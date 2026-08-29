@@ -22,3 +22,10 @@ Move-Item -Path "m68000_temp" -Destination "src\devices\cpu\m68000"
 ```
 
 
+## Graphify
+
+if `graphify` command is not reachable after installation run
+
+```powershell
+uv tool update-shell
+```
