@@ -15,5 +15,16 @@
 - Only progress when CPU cycle requirements are satisfied and the bus is unblocked
 	- Note that because CPU may be blocked by Chip RAM / DMA, it can wait additional CCKs
 - Use `MemoryBus` to access memory
+- **Exception Vector Table & Exception Processing**:
+  - Implement full MC68000 Exception Vector Table (`$000000-$0003FF`, 256 32-bit vector addresses in memory)
+  - Vectors include Reset SP/PC (0-1), Address Error (3), Illegal Instruction (4), Zero Divide (5), Privilege Violation (8), Trace (9), TRAP #0-#15 (32-47), and Autovector Interrupts Level 1-7 (Vectors 25-31 at `$000064-$00007C`)
+- **Interrupt Handling**:
+  - CPU exposes an interface to sample external interrupt lines (e.g. `set_ipl(level: u8)`)
+  - When the sampled interrupt level is greater than the current CPU interrupt mask in the Status Register (`SR` bits 8-10, `I0-I2`) — or on level 7 (NMI) — CPU processes an autovector interrupt exception at instruction boundary
+- **Error Handling**:
+  - **Address Error (Vector 3, `$00000C`)**: **Must be handled**. Triggered internally by the CPU whenever a 16-bit word or 32-bit long-word access is attempted on an odd address (bit 0 set). Pushes the 68000 Address Error stack frame.
+  - **Bus Error (`_BERR`, Vector 2, `$000008`)**: **Omitted** in current hardware emulation. Standard Amiga 500 hardware does not assert `_BERR` (unmapped addresses simply float and return `$FF` / `$FFFF`).
 - Method to progress one cycle / CCK forward
+- **Verification**:
+  - Validated against [`CPU SingleStepTests.md`](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CPU%20SingleStepTests.md) using test vectors from `ref_src/SingleStepTests-m68000/v1/`
 - Initial milestone: Implement and verify `NOP` instruction

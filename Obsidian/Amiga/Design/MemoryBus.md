@@ -10,9 +10,9 @@
   - Model bus read/write operations using an enum (e.g. `MemoryBusResult`):
     - `Ready(u16)` (or `Success`) — Operation completed successfully (returns 16-bit word on word read, or 8-bit byte on byte read)
     - `Blocked` (or `Wait`) — Bus is currently blocked (e.g., Chip RAM occupied by Agnus/DMA)
-    - `BusError` — Access to unmapped / invalid space
+  - *(Note: `BusError` is omitted in current hardware emulation as standard A500 hardware does not assert `_BERR`)*
 - **Unmapped Address Space & Floating Bus**:
-  - Reading from unmapped address space returns **`$FF`** for 8-bit byte reads and **`$FFFF`** for 16-bit word reads (simulating pull-up resistors / floating open bus).
+  - Reading from unmapped address space returns **`$FF`** for 8-bit byte reads and **`$FFFF`** for 16-bit word reads (simulating pull-up resistors / floating open bus without triggering Bus Error).
   - Writing to unmapped address space is safely ignored (no-op).
 - **Byte vs. Word Access to 16-bit Custom Registers & CIAs**:
   - **16-bit Custom Chip Registers ($DFF000-$DFFFFE)**:

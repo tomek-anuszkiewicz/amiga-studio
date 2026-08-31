@@ -12,5 +12,17 @@
 - **Register Width & Byte Access Handling**:
   - **Custom Chips (16-bit)**: Custom registers are 16-bit wide. Byte writes target the addressed byte lane while the unaddressed byte defaults to `$FF`. Reading disconnected/write-only registers returns `$FF`.
   - **CIAs (8-bit)**: CIAs are native 8-bit peripherals. Byte reads and byte writes are the standard operating mode (CIA-A on odd addresses, CIA-B on even addresses). Word reads return the 8-bit value with `$FF` on the unused byte lane.
+- **Interrupt Management & Internal Interrupt State**:
+  - **Paula**: Houses central Amiga interrupt controller (`INTENA` `$DFF09A`, `INTREQ` `$DFF09C`). Multiplexes interrupt sources into priority levels:
+    - Level 1: Serial TX empty (TBE), Disk Block (DSKBLK), Software interrupt (SOFT)
+    - Level 2: CIA-A interrupt (`PORTS`)
+    - Level 3: Vertical Blank (VERTB), Blitter finished (BLIT), Copper (COPER)
+    - Level 4: Audio channels 0-3 (`AUD0`-`AUD3`)
+    - Level 5: Serial RX buffer full (RBF), Disk Sync match (DSKSYN)
+    - Level 6: CIA-B interrupt (`EXTER`)
+  - **CIA-A**: Keeps internal Interrupt Control Register (ICR) state; drives the Level 2 interrupt line
+  - **CIA-B**: Keeps internal Interrupt Control Register (ICR) state; drives the Level 6 interrupt line
+  - **Agnus**: Signals VBlank, Blitter, and Copper interrupt conditions to Paula
+  - **Interrupt State Inspection**: Each chip maintains its internal interrupt line state and exposes public getter methods so that external systems (the main loop) can read active interrupt lines
 - In early implementation phase: treat all registers as R/W
 - Provide `get_state()` / `set_state()` methods for full serialization in save states
