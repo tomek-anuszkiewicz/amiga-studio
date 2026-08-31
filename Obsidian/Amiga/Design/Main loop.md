@@ -6,6 +6,6 @@
   - Process by single CCK cycle
   - Process predefined number of cycles
   - Process a full video frame
-- Reset method (initializes hardware state and routes low memory addresses to Kickstart)
+- Reset method (initializes hardware state and calls `map_kickstart_to_low_memory()`)
 - Load / save state methods for the whole machine (JSON with Base64-encoded memory)
 - Output methods to retrieve video frame and sound buffers
