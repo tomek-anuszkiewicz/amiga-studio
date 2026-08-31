@@ -23,6 +23,15 @@
     - CIAs (8520) are native 8-bit chips and operate on byte-wide accesses (CIA-A at odd byte addresses `$BFE001`, CIA-B at even byte addresses `$BFD000`).
     - Byte reads and byte writes to CIA registers are completely valid and native.
     - When performing a 16-bit word read on CIA address space, the addressed CIA returns its 8-bit value on its byte lane, while the unconnected byte lane returns **`$FF`**.
+- **TAS (Test-And-Set / Read-Modify-Write) Hardware Quirk**:
+  - The M68000 `TAS <ea>` instruction performs an indivisible Read-Modify-Write (RMW) cycle holding Address Strobe (`_AS`) continuously asserted.
+  - **Chip RAM (`$000000-$07FFFF`) & Slow RAM (`$C00000-$C7FFFF`)**:
+    - Managed by Agnus / Gary memory arbitration logic, which does not latch the unbroken RMW write strobe.
+    - **Read phase succeeds** (CCR condition codes $N$ and $Z$ are updated).
+    - **Write phase is dropped / ignored** (bit 7 is NOT set in memory; memory contents remain unchanged, behaving effectively like `TST.B`).
+  - **Fast RAM (`$200000-$5FFFFF`)**:
+    - Decoupled on the expansion bus.
+    - **Both read and write phases succeed** (bit 7 is set to 1 in memory).
 - **Kickstart Low-Memory Routing**:
   - Methods to control whether address `$000000` points to Kickstart ROM or Chip RAM:
     - `map_kickstart_to_low_memory()` — Maps `$000000-$07FFFF` reads to Kickstart ROM (active on system reset to fetch Reset SP & PC)
