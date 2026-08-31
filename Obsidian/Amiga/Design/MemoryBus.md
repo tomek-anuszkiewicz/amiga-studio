@@ -1,0 +1,19 @@
+- Keep code in MemoryBus directory
+- This is to handle memory for Amiga 500 system
+- Memory bus is 24 width
+- Datsa is 16 bit width
+- Chip Memory can be blocked, so instead of data I should return information about it
+- Implement Amiga memory map
+	- Game
+		- 0.5MB CHIP
+		- 0.5MB SLOW
+	- PowerUser
+		- 0.5MB CHIP
+		- 4MB Fast
+- Detect if memory is used by specialized Amiga chips, and route operation there
+- Write method to get/set memory for purpose of load/save state
+- I need method to lock/unlock chip ram
+- Memory config are predefined:
+  - 0.5MB CHIP
+  - 0.5MB CHIP + 0.5MB SLOW
+  - 0.5MB CHIP + 0.5MB SLOW + 4MB FAST

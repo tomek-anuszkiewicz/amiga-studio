@@ -1,0 +1,1 @@
+Simple shared 32bit counter, should ne shared among all chips and cpu. Should be shared as read only.

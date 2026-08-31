@@ -1,0 +1,5 @@
+- I would name it A500
+- We should be able to process by one cycle
+- I need method to load/save state
+- I need reset method
+- Create whole machine with all chips, cpu, memory.
