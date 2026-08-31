@@ -1,17 +1,19 @@
-- Keep code in directory M68000
+# CPU Motorola M68000
+
+- Keep code in directory `M68000`
 - Code should be cycle-exact
-- CPU state should be read only
-- Implement all register, also those internal (prefetch, maybe others)
-- I need to get and set whole state at once, so I can use it to load/save state
-- Build big switch for each instruction
-- Every instruction should be separated in 8 states, each for 2 cycles, as defined in cpu documentation.
-	- In this case cycle exact means if a need to read/write in specififed state I should exactly in this state check if I can do this.
-		- If bus is available I should progress
-		- If not I should remain at same state
-- I should execute prefetch also in defined in manual cycles
-- For each instruction I should calculate exactly how many cycles it should take
-- Only if number of cpu cycles >= cycle to progress to next state, I should progress
-	- Note that because CPU may be blocked, we can wait longer
-- Use MemoryBus to access memory
-- I need method to progress one cycle forward. 
-- Implement only NOP instruction
+- CPU state should be read-only (queryable)
+- Implement all registers, including internal ones (prefetch queue, instruction stage)
+- Provide methods to get and set whole CPU state at once for save/load state
+- Build instruction execution state machine (e.g. big switch / table for instructions)
+- Memory bus operations and instruction execution stages are modeled using Color Clock phases: **CCK1** and **CCK2** (replacing traditional S-states, where 1 bus access = 4 CPU clocks = 2 CCK cycles: CCK1 and CCK2):
+	- When reading/writing during a CCK phase, check memory bus availability via `MemoryBusResult`:
+		- If bus is ready (`MemoryBusResult::Ready`), progress to the next state/phase.
+		- If bus is blocked (`MemoryBusResult::Blocked` / `Wait`), remain at the same state/phase (insert wait state).
+- Execute prefetch in defined CCK cycles as per the MC68000 manual
+- For each instruction, calculate exact cycle timings based on CCK phases
+- Only progress when CPU cycle requirements are satisfied and the bus is unblocked
+	- Note that because CPU may be blocked by Chip RAM / DMA, it can wait additional CCKs
+- Use `MemoryBus` to access memory
+- Method to progress one cycle / CCK forward
+- Initial milestone: Implement and verify `NOP` instruction

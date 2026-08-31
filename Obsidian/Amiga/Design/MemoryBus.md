@@ -1,19 +1,25 @@
-- Keep code in MemoryBus directory
-- This is to handle memory for Amiga 500 system
-- Memory bus is 24 width
-- Datsa is 16 bit width
-- Chip Memory can be blocked, so instead of data I should return information about it
-- Implement Amiga memory map
-	- Game
-		- 0.5MB CHIP
-		- 0.5MB SLOW
-	- PowerUser
-		- 0.5MB CHIP
-		- 4MB Fast
-- Detect if memory is used by specialized Amiga chips, and route operation there
-- Write method to get/set memory for purpose of load/save state
-- I need method to lock/unlock chip ram
-- Memory config are predefined:
-  - 0.5MB CHIP
-  - 0.5MB CHIP + 0.5MB SLOW
-  - 0.5MB CHIP + 0.5MB SLOW + 4MB FAST
+# Memory Bus
+
+- Keep code in `MemoryBus` directory
+- Handles memory addressing and routing for the Amiga 500 system
+- Address bus: 24-bit width (`0x000000` - `0xFFFFFF`)
+- Data bus: 16-bit width
+- **Memory Bus Result as Enum**:
+  - Model bus read/write operations using an enum (e.g. `MemoryBusResult`):
+    - `Ready(u16)` (or `Success`) — Operation completed successfully (returns 16-bit word on read)
+    - `Blocked` (or `Wait`) — Bus is currently blocked (e.g., Chip RAM occupied by Agnus/DMA)
+    - `BusError` — Access to unmapped / invalid space
+- **Kickstart Low-Memory Routing**:
+  - Add explicit methods to control whether address `$000000` points to Kickstart ROM or Chip RAM:
+    - `route_low_addresses_to_kickstart()` (or `map_kickstart_to_low_memory()`) — Routes `$000000-$07FFFF` reads to Kickstart ROM (active on system reset to fetch Reset SP & PC)
+    - `route_low_addresses_to_chip_ram()` (or `map_chip_ram_to_low_memory()`) — Restores `$000000-$07FFFF` to access physical Chip RAM
+  - *(Names explicitly describe what is happening without using "cia", "OVL", or "overlay")*
+- **Memory Configurations**:
+  - Predefined configs:
+    - `0.5MB CHIP`
+    - `0.5MB CHIP + 0.5MB SLOW` (Trapdoor `$C00000`)
+    - `0.5MB CHIP + 0.5MB SLOW + 4MB FAST` (Fast RAM `$200000-$5FFFFF`)
+- **Routing & Arbitration**:
+  - Detect addresses belonging to specialized Amiga custom chips (`$DFF000-$DFFFFF`) and CIAs (`$BFE001`, `$BFD000`), and route operations there
+  - Methods to lock/unlock Chip RAM during custom chip DMA cycles
+  - Methods to get/set memory buffers (encoded in Base64) for load/save state

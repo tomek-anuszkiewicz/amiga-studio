@@ -1,7 +1,9 @@
-Use Rust
-Emulator should also run in WebAssembly
-It should run on different cpu architectures
-It should be mostly system agnostic.
-Save state, configuration, rom will be provided from outside.
-I should be able to reset emulator, execute predefined cycles, or execute whole frame.
-I should be able to get video frame, sound buffer.
+# General Architecture
+
+- Written in Rust
+- Emulator must run in WebAssembly (`wasm32-unknown-unknown`) as well as native desktop targets
+- Portable across different CPU architectures (x86_64, ARM64, etc.)
+- System-agnostic core (no direct OS dependencies in the core emulator engine)
+- External injection of save states, memory configurations, and Kickstart ROMs
+- Flexible execution control: reset emulator, execute single/predefined CCK cycles, or execute full video frame
+- Decoupled outputs: methods to retrieve video frame buffer and audio sample buffer
