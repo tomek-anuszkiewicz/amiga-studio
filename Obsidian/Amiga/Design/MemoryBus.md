@@ -11,6 +11,18 @@
     - `Ready(u16)` (or `Success`) — Operation completed successfully (returns 16-bit word on word read, or 8-bit byte on byte read)
     - `Blocked` (or `Wait`) — Bus is currently blocked (e.g., Chip RAM occupied by Agnus/DMA)
     - `BusError` — Access to unmapped / invalid space
+- **Unmapped Address Space & Floating Bus**:
+  - Reading from unmapped address space returns **`$FF`** for 8-bit byte reads and **`$FFFF`** for 16-bit word reads (simulating pull-up resistors / floating open bus).
+  - Writing to unmapped address space is safely ignored (no-op).
+- **Byte vs. Word Access to 16-bit Custom Registers & CIAs**:
+  - **16-bit Custom Chip Registers ($DFF000-$DFFFFE)**:
+    - Amiga custom chips (Agnus, Denise, Paula) are 16-bit wide.
+    - If a byte write is performed on a 16-bit custom register, the active byte is written to the addressed half while the inactive byte defaults to/operates with **`$FF`** (or open bus lines).
+    - Reading write-only or disconnected register bits returns **`$FF`**.
+  - **8-bit CIA Registers ($BFE001 / $BFD000)**:
+    - CIAs (8520) are native 8-bit chips and operate on byte-wide accesses (CIA-A at odd byte addresses `$BFE001`, CIA-B at even byte addresses `$BFD000`).
+    - Byte reads and byte writes to CIA registers are completely valid and native.
+    - When performing a 16-bit word read on CIA address space, the addressed CIA returns its 8-bit value on its byte lane, while the unconnected byte lane returns **`$FF`**.
 - **Kickstart Low-Memory Routing**:
   - Methods to control whether address `$000000` points to Kickstart ROM or Chip RAM:
     - `map_kickstart_to_low_memory()` — Maps `$000000-$07FFFF` reads to Kickstart ROM (active on system reset to fetch Reset SP & PC)
