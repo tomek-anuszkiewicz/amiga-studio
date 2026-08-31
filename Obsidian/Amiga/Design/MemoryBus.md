@@ -3,10 +3,12 @@
 - Keep code in `MemoryBus` directory
 - Handles memory addressing and routing for the Amiga 500 system
 - Address bus: 24-bit width (`0x000000` - `0xFFFFFF`)
-- Data bus: 16-bit width
+- Data bus: 16-bit width (supports 8-bit byte and 16-bit big-endian word operations)
+- **Raw Memory Representation**:
+  - All underlying memory regions (Chip RAM, Slow RAM, Fast RAM, ROM) are stored and manipulated as **raw arrays of bytes (`[u8]` / `Vec<u8>`)**.
 - **Memory Bus Result as Enum**:
   - Model bus read/write operations using an enum (e.g. `MemoryBusResult`):
-    - `Ready(u16)` (or `Success`) — Operation completed successfully (returns 16-bit word on read)
+    - `Ready(u16)` (or `Success`) — Operation completed successfully (returns 16-bit word on word read, or 8-bit byte on byte read)
     - `Blocked` (or `Wait`) — Bus is currently blocked (e.g., Chip RAM occupied by Agnus/DMA)
     - `BusError` — Access to unmapped / invalid space
 - **Kickstart Low-Memory Routing**:
@@ -16,11 +18,11 @@
   - *(Names explicitly describe what is happening without using "cia", "OVL", or "overlay")*
 - **Memory Configurations**:
   - Predefined configs:
-    - `0.5MB CHIP`
+    - `0.5MB CHIP` (512 KB array of bytes)
     - `0.5MB CHIP + 0.5MB SLOW` (Trapdoor `$C00000`)
     - `0.5MB CHIP + 0.5MB SLOW + 4MB FAST` (Fast RAM `$200000-$5FFFFF`)
 - **Routing & Arbitration**:
   - Detect addresses belonging to specialized Amiga custom chips (`$DFF000-$DFFFFF`) and CIAs (`$BFE001`, `$BFD000`), and route operations there
   - Methods to lock/unlock Chip RAM during custom chip DMA cycles
   - **Memory State Access**:
-    - `MemoryBus` must get and set memory buffers as **arrays of words (`[u16]`)**, not as Base64 (Base64 encoding is handled at the SaveState serialization layer)
+    - `MemoryBus` gets and sets memory buffers as **arrays of bytes (`[u8]`)**, not as Base64 (Base64 encoding is handled at the SaveState serialization layer)

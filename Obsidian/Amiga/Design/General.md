@@ -4,6 +4,7 @@
 - Emulator must run in WebAssembly (`wasm32-unknown-unknown`) as well as native desktop targets
 - Portable across different CPU architectures (x86_64, ARM64, etc.)
 - System-agnostic core (no direct OS dependencies in the core emulator engine)
-- External injection of save states, memory configurations, and Kickstart ROMs
+- External injection of save states, memory configurations, and Kickstart ROMs (as raw arrays/slices of bytes `&[u8]`)
+- Raw memory is represented throughout the system as arrays of bytes (`[u8]`)
 - Flexible execution control: reset emulator, execute single/predefined CCK cycles, or execute full video frame
 - Decoupled outputs: methods to retrieve video frame buffer and audio sample buffer
