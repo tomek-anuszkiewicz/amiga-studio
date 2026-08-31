@@ -2,3 +2,4 @@ progs/LTspice64.msi
 .tmp.driveupload/
 .graphifyignore
 graphify-out/cache/
+.tmp.drivedownload/
