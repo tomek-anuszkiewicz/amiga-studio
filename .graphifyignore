@@ -1,10 +1,8 @@
-.git/
 bin/
 obj/
 node_modules/
 dist/
 build/
-graphify-out/
 
 .vscode/
 
@@ -15,7 +13,17 @@ graphify-out/
 *.dms
 *.bin
 
+.git/
+.agents/
+.antigravity/
 .tmp.*/
+adfs
+docs-org/
+docs-todo/
+docs-unused/
+graphify-out/
+ltspice-audio/
+progs/
 ref_src/Minimig-AGA_MiSTer-MiSTer/
 ref_src/EASy68K-master/
 ref_src/fx68k/
@@ -24,3 +32,4 @@ ref_src/SingleStepTests-680x0
 ref_src/SingleStepTests-m68000
 ref_src/TG68K.C
 ref_src/vAmigaTS
+
