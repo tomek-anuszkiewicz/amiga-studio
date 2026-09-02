@@ -1,4 +1,3 @@
-# Main Loop (A500)
 
 - Name the machine struct `A500`
 - Create whole machine wiring CPU (`M68000`), `MemoryBus`, `CycleCounter` (64-bit CCK), and custom chips
@@ -12,3 +11,10 @@
 - Reset method (initializes hardware state and calls `map_kickstart_to_low_memory()`)
 - Load / save state methods for the whole machine (JSON with Base64-encoded memory)
 - Output methods to retrieve video frame and sound buffers
+
+
+TODO:
+- Reset
+	- reset cpu
+	- reset memory bus - kickstart from $0
+	- todo: specialized chips, memory?

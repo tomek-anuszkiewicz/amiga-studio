@@ -1,5 +1,3 @@
-# Cycle Counter
-
 - Shared 64-bit unsigned integer counter (`u64`).
 - Counts Color Clocks (CCK, ~3.54 MHz PAL / ~3.57 MHz NTSC).
 - Shared among all custom chips (Agnus, Denise, Paula), CIAs, and CPU as read-only.

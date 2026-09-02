@@ -1,4 +1,3 @@
-# Save State
 
 - Define save state to load/save the complete machine state (`A500`).
 - Serializes `CycleCounter` (64-bit CCK counter).

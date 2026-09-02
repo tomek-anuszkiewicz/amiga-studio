@@ -1,4 +1,3 @@
-# CPU SingleStepTests & Verification
 
 This document defines the complete specification for running the **SingleStepTests** test suite against the M68000 CPU emulator in Rust. It assumes all 127 test files in `ref_src/SingleStepTests-m68000/v1/` are available in JSON format (e.g. `ADD.b.json`, `MOVE.w.json`, `ILLEGAL_LINEA.json`).
 

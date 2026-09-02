@@ -1,5 +1,3 @@
-# General Architecture
-
 - Written in Rust
 - Emulator must run in WebAssembly (`wasm32-unknown-unknown`) as well as native desktop targets
 - Portable across different CPU architectures (x86_64, ARM64, etc.)
