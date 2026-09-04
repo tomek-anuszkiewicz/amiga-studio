@@ -105,5 +105,5 @@ Expose methods to simulate Agnus cycle stealing:
 
 
 TODO:
-Reset:
+Hard Reset:
 - zero memory, only cold reset

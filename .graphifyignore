@@ -16,7 +16,8 @@ build/
 .git/
 .agents/
 .antigravity/
-.tmp.*/
+.tmp.driveupload/
+.tmp.drivedownload/
 adfs
 docs-org/
 docs-todo/
@@ -32,4 +33,3 @@ ref_src/SingleStepTests-680x0
 ref_src/SingleStepTests-m68000
 ref_src/TG68K.C
 ref_src/vAmigaTS
-

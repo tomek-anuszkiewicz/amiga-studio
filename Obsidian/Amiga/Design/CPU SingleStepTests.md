@@ -460,3 +460,7 @@ cargo test tests::cpu::test_trap
 cargo test tests::cpu
 ```
 
+TODO:
+- we must simulate how dma blocks chip memory, looking at test json we  should prepare mix of dma schedule, we should alter json, and expect test to pass
+  - this is a cpu test, and memorybus already has logic to block chip memory, we just need to hook it up with actual dma schedule, in test method
+- and another mix should be chip/fast memory. So in test json we should alter memory address to mix chip/fast/onlychip/onlyfast. Knowing that we should alter test json, and expect it to pass

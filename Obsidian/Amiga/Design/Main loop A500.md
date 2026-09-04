@@ -18,3 +18,5 @@ TODO:
 	- reset cpu
 	- reset memory bus - kickstart from $0
 	- todo: specialized chips, memory?
+  - hard reset - clear memory, register, chips may have custom reset logic, we need to call them
+  - warm reset - just start with procesor reset state, keep registers, keep memory, chips registers

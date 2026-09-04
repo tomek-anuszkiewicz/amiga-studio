@@ -5,7 +5,9 @@
       "python",
       "powershell",
       "Get-Content",
-      "graphify"
+      "graphify",
+      "pip *",
+      "git *"
     ]
   }
 }
