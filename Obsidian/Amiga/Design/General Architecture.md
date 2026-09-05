@@ -56,6 +56,7 @@ graph TD
 - [Joystick.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Joystick.md): Game port digital/analog joysticks, 4-player parallel adapter, and host gamepad mapping.
 - [Mouse.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Mouse.md): Port 1 quadrature counters (`JOY0DAT`), buttons, pointer locking, and touchscreen mapping.
 - [Keyboard.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Keyboard.md): Microcontroller serial protocol, scancode matrix, `Ctrl-Amiga-Amiga` reset, and host layout-independent key mapping.
+- [Floppy.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Floppy.md): 3.5" DD drive mechanics, multi-chip interface (CIA-A, CIA-B, Paula, Agnus), MFM track layout, and ADF ingestion.
 
 ---
 

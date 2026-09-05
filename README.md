@@ -34,6 +34,7 @@ The goal of this repository is to build a modern, system-agnostic, cycle-exact A
 │       │   ├── CycleCounter.md
 │       │   ├── Debugger.md
 │       │   ├── Denise.md
+│       │   ├── Floppy.md
 │       │   ├── General Architecture.md
 │       │   ├── GUI.md
 │       │   ├── Joystick.md

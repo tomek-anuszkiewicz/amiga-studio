@@ -147,6 +147,9 @@ flowchart TD
 - **Bit 6 (`_SEL3`):** Drive 3 select (`DF3:`).
 - **Bit 7 (`_MTR`):** Floppy motor on/off (latched on drive selection).
 
+> [!NOTE]
+> For complete drive mechanics, motor latching on select, head step rates, `_CHNG` flip-flop clearing, and MFM sector formatting, see [Floppy.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Floppy.md).
+
 ---
 
 ## 8. Interrupt Control Register (ICR) & Routing
