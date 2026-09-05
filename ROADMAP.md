@@ -33,6 +33,7 @@ This document outlines the phased development plan, hardware milestones, verific
 ### Peripheral Extensions (Post-Baseline)
 - **4-Player Joystick Adapter:** Parallel port 4-joystick adapter for multiplayer games (e.g. *Super Skidmarks*, *Dynablaster*).
 - **Analog Joysticks:** Proportional analog potentiometer sampling via `POT0DAT`/`POT1DAT`.
+- **Light Pen / Gun:** Video beam position latching via `VPOSR`/`VHPOSR` registers and `BPLCON0` bit 3 (`LPEN`).
 
 ---
 
