@@ -103,31 +103,31 @@ uv tool update-shell
 The `ref_src/` directory houses 17 local reference implementations, testbenches, and hardware descriptions:
 
 ### 4.1 Motorola 68000 CPU Cores
-- **[Moira 3.0](file:///d:/Programowanie/Amiga/ref_src/Moira-3.0)** (`C++`): Cycle-exact, micro-operation based MC68000 core by Dirk W. Hoffmann. Primary behavioral standard for bus cycle phases ($S_0-S_7$), instruction prefetch, and CCK clock synchronization.
-- **[Musashi](file:///d:/Programowanie/Amiga/ref_src/Musashi)** (`C`): Industry-standard portable 680x0 emulator core by Karl Stenerud. Reference for complete opcode decoding, CCR flags, and exception frames.
-- **[m68k-rs](file:///d:/Programowanie/Amiga/ref_src/m68k-rs-m68k-v0.11.6)** (`Rust`): Pure Rust M68000–M68060 core featuring clean bus abstraction (`AddressBus`).
-- **[EASy68K](file:///d:/Programowanie/Amiga/ref_src/EASy68K-master)**: 68000 assembly editor, assembler, and simulator toolchain for authoring bare-metal test routines.
+- **[Moira 3.0](file:///d:/Programowanie/Amiga/ref_src/Moira-3.0)** (`C++`) — [GitHub](https://github.com/dirkwhoffmann/Moira): Cycle-exact, micro-operation based MC68000 core by Dirk W. Hoffmann. Primary behavioral standard for bus cycle phases ($S_0-S_7$), instruction prefetch, and CCK clock synchronization.
+- **[Musashi](file:///d:/Programowanie/Amiga/ref_src/Musashi)** (`C`) — [GitHub](https://github.com/kstenerud/Musashi): Industry-standard portable 680x0 emulator core by Karl Stenerud. Reference for complete opcode decoding, CCR flags, and exception frames.
+- **[m68k-rs](file:///d:/Programowanie/Amiga/ref_src/m68k-rs-m68k-v0.11.6)** (`Rust`) — [GitHub](https://github.com/benletchford/m68k-rs): Pure Rust M68000–M68060 core featuring clean bus abstraction (`AddressBus`).
+- **[EASy68K](file:///d:/Programowanie/Amiga/ref_src/EASy68K-master)** — [GitHub](https://github.com/EASy68K/EASy68K) / [Web](http://www.easy68k.com): 68000 assembly editor, assembler, and simulator toolchain for authoring bare-metal test routines.
 
 ### 4.2 Hardware & FPGA Descriptions (HDL)
-- **[fx68k](file:///d:/Programowanie/Amiga/ref_src/fx68k)** (`Verilog`): Cycle-exact, microcode-level 68000 hardware description by Jorge Cwik (ijor). Ground-truth reference for silicon-level microcode, prefetch refills, and bus wait states.
-- **[TG68K.C](file:///d:/Programowanie/Amiga/ref_src/TG68K.C)** (`VHDL`): Synthesizable 68000 FPGA core by Tobias Gubener.
-- **[deniser](file:///d:/Programowanie/Amiga/ref_src/deniser-1.0.0)** (`VHDL`): Drop-in FPGA replacement for the Amiga Denise video chip detailing planar-to-chunky conversion, sprite multiplexing, and HAM/EHB modes.
-- **[Minimig-AGA_MiSTer](file:///d:/Programowanie/Amiga/ref_src/Minimig-AGA_MiSTer)** (`Verilog`): Full Amiga OCS/ECS/AGA hardware implementation on MiSTer FPGA. Reference for DMA bus slot arbitration across Agnus, Denise, and Paula.
+- **[fx68k](file:///d:/Programowanie/Amiga/ref_src/fx68k)** (`Verilog`) — [GitHub](https://github.com/ijor/fx68k): Cycle-exact, microcode-level 68000 hardware description by Jorge Cwik (ijor). Ground-truth reference for silicon-level microcode, prefetch refills, and bus wait states.
+- **[TG68K.C](file:///d:/Programowanie/Amiga/ref_src/TG68K.C)** (`VHDL`) — [GitHub](https://github.com/TobiFlex/TG68K.C): Synthesizable 68000 FPGA core by Tobias Gubener.
+- **[deniser](file:///d:/Programowanie/Amiga/ref_src/deniser-1.0.0)** (`VHDL`) — [GitHub](https://github.com/endofexclusive/deniser): Drop-in FPGA replacement for the Amiga Denise video chip detailing planar-to-chunky conversion, sprite multiplexing, and HAM/EHB modes.
+- **[Minimig-AGA_MiSTer](file:///d:/Programowanie/Amiga/ref_src/Minimig-AGA_MiSTer)** (`Verilog`) — [GitHub](https://github.com/MiSTer-devel/Minimig-AGA_MiSTer): Full Amiga OCS/ECS/AGA hardware implementation on MiSTer FPGA. Reference for DMA bus slot arbitration across Agnus, Denise, and Paula.
 
 ### 4.3 Test Suites & Verification
-- **[SingleStepTests-m68000](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000)**: 127 exhaustive per-instruction JSON validation test suites generated from MAME's microcoded core. Provides register/memory/prefetch starting conditions and expected cycle-by-cycle output states.
-- **[SingleStepTests-680x0](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0)**: Tom Harte's single-step processor test vectors.
-- **[amiga-stuff-testkit](file:///d:/Programowanie/Amiga/ref_src/amiga-stuff-testkit-v1.21)**: Keir Fraser's Amiga Test Kit (ADF boot disk) for testing CIA timers, floppy PLL decoding, memory autoconfig, and chipset interrupts.
-- **[vAmigaTS](file:///d:/Programowanie/Amiga/ref_src/vAmigaTS)**: Automated regression test suite consisting of ADF test disks and reference video renders for Copper lists, Blitter fills, and raster effects.
+- **[SingleStepTests-m68000](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000)** — [GitHub](https://github.com/SingleStepTests/m68000): 127 exhaustive per-instruction JSON validation test suites generated from MAME's microcoded core. Provides register/memory/prefetch starting conditions and expected cycle-by-cycle output states.
+- **[SingleStepTests-680x0](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0)** — [GitHub](https://github.com/SingleStepTests/680x0): Tom Harte's single-step processor test vectors.
+- **[amiga-stuff-testkit](file:///d:/Programowanie/Amiga/ref_src/amiga-stuff-testkit-v1.21)** — [GitHub](https://github.com/keirf/amiga-test-kit): Keir Fraser's Amiga Test Kit (ADF boot disk) for testing CIA timers, floppy PLL decoding, memory autoconfig, and chipset interrupts.
+- **[vAmigaTS](file:///d:/Programowanie/Amiga/ref_src/vAmigaTS)** — [GitHub](https://github.com/dirkwhoffmann/vAmigaTS): Automated regression test suite consisting of ADF test disks and reference video renders for Copper lists, Blitter fills, and raster effects.
 
 ### 4.4 Reference System Emulators
-- **[WinUAE](file:///d:/Programowanie/Amiga/ref_src/WinUAE-6030)**: Most comprehensive cycle-exact Amiga emulator by Toni Wilen. Ultimate reference for edge cases (floppy MFM sync, CIA TOD timers, Gary/Agnus bus contention).
-- **[vAmiga](file:///d:/Programowanie/Amiga/ref_src/vAmiga-4.5)**: Clean, object-oriented C++ A500/A1000/A2000 emulator by Dirk W. Hoffmann. Reference for decoupling Agnus, Denise, and Paula across a unified CCK grid.
-- **[ScriptedAmigaEmulator](file:///d:/Programowanie/Amiga/ref_src/ScriptedAmigaEmulator)**: High-level JavaScript Amiga emulator by Rupert Hausberger.
-- **[MAME](file:///d:/Programowanie/Amiga/ref_src/mame-mame0289)**: Reference implementations for shared peripheral chips (MOS 8520 CIA, M68000 CPU).
+- **[WinUAE](file:///d:/Programowanie/Amiga/ref_src/WinUAE-6030)** — [GitHub](https://github.com/tonioni/WinUAE): Most comprehensive cycle-exact Amiga emulator by Toni Wilen. Ultimate reference for edge cases (floppy MFM sync, CIA TOD timers, Gary/Agnus bus contention).
+- **[vAmiga](file:///d:/Programowanie/Amiga/ref_src/vAmiga-4.5)** — [GitHub](https://github.com/dirkwhoffmann/vAmiga): Clean, object-oriented C++ A500/A1000/A2000 emulator by Dirk W. Hoffmann. Reference for decoupling Agnus, Denise, and Paula across a unified CCK grid.
+- **[ScriptedAmigaEmulator](file:///d:/Programowanie/Amiga/ref_src/ScriptedAmigaEmulator)** — [GitHub](https://github.com/naTmeg/ScriptedAmigaEmulator): High-level JavaScript Amiga emulator by Rupert Hausberger.
+- **[MAME](file:///d:/Programowanie/Amiga/ref_src/mame-mame0289)** — [GitHub](https://github.com/mamedev/mame): Reference implementations for shared peripheral chips (MOS 8520 CIA, M68000 CPU).
 
 ### 4.5 Visual Post-Processing
-- **[RetroVisor.app](file:///d:/Programowanie/Amiga/ref_src/RetroVisor.app)**: CRT shader pipeline reference (scanlines, phosphor bloom, curvature, shadow mask) by Dirk W. Hoffmann.
+- **[RetroVisor.app](file:///d:/Programowanie/Amiga/ref_src/RetroVisor.app)** — [GitHub](https://github.com/dirkwhoffmann/RetroVisor): CRT shader pipeline reference (scanlines, phosphor bloom, curvature, shadow mask) by Dirk W. Hoffmann.
 
 ---
 
