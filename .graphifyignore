@@ -18,13 +18,11 @@ build/
 .antigravity/
 .tmp.driveupload/
 .tmp.drivedownload/
-adfs
-docs-org/
-docs-todo/
-docs-unused/
+archive/
+tests/
+tools/
+schematics/
 graphify-out/
-ltspice-audio/
-progs/
 ref_src/Minimig-AGA_MiSTer-MiSTer/
 ref_src/EASy68K-master/
 ref_src/fx68k/

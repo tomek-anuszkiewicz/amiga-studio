@@ -45,6 +45,17 @@ The goal of this repository is to build a modern, system-agnostic, cycle-exact A
 │   ├── vAmiga-4.5/
 │   ├── fx68k/
 │   └── ...
+├── schematics/              <- Consolidated hardware schematics and IC datasheets
+│   ├── a500/                <- Active Phase 1 schematics (Rev 5, Rev 6A/7, A501, IC datasheets)
+│   └── other-models/        <- Other Commodore Amiga models (A1000, A1200, A2000, etc.)
+├── tools/                   <- Developer tools and offline table generators
+│   ├── BlebGenerator/       <- C# sinc BLEP table generator
+│   └── winguide/            <- AmigaGuide viewer utility
+├── tests/                   <- Test media, testbenches, and disk images
+│   └── disks/               <- ADF test disk images (AmigaTestKit)
+├── archive/                 <- Cold storage for digitized / inactive raw sources
+│   ├── docs-original/       <- Raw sources digitized into Obsidian Reference
+│   └── docs-non-a500/       <- Inactive manuals (68020+, AGA, etc.)
 ├── AGENTS.md                <- Authoritative project rules and Rust systems guidelines
 ├── ROADMAP.md               <- Project milestones, implementation steps, and agent testing strategy
 └── README.md
