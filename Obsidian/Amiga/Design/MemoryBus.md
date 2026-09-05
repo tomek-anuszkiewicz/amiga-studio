@@ -39,7 +39,11 @@
 
 ## 3. Sub-Cycle Timing & 2-Phase Bus Arbitration
 
-Model bus access according to the Motorola 68000 4-clock execution cycle (7.09 MHz PAL), divided into two Color Clock slots (CCK / 3.54 MHz): **Phase 1 (S0–S3)** and **Phase 2 (S4–S7)**.
+The Motorola 68000 bus cycle spans 4 CPU clocks ($S_0$ through $S_7$), which maps to two Color Clock slots (CCK / 3.54 MHz): **Phase 1 / CCK1 (S0–S3)** and **Phase 2 / CCK2 (S4–S7)**.
+
+While the CPU requires 2 Color Clocks to complete an instruction bus transaction, **Amiga Chip RAM can complete a physical access in just 1 Color Clock (280 ns)**. The hardware exploits this difference to interleave access 50/50 between CPU and DMA without slowing down the CPU:
+- **Read Cycle:** On CCK1, data is read from physical Chip RAM into `read_latch`. On CCK2, the CPU reads safely from `read_latch` while **the physical Chip RAM bus is completely freed for custom chip DMA**.
+- **Write Cycle:** On CCK1, the CPU prepares address and data internally without needing physical memory access (leaving CCK1 free for DMA). On CCK2, the CPU commits the unbuffered write directly to physical Chip RAM.
 
 Maintain the following internal bus state:
 - `read_latch: u16`: Transparent buffer holding sampled read data between phases.

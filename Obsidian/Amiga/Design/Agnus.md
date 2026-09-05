@@ -89,9 +89,92 @@ Bits 14-8: Chip ID (0 = OCS PAL 8371 / NTSC 8370; 1 = ECS Fat Agnus 8372A)
 Bit     0: V8     (Vertical scanline bit 8)
 ```
 
-- **PAL Scanning:** $312$ lines ($0$ to $311$). $V_8$ is set for scanlines $\ge 256$.
-- **NTSC Scanning:** $262$ lines ($0$ to $261$).
+- **PAL Scanning:** $312$ lines ($0$ to $311$). $V_8$ is set for scanlines $\ge 256$. Total CCKs per frame: $70,937$ ($\approx 50.00\ \text{Hz}$).
+- **NTSC Scanning:** $262$ lines ($0$ to $261$). Total CCKs per frame: $59,605$ ($\approx 60.05\ \text{Hz}$).
 - **Horizontal Range:** Counts $0$ to $227$ CCKs per line (alternating 227/228 on PAL).
+
+### 4.1 Beam Counter Implementation (`chips/agnus/beam.rs`)
+
+```rust
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum VideoStandard {
+    Pal,
+    Ntsc,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BeamCounter {
+    standard: VideoStandard,
+    hpos: u16,
+    vpos: u16,
+    lof: bool,
+}
+
+impl BeamCounter {
+    pub fn new(standard: VideoStandard) -> Self {
+        Self {
+            standard,
+            hpos: 0,
+            vpos: 0,
+            lof: false,
+        }
+    }
+
+    /// Advance raster beam by 1 CCK tick
+    #[inline(always)]
+    pub fn step_cck(&mut self) {
+        let max_hpos = self.line_cck_count(self.vpos);
+        self.hpos += 1;
+        if self.hpos >= max_hpos {
+            self.hpos = 0;
+            self.vpos += 1;
+            let max_vpos = match self.standard {
+                VideoStandard::Pal => 312,
+                VideoStandard::Ntsc => 262,
+            };
+            if self.vpos >= max_vpos {
+                self.vpos = 0;
+                self.lof = !self.lof; // Toggle interlace field
+            }
+        }
+    }
+
+    /// Returns the number of CCKs for the current scanline (alternating 227 and 228 on PAL)
+    #[inline(always)]
+    pub fn line_cck_count(&self, line: u16) -> u16 {
+        match self.standard {
+            VideoStandard::Pal => if (line & 1) == 0 { 228 } else { 227 },
+            VideoStandard::Ntsc => 227,
+        }
+    }
+
+    #[inline(always)]
+    pub fn hpos(&self) -> u16 { self.hpos }
+
+    #[inline(always)]
+    pub fn vpos(&self) -> u16 { self.vpos }
+
+    #[inline(always)]
+    pub fn lof(&self) -> bool { self.lof }
+
+    /// Format value for VHPOSR register ($DFF004)
+    #[inline(always)]
+    pub fn read_vhposr(&self) -> u16 {
+        ((self.vpos & 0xFF) << 8) | ((self.hpos >> 1) & 0xFF)
+    }
+
+    /// Format value for VPOSR register ($DFF006)
+    #[inline(always)]
+    pub fn read_vposr(&self, is_ecs: bool) -> u16 {
+        let lof_bit = if self.lof { 0x8000 } else { 0x0000 };
+        let chip_id = if is_ecs { 0x2000 } else { 0x0000 };
+        let v8_bit = if self.vpos >= 256 { 0x0001 } else { 0x0000 };
+        lof_bit | chip_id | v8_bit
+    }
+}
+```
 
 ---
 

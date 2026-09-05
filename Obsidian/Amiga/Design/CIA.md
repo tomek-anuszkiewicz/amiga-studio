@@ -63,7 +63,7 @@ The 8520 is a native 8-bit peripheral connected across the Amiga 16-bit data bus
 ## 4. 16-Bit Interval Timers (Timer A & Timer B)
 
 Each CIA houses two 16-bit decrementing interval timers:
-- **Clock Source:** Decrement on every **E-Clock tick** ($1$ tick every $5$ CCKs).
+- **Clock Source:** Decrement on every **E-Clock tick** ($1$ tick every $5$ Color Clocks). The CIA coordinator maintains an internal sub-phase counter (`e_clock_subphase: u8`, $0..4$) stepped on each global CCK; when it wraps from 4 to 0, an E-Clock cycle occurs and active timers decrement.
 - **Auto-Reload:** When a counter decrements from `$0001` to `$0000`, an underflow occurs:
   - The counter reloads immediately from its 16-bit latch (`TALO`/`TAHI` or `TBLO`/`TBHI`).
   - An underflow interrupt is latched into `ICR`.

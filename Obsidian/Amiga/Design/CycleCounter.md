@@ -2,14 +2,15 @@
 
 > [!NOTE]
 > System execution constraints, zero-allocation hot path rules, and 2-phase Color Clock guidelines are defined in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md).
-> Bus arbitration using Color Clock phases is specified in [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md).
-> Machine stepping integration is detailed in [Main loop A500.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Main%20loop%20A500.md).
+> Physical bus arbitration, the transparent read latch buffer, and unbuffered write cycles are specified in [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md).
+> Master beam position counters (`VHPOSR`, `VPOSR`) are implemented in Agnus ([Agnus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Agnus.md)).
+> CIA E-Clock division is implemented in [CIA.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CIA.md).
 
 ---
 
 ## 1. System Clock Generation & Master Hierarchy
 
-The Amiga 500 derives all system clock frequencies from a single high-precision master crystal oscillator. All major processing units—Motorola 68000 CPU, custom chips (Agnus, Denise, Paula), and Complex Interface Adapters (MOS 8520 CIAs)—operate in strict synchronous harmonic lock:
+The Amiga 500 derives all system clock frequencies from a single master crystal oscillator. All processing units operate in synchronous harmonic lock:
 
 ```mermaid
 flowchart TD
@@ -20,11 +21,11 @@ flowchart TD
     DIV8 --> CCK["Color Clock / CCK (3.546895 MHz PAL / 3.579545 MHz NTSC)\n1 CCK ≈ 281.94 ns (PAL) / 279.37 ns (NTSC)"]
     
     CPU_CLK --> CPU["Motorola 68000 CPU\n(4 Clocks per Bus Cycle = 2 CCKs)"]
-    CCK --> AGNUS["Agnus (Beam Counter / Copper / Blitter DMA)"]
+    CCK --> AGNUS["Agnus (Master Beam Counter / Copper / Blitter DMA)"]
     CCK --> DENISE["Denise (Pixel Serializer / Sprites / Palette)"]
     CCK --> PAULA["Paula (Audio Periods / Floppy MFM / UART)"]
     
-    CPU_CLK --> DIV10["Divide by 10 (E-Clock Generator)\n6 Clocks Low / 4 Clocks High"]
+    CPU_CLK --> DIV10["Divide by 10 (E-Clock Divider in CIAs)\n6 Clocks Low / 4 Clocks High"]
     DIV10 --> ECLK["Motorola E-Clock (709.379 kHz PAL / 715.909 kHz NTSC)\n1 E-Clock = 5 CCKs ≈ 1.4097 µs (PAL)"]
     ECLK --> CIAA["CIA-A (Timers A/B, TOD, Keyboard SDR)"]
     ECLK --> CIAB["CIA-B (Timers A/B, TOD, Floppy Control)"]
@@ -39,207 +40,100 @@ flowchart TD
 
 ---
 
-## 2. The Color Clock (CCK) Fundamental Unit
+## 2. 2-Phase Bus Timing & Transparent Memory Interleaving
 
-The primary unit of synchronization in the emulator is the **Color Clock (CCK)**. One Color Clock represents exactly:
-- **$2$ Motorola 68000 CPU clock ticks**.
-- **$1$ low-resolution pixel clock** ($3.55\ \text{MHz}$ / $140\ \text{ns}$ per low-res pixel in Denise, or $2$ hi-res pixels at $7\ \text{MHz}$, or $4$ super-hires pixels at $14\ \text{MHz}$).
-- **$1$ memory bus slot** in Chip RAM.
-- **$\frac{1}{5}$ of a Motorola E-Clock tick** ($5\ \text{CCKs} = 1\ \text{E-Clock}$).
-
-### 2.1 Color Clock Phases: CCK1 & CCK2
-
-A standard Motorola 68000 bus cycle requires $4$ CPU clock cycles ($S_0$ through $S_7$), which maps directly onto **two consecutive Color Clocks**:
+A critical architectural triumph of the Amiga is its ability to share Chip RAM between the Motorola 68000 CPU and custom chip DMA channels **without slowing down the CPU**:
 
 ```
 CPU Clock:  | S0 | S1 | S2 | S3 | S4 | S5 | S6 | S7 |
             |-------------------|-------------------|
-CCK Cycle:  |       CCK1        |       CCK2        |
-            | (Bus Address/Strobe) | (Data Transfer/Latch) |
+CCK Slot:   |       CCK1        |       CCK2        |
+READ:       | Fetch to Buffer   | CPU Reads Buffer  |
+            | (Physical RAM)    | (RAM FREE FOR DMA)|
+            |-------------------|-------------------|
+WRITE:      | Internal Prep     | Commit Write      |
+            | (RAM FREE FOR DMA)| (Physical RAM)    |
 ```
 
-- **Phase 1 (CCK1: States $S_0$–$S_3$):**
-  - CPU drives the 24-bit physical address bus (`A1`–`A23`) and Function Code pins (`FC0`–`FC2`).
-  - Read/Write line (`R/_W`) is established.
-  - Address Strobe (`_AS`) and Data Strobes (`_UDS` / `_LDS` on read) are asserted.
-  - Chip RAM bus arbitration is evaluated in [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md): if custom chip DMA is asserting ownership, the cycle blocks.
-- **Phase 2 (CCK2: States $S_4$–$S_7$):**
-  - Transfer acknowledge (`_DTACK`) is sampled at state $S_4$. If not asserted by Gary/chipset, wait states are inserted.
-  - On write, data is driven onto `D0`–`D15` and data strobes are asserted.
-  - On read, data is latched into the CPU internal read buffer and strobes are deasserted.
-  - Cycle completes and bus returns to idle before next transaction.
+### 2.1 The Hardware Secret: 2-Clock CPU vs 1-Clock RAM
+- **Motorola 68000 Bus Cycle:** A standard 68000 read or write cycle spans **4 CPU clocks** ($S_0$ through $S_7$), which equals **2 Color Clocks (CCK1 and CCK2)**.
+- **Amiga Chip RAM Speed:** The Amiga DRAM memory bus is engineered to complete an entire physical read or write cycle in **only 1 Color Clock (280 ns)**!
 
-### 2.2 Memory Interleaving & DMA Slot Scheduling
+### 2.2 Read Cycle Interleaving (Buffered Read)
+1. **During CCK1 ($S_0$–$S_3$):**
+   - The CPU presents the target address and asserts strobes (`_AS`, `_UDS`/`_LDS`).
+   - If Chip RAM is available (unblocked), physical RAM access occurs immediately during CCK1.
+   - The fetched 16-bit word is latched into an internal transparent hardware buffer (`MemoryBus.read_latch`).
+2. **During CCK2 ($S_4$–$S_7$):**
+   - **The physical Chip RAM bus is completely freed for custom chip DMA!**
+   - Meanwhile, the CPU reads the data safely from `read_latch`, isolated from the bus.
+   - Gary asserts `_DTACK`, the CPU completes its cycle, and neither CPU nor DMA suffered any wait states.
 
-Because custom chips and the CPU share the Chip RAM bus, memory cycles are interleaved at the Color Clock boundary:
-- **Even CCK Slots:** Reserved for Agnus DMA channels (Bitplanes, Copper, Blitter, Audio, Sprites, Floppy disk).
-- **Odd CCK Slots:** Available for the Motorola 68000 CPU.
-- **Cycle Stealing ("Blitter Nasty"):** If Bitplane DMA bandwidth is maximized (4 to 6 bitplanes active in low-res, or high-res display) or if Blitter Nasty mode (`BLTPRI` in `DMACON`) is asserted, Agnus claims odd cycles as well, causing CPU wait states (`MemoryBusResult::Blocked`).
+### 2.3 Write Cycle Interleaving (Direct / Unbuffered Write)
+1. **During CCK1 ($S_0$–$S_3$):**
+   - The CPU calculates the address, outputs control lines, and prepares the data internally.
+   - **The CPU does not require physical memory access during CCK1.**
+   - Custom chip DMA can freely utilize the Chip RAM bus during CCK1 without interference.
+2. **During CCK2 ($S_4$–$S_7$):**
+   - The CPU drives write data onto `D0`–`D15` and asserts data strobes.
+   - The write is committed directly to physical Chip RAM without buffering.
+   - If a DMA channel with higher priority (such as Blitter Nasty) has claimed CCK2, Gary withholds `_DTACK`, causing the CPU to wait until the bus becomes available.
+
+### 2.4 Conclusion: Full-Speed 50/50 Division
+In normal operating mode (standard display modes, Blitter Nasty disabled), **memory access is seamlessly interleaved 50/50 between CPU and DMA**:
+- During reads, the CPU uses physical RAM in CCK1 and DMA uses CCK2.
+- During writes, DMA uses physical RAM in CCK1 and the CPU uses CCK2.
+- The CPU runs at **100% full speed ($7.09\ \text{MHz}$)** without a single wait state!
 
 ---
 
-## 3. Motorola E-Clock Timing (CIA Synchronization)
+## 3. Strict Separation of Responsibilities
 
-The MOS 8520 CIAs ([CIA.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CIA.md)) are clocked by the Motorola **E-Clock**, which is generated internally by the 68000 CPU (or equivalent timing logic) by dividing the CPU clock by $10$ (a fixed ratio of $5$ CCKs per E-Clock tick):
+To prevent tight coupling and synchronization bugs, responsibilities are cleanly isolated across subsystems:
 
-```
-CCK Tick:   |   0   |   1   |   2   |   3   |   4   |   0   |
-CPU Clocks: | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | 1 |
-E-Clock:    |________LOW (6 Clocks)_________|__HIGH (4 Clocks)__|
-```
-
-- **Duty Cycle:** $60\%$ Low ($6$ CPU clocks / $3$ CCKs), $40\%$ High ($4$ CPU clocks / $2$ CCKs).
-- **Timer Decrementing:** CIA Timers A and B decrement once per complete E-Clock cycle ($1$ tick every $5$ CCKs).
-- **Phase Alignment:** `CycleCounter` tracks the internal E-Clock sub-phase ($0..4$) to trigger CIA timer decrements deterministically without floating-point math.
+| Subsystem | Dedicated Responsibility | Implementation Location |
+| :--- | :--- | :--- |
+| **`CycleCounter`** | **Pure 64-bit CCK Cycle Counter:** Tracks elapsed global Color Clocks (`total_cck: u64`). Does not track bus phases, beam coordinates, or E-Clock dividers. | `cycle_counter.rs` |
+| **`Agnus` (Beam)** | **Master Raster Beam Tracking:** Coordinates horizontal beam position (`HPOS`), vertical scanlines (`VPOS`), `LOF` interlace field bit, and display timing registers `VHPOSR` / `VPOSR`. | `chips/agnus/beam.rs` (see [Agnus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Agnus.md)) |
+| **`CIA`** | **E-Clock Division & Prescalers:** Tracks internal E-Clock sub-phase divider ($0..4$) to step Timers A and B every 5 CCKs. | `chips/cia/mod.rs` (see [CIA.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CIA.md)) |
+| **`MemoryBus` / CPU** | **Bus Phase State Machine:** Manages CCK1 vs CCK2 arbitration, wait states, and `read_latch` buffer. | `memory_bus/mod.rs` (see [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md)) |
 
 ---
 
-## 4. Raster Beam Geometry & Frame Metrics
+## 4. Rust Engine Implementation
 
-Agnus generates the horizontal and vertical display timing by counting Color Clocks along each raster line:
-
-### 4.1 PAL Standard Display Timing
-
-- **Color Clocks per Line:** $227.5$ CCKs average.
-  - Implemented as alternating scanlines: **Short Line ($227$ CCKs = $454$ CPU clocks)** and **Long Line ($228$ CCKs = $456$ CPU clocks)**.
-- **Lines per Frame:** $312$ scanlines in non-interlaced mode; $313$ / $312$ lines in interlaced mode (Field 1 / Field 2).
-- **Total Color Clocks per Frame (Non-Interlaced):**
-  $$\text{Total CCKs} = 312 \times 227.5 = 70,937\ \text{CCKs}$$
-- **Frame Rate:**
-  $$\text{Frame Rate} = \frac{3,546,895\ \text{Hz}}{70,937\ \text{CCKs}} \approx 50.0006\ \text{Hz}$$
-
-### 4.2 NTSC Standard Display Timing
-
-- **Color Clocks per Line:** $227.5$ CCKs average ($227$ / $228$ alternating).
-- **Lines per Frame:** $262$ scanlines non-interlaced; $263$ / $262$ lines interlaced.
-- **Total Color Clocks per Frame (Non-Interlaced):**
-  $$\text{Total CCKs} = 262 \times 227.5 = 59,605\ \text{CCKs}$$
-- **Frame Rate:**
-  $$\text{Frame Rate} = \frac{3,579,545\ \text{Hz}}{59,605\ \text{CCKs}} \approx 60.0544\ \text{Hz}$$
-
-### 4.3 Raster Beam Coordinate Space
-
-Horizontal beam counter values (`HPOS`) and vertical beam counter values (`VPOS`) are tracked by Agnus ([Agnus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Agnus.md)) and read via registers `VHPOSR` (`$DFF004`) and `VPOSR` (`$DFF006`):
-
-```
-Horizontal Scanline:
-0 ------------------- HPOS (0 .. $E3 / 227 CCK) -------------------> 227
-|  Blanking / Sync  | Display Data Fetch (DDF) | Border / Blanking  |
-```
-
----
-
-## 5. Rust Engine Implementation
-
-The `CycleCounter` is a copyable, zero-allocation struct that serves as the single source of truth for global emulation time.
+The `CycleCounter` is an ultra-lean, copyable, zero-allocation struct whose sole responsibility is counting master Color Clocks:
 
 ```rust
 use serde::{Deserialize, Serialize};
 
-/// Identifies the active sub-phase of a 68000 bus cycle.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CckPhase {
-    /// Phase 1: Address output, strobes asserted, bus arbitration evaluated
-    Cck1,
-    /// Phase 2: Data latched / written, _DTACK sampled, strobes deasserted
-    Cck2,
-}
-
-/// Target video timing standard.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum VideoStandard {
-    Pal,
-    Ntsc,
-}
-
-/// Master hardware cycle counter tracking Color Clocks and sub-phases.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Master hardware cycle counter tracking elapsed Color Clocks (CCK).
+/// At ~3.55 MHz, a 64-bit integer will run for over 164,000 years without overflowing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct CycleCounter {
-    /// Monotonically increasing 64-bit Color Clock counter.
-    /// At 3.55 MHz, a u64 counter will run for over 164,000 years without overflowing.
+    /// Monotonically increasing Color Clock count.
     total_cck: u64,
-    /// Current bus cycle phase (CCK1 vs CCK2).
-    phase: CckPhase,
-    /// Sub-phase counter within the 5-CCK E-Clock cycle (0..4).
-    e_clock_phase: u8,
-    /// Configured video standard (PAL or NTSC).
-    standard: VideoStandard,
-    /// Current raster horizontal position (0..227).
-    hpos: u16,
-    /// Current raster vertical scanline (0..311 PAL, 0..261 NTSC).
-    vpos: u16,
-    /// Long-frame toggle bit (LOF) for interlace field tracking.
-    lof: bool,
 }
 
 impl CycleCounter {
     pub const PAL_CCK_PER_FRAME: u64 = 70_937;
     pub const NTSC_CCK_PER_FRAME: u64 = 59_605;
-    pub const E_CLOCK_DIVISOR: u8 = 5;
 
-    pub fn new(standard: VideoStandard) -> Self {
-        Self {
-            total_cck: 0,
-            phase: CckPhase::Cck1,
-            e_clock_phase: 0,
-            standard,
-            hpos: 0,
-            vpos: 0,
-            lof: false,
-        }
+    #[inline(always)]
+    pub fn new() -> Self {
+        Self { total_cck: 0 }
     }
 
-    /// Advance master clock by exactly 1 Color Clock (~280 ns).
-    /// Returns true if an E-Clock falling edge occurred (triggering CIA timer ticks).
+    /// Advance global emulation time by exactly 1 Color Clock (~280 ns).
     #[inline(always)]
-    pub fn step_cck(&mut self) -> bool {
+    pub fn step_cck(&mut self) {
         self.total_cck = self.total_cck.wrapping_add(1);
-
-        // Toggle bus phase between CCK1 and CCK2
-        self.phase = match self.phase {
-            CckPhase::Cck1 => CckPhase::Cck2,
-            CckPhase::Cck2 => CckPhase::Cck1,
-        };
-
-        // Advance raster beam
-        self.advance_beam();
-
-        // Advance E-Clock phase (0..4)
-        self.e_clock_phase += 1;
-        if self.e_clock_phase >= Self::E_CLOCK_DIVISOR {
-            self.e_clock_phase = 0;
-            true // Trigger CIA timer tick
-        } else {
-            false
-        }
     }
 
+    /// Advance global emulation time by a designated number of Color Clocks.
     #[inline(always)]
-    fn advance_beam(&mut self) {
-        let max_hpos = self.line_cck_count(self.vpos);
-        self.hpos += 1;
-        if self.hpos >= max_hpos {
-            self.hpos = 0;
-            self.vpos += 1;
-            let max_vpos = match self.standard {
-                VideoStandard::Pal => 312,
-                VideoStandard::Ntsc => 262,
-            };
-            if self.vpos >= max_vpos {
-                self.vpos = 0;
-                self.lof = !self.lof; // Toggle interlace field
-            }
-        }
-    }
-
-    /// Returns the number of CCKs for the current scanline (alternating 227 and 228).
-    #[inline(always)]
-    pub fn line_cck_count(&self, line: u16) -> u16 {
-        if (line & 1) == 0 {
-            228
-        } else {
-            227
-        }
+    pub fn advance_cck(&mut self, count: u64) {
+        self.total_cck = self.total_cck.wrapping_add(count);
     }
 
     #[inline(always)]
@@ -248,48 +142,8 @@ impl CycleCounter {
     }
 
     #[inline(always)]
-    pub fn phase(&self) -> CckPhase {
-        self.phase
-    }
-
-    #[inline(always)]
-    pub fn hpos(&self) -> u16 {
-        self.hpos
-    }
-
-    #[inline(always)]
-    pub fn vpos(&self) -> u16 {
-        self.vpos
-    }
-
-    #[inline(always)]
-    pub fn lof(&self) -> bool {
-        self.lof
-    }
-
     pub fn reset(&mut self) {
         self.total_cck = 0;
-        self.phase = CckPhase::Cck1;
-        self.e_clock_phase = 0;
-        self.hpos = 0;
-        self.vpos = 0;
-        self.lof = false;
     }
 }
 ```
-
----
-
-## 6. Subsystem Coordination & Scheduling
-
-1. **CPU Bus Cycles:**
-   - Every CPU read/write cycle takes $2$ CCK ticks ($1$ bus cycle = $4$ CPU clocks).
-   - If `memory_bus` returns `MemoryBusResult::Blocked`, the CPU freezes its state machine and waits for the subsequent Color Clock slot without advancing instruction execution.
-2. **Custom Chip DMA:**
-   - On every CCK, Agnus evaluates active DMA channels (`DMACON`) and claims Chip RAM memory access.
-3. **CIAs:**
-   - On every $5^{\text{th}}$ CCK tick (`e_clock_phase == 0`), CIA-A and CIA-B timers decrement by $1$.
-4. **Denise Serializer:**
-   - Low-res pixels emit every $1$ CCK. Hi-res pixels emit every $0.5$ CCK ($2$ pixels per CCK).
-5. **Paula Audio:**
-   - Period counters count down each CCK. When a channel counter reaches zero, it latches the next audio sample from Chip RAM via DMA or reloads.
