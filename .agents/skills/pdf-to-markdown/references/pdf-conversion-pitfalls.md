@@ -1,6 +1,6 @@
 # PDF to Markdown: Technical Pitfalls & Proven Solutions
 
-This document details the 11 known technical pitfalls encountered when converting complex technical manuals and hardware books from PDF to Markdown for Obsidian, along with their authoritative solutions derived from real-world conversion projects (*A500 A2000 Technical Reference Manual*, *68000 User's Manual*, *68000 Programmer's Reference Manual*).
+This document details the 13 known technical pitfalls encountered when converting complex technical manuals and hardware books from PDF to Markdown for Obsidian, along with their authoritative solutions derived from real-world conversion projects (*A500 A2000 Technical Reference Manual*, *68000 User's Manual*, *68000 Programmer's Reference Manual*).
 
 ---
 
@@ -218,3 +218,37 @@ Always convert advisory and alert blocks into their corresponding Obsidian callo
    > move.w  $0004,d0    ; Valid aligned read
    > ```
    ```
+
+---
+
+## 13. Blind Bitmap Tracing vs Native PDF Vector Extraction
+
+### Problem
+When converting architectural diagrams, block schematics, or bus timing charts to SVG, agents often follow a naive raster-first pipeline: render the page to a PNG bitmap $\rightarrow$ crop the bounding box $\rightarrow$ run an automatic bitmap tracer (like `potrace`, an online converter, or LLM SVG re-generation).
+However, many technical PDF documents were originally generated digitally from PostScript, FrameMaker, troff, or CAD vector packages. In these PDFs, diagrams and schematics **are already stored as mathematical vector primitives (Bézier curves, lines, polygons) and true font text objects**.
+Blindly rasterizing to a bitmap and then attempting to re-trace:
+- Degrades clean straight lines into wobbly or rounded approximations.
+- Converts sharp, selectable typography into unsearchable bitmap pixels or deformed vector paths.
+- Wastes effort redrawing or approximating a graphic that already exists in pristine vector form inside the PDF file.
+
+### Solution: The "Check PDF First" Principle
+Always inspect the source PDF page before attempting to trace or redraw an SVG:
+
+1. **Inspect the Source PDF for Native Non-Bitmap Content**:
+   - Check if vector drawing operations (`m`, `l`, `c`, `re`) and text objects exist on the page:
+     ```python
+     import fitz  # PyMuPDF
+     doc = fitz.open("path/to/manual.pdf")
+     page = doc[page_num]
+     drawings = page.get_drawings()
+     print(f"Found {len(drawings)} native vector paths on page {page_num}")
+     ```
+2. **Direct Vector Extraction**:
+   - If native vector content exists, extract the SVG directly from the PDF page using tools such as:
+     - `pdf2svg "manual.pdf" page_number "output.svg"`
+     - `mutool draw -F svg -o "output.svg" "manual.pdf" page_number`
+     - PyMuPDF: `page.get_svg_image()`
+   - Once exported, crop the SVG's `viewBox` to the specific diagram coordinates and remove surrounding page elements.
+   - Result: 100% mathematical precision, crisp vector rendering at any zoom level, and true selectable/searchable text.
+3. **Fallback to Bitmap Tracing**:
+   - Only use raster-to-SVG vector tracing (or manual reconstruction) when the source PDF is verified to be a pure scanned paper scan (e.g. vintage 1980s microfiche or scanner raster images with zero embedded vector operators).

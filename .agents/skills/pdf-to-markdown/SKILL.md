@@ -65,8 +65,9 @@ When encountering diagrams, code, tables, and visual figures in the PDF, apply t
 6. **Priority 6: Crop to High-Res PNG**:
    - For complex physical IC pinouts, oscilloscope waveforms, and dense schematics.
    - Render at 150-200 DPI with a 10-15% safety padding margin.
-7. **Priority 7: PNG $\rightarrow$ SVG Vectorization**:
+7. **Priority 7: Native Vector Extraction & SVG Optimization**:
    - For block diagrams, logic schematics, and digital timing charts to ensure crisp, scalable vector graphics in Obsidian.
+   - **Check Source PDF First**: Always inspect the original PDF document to verify if **native non-bitmap content (vector paths, Bézier curves, shapes, and font text)** already exists on the page. If present, extract the native vector graphic directly (via tools like `mutool draw -F svg`, `pdf2svg`, or PyMuPDF) rather than lossy bitmap tracing.
 
 ---
 
@@ -145,17 +146,30 @@ python .agents/skills/pdf-to-markdown/scripts/extract_crops.py \
 
 ---
 
-### Phase 4: SVG Vectorization & Boundary Audit
+### Phase 4: Vector Extraction, SVG Vectorization & Boundary Audit
 
-For block diagrams and timing charts converted to SVG:
-1. Audit the SVG `viewBox` and `<clipPath>` using `png_to_svg_helper.py`:
-   ```bash
-   python .agents/skills/pdf-to-markdown/scripts/png_to_svg_helper.py \
-     "Obsidian/Amiga/Reference/ManualName/assets" \
-     --padding 20.0 \
-     --apply
-   ```
-2. Ensures `viewBox` has an expanded safety buffer and that outer signal lines, pin labels, and text are not clipped.
+For block diagrams and timing charts:
+1. **Audit Source PDF for Native Vectors First**:
+   - Check if the source PDF contains native vector primitives and selectable font text rather than a flattened raster scan:
+     ```python
+     import fitz
+     doc = fitz.open("path/to/manual.pdf")
+     page = doc[page_num]
+     drawings = page.get_drawings()  # Native vector paths
+     print(f"Vector paths detected: {len(drawings)}")
+     ```
+   - **If native vectors exist**: Extract the diagram directly as SVG (e.g. via `mutool draw -F svg`, `pdf2svg`, or PyMuPDF's `page.get_svg_image()`). This yields 100% sharp lines and true selectable text without raster degradation.
+   - **If the PDF is purely a scanned bitmap**: Vectorize/trace the cropped high-res PNG.
+2. **Boundary & ViewBox Audit**:
+   - Audit the SVG `viewBox` and `<clipPath>` using `png_to_svg_helper.py`:
+     ```bash
+     python .agents/skills/pdf-to-markdown/scripts/png_to_svg_helper.py \
+       "Obsidian/Amiga/Reference/ManualName/assets" \
+       --padding 20.0 \
+       --apply
+     ```
+   - Ensures `viewBox` has an expanded safety buffer and that outer signal lines, pin labels, and text are not clipped.
+
 
 ---
 

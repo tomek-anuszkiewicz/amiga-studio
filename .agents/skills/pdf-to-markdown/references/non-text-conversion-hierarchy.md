@@ -15,7 +15,7 @@ Priority 3: Monotone Text Block (```text)    -> For memory dumps, hex bytes, raw
 Priority 4: ASCII Art (Only if Readable)     -> For simple register bitfield diagrams
 Priority 5: HTML Table                       -> For complex tables requiring cell spans (colspan/rowspan)
 Priority 6: Crop to High-Res PNG             -> For complex schematics, waveforms, pinouts
-Priority 7: PNG -> SVG Vectorization         -> For scalable block diagrams, logic, and timing charts
+Priority 7: Native Vector Extraction & SVG -> For scalable block diagrams, logic, and timing charts
 ```
 
 ---
@@ -118,18 +118,29 @@ Complex visual hardware illustrations that cannot be represented in text:
 
 ---
 
-## 7. Priority 7: PNG $\rightarrow$ SVG Vectorization
+## 7. Priority 7: Native Vector Extraction & SVG Optimization
 
 ### When to Use
-High-importance architectural diagrams, block diagrams, and state machines where vector scalability significantly enhances readability in Obsidian:
+High-importance architectural diagrams, block diagrams, logic schematics, and state machines where vector scalability significantly enhances readability in Obsidian:
 - System block diagrams (e.g. A500 / B2000 System Architecture).
 - Chip functional diagrams (e.g. Fat Agnus internal registers, 8520 CIA functional blocks).
 - Bus state and timing diagrams (Write Cycle, Read Cycle).
 
-### Rules
-- Ensure `viewBox` covers all outer signal lines and labels plus a 20px buffer.
-- Audit and expand `<clipPath>` to prevent clipped text.
-- Save as clean `.svg` in `assets/`.
+### Critical Rule: Inspect Source PDF for Native Vectors First
+Before attempting to trace a cropped PNG bitmap or manually drawing SVG:
+1. **Check for Native Vector Content**:
+   - Inspect whether the diagram in the source PDF consists of **native vector drawing commands (paths, lines, polygons, beziers)** and **embedded font text**.
+   - Modern digital manuals, FrameMaker exports, and CAD datasheets embed vector primitives natively.
+2. **Direct Vector Extraction**:
+   - If native vector primitives exist, extract the diagram directly as SVG using tools like `pdf2svg`, `mutool draw -F svg`, or PyMuPDF (`page.get_svg_image()`).
+   - Direct extraction preserves mathematical line precision, keeps true selectable text, and avoids fuzzy raster tracing artifacts entirely.
+3. **Fallback to Bitmap Tracing**:
+   - Only fall back to PNG-to-SVG tracing (or manual redrawing) if the source PDF is verified to be a scanned bitmap scan with no native vector operators.
+4. **ViewBox & ClipPath Rules**:
+   - Ensure `viewBox` covers all outer signal lines and labels plus a 20px safety buffer.
+   - Audit and expand `<clipPath>` to prevent clipped pin numbers or text.
+   - Save as clean `.svg` in `assets/`.
+
 
 ---
 
