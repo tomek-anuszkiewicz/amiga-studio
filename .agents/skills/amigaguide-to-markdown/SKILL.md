@@ -1,7 +1,7 @@
 ---
 name: amigaguide-to-markdown
 description: >-
-  Use this skill when converting Commodore AmigaGuide hypertext documents (.guide) into clean, modern Markdown files (.md) optimized for Obsidian and GitHub. Covers node parsing, multi-chapter splitting, tag translation, paragraph unwrapping, content cleanup (headers/footers/boilerplate/index/partial TOC removal), non-text content conversion hierarchy (Markdown tables, ASCII art, HTML tables, text blocks), bidirectional navigation links (begin/end), Obsidian TD() heading anchor resolution, and automated link validation.
+  Use this skill when converting Commodore AmigaGuide hypertext documents (.guide) into clean, modern Markdown files (.md) optimized for Obsidian and GitHub. Covers node parsing, multi-chapter splitting, tag translation, paragraph unwrapping, content cleanup (headers/footers/boilerplate/index/partial TOC removal), non-text content conversion hierarchy (Markdown tables, ASCII art, HTML tables, text blocks), Obsidian callouts for notes/warnings/errors, bidirectional navigation links (begin/end), Obsidian TD() heading anchor resolution, and automated link validation.
 ---
 
 # Recipe: Converting AmigaGuide Documents to Markdown
@@ -110,7 +110,54 @@ graph TD
 
 ---
 
-## 4. Chapter & Section Navigation Standards
+## 4. Callout Blocks: Notes, Warnings, Cautions, and Errors
+
+AmigaGuide files and technical reference guides frequently feature advisory blocks, developer tips, hardware cautions, or critical error notices marked by bold labels, indented paragraphs, or ASCII delimiter lines (e.g. `Note:`, `Notice:`, `WARNING:`, `CAUTION:`, `IMPORTANT:`).
+
+Always convert these advisory blocks into **native Obsidian callouts** rather than leaving them as plain text or standard blockquotes (`> text`).
+
+### Mapping Source Markers to Obsidian Callouts
+
+| Source Document Marker / Style | Obsidian Callout Type | When to Use |
+| :--- | :--- | :--- |
+| `Note:`, `Notice:`, `Info:`, `Information:`, bordered box | `> [!NOTE]` or `> [!INFO]` | Supplementary explanations, background hardware details, peripheral clarifications. |
+| `Tip:`, `Hint:`, `Recommended:`, `Programming Tip:` | `> [!TIP]` | Performance suggestions, coding tricks, register programming best practices. |
+| `Important:`, `Attention:`, `Critical:` | `> [!IMPORTANT]` | Essential prerequisites, non-negotiable register constraints, memory alignment requirements. |
+| `Warning:`, `Caution:`, `Alert:`, `Beware:` | `> [!WARNING]` or `> [!CAUTION]` | Hardware risks, bus contention hazards, undefined register bit behaviors, data corruption risks. |
+| `Error:`, `Danger:`, `Fatal:`, `Bug:`, `Silicon Errata:` | `> [!DANGER]` or `> [!ERROR]` / `> [!BUG]` | Destructive operations, silicon bugs, fatal CPU exceptions, illegal bus operations. |
+
+### Formatting Syntax & Best Practices
+
+1. **Retain Meaning & Specific Titles**:
+   If the source provides a specific heading or title for the note/warning, include it on the callout declaration line:
+   ```markdown
+   > [!WARNING] Bus Contention Hazard
+   > Never write to BLTCON0 while the Blitter busy flag (DMACONR bit 6) is set. Doing so causes bus contention with the 68000 CPU and corrupts subsequent DMA transfers.
+   ```
+2. **Preserve Complete Content (Zero Omissions)**:
+   Retain every sentence, list item, footnote, and technical parameter in the callout. Never summarize or omit details.
+3. **Multi-Paragraph and Nested Elements**:
+   Prefix every line of the callout with `>`, including empty lines between paragraphs:
+   ```markdown
+   > [!NOTE] Copper Instruction Fetch Timing
+   > Copper instructions are two words (4 bytes) long. A MOVE or WAIT requires two bus cycles (4 clock ticks).
+   >
+   > - First cycle: Fetch IR1 (register address or vertical beam position).
+   > - Second cycle: Fetch IR2 (data word or horizontal beam position).
+   ```
+4. **Code Blocks Inside Callouts**:
+   Prefix code block fences and indented lines with `>`:
+   ```markdown
+   > [!IMPORTANT]
+   > Always set the Blitter logic function minterm before initiating the blit:
+   > ```m68k
+   > move.w  #$09F0,$DFF040   ; BLTCON0: Minterm D = A & B
+   > ```
+   ```
+
+---
+
+## 5. Chapter & Section Navigation Standards
 
 To enable effortless browsing across chapters and sections in Obsidian vaults and GitHub markdown viewers, navigation links must be placed at **BOTH the BEGIN and the END** of every chapter and section file.
 
@@ -142,7 +189,7 @@ To enable effortless browsing across chapters and sections in Obsidian vaults an
 
 ---
 
-## 5. Toolchain & Directory Structure
+## 6. Toolchain & Directory Structure
 
 All conversion scripts and references reside inside this skill directory:
 
@@ -160,7 +207,7 @@ All conversion scripts and references reside inside this skill directory:
 
 ---
 
-## 6. Step-by-Step Conversion Workflow
+## 7. Step-by-Step Conversion Workflow
 
 Follow these phases sequentially when processing an AmigaGuide file.
 
@@ -212,15 +259,17 @@ When reviewing or enhancing the generated Markdown:
 
 1. **Apply Non-Text Hierarchy**:
    - Prioritize: **Markdown Table $\rightarrow$ Readable ASCII Art $\rightarrow$ HTML Table $\rightarrow$ Text Block**.
-2. **Code Blocks & Assembly Listings**:
+2. **Convert Advisory Blocks to Obsidian Callouts**:
+   - Convert paragraphs or sections marked with `Note:`, `Warning:`, `Caution:`, `Important:`, or `Error:` into native Obsidian callouts (`> [!NOTE]`, `> [!WARNING]`, `> [!CAUTION]`, `> [!IMPORTANT]`, `> [!DANGER]`).
+3. **Code Blocks & Assembly Listings**:
    - Enclose code in fenced blocks with explicit language identifiers: ```` ```c ````, ```` ```m68k ````, or ```` ```text ````.
-3. **Mathematical Expressions**:
+4. **Mathematical Expressions**:
    - Use standard LaTeX/KaTeX math (`$2^{10}$`, `$2^{31}-1$`).
    - **CRITICAL**: Do **NOT** treat Motorola hexadecimal values (`$00000004`, `$FF`, `$C00000`) as LaTeX math! Enclose hexadecimal addresses in inline code backticks: `` `$00000004` ``.
-4. **List Formatting**:
+5. **List Formatting**:
    - Convert AmigaGuide list bullets (`*` or `**` at start of line) to standard Markdown `-`.
    - Keep footnotes and literal asterisks properly escaped (`\*`).
-5. **Heading Punctuation**:
+6. **Heading Punctuation**:
    - Convert trailing colons in numbered headings to periods (e.g. `## 2.1.1: System Addresses` $\rightarrow$ `## 2.1.1. System Addresses`).
 
 ---

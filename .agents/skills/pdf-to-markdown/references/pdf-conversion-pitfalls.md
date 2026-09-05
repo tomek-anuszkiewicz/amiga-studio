@@ -181,3 +181,40 @@ KaTeX attempts to parse `00000000 to 00000400` as a mathematical expression, pro
   Custom chip registers begin at `$DFF000`.
   ```
 - Reserve `$math$` exclusively for actual mathematical formulas (e.g. `$2^{32} - 1$`, `$f = \frac{1}{2\pi RC}$`).
+
+---
+
+## 12. Advisory, Warning, and Error Blocks (Obsidian Callouts vs Plain Text)
+
+### Problem
+Hardware manuals, processor programming guides, and system reference books frequently highlight crucial notices, silicon warnings, programming tips, and error conditions using graphical elements:
+- Shaded boxes or double-ruled borders
+- Margin warning icons (danger triangles, stop signs)
+- Bold prefixes (`NOTE:`, `WARNING:`, `CAUTION:`, `IMPORTANT:`, `PROGRAMMING TIP:`)
+
+When transcribed as flat paragraphs or standard blockquotes (`> text`), these vital notices lose their visual distinction, blend into body text, and fail to leverage Obsidian's semantic callout rendering.
+
+### Solution: Map to Native Obsidian Callouts
+Always convert advisory and alert blocks into their corresponding Obsidian callout types:
+
+| Source PDF Styling / Marker | Obsidian Callout Target | Semantic Role |
+|---|---|---|
+| `Note:`, `Notice:`, `Info:`, boxed text | `> [!NOTE]` or `> [!INFO]` | General technical notes, secondary explanations, hardware background |
+| `Tip:`, `Hint:`, `Programming Tip:` | `> [!TIP]` | Performance suggestions, coding tricks, cycle-saving register usage |
+| `Important:`, `Attention:`, `Critical:` | `> [!IMPORTANT]` | Prerequisites, non-negotiable register bit requirements, memory alignment |
+| `Warning:`, `Caution:`, `Alert:` | `> [!WARNING]` or `> [!CAUTION]` | Hardware risks, bus contention hazards, undefined register bit behaviors |
+| `Error:`, `Danger:`, `Fatal:`, `Bug:` | `> [!DANGER]` or `> [!ERROR]` / `> [!BUG]` | Destructive operations, silicon errata, fatal CPU exceptions, bus lockups |
+
+### Implementation Rules:
+1. **Preserve Complete Content**: Never summarize or truncate the warning/note. Retain all parameters, hex values, and references.
+2. **Specific Titles**: If the box has a specific title, put it on the declaration line: `> [!WARNING] Blitter Bus Contention`.
+3. **Multi-Line & Code**: Prefix every line with `>`, including empty lines between paragraphs and code block fences:
+   ```markdown
+   > [!IMPORTANT] Address Alignment
+   > Word and longword memory accesses on the 68000 must be aligned to even byte addresses. An odd address access triggers an Address Error exception (Vector 3).
+   >
+   > ```m68k
+   > move.w  $0003,d0    ; Triggers Address Error!
+   > move.w  $0004,d0    ; Valid aligned read
+   > ```
+   ```

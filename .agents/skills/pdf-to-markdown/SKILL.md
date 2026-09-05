@@ -1,7 +1,7 @@
 ---
 name: pdf-to-markdown
 description: >-
-  Use this skill when converting technical PDF manuals, books, or documentation into clean, modern Markdown files (.md) optimized for Obsidian and GitHub. Covers PDF bookmark parsing, high-res page rendering, LLM vision transcription, crop asset extraction with safety padding, asset deduplication, SVG vectorization, split table stitching, running header/footer stripping, Prev/TOC/Next navigation bars, and visual QA double-checks.
+  Use this skill when converting technical PDF manuals, books, or documentation into clean, modern Markdown files (.md) optimized for Obsidian and GitHub. Covers PDF bookmark parsing, high-res page rendering, LLM vision transcription, crop asset extraction with safety padding, asset deduplication, SVG vectorization, split table stitching, running header/footer stripping, Obsidian callouts for notes/warnings/errors, Prev/TOC/Next navigation bars, and visual QA double-checks.
 ---
 
 # Recipe: Converting Technical PDF Manuals to Markdown
@@ -111,6 +111,18 @@ Transcribe each page PNG (`page_001.png` $\dots$) into a page-level Markdown fil
    > [!NOTE] DMA Time Slot Notes
    > 1. If divide by zero occurs, an exception occurs.
    ```
+5. **Obsidian Callouts for Notes, Warnings, and Errors**:
+   - Whenever the source page contains an advisory block (e.g. boxed note, shaded warning, margin caution, or text beginning with `Note:`, `Notice:`, `Warning:`, `Caution:`, `Important:`, `Error:`, `Danger:`), convert it into an Obsidian callout rather than leaving it as plain text or an unstyled blockquote:
+     - `Note:` / `Notice:` / `Info:` $\rightarrow$ `> [!NOTE]` or `> [!INFO]`
+     - `Tip:` / `Hint:` $\rightarrow$ `> [!TIP]`
+     - `Important:` / `Attention:` $\rightarrow$ `> [!IMPORTANT]`
+     - `Warning:` / `Caution:` $\rightarrow$ `> [!WARNING]` or `> [!CAUTION]`
+     - `Error:` / `Danger:` / `Bug:` $\rightarrow$ `> [!DANGER]` or `> [!ERROR]`
+   - Example:
+     ```markdown
+     > [!WARNING] Bus Contention Risk
+     > Never access custom chip registers during DMA cycles without asserting the bus grant signal.
+     ```
 
 ---
 

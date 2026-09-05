@@ -130,3 +130,21 @@ High-importance architectural diagrams, block diagrams, and state machines where
 - Ensure `viewBox` covers all outer signal lines and labels plus a 20px buffer.
 - Audit and expand `<clipPath>` to prevent clipped text.
 - Save as clean `.svg` in `assets/`.
+
+---
+
+## 8. Advisory & Callout Blocks (Notes, Warnings, and Errors)
+
+### When to Use
+Any bordered note box, shaded sidebar, developer tip, hardware caution, or errata callout in the source manual.
+
+### Rules
+- Never leave advisory blocks as unstructured body text or plain `> quote` formatting.
+- Map them directly to native Obsidian Callout types:
+  - `Note:`, `Notice:`, `Info:` $\rightarrow$ `> [!NOTE]` or `> [!INFO]`
+  - `Tip:`, `Hint:`, `Programming Tip:` $\rightarrow$ `> [!TIP]`
+  - `Important:`, `Attention:`, `Critical:` $\rightarrow$ `> [!IMPORTANT]`
+  - `Warning:`, `Caution:`, `Alert:` $\rightarrow$ `> [!WARNING]` or `> [!CAUTION]`
+  - `Error:`, `Danger:`, `Fatal:`, `Bug:` $\rightarrow$ `> [!DANGER]` or `> [!ERROR]`
+- Retain 100% of text and parameters. Prefix every line (including blank lines and code blocks) with `>`.
+

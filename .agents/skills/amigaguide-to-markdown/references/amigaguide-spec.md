@@ -107,3 +107,31 @@ Inline formatting commands are delimited by `@\{` and `\}`.
 - `\@`: Literal `@` character (prevents the parser from interpreting it as a command).
 - `\"`: Literal double-quote inside quoted arguments (e.g. `System \"constants\"`).
 - `\\`: Literal backslash.
+
+---
+
+## 6. Advisory, Warning, and Error Blocks (Obsidian Callouts)
+
+In original AmigaGuide files, advisory notes, programmer cautions, and hardware warnings are typically formatted using bold headings, indented blocks, or ASCII delimiter boxes. In Markdown, map these directly to **Obsidian callouts**:
+
+| AmigaGuide Source Pattern | Markdown / Obsidian Target | Semantic Purpose |
+|---|---|---|
+| `@{B}Note:@{UB}`, `Note:`, `Notice:` | `> [!NOTE]` or `> [!INFO]` | Supplementary technical background, architecture clarifications |
+| `@{B}Tip:@{UB}`, `Programming Tip:` | `> [!TIP]` | Optimization tricks, recommended assembler techniques |
+| `@{B}Important:@{UB}`, `Important:` | `> [!IMPORTANT]` | Prerequisites, mandatory register setups, timing constraints |
+| `@{B}Warning:@{UB}`, `@{B}Caution:@{UB}` | `> [!WARNING]` or `> [!CAUTION]` | Hardware contention, bus locking risks, unassigned register bit writes |
+| `@{B}Bug:@{UB}`, `Errata:`, `Fatal Error:` | `> [!DANGER]` or `> [!ERROR]` / `> [!BUG]` | Known chip bugs, fatal exceptions, data loss conditions |
+
+### Example Conversion:
+**AmigaGuide Original:**
+```text
+@{B}WARNING:@{UB} Writing to this register while the DMA channel
+is active may cause unpredictable memory corruption.
+```
+
+**Obsidian Markdown Output:**
+```markdown
+> [!WARNING] Active DMA Hazard
+> Writing to this register while the DMA channel is active may cause unpredictable memory corruption.
+```
+
