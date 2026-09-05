@@ -44,8 +44,10 @@ graph TD
 
 - [Main loop A500.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Main%20loop%20A500.md): Machine stepping, reset sequence, and interrupt arbitration.
 - [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md): 2-phase CCK arbitration, address decoding, and DMA contention.
-- [CPU Motorola M68000.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CPU%20Motorola%20M68000.md): M68000 core state, registers, and prefetch queue.
-- [Specialized Chips.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Specialized%20Chips.md): Custom chips (Agnus, Denise, Paula) and CIAs (8520).
+- [Agnus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Agnus.md): Master beam counters, DMA arbiter, Copper, and 4-channel Blitter.
+- [Denise.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Denise.md): Video pixel serializer, bitplanes, sprites, palette, and collisions.
+- [Paula.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Paula.md): 4-channel DMA audio, floppy disk MFM controller, serial UART, and central interrupt multiplexer.
+- [CIA.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CIA.md): Dual MOS 8520 Complex Interface Adapters (timers, TOD, SDR, parallel & control ports).
 - [CycleCounter.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CycleCounter.md): Master Color Clock counter.
 - [SaveState.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/SaveState.md): State serialization model.
 - [Configuration.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Configuration.md): Machine configuration, RAM sizes, chipset models, and ROM injection.

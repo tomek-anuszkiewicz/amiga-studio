@@ -3,7 +3,7 @@
 This document specifies the keyboard microcontroller hardware, serial transmission protocol, scancode matrix, warm reset mechanics (`Ctrl-Amiga-Amiga`), and cross-platform host keyboard abstraction for the Amiga 500 emulator.
 
 > [!NOTE]
-> For top-level machine coordination and reset sequences, see [Main loop A500.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Main%20loop%20A500.md) and [General Architecture.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/General%20Architecture.md). For CIA-A register mapping, see [Specialized Chips.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Specialized%20Chips.md). For host frontend keyboard routing, see [GUI.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/GUI.md).
+> For top-level machine coordination and reset sequences, see [Main loop A500.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Main%20loop%20A500.md) and [General Architecture.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/General%20Architecture.md). For CIA-A register mapping, see [CIA.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CIA.md). For host frontend keyboard routing, see [GUI.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/GUI.md).
 
 ---
 

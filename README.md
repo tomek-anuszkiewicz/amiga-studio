@@ -26,16 +26,23 @@ The goal of this repository is to build a modern, system-agnostic, cycle-exact A
 ├── Obsidian/                <- Complete technical knowledge base
 │   └── Amiga/
 │       ├── Design/          <- Component architecture specifications
+│       │   ├── Agnus.md
+│       │   ├── CIA.md
 │       │   ├── Configuration.md
 │       │   ├── CPU Motorola M68000.md
 │       │   ├── CPU SingleStepTests.md
+│       │   ├── CycleCounter.md
 │       │   ├── Debugger.md
+│       │   ├── Denise.md
 │       │   ├── General Architecture.md
 │       │   ├── GUI.md
+│       │   ├── Joystick.md
+│       │   ├── Keyboard.md
 │       │   ├── Main loop A500.md
 │       │   ├── MemoryBus.md
-│       │   ├── SaveState.md
-│       │   └── Specialized Chips.md
+│       │   ├── Mouse.md
+│       │   ├── Paula.md
+│       │   └── SaveState.md
 │       └── Reference/       <- Official Commodore HRM, PRMs, Guru book (indexed by RAG)
 ├── ref_src/                 <- Local reference cores, emulators, HDL, and test suites
 │   ├── SingleStepTests-m68000/
