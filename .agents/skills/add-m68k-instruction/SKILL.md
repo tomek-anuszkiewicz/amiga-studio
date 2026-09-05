@@ -78,3 +78,9 @@ Before writing code, verify exact micro-timing and flag behavior:
    cargo test tests::cpu::test_my_instruction
    ```
 4. If assertions fail, activate the `m68k-singlestep-test` skill to diagnose the mismatch.
+
+---
+
+## 7. Update Design Documentation (Definition of Done)
+
+If implementing or debugging this instruction revealed, clarified, or modified any architectural assumption (e.g. prefetch timing, condition code quirks, or bus wait-state behavior), update [CPU Motorola M68000.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CPU%20Motorola%20M68000.md) or [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md).

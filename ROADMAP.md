@@ -21,6 +21,9 @@ This document outlines the phased development plan, hardware milestones, verific
   - Dual game ports: Port 1 (Mouse), Port 2 (Joystick).
   - Floppy Drive: Internal DF0 with ADF byte slice injection.
   - Kickstart ROM: 256 KB (1.2 / 1.3) with low-memory overlay boot sequence.
+- **Integrated Developer Debugger (Mandatory Phase 1 Deliverable):**
+  - Headless backend engine with stepping (`step_cck`, `step_instruction`), M68000 disassembler, breakpoints, memory watchpoints, and 1024-entry execution trace ring buffer.
+  - Interactive `egui` developer GUI panels (disassembly, registers, memory hex, Copper/Blitter inspector, and DMA logic analyzer).
 
 ### Phase 2: Enhanced Chipset (ECS) & Later Models
 - **A500 Rev 6A (1 MB Chip):** Fat Agnus 8372A with 1 MB Chip RAM jumper configuration.
@@ -39,12 +42,22 @@ This document outlines the phased development plan, hardware milestones, verific
 - Port the BlepGenerator logic to Rust.
 - Validate band-limited step (BLEP) curves against reference audio output to ensure clean, alias-free sound rendering for Paula's variable-rate audio channels.
 
-### Step 2: M68000 CPU Subsystem
-- Build cycle-exact instruction execution state machine mapped to CCK phases.
-- Implement one instruction from each instruction group (Data Movement, Arithmetic, Logic, Shifts, Bit Manipulation, Control Flow, System/Exceptions).
-- Validate against the 127 per-instruction test suites in `ref_src/SingleStepTests-m68000/v1/`.
-- Employ an autonomous agentic development loop using the `add-m68k-instruction` and `m68k-singlestep-test` skills.
-- Test address errors, unaligned accesses, prefetch queue pipeline (`IR`/`IRC`), and status register condition code quirks (`TAS`, `TRAPV`).
+### Step 2: M68000 CPU Subsystem & Early Debugger Backend
+> [!IMPORTANT]
+> **Debugger is an immediate prerequisite:** Building and validating a cycle-exact CPU without an inspection backend is nearly impossible. The core headless debugger engine must be implemented concurrently with the CPU.
+
+- **Early Debugger Primitives (Required Immediately):**
+  - M68000 opcode disassembler (decodes instructions to human-readable strings).
+  - Stepping primitives (`step_instruction`, `step_cck`).
+  - PC execution breakpoints and memory read/write watchpoints.
+  - Read-only state inspection (`CpuState`, registers $D_0-D_7$, $A_0-A_7$, $SR$, CCR flags, prefetch queue).
+  - Fixed-size trace ring buffer (last 1024 instructions) for instant post-mortem diagnosis of test failures or crashes.
+- **CPU Core Implementation:**
+  - Build cycle-exact instruction execution state machine mapped to CCK phases.
+  - Implement one instruction from each instruction group (Data Movement, Arithmetic, Logic, Shifts, Bit Manipulation, Control Flow, System/Exceptions).
+  - Validate against the 127 per-instruction test suites in `ref_src/SingleStepTests-m68000/v1/`.
+  - Employ an autonomous agentic development loop using the `add-m68k-instruction` and `m68k-singlestep-test` skills.
+  - Test address errors, unaligned accesses, prefetch queue pipeline (`IR`/`IRC`), and status register condition code quirks (`TAS`, `TRAPV`).
 
 ### Step 3: MemoryBus & Bus Contention
 - Implement 24-bit physical decoding and two-phase CCK bus latching (`read_phase1`/`read_phase2`, `write_phase1`/`write_phase2`).
@@ -55,11 +68,17 @@ This document outlines the phased development plan, hardware milestones, verific
 - Implement interrupt priority line (IPL 1–6) aggregation and main loop arbitration.
 - Wire multi-chip peripherals (Floppy drive, Game ports, Keyboard reset line).
 
-### Step 5: Presentation & Host Integration
+### Step 5: Presentation, Host Integration & Full Interactive Debugger GUI
 - Video rendering: Decoupled ARGB8888 frame buffer with 4:3 aspect ratio scaling.
 - Audio sink: Ring buffer decoupled from host audio playback (`cpal` / Web Audio).
 - GUI: Native and WebAssembly UI using `egui` + `wgpu`.
 - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
+- **Full Interactive Debugger Tool Windows:**
+  - Live disassembly view with execution pointer and double-click breakpoints.
+  - Interactive CPU register editor and CCR bit toggles.
+  - 24-bit memory hex dump viewer with ASCII pane and live search.
+  - Copper list visualizer with live beam position cursor.
+  - DMA slot logic analyzer timeline.
 
 ---
 
@@ -93,17 +112,13 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
 
 ---
 
-## 4. Advanced Tooling & Future Extensions
+## 4. Post-Phase 1 Extensions: Reverse Engineering & Extraction
 
-### 4.1 Interactive Developer Debugger
-- Headless backend engine exposing breakpoints, disassembler, memory hex viewer, and trace ring buffers.
-- Interactive `egui` debugger tool windows for real-time inspection.
-
-### 4.2 Resource Extractor & Reverse Engineering Assistant
+### 4.1 Resource Extractor & Reverse Engineering Assistant
 - Extract graphics (bitplanes, sprites, palettes) and audio samples directly from memory buffers.
 - Annotate assets, memory addresses, and game phases using LLM assistance.
 - Map active assets to the visual 24-bit memory map.
 
-### 4.3 LLM-Assisted Decompiler
+### 4.2 LLM-Assisted Decompiler
 - Integrate resource extraction to infer meaningful variable and function names.
 - Provide synchronized side-by-side debugging of raw M68k disassembly alongside decompiled high-level logic.
