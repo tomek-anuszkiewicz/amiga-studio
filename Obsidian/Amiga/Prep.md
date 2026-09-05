@@ -1,5 +1,7 @@
 
-download amiga-stuff-testkit-v1.21
+Those steps are required after you clone a repository.
+
+
 ##  Mushashi - generate sources
 
 ```powershell
