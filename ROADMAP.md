@@ -39,9 +39,15 @@ This document outlines the phased development plan, hardware milestones, verific
 
 ## 2. Core Implementation Strategy
 
-### Step 1: BlepGenerator (Audio Antialiasing)
-- Port the BlepGenerator logic to Rust.
-- Validate band-limited step (BLEP) tables directly against WinUAE's reference `winsinc_integral` tables ([`ref_src/WinUAE-6030/sinctable.cpp`](file:///d:/Programowanie/Amiga/ref_src/WinUAE-6030/sinctable.cpp)) to ensure clean, alias-free sound rendering for Paula's variable-rate audio channels.
+### Step 1: BlepGenerator — Rust Port & Audio Antialiasing Validation
+- **Convert [tools/BlebGenerator](file:///d:/Programowanie/Amiga/tools/BlebGenerator) to Rust:**
+  - Port the C# table generation implementation ([`tools/BlebGenerator/genblepsharp.cs`](file:///d:/Programowanie/Amiga/tools/BlebGenerator/genblepsharp.cs)) into a native Rust tool (`tools/bleb-generator` or cargo workspace utility crate).
+  - Port the analytical audio filter transfer function, windowed sinc integration, and BLEP table calculation pipeline.
+  - Generate band-limited step (BLEP) interpolation tables for Paula's audio channels across A500 PAL (~3.54 MHz) and NTSC (~3.58 MHz) clock domains.
+- **Validate Against WinUAE Ground Truth:**
+  - Validate the generated tables directly against WinUAE's reference `winsinc_integral` tables ([`ref_src/WinUAE-6030/sinctable.cpp`](file:///d:/Programowanie/Amiga/ref_src/WinUAE-6030/sinctable.cpp)) to ensure clean, alias-free sound rendering for Paula's variable-rate audio channels.
+- **Embed Static Tables in Paula Core:**
+  - Embed the precalculated BLEP sinc tables as static arrays in Paula's audio rendering pipeline, adhering strictly to the zero-allocation hot-path guideline.
 
 ### Step 2: M68000 CPU Subsystem & Early Debugger Backend
 > [!IMPORTANT]
