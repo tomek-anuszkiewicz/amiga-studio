@@ -49,7 +49,7 @@ This document outlines the phased development plan, hardware milestones, verific
 - **Embed Static Tables in Paula Core:**
   - Embed the precalculated BLEP sinc tables as static arrays in Paula's audio rendering pipeline, adhering strictly to the zero-allocation hot-path guideline.
 
-### Step 2: M68000 CPU Subsystem & Early Debugger Backend
+### Step 2a: M68000 CPU Foundations, All Addressing Modes & Early Debugger Backend
 > [!IMPORTANT]
 > **Debugger is an immediate prerequisite:** Building and validating a cycle-exact CPU without an inspection backend is nearly impossible. The core headless debugger engine must be implemented concurrently with the CPU.
 
@@ -59,12 +59,41 @@ This document outlines the phased development plan, hardware milestones, verific
   - PC execution breakpoints and memory read/write watchpoints.
   - Read-only state inspection (`CpuState`, registers $D_0-D_7$, $A_0-A_7$, $SR$, CCR flags, prefetch queue).
   - Fixed-size trace ring buffer (last 1024 instructions) for instant post-mortem diagnosis of test failures or crashes.
-- **CPU Core Implementation:**
-  - Build cycle-exact instruction execution state machine mapped to CCK phases.
-  - Implement one instruction from each instruction group (Data Movement, Arithmetic, Logic, Shifts, Bit Manipulation, Control Flow, System/Exceptions).
-  - Validate against both the 127 per-instruction test suites in [`ref_src/SingleStepTests-m68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000/v1) (MAME) and the 125 compressed suites in [`ref_src/SingleStepTests-680x0/68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0/68000/v1) (Tom Harte).
-  - Employ an autonomous agentic development loop using the `add-m68k-instruction` and `m68k-singlestep-test` skills.
-  - Test address errors, unaligned accesses, prefetch queue pipeline (`IR`/`IRC`), and status register condition code quirks (`TAS`, `TRAPV`).
+- **CPU Core & Addressing Modes Engine:**
+  - Build cycle-exact instruction execution state machine mapped to CCK phases (CCK1/CCK2).
+  - Implement and thoroughly test **all M68000 addressing modes** upfront:
+    - Data & Address Register Direct (`Dn`, `An`)
+    - Address Register Indirect (`(An)`)
+    - Address Register Indirect with Postincrement (`(An)+`) and Predecrement (`-(An)`)
+    - Address Register Indirect with Displacement (`(d16, An)`)
+    - Address Register Indirect with Index (`(d8, An, Xn)`)
+    - Absolute Short & Long (`(xxx).W`, `(xxx).L`)
+    - Program Counter with Displacement & Index (`(d16, PC)`, `(d8, PC, Xn)`)
+    - Immediate data & Status Register (`#<data>`, `SR`, `CCR`)
+- **Initial Representative Instructions (One from Each Category):**
+  - Implement a representative instruction from every major instruction category to exercise the execution pipeline:
+    - *Data Movement:* `MOVE` / `MOVEA`
+    - *Integer Arithmetic:* `ADD` / `SUB`
+    - *Logic:* `AND` / `OR`
+    - *Shift & Rotate:* `LSL` / `LSR` (or `ASL` / `ASR`)
+    - *Bit Manipulation:* `BTST` / `BSET`
+    - *Control Flow:* `BRA` / `Bcc` / `JMP` / `RTS`
+    - *System & Exceptions:* `NOP`, `TRAP`, address error / unaligned access exception handling.
+  - Initial SingleStepTest validation run using `m68k-singlestep-test` to ensure bus cycle timing, prefetch queue (`IR`/`IRC`), and CCR calculations are exact across all addressing modes.
+
+### Step 2b: Full M68000 Instruction Set Completion & Cycle-Exact Validation
+- **Implement All Remaining Instructions:**
+  - Complete the full M68000 opcode matrix across all categories:
+    - Block & specialized moves: `MOVEM`, `MOVEP`, `EXG`, `LEA`, `PEA`
+    - Extended/BCD arithmetic: `ADDX`, `SUBX`, `NEGX`, `ABCD`, `SBCD`, `NBCD`, `MULS`, `MULU`, `DIVS`, `DIVU`, `EXT`
+    - Bit/comparison operations: `BCHG`, `BCLR`, `TST`, `CMP`, `CMPA`, `CMPI`, `CMPM`, `CLR`, `NEG`, `NOT`
+    - Specialized control & loops: `DBcc`, `Scc`, `JSR`, `RTE`, `RTR`, `LINK`, `UNLK`, `SWAP`, `CHK`
+    - Privileged & atomic instructions: `STOP`, `RESET`, `TAS`, `TRAPV`, `MOVE to SR/CCR`, `MOVE from SR`, `MOVE USP`
+- **Comprehensive SingleStepTest Suite Coverage:**
+  - Autonomous agentic loop using `add-m68k-instruction` and `m68k-singlestep-test` skills.
+  - 100% pass rate against all 127 per-instruction test suites in [`ref_src/SingleStepTests-m68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000/v1) (MAME).
+  - 100% pass rate against all 125 compressed suites in [`ref_src/SingleStepTests-680x0/68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0/68000/v1) (Tom Harte).
+  - Rigorous verification of edge cases: unaligned word/long address errors, prefetch queue reload delays, bus cycle states, and condition code quirks.
 
 ### Step 3: MemoryBus & Bus Contention
 - Implement 24-bit physical decoding and two-phase CCK bus latching (`read_phase1`/`read_phase2`, `write_phase1`/`write_phase2`).
