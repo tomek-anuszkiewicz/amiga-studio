@@ -77,6 +77,7 @@ flowchart TD
 - **Hardware Decoding:**
   - **Direction / Movement:** Mouse quadrature optical pulses or joystick switch closures directly increment/decrement counters in `JOY0DAT` / `JOY1DAT` in Denise.
   - **Buttons:** Fire 1 (Left Mouse Button) is read via **CIA-A Port A** (`_FIR0` bit 6, `_FIR1` bit 7). Fire 2 & 3 (Right / Middle Mouse Button) are read via **Paula / Denise** through the proportional pot pins in `POTGO` (`$DFF034`).
+  - *Detailed Specifications:* For full register decoding, pinouts, quadrature math, 4-player adapters, and host mapping, see [Joystick.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Joystick.md) and [Mouse.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Mouse.md).
 - **Host Input Update Rate (Once Per Frame):**
   - The host window loop provides mouse and joystick updates to the emulator via public `A500` methods from the outside:
     ```rust
@@ -102,6 +103,7 @@ The 3.5" floppy drive interface spans three different custom chips and connects 
 ### 2.3 Keyboard & Reset Line
 - **CIA-A:** Receives keyboard serial clock and data in its Serial Data Register (`SDR`), firing a Level 2 interrupt (`PORTS`).
 - **Keyboard Microcontroller (6500/1):** Monitors for the **Ctrl-Amiga-Amiga** key combination. When detected, the microcontroller physically pulls the system `_RESET` pin low, triggering a hardware reset across CPU, Agnus, Denise, Paula, and CIAs.
+- *Detailed Specification:* For complete serial protocol, scancode matrix, handshake timing, and warm reset flows, see [Keyboard.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Keyboard.md).
 
 ### 2.4 Video Beam Synchronization
 - **Agnus:** Drives master beam position counters (`VHPOSR`, `VPOSR`) and executes the Copper display list synchronized to beam coordinates.

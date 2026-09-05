@@ -62,14 +62,19 @@ We plan to implement a GPU shader pipeline (via WGSL / GLSL in `wgpu` and WebGL/
 Translates host input devices into Amiga hardware register events:
 
 1. **Host Keyboard -> Amiga Keyboard Matrix:**
-   - Translates physical host keys into raw Amiga 8-bit scancodes transmitted to CIA-A `SDR`.
+   - Translates physical host keys (`KeyCode`) into raw Amiga 8-bit scancodes transmitted to CIA-A `SDR`.
    - Maps host shortcuts (e.g. `Ctrl+Alt+Delete` or `F12`) to the Amiga `Ctrl-Amiga-Amiga` reset sequence.
+   - *Detailed Specification:* See [Keyboard.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Keyboard.md).
 2. **Host Mouse -> Game Port 1 (`JOY0DAT` & CIA-A):**
    - Accumulates host cursor delta into Denise 8-bit quadrature counters (`JOY0DAT`).
    - Maps left, right, and middle mouse buttons to CIA-A `PRA` bit 6 and Paula `POTGO`.
+   - Supports viewport pointer lock and mobile/touchscreen trackpad modes.
+   - *Detailed Specification:* See [Mouse.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Mouse.md).
 3. **Host Gamepad -> Game Port 2 (`JOY1DAT` & CIA-A):**
    - Maps D-Pad / Analog stick to digital directional bits in `JOY1DAT`.
    - Maps gamepad buttons to CIA-A `PRA` bit 7 (Fire 1) and `POTGO` (Fire 2).
+   - Supports keyboard-to-joystick mapping, autofire, and mobile virtual D-pad.
+   - *Detailed Specification:* See [Joystick.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Joystick.md).
 
 ---
 

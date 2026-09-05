@@ -51,6 +51,9 @@ graph TD
 - [Configuration.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Configuration.md): Machine configuration, RAM sizes, chipset models, and ROM injection.
 - [Debugger.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Debugger.md): Headless debugger backend, stepping, breakpoints, and disassembler.
 - [GUI.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/GUI.md): Frontend architecture, video viewport, audio sink, and developer UI panels.
+- [Joystick.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Joystick.md): Game port digital/analog joysticks, 4-player parallel adapter, and host gamepad mapping.
+- [Mouse.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Mouse.md): Port 1 quadrature counters (`JOY0DAT`), buttons, pointer locking, and touchscreen mapping.
+- [Keyboard.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Keyboard.md): Microcontroller serial protocol, scancode matrix, `Ctrl-Amiga-Amiga` reset, and host layout-independent key mapping.
 
 ---
 
