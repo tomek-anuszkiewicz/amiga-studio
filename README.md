@@ -46,6 +46,7 @@ The goal of this repository is to build a modern, system-agnostic, cycle-exact A
 │   ├── fx68k/
 │   └── ...
 ├── AGENTS.md                <- Authoritative project rules and Rust systems guidelines
+├── ROADMAP.md               <- Project milestones, implementation steps, and agent testing strategy
 └── README.md
 ```
 
