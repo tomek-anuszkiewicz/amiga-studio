@@ -41,7 +41,7 @@ This document outlines the phased development plan, hardware milestones, verific
 
 ### Step 1: BlepGenerator (Audio Antialiasing)
 - Port the BlepGenerator logic to Rust.
-- Validate band-limited step (BLEP) curves against reference audio output to ensure clean, alias-free sound rendering for Paula's variable-rate audio channels.
+- Validate band-limited step (BLEP) tables directly against WinUAE's reference `winsinc_integral` tables ([`ref_src/WinUAE-6030/sinctable.cpp`](file:///d:/Programowanie/Amiga/ref_src/WinUAE-6030/sinctable.cpp)) to ensure clean, alias-free sound rendering for Paula's variable-rate audio channels.
 
 ### Step 2: M68000 CPU Subsystem & Early Debugger Backend
 > [!IMPORTANT]
