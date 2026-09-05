@@ -1,21 +1,17 @@
+# Motorola 68000 CPU Design Specification
 
-- Keep code in directory `M68000`
-- Code should be cycle-exact
-- CPU state should be read-only (queryable)
-- Implement all registers, including internal ones (prefetch queue, instruction stage)
-- Provide methods to get and set whole CPU state at once for save/load state
-- Build instruction execution state machine (e.g. big switch / table for instructions)
-- Memory bus operations and instruction execution stages are modeled using Color Clock phases: **CCK1** and **CCK2** (replacing traditional S-states, where 1 bus access = 4 CPU clocks = 2 CCK cycles: CCK1 and CCK2):
-	- When reading/writing during a CCK phase, check memory bus availability via `MemoryBusResult`:
-		- If bus is ready (`MemoryBusResult::Ready`), progress to the next state/phase.
-		- If bus is blocked (`MemoryBusResult::Blocked` / `Wait`), remain at the same state/phase (insert wait state).
-- Execute prefetch in defined CCK cycles as per the MC68000 manual
-- For each instruction, calculate exact cycle timings based on CCK phases
-- Only progress when CPU cycle requirements are satisfied and the bus is unblocked
-	- Note that because CPU may be blocked by Chip RAM / DMA, it can wait additional CCKs
-- Use `MemoryBus` to access memory
-- **CPU State & Register Architecture**:
-  - Implement full register state in a dedicated struct (`CpuState` / `Cpu`):
+- **Module Location:** `m68000/`
+- **Execution Model:** Cycle-exact micro-operations mapped to Color Clock phases (**CCK1** and **CCK2**).
+- **Bus Interface:** Interacts with memory strictly via [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md), respecting `MemoryBusResult::Ready` vs `MemoryBusResult::Blocked`.
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md) (wrapping arithmetic, Big-Endian decoding, zero panics).
+- **Test Validation:** Verified via [CPU SingleStepTests.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CPU%20SingleStepTests.md) and skill `m68k-singlestep-test`.
+
+---
+
+## 1. CPU State & Register Architecture
+
+The CPU exposes a fully queryable, read-only state snapshot for inspection, debugging, and save states:
+
 ```rust
 use serde::{Deserialize, Serialize};
 
@@ -73,84 +69,111 @@ impl CpuState {
     }
 }
 ```
-- **Exception Vector Table & Exception Processing**:
-  - Implement full MC68000 Exception Vector Table (`$000000-$0003FF`, 256 32-bit vector addresses in memory)
-  - Vectors include Reset SP/PC (0-1), Address Error (3), Illegal Instruction (4), Zero Divide (5), Privilege Violation (8), Trace (9), TRAP #0-#15 (32-47), and Autovector Interrupts Level 1-7 (Vectors 25-31 at `$000064-$00007C`)
-- **Interrupt Handling**:
-  - CPU exposes an interface to sample external interrupt lines (e.g. `set_ipl(level: u8)`)
-  - When the sampled interrupt level is greater than the current CPU interrupt mask in the Status Register (`SR` bits 8-10, `I0-I2`) — or on level 7 (NMI) — CPU processes an autovector interrupt exception at instruction boundary
-- **Error Handling**:
-  - **Address Error (Vector 3, `$00000C`)**: **Must be handled**. Triggered internally by the CPU whenever a 16-bit word or 32-bit long-word access is attempted on an odd address (bit 0 set). Pushes the 68000 Address Error stack frame.
-  - **Bus Error (`_BERR`, Vector 2, `$000008`)**: **Omitted** in current hardware emulation. Standard Amiga 500 hardware does not assert `_BERR` (unmapped addresses simply float and return `$FF` / `$FFFF`).
-- **Instruction Quirks & Hardware Behavior**:
-  - **TAS (Test And Set)**:
-    - Register operand (`TAS Dn`): Always operates normally (tests value, sets $N/Z$, clears $V/C$, sets bit 7).
-    - Memory operand (`TAS <ea>`): Performs an atomic Read-Modify-Write cycle. On the Amiga:
-      - **Chip RAM & Slow RAM**: Write phase is ignored by hardware (CCR updated, memory unmodified).
-      - **Fast RAM**: Full Read-Modify-Write succeeds (CCR updated, bit 7 set in memory).
-- Method to progress one cycle / CCK forward
-- **Verification**:
-  - Validated against [`CPU SingleStepTests.md`](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CPU%20SingleStepTests.md) using test vectors from `ref_src/SingleStepTests-m68000/v1/`
-- Initial milestone: Implement and verify `NOP` instruction
-### Step-by-Step Reset Procedure
 
-When triggering a reset on the Amiga 500, execute the following actions in order:
+---
 
-#### 1. Configure the Memory Bus (Kickstart Low-Memory Mapping)
+## 2. Dynamic Opcode Cycle Calculation
 
-- Set the low-memory overlay active so that accesses to the vector address range (`$000000–$000007`) are routed directly to the Kickstart ROM rather than physical Chip RAM.
-    
-- Clear any DMA wait state or bus-lock flags.
-    
+The emulator does **NOT** rely on a static cycle lookup table. Cycles are calculated dynamically as an emergent property of the micro-operation state machine:
 
-#### 2. Initialize Internal Status & Control Flags
+1. **Effective Addressing (EA) Timing:**
+   - Register Direct: 0 additional cycles.
+   - Address Register Indirect `(An)`: 4 clocks (2 CCK).
+   - Post-increment / Pre-decrement `(An)+` / `-(An)`: 4 clocks (2 CCK).
+   - Displacement `(d16, An)`: 8 clocks (4 CCK) — 1 prefetch word + address calc.
+   - Indexed `(d8, An, Xn)`: 10 clocks (5 CCK) — 1 prefetch word + index addition + internal idle clock.
+2. **Data-Dependent Operand Timing:**
+   - **`DIVU` (Unsigned Division):** Dynamically takes between 38 and 140 CPU clocks depending on quotient bit loop cancellations and zero divisor detection.
+   - **`DIVS` (Signed Division):** Dynamically takes between 122 and 158 CPU clocks depending on sign resolution and division iterations.
+   - **`MULU` / `MULS`:** Takes 38 to 70 CPU clocks (cycles scale dynamically with the number of 1-bits in the multiplier).
+   - **Shifts & Rotates (`ASL`, `LSR`, etc.):** 6 or 8 base clocks + 2 clocks per bit shifted.
+3. **Branch Conditions:**
+   - `Bcc`: 10 clocks if branch taken, 8 clocks if not taken.
+4. **Bus Wait State Accumulation:**
+   - Every CCK cycle where `MemoryBus` returns `MemoryBusResult::Blocked` adds exactly **1 CCK (2 CPU clocks)** to the instruction's total duration.
 
-- **Status Register (SR):** Set to `$2700`.
-    
-    - Sets the **Supervisor bit ($S = 1$)**, granting full supervisor privileges.
-        
-    - Clears the **Trace mode bit ($T = 0$)**, disabling single-step tracing.
-        
-    - Sets the **Interrupt Priority Mask to Level 7 ($I2..I0 = 111$)**, masking all standard maskable interrupts (only Level 7 / NMI can interrupt, if present).
-        
-    - Clears all condition code register (CCR) flags ($X, N, Z, V, C = 0$).
-        
-- **Stop / Halt State:** Ensure the CPU is taken out of any `STOP` or halted condition.
-    
+---
 
-#### 3. Fetch the Initial Supervisor Stack Pointer (SSP / A7)
+## 3. Bus Stalling & CCK Phase Model
 
-- Read the 16-bit word at address `$000000` (High Word).
-    
-- Read the 16-bit word at address `$000002` (Low Word).
-    
-- Combine them into a 32-bit value and write it directly to the active Supervisor Stack Pointer (`SSP` / `A7`).
-    
+Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
+- $1\ \text{M68000 bus cycle} = 4\ \text{CPU clocks (S0-S7)} = 2\ \text{CCK cycles (CCK1 + CCK2)}$.
 
-#### 4. Fetch the Initial Program Counter (PC)
+### 3.1 Read Transaction Contention
+- **CCK1 (S0–S3):** The CPU asserts the target address and `_AS`.
+  - If target is Chip RAM and Agnus DMA is active (`chip_ram_blocked == true`):
+    - `MemoryBus` returns `MemoryBusResult::Blocked`.
+    - **Action:** CPU stalls at the current micro-step. Does NOT advance `step`. Repeats CCK1 on next clock.
+  - If unblocked:
+    - `MemoryBus` loads data into `read_latch` and returns `MemoryBusResult::Phase1Ready`.
+- **CCK2 (S4–S7):**
+  - The CPU reads directly from `self.read_latch`, isolated from the external memory bus.
+  - `MemoryBus` returns `MemoryBusResult::Ready(latch)`.
+  - The CPU micro-step completes and advances to the next step.
 
-- Read the 16-bit word at address `$000004` (High Word).
-    
-- Read the 16-bit word at address `$000006` (Low Word).
-    
-- Combine them into a 32-bit value and set it as the starting `PC`.
-    
+### 3.2 Write Transaction Contention (Unbuffered)
+- **CCK1 (S0–S3):** The CPU outputs the address and write data onto its external pins.
+  - `MemoryBus` stores incoming data in temporary register (`pending_write_data`).
+  - Returns `MemoryBusResult::Phase1Ready`. The CPU always proceeds to CCK2.
+- **CCK2 (S4–S7):** The memory bus attempts to commit the write to RAM.
+  - If target is Chip RAM and `chip_ram_blocked == true`:
+    - Gary withholds `_DTACK`.
+    - `MemoryBus` returns `MemoryBusResult::Blocked`.
+    - **Action:** CPU stalls at CCK2, holding write pins asserted until Agnus frees the bus.
+  - If unblocked:
+    - Byte/word commits to memory. Returns `MemoryBusResult::Ready(0)`.
 
-#### 5. Prime the Instruction Prefetch Pipeline
+---
 
-Before instruction execution can begin, the two-stage prefetch queue must be filled from the initial target address:
+## 4. Two-Word Instruction Prefetch Pipeline
 
-- **Instruction Register (IR):** Read the 16-bit word from the current `PC` address. Store this word into `IR` (this represents the first opcode to be decoded).
-    
-- **Increment PC:** Add `2` to the `PC`.
-    
-- **Instruction Prefetch Buffer (IRC):** Read the next 16-bit word from the updated `PC` address. Store this word into `IRC` (ready as the next immediate word or subsequent opcode).
-    
-- **Increment PC:** Add `2` to the `PC` once more.
-    
+The M68000 maintains a two-word prefetch queue:
+- **`IR` (Instruction Register):** Holds the opcode currently being decoded and executed.
+- **`IRC` (Instruction Register Capture):** Holds the next 16-bit word prefetched from memory.
 
-#### 6. Transition to Execution
+### Prefetch Pipeline Rules
+1. **Initial State (After Reset):**
+   - `IR` contains the first opcode at `Initial_PC`.
+   - `IRC` contains the prefetch word at `Initial_PC + 2`.
+   - `PC` register holds `Initial_PC + 4`.
+2. **Consuming Extension Words / Immediates:**
+   - Any immediate data, 16-bit displacement, or extension word is **consumed directly from `IRC`**.
+   - The CPU immediately initiates a prefetch read cycle at address `PC` to refill `IRC`.
+   - `PC` is incremented by 2 (`pc = pc.wrapping_add(2)`).
+3. **Instruction Retirement:**
+   - During the final bus cycle of an instruction, `IRC` transfers to `IR` for the next opcode.
+   - The CPU reads the next instruction stream word from `PC` into `IRC` and increments `PC` by 2.
 
-- At this point, `IR` holds opcode 1, `IRC` holds word 2, and `PC` points to $Initial\_PC + 4$.
-    
-- Hand control over to the main instruction execution loop.
+---
+
+## 5. Exception Processing & Vectors
+
+- **Vector Table Range:** `$000000-$0003FF` (256 32-bit vector addresses).
+- **Core Exceptions:**
+  - `0`: Reset Initial SSP (High & Low word)
+  - `1`: Reset Initial PC (High & Low word)
+  - `2`: Bus Error (`_BERR` — omitted; stock A500 does not assert `_BERR`)
+  - `3`: Address Error (unaligned word/long access aborts execution and pushes Address Error stack frame)
+  - `4`: Illegal Instruction
+  - `5`: Zero Divide
+  - `6`: CHK Instruction
+  - `7`: TRAPV Instruction
+  - `8`: Privilege Violation
+  - `9`: Trace
+  - `10`: Line-A (`ILLEGAL_LINEA`)
+  - `11`: Line-F (`ILLEGAL_LINEF`)
+  - `25-31`: Autovector Interrupts Level 1–7
+
+---
+
+## 6. Reset Procedure (Cold and Warm)
+
+On both **Cold** and **Warm** reset, the CPU execution flow begins at vector `$000000`:
+
+1. **Overlay Active:** Low-memory overlay (`_OVL`) routes `$000000-$07FFFF` to Kickstart ROM.
+2. **Status Register:** Set to `$2700` ($S=1, T=0, I=7$).
+3. **Fetch Initial SSP:** Read 32-bit value from `$000000` into `ssp` (active `A7`).
+4. **Fetch Initial PC:** Read 32-bit value from `$000004` into `pc`.
+5. **Fill Prefetch:** Read word at `pc` into `ir`, increment `pc += 2`; read word at `pc` into `irc`, increment `pc += 2`.
+6. **Execution:** Begin execution at `pc` in Kickstart ROM.
+   - Kickstart inspects RAM contents for magic resident checksums to determine whether to perform a warm reboot or cold boot.

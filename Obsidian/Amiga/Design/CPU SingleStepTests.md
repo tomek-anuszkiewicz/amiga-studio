@@ -1,21 +1,26 @@
 
-This document defines the complete specification for running the **SingleStepTests** test suite against the M68000 CPU emulator in Rust. It assumes all 127 test files in `ref_src/SingleStepTests-m68000/v1/` are available in JSON format (e.g. `ADD.b.json`, `MOVE.w.json`, `ILLEGAL_LINEA.json`).
+# M68000 SingleStepTests Suite Specification
 
-Based on this specification, the entire test runner and all per-instruction test modules can be directly implemented.
+> [!NOTE]
+> Operational test running, command shortcuts, and debugging checklists are documented in the [m68k-singlestep-test](file:///d:/Programowanie/Amiga/.agents/skills/m68k-singlestep-test/SKILL.md) skill.
+> Step-by-step instruction implementation is guided by [add-m68k-instruction](file:///d:/Programowanie/Amiga/.agents/skills/add-m68k-instruction/SKILL.md).
+
+This document defines the complete specification and Rust data structures for running the **SingleStepTests** test suite against the M68000 CPU emulator. It assumes all 127 test files in `ref_src/SingleStepTests-m68000/v1/` are available in JSON format (e.g. `ADD.b.json`, `MOVE.w.json`, `ILLEGAL_LINEA.json`).
 
 ---
 
 ## 1. Test Suite Overview
 
 - **Location:** `ref_src/SingleStepTests-m68000/v1/*.json` (127 JSON files).
-- **Origin:** Generated from MAME's cycle-exact, microcoded Motorola 68000 core.
+- **Origin:** Generated from MAME's cycle-exact, microcoded Motorola 68000 emulator core.
+  - *Note on Caveats:* Any bugs or microcode quirks present in MAME's 68000 core are mirrored in these files. Specifically, `TAS` does not properly model the 5-cycle read-modify-write timing, and `TRAPV` has a known quirk with $S$-bit handling. All other 125 test suites are verified as cycle-exact.
 - **Scope:** Exhaustive unit tests covering:
   - All standard instructions, sizes (`.b`, `.w`, `.l`), and addressing modes.
   - Condition code register (`CCR` / `SR`) calculations.
   - Internal instruction prefetch queue stages (`pf0`, `pf1`).
   - Exceptions & interrupts: Line-A (`ILLEGAL_LINEA`), Line-F (`ILLEGAL_LINEF`), `TRAP`, `TRAPV`, `CHK`, `RESET`, `STOP`.
   - Address Errors (unaligned word/long read/write operations triggering Vector 3 exceptions).
-  - Bus cycle activity and cycle counts.
+  - Cycle-by-cycle bus activity logs and execution lengths.
 
 ---
 
@@ -202,7 +207,12 @@ flowchart TD
    - **Program Counter:** Assert `cpu.pc == final_state.pc`.
    - **Prefetch Queue:** Assert `cpu.prefetch == final_state.prefetch`.
    - **RAM Verification:** Iterate through all `[address, expected_byte]` pairs in `final_state.ram` and assert that the test memory contains the exact byte.
-5. **Address Error & Exception Handling:**
+5. **Cycle-by-Cycle Bus Transaction Assertion:**
+   - Iterate through `test.transactions` (`[type, duration, size, addr, str_size, data, uds, lds]`):
+     - **CCK1 (S0–S3):** Assert the CPU asserts the exact address (`addr`), strobe signals (`uds`, `lds`), and transfer direction (`r` vs `w`).
+     - **CCK2 (S4–S7):** Assert that on read, data captured in the latch matches `data`, and on write, data driven on the bus matches `data`.
+     - Idle cycles (`n`) assert no active bus strobes for the given clock duration.
+6. **Address Error & Exception Handling:**
    - If the test triggers an address error (unaligned word/long access), verify that the CPU:
      1. Pushes the Address Error stack frame (Function Code, Access Address, Instruction Register, Status Register, PC).
      2. Sets the Supervisor bit $S$ in $SR$.
@@ -460,7 +470,41 @@ cargo test tests::cpu::test_trap
 cargo test tests::cpu
 ```
 
-TODO:
-- we must simulate how dma blocks chip memory, looking at test json we  should prepare mix of dma schedule, we should alter json, and expect test to pass
-  - this is a cpu test, and memorybus already has logic to block chip memory, we just need to hook it up with actual dma schedule, in test method
-- and another mix should be chip/fast memory. So in test json we should alter memory address to mix chip/fast/onlychip/onlyfast. Knowing that we should alter test json, and expect it to pass
+---
+
+## 8. In-Code Test Mutation Strategy (Chip/Fast RAM & DMA Contention)
+
+To verify the CPU's bus arbitration and wait-state handling under real Amiga hardware conditions, we do **not** generate duplicate JSON files on disk. Instead, the test runner applies **programmatic test mutations in memory**:
+
+### 8.1 Address Remapping Modes
+The test harness provides a parameter to remap the arbitrary test addresses from the JSON into Amiga-specific address spaces:
+- **`MemoryMappingMode::Direct`**: Executes tests using raw addresses from the JSON file in sparse test memory.
+- **`MemoryMappingMode::ForceChipRam`**: Offsets all code, data, and stack addresses into Chip RAM (`$000000-$07FFFF`). Validates that the CPU handles Chip RAM contention and respects `MemoryBusResult::Blocked`.
+- **`MemoryMappingMode::ForceFastRam`**: Offsets addresses into Fast RAM (`$200000-$27FFFF`). Validates that the CPU executes at full speed without bus delays.
+- **`MemoryMappingMode::MixedChipFast`**: Maps instruction opcodes in Fast RAM while placing data operands in Chip RAM (or vice versa), testing mixed-bus execution.
+
+### 8.2 Parameterized DMA Contention Scheduling
+The test harness can inject a simulated Agnus DMA schedule into the execution loop:
+```rust
+pub struct DmaSchedule {
+    /// Closure or pattern indicating if Agnus occupies the bus at this CCK cycle
+    pub is_blocked: Box<dyn Fn(u64) -> bool>,
+}
+
+impl DmaSchedule {
+    /// Agnus blocks every alternate cycle (simulating bitplane DMA)
+    pub fn alternate_cycles() -> Self {
+        Self { is_blocked: Box::new(|cck| cck % 2 != 0) }
+    }
+
+    /// Blitter nastiness: Agnus blocks the bus for N consecutive CCK cycles
+    pub fn burst(duration: u64) -> Self {
+        Self { is_blocked: Box::new(move |cck| cck < duration) }
+    }
+}
+```
+
+### 8.3 Invariant Under Bus Mutations
+When running a test mutation with simulated DMA blocks:
+1. **Registers & Memory:** The final register state ($D_0-D_7$, $A_0-A_6$, $SR$, $PC$, prefetch) and RAM contents **must match the JSON final state exactly**.
+2. **Cycle Count:** The total elapsed CCK count naturally increases by the exact number of wait states inserted by the DMA schedule.

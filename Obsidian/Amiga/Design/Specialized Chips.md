@@ -1,122 +1,124 @@
+# Amiga 500 Specialized Chips Architecture (Agnus, Denise, Paula, CIAs)
 
-- Implement each chip in a dedicated module/directory matching its name
-- Custom chips and controllers to implement:
-  - **Agnus** (DMA controller, Copper, Blitter)
-  - **Denise** (Video & display generator, bitplanes, sprites, color registers)
-  - **Paula** (Audio channels, floppy disk controller, UART, interrupt controller)
-  - **CIA-A** (Complex Interface Adapter 8520: keyboard, timers, joystick/mouse buttons)
-  - **CIA-B** (Complex Interface Adapter 8520: disk motor/select, timers, serial/parallel handshakes)
-- For each chip, provide methods to get and set register/memory cell values
-- Define all hardware registers and bitfields using canonical names from Amiga documentation
-- **Register Width & Byte Access Handling**:
-  - **Custom Chips (16-bit)**: Custom registers are 16-bit wide. Byte writes target the addressed byte lane while the unaddressed byte defaults to `$FF`. Reading disconnected/write-only registers returns `$FF`.
-  - **CIAs (8-bit)**: CIAs are native 8-bit peripherals. Byte reads and byte writes are the standard operating mode (CIA-A on odd addresses, CIA-B on even addresses). Word reads return the 8-bit value with `$FF` on the unused byte lane.
-- **Interrupt Management & Internal Interrupt State**:
-  - **Paula**: Houses central Amiga interrupt controller (`INTENA` `$DFF09A`, `INTREQ` `$DFF09C`). Multiplexes interrupt sources into priority levels:
-    - Level 1: Serial TX empty (TBE), Disk Block (DSKBLK), Software interrupt (SOFT)
-    - Level 2: CIA-A interrupt (`PORTS`)
-    - Level 3: Vertical Blank (VERTB), Blitter finished (BLIT), Copper (COPER)
-    - Level 4: Audio channels 0-3 (`AUD0`-`AUD3`)
-    - Level 5: Serial RX buffer full (RBF), Disk Sync match (DSKSYN)
-    - Level 6: CIA-B interrupt (`EXTER`)
-  - **CIA-A**: Keeps internal Interrupt Control Register (ICR) state; drives the Level 2 interrupt line
-  - **CIA-B**: Keeps internal Interrupt Control Register (ICR) state; drives the Level 6 interrupt line
-  - **Agnus**: Signals VBlank, Blitter, and Copper interrupt conditions to Paula
-  - **Interrupt State Inspection**: Each chip maintains its internal interrupt line state and exposes public getter methods so that external systems (the main loop) can read active interrupt lines
-- In early implementation phase: treat all registers as R/W
-- Provide `get_state()` / `set_state()` methods for full serialization in save states
+> [!NOTE]
+> Physical bus addressing, byte-lane decoding, and open-bus `$FF` handling for custom chips and CIAs are defined in [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md).
+> Save state serialization patterns are detailed in [SaveState.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/SaveState.md).
 
-TODO:
-### RESET
+---
 
-### 1. Custom Chip Registers (Agnus, Denise, Paula)
+## 1. Modular Subsystem Decomposition
 
-The custom chips do not wipe all internal data registers (like color palettes or coordinate pointers), but their critical control registers are forced to safe defaults by the hardware reset line:
+To prevent monolithic files, each chip module serves as a coordinator that delegates to focused internal subcomponents:
 
-- **DMA Control (`DMACON` / `DMACONR` at `$DFF096` / `$DFF002`):**
-    
-    - **Set to `$0000` (All DMA channels disabled).**
-        
-    - Bitplane, Copper, Blitter, Audio, Sprite, and Disk DMA are completely shut off.
-        
-    - Agnus stops generating memory access cycles, ensuring the Chip RAM bus is completely unblocked for the 68000 CPU.
-        
-- **Interrupt Enable (`INTENA` / `INTENAR` at `$DFF09A` / `$DFF001C`):**
-    
-    - **Set to `$0000` (All custom interrupts disabled).**
-        
-    - Master interrupt enable and all 14 individual interrupt sources (Vertical Blank, Copper, Audio, Blitter, CIAs, etc.) are masked.
-        
-- **Interrupt Requests (`INTREQ` / `INTREQR` at `$DFF09C` / `$DFF01E`):**
-    
-    - Cleared to `$0000` (Any pending latch states or requests are discarded).
-        
-- **Audio Channels (`AUDxDAT`, `AUDxVOL`, `AUDxPER`, `AUDxLEN` at `$DFF0A0–$DFF0DF`):**
-    
-    - Volume registers are forced or defaulted to zero (`0`), muting the audio DACs immediately.
-        
-- **Copper (`COPCON` at `$DFF02E`):**
-    
-    - Copper danger mode bit (CDANG) is set to `0` (Copper is locked out of writing to dangerous registers like Blitter/Copper jump pointers).
-        
-    - Copper program counters (`COP1LCH`/`COP2LCH`) are halted since DMA is off.
-        
-- **Display & Beam Positioning (`BPLCON0`, `VPOSR`, etc.):**
-    
-    - Bitplane enable bits are cleared (`BPLCON0` planes set to 0), disabling video rendering.
-        
-- **Other Custom Registers (Palettes `COLORxx`, Sprite positions, etc.):**
-    
-    - Retain undefined/random values or previous states. Kickstart explicitly initializes the palette and coordinate registers during early boot.
-        
+```
+chips/
+├── agnus/
+│   ├── mod.rs             // Agnus coordinator & register dispatch
+│   ├── copper.rs          // Copper coprocessor (MOVE, WAIT, SKIP)
+│   ├── blitter.rs         // 4-channel DMA Blitter, minterms, line drawing
+│   ├── dma.rs             // DMA channel arbitration & DMACON scheduling
+│   └── beam.rs            // Horizontal & vertical beam counters (VHPOSR, VPOSR)
+├── denise/
+│   ├── mod.rs             // Denise coordinator & register dispatch
+│   ├── bitplanes.rs       // BPLCON0-3, bitplane serializers, dual playfield
+│   ├── sprites.rs         // 8 hardware sprites, position comparators
+│   ├── palette.rs         // COLOR00-COLOR31 (12-bit RGB444 color registers)
+│   └── collision.rs       // CLXDAT sprite/playfield collision detection
+├── paula/
+│   ├── mod.rs             // Paula coordinator & register dispatch
+│   ├── audio.rs           // 4 independent DMA sound channels (AUD0-AUD3)
+│   ├── floppy.rs          // Floppy MFM encoding/decoding, track buffer, DSKSYN
+│   ├── uart.rs            // Serial port UART (SERDAT, SERPER)
+│   └── interrupts.rs      // Central INTENA and INTREQ priority encoder
+└── cia/
+    ├── mod.rs             // MOS 8520 coordinator (instantiated as cia_a and cia_b)
+    ├── timers.rs          // 16-bit decrementing Timer A and Timer B
+    ├── ports.rs           // Port A and Port B bidirectional I/O latches (PRA, PRB)
+    ├── tod.rs             // 50Hz/60Hz Time-of-Day counter
+    └── sdr.rs             // 8-bit bidirectional serial shift register
+```
 
-### 2. Complex Interface Adapters (8520 CIA-A & CIA-B)
+---
 
-The reset pin on the 6526/8520 CIA chips drives standard, well-defined hardware resets:
+## 2. Multi-Chip Peripheral Coordination
 
-- **Data Direction Registers (`DDRA`, `DDRB`):**
-    
-    - Initialized to **`$00`** (All I/O port pins set as high-impedance **inputs**).
-        
-    - This is critical for CIA-A Port A, where bit 0 is connected to the low-memory overlay (`_OVL`):
-        
-        - As an input with an external pull-up, it guarantees that the overlay line stays active, keeping `map_kickstart_to_low_memory()` engaged.
-            
-- **Port Data Registers (`PRA`, `PRB`):**
-    
-    - Initialized to **`$00`** (Output latches cleared, though pins float as inputs).
-        
-- **Timers (`Timer A`, `Timer B`):**
-    
-    - Timer Control Registers (`CRA`, `CRB`) are set to **`$00`** (Timers are stopped, continuous mode reset, PBON output disabled).
-        
-    - Latches/Counters typically reset to `$FFFF`.
-        
-- **Interrupt Control Register (`ICR`):**
-    
-    - **Set to `$00` (All CIA interrupts masked/disabled).**
-        
-    - Pending interrupt flag latches are cleared.
-        
-- **Serial Shift Register (`SDR`):**
-    
-    - Cleared to `$00`, with shift mode disabled in `CRA`.
-        
-- **Time-of-Day Clock (TOD):**
-    
-    - TOD event counter/clock is halted or remains unlatched until programmed.
-        
+Several Amiga peripherals bridge across multiple custom chips. The emulator coordinates these peripherals in the main loop or via explicit signal lines:
 
-### Summary Checklist for an Emulator Reset
+### 2.1 Game Ports (Mouse & Joysticks)
+At the physical hardware level, **Mouse and Joystick use identical 9-pin D-sub connectors (Port 1 and Port 2)** and are decoded by the exact same registers:
 
-To bring the chips to the correct initial state before running the CPU:
+```mermaid
+flowchart TD
+    PORT1["Game Port 1 (Mouse / Joy 1)"] -->|Quadrature / Direction| DENISE_JOY0["Denise: JOY0DAT ($DFF00A)"]
+    PORT1 -->|Button 1 (Left Click / Fire 1)| CIAA_PRA6["CIA-A: PRA bit 6 ($BFE001)"]
+    PORT1 -->|Button 2/3 (Right / Middle Click)| PAULA_POT0["Paula / Denise: POT0DAT / POTGO ($DFF012/$DFF034)"]
 
-1. Clear `DMACON` to `0` (guaranteeing `chip_ram_blocked = false`).
-    
-2. Clear `INTENA` and `INTREQ` to `0`.
-    
-3. Mute Paula audio channels (volumes to `0`).
-    
-4. Set CIA-A and CIA-B control registers (`CRA`, `CRB`, `ICR`, `DDRA`, `DDRB`) to `0`.
-    
-5. Ensure CIA-A Port A bit 0 leaves the Kickstart overlay enabled (`$000000` routed to ROM).
+    PORT2["Game Port 2 (Joy 2 / Mouse 2)"] -->|Quadrature / Direction| DENISE_JOY1["Denise: JOY1DAT ($DFF00C)"]
+    PORT2 -->|Button 1 (Fire 1)| CIAA_PRA7["CIA-A: PRA bit 7 ($BFE001)"]
+    PORT2 -->|Button 2 (Fire 2)| PAULA_POT1["Paula / Denise: POT1DAT / POTGO ($DFF014/$DFF034)"]
+```
+
+- **Direction / Movement:**
+  - **Mouse:** Quadrature optical pulses increment/decrement counters in `JOY0DAT` / `JOY1DAT`.
+  - **Joystick:** Digital switch closures modify bits in `JOY0DAT` / `JOY1DAT`.
+- **Buttons:**
+  - Fire 1 (Left Mouse Button): Read via **CIA-A Port A** (`_FIR0` bit 6, `_FIR1` bit 7).
+  - Fire 2 & 3 (Right / Middle Mouse Button): Read via **Paula / Denise** through the proportional pot pins in `POTGO` (`$DFF034`).
+
+### 2.2 Floppy Disk Drive
+The 3.5" floppy drive interface spans three different custom chips:
+- **CIA-B (Drive Control Output):** Drives motor on/off (`_MTR`), step pulse (`_STEP`), step direction (`_DIR`), head side select (`_SIDE`), and drive select (`_SEL0`–`_SEL3`).
+- **CIA-A (Drive Status Input):** Reads drive status signals: Disk Ready (`_RDY`), Track 0 sensor (`_TK0`), Write Protect (`_WPROT`), and Disk Change (`_CHNG`).
+- **Paula (High-Speed Data & DMA):** Reads and writes serial MFM data streams (`DSKDAT`), detects track sync words (`DSKSYN`), and generates Disk Block Done (`DSKBLK`) and Disk Sync Match (`DSKSYN`) interrupts.
+- **Agnus (Bus Master):** Allocates Chip RAM DMA cycles for the disk data buffer.
+
+### 2.3 Keyboard & Reset Line
+- **CIA-A:** Receives keyboard serial clock and data in its Serial Data Register (`SDR`), firing a Level 2 interrupt (`PORTS`).
+- **Keyboard Microcontroller (6500/1):** Monitors for the **Ctrl-Amiga-Amiga** key combination. When detected, the microcontroller physically pulls the system `_RESET` pin low, triggering a hardware reset across CPU, Agnus, Denise, Paula, and CIAs.
+
+### 2.4 Video Beam Synchronization
+- **Agnus:** Drives master beam position counters (`VHPOSR`, `VPOSR`) and executes the Copper display list synchronized to beam coordinates.
+- **Denise:** Receives the beam clock and sync signals from Agnus to serialize bitplanes and sprites into RGB output pixels.
+
+### 2.5 Low-Memory Boot Overlay (`_OVL`)
+- **CIA-A:** Port A bit 0 drives the physical `_OVL` control line.
+- **MemoryBus (Gary):** Intercepts `$000000-$07FFFF` accesses and routes them to Kickstart ROM while `_OVL` is asserted.
+
+---
+
+## 3. Paula Interrupt Multiplexing & Signal Routing
+
+Paula houses the central interrupt multiplexer, aggregating internal sources and external CIA lines into priority levels:
+
+| Level | Priority Sources | Triggering Chip / Subcomponent |
+| :---: | :--- | :--- |
+| **1** | `TBE` (Serial TX Empty), `DSKBLK` (Disk Block Done), `SOFT` | Paula (UART, Floppy) |
+| **2** | `PORTS` (CIA-A interrupt line) | CIA-A |
+| **3** | `VERTB` (Vertical Blank), `BLIT` (Blitter Finished), `COPER` (Copper) | Agnus (Beam, Blitter, Copper) |
+| **4** | `AUD0`, `AUD1`, `AUD2`, `AUD3` (Audio Channels 0–3) | Paula (Audio) |
+| **5** | `RBF` (Serial RX Buffer Full), `DSKSYN` (Disk Sync Match) | Paula (UART, Floppy) |
+| **6** | `EXTER` (CIA-B interrupt line) | CIA-B |
+
+- **State Inspection:** Each chip maintains its internal interrupt request and mask lines and exposes read-only query methods.
+- **Arbitration:** The top-level [Main loop A500.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Main%20loop%20A500.md) polls Paula and the CIAs to resolve the highest unmasked priority ($IPL \in 1..6$) and drives `cpu.set_ipl(level)`.
+
+---
+
+## 4. Hardware Reset Register Defaults
+
+### 4.1 Custom Chips (Agnus, Denise, Paula)
+- **`DMACON` (`$DFF096`):** Forced to **`$0000`** (all DMA channels disabled). Agnus stops generating memory access cycles, ensuring Chip RAM is unblocked.
+- **`INTENA` (`$DFF09A`):** Forced to **`$0000`** (master and all 14 individual interrupt sources disabled).
+- **`INTREQ` (`$DFF09C`):** Cleared to **`$0000`** (pending latches discarded).
+- **`AUDxVOL` (`$DFF0A8..$DFF0D8`):** Volumes forced to `0`, muting audio immediately.
+- **`COPCON` (`$DFF02E`):** Danger mode bit `CDANG` set to `0` (Copper locked out of dangerous registers). Copper halted.
+- **`BPLCON0` (`$DFF100`):** Bitplane count set to 0, disabling video rendering.
+
+### 4.2 Complex Interface Adapters (CIA-A & CIA-B)
+- **`DDRA`, `DDRB`:** Initialized to **`$00`** (all port pins set as high-impedance inputs).
+  - Ensures CIA-A Port A bit 0 (`_OVL`) floats high, keeping `map_kickstart_to_low_memory()` active.
+- **`PRA`, `PRB`:** Latches cleared to **`$00`**.
+- **`CRA`, `CRB`:** Set to **`$00`** (Timers stopped, continuous mode reset, PBON disabled). Counters reset to `$FFFF`.
+- **`ICR`:** Reset to **`$00`** (all CIA interrupt sources masked, latches cleared).
+- **`SDR`:** Cleared to **`$00`**.
+- **`TOD`:** Time-of-Day clock halted/unlatched until programmed.
