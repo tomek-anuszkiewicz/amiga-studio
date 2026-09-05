@@ -27,13 +27,23 @@ graph TD
 
 ## 2. Video Display Viewport
 
-### 2.1 Resolution & Framing
+### 2.1 Resolution, Framing & Aspect Ratio
 - **Native Resolution:** Amiga 500 standard output is 50 Hz PAL ($320 \times 256$ LoRes, $640 \times 512$ HiRes interlace) or 60 Hz NTSC ($320 \times 200$ LoRes, $640 \times 400$ HiRes).
 - **Overscan Canvas:** Render into a maximum $720 \times 576$ internal buffer (`&[u32]` ARGB8888) to capture hardware overscan, Copper borders, and scrolling margins.
 - **Aspect Ratio & Scaling:**
-  - Standard Amiga monitors (1084S) have a 4:3 physical aspect ratio.
-  - The viewport performs integer scaling or sharp bilinear filtering with 4:3 correction.
-  - Optional CRT shader options (scanlines, phosphor bloom, curvature).
+  - Standard Amiga monitors (Commodore 1084S) have a 4:3 physical aspect ratio.
+  - The viewport performs integer scaling or sharp bilinear filtering with 4:3 display aspect ratio correction.
+
+### 2.2 GPU Post-Processing & Old TV Simulation Shaders
+We plan to implement a GPU shader pipeline (via WGSL / GLSL in `wgpu` and WebGL/WebGPU) with modular post-processing passes to reproduce authentic CRT monitor and vintage television optics:
+- **CRT Geometry & Mask:**
+  - Adjustable barrel curvature, bezel reflection, and corner vignette.
+  - Shadow mask / aperture grille (Trinitron-style) phosphor subpixel triads.
+  - Horizontal scanline rasterization with brightness-dependent scanline beam thickness.
+- **Color & Signal Emulation (Old TV Look & Feel):**
+  - Phosphor glow, halation, and bloom on bright highlights.
+  - Optional composite / RF video signal artifacts (chroma subcarrier bleeding, horizontal color fringing, and luma/chroma crosstalk typical of SCART / RF modulators on 1980s TVs).
+  - Configurable phosphor persistence and decay trails.
 
 ---
 

@@ -42,9 +42,25 @@ chips/
 
 ## 2. Multi-Chip Peripheral Coordination
 
-Several Amiga peripherals bridge across multiple custom chips. The emulator coordinates these peripherals in the main loop or via explicit signal lines:
+Several Amiga peripherals bridge across multiple custom chips. Rather than coupling chips directly, the emulator organizes these cross-chip subsystems in a dedicated `peripherals/` layer coordinated by the main loop:
 
-### 2.1 Game Ports (Mouse & Joysticks)
+```
+peripherals/
+├── floppy/
+│   ├── mod.rs             // Multi-chip Floppy coordinator (bridges CIA-A, CIA-B, Paula, Agnus)
+│   ├── drive.rs           // Drive mechanics (motor on/off, track step, side select, status flags)
+│   └── disk_image.rs      // ADF byte slice (&[u8]) loader & MFM track buffer
+├── game_ports/
+│   ├── mod.rs             // Game Ports coordinator (bridges Denise, CIA-A, Paula)
+│   ├── mouse.rs           // Host delta accumulator -> Denise JOY0DAT quadrature counters
+│   └── joystick.rs        // Host direction/buttons -> Denise JOY1DAT and CIA-A PRA
+└── keyboard/
+    ├── mod.rs             // Keyboard coordinator (bridges CIA-A SDR and reset pin)
+    ├── scancodes.rs       // Host key to Amiga 8-bit scancode matrix translator
+    └── reset_detector.rs  // Ctrl-Amiga-Amiga watcher triggering hardware _RESET
+```
+
+### 2.1 Game Ports (Mouse & Joysticks) & Host Input Timing
 At the physical hardware level, **Mouse and Joystick use identical 9-pin D-sub connectors (Port 1 and Port 2)** and are decoded by the exact same registers:
 
 ```mermaid
@@ -58,19 +74,30 @@ flowchart TD
     PORT2 -->|Button 2 (Fire 2)| PAULA_POT1["Paula / Denise: POT1DAT / POTGO ($DFF014/$DFF034)"]
 ```
 
-- **Direction / Movement:**
-  - **Mouse:** Quadrature optical pulses increment/decrement counters in `JOY0DAT` / `JOY1DAT`.
-  - **Joystick:** Digital switch closures modify bits in `JOY0DAT` / `JOY1DAT`.
-- **Buttons:**
-  - Fire 1 (Left Mouse Button): Read via **CIA-A Port A** (`_FIR0` bit 6, `_FIR1` bit 7).
-  - Fire 2 & 3 (Right / Middle Mouse Button): Read via **Paula / Denise** through the proportional pot pins in `POTGO` (`$DFF034`).
+- **Hardware Decoding:**
+  - **Direction / Movement:** Mouse quadrature optical pulses or joystick switch closures directly increment/decrement counters in `JOY0DAT` / `JOY1DAT` in Denise.
+  - **Buttons:** Fire 1 (Left Mouse Button) is read via **CIA-A Port A** (`_FIR0` bit 6, `_FIR1` bit 7). Fire 2 & 3 (Right / Middle Mouse Button) are read via **Paula / Denise** through the proportional pot pins in `POTGO` (`$DFF034`).
+- **Host Input Update Rate (Once Per Frame):**
+  - The host window loop provides mouse and joystick updates to the emulator via public `A500` methods from the outside:
+    ```rust
+    pub fn set_mouse_delta(&mut self, dx: i32, dy: i32);
+    pub fn set_joystick_state(&mut self, port: usize, state: JoystickState);
+    ```
+  - **Is once-per-frame updating sufficient?**
+    - **Yes, it is optimal.** Amiga games, demos, and Intuition OS tasks poll mouse coordinates and joystick switches synchronously during the Vertical Blanking interrupt (50 Hz PAL / 60 Hz NTSC, once every 20 ms).
+    - Updating host inputs once per frame right before calling `step_frame()` provides sub-millisecond responsiveness with zero input lag.
+    - If running sub-frame CCK stepping, host events can also be pushed continuously into the delta accumulators.
 
-### 2.2 Floppy Disk Drive
-The 3.5" floppy drive interface spans three different custom chips:
-- **CIA-B (Drive Control Output):** Drives motor on/off (`_MTR`), step pulse (`_STEP`), step direction (`_DIR`), head side select (`_SIDE`), and drive select (`_SEL0`–`_SEL3`).
-- **CIA-A (Drive Status Input):** Reads drive status signals: Disk Ready (`_RDY`), Track 0 sensor (`_TK0`), Write Protect (`_WPROT`), and Disk Change (`_CHNG`).
-- **Paula (High-Speed Data & DMA):** Reads and writes serial MFM data streams (`DSKDAT`), detects track sync words (`DSKSYN`), and generates Disk Block Done (`DSKBLK`) and Disk Sync Match (`DSKSYN`) interrupts.
-- **Agnus (Bus Master):** Allocates Chip RAM DMA cycles for the disk data buffer.
+### 2.2 Floppy Disk Drive & ADF Image Injection
+The 3.5" floppy drive interface spans three different custom chips and connects directly to raw ADF disk images injected as byte slices:
+- **ADF Image Connection:**
+  - Disk images are passed into the emulator as raw byte slices: `a500.insert_floppy(drive, adf_bytes: &[u8])`.
+  - The emulator buffers tracks and serializes sector data into MFM pulses in memory without disk I/O.
+- **Hardware Coordination:**
+  - **CIA-B (Drive Control Output):** Drives motor on/off (`_MTR`), step pulse (`_STEP`), step direction (`_DIR`), head side select (`_SIDE`), and drive select (`_SEL0`–`_SEL3`).
+  - **CIA-A (Drive Status Input):** Reads drive status signals: Disk Ready (`_RDY`), Track 0 sensor (`_TK0`), Write Protect (`_WPROT`), and Disk Change (`_CHNG`).
+  - **Paula (High-Speed Data & DMA):** Reads and writes serial MFM data streams (`DSKDAT`), detects track sync words (`DSKSYN`), and generates Disk Block Done (`DSKBLK`) and Disk Sync Match (`DSKSYN`) interrupts.
+  - **Agnus (Bus Master):** Allocates Chip RAM DMA cycles for the disk data buffer.
 
 ### 2.3 Keyboard & Reset Line
 - **CIA-A:** Receives keyboard serial clock and data in its Serial Data Register (`SDR`), firing a Level 2 interrupt (`PORTS`).

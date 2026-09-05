@@ -177,3 +177,22 @@ On both **Cold** and **Warm** reset, the CPU execution flow begins at vector `$0
 5. **Fill Prefetch:** Read word at `pc` into `ir`, increment `pc += 2`; read word at `pc` into `irc`, increment `pc += 2`.
 6. **Execution:** Begin execution at `pc` in Kickstart ROM.
    - Kickstart inspects RAM contents for magic resident checksums to determine whether to perform a warm reboot or cold boot.
+
+---
+
+## 7. Instruction Quirks: TAS (Test And Set)
+
+The `TAS` instruction tests a byte operand, updates the condition codes, and sets high bit 7 to 1:
+
+- **Register Operand (`TAS Dn`):**
+  - Operates purely internally in the CPU ALU.
+  - Tests low byte `Dn[7:0]`.
+  - Sets $N$ if bit 7 was set; sets $Z$ if byte was zero; clears $V$ and $C$ ($X$ unaffected).
+  - Sets bit 7 of `Dn` to 1. Always succeeds.
+- **Memory Operand (`TAS <ea>`):**
+  - Initiates an unbroken Read-Modify-Write (RMW) cycle on the bus:
+    1. **Read Phase:** Reads byte from memory address `<ea>`, evaluates value, and updates CCR ($N, Z$ updated, $V, C$ cleared, $X$ untouched).
+    2. **Write Phase:** Attempts to write the value back with bit 7 set to 1.
+  - **Amiga 500 Hardware Quirk:**
+    - **Chip RAM (`$000000-$07FFFF`) & Slow RAM (`$C00000-$C7FFFF`):** Gary / Agnus fails to latch the write phase of an unbroken RMW bus cycle and **discards the write**. CCR flags are updated, but memory content is unmodified (bit 7 is NOT set).
+    - **Fast RAM (`$200000-$5FFFFF`):** Full Read-Modify-Write cycle succeeds (CCR flags updated, bit 7 is set to 1 in memory).
