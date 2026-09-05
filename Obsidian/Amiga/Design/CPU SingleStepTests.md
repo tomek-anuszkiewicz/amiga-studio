@@ -5,22 +5,33 @@
 > Operational test running, command shortcuts, and debugging checklists are documented in the [m68k-singlestep-test](file:///d:/Programowanie/Amiga/.agents/skills/m68k-singlestep-test/SKILL.md) skill.
 > Step-by-step instruction implementation is guided by [add-m68k-instruction](file:///d:/Programowanie/Amiga/.agents/skills/add-m68k-instruction/SKILL.md).
 
-This document defines the complete specification and Rust data structures for running the **SingleStepTests** test suite against the M68000 CPU emulator. It assumes all 127 test files in `ref_src/SingleStepTests-m68000/v1/` are available in JSON format (e.g. `ADD.b.json`, `MOVE.w.json`, `ILLEGAL_LINEA.json`).
+This document defines the complete specification and Rust data structures for running the **SingleStepTests** test suites against the M68000 CPU emulator. It specifies validation against both:
+1. The **MAME SingleStepTests suite** in [`ref_src/SingleStepTests-m68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000/v1) (127 JSON files).
+2. The **Tom Harte SingleStepTests-680x0 suite** in [`ref_src/SingleStepTests-680x0/68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0/68000/v1) (125 `.json.gz` files, ~1,000,000 tests).
 
 ---
 
-## 1. Test Suite Overview
+## 1. Dual Test Suite Overview
 
-- **Location:** `ref_src/SingleStepTests-m68000/v1/*.json` (127 JSON files).
-- **Origin:** Generated from MAME's cycle-exact, microcoded Motorola 68000 emulator core.
-  - *Note on Caveats:* Any bugs or microcode quirks present in MAME's 68000 core are mirrored in these files. Specifically, `TAS` does not properly model the 5-cycle read-modify-write timing, and `TRAPV` has a known quirk with $S$-bit handling. All other 125 test suites are verified as cycle-exact.
-- **Scope:** Exhaustive unit tests covering:
-  - All standard instructions, sizes (`.b`, `.w`, `.l`), and addressing modes.
-  - Condition code register (`CCR` / `SR`) calculations.
-  - Internal instruction prefetch queue stages (`pf0`, `pf1`).
-  - Exceptions & interrupts: Line-A (`ILLEGAL_LINEA`), Line-F (`ILLEGAL_LINEF`), `TRAP`, `TRAPV`, `CHK`, `RESET`, `STOP`.
-  - Address Errors (unaligned word/long read/write operations triggering Vector 3 exceptions).
-  - Cycle-by-cycle bus activity logs and execution lengths.
+To ensure robust, ground-truth verification and eliminate single-source simulation artifacts, the M68000 CPU emulator is validated against **two independent, complementary single-step test suites**:
+
+| Feature | Suite 1: MAME SingleStepTests | Suite 2: Tom Harte SingleStepTests |
+| :--- | :--- | :--- |
+| **Path** | [`ref_src/SingleStepTests-m68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000/v1) | [`ref_src/SingleStepTests-680x0/68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0/68000/v1) |
+| **File Format** | Plain `.json` (and `.json.bin`) | Gzip-compressed `.json.gz` |
+| **Suite Count** | **127 test files** | **125 test files** |
+| **Test Scale** | ~1,000–5,000 tests per file | ~8,000+ tests per file (~1,000,000 total) |
+| **Origin** | MAME cycle-exact microcoded core | Tom Harte's CLK processor test generator |
+| **Unique Strengths** | Fast uncompressed loading; includes `ILLEGAL_LINEA`, `ILLEGAL_LINEF`, `STOP` | Massive randomized test coverage; independently verified |
+| **`TAS` Indivisible RMW** | ⚠️ Caveat: does not model 5-cycle RMW timing | ✅ Fully modeled via explicit `"t"` bus transactions |
+| **`TRAPV` $S$-bit** | ⚠️ Caveat: Known quirk with S-bit handling | ✅ Standard behavior |
+| **Mode Coverage** | Supervisor & User mode | 99% Supervisor mode, 1% User mode |
+
+### 1.1 Why Dual-Suite Testing?
+1. **Triangulation of Simulator Quirks:** When an instruction test fails, comparing against both MAME and Tom Harte tests immediately clarifies whether the issue is a genuine core bug or a quirk of MAME's microcode generator (such as `TAS` and `TRAPV`).
+2. **Exhaustive Address & Mode Variation:** Tom Harte's suite generates over 1 million test vectors, checking edge cases in word-aligned vs unaligned memory pointers and register boundary combinations.
+3. **Comprehensive Coverage:** MAME provides specialized exception vector suites (`ILLEGAL_LINEA`, `ILLEGAL_LINEF`, `STOP`) that are not present in Tom Harte's 125-opcode collection.
+
 
 ---
 
@@ -101,8 +112,8 @@ Each `.json` file contains a JSON array of individual test cases: `[ { ... }, { 
 | `name` | `String` | Human-readable test description |
 | `initial` | `Object` | CPU state and memory before execution |
 | `final` | `Object` | Expected CPU state and memory after execution |
-| `transactions` | `Array` | Log of cycle transactions (`r` = read, `w` = write, `n` = idle, `t` = TAS, `re` = read address error, `we` = write address error) |
-| `length` | `u32` | Total number of clock cycles taken |
+| `transactions` | `Array` | Log of cycle bus transactions (see Section 2.3) |
+| `length` | `u32` | Total number of clock cycles taken (assuming immediate DTACK) |
 
 #### State Object Fields (`initial` and `final`):
 - `d0`–`d7`: Data registers (`u32`)
@@ -114,9 +125,31 @@ Each `.json` file contains a JSON array of individual test cases: `[ { ... }, { 
 - `prefetch`: Two 16-bit words (`[u32; 2]`) in the CPU prefetch queue (`pf0`, `pf1`)
 - `ram`: Array of `[address, byte_value]` pairs (`Vec<[u32; 2]>`)
 
-### 2.3 Strict Schema Validation Rules
+### 2.3 Transaction Formats (MAME vs Tom Harte)
+
+While CPU state schemas are identical, the two suites format their bus transactions array slightly differently:
+
+#### Tom Harte Transaction Format (`ref_src/SingleStepTests-680x0/`):
+- **Bus Cycle:** `[type, duration, fc, addr, size, data]`
+  - `type`: `"r"` (read), `"w"` (write), or `"t"` (**TAS indivisible read-modify-write cycle**).
+  - `duration`: Transaction length in clock cycles (typically 4 cycles).
+  - `fc`: Function code bits (`bit 0 = FC0, bit 1 = FC1, bit 2 = FC2`).
+  - `addr`: 24-bit physical address.
+  - `size`: `".b"` (byte) or `".w"` (word).
+  - `data`: Value on the data bus (0–255 for byte, 0–65535 for word). For `"t"`, records final byte written.
+- **Internal / Idle Cycle:** `["n", duration]`
+  - CPU internal operations without external bus activity.
+
+#### MAME Transaction Format (`ref_src/SingleStepTests-m68000/`):
+- **Bus Cycle:** `[type, start_cycle, fc, addr, size, data, uds, lds]`
+  - `type`: `"r"`, `"w"`, `"re"` (read address error), `"we"` (write address error).
+  - `uds`, `lds`: Upper and lower data strobe line states (`1` or `0`).
+- **Internal / Idle Cycle:** `["n", duration]`
+
+### 2.4 Strict Schema Validation Rules
 - **Optional Fields:** **None**. Every single field in the test schema is **mandatory**. If any expected field is missing from a test object or state object, deserialization must immediately fail with a descriptive error.
 - **Unknown Fields:** **Forbidden**. Any unrecognized or unexpected keys present in the JSON must cause deserialization to fail.
+
 
 ---
 
@@ -226,18 +259,40 @@ flowchart TD
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use flate2::read::GzDecoder;
 use crate::m68000::cpu::Cpu;
 use crate::m68000::bus::TestMemoryBus;
 
-pub fn run_test_file<P: AsRef<Path>>(json_path: P) {
-    let file = File::open(json_path.as_ref())
-        .unwrap_or_else(|_| panic!("Failed to open test file: {:?}", json_path.as_ref()));
-    let reader = BufReader::new(file);
-    let tests: Vec<SingleStepTest> = serde_json::from_reader(reader)
-        .unwrap_or_else(|e| panic!("Failed to parse JSON {:?}: {}", json_path.as_ref(), e));
-
+/// Loads and executes tests from either a plain `.json` (MAME) or `.json.gz` (Tom Harte) file.
+pub fn run_test_file<P: AsRef<Path>>(test_path: P) {
+    let tests = load_test_file(test_path);
     for test in tests {
         run_single_test(&test);
+    }
+}
+
+/// Runs a bounded subset of tests from a file (useful for rapid TDD iterations on large suites).
+pub fn run_test_sample<P: AsRef<Path>>(test_path: P, sample_size: usize) {
+    let tests = load_test_file(test_path);
+    for test in tests.iter().take(sample_size) {
+        run_single_test(test);
+    }
+}
+
+/// Transparently deserializes either plain `.json` or `.json.gz`.
+pub fn load_test_file<P: AsRef<Path>>(test_path: P) -> Vec<SingleStepTest> {
+    let path = test_path.as_ref();
+    let file = File::open(path)
+        .unwrap_or_else(|_| panic!("Failed to open test file: {:?}", path));
+    let reader = BufReader::new(file);
+
+    if path.extension().and_then(|s| s.to_str()) == Some("gz") {
+        let gz = GzDecoder::new(reader);
+        serde_json::from_reader(gz)
+            .unwrap_or_else(|e| panic!("Failed to parse gzipped JSON {:?}: {}", path, e))
+    } else {
+        serde_json::from_reader(reader)
+            .unwrap_or_else(|e| panic!("Failed to parse JSON {:?}: {}", path, e))
     }
 }
 
@@ -430,12 +485,19 @@ tests/
 
 ### 6.2 Example Individual Test File (`test_add_b.rs`)
 
+Tests can target both MAME and Tom Harte suites independently or as a combined verification run:
+
 ```rust
 use crate::tests::cpu::common::run_test_file;
 
 #[test]
-fn test_add_b() {
+fn test_mame_add_b() {
     run_test_file("ref_src/SingleStepTests-m68000/v1/ADD.b.json");
+}
+
+#[test]
+fn test_harte_add_b() {
+    run_test_file("ref_src/SingleStepTests-680x0/68000/v1/ADD.b.json.gz");
 }
 ```
 
@@ -446,6 +508,7 @@ use crate::tests::cpu::common::run_test_file;
 
 #[test]
 fn test_illegal_linea() {
+    // Sourced from MAME suite (provides dedicated Line-A exception vector 10 verification)
     run_test_file("ref_src/SingleStepTests-m68000/v1/ILLEGAL_LINEA.json");
 }
 ```
@@ -454,17 +517,29 @@ fn test_illegal_linea() {
 
 ## 7. Running Tests
 
-Individual instruction suites or error cases can be executed selectively:
+Individual instruction suites, specific suites, or entire test runs can be executed selectively:
 ```powershell
-# Run only NOP tests
+# Run only NOP tests (both MAME and Harte)
 cargo test tests::cpu::test_nop
 
-# Run specific arithmetic tests
-cargo test tests::cpu::test_add_b
+# Run specific arithmetic tests (MAME suite)
+cargo test tests::cpu::test_mame_add_b
+
+# Run specific arithmetic tests (Tom Harte suite)
+cargo test tests::cpu::test_harte_add_b
+
+# Run all tests for ADD.b across both suites
+cargo test test_add_b
 
 # Run exception & trap tests
 cargo test tests::cpu::test_illegal_linea
 cargo test tests::cpu::test_trap
+
+# Run all MAME single-step tests
+cargo test tests::cpu::mame
+
+# Run all Tom Harte single-step tests
+cargo test tests::cpu::harte
 
 # Run all CPU tests
 cargo test tests::cpu
@@ -508,3 +583,28 @@ impl DmaSchedule {
 When running a test mutation with simulated DMA blocks:
 1. **Registers & Memory:** The final register state ($D_0-D_7$, $A_0-A_6$, $SR$, $PC$, prefetch) and RAM contents **must match the JSON final state exactly**.
 2. **Cycle Count:** The total elapsed CCK count naturally increases by the exact number of wait states inserted by the DMA schedule.
+
+---
+
+## 9. Dual-Suite Cross-Validation & Discrepancy Resolution
+
+Having access to both the MAME and Tom Harte test suites provides an invaluable verification tool for cycle-exact M68000 emulation:
+
+### 9.1 Comparative Matrix
+| Operation / Quirk | MAME SingleStepTests (`ref_src/SingleStepTests-m68000/v1/`) | Tom Harte SingleStepTests (`ref_src/SingleStepTests-680x0/68000/v1/`) | Recommended Ground Truth |
+| :--- | :--- | :--- | :--- |
+| **Standard Instructions** (ADD, MOVE, etc.) | Cycle-exact; verified across 125 operations | Cycle-exact; verified across 125 operations (~8,000 cases each) | **Both must pass** |
+| **`TAS` Instruction** | ⚠️ Flawed: Does not simulate 5-cycle indivisible read-modify-write timing | ✅ Accurate: Models indivisible RMW via `"t"` transaction | **Tom Harte Suite** |
+| **`TRAPV` Exception** | ⚠️ Flawed: S-bit state quirk in MAME test generator | ✅ Standard 68000 behavior | **Tom Harte Suite** |
+| **`ILLEGAL_LINEA` / `LINEF`** | ✅ Included (Vector 10 & Vector 11 tests) | Not included in basic opcode list | **MAME Suite** |
+| **`STOP` Instruction** | ✅ Included (Supervisor privileged stop) | Not included in basic opcode list | **MAME Suite** |
+| **User vs Supervisor Stack** | Both modes tested | 99% Supervisor mode, 1% User mode | **Both** |
+
+### 9.2 Triangulation Protocol
+When diagnosing a test mismatch:
+1. **Fails in MAME, Passes in Tom Harte:**
+   - Check if the instruction is `TAS`, `TRAPV`, or touches a known MAME microcode generator quirk. If Tom Harte passes and verified against [Moira 3.0](file:///d:/Programowanie/Amiga/ref_src/Moira-3.0), the core is behaving accurately.
+2. **Fails in Tom Harte, Passes in MAME:**
+   - Tom Harte generates vastly more random address combinations (~8,000 per opcode). A failure here typically reveals an unaligned address boundary edge case or unhandled condition code combination that MAME's smaller sample missed.
+3. **Fails in Both:**
+   - Definite implementation bug in decoding, effective address calculation, CCK phase alignment, or CCR flag updates.

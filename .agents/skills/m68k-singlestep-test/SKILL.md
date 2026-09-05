@@ -1,20 +1,23 @@
 ---
 name: m68k-singlestep-test
 description: >-
-  Use this skill when running, validating, or debugging M68000 CPU instructions against the cycle-exact SingleStepTests test suite in ref_src/SingleStepTests-m68000/v1/. Covers running test cases, interpreting test JSON schemas, diagnosing register, CCR, and prefetch mismatches, and handling address errors.
+  Use this skill when running, validating, or debugging M68000 CPU instructions against the cycle-exact SingleStepTests suites in ref_src/SingleStepTests-m68000/v1/ (MAME) and ref_src/SingleStepTests-680x0/68000/v1/ (Tom Harte). Covers running test cases, interpreting test JSON schemas, diagnosing register, CCR, and prefetch mismatches, and handling address errors.
 ---
 
 # M68000 SingleStepTests Verification & Debugging Runbook
 
-This skill guides the validation and debugging of the M68000 CPU implementation against the exhaustive 127-file test suite located in `ref_src/SingleStepTests-m68000/v1/`.
+This skill guides the validation and debugging of the M68000 CPU implementation against the two complementary single-step test suites:
+1. **MAME SingleStepTests:** `ref_src/SingleStepTests-m68000/v1/*.json` (127 files, includes Line-A, Line-F, STOP).
+2. **Tom Harte SingleStepTests-680x0:** `ref_src/SingleStepTests-680x0/68000/v1/*.json.gz` (125 gzipped files, ~1,000,000 tests, ground-truth for `TAS` RMW).
 
 ---
 
-## 1. Test Suite Location & Structure
+## 1. Test Suite Locations & Structure
 
-- **Path:** `ref_src/SingleStepTests-m68000/v1/*.json`
-- **Naming Pattern:** `<INSTRUCTION>.<size>.json` (e.g., `ADD.b.json`, `MOVE.w.json`, `LSR.l.json`) or `<INSTRUCTION>.json` (e.g., `NOP.json`, `MULU.json`, `ILLEGAL_LINEA.json`).
-- **Specification Document:** Detailed design and Rust structs are in [CPU SingleStepTests.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CPU%20SingleStepTests.md).
+- **Paths:**
+  - MAME suite: `ref_src/SingleStepTests-m68000/v1/<INSTRUCTION>.<size>.json`
+  - Tom Harte suite: `ref_src/SingleStepTests-680x0/68000/v1/<INSTRUCTION>.<size>.json.gz`
+- **Specification Document:** Complete architecture, comparative matrix, and Rust data structures are in [CPU SingleStepTests.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CPU%20SingleStepTests.md).
 
 ---
 
@@ -38,16 +41,24 @@ Each test case contains:
 
 ### Running Specific Instruction Tests via Cargo
 ```powershell
-# Run only NOP tests
-cargo test tests::cpu::test_nop
+# Run specific instruction tests against MAME suite
+cargo test tests::cpu::test_mame_add_b
 
-# Run a specific arithmetic or logic suite
-cargo test tests::cpu::test_add_b
-cargo test tests::cpu::test_move_w
+# Run specific instruction tests against Tom Harte suite
+cargo test tests::cpu::test_harte_add_b
 
-# Run exception and illegal instruction tests
+# Run all tests for a specific opcode across both suites
+cargo test test_add_b
+
+# Run exception and illegal instruction tests (MAME suite)
 cargo test tests::cpu::test_illegal_linea
 cargo test tests::cpu::test_trap
+
+# Run all MAME tests
+cargo test tests::cpu::mame
+
+# Run all Tom Harte tests
+cargo test tests::cpu::harte
 
 # Run all CPU single step tests
 cargo test tests::cpu

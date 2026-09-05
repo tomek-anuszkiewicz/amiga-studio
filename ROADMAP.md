@@ -62,7 +62,7 @@ This document outlines the phased development plan, hardware milestones, verific
 - **CPU Core Implementation:**
   - Build cycle-exact instruction execution state machine mapped to CCK phases.
   - Implement one instruction from each instruction group (Data Movement, Arithmetic, Logic, Shifts, Bit Manipulation, Control Flow, System/Exceptions).
-  - Validate against the 127 per-instruction test suites in `ref_src/SingleStepTests-m68000/v1/`.
+  - Validate against both the 127 per-instruction test suites in [`ref_src/SingleStepTests-m68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000/v1) (MAME) and the 125 compressed suites in [`ref_src/SingleStepTests-680x0/68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0/68000/v1) (Tom Harte).
   - Employ an autonomous agentic development loop using the `add-m68k-instruction` and `m68k-singlestep-test` skills.
   - Test address errors, unaligned accesses, prefetch queue pipeline (`IR`/`IRC`), and status register condition code quirks (`TAS`, `TRAPV`).
 
