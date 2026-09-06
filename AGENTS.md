@@ -41,6 +41,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
      let long = u32::from_be_bytes([b0, b1, b2, b3]);
      let bytes = val.to_be_bytes();
      ```
+   - *Optimization Note (Endianness Bypass)*: Bitwise operations (`AND`, `OR`, `EOR`, `NOT`), zeroing (`CLR`), and memory-to-memory block transfers (DMA, `MOVEM`, `MOVE (An), (Am)`) commute with byte reversal or are byte-order invariant, meaning they can safely bypass endian swapping in performance-critical hot paths.
 
 2. **Zero Host Panics on Guest Code**:
    - Emulated guest code (including malformed binaries, crash dumps, or illegal memory accesses) must **never panic the host process**.

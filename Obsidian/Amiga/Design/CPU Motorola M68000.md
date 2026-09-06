@@ -158,6 +158,41 @@ To maximize host throughput, verified reference emulators (Musashi via `m68kmake
   - The compiler generates straight-line host assembly instructions for arithmetic and CCR flag updates.
   - Modern CPU Branch Target Buffers (BTBs) predict indirect table dispatches with high efficiency, maximizing instruction cache locality and superscalar throughput.
 
+### 2.2 Endianness Bypass & Fast-Path Optimization Opportunities
+
+The Motorola 68000 is strictly Big-Endian, while modern host architectures (x86_64, aarch64) are Little-Endian. While arithmetic operations (`ADD`, `SUB`, `CMP`, multiplies, divides) require strict Big-Endian value decoding due to directional carry propagation, several classes of instructions can **completely bypass endian byte swapping**:
+
+#### 1. Bitwise Logical Operations (`AND`, `OR`, `EOR`, `NOT`)
+Bitwise logical operations are strictly pointwise and commute with byte reversal:
+$$\text{bswap}(A \ \& \ B) = \text{bswap}(A) \ \& \ \text{bswap}(B)$$
+- When applying bitwise logic between raw memory buffers or host registers:
+  - Performing a native 16-bit or 32-bit `AND`, `OR`, `XOR`, or `NOT` directly on raw guest bytes produces the **exact same memory result** without swapping before and after the operation.
+- **Condition Codes (CCR):**
+  - Zero flag ($Z$): Zero is zero regardless of byte ordering (`val == 0`).
+  - Negative flag ($N$): In memory, the sign bit is simply bit 7 of the first byte (`addr[0] & 0x80 != 0`).
+  - Overflow ($V$) and Carry ($C$): Always cleared to 0.
+  - Extend ($X$): Unaffected.
+
+#### 2. Direct Memory-to-Memory Transfers & Block Moves (`MOVE`, `MOVEM`, DMA)
+- When moving memory words or longs between memory locations, or transferring blocks via DMA (Blitter, Copper, Floppy):
+  - A sequence of bytes is identical regardless of endian interpretation.
+  - Data can be transferred via raw native memory copies (`memcpy` or direct word/dword moves) without any `bswap` or `to_be_bytes`/`from_be_bytes` overhead.
+
+#### 3. Clear & Zero-Check Operations (`CLR`, `TST`)
+- **`CLR`:** Storing zeros (`0x00`, `0x0000`, `0x00000000`) is identical in all byte orders.
+- **`TST`:** Testing for zero evaluates directly against 0; testing negative checks bit 7 of byte 0.
+
+#### Summary Matrix: Endian Conversion Requirements
+
+| Instruction Category | Examples | Endian Swapping Required? | Rationale |
+| :--- | :--- | :---: | :--- |
+| **Bitwise Logic** | `AND`, `OR`, `EOR`, `NOT` | ❌ **No (Bypassable)** | Pointwise operations commute with byte reversal; no carry propagation across bytes. |
+| **Block Copies** | `MOVE (An), (Am)`, `MOVEM`, DMA | ❌ **No (Bypassable)** | Byte stream is identical in memory. |
+| **Zeroing** | `CLR` | ❌ **No (Bypassable)** | All-zeros representation is identical in BE and LE. |
+| **Arithmetic** | `ADD`, `SUB`, `CMP`, `NEG` | ✅ **Yes (Required)** | Carry propagates right-to-left across byte boundaries. |
+| **Shifts & Rotates** | `LSL`, `LSR`, `ASL`, `ASR`, `ROL`, `ROR` | ✅ **Yes (Required)** | Bits cross byte boundaries. |
+| **Address Calculation** | `(d16, An)`, `(d8, An, Xn)`, PC-relative | ✅ **Yes (Required)** | Mathematical pointer arithmetic. |
+
 ---
 
 ## 3. Bus Stalling & CCK Phase Model
