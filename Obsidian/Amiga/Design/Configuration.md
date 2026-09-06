@@ -5,76 +5,108 @@
 
 ---
 
-## 1. Focused Initial Scope: Stock Amiga 500 (OCS)
+## 1. Focused Scope: 3 Canonical Hardware Presets
 
-To achieve cycle-exact emulation quickly without configuration explosion, the initial core focuses strictly on the standard **Amiga 500 OCS (Rev 5 / Rev 6a)** hardware profile:
-- 512 KB Chip RAM
-- Optional 512 KB Trapdoor Slow RAM (A501 expansion)
-- Optional 4 MB Fast RAM
-- OCS Chipset (Agnus 8370/8371, Denise 8362)
-- Game Ports (Port 1 and Port 2 configured for Mouse, Joystick, or Unplugged)
+To achieve cycle-exact emulation and eliminate configuration explosion, the emulator core is configured exclusively through **three canonical hardware presets**:
+
+```mermaid
+graph TD
+    classDef p1 fill:#1e3a5f,stroke:#4f9da6,stroke-width:2px,color:#fff;
+    classDef p2 fill:#2d5016,stroke:#70c1b3,stroke-width:2px,color:#fff;
+    classDef p3 fill:#4a1c40,stroke:#d16ba5,stroke-width:2px,color:#fff;
+
+    P1["Preset 1: Bare Stock A500<br/><b>512 KB Chip RAM</b><br/>• No Slow RAM<br/>• No Fast RAM<br/>• No RTC (Open bus at $DC0000)"]:::p1
+    P2["Preset 2: Standard A500 + A501 (Default)<br/><b>1 MB (512 KB Chip + 512 KB Slow) + RTC</b><br/>• 512 KB Slow RAM at $C00000<br/>• OKI MSM6242B RTC at $DC0000<br/>• No Fast RAM"]:::p2
+    P3["Preset 3: Expanded / Power User A500<br/><b>5.5 MB (512K Chip + 512K Slow + 4MB Fast) + RTC</b><br/>• 512 KB Slow RAM at $C00000<br/>• 4 MB Fast RAM at $200000<br/>• OKI MSM6242B RTC at $DC0000"]:::p3
+```
+
+1. **Preset 1 (`Bare512k`)**: Factory unexpanded 1987 A500. 512 KB Chip RAM only, no expansions, open bus `$FF` at `$DC0000`.
+2. **Preset 2 (`Standard1Mb`, Default)**: The golden standard for >90% of Amiga 500 games and demoscene productions. 512 KB Chip + 512 KB Slow RAM (`$C00000`) + OKI MSM6242B RTC at `$DC0000`.
+3. **Preset 3 (`ExpandedPowerUser`)**: 512 KB Chip + 512 KB Slow + 4 MB Auto-Config Fast RAM (`$200000`) + OKI MSM6242B RTC. Ideal for Workbench productivity, WHDLoad, and compilers.
 
 ---
 
-## 2. Configuration Data Structure
+## 2. Configuration Immutability & Data Structure
+
+`A500Config` enforces strict encapsulation:
+* **Read-Only**: Internal fields are private and accessible solely via public getters (`active_preset()`, `chip_ram()`, `slow_ram()`, `fast_ram()`, `rtc()`, `video_standard()`).
+* **Single Mutation Vector**: Configuration can only be modified atomically via `apply_preset(preset)`.
+* **RTC Model**: Held internally as an explicit `RtcModel` enum.
 
 ```rust
 use serde::{Deserialize, Serialize};
 
+/// Canonical hardware configuration presets
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum A500Preset {
+    /// Preset 1: Bare Stock A500 (512 KB Chip RAM, no expansions, no RTC)
+    Bare512k,
+    /// Preset 2: Standard A500 + A501 (512 KB Chip + 512 KB Slow RAM + MSM6242B RTC)
+    Standard1Mb,
+    /// Preset 3: Power User A500 (512 KB Chip + 512 KB Slow + 4 MB Fast RAM + MSM6242B RTC)
+    ExpandedPowerUser,
+}
+
+/// Real-Time Clock hardware model
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RtcModel {
+    /// No RTC installed (returns floating bus $FF at $DC0000..$DC003F)
+    None,
+    /// OKI MSM6242B (standard on A501 expansion, A500+, and A2000)
+    Msm6242b,
+}
+
 /// Master configuration struct for the Amiga 500 emulator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct A500Config {
-    /// Video standard and master clock timing
-    pub video_standard: VideoStandard,
+    preset: A500Preset,
+    video_standard: VideoStandard,
+    chip_ram: ChipRamSize,
+    slow_ram: SlowRamSize,
+    fast_ram: FastRamSize,
+    rtc: RtcModel,
+}
 
-    /// Chip RAM capacity (Fixed at 512 KB for baseline A500 OCS)
-    pub chip_ram: ChipRamSize,
+impl A500Config {
+    pub fn from_preset(preset: A500Preset, video: VideoStandard) -> Self;
+    pub fn bare_512k(video: VideoStandard) -> Self;
+    pub fn standard_1mb(video: VideoStandard) -> Self;
+    pub fn expanded_power_user(video: VideoStandard) -> Self;
 
-    /// Optional Trapdoor Slow RAM at $C00000
-    pub slow_ram: SlowRamSize,
+    /// The only mutation vector: applies a canonical preset atomically
+    pub fn apply_preset(&mut self, preset: A500Preset);
 
-    /// Optional Auto-Config Fast RAM at $200000
-    pub fast_ram: FastRamSize,
-
-    /// Custom chipset hardware revisions (OCS)
-    pub agnus_model: AgnusModel,
-    pub denise_model: DeniseModel,
-
-    /// Game Ports input configuration
-    pub port1: GamePortDevice,
-    pub port2: GamePortDevice,
-
-    /// Floppy drive configuration
-    pub floppy_drives: FloppyConfig,
+    // Read-only getters
+    pub fn active_preset(&self) -> A500Preset;
+    pub fn video_standard(&self) -> VideoStandard;
+    pub fn chip_ram(&self) -> ChipRamSize;
+    pub fn slow_ram(&self) -> SlowRamSize;
+    pub fn fast_ram(&self) -> FastRamSize;
+    pub fn rtc(&self) -> RtcModel;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VideoStandard {
-    /// PAL (Europe / Australia): 50 Hz vertical refresh, ~3.546895 MHz Color Clock (CCK)
+    /// PAL: 50 Hz vertical refresh, ~3.546895 MHz Color Clock (CCK)
     Pal,
-    /// NTSC (North America / Japan): 60 Hz vertical refresh, ~3.579545 MHz Color Clock (CCK)
+    /// NTSC: 60 Hz vertical refresh, ~3.579545 MHz Color Clock (CCK)
     Ntsc,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChipRamSize {
-    /// 512 KB Chip RAM ($000000 - $07FFFF) — Standard baseline A500
     Kb512,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SlowRamSize {
-    /// No Slow RAM installed
     None,
-    /// 512 KB Trapdoor Slow RAM at $C00000 ($C00000 - $C7FFFF) — Standard A501 expansion
     Kb512,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FastRamSize {
-    /// No Fast RAM
     None,
-    /// 4 MB Auto-Config Fast RAM ($200000 - $5FFFFF)
     Mb4,
 }
 

@@ -67,7 +67,16 @@ impl MemoryBus {
             return 0xFF;
         }
 
-        // 6. Custom Chip Registers ($DFF000-$DFFFFE)
+        // 6. Real-Time Clock ($DC0000-$DC003F) on A501 expansion or A500+
+        if (0xDC0000..=0xDC003F).contains(&addr) {
+            if self.config.rtc() == crate::RtcModel::Msm6242b {
+                let reg = ((addr >> 2) & 0x0F) as usize;
+                return self.rtc_registers[reg] & 0x0F;
+            }
+            return 0xFF; // Open bus if no RTC installed
+        }
+
+        // 7. Custom Chip Registers ($DFF000-$DFFFFE)
         if (0xDFF000..=0xDFFFFF).contains(&addr) {
             let word_idx = ((addr & 0x1FE) >> 1) as usize;
             let reg_val = self.custom_registers[word_idx];
@@ -78,7 +87,7 @@ impl MemoryBus {
             };
         }
 
-        // 7. Kickstart ROM ($F80000-$FFFFFF)
+        // 8. Kickstart ROM ($F80000-$FFFFFF)
         if addr >= 0xF80000 {
             return self.read_kickstart_byte(addr - 0xF80000);
         }
@@ -158,7 +167,16 @@ impl MemoryBus {
             return;
         }
 
-        // 6. Custom Chip Registers ($DFF000-$DFFFFE)
+        // 6. Real-Time Clock ($DC0000-$DC003F)
+        if (0xDC0000..=0xDC003F).contains(&addr) {
+            if self.config.rtc() == crate::RtcModel::Msm6242b {
+                let reg = ((addr >> 2) & 0x0F) as usize;
+                self.rtc_registers[reg] = val & 0x0F;
+            }
+            return;
+        }
+
+        // 7. Custom Chip Registers ($DFF000-$DFFFFE)
         if (0xDFF000..=0xDFFFFF).contains(&addr) {
             let word_idx = ((addr & 0x1FE) >> 1) as usize;
             let current = self.custom_registers[word_idx];

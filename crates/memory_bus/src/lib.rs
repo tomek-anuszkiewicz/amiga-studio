@@ -4,10 +4,12 @@
 //! DMA wait-state stalling, and hardware quirks per Obsidian/Amiga/Design/MemoryBus.md.
 
 pub mod arbitration;
+pub mod config;
 pub mod map;
 pub mod test_injection;
 
 pub use arbitration::MemoryBusResult;
+pub use config::{A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard};
 
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +24,9 @@ pub const KICKSTART_SIZE_512K: usize = 512 * 1024;
 /// Cycle-exact Amiga 500 MemoryBus
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryBus {
+    /// Active hardware configuration
+    pub config: A500Config,
+
     /// Physical Chip RAM buffer (512 KB default, expandable to 1 MB)
     pub chip_ram: Vec<u8>,
 
@@ -54,6 +59,9 @@ pub struct MemoryBus {
 
     /// Custom chip register space $DFF000-$DFFFFE (256 16-bit words)
     pub custom_registers: [u16; 256],
+
+    /// Real-Time Clock register bank at $DC0000..$DC003F (16 4-bit registers)
+    pub rtc_registers: [u8; 16],
 }
 
 impl Default for MemoryBus {
@@ -63,12 +71,30 @@ impl Default for MemoryBus {
 }
 
 impl MemoryBus {
-    /// Creates a standard A500 MemoryBus (512 KB Chip RAM, 512 KB Slow RAM, 256 KB Kickstart mirror)
+    /// Creates a standard A500 MemoryBus using the default configuration (Standard 1 MB + RTC, PAL)
     pub fn new() -> Self {
+        Self::from_config(A500Config::default())
+    }
+
+    /// Creates a MemoryBus configured per the provided A500Config
+    pub fn from_config(config: A500Config) -> Self {
+        let chip_ram_size = match config.chip_ram() {
+            ChipRamSize::Kb512 => CHIP_RAM_SIZE_512K,
+        };
+        let slow_ram = match config.slow_ram() {
+            SlowRamSize::None => None,
+            SlowRamSize::Kb512 => Some(vec![0x00; SLOW_RAM_SIZE]),
+        };
+        let fast_ram = match config.fast_ram() {
+            FastRamSize::None => None,
+            FastRamSize::Mb4 => Some(vec![0x00; 4 * 1024 * 1024]),
+        };
+
         let mut bus = Self {
-            chip_ram: vec![0x00; CHIP_RAM_SIZE_512K],
-            slow_ram: Some(vec![0x00; SLOW_RAM_SIZE]),
-            fast_ram: None,
+            config,
+            chip_ram: vec![0x00; chip_ram_size],
+            slow_ram,
+            fast_ram,
             kickstart_rom: vec![0xFF; KICKSTART_SIZE_256K],
             read_latch: 0xFFFF,
             pending_write_data: 0,
@@ -77,9 +103,30 @@ impl MemoryBus {
             cia_a_registers: [0xFF; 16],
             cia_b_registers: [0xFF; 16],
             custom_registers: [0xFFFF; 256],
+            rtc_registers: [0x00; 16],
         };
         bus.map_kickstart_to_low_memory();
         bus
+    }
+
+    /// Reconfigures RAM buffers and RTC mapping by applying a new A500Config
+    pub fn apply_config(&mut self, config: A500Config) {
+        let chip_ram_size = match config.chip_ram() {
+            ChipRamSize::Kb512 => CHIP_RAM_SIZE_512K,
+        };
+        self.chip_ram.resize(chip_ram_size, 0);
+
+        self.slow_ram = match config.slow_ram() {
+            SlowRamSize::None => None,
+            SlowRamSize::Kb512 => Some(vec![0x00; SLOW_RAM_SIZE]),
+        };
+
+        self.fast_ram = match config.fast_ram() {
+            FastRamSize::None => None,
+            FastRamSize::Mb4 => Some(vec![0x00; 4 * 1024 * 1024]),
+        };
+
+        self.config = config;
     }
 
     /// Engages low-memory boot overlay (_OVL), routing $000000-$07FFFF accesses to Kickstart ROM
