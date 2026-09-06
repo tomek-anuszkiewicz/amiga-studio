@@ -55,9 +55,11 @@ fn test_memory_bus_with_bare_preset_has_open_bus_rtc() {
     assert!(bus.slow_ram.is_none());
     assert!(bus.fast_ram.is_none());
 
-    // Reading RTC area ($DC0000) on bare A500 returns open bus $FF
+    // Reading RTC area ($DC0000..$DC003F) on bare A500 returns open bus $FF on both even and odd bytes
     assert_eq!(bus.read_byte_debug(0xDC0000), 0xFF);
+    assert_eq!(bus.read_byte_debug(0xDC0001), 0xFF);
     assert_eq!(bus.read_byte_debug(0xDC0004), 0xFF);
+    assert_eq!(bus.read_byte_debug(0xDC0005), 0xFF);
 }
 
 #[test]
@@ -68,13 +70,17 @@ fn test_memory_bus_with_standard_1mb_has_active_rtc() {
     assert!(bus.slow_ram.is_some());
     assert!(bus.fast_ram.is_none());
 
-    // Write to RTC register 1 (addr $DC0004)
-    bus.write_byte_debug(0xDC0004, 0x07);
-    assert_eq!(bus.read_byte_debug(0xDC0004), 0x07);
+    // Even byte addresses return floating open bus $FF
+    assert_eq!(bus.read_byte_debug(0xDC0000), 0xFF);
+    assert_eq!(bus.read_byte_debug(0xDC0004), 0xFF);
 
-    // Write to RTC register 0 (addr $DC0000)
-    bus.write_byte_debug(0xDC0000, 0x09);
-    assert_eq!(bus.read_byte_debug(0xDC0000), 0x09);
+    // Write to RTC register 1 (addr $DC0005, 10s of seconds)
+    bus.write_byte_debug(0xDC0005, 0x05);
+    assert_eq!(bus.read_byte_debug(0xDC0005), 0x05);
+
+    // Write to RTC register 0 (addr $DC0001, 1s of seconds)
+    bus.write_byte_debug(0xDC0001, 0x09);
+    assert_eq!(bus.read_byte_debug(0xDC0001), 0x09);
 }
 
 #[test]
@@ -87,7 +93,7 @@ fn test_memory_bus_apply_config_dynamically() {
     bus.apply_config(A500Config::bare_512k(VideoStandard::Pal));
     assert_eq!(bus.config.active_preset(), A500Preset::Bare512k);
     assert!(bus.slow_ram.is_none());
-    assert_eq!(bus.read_byte_debug(0xDC0000), 0xFF);
+    assert_eq!(bus.read_byte_debug(0xDC0001), 0xFF);
 }
 
 #[test]

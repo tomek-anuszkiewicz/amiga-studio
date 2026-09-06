@@ -5,6 +5,7 @@
 
 pub mod arbitration;
 pub mod map;
+pub mod rtc;
 pub mod test_injection;
 
 pub use arbitration::MemoryBusResult;
@@ -13,6 +14,7 @@ pub use map::{
     build_bank_map, build_preset_bank_map, get_preset_bank_map, handler_for_bank, BankHandler,
     BankReadByteFn, BankWriteByteFn, BANK_MAP_BARE, BANK_MAP_EXPANDED, BANK_MAP_STANDARD,
 };
+pub use rtc::RtcMsm6242b;
 
 use serde::{Deserialize, Serialize};
 
@@ -87,8 +89,8 @@ pub struct MemoryBus {
     /// Custom chip register space $DFF000-$DFFFFE (256 16-bit words)
     pub custom_registers: [u16; 256],
 
-    /// Real-Time Clock register bank at $DC0000..$DC003F (16 4-bit registers)
-    pub rtc_registers: [u8; 16],
+    /// Real-Time Clock (OKI MSM6242B) at $DC0000..$DC003F
+    pub rtc: rtc::RtcMsm6242b,
 }
 
 impl Default for MemoryBus {
@@ -117,6 +119,7 @@ impl MemoryBus {
             FastRamSize::Mb4 => Some(vec![0x00; 4 * 1024 * 1024]),
         };
         let bank_map = map::build_bank_map(&config);
+        let rtc = rtc::RtcMsm6242b::new(config.rtc());
 
         let mut bus = Self {
             config,
@@ -132,7 +135,7 @@ impl MemoryBus {
             cia_a_registers: [0xFF; 16],
             cia_b_registers: [0xFF; 16],
             custom_registers: [0xFFFF; 256],
-            rtc_registers: [0x00; 16],
+            rtc,
         };
         bus.map_kickstart_to_low_memory();
         bus
@@ -155,8 +158,15 @@ impl MemoryBus {
             FastRamSize::Mb4 => Some(vec![0x00; 4 * 1024 * 1024]),
         };
 
+        self.rtc.model = config.rtc();
         self.bank_map = map::build_bank_map(&config);
         self.config = config;
+    }
+
+    /// Advances internal clock timers (including Real-Time Clock) by the given CCK cycles
+    #[inline]
+    pub fn step_cck(&mut self, cck_cycles: u64) {
+        self.rtc.step_cck(cck_cycles);
     }
 
     /// Engages low-memory boot overlay (_OVL), routing $000000-$07FFFF accesses to Kickstart ROM

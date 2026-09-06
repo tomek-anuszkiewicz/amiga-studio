@@ -189,8 +189,7 @@ pub fn write_slow_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
 /// Read handler for Real-Time Clock ($DC0000-$DC003F)
 pub fn read_rtc(bus: &MemoryBus, addr: u32) -> u8 {
     if (0xDC0000..=0xDC003F).contains(&addr) {
-        let reg = ((addr >> 2) & 0x0F) as usize;
-        bus.rtc_registers[reg] & 0x0F
+        bus.rtc.read_byte(addr)
     } else {
         0xFF
     }
@@ -199,8 +198,7 @@ pub fn read_rtc(bus: &MemoryBus, addr: u32) -> u8 {
 /// Write handler for Real-Time Clock ($DC0000-$DC003F)
 pub fn write_rtc(bus: &mut MemoryBus, addr: u32, val: u8) {
     if (0xDC0000..=0xDC003F).contains(&addr) {
-        let reg = ((addr >> 2) & 0x0F) as usize;
-        bus.rtc_registers[reg] = val & 0x0F;
+        bus.rtc.write_byte(addr, val);
     }
 }
 
