@@ -1,0 +1,427 @@
+{
+  "sources": {
+    "obsidian": {
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\_Explore.md": {
+        "hash": "52caf840553fdb190578ff46063bb9ec61120463d765b3a2310e1a7e3c742842",
+        "chunks": 5,
+        "last_indexed": "2026-09-05 16:17:36"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Agent Deployment and Execution Models.md": {
+        "hash": "e04307a1f66ef6cfcdbe3a94e9f2e63c19c8094fabe1cf83d458c7c54d64eb9c",
+        "chunks": 27,
+        "last_indexed": "2026-09-05 16:17:43"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Agentic Coding Harness and Controlled Development Workflows.md": {
+        "hash": "fbaede5dfb5844033b460eb57004d85352ad139f55b6823642a4e62179ff4af5",
+        "chunks": 41,
+        "last_indexed": "2026-09-05 16:18:00"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Agentic Coding with EF Core and SQL Server.md": {
+        "hash": "1973031fa955398c7999f2c1bc71a2a412cac71a9212d6d6748ae06dbeff20be",
+        "chunks": 13,
+        "last_indexed": "2026-09-05 16:18:05"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Agentic Review Can Enforce Rules That Were Previously Too Hard to Formalize.md": {
+        "hash": "a6fa1340576341b321bb88fdca1523ec136d0161babb4f240a6d70c45cfd643f",
+        "chunks": 16,
+        "last_indexed": "2026-09-05 16:18:09"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Agentic Software Development Workflows.md": {
+        "hash": "0b16073544f3376303233c51bd6d599026a5cd81d87bbb581ea624ec4950906e",
+        "chunks": 25,
+        "last_indexed": "2026-09-05 16:18:18"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\AI May Make Aggressive Code Optimization Economically Viable.md": {
+        "hash": "ea7fe1734c009310d3a95b0164bd82ea8931ea9063ea7fb19777c1040168b4ff",
+        "chunks": 14,
+        "last_indexed": "2026-09-05 16:18:21"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\AI May Replace Some Source Generators with Explicit Generated Code.md": {
+        "hash": "f976d05bc552b014f94487a4e3eea5756f9e08972f9f4a9f5fa0862dc5dfb7be",
+        "chunks": 11,
+        "last_indexed": "2026-09-05 16:18:24"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\AI-Generated Architectural Documentation from Code.md": {
+        "hash": "894cc48a131241f91df508c9fbde01e0e7607b7a9d9a090363cc3345706dcb4d",
+        "chunks": 25,
+        "last_indexed": "2026-09-05 16:18:32"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Comments May Become More Valuable in AI-Generated Code.md": {
+        "hash": "3f2be62af457dc8df4562122f09252f69c816a0dc69e959e634988e6919cfab7",
+        "chunks": 9,
+        "last_indexed": "2026-09-05 16:18:34"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Correcting AI-Generated Code - Patch, Regenerate, or Change the Specification.md": {
+        "hash": "19a94ab036d0e3789cc839cda5f9e54ac98b82d360b2f5d2ab4a67e942badbde",
+        "chunks": 25,
+        "last_indexed": "2026-09-05 16:18:41"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Designing APIs for LLM-Generated Integration Code.md": {
+        "hash": "a5eb096aa7e73017d7288f6513a0abefaddce8085e351905b71a362391a66d72",
+        "chunks": 15,
+        "last_indexed": "2026-09-05 16:18:45"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Designing Internal NuGet Packages as an Explicit, Composable Framework.md": {
+        "hash": "f84586c43f08427a4335749b98e1caaf4bf273a5108bb94aae11c5a30ecf0c93",
+        "chunks": 21,
+        "last_indexed": "2026-09-05 16:18:53"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Designing Software Architecture with LLM Assistance.md": {
+        "hash": "6b73e31938bc7d31039ab4d1fdde816ec9ae9e7e7472a346847d3b576f938285",
+        "chunks": 34,
+        "last_indexed": "2026-09-05 16:19:04"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Designing Software for AI Agents.md": {
+        "hash": "b124834569c56f1fa065bf5709eb235d4614667d0367587a5ddba20337ce17d5",
+        "chunks": 12,
+        "last_indexed": "2026-09-05 16:19:08"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Developing Features with AI Coding Agents.md": {
+        "hash": "f8317a3d851d9638660d2c2690314560c68e62c200e1eb93504304c0533eedb6",
+        "chunks": 9,
+        "last_indexed": "2026-09-05 16:19:09"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Exploring Agent Harnesses.md": {
+        "hash": "24769c33240ee84191eff3bcf8f39218b29d733c3e49761f1e4cfca8ed0c8a9b",
+        "chunks": 19,
+        "last_indexed": "2026-09-05 16:19:15"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Hidden Abstractions May Become More Expensive in Agent-Maintained Code.md": {
+        "hash": "43a3679f472b6c0c6fbba4c2fa1cfe1661a5ec01b19db9c4d85de97ceab25f3f",
+        "chunks": 19,
+        "last_indexed": "2026-09-05 16:19:24"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Internal NuGet Packages vs Agent-Generated Code.md": {
+        "hash": "ac0a73423b742e20d64dcd1f81395928c98ccae7c80d2879839bca64ec84749b",
+        "chunks": 32,
+        "last_indexed": "2026-09-05 16:19:35"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Introduction to Workflow Orchestration.md": {
+        "hash": "91c6c2657e325a012ffdfa27dd44448a3aa7b3b49633380941d5b6bb7c7211e1",
+        "chunks": 24,
+        "last_indexed": "2026-09-05 16:19:45"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Learning Coding Agents Through Failure-Driven Instructions.md": {
+        "hash": "edd6437c18f3d7f8c1edd260fc69d2572b59aac2002222fc65a9479ce7c94c70",
+        "chunks": 18,
+        "last_indexed": "2026-09-05 16:19:48"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\LLM Agents and Institutional Memory.md": {
+        "hash": "84ce6a4c577282a5c4d8ce52b7e84e23dfe54cb269ad7fbf0f2a512f1505ebcd",
+        "chunks": 10,
+        "last_indexed": "2026-09-05 16:19:51"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\LLMs as a Code Review Team.md": {
+        "hash": "daa5b0f3ebb77e09900a1a21d7a9d99090efd1eb702fc6b4a949390ad27f3508",
+        "chunks": 24,
+        "last_indexed": "2026-09-05 16:19:57"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Model Access and Execution Infrastructure.md": {
+        "hash": "69c0646f2ebafe9da11af40a0d697298399a1c0d3f189a03ddeb5cd8fd0e47bf",
+        "chunks": 8,
+        "last_indexed": "2026-09-05 16:19:59"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Multi-Agent Software Development.md": {
+        "hash": "ebda7a4cb67adad3b4688911a3b92d7b20a54f15bd1f1efe9db08cbe546fc85b",
+        "chunks": 25,
+        "last_indexed": "2026-09-05 16:20:05"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\OpenTelemetry.md": {
+        "hash": "075d8a44092003b6e62099dc261f7bfa5011b479073d3ca8005c52a56f102e5d",
+        "chunks": 45,
+        "last_indexed": "2026-09-05 16:20:17"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Propagating User Context Between Services.md": {
+        "hash": "1a0968f2fe97161d98443a1105b8104b9f4ca3ec688d8a7cda6ec0deecdcccaa",
+        "chunks": 13,
+        "last_indexed": "2026-09-05 16:20:21"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Refactoring Legacy Systems with AI Agents.md": {
+        "hash": "3cdf5651793a5ef54ba42651dedd2f3f1f775afb189721b54bde46ef2059190b",
+        "chunks": 3,
+        "last_indexed": "2026-09-05 16:20:22"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Reviewing AI-Generated Code.md": {
+        "hash": "1f94b8df1396eadcc95630ced119e34ef0b13a1b785fd0fc3b2dff123f92712b",
+        "chunks": 3,
+        "last_indexed": "2026-09-05 16:20:22"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Scaling a Modular Monolith with Local-or-Remote Module Execution.md": {
+        "hash": "5677e04737fd0d566977d13921e9879bf800008ac000992c541d01b52e788f30",
+        "chunks": 27,
+        "last_indexed": "2026-09-05 16:20:32"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Service vs User Authorization Models.md": {
+        "hash": "46a3a0eee9d5300534dfaf28499fa541f952d6bdea67e32d007a7bfee78872e1",
+        "chunks": 9,
+        "last_indexed": "2026-09-05 16:20:34"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Service-to-Service Authentication and Authorization in Azure and Kubernetes.md": {
+        "hash": "3631c2ac1567f280a9af7ba1915c514c0f36d3f03307e2224a63a2f1fd005efb",
+        "chunks": 74,
+        "last_indexed": "2026-09-05 16:20:56"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Service-to-Service Communication -  How Service A Should Call Service B.md": {
+        "hash": "f8247164b9d675947272d9662e4bea75d3ae25fe1efa79dbf4df607bf5fb563f",
+        "chunks": 60,
+        "last_indexed": "2026-09-05 16:21:14"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Software Engineering May Shift Toward Code Optimized for Agents.md": {
+        "hash": "3cb0c5acfffb60079da0ab18474e603a0c2a8dfd41c636b7a73587dce6d9f960",
+        "chunks": 18,
+        "last_indexed": "2026-09-05 16:21:20"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\Standardizing Service Infrastructure with Reusable Blocks.md": {
+        "hash": "3e1b9d4fbd02b56fb59dc4c0167f55cd6d7392ff41acd25378c4cde25c2461ce",
+        "chunks": 38,
+        "last_indexed": "2026-09-05 16:21:33"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Architecture Guidelines\\User Context in Asynchronous Systems.md": {
+        "hash": "a61aa10c2e6e4cd0e3b860829d6b47fe5eb4ef7a4ce9847c626012d9a6c0793c",
+        "chunks": 8,
+        "last_indexed": "2026-09-05 16:21:36"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\Agent Adoption as a Learning Flywheel.md": {
+        "hash": "e9442475a5b88f7c99d9d35ddc04e84d6ba45752e0951ede9b72998bffe6b4c7",
+        "chunks": 16,
+        "last_indexed": "2026-09-05 16:21:39"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\AI Changes the Economics of Software Libraries.md": {
+        "hash": "e347fd3619833e3e5b77f110fee483ec1093235b5eee087ff9c1a982857fe4db",
+        "chunks": 17,
+        "last_indexed": "2026-09-05 16:21:46"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\AI Changes the Role and Training of Software Engineers.md": {
+        "hash": "b2d8a7816b30ea9819fa0c63ef86472dc1b526dd8db7968d48e0f49e511184eb",
+        "chunks": 2,
+        "last_indexed": "2026-09-05 16:21:46"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\AI Era Software Engineering Recruitment.md": {
+        "hash": "510b38e65caca018995a5646bb58a6c7a548945b32fa9615b3000c41ae8a8ca6",
+        "chunks": 19,
+        "last_indexed": "2026-09-05 16:21:52"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\AI May Become an Irreversible Part of Software Development.md": {
+        "hash": "15786c19cac594c59c89b2bdbd87cefd41579e49d545a3cfcfa4aaad74e72fa4",
+        "chunks": 21,
+        "last_indexed": "2026-09-05 16:21:56"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\AI May Break the Old Economic Model of the Open Web.md": {
+        "hash": "fd7df83ddc080e5bc2eeecd9a5f2975bab3af3a37d7b9b549f36d923987caee2",
+        "chunks": 24,
+        "last_indexed": "2026-09-05 16:22:01"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\AI May Create a New Market for Small, Custom Business Software.md": {
+        "hash": "4a29186033211e653ecf3e7bacf2e9cfeb8cdfa48561a311611312d5dd530c5e",
+        "chunks": 22,
+        "last_indexed": "2026-09-05 16:22:09"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\AI May Increase Product Ambition Instead of Reducing Team Size.md": {
+        "hash": "529e6e4f98b2ac35cc06be74272460a8bf76fedb9a6e79d84335f124d0191929",
+        "chunks": 19,
+        "last_indexed": "2026-09-05 16:22:15"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\Applications May Shift from Fixed Features to Agent-Extensible Primitives.md": {
+        "hash": "a0b189f4d9e55bf72c21f2c9adf2252f42d9f62aaf8f970e85cd935e7d5b8052",
+        "chunks": 11,
+        "last_indexed": "2026-09-05 16:22:18"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\Competitive advantage in the age of commodity AI.md": {
+        "hash": "64231a091f442bafa5e0325fcd0ca0897b3f8a7efb2625a94b19bb72bc57d798",
+        "chunks": 17,
+        "last_indexed": "2026-09-05 16:22:23"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\Finding Original Knowledge in an Internet Full of Repetition.md": {
+        "hash": "cc11aeeb93921fade045dc756455a12f74ff07b6413796850a4550250823fb51",
+        "chunks": 17,
+        "last_indexed": "2026-09-05 16:22:26"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\Fresh Contact With Reality May Become the Training Bottleneck.md": {
+        "hash": "cbb3a2c1cc0aa466e18de50c54c53a89245371e92f15079138155de92befd04c",
+        "chunks": 24,
+        "last_indexed": "2026-09-05 16:22:32"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\From AI-Assisted Teams to Cross-System Feature Ownership.md": {
+        "hash": "3aef1ad9cd855fb7672e91b9c2ebb81e88ba4f30d7b98e45be9a062a108f281e",
+        "chunks": 24,
+        "last_indexed": "2026-09-05 16:22:38"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\How AI Agents May Control Computers, Applications, and the Web.md": {
+        "hash": "f805f99491448fcc4f274631570f155c876716f9c8d43c8a420e85d67cb38461",
+        "chunks": 19,
+        "last_indexed": "2026-09-05 16:22:43"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\How Should Companies Use the Productivity Gains from AI.md": {
+        "hash": "56d944d89880434ddcf4e8fc244abf97a585c80a5e0b488a3d7802f0c8661235",
+        "chunks": 3,
+        "last_indexed": "2026-09-05 16:22:43"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\LLM Capability Reliability and the Shape of Progress.md": {
+        "hash": "9c59add6a681c56f8f2bdb5d969261130fb756cc45a253c87b03879b9859e82e",
+        "chunks": 18,
+        "last_indexed": "2026-09-05 16:22:49"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\New Developer Technologies May Need to Be Agent-Ready from Day One.md": {
+        "hash": "3aa46b96887b4381f758ab15bfd2678e89adcb102413dfa54a240b0aadcc1745",
+        "chunks": 18,
+        "last_indexed": "2026-09-05 16:22:53"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\Personal Digital Representation May Become the Foundation of an AI Agent Ecosystem.md": {
+        "hash": "cb1d5a25589824b1f61263170f66bc555d112c0526d1409653b0f6bbe5a797ec",
+        "chunks": 21,
+        "last_indexed": "2026-09-05 16:23:00"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\Proactive Software -  From Reactive Systems to Autonomous Agents.md": {
+        "hash": "9cd4e02739fa0cbfa30c76caeb4d2b52d3d368045f6a23a1595b65a75c11f23b",
+        "chunks": 33,
+        "last_indexed": "2026-09-05 16:23:11"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\Programming Languages May Evolve Differently in the Age of AI.md": {
+        "hash": "7dbc0b372e30c9a0aea8a4cc68382c3a4e8b2674298dcfae1f70d78afa9eaf77",
+        "chunks": 21,
+        "last_indexed": "2026-09-05 16:23:15"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\Singularity Without AGI -  The Civilizational Automation Loop.md": {
+        "hash": "8d59867b517c775113bb2e2f4e66fd18f36d7ff84c01333b55eda2a973cbb659",
+        "chunks": 32,
+        "last_indexed": "2026-09-05 16:23:25"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\The First AI-Native Generation of Software Engineers.md": {
+        "hash": "13ffa9cd92b4f2eacaf8715348b872321dcbf922b08b993bec1d0ee462df6002",
+        "chunks": 19,
+        "last_indexed": "2026-09-05 16:23:29"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\The Future of School When Knowledge Becomes Abundant.md": {
+        "hash": "35311b5cff5218d20b2e04f0b68f6ab0ec7b976380e854e054abcc677a94a763",
+        "chunks": 22,
+        "last_indexed": "2026-09-05 16:23:36"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\The Implications of Having a Digital Model of Yourself.md": {
+        "hash": "c404ab2e102a7173ce20bfa6d96089f91b3ec3552a64cbe9b4af7840f041c00b",
+        "chunks": 30,
+        "last_indexed": "2026-09-05 16:23:47"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\The Most Valuable Software Training Data May Be Private.md": {
+        "hash": "dd77469b40f2f55b6c493bcf369668027b3196ed7209e51dfbe9b3bda46b3fc6",
+        "chunks": 12,
+        "last_indexed": "2026-09-05 16:23:50"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\Future\\Unbundling of Enterprise Software.md": {
+        "hash": "1419ebf987116d77c2c91fec81c67dfdcb32d8db71a27364bb24af2dfabb9076",
+        "chunks": 36,
+        "last_indexed": "2026-09-05 16:23:58"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Insight\\AI, Averaged Decisions, and Premature Convergence on Solutions.md": {
+        "hash": "0a492c8cf795515cca99c71e92e4f3209adb7b52b55e87345b3b892824016af6",
+        "chunks": 24,
+        "last_indexed": "2026-09-05 16:24:04"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Insight\\Applications of LLM Agents Beyond Programming.md": {
+        "hash": "6f25c85e5b9316816f3a31fd8c630cd6baf9364599749130b4707e3b922101c1",
+        "chunks": 11,
+        "last_indexed": "2026-09-05 16:24:07"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Insight\\How Context Narrows an AI's Solution Space.md": {
+        "hash": "c7d5f519899a8587b7a543f8c3889b6d333901efedabf277af4b77db3eeab565",
+        "chunks": 18,
+        "last_indexed": "2026-09-05 16:24:16"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Insight\\How LLM Systems Build Context.md": {
+        "hash": "5040de28e2feba611827e7fee838ef4963ec66d0495f9884a6e4a4dc8455be45",
+        "chunks": 15,
+        "last_indexed": "2026-09-05 16:24:22"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Insight\\How LLM Systems Enforce Safety and Higher-Level Instructions.md": {
+        "hash": "e1f3bd62b7440096a0b83a2fa93f4e07a62151d03df49776bb72937ff62caf67",
+        "chunks": 11,
+        "last_indexed": "2026-09-05 16:24:24"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Insight\\How Modern LLM Systems Build Context, Reason, and Stay Constrained.md": {
+        "hash": "82e7accc2fae90624a8ef15b313bf730a259938a9f4244d94d6a4326300715c3",
+        "chunks": 5,
+        "last_indexed": "2026-09-05 16:24:25"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Insight\\How Reasoning Models Explore and Evaluate Solutions.md": {
+        "hash": "a656af64a9348c464a322e7aaa20c3f9334992c3ccca84b188f0964ab75300f4",
+        "chunks": 8,
+        "last_indexed": "2026-09-05 16:24:26"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Insight\\Improving AI Models - From Scaling to Agent-Generated Training Data.md": {
+        "hash": "825c855bbfdaa7662b124df87c88151a15b7d0b225d1f18afe19e5b8ef065406",
+        "chunks": 14,
+        "last_indexed": "2026-09-05 16:24:29"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Insight\\LLM Coding Agents Reliability.md": {
+        "hash": "4848bdbd4b3365c018c47c9b6c8519c4cfb64b6061c0e90f37729f099f52dcda",
+        "chunks": 18,
+        "last_indexed": "2026-09-05 16:24:32"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Using\\Agent Advantage -  Relentless, Methodical Work.md": {
+        "hash": "6459cd881d7a120b548357d97d5786a5d5288b1bbf7ad588c7beaeec3a88c410",
+        "chunks": 18,
+        "last_indexed": "2026-09-05 16:24:36"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Using\\AI Changes the Economics of Technical Debt.md": {
+        "hash": "76815c46cabe59b24c18af5a6a1809f1f9dc7816627283a4ce7deec6bf72349c",
+        "chunks": 2,
+        "last_indexed": "2026-09-05 16:24:36"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Using\\AI Productivity Is Limited by the Delivery System.md": {
+        "hash": "662abf814d1daad0da4a8719f86ba6dd4a371dc64f08fbb43ba50666562c321f",
+        "chunks": 14,
+        "last_indexed": "2026-09-05 16:24:39"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Using\\AI-Assisted Software Engineering Where Are We Now.md": {
+        "hash": "8e2684ebe4f8ed7525c51bf1a2f4f690bacb0630469fb5371b35910270ba38e7",
+        "chunks": 24,
+        "last_indexed": "2026-09-05 16:24:51"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Using\\Early AI Adoption as Organizational Readiness.md": {
+        "hash": "43de0b2192f5a6d2dc2e000f42733db16a20d1cc636486641d17626a6fa8f95d",
+        "chunks": 18,
+        "last_indexed": "2026-09-05 16:24:54"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Using\\How AI Changes Prototyping and the Path from PoC to Production.md": {
+        "hash": "2c68dbdd00d571eebffbbecaa46cf28cd2ca73e6b558a66ac21848bd851c6485",
+        "chunks": 3,
+        "last_indexed": "2026-09-05 16:24:55"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Using\\Testing in the Model, Agent, LLM Era.md": {
+        "hash": "31b87dc385447a9e22e52d895ca3a3a30033ba87a0427ef7aff4913c3033ed90",
+        "chunks": 22,
+        "last_indexed": "2026-09-05 16:25:01"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Using\\What Should Organizations Preserve from AI-Assisted Development.md": {
+        "hash": "04d4af98277421d991d7c06f4c0946e69091408d38e1acd634a4abc18f9f35fd",
+        "chunks": 4,
+        "last_indexed": "2026-09-05 16:25:02"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\LLM Using\\Why Business Logic Is the Hardest Part of Agentic Coding.md": {
+        "hash": "de92735d8d0c0e1ad3ae0e5ba0cf43c617ee115762c06d6c460ef5c08f76756c",
+        "chunks": 3,
+        "last_indexed": "2026-09-05 16:25:03"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\RAG\\Advanced RAG Architectures.md": {
+        "hash": "f7a049b52e2a18b0770ac6e4d5906d625645637616f6f8130ac6fbc76075e355",
+        "chunks": 9,
+        "last_indexed": "2026-09-05 16:25:05"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\RAG\\Introduction to RAG.md": {
+        "hash": "4f5500873da8aa73405ede1284cca31d9969099732d932a9204aa74b2c1b6d6b",
+        "chunks": 7,
+        "last_indexed": "2026-09-05 16:25:08"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\RAG\\RAG Ingestion and Chunking Strategies.md": {
+        "hash": "cec92142fb7d2d04854293b804cde53e3b26739c0dce41ace9bd4d76d72908a0",
+        "chunks": 11,
+        "last_indexed": "2026-09-05 16:25:11"
+      },
+      "D:\\GoogleDrive\\AI\\Obsidian\\Default\\RAG\\RAG Retrieval and Search.md": {
+        "hash": "26a14f8585cb6b36a35778007a6cc1f61ad2896be231bf66d215071de28aaf4f",
+        "chunks": 9,
+        "last_indexed": "2026-09-05 16:25:14"
+      }
+    }
+  },
+  "image_descriptions": {}
+}

@@ -6,11 +6,11 @@ This directory contains the ingestion pipeline, indexing scripts, CLI utilities,
 
 ## 1. Quick Overview
 
-- **CLI Indexer**: `bin/rag-qdrant-index.bat` (or `python -m rag_qdrant.cli`)
+- **CLI Indexer**: `bin/amiga_rag.bat` (or `python -m rag_qdrant.cli`)
 - **FastMCP Server**: `rag_mcp_server.py` (registers `rag_search`, `rag_list_sources`, `rag_status` for AI agents)
-- **Vector Database**: Runs in Docker on `http://localhost:6333` (hosted at `D:\GoogleDrive\AI\qdrant`)
-- **Hash Cache**: `D:\GoogleDrive\AI\qdrant\rag_cache.json` (incremental indexing, only re-indexes modified files)
-- **Configuration**: Loaded from `rag_qdrant/config.py` and repository `.env` (`D:\Programowanie\Amiga\.env`)
+- **Vector Database**: Runs in Docker on `http://localhost:6333` (Collection: `amiga`)
+- **Hash Cache**: `tools/rag/rag_cache.json` (incremental indexing, only re-indexes modified files)
+- **Configuration**: Loaded from `rag_qdrant/config.py` and repository `.env` (`.env`)
 
 ---
 
@@ -32,25 +32,25 @@ Dependencies:
 
 ---
 
-## 3. CLI Usage: `rag-qdrant-index`
+## 3. CLI Usage: `amiga_rag`
 
 You can invoke the indexer using the helper batch script:
 
 ```powershell
 # Check database status and connection
-.\tools\rag\bin\rag-qdrant-index.bat --status
+.\tools\rag\bin\amiga_rag.bat --status
 
 # List indexed knowledge sources and vector counts
-.\tools\rag\bin\rag-qdrant-index.bat --list-sources
+.\tools\rag\bin\amiga_rag.bat --list-sources
 
 # Index Amiga technical documentation in this repository (tagged as 'amiga')
-.\tools\rag\bin\rag-qdrant-index.bat D:\Programowanie\Amiga --source amiga
+.\tools\rag\bin\amiga_rag.bat D:\Programowanie\Amiga --source amiga
 
 # Index Obsidian notes (tagged as 'obsidian')
-.\tools\rag\bin\rag-qdrant-index.bat D:\GoogleDrive\AI\Obsidian --source obsidian
+.\tools\rag\bin\amiga_rag.bat D:\GoogleDrive\AI\Obsidian --source obsidian
 
 # Force re-index of all files (ignores SHA256 cache)
-.\tools\rag\bin\rag-qdrant-index.bat D:\Programowanie\Amiga --source amiga --reindex
+.\tools\rag\bin\amiga_rag.bat D:\Programowanie\Amiga --source amiga --reindex
 ```
 
 ---
@@ -86,9 +86,10 @@ The server is configured in `C:\Users\Tomek\.gemini\config\mcp_config.json`:
 tools/rag/
 ├── README.md                 # This documentation
 ├── requirements.txt          # Python dependencies
+├── rag_cache.json            # File hashes for incremental indexing
 ├── rag_mcp_server.py         # FastMCP server for Antigravity AI
 ├── bin/
-│   └── rag-qdrant-index.bat  # CLI batch launcher
+│   └── amiga_rag.bat         # CLI batch launcher
 └── rag_qdrant/               # Core Python package
     ├── __init__.py
     ├── config.py             # Config & .env loading

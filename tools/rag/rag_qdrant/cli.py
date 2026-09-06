@@ -14,10 +14,10 @@ from .config import DEFAULT_SOURCE, QDRANT_URL, COLLECTION_NAME
 from .indexer import KnowledgeIndexer
 
 HELP_TEXT = """
-[bold cyan]rag-qdrant-index[/bold cyan] - Multi-Source Local RAG Indexer (Qdrant)
+[bold cyan]amiga_rag[/bold cyan] - Multi-Source Local RAG Indexer (Qdrant)
 
 [bold yellow]USAGE:[/bold yellow]
-  rag-qdrant-index [PATH] [OPTIONS]
+  amiga_rag [PATH] [OPTIONS]
 
 [bold yellow]ARGUMENTS:[/bold yellow]
   [green]PATH[/green]                   Directory to index (e.g. [bold].[/bold] for current folder, or [bold]D:\\GoogleDrive\\AI\\Obsidian[/bold])
@@ -31,17 +31,17 @@ HELP_TEXT = """
   [green]-h, --help[/green]             Show this help message and exit.
 
 [bold yellow]EXAMPLES:[/bold yellow]
-  rag-qdrant-index . --source amiga
-  rag-qdrant-index D:\\GoogleDrive\\AI\\Obsidian --source obsidian
-  rag-qdrant-index --list-sources
-  rag-qdrant-index --status
+  amiga_rag . --source amiga
+  amiga_rag D:\\GoogleDrive\\AI\\Obsidian --source obsidian
+  amiga_rag --list-sources
+  amiga_rag --status
 """
 
 PLAIN_HELP_TEXT = """
-rag-qdrant-index - Multi-Source Local RAG Indexer (Qdrant)
+amiga_rag - Multi-Source Local RAG Indexer (Qdrant)
 
 USAGE:
-  rag-qdrant-index [PATH] [OPTIONS]
+  amiga_rag [PATH] [OPTIONS]
 
 ARGUMENTS:
   PATH                   Directory to index (e.g. '.' for current folder, or D:\\GoogleDrive\\AI\\Obsidian)
@@ -55,10 +55,10 @@ OPTIONS:
   -h, --help             Show this help message and exit.
 
 EXAMPLES:
-  rag-qdrant-index . --source amiga
-  rag-qdrant-index D:\\GoogleDrive\\AI\\Obsidian --source obsidian
-  rag-qdrant-index --list-sources
-  rag-qdrant-index --status
+  amiga_rag . --source amiga
+  amiga_rag D:\\GoogleDrive\\AI\\Obsidian --source obsidian
+  amiga_rag --list-sources
+  amiga_rag --status
 """
 
 
@@ -78,7 +78,7 @@ def show_sources_table(indexer: KnowledgeIndexer):
         from rich.table import Table
         console = Console()
         if not sources:
-            console.print("[yellow]No sources indexed yet. Run 'rag-qdrant-index <PATH>' to index a folder.[/yellow]")
+            console.print("[yellow]No sources indexed yet. Run 'amiga_rag <PATH>' to index a folder.[/yellow]")
             return
 
         table = Table(title="[bold green]Indexed Knowledge Sources in Qdrant[/bold green]")

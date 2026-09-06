@@ -110,7 +110,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
 
 - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
 - **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and Guru Book reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via the `rag_search` tool (`amiga-rag`).
-- **RAG Tooling & Infrastructure**: The indexing pipeline, CLI indexer, and FastMCP server reside in [`tools/rag`](tools/rag), while the Qdrant vector database container, persistent storage, and hash cache are hosted at [`D:\GoogleDrive\AI\qdrant`](file:///D:/GoogleDrive/AI/qdrant).
+- **RAG Tooling & Infrastructure**: The indexing pipeline, CLI indexer (`amiga_rag`), and FastMCP server reside in [`tools/rag`](tools/rag), backed by the local Qdrant vector database (`amiga` collection).
 - **Reference Emulator Source Code**: Verified reference implementations (MAME, Moira, Musashi, vAmiga, WinUAE) are located in [ref_src](ref_src).
 - **Single-Step Test Vectors**: Official test suite for the M68000 CPU is located in [ref_src/SingleStepTests-m68000/v1](ref_src/SingleStepTests-m68000/v1).
 

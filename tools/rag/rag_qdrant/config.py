@@ -15,8 +15,9 @@ else:
 
 # Qdrant settings
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
-COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "unified_knowledge")
-CACHE_FILE = Path(os.getenv("RAG_CACHE_FILE", r"D:\GoogleDrive\AI\qdrant\rag_cache.json"))
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "amiga")
+default_cache = Path(__file__).resolve().parents[1] / "rag_cache.json"
+CACHE_FILE = Path(os.getenv("RAG_CACHE_FILE", str(default_cache)))
 
 # Embedding settings: 'fastembed' (local, free, 0 API quota) or 'gemini' (cloud)
 EMBEDDING_PROVIDER = os.getenv("RAG_EMBEDDING_PROVIDER", "fastembed").lower()
@@ -26,8 +27,8 @@ if EMBEDDING_PROVIDER == "gemini":
     EMBEDDING_MODEL = os.getenv("RAG_EMBEDDING_MODEL", "gemini-embedding-001")
     EMBEDDING_DIM = 768
 else:
-    EMBEDDING_MODEL = os.getenv("RAG_EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
-    EMBEDDING_DIM = 384
+    EMBEDDING_MODEL = os.getenv("RAG_EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
+    EMBEDDING_DIM = 768
 
 VISION_MODEL = os.getenv("RAG_VISION_MODEL", "gemini-2.5-flash")
 

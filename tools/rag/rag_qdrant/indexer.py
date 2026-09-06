@@ -68,14 +68,14 @@ class KnowledgeIndexer:
                 hasher.update(chunk)
         return hasher.hexdigest()
 
-    def ensure_collection(self):
+    def ensure_collection(self, force_recreate: bool = False):
         """Creates Qdrant collection if not already existing or reconciles dimension."""
         collections = [c.name for c in self.client.get_collections().collections]
         if COLLECTION_NAME in collections:
             info = self.client.get_collection(COLLECTION_NAME)
             current_dim = info.config.params.vectors.size
-            if current_dim != EMBEDDING_DIM and info.points_count == 0:
-                # Recreate empty collection if dimension changed
+            if current_dim != EMBEDDING_DIM and (force_recreate or info.points_count == 0):
+                # Recreate collection if dimension changed
                 self.client.delete_collection(COLLECTION_NAME)
                 collections.remove(COLLECTION_NAME)
 
@@ -143,7 +143,7 @@ class KnowledgeIndexer:
         progress_cb=None
     ) -> Dict[str, Any]:
         """Indexes all markdown files and referenced images from directory incrementally."""
-        self.ensure_collection()
+        self.ensure_collection(force_recreate=force)
         dir_path = directory.resolve()
         source_name = source_name.strip().lower()
         source_cache = self.cache.setdefault("sources", {}).setdefault(source_name, {})

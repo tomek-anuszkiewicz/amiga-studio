@@ -58,7 +58,7 @@ The goal of this repository is to build a modern, system-agnostic, cycle-exact A
 │   └── other-models/        <- Other Commodore Amiga models (A1000, A1200, A2000, etc.)
 ├── tools/                   <- Developer tools, offline table generators, and AI tooling
 │   ├── BlebGenerator/       <- C# sinc BLEP table generator
-│   ├── rag/                 <- Local RAG ingestion pipeline, CLI indexer, and FastMCP server
+│   ├── rag/                 <- Local RAG ingestion pipeline, CLI indexer (amiga_rag), and FastMCP server
 │   └── winguide/            <- AmigaGuide viewer utility
 ├── tests/                   <- Test media, testbenches, and disk images
 │   └── disks/               <- ADF test disk images (AmigaTestKit)
@@ -191,7 +191,7 @@ cargo test tests::cpu
 This repository is configured for autonomous pair-programming with AI agents:
 
 1. **Strict Guardrails:** All agent interactions must follow [AGENTS.md](AGENTS.md) (no panics, wrapping arithmetic, big-endian conversions, zero allocations in hot paths).
-2. **Domain Knowledge RAG:** Use the `amiga-rag` tool (`rag_search`) to query official Commodore Hardware Reference Manuals and PRMs in `Obsidian/Amiga/Reference/`. The RAG pipeline and FastMCP server reside in [`tools/rag/`](tools/rag/), while the Qdrant vector database container and persistent storage are hosted at `D:\GoogleDrive\AI\qdrant`.
+2. **Domain Knowledge RAG:** Use the `amiga-rag` tool (`rag_search`) to query official Commodore Hardware Reference Manuals and PRMs in `Obsidian/Amiga/Reference/`. The RAG pipeline, cache (`rag_cache.json`), and FastMCP server reside in [`tools/rag/`](tools/rag/), backed by the local Qdrant vector database (`amiga` collection).
 3. **AST & Code Knowledge Graph:** Use `graphify` (`graphify query`, `graphify explain`) to inspect code relationships, types, and architectural hierarchies.
 4. **Instruction Implementation:** Activate the `add-m68k-instruction` skill for a step-by-step checklist (decoding, CCK micro-steps, CCR flag updates, prefetch pipeline, and test harness integration).
 5. **Test Failure Diagnosis:** Activate the `m68k-singlestep-test` skill to diagnose CCR mismatches ($X, N, Z, V, C$), prefetch queue offsets, and Address Error stack frames.

@@ -13,8 +13,8 @@ Division of Responsibility between RAG and Graphify:
 - When the user asks about the RAG database state, call `rag_status` or `rag_list_sources`.
 
 Tooling, Reindexing & Infrastructure:
-- **Tools & MCP Server**: The ingestion pipeline, CLI (`rag-qdrant-index`), and FastMCP server reside in this repository under [`tools/rag/`](file:///D:/Programowanie/Amiga/tools/rag/).
-- **Vector Database Host**: The Qdrant Docker container, persistent vector storage (`qdrant_storage/`), and SHA256 cache (`rag_cache.json`) are hosted at `D:\GoogleDrive\AI\qdrant\`.
+- **Tools & MCP Server**: The ingestion pipeline, CLI (`amiga_rag`), incremental cache (`rag_cache.json`), and FastMCP server reside in this repository under [`tools/rag/`](file:///D:/Programowanie/Amiga/tools/rag/).
+- **Vector Database**: Connects to the local Qdrant instance (`http://localhost:6333`, collection: `amiga`).
 - To reindex manuals or notes:
-  - Run `.\tools\rag\bin\rag-qdrant-index.bat D:\Programowanie\Amiga --source amiga`
-  - Run `.\tools\rag\bin\rag-qdrant-index.bat D:\GoogleDrive\AI\Obsidian --source obsidian`
+  - Run `.\tools\rag\bin\amiga_rag.bat D:\Programowanie\Amiga --source amiga`
+  - Run `.\tools\rag\bin\amiga_rag.bat D:\GoogleDrive\AI\Obsidian --source obsidian`
