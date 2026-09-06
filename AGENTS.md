@@ -72,6 +72,17 @@ All agentic pair-programming and automated modifications must adhere strictly to
    - Cascaded runtime branches (`match opcode`, `match ea_mode`, `if size == Size::Byte`) in the hot instruction dispatch loop cause severe branch predictor thrashing.
    - For peak performance, the execution core must favor **direct, flattened code flows** (e.g. 65,536-entry direct dispatch table `[fn; 65536]`, direct-threaded handlers, or specialized code generation) where addressing modes, sizes, and registers are statically baked into dedicated handlers, avoiding dynamic runtime conditionals.
 
+7. **Module Cohesion & File Size Guidelines**:
+   - **Cohesion over Arbitrary Fragmentation**: Group closely related structs, enums, type definitions, and direct handlers in the same file when they cover the same architectural aspect (e.g. `MemoryBank`, `BankHandler`, and bank functions in `map.rs`). Avoid fragmenting tightly coupled concepts across dozens of micro-files.
+   - **Size Thresholds**:
+     - *< 300 lines*: Healthy baseline for single-aspect modules and state structures.
+     - *300–600 lines*: Ideal sweet spot for cohesive units combining types, enums, and operational logic.
+     - *600–800 lines*: Review trigger. Review for multiple responsibilities (SRP violation), independent sub-domains, or test code that should be separated into submodules.
+     - *> 800 lines*: Split mandate. Files exceeding 800 lines must be split into submodules unless they meet the criteria for a Recognized Exception.
+   - **Recognized Exceptions (Allowed to exceed 800 lines)**:
+     - Compile-time static dispatch and lookup tables (e.g. `dispatch_table.rs` with 65,536-entry opcode decoding, BLEP sinc tables).
+     - Exhaustive linear instruction decoders or atomic hardware circuit state machines where splitting obscures sequential cycle timing.
+
 ---
 
 ## 3. Knowledge Base & Reference Navigation
