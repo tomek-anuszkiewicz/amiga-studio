@@ -86,4 +86,5 @@ All agentic pair-programming and automated modifications must adhere strictly to
 ## 4. Documentation Maintenance Rule (Definition of Done)
 
 - **Mandatory Final Task:** Whenever an agent (or human developer) implements, refactors, or modifies a subsystem, you **must update the corresponding design document in [Obsidian/Amiga/Design](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design) if any architectural decision, timing model, data structure, or hardware quirk has changed or was clarified.**
+- **Crate Dependency Graph Maintenance:** Whenever crates or workspace dependencies in `Cargo.toml` (new crates, modified inter-crate dependencies, or key external dependencies) are added, altered, or removed, you **must update the Crate Dependency Mermaid Graph in [Obsidian/Amiga/Design/General Architecture.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/General%20Architecture.md#2-workspace-crate-architecture--dependencies)**.
 - The design documents under `Obsidian/Amiga/Design/` are living, permanent specifications and must always reflect the exact architectural reality of the implementation.

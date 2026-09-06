@@ -30,7 +30,58 @@ graph TD
 
 ---
 
-## 2. External Interfaces & Data Flow
+## 2. Workspace Crate Architecture & Dependencies
+
+The codebase is organized as a Cargo workspace with decoupled, single-responsibility crates located under `crates/`:
+
+```mermaid
+graph TD
+    classDef core fill:#1e3a5f,stroke:#4f9da6,stroke-width:2px,color:#ffffff;
+    classDef tool fill:#3d2c40,stroke:#d16ba5,stroke-width:2px,color:#ffffff;
+    classDef ext fill:#1c2321,stroke:#5e6472,stroke-width:1px,stroke-dasharray: 5 5,color:#e0e0e0;
+
+    subgraph WorkspaceCrates["Cargo Workspace Crates (crates/*)"]
+        MEM["memory_bus<br/><code>crates/memory_bus</code>"]:::core
+        CPU["m68000<br/><code>crates/m68000</code>"]:::core
+        DBG["debugger<br/><code>crates/debugger</code>"]:::tool
+        TR["test_runner<br/><code>crates/test_runner</code>"]:::tool
+    end
+
+    subgraph ExternalDeps["Key External Crates"]
+        SERDE["serde / serde_json<br/>(no_std + alloc)"]:::ext
+        BF["bitflags"]:::ext
+        GZ["flate2"]:::ext
+    end
+
+    %% Internal Dependencies
+    CPU -->|depends on| MEM
+    DBG -->|depends on| CPU
+    DBG -->|depends on| MEM
+    TR -->|depends on| CPU
+    TR -->|depends on| MEM
+    TR -->|depends on| DBG
+
+    %% External Dependencies
+    MEM -.-> SERDE
+    CPU -.-> SERDE
+    CPU -.-> BF
+    DBG -.-> SERDE
+    TR -.-> SERDE
+    TR -.-> GZ
+```
+
+### Crate Descriptions & Responsibilities
+
+| Crate | Path | Responsibility | Workspace Dependencies |
+| :--- | :--- | :--- | :--- |
+| **`memory_bus`** | [`crates/memory_bus`](file:///d:/Programowanie/Amiga/crates/memory_bus) | Amiga physical memory map, 2-phase CCK arbitration, address decoding, Chip/Fast/Slow RAM, open bus emulation. | *None* |
+| **`m68000`** | [`crates/m68000`](file:///d:/Programowanie/Amiga/crates/m68000) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | `memory_bus` |
+| **`debugger`** | [`crates/debugger`](file:///d:/Programowanie/Amiga/crates/debugger) | Headless inspection and debugging subsystem, register/memory inspectors, disassembly, breakpoint triggers. | `m68000`, `memory_bus` |
+| **`test_runner`** | [`crates/test_runner`](file:///d:/Programowanie/Amiga/crates/test_runner) | Automated validation against MAME (`.json`) and Tom Harte (`.json.gz`) SingleStepTests suites. | `m68000`, `memory_bus`, `debugger` |
+
+---
+
+## 3. External Interfaces & Data Flow
 
 - **ROM & Disk Injection**: Kickstart ROM images and disk buffers are injected from the outside as raw byte slices (`&[u8]`).
 - **Decoupled Host I/O**:
@@ -40,7 +91,7 @@ graph TD
 
 ---
 
-## 3. Subsystem Reference Links
+## 4. Subsystem Reference Links
 
 - [Main loop A500.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Main%20loop%20A500.md): Machine stepping, reset sequence, and interrupt arbitration.
 - [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md): 2-phase CCK arbitration, address decoding, and DMA contention.
@@ -60,7 +111,7 @@ graph TD
 
 ---
 
-## 4. Architecture Notes & TODOs
+## 5. Architecture Notes & TODOs
 
 - **Memory Interleaving & Buffers**:
   - Document the exact mechanism where CPU accesses memory during alternate Color Clock slots while custom chips perform DMA.
