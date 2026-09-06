@@ -168,3 +168,11 @@ fn test_rtc_bank_boundary_open_bus() {
     assert_eq!(bus.read_byte_debug(0xDC1000), 0xFF);
     assert_eq!(bus.read_byte_debug(0xDCFFFF), 0xFF);
 }
+
+#[test]
+fn test_rtc_reexported_module_namespace() {
+    // Verify that downstream callers can construct or type-check RtcMsm6242b
+    // directly via memory_bus::rtc::RtcMsm6242b without depending directly on crate rtc
+    let rtc_instance = memory_bus::rtc::RtcMsm6242b::new(memory_bus::RtcModel::Msm6242b);
+    assert_eq!(rtc_instance.model, memory_bus::RtcModel::Msm6242b);
+}

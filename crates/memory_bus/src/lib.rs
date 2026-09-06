@@ -13,6 +13,7 @@ pub use map::{
     build_bank_map, build_preset_bank_map, get_preset_bank_map, handler_for_bank, BankHandler,
     BankReadByteFn, BankWriteByteFn, BANK_MAP_BARE, BANK_MAP_EXPANDED, BANK_MAP_STANDARD,
 };
+pub use rtc;
 pub use rtc::RtcMsm6242b;
 
 use serde::{Deserialize, Serialize};
