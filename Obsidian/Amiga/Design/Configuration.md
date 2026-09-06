@@ -2,6 +2,7 @@
 
 > [!NOTE]
 > All ROM binaries, disk images, and memory configurations are injected into the core externally as raw byte slices (`&[u8]`), preserving WASM portability and system independence (see [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md)).
+> Implementation resides in the dedicated foundational crate [`crates/config`](file:///d:/Programowanie/Amiga/crates/config).
 
 ---
 

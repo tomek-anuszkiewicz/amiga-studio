@@ -41,6 +41,7 @@ graph TD
     classDef ext fill:#1c2321,stroke:#5e6472,stroke-width:1px,stroke-dasharray: 5 5,color:#e0e0e0;
 
     subgraph WorkspaceCrates["Cargo Workspace Crates (crates/*)"]
+        CFG["config<br/><code>crates/config</code>"]:::core
         MEM["memory_bus<br/><code>crates/memory_bus</code>"]:::core
         CPU["m68000<br/><code>crates/m68000</code>"]:::core
         DBG["debugger<br/><code>crates/debugger</code>"]:::tool
@@ -54,6 +55,7 @@ graph TD
     end
 
     %% Internal Dependencies
+    MEM -->|depends on| CFG
     CPU -->|depends on| MEM
     DBG -->|depends on| CPU
     DBG -->|depends on| MEM
@@ -62,6 +64,7 @@ graph TD
     TR -->|depends on| DBG
 
     %% External Dependencies
+    CFG -.-> SERDE
     MEM -.-> SERDE
     CPU -.-> SERDE
     CPU -.-> BF
@@ -74,7 +77,8 @@ graph TD
 
 | Crate | Path | Responsibility | Workspace Dependencies |
 | :--- | :--- | :--- | :--- |
-| **`memory_bus`** | [`crates/memory_bus`](file:///d:/Programowanie/Amiga/crates/memory_bus) | Amiga physical memory map, 2-phase CCK arbitration, address decoding, Chip/Fast/Slow RAM, open bus emulation. | *None* |
+| **`config`** | [`crates/config`](file:///d:/Programowanie/Amiga/crates/config) | Encapsulated, read-only hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`), `RtcModel`, video timings. | *None* |
+| **`memory_bus`** | [`crates/memory_bus`](file:///d:/Programowanie/Amiga/crates/memory_bus) | 24-bit physical address space, 256-entry 64KB bank table (`addr >> 16`), 2-phase CCK arbitration, open bus emulation. | `config` |
 | **`m68000`** | [`crates/m68000`](file:///d:/Programowanie/Amiga/crates/m68000) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | `memory_bus` |
 | **`debugger`** | [`crates/debugger`](file:///d:/Programowanie/Amiga/crates/debugger) | Headless inspection and debugging subsystem, register/memory inspectors, disassembly, breakpoint triggers. | `m68000`, `memory_bus` |
 | **`test_runner`** | [`crates/test_runner`](file:///d:/Programowanie/Amiga/crates/test_runner) | Automated validation against MAME (`.json`) and Tom Harte (`.json.gz`) SingleStepTests suites. | `m68000`, `memory_bus`, `debugger` |

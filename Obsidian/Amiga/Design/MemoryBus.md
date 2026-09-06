@@ -37,6 +37,22 @@
 > **Low-Memory Boot Overlay (`_OVL`):**
 > When the overlay is active (at cold or warm reset via CIA-A Port A bit 0), any access targeting `$000000-$07FFFF` is redirected directly to Kickstart ROM at `$F80000-$FFFFFF`. This guarantees that vector fetches ($SSP$ at `$000000`, $PC$ at `$000004`) execute directly from ROM.
 
+### 2.1 256-Entry Direct Bank Dispatch Table (`addr >> 16`)
+
+To eliminate branch mispredictions and cascaded conditional checks in hot memory access loops, the 16 MB physical address space is divided into **256 banks of 64 KB each** ($256 \times 64\text{ KB} = 16\text{ MB}$).
+
+- **O(1) Direct Lookup**: An address's bank index is extracted in a single instruction: `(addr >> 16) & 0xFF`.
+- **L1 Cache Resident**: The entire lookup table `[MemoryBank; 256]` occupies just 256 bytes in the host L1 data cache.
+- **Direct Dispatch**:
+  - `$00..=$07`: `MemoryBank::ChipRam`
+  - `$20..=$5F`: `MemoryBank::FastRam` (4 MB)
+  - `$BF`: `MemoryBank::Cia` (CIA-A & CIA-B)
+  - `$C0..=$C7`: `MemoryBank::SlowRam` (A501 trapdoor RAM)
+  - `$DC`: `MemoryBank::Rtc` (OKI MSM6242B)
+  - `$DF`: `MemoryBank::CustomChips` (Agnus, Denise, Paula)
+  - `$F8..=$FF`: `MemoryBank::KickstartRom`
+  - All other banks: `MemoryBank::OpenBus` (`$FF`)
+
 ---
 
 ## 3. Sub-Cycle Timing & 2-Phase Bus Arbitration

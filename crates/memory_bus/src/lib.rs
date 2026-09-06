@@ -21,11 +21,35 @@ pub const FAST_RAM_SIZE: usize = 8 * 1024 * 1024; // Max 8MB Zorro II Fast RAM
 pub const KICKSTART_SIZE_256K: usize = 256 * 1024;
 pub const KICKSTART_SIZE_512K: usize = 512 * 1024;
 
+/// Classification of a 64 KB physical memory bank for O(1) direct address dispatch
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MemoryBank {
+    /// Chip RAM (Base $000000-$07FFFF, optionally extended to $000000-$0FFFFF)
+    ChipRam,
+    /// Auto-Config Fast RAM expansion ($200000-$9FFFFF)
+    FastRam,
+    /// CIA-A and CIA-B peripheral registers ($BF0000-$BFFFFF)
+    Cia,
+    /// Slow / Trapdoor RAM ($C00000-$C7FFFF)
+    SlowRam,
+    /// Real-Time Clock ($DC0000-$DC003F)
+    Rtc,
+    /// Custom Chip Registers ($DF0000-$DFFFFF, active at $DFF000-$DFFFFE)
+    CustomChips,
+    /// Kickstart ROM ($F80000-$FFFFFF)
+    KickstartRom,
+    /// Unmapped floating open bus (returns $FF / $FFFF)
+    OpenBus,
+}
+
 /// Cycle-exact Amiga 500 MemoryBus
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryBus {
     /// Active hardware configuration
     pub config: A500Config,
+
+    /// 256-entry direct bank lookup table (64 KB per bank across 16 MB physical space)
+    pub bank_map: [MemoryBank; 256],
 
     /// Physical Chip RAM buffer (512 KB default, expandable to 1 MB)
     pub chip_ram: Vec<u8>,
@@ -89,9 +113,11 @@ impl MemoryBus {
             FastRamSize::None => None,
             FastRamSize::Mb4 => Some(vec![0x00; 4 * 1024 * 1024]),
         };
+        let bank_map = map::build_bank_map(&config);
 
         let mut bus = Self {
             config,
+            bank_map,
             chip_ram: vec![0x00; chip_ram_size],
             slow_ram,
             fast_ram,
@@ -126,6 +152,7 @@ impl MemoryBus {
             FastRamSize::Mb4 => Some(vec![0x00; 4 * 1024 * 1024]),
         };
 
+        self.bank_map = map::build_bank_map(&config);
         self.config = config;
     }
 

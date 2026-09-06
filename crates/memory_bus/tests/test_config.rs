@@ -89,3 +89,47 @@ fn test_memory_bus_apply_config_dynamically() {
     assert!(bus.slow_ram.is_none());
     assert_eq!(bus.read_byte_debug(0xDC0000), 0xFF);
 }
+
+#[test]
+fn test_256_entry_bank_map() {
+    use memory_bus::MemoryBank;
+
+    // 1. Standard 1MB config
+    let bus = MemoryBus::new();
+    // Chip RAM: banks 0..=7
+    for b in 0..=7 {
+        assert_eq!(bus.bank_map[b], MemoryBank::ChipRam);
+    }
+    // Extended Chip: 8..=15 are OpenBus on 512k baseline
+    for b in 8..=15 {
+        assert_eq!(bus.bank_map[b], MemoryBank::OpenBus);
+    }
+    // CIA bank: 0xBF
+    assert_eq!(bus.bank_map[0xBF], MemoryBank::Cia);
+    // Slow RAM: 0xC0..=0xC7
+    for b in 0xC0..=0xC7 {
+        assert_eq!(bus.bank_map[b], MemoryBank::SlowRam);
+    }
+    // RTC bank: 0xDC
+    assert_eq!(bus.bank_map[0xDC], MemoryBank::Rtc);
+    // Custom chips: 0xDF
+    assert_eq!(bus.bank_map[0xDF], MemoryBank::CustomChips);
+    // Kickstart ROM: 0xF8..=0xFF
+    for b in 0xF8..=0xFF {
+        assert_eq!(bus.bank_map[b], MemoryBank::KickstartRom);
+    }
+
+    // 2. Bare 512k config: SlowRam and RTC become OpenBus
+    let bare_bus = MemoryBus::from_config(A500Config::bare_512k(VideoStandard::Pal));
+    for b in 0xC0..=0xC7 {
+        assert_eq!(bare_bus.bank_map[b], MemoryBank::OpenBus);
+    }
+    assert_eq!(bare_bus.bank_map[0xDC], MemoryBank::OpenBus);
+
+    // 3. Expanded config: Fast RAM occupies 0x20..=0x5F
+    let exp_bus = MemoryBus::from_config(A500Config::expanded_power_user(VideoStandard::Pal));
+    for b in 0x20..=0x5F {
+        assert_eq!(exp_bus.bank_map[b], MemoryBank::FastRam);
+    }
+}
+
