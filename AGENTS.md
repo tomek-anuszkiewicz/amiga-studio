@@ -83,6 +83,20 @@ All agentic pair-programming and automated modifications must adhere strictly to
      - Compile-time static dispatch and lookup tables (e.g. `dispatch_table.rs` with 65,536-entry opcode decoding, BLEP sinc tables).
      - Exhaustive linear instruction decoders or atomic hardware circuit state machines where splitting obscures sequential cycle timing.
 
+8. **Method Inlining Strategy (`#[inline]`, `#[inline(always)]`, `#[inline(never)]`)**:
+   - In Rust, `#[inline]` serves two functions: it is an aggressive inlining hint to LLVM, and crucially, it emits intermediate representation (MIR/LLVM IR) into crate metadata, enabling **cross-crate inlining** across workspace crates without requiring whole-program LTO.
+   - **Use `#[inline]` on**:
+     - Public getters, setters, and single-expression accessors called across crates (e.g., `pub fn chip_ram(&self) -> ChipRamSize`, `pub fn is_chip_ram_blocked(&self) -> bool`).
+     - Lightweight forwarding/delegation wrappers (e.g., `pub fn step_cck(&mut self, cck: u64) { self.rtc.step_cck(cck); }`).
+     - Endian conversion and byte/word packing helpers.
+   - **Use `#[inline(always)]` on**:
+     - Ultra-hot arithmetic/logic and CCR condition code flag calculations ($X, N, Z, V, C$) executed multiple times per CCK cycle where function call prologue/epilogue overhead must be strictly eliminated.
+   - **Avoid `#[inline]` on**:
+     - Medium to large functions (> 15–20 lines of complex control flow) to prevent instruction cache (L1i) bloat and code size explosion.
+     - Indirect dispatch table targets (e.g., `BankHandler.read_byte` function pointers, 65,536-entry opcode handlers) that are invoked through pointers and cannot be inlined at the call site.
+   - **Use `#[inline(never)]` on**:
+     - Cold exception paths, address error dumps, illegal instruction traps, and diagnostic panic paths. Keeping cold recovery logic out-of-line ensures the hot instruction dispatch loop remains dense and contiguous in the host CPU's instruction cache.
+
 ---
 
 ## 3. Knowledge Base & Reference Navigation
