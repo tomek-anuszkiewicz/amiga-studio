@@ -14,7 +14,7 @@ pub type BankReadByteFn = fn(&MemoryBus, u32) -> u8;
 pub type BankWriteByteFn = fn(&mut MemoryBus, u32, u8);
 
 /// Memory bank handler containing method pointers for direct dispatch
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub struct BankHandler {
     /// Associated memory bank classification
     pub bank: MemoryBank,
@@ -23,6 +23,15 @@ pub struct BankHandler {
     /// Direct write byte handler method pointer
     pub write_byte: BankWriteByteFn,
 }
+
+impl PartialEq for BankHandler {
+    #[inline(always)]
+    fn eq(&self, other: &Self) -> bool {
+        self.bank == other.bank
+    }
+}
+
+impl Eq for BankHandler {}
 
 impl std::fmt::Debug for BankHandler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -408,6 +417,9 @@ impl MemoryBus {
     #[inline(always)]
     pub(crate) fn read_byte_internal(&self, addr: u32) -> u8 {
         let addr = addr & 0x00FF_FFFF;
+        if let Some(map) = &self.test_memory {
+            return *map.get(&addr).unwrap_or(&0xFF);
+        }
         let bank_idx = (addr >> 16) as usize;
         (self.bank_map[bank_idx].read_byte)(self, addr)
     }
@@ -424,6 +436,10 @@ impl MemoryBus {
     #[inline(always)]
     pub(crate) fn write_byte_internal(&mut self, addr: u32, val: u8) {
         let addr = addr & 0x00FF_FFFF;
+        if let Some(map) = &mut self.test_memory {
+            map.insert(addr, val);
+            return;
+        }
         let bank_idx = (addr >> 16) as usize;
         (self.bank_map[bank_idx].write_byte)(self, addr, val);
     }
@@ -448,6 +464,10 @@ impl MemoryBus {
     /// In Chip RAM and Slow RAM, Gary / Agnus fails to latch the write phase, dropping the write.
     /// In Fast RAM, the write phase succeeds.
     pub fn write_tas_byte(&mut self, addr: u32, data: u8) {
+        if self.test_memory.is_some() {
+            self.write_byte_internal(addr, data);
+            return;
+        }
         let addr = addr & 0x00FF_FFFF;
         // Check if target is Chip RAM or Slow RAM
         if addr < 0x100000 || (0xC00000..=0xC7FFFF).contains(&addr) {

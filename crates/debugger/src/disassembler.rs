@@ -140,7 +140,7 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
         let mnem = if is_jsr { "JSR" } else { "JMP" };
         let mode = ((op >> 3) & 0x07) as u8;
         let reg = (op & 0x07) as u8;
-        let ea_str = format_ea(mode, reg, &mut next_word, pc.wrapping_add(offset));
+        let ea_str = format_ea(mode, reg, &mut next_word);
         return (
             Disassembly {
                 pc,
@@ -158,10 +158,10 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
     if top2 == 0 {
         let size_bits = (op >> 12) & 0x03;
         if size_bits != 0 {
-            let (sz_str, mnem) = match size_bits {
-                1 => (".B", "MOVE.B"),
-                3 => (".W", "MOVE.W"),
-                2 => (".L", "MOVE.L"),
+            let mnem = match size_bits {
+                1 => "MOVE.B",
+                3 => "MOVE.W",
+                2 => "MOVE.L",
                 _ => unreachable!(),
             };
             let dst_reg = ((op >> 9) & 0x07) as u8;
@@ -179,8 +179,8 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
                 mnem
             };
 
-            let src_str = format_ea(src_mode, src_reg, &mut next_word, pc.wrapping_add(offset));
-            let dst_str = format_ea(dst_mode, dst_reg, &mut next_word, pc.wrapping_add(offset));
+            let src_str = format_ea(src_mode, src_reg, &mut next_word);
+            let dst_str = format_ea(dst_mode, dst_reg, &mut next_word);
             return (
                 Disassembly {
                     pc,
@@ -219,7 +219,7 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
             _ => (".W", true),
         };
 
-        let ea_str = format_ea(ea_mode, ea_reg, &mut next_word, pc.wrapping_add(offset));
+        let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
         let ops = if ea_is_source {
             format!("{}, D{}", ea_str, reg_d)
         } else {
@@ -267,7 +267,7 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
     )
 }
 
-fn format_ea(mode: u8, reg: u8, mut read_ext: impl FnMut() -> u16, _current_pc: u32) -> String {
+fn format_ea(mode: u8, reg: u8, mut read_ext: impl FnMut() -> u16) -> String {
     match mode {
         0 => format!("D{}", reg),
         1 => format!("A{}", reg),

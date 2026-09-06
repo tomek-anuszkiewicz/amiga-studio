@@ -1,6 +1,5 @@
 //! Breakpoint and Watchpoint management
 
-use m68000::CpuState;
 
 /// Watchpoint access type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

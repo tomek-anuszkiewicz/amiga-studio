@@ -90,6 +90,8 @@ impl Cpu {
             return StepResult::Stopped;
         }
 
+        self.state.instruction_pc = self.state.pc.wrapping_sub(2);
+
         // Direct table dispatch: index directly into static 65,536-entry jump table in .rodata
         let handler = crate::dispatch_table::DISPATCH_TABLE[self.state.ir as usize];
         handler(self, bus)
@@ -99,7 +101,7 @@ impl Cpu {
     #[inline]
     pub fn retire_instruction(&mut self, bus: &mut MemoryBus) {
         self.state.ir = self.state.prefetch[0];
-        self.state.prefetch[0] = bus.read_word_debug(self.state.pc);
+        self.state.prefetch[0] = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);
     }
 
@@ -107,17 +109,17 @@ impl Cpu {
     #[inline]
     pub fn consume_extension_word(&mut self, bus: &mut MemoryBus) -> u16 {
         let ext = self.state.prefetch[0];
-        self.state.prefetch[0] = bus.read_word_debug(self.state.pc);
+        self.state.prefetch[0] = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);
         ext
     }
 
     /// Reloads PC and prefetches the next two instruction words (after branch or jump)
     pub fn reload_pc_and_prefetch(&mut self, target_pc: u32, bus: &mut MemoryBus) {
-        self.state.pc = target_pc & 0x00FF_FFFF;
-        self.state.ir = bus.read_word_debug(self.state.pc);
+        self.state.pc = target_pc;
+        self.state.ir = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);
-        self.state.prefetch[0] = bus.read_word_debug(self.state.pc);
+        self.state.prefetch[0] = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);
     }
 
@@ -204,21 +206,136 @@ impl Cpu {
         }
     }
 
-    /// Handles address error exception by pushing 7-word stack frame
-    pub(crate) fn handle_address_error(&mut self, fault_addr: u32, is_read: bool, bus: &mut MemoryBus) {
+    /// Reads value from EA for a Read-Modify-Write operation.
+    /// If EA is memory-based, resolves the address ONCE and returns `(value, Some(addr))`.
+    /// If EA is register-based (`DataDirect`), returns `(value, None)`.
+    pub fn read_ea_modify(
+        &mut self,
+        ea: &AddressingMode,
+        size: Size,
+        bus: &mut MemoryBus,
+    ) -> Result<(u32, Option<u32>), EaError> {
+        match *ea {
+            AddressingMode::DataDirect(reg) => {
+                let d = self.state.d[reg as usize];
+                let val = match size {
+                    Size::Byte => d & 0xFF,
+                    Size::Word => d & 0xFFFF,
+                    Size::Long => d,
+                };
+                Ok((val, None))
+            }
+            AddressingMode::AddressDirect(reg) => {
+                let a = self.state.read_a(reg as usize);
+                let val = match size {
+                    Size::Byte => a & 0xFF,
+                    Size::Word => a & 0xFFFF,
+                    Size::Long => a,
+                };
+                Ok((val, None))
+            }
+            AddressingMode::Immediate(_) => Err(EaError::IllegalAddressingMode),
+            _ => {
+                let addr = ea.resolve_address(&mut self.state, size)?;
+                let val = match size {
+                    Size::Byte => bus.read_byte_debug(addr) as u32,
+                    Size::Word => bus.read_word_debug(addr) as u32,
+                    Size::Long => {
+                        let hi = bus.read_word_debug(addr) as u32;
+                        let lo = bus.read_word_debug(addr.wrapping_add(2)) as u32;
+                        (hi << 16) | lo
+                    }
+                };
+                Ok((val, Some(addr)))
+            }
+        }
+    }
+
+    /// Writes modified value back to EA without re-resolving address.
+    pub fn write_ea_modify(
+        &mut self,
+        ea: &AddressingMode,
+        addr: Option<u32>,
+        val: u32,
+        size: Size,
+        bus: &mut MemoryBus,
+    ) -> Result<(), EaError> {
+        match addr {
+            Some(addr) => {
+                match size {
+                    Size::Byte => {
+                        bus.write_byte_debug(addr, (val & 0xFF) as u8);
+                    }
+                    Size::Word => {
+                        bus.write_word_debug(addr, (val & 0xFFFF) as u16);
+                    }
+                    Size::Long => {
+                        bus.write_word_debug(addr, (val >> 16) as u16);
+                        bus.write_word_debug(addr.wrapping_add(2), (val & 0xFFFF) as u16);
+                    }
+                }
+                Ok(())
+            }
+            None => {
+                match *ea {
+                    AddressingMode::DataDirect(reg) => {
+                        self.write_d_reg(reg as usize, val, size);
+                        Ok(())
+                    }
+                    AddressingMode::AddressDirect(reg) => {
+                        let final_val = if size == Size::Word {
+                            move_ops::sign_extend_word(val as u16)
+                        } else {
+                            val
+                        };
+                        self.state.write_a(reg as usize, final_val);
+                        Ok(())
+                    }
+                    _ => Err(EaError::IllegalAddressingMode),
+                }
+            }
+        }
+    }
+
+    /// Handles address error exception with specific function code
+    pub(crate) fn handle_address_error_fc(
+        &mut self,
+        fault_addr: u32,
+        is_read: bool,
+        function_code: u8,
+        bus: &mut MemoryBus,
+    ) {
         system::push_address_error_exception(
             &mut self.state,
             fault_addr,
             is_read,
-            if self.state.is_supervisor() { 5 } else { 1 },
-            |addr, val| bus.write_word_debug(addr, val),
-            |addr| {
-                let hi = bus.read_word_debug(addr);
-                let lo = bus.read_word_debug(addr.wrapping_add(2));
-                ((hi as u32) << 16) | (lo as u32)
-            },
+            function_code,
+            bus,
         );
         self.reload_pc_and_prefetch(self.state.pc, bus);
+    }
+
+    /// Handles address error exception by pushing 7-word stack frame
+    pub(crate) fn handle_address_error(&mut self, fault_addr: u32, is_read: bool, bus: &mut MemoryBus) {
+        let function_code = if self.state.is_supervisor() { 5 } else { 1 };
+        self.handle_address_error_fc(fault_addr, is_read, function_code, bus);
+    }
+
+    /// Handles address error exception, selecting Program Space (FC 2/6) for PC-relative modes
+    pub(crate) fn handle_address_error_for_ea(
+        &mut self,
+        ea: &AddressingMode,
+        fault_addr: u32,
+        is_read: bool,
+        bus: &mut MemoryBus,
+    ) {
+        let is_sup = self.state.is_supervisor();
+        let function_code = if ea.is_program_space() {
+            if is_sup { 6 } else { 2 }
+        } else {
+            if is_sup { 5 } else { 1 }
+        };
+        self.handle_address_error_fc(fault_addr, is_read, function_code, bus);
     }
 
     #[inline]

@@ -4,6 +4,7 @@
 //! DMA wait-state stalling, and hardware quirks per Obsidian/Amiga/Design/MemoryBus.md.
 
 pub mod arbitration;
+pub mod big_array;
 pub mod map;
 pub mod test_injection;
 
@@ -54,6 +55,7 @@ pub struct MemoryBus {
     pub config: A500Config,
 
     /// 256-entry direct bank dispatch table (function pointers to read/write handlers)
+    #[serde(with = "big_array")]
     pub bank_map: [BankHandler; 256],
 
     /// Physical Chip RAM buffer (512 KB default, expandable to 1 MB)
@@ -87,10 +89,15 @@ pub struct MemoryBus {
     pub cia_b_registers: [u8; 16],
 
     /// Custom chip register space $DFF000-$DFFFFE (256 16-bit words)
+    #[serde(with = "big_array")]
     pub custom_registers: [u16; 256],
 
     /// Real-Time Clock (OKI MSM6242B) at $DC0000..$DC003F
     pub rtc: rtc::RtcMsm6242b,
+
+    /// Sparse test memory for CPU SingleStepTests and synthetic test runner execution
+    #[serde(skip)]
+    pub test_memory: Option<std::collections::HashMap<u32, u8>>,
 }
 
 impl Default for MemoryBus {
@@ -103,6 +110,37 @@ impl MemoryBus {
     /// Creates a standard A500 MemoryBus using the default configuration (Standard 1 MB + RTC, PAL)
     pub fn new() -> Self {
         Self::from_config(A500Config::default())
+    }
+
+    /// Creates a lightweight test memory bus with sparse 24-bit test RAM for CPU SingleStepTests
+    pub fn new_test() -> Self {
+        let config = A500Config::default();
+        let bank_map = [map::OPEN_BUS_HANDLER; 256];
+        let rtc = rtc::RtcMsm6242b::new(config.rtc());
+        Self {
+            config,
+            bank_map,
+            chip_ram: Vec::new(),
+            slow_ram: None,
+            fast_ram: None,
+            kickstart_rom: Vec::new(),
+            read_latch: 0xFFFF,
+            pending_write_data: 0,
+            chip_ram_blocked: false,
+            low_memory_overlay: false,
+            cia_a_registers: [0xFF; 16],
+            cia_b_registers: [0xFF; 16],
+            custom_registers: [0xFFFF; 256],
+            rtc,
+            test_memory: Some(std::collections::HashMap::with_capacity(32)),
+        }
+    }
+
+    /// Enables sparse flat test memory on an existing bus
+    pub fn enable_flat_test_memory(&mut self) {
+        if self.test_memory.is_none() {
+            self.test_memory = Some(std::collections::HashMap::with_capacity(32));
+        }
     }
 
     /// Creates a MemoryBus configured per the provided A500Config
@@ -136,6 +174,7 @@ impl MemoryBus {
             cia_b_registers: [0xFF; 16],
             custom_registers: [0xFFFF; 256],
             rtc,
+            test_memory: None,
         };
         bus.map_kickstart_to_low_memory();
         bus

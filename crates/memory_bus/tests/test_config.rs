@@ -50,7 +50,7 @@ fn test_apply_preset_mutation() {
 #[test]
 fn test_memory_bus_with_bare_preset_has_open_bus_rtc() {
     let config = A500Config::bare_512k(VideoStandard::Pal);
-    let mut bus = MemoryBus::from_config(config);
+    let bus = MemoryBus::from_config(config);
 
     assert!(bus.slow_ram.is_none());
     assert!(bus.fast_ram.is_none());

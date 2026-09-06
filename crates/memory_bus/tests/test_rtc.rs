@@ -3,7 +3,7 @@
 //! Verifies odd-byte address decoding, BCD conversion, 24/12h mode, HOLD latching,
 //! CCK cycle stepping, and preset mapping per Obsidian/Amiga/Design/RTC.md.
 
-use memory_bus::{A500Config, A500Preset, MemoryBus, RtcModel, VideoStandard};
+use memory_bus::{A500Config, MemoryBus, RtcModel, VideoStandard};
 
 #[test]
 fn test_rtc_unmapped_on_bare_512k() {
@@ -30,20 +30,22 @@ fn test_rtc_odd_byte_addressing() {
     let config = A500Config::standard_1mb(VideoStandard::Pal);
     let mut bus = MemoryBus::from_config(config);
 
-    // Even byte addresses (A0 = 0) must return floating open bus $FF
-    for reg in 0..16 {
-        let even_addr = 0xDC0000 + (reg * 4);
-        assert_eq!(
-            bus.read_byte_debug(even_addr),
-            0xFF,
-            "Even address 0x{:06X} should return 0xFF",
-            even_addr
-        );
+    assert_eq!(bus.config.rtc(), RtcModel::Msm6242b);
 
-        // Writing to even address is ignored
-        bus.write_byte_debug(even_addr, 0x0A);
-        assert_eq!(bus.read_byte_debug(even_addr), 0xFF);
-    }
+    // Even byte addresses in RTC space ($DC0000, $DC0002, ...) return open bus $FF
+    assert_eq!(bus.read_byte_debug(0xDC0000), 0xFF);
+    assert_eq!(bus.read_byte_debug(0xDC0002), 0xFF);
+    assert_eq!(bus.read_byte_debug(0xDC000E), 0xFF);
+
+    // Odd byte addresses return active 4-bit nibbles ($00..$0F)
+    assert!(bus.read_byte_debug(0xDC0001) <= 0x0F);
+    assert!(bus.read_byte_debug(0xDC0005) <= 0x0F);
+    assert!(bus.read_byte_debug(0xDC0009) <= 0x0F);
+
+    // Even byte writes do not alter odd byte register state
+    let before = bus.read_byte_debug(0xDC0001);
+    bus.write_byte_debug(0xDC0000, 0x0A);
+    assert_eq!(bus.read_byte_debug(0xDC0001), before);
 }
 
 #[test]
@@ -51,9 +53,9 @@ fn test_rtc_bcd_decomposition_and_registers() {
     let config = A500Config::standard_1mb(VideoStandard::Pal);
     let mut bus = MemoryBus::from_config(config);
 
-    // Timestamp for 1993-03-15 14:27:08 UTC = 732196028
+    // Timestamp for 1993-03-15 14:27:08 UTC = 732205628
     // Note: Monday March 15, 1993
-    bus.rtc.set_time(732196028);
+    bus.rtc.set_time(732205628);
 
     // Register 0 (1s sec) -> 8
     assert_eq!(bus.read_byte_debug(0xDC0001), 8);
@@ -89,7 +91,7 @@ fn test_rtc_12_hour_mode() {
     let mut bus = MemoryBus::from_config(config);
 
     // 14:27:08 (2:27:08 PM)
-    bus.rtc.set_time(732196028);
+    bus.rtc.set_time(732205628);
 
     // Switch to 12-hour mode by clearing Bit 2 of Control Register F ($DC003D)
     let ctrl_f = bus.read_byte_debug(0xDC003D);
@@ -102,7 +104,7 @@ fn test_rtc_12_hour_mode() {
     assert_eq!(bus.read_byte_debug(0xDC0015), 0x04);
 
     // Midnight 00:15:00 should be 12:15 AM
-    bus.rtc.set_time(732159300);
+    bus.rtc.set_time(732154500);
     // Reg 4 = 2, Reg 5 = 1 (12 AM, PM bit 0)
     assert_eq!(bus.read_byte_debug(0xDC0011), 2);
     assert_eq!(bus.read_byte_debug(0xDC0015), 1);

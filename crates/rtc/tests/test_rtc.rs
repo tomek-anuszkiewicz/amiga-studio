@@ -24,8 +24,8 @@ fn test_rtc_even_address_reads_open_bus() {
 #[test]
 fn test_rtc_timestamp_bcd_encoding() {
     let mut rtc = RtcMsm6242b::new(RtcModel::Msm6242b);
-    // 1993-03-15 14:27:08 UTC = 732196028 (Monday)
-    rtc.set_time(732196028);
+    // 1993-03-15 14:27:08 UTC = 732205628 (Monday)
+    rtc.set_time(732205628);
 
     assert_eq!(rtc.read_byte(0xDC0001), 8); // 1s sec
     assert_eq!(rtc.read_byte(0xDC0005), 0); // 10s sec
@@ -46,7 +46,7 @@ fn test_rtc_timestamp_bcd_encoding() {
 fn test_rtc_12_hour_am_pm_mode() {
     let mut rtc = RtcMsm6242b::new(RtcModel::Msm6242b);
     // 14:27:08 (2:27:08 PM)
-    rtc.set_time(732196028);
+    rtc.set_time(732205628);
 
     // Switch to 12-hour mode by clearing Bit 2 of Control Register F ($DC003D)
     let ctrl_f = rtc.read_byte(0xDC003D);
@@ -57,7 +57,7 @@ fn test_rtc_12_hour_am_pm_mode() {
     assert_eq!(rtc.read_byte(0xDC0015), 0x04);
 
     // Midnight 00:15:00 should be 12:15 AM
-    rtc.set_time(732159300);
+    rtc.set_time(732154500);
     assert_eq!(rtc.read_byte(0xDC0011), 2);
     assert_eq!(rtc.read_byte(0xDC0015), 1); // 12 AM (PM bit = 0)
 }

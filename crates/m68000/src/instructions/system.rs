@@ -1,6 +1,7 @@
 //! M68000 System and Exception Processing (NOP, TRAP, Address Error)
 
 use crate::state::{CpuState, SR_S, SR_T};
+use memory_bus::MemoryBus;
 
 pub const VECTOR_RESET_SSP: u32 = 0x000000;
 pub const VECTOR_RESET_PC: u32 = 0x000004;
@@ -21,8 +22,7 @@ pub fn push_standard_exception(
     state: &mut CpuState,
     vector_addr: u32,
     return_pc: u32,
-    mut write_word: impl FnMut(u32, u16),
-    mut read_long: impl FnMut(u32) -> u32,
+    bus: &mut MemoryBus,
 ) {
     let old_sr = state.sr;
     // Switch to supervisor mode, clear trace
@@ -32,16 +32,18 @@ pub fn push_standard_exception(
     // Push PC (high word, low word)
     let sp = state.ssp.wrapping_sub(4);
     state.ssp = sp;
-    write_word(sp, (return_pc >> 16) as u16);
-    write_word(sp.wrapping_add(2), (return_pc & 0xFFFF) as u16);
+    bus.write_word_debug(sp, (return_pc >> 16) as u16);
+    bus.write_word_debug(sp.wrapping_add(2), (return_pc & 0xFFFF) as u16);
 
     // Push SR
     let sp = state.ssp.wrapping_sub(2);
     state.ssp = sp;
-    write_word(sp, old_sr);
+    bus.write_word_debug(sp, old_sr);
 
     // Load new PC from vector
-    state.pc = read_long(vector_addr) & 0x00FF_FFFF;
+    let hi = bus.read_word_debug(vector_addr);
+    let lo = bus.read_word_debug(vector_addr.wrapping_add(2));
+    state.pc = ((hi as u32) << 16) | (lo as u32);
 }
 
 /// Initiates MC68000 Group 0/1 Address Error (Vector 3) 7-word exception processing
@@ -50,11 +52,10 @@ pub fn push_address_error_exception(
     fault_addr: u32,
     is_read: bool,
     function_code: u8,
-    mut write_word: impl FnMut(u32, u16),
-    mut read_long: impl FnMut(u32) -> u32,
+    bus: &mut MemoryBus,
 ) {
     let old_sr = state.sr;
-    let old_pc = state.pc;
+    let old_pc = state.instruction_pc;
     let ir = state.ir;
 
     // Switch to supervisor mode, clear trace
@@ -62,12 +63,12 @@ pub fn push_address_error_exception(
     state.sr &= !SR_T;
 
     // Build Internal Information Word:
+    // Bits 15-5: Opcode (IR & 0xFFE0)
     // Bit 4: R/W (1 = Read, 0 = Write)
-    // Bit 3: I/N (1 = Instruction processing, 0 = Exception)
+    // Bit 3: I/N (0 = Instruction processing, 1 = Exception)
     // Bits 2-0: Function Code (FC0-FC2)
     let rw_bit = if is_read { 0x10 } else { 0x00 };
-    let in_bit = 0x08;
-    let info_word = rw_bit | in_bit | ((function_code as u16) & 0x07);
+    let info_word = (ir & 0xFFE0) | rw_bit | ((function_code as u16) & 0x07);
 
     // Push 7-word stack frame in reverse order (bottom to top):
     // SP + 12: Low 16 bits of PC
@@ -80,14 +81,16 @@ pub fn push_address_error_exception(
     let sp = state.ssp.wrapping_sub(14);
     state.ssp = sp;
 
-    write_word(sp, info_word);
-    write_word(sp.wrapping_add(2), (fault_addr >> 16) as u16);
-    write_word(sp.wrapping_add(4), (fault_addr & 0xFFFF) as u16);
-    write_word(sp.wrapping_add(6), ir);
-    write_word(sp.wrapping_add(8), old_sr);
-    write_word(sp.wrapping_add(10), (old_pc >> 16) as u16);
-    write_word(sp.wrapping_add(12), (old_pc & 0xFFFF) as u16);
+    bus.write_word_debug(sp, info_word);
+    bus.write_word_debug(sp.wrapping_add(2), (fault_addr >> 16) as u16);
+    bus.write_word_debug(sp.wrapping_add(4), (fault_addr & 0xFFFF) as u16);
+    bus.write_word_debug(sp.wrapping_add(6), ir);
+    bus.write_word_debug(sp.wrapping_add(8), old_sr);
+    bus.write_word_debug(sp.wrapping_add(10), (old_pc >> 16) as u16);
+    bus.write_word_debug(sp.wrapping_add(12), (old_pc & 0xFFFF) as u16);
 
     // Vector 3 ($00000C)
-    state.pc = read_long(VECTOR_ADDRESS_ERROR) & 0x00FF_FFFF;
+    let hi = bus.read_word_debug(VECTOR_ADDRESS_ERROR);
+    let lo = bus.read_word_debug(VECTOR_ADDRESS_ERROR.wrapping_add(2));
+    state.pc = ((hi as u32) << 16) | (lo as u32);
 }

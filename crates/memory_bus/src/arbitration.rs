@@ -58,7 +58,7 @@ impl MemoryBus {
         addr: u32,
         data: u16,
         is_byte: bool,
-        high_byte: bool,
+        _high_byte: bool,
     ) -> MemoryBusResult {
         let addr = addr & 0x00FF_FFFF;
 

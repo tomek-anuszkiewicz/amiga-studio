@@ -599,6 +599,9 @@ Having access to both the MAME and Tom Harte test suites provides an invaluable 
 | **`ILLEGAL_LINEA` / `LINEF`** | ✅ Included (Vector 10 & Vector 11 tests) | Not included in basic opcode list | **MAME Suite** |
 | **`STOP` Instruction** | ✅ Included (Supervisor privileged stop) | Not included in basic opcode list | **MAME Suite** |
 | **User vs Supervisor Stack** | Both modes tested | 99% Supervisor mode, 1% User mode | **Both** |
+| **`(An)+` Address Error AGU** | ⚠️ Aborts without advancing $A_n$ on address error | ✅ Real Silicon: $A_n$ advances in AGU prior to bus error trap | **Tom Harte Suite** |
+| **Address Error Stack Frame PC** | Pushes $PC$ based on internal simulator microcode stage | Pushes target - 4 on jumps / hardware prefetch PC on faults | **Both (accommodated in runner)** |
+| **PC-Relative Function Codes** | Uses Program Space (FC 2 / 6) on PC-relative operand faults | Uses Data Space (FC 1 / 5) on certain operand evaluations | **Handled in runner status word check** |
 
 ### 9.2 Triangulation Protocol
 When diagnosing a test mismatch:

@@ -87,6 +87,16 @@ pub enum AddressingMode {
     Immediate(u32),
 }
 
+impl AddressingMode {
+    #[inline]
+    pub fn is_program_space(&self) -> bool {
+        matches!(
+            self,
+            AddressingMode::PcDisplacement(_, _) | AddressingMode::PcIndexed(_, _, _)
+        )
+    }
+}
+
 /// Decodes brief extension word for indexed modes
 pub fn decode_brief_extension(ext: u16) -> (IndexReg, i8) {
     let reg_type = if (ext & 0x8000) != 0 {
@@ -143,13 +153,13 @@ impl AddressingMode {
                 0 => {
                     let word = read_ext();
                     // Sign-extend 16-bit to 32-bit
-                    let addr = (word as i16 as i32 as u32) & 0x00FF_FFFF;
+                    let addr = word as i16 as i32 as u32;
                     Ok(AddressingMode::AbsoluteShort(addr))
                 }
                 1 => {
                     let hi = read_ext();
                     let lo = read_ext();
-                    let addr = (((hi as u32) << 16) | (lo as u32)) & 0x00FF_FFFF;
+                    let addr = ((hi as u32) << 16) | (lo as u32);
                     Ok(AddressingMode::AbsoluteLong(addr))
                 }
                 2 => {
@@ -231,16 +241,14 @@ impl AddressingMode {
             }
         };
 
-        let physical_addr = addr & 0x00FF_FFFF;
-
         // Check for unaligned word/long address error
-        if size != Size::Byte && (physical_addr & 1) != 0 {
+        if size != Size::Byte && (addr & 1) != 0 {
             return Err(EaError::AddressError {
-                addr: physical_addr,
+                addr,
                 is_read: true,
             });
         }
 
-        Ok(physical_addr)
+        Ok(addr & 0x00FF_FFFF)
     }
 }

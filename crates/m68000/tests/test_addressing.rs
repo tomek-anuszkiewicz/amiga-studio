@@ -120,11 +120,12 @@ fn test_nop_and_branch() {
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
-    cpu.state.pc = 0x001000;
+    // NOP is at 0x0FFE, prefetch (BRA.S) is at 0x1000, so PC starts at 0x1002
+    cpu.state.pc = 0x001002;
 
     // NOP (0x4E71)
     cpu.state.ir = 0x4E71;
-    cpu.state.prefetch[0] = 0x6004; // BRA.S +4
+    cpu.state.prefetch[0] = 0x6004; // BRA.S +4 at 0x1000
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
     // After NOP retires, ir should be the prefetch (BRA.S 0x6004)

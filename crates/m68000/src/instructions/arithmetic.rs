@@ -134,3 +134,117 @@ pub fn execute_sub(state: &mut CpuState, src: u32, dst: u32, size: Size, update_
         Size::Long => sub_l(state, src, dst, update_ccr),
     }
 }
+
+pub fn execute_addx(state: &mut CpuState, src: u32, dst: u32, size: Size) -> u32 {
+    let x = if state.get_x() { 1 } else { 0 };
+    match size {
+        Size::Byte => {
+            let s = (src & 0xFF) as u8;
+            let d = (dst & 0xFF) as u8;
+            let (res1, c1) = d.overflowing_add(s);
+            let (res, c2) = res1.overflowing_add(x as u8);
+            let c = c1 || c2;
+            let v = ((!(s ^ d) & (d ^ res)) & 0x80) != 0;
+            let n = (res & 0x80) != 0;
+            if res != 0 {
+                state.set_z(false);
+            }
+            state.set_x(c);
+            state.set_c(c);
+            state.set_v(v);
+            state.set_n(n);
+            (dst & !0xFF) | (res as u32)
+        }
+        Size::Word => {
+            let s = (src & 0xFFFF) as u16;
+            let d = (dst & 0xFFFF) as u16;
+            let (res1, c1) = d.overflowing_add(s);
+            let (res, c2) = res1.overflowing_add(x as u16);
+            let c = c1 || c2;
+            let v = ((!(s ^ d) & (d ^ res)) & 0x8000) != 0;
+            let n = (res & 0x8000) != 0;
+            if res != 0 {
+                state.set_z(false);
+            }
+            state.set_x(c);
+            state.set_c(c);
+            state.set_v(v);
+            state.set_n(n);
+            (dst & !0xFFFF) | (res as u32)
+        }
+        Size::Long => {
+            let s = src;
+            let d = dst;
+            let (res1, c1) = d.overflowing_add(s);
+            let (res, c2) = res1.overflowing_add(x);
+            let c = c1 || c2;
+            let v = ((!(s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
+            let n = (res & 0x8000_0000) != 0;
+            if res != 0 {
+                state.set_z(false);
+            }
+            state.set_x(c);
+            state.set_c(c);
+            state.set_v(v);
+            state.set_n(n);
+            res
+        }
+    }
+}
+
+pub fn execute_subx(state: &mut CpuState, src: u32, dst: u32, size: Size) -> u32 {
+    let x = if state.get_x() { 1 } else { 0 };
+    match size {
+        Size::Byte => {
+            let s = (src & 0xFF) as u8;
+            let d = (dst & 0xFF) as u8;
+            let (res1, c1) = d.overflowing_sub(s);
+            let (res, c2) = res1.overflowing_sub(x as u8);
+            let c = c1 || c2;
+            let v = (((s ^ d) & (d ^ res)) & 0x80) != 0;
+            let n = (res & 0x80) != 0;
+            if res != 0 {
+                state.set_z(false);
+            }
+            state.set_x(c);
+            state.set_c(c);
+            state.set_v(v);
+            state.set_n(n);
+            (dst & !0xFF) | (res as u32)
+        }
+        Size::Word => {
+            let s = (src & 0xFFFF) as u16;
+            let d = (dst & 0xFFFF) as u16;
+            let (res1, c1) = d.overflowing_sub(s);
+            let (res, c2) = res1.overflowing_sub(x as u16);
+            let c = c1 || c2;
+            let v = (((s ^ d) & (d ^ res)) & 0x8000) != 0;
+            let n = (res & 0x8000) != 0;
+            if res != 0 {
+                state.set_z(false);
+            }
+            state.set_x(c);
+            state.set_c(c);
+            state.set_v(v);
+            state.set_n(n);
+            (dst & !0xFFFF) | (res as u32)
+        }
+        Size::Long => {
+            let s = src;
+            let d = dst;
+            let (res1, c1) = d.overflowing_sub(s);
+            let (res, c2) = res1.overflowing_sub(x);
+            let c = c1 || c2;
+            let v = (((s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
+            let n = (res & 0x8000_0000) != 0;
+            if res != 0 {
+                state.set_z(false);
+            }
+            state.set_x(c);
+            state.set_c(c);
+            state.set_v(v);
+            state.set_n(n);
+            res
+        }
+    }
+}
