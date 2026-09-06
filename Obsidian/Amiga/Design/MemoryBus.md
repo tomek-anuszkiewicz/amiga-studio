@@ -130,6 +130,12 @@ Expose methods to simulate Agnus cycle stealing:
 - `unlock_chip_ram()`: Sets `chip_ram_blocked = false`.
 - `is_chip_ram_blocked() -> bool`: Queries current arbitration status.
 
+### Test Memory & Direct State Injection for Test Runners
+To support headless unit testing, SingleStepTests, and debugger inspection without side effects:
+- `load_test_ram(&mut self, entries: &[[u32; 2]])`: Injects initial `[address, byte]` vectors directly into physical memory arrays (bypassing bus wait states and latches).
+- `read_byte_debug(&self, addr: u32) -> u8`: Side-effect-free byte read for debugger inspection and test result assertions.
+- `read_word_debug(&self, addr: u32) -> u16`: Side-effect-free word read for disassemblers and test result assertions.
+
 ---
 
 ## 5. Memory Bus Reset Methods

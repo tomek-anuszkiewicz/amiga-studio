@@ -49,24 +49,36 @@ This document outlines the phased development plan, hardware milestones, verific
 - **Embed Static Tables in Paula Core:**
   - Embed the precalculated BLEP sinc tables as static arrays in Paula's audio rendering pipeline, adhering strictly to the zero-allocation hot-path guideline.
 
-### Step 2a: M68000 CPU Foundations, All Addressing Modes & Early Debugger Backend
+### Step 2: MemoryBus & 2-Phase CCK Bus Arbitration
+- **24-Bit Physical Address Decoding:**
+  - Implement full 24-bit physical decoding: Chip RAM (512 KB/1 MB), Slow RAM (`$C00000`), Fast RAM (`$200000`), Kickstart ROM (`$F80000`), and hardware register spaces (`$DFF000`, `$BFE001`, `$BFD000`).
+  - Implement low-memory boot overlay (`_OVL`): route `$000000-$07FFFF` to Kickstart ROM on cold/warm reset until cleared.
+  - Model open bus behavior: floating address lines return `$FF` / `$FFFF` on unmapped spaces without bus errors.
+  - Implement Amiga hardware quirks: `TAS` write-drop in Chip/Slow RAM, CIA byte lane mapping (even on CIA-B, odd on CIA-A).
+- **Sub-Cycle 2-Phase CCK Bus Arbitration:**
+  - Implement two-phase CCK latching (`read_phase1`/`read_phase2`, `write_phase1`/`write_phase2`) returning `MemoryBusResult` (`Phase1Ready`, `Ready(u16)`, `Blocked`).
+  - Transparent read latch buffer (`read_latch`) isolating CPU during bus wait states.
+  - Simulate Agnus cycle stealing and DMA wait states on Chip RAM via `lock_chip_ram()` / `unlock_chip_ram()`.
+  - Provide a test-loading mode to populate arbitrary RAM bytes for `SingleStepTests` execution.
+
+### Step 3a: M68000 CPU Foundations, All Addressing Modes & Early Debugger Backend
 > [!IMPORTANT]
 > **Debugger is an immediate prerequisite:** Building and validating a cycle-exact CPU without an inspection backend is nearly impossible. The core headless debugger engine must be implemented concurrently with the CPU.
 
 - **Early Debugger Primitives (Required Immediately):**
-  - M68000 opcode disassembler (decodes instructions to human-readable strings).
+  - Built-in zero-dependency M68000 opcode disassembler (decodes instructions to human-readable strings).
   - Stepping primitives (`step_instruction`, `step_cck`).
   - PC execution breakpoints and memory read/write watchpoints.
   - Read-only state inspection (`CpuState`, registers $D_0-D_7$, $A_0-A_7$, $SR$, CCR flags, prefetch queue).
   - Fixed-size trace ring buffer (last 1024 instructions) for instant post-mortem diagnosis of test failures or crashes.
 - **CPU Core & Addressing Modes Engine:**
-  - Build cycle-exact instruction execution state machine mapped to CCK phases (CCK1/CCK2).
+  - Build cycle-exact instruction execution state machine mapped to CCK phases (CCK1/CCK2), directly interfaced with `MemoryBus`.
   - Implement and thoroughly test **all M68000 addressing modes** upfront:
     - Data & Address Register Direct (`Dn`, `An`)
     - Address Register Indirect (`(An)`)
-    - Address Register Indirect with Postincrement (`(An)+`) and Predecrement (`-(An)`)
+    - Address Register Indirect with Postincrement (`(An)+`) and Predecrement (`-(An)`) [with `A7` 2-byte alignment quirk on byte ops]
     - Address Register Indirect with Displacement (`(d16, An)`)
-    - Address Register Indirect with Index (`(d8, An, Xn)`)
+    - Address Register Indirect with Index (`(d8, An, Xn)`) [parsing brief extension word]
     - Absolute Short & Long (`(xxx).W`, `(xxx).L`)
     - Program Counter with Displacement & Index (`(d16, PC)`, `(d8, PC, Xn)`)
     - Immediate data & Status Register (`#<data>`, `SR`, `CCR`)
@@ -78,10 +90,10 @@ This document outlines the phased development plan, hardware milestones, verific
     - *Shift & Rotate:* `LSL` / `LSR` (or `ASL` / `ASR`)
     - *Bit Manipulation:* `BTST` / `BSET`
     - *Control Flow:* `BRA` / `Bcc` / `JMP` / `RTS`
-    - *System & Exceptions:* `NOP`, `TRAP`, address error / unaligned access exception handling.
+    - *System & Exceptions:* `NOP`, `TRAP`, address error / unaligned access exception handling (7-word stack frame).
   - Initial SingleStepTest validation run using `m68k-singlestep-test` to ensure bus cycle timing, prefetch queue (`IR`/`IRC`), and CCR calculations are exact across all addressing modes.
 
-### Step 2b: Full M68000 Instruction Set Completion & Cycle-Exact Validation
+### Step 3b: Full M68000 Instruction Set Completion & Cycle-Exact Validation
 - **Implement All Remaining Instructions:**
   - Complete the full M68000 opcode matrix across all categories:
     - Block & specialized moves: `MOVEM`, `MOVEP`, `EXG`, `LEA`, `PEA`
@@ -94,10 +106,6 @@ This document outlines the phased development plan, hardware milestones, verific
   - 100% pass rate against all 127 per-instruction test suites in [`ref_src/SingleStepTests-m68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000/v1) (MAME).
   - 100% pass rate against all 125 compressed suites in [`ref_src/SingleStepTests-680x0/68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0/68000/v1) (Tom Harte).
   - Rigorous verification of edge cases: unaligned word/long address errors, prefetch queue reload delays, bus cycle states, and condition code quirks.
-
-### Step 3: MemoryBus & Bus Contention
-- Implement 24-bit physical decoding and two-phase CCK bus latching (`read_phase1`/`read_phase2`, `write_phase1`/`write_phase2`).
-- Simulate Agnus cycle stealing and DMA wait states on Chip RAM via `MemoryBusResult::Blocked`.
 
 ### Step 4: Custom Chipsets (Agnus, Denise, Paula, CIAs)
 - Decompose monolithic chip logic into focused subcomponents (Copper, Blitter, DMA, Audio, Floppy, Timers, Ports).

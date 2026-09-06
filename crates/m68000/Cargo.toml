@@ -1,0 +1,11 @@
+[package]
+name = "m68000"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+memory_bus = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+bitflags = { workspace = true }

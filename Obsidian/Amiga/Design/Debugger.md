@@ -70,6 +70,28 @@ The debugger maintains a collection of traps evaluated during execution:
   - Branch targets calculated as relative offsets (`$001004: BNE $001040`).
 - Returns formatted strings: `00FC0004: 4E71            NOP`.
 
+#### 4.1.1 Standalone Disassembler API (Zero-Dependency)
+The disassembler is built-in and decoupled from any specific machine or bus struct, operating via a simple closure or reader trait:
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Disassembly {
+    /// Program counter address where instruction begins
+    pub pc: u32,
+    /// Raw instruction word and extension words (up to 5 words for MC68000)
+    pub words: [u16; 5],
+    pub word_count: usize,
+    /// Mnemonic string (e.g. "MOVE.W", "ADD.L", "BRA")
+    pub mnemonic: &'static str,
+    /// Formatted operand string (e.g. "D0, (A1)", "#$0042, D1")
+    pub operands: String,
+}
+
+/// Disassembles one instruction starting at `pc` using a side-effect-free word reader function.
+/// Returns the Disassembly structure and the total number of bytes consumed (word_count * 2).
+pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32);
+```
+
 ### 4.2 Copper List Disassembler
 - Traverses the Copper instruction stream starting from `COP1LC` or `COP2LC`.
 - Disassembles instructions into:

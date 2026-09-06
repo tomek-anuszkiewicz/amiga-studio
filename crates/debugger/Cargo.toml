@@ -1,0 +1,11 @@
+[package]
+name = "debugger"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+m68000 = { workspace = true }
+memory_bus = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }

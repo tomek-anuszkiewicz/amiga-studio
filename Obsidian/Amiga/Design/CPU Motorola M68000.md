@@ -70,6 +70,53 @@ impl CpuState {
 }
 ```
 
+### 1.2 Complete M68000 Addressing Modes Specification
+
+The M68000 supports 12 fundamental addressing modes encoded via the effective address fields `mode` (bits 5–3) and `reg` (bits 2–0):
+
+| Mode Name | Syntax | `mode` | `reg` | Extension Words | Clocks (Read / Write) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Data Register Direct** | `Dn` | `000` | `000-111` | 0 | 0 / 0 |
+| **Address Register Direct** | `An` | `001` | `000-111` | 0 | 0 / 0 |
+| **Address Register Indirect** | `(An)` | `010` | `000-111` | 0 | 4 / 4 |
+| **Address Reg Indirect with Postincrement** | `(An)+` | `011` | `000-111` | 0 | 4 / 4 |
+| **Address Reg Indirect with Predecrement** | `-(An)` | `100` | `000-111` | 0 | 6 / 4 |
+| **Address Reg Indirect with Displacement** | `(d16, An)` | `101` | `000-111` | 1 (`d16`) | 8 / 8 |
+| **Address Reg Indirect with Index** | `(d8, An, Xn)` | `110` | `000-111` | 1 (Brief) | 10 / 10 |
+| **Absolute Short** | `(xxx).W` | `111` | `000` | 1 | 8 / 8 |
+| **Absolute Long** | `(xxx).L` | `111` | `001` | 2 | 12 / 12 |
+| **Program Counter with Displacement** | `(d16, PC)` | `111` | `010` | 1 (`d16`) | 8 / N/A |
+| **Program Counter with Index** | `(d8, PC, Xn)` | `111` | `011` | 1 (Brief) | 10 / N/A |
+| **Immediate Data** | `#<data>` | `111` | `100` | 1 or 2 | 4 / N/A |
+
+#### Brief Extension Word Format (`(d8, An, Xn)` and `(d8, PC, Xn)`)
+The MC68000 exclusively supports the 16-bit **Brief Extension Word**:
+```text
+15   14        12 11   10         8 7                               0
++---+------------+----+------------+--------------------------------+
+|D/A|  Register  |W/L | Scale (000)|   Signed 8-bit Displacement    |
++---+------------+----+------------+--------------------------------+
+```
+- **Bit 15 (D/A):** Index register type (`0` = Data Register $D_n$, `1` = Address Register $A_n$).
+- **Bits 14–12 (Register):** Index register index (0–7).
+- **Bit 11 (W/L):** Index size (`0` = sign-extended 16-bit word, `1` = 32-bit long).
+- **Bits 10–8 (Scale):** Scale factor. On the MC68000, scale is always $1\times$ (`000`).
+- **Bits 7–0 (Displacement):** Signed 8-bit integer ($d_8$), sign-extended to 32 bits.
+- **Effective Address Formula:**
+  - For `(d8, An, Xn)`: $EA = (A_n + X_n + \text{sign\_extend}(d_8)) \ \& \ \text{\$00FFFFFF}$.
+  - For `(d8, PC, Xn)`: $EA = (PC_{extension} + X_n + \text{sign\_extend}(d_8)) \ \& \ \text{\$00FFFFFF}$.
+
+#### Hardware Quirks & Rules
+1. **Stack Pointer `A7` Byte Alignment Quirk:**
+   - On byte-sized operations (`.b`), postincrement `(An)+` and predecrement `-(An)` normally adjust the address register by 1.
+   - **Exception:** If the register is `A7` (either User Stack Pointer `USP` or Supervisor Stack Pointer `SSP`), the address is adjusted by **2** to keep the stack word-aligned.
+2. **Sign Extension Rules:**
+   - 16-bit displacement `d16` and 8-bit displacement `d8` must be sign-extended to 32 bits before addition.
+   - Absolute short addresses `(xxx).W` are sign-extended from 16 to 32 bits (addressing `$00000000-$00007FFF` and `$FFFF8000-$FFFFFFFF`).
+3. **24-bit Physical Address Truncation:**
+   - Internal address registers and arithmetic are full 32-bit. However, the physical MC68000 address bus only routes 24 bits ($A_1-A_{23}$ plus $\overline{UDS}/\overline{LDS}$).
+   - All physical bus transactions must mask addresses to 24 bits (`addr & 0x00FF_FFFF`).
+
 ---
 
 ## 2. Dynamic Opcode Cycle Calculation
@@ -123,6 +170,33 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
   - If unblocked:
     - Byte/word commits to memory. Returns `MemoryBusResult::Ready(0)`.
 
+### 3.3 Micro-Step State Machine & Instruction Lifecycle
+
+Instruction execution is driven via a micro-step state machine clocked at CCK granularity:
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StepResult {
+    /// Micro-step completed within the current instruction
+    StepCompleted,
+    /// Instruction has retired (completed writeback and prefetched next opcode into IR/IRC)
+    InstructionCompleted,
+    /// CPU stalled due to bus wait-state (MemoryBusResult::Blocked)
+    WaitState,
+    /// CPU entered or is in stopped state (STOP instruction)
+    Stopped,
+    /// CPU entered halted state (double bus fault / fatal reset)
+    Halted,
+}
+```
+
+#### Execution Lifecycle Stages
+1. **Decode & EA Calculation (CCK cycles):** Read effective address parameters and extension words from `IRC` if required, initiating refill prefetch reads at `PC`.
+2. **Operand Fetch:** Read source operand from register or memory via 2-phase bus transactions (`read_phase1`/`read_phase2`).
+3. **ALU Operation:** Compute operation using wrapping arithmetic and evaluate condition code flags (X, N, Z, V, C).
+4. **Writeback:** Write destination operand (if memory destination, via `write_phase1`/`write_phase2`).
+5. **Instruction Retirement:** Transfer `IRC -> IR`, fetch next stream word into `IRC`, increment `PC += 2`, and return `StepResult::InstructionCompleted`.
+
 ---
 
 ## 4. Two-Word Instruction Prefetch Pipeline
@@ -163,6 +237,25 @@ The M68000 maintains a two-word prefetch queue:
   - `10`: Line-A (`ILLEGAL_LINEA`)
   - `11`: Line-F (`ILLEGAL_LINEF`)
   - `25-31`: Autovector Interrupts Level 1–7
+
+### 5.1 Address Error (Vector 3) 7-Word Stack Frame
+
+When a word (`.w`) or long (`.l`) bus transfer targets an odd address (`addr & 1 != 0`), the MC68000 aborts instruction execution and pushes a **7-word Group 0/1 exception stack frame** onto the supervisor stack ($SSP$):
+
+```text
+SP + 00: [ R/W | I/N | Function Code (FC0-FC2) ]  (Internal Information Word)
+SP + 02: [ High 16 bits of Access Address       ]
+SP + 04: [ Low 16 bits of Access Address        ]
+SP + 06: [ Instruction Register (IR)            ]
+SP + 08: [ Status Register (SR)                 ]
+SP + 10: [ High 16 bits of Program Counter (PC) ]
+SP + 12: [ Low 16 bits of Program Counter (PC) ]
+```
+- **Internal Information Word (Word 0):**
+  - Bit 4: $R/\overline{W}$ (`1` = Read fault, `0` = Write fault).
+  - Bit 3: $I/N$ (`1` = Processor was executing instruction, `0` = Exception processing).
+  - Bits 2–0: Function Code bits ($FC_2, FC_1, FC_0$).
+- Vector address is loaded from `$00000C` (Vector 3), and execution resumes in supervisor mode ($S=1, T=0$).
 
 ---
 
