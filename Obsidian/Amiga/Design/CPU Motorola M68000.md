@@ -139,6 +139,25 @@ The emulator does **NOT** rely on a static cycle lookup table. Cycles are calcul
 4. **Bus Wait State Accumulation:**
    - Every CCK cycle where `MemoryBus` returns `MemoryBusResult::Blocked` adds exactly **1 CCK (2 CPU clocks)** to the instruction's total duration.
 
+### 2.1 Modern Host CPU Pipelining & Direct Code Flow Architecture
+
+Modern superscalar host CPUs (x86_64, aarch64, Apple Silicon) rely on deep 14–20+ stage execution pipelines, aggressive branch prediction, and speculative execution.
+
+#### The Branch Misprediction Bottleneck in Emulation
+In naive instruction dispatch, cascaded runtime condition checks:
+```text
+Opcode Fetch -> match (opcode >> 12) -> match opmode -> match ea_mode -> if size == Byte ...
+```
+force the host CPU through 8–15 conditional branches per emulated instruction. Because consecutive M68000 instructions change constantly in real guest code, host branch predictors suffer high misprediction rates. Each pipeline flush costs **15 to 20 wasted CPU cycles**.
+
+#### Direct-Threaded / Table-Driven Opcode Dispatch
+To maximize host throughput, verified reference emulators (Musashi via `m68kmake`, WinUAE via `gencpu`, and Moira via C++ template specialization) structure the CPU core as **direct, flattened code flows**:
+- **65,536-Entry Direct Dispatch Table (`[fn; 65536]`):** Every 16-bit opcode indexes directly into a precalculated array of specialized handlers.
+- **Statically Inlined Parameters:** Within each specialized opcode handler, operand size (`.b`, `.w`, `.l`), addressing mode, and register indices are compile-time constants:
+  - Eliminates runtime `match mode` and `if size == ...` checks.
+  - The compiler generates straight-line host assembly instructions for arithmetic and CCR flag updates.
+  - Modern CPU Branch Target Buffers (BTBs) predict indirect table dispatches with high efficiency, maximizing instruction cache locality and superscalar throughput.
+
 ---
 
 ## 3. Bus Stalling & CCK Phase Model

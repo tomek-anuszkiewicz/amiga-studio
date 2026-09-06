@@ -1,4 +1,11 @@
 //! M68000 Effective Address (EA) decoding, calculation, and operand resolution
+//!
+//! # Architecture & Host Pipelining Principle
+//! Modern host CPUs (x86_64, aarch64) feature deep execution pipelines and incur heavy branch
+//! misprediction penalties (15–20 cycles per stall). For maximum performance, instruction dispatch
+//! avoids cascaded runtime conditionals (`match mode`, `if size == ...`). Dedicated opcode handlers
+//! execute direct, straight-line code flows with operand size and addressing modes statically
+//! baked in (or via specialized inline functions).
 
 use crate::state::CpuState;
 

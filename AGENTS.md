@@ -66,6 +66,11 @@ All agentic pair-programming and automated modifications must adhere strictly to
      - No `std::thread` or OS thread spawning.
      - No `std::fs` calls (load ROMs and disk images as `&[u8]` byte slices passed into public constructors/methods).
 
+6. **Direct Code Flow & Branch-Minimization (Host CPU Pipelining)**:
+   - Modern superscalar host CPUs (x86_64, aarch64) feature deep execution pipelines (14–20+ stages) and heavily penalize branch mispredictions (15–20 wasted cycles per stall).
+   - Cascaded runtime branches (`match opcode`, `match ea_mode`, `if size == Size::Byte`) in the hot instruction dispatch loop cause severe branch predictor thrashing.
+   - For peak performance, the execution core must favor **direct, flattened code flows** (e.g. 65,536-entry direct dispatch table `[fn; 65536]`, direct-threaded handlers, or specialized code generation) where addressing modes, sizes, and registers are statically baked into dedicated handlers, avoiding dynamic runtime conditionals.
+
 ---
 
 ## 3. Knowledge Base & Reference Navigation
