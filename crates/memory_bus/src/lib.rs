@@ -4,7 +4,6 @@
 //! DMA wait-state stalling, and hardware quirks per Obsidian/Amiga/Design/MemoryBus.md.
 
 pub mod arbitration;
-pub mod config;
 pub mod map;
 pub mod test_injection;
 

@@ -2,12 +2,12 @@
 # M68000 SingleStepTests Suite Specification
 
 > [!NOTE]
-> Operational test running, command shortcuts, and debugging checklists are documented in the [m68k-singlestep-test](file:///d:/Programowanie/Amiga/.agents/skills/m68k-singlestep-test/SKILL.md) skill.
-> Step-by-step instruction implementation is guided by [add-m68k-instruction](file:///d:/Programowanie/Amiga/.agents/skills/add-m68k-instruction/SKILL.md).
+> Operational test running, command shortcuts, and debugging checklists are documented in the [m68k-singlestep-test](../../../.agents/skills/m68k-singlestep-test/SKILL.md) skill.
+> Step-by-step instruction implementation is guided by [add-m68k-instruction](../../../.agents/skills/add-m68k-instruction/SKILL.md).
 
 This document defines the complete specification and Rust data structures for running the **SingleStepTests** test suites against the M68000 CPU emulator. It specifies validation against both:
-1. The **MAME SingleStepTests suite** in [`ref_src/SingleStepTests-m68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000/v1) (127 JSON files).
-2. The **Tom Harte SingleStepTests-680x0 suite** in [`ref_src/SingleStepTests-680x0/68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0/68000/v1) (125 `.json.gz` files, ~1,000,000 tests).
+1. The **MAME SingleStepTests suite** in [`ref_src/SingleStepTests-m68000/v1/`](../../../ref_src/SingleStepTests-m68000/v1) (127 JSON files).
+2. The **Tom Harte SingleStepTests-680x0 suite** in [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) (125 `.json.gz` files, ~1,000,000 tests).
 
 ---
 
@@ -17,7 +17,7 @@ To ensure robust, ground-truth verification and eliminate single-source simulati
 
 | Feature | Suite 1: MAME SingleStepTests | Suite 2: Tom Harte SingleStepTests |
 | :--- | :--- | :--- |
-| **Path** | [`ref_src/SingleStepTests-m68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000/v1) | [`ref_src/SingleStepTests-680x0/68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0/68000/v1) |
+| **Path** | [`ref_src/SingleStepTests-m68000/v1/`](../../../ref_src/SingleStepTests-m68000/v1) | [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) |
 | **File Format** | Plain `.json` (and `.json.bin`) | Gzip-compressed `.json.gz` |
 | **Suite Count** | **127 test files** | **125 test files** |
 | **Test Scale** | ~1,000–5,000 tests per file | ~8,000+ tests per file (~1,000,000 total) |
@@ -603,14 +603,14 @@ Having access to both the MAME and Tom Harte test suites provides an invaluable 
 ### 9.2 Triangulation Protocol
 When diagnosing a test mismatch:
 1. **Fails in MAME, Passes in Tom Harte:**
-   - Check if the instruction is `TAS`, `TRAPV`, or touches a known MAME microcode generator quirk. If Tom Harte passes and verified against [Moira 3.0](file:///d:/Programowanie/Amiga/ref_src/Moira-3.0), the core is behaving accurately.
+   - Check if the instruction is `TAS`, `TRAPV`, or touches a known MAME microcode generator quirk. If Tom Harte passes and verified against [Moira 3.0](../../../ref_src/Moira-3.0), the core is behaving accurately.
 2. **Fails in Tom Harte, Passes in MAME:**
    - Tom Harte generates vastly more random address combinations (~8,000 per opcode). A failure here typically reveals an unaligned address boundary edge case or unhandled condition code combination that MAME's smaller sample missed.
 3. **Fails in Both:**
    - Definite implementation bug in decoding, effective address calculation, CCK phase alignment, or CCR flag updates.
 
 ### 9.3 Automated Dual-Suite Integration Test Matrix
-The integration test suite in [`crates/test_runner/tests/test_singlestep.rs`](file:///d:/Programowanie/Amiga/crates/test_runner/tests/test_singlestep.rs) executes dual-suite cross-validation on every `cargo test` run. Each opcode test invokes `run_dual_test("<OPCODE>", limit)`, simultaneously validating vectors against:
+The integration test suite in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs) executes dual-suite cross-validation on every `cargo test` run. Each opcode test invokes `run_dual_test("<OPCODE>", limit)`, simultaneously validating vectors against:
 - **MAME suite** (`ref_src/SingleStepTests-m68000/v1/<OPCODE>.json`)
 - **Real 68k / Tom Harte suite** (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json.gz`)
 

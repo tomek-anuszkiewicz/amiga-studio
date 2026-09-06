@@ -1,7 +1,7 @@
 # Amiga 500 General System Architecture
 
 > [!NOTE]
-> Project-wide engineering constraints, Rust coding guidelines, and WASM requirements are defined in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md).
+> Project-wide engineering constraints, Rust coding guidelines, and WASM requirements are defined in [AGENTS.md](../../../AGENTS.md).
 
 ---
 
@@ -77,11 +77,11 @@ graph TD
 
 | Crate | Path | Responsibility | Workspace Dependencies |
 | :--- | :--- | :--- | :--- |
-| **`config`** | [`crates/config`](file:///d:/Programowanie/Amiga/crates/config) | Encapsulated, read-only hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`), `RtcModel`, video timings. | *None* |
-| **`memory_bus`** | [`crates/memory_bus`](file:///d:/Programowanie/Amiga/crates/memory_bus) | 24-bit physical address space, 256-entry 64KB bank table (`addr >> 16`), 2-phase CCK arbitration, open bus emulation. | `config` |
-| **`m68000`** | [`crates/m68000`](file:///d:/Programowanie/Amiga/crates/m68000) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | `memory_bus` |
-| **`debugger`** | [`crates/debugger`](file:///d:/Programowanie/Amiga/crates/debugger) | Headless inspection and debugging subsystem, register/memory inspectors, disassembly, breakpoint triggers. | `m68000`, `memory_bus` |
-| **`test_runner`** | [`crates/test_runner`](file:///d:/Programowanie/Amiga/crates/test_runner) | Automated validation against MAME (`.json`) and Tom Harte (`.json.gz`) SingleStepTests suites. | `m68000`, `memory_bus`, `debugger` |
+| **`config`** | [`crates/config`](../../../crates/config) | Encapsulated, read-only hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`), `RtcModel`, video timings. | *None* |
+| **`memory_bus`** | [`crates/memory_bus`](../../../crates/memory_bus) | 24-bit physical address space, 256-entry 64KB bank table (`addr >> 16`), 2-phase CCK arbitration, open bus emulation. | `config` |
+| **`m68000`** | [`crates/m68000`](../../../crates/m68000) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | `memory_bus` |
+| **`debugger`** | [`crates/debugger`](../../../crates/debugger) | Headless inspection and debugging subsystem, register/memory inspectors, disassembly, breakpoint triggers. | `m68000`, `memory_bus` |
+| **`test_runner`** | [`crates/test_runner`](../../../crates/test_runner) | Automated validation against MAME (`.json`) and Tom Harte (`.json.gz`) SingleStepTests suites. | `m68000`, `memory_bus`, `debugger` |
 
 ---
 
@@ -91,27 +91,27 @@ graph TD
 - **Decoupled Host I/O**:
   - Video rendering outputs into a dedicated frame buffer.
   - Audio outputs into decoupled sample ring buffers.
-  - Save states serialize full machine state to/from JSON (see [SaveState.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/SaveState.md)).
+  - Save states serialize full machine state to/from JSON (see [SaveState.md](SaveState.md)).
 
 ---
 
 ## 4. Subsystem Reference Links
 
-- [Main loop A500.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Main%20loop%20A500.md): Machine stepping, reset sequence, and interrupt arbitration.
-- [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md): 2-phase CCK arbitration, address decoding, and DMA contention.
-- [Agnus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Agnus.md): Master beam counters, DMA arbiter, Copper, and 4-channel Blitter.
-- [Denise.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Denise.md): Video pixel serializer, bitplanes, sprites, palette, and collisions.
-- [Paula.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Paula.md): 4-channel DMA audio, floppy disk MFM controller, serial UART, and central interrupt multiplexer.
-- [CIA.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CIA.md): Dual MOS 8520 Complex Interface Adapters (timers, TOD, SDR, parallel & control ports).
-- [CycleCounter.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CycleCounter.md): Master Color Clock counter.
-- [SaveState.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/SaveState.md): State serialization model.
-- [Configuration.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Configuration.md): Machine configuration, RAM sizes, chipset models, and ROM injection.
-- [Debugger.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Debugger.md): Headless debugger backend, stepping, breakpoints, and disassembler.
-- [GUI.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/GUI.md): Frontend architecture, video viewport, audio sink, and developer UI panels.
-- [Joystick.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Joystick.md): Game port digital/analog joysticks, 4-player parallel adapter, and host gamepad mapping.
-- [Mouse.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Mouse.md): Port 1 quadrature counters (`JOY0DAT`), buttons, pointer locking, and touchscreen mapping.
-- [Keyboard.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Keyboard.md): Microcontroller serial protocol, scancode matrix, `Ctrl-Amiga-Amiga` reset, and host layout-independent key mapping.
-- [Floppy.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Floppy.md): 3.5" DD drive mechanics, multi-chip interface (CIA-A, CIA-B, Paula, Agnus), MFM track layout, and ADF ingestion.
+- [Main loop A500.md](Main%20loop%20A500.md): Machine stepping, reset sequence, and interrupt arbitration.
+- [MemoryBus.md](MemoryBus.md): 2-phase CCK arbitration, address decoding, and DMA contention.
+- [Agnus.md](Agnus.md): Master beam counters, DMA arbiter, Copper, and 4-channel Blitter.
+- [Denise.md](Denise.md): Video pixel serializer, bitplanes, sprites, palette, and collisions.
+- [Paula.md](Paula.md): 4-channel DMA audio, floppy disk MFM controller, serial UART, and central interrupt multiplexer.
+- [CIA.md](CIA.md): Dual MOS 8520 Complex Interface Adapters (timers, TOD, SDR, parallel & control ports).
+- [CycleCounter.md](CycleCounter.md): Master Color Clock counter.
+- [SaveState.md](SaveState.md): State serialization model.
+- [Configuration.md](Configuration.md): Machine configuration, RAM sizes, chipset models, and ROM injection.
+- [Debugger.md](Debugger.md): Headless debugger backend, stepping, breakpoints, and disassembler.
+- [GUI.md](GUI.md): Frontend architecture, video viewport, audio sink, and developer UI panels.
+- [Joystick.md](Joystick.md): Game port digital/analog joysticks, 4-player parallel adapter, and host gamepad mapping.
+- [Mouse.md](Mouse.md): Port 1 quadrature counters (`JOY0DAT`), buttons, pointer locking, and touchscreen mapping.
+- [Keyboard.md](Keyboard.md): Microcontroller serial protocol, scancode matrix, `Ctrl-Amiga-Amiga` reset, and host layout-independent key mapping.
+- [Floppy.md](Floppy.md): 3.5" DD drive mechanics, multi-chip interface (CIA-A, CIA-B, Paula, Agnus), MFM track layout, and ADF ingestion.
 
 ---
 

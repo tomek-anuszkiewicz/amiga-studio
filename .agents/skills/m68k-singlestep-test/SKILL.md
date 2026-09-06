@@ -17,7 +17,7 @@ This skill guides the validation and debugging of the M68000 CPU implementation 
 - **Paths:**
   - MAME suite: `ref_src/SingleStepTests-m68000/v1/<INSTRUCTION>.<size>.json`
   - Tom Harte suite: `ref_src/SingleStepTests-680x0/68000/v1/<INSTRUCTION>.<size>.json.gz`
-- **Specification Document:** Complete architecture, comparative matrix, and Rust data structures are in [CPU SingleStepTests.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CPU%20SingleStepTests.md).
+- **Specification Document:** Complete architecture, comparative matrix, and Rust data structures are in [CPU SingleStepTests.md](../../../Obsidian/Amiga/Design/CPU%20SingleStepTests.md).
 
 ---
 

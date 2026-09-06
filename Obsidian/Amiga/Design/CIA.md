@@ -1,9 +1,9 @@
 # MOS 8520 Complex Interface Adapters (CIA-A & CIA-B) Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md), [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md), and [CycleCounter.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CycleCounter.md).
-> Save state structures for the CIAs are specified in [SaveState.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/SaveState.md).
-> Detailed keyboard serial protocol and handshake timings are documented in [Keyboard.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Keyboard.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [CycleCounter.md](CycleCounter.md).
+> Save state structures for the CIAs are specified in [SaveState.md](SaveState.md).
+> Detailed keyboard serial protocol and handshake timings are documented in [Keyboard.md](Keyboard.md).
 
 ---
 
@@ -100,7 +100,7 @@ The SDR is an 8-bit bidirectional shift register clocked by the external `CNT` p
   - Keyboard sends scancodes bit-serially into CIA-A SDR.
   - Once 8 bits are received, CIA-A latches the byte and asserts the SDR interrupt in `ICR`.
   - The Amiga OS acknowledges receipt by pulsing the keyboard clock line low via CIA-A Port A.
-  - *Detailed Specifications:* See [Keyboard.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Keyboard.md).
+  - *Detailed Specifications:* See [Keyboard.md](Keyboard.md).
 
 ---
 
@@ -148,7 +148,7 @@ flowchart TD
 - **Bit 7 (`_MTR`):** Floppy motor on/off (latched on drive selection).
 
 > [!NOTE]
-> For complete drive mechanics, motor latching on select, head step rates, `_CHNG` flip-flop clearing, and MFM sector formatting, see [Floppy.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Floppy.md).
+> For complete drive mechanics, motor latching on select, head step rates, `_CHNG` flip-flop clearing, and MFM sector formatting, see [Floppy.md](Floppy.md).
 
 ---
 

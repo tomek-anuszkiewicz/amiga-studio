@@ -3,7 +3,7 @@
 This document specifies the hardware registers, quadrature counter mechanics, button sensing, and cross-platform host mouse/touchscreen input abstraction for the Amiga 500 emulator.
 
 > [!NOTE]
-> For top-level machine coordination, see [General Architecture.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/General%20Architecture.md). For game port configurations, see [Configuration.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Configuration.md). For digital joysticks, see [Joystick.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Joystick.md). For GUI pointer locking, see [GUI.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/GUI.md).
+> For top-level machine coordination, see [General Architecture.md](General%20Architecture.md). For game port configurations, see [Configuration.md](Configuration.md). For digital joysticks, see [Joystick.md](Joystick.md). For GUI pointer locking, see [GUI.md](GUI.md).
 
 ---
 
@@ -207,12 +207,12 @@ impl MouseDevice {
 - **CIA-A Integration:** `CIAAPRA` bit 6 reads `0` if `left_button == true`, `1` otherwise.
 - **Paula Integration:** `POTINP` bit 10 reads `0` if `right_button == true`, bit 8 reads `0` if `middle_button == true`.
 - **Denise Integration:** Denise returns `read_joy0dat()` whenever `$DFF00A` is accessed.
-- **Save State:** `MouseState` (counters and button states) is fully serialized in [SaveState.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/SaveState.md).
+- **Save State:** `MouseState` (counters and button states) is fully serialized in [SaveState.md](SaveState.md).
 
 ---
 
 ## 7. Reference Documentation
 
-- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md)
-- [Amiga Hardware Reference Manual: Appendix E (Interfaces)](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Reference/Hardware%20Reference%20Manual/13%20-%20Appendix%20E%20-%20Interfaces.md)
-- [vAmiga Mouse Implementation Reference](file:///d:/Programowanie/Amiga/ref_src/vAmiga-4.5/Core/Peripherals/Mouse/Mouse.h)
+- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md)
+- [Amiga Hardware Reference Manual: Appendix E (Interfaces)](../Reference/Hardware%20Reference%20Manual/13%20-%20Appendix%20E%20-%20Interfaces.md)
+- [vAmiga Mouse Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Peripherals/Mouse/Mouse.h)

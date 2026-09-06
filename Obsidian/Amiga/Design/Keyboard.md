@@ -3,7 +3,7 @@
 This document specifies the keyboard microcontroller hardware, serial transmission protocol, scancode matrix, warm reset mechanics (`Ctrl-Amiga-Amiga`), and cross-platform host keyboard abstraction for the Amiga 500 emulator.
 
 > [!NOTE]
-> For top-level machine coordination and reset sequences, see [Main loop A500.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Main%20loop%20A500.md) and [General Architecture.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/General%20Architecture.md). For CIA-A register mapping, see [CIA.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CIA.md). For host frontend keyboard routing, see [GUI.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/GUI.md).
+> For top-level machine coordination and reset sequences, see [Main loop A500.md](Main%20loop%20A500.md) and [General Architecture.md](General%20Architecture.md). For CIA-A register mapping, see [CIA.md](CIA.md). For host frontend keyboard routing, see [GUI.md](GUI.md).
 
 ---
 
@@ -132,7 +132,7 @@ sequenceDiagram
 3. **Hard Line Pull:** The microcontroller asserts the motherboard `_RESET` pin low for at least **500 ms**, ensuring all custom chips and the CPU are fully held in reset.
 4. **Kickstart Warm Boot:**
    - On release, the CPU loads initial SSP and PC from `$000000`/`$000004` (overlayed to Kickstart ROM).
-   - Because RAM was not erased, Kickstart verifies the memory checksums (`KickTagPtr`), detects a warm reset, preserves resident modules, and restarts without a cold memory test (see [Main loop A500.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Main%20loop%20A500.md)).
+   - Because RAM was not erased, Kickstart verifies the memory checksums (`KickTagPtr`), detects a warm reset, preserves resident modules, and restarts without a cold memory test (see [Main loop A500.md](Main%20loop%20A500.md)).
 
 ---
 
@@ -239,6 +239,6 @@ impl A500 {
 
 ## 7. Reference Documentation
 
-- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md)
-- [Amiga Hardware Reference Manual: Appendix H (Keyboard)](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Reference/Hardware%20Reference%20Manual/16%20-%20Appendix%20H%20-%20Keyboard.md)
-- [vAmiga Keyboard Implementation Reference](file:///d:/Programowanie/Amiga/ref_src/vAmiga-4.5/Core/Peripherals/Keyboard/Keyboard.h)
+- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md)
+- [Amiga Hardware Reference Manual: Appendix H (Keyboard)](../Reference/Hardware%20Reference%20Manual/16%20-%20Appendix%20H%20-%20Keyboard.md)
+- [vAmiga Keyboard Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Peripherals/Keyboard/Keyboard.h)

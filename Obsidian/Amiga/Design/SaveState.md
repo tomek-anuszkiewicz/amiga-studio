@@ -1,9 +1,9 @@
 # Amiga 500 Save State Architecture & Serialization Specification
 
 > [!NOTE]
-> System ownership principles and decoupling constraints are defined in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md) and [General Architecture.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/General%20Architecture.md).
-> Master clock synchronization is detailed in [CycleCounter.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CycleCounter.md).
-> Memory layout and low-memory overlay rules are specified in [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md).
+> System ownership principles and decoupling constraints are defined in [AGENTS.md](../../../AGENTS.md) and [General Architecture.md](General%20Architecture.md).
+> Master clock synchronization is detailed in [CycleCounter.md](CycleCounter.md).
+> Memory layout and low-memory overlay rules are specified in [MemoryBus.md](MemoryBus.md).
 
 ---
 

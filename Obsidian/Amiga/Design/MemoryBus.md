@@ -1,7 +1,7 @@
 # Amiga 500 MemoryBus Architecture & Hardware Quirks
 
 > [!NOTE]
-> Global endianness rules, wrapping arithmetic, and WASM constraints are defined in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md).
+> Global endianness rules, wrapping arithmetic, and WASM constraints are defined in [AGENTS.md](../../../AGENTS.md).
 
 ---
 
@@ -43,12 +43,13 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
 
 - **O(1) Direct Lookup**: An address's bank index is extracted in a single instruction: `(addr >> 16) & 0xFF`.
 - **L1 Cache Resident**: The entire lookup table `[MemoryBank; 256]` occupies just 256 bytes in the host L1 data cache.
+- **Zero Runtime Setup (`static`/`const`)**: Precalculated as compile-time `static` arrays (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), eliminating all initialization loops or runtime reallocation overhead.
 - **Direct Dispatch**:
   - `$00..=$07`: `MemoryBank::ChipRam`
-  - `$20..=$5F`: `MemoryBank::FastRam` (4 MB)
+  - `$20..=$5F`: `MemoryBank::FastRam` (4 MB, active in `ExpandedPowerUser`)
   - `$BF`: `MemoryBank::Cia` (CIA-A & CIA-B)
-  - `$C0..=$C7`: `MemoryBank::SlowRam` (A501 trapdoor RAM)
-  - `$DC`: `MemoryBank::Rtc` (OKI MSM6242B)
+  - `$C0..=$C7`: `MemoryBank::SlowRam` (512 KB A501 trapdoor RAM, active in `Standard1Mb` & `ExpandedPowerUser`)
+  - `$DC`: `MemoryBank::Rtc` (OKI MSM6242B, active in `Standard1Mb` & `ExpandedPowerUser`)
   - `$DF`: `MemoryBank::CustomChips` (Agnus, Denise, Paula)
   - `$F8..=$FF`: `MemoryBank::KickstartRom`
   - All other banks: `MemoryBank::OpenBus` (`$FF`)

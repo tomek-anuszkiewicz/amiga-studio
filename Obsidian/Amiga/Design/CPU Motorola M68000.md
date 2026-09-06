@@ -2,9 +2,9 @@
 
 - **Module Location:** `m68000/`
 - **Execution Model:** Cycle-exact micro-operations mapped to Color Clock phases (**CCK1** and **CCK2**).
-- **Bus Interface:** Interacts with memory strictly via [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md), respecting `MemoryBusResult::Ready` vs `MemoryBusResult::Blocked`.
-- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md) (wrapping arithmetic, Big-Endian decoding, zero panics).
-- **Test Validation:** Verified via [CPU SingleStepTests.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CPU%20SingleStepTests.md) and skill `m68k-singlestep-test`.
+- **Bus Interface:** Interacts with memory strictly via [MemoryBus.md](MemoryBus.md), respecting `MemoryBusResult::Ready` vs `MemoryBusResult::Blocked`.
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md) (wrapping arithmetic, Big-Endian decoding, zero panics).
+- **Test Validation:** Verified via [CPU SingleStepTests.md](CPU%20SingleStepTests.md) and skill `m68k-singlestep-test`.
 
 ---
 

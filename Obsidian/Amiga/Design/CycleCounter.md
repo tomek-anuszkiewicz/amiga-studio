@@ -1,10 +1,10 @@
 # Amiga 500 Master CycleCounter & Hardware Clock Hierarchy
 
 > [!NOTE]
-> System execution constraints, zero-allocation hot path rules, and 2-phase Color Clock guidelines are defined in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md).
-> Physical bus arbitration, the transparent read latch buffer, and unbuffered write cycles are specified in [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md).
-> Master beam position counters (`VHPOSR`, `VPOSR`) are implemented in Agnus ([Agnus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Agnus.md)).
-> CIA E-Clock division is implemented in [CIA.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CIA.md).
+> System execution constraints, zero-allocation hot path rules, and 2-phase Color Clock guidelines are defined in [AGENTS.md](../../../AGENTS.md).
+> Physical bus arbitration, the transparent read latch buffer, and unbuffered write cycles are specified in [MemoryBus.md](MemoryBus.md).
+> Master beam position counters (`VHPOSR`, `VPOSR`) are implemented in Agnus ([Agnus.md](Agnus.md)).
+> CIA E-Clock division is implemented in [CIA.md](CIA.md).
 
 ---
 
@@ -94,9 +94,9 @@ To prevent tight coupling and synchronization bugs, responsibilities are cleanly
 | Subsystem | Dedicated Responsibility | Implementation Location |
 | :--- | :--- | :--- |
 | **`CycleCounter`** | **Pure 64-bit CCK Cycle Counter:** Tracks elapsed global Color Clocks (`total_cck: u64`). Does not track bus phases, beam coordinates, or E-Clock dividers. | `cycle_counter.rs` |
-| **`Agnus` (Beam)** | **Master Raster Beam Tracking:** Coordinates horizontal beam position (`HPOS`), vertical scanlines (`VPOS`), `LOF` interlace field bit, and display timing registers `VHPOSR` / `VPOSR`. | `chips/agnus/beam.rs` (see [Agnus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Agnus.md)) |
-| **`CIA`** | **E-Clock Division & Prescalers:** Tracks internal E-Clock sub-phase divider ($0..4$) to step Timers A and B every 5 CCKs. | `chips/cia/mod.rs` (see [CIA.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CIA.md)) |
-| **`MemoryBus` / CPU** | **Bus Phase State Machine:** Manages CCK1 vs CCK2 arbitration, wait states, and `read_latch` buffer. | `memory_bus/mod.rs` (see [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md)) |
+| **`Agnus` (Beam)** | **Master Raster Beam Tracking:** Coordinates horizontal beam position (`HPOS`), vertical scanlines (`VPOS`), `LOF` interlace field bit, and display timing registers `VHPOSR` / `VPOSR`. | `chips/agnus/beam.rs` (see [Agnus.md](Agnus.md)) |
+| **`CIA`** | **E-Clock Division & Prescalers:** Tracks internal E-Clock sub-phase divider ($0..4$) to step Timers A and B every 5 CCKs. | `chips/cia/mod.rs` (see [CIA.md](CIA.md)) |
+| **`MemoryBus` / CPU** | **Bus Phase State Machine:** Manages CCK1 vs CCK2 arbitration, wait states, and `read_latch` buffer. | `memory_bus/mod.rs` (see [MemoryBus.md](MemoryBus.md)) |
 
 ---
 

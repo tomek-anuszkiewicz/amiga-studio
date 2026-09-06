@@ -1,7 +1,7 @@
 # Amiga 500 Main Machine Loop & Subsystem Coordination
 
 > [!NOTE]
-> Ownership architecture and module decoupling principles are defined in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md) and [General Architecture.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/General%20Architecture.md).
+> Ownership architecture and module decoupling principles are defined in [AGENTS.md](../../../AGENTS.md) and [General Architecture.md](General%20Architecture.md).
 
 ---
 
@@ -93,4 +93,4 @@ On real Amiga hardware, **all resets start CPU execution from address `$000000` 
 
 - **Video Frame Retrieval:** Returns current frame buffer slice (`&[u32]` ARGB, $720 \times 576$ max PAL).
 - **Audio Sample Retrieval:** Decouples stereo audio ring buffers (`&[i16]`).
-- **Save State:** Serializes complete machine state via [SaveState.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/SaveState.md).
+- **Save State:** Serializes complete machine state via [SaveState.md](SaveState.md).

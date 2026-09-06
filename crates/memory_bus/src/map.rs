@@ -3,21 +3,25 @@
 //! Provides single-instruction O(1) memory bank dispatch using a 256-entry direct lookup table.
 
 use super::{MemoryBank, MemoryBus};
-use config::{A500Config, FastRamSize, RtcModel, SlowRamSize};
+use config::{A500Config, A500Preset};
 
-/// Precalculates the 256-entry 64 KB memory bank dispatch table based on active configuration
-pub fn build_bank_map(config: &A500Config) -> [MemoryBank; 256] {
+/// Precalculates the 256-entry 64 KB memory bank dispatch table for a given preset at compile time
+pub const fn build_preset_bank_map(preset: A500Preset) -> [MemoryBank; 256] {
     let mut map = [MemoryBank::OpenBus; 256];
 
     // 1. Chip RAM: 512 KB occupies banks 0x00..=0x07 (8 banks of 64 KB)
-    for b in 0x00..=0x07 {
+    let mut b = 0x00;
+    while b <= 0x07 {
         map[b] = MemoryBank::ChipRam;
+        b += 1;
     }
 
     // 2. Fast RAM: 4 MB occupies banks 0x20..=0x5F (64 banks of 64 KB)
-    if config.fast_ram() == FastRamSize::Mb4 {
-        for b in 0x20..=0x5F {
+    if matches!(preset, A500Preset::ExpandedPowerUser) {
+        let mut b = 0x20;
+        while b <= 0x5F {
             map[b] = MemoryBank::FastRam;
+            b += 1;
         }
     }
 
@@ -25,14 +29,16 @@ pub fn build_bank_map(config: &A500Config) -> [MemoryBank; 256] {
     map[0xBF] = MemoryBank::Cia;
 
     // 4. Slow RAM: 512 KB occupies banks 0xC0..=0xC7 (8 banks of 64 KB)
-    if config.slow_ram() == SlowRamSize::Kb512 {
-        for b in 0xC0..=0xC7 {
+    if matches!(preset, A500Preset::Standard1Mb | A500Preset::ExpandedPowerUser) {
+        let mut b = 0xC0;
+        while b <= 0xC7 {
             map[b] = MemoryBank::SlowRam;
+            b += 1;
         }
     }
 
     // 5. RTC: bank 0xDC (at $DC0000..=$DC003F)
-    if config.rtc() == RtcModel::Msm6242b {
+    if matches!(preset, A500Preset::Standard1Mb | A500Preset::ExpandedPowerUser) {
         map[0xDC] = MemoryBank::Rtc;
     }
 
@@ -40,11 +46,38 @@ pub fn build_bank_map(config: &A500Config) -> [MemoryBank; 256] {
     map[0xDF] = MemoryBank::CustomChips;
 
     // 7. Kickstart ROM: 512 KB occupies banks 0xF8..=0xFF (8 banks of 64 KB)
-    for b in 0xF8..=0xFF {
+    let mut b = 0xF8;
+    while b <= 0xFF {
         map[b] = MemoryBank::KickstartRom;
+        b += 1;
     }
 
     map
+}
+
+/// Static compile-time bank dispatch table for Preset 1 (Bare Stock 512 KB)
+pub static BANK_MAP_BARE: [MemoryBank; 256] = build_preset_bank_map(A500Preset::Bare512k);
+
+/// Static compile-time bank dispatch table for Preset 2 (Standard 1 MB + RTC)
+pub static BANK_MAP_STANDARD: [MemoryBank; 256] = build_preset_bank_map(A500Preset::Standard1Mb);
+
+/// Static compile-time bank dispatch table for Preset 3 (Expanded Power User: 1 MB + 4 MB Fast + RTC)
+pub static BANK_MAP_EXPANDED: [MemoryBank; 256] = build_preset_bank_map(A500Preset::ExpandedPowerUser);
+
+/// Returns a reference to the static compile-time bank dispatch table for the given preset
+#[inline(always)]
+pub const fn get_preset_bank_map(preset: A500Preset) -> &'static [MemoryBank; 256] {
+    match preset {
+        A500Preset::Bare512k => &BANK_MAP_BARE,
+        A500Preset::Standard1Mb => &BANK_MAP_STANDARD,
+        A500Preset::ExpandedPowerUser => &BANK_MAP_EXPANDED,
+    }
+}
+
+/// Returns the 256-entry 64 KB memory bank dispatch table based on active configuration
+#[inline(always)]
+pub fn build_bank_map(config: &A500Config) -> [MemoryBank; 256] {
+    *get_preset_bank_map(config.active_preset())
 }
 
 impl MemoryBus {

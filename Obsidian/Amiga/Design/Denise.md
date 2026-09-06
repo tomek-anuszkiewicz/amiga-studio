@@ -1,8 +1,8 @@
 # Denise (MOS 8362 / 8373) Architecture & Hardware Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md), [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md), and [CycleCounter.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CycleCounter.md).
-> Detailed game port pinouts and host input bindings are documented in [Joystick.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Joystick.md) and [Mouse.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Mouse.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [CycleCounter.md](CycleCounter.md).
+> Detailed game port pinouts and host input bindings are documented in [Joystick.md](Joystick.md) and [Mouse.md](Mouse.md).
 
 ---
 
@@ -151,7 +151,7 @@ Denise houses the directional and quadrature counters for Game Port 1 and Game P
 - **`JOY0DAT` (`$DFF00A`):** Port 1 (Mouse / Joy 1) counter. Bits 15–8 track Y quadrature, bits 7–0 track X quadrature.
 - **`JOY1DAT` (`$DFF00C`):** Port 2 (Joy 2 / Mouse 2) counter. Directional switch closures decode into XORed bit pairs.
 - **`POT0DAT` / `POT1DAT` (`$DFF012` / `$DFF014`):** Proportional analog potentiometer counters and right/middle mouse button status via `POTGO` (`$DFF034`).
-- *Detailed Specifications:* See [Mouse.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Mouse.md) and [Joystick.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Joystick.md).
+- *Detailed Specifications:* See [Mouse.md](Mouse.md) and [Joystick.md](Joystick.md).
 
 ---
 

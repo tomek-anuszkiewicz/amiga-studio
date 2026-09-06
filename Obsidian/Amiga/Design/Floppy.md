@@ -1,9 +1,9 @@
 # Amiga 500 Floppy Disk Subsystem Architecture
 
 > [!NOTE]
-> Global system ownership principles, zero-allocation rules, and WASM constraints are defined in [AGENTS.md](file:///d:/Programowanie/Amiga/AGENTS.md).
-> Custom chip register mappings are defined in [Paula.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Paula.md) (`DSKPTH/L`, `DSKLEN`, `DSKSYN`, `DSKBYTR`) and [CIA.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CIA.md) (`CIAAPRA`, `CIABPRB`).
-> Memory bus DMA contention and 2-phase Color Clock slot timing are defined in [MemoryBus.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/MemoryBus.md) and [CycleCounter.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/CycleCounter.md).
+> Global system ownership principles, zero-allocation rules, and WASM constraints are defined in [AGENTS.md](../../../AGENTS.md).
+> Custom chip register mappings are defined in [Paula.md](Paula.md) (`DSKPTH/L`, `DSKLEN`, `DSKSYN`, `DSKBYTR`) and [CIA.md](CIA.md) (`CIAAPRA`, `CIABPRB`).
+> Memory bus DMA contention and 2-phase Color Clock slot timing are defined in [MemoryBus.md](MemoryBus.md) and [CycleCounter.md](CycleCounter.md).
 
 ---
 

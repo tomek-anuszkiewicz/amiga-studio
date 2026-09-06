@@ -3,7 +3,7 @@
 This document specifies the hardware registers, electrical interface, extended adapter standards, and cross-platform host input abstraction for digital and proportional joysticks in the Amiga 500 emulator.
 
 > [!NOTE]
-> For top-level machine coordination, see [General Architecture.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/General%20Architecture.md). For game port switching and configuration, see [Configuration.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Configuration.md). For frontend UI input routing, see [GUI.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/GUI.md).
+> For top-level machine coordination, see [General Architecture.md](General%20Architecture.md). For game port switching and configuration, see [Configuration.md](Configuration.md). For frontend UI input routing, see [GUI.md](GUI.md).
 
 ---
 
@@ -13,7 +13,7 @@ The Amiga 500 provides two 9-pin D-sub male controller ports on the side of the 
 - **Port 1 (Default: Mouse):** Decoded by Denise `JOY0DAT` (`$DFF00A`), CIA-A `PRA` bit 6, and Paula/Denise `POT0DAT` (`$DFF012`) / `POTGO` (`$DFF034`).
 - **Port 2 (Default: Joystick):** Decoded by Denise `JOY1DAT` (`$DFF00C`), CIA-A `PRA` bit 7, and Paula/Denise `POT1DAT` (`$DFF014`) / `POTGO` (`$DFF034`).
 
-Either port can be configured to host a joystick or a mouse via `A500Config` (see [Configuration.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Configuration.md)).
+Either port can be configured to host a joystick or a mouse via `A500Config` (see [Configuration.md](Configuration.md)).
 
 ```mermaid
 flowchart TD
@@ -197,12 +197,12 @@ impl A500 {
 
 - **CIA-A Integration:** `CIAAPRA` bits 6 and 7 continuously reflect `!fire1`.
 - **Denise Integration:** Denise reads directional bits when the CPU or Copper accesses `$DFF00A` / `$DFF00C`.
-- **Save State:** `JoystickState` is fully serializable as part of `GamePortsState` in [SaveState.md](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/SaveState.md).
+- **Save State:** `JoystickState` is fully serializable as part of `GamePortsState` in [SaveState.md](SaveState.md).
 
 ---
 
 ## 7. Reference Documentation
 
-- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md)
-- [Amiga Hardware Reference Manual: Appendix E (Interfaces)](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Reference/Hardware%20Reference%20Manual/13%20-%20Appendix%20E%20-%20Interfaces.md)
-- [vAmiga Joystick Implementation Reference](file:///d:/Programowanie/Amiga/ref_src/vAmiga-4.5/Core/Peripherals/Joystick/Joystick.h)
+- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md)
+- [Amiga Hardware Reference Manual: Appendix E (Interfaces)](../Reference/Hardware%20Reference%20Manual/13%20-%20Appendix%20E%20-%20Interfaces.md)
+- [vAmiga Joystick Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Peripherals/Joystick/Joystick.h)

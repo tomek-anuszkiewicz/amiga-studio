@@ -40,12 +40,12 @@ This document outlines the phased development plan, hardware milestones, verific
 ## 2. Core Implementation Strategy
 
 ### Step 1: BlepGenerator — Rust Port & Audio Antialiasing Validation
-- **Convert [tools/BlebGenerator](file:///d:/Programowanie/Amiga/tools/BlebGenerator) to Rust:**
-  - Port the C# table generation implementation ([`tools/BlebGenerator/genblepsharp.cs`](file:///d:/Programowanie/Amiga/tools/BlebGenerator/genblepsharp.cs)) into a native Rust tool (`tools/bleb-generator` or cargo workspace utility crate).
+- **Convert [tools/BlebGenerator](tools/BlebGenerator) to Rust:**
+  - Port the C# table generation implementation ([`tools/BlebGenerator/genblepsharp.cs`](tools/BlebGenerator/genblepsharp.cs)) into a native Rust tool (`tools/bleb-generator` or cargo workspace utility crate).
   - Port the analytical audio filter transfer function, windowed sinc integration, and BLEP table calculation pipeline.
   - Generate band-limited step (BLEP) interpolation tables for Paula's audio channels across A500 PAL (~3.54 MHz) and NTSC (~3.58 MHz) clock domains.
 - **Validate Against WinUAE Ground Truth:**
-  - Validate the generated tables directly against WinUAE's reference `winsinc_integral` tables ([`ref_src/WinUAE-6030/sinctable.cpp`](file:///d:/Programowanie/Amiga/ref_src/WinUAE-6030/sinctable.cpp)) to ensure clean, alias-free sound rendering for Paula's variable-rate audio channels.
+  - Validate the generated tables directly against WinUAE's reference `winsinc_integral` tables ([`ref_src/WinUAE-6030/sinctable.cpp`](ref_src/WinUAE-6030/sinctable.cpp)) to ensure clean, alias-free sound rendering for Paula's variable-rate audio channels.
 - **Embed Static Tables in Paula Core:**
   - Embed the precalculated BLEP sinc tables as static arrays in Paula's audio rendering pipeline, adhering strictly to the zero-allocation hot-path guideline.
 
@@ -103,8 +103,8 @@ This document outlines the phased development plan, hardware milestones, verific
     - Privileged & atomic instructions: `STOP`, `RESET`, `TAS`, `TRAPV`, `MOVE to SR/CCR`, `MOVE from SR`, `MOVE USP`
 - **Comprehensive SingleStepTest Suite Coverage:**
   - Autonomous agentic loop using `add-m68k-instruction` and `m68k-singlestep-test` skills.
-  - 100% pass rate against all 127 per-instruction test suites in [`ref_src/SingleStepTests-m68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-m68000/v1) (MAME).
-  - 100% pass rate against all 125 compressed suites in [`ref_src/SingleStepTests-680x0/68000/v1/`](file:///d:/Programowanie/Amiga/ref_src/SingleStepTests-680x0/68000/v1) (Tom Harte).
+  - 100% pass rate against all 127 per-instruction test suites in [`ref_src/SingleStepTests-m68000/v1/`](ref_src/SingleStepTests-m68000/v1) (MAME).
+  - 100% pass rate against all 125 compressed suites in [`ref_src/SingleStepTests-680x0/68000/v1/`](ref_src/SingleStepTests-680x0/68000/v1) (Tom Harte).
   - Rigorous verification of edge cases: unaligned word/long address errors, prefetch queue reload delays, bus cycle states, and condition code quirks.
 
 ### Step 4: Custom Chipsets (Agnus, Denise, Paula, CIAs)
@@ -132,7 +132,7 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
 
 ### 3.1 Differential Testing Against Reference Emulators
 - **Cross-Emulator Execution Harness:**
-  - Run target test cases, test ROMs, or problematic games in verified reference emulators ([vAmiga](file:///d:/Programowanie/Amiga/ref_src/vAmiga-4.5) and [WinUAE](file:///d:/Programowanie/Amiga/ref_src/WinUAE-6030)).
+  - Run target test cases, test ROMs, or problematic games in verified reference emulators ([vAmiga](ref_src/vAmiga-4.5) and [WinUAE](ref_src/WinUAE-6030)).
   - Step emulation to a designated frame number or instruction milestone.
   - Dump execution traces, CPU registers, DMA channel allocations, and memory state.
   - Run the same binary on our emulator core and compare state dumps to detect cycle deviations instantly.
@@ -149,7 +149,7 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
   - Capture raw PCM audio buffers from Paula channels at fixed cycle intervals and compare waveform phase and amplitude against hardware recordings.
 
 ### 3.4 Headless Debugger Interface for Agents
-- Provide a machine-readable REST / IPC interface to the [Debugger](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Design/Debugger.md) engine:
+- Provide a machine-readable REST / IPC interface to the [Debugger](Obsidian/Amiga/Design/Debugger.md) engine:
   - Set PC breakpoints and memory watchpoints programmatically.
   - Query register state, disassembly, and execution trace history ring buffers.
   - Enable autonomous debugging agents to diagnose CPU hangs or crash dumps.
