@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/config",
+    "crates/rtc",
     "crates/memory_bus",
     "crates/m68000",
     "crates/debugger",
@@ -20,6 +21,7 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 bitflags = "2.4"
 flate2 = "1.0"
 config = { path = "crates/config" }
+rtc = { path = "crates/rtc" }
 memory_bus = { path = "crates/memory_bus" }
 m68000 = { path = "crates/m68000" }
 debugger = { path = "crates/debugger" }

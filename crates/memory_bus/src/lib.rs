@@ -5,7 +5,6 @@
 
 pub mod arbitration;
 pub mod map;
-pub mod rtc;
 pub mod test_injection;
 
 pub use arbitration::MemoryBusResult;

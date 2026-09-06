@@ -3,6 +3,7 @@
 > [!NOTE]
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [CycleCounter.md](CycleCounter.md).
 > Save state structures for RTC are specified in [SaveState.md](SaveState.md). Hardware presets and active RTC model configurations are defined in [Configuration.md](Configuration.md).
+> Implementation resides in the dedicated foundational crate [`crates/rtc`](../../../crates/rtc).
 
 ---
 
