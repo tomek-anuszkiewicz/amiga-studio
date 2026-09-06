@@ -137,3 +137,18 @@ fn test_256_entry_bank_map() {
     assert_eq!(exp_bus.bank_map, memory_bus::map::BANK_MAP_EXPANDED);
 }
 
+#[test]
+fn test_bank_handler_direct_method_pointer_dispatch() {
+    let mut bus = MemoryBus::new();
+    bus.map_chip_ram_to_low_memory();
+
+    // Directly invoke write and read handler pointers from bank_map
+    let chip_handler = bus.bank_map[0x00];
+    (chip_handler.write_byte)(&mut bus, 0x000100, 0x42);
+    let val = (chip_handler.read_byte)(&bus, 0x000100);
+    assert_eq!(val, 0x42);
+
+    // Verify through normal bus read
+    assert_eq!(bus.read_byte_debug(0x000100), 0x42);
+}
+

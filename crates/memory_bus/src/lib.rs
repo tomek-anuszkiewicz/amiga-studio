@@ -9,6 +9,10 @@ pub mod test_injection;
 
 pub use arbitration::MemoryBusResult;
 pub use config::{A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard};
+pub use map::{
+    build_bank_map, build_preset_bank_map, get_preset_bank_map, handler_for_bank, BankHandler,
+    BankReadByteFn, BankWriteByteFn, BANK_MAP_BARE, BANK_MAP_EXPANDED, BANK_MAP_STANDARD,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +24,7 @@ pub const FAST_RAM_SIZE: usize = 8 * 1024 * 1024; // Max 8MB Zorro II Fast RAM
 pub const KICKSTART_SIZE_256K: usize = 256 * 1024;
 pub const KICKSTART_SIZE_512K: usize = 512 * 1024;
 
-/// Classification of a 64 KB physical memory bank for O(1) direct address dispatch
+/// Classification of a 64 KB physical memory bank
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MemoryBank {
     /// Chip RAM (Base $000000-$07FFFF, optionally extended to $000000-$0FFFFF)
@@ -47,8 +51,8 @@ pub struct MemoryBus {
     /// Active hardware configuration
     pub config: A500Config,
 
-    /// 256-entry direct bank lookup table (64 KB per bank across 16 MB physical space)
-    pub bank_map: [MemoryBank; 256],
+    /// 256-entry direct bank dispatch table (function pointers to read/write handlers)
+    pub bank_map: [BankHandler; 256],
 
     /// Physical Chip RAM buffer (512 KB default, expandable to 1 MB)
     pub chip_ram: Vec<u8>,

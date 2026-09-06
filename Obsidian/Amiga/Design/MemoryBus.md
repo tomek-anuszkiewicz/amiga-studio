@@ -41,18 +41,33 @@
 
 To eliminate branch mispredictions and cascaded conditional checks in hot memory access loops, the 16 MB physical address space is divided into **256 banks of 64 KB each** ($256 \times 64\text{ KB} = 16\text{ MB}$).
 
-- **O(1) Direct Lookup**: An address's bank index is extracted in a single instruction: `(addr >> 16) & 0xFF`.
-- **L1 Cache Resident**: The entire lookup table `[MemoryBank; 256]` occupies just 256 bytes in the host L1 data cache.
+- **Direct Function Pointer Method Dispatch**: Mimicking the CPU's direct opcode table (`[OpcodeHandler; 65536]`), `bank_map` is a 256-entry array of `BankHandler` structs containing direct function pointers to read and write handler methods:
+  ```rust
+  pub type BankReadByteFn = fn(&MemoryBus, u32) -> u8;
+  pub type BankWriteByteFn = fn(&mut MemoryBus, u32, u8);
+
+  #[derive(Clone, Copy, PartialEq, Eq)]
+  pub struct BankHandler {
+      pub bank: MemoryBank,
+      pub read_byte: BankReadByteFn,
+      pub write_byte: BankWriteByteFn,
+  }
+  ```
+- **Zero Runtime Branches**: Memory accesses execute directly through the table:
+  ```rust
+  (self.bank_map[(addr >> 16) as usize].read_byte)(self, addr);
+  (self.bank_map[(addr >> 16) as usize].write_byte)(self, addr, val);
+  ```
 - **Zero Runtime Setup (`static`/`const`)**: Precalculated as compile-time `static` arrays (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), eliminating all initialization loops or runtime reallocation overhead.
 - **Direct Dispatch**:
-  - `$00..=$07`: `MemoryBank::ChipRam`
-  - `$20..=$5F`: `MemoryBank::FastRam` (4 MB, active in `ExpandedPowerUser`)
-  - `$BF`: `MemoryBank::Cia` (CIA-A & CIA-B)
-  - `$C0..=$C7`: `MemoryBank::SlowRam` (512 KB A501 trapdoor RAM, active in `Standard1Mb` & `ExpandedPowerUser`)
-  - `$DC`: `MemoryBank::Rtc` (OKI MSM6242B, active in `Standard1Mb` & `ExpandedPowerUser`)
-  - `$DF`: `MemoryBank::CustomChips` (Agnus, Denise, Paula)
-  - `$F8..=$FF`: `MemoryBank::KickstartRom`
-  - All other banks: `MemoryBank::OpenBus` (`$FF`)
+  - `$00..=$07`: `CHIP_RAM_HANDLER`
+  - `$20..=$5F`: `FAST_RAM_HANDLER` (4 MB, active in `ExpandedPowerUser`)
+  - `$BF`: `CIA_HANDLER` (CIA-A & CIA-B)
+  - `$C0..=$C7`: `SLOW_RAM_HANDLER` (512 KB A501 trapdoor RAM, active in `Standard1Mb` & `ExpandedPowerUser`)
+  - `$DC`: `RTC_HANDLER` (OKI MSM6242B, active in `Standard1Mb` & `ExpandedPowerUser`)
+  - `$DF`: `CUSTOM_CHIPS_HANDLER` (Agnus, Denise, Paula)
+  - `$F8..=$FF`: `KICKSTART_ROM_HANDLER`
+  - All other banks: `OPEN_BUS_HANDLER` (`$FF`)
 
 ---
 
