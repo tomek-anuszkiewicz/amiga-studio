@@ -608,3 +608,16 @@ When diagnosing a test mismatch:
    - Tom Harte generates vastly more random address combinations (~8,000 per opcode). A failure here typically reveals an unaligned address boundary edge case or unhandled condition code combination that MAME's smaller sample missed.
 3. **Fails in Both:**
    - Definite implementation bug in decoding, effective address calculation, CCK phase alignment, or CCR flag updates.
+
+### 9.3 Automated Dual-Suite Integration Test Matrix
+The integration test suite in [`crates/test_runner/tests/test_singlestep.rs`](file:///d:/Programowanie/Amiga/crates/test_runner/tests/test_singlestep.rs) executes dual-suite cross-validation on every `cargo test` run. Each opcode test invokes `run_dual_test("<OPCODE>", limit)`, simultaneously validating vectors against:
+- **MAME suite** (`ref_src/SingleStepTests-m68000/v1/<OPCODE>.json`)
+- **Real 68k / Tom Harte suite** (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json.gz`)
+
+Currently active dual-suite tests cover all implemented instructions:
+- **System & Control**: `NOP`, `RTS`, `TRAP`, `Bcc` (`BRA`), `JMP`, `JSR`
+- **Data Movement**: `MOVE.b`, `MOVE.w`, `MOVE.l`, `MOVEA.w`, `MOVEA.l`
+- **Arithmetic**: `ADD.b`, `ADD.w`, `ADD.l`, `ADDA.w`, `ADDA.l`, `SUB.b`, `SUB.w`, `SUB.l`, `SUBA.w`, `SUBA.l`
+- **Logic**: `AND.b`, `AND.w`, `AND.l`, `OR.b`, `OR.w`, `OR.l`
+- **Bit Manipulation**: `BTST`, `BSET`, `BCLR`, `BCHG`
+- **Shifts & Rotates**: `ASL.b`, `ASL.w`, `ASL.l`, `ASR.b`, `ASR.w`, `ASR.l`, `LSL.b`, `LSL.w`, `LSL.l`, `LSR.b`, `LSR.w`, `LSR.l`
