@@ -1,108 +1,136 @@
 //! M68000 Integer Arithmetic (ADD, SUB, ADDQ, SUBQ) and cycle-exact CCR calculation
+//!
+//! Provides both generic size handlers and branchless size-specialized leaf functions (add_b, add_w, add_l).
 
 use crate::addressing::Size;
 use crate::state::CpuState;
 
-/// Performs integer addition with cycle-exact CCR flag evaluation (X, N, Z, V, C)
+// --- Direct Size-Specialized Addition Functions (Branchless) ---
+
+#[inline(always)]
+pub fn add_b(state: &mut CpuState, s: u8, d: u8, update_ccr: bool) -> u8 {
+    let (res, c) = d.overflowing_add(s);
+    if update_ccr {
+        let v = ((!(s ^ d) & (d ^ res)) & 0x80) != 0;
+        let n = (res & 0x80) != 0;
+        let z = res == 0;
+        state.set_x(c);
+        state.set_c(c);
+        state.set_v(v);
+        state.set_n(n);
+        state.set_z(z);
+    }
+    res
+}
+
+#[inline(always)]
+pub fn add_w(state: &mut CpuState, s: u16, d: u16, update_ccr: bool) -> u16 {
+    let (res, c) = d.overflowing_add(s);
+    if update_ccr {
+        let v = ((!(s ^ d) & (d ^ res)) & 0x8000) != 0;
+        let n = (res & 0x8000) != 0;
+        let z = res == 0;
+        state.set_x(c);
+        state.set_c(c);
+        state.set_v(v);
+        state.set_n(n);
+        state.set_z(z);
+    }
+    res
+}
+
+#[inline(always)]
+pub fn add_l(state: &mut CpuState, s: u32, d: u32, update_ccr: bool) -> u32 {
+    let (res, c) = d.overflowing_add(s);
+    if update_ccr {
+        let v = ((!(s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
+        let n = (res & 0x8000_0000) != 0;
+        let z = res == 0;
+        state.set_x(c);
+        state.set_c(c);
+        state.set_v(v);
+        state.set_n(n);
+        state.set_z(z);
+    }
+    res
+}
+
+// --- Direct Size-Specialized Subtraction Functions (Branchless) ---
+
+#[inline(always)]
+pub fn sub_b(state: &mut CpuState, s: u8, d: u8, update_ccr: bool) -> u8 {
+    let (res, c) = d.overflowing_sub(s);
+    if update_ccr {
+        let v = (((s ^ d) & (d ^ res)) & 0x80) != 0;
+        let n = (res & 0x80) != 0;
+        let z = res == 0;
+        state.set_x(c);
+        state.set_c(c);
+        state.set_v(v);
+        state.set_n(n);
+        state.set_z(z);
+    }
+    res
+}
+
+#[inline(always)]
+pub fn sub_w(state: &mut CpuState, s: u16, d: u16, update_ccr: bool) -> u16 {
+    let (res, c) = d.overflowing_sub(s);
+    if update_ccr {
+        let v = (((s ^ d) & (d ^ res)) & 0x8000) != 0;
+        let n = (res & 0x8000) != 0;
+        let z = res == 0;
+        state.set_x(c);
+        state.set_c(c);
+        state.set_v(v);
+        state.set_n(n);
+        state.set_z(z);
+    }
+    res
+}
+
+#[inline(always)]
+pub fn sub_l(state: &mut CpuState, s: u32, d: u32, update_ccr: bool) -> u32 {
+    let (res, c) = d.overflowing_sub(s);
+    if update_ccr {
+        let v = (((s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
+        let n = (res & 0x8000_0000) != 0;
+        let z = res == 0;
+        state.set_x(c);
+        state.set_c(c);
+        state.set_v(v);
+        state.set_n(n);
+        state.set_z(z);
+    }
+    res
+}
+
+// --- Sized Generic Wrappers ---
+
 pub fn execute_add(state: &mut CpuState, src: u32, dst: u32, size: Size, update_ccr: bool) -> u32 {
     match size {
         Size::Byte => {
-            let s = (src & 0xFF) as u8;
-            let d = (dst & 0xFF) as u8;
-            let (res, c) = d.overflowing_add(s);
-            if update_ccr {
-                let v = ((!(s ^ d) & (d ^ res)) & 0x80) != 0;
-                let n = (res & 0x80) != 0;
-                let z = res == 0;
-                state.set_x(c);
-                state.set_c(c);
-                state.set_v(v);
-                state.set_n(n);
-                state.set_z(z);
-            }
+            let res = add_b(state, (src & 0xFF) as u8, (dst & 0xFF) as u8, update_ccr);
             (dst & !0xFF) | (res as u32)
         }
         Size::Word => {
-            let s = (src & 0xFFFF) as u16;
-            let d = (dst & 0xFFFF) as u16;
-            let (res, c) = d.overflowing_add(s);
-            if update_ccr {
-                let v = ((!(s ^ d) & (d ^ res)) & 0x8000) != 0;
-                let n = (res & 0x8000) != 0;
-                let z = res == 0;
-                state.set_x(c);
-                state.set_c(c);
-                state.set_v(v);
-                state.set_n(n);
-                state.set_z(z);
-            }
+            let res = add_w(state, (src & 0xFFFF) as u16, (dst & 0xFFFF) as u16, update_ccr);
             (dst & !0xFFFF) | (res as u32)
         }
-        Size::Long => {
-            let (res, c) = dst.overflowing_add(src);
-            if update_ccr {
-                let v = ((!(src ^ dst) & (dst ^ res)) & 0x8000_0000) != 0;
-                let n = (res & 0x8000_0000) != 0;
-                let z = res == 0;
-                state.set_x(c);
-                state.set_c(c);
-                state.set_v(v);
-                state.set_n(n);
-                state.set_z(z);
-            }
-            res
-        }
+        Size::Long => add_l(state, src, dst, update_ccr),
     }
 }
 
-/// Performs integer subtraction (Dst - Src) with cycle-exact CCR flag evaluation (X, N, Z, V, C)
 pub fn execute_sub(state: &mut CpuState, src: u32, dst: u32, size: Size, update_ccr: bool) -> u32 {
     match size {
         Size::Byte => {
-            let s = (src & 0xFF) as u8;
-            let d = (dst & 0xFF) as u8;
-            let (res, c) = d.overflowing_sub(s);
-            if update_ccr {
-                let v = (((s ^ d) & (d ^ res)) & 0x80) != 0;
-                let n = (res & 0x80) != 0;
-                let z = res == 0;
-                state.set_x(c);
-                state.set_c(c);
-                state.set_v(v);
-                state.set_n(n);
-                state.set_z(z);
-            }
+            let res = sub_b(state, (src & 0xFF) as u8, (dst & 0xFF) as u8, update_ccr);
             (dst & !0xFF) | (res as u32)
         }
         Size::Word => {
-            let s = (src & 0xFFFF) as u16;
-            let d = (dst & 0xFFFF) as u16;
-            let (res, c) = d.overflowing_sub(s);
-            if update_ccr {
-                let v = (((s ^ d) & (d ^ res)) & 0x8000) != 0;
-                let n = (res & 0x8000) != 0;
-                let z = res == 0;
-                state.set_x(c);
-                state.set_c(c);
-                state.set_v(v);
-                state.set_n(n);
-                state.set_z(z);
-            }
+            let res = sub_w(state, (src & 0xFFFF) as u16, (dst & 0xFFFF) as u16, update_ccr);
             (dst & !0xFFFF) | (res as u32)
         }
-        Size::Long => {
-            let (res, c) = dst.overflowing_sub(src);
-            if update_ccr {
-                let v = (((src ^ dst) & (dst ^ res)) & 0x8000_0000) != 0;
-                let n = (res & 0x8000_0000) != 0;
-                let z = res == 0;
-                state.set_x(c);
-                state.set_c(c);
-                state.set_v(v);
-                state.set_n(n);
-                state.set_z(z);
-            }
-            res
-        }
+        Size::Long => sub_l(state, src, dst, update_ccr),
     }
 }
