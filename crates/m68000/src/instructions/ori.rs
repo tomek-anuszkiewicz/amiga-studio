@@ -219,8 +219,47 @@ pub fn op_ori_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_ori(cpu, bus)
 }
 
-pub fn op_ori_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_ori(cpu, bus)
+/// Execution handler for `ORI.B #<data>, Dn` (Opcodes $0000..=$0007)
+///
+/// Bitwise ORs an 8-bit immediate value into destination data register Dn.
+/// Execution time: 8 CPU clocks (4 CCKs) across 2 micro-steps:
+/// - Micro-step 0 (CCK 0..1, 4 clocks): Fetch immediate byte from prefetch queue, initiate next word fetch.
+/// - Micro-step 1 (CCK 2..3, 4 clocks): Refill prefetch, execute 8-bit OR, update CCR, write to Dn, prefetch next opcode.
+pub fn op_ori_b_imm_dn(cpu: &mut Cpu, _bus: &mut MemoryBus) -> StepResult {
+    match cpu.state.micro.micro_step {
+        0 => {
+            // Immediate byte is located in bits 7..0 of the current prefetch word
+            let imm = (cpu.state.prefetch[0] & 0xFF) as u8;
+            cpu.state.micro.scratch[0] = imm as u32;
+            prefetch_extension(cpu);
+            StepResult::StepCompleted
+        }
+        1 => {
+            cpu.state.prefetch[0] = cpu.state.micro.last_read;
+            let imm = cpu.state.micro.scratch[0] as u8;
+            let dn_reg = (cpu.state.ir & 7) as usize;
+            let dst = cpu.state.d[dn_reg] as u8;
+            let res = dst | imm;
+
+            // Inlined Byte CCR Calculation (Zero host branches)
+            let n = (res as i8) < 0;
+            let z = res == 0;
+            cpu.state.set_n(n);
+            cpu.state.set_z(z);
+            cpu.state.set_v(false);
+            cpu.state.set_c(false);
+            // Extend flag (X) is completely unaffected
+
+            // Write back lower byte to Dn, preserving upper 24 bits
+            cpu.state.d[dn_reg] = (cpu.state.d[dn_reg] & 0xFFFF_FF00) | (res as u32);
+
+            // Refill instruction prefetch queue and retire
+            cpu.initiate_prefetch();
+            cpu.state.micro.mark_standard_prefetch_retire();
+            StepResult::StepCompleted
+        }
+        _ => unreachable!(),
+    }
 }
 
 pub fn op_ori_b_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
