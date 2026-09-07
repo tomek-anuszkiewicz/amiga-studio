@@ -165,4 +165,12 @@ All agentic pair-programming and automated modifications must adhere strictly to
   - Light editing for punctuation and flow is encouraged, but the exact intent, questions, and technical terminology must be strictly preserved.
   - This guarantees that the user has complete visibility into what the model heard and understood before reviewing the actions taken.
 
+---
+
+## 8. Dynamic Model & Reasoning Effort Advisory Rule
+
+- **Proactive Model Advisory:** The agent actively monitors the active model and thinking/reasoning budget from session metadata and proactively advises the user when switching between `Medium` and `High` (or Pro) is recommended:
+  - **Recommend `High` / `Pro`** when entering complex architectural work, cycle-exact prefetch/pipeline modeling, diagnosing intricate `SingleStepTests` failures (e.g. CCK timing mismatches, address error frames, tricky ALU/CCR behavior), or designing multi-chip bus arbitration (Agnus/Copper/Blitter vs CPU).
+  - **Recommend `Medium`** when performing repetitive opcode implementations using established recipes, mechanical refactoring (file splitting >800 lines, inlining updates), running tests, or updating documentation, to maximize interaction speed and preserve token limits.
+  - **Format:** Present recommendations as a prominent, non-blocking callout (e.g. `> 💡 **Rekomendacja modelu:** ...`) immediately under the voice transcript echo or at the very start of the response.
 
