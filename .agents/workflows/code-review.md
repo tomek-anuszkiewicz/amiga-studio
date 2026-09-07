@@ -70,6 +70,13 @@ Run all workspace unit and integration tests:
 cargo test
 ```
 
+### M68000 Full Exhaustive Verification
+If any file in `crates/m68000` was added, modified, or refactored:
+```powershell
+$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+```
+Verify that all 77 suites run across all ~300,000 test cases with 100% green passes.
+
 ---
 
 ## 4. Audit Verdict

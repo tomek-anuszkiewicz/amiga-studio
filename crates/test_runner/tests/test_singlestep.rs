@@ -3,6 +3,24 @@ use test_runner::runner::{run_test_file_with_mode, VerifyMode};
 /// Default number of test cases to run per opcode from each test suite
 const DEFAULT_SAMPLE_LIMIT: usize = 50;
 
+/// Resolves effective sample limit, allowing full execution via SINGLESTEP_FULL=1 or custom limit via SINGLESTEP_LIMIT=<N>
+fn resolve_limit(explicit: usize) -> Option<usize> {
+    if let Ok(val) = std::env::var("SINGLESTEP_FULL") {
+        if val == "1" || val.eq_ignore_ascii_case("true") {
+            return None;
+        }
+    }
+    if let Ok(val) = std::env::var("SINGLESTEP_LIMIT") {
+        if val.eq_ignore_ascii_case("full") || val.eq_ignore_ascii_case("all") {
+            return None;
+        }
+        if let Ok(num) = val.parse::<usize>() {
+            return Some(num);
+        }
+    }
+    Some(explicit)
+}
+
 /// Helper function to execute a test against both MAME and Real 68k (Tom Harte) suites
 fn run_dual_test(name: &str, limit: usize) {
     run_dual_test_with_mode(name, limit, VerifyMode::StateOnly);
@@ -10,11 +28,12 @@ fn run_dual_test(name: &str, limit: usize) {
 
 /// Helper function to execute a test against both suites with specified verification mode
 fn run_dual_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
+    let effective = resolve_limit(limit);
     let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", name);
     let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", name);
 
     // 1. MAME SingleStepTests suite
-    let mame_res = run_test_file_with_mode(&mame_path, Some(limit), mode)
+    let mame_res = run_test_file_with_mode(&mame_path, effective, mode)
         .unwrap_or_else(|err| panic!("Failed to open/parse MAME test '{}': {}", mame_path, err));
     let (mame_passed, mame_failed) = mame_res;
     assert!(
@@ -33,7 +52,7 @@ fn run_dual_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
     );
 
     // 2. Real 68k (Tom Harte) SingleStepTests-680x0 suite
-    let harte_res = run_test_file_with_mode(&harte_path, Some(limit), mode).unwrap_or_else(|err| {
+    let harte_res = run_test_file_with_mode(&harte_path, effective, mode).unwrap_or_else(|err| {
         panic!(
             "Failed to open/parse Real 68k test '{}': {}",
             harte_path, err

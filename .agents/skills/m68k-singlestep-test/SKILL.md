@@ -39,29 +39,19 @@ Each test case contains:
 
 ## 3. Running Test Suites
 
-### Running Specific Instruction Tests via Cargo
+### Running SingleStepTests via Cargo Test Runner
 ```powershell
-# Run specific instruction tests against MAME suite
-cargo test tests::cpu::test_mame_add_b
+# Fast sample run (default: 50 cases per suite, ~5.8s):
+cargo test -p test_runner --test test_singlestep
 
-# Run specific instruction tests against Tom Harte suite
-cargo test tests::cpu::test_harte_add_b
+# Full exhaustive verification (~300,000 cases across all 77 suites, ~14s):
+$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
 
-# Run all tests for a specific opcode across both suites
-cargo test test_add_b
+# Full exhaustive run for a single instruction:
+$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep -- test_add_b
 
-# Run exception and illegal instruction tests (MAME suite)
-cargo test tests::cpu::test_illegal_linea
-cargo test tests::cpu::test_trap
-
-# Run all MAME tests
-cargo test tests::cpu::mame
-
-# Run all Tom Harte tests
-cargo test tests::cpu::harte
-
-# Run all CPU single step tests
-cargo test tests::cpu
+# Custom sample limit (e.g. 500 cases):
+$env:SINGLESTEP_LIMIT = "500"; cargo test -p test_runner --test test_singlestep -- test_move_w
 ```
 
 ---
