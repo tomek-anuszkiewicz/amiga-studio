@@ -136,7 +136,7 @@ fn print_diff(results_dir: &Path) {
 
 fn run_specific_suite(opcode: &str) {
     let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", opcode);
-    let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json.gz", opcode);
+    let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", opcode);
 
     println!("Running MAME suite for '{}'...", opcode);
     match test_runner::runner::run_test_file(&mame_path, Some(50)) {

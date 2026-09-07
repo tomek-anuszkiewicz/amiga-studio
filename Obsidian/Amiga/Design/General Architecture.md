@@ -86,7 +86,7 @@ graph TD
 | **`memory_bus`** | [`crates/memory_bus`](../../../crates/memory_bus) | 24-bit physical address space, 256-entry 64KB bank table (`addr >> 16`), 2-phase CCK arbitration, open bus emulation. | `config`, `rtc` |
 | **`m68000`** | [`crates/m68000`](../../../crates/m68000) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | `memory_bus` |
 | **`debugger`** | [`crates/debugger`](../../../crates/debugger) | Headless inspection and debugging subsystem, register/memory inspectors, disassembly, breakpoint triggers. | `m68000`, `memory_bus` |
-| **`test_runner`** | [`crates/test_runner`](../../../crates/test_runner) | Automated validation against MAME (`.json`) and Tom Harte (`.json.gz`) SingleStepTests suites. | `m68000`, `memory_bus`, `debugger` |
+| **`test_runner`** | [`crates/test_runner`](../../../crates/test_runner) | Automated validation against MAME (`.json`) and Tom Harte (`.json`) SingleStepTests suites. | `m68000`, `memory_bus`, `debugger` |
 
 ---
 

@@ -8,7 +8,7 @@ description: >-
 
 This skill guides the validation and debugging of the M68000 CPU implementation against the two complementary single-step test suites:
 1. **MAME SingleStepTests:** `ref_src/SingleStepTests-m68000/v1/*.json` (127 files, includes Line-A, Line-F, STOP).
-2. **Tom Harte SingleStepTests-680x0:** `ref_src/SingleStepTests-680x0/68000/v1/*.json.gz` (125 gzipped files, ~1,000,000 tests, ground-truth for `TAS` RMW).
+2. **Tom Harte SingleStepTests-680x0:** `ref_src/SingleStepTests-680x0/68000/v1/*.json` (124 JSON files, ~1,000,000 tests, ground-truth for `TAS` RMW).
 
 ---
 
@@ -16,7 +16,7 @@ This skill guides the validation and debugging of the M68000 CPU implementation 
 
 - **Paths:**
   - MAME suite: `ref_src/SingleStepTests-m68000/v1/<INSTRUCTION>.<size>.json`
-  - Tom Harte suite: `ref_src/SingleStepTests-680x0/68000/v1/<INSTRUCTION>.<size>.json.gz`
+  - Tom Harte suite: `ref_src/SingleStepTests-680x0/68000/v1/<INSTRUCTION>.<size>.json`
 - **Specification Document:** Complete architecture, comparative matrix, and Rust data structures are in [CPU SingleStepTests.md](../../../Obsidian/Amiga/Design/CPU%20SingleStepTests.md).
 
 ---

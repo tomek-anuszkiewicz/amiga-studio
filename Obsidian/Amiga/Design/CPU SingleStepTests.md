@@ -7,7 +7,7 @@
 
 This document defines the complete specification and Rust data structures for running the **SingleStepTests** test suites against the M68000 CPU emulator. It specifies validation against both:
 1. The **MAME SingleStepTests suite** in [`ref_src/SingleStepTests-m68000/v1/`](../../../ref_src/SingleStepTests-m68000/v1) (127 JSON files).
-2. The **Tom Harte SingleStepTests-680x0 suite** in [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) (125 `.json.gz` files, ~1,000,000 tests).
+2. The **Tom Harte SingleStepTests-680x0 suite** in [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) (124 `.json` files, ~1,000,000 tests).
 
 ---
 
@@ -18,8 +18,8 @@ To ensure robust, ground-truth verification and eliminate single-source simulati
 | Feature | Suite 1: MAME SingleStepTests | Suite 2: Tom Harte SingleStepTests |
 | :--- | :--- | :--- |
 | **Path** | [`ref_src/SingleStepTests-m68000/v1/`](../../../ref_src/SingleStepTests-m68000/v1) | [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) |
-| **File Format** | Plain `.json` (and `.json.bin`) | Gzip-compressed `.json.gz` |
-| **Suite Count** | **127 test files** | **125 test files** |
+| **File Format** | Plain `.json` (and `.json.bin`) | Plain `.json` |
+| **Suite Count** | **127 test files** | **124 test files** |
 | **Test Scale** | ~1,000–5,000 tests per file | ~8,000+ tests per file (~1,000,000 total) |
 | **Origin** | MAME cycle-exact microcoded core | Tom Harte's CLK processor test generator |
 | **Unique Strengths** | Fast uncompressed loading; includes `ILLEGAL_LINEA`, `ILLEGAL_LINEF`, `STOP` | Massive randomized test coverage; independently verified |
@@ -261,7 +261,7 @@ The test harness is implemented in the dedicated workspace crate [`crates/test_r
 - **[`schema.rs`](../../../crates/test_runner/src/schema.rs):** Strict deserialization of `SingleStepTest` and `CpuTestState` using `#[serde(deny_unknown_fields)]`.
 - **[`runner.rs`](../../../crates/test_runner/src/runner.rs):** Test execution loop, CPU prefetch priming, state comparison, cycle count validation, and RAM byte validation:
   - `run_single_test_detail(test, file_path, index, mode) -> Result<(), TestFailure>`: Executes a single test case with configurable `VerifyMode` (`StateOnly`, `StateAndCycles`, `Full`).
-  - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Transparently decompresses `.json.gz` (Tom Harte) or reads plain `.json` (MAME), running up to `limit` test cases in `StateOnly` mode.
+  - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Reads plain `.json` test suites (MAME or Tom Harte), running up to `limit` test cases in `StateOnly` mode.
   - `run_test_file_with_mode(path, limit, mode)`: Configurable execution mode enabling cycle-exact and bus transaction verification.
 - **[`transactions.rs`](../../../crates/test_runner/src/transactions.rs):** Deserializes and parses transaction logs across Tom Harte and MAME formats, matching recorded bus transactions (read/write/TAS direction, 24-bit address, size, bus value, FC lines, strobe signals) against silicon logs.
 - **[`dma_harness.rs`](../../../crates/test_runner/src/dma_harness.rs):** Synthetic Agnus DMA bus contention runner sweeping single-cycle (`run_dma_contention_sweep`) and multi-cycle burst (`run_dma_burst_contention`) stalls across instruction execution phases, validating State Invariance and Cycle Invariance ($C = C_0 + 2 \times \text{wait\_cycles}$).
@@ -303,7 +303,7 @@ Integration tests reside in [`crates/test_runner/tests/test_singlestep.rs`](../.
 /// Helper function to execute a test against both MAME and Real 68k (Tom Harte) suites
 fn run_dual_test(name: &str, limit: usize) {
     let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", name);
-    let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json.gz", name);
+    let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", name);
 
     // 1. Validate against MAME suite
     let (mame_passed, mame_failed) = run_test_file(&mame_path, Some(limit))
@@ -419,7 +419,7 @@ When diagnosing a test mismatch:
 ### 9.3 Automated Dual-Suite Integration Test Matrix
 The integration test suite in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs) executes dual-suite cross-validation on every `cargo test` run. Each opcode test invokes `run_dual_test("<OPCODE>", limit)`, simultaneously validating vectors against:
 - **MAME suite** (`ref_src/SingleStepTests-m68000/v1/<OPCODE>.json`)
-- **Real 68k / Tom Harte suite** (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json.gz`)
+- **Real 68k / Tom Harte suite** (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json`)
 
 Currently active dual-suite tests cover all implemented instructions:
 - **System & Control**: `NOP`, `RTS`, `TRAP`, `Bcc` (`BRA`), `JMP`, `JSR`

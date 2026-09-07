@@ -11,7 +11,7 @@ fn run_dual_test(name: &str, limit: usize) {
 /// Helper function to execute a test against both suites with specified verification mode
 fn run_dual_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
     let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", name);
-    let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json.gz", name);
+    let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", name);
 
     // 1. MAME SingleStepTests suite
     let mame_res = run_test_file_with_mode(&mame_path, Some(limit), mode)
@@ -91,16 +91,15 @@ fn test_pea() {
 
 #[test]
 fn test_pea_an_full_verification() {
-    let base_path = "ref_src/SingleStepTests-680x0/68000/v1/PEA.json.gz";
+    let base_path = "ref_src/SingleStepTests-680x0/68000/v1/PEA.json";
     let harte_path = if std::path::Path::new(base_path).exists() {
         std::path::PathBuf::from(base_path)
     } else {
         std::path::Path::new("../..").join(base_path)
     };
     let file = std::fs::File::open(&harte_path).expect("Failed to open PEA test file");
-    let gz = flate2::read::GzDecoder::new(std::io::BufReader::new(file));
     let tests: Vec<test_runner::schema::SingleStepTest> =
-        serde_json::from_reader(gz).expect("Failed to parse PEA tests");
+        serde_json::from_reader(std::io::BufReader::new(file)).expect("Failed to parse PEA tests");
 
     let an_tests: Vec<_> = tests
         .into_iter()
