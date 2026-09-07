@@ -232,10 +232,24 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 
 ### 3.3 Micro-Step State Machine & Instruction Lifecycle
 
-Instruction execution is driven via a micro-step state machine clocked at CCK granularity:
+Instruction execution is driven via a micro-step state machine clocked at Color Clock (CCK) granularity (2 CPU clocks per CCK, 4 clocks per bus cycle):
 
 ```rust
 use memory_bus::{BusCycle, CckPhase};
+use serde::{Deserialize, Serialize};
+
+/// Instruction retirement and pipeline refill mode upon concluding in-flight micro-operations
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MicroRetireMode {
+    /// Instruction is actively progressing through micro-steps
+    None,
+    /// Standard sequential prefetch: ir = prefetch[0], prefetch[0] = last_read, pc += 2
+    StandardPrefetch,
+    /// RMW / Stack push: ir = prefetch[0], prefetch[0] = scratch_prefetch, pc += 2
+    ScratchPrefetch,
+    /// Taken branch / jump target refill: ir = new_ir, prefetch[0] = last_read, pc = target + 4
+    TargetRefill { target: u32, new_ir: u16 },
+}
 
 /// Sub-cycle execution micro-state of the M68000 CPU
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -244,19 +258,25 @@ pub struct CpuMicroState {
     pub phase: CckPhase,
     /// In-flight structured bus cycle (if awaiting memory response or holding wait states)
     pub active_bus_cycle: Option<BusCycle>,
+    /// Last 16-bit word received from completed bus read cycle
+    pub last_read: u16,
+    /// Intermediate latched prefetch word (e.g. for Class 0 RMW where prefetch precedes write)
+    pub scratch_prefetch: u16,
     /// Internal execution CPU clocks remaining (non-bus micro-operations)
     pub internal_clocks: u16,
     /// Step index within the current instruction's micro-operation sequence
     pub micro_step: u16,
     /// Intermediate temporary registers for multi-step micro-operations
     pub scratch: [u32; 2],
+    /// Pipeline retirement mode upon concluding the current in-flight cycle
+    pub retire_mode: MicroRetireMode,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StepResult {
     /// Micro-step completed within the current instruction
     StepCompleted,
-    /// Instruction has retired (completed writeback and prefetched next opcode into IR/IRC)
+    /// Instruction has retired (completed writeback and prefetched next opcode into IR/prefetch[0])
     InstructionCompleted,
     /// CPU stalled due to bus wait-state (MemoryBusResult::Blocked)
     WaitState,
@@ -267,12 +287,21 @@ pub enum StepResult {
 }
 ```
 
-#### Execution Lifecycle Stages
-1. **Decode & EA Calculation (CCK cycles):** Read effective address parameters and extension words from `IRC` if required, initiating refill prefetch reads at `PC`.
-2. **Operand Fetch:** Read source operand from register or memory via 2-phase bus transactions (`read_phase1`/`read_phase2`).
-3. **ALU Operation:** Compute operation using wrapping arithmetic and evaluate condition code flags (X, N, Z, V, C).
-4. **Writeback:** Write destination operand (if memory destination, via `write_phase1`/`write_phase2`).
-5. **Instruction Retirement:** Transfer `IRC -> IR`, fetch next stream word into `IRC`, increment `PC += 2`, and return `StepResult::InstructionCompleted`.
+#### The 6 Representative Micro-Step Archetypes (Verified Reference Model)
+
+| Archetype | Sample Instruction | Total CPU Clocks | Color Clocks (CCKs) | Sub-Cycle Micro-Operation Sequence |
+| :--- | :--- | :---: | :---: | :--- |
+| **1. Internal Register ALU** | `NOP`, `MOVE.w Dx, Dy` | **4** | **2** | **Step 0:** ALU execution / register copy + initiate opcode prefetch at `PC`. Retires via `StandardPrefetch`. |
+| **2. Memory Read** | `MOVE.w (Ax), Dy` | **8** | **4** | **Step 0:** Read data word from `(Ax)` (CCK1/CCK2).<br>**Step 1:** Latch `last_read` into `Dy`, update CCR, initiate opcode prefetch at `PC` (CCK1/CCK2). Retires via `StandardPrefetch`. |
+| **3. Memory Write (Class 1)** | `MOVE.w Dx, (Ay)` | **8** | **4** | **Step 0:** Update CCR, write `Dx` to `(Ay)` (CCK1/CCK2).<br>**Step 1:** Initiate opcode prefetch at `PC` (CCK1/CCK2). Retires via `StandardPrefetch`. |
+| **4. Read-Modify-Write (Class 0)** | `ADD.w Dx, (Ay)` | **12** | **6** | **Step 0:** Read destination word from `(Ay)` (CCK1/CCK2).<br>**Step 1:** Compute ALU sum, update CCR, initiate opcode prefetch at `PC` (CCK1/CCK2).<br>**Step 2:** Store prefetched opcode in `scratch_prefetch`, initiate write of ALU result to `(Ay)` (CCK1/CCK2). Retires via `ScratchPrefetch`. |
+| **5. Conditional Branching** | `Bcc.s` / `BRA.s` | **8** (untaken)<br>**10** (taken) | **4** (untaken)<br>**5** (taken) | **Untaken:** 4 internal clocks + initiate prefetch at `PC` (4 clocks). Retires via `StandardPrefetch`.<br>**Taken:** 2 internal clocks + target opcode prefetch at `target` (4 clocks) + next word prefetch at `target + 2` (4 clocks). Retires via `TargetRefill`. |
+| **6. Stack Push & Subroutine Call** | `PEA (An)`<br>`JSR (An)` | **12** (`PEA`)<br>**16** (`JSR`) | **6** (`PEA`)<br>**8** (`JSR`) | **`PEA (An)`:** Prefetch next word into `scratch_prefetch` (4 clocks) $\to$ Write address high word to `-(SP)` (4 clocks) $\to$ Write address low word to `SP + 2` (4 clocks). Retires via `ScratchPrefetch`.<br>**`JSR (An)`:** Prefetch target opcode into `scratch_prefetch` (4 clocks) $\to$ Write return PC high word to `-(SP)` (4 clocks) $\to$ Write return PC low word to `SP + 2` (4 clocks) $\to$ Prefetch target+2 word (4 clocks). Retires via `TargetRefill`. |
+
+#### Pipeline & Dispatch Table Invariants
+1. **Immutable `ir` During Micro-Steps:** The 65,536-entry static dispatch table (`DISPATCH_TABLE`) is indexed directly by `cpu.state.ir`. Intermediate multi-step operations (e.g. `JSR` or taken `Bcc`) must never overwrite `cpu.state.ir` before final retirement. Target opcodes must be staged in `scratch_prefetch` or `TargetRefill { target, new_ir }`, and committed to `cpu.state.ir` only upon retirement.
+2. **32-Bit Internal Program Counter:** The MC68000 Program Counter register is 32-bit wide internally. Across branch and jump target refills, `pc` is computed as `target.wrapping_add(4)` without 24-bit truncation mask `& 0x00FF_FFFF` (matching verified hardware tests in SingleStepTests).
+3. **Control Addressing Modes Alignment:** Control addressing modes in `PEA` and `LEA` compute effective addresses without checking word alignment. Odd addresses can be pushed onto the stack by `PEA` without generating Vector 3 Address Error. Only an unaligned Stack Pointer ($SP$) during stack writeback triggers an Address Error.
 
 ---
 

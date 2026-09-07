@@ -79,6 +79,11 @@ fn test_jsr() {
     run_dual_test("JSR", DEFAULT_SAMPLE_LIMIT);
 }
 
+#[test]
+fn test_pea() {
+    run_dual_test("PEA", DEFAULT_SAMPLE_LIMIT);
+}
+
 // ============================================================================
 // Data Movement (MOVE & MOVEA)
 // ============================================================================

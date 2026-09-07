@@ -42,37 +42,26 @@ This document outlines the phased development plan, hardware milestones, verific
 > **Completed Baseline Foundation:**
 > - **Audio Antialiasing:** `tools/blep_generator` ported to Rust, BLEP tables validated against WinUAE `sinctable.cpp`.
 > - **MemoryBus Architecture:** 24-bit physical decoding, 256-bank direct dispatch table, `_OVL` boot overlay, open bus floating physics (`$FF`/`$FFFF`), hardware quirks (`TAS` write-drop, CIA lane mapping), and OKI MSM6242B RTC integration.
-> - **M68000 Baseline Core & Debugger:** All 12 addressing modes (with Vector 3 Address Error), 51 instruction suites verified (100% green against SingleStepTests), and headless debugger backend (disassembler, trace ring buffer, breakpoints/watchpoints).
+> - **M68000 Baseline Core & Debugger:** All 12 addressing modes (with Vector 3 Address Error), 52 instruction suites verified (100% green against SingleStepTests including PEA), and headless debugger backend (disassembler, trace ring buffer, breakpoints/watchpoints).
 > - **CCK Sub-Cycle Bus Interface & 2-Phase State Machine:** 2-phase Color Clock protocol (CCK1 address/arbitration, CCK2 data commit/_DTACK), structured `BusCycle` with UDS/LDS strobes, `CpuMicroState` machine, and cycle-exact Chip RAM DMA wait-state stalling in `MemoryBus` and `Cpu`.
+> - **Micro-Step Instruction Decomposition (6 Archetypes PoC):** Cycle-exact sub-cycle micro-step engine decomposing all 6 representative instruction archetypes: Internal ALU (`NOP`, `MOVE.w Dx, Dy` - 4 clocks / 2 CCKs), Memory Read (`MOVE.w (Ax), Dy` - 8 clocks / 4 CCKs), Memory Write (`MOVE.w Dx, (Ay)` - 8 clocks / 4 CCKs), Read-Modify-Write Class 0 (`ADD.w Dx, (Ay)` - 12 clocks / 6 CCKs), Branching (`Bcc.s` / `BRA.s` - untaken 8 clocks / taken 10 clocks), and Stack Push/Call (`PEA (An)` - 12 clocks / 6 CCKs, `JSR (An)` - 16 clocks / 8 CCKs). Validated with 100% green unit tests and synthetic CCK1/CCK2 DMA contention stalls.
 
-### Step 1: Micro-Step Instruction Decomposition on 6 Representative Archetypes (Proof of Concept)
-- **Decompose 6 Archetypes into Cycle-Exact Micro-Operations:**
-  1. *Internal Register ALU (4 clocks / 2 CCKs):* `NOP`, `MOVE.w D0, D1` (Zero external memory cycles beyond opcode prefetch).
-  2. *Memory Read (8 clocks / 4 CCKs):* `MOVE.w (A0), D0` (Opcode fetch + prefetch + memory read).
-  3. *Memory Write (8 clocks / 4 CCKs):* `MOVE.w D0, (A0)` (Opcode fetch + memory write + prefetch).
-  4. *Read-Modify-Write (12 clocks / 6 CCKs):* `ADD.w D0, (A0)` (Opcode fetch + memory read + ALU execution + memory write + prefetch).
-  5. *Conditional Branching (10 vs 8 clocks):* `BRA.s` / `Bcc` (Taken branch: 10 clocks with pipeline flush/refetch; Untaken branch: 8 clocks with sequential prefetch).
-  6. *Stack Push/Pop (Multi-Word):* `PEA (A0)` / `JSR (A0)` (Sequential stack memory writes across multiple CCK cycles).
-- **Validation of Proof of Concept:**
-  - Verify that each archetype matches exact cycle length (`test.length`) under unblocked memory execution.
-  - Verify that injecting synthetic DMA stalls during CCK1 pauses the micro-step state machine without state corruption.
-
-### Step 2: Cycle Length & Bus Transaction Verification Harness
+### Step 1: Cycle Length & Bus Transaction Verification Harness
 - **Harness Extensions in `crates/test_runner`:**
   - Add cycle length verification asserting `cpu.cycles == test.length` against MAME and Tom Harte test vectors.
   - Implement bus cycle transaction recording (`[cycle, address, value, type, uds, lds]`) and match against Tom Harte's silicon bus transaction logs.
   - Add synthetic Agnus DMA contention test runner: inject DMA stalls at every possible CCK phase of each instruction to verify invariant preservation (final registers and memory identical, total cycles increased by wait states).
 
-### Step 3: Systematic Migration of Existing 51 Instructions to CCK Engine
+### Step 2: Systematic Migration of Existing 52 Instructions to CCK Engine
 - **Structured Migration Batches:**
   - *Batch 1 (Simple ALU & Immediate):* `ADD`, `ADDA`, `ADDI`, `ADDQ`, `SUB`, `SUBA`, `SUBI`, `SUBQ`, `CMP`, `CMPA`, `CMPI`, `CMPM`, `TST`.
   - *Batch 2 (Bitwise Logic & Bit Ops):* `AND`, `OR`, `BTST`, `BSET`, `BCLR`, `BCHG`.
   - *Batch 3 (Shifts & Rotates):* `ASL`, `ASR`, `LSL`, `LSR` (Dynamic micro-step loops: 6/8 base clocks + 2 clocks per bit shifted).
   - *Batch 4 (Data Movement):* `MOVE.b/w/l`, `MOVEA.w/l`.
   - *Batch 5 (Extended Arithmetic & Control Flow):* `ADDX`, `SUBX`, `BRA`, `Bcc`, `JMP`, `JSR`, `RTS`, `TRAP`, `NOP`.
-- **Milestone Gate:** All 51 migrated instructions pass 100% green in SingleStepTests with both state match AND exact cycle count (`test.length`).
+- **Milestone Gate:** All 52 migrated instructions pass 100% green in SingleStepTests with both state match AND exact cycle count (`test.length`).
 
-### Step 4: Implementation of Remaining Complex & Multi-Cycle Instructions
+### Step 3: Implementation of Remaining Complex & Multi-Cycle Instructions
 - **Implement Directly in CCK Engine:**
   - *Batch 6 (Multi-Register Moves):* `MOVEM` (looping bus cycles, predecrement/postincrement register ordering, interrupt sensitivity).
   - *Batch 7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
@@ -82,7 +71,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - *Batch 11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
 - **100% SingleStepTest Pass Rate Target:** Complete all 127 MAME suites and 125 Tom Harte suites with both register/memory match and cycle/bus-exact match.
 
-### Step 5: In-Memory Mutations & Dynamic DMA Contention Stress Testing
+### Step 4: In-Memory Mutations & Dynamic DMA Contention Stress Testing
 - **Address Space Remapping Mutations:**
   - Execute SingleStepTest suites with programmatic address remapping mutations (per [CPU SingleStepTests.md](Obsidian/Amiga/Design/CPU%20SingleStepTests.md#8-in-code-test-mutation-strategy-chipfast-ram--dma-contention)):
     - `ForceChipRam`: Offset code, operands, and stack into Chip RAM (`$000000-$07FFFF`) to test contention and Gary bus limits.
@@ -95,13 +84,13 @@ This document outlines the phased development plan, hardware milestones, verific
     - Burst stalls (simulating Blitter nastiness blocking the CPU for $N$ consecutive CCK cycles).
   - Verify bus arbitration invariants: CPU properly pauses instruction phase on `MemoryBusResult::Blocked`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
 
-### Step 6: Custom Chipsets (Agnus, Denise, Paula, CIAs)
+### Step 5: Custom Chipsets (Agnus, Denise, Paula, CIAs)
 - Decompose monolithic chip logic into focused subcomponents (Copper, Blitter, DMA, Audio, Floppy, Timers, Ports).
 - **Paula Audio Engine with Native BLEP Synthesis:** Integrate the precomputed BLEP tables (`blep_tables.rs`) generated by `tools/blep_generator` into Paula's 4 DMA audio channels, enabling alias-free variable-rate PCM playback across Amiga 500 and Amiga 1200 models (supporting dynamic CIA-A LED low-pass filter switching).
 - Implement interrupt priority line (IPL 1–6) aggregation and main loop arbitration.
 - Wire multi-chip peripherals (Floppy drive, Game ports, Keyboard reset line).
 
-### Step 8: Presentation, Host Integration & Full Interactive Debugger GUI
+### Step 6: Presentation, Host Integration & Full Interactive Debugger GUI
 - Video rendering: Decoupled ARGB8888 frame buffer with 4:3 aspect ratio scaling.
 - Audio sink: Ring buffer decoupled from host audio playback (`cpal` / Web Audio).
 - GUI: Native and WebAssembly UI using `egui` + `wgpu`.

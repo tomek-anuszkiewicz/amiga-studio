@@ -40,6 +40,10 @@ pub struct Cpu {
     pub state: CpuState,
     /// Number of wait-state cycles currently accumulated
     pub wait_cycles: u32,
+    /// Total CPU clocks executed (1 CCK = 2 CPU clocks)
+    pub total_clocks: u64,
+    /// CPU clocks consumed by the current instruction
+    pub instruction_clocks: u32,
 }
 
 impl Default for Cpu {
@@ -53,6 +57,8 @@ impl Cpu {
         Self {
             state: CpuState::default(),
             wait_cycles: 0,
+            total_clocks: 0,
+            instruction_clocks: 0,
         }
     }
 
@@ -63,6 +69,9 @@ impl Cpu {
         self.state.halted = false;
         self.state.step = 0;
         self.state.micro.reset();
+        self.wait_cycles = 0;
+        self.total_clocks = 0;
+        self.instruction_clocks = 0;
 
         // Fetch initial SSP from $000000
         let ssp_hi = bus.read_word_debug(0x000000);
@@ -91,12 +100,85 @@ impl Cpu {
             return StepResult::Stopped;
         }
 
-        // If an external bus transaction or internal execution is in flight, step the micro-state
-        if self.state.micro.is_bus_busy() || self.state.micro.internal_clocks > 0 {
-            return self.state.micro.step_cck(bus, &mut self.wait_cycles);
+        // 1. If an external bus transaction is currently in flight:
+        if self.state.micro.is_bus_busy() {
+            let res = self.state.micro.step_cck(bus, &mut self.wait_cycles);
+            self.total_clocks = self.total_clocks.wrapping_add(2);
+            self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+
+            if res.is_wait() {
+                return StepResult::WaitState;
+            }
+
+            // If the bus cycle just completed, check retirement mode
+            if !self.state.micro.is_bus_busy() {
+                match self.state.micro.retire_mode {
+                    crate::micro::MicroRetireMode::None => {}
+                    crate::micro::MicroRetireMode::StandardPrefetch => {
+                        self.state.ir = self.state.prefetch[0];
+                        self.state.prefetch[0] = self.state.micro.last_read;
+                        self.state.pc = self.state.pc.wrapping_add(2);
+                        self.state.micro.reset();
+                        return StepResult::InstructionCompleted;
+                    }
+                    crate::micro::MicroRetireMode::ScratchPrefetch => {
+                        self.state.ir = self.state.prefetch[0];
+                        self.state.prefetch[0] = self.state.micro.scratch_prefetch;
+                        self.state.pc = self.state.pc.wrapping_add(2);
+                        self.state.micro.reset();
+                        return StepResult::InstructionCompleted;
+                    }
+                    crate::micro::MicroRetireMode::TargetRefill { target, new_ir } => {
+                        self.state.ir = new_ir;
+                        self.state.prefetch[0] = self.state.micro.last_read;
+                        self.state.pc = target.wrapping_add(4);
+                        self.state.micro.reset();
+                        return StepResult::InstructionCompleted;
+                    }
+                }
+            }
+
+            return StepResult::StepCompleted;
         }
 
-        self.step_instruction(bus)
+        // 2. If internal execution clocks remain:
+        if self.state.micro.internal_clocks > 0 {
+            self.state.micro.internal_clocks = self.state.micro.internal_clocks.saturating_sub(2);
+            self.total_clocks = self.total_clocks.wrapping_add(2);
+            self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+            if self.state.micro.internal_clocks == 0 {
+                self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+            }
+            return StepResult::StepCompleted;
+        }
+
+        // 3. Dispatch current micro-step of current instruction
+        self.state.instruction_pc = self.state.pc.wrapping_sub(2);
+        let handler = crate::dispatch_table::DISPATCH_TABLE[self.state.ir as usize];
+        let res = handler(self, bus);
+
+        // If the handler initiated a bus cycle on CCK1, immediately execute CCK1 for that cycle
+        if self.state.micro.is_bus_busy() && self.state.micro.phase == memory_bus::CckPhase::Cck1 {
+            let bus_res = self.state.micro.step_cck(bus, &mut self.wait_cycles);
+            self.total_clocks = self.total_clocks.wrapping_add(2);
+            self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+            if bus_res.is_wait() {
+                return StepResult::WaitState;
+            }
+            return StepResult::StepCompleted;
+        }
+
+        // If handler completed synchronously (for non-migrated opcodes):
+        if res.is_completed() {
+            if self.instruction_clocks == 0 {
+                self.total_clocks = self.total_clocks.wrapping_add(4);
+                self.instruction_clocks = self.instruction_clocks.wrapping_add(4);
+            }
+            self.state.micro.reset();
+            return StepResult::InstructionCompleted;
+        }
+
+        res
     }
 
     /// Schedules a structured bus transaction onto the CPU micro-state machine
@@ -105,8 +187,23 @@ impl Cpu {
         self.state.micro.initiate_bus_cycle(cycle);
     }
 
+    /// Schedules an instruction prefetch read cycle from PC
+    #[inline]
+    pub fn initiate_prefetch(&mut self) {
+        let fc = if self.state.is_supervisor() {
+            memory_bus::function_code::SUPERVISOR_PROGRAM
+        } else {
+            memory_bus::function_code::USER_PROGRAM
+        };
+        let cycle = memory_bus::BusCycle::new_read(
+            self.state.pc,
+            memory_bus::BusAccessSize::Word,
+            fc,
+        );
+        self.state.micro.initiate_bus_cycle(cycle);
+    }
+
     /// Executes exactly one full M68000 instruction via direct table dispatch
-    #[inline(always)]
     pub fn step_instruction(&mut self, bus: &mut MemoryBus) -> StepResult {
         if self.state.halted {
             return StepResult::Halted;
@@ -115,11 +212,13 @@ impl Cpu {
             return StepResult::Stopped;
         }
 
-        self.state.instruction_pc = self.state.pc.wrapping_sub(2);
-
-        // Direct table dispatch: index directly into static 65,536-entry jump table in .rodata
-        let handler = crate::dispatch_table::DISPATCH_TABLE[self.state.ir as usize];
-        handler(self, bus)
+        self.instruction_clocks = 0;
+        loop {
+            let res = self.step_cck(bus);
+            if res.is_completed() || res == StepResult::Halted || res == StepResult::Stopped {
+                return res;
+            }
+        }
     }
 
     /// Retire current instruction and refill prefetch pipeline for sequential instructions

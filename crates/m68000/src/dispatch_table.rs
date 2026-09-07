@@ -52,6 +52,10 @@ const fn decode_opcode_handler(op: u16) -> OpcodeHandler {
     if (op & 0xFFC0) == 0x4E80 {
         return op_jsr;
     }
+    // PEA: 0100 1000 01 <ea:6>
+    if (op & 0xFFC0) == 0x4840 {
+        return op_pea;
+    }
     // 7. MOVE and MOVEA
     let top2 = (op >> 14) & 0x03;
     if top2 == 0 {
@@ -136,9 +140,11 @@ const fn decode_opcode_handler(op: u16) -> OpcodeHandler {
 
 // --- Specialized Direct Handlers ---
 
-pub fn op_nop(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    cpu.retire_instruction(bus);
-    StepResult::InstructionCompleted
+pub fn op_nop(cpu: &mut Cpu, _bus: &mut MemoryBus) -> StepResult {
+    // Micro-step 0 (CCK1 & CCK2 / 4 clocks): Prefetch next word from PC and retire
+    cpu.initiate_prefetch();
+    cpu.state.micro.mark_standard_prefetch_retire();
+    StepResult::StepCompleted
 }
 
 pub fn op_rts(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
@@ -181,12 +187,69 @@ pub fn op_bra_bcc(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let d8 = (opcode & 0x00FF) as i8;
     let base_pc = cpu.state.pc.wrapping_sub(2);
 
-    let displacement = if d8 == 0 {
-        cpu.consume_extension_word(bus) as i16 as i32
-    } else {
-        d8 as i32
-    };
+    if d8 != 0 {
+        let taken_target = control::evaluate_bcc(&cpu.state, cond, base_pc, d8 as i32);
+        match taken_target {
+            None => {
+                // Untaken branch: 8 CPU clocks (4 internal clocks + 4 prefetch)
+                match cpu.state.micro.micro_step {
+                    0 => {
+                        cpu.state.micro.internal_clocks = 4;
+                        return StepResult::StepCompleted;
+                    }
+                    1 => {
+                        cpu.initiate_prefetch();
+                        cpu.state.micro.mark_standard_prefetch_retire();
+                        return StepResult::StepCompleted;
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            Some(target) => {
+                // Taken branch: 10 CPU clocks (2 internal clocks + 4 target prefetch + 4 target+2 prefetch)
+                if (target & 1) != 0 {
+                    let fc = if cpu.state.is_supervisor() { 6 } else { 2 };
+                    cpu.handle_address_error_fc(target, true, fc, bus);
+                    return StepResult::InstructionCompleted;
+                }
+                match cpu.state.micro.micro_step {
+                    0 => {
+                        cpu.state.micro.scratch[0] = target;
+                        cpu.state.micro.internal_clocks = 2;
+                        return StepResult::StepCompleted;
+                    }
+                    1 => {
+                        let target = cpu.state.micro.scratch[0];
+                        let fc = if cpu.state.is_supervisor() {
+                            memory_bus::function_code::SUPERVISOR_PROGRAM
+                        } else {
+                            memory_bus::function_code::USER_PROGRAM
+                        };
+                        let cycle = memory_bus::BusCycle::new_read(target, memory_bus::BusAccessSize::Word, fc);
+                        cpu.initiate_bus_cycle(cycle);
+                        return StepResult::StepCompleted;
+                    }
+                    2 => {
+                        let new_ir = cpu.state.micro.last_read;
+                        let target = cpu.state.micro.scratch[0];
+                        let fc = if cpu.state.is_supervisor() {
+                            memory_bus::function_code::SUPERVISOR_PROGRAM
+                        } else {
+                            memory_bus::function_code::USER_PROGRAM
+                        };
+                        let cycle = memory_bus::BusCycle::new_read(target.wrapping_add(2), memory_bus::BusAccessSize::Word, fc);
+                        cpu.initiate_bus_cycle(cycle);
+                        cpu.state.micro.mark_target_refill_retire(target, new_ir);
+                        return StepResult::StepCompleted;
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
 
+    // 16-bit displacement branches (displacement in extension word)
+    let displacement = cpu.consume_extension_word(bus) as i16 as i32;
     if let Some(target) = control::evaluate_bcc(&cpu.state, cond, base_pc, displacement) {
         if (target & 1) != 0 {
             let fc = if cpu.state.is_supervisor() { 6 } else { 2 };
@@ -238,6 +301,72 @@ pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let opcode = cpu.state.ir;
     let mode = ((opcode >> 3) & 0x07) as u8;
     let reg = (opcode & 0x07) as u8;
+
+    // Archetype 6: JSR (An) (Stack Subroutine Call - Multi-Cycle, 16 clocks / 8 CCKs)
+    if mode == 2 {
+        let target = cpu.state.read_a(reg as usize);
+        if (target & 1) != 0 {
+            let fc = if cpu.state.is_supervisor() { 6 } else { 2 };
+            cpu.handle_address_error_fc(target, true, fc, bus);
+            return StepResult::InstructionCompleted;
+        }
+
+        let fc_prog = if cpu.state.is_supervisor() {
+            memory_bus::function_code::SUPERVISOR_PROGRAM
+        } else {
+            memory_bus::function_code::USER_PROGRAM
+        };
+        let fc_data = if cpu.state.is_supervisor() {
+            memory_bus::function_code::SUPERVISOR_DATA
+        } else {
+            memory_bus::function_code::USER_DATA
+        };
+
+        match cpu.state.micro.micro_step {
+            0 => {
+                // CCK 1 & 2 (Bus Cycle 1): Prefetch target opcode at target
+                cpu.state.micro.scratch[0] = target;
+                let return_pc = cpu.state.pc.wrapping_sub(2);
+                cpu.state.micro.scratch[1] = return_pc;
+                let cycle = memory_bus::BusCycle::new_read(target, memory_bus::BusAccessSize::Word, fc_prog);
+                cpu.initiate_bus_cycle(cycle);
+                return StepResult::StepCompleted;
+            }
+            1 => {
+                // CCK 3 & 4 (Bus Cycle 2): Write return PC high word to stack -(SP)
+                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
+                let sp = cpu.state.a7().wrapping_sub(4);
+                cpu.state.set_a7(sp);
+                if (sp & 1) != 0 {
+                    cpu.handle_address_error(sp, false, bus);
+                    return StepResult::InstructionCompleted;
+                }
+                let hi = ((cpu.state.micro.scratch[1] >> 16) & 0xFFFF) as u16;
+                let cycle = memory_bus::BusCycle::new_write(sp, hi, memory_bus::BusAccessSize::Word, fc_data);
+                cpu.initiate_bus_cycle(cycle);
+                return StepResult::StepCompleted;
+            }
+            2 => {
+                // CCK 5 & 6 (Bus Cycle 3): Write return PC low word to stack SP + 2
+                let sp_low = cpu.state.a7().wrapping_add(2);
+                let lo = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
+                let cycle = memory_bus::BusCycle::new_write(sp_low, lo, memory_bus::BusAccessSize::Word, fc_data);
+                cpu.initiate_bus_cycle(cycle);
+                return StepResult::StepCompleted;
+            }
+            3 => {
+                // CCK 7 & 8 (Bus Cycle 4): Prefetch next target word from target + 2
+                let target = cpu.state.micro.scratch[0];
+                let new_ir = cpu.state.micro.scratch_prefetch;
+                let cycle = memory_bus::BusCycle::new_read(target.wrapping_add(2), memory_bus::BusAccessSize::Word, fc_prog);
+                cpu.initiate_bus_cycle(cycle);
+                cpu.state.micro.mark_target_refill_retire(target, new_ir);
+                return StepResult::StepCompleted;
+            }
+            _ => unreachable!(),
+        }
+    }
+
     let pc = cpu.state.pc.wrapping_sub(2);
     let mut ext_reader = || cpu.consume_extension_word(bus);
     match AddressingMode::decode(mode, reg, Size::Long, pc, &mut ext_reader) {
@@ -273,6 +402,83 @@ pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     }
 }
 
+pub fn op_pea(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let opcode = cpu.state.ir;
+    let mode = ((opcode >> 3) & 0x07) as u8;
+    let reg = (opcode & 0x07) as u8;
+
+    // Archetype 6: PEA (An) (Stack Push - Multi-Cycle, 12 clocks / 6 CCKs)
+    if mode == 2 {
+        let fc_data = if cpu.state.is_supervisor() {
+            memory_bus::function_code::SUPERVISOR_DATA
+        } else {
+            memory_bus::function_code::USER_DATA
+        };
+
+        match cpu.state.micro.micro_step {
+            0 => {
+                // CCK 1 & 2 (Bus Cycle 1): Prefetch next instruction word from PC
+                let addr = cpu.state.read_a(reg as usize);
+                cpu.state.micro.scratch[0] = addr;
+                cpu.initiate_prefetch();
+                return StepResult::StepCompleted;
+            }
+            1 => {
+                // CCK 3 & 4 (Bus Cycle 2): Write high word of address to stack -(SP)
+                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
+                let sp = cpu.state.a7().wrapping_sub(4);
+                cpu.state.set_a7(sp);
+                if (sp & 1) != 0 {
+                    cpu.handle_address_error(sp, false, bus);
+                    return StepResult::InstructionCompleted;
+                }
+                let hi = ((cpu.state.micro.scratch[0] >> 16) & 0xFFFF) as u16;
+                let cycle = memory_bus::BusCycle::new_write(sp, hi, memory_bus::BusAccessSize::Word, fc_data);
+                cpu.initiate_bus_cycle(cycle);
+                return StepResult::StepCompleted;
+            }
+            2 => {
+                // CCK 5 & 6 (Bus Cycle 3): Write low word of address to stack SP + 2
+                let sp_low = cpu.state.a7().wrapping_add(2);
+                let lo = (cpu.state.micro.scratch[0] & 0xFFFF) as u16;
+                let cycle = memory_bus::BusCycle::new_write(sp_low, lo, memory_bus::BusAccessSize::Word, fc_data);
+                cpu.initiate_bus_cycle(cycle);
+                cpu.state.micro.mark_scratch_prefetch_retire();
+                return StepResult::StepCompleted;
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    // Fallback for other addressing modes (absolute, PC-relative, etc.)
+    let pc = cpu.state.pc.wrapping_sub(2);
+    let mut ext_reader = || cpu.consume_extension_word(bus);
+    match AddressingMode::decode(mode, reg, Size::Long, pc, &mut ext_reader) {
+        Ok(ea) => match ea.resolve_address_unaligned(&mut cpu.state) {
+            Ok(addr) => {
+                let sp = cpu.state.a7().wrapping_sub(4);
+                cpu.state.set_a7(sp);
+                if (sp & 1) != 0 {
+                    cpu.handle_address_error(sp, false, bus);
+                    return StepResult::InstructionCompleted;
+                }
+                bus.write_word_debug(sp, (addr >> 16) as u16);
+                bus.write_word_debug(sp.wrapping_add(2), (addr & 0xFFFF) as u16);
+                cpu.retire_instruction(bus);
+                StepResult::InstructionCompleted
+            }
+            Err(_) => {
+                cpu.state.halted = true;
+                StepResult::Halted
+            }
+        },
+        Err(_) => {
+            cpu.state.halted = true;
+            StepResult::Halted
+        }
+    }
+}
+
 pub fn op_move(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let opcode = cpu.state.ir;
     let size_bits = (opcode >> 12) & 0x03;
@@ -287,6 +493,75 @@ pub fn op_move(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let dst_mode = ((opcode >> 6) & 0x07) as u8;
     let src_mode = ((opcode >> 3) & 0x07) as u8;
     let src_reg = (opcode & 0x07) as u8;
+
+    // Archetype 1: MOVE.w Dx, Dy (Register to Register, 4 clocks / 2 CCKs)
+    if size == Size::Word && src_mode == 0 && dst_mode == 0 {
+        let val = cpu.state.d[src_reg as usize] & 0xFFFF;
+        cpu.write_d_reg(dst_reg as usize, val, Size::Word);
+        move_ops::update_ccr_move(&mut cpu.state, val, Size::Word);
+        cpu.initiate_prefetch();
+        cpu.state.micro.mark_standard_prefetch_retire();
+        return StepResult::StepCompleted;
+    }
+
+    // Archetype 2: MOVE.w (Ax), Dy (Memory Read, 8 clocks / 4 CCKs)
+    if size == Size::Word && src_mode == 2 && dst_mode == 0 {
+        let addr = cpu.state.read_a(src_reg as usize);
+        if (addr & 1) != 0 {
+            cpu.handle_address_error(addr, true, bus);
+            return StepResult::InstructionCompleted;
+        }
+        match cpu.state.micro.micro_step {
+            0 => {
+                let fc = if cpu.state.is_supervisor() {
+                    memory_bus::function_code::SUPERVISOR_DATA
+                } else {
+                    memory_bus::function_code::USER_DATA
+                };
+                let cycle = memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc);
+                cpu.initiate_bus_cycle(cycle);
+                return StepResult::StepCompleted;
+            }
+            1 => {
+                let val = cpu.state.micro.last_read as u32;
+                cpu.write_d_reg(dst_reg as usize, val, Size::Word);
+                move_ops::update_ccr_move(&mut cpu.state, val, Size::Word);
+                cpu.initiate_prefetch();
+                cpu.state.micro.mark_standard_prefetch_retire();
+                return StepResult::StepCompleted;
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    // Archetype 3: MOVE.w Dx, (Ay) (Memory Write - Class 1, 8 clocks / 4 CCKs)
+    if size == Size::Word && src_mode == 0 && dst_mode == 2 {
+        let val = (cpu.state.d[src_reg as usize] & 0xFFFF) as u16;
+        move_ops::update_ccr_move(&mut cpu.state, val as u32, Size::Word);
+        let addr = cpu.state.read_a(dst_reg as usize);
+        if (addr & 1) != 0 {
+            cpu.handle_address_error(addr, false, bus);
+            return StepResult::InstructionCompleted;
+        }
+        match cpu.state.micro.micro_step {
+            0 => {
+                let fc = if cpu.state.is_supervisor() {
+                    memory_bus::function_code::SUPERVISOR_DATA
+                } else {
+                    memory_bus::function_code::USER_DATA
+                };
+                let cycle = memory_bus::BusCycle::new_write(addr, val, memory_bus::BusAccessSize::Word, fc);
+                cpu.initiate_bus_cycle(cycle);
+                return StepResult::StepCompleted;
+            }
+            1 => {
+                cpu.initiate_prefetch();
+                cpu.state.micro.mark_standard_prefetch_retire();
+                return StepResult::StepCompleted;
+            }
+            _ => unreachable!(),
+        }
+    }
 
     let pc = cpu.state.pc.wrapping_sub(2);
     let mut ext_reader = || cpu.consume_extension_word(bus);
@@ -394,6 +669,44 @@ fn execute_arithmetic_group(cpu: &mut Cpu, bus: &mut MemoryBus, is_sub: bool) ->
         7 => (Size::Long, true, true), // ADDA/SUBA.L
         _ => unreachable!(),
     };
+
+    // Archetype 4: ADD.w Dx, (Ay) (Read-Modify-Write - Class 0, 12 clocks / 6 CCKs)
+    if !is_sub && opmode == 5 && ea_mode == 2 {
+        let addr = cpu.state.read_a(ea_reg as usize);
+        if (addr & 1) != 0 {
+            cpu.handle_address_error(addr, true, bus);
+            return StepResult::InstructionCompleted;
+        }
+        let fc = if cpu.state.is_supervisor() {
+            memory_bus::function_code::SUPERVISOR_DATA
+        } else {
+            memory_bus::function_code::USER_DATA
+        };
+        match cpu.state.micro.micro_step {
+            0 => {
+                let cycle = memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc);
+                cpu.initiate_bus_cycle(cycle);
+                return StepResult::StepCompleted;
+            }
+            1 => {
+                let dst_val = cpu.state.micro.last_read as u32;
+                let src_val = cpu.state.d[reg_d] & 0xFFFF;
+                let res = arithmetic::execute_add(&mut cpu.state, src_val, dst_val, Size::Word, true);
+                cpu.state.micro.scratch[1] = res;
+                cpu.initiate_prefetch();
+                return StepResult::StepCompleted;
+            }
+            2 => {
+                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
+                let write_val = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
+                let cycle = memory_bus::BusCycle::new_write(addr, write_val, memory_bus::BusAccessSize::Word, fc);
+                cpu.initiate_bus_cycle(cycle);
+                cpu.state.micro.mark_scratch_prefetch_retire();
+                return StepResult::StepCompleted;
+            }
+            _ => unreachable!(),
+        }
+    }
 
     let pc = cpu.state.pc.wrapping_sub(2);
     let mut ext_reader = || cpu.consume_extension_word(bus);

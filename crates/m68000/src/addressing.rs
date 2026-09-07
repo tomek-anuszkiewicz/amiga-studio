@@ -192,29 +192,18 @@ impl AddressingMode {
         }
     }
 
-    /// Resolves the target memory address for memory-based addressing modes
-    pub fn resolve_address(&self, state: &mut CpuState, size: Size) -> Result<u32, EaError> {
+    /// Resolves the effective address without checking word alignment (for LEA/PEA control addressing modes)
+    pub fn resolve_address_unaligned(&self, state: &mut CpuState) -> Result<u32, EaError> {
         let addr = match *self {
             AddressingMode::AddressIndirect(reg) => state.read_a(reg as usize),
             AddressingMode::Postincrement(reg) => {
                 let a = state.read_a(reg as usize);
-                // Stack Pointer A7 Quirk: On byte ops, A7 adjusts by 2 to keep stack word-aligned
-                let delta = if size == Size::Byte && reg == 7 {
-                    2
-                } else {
-                    size.byte_count()
-                };
-                state.write_a(reg as usize, a.wrapping_add(delta));
+                state.write_a(reg as usize, a.wrapping_add(4));
                 a
             }
             AddressingMode::Predecrement(reg) => {
                 let a = state.read_a(reg as usize);
-                let delta = if size == Size::Byte && reg == 7 {
-                    2
-                } else {
-                    size.byte_count()
-                };
-                let new_a = a.wrapping_sub(delta);
+                let new_a = a.wrapping_sub(4);
                 state.write_a(reg as usize, new_a);
                 new_a
             }
@@ -241,6 +230,37 @@ impl AddressingMode {
             }
         };
 
+        Ok(addr)
+    }
+
+    /// Resolves the target memory address for memory-based addressing modes
+    pub fn resolve_address(&self, state: &mut CpuState, size: Size) -> Result<u32, EaError> {
+        let addr = match *self {
+            AddressingMode::Postincrement(reg) if size == Size::Byte && reg == 7 => {
+                let a = state.read_a(7);
+                state.write_a(7, a.wrapping_add(2));
+                a
+            }
+            AddressingMode::Predecrement(reg) if size == Size::Byte && reg == 7 => {
+                let a = state.read_a(7);
+                let new_a = a.wrapping_sub(2);
+                state.write_a(7, new_a);
+                new_a
+            }
+            AddressingMode::Postincrement(reg) => {
+                let a = state.read_a(reg as usize);
+                state.write_a(reg as usize, a.wrapping_add(size.byte_count()));
+                a
+            }
+            AddressingMode::Predecrement(reg) => {
+                let a = state.read_a(reg as usize);
+                let new_a = a.wrapping_sub(size.byte_count());
+                state.write_a(reg as usize, new_a);
+                new_a
+            }
+            _ => self.resolve_address_unaligned(state)?,
+        };
+
         // Check for unaligned word/long address error
         if size != Size::Byte && (addr & 1) != 0 {
             return Err(EaError::AddressError {
@@ -249,6 +269,6 @@ impl AddressingMode {
             });
         }
 
-        Ok(addr & 0x00FF_FFFF)
+        Ok(addr)
     }
 }

@@ -7,6 +7,20 @@ use crate::core::StepResult;
 use memory_bus::{BusCycle, CckPhase, MemoryBus, MemoryBusResult};
 use serde::{Deserialize, Serialize};
 
+/// Instruction retirement and pipeline refill mode when finishing micro-operations
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum MicroRetireMode {
+    /// Instruction is actively progressing through micro-steps
+    #[default]
+    None,
+    /// Standard sequential prefetch: ir = prefetch[0], prefetch[0] = last_read, pc += 2
+    StandardPrefetch,
+    /// RMW / Stack push: ir = prefetch[0], prefetch[0] = scratch_prefetch, pc += 2
+    ScratchPrefetch,
+    /// Taken branch / jump target refill: ir = new_ir, prefetch[0] = last_read, pc = target + 4
+    TargetRefill { target: u32, new_ir: u16 },
+}
+
 /// Sub-cycle execution micro-state of the M68000 CPU
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CpuMicroState {
@@ -14,12 +28,21 @@ pub struct CpuMicroState {
     pub phase: CckPhase,
     /// In-flight structured bus cycle (if awaiting memory response or holding wait states)
     pub active_bus_cycle: Option<BusCycle>,
+    /// Last 16-bit word received from completed bus read cycle
+    #[serde(default)]
+    pub last_read: u16,
+    /// Intermediate latched prefetch word (e.g. for Class 0 RMW where prefetch precedes write)
+    #[serde(default)]
+    pub scratch_prefetch: u16,
     /// Internal execution CPU clocks remaining (non-bus micro-operations)
     pub internal_clocks: u16,
     /// Step index within the current instruction's micro-operation sequence
     pub micro_step: u16,
     /// Intermediate temporary registers for multi-step micro-operations
     pub scratch: [u32; 2],
+    /// Pipeline retirement mode upon concluding the current in-flight cycle
+    #[serde(default)]
+    pub retire_mode: MicroRetireMode,
 }
 
 impl Default for CpuMicroState {
@@ -34,9 +57,12 @@ impl CpuMicroState {
         Self {
             phase: CckPhase::Cck1,
             active_bus_cycle: None,
+            last_read: 0,
+            scratch_prefetch: 0,
             internal_clocks: 0,
             micro_step: 0,
             scratch: [0; 2],
+            retire_mode: MicroRetireMode::None,
         }
     }
 
@@ -44,15 +70,42 @@ impl CpuMicroState {
     pub fn reset(&mut self) {
         self.phase = CckPhase::Cck1;
         self.active_bus_cycle = None;
+        self.last_read = 0;
+        self.scratch_prefetch = 0;
         self.internal_clocks = 0;
         self.micro_step = 0;
         self.scratch = [0; 2];
+        self.retire_mode = MicroRetireMode::None;
     }
 
     /// Returns whether an external bus transaction is currently in flight
     #[inline]
     pub fn is_bus_busy(&self) -> bool {
         self.active_bus_cycle.is_some()
+    }
+
+    /// Returns whether the current instruction is marked for retirement
+    #[inline]
+    pub fn is_instruction_done(&self) -> bool {
+        self.retire_mode != MicroRetireMode::None
+    }
+
+    /// Marks instruction to retire via standard prefetch upon completing the in-flight cycle
+    #[inline]
+    pub fn mark_standard_prefetch_retire(&mut self) {
+        self.retire_mode = MicroRetireMode::StandardPrefetch;
+    }
+
+    /// Marks instruction to retire via scratch prefetch (Class 0 RMW / stack)
+    #[inline]
+    pub fn mark_scratch_prefetch_retire(&mut self) {
+        self.retire_mode = MicroRetireMode::ScratchPrefetch;
+    }
+
+    /// Marks instruction to retire via target branch refill
+    #[inline]
+    pub fn mark_target_refill_retire(&mut self, target: u32, new_ir: u16) {
+        self.retire_mode = MicroRetireMode::TargetRefill { target, new_ir };
     }
 
     /// Initiates a structured bus cycle, scheduling it on the micro-state machine
@@ -77,8 +130,11 @@ impl CpuMicroState {
                             self.phase = CckPhase::Cck2;
                             StepResult::StepCompleted
                         }
-                        MemoryBusResult::Ready(_) => {
+                        MemoryBusResult::Ready(data) => {
                             // Immediate transaction completion
+                            if cycle.is_read {
+                                self.last_read = data;
+                            }
                             self.active_bus_cycle = None;
                             self.phase = CckPhase::Cck1;
                             self.micro_step = self.micro_step.wrapping_add(1);
@@ -93,7 +149,10 @@ impl CpuMicroState {
                             *wait_cycles = wait_cycles.wrapping_add(1);
                             StepResult::WaitState
                         }
-                        MemoryBusResult::Ready(_) => {
+                        MemoryBusResult::Ready(data) => {
+                            if cycle.is_read {
+                                self.last_read = data;
+                            }
                             self.active_bus_cycle = None;
                             self.phase = CckPhase::Cck1;
                             self.micro_step = self.micro_step.wrapping_add(1);
@@ -112,6 +171,9 @@ impl CpuMicroState {
             // 2 CPU clocks = 1 CCK cycle
             self.internal_clocks = self.internal_clocks.saturating_sub(2);
             self.phase = self.phase.next();
+            if self.internal_clocks == 0 {
+                self.micro_step = self.micro_step.wrapping_add(1);
+            }
             StepResult::StepCompleted
         } else {
             StepResult::StepCompleted
