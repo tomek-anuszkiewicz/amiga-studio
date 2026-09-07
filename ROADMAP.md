@@ -77,33 +77,47 @@ This document outlines the phased development plan, hardware milestones, verific
   - *Batch 11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
 - **100% SingleStepTest Pass Rate Target:** Complete all 127 MAME suites and 125 Tom Harte suites with both register/memory match and cycle/bus-exact match.
 
-### Step 3: Custom Chipsets (Agnus, Denise, Paula, CIAs)
-- **Step 3.1: Minimal Machine Main Loop (`A500::step_cck`) & Subsystem Orchestration:**
+### Step 3: Comprehensive Opcode Benchmarking & Performance Profiling
+- **Automated Per-Opcode Micro-Benchmark Harness:**
+  - Develop an exhaustive automated micro-benchmark harness (e.g. using `criterion` and dedicated throughput harnesses in `crates/test_runner`) measuring host execution time, nanoseconds per instruction, and throughput (MIPS) across all 65,536 dispatch entries and instruction variants.
+  - Test diverse operand combinations: data register direct, address register indirect with displacement/indexing, and immediate/memory forms under both cached and unblocked bus scenarios.
+- **Bottleneck Profiling & Hot-Path Anomaly Detection:**
+  - Profile host CPU metrics (instruction cache density, L1i/L1d cache behavior, superscalar IPC, branch mispredictions) across instruction handlers.
+  - Automatically rank handlers by host latency and flag operations exhibiting disproportionate execution overhead relative to emulated M68000 cycle counts.
+  - Isolate candidates ripe for performance tuning (e.g., redundant flag calculations, sub-optimal addressing resolution, intermediate masking, or branching in micro-step transitions).
+- **Targeted Mechanical Sympathy Optimization:**
+  - Refactor identified slow handlers using host CPU mechanical sympathy principles (direct specialized flattening, branchless bit operations, eliminated redundant register banking, and cross-crate MIR inlining).
+  - Strictly enforce architectural constraints: zero custom macros (`macro_rules!`), zero const-generic function matrices, zero dynamic heap allocations, and zero compromise on code readability.
+- **Fidelity & Regression Validation Gate:**
+  - Ensure every optimized handler retains 100% cycle-exact Color Clock fidelity and passes the full exhaustive SingleStepTests suite (`$env:SINGLESTEP_FULL = "1"`) with zero regressions.
+
+### Step 4: Custom Chipsets (Agnus, Denise, Paula, CIAs)
+- **Step 4.1: Minimal Machine Main Loop (`A500::step_cck`) & Subsystem Orchestration:**
   - Create the top-level machine struct (`A500`) owning all primary subsystems without circular references: `cpu`, `memory_bus`, `cycle_counter`, `agnus`, `denise`, `paula`, `cia_a`, `cia_b`.
   - Multi-level stepping interfaces: `step_cck(cck: u64)`, `step_instruction()`, `step_cycles(n)`, `step_frame()`.
   - Strict lockstep Color Clock stepping: clock beam counters, advance DMA slots, clock CIAs, drive CPU CCK1/CCK2 bus phases against `MemoryBus`.
   - Central interrupt priority arbitration pipeline: sample Paula (Levels 1, 3, 4, 5), CIA-A (Level 2), and CIA-B (Level 6), calculate highest unmasked level, and drive `cpu.set_ipl()`.
-- **Step 3.2: Machine-Wide Reset Sequencing (`reset_cold` & `reset_warm`):**
+- **Step 4.2: Machine-Wide Reset Sequencing (`reset_cold` & `reset_warm`):**
   - Physical `_RESET` line propagation across all chips.
   - Boot overlay engagement (`map_kickstart_to_low_memory` in `MemoryBus`).
   - *Cold Reset:* Zero physical RAM buffers (`$00`), reset chip registers to power-on defaults (`DMACON = $0000`, `INTENA/INTREQ = $0000`, CIA latches cleared), initialize CPU `SR = $2700`, load initial `SSP`/`PC` from `$000000`/`$000004` (Kickstart ROM), prime prefetch queue (`IR`, `IRC`).
   - *Warm Reset:* Preserve RAM contents intact (ensuring Kickstart memory checksum and resident module discovery pass), re-engage `_OVL`, assert chip reset lines, reload initial vectors.
   - Hardware keyboard reset line: wire `Ctrl-Amiga-Amiga` reset trigger line to main machine reset flow.
-- **Step 3.3: Delayed Signal & Register Mutation Propagation Pipeline:**
+- **Step 4.3: Delayed Signal & Register Mutation Propagation Pipeline:**
   - *Physical Circuit Simulation:* Register reads return the currently latched active state **immediately** ("Read is NOW"). Register writes, strobes, and register mutations (e.g. `DMACON`, `BPLCON0`, `COLORxx`, `INTENA`, `COPJMP1`, `BLTSIZE`, CIA timer latches) do not take instantaneous cross-chip effect; they are staged and propagate after $K$ Color Clock phases / CCK cycles before altering the active execution path.
   - *Zero-Allocation Hot Path Design:* Model staged mutations using fixed-size inline pipeline latches / ring buffers (e.g. `[Option<DelayedWrite>; 4]` or fixed-capacity shift latches) embedded directly within chip structs. Zero dynamic heap allocation (`Vec`, `Box`) during CCK stepping.
   - *Save State Persistence:* The delayed mutation pipeline, staged values, and remaining cycle countdowns are fully serializable in save states (`AgnusState`, `DeniseState`, etc.), guaranteeing deterministic round-trip snapshot capture and rewind/restore even mid-propagation.
-- **Step 3.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
+- **Step 4.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
   - Implement the baseline Agnus horizontal scanline DMA slot schedule (CCK 0..3 DRAM refresh, CCK 4 disk, CCK 5..8 audio, CCK 12..27 sprites, bitplanes, and even/odd slots).
   - CPU and Blitter contention arbitration (`BLTPRI` Blitter Nasty mode).
   - Direct bus lock exposure: drive `MemoryBus::set_chip_ram_blocked(bool)` so the CPU and all custom chips observe bus contention and stall with wait states (`MemoryBusResult::Blocked`), establishing correct bus contention physics even before individual channel internal DSP/rendering logic is fully completed.
-- **Step 3.5: Decomposed Subsystem Deep Implementations:**
+- **Step 4.5: Decomposed Subsystem Deep Implementations:**
   - *Agnus:* Copper coprocessor state machine (`MOVE`, `WAIT`, `SKIP`, `CDANG` danger mode), 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer, ascending/descending modes).
   - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (`blep_tables.rs`) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.
   - *Denise:* Video pixel serializer, bitplanes (1–6), 8 hardware sprites, 32-color palette (RGB444), dual playfield, collision detection registers (`CLXDAT`, `CLXCON`).
   - *CIAs (Dual MOS 8520):* Timers A & B, TOD clock, serial shift register (SDR), parallel/control ports, E-clock synchronization.
 
-### Step 4: Presentation, Host Integration & Full Interactive Debugger GUI
+### Step 5: Presentation, Host Integration & Full Interactive Debugger GUI
 - Video rendering: Decoupled ARGB8888 frame buffer with 4:3 aspect ratio scaling.
 - Audio sink: Ring buffer decoupled from host audio playback (`cpal` / Web Audio).
 - GUI: Native and WebAssembly UI using `egui` + `wgpu`.
