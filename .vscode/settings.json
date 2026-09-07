@@ -1,0 +1,4 @@
+﻿{
+  "rust-analyzer.debug.engine": "ms-vscode.cpptools",
+  "debug.allowBreakpointsEverywhere": true
+}
