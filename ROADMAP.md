@@ -36,55 +36,15 @@ This document outlines the phased development plan, hardware milestones, verific
 - **Light Pen / Gun:** Video beam position latching via `VPOSR`/`VHPOSR` registers and `BPLCON0` bit 3 (`LPEN`).
 
 ---
+## 2. Core Implementation Strategy (Remaining Milestones)
 
-## 2. Core Implementation Strategy
-### Step 1: BlepGenerator — Rust Port & Audio Antialiasing Validation (Completed)
-- **Convert [tools/blep_generator](tools/blep_generator) to Rust:**
-  - Ported the C# table generation implementation into a native Rust tool (`tools/blep_generator`).
-  - Ported the analytical audio filter transfer function, windowed sinc integration, and BLEP table calculation pipeline.
-  - Generated band-limited step (BLEP) interpolation tables for Paula's audio channels across A500 PAL (~3.54 MHz) and NTSC (~3.58 MHz) clock domains.
-- **Validate Against WinUAE Ground Truth:**
-  - Validated generated tables directly against WinUAE's reference `winsinc_integral` tables ([`ref_src/WinUAE-6030/sinctable.cpp`](ref_src/WinUAE-6030/sinctable.cpp)) to ensure clean, alias-free sound rendering for Paula's variable-rate audio channels.
-- **Embed Static Tables in Paula Core:**
-  - Precalculated BLEP sinc tables ready as static arrays in Paula's audio rendering pipeline, adhering strictly to the zero-allocation hot-path guideline.
+> [!NOTE]
+> **Completed Baseline Foundation:**
+> - **Audio Antialiasing:** `tools/blep_generator` ported to Rust, BLEP tables validated against WinUAE `sinctable.cpp`.
+> - **MemoryBus Architecture:** 24-bit physical decoding, 256-bank direct dispatch table, `_OVL` boot overlay, open bus floating physics (`$FF`/`$FFFF`), hardware quirks (`TAS` write-drop, CIA lane mapping), and OKI MSM6242B RTC integration.
+> - **M68000 Baseline Core & Debugger:** All 12 addressing modes (with Vector 3 Address Error), 51 instruction suites verified (100% green against SingleStepTests), and headless debugger backend (disassembler, trace ring buffer, breakpoints/watchpoints).
 
-### Step 2: MemoryBus & 2-Phase CCK Bus Arbitration (Baseline Implemented)
-- **24-Bit Physical Address Decoding:**
-  - Implemented 24-bit physical decoding: Chip RAM (512 KB/1 MB), Slow RAM (`$C00000`), Fast RAM (`$200000`), Kickstart ROM (`$F80000`), and hardware register spaces (`$DFF000`, `$BFE001`, `$BFD000`).
-  - Implemented low-memory boot overlay (`_OVL`): route `$000000-$07FFFF` to Kickstart ROM on cold/warm reset until cleared.
-  - Modeled open bus behavior: floating address lines return `$FF` / `$FFFF` on unmapped spaces without bus errors.
-  - Implemented Amiga hardware quirks: `TAS` write-drop in Chip/Slow RAM, CIA byte lane mapping (even on CIA-B, odd on CIA-A).
-  - Dedicated test-loading mode populating arbitrary RAM bytes for `SingleStepTests` execution.
-- **Sub-Cycle 2-Phase CCK Bus Protocol Integration:**
-  - Two-phase CCK latching (`read_phase1`/`read_phase2`, `write_phase1`/`write_phase2`) returning `MemoryBusResult` (`Phase1Ready`, `Ready(u16)`, `Blocked`).
-  - Transparent read latch buffer (`read_latch`) isolating CPU during bus wait states.
-  - Gary / Agnus cycle stealing and DMA wait states on Chip RAM via `lock_chip_ram()` / `unlock_chip_ram()`.
-
-### Step 3a: Functional Core Baseline, Addressing Modes & Debugger Primitives (Completed)
-- **Headless Debugger Backend Primitives:**
-  - Built-in zero-dependency M68000 opcode disassembler.
-  - Stepping primitives (`step_instruction`, `step_cck`).
-  - PC execution breakpoints and memory read/write watchpoints.
-  - Read-only state inspection (`CpuState`, registers $D_0-D_7$, $A_0-A_7$, $SR$, CCR flags, prefetch queue).
-  - 1024-entry execution trace ring buffer for instant post-mortem failure analysis.
-- **All 12 M68000 Addressing Modes Implemented & Validated:**
-  - Register direct (`Dn`, `An`), indirect `(An)`, postincrement `(An)+`, predecrement `-(An)` (with `A7` 2-byte alignment quirk on byte ops).
-  - Displacement `(d16, An)`, indexed `(d8, An, Xn)` with brief extension word, absolute short `(xxx).W`, absolute long `(xxx).L`.
-  - PC-relative displacement `(d16, PC)` and index `(d8, PC, Xn)`, immediate data `#<data>`, `SR`, and `CCR`.
-  - Unaligned word/long address error exception handling (Vector 3) with full 7-word stack frame generation.
-- **51 Instruction Suites Verified (100% Green):**
-  - Data movement: `MOVE.b/w/l`, `MOVEA.w/l`.
-  - Arithmetic: `ADD.b/w/l`, `ADDA.w/l`, `ADDX.b/w/l`, `ADDQ.b/w/l`, `ADDI.b/w/l`, `SUB.b/w/l`, `SUBA.w/l`, `SUBX.b/w/l`, `SUBQ.b/w/l`, `SUBI.b/w/l`.
-  - Comparison & Test: `CMP.b/w/l`, `CMPA.w/l`, `CMPI.b/w/l`, `CMPM.b/w/l`, `TST.b/w/l`.
-  - Logic & Bit Ops: `AND.b/w/l`, `OR.b/w/l`, `BTST`, `BSET`, `BCLR`, `BCHG`.
-  - Shifts: `ASL.b/w/l`, `ASR.b/w/l`, `LSL.b/w/l`, `LSR.b/w/l`.
-  - Control Flow & Exceptions: `BRA`, `Bcc`, `JMP`, `JSR`, `RTS`, `NOP`, `TRAP`.
-- **Silicon Quirks Identified & Documented:**
-  - Unmapped memory open bus (`$FF`) vs SingleStepTests flat memory model (`$00`).
-  - Address register postincrement/predecrement timing on write faults (predecrement decrements before fault, postincrement does not increment).
-  - `CMP` / `TST` condition codes: identical to subtraction/testing, but **Extend ($X$) flag is strictly preserved**.
-
-### Step 3b: Color Clock (CCK) Sub-Cycle Bus Interface & 2-Phase State Machine
+### Step 1: Color Clock (CCK) Sub-Cycle Bus Interface & 2-Phase State Machine
 - **Clocking & Synchronization Model:**
   - $1\ \text{M68000 bus cycle} = 4\ \text{CPU clocks (S0-S7)} = 2\ \text{Color Clocks (CCK1 + CCK2)}$.
   - CCK1 (Clocks S0–S3): Address output, `_AS` assertion, bus arbitration check against Agnus DMA. If blocked, Gary withholds `_DTACK` -> CPU pauses without advancing micro-step.
@@ -97,7 +57,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - Implement `step_cck(&mut bus) -> StepResult (InFlight | InstructionComplete | BusWait)`.
   - Seamlessly handle Chip RAM DMA contention: CPU holds intermediate states and wait cycles when `MemoryBusResult::Blocked` is returned.
 
-### Step 3c: Micro-Step Instruction Decomposition on 6 Representative Archetypes (Proof of Concept)
+### Step 2: Micro-Step Instruction Decomposition on 6 Representative Archetypes (Proof of Concept)
 - **Decompose 6 Archetypes into Cycle-Exact Micro-Operations:**
   1. *Internal Register ALU (4 clocks / 2 CCKs):* `NOP`, `MOVE.w D0, D1` (Zero external memory cycles beyond opcode prefetch).
   2. *Memory Read (8 clocks / 4 CCKs):* `MOVE.w (A0), D0` (Opcode fetch + prefetch + memory read).
@@ -109,13 +69,13 @@ This document outlines the phased development plan, hardware milestones, verific
   - Verify that each archetype matches exact cycle length (`test.length`) under unblocked memory execution.
   - Verify that injecting synthetic DMA stalls during CCK1 pauses the micro-step state machine without state corruption.
 
-### Step 3d: Cycle Length & Bus Transaction Verification Harness
+### Step 3: Cycle Length & Bus Transaction Verification Harness
 - **Harness Extensions in `crates/test_runner`:**
   - Add cycle length verification asserting `cpu.cycles == test.length` against MAME and Tom Harte test vectors.
   - Implement bus cycle transaction recording (`[cycle, address, value, type, uds, lds]`) and match against Tom Harte's silicon bus transaction logs.
   - Add synthetic Agnus DMA contention test runner: inject DMA stalls at every possible CCK phase of each instruction to verify invariant preservation (final registers and memory identical, total cycles increased by wait states).
 
-### Step 3e: Systematic Migration of Existing 51 Instructions to CCK Engine
+### Step 4: Systematic Migration of Existing 51 Instructions to CCK Engine
 - **Structured Migration Batches:**
   - *Batch 1 (Simple ALU & Immediate):* `ADD`, `ADDA`, `ADDI`, `ADDQ`, `SUB`, `SUBA`, `SUBI`, `SUBQ`, `CMP`, `CMPA`, `CMPI`, `CMPM`, `TST`.
   - *Batch 2 (Bitwise Logic & Bit Ops):* `AND`, `OR`, `BTST`, `BSET`, `BCLR`, `BCHG`.
@@ -124,7 +84,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - *Batch 5 (Extended Arithmetic & Control Flow):* `ADDX`, `SUBX`, `BRA`, `Bcc`, `JMP`, `JSR`, `RTS`, `TRAP`, `NOP`.
 - **Milestone Gate:** All 51 migrated instructions pass 100% green in SingleStepTests with both state match AND exact cycle count (`test.length`).
 
-### Step 3f: Implementation of Remaining Complex & Multi-Cycle Instructions
+### Step 5: Implementation of Remaining Complex & Multi-Cycle Instructions
 - **Implement Directly in CCK Engine:**
   - *Batch 6 (Multi-Register Moves):* `MOVEM` (looping bus cycles, predecrement/postincrement register ordering, interrupt sensitivity).
   - *Batch 7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
@@ -134,7 +94,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - *Batch 11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
 - **100% SingleStepTest Pass Rate Target:** Complete all 127 MAME suites and 125 Tom Harte suites with both register/memory match and cycle/bus-exact match.
 
-### Step 3g: In-Memory Mutations & Dynamic DMA Contention Stress Testing
+### Step 6: In-Memory Mutations & Dynamic DMA Contention Stress Testing
 - **Address Space Remapping Mutations:**
   - Execute SingleStepTest suites with programmatic address remapping mutations (per [CPU SingleStepTests.md](Obsidian/Amiga/Design/CPU%20SingleStepTests.md#8-in-code-test-mutation-strategy-chipfast-ram--dma-contention)):
     - `ForceChipRam`: Offset code, operands, and stack into Chip RAM (`$000000-$07FFFF`) to test contention and Gary bus limits.
@@ -147,13 +107,13 @@ This document outlines the phased development plan, hardware milestones, verific
     - Burst stalls (simulating Blitter nastiness blocking the CPU for $N$ consecutive CCK cycles).
   - Verify bus arbitration invariants: CPU properly pauses instruction phase on `MemoryBusResult::Blocked`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
 
-### Step 4: Custom Chipsets (Agnus, Denise, Paula, CIAs)
+### Step 7: Custom Chipsets (Agnus, Denise, Paula, CIAs)
 - Decompose monolithic chip logic into focused subcomponents (Copper, Blitter, DMA, Audio, Floppy, Timers, Ports).
 - **Paula Audio Engine with Native BLEP Synthesis:** Integrate the precomputed BLEP tables (`blep_tables.rs`) generated by `tools/blep_generator` into Paula's 4 DMA audio channels, enabling alias-free variable-rate PCM playback across Amiga 500 and Amiga 1200 models (supporting dynamic CIA-A LED low-pass filter switching).
 - Implement interrupt priority line (IPL 1–6) aggregation and main loop arbitration.
 - Wire multi-chip peripherals (Floppy drive, Game ports, Keyboard reset line).
 
-### Step 5: Presentation, Host Integration & Full Interactive Debugger GUI
+### Step 8: Presentation, Host Integration & Full Interactive Debugger GUI
 - Video rendering: Decoupled ARGB8888 frame buffer with 4:3 aspect ratio scaling.
 - Audio sink: Ring buffer decoupled from host audio playback (`cpal` / Web Audio).
 - GUI: Native and WebAssembly UI using `egui` + `wgpu`.
