@@ -44,7 +44,7 @@ pub fn op_cmpi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 3 => {
                     let imm = cpu.state.micro.scratch[0];
                     let reg_d = (cpu.state.ir & 7) as usize;
-                    let d = cpu.state.d[reg_d];
+                    let d = cpu.state.d_long(reg_d);
                     execute_cmp(&mut cpu.state, imm, d, Size::Long);
                     cpu.initiate_prefetch();
                     cpu.state.micro.mark_standard_prefetch_retire();
@@ -68,7 +68,7 @@ pub fn op_cmpi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                     cpu.state.prefetch[0] = cpu.state.micro.last_read;
                     let imm = cpu.state.micro.scratch[0];
                     let reg_d = (cpu.state.ir & 7) as usize;
-                    let d = cpu.state.d[reg_d];
+                    let d = cpu.state.d_long(reg_d);
                     execute_cmp(&mut cpu.state, imm, d, size);
                     cpu.initiate_prefetch();
                     cpu.state.micro.mark_standard_prefetch_retire();

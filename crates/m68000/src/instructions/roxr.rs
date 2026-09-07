@@ -74,7 +74,7 @@ pub fn op_roxr_reg(
         0 => {
             let count = if is_reg_count {
                 let reg_cnt = ((ir >> 9) & 7) as usize;
-                cpu.state.d[reg_cnt] & 63
+                cpu.state.d_long(reg_cnt) & 63
             } else {
                 let raw = ((ir >> 9) & 7) as u32;
                 if raw == 0 {
@@ -85,7 +85,7 @@ pub fn op_roxr_reg(
             };
 
             let reg_dst = (ir & 7) as usize;
-            let val = cpu.state.d[reg_dst];
+            let val = cpu.state.d_long(reg_dst);
             let res = execute_roxr(&mut cpu.state, s, count, val);
             let size = size_from_const(s);
             cpu.write_d_reg(reg_dst, res, size);

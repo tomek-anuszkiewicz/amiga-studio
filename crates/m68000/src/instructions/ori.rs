@@ -44,7 +44,7 @@ fn exec_ori(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepResult {
                 3 => {
                     let imm = cpu.state.micro.scratch[0];
                     let reg_d = (cpu.state.ir & 7) as usize;
-                    let d = cpu.state.d[reg_d];
+                    let d = cpu.state.d_long(reg_d);
                     let res = execute_or(&mut cpu.state, imm, d, Size::Long);
                     cpu.write_d_reg(reg_d, res, Size::Long);
                     cpu.initiate_prefetch();
@@ -68,7 +68,7 @@ fn exec_ori(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepResult {
                     cpu.state.prefetch[0] = cpu.state.micro.last_read;
                     let imm = cpu.state.micro.scratch[0];
                     let reg_d = (cpu.state.ir & 7) as usize;
-                    let d = cpu.state.d[reg_d];
+                    let d = cpu.state.d_long(reg_d);
                     let res = execute_or(&mut cpu.state, imm, d, size);
                     cpu.write_d_reg(reg_d, res, size);
                     cpu.initiate_prefetch();
@@ -238,7 +238,7 @@ pub fn op_ori_b_imm_dn(cpu: &mut Cpu, _bus: &mut MemoryBus) -> StepResult {
             cpu.state.prefetch[0] = cpu.state.micro.last_read;
             let imm = cpu.state.micro.scratch[0] as u8;
             let dn_reg = (cpu.state.ir & 7) as usize;
-            let dst = cpu.state.d[dn_reg] as u8;
+            let dst = cpu.state.d_byte(dn_reg);
             let res = dst | imm;
 
             // Inlined Byte CCR Calculation (Zero host branches)
@@ -251,7 +251,7 @@ pub fn op_ori_b_imm_dn(cpu: &mut Cpu, _bus: &mut MemoryBus) -> StepResult {
             // Extend flag (X) is completely unaffected
 
             // Write back lower byte to Dn, preserving upper 24 bits
-            cpu.state.d[dn_reg] = (cpu.state.d[dn_reg] & 0xFFFF_FF00) | (res as u32);
+            cpu.state.set_d_byte(dn_reg, res);
 
             // Refill instruction prefetch queue and retire
             cpu.initiate_prefetch();

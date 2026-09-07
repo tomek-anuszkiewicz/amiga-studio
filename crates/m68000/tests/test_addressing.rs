@@ -5,14 +5,14 @@ use memory_bus::MemoryBus;
 #[test]
 fn test_addressing_modes_and_a7_byte_quirk() {
     let mut state = CpuState::default();
-    state.a[0] = 0x001000;
+    state.set_a_long(0, 0x001000);
     state.write_a(7, 0x002000); // SP
 
     // (A0)+ with Byte size increments by 1
     let ea_a0_byte = AddressingMode::Postincrement(0);
     let addr = ea_a0_byte.resolve_address(&mut state, Size::Byte).unwrap();
     assert_eq!(addr, 0x001000);
-    assert_eq!(state.a[0], 0x001001);
+    assert_eq!(state.a_long(0), 0x001001);
 
     // -(A0) with Byte size decrements by 1
     let ea_a0_predec = AddressingMode::Predecrement(0);
@@ -20,7 +20,7 @@ fn test_addressing_modes_and_a7_byte_quirk() {
         .resolve_address(&mut state, Size::Byte)
         .unwrap();
     assert_eq!(addr, 0x001000);
-    assert_eq!(state.a[0], 0x001000);
+    assert_eq!(state.a_long(0), 0x001000);
 
     // CRITICAL QUIRK: (A7)+ with Byte size MUST adjust by 2 (preserving word alignment)!
     let ea_sp_byte = AddressingMode::Postincrement(7);
@@ -40,8 +40,8 @@ fn test_addressing_modes_and_a7_byte_quirk() {
 #[test]
 fn test_indexed_addressing_mode() {
     let mut state = CpuState::default();
-    state.a[1] = 0x004000;
-    state.d[2] = 0x0000_0020; // Index +32
+    state.set_a_long(1, 0x004000);
+    state.set_d_long(2, 0x0000_0020); // Index +32
 
     let index = IndexReg {
         reg_type: IndexType::Data,
@@ -57,7 +57,7 @@ fn test_indexed_addressing_mode() {
 #[test]
 fn test_unaligned_address_error() {
     let mut state = CpuState::default();
-    state.a[0] = 0x001001; // Odd address!
+    state.set_a_long(0, 0x001001); // Odd address!
 
     let ea = AddressingMode::AddressIndirect(0);
     // Word access to odd address must trigger AddressError
@@ -71,7 +71,7 @@ fn test_move_instruction() {
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
-    cpu.state.d[0] = 0x0000_1234;
+    cpu.state.set_d_long(0, 0x0000_1234);
 
     // MOVE.W D0, D1 (Opcode: 0x3200)
     cpu.state.ir = 0x3200;
@@ -80,7 +80,7 @@ fn test_move_instruction() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.state.d[1] & 0xFFFF, 0x1234);
+    assert_eq!(cpu.state.d_word(1), 0x1234);
     assert!(!cpu.state.get_n());
     assert!(!cpu.state.get_z());
     assert!(!cpu.state.get_v());
@@ -93,8 +93,8 @@ fn test_add_sub_ccr() {
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
-    cpu.state.d[0] = 5;
-    cpu.state.d[1] = 10;
+    cpu.state.set_d_long(0, 5);
+    cpu.state.set_d_long(1, 10);
 
     // ADD.L D0, D1 (Opcode: 0xD280)
     cpu.state.ir = 0xD280;
@@ -103,7 +103,7 @@ fn test_add_sub_ccr() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.state.d[1], 15);
+    assert_eq!(cpu.state.d_long(1), 15);
     assert!(!cpu.state.get_c());
     assert!(!cpu.state.get_z());
 
@@ -112,7 +112,7 @@ fn test_add_sub_ccr() {
     cpu.state.prefetch[0] = 0x4E71;
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.state.d[0], (-10i32) as u32);
+    assert_eq!(cpu.state.d_long(0), (-10i32) as u32);
     assert!(cpu.state.get_n());
     assert!(cpu.state.get_c());
     assert!(cpu.state.get_x());
@@ -148,34 +148,34 @@ fn test_logic_and_shifts() {
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
-    cpu.state.d[0] = 0x0000_F0F0;
-    cpu.state.d[1] = 0x0000_FF00;
+    cpu.state.set_d_long(0, 0x0000_F0F0);
+    cpu.state.set_d_long(1, 0x0000_FF00);
 
     // AND.W D0, D1 -> D1.W = 0xF000 (Opcode: 0xC240)
     cpu.state.ir = 0xC240;
     cpu.state.prefetch[0] = 0x4E71;
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.state.d[1] & 0xFFFF, 0xF000);
+    assert_eq!(cpu.state.d_word(1), 0xF000);
     assert!(cpu.state.get_n());
     assert!(!cpu.state.get_z());
 
     // OR.W D0, D1 -> D1.W = 0xFFF0 (Opcode: 0x8240)
-    cpu.state.d[0] = 0x0000_00F0;
-    cpu.state.d[1] = 0x0000_FF00;
+    cpu.state.set_d_long(0, 0x0000_00F0);
+    cpu.state.set_d_long(1, 0x0000_FF00);
     cpu.state.ir = 0x8240;
     cpu.state.prefetch[0] = 0x4E71;
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.state.d[1] & 0xFFFF, 0xFFF0);
+    assert_eq!(cpu.state.d_word(1), 0xFFF0);
 
     // LSL.W #2, D1 (Opcode: 0xE549) (count=2, LSL, Word, reg 1)
-    cpu.state.d[1] = 0x0000_0003;
+    cpu.state.set_d_long(1, 0x0000_0003);
     cpu.state.ir = 0xE549;
     cpu.state.prefetch[0] = 0x4E71;
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.state.d[1] & 0xFFFF, 0x000C);
+    assert_eq!(cpu.state.d_word(1), 0x000C);
 }
 
 #[test]
@@ -184,8 +184,8 @@ fn test_bit_manipulation() {
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
-    cpu.state.d[0] = 0x0000_0004; // bit 4 is set: 0x10
-    cpu.state.d[1] = 0x0000_0010;
+    cpu.state.set_d_long(0, 0x0000_0004); // bit 4 is set: 0x10
+    cpu.state.set_d_long(1, 0x0000_0010);
 
     // BTST D0, D1 (Opcode: 0x0101) (dyn bit, D0=bit 4, D1=target)
     cpu.state.ir = 0x0101;
@@ -199,5 +199,5 @@ fn test_bit_manipulation() {
     cpu.state.prefetch[0] = 0x4E71;
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.state.d[1], 0);
+    assert_eq!(cpu.state.d_long(1), 0);
 }

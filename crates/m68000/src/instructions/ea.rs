@@ -134,9 +134,9 @@ pub fn read_ea_operand(
         EA_DN => {
             let reg = (cpu.state.ir & 7) as usize;
             let val = match s {
-                SIZE_BYTE => cpu.state.d[reg] & 0xFF,
-                SIZE_WORD => cpu.state.d[reg] & 0xFFFF,
-                _ => cpu.state.d[reg],
+                SIZE_BYTE => cpu.state.d_long(reg) & 0xFF,
+                SIZE_WORD => cpu.state.d_long(reg) & 0xFFFF,
+                _ => cpu.state.d_long(reg),
             };
             Ok(val)
         }
@@ -370,7 +370,7 @@ pub fn read_ea_operand(
                     let x_val = if is_a {
                         cpu.state.read_a(x_reg)
                     } else {
-                        cpu.state.d[x_reg]
+                        cpu.state.d_long(x_reg)
                     };
                     let x_idx = if is_long {
                         x_val as i32
@@ -564,7 +564,7 @@ pub fn read_ea_operand(
                     let x_val = if is_a {
                         cpu.state.read_a(x_reg)
                     } else {
-                        cpu.state.d[x_reg]
+                        cpu.state.d_long(x_reg)
                     };
                     let x_idx = if is_long {
                         x_val as i32

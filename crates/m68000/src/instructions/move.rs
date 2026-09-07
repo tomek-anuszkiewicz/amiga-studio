@@ -332,7 +332,7 @@ fn write_move_dst(
                 let x_val = if is_a {
                     cpu.state.read_a(x_reg)
                 } else {
-                    cpu.state.d[x_reg]
+                    cpu.state.d_long(x_reg)
                 };
                 let x_idx = if is_long {
                     x_val as i32

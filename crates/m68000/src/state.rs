@@ -15,11 +15,11 @@ pub const CCR_ALL: u16 = 0x001F;
 /// Complete register set and state snapshot for the Motorola 68000 CPU
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CpuState {
-    /// Data Registers D0-D7 (32-bit each)
-    pub d: [u32; 8],
+    /// Data Registers D0-D7 (32-bit each, private)
+    d: [u32; 8],
 
-    /// Address Registers A0-A7 (32-bit each). A7 holds the active stack pointer (USP or SSP).
-    pub a: [u32; 8],
+    /// Address Registers A0-A7 (32-bit each, private). A7 holds the active stack pointer (USP or SSP).
+    a: [u32; 8],
 
     /// User Stack Pointer (stored A7 when Supervisor bit S = 0)
     pub usp: u32,
@@ -82,6 +82,99 @@ impl Default for CpuState {
 }
 
 impl CpuState {
+    // --- Data Register (Dn) Accessors ---
+
+    /// Reads lowest 8 bits of data register Dn
+    #[inline(always)]
+    pub fn d_byte(&self, reg: usize) -> u8 {
+        self.d[reg] as u8
+    }
+
+    /// Writes lowest 8 bits of data register Dn, preserving upper 24 bits
+    #[inline(always)]
+    pub fn set_d_byte(&mut self, reg: usize, val: u8) {
+        self.d[reg] = (self.d[reg] & 0xFFFF_FF00) | (val as u32);
+    }
+
+    /// Reads lowest 16 bits of data register Dn
+    #[inline(always)]
+    pub fn d_word(&self, reg: usize) -> u16 {
+        self.d[reg] as u16
+    }
+
+    /// Writes lowest 16 bits of data register Dn, preserving upper 16 bits
+    #[inline(always)]
+    pub fn set_d_word(&mut self, reg: usize, val: u16) {
+        self.d[reg] = (self.d[reg] & 0xFFFF_0000) | (val as u32);
+    }
+
+    /// Reads full 32-bit value of data register Dn
+    #[inline(always)]
+    pub fn d_long(&self, reg: usize) -> u32 {
+        self.d[reg]
+    }
+
+    /// Writes full 32-bit value of data register Dn
+    #[inline(always)]
+    pub fn set_d_long(&mut self, reg: usize, val: u32) {
+        self.d[reg] = val;
+    }
+
+    // --- Address Register (An) Accessors ---
+    // Note: Byte accessors are intentionally omitted because byte operations on An are illegal in the M68000 ISA.
+
+    /// Reads lowest 16 bits of address register An
+    #[inline(always)]
+    pub fn a_word(&self, reg: usize) -> u16 {
+        self.read_a(reg) as u16
+    }
+
+    /// Writes 16-bit word to address register An, always sign-extending to 32 bits per M68000 hardware specification
+    #[inline(always)]
+    pub fn set_a_word(&mut self, reg: usize, val: u16) {
+        let sign_extended = (val as i16 as i32) as u32;
+        self.write_a(reg, sign_extended);
+    }
+
+    /// Reads full 32-bit value of address register An
+    #[inline(always)]
+    pub fn a_long(&self, reg: usize) -> u32 {
+        self.read_a(reg)
+    }
+
+    /// Writes full 32-bit value of address register An
+    #[inline(always)]
+    pub fn set_a_long(&mut self, reg: usize, val: u32) {
+        self.write_a(reg, val);
+    }
+
+    // --- Full Array Accessors & Bulk Mutators ---
+
+    /// Read-only slice view of all 8 data registers D0-D7
+    #[inline(always)]
+    pub fn d_regs(&self) -> &[u32; 8] {
+        &self.d
+    }
+
+    /// Read-only slice view of all 8 address registers A0-A7
+    #[inline(always)]
+    pub fn a_regs(&self) -> &[u32; 8] {
+        &self.a
+    }
+
+    /// Bulk initialization of data registers D0-D7
+    #[inline]
+    pub fn set_d_regs(&mut self, regs: [u32; 8]) {
+        self.d = regs;
+    }
+
+    /// Bulk initialization of address registers A0-A7, synchronizing active stack pointer
+    #[inline]
+    pub fn set_a_regs(&mut self, regs: [u32; 8]) {
+        self.a = regs;
+        self.sync_stack_pointers();
+    }
+
     /// Read address register by index (0-7 returns A0-A7)
     #[inline(always)]
     pub fn read_a(&self, idx: usize) -> u32 {

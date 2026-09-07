@@ -61,8 +61,8 @@ fn test_archetype1_move_reg_to_reg_4_clocks() {
     bus.write_word_debug(0x001004, 0x4E71);
     prime_prefetch(&mut cpu, &mut bus);
 
-    cpu.state.d[0] = 0x1234_5678;
-    cpu.state.d[1] = 0x0000_0000;
+    cpu.state.set_d_long(0, 0x1234_5678);
+    cpu.state.set_d_long(1, 0x0000_0000);
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
@@ -70,7 +70,7 @@ fn test_archetype1_move_reg_to_reg_4_clocks() {
         cpu.instruction_clocks, 4,
         "MOVE.w Dx, Dy must take exactly 4 CPU clocks (2 CCKs)"
     );
-    assert_eq!(cpu.state.d[1], 0x0000_5678);
+    assert_eq!(cpu.state.d_long(1), 0x0000_5678);
     assert_eq!(
         cpu.state.sr & 0x1F,
         0x00,
@@ -89,7 +89,7 @@ fn test_archetype2_move_mem_read_8_clocks() {
     bus.write_word_debug(0x002000, 0xCAFE);
 
     cpu.state.write_a(0, 0x002000);
-    cpu.state.d[0] = 0;
+    cpu.state.set_d_long(0, 0);
     prime_prefetch(&mut cpu, &mut bus);
 
     let res = cpu.step_instruction(&mut bus);
@@ -98,7 +98,7 @@ fn test_archetype2_move_mem_read_8_clocks() {
         cpu.instruction_clocks, 8,
         "MOVE.w (Ax), Dy must take exactly 8 CPU clocks (4 CCKs)"
     );
-    assert_eq!(cpu.state.d[0] & 0xFFFF, 0xCAFE);
+    assert_eq!(cpu.state.d_word(0), 0xCAFE);
     assert_eq!(cpu.wait_cycles, 0);
 }
 
@@ -112,7 +112,7 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     bus.write_word_debug(0x002000, 0xCAFE);
 
     cpu.state.write_a(0, 0x002000);
-    cpu.state.d[0] = 0;
+    cpu.state.set_d_long(0, 0);
     prime_prefetch(&mut cpu, &mut bus);
 
     // Agnus DMA occupies Chip RAM before read cycle begins
@@ -151,7 +151,7 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     // Total clocks = 8 base clocks + 2 * (2 wait states) = 12 clocks
     assert_eq!(cpu.instruction_clocks, 12);
     assert_eq!(cpu.wait_cycles, 2);
-    assert_eq!(cpu.state.d[0] & 0xFFFF, 0xCAFE);
+    assert_eq!(cpu.state.d_word(0), 0xCAFE);
 }
 
 #[test]
@@ -162,7 +162,7 @@ fn test_archetype3_move_mem_write_8_clocks() {
     bus.write_word_debug(0x001002, 0x4E71);
     bus.write_word_debug(0x001004, 0x4E71);
 
-    cpu.state.d[0] = 0x0000_BEEF;
+    cpu.state.set_d_long(0, 0x0000_BEEF);
     cpu.state.write_a(0, 0x003000);
     prime_prefetch(&mut cpu, &mut bus);
 
@@ -183,7 +183,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     bus.write_word_debug(0x001002, 0x4E71);
     bus.write_word_debug(0x001004, 0x4E71);
 
-    cpu.state.d[0] = 0x0000_BEEF;
+    cpu.state.set_d_long(0, 0x0000_BEEF);
     cpu.state.write_a(0, 0x003000);
     prime_prefetch(&mut cpu, &mut bus);
 
@@ -233,7 +233,7 @@ fn test_archetype4_rmw_add_12_clocks() {
     bus.write_word_debug(0x001004, 0x4E71);
     bus.write_word_debug(0x004000, 0x0020);
 
-    cpu.state.d[0] = 0x0000_0015;
+    cpu.state.set_d_long(0, 0x0000_0015);
     cpu.state.write_a(0, 0x004000);
     prime_prefetch(&mut cpu, &mut bus);
 

@@ -48,7 +48,7 @@ fn exec_subq(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepResult {
                 }
                 1 => {
                     let reg_d = (cpu.state.ir & 7) as usize;
-                    let d = cpu.state.d[reg_d];
+                    let d = cpu.state.d_long(reg_d);
                     let res = execute_sub(&mut cpu.state, imm, d, Size::Long, true);
                     cpu.write_d_reg(reg_d, res, Size::Long);
                     cpu.initiate_prefetch();
@@ -59,7 +59,7 @@ fn exec_subq(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepResult {
             }
         } else {
             let reg_d = (cpu.state.ir & 7) as usize;
-            let d = cpu.state.d[reg_d];
+            let d = cpu.state.d_long(reg_d);
             let res = execute_sub(&mut cpu.state, imm, d, size, true);
             cpu.write_d_reg(reg_d, res, size);
             cpu.initiate_prefetch();

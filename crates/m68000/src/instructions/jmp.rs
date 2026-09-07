@@ -37,7 +37,7 @@ pub fn resolve_control_target(cpu: &Cpu, mode: u8, reg: usize, base_pc: u32) -> 
             let idx_val = if is_a {
                 cpu.state.read_a(idx_reg)
             } else {
-                cpu.state.d[idx_reg]
+                cpu.state.d_long(idx_reg)
             };
             let idx_ext = if is_long {
                 idx_val as i32
@@ -61,7 +61,7 @@ pub fn resolve_control_target(cpu: &Cpu, mode: u8, reg: usize, base_pc: u32) -> 
             let idx_val = if is_a {
                 cpu.state.read_a(idx_reg)
             } else {
-                cpu.state.d[idx_reg]
+                cpu.state.d_long(idx_reg)
             };
             let idx_ext = if is_long {
                 idx_val as i32

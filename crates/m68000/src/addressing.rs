@@ -47,7 +47,7 @@ impl IndexReg {
     /// Reads and sign-extends the index register value from CpuState
     pub fn read_val(self, state: &CpuState) -> u32 {
         let raw = match self.reg_type {
-            IndexType::Data => state.d[self.reg_idx as usize],
+            IndexType::Data => state.d_long(self.reg_idx as usize),
             IndexType::Address => state.read_a(self.reg_idx as usize),
         };
         if self.is_long {

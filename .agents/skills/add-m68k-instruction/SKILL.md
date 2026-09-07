@@ -141,9 +141,19 @@ let c = false;
 
 ## 5. Register Access & Stack Pointer Banking
 
-- Use `cpu.state.d[idx]` directly for data registers ($D_0$–$D_7$).
-- Use `cpu.state.read_a(idx)` and `cpu.state.write_a(idx, val)` for address registers ($A_0$–$A_7$).
-  - `a[7]` holds the active stack pointer branchlessly.
+Data and address registers (`d` and `a`) in `CpuState` are **strictly private** fields to prevent accidental direct mutation and guarantee architectural invariants.
+
+### Data Registers ($D_0$–$D_7$)
+Always use size-specific accessor methods annotated with `#[inline(always)]`:
+- **Byte (.B)**: `cpu.state.d_byte(idx) -> u8` and `cpu.state.set_d_byte(idx, val: u8)` (preserves upper bits 8–31).
+- **Word (.W)**: `cpu.state.d_word(idx) -> u16` and `cpu.state.set_d_word(idx, val: u16)` (preserves upper bits 16–31).
+- **Long (.L)**: `cpu.state.d_long(idx) -> u32` and `cpu.state.set_d_long(idx, val: u32)`.
+
+### Address Registers ($A_0$–$A_7$)
+- **Word (.W)**: `cpu.state.a_word(idx) -> u16` and `cpu.state.set_a_word(idx, val: u16)` (automatically sign-extends 16-bit word to 32 bits into $A_n$).
+- **Long (.L)**: `cpu.state.a_long(idx) -> u32` and `cpu.state.set_a_long(idx, val: u32)` (automatically handles $A_7$ stack pointer bank synchronization if $idx == 7$).
+- **Byte (.B) Access Forbidden**: In the Motorola 68000 ISA, byte operations on address registers do not exist. There are no byte accessors on $A_n$.
+- Helper shortcuts `read_a(idx)` and `write_a(idx, val)` are equivalent to `a_long(idx)` and `set_a_long(idx, val)`.
 - When privilege changes, call `cpu.state.set_supervisor(bool)` or `cpu.state.set_sr(new_sr)`.
 
 ---

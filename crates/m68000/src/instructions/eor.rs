@@ -84,8 +84,8 @@ fn exec_eor_dn_to_ea(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepRe
                 1 => {
                     let reg_s = ((cpu.state.ir >> 9) & 7) as usize;
                     let reg_d = (cpu.state.ir & 7) as usize;
-                    let s_val = cpu.state.d[reg_s];
-                    let d_val = cpu.state.d[reg_d];
+                    let s_val = cpu.state.d_long(reg_s);
+                    let d_val = cpu.state.d_long(reg_d);
                     let res = execute_eor(&mut cpu.state, s_val, d_val, Size::Long);
                     cpu.write_d_reg(reg_d, res, Size::Long);
                     cpu.initiate_prefetch();
@@ -97,8 +97,8 @@ fn exec_eor_dn_to_ea(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepRe
         } else {
             let reg_s = ((cpu.state.ir >> 9) & 7) as usize;
             let reg_d = (cpu.state.ir & 7) as usize;
-            let s_val = cpu.state.d[reg_s];
-            let d_val = cpu.state.d[reg_d];
+            let s_val = cpu.state.d_long(reg_s);
+            let d_val = cpu.state.d_long(reg_d);
             let res = execute_eor(&mut cpu.state, s_val, d_val, size);
             cpu.write_d_reg(reg_d, res, size);
             cpu.initiate_prefetch();
@@ -113,7 +113,7 @@ fn exec_eor_dn_to_ea(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepRe
                 Err(res) => return res,
             };
             let reg_d = ((cpu.state.ir >> 9) & 7) as usize;
-            let d_val = cpu.state.d[reg_d];
+            let d_val = cpu.state.d_long(reg_d);
             let res = execute_eor(&mut cpu.state, d_val, mem_val, size);
             cpu.state.micro.scratch[1] = res;
             cpu.initiate_prefetch();

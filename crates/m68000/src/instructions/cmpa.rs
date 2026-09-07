@@ -26,7 +26,7 @@ pub fn op_cmpa(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 let reg_a = ((cpu.state.ir >> 9) & 7) as usize;
                 let reg_s = (cpu.state.ir & 7) as usize;
                 let raw_val = if m == EA_DN {
-                    cpu.state.d[reg_s]
+                    cpu.state.d_long(reg_s)
                 } else {
                     cpu.state.read_a(reg_s)
                 };

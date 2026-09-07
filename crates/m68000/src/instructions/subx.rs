@@ -84,8 +84,8 @@ pub fn op_subx_reg(
                 StepResult::StepCompleted
             }
             1 => {
-                let src = cpu.state.d[ry];
-                let dst = cpu.state.d[rx];
+                let src = cpu.state.d_long(ry);
+                let dst = cpu.state.d_long(rx);
                 let res = execute_subx(&mut cpu.state, src, dst, Size::Long);
                 cpu.write_d_reg(rx, res, Size::Long);
                 cpu.initiate_prefetch();
@@ -95,8 +95,8 @@ pub fn op_subx_reg(
             _ => unreachable!(),
         }
     } else {
-        let src = cpu.state.d[ry];
-        let dst = cpu.state.d[rx];
+        let src = cpu.state.d_long(ry);
+        let dst = cpu.state.d_long(rx);
         let res = execute_subx(&mut cpu.state, src, dst, size);
         cpu.write_d_reg(rx, res, size);
         cpu.initiate_prefetch();

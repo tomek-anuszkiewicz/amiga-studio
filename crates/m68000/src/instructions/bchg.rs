@@ -29,13 +29,13 @@ pub fn execute_bchg(state: &mut CpuState, bit_num: u32, val: u32, is_register: b
 pub fn op_bchg_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let m = decode_ea_index(((cpu.state.ir >> 3) & 7) as u8, (cpu.state.ir & 7) as u8);
     let reg_bit = ((cpu.state.ir >> 9) & 7) as usize;
-    let bit_num = cpu.state.d[reg_bit];
+    let bit_num = cpu.state.d_long(reg_bit);
 
     if m == EA_DN {
         let reg_d = (cpu.state.ir & 7) as usize;
         match cpu.state.micro.micro_step {
             0 => {
-                let val = cpu.state.d[reg_d];
+                let val = cpu.state.d_long(reg_d);
                 let res = execute_bchg(&mut cpu.state, bit_num, val, true);
                 cpu.write_d_reg(reg_d, res, Size::Long);
                 cpu.initiate_prefetch();
@@ -94,7 +94,7 @@ pub fn op_bchg_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             1 => {
                 cpu.state.prefetch[0] = cpu.state.micro.last_read;
                 let bit_num = cpu.state.micro.scratch[3];
-                let val = cpu.state.d[reg_d];
+                let val = cpu.state.d_long(reg_d);
                 let res = execute_bchg(&mut cpu.state, bit_num, val, true);
                 cpu.write_d_reg(reg_d, res, Size::Long);
                 cpu.initiate_prefetch();

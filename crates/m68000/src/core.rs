@@ -77,7 +77,7 @@ impl Cpu {
         let ssp_hi = bus.read_word_debug(0x000000);
         let ssp_lo = bus.read_word_debug(0x000002);
         self.state.ssp = ((ssp_hi as u32) << 16) | (ssp_lo as u32);
-        self.state.a[7] = self.state.ssp;
+        self.state.set_a_long(7, self.state.ssp);
 
         // Fetch initial PC from $000004
         let pc_hi = bus.read_word_debug(0x000004);
@@ -287,7 +287,7 @@ impl Cpu {
     ) -> Result<u32, EaError> {
         match *ea {
             AddressingMode::DataDirect(reg) => {
-                let d = self.state.d[reg as usize];
+                let d = self.state.d_long(reg as usize);
                 Ok(match size {
                     Size::Byte => d & 0xFF,
                     Size::Word => d & 0xFFFF,
@@ -446,7 +446,7 @@ impl Cpu {
     ) -> Result<(u32, Option<u32>), EaError> {
         match *ea {
             AddressingMode::DataDirect(reg) => {
-                let d = self.state.d[reg as usize];
+                let d = self.state.d_long(reg as usize);
                 let val = match size {
                     Size::Byte => d & 0xFF,
                     Size::Word => d & 0xFFFF,
@@ -583,11 +583,10 @@ impl Cpu {
 
     #[inline]
     pub(crate) fn write_d_reg(&mut self, reg: usize, val: u32, size: Size) {
-        let current = self.state.d[reg];
-        self.state.d[reg] = match size {
-            Size::Byte => (current & !0xFF) | (val & 0xFF),
-            Size::Word => (current & !0xFFFF) | (val & 0xFFFF),
-            Size::Long => val,
-        };
+        match size {
+            Size::Byte => self.state.set_d_byte(reg, val as u8),
+            Size::Word => self.state.set_d_word(reg, val as u16),
+            Size::Long => self.state.set_d_long(reg, val),
+        }
     }
 }

@@ -70,11 +70,11 @@ pub fn op_cmp_ea_to_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 let reg_d = ((cpu.state.ir >> 9) & 7) as usize;
                 let reg_s = (cpu.state.ir & 7) as usize;
                 let s_val = if m == EA_DN {
-                    cpu.state.d[reg_s]
+                    cpu.state.d_long(reg_s)
                 } else {
                     cpu.state.read_a(reg_s)
                 };
-                let d_val = cpu.state.d[reg_d];
+                let d_val = cpu.state.d_long(reg_d);
                 execute_cmp(&mut cpu.state, s_val, d_val, Size::Long);
                 cpu.initiate_prefetch();
                 cpu.state.micro.mark_standard_prefetch_retire();
@@ -88,7 +88,7 @@ pub fn op_cmp_ea_to_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             Err(res) => return res,
         };
         let reg_d = ((cpu.state.ir >> 9) & 7) as usize;
-        let d_val = cpu.state.d[reg_d];
+        let d_val = cpu.state.d_long(reg_d);
         execute_cmp(&mut cpu.state, s_val, d_val, size);
         cpu.initiate_prefetch();
         cpu.state.micro.mark_standard_prefetch_retire();

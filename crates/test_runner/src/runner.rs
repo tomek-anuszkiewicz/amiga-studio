@@ -43,7 +43,7 @@ pub fn run_single_test_detail(
     if mode == VerifyMode::Full {
         cpu.enable_transaction_recording(true);
     }
-    cpu.state.d = [
+    cpu.state.set_d_regs([
         test.initial.d0,
         test.initial.d1,
         test.initial.d2,
@@ -52,13 +52,13 @@ pub fn run_single_test_detail(
         test.initial.d5,
         test.initial.d6,
         test.initial.d7,
-    ];
+    ]);
     let initial_sp = if (test.initial.sr & 0x2000) != 0 {
         test.initial.ssp
     } else {
         test.initial.usp
     };
-    cpu.state.a = [
+    cpu.state.set_a_regs([
         test.initial.a0,
         test.initial.a1,
         test.initial.a2,
@@ -67,7 +67,7 @@ pub fn run_single_test_detail(
         test.initial.a5,
         test.initial.a6,
         initial_sp,
-    ];
+    ]);
     cpu.state.usp = test.initial.usp;
     cpu.state.ssp = test.initial.ssp;
     cpu.state.sr = test.initial.sr;
@@ -97,10 +97,11 @@ pub fn run_single_test_detail(
         test.final_state.d7,
     ];
     for i in 0..8 {
-        if cpu.state.d[i] != expected_d[i] {
+        let val = cpu.state.d_regs()[i];
+        if val != expected_d[i] {
             failure.diffs.push(StateDiff::DataRegister {
                 reg: i,
-                actual: cpu.state.d[i],
+                actual: val,
                 expected: expected_d[i],
             });
         }
@@ -117,20 +118,21 @@ pub fn run_single_test_detail(
         test.final_state.a6,
     ];
     for i in 0..7 {
-        if cpu.state.a[i] != expected_a[i] {
+        let val = cpu.state.a_regs()[i];
+        if val != expected_a[i] {
             // Documented simulator divergence: on Address Error during (An)+ / -(An),
             // real 68000 silicon (Tom Harte) updates An in the AGU before the bus fault,
             // whereas MAME's microcode interpreter aborts without updating An.
             if !is_harte && cpu.state.ssp != test.initial.ssp {
-                let diff = cpu.state.a[i].wrapping_sub(expected_a[i]);
-                let diff_rev = expected_a[i].wrapping_sub(cpu.state.a[i]);
+                let diff = val.wrapping_sub(expected_a[i]);
+                let diff_rev = expected_a[i].wrapping_sub(val);
                 if diff == 2 || diff == 4 || diff_rev == 2 || diff_rev == 4 {
                     continue;
                 }
             }
             failure.diffs.push(StateDiff::AddressRegister {
                 reg: i,
-                actual: cpu.state.a[i],
+                actual: val,
                 expected: expected_a[i],
             });
         }

@@ -114,20 +114,24 @@ pub fn run_dma_contention_sweep(
         // Verify Invariant 2: State Invariance (Registers & RAM)
         let mut diffs = Vec::new();
         for i in 0..8 {
-            if cpu.state.d[i] != golden_state.d[i] {
+            let actual = cpu.state.d_regs()[i];
+            let expected = golden_state.d_regs()[i];
+            if actual != expected {
                 diffs.push(StateDiff::DataRegister {
                     reg: i,
-                    actual: cpu.state.d[i],
-                    expected: golden_state.d[i],
+                    actual,
+                    expected,
                 });
             }
         }
         for i in 0..7 {
-            if cpu.state.a[i] != golden_state.a[i] {
+            let actual = cpu.state.a_regs()[i];
+            let expected = golden_state.a_regs()[i];
+            if actual != expected {
                 diffs.push(StateDiff::AddressRegister {
                     reg: i,
-                    actual: cpu.state.a[i],
-                    expected: golden_state.a[i],
+                    actual,
+                    expected,
                 });
             }
         }
@@ -260,20 +264,24 @@ pub fn run_dma_burst_contention(
     // Assert State Invariance
     let mut diffs = Vec::new();
     for i in 0..8 {
-        if cpu.state.d[i] != golden_state.d[i] {
+        let actual = cpu.state.d_regs()[i];
+        let expected = golden_state.d_regs()[i];
+        if actual != expected {
             diffs.push(StateDiff::DataRegister {
                 reg: i,
-                actual: cpu.state.d[i],
-                expected: golden_state.d[i],
+                actual,
+                expected,
             });
         }
     }
     for i in 0..7 {
-        if cpu.state.a[i] != golden_state.a[i] {
+        let actual = cpu.state.a_regs()[i];
+        let expected = golden_state.a_regs()[i];
+        if actual != expected {
             diffs.push(StateDiff::AddressRegister {
                 reg: i,
-                actual: cpu.state.a[i],
-                expected: golden_state.a[i],
+                actual,
+                expected,
             });
         }
     }
@@ -330,7 +338,7 @@ pub fn run_dma_burst_contention(
 }
 
 fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
-    cpu.state.d = [
+    cpu.state.set_d_regs([
         test.initial.d0,
         test.initial.d1,
         test.initial.d2,
@@ -339,13 +347,13 @@ fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
         test.initial.d5,
         test.initial.d6,
         test.initial.d7,
-    ];
+    ]);
     let initial_sp = if (test.initial.sr & 0x2000) != 0 {
         test.initial.ssp
     } else {
         test.initial.usp
     };
-    cpu.state.a = [
+    cpu.state.set_a_regs([
         test.initial.a0,
         test.initial.a1,
         test.initial.a2,
@@ -354,7 +362,7 @@ fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
         test.initial.a5,
         test.initial.a6,
         initial_sp,
-    ];
+    ]);
     cpu.state.usp = test.initial.usp;
     cpu.state.ssp = test.initial.ssp;
     cpu.state.sr = test.initial.sr;

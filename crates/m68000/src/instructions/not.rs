@@ -76,7 +76,7 @@ pub fn op_not(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 }
                 1 => {
                     let reg_d = (cpu.state.ir & 7) as usize;
-                    let val = cpu.state.d[reg_d];
+                    let val = cpu.state.d_long(reg_d);
                     let res = !val;
                     cpu.state.set_n((res & 0x8000_0000) != 0);
                     cpu.state.set_z(res == 0);
@@ -91,7 +91,7 @@ pub fn op_not(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             }
         } else {
             let reg_d = (cpu.state.ir & 7) as usize;
-            let val = cpu.state.d[reg_d];
+            let val = cpu.state.d_long(reg_d);
             let (res, n, z) = if s == SIZE_BYTE {
                 let r = !(val as u8);
                 (r as u32, (r & 0x80) != 0, r == 0)
