@@ -22,8 +22,11 @@ Before writing code, verify exact micro-timing and flag behavior:
 
 ## 2. Opcode Decoding & Dispatch
 
-1. Identify the 16-bit opcode bit pattern, operation size (`.b` = 00/01, `.w` = 01/11, `.l` = 10/10), and operand fields (Data/Address registers, Effective Address mode/register).
-2. Wire the opcode into the decoder dispatch table or match tree:
+1. **Follow the Standard Naming Rule:** Name the opcode handler strictly according to [.agents/rules/opcode-naming.md](../../rules/opcode-naming.md):
+   $$\text{op\_}\langle\text{mnemonic}\rangle\_\langle\text{size}\rangle\_\langle\text{source}\rangle\_\langle\text{destination}\rangle\_\langle\text{hex}\rangle$$
+   (e.g., `op_add_w_ai_dn_d050`, `op_ori_b_imm_dn_0000`, `op_nop_4e71`).
+2. Identify the 16-bit opcode bit pattern, operation size (`.b` = 00/01, `.w` = 01/11, `.l` = 10/10), and operand fields (Data/Address registers, Effective Address mode/register).
+3. Wire the opcode into the decoder dispatch table or match tree:
    - Ensure reserved or invalid bit combinations branch to an **Illegal Instruction** exception (Vector 4, `$000010`) or Line-A / Line-F exceptions.
 
 ---

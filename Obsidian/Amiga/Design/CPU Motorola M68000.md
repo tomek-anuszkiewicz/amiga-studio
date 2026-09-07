@@ -225,6 +225,86 @@ $$\text{bswap}(A \ \& \ B) = \text{bswap}(A) \ \& \ \text{bswap}(B)$$
 | **Shifts & Rotates** | `LSL`, `LSR`, `ASL`, `ASR`, `ROL`, `ROR` | ✅ **Yes (Required)** | Bits cross byte boundaries. |
 | **Address Calculation** | `(d16, An)`, `(d8, An, Xn)`, PC-relative | ✅ **Yes (Required)** | Mathematical pointer arithmetic. |
 
+### 2.3 M68000 Opcode Bitfield Decoding & Instruction Topology
+
+> [!NOTE]
+> For emulator codebase function naming conventions, consult the operational rule in [opcode-naming.md](../../.agents/rules/opcode-naming.md).
+
+The 16-bit M68000 opcode word is partitioned into five canonical bitfields:
+
+```text
+ 15  14  13  12  11  10   9   8   7   6   5   4   3   2   1   0
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+|  Major Group  |  Register |    Opmode     |   Mode    |  Register |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+ \_____________/ \_________/ \_____________/ \_______/   \_________/
+    Bits 15-12    Bits 11-9     Bits 8-6      Bits 5-3    Bits 2-0
+  Instruction    Destination   Direction /    EA Mode     EA Reg
+     Family       / Condition  Size / Sub-op
+```
+
+#### 1. Bits 15–12: Major Opcode Class ($0..F$)
+
+Every instruction's primary category is indexed by its highest nibble:
+
+| Nibble (Bits 15–12) | Major Instruction Family | Key Instructions |
+| :---: | :--- | :--- |
+| **`$0`** (`0000`) | Bit Manipulation / Immediate / `MOVEP` | `BTST`, `BCHG`, `BCLR`, `BSET`, `MOVEP`, `ORI`, `ANDI`, `SUBI`, `ADDI`, `EORI`, `CMPI` |
+| **`$1`** (`0001`) | Move Byte | `MOVE.B` |
+| **`$2`** (`0010`) | Move Long | `MOVE.L`, `MOVEA.L` |
+| **`$3`** (`0011`) | Move Word | `MOVE.W`, `MOVEA.W` |
+| **`$4`** (`0100`) | Miscellaneous / System / Control | `LEA`, `PEA`, `CLR`, `NEG`, `NOT`, `TST`, `EXT`, `SWAP`, `TRAP`, `LINK`, `UNLK`, `JMP`, `JSR`, `RTS`, `RTE`, `MOVEM`, `CHK` |
+| **`$5`** (`0101`) | Quick Math & Conditional Tests | `ADDQ`, `SUBQ`, `Scc`, `DBcc` |
+| **`$6`** (`0110`) | PC-Relative Branches | `BRA`, `BSR`, `Bcc` (16 conditions: `BEQ`, `BNE`, `BGT`, etc.) |
+| **`$7`** (`0111`) | Move Quick | `MOVEQ` (8-bit immediate sign-extended into $D_n$) |
+| **`$8`** (`1000`) | Logical OR & Division | `OR`, `DIVU`, `DIVS`, `SBCD` |
+| **`$9`** (`1001`) | Subtraction | `SUB`, `SUBA`, `SUBX` |
+| **`$A`** (`1010`) | Line-A Emulator Trap | Reserved for host OS emulation traps (Vector 10) |
+| **`$B`** (`1011`) | Compare & Exclusive OR | `CMP`, `CMPA`, `EOR`, `CMPM` |
+| **`$C`** (`1100`) | Logical AND & Multiplication | `AND`, `MULU`, `MULS`, `ABCD`, `EXG` |
+| **`$D`** (`1101`) | Addition | `ADD`, `ADDA`, `ADDX` |
+| **`$E`** (`1110`) | Bit Shifts & Rotates | `ASL`, `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR` |
+| **`$F`** (`1111`) | Line-F Coprocessor Trap | Reserved for FPU/coprocessor traps (Vector 11) |
+
+#### 2. Bits 11–9: Register & Condition Field
+
+- **Standard ALU (`ADD`, `SUB`, `AND`, `OR`, `CMP`):** Primary Data Register $D_n$ index (`0`–`7`).
+- **`MOVE` instructions:** Destination Data/Address register index.
+- **Branches (`Bcc`, `DBcc`, `Scc`):** 4-bit / 3-bit condition code test (`0000`–`1111`).
+- **`ADDQ` / `SUBQ`:** 3-bit quick immediate data: values `1`–`7`; `000` encodes value `8`.
+- **`MOVEQ`:** Destination Data Register $D_n$ index (bits 7–0 hold the signed 8-bit literal).
+
+#### 3. Bits 8–6: Direction & Operand Size Field
+
+- **ALU Instructions (`ADD`, `SUB`, `AND`, `OR`):**
+  - **Bit 8 (Direction):**
+    - `0`: $\langle\text{ea}\rangle + D_n \rightarrow D_n$ (Source is $\langle\text{ea}\rangle$, Destination is $D_n$).
+    - `1`: $D_n + \langle\text{ea}\rangle \rightarrow \langle\text{ea}\rangle$ (Source is $D_n$, Destination is $\langle\text{ea}\rangle$).
+  - **Bits 7–6 (Size):**
+    - `00`: Byte (`.B`, 8-bit)
+    - `01`: Word (`.W`, 16-bit)
+    - `10`: Long (`.L`, 32-bit)
+  - **Special Address Register Mode (`ADDA`, `SUBA`, `CMPA`):**
+    - `011`: Word (`.W`, 16-bit sign-extended to 32-bit)
+    - `111`: Long (`.L`, 32-bit)
+- **`MOVE` Instructions (Bits 13–12 & 8–6):**
+  - **Bits 13–12:** Size (`01` = Byte, `11` = Word, `10` = Long).
+  - **Bits 8–6:** Destination Effective Address Mode (`000` = $D_n$, `001` = $A_n$, `010` = $(A_n)$, etc.).
+- **Shifts & Rotates (`ASL`, `LSR`, etc.):**
+  - **Bit 8 (Direction):** `0` = Right shift, `1` = Left shift.
+  - **Bits 7–6 (Size):** `00` = Byte, `01` = Word, `10` = Long.
+
+#### 4. Bits 5–0: Effective Address (<ea>) Field
+
+- **Bits 5–3 (`mode`):** Addressing mode selector (`000` through `111`).
+- **Bits 2–0 (`reg`):** Register number (`0` through `7`).
+- **Mode 7 (`111`) Special Extensions:**
+  - `000`: Absolute Short (`(xxx).W`)
+  - `001`: Absolute Long (`(xxx).L`)
+  - `010`: Program Counter with 16-bit Displacement (`(d16, PC)`)
+  - `011`: Program Counter with 8-bit Index (`(d8, PC, Xn)`)
+  - `100`: Immediate Data (`#<data>`)
+
 ---
 
 ## 3. Bus Stalling & CCK Phase Model
