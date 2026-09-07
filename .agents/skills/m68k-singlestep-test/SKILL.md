@@ -111,8 +111,61 @@ When a test fails, follow this systematic diagnostic checklist:
 
 ---
 
-## 5. Isolating a Single Failing Test Case
+## 5. Test Result Tracking & Regression Diagnosis
 
-If a test file containing thousands of cases fails, print the test case name:
-1. Check the assertion error: `"RAM mismatch at 0x... in test: <NAME>"` or `"SR mismatch in test: <NAME>"`.
-2. Filter or run only that specific test case in the test harness by checking `test.name.contains(...)` for fast iteration.
+The test harness automatically tracks test outcomes, diffs, and regressions across executions:
+
+### A. Results Directory Structure (`.test_results/`)
+- `.test_results/latest/<suite_name>.json`: Detailed outcomes of the most recent test run.
+- `.test_results/previous/<suite_name>.json`: Rotated snapshot of the previous run used for regression diffing.
+- `.test_results/summary.json`: Global repository-wide pass/fail matrix, percentages, and active failure names.
+
+### B. Automated Regression & Progress Alerts
+When running tests via `cargo test -p test_runner`, the test runner automatically compares the current run against the previous run:
+- 🔴 **Regressions**: Tests that previously passed but failed after your changes:
+  ```text
+  ⚠️  [REGRESSION DETECTED] Suite 'MAME::ADD.b': 1 test(s) that previously PASSED now FAILED!
+     🔴 Broken: "001 ADD.b D1, (d8, A4, Xn) d334"
+  ```
+- 🟢 **Improvements**: Tests that were broken and are now passing:
+  ```text
+  🎉 [PROGRESS / FIX] Suite 'Real68k::MOVEA.w': 1 test(s) that previously FAILED now PASSED!
+     🟢 Fixed:  "3c7a [MOVEA.w (d16, PC), A6] 19"
+  ```
+
+### C. Agent Inspection CLI Commands
+Agents can quickly inspect test coverage or check for regressions without searching log outputs:
+```powershell
+# Check whether your latest code edits caused any regressions
+cargo run -p test_runner -- --diff
+
+# Print a tabular summary of pass rates and active failure cases across all opcodes
+cargo run -p test_runner -- --summary
+
+# Run a specific opcode suite with live diagnostics
+cargo run -p test_runner -- --suite ADD.b
+```
+
+---
+
+## 6. Diagnostic Failure Reports & Cycle Logging
+
+When a test case fails, the runner outputs a structured diagnostic block:
+```text
+================================================================================
+❌ TEST FAILURE: "049 ADD.b 6, (A2) 5c12"
+   Location: ref_src/SingleStepTests-m68000/v1/ADD.b.json [Test #49]
+   Cycle:    12 clock cycles (approx. 6 CCK cycles)
+--------------------------------------------------------------------------------
+Differences detected:
+  • Status Register / CCR Mismatch:
+      Expected: 0xA008 [T:1 S:1 I:0 X:0 N:1 Z:0 V:0 C:0]
+      Actual:   0xA00C [T:1 S:1 I:0 X:0 N:1 Z:1 V:0 C:0]
+      Diff:     Z flag: expected 0, got 1 (unexpectedly SET)
+  • Register D0:
+      Expected: 0x0000002A
+      Actual:   0x00000000 (diff: -42)
+================================================================================
+```
+- **Cycle / CCK:** Shows the expected execution duration in master clock cycles and Amiga CCK cycles ($1\ \text{CCK} = 2\ \text{clocks}$, $1\ \text{bus cycle} = 4\ \text{clocks} = 2\ \text{CCK}$).
+- **Decomposed CCR flags:** Shows exactly which flag ($X, N, Z, V, C$) diverged and whether it was unexpectedly SET or CLEARED.

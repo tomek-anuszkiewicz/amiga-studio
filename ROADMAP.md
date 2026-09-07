@@ -106,6 +106,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - 100% pass rate against all 127 per-instruction test suites in [`ref_src/SingleStepTests-m68000/v1/`](ref_src/SingleStepTests-m68000/v1) (MAME).
   - 100% pass rate against all 125 compressed suites in [`ref_src/SingleStepTests-680x0/68000/v1/`](ref_src/SingleStepTests-680x0/68000/v1) (Tom Harte).
   - Rigorous verification of edge cases: unaligned word/long address errors, prefetch queue reload delays, bus cycle states, and condition code quirks.
+  - Cycle-Exact Diagnostics: log the exact execution cycle/CCK phase and bus transaction on test failure during cycle-stepped execution.
 
 ### Step 4: Custom Chipsets (Agnus, Denise, Paula, CIAs)
 - Decompose monolithic chip logic into focused subcomponents (Copper, Blitter, DMA, Audio, Floppy, Timers, Ports).

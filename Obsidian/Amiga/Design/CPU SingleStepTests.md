@@ -624,3 +624,39 @@ Currently active dual-suite tests cover all implemented instructions:
 - **Logic**: `AND.b`, `AND.w`, `AND.l`, `OR.b`, `OR.w`, `OR.l`
 - **Bit Manipulation**: `BTST`, `BSET`, `BCLR`, `BCHG`
 - **Shifts & Rotates**: `ASL.b`, `ASL.w`, `ASL.l`, `ASR.b`, `ASR.w`, `ASR.l`, `LSL.b`, `LSL.w`, `LSL.l`, `LSR.b`, `LSR.w`, `LSR.l`
+
+---
+
+## 10. Diagnostic Logging & Regression Tracking Architecture
+
+To support autonomous developer and agent workflows, the test runner implements cycle-level diagnostic failure logging and persistent differential regression tracking.
+
+### 10.1 Diagnostic Failure Reports
+Whenever a test case fails, the runner produces a formatted diagnostic report containing:
+- **Test Identification:** Opcode name, source JSON/GZ file, test vector index.
+- **Cycle & Timing:** Exact test length in CPU clock cycles and Amiga CCK cycles ($1\ \text{CCK} = 2\ \text{CPU clocks}$).
+- **Decomposed CCR Analysis:** Status Register decoded into human-readable flags ($T, S, I, X, N, Z, V, C$) indicating specifically which flags are unexpectedly SET or CLEARED.
+- **Register & Memory Diffs:** Detailed expected vs actual values with decimal offsets for registers ($D_0-D_7, A_0-A_7, PC$) and RAM byte addresses.
+
+### 10.2 Differential Regression Tracker (`.test_results/`)
+Test outcomes are persisted across runs in the `.test_results/` workspace directory:
+- `.test_results/latest/<suite>.json`: Full test results and failing test names from the most recent run.
+- `.test_results/previous/<suite>.json`: Prior run snapshot rotated upon execution.
+- `.test_results/summary.json`: Aggregated repository coverage matrix with pass rates and active failure cases.
+
+#### Regression & Improvement Detection:
+- 🔴 **Regressions:** Tests that previously passed in `.test_results/previous/` but failed in the current run are immediately flagged with `⚠️ [REGRESSION DETECTED]` in the terminal.
+- 🟢 **Improvements:** Tests that previously failed but now pass are flagged with `🎉 [PROGRESS / FIX]`.
+
+### 10.3 CLI Inspection Tool
+Developers and AI agents can query test status and regressions directly:
+```powershell
+# Show regressions and fixed tests vs previous run
+cargo run -p test_runner -- --diff
+
+# Display global pass/fail matrix across all suites
+cargo run -p test_runner -- --summary
+
+# Run a specific opcode suite directly
+cargo run -p test_runner -- --suite ADD.b
+```

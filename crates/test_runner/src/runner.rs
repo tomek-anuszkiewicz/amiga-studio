@@ -1,5 +1,5 @@
-//! Test runner for M68000 SingleStepTests
-
+use crate::diagnostic::{format_ccr_diff, StateDiff, TestFailure};
+use crate::reporter::{record_suite_result, SuiteResult, TestFailureSummary};
 use crate::schema::SingleStepTest;
 use flate2::read::GzDecoder;
 use m68000::Cpu;
@@ -7,8 +7,19 @@ use memory_bus::MemoryBus;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-/// Runs a single SingleStepTest against the CPU and MemoryBus
+/// Runs a single SingleStepTest returning a concise string error on mismatch
 pub fn run_single_test(test: &SingleStepTest) -> Result<(), String> {
+    run_single_test_detail(test, "unspecified", 0).map_err(|err| err.to_string())
+}
+
+/// Runs a single SingleStepTest against the CPU and MemoryBus, returning detailed diagnostics
+pub fn run_single_test_detail(
+    test: &SingleStepTest,
+    file_path: &str,
+    test_index: usize,
+) -> Result<(), TestFailure> {
+    let mut failure = TestFailure::new(&test.name, file_path, test_index, test.length);
+
     let mut bus = MemoryBus::new_test();
     bus.load_test_ram(&test.initial.ram);
 
@@ -61,10 +72,11 @@ pub fn run_single_test(test: &SingleStepTest) -> Result<(), String> {
     ];
     for i in 0..8 {
         if cpu.state.d[i] != expected_d[i] {
-            return Err(format!(
-                "D{} mismatch in '{}': got {:08X}, expected {:08X}",
-                i, test.name, cpu.state.d[i], expected_d[i]
-            ));
+            failure.diffs.push(StateDiff::DataRegister {
+                reg: i,
+                actual: cpu.state.d[i],
+                expected: expected_d[i],
+            });
         }
     }
 
@@ -89,43 +101,47 @@ pub fn run_single_test(test: &SingleStepTest) -> Result<(), String> {
                     continue;
                 }
             }
-            return Err(format!(
-                "A{} mismatch in '{}': got {:08X}, expected {:08X}",
-                i, test.name, cpu.state.a[i], expected_a[i]
-            ));
+            failure.diffs.push(StateDiff::AddressRegister {
+                reg: i,
+                actual: cpu.state.a[i],
+                expected: expected_a[i],
+            });
         }
     }
 
     // Verify Stack Pointers
     if cpu.state.usp != test.final_state.usp {
-        return Err(format!(
-            "USP mismatch in '{}': got {:08X}, expected {:08X}",
-            test.name, cpu.state.usp, test.final_state.usp
-        ));
+        failure.diffs.push(StateDiff::UserStackPointer {
+            actual: cpu.state.usp,
+            expected: test.final_state.usp,
+        });
     }
     if cpu.state.ssp != test.final_state.ssp {
-        return Err(format!(
-            "SSP mismatch in '{}': got {:08X}, expected {:08X}",
-            test.name, cpu.state.ssp, test.final_state.ssp
-        ));
+        failure.diffs.push(StateDiff::SupervisorStackPointer {
+            actual: cpu.state.ssp,
+            expected: test.final_state.ssp,
+        });
     }
 
     // Verify Status Register (CCR flags)
     if cpu.state.sr != test.final_state.sr {
-        return Err(format!(
-            "SR mismatch in '{}': got {:04X}, expected {:04X}",
-            test.name, cpu.state.sr, test.final_state.sr
-        ));
+        let (summary, flags_diff) = format_ccr_diff(cpu.state.sr, test.final_state.sr);
+        failure.diffs.push(StateDiff::StatusRegister {
+            actual: cpu.state.sr,
+            expected: test.final_state.sr,
+            details: summary,
+            diverging_flags: flags_diff,
+        });
     }
 
     // Verify Program Counter (accommodates both MAME prefetch-ahead PC and Tom Harte architectural PC)
     let pc_matches = (cpu.state.pc & 0x00FF_FFFF) == (test.final_state.pc & 0x00FF_FFFF)
         || (cpu.state.pc.wrapping_sub(4) & 0x00FF_FFFF) == (test.final_state.pc & 0x00FF_FFFF);
     if !pc_matches {
-        return Err(format!(
-            "PC mismatch in '{}': got {:08X}, expected {:08X}",
-            test.name, cpu.state.pc, test.final_state.pc
-        ));
+        failure.diffs.push(StateDiff::ProgramCounter {
+            actual: cpu.state.pc,
+            expected: test.final_state.pc,
+        });
     }
 
     // Verify RAM modifications
@@ -146,14 +162,19 @@ pub fn run_single_test(test: &SingleStepTest) -> Result<(), String> {
             if addr >= cpu.state.ssp.wrapping_add(10) && addr <= cpu.state.ssp.wrapping_add(13) {
                 continue;
             }
-            return Err(format!(
-                "RAM byte mismatch at ${:06X} in '{}': got {:02X}, expected {:02X}",
-                addr, test.name, actual_byte, expected_byte
-            ));
+            failure.diffs.push(StateDiff::RamByte {
+                address: addr,
+                actual: actual_byte,
+                expected: expected_byte,
+            });
         }
     }
 
-    Ok(())
+    if failure.diffs.is_empty() {
+        Ok(())
+    } else {
+        Err(failure)
+    }
 }
 
 /// Resolves a test file path whether running from workspace root or sub-crate
@@ -200,16 +221,45 @@ pub fn run_test_file(
 
     let mut passed = 0;
     let mut failed = 0;
+    let mut passed_names = Vec::with_capacity(count);
+    let mut failure_summaries = Vec::new();
 
-    for test in tests.iter().take(count) {
-        match run_single_test(test) {
-            Ok(()) => passed += 1,
-            Err(err) => {
+    for (idx, test) in tests.iter().take(count).enumerate() {
+        match run_single_test_detail(test, path, idx) {
+            Ok(()) => {
+                passed += 1;
+                passed_names.push(test.name.clone());
+            }
+            Err(failure) => {
                 failed += 1;
-                eprintln!("Test failure: {}", err);
+                eprintln!("{}", failure.format_diagnostic());
+                failure_summaries.push(TestFailureSummary::from(&failure));
             }
         }
     }
+
+    // Determine suite name from path, e.g. "MAME::ADD.b" or "Real68k::ADD.b"
+    let is_harte = path.contains("SingleStepTests-680x0");
+    let stem = std::path::Path::new(path)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(path)
+        .trim_end_matches(".gz")
+        .trim_end_matches(".json");
+    let suite_prefix = if is_harte { "Real68k" } else { "MAME" };
+    let suite_name = format!("{}::{}", suite_prefix, stem);
+
+    let suite_result = SuiteResult {
+        suite_name,
+        file_path: path.to_string(),
+        total_executed: count,
+        passed_count: passed,
+        failed_count: failed,
+        passed_test_names: passed_names,
+        failures: failure_summaries,
+    };
+
+    record_suite_result(&suite_result);
 
     Ok((passed, failed))
 }
