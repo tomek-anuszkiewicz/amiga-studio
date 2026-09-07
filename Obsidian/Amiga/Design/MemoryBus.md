@@ -133,9 +133,12 @@ pub enum MemoryBusResult {
 - Writes to unmapped regions are silent no-ops.
 - Do not trigger Bus Error exceptions (`_BERR` is not wired on stock A500).
 
-### Custom Chip Registers (`$DFF000-$DFFFFE`)
-- Dedicated registers are 16-bit wide.
-- **Byte Write:** Write the active byte to the addressed half of the register, while treating the inactive half as open bus lines (`0xFF`).
+### Custom Chip Registers & 512-Byte Mirroring (`$DFF000-$DFFFFE`)
+- Dedicated registers are 16-bit wide (256 words, 512 bytes, `$DFF000-$DFF1FE`).
+- **64 KB Block Mirroring:** Gary and custom chip address decoders evaluate address bits `A1..A8` (`(addr & 0x1FE) >> 1`), ignoring higher address bits `A9..A15`. As a result, the 512-byte register block repeats **128 times** across the entire 64 KB space (`$DFF000-$DFFFFF`).
+- **Byte Write Merging:** Byte writes merge the written byte into the addressed half of the 16-bit register, preserving the unaddressed half:
+  - Even address (`addr & 1 == 0`): Overwrites upper byte (`D15-D8`), preserving lower byte.
+  - Odd address (`addr & 1 == 1`): Overwrites lower byte (`D7-D0`), preserving upper byte.
 - **Read:** Return register value; disconnected or write-only register bits return `1`s (`0xFF`).
 
 ### 8520 CIA Registers (`$BFE001` / `$BFD000`)
@@ -153,21 +156,32 @@ pub enum MemoryBusResult {
 - **Fast RAM (`$200000-$5FFFFF`):**
   - Read succeeds, and write succeeds (bit 7 is set to 1).
 
-### Low-Memory Boot Overlay Control
-Implement explicit address mapping methods without using "OVL" or "overlay" in identifiers:
-- `map_kickstart_to_low_memory()`: Routes `$000000-$07FFFF` accesses to Kickstart ROM.
-- `map_chip_ram_to_low_memory()`: Restores physical Chip RAM mapping at `$000000-$07FFFF`.
+### Low-Memory Boot Overlay Control via CIA-A Port A Bit 0
+- At hardware reset (cold or warm), Gary initializes with low-memory overlay active (`low_memory_overlay = true`), routing `$000000-$07FFFF` accesses to Kickstart ROM.
+- Software explicitly controls this mapping via **CIA-A Port A bit 0 (`_OVL`)** at address `$BFE001`:
+  - **Bit 0 written as `0`:** Invokes `map_kickstart_to_low_memory()`, re-engaging Kickstart ROM over low Chip RAM.
+  - **Bit 0 written as `1`:** Invokes `map_chip_ram_to_low_memory()`, exposing physical Chip RAM at `$000000-$07FFFF`.
+- Methods use explicit routing semantics without "OVL" or "overlay" in their names (`map_kickstart_to_low_memory()` and `map_chip_ram_to_low_memory()`).
 
-### Kickstart ROM Space ($F80000-$FFFFFF) & Boot Overlay Writes
+### Kickstart ROM Space ($F80000-$FFFFFF) & Mirroring Rules
 - **Physical Hardware Behavior (Gary & Mask-ROM):**
   - The Amiga 500 Kickstart ROM (256 KB or 512 KB) is physically read-only (Mask-ROM/EPROM without a write-enable `_WE` line).
-  - When the M68000 initiates a write bus cycle (`R/_W = LOW`) targeting Kickstart ROM space (`$F80000-$FFFFFF`) or low memory during boot overlay (`$000000-$07FFFF` while `_OVL` is active):
+  - When the M68000 initiates a write bus cycle (`R/_W = LOW`) targeting Kickstart ROM space (`$F80000-$FFFFFF`) or low memory during boot overlay (`$000000-$07FFFF` while overlay is active):
     - The Gary custom chip decodes the address and asserts `_DTACK` to terminate the bus transaction cleanly.
     - Data placed on the data bus (`D0-D15`) is discarded (silent drop / no-op) by the un-writable ROM hardware.
     - No Bus Error exception (`_BERR`) is asserted, and execution proceeds uninterrupted.
+- **256 KB vs 512 KB Mirroring:**
+  - **256 KB Kickstart ROMs (Kickstart 1.2 / 1.3):** Address decoding masks the offset using `offset & (rom_len - 1)`. The 256 KB ROM image is physically mirrored twice across the 512 KB range: `$F80000-$FBFFFF` and `$FC0000-$FFFFFF`.
+  - **512 KB Kickstart ROMs (Kickstart 2.04 / 3.1):** Fills the complete 512 KB range without aliasing.
+  - **Unloaded / Missing ROM:** Returns floating bus `$FF`.
 - **Emulator Implementation:**
   - `write_kickstart_rom`: Implemented as a direct no-op (`fn write_kickstart_rom(_bus: &mut MemoryBus, _addr: u32, _val: u8) {}`).
   - `write_chip_ram`: When `low_memory_overlay == true` and `addr < 0x080000`, writes are safely discarded without altering underlying Chip RAM or ROM.
+
+### Slow RAM ($C00000-$C7FFFF) Gary / Agnus Bus Contention Quirk
+- Although Slow RAM is physically located on the trapdoor expansion, Gary routes its bus control through Agnus arbitration lines.
+- Consequently, whenever Agnus DMA blocks Chip RAM (`chip_ram_blocked == true`), accesses to Slow RAM are **also blocked and stall the CPU**.
+- **Exception under Overlay:** When low-memory overlay is active (`low_memory_overlay == true`), accesses below `$080000` route to Kickstart ROM, which is non-contended and never stalls.
 
 ### DMA Arbitration Methods
 Expose methods to simulate Agnus cycle stealing:

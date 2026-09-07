@@ -330,7 +330,9 @@ On both **Cold** and **Warm** reset, the CPU execution flow begins at vector `$0
 
 ---
 
-## 7. Instruction Quirks: TAS (Test And Set)
+## 7. M68000 Instruction & Hardware Silicon Quirks
+
+### 7.1 TAS (Test And Set) Read-Modify-Write Hardware Bug
 
 The `TAS` instruction tests a byte operand, updates the condition codes, and sets high bit 7 to 1:
 
@@ -346,3 +348,67 @@ The `TAS` instruction tests a byte operand, updates the condition codes, and set
   - **Amiga 500 Hardware Quirk:**
     - **Chip RAM (`$000000-$07FFFF`) & Slow RAM (`$C00000-$C7FFFF`):** Gary / Agnus fails to latch the write phase of an unbroken RMW bus cycle and **discards the write**. CCR flags are updated, but memory content is unmodified (bit 7 is NOT set).
     - **Fast RAM (`$200000-$5FFFFF`):** Full Read-Modify-Write cycle succeeds (CCR flags updated, bit 7 is set to 1 in memory).
+
+### 7.2 ADDX, SUBX & NEGX Multi-Precision Zero Flag ($Z$) Quirk
+
+In standard arithmetic instructions (`ADD`, `SUB`, `NEG`), the Zero flag is set if the result equals zero and cleared otherwise ($Z = \text{result} == 0$).
+
+- **Chained Multi-Precision Behavior (`ADDX`, `SUBX`, `NEGX`):**
+  - The Zero flag ($Z$) is **only cleared if the result is non-zero** (`if res != 0 { Z = false; }`).
+  - If the operation result is zero, **$Z$ retains its prior state without change**.
+  - **Rationale:** This allows multi-precision arithmetic chains (e.g. 64-bit addition: `ADD.L D0, D1` followed by `ADDX.L D2, D3`) where the final $Z$ flag indicates whether the *entire* multi-word number is zero. If any intermediate word was non-zero, $Z$ remains `0` to the end.
+
+### 7.3 Address Register Direct Operations Quirks (`MOVEA`, `ADDA`, `SUBA`, `ADDQ`, `SUBQ`)
+
+The M68000 treats Address Registers ($A_0-A_7$) as dedicated pointer resources, applying unique rules compared to Data Registers:
+
+- **`MOVEA` (Move Address):**
+  - Word operations (`MOVEA.W`) **sign-extend the 16-bit word to full 32-bit** before writing into $A_n$.
+  - **Condition Codes:** `MOVEA` **never alters any condition codes** ($X, N, Z, V, C$ are untouched), unlike standard `MOVE` which updates $N, Z$ and clears $V, C$.
+- **`ADDA` and `SUBA` (Add/Subtract Address):**
+  - Word operations sign-extend the 16-bit source to 32 bits.
+  - Calculations operate across the entire 32-bit address register.
+  - **Condition Codes:** **All condition codes ($X, N, Z, V, C$) remain completely unchanged**.
+- **`ADDQ` and `SUBQ` (Add/Subtract Quick):**
+  - Immediate value is $1..8$ (the 3-bit opcode field `000` encodes `8`).
+  - **Destination $A_n$:**
+    - Byte size (`.B`) is invalid/unsupported.
+    - Word operations perform full 32-bit addition/subtraction without truncation.
+    - **Condition Codes:** **No condition codes are modified** when destination is an address register.
+  - **Destination $D_n$ or Memory:** Standard size masking and condition codes ($X, N, Z, V, C$) update normally.
+
+### 7.4 Bit Manipulation Instructions Quirks (`BTST`, `BSET`, `BCLR`, `BCHG`)
+
+Bit manipulation instructions evaluate individual bit positions:
+
+- **Bit Number Modulo Addressing:**
+  - **Data Register Destination ($D_n$):** Bit index is evaluated modulo 32 (`bit_num % 32`).
+  - **Memory Destination (`<ea>`):** Bit index is evaluated modulo 8 (`bit_num % 8`).
+- **Condition Codes:**
+  - Only the **Zero flag ($Z$)** is updated: $Z = 1$ if the tested bit was zero; $Z = 0$ if the tested bit was one.
+  - Flags **$X, N, V, C$ are completely unaffected** (preserving existing carry/extend states across bit tests).
+
+### 7.5 Shifts & Rotates Quirks (`ASL`, `ASR`, `LSL`, `LSR`)
+
+- **Shift Count Modulo:**
+  - When the shift count is held in a data register, the CPU evaluates only the lower 6 bits (`count % 64` / `count & 63`).
+- **Zero Shift Count (`count == 0`):**
+  - If the shift count is zero:
+    - $C$ (Carry) is cleared to `0`.
+    - $V$ (Overflow) is cleared to `0`.
+    - **$X$ (Extend) is completely untouched** (retains prior value).
+    - $N$ and $Z$ flags reflect the value of the unshifted operand.
+- **`ASL` Sticky Overflow ($V$) Quirk:**
+  - In Arithmetic Shift Left, the $V$ flag indicates whether the sign bit changed.
+  - In multi-bit shifts, if the sign bit (MSB) changes at **any intermediate bit shift step**, $V$ is set to `1` and **latches high (sticky)**, remaining `1` even if subsequent shift steps restore the sign bit.
+
+### 7.6 Address Error (Vector 3) Program Space Selection & Silicon Divergences
+
+- **Function Code Selection on Address Error:**
+  - If the unaligned word/long access was triggered by a **PC-relative addressing mode** (`(d16, PC)` or `(d8, PC, Xn)`), the CPU asserts **Program Space** ($FC = 2$ in User mode, $FC = 6$ in Supervisor mode).
+  - For standard data memory operands, the CPU asserts **Data Space** ($FC = 1$ in User mode, $FC = 5$ in Supervisor mode).
+- **Postincrement AGU Advancement Silicon Divergence:**
+  - When an Address Error occurs during a postincrement read/write (`(An)+` where $A_n$ is odd):
+    - **Real MC68000 Silicon (Tom Harte test vectors):** The Address Generation Unit (AGU) increments $A_n$ by 1 or 2 *before* the bus cycle fails with an address fault.
+    - **MAME Microcode Interpreter:** The simulator detects the odd address and immediately aborts the instruction without updating $A_n$.
+    - *Emulator Resolution:* The test harness explicitly accommodates this documented simulator divergence.
