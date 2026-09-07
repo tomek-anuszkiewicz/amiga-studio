@@ -54,6 +54,10 @@ pub struct CpuState {
     /// Execution control flags
     pub stopped: bool,
     pub halted: bool,
+
+    /// Sub-cycle execution micro-state (Color Clock phase and in-flight bus cycle)
+    #[serde(default)]
+    pub micro: crate::micro::CpuMicroState,
 }
 
 impl Default for CpuState {
@@ -72,6 +76,7 @@ impl Default for CpuState {
             instruction_pc: 0,
             stopped: false,
             halted: false,
+            micro: crate::micro::CpuMicroState::default(),
         }
     }
 }

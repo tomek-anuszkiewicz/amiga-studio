@@ -93,9 +93,40 @@ Maintain the following internal bus state:
 - `read_latch: u16`: Transparent buffer holding sampled read data between phases.
 - `chip_ram_blocked: bool`: Flag indicating whether Agnus / Blitter / DMA is currently occupying the Chip RAM bus.
 
-### Return Type
+### Types & Structures
 ```rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+
+/// Color Clock (CCK) sub-cycle phase of the 4-clock M68000 bus cycle
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CckPhase {
+    /// Color Clock Phase 1 (CPU S0–S3): Address output, _AS strobe, contention arbitration
+    Cck1,
+    /// Color Clock Phase 2 (CPU S4–S7): Data latch/write commit, _DTACK acknowledgement
+    Cck2,
+}
+
+/// Bus access transfer size
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BusAccessSize {
+    Byte,
+    Word,
+}
+
+/// Structured M68000 bus cycle representation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BusCycle {
+    pub addr: u32,
+    pub data: u16,
+    pub size: BusAccessSize,
+    pub fc: u8,
+    pub is_read: bool,
+    pub uds: bool,
+    pub lds: bool,
+}
+
+/// Result of an M68000 bus transaction phase
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MemoryBusResult {
     /// Phase 1 completed; proceed to Phase 2
     Phase1Ready,
@@ -106,33 +137,23 @@ pub enum MemoryBusResult {
 }
 ```
 
-### Read Transaction Algorithm (`read_phase1` and `read_phase2`)
-1. **`read_phase1(addr: u32, is_byte: bool, high_byte: bool) -> MemoryBusResult`:**
-   - Detect targeted address region.
-   - If target is **Chip RAM** (or Slow RAM shared with Agnus) and `chip_ram_blocked == true`:
-     - Return `MemoryBusResult::Blocked`. Do not fetch data; CPU must hold state and repeat Phase 1.
-   - If target is **unblocked Chip RAM, Fast RAM, or ROM**:
-     - Perform DRAM/ROM read cycle immediately.
-     - Store fetched word/byte into `self.read_latch`.
-     - Return `MemoryBusResult::Phase1Ready`.
-2. **`read_phase2(addr: u32) -> MemoryBusResult`:**
-   - Do **NOT** check `chip_ram_blocked`. The CPU reads exclusively from `self.read_latch`, isolated from the memory bus.
-   - Return `MemoryBusResult::Ready(self.read_latch)`.
-
-### Write Transaction Algorithm (`write_phase1` and `write_phase2`)
-*The write path is unbuffered (no posted-write FIFO).*
-1. **`write_phase1(addr: u32, data: u16) -> MemoryBusResult`:**
-   - CPU presents address and data onto bus lines.
-   - Do **NOT** write to memory or check `chip_ram_blocked`.
-   - Store incoming data in temporary register (e.g. `pending_write_data`).
-   - Return `MemoryBusResult::Phase1Ready`.
-2. **`write_phase2(addr: u32, data: u16, is_byte: bool, high_byte: bool) -> MemoryBusResult`:**
-   - If target is **Chip RAM** and `chip_ram_blocked == true`:
-     - Gary withholds `_DTACK`.
-     - Return `MemoryBusResult::Blocked`. CPU must re-invoke Phase 2 without advancing bus state.
-   - If target is **unblocked Chip RAM** or **Fast RAM**:
-     - Commit the byte or word directly into memory.
-     - Return `MemoryBusResult::Ready(0)`.
+### Structured 2-Phase Transaction API (`begin_cycle` and `end_cycle`)
+1. **`begin_cycle(&mut self, cycle: &mut BusCycle) -> MemoryBusResult` (CCK1 / S0–S3):**
+   - Address is masked to 24 bits (`addr & 0x00FF_FFFF`).
+   - If **Read**:
+     - Detect targeted region. If Chip RAM (or Slow RAM) and `chip_ram_blocked == true`, return `MemoryBusResult::Blocked` (Gary withholds `_DTACK`, CPU holds at CCK1).
+     - Otherwise, perform read into `self.read_latch` and return `MemoryBusResult::Phase1Ready`.
+   - If **Write**:
+     - CPU places address and data onto bus lines (`pending_write_data = cycle.data`). Returns `MemoryBusResult::Phase1Ready`.
+2. **`end_cycle(&mut self, cycle: &mut BusCycle) -> MemoryBusResult` (CCK2 / S4–S7):**
+   - Address is masked to 24 bits (`addr & 0x00FF_FFFF`).
+   - If **Read**:
+     - Reads safely from `self.read_latch` without external contention (bus is free for DMA).
+     - Extracts byte (based on `uds`/`lds`) or full word into `cycle.data`.
+     - Returns `MemoryBusResult::Ready(cycle.data)`.
+   - If **Write**:
+     - If target is Chip RAM and `chip_ram_blocked == true`, return `MemoryBusResult::Blocked` (Gary withholds `_DTACK`, CPU stalls at CCK2).
+     - Otherwise, commits byte or word to memory and returns `MemoryBusResult::Ready(0)`.
 
 ---
 

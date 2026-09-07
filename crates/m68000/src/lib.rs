@@ -8,9 +8,11 @@ pub mod addressing;
 pub mod core;
 pub mod dispatch_table;
 pub mod instructions;
+pub mod micro;
 pub mod state;
 
 pub use addressing::{AddressingMode, IndexReg, IndexType, Size};
 pub use core::{Cpu, StepResult};
 pub use dispatch_table::{OpcodeHandler, DISPATCH_TABLE};
+pub use micro::CpuMicroState;
 pub use state::CpuState;

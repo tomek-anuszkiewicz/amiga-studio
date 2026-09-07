@@ -1,4 +1,4 @@
-use memory_bus::{MemoryBus, MemoryBusResult};
+use memory_bus::{function_code, BusAccessSize, BusCycle, MemoryBus, MemoryBusResult};
 
 #[test]
 fn test_boot_overlay_and_cia_control() {
@@ -116,4 +116,59 @@ fn test_configurable_unmapped_byte_default_ff_and_test_mode() {
     assert_eq!(test_bus.read_byte_debug(0x2000), 0x00);
     assert_eq!(test_bus.read_word_debug(0x2000), 0x0000);
     assert_eq!(test_bus.read_byte_debug(0x1000), 0x42); // populated untouched
+}
+
+#[test]
+fn test_bus_cycle_begin_end_and_strobes() {
+    let mut bus = MemoryBus::new();
+    bus.map_chip_ram_to_low_memory();
+
+    // 1. UDS / LDS Strobes Verification
+    let word_cycle = BusCycle::new_read(0x001000, BusAccessSize::Word, function_code::USER_PROGRAM);
+    assert!(word_cycle.uds && word_cycle.lds);
+
+    let even_byte_cycle = BusCycle::new_read(0x001000, BusAccessSize::Byte, function_code::USER_DATA);
+    assert!(even_byte_cycle.uds && !even_byte_cycle.lds);
+
+    let odd_byte_cycle = BusCycle::new_read(0x001001, BusAccessSize::Byte, function_code::USER_DATA);
+    assert!(!odd_byte_cycle.uds && odd_byte_cycle.lds);
+
+    // 2. Structured Write (Word) via begin_cycle & end_cycle
+    let mut write_cycle =
+        BusCycle::new_write(0x004000, 0x1234, BusAccessSize::Word, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut write_cycle), MemoryBusResult::Phase1Ready);
+    assert_eq!(bus.end_cycle(&mut write_cycle), MemoryBusResult::Ready(0));
+    assert_eq!(bus.read_word_debug(0x004000), 0x1234);
+
+    // 3. Structured Read (Word) via begin_cycle & end_cycle
+    let mut read_word = BusCycle::new_read(0x004000, BusAccessSize::Word, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut read_word), MemoryBusResult::Phase1Ready);
+    assert_eq!(bus.end_cycle(&mut read_word), MemoryBusResult::Ready(0x1234));
+    assert_eq!(read_word.data, 0x1234);
+
+    // 4. Structured Byte Reads (Upper byte vs Lower byte)
+    let mut read_hi = BusCycle::new_read(0x004000, BusAccessSize::Byte, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut read_hi), MemoryBusResult::Phase1Ready);
+    assert_eq!(bus.end_cycle(&mut read_hi), MemoryBusResult::Ready(0x12));
+    assert_eq!(read_hi.data, 0x12);
+
+    let mut read_lo = BusCycle::new_read(0x004001, BusAccessSize::Byte, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut read_lo), MemoryBusResult::Phase1Ready);
+    assert_eq!(bus.end_cycle(&mut read_lo), MemoryBusResult::Ready(0x34));
+    assert_eq!(read_lo.data, 0x34);
+
+    // 5. Contention Handling on Read (Blocked at CCK1)
+    bus.lock_chip_ram();
+    let mut blocked_read =
+        BusCycle::new_read(0x004000, BusAccessSize::Word, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut blocked_read), MemoryBusResult::Blocked);
+
+    // 6. Contention Handling on Write (Blocked at CCK2 when Gary withholds _DTACK)
+    let mut blocked_write =
+        BusCycle::new_write(0x004000, 0x9999, BusAccessSize::Word, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut blocked_write), MemoryBusResult::Phase1Ready);
+    assert_eq!(bus.end_cycle(&mut blocked_write), MemoryBusResult::Blocked);
+    // Value remains unchanged
+    bus.unlock_chip_ram();
+    assert_eq!(bus.read_word_debug(0x004000), 0x1234);
 }

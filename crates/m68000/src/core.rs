@@ -20,6 +20,20 @@ pub enum StepResult {
     Halted,
 }
 
+impl StepResult {
+    /// Returns true if execution resulted in a wait state / bus stall
+    #[inline]
+    pub fn is_wait(&self) -> bool {
+        matches!(self, StepResult::WaitState)
+    }
+
+    /// Returns true if an instruction fully completed and retired
+    #[inline]
+    pub fn is_completed(&self) -> bool {
+        matches!(self, StepResult::InstructionCompleted)
+    }
+}
+
 /// Motorola 68000 CPU Core
 #[derive(Debug, Clone)]
 pub struct Cpu {
@@ -48,6 +62,7 @@ impl Cpu {
         self.state.stopped = false;
         self.state.halted = false;
         self.state.step = 0;
+        self.state.micro.reset();
 
         // Fetch initial SSP from $000000
         let ssp_hi = bus.read_word_debug(0x000000);
@@ -76,8 +91,18 @@ impl Cpu {
             return StepResult::Stopped;
         }
 
-        // For now, execute one instruction step and retire
+        // If an external bus transaction or internal execution is in flight, step the micro-state
+        if self.state.micro.is_bus_busy() || self.state.micro.internal_clocks > 0 {
+            return self.state.micro.step_cck(bus, &mut self.wait_cycles);
+        }
+
         self.step_instruction(bus)
+    }
+
+    /// Schedules a structured bus transaction onto the CPU micro-state machine
+    #[inline]
+    pub fn initiate_bus_cycle(&mut self, cycle: memory_bus::BusCycle) {
+        self.state.micro.initiate_bus_cycle(cycle);
     }
 
     /// Executes exactly one full M68000 instruction via direct table dispatch

@@ -56,6 +56,9 @@ pub struct CpuState {
     /// Execution control flags
     pub stopped: bool,
     pub halted: bool,
+
+    /// Sub-cycle execution micro-state (Color Clock phase and in-flight bus cycle)
+    pub micro: CpuMicroState,
 }
 
 impl CpuState {
@@ -232,6 +235,23 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 Instruction execution is driven via a micro-step state machine clocked at CCK granularity:
 
 ```rust
+use memory_bus::{BusCycle, CckPhase};
+
+/// Sub-cycle execution micro-state of the M68000 CPU
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CpuMicroState {
+    /// Current Color Clock phase (CCK1 or CCK2)
+    pub phase: CckPhase,
+    /// In-flight structured bus cycle (if awaiting memory response or holding wait states)
+    pub active_bus_cycle: Option<BusCycle>,
+    /// Internal execution CPU clocks remaining (non-bus micro-operations)
+    pub internal_clocks: u16,
+    /// Step index within the current instruction's micro-operation sequence
+    pub micro_step: u16,
+    /// Intermediate temporary registers for multi-step micro-operations
+    pub scratch: [u32; 2],
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StepResult {
     /// Micro-step completed within the current instruction
