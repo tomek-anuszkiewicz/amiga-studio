@@ -146,3 +146,126 @@ fn exec_eor_dn_to_ea(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepRe
         }
     }
 }
+
+// --- Specialized Opcode Forwarders ---
+
+#[inline(always)]
+pub fn op_eor_b_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_b_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_b_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_b_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_b_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_b_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_b_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_l_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_l_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_l_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_l_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_l_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_l_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_l_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_w_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_w_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_w_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_w_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_w_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_w_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eor_w_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eor_dn_to_ea(cpu, bus)
+}
+

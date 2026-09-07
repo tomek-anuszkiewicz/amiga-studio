@@ -172,3 +172,66 @@ pub fn op_jmp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         }
     }
 }
+
+// --- Specialized Opcode Forwarders ---
+
+#[inline(always)]
+pub fn op_jmp_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jmp_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jmp(cpu, bus)
+}
+

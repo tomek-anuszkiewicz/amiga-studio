@@ -150,3 +150,86 @@ pub fn op_bchg_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         }
     }
 }
+
+// --- Specialized Opcode Forwarders ---
+
+#[inline(always)]
+pub fn op_bchg_b_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_dn(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_dn(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_dn(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_dn(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_dn(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_dn(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_dn(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_imm(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_imm(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_imm(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_imm(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_imm(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_imm(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_b_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_imm(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_dn(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bchg_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bchg_imm(cpu, bus)
+}
+

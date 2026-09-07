@@ -26,12 +26,12 @@ Because each handler in `dispatch_table.rs` is dedicated to a specific opcode or
 
 Name every handler strictly according to [.agents/rules/opcode-naming.md](../../rules/opcode-naming.md):
 
-$$\mathbf{\text{op\_}\langle\text{mnemonic}\rangle\_\langle\text{size}\rangle\_\langle\text{source}\rangle\_\langle\text{destination}\rangle\_\langle\text{hex}\rangle}$$
+$$\mathbf{\text{op\_}\langle\text{mnemonic}\rangle\_\langle\text{size}\rangle\_\langle\text{source}\rangle\_\langle\text{destination}\rangle}$$
 
-- Dual-operand: `op_add_w_ai_dn_d050` (`ADD.W (An), Dn`)
-- Immediate: `op_ori_b_imm_dn_0000` (`ORI.B #imm, Dn`), `op_ori_w_imm_sr_007c` (`ORI #imm, SR`)
-- Single-operand: `op_clr_b_dn_4200` (`CLR.B Dn`), `op_tst_l_dn_4a80` (`TST.L Dn`)
-- Control / Zero-operand: `op_nop_4e71` (`NOP`), `op_rts_4e75` (`RTS`), `op_trap_4e40` (`TRAP #<vec>`)
+- Dual-operand: `op_add_w_ai_dn` (`ADD.W (An), Dn`)
+- Immediate: `op_ori_b_imm_dn` (`ORI.B #imm, Dn`), `op_ori_w_imm_sr` (`ORI #imm, SR`)
+- Single-operand: `op_clr_b_dn` (`CLR.B Dn`), `op_tst_l_dn` (`TST.L Dn`)
+- Control / Zero-operand: `op_nop` (`NOP`), `op_rts` (`RTS`), `op_trap` (`TRAP #<vec>`)
 
 ---
 
@@ -53,7 +53,7 @@ pub fn op_add_bad(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 ### ✅ Good (Flat, Linear, Compile-Time Specialized):
 ```rust
 /// ADD.W (An), Dn (Opcode 0xD050 family: 1101 <Dn:3> 0 01 010 <An:3>)
-pub fn op_add_w_ai_dn_d050(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+pub fn op_add_w_ai_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let ir = cpu.state.ir;
     let an_reg = (ir & 7) as usize;
     let dn_reg = ((ir >> 9) & 7) as usize;

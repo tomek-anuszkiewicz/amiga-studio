@@ -200,3 +200,66 @@ pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         }
     }
 }
+
+// --- Specialized Opcode Forwarders ---
+
+#[inline(always)]
+pub fn op_jsr_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_jsr_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_jsr(cpu, bus)
+}
+

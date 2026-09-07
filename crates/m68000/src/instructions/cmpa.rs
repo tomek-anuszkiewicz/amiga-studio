@@ -61,3 +61,126 @@ pub fn op_cmpa(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         StepResult::StepCompleted
     }
 }
+
+// --- Specialized Opcode Forwarders ---
+
+#[inline(always)]
+pub fn op_cmpa_l_absl_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_absw_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_ai_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_an_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_disp_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_dn_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_idx_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_imm_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_pcdisp_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_pcidx_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_pd_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_l_pi_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_absl_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_absw_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_ai_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_an_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_disp_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_dn_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_idx_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_imm_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_pcdisp_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_pcidx_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_pd_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpa_w_pi_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpa(cpu, bus)
+}
+

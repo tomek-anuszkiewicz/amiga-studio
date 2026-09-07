@@ -149,3 +149,70 @@ pub fn op_bcc(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         }
     }
 }
+
+// --- Specialized Opcode Forwarders ---
+
+#[inline(always)]
+pub fn op_bhi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bls(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bcs(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bne(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_beq(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bvc(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bvs(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bpl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bmi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bge(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_blt(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_bgt(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_ble(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_bcc(cpu, bus)
+}

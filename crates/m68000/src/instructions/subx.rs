@@ -277,3 +277,36 @@ pub fn op_subx_mem(
         }
     }
 }
+
+// --- Specialized Opcode Forwarders ---
+
+#[inline(always)]
+pub fn op_subx_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_subx_reg(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_subx_b_pd_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_subx_mem(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_subx_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_subx_reg(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_subx_l_pd_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_subx_mem(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_subx_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_subx_reg(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_subx_w_pd_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_subx_mem(cpu, bus)
+}
+

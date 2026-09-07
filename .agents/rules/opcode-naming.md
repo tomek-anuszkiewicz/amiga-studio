@@ -6,9 +6,9 @@ This rule enforces total naming consistency and architectural alignment across t
 
 ## 1. Canonical Naming Formula
 
-All opcode handler function identifiers follow Motorola's universal **`SOURCE, DESTINATION`** syntax order, terminated by the 4-digit hexadecimal opcode:
+All opcode handler function identifiers follow Motorola's universal **`SOURCE, DESTINATION`** syntax order:
 
-$$\mathbf{\text{op\_}\langle\text{mnemonic}\rangle\_\langle\text{size}\rangle\_\langle\text{source}\rangle\_\langle\text{destination}\rangle\_\langle\text{hex}\rangle}$$
+$$\mathbf{\text{op\_}\langle\text{mnemonic}\rangle\_\langle\text{size}\rangle\_\langle\text{source}\rangle\_\langle\text{destination}\rangle}$$
 
 Where:
 - **`op_`**: Standard mandatory prefix for all opcode execution handlers.
@@ -19,7 +19,7 @@ Where:
   - `l`: Long (32-bit)
   - *(Omitted for instructions without size variants, e.g. `nop`, `rts`, `trap`, `jmp`, `jsr`)*.
 - **`<source>` & `<destination>`**: Addressing mode or register tokens following Motorola convention (`SOURCE, DESTINATION`).
-- **`<hex>`**: 4-digit lowercase hexadecimal opcode (e.g. `_4e71`, `_d000`, `_007c`). For handlers covering register variations within an addressing mode, `<hex>` represents the base opcode with variable register fields masked to zero.
+*(Hexadecimal opcode suffixes are omitted because mnemonic, size, source mode, and destination mode provide 100% unique identification across all 65,536 opcodes, eliminating opcode-number contradictions across variable register fields $D_0..D_7$ and $A_0..A_7$)*.
 
 ---
 
@@ -52,34 +52,34 @@ To prevent naming divergence across thousands of generated handlers, only the fo
 ## 3. Naming Patterns by Instruction Arity
 
 1. **Dual-Operand Instructions (`ADD`, `SUB`, `MOVE`, `CMP`, `AND`, `OR`, `EOR`)**:
-   - `op_<mnemonic>_<size>_<source>_<destination>_<hex>`
-   - `op_add_b_dn_dn_d000` $\rightarrow$ `ADD.B Dm, Dn`
-   - `op_add_w_ai_dn_d050` $\rightarrow$ `ADD.W (An), Dn`
-   - `op_add_l_dn_pd_d1a0` $\rightarrow$ `ADD.L Dn, -(An)`
-   - `op_adda_w_dn_an_d0c0` $\rightarrow$ `ADDA.W Dn, An`
-   - `op_move_w_ai_dn_3010` $\rightarrow$ `MOVE.W (An), Dn`
+   - `op_<mnemonic>_<size>_<source>_<destination>`
+   - `op_add_b_dn_dn` $\rightarrow$ `ADD.B Dm, Dn`
+   - `op_add_w_ai_dn` $\rightarrow$ `ADD.W (An), Dn`
+   - `op_add_l_dn_pd` $\rightarrow$ `ADD.L Dn, -(An)`
+   - `op_adda_w_dn_an` $\rightarrow$ `ADDA.W Dn, An`
+   - `op_move_w_ai_dn` $\rightarrow$ `MOVE.W (An), Dn`
 
 2. **Immediate Instructions (`ADDI`, `SUBI`, `ORI`, `ANDI`, `EORI`, `CMPI`)**:
-   - `op_<mnemonic>_<size>_imm_<destination>_<hex>`
-   - `op_ori_b_imm_dn_0000` $\rightarrow$ `ORI.B #imm, Dn`
-   - `op_ori_w_imm_sr_007c` $\rightarrow$ `ORI #imm, SR`
-   - `op_ori_b_imm_ccr_003c` $\rightarrow$ `ORI #imm, CCR`
-   - `op_andi_w_imm_sr_027c` $\rightarrow$ `ANDI #imm, SR`
+   - `op_<mnemonic>_<size>_imm_<destination>`
+   - `op_ori_b_imm_dn` $\rightarrow$ `ORI.B #imm, Dn`
+   - `op_ori_w_imm_sr` $\rightarrow$ `ORI #imm, SR`
+   - `op_ori_b_imm_ccr` $\rightarrow$ `ORI #imm, CCR`
+   - `op_andi_w_imm_sr` $\rightarrow$ `ANDI #imm, SR`
 
 3. **Single-Operand Instructions (`CLR`, `NEG`, `NOT`, `TST`, `SWAP`)**:
-   - `op_<mnemonic>_<size>_<destination>_<hex>`
-   - `op_clr_b_dn_4200` $\rightarrow$ `CLR.B Dn`
-   - `op_clr_w_ai_4250` $\rightarrow$ `CLR.W (An)`
-   - `op_tst_l_dn_4a80` $\rightarrow$ `TST.L Dn`
+   - `op_<mnemonic>_<size>_<destination>`
+   - `op_clr_b_dn` $\rightarrow$ `CLR.B Dn`
+   - `op_clr_w_ai` $\rightarrow$ `CLR.W (An)`
+   - `op_tst_l_dn` $\rightarrow$ `TST.L Dn`
 
 4. **Zero-Operand & Control Instructions (`NOP`, `RTS`, `RTE`, `TRAP`, `JMP`, `JSR`)**:
-   - `op_<mnemonic>_<hex>` or `op_<mnemonic>_<target>_<hex>`
-   - `op_nop_4e71` $\rightarrow$ `NOP`
-   - `op_rts_4e75` $\rightarrow$ `RTS`
-   - `op_rte_4e73` $\rightarrow$ `RTE`
-   - `op_trap_4e40` $\rightarrow$ `TRAP #<vector>`
-   - `op_jsr_ai_4e90` $\rightarrow$ `JSR (An)`
-   - `op_jmp_ai_4ec0` $\rightarrow$ `JMP (An)`
+   - `op_<mnemonic>` or `op_<mnemonic>_<target>`
+   - `op_nop` $\rightarrow$ `NOP`
+   - `op_rts` $\rightarrow$ `RTS`
+   - `op_rte` $\rightarrow$ `RTE`
+   - `op_trap` $\rightarrow$ `TRAP #<vector>`
+   - `op_jsr_ai` $\rightarrow$ `JSR (An)`
+   - `op_jmp_ai` $\rightarrow$ `JMP (An)`
 
 ---
 

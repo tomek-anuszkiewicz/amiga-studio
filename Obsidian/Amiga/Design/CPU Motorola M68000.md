@@ -184,10 +184,11 @@ force the host CPU through 8–15 conditional branches per emulated instruction.
 
 #### Direct-Threaded / Table-Driven Opcode Dispatch
 To maximize host throughput, verified reference emulators (Musashi via `m68kmake`, WinUAE via `gencpu`, and Moira via C++ template specialization) structure the CPU core as **direct, flattened code flows**:
-- **65,536-Entry Direct Dispatch Table (`[fn; 65536]`):** Every 16-bit opcode indexes directly into a precalculated array of specialized handlers.
-- **Statically Inlined Parameters:** Within each specialized opcode handler, operand size (`.b`, `.w`, `.l`), addressing mode, and register indices are compile-time constants:
-  - Eliminates runtime `match mode` and `if size == ...` checks.
-  - The compiler generates straight-line host assembly instructions for arithmetic and CCR flag updates.
+- **65,536-Entry Direct Dispatch Table (`[fn; 65536]`):** Every 16-bit opcode indexes directly into a precalculated array of specialized handlers (`DISPATCH_TABLE` in `dispatch_table.rs`). Each implemented opcode routes to a statically typed function named canonically per `.agents/rules/opcode-naming.md` (`op_<mnemonic>_<size>_<source>_<destination>`).
+- **Statically Inlined Parameters & Forwarding Architecture:**
+  - Forwarder functions reside in per-mnemonic instruction modules (`crates/m68000/src/instructions/<mnemonic>.rs`, and flat move modules `move_b.rs`, `move_w.rs`, `move_l.rs`).
+  - During migration, forwarders cleanly delegate to existing instruction execution routines (`#[inline(always)]`).
+  - Progressively, each specialized opcode handler inlines operand size (`.b`, `.w`, `.l`), addressing mode, register indices, and CCR arithmetic directly, eliminating runtime `match mode` and `if size == ...` branches.
   - Modern CPU Branch Target Buffers (BTBs) predict indirect table dispatches with high efficiency, maximizing instruction cache locality and superscalar throughput.
 
 ### 2.2 Endianness Bypass & Fast-Path Optimization Opportunities

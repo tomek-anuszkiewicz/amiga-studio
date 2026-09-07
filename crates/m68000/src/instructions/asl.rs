@@ -151,3 +151,71 @@ pub fn op_asl_mem(
         StepResult::StepCompleted
     }
 }
+
+// --- Specialized Opcode Forwarders ---
+
+#[inline(always)]
+pub fn op_asl_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_reg(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_reg(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_reg(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_reg(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_w_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_mem(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_w_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_mem(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_w_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_mem(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_w_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_mem(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_reg(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_w_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_mem(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_w_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_reg(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_w_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_mem(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_asl_w_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_asl_mem(cpu, bus)
+}
+

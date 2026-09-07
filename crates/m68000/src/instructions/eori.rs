@@ -196,3 +196,136 @@ pub fn op_eori_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     cpu.retire_instruction(bus);
     StepResult::InstructionCompleted
 }
+
+// --- Specialized Opcode Forwarders ---
+
+#[inline(always)]
+pub fn op_eori_b_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_b_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_b_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_b_imm_ccr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori_to_ccr(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_b_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_b_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_b_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_l_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_l_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_l_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_l_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_l_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_l_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_l_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_w_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_w_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_w_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_w_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_w_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_w_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_w_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_w_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_eori_w_imm_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_eori_to_sr(cpu, bus)
+}
+

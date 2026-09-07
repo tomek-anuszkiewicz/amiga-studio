@@ -128,3 +128,21 @@ pub fn op_cmpm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         }
     }
 }
+
+// --- Specialized Opcode Forwarders ---
+
+#[inline(always)]
+pub fn op_cmpm_b_pi_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpm(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpm_l_pi_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpm(cpu, bus)
+}
+
+#[inline(always)]
+pub fn op_cmpm_w_pi_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    op_cmpm(cpu, bus)
+}
+
