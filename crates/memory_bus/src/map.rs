@@ -247,9 +247,9 @@ pub fn read_kickstart_rom(bus: &MemoryBus, addr: u32) -> u8 {
 /// Write handler for Kickstart ROM (ROM writes are silent no-ops)
 pub fn write_kickstart_rom(_bus: &mut MemoryBus, _addr: u32, _val: u8) {}
 
-/// Read handler for unmapped Open Bus (returns floating bus $FF)
-pub fn read_open_bus(_bus: &MemoryBus, _addr: u32) -> u8 {
-    0xFF
+/// Read handler for unmapped Open Bus (returns floating bus byte, defaults to $FF)
+pub fn read_open_bus(bus: &MemoryBus, _addr: u32) -> u8 {
+    bus.unmapped_byte
 }
 
 /// Write handler for unmapped Open Bus (writes are silent no-ops)
@@ -418,7 +418,10 @@ impl MemoryBus {
     pub(crate) fn read_byte_internal(&self, addr: u32) -> u8 {
         let addr = addr & 0x00FF_FFFF;
         if let Some(map) = &self.test_memory {
-            return *map.get(&addr).unwrap_or(&0xFF);
+            // Test memory harness: unpopulated RAM in test vectors defaults to unmapped_byte.
+            // In SingleStepTests flat RAM mode, unmapped_byte is set to 0x00.
+            // In real Amiga execution (or when unmapped_byte is 0xFF), unpopulated/unmapped reads return 0xFF.
+            return *map.get(&addr).unwrap_or(&self.unmapped_byte);
         }
         let bank_idx = (addr >> 16) as usize;
         (self.bank_map[bank_idx].read_byte)(self, addr)

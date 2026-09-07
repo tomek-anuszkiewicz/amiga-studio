@@ -81,6 +81,13 @@ const fn decode_opcode_handler(op: u16) -> OpcodeHandler {
             return op_addi_subi;
         }
     }
+    // ORI and ANDI
+    if (op & 0xFF00) == 0x0000 || (op & 0xFF00) == 0x0200 {
+        let size_bits = (op >> 6) & 0x03;
+        if size_bits != 3 {
+            return op_andi_ori;
+        }
+    }
     // 8. ADD and SUB
     let op_group = (op >> 12) & 0x0F;
     if op_group == 0xD {
@@ -103,6 +110,25 @@ const fn decode_opcode_handler(op: u16) -> OpcodeHandler {
     // 11. Bit Manipulation (BTST, BSET, BCLR, BCHG)
     if (op & 0xF100) == 0x0100 || (op & 0xFF00) == 0x0800 {
         return op_bit;
+    }
+    // CMPI
+    if (op & 0xFF00) == 0x0C00 && ((op >> 6) & 0x03) != 3 {
+        return op_cmpi;
+    }
+    // TST
+    if (op & 0xFF00) == 0x4A00 && ((op >> 6) & 0x03) != 3 {
+        return op_tst;
+    }
+    // CMPM
+    if (op & 0xF138) == 0xB108 && ((op >> 6) & 0x03) != 3 {
+        return op_cmpm;
+    }
+    // CMP and CMPA
+    if (op >> 12) == 0x0B {
+        let opmode = (op >> 6) & 0x07;
+        if opmode == 3 || opmode == 7 || opmode <= 2 {
+            return op_cmp;
+        }
     }
 
     op_unimplemented
@@ -138,7 +164,7 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let opcode = cpu.state.ir;
     let vector_num = (opcode & 0x000F) as u32;
     let vector_addr = system::VECTOR_TRAP_BASE + (vector_num * 4);
-    let return_pc = cpu.state.pc;
+    let return_pc = cpu.state.pc.wrapping_sub(2);
     system::push_standard_exception(
         &mut cpu.state,
         vector_addr,
@@ -162,6 +188,11 @@ pub fn op_bra_bcc(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     };
 
     if let Some(target) = control::evaluate_bcc(&cpu.state, cond, base_pc, displacement) {
+        if (target & 1) != 0 {
+            let fc = if cpu.state.is_supervisor() { 6 } else { 2 };
+            cpu.handle_address_error_fc(target, true, fc, bus);
+            return StepResult::InstructionCompleted;
+        }
         cpu.reload_pc_and_prefetch(target, bus);
     } else {
         cpu.retire_instruction(bus);
@@ -217,7 +248,7 @@ pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                     cpu.handle_address_error_fc(target, true, fc, bus);
                     return StepResult::InstructionCompleted;
                 }
-                let return_pc = cpu.state.pc;
+                let return_pc = cpu.state.pc.wrapping_sub(2);
                 let sp = cpu.state.a7().wrapping_sub(4);
                 cpu.state.set_a7(sp);
                 bus.write_word_debug(sp, (return_pc >> 16) as u16);
@@ -257,7 +288,7 @@ pub fn op_move(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let src_mode = ((opcode >> 3) & 0x07) as u8;
     let src_reg = (opcode & 0x07) as u8;
 
-    let pc = cpu.state.pc;
+    let pc = cpu.state.pc.wrapping_sub(2);
     let mut ext_reader = || cpu.consume_extension_word(bus);
     let src_ea = match AddressingMode::decode(src_mode, src_reg, size, pc, &mut ext_reader)
     {
@@ -292,7 +323,7 @@ pub fn op_move(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         return StepResult::InstructionCompleted;
     }
 
-    let pc = cpu.state.pc;
+    let pc = cpu.state.pc.wrapping_sub(2);
     let mut ext_reader2 = || cpu.consume_extension_word(bus);
     let dst_ea =
         match AddressingMode::decode(dst_mode, dst_reg, size, pc, &mut ext_reader2) {
@@ -303,19 +334,36 @@ pub fn op_move(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             }
         };
 
-    match cpu.write_ea_value(&dst_ea, src_val, size, bus) {
-        Ok(()) => {
-            move_ops::update_ccr_move(&mut cpu.state, src_val, size);
-            cpu.retire_instruction(bus);
-            StepResult::InstructionCompleted
+    move_ops::update_ccr_move(&mut cpu.state, src_val, size);
+
+    if dst_mode == 4 && size != Size::Long {
+        // Predecrement destination for Byte/Word: prefetch occurs before write
+        cpu.retire_instruction(bus);
+        match cpu.write_ea_value(&dst_ea, src_val, size, bus) {
+            Ok(()) => StepResult::InstructionCompleted,
+            Err(EaError::AddressError { addr, is_read }) => {
+                cpu.handle_address_error(addr, is_read, bus);
+                StepResult::InstructionCompleted
+            }
+            Err(_) => {
+                cpu.state.halted = true;
+                StepResult::Halted
+            }
         }
-        Err(EaError::AddressError { addr, is_read }) => {
-            cpu.handle_address_error(addr, is_read, bus);
-            StepResult::InstructionCompleted
-        }
-        Err(_) => {
-            cpu.state.halted = true;
-            StepResult::Halted
+    } else {
+        match cpu.write_ea_value(&dst_ea, src_val, size, bus) {
+            Ok(()) => {
+                cpu.retire_instruction(bus);
+                StepResult::InstructionCompleted
+            }
+            Err(EaError::AddressError { addr, is_read }) => {
+                cpu.handle_address_error(addr, is_read, bus);
+                StepResult::InstructionCompleted
+            }
+            Err(_) => {
+                cpu.state.halted = true;
+                StepResult::Halted
+            }
         }
     }
 }
@@ -470,7 +518,7 @@ fn execute_logic_group(cpu: &mut Cpu, bus: &mut MemoryBus, is_and: bool) -> Step
         }
     };
 
-    let pc = cpu.state.pc;
+    let pc = cpu.state.pc.wrapping_sub(2);
     let mut ext_reader = || cpu.consume_extension_word(bus);
     let ea = match AddressingMode::decode(ea_mode, ea_reg, size, pc, &mut ext_reader) {
         Ok(ea) => ea,
@@ -579,8 +627,57 @@ pub fn op_shift(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         cpu.retire_instruction(bus);
         StepResult::InstructionCompleted
     } else {
-        cpu.state.halted = true;
-        StepResult::Halted
+        // Memory shift: ASd, LSd, ROXd, ROd <ea> (Word size, count = 1)
+        let shift_type = (opcode >> 9) & 0x03;
+        let ea_mode = ((opcode >> 3) & 0x07) as u8;
+        let ea_reg = (opcode & 0x07) as u8;
+        let pc = cpu.state.pc.wrapping_sub(2);
+        let mut ext_reader = || cpu.consume_extension_word(bus);
+        let ea = match AddressingMode::decode(ea_mode, ea_reg, Size::Word, pc, &mut ext_reader) {
+            Ok(ea) => ea,
+            Err(_) => {
+                cpu.state.halted = true;
+                return StepResult::Halted;
+            }
+        };
+
+        let (val, addr_opt) = match cpu.read_ea_modify(&ea, Size::Word, bus) {
+            Ok(res) => res,
+            Err(EaError::AddressError { addr, is_read }) => {
+                cpu.handle_address_error(addr, is_read, bus);
+                return StepResult::InstructionCompleted;
+            }
+            Err(_) => {
+                cpu.state.halted = true;
+                return StepResult::Halted;
+            }
+        };
+
+        let res = match (shift_type, is_left) {
+            (0, true) => shifts::execute_asl(&mut cpu.state, 1, val, Size::Word),
+            (0, false) => shifts::execute_asr(&mut cpu.state, 1, val, Size::Word),
+            (1, true) => shifts::execute_lsl(&mut cpu.state, 1, val, Size::Word),
+            (1, false) => shifts::execute_lsr(&mut cpu.state, 1, val, Size::Word),
+            _ => {
+                cpu.state.halted = true;
+                return StepResult::Halted;
+            }
+        };
+
+        match cpu.write_ea_modify(&ea, addr_opt, res, Size::Word, bus) {
+            Ok(()) => {
+                cpu.retire_instruction(bus);
+                StepResult::InstructionCompleted
+            }
+            Err(EaError::AddressError { addr, is_read }) => {
+                cpu.handle_address_error(addr, is_read, bus);
+                StepResult::InstructionCompleted
+            }
+            Err(_) => {
+                cpu.state.halted = true;
+                StepResult::Halted
+            }
+        }
     }
 }
 
@@ -601,7 +698,7 @@ pub fn op_bit(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let is_reg = ea_mode == 0;
     let size = if is_reg { Size::Long } else { Size::Byte };
 
-    let pc = cpu.state.pc;
+    let pc = cpu.state.pc.wrapping_sub(2);
     let mut ext_reader = || cpu.consume_extension_word(bus);
     let ea = match AddressingMode::decode(ea_mode, ea_reg, size, pc, &mut ext_reader) {
         Ok(ea) => ea,
@@ -759,7 +856,7 @@ pub fn op_addq_subq(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let ea_mode = ((opcode >> 3) & 0x07) as u8;
     let ea_reg = (opcode & 0x07) as u8;
 
-    let pc = cpu.state.pc;
+    let pc = cpu.state.pc.wrapping_sub(2);
     let mut ext_reader = || cpu.consume_extension_word(bus);
     let ea = match AddressingMode::decode(ea_mode, ea_reg, size, pc, &mut ext_reader) {
         Ok(ea) => ea,
@@ -840,7 +937,7 @@ pub fn op_addi_subi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     let ea_mode = ((opcode >> 3) & 0x07) as u8;
     let ea_reg = (opcode & 0x07) as u8;
 
-    let pc = cpu.state.pc;
+    let pc = cpu.state.pc.wrapping_sub(2);
     let mut ext_reader = || cpu.consume_extension_word(bus);
     let ea = match AddressingMode::decode(ea_mode, ea_reg, size, pc, &mut ext_reader) {
         Ok(ea) => ea,
@@ -882,6 +979,316 @@ pub fn op_addi_subi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             StepResult::Halted
         }
     }
+}
+
+pub fn op_andi_ori(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let opcode = cpu.state.ir;
+    let is_and = (opcode & 0x0200) != 0;
+    let size_bits = (opcode >> 6) & 0x03;
+    let size = match size_bits {
+        0 => Size::Byte,
+        1 => Size::Word,
+        2 => Size::Long,
+        _ => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+    let imm = match size {
+        Size::Byte => (cpu.consume_extension_word(bus) & 0xFF) as u32,
+        Size::Word => cpu.consume_extension_word(bus) as u32,
+        Size::Long => {
+            let hi = cpu.consume_extension_word(bus) as u32;
+            let lo = cpu.consume_extension_word(bus) as u32;
+            (hi << 16) | lo
+        }
+    };
+    let ea_mode = ((opcode >> 3) & 0x07) as u8;
+    let ea_reg = (opcode & 0x07) as u8;
+
+    // Special case: ORI/ANDI to CCR (mode 7, reg 4, size Byte)
+    if ea_mode == 7 && ea_reg == 4 && size == Size::Byte {
+        let current_ccr = (cpu.state.sr & 0x1F) as u32;
+        let new_ccr = if is_and {
+            current_ccr & imm
+        } else {
+            current_ccr | imm
+        };
+        cpu.state.sr = (cpu.state.sr & !0x1F) | (new_ccr as u16 & 0x1F);
+        cpu.retire_instruction(bus);
+        return StepResult::InstructionCompleted;
+    }
+
+    // Special case: ORI/ANDI to SR (mode 7, reg 4, size Word)
+    if ea_mode == 7 && ea_reg == 4 && size == Size::Word {
+        if !cpu.state.is_supervisor() {
+            let ret_pc = cpu.state.instruction_pc;
+            system::push_standard_exception(
+                &mut cpu.state,
+                system::VECTOR_PRIVILEGE_VIOLATION,
+                ret_pc,
+                bus,
+            );
+            cpu.reload_pc_and_prefetch(cpu.state.pc, bus);
+            return StepResult::InstructionCompleted;
+        }
+        let current_sr = cpu.state.sr as u32;
+        let new_sr = if is_and {
+            current_sr & imm
+        } else {
+            current_sr | imm
+        };
+        cpu.state.sr = new_sr as u16;
+        cpu.retire_instruction(bus);
+        return StepResult::InstructionCompleted;
+    }
+
+    let pc = cpu.state.pc.wrapping_sub(2);
+    let mut ext_reader = || cpu.consume_extension_word(bus);
+    let ea = match AddressingMode::decode(ea_mode, ea_reg, size, pc, &mut ext_reader) {
+        Ok(ea) => ea,
+        Err(_) => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    let (dst_val, addr_opt) = match cpu.read_ea_modify(&ea, size, bus) {
+        Ok(res) => res,
+        Err(EaError::AddressError { addr, is_read }) => {
+            cpu.handle_address_error(addr, is_read, bus);
+            return StepResult::InstructionCompleted;
+        }
+        Err(_) => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    let res = if is_and {
+        logic::execute_and(&mut cpu.state, imm, dst_val, size)
+    } else {
+        logic::execute_or(&mut cpu.state, imm, dst_val, size)
+    };
+
+    match cpu.write_ea_modify(&ea, addr_opt, res, size, bus) {
+        Ok(()) => {
+            cpu.retire_instruction(bus);
+            StepResult::InstructionCompleted
+        }
+        Err(EaError::AddressError { addr, is_read }) => {
+            cpu.handle_address_error(addr, is_read, bus);
+            StepResult::InstructionCompleted
+        }
+        Err(_) => {
+            cpu.state.halted = true;
+            StepResult::Halted
+        }
+    }
+}
+
+pub fn op_cmp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let opcode = cpu.state.ir;
+    let reg = ((opcode >> 9) & 0x07) as usize;
+    let opmode = ((opcode >> 6) & 0x07) as u8;
+    let ea_mode = ((opcode >> 3) & 0x07) as u8;
+    let ea_reg = (opcode & 0x07) as u8;
+
+    let (size, is_cmpa) = match opmode {
+        0 => (Size::Byte, false),
+        1 => (Size::Word, false),
+        2 => (Size::Long, false),
+        3 => (Size::Word, true),  // CMPA.W
+        7 => (Size::Long, true),  // CMPA.L
+        _ => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    let pc = cpu.state.pc.wrapping_sub(2);
+    let mut ext_reader = || cpu.consume_extension_word(bus);
+    let ea = match AddressingMode::decode(ea_mode, ea_reg, size, pc, &mut ext_reader) {
+        Ok(ea) => ea,
+        Err(_) => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    let src_val = match cpu.read_ea_value(&ea, size, bus) {
+        Ok(val) => val,
+        Err(EaError::AddressError { addr, is_read }) => {
+            cpu.handle_address_error_for_ea(&ea, addr, is_read, bus);
+            return StepResult::InstructionCompleted;
+        }
+        Err(_) => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    if is_cmpa {
+        let dst_val = cpu.state.read_a(reg);
+        let src_final = if size == Size::Word {
+            (src_val as i16 as i32) as u32
+        } else {
+            src_val
+        };
+        arithmetic::execute_cmp(&mut cpu.state, src_final, dst_val, Size::Long);
+    } else {
+        let dst_val = cpu.state.d[reg];
+        arithmetic::execute_cmp(&mut cpu.state, src_val, dst_val, size);
+    }
+
+    cpu.retire_instruction(bus);
+    StepResult::InstructionCompleted
+}
+
+pub fn op_cmpm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let opcode = cpu.state.ir;
+    let rx = ((opcode >> 9) & 0x07) as u8;
+    let size_bits = (opcode >> 6) & 0x03;
+    let ry = (opcode & 0x07) as u8;
+
+    let size = match size_bits {
+        0 => Size::Byte,
+        1 => Size::Word,
+        2 => Size::Long,
+        _ => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    let ea_src = AddressingMode::Postincrement(ry);
+    let ea_dst = AddressingMode::Postincrement(rx);
+
+    // Source (Ay)+ is read first
+    let src_val = match cpu.read_ea_value(&ea_src, size, bus) {
+        Ok(val) => val,
+        Err(EaError::AddressError { addr, is_read }) => {
+            cpu.handle_address_error_for_ea(&ea_src, addr, is_read, bus);
+            return StepResult::InstructionCompleted;
+        }
+        Err(_) => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    // Destination (Ax)+ is read second
+    let dst_val = match cpu.read_ea_value(&ea_dst, size, bus) {
+        Ok(val) => val,
+        Err(EaError::AddressError { addr, is_read }) => {
+            cpu.handle_address_error_for_ea(&ea_dst, addr, is_read, bus);
+            return StepResult::InstructionCompleted;
+        }
+        Err(_) => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    arithmetic::execute_cmp(&mut cpu.state, src_val, dst_val, size);
+    cpu.retire_instruction(bus);
+    StepResult::InstructionCompleted
+}
+
+pub fn op_cmpi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let opcode = cpu.state.ir;
+    let size_bits = (opcode >> 6) & 0x03;
+    let ea_mode = ((opcode >> 3) & 0x07) as u8;
+    let ea_reg = (opcode & 0x07) as u8;
+
+    let size = match size_bits {
+        0 => Size::Byte,
+        1 => Size::Word,
+        2 => Size::Long,
+        _ => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    let imm = match size {
+        Size::Byte => (cpu.consume_extension_word(bus) & 0xFF) as u32,
+        Size::Word => cpu.consume_extension_word(bus) as u32,
+        Size::Long => {
+            let hi = cpu.consume_extension_word(bus) as u32;
+            let lo = cpu.consume_extension_word(bus) as u32;
+            (hi << 16) | lo
+        }
+    };
+
+    let pc = cpu.state.pc.wrapping_sub(2);
+    let mut ext_reader = || cpu.consume_extension_word(bus);
+    let ea = match AddressingMode::decode(ea_mode, ea_reg, size, pc, &mut ext_reader) {
+        Ok(ea) => ea,
+        Err(_) => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    let dst_val = match cpu.read_ea_value(&ea, size, bus) {
+        Ok(val) => val,
+        Err(EaError::AddressError { addr, is_read }) => {
+            cpu.handle_address_error_for_ea(&ea, addr, is_read, bus);
+            return StepResult::InstructionCompleted;
+        }
+        Err(_) => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    arithmetic::execute_cmp(&mut cpu.state, imm, dst_val, size);
+    cpu.retire_instruction(bus);
+    StepResult::InstructionCompleted
+}
+
+pub fn op_tst(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let opcode = cpu.state.ir;
+    let size_bits = (opcode >> 6) & 0x03;
+    let ea_mode = ((opcode >> 3) & 0x07) as u8;
+    let ea_reg = (opcode & 0x07) as u8;
+
+    let size = match size_bits {
+        0 => Size::Byte,
+        1 => Size::Word,
+        2 => Size::Long,
+        _ => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    let pc = cpu.state.pc.wrapping_sub(2);
+    let mut ext_reader = || cpu.consume_extension_word(bus);
+    let ea = match AddressingMode::decode(ea_mode, ea_reg, size, pc, &mut ext_reader) {
+        Ok(ea) => ea,
+        Err(_) => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    let val = match cpu.read_ea_value(&ea, size, bus) {
+        Ok(val) => val,
+        Err(EaError::AddressError { addr, is_read }) => {
+            cpu.handle_address_error_for_ea(&ea, addr, is_read, bus);
+            return StepResult::InstructionCompleted;
+        }
+        Err(_) => {
+            cpu.state.halted = true;
+            return StepResult::Halted;
+        }
+    };
+
+    arithmetic::execute_tst(&mut cpu.state, val, size);
+    cpu.retire_instruction(bus);
+    StepResult::InstructionCompleted
 }
 
 pub fn op_unimplemented(cpu: &mut Cpu, _bus: &mut MemoryBus) -> StepResult {

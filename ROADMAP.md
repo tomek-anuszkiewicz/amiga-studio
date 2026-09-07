@@ -38,77 +38,103 @@ This document outlines the phased development plan, hardware milestones, verific
 ---
 
 ## 2. Core Implementation Strategy
-
-### Step 1: BlepGenerator — Rust Port & Audio Antialiasing Validation
-- **Convert [tools/BlebGenerator](tools/BlebGenerator) to Rust:**
-  - Port the C# table generation implementation ([`tools/BlebGenerator/genblepsharp.cs`](tools/BlebGenerator/genblepsharp.cs)) into a native Rust tool (`tools/bleb-generator` or cargo workspace utility crate).
-  - Port the analytical audio filter transfer function, windowed sinc integration, and BLEP table calculation pipeline.
-  - Generate band-limited step (BLEP) interpolation tables for Paula's audio channels across A500 PAL (~3.54 MHz) and NTSC (~3.58 MHz) clock domains.
+### Step 1: BlepGenerator — Rust Port & Audio Antialiasing Validation (Completed)
+- **Convert [tools/blep_generator](tools/blep_generator) to Rust:**
+  - Ported the C# table generation implementation into a native Rust tool (`tools/blep_generator`).
+  - Ported the analytical audio filter transfer function, windowed sinc integration, and BLEP table calculation pipeline.
+  - Generated band-limited step (BLEP) interpolation tables for Paula's audio channels across A500 PAL (~3.54 MHz) and NTSC (~3.58 MHz) clock domains.
 - **Validate Against WinUAE Ground Truth:**
-  - Validate the generated tables directly against WinUAE's reference `winsinc_integral` tables ([`ref_src/WinUAE-6030/sinctable.cpp`](ref_src/WinUAE-6030/sinctable.cpp)) to ensure clean, alias-free sound rendering for Paula's variable-rate audio channels.
+  - Validated generated tables directly against WinUAE's reference `winsinc_integral` tables ([`ref_src/WinUAE-6030/sinctable.cpp`](ref_src/WinUAE-6030/sinctable.cpp)) to ensure clean, alias-free sound rendering for Paula's variable-rate audio channels.
 - **Embed Static Tables in Paula Core:**
-  - Embed the precalculated BLEP sinc tables as static arrays in Paula's audio rendering pipeline, adhering strictly to the zero-allocation hot-path guideline.
+  - Precalculated BLEP sinc tables ready as static arrays in Paula's audio rendering pipeline, adhering strictly to the zero-allocation hot-path guideline.
 
-### Step 2: MemoryBus & 2-Phase CCK Bus Arbitration
+### Step 2: MemoryBus & 2-Phase CCK Bus Arbitration (Baseline Implemented)
 - **24-Bit Physical Address Decoding:**
-  - Implement full 24-bit physical decoding: Chip RAM (512 KB/1 MB), Slow RAM (`$C00000`), Fast RAM (`$200000`), Kickstart ROM (`$F80000`), and hardware register spaces (`$DFF000`, `$BFE001`, `$BFD000`).
-  - Implement low-memory boot overlay (`_OVL`): route `$000000-$07FFFF` to Kickstart ROM on cold/warm reset until cleared.
-  - Model open bus behavior: floating address lines return `$FF` / `$FFFF` on unmapped spaces without bus errors.
-  - Implement Amiga hardware quirks: `TAS` write-drop in Chip/Slow RAM, CIA byte lane mapping (even on CIA-B, odd on CIA-A).
-- **Sub-Cycle 2-Phase CCK Bus Arbitration:**
-  - Implement two-phase CCK latching (`read_phase1`/`read_phase2`, `write_phase1`/`write_phase2`) returning `MemoryBusResult` (`Phase1Ready`, `Ready(u16)`, `Blocked`).
+  - Implemented 24-bit physical decoding: Chip RAM (512 KB/1 MB), Slow RAM (`$C00000`), Fast RAM (`$200000`), Kickstart ROM (`$F80000`), and hardware register spaces (`$DFF000`, `$BFE001`, `$BFD000`).
+  - Implemented low-memory boot overlay (`_OVL`): route `$000000-$07FFFF` to Kickstart ROM on cold/warm reset until cleared.
+  - Modeled open bus behavior: floating address lines return `$FF` / `$FFFF` on unmapped spaces without bus errors.
+  - Implemented Amiga hardware quirks: `TAS` write-drop in Chip/Slow RAM, CIA byte lane mapping (even on CIA-B, odd on CIA-A).
+  - Dedicated test-loading mode populating arbitrary RAM bytes for `SingleStepTests` execution.
+- **Sub-Cycle 2-Phase CCK Bus Protocol Integration:**
+  - Two-phase CCK latching (`read_phase1`/`read_phase2`, `write_phase1`/`write_phase2`) returning `MemoryBusResult` (`Phase1Ready`, `Ready(u16)`, `Blocked`).
   - Transparent read latch buffer (`read_latch`) isolating CPU during bus wait states.
-  - Simulate Agnus cycle stealing and DMA wait states on Chip RAM via `lock_chip_ram()` / `unlock_chip_ram()`.
-  - Provide a test-loading mode to populate arbitrary RAM bytes for `SingleStepTests` execution.
+  - Gary / Agnus cycle stealing and DMA wait states on Chip RAM via `lock_chip_ram()` / `unlock_chip_ram()`.
 
-### Step 3a: M68000 CPU Foundations, All Addressing Modes & Early Debugger Backend
-> [!IMPORTANT]
-> **Debugger is an immediate prerequisite:** Building and validating a cycle-exact CPU without an inspection backend is nearly impossible. The core headless debugger engine must be implemented concurrently with the CPU.
-
-- **Early Debugger Primitives (Required Immediately):**
-  - Built-in zero-dependency M68000 opcode disassembler (decodes instructions to human-readable strings).
+### Step 3a: Functional Core Baseline, Addressing Modes & Debugger Primitives (Completed)
+- **Headless Debugger Backend Primitives:**
+  - Built-in zero-dependency M68000 opcode disassembler.
   - Stepping primitives (`step_instruction`, `step_cck`).
   - PC execution breakpoints and memory read/write watchpoints.
   - Read-only state inspection (`CpuState`, registers $D_0-D_7$, $A_0-A_7$, $SR$, CCR flags, prefetch queue).
-  - Fixed-size trace ring buffer (last 1024 instructions) for instant post-mortem diagnosis of test failures or crashes.
-- **CPU Core & Addressing Modes Engine:**
-  - Build cycle-exact instruction execution state machine mapped to CCK phases (CCK1/CCK2), directly interfaced with `MemoryBus`.
-  - Implement and thoroughly test **all M68000 addressing modes** upfront:
-    - Data & Address Register Direct (`Dn`, `An`)
-    - Address Register Indirect (`(An)`)
-    - Address Register Indirect with Postincrement (`(An)+`) and Predecrement (`-(An)`) [with `A7` 2-byte alignment quirk on byte ops]
-    - Address Register Indirect with Displacement (`(d16, An)`)
-    - Address Register Indirect with Index (`(d8, An, Xn)`) [parsing brief extension word]
-    - Absolute Short & Long (`(xxx).W`, `(xxx).L`)
-    - Program Counter with Displacement & Index (`(d16, PC)`, `(d8, PC, Xn)`)
-    - Immediate data & Status Register (`#<data>`, `SR`, `CCR`)
-- **Initial Representative Instructions (One from Each Category):**
-  - Implement a representative instruction from every major instruction category to exercise the execution pipeline:
-    - *Data Movement:* `MOVE` / `MOVEA`
-    - *Integer Arithmetic:* `ADD` / `SUB`
-    - *Logic:* `AND` / `OR`
-    - *Shift & Rotate:* `LSL` / `LSR` (or `ASL` / `ASR`)
-    - *Bit Manipulation:* `BTST` / `BSET`
-    - *Control Flow:* `BRA` / `Bcc` / `JMP` / `RTS`
-    - *System & Exceptions:* `NOP`, `TRAP`, address error / unaligned access exception handling (7-word stack frame).
-  - Initial SingleStepTest validation run using `m68k-singlestep-test` to ensure bus cycle timing, prefetch queue (`IR`/`IRC`), and CCR calculations are exact across all addressing modes.
+  - 1024-entry execution trace ring buffer for instant post-mortem failure analysis.
+- **All 12 M68000 Addressing Modes Implemented & Validated:**
+  - Register direct (`Dn`, `An`), indirect `(An)`, postincrement `(An)+`, predecrement `-(An)` (with `A7` 2-byte alignment quirk on byte ops).
+  - Displacement `(d16, An)`, indexed `(d8, An, Xn)` with brief extension word, absolute short `(xxx).W`, absolute long `(xxx).L`.
+  - PC-relative displacement `(d16, PC)` and index `(d8, PC, Xn)`, immediate data `#<data>`, `SR`, and `CCR`.
+  - Unaligned word/long address error exception handling (Vector 3) with full 7-word stack frame generation.
+- **51 Instruction Suites Verified (100% Green):**
+  - Data movement: `MOVE.b/w/l`, `MOVEA.w/l`.
+  - Arithmetic: `ADD.b/w/l`, `ADDA.w/l`, `ADDX.b/w/l`, `ADDQ.b/w/l`, `ADDI.b/w/l`, `SUB.b/w/l`, `SUBA.w/l`, `SUBX.b/w/l`, `SUBQ.b/w/l`, `SUBI.b/w/l`.
+  - Comparison & Test: `CMP.b/w/l`, `CMPA.w/l`, `CMPI.b/w/l`, `CMPM.b/w/l`, `TST.b/w/l`.
+  - Logic & Bit Ops: `AND.b/w/l`, `OR.b/w/l`, `BTST`, `BSET`, `BCLR`, `BCHG`.
+  - Shifts: `ASL.b/w/l`, `ASR.b/w/l`, `LSL.b/w/l`, `LSR.b/w/l`.
+  - Control Flow & Exceptions: `BRA`, `Bcc`, `JMP`, `JSR`, `RTS`, `NOP`, `TRAP`.
+- **Silicon Quirks Identified & Documented:**
+  - Unmapped memory open bus (`$FF`) vs SingleStepTests flat memory model (`$00`).
+  - Address register postincrement/predecrement timing on write faults (predecrement decrements before fault, postincrement does not increment).
+  - `CMP` / `TST` condition codes: identical to subtraction/testing, but **Extend ($X$) flag is strictly preserved**.
 
-### Step 3b: Full M68000 Instruction Set Completion & Cycle-Exact Validation
-- **Implement All Remaining Instructions:**
-  - Complete the full M68000 opcode matrix across all categories:
-    - Block & specialized moves: `MOVEM`, `MOVEP`, `EXG`, `LEA`, `PEA`
-    - Extended/BCD arithmetic: `ADDX`, `SUBX`, `NEGX`, `ABCD`, `SBCD`, `NBCD`, `MULS`, `MULU`, `DIVS`, `DIVU`, `EXT`
-    - Bit/comparison operations: `BCHG`, `BCLR`, `TST`, `CMP`, `CMPA`, `CMPI`, `CMPM`, `CLR`, `NEG`, `NOT`
-    - Specialized control & loops: `DBcc`, `Scc`, `JSR`, `RTE`, `RTR`, `LINK`, `UNLK`, `SWAP`, `CHK`
-    - Privileged & atomic instructions: `STOP`, `RESET`, `TAS`, `TRAPV`, `MOVE to SR/CCR`, `MOVE from SR`, `MOVE USP`
-- **Comprehensive SingleStepTest Suite Coverage:**
-  - Autonomous agentic loop using `add-m68k-instruction` and `m68k-singlestep-test` skills.
-  - 100% pass rate against all 127 per-instruction test suites in [`ref_src/SingleStepTests-m68000/v1/`](ref_src/SingleStepTests-m68000/v1) (MAME).
-  - 100% pass rate against all 125 compressed suites in [`ref_src/SingleStepTests-680x0/68000/v1/`](ref_src/SingleStepTests-680x0/68000/v1) (Tom Harte).
-  - Rigorous verification of edge cases: unaligned word/long address errors, prefetch queue reload delays, bus cycle states, and condition code quirks.
-  - Cycle-Exact Diagnostics: log the exact execution cycle/CCK phase and bus transaction on test failure during cycle-stepped execution.
+### Step 3b: Color Clock (CCK) Sub-Cycle Bus Interface & 2-Phase State Machine
+- **Clocking & Synchronization Model:**
+  - $1\ \text{M68000 bus cycle} = 4\ \text{CPU clocks (S0-S7)} = 2\ \text{Color Clocks (CCK1 + CCK2)}$.
+  - CCK1 (Clocks S0–S3): Address output, `_AS` assertion, bus arbitration check against Agnus DMA. If blocked, Gary withholds `_DTACK` -> CPU pauses without advancing micro-step.
+  - CCK2 (Clocks S4–S7): Data transfer, latch read data (`read_latch`) or commit write data, acknowledge `_DTACK`.
+- **Bus Protocol Refinement in `crates/memory_bus`:**
+  - Define `CckPhase` (`Cck1`, `Cck2`) and `BusCycle` representation (`addr`, `data`, `size`, `fc`, `is_read`, `uds`, `lds`).
+  - Provide 2-phase API: `begin_cycle(addr, size, fc, is_read) -> MemoryBusResult` and `end_cycle(data) -> MemoryBusResult`.
+- **CPU Micro-State Machine in `crates/m68000`:**
+  - Introduce `CpuMicroState` / `CckPhase` / `active_bus_cycle: Option<BusCycle>` into CPU execution core.
+  - Implement `step_cck(&mut bus) -> StepResult (InFlight | InstructionComplete | BusWait)`.
+  - Seamlessly handle Chip RAM DMA contention: CPU holds intermediate states and wait cycles when `MemoryBusResult::Blocked` is returned.
 
-### Step 3c: In-Memory Test Mutations & Bus Contention Stress Testing
+### Step 3c: Micro-Step Instruction Decomposition on 6 Representative Archetypes (Proof of Concept)
+- **Decompose 6 Archetypes into Cycle-Exact Micro-Operations:**
+  1. *Internal Register ALU (4 clocks / 2 CCKs):* `NOP`, `MOVE.w D0, D1` (Zero external memory cycles beyond opcode prefetch).
+  2. *Memory Read (8 clocks / 4 CCKs):* `MOVE.w (A0), D0` (Opcode fetch + prefetch + memory read).
+  3. *Memory Write (8 clocks / 4 CCKs):* `MOVE.w D0, (A0)` (Opcode fetch + memory write + prefetch).
+  4. *Read-Modify-Write (12 clocks / 6 CCKs):* `ADD.w D0, (A0)` (Opcode fetch + memory read + ALU execution + memory write + prefetch).
+  5. *Conditional Branching (10 vs 8 clocks):* `BRA.s` / `Bcc` (Taken branch: 10 clocks with pipeline flush/refetch; Untaken branch: 8 clocks with sequential prefetch).
+  6. *Stack Push/Pop (Multi-Word):* `PEA (A0)` / `JSR (A0)` (Sequential stack memory writes across multiple CCK cycles).
+- **Validation of Proof of Concept:**
+  - Verify that each archetype matches exact cycle length (`test.length`) under unblocked memory execution.
+  - Verify that injecting synthetic DMA stalls during CCK1 pauses the micro-step state machine without state corruption.
+
+### Step 3d: Cycle Length & Bus Transaction Verification Harness
+- **Harness Extensions in `crates/test_runner`:**
+  - Add cycle length verification asserting `cpu.cycles == test.length` against MAME and Tom Harte test vectors.
+  - Implement bus cycle transaction recording (`[cycle, address, value, type, uds, lds]`) and match against Tom Harte's silicon bus transaction logs.
+  - Add synthetic Agnus DMA contention test runner: inject DMA stalls at every possible CCK phase of each instruction to verify invariant preservation (final registers and memory identical, total cycles increased by wait states).
+
+### Step 3e: Systematic Migration of Existing 51 Instructions to CCK Engine
+- **Structured Migration Batches:**
+  - *Batch 1 (Simple ALU & Immediate):* `ADD`, `ADDA`, `ADDI`, `ADDQ`, `SUB`, `SUBA`, `SUBI`, `SUBQ`, `CMP`, `CMPA`, `CMPI`, `CMPM`, `TST`.
+  - *Batch 2 (Bitwise Logic & Bit Ops):* `AND`, `OR`, `BTST`, `BSET`, `BCLR`, `BCHG`.
+  - *Batch 3 (Shifts & Rotates):* `ASL`, `ASR`, `LSL`, `LSR` (Dynamic micro-step loops: 6/8 base clocks + 2 clocks per bit shifted).
+  - *Batch 4 (Data Movement):* `MOVE.b/w/l`, `MOVEA.w/l`.
+  - *Batch 5 (Extended Arithmetic & Control Flow):* `ADDX`, `SUBX`, `BRA`, `Bcc`, `JMP`, `JSR`, `RTS`, `TRAP`, `NOP`.
+- **Milestone Gate:** All 51 migrated instructions pass 100% green in SingleStepTests with both state match AND exact cycle count (`test.length`).
+
+### Step 3f: Implementation of Remaining Complex & Multi-Cycle Instructions
+- **Implement Directly in CCK Engine:**
+  - *Batch 6 (Multi-Register Moves):* `MOVEM` (looping bus cycles, predecrement/postincrement register ordering, interrupt sensitivity).
+  - *Batch 7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
+  - *Batch 8 (BCD & Math Extensions):* `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `NOT`, `EXT`.
+  - *Batch 9 (Looping & Conditional Setting):* `DBcc`, `Scc`.
+  - *Batch 10 (Stack & Frame Control):* `LINK`, `UNLK`, `PEA`, `LEA`, `EXG`, `SWAP`, `CHK`.
+  - *Batch 11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
+- **100% SingleStepTest Pass Rate Target:** Complete all 127 MAME suites and 125 Tom Harte suites with both register/memory match and cycle/bus-exact match.
+
+### Step 3g: In-Memory Mutations & Dynamic DMA Contention Stress Testing
 - **Address Space Remapping Mutations:**
   - Execute SingleStepTest suites with programmatic address remapping mutations (per [CPU SingleStepTests.md](Obsidian/Amiga/Design/CPU%20SingleStepTests.md#8-in-code-test-mutation-strategy-chipfast-ram--dma-contention)):
     - `ForceChipRam`: Offset code, operands, and stack into Chip RAM (`$000000-$07FFFF`) to test contention and Gary bus limits.

@@ -121,14 +121,24 @@ pub fn execute_asr(state: &mut CpuState, count: u32, val: u32, size: Size) -> u3
     }
 
     let mut last_out = false;
-    for _ in 0..count {
-        last_out = (v & 1) != 0;
-        let sign_bit = v & msb_mask;
-        v = (v >> 1) | sign_bit;
+    if count <= width {
+        for _ in 0..count {
+            last_out = (v & 1) != 0;
+            let sign_bit = v & msb_mask;
+            v = (v >> 1) | sign_bit;
+        }
+        state.set_x(last_out);
+        state.set_c(last_out);
+    } else {
+        if (v & msb_mask) != 0 {
+            v = mask;
+        } else {
+            v = 0;
+        }
+        state.set_x(false);
+        state.set_c(false);
     }
 
-    state.set_x(last_out);
-    state.set_c(last_out);
     state.set_v(false);
     update_nz(state, v, size);
 

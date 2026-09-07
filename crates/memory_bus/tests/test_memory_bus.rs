@@ -89,3 +89,31 @@ fn test_floating_bus_and_tas_quirk() {
     bus.write_tas_byte(0x200100, 0x80);
     assert_eq!(bus.read_byte_debug(0x200100), 0x80);
 }
+
+#[test]
+fn test_configurable_unmapped_byte_default_ff_and_test_mode() {
+    // 1. Real emulator mode: unmapped memory defaults to 0xFF (open bus floating high)
+    let mut real_bus = MemoryBus::new();
+    assert_eq!(real_bus.unmapped_byte(), 0xFF);
+    assert_eq!(real_bus.read_byte_debug(0x180000), 0xFF);
+    assert_eq!(real_bus.read_word_debug(0x180000), 0xFFFF);
+
+    // Can reconfigure open bus default if needed
+    real_bus.set_unmapped_byte(0xAA);
+    assert_eq!(real_bus.read_byte_debug(0x180000), 0xAA);
+    assert_eq!(real_bus.read_word_debug(0x180000), 0xAAAA);
+
+    // 2. Test harness mode: MemoryBus::new_test() defaults to 0xFF, configurable to 0x00 for flat test RAM
+    let mut test_bus = MemoryBus::new_test();
+    assert_eq!(test_bus.unmapped_byte(), 0xFF);
+    test_bus.load_test_ram(&[[0x1000, 0x42]]);
+    assert_eq!(test_bus.read_byte_debug(0x1000), 0x42);
+    // Unpopulated address in test memory with default 0xFF
+    assert_eq!(test_bus.read_byte_debug(0x2000), 0xFF);
+
+    // Switch to flat RAM model (SingleStepTests)
+    test_bus.set_unmapped_byte(0x00);
+    assert_eq!(test_bus.read_byte_debug(0x2000), 0x00);
+    assert_eq!(test_bus.read_word_debug(0x2000), 0x0000);
+    assert_eq!(test_bus.read_byte_debug(0x1000), 0x42); // populated untouched
+}

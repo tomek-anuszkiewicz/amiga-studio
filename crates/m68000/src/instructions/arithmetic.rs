@@ -248,3 +248,67 @@ pub fn execute_subx(state: &mut CpuState, src: u32, dst: u32, size: Size) -> u32
         }
     }
 }
+
+/// Executes CMP: evaluates (dst - src) and updates N, Z, V, C flags.
+/// X flag is NOT affected.
+#[inline]
+pub fn execute_cmp(state: &mut CpuState, src: u32, dst: u32, size: Size) {
+    match size {
+        Size::Byte => {
+            let s = (src & 0xFF) as u8;
+            let d = (dst & 0xFF) as u8;
+            let (res, c) = d.overflowing_sub(s);
+            let v = (((s ^ d) & (d ^ res)) & 0x80) != 0;
+            let n = (res & 0x80) != 0;
+            let z = res == 0;
+            state.set_c(c);
+            state.set_v(v);
+            state.set_n(n);
+            state.set_z(z);
+        }
+        Size::Word => {
+            let s = (src & 0xFFFF) as u16;
+            let d = (dst & 0xFFFF) as u16;
+            let (res, c) = d.overflowing_sub(s);
+            let v = (((s ^ d) & (d ^ res)) & 0x8000) != 0;
+            let n = (res & 0x8000) != 0;
+            let z = res == 0;
+            state.set_c(c);
+            state.set_v(v);
+            state.set_n(n);
+            state.set_z(z);
+        }
+        Size::Long => {
+            let (res, c) = dst.overflowing_sub(src);
+            let v = (((src ^ dst) & (dst ^ res)) & 0x8000_0000) != 0;
+            let n = (res & 0x8000_0000) != 0;
+            let z = res == 0;
+            state.set_c(c);
+            state.set_v(v);
+            state.set_n(n);
+            state.set_z(z);
+        }
+    }
+}
+
+/// Executes TST: evaluates val against zero, updating N and Z flags, clearing V and C.
+/// X flag is NOT affected.
+#[inline]
+pub fn execute_tst(state: &mut CpuState, val: u32, size: Size) {
+    let (n, z) = match size {
+        Size::Byte => {
+            let b = (val & 0xFF) as u8;
+            ((b & 0x80) != 0, b == 0)
+        }
+        Size::Word => {
+            let w = (val & 0xFFFF) as u16;
+            ((w & 0x8000) != 0, w == 0)
+        }
+        Size::Long => ((val & 0x8000_0000) != 0, val == 0),
+    };
+    state.set_n(n);
+    state.set_z(z);
+    state.set_v(false);
+    state.set_c(false);
+}
+

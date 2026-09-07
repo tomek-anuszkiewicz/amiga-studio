@@ -46,7 +46,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
 2. **Zero Host Panics on Guest Code**:
    - Emulated guest code (including malformed binaries, crash dumps, or illegal memory accesses) must **never panic the host process**.
    - Do not use `.unwrap()` or `.expect()` in runtime emulation paths.
-   - Unmapped or disconnected address reads must simulate open bus behavior (typically returning `$FF` or `$FFFF` on standard A500) rather than indexing out of bounds.
+   - Unmapped, disconnected, or unreadable address reads must simulate open bus behavior, returning `$FF` for byte reads and `$FFFF` for word reads (standard A500 floating data bus pulled high) rather than indexing out of bounds or panicking. In synthetic test harnesses (such as SingleStepTests flat memory model where unpopulated addresses default to `$00`), this default is explicitly configurable via `MemoryBus::set_unmapped_byte()`.
    - Unaligned word/long accesses must trigger an M68000 Address Error exception (Vector 3).
 
 3. **Arithmetic & Overflow Handling**:
@@ -130,4 +130,19 @@ All agentic pair-programming and automated modifications must adhere strictly to
 - **Privacy & Portability**: External paths leak private user environment details and break cross-machine portability.
 - **Documentation Placeholders**: In documentation, help text, or configuration templates, always use generic placeholders (e.g., `<PATH_TO_VAULT>`, `<PATH_TO_CACHE_DIR>`, `<repo_path>`).
 - **User Consultation Required**: If a situation arises where an external path seems needed or requested, you **must stop and ask the user how to solve it** (e.g. via `.env` variables, CLI arguments, or relative paths) rather than assuming, embedding, or exposing external paths.
+
+---
+
+## 6. Specification Compliance & Divergence Escalation Rule (Zero Silent Spec Violations)
+
+- **Living Specification as Ground Truth**: Design specifications under [Obsidian/Amiga/Design](Obsidian/Amiga/Design) and guidelines in `AGENTS.md` define the authoritative architectural truth and hardware behavior for this emulator.
+- **Zero Unilateral Divergence**: Agents must **never silently implement code that contradicts or bypasses existing design specifications or rules** (e.g., returning `$00` instead of `$FF` on unmapped memory reads, altering bus contention timings, or silently diverging from hardware models to pass synthetic test vectors).
+- **Mandatory Conflict Detection & Escalation**:
+  - Whenever an implementation requirement, external test harness expectation (such as SingleStepTests flat memory assumptions), or reference emulator quirk conflicts with the documented specification:
+  - You **MUST STOP immediately and present the conflict to the USER before modifying code**.
+  - Specifically detail:
+    1. What the current design specification / hardware rule requires.
+    2. What the conflicting test suite or scenario expects.
+    3. The proposed architectural alternatives (e.g. configurable parameters, separate test harnesses vs real emulation modes, or formal spec amendments).
+- **Explicit User Decision Required**: No code may deviate from existing documentation without an explicit, recorded decision by the user. Either the documentation is officially updated with user approval, or the code must strictly adhere to the specification.
 

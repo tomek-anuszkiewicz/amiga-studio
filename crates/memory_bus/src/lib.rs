@@ -98,6 +98,17 @@ pub struct MemoryBus {
     /// Sparse test memory for CPU SingleStepTests and synthetic test runner execution
     #[serde(skip)]
     pub test_memory: Option<std::collections::HashMap<u32, u8>>,
+
+    /// Default byte value returned when reading unpopulated test memory or unmapped open bus space.
+    /// In real Amiga hardware execution, this is 0xFF (floating open bus with pull-up resistors).
+    /// In SingleStepTests flat RAM harness, this can be configured to 0x00.
+    #[serde(default = "default_unmapped_byte")]
+    pub unmapped_byte: u8,
+}
+
+#[inline(always)]
+fn default_unmapped_byte() -> u8 {
+    0xFF
 }
 
 impl Default for MemoryBus {
@@ -133,6 +144,7 @@ impl MemoryBus {
             custom_registers: [0xFFFF; 256],
             rtc,
             test_memory: Some(std::collections::HashMap::with_capacity(32)),
+            unmapped_byte: 0xFF,
         }
     }
 
@@ -141,6 +153,18 @@ impl MemoryBus {
         if self.test_memory.is_none() {
             self.test_memory = Some(std::collections::HashMap::with_capacity(32));
         }
+    }
+
+    /// Returns the byte value returned when reading unpopulated test memory or unmapped open bus
+    #[inline]
+    pub fn unmapped_byte(&self) -> u8 {
+        self.unmapped_byte
+    }
+
+    /// Sets the byte value returned when reading unpopulated test memory or unmapped open bus
+    #[inline]
+    pub fn set_unmapped_byte(&mut self, val: u8) {
+        self.unmapped_byte = val;
     }
 
     /// Creates a MemoryBus configured per the provided A500Config
@@ -175,6 +199,7 @@ impl MemoryBus {
             custom_registers: [0xFFFF; 256],
             rtc,
             test_memory: None,
+            unmapped_byte: 0xFF,
         };
         bus.map_kickstart_to_low_memory();
         bus

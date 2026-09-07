@@ -187,8 +187,77 @@ impl Cpu {
                 Ok(())
             }
             AddressingMode::Immediate(_) => Err(EaError::IllegalAddressingMode),
+            AddressingMode::Postincrement(reg) => {
+                let a = self.state.read_a(reg as usize);
+                if size != Size::Byte && (a & 1) != 0 {
+                    return Err(EaError::AddressError {
+                        addr: a,
+                        is_read: false,
+                    });
+                }
+                let delta = if size == Size::Byte && reg == 7 {
+                    2
+                } else {
+                    size.byte_count()
+                };
+                self.state.write_a(reg as usize, a.wrapping_add(delta));
+                match size {
+                    Size::Byte => {
+                        bus.write_byte_debug(a, (val & 0xFF) as u8);
+                    }
+                    Size::Word => {
+                        bus.write_word_debug(a, (val & 0xFFFF) as u16);
+                    }
+                    Size::Long => {
+                        bus.write_word_debug(a, (val >> 16) as u16);
+                        bus.write_word_debug(a.wrapping_add(2), (val & 0xFFFF) as u16);
+                    }
+                }
+                Ok(())
+            }
+            AddressingMode::Predecrement(reg) => {
+                let a = self.state.read_a(reg as usize);
+                if size == Size::Long {
+                    let addr_low = a.wrapping_sub(2);
+                    self.state.write_a(reg as usize, addr_low);
+                    if (addr_low & 1) != 0 {
+                        return Err(EaError::AddressError {
+                            addr: addr_low,
+                            is_read: false,
+                        });
+                    }
+                    let addr_high = a.wrapping_sub(4);
+                    self.state.write_a(reg as usize, addr_high);
+                    bus.write_word_debug(addr_low, (val & 0xFFFF) as u16);
+                    bus.write_word_debug(addr_high, (val >> 16) as u16);
+                    Ok(())
+                } else {
+                    let delta = if size == Size::Byte && reg == 7 {
+                        2
+                    } else {
+                        size.byte_count()
+                    };
+                    let new_a = a.wrapping_sub(delta);
+                    self.state.write_a(reg as usize, new_a);
+                    if size != Size::Byte && (new_a & 1) != 0 {
+                        return Err(EaError::AddressError {
+                            addr: new_a,
+                            is_read: false,
+                        });
+                    }
+                    match size {
+                        Size::Byte => bus.write_byte_debug(new_a, (val & 0xFF) as u8),
+                        Size::Word => bus.write_word_debug(new_a, (val & 0xFFFF) as u16),
+                        Size::Long => unreachable!(),
+                    }
+                    Ok(())
+                }
+            }
             _ => {
-                let addr = ea.resolve_address(&mut self.state, size)?;
+                let addr = ea.resolve_address(&mut self.state, size).map_err(|e| match e {
+                    EaError::AddressError { addr, .. } => EaError::AddressError { addr, is_read: false },
+                    other => other,
+                })?;
                 match size {
                     Size::Byte => {
                         bus.write_byte_debug(addr, (val & 0xFF) as u8);
@@ -234,7 +303,7 @@ impl Cpu {
                 };
                 Ok((val, None))
             }
-            AddressingMode::Immediate(_) => Err(EaError::IllegalAddressingMode),
+            AddressingMode::Immediate(val) => Ok((val, None)),
             _ => {
                 let addr = ea.resolve_address(&mut self.state, size)?;
                 let val = match size {
