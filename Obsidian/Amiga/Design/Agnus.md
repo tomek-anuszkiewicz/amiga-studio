@@ -207,6 +207,19 @@ flowchart LR
   - When `BLTPRI == 0`, the Blitter only uses idle even slots and odd slots when the CPU does not request them.
   - When `BLTPRI == 1` ("Blitter Nasty"), Agnus awards **all available memory cycles** (both even and odd) to the Blitter. If the Blitter requires bus cycles, the CPU is completely locked out (`MemoryBusResult::Blocked`), maximizing blit transfer speed.
 
+### 5.3 Baseline DMA Bus Contention Exposure
+The baseline DMA arbiter implements horizontal scanline slot arbitration before individual custom chip internal logic (e.g. video bitplane serialization, audio BLEP synthesis) is completed:
+- On each CCK cycle, Agnus determines if the active slot is allocated to custom chip DMA or claimed by Blitter Nasty.
+- Agnus signals `MemoryBus::set_chip_ram_blocked(blocked)`.
+- When `blocked == true`, any CPU access to Chip RAM (`$000000-$07FFFF`) stalls via `MemoryBusResult::Blocked`, asserting wait states. Fast RAM (`$200000-$27FFFF`) remains accessible at full speed without contention.
+
+### 5.4 Delayed Mutation Propagation Pipeline
+In Agnus, writes to control registers (`DMACON`, `BLTCON0/1`, `COPCON`) or strobes (`COPJMP1/2`, `BLTSIZE`) do not take instantaneous cross-chip effect:
+- **Read is NOW**: Reading `DMACONR`, `VHPOSR`, or `VPOSR` returns the currently active, latched state immediately on the current cycle.
+- **Write is Staged**: Writes enter an inline, fixed-capacity pipeline (`[Option<DelayedMutation<u16>>; 4]`).
+- Each CCK step decrements `remaining_cck`. When it reaches zero, the mutated value commits to the active register (e.g. updating DMA channel enables or triggering the Copper program counter reload).
+- **Zero Allocations & Save State Persistence**: The mutation array contains no heap allocations and is serialized into `AgnusState`, preserving determinism across save/restore cycles.
+
 ---
 
 ## 6. Copper Coprocessor

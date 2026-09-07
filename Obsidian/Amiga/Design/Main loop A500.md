@@ -89,7 +89,49 @@ On real Amiga hardware, **all resets start CPU execution from address `$000000` 
 
 ---
 
-## 5. Host Interfaces & Persistence
+## 5. Delayed Signal & Register Mutation Propagation Pipeline
+
+Physical Amiga circuit traces and custom chip internal latches exhibit finite propagation delays:
+- **Read is NOW**: Reading a custom register returns the *currently latched active value* immediately with zero delay.
+- **Write is Staged**: Writes to control registers (e.g. `DMACON`, `BPLCON0`, `COLORxx`, `INTENA`), trigger strobes (`COPJMP1`, `BLTSIZE`), or CIA timer latches do not take instantaneous cross-chip effect. Instead, they enter a small staged delay pipeline and commit to the active register after $K$ Color Clock phases or CCK cycles ($K \in 1..4$).
+
+```mermaid
+flowchart LR
+    CPU_WRITE["CPU / Copper Write\n(Cycle T)"] --> STAGE["Delayed Mutation Latch\n[delay_cck = K, value = V]"]
+    STAGE -->|step_cck() decrements countdown| PIPELINE{"countdown == 0?"}
+    PIPELINE -->|No| WAIT["Pending (Hidden from Chip Logic)"]
+    PIPELINE -->|Yes| COMMIT["Commit to Active Register\n(Cycle T + K)\nAffects Beam / DMA / Video"]
+    
+    REG_READ["Register Read\n(Cycle T)"] --> ACTIVE["Read Active Latched Value NOW\n(Immediate Bus Return)"]
+```
+
+### 5.1 Hot-Path Zero-Allocation Architecture
+To satisfy Rule 2.4 (zero allocation in hot path):
+- Staged mutations are modeled using fixed-size inline ring buffers / fixed arrays (e.g. `[Option<DelayedMutation>; 4]`) embedded directly in chip structs.
+- No `Vec`, `Box`, or heap allocations are performed when registering or committing mutations.
+
+### 5.2 Deterministic Save State Serialization
+All pending mutations, staged register values, and remaining cycle countdowns are fully serialized within the subsystem snapshot structs (`AgnusState`, `DeniseState`, etc.):
+- Restoring a save state captured mid-propagation guarantees that pending writes commit at the exact target cycle, ensuring bit-for-bit cycle-exact repeatability.
+
+---
+
+## 6. Baseline Agnus DMA Bus Contention Arbitration
+
+On each CCK step, Agnus evaluates the horizontal scanline slot schedule ($227.5$ CCKs per PAL line):
+1. **DMA Slot Allocation**:
+   - CCK 0..3: DRAM Refresh
+   - CCK 4: Floppy Disk DMA
+   - CCK 5..8: Audio DMA (Channels 0–3)
+   - CCK 12..27: Sprite DMA (Sprites 0–7)
+   - Dynamic: Bitplane DMA according to display depth (`BPLCON0`)
+2. **Contention Flag Exposure**:
+   - Agnus drives `memory_bus.set_chip_ram_blocked(blocked)` based on the active DMA slot and `DMACON` bit 10 (`BLTPRI` Blitter Nasty mode).
+   - Even before individual custom chip internal logic (e.g. bitplane pixel serializer, audio BLEP synthesis, Blitter minterm ALU) is fully implemented, this baseline arbiter allows the CPU, Copper, and memory bus to observe bus contention and stall with `MemoryBusResult::Blocked`, establishing realistic bus timing from day one.
+
+---
+
+## 7. Host Interfaces & Persistence
 
 - **Video Frame Retrieval:** Returns current frame buffer slice (`&[u32]` ARGB, $720 \times 576$ max PAL).
 - **Audio Sample Retrieval:** Decouples stereo audio ring buffers (`&[i16]`).

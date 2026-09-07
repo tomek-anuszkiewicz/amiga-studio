@@ -102,6 +102,18 @@ pub struct CpuState {
 }
 
 /// Agnus state (Master Beam, Copper, Blitter, DMA).
+/// Delayed register mutation in-flight across Color Clock phases / CCK cycles.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DelayedMutation<T: Copy> {
+    /// Target custom register offset ($DFF000 + reg)
+    pub reg: u16,
+    /// Staged payload to commit
+    pub value: T,
+    /// Remaining CCK clock countdown before committing to active chip registers
+    pub remaining_cck: u8,
+}
+
+/// Agnus state (Master Beam, Copper, Blitter, DMA).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AgnusState {
     pub dmacon: u16,
@@ -145,6 +157,10 @@ pub struct AgnusState {
     pub bltsizh: u16,
     pub blitter_busy: bool,
     pub blitter_zero_flag: bool,
+
+    // --- Delayed Mutation Pipeline ---
+    /// In-flight staged mutations pending commit after K CCK cycles
+    pub delayed_mutations: [Option<DelayedMutation<u16>>; 4],
 }
 
 /// Denise state (Video, Bitplanes, Sprites, Palette, Collisions).
@@ -172,6 +188,10 @@ pub struct DeniseState {
     /// Collision Detection
     pub clxdat: u16,
     pub clxcon: u16,
+
+    // --- Delayed Mutation Pipeline ---
+    /// In-flight staged mutations pending commit after K CCK cycles
+    pub delayed_mutations: [Option<DelayedMutation<u16>>; 4],
 }
 
 /// Paula state (Audio, Floppy, Serial UART, Interrupts).
