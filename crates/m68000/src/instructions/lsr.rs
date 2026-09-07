@@ -157,67 +157,54 @@ pub fn op_lsr_mem(
 
 // --- Specialized Opcode Forwarders ---
 
-#[inline(always)]
 pub fn op_lsr_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_w_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_w_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_w_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_w_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_w_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_w_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_w_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_lsr_w_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_lsr_mem(cpu, bus)
 }

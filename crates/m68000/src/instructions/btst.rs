@@ -124,107 +124,86 @@ pub fn op_btst_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 
 // --- Specialized Opcode Forwarders ---
 
-#[inline(always)]
 pub fn op_btst_b_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_dn_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_dn_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_dn_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_imm(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_imm(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_imm(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_imm(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_imm(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_imm_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_imm(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_imm_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_imm(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_imm(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_b_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_imm(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_btst_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_btst_imm(cpu, bus)
 }

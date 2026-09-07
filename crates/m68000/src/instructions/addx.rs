@@ -280,32 +280,26 @@ pub fn op_addx_mem(
 
 // --- Specialized Opcode Forwarders ---
 
-#[inline(always)]
 pub fn op_addx_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_addx_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_addx_b_pd_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_addx_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_addx_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_addx_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_addx_l_pd_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_addx_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_addx_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_addx_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_addx_w_pd_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_addx_mem(cpu, bus)
 }

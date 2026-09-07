@@ -90,77 +90,62 @@ pub fn op_pea(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 
 // --- Specialized Opcode Forwarders ---
 
-#[inline(always)]
 pub fn op_pea_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_inv5(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_inv6(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_inv7(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_pea_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }

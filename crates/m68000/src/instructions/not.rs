@@ -168,122 +168,98 @@ pub fn op_not(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 
 // --- Specialized Opcode Forwarders ---
 
-#[inline(always)]
 pub fn op_not_b_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_b_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_b_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_b_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_b_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_b_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_b_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_b_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_l_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_l_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_l_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_l_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_l_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_l_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_l_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_l_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_w_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_w_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_w_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_w_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_w_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_w_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_w_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_not_w_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_not(cpu, bus)
 }

@@ -19,6 +19,7 @@ Because each handler in `dispatch_table.rs` is dedicated to a specific opcode or
 2. **Zero Runtime Size Matching:** The operand size (`.b`, `.w`, `.l`) is statically fixed for the handler. Write concrete `u8`, `u16`, or `u32` math directly.
 3. **Inlined CCR Calculations:** Calculate Condition Code Register flags ($X, N, Z, V, C$) directly using branchless bitwise formulas for the specific operand size. Never call generic dynamic multi-size CCR functions.
 4. **No Macros & No Const-Generics:** Custom macros (`macro_rules!`) and const-generic matrices (`fn op<const S: usize>`) are strictly forbidden. Handlers must be explicit, self-documenting Rust functions.
+5. **Zero `#[inline]` on Opcode Handlers:** Because opcode handlers (`pub fn op_...`) are indirect function pointer targets in `DISPATCH_TABLE: [OpcodeHandler; 65536]`, indirect calls can never be inlined at the call site. Never annotate top-level opcode methods with `#[inline]` or `#[inline(always)]` (per Rule 2.8 in `AGENTS.md`). Keep inlining strictly *internal* to the method body (e.g. inlined CCR formulas and branchless arithmetic).
 
 ---
 

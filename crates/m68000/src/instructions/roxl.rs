@@ -148,67 +148,54 @@ pub fn op_roxl_mem(
 
 // --- Specialized Opcode Forwarders ---
 
-#[inline(always)]
 pub fn op_roxl_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_w_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_w_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_w_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_w_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_w_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_w_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_reg(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_w_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_mem(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_roxl_w_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_roxl_mem(cpu, bus)
 }

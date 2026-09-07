@@ -215,272 +215,218 @@ fn exec_or_dn_to_ea(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepRes
 
 // --- Specialized Opcode Forwarders ---
 
-#[inline(always)]
 pub fn op_or_b_absl_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_absw_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_ai_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_disp_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_idx_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_pcdisp_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_pcidx_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_pd_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_b_pi_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_absl_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_absw_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_ai_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_disp_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_idx_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_pcdisp_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_pcidx_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_pd_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_l_pi_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_absl_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_absw_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_ai_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_disp_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_dn_to_ea(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_idx_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_pcdisp_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_pcidx_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_pd_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
 
-#[inline(always)]
 pub fn op_or_w_pi_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_or_ea_to_dn(cpu, bus)
 }
