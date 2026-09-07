@@ -203,6 +203,32 @@ impl Cpu {
         self.state.micro.initiate_bus_cycle(cycle);
     }
 
+    /// Enables or disables transaction recording for cycle-exact test harnesses
+    #[inline]
+    pub fn enable_transaction_recording(&mut self, enabled: bool) {
+        self.state.micro.enable_transaction_recording(enabled);
+    }
+
+    /// Returns recorded bus transactions if recording is enabled
+    #[inline]
+    pub fn recorded_transactions(&self) -> Option<&[crate::micro::RecordedTransaction]> {
+        self.state.micro.transaction_log.as_deref()
+    }
+
+    /// Clears the recorded transactions buffer
+    #[inline]
+    pub fn clear_transactions(&mut self) {
+        if let Some(ref mut log) = self.state.micro.transaction_log {
+            log.clear();
+        }
+    }
+
+    /// Records an internal CPU operation duration and schedules internal execution clocks
+    #[inline]
+    pub fn record_internal_clocks(&mut self, clocks: u16) {
+        self.state.micro.record_internal_clocks(clocks);
+    }
+
     /// Executes exactly one full M68000 instruction via direct table dispatch
     pub fn step_instruction(&mut self, bus: &mut MemoryBus) -> StepResult {
         if self.state.halted {

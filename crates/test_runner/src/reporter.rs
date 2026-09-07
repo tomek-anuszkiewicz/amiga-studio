@@ -42,6 +42,15 @@ impl From<&TestFailure> for TestFailureSummary {
                 crate::diagnostic::StateDiff::SupervisorStackPointer { actual, expected } => {
                     format!("SSP mismatch: got 0x{:08X}, expected 0x{:08X}", actual, expected)
                 }
+                crate::diagnostic::StateDiff::CycleLength { actual, expected } => {
+                    format!("Cycles: got {} clocks, expected {} clocks", actual, expected)
+                }
+                crate::diagnostic::StateDiff::TransactionCountMismatch { actual, expected } => {
+                    format!("Transactions: recorded {}, expected {}", actual, expected)
+                }
+                crate::diagnostic::StateDiff::TransactionMismatch { details } => {
+                    format!("Transaction mismatch: {}", details)
+                }
             }
         } else {
             "Unknown mismatch".to_string()

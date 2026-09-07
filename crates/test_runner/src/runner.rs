@@ -7,9 +7,21 @@ use memory_bus::MemoryBus;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
+/// Verification mode for SingleStepTests
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum VerifyMode {
+    /// Verify CPU registers and RAM contents (baseline for opcodes awaiting cycle migration)
+    #[default]
+    StateOnly,
+    /// Verify CPU registers, RAM contents, and instruction clock cycles (cpu.instruction_clocks == test.length)
+    StateAndCycles,
+    /// Full verification: registers, RAM, cycle count, and complete bus transaction sequence
+    Full,
+}
+
 /// Runs a single SingleStepTest returning a concise string error on mismatch
 pub fn run_single_test(test: &SingleStepTest) -> Result<(), String> {
-    run_single_test_detail(test, "unspecified", 0).map_err(|err| err.to_string())
+    run_single_test_detail(test, "unspecified", 0, VerifyMode::StateOnly).map_err(|err| err.to_string())
 }
 
 /// Runs a single SingleStepTest against the CPU and MemoryBus, returning detailed diagnostics
@@ -17,6 +29,7 @@ pub fn run_single_test_detail(
     test: &SingleStepTest,
     file_path: &str,
     test_index: usize,
+    mode: VerifyMode,
 ) -> Result<(), TestFailure> {
     let mut failure = TestFailure::new(&test.name, file_path, test_index, test.length);
 
@@ -26,6 +39,9 @@ pub fn run_single_test_detail(
     bus.load_test_ram(&test.initial.ram);
 
     let mut cpu = Cpu::new();
+    if mode == VerifyMode::Full {
+        cpu.enable_transaction_recording(true);
+    }
     cpu.state.d = [
         test.initial.d0,
         test.initial.d1,
@@ -193,6 +209,35 @@ pub fn run_single_test_detail(
         }
     }
 
+    // Verify Cycle Length
+    if mode == VerifyMode::StateAndCycles || mode == VerifyMode::Full {
+        if cpu.instruction_clocks != test.length {
+            failure.diffs.push(StateDiff::CycleLength {
+                actual: cpu.instruction_clocks,
+                expected: test.length,
+            });
+        }
+    }
+
+    // Verify Bus Transactions
+    if mode == VerifyMode::Full {
+        match crate::transactions::parse_transactions(&test.transactions) {
+            Ok(expected_txs) => {
+                let recorded = cpu.recorded_transactions().unwrap_or(&[]);
+                if let Err(tx_diffs) = crate::transactions::match_transactions(recorded, &expected_txs, is_harte) {
+                    for diff in tx_diffs {
+                        failure.diffs.push(StateDiff::TransactionMismatch { details: diff });
+                    }
+                }
+            }
+            Err(parse_err) => {
+                failure.diffs.push(StateDiff::TransactionMismatch {
+                    details: format!("Failed to parse test transactions: {}", parse_err),
+                });
+            }
+        }
+    }
+
     if failure.diffs.is_empty() {
         Ok(())
     } else {
@@ -219,10 +264,19 @@ fn resolve_test_path(path: &str) -> std::path::PathBuf {
     p.to_path_buf()
 }
 
-/// Loads and executes tests from a plain JSON or gzip (.json.gz) test suite file
+/// Loads and executes tests from a plain JSON or gzip (.json.gz) test suite file in StateOnly mode
 pub fn run_test_file(
     path: &str,
     limit: Option<usize>,
+) -> Result<(usize, usize), Box<dyn std::error::Error>> {
+    run_test_file_with_mode(path, limit, VerifyMode::StateOnly)
+}
+
+/// Loads and executes tests from a plain JSON or gzip (.json.gz) test suite file with specified verification mode
+pub fn run_test_file_with_mode(
+    path: &str,
+    limit: Option<usize>,
+    mode: VerifyMode,
 ) -> Result<(usize, usize), Box<dyn std::error::Error>> {
     let resolved = resolve_test_path(path);
     let file = File::open(&resolved)?;
@@ -248,7 +302,7 @@ pub fn run_test_file(
     let mut failure_summaries = Vec::new();
 
     for (idx, test) in tests.iter().take(count).enumerate() {
-        match run_single_test_detail(test, path, idx) {
+        match run_single_test_detail(test, path, idx, mode) {
             Ok(()) => {
                 passed += 1;
                 passed_names.push(test.name.clone());

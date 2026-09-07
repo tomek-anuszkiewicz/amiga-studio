@@ -159,6 +159,17 @@ pub enum StateDiff {
         actual: u8,
         expected: u8,
     },
+    CycleLength {
+        actual: u32,
+        expected: u32,
+    },
+    TransactionCountMismatch {
+        actual: usize,
+        expected: usize,
+    },
+    TransactionMismatch {
+        details: String,
+    },
 }
 
 /// Comprehensive failure diagnostic for a single test case
@@ -288,6 +299,21 @@ impl TestFailure {
                         "  • RAM at $0x{:06X}: Expected 0x{:02X}, got 0x{:02X}\n",
                         address, expected, actual
                     ));
+                }
+                StateDiff::CycleLength { actual, expected } => {
+                    out.push_str(&format!(
+                        "  • Instruction Cycle Count: Expected {} clocks ({} CCKs), got {} clocks ({} CCKs)\n",
+                        expected, expected / 2, actual, actual / 2
+                    ));
+                }
+                StateDiff::TransactionCountMismatch { actual, expected } => {
+                    out.push_str(&format!(
+                        "  • Bus Transaction Count: Expected {} transactions, recorded {}\n",
+                        expected, actual
+                    ));
+                }
+                StateDiff::TransactionMismatch { details } => {
+                    out.push_str(&format!("  • Bus Transaction Mismatch: {}\n", details));
                 }
             }
         }

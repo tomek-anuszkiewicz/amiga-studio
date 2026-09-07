@@ -14,5 +14,5 @@ pub mod state;
 pub use addressing::{AddressingMode, IndexReg, IndexType, Size};
 pub use core::{Cpu, StepResult};
 pub use dispatch_table::{OpcodeHandler, DISPATCH_TABLE};
-pub use micro::{CpuMicroState, MicroRetireMode};
+pub use micro::{CpuMicroState, MicroRetireMode, RecordedTransaction};
 pub use state::CpuState;

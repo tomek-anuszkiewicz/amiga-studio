@@ -270,6 +270,29 @@ pub struct CpuMicroState {
     pub scratch: [u32; 2],
     /// Pipeline retirement mode upon concluding the current in-flight cycle
     pub retire_mode: MicroRetireMode,
+    /// Optional transaction log for cycle-exact verification (disabled by default)
+    pub transaction_log: Option<Vec<RecordedTransaction>>,
+    /// Wait cycles accumulated during the currently active bus cycle
+    pub current_cycle_wait_cycles: u32,
+}
+
+/// A recorded bus or internal transaction captured for cycle-exact verification
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RecordedTransaction {
+    Bus {
+        is_read: bool,
+        is_tas: bool,
+        duration: u32,
+        fc: u8,
+        addr: u32,
+        size: BusAccessSize,
+        data: u16,
+        uds: bool,
+        lds: bool,
+    },
+    Internal {
+        duration: u32,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

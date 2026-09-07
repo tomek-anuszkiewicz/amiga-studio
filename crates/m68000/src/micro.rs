@@ -4,8 +4,37 @@
 //! tracking active bus cycles, internal ALU cycles, and bus contention wait states.
 
 use crate::core::StepResult;
-use memory_bus::{BusCycle, CckPhase, MemoryBus, MemoryBusResult};
+use memory_bus::{BusAccessSize, BusCycle, CckPhase, MemoryBus, MemoryBusResult};
 use serde::{Deserialize, Serialize};
+
+/// A recorded bus or internal transaction captured for cycle-exact verification
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RecordedTransaction {
+    Bus {
+        /// Read (true) vs Write (false)
+        is_read: bool,
+        /// Indivisible TAS read-modify-write cycle
+        is_tas: bool,
+        /// Duration of the bus cycle in CPU clocks (4, plus 2 per wait cycle)
+        duration: u32,
+        /// Function Code bits (1=User Data, 2=User Program, 5=Supervisor Data, 6=Supervisor Program)
+        fc: u8,
+        /// 24-bit physical memory address
+        addr: u32,
+        /// Transfer size (Byte or Word)
+        size: BusAccessSize,
+        /// Data transferred on the bus (0-255 for byte, 0-65535 for word)
+        data: u16,
+        /// Upper Data Strobe (_UDS)
+        uds: bool,
+        /// Lower Data Strobe (_LDS)
+        lds: bool,
+    },
+    Internal {
+        /// Duration of the internal operation in CPU clocks
+        duration: u32,
+    },
+}
 
 /// Instruction retirement and pipeline refill mode when finishing micro-operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -43,6 +72,12 @@ pub struct CpuMicroState {
     /// Pipeline retirement mode upon concluding the current in-flight cycle
     #[serde(default)]
     pub retire_mode: MicroRetireMode,
+    /// Optional transaction log for cycle-exact verification (disabled by default)
+    #[serde(skip)]
+    pub transaction_log: Option<Vec<RecordedTransaction>>,
+    /// Wait cycles accumulated during the currently active bus cycle
+    #[serde(default)]
+    pub current_cycle_wait_cycles: u32,
 }
 
 impl Default for CpuMicroState {
@@ -63,6 +98,8 @@ impl CpuMicroState {
             micro_step: 0,
             scratch: [0; 2],
             retire_mode: MicroRetireMode::None,
+            transaction_log: None,
+            current_cycle_wait_cycles: 0,
         }
     }
 
@@ -76,6 +113,28 @@ impl CpuMicroState {
         self.micro_step = 0;
         self.scratch = [0; 2];
         self.retire_mode = MicroRetireMode::None;
+        self.current_cycle_wait_cycles = 0;
+    }
+
+    /// Enables or disables transaction recording
+    #[inline]
+    pub fn enable_transaction_recording(&mut self, enabled: bool) {
+        if enabled {
+            self.transaction_log = Some(Vec::new());
+        } else {
+            self.transaction_log = None;
+        }
+    }
+
+    /// Records an internal CPU operation (no bus transaction)
+    #[inline]
+    pub fn record_internal_clocks(&mut self, clocks: u16) {
+        self.internal_clocks = clocks;
+        if let Some(ref mut log) = self.transaction_log {
+            log.push(RecordedTransaction::Internal {
+                duration: clocks as u32,
+            });
+        }
     }
 
     /// Returns whether an external bus transaction is currently in flight
@@ -112,6 +171,31 @@ impl CpuMicroState {
     pub fn initiate_bus_cycle(&mut self, cycle: BusCycle) {
         self.active_bus_cycle = Some(cycle);
         self.phase = CckPhase::Cck1;
+        self.current_cycle_wait_cycles = 0;
+    }
+
+    /// Helper to record a completed bus cycle into the transaction log
+    #[inline]
+    fn record_completed_bus_cycle(&mut self, cycle: &BusCycle) {
+        if let Some(ref mut log) = self.transaction_log {
+            let duration = 4u32.wrapping_add(self.current_cycle_wait_cycles.wrapping_mul(2));
+            let bus_data = if cycle.is_read {
+                self.last_read
+            } else {
+                cycle.data
+            };
+            log.push(RecordedTransaction::Bus {
+                is_read: cycle.is_read,
+                is_tas: false,
+                duration,
+                fc: cycle.fc,
+                addr: cycle.addr & 0x00FF_FFFF,
+                size: cycle.size,
+                data: bus_data,
+                uds: cycle.uds,
+                lds: cycle.lds,
+            });
+        }
     }
 
     /// Advances the micro-state machine by exactly 1 Color Clock (CCK)
@@ -122,6 +206,7 @@ impl CpuMicroState {
                     match bus.begin_cycle(&mut cycle) {
                         MemoryBusResult::Blocked => {
                             // Target bus occupied by Agnus DMA: Gary withholds _DTACK, CPU stalls
+                            self.current_cycle_wait_cycles = self.current_cycle_wait_cycles.wrapping_add(1);
                             *wait_cycles = wait_cycles.wrapping_add(1);
                             StepResult::WaitState
                         }
@@ -135,6 +220,7 @@ impl CpuMicroState {
                             if cycle.is_read {
                                 self.last_read = data;
                             }
+                            self.record_completed_bus_cycle(&cycle);
                             self.active_bus_cycle = None;
                             self.phase = CckPhase::Cck1;
                             self.micro_step = self.micro_step.wrapping_add(1);
@@ -146,6 +232,7 @@ impl CpuMicroState {
                     match bus.end_cycle(&mut cycle) {
                         MemoryBusResult::Blocked => {
                             // Write blocked at CCK2 by Agnus DMA
+                            self.current_cycle_wait_cycles = self.current_cycle_wait_cycles.wrapping_add(1);
                             *wait_cycles = wait_cycles.wrapping_add(1);
                             StepResult::WaitState
                         }
@@ -153,12 +240,14 @@ impl CpuMicroState {
                             if cycle.is_read {
                                 self.last_read = data;
                             }
+                            self.record_completed_bus_cycle(&cycle);
                             self.active_bus_cycle = None;
                             self.phase = CckPhase::Cck1;
                             self.micro_step = self.micro_step.wrapping_add(1);
                             StepResult::StepCompleted
                         }
                         MemoryBusResult::Phase1Ready => {
+                            self.record_completed_bus_cycle(&cycle);
                             self.active_bus_cycle = None;
                             self.phase = CckPhase::Cck1;
                             self.micro_step = self.micro_step.wrapping_add(1);
@@ -180,3 +269,4 @@ impl CpuMicroState {
         }
     }
 }
+

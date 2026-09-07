@@ -1,15 +1,20 @@
-use test_runner::runner::run_test_file;
+use test_runner::runner::{run_test_file_with_mode, VerifyMode};
 
 /// Default number of test cases to run per opcode from each test suite
 const DEFAULT_SAMPLE_LIMIT: usize = 50;
 
 /// Helper function to execute a test against both MAME and Real 68k (Tom Harte) suites
 fn run_dual_test(name: &str, limit: usize) {
+    run_dual_test_with_mode(name, limit, VerifyMode::StateOnly);
+}
+
+/// Helper function to execute a test against both suites with specified verification mode
+fn run_dual_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
     let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", name);
     let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json.gz", name);
 
     // 1. MAME SingleStepTests suite
-    let mame_res = run_test_file(&mame_path, Some(limit))
+    let mame_res = run_test_file_with_mode(&mame_path, Some(limit), mode)
         .unwrap_or_else(|err| panic!("Failed to open/parse MAME test '{}': {}", mame_path, err));
     let (mame_passed, mame_failed) = mame_res;
     assert!(
@@ -27,7 +32,7 @@ fn run_dual_test(name: &str, limit: usize) {
     );
 
     // 2. Real 68k (Tom Harte) SingleStepTests-680x0 suite
-    let harte_res = run_test_file(&harte_path, Some(limit))
+    let harte_res = run_test_file_with_mode(&harte_path, Some(limit), mode)
         .unwrap_or_else(|err| panic!("Failed to open/parse Real 68k test '{}': {}", harte_path, err));
     let (harte_passed, harte_failed) = harte_res;
     assert!(
@@ -51,7 +56,7 @@ fn run_dual_test(name: &str, limit: usize) {
 
 #[test]
 fn test_nop() {
-    run_dual_test("NOP", 100);
+    run_dual_test_with_mode("NOP", 100, VerifyMode::Full);
 }
 
 #[test]
@@ -82,6 +87,39 @@ fn test_jsr() {
 #[test]
 fn test_pea() {
     run_dual_test("PEA", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_pea_an_full_verification() {
+    let base_path = "ref_src/SingleStepTests-680x0/68000/v1/PEA.json.gz";
+    let harte_path = if std::path::Path::new(base_path).exists() {
+        std::path::PathBuf::from(base_path)
+    } else {
+        std::path::Path::new("../..").join(base_path)
+    };
+    let file = std::fs::File::open(&harte_path).expect("Failed to open PEA test file");
+    let gz = flate2::read::GzDecoder::new(std::io::BufReader::new(file));
+    let tests: Vec<test_runner::schema::SingleStepTest> =
+        serde_json::from_reader(gz).expect("Failed to parse PEA tests");
+
+    let an_tests: Vec<_> = tests
+        .into_iter()
+        .filter(|t| t.name.contains("[PEA (A") && t.name.contains(")]"))
+        .take(50)
+        .collect();
+
+    assert!(!an_tests.is_empty(), "No PEA (An) tests found");
+    for (idx, test) in an_tests.iter().enumerate() {
+        if let Err(failure) =
+            test_runner::runner::run_single_test_detail(test, harte_path.to_str().unwrap(), idx, VerifyMode::Full)
+        {
+            panic!(
+                "PEA (An) Full Verification Failed on {}:\n{}",
+                test.name,
+                failure.format_diagnostic()
+            );
+        }
+    }
 }
 
 // ============================================================================

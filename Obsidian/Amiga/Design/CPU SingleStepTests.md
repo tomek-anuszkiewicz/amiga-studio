@@ -259,10 +259,13 @@ The test harness is implemented in the dedicated workspace crate [`crates/test_r
 
 ### 5.1 Module Structure
 - **[`schema.rs`](../../../crates/test_runner/src/schema.rs):** Strict deserialization of `SingleStepTest` and `CpuTestState` using `#[serde(deny_unknown_fields)]`.
-- **[`runner.rs`](../../../crates/test_runner/src/runner.rs):** Test execution loop, CPU prefetch priming, state comparison, and RAM byte validation:
-  - `run_single_test_detail(test, file_path, index) -> Result<(), TestFailure>`: Executes a single test case, collecting all discrepancies.
-  - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Transparently decompresses `.json.gz` (Tom Harte) or reads plain `.json` (MAME), running up to `limit` test cases.
-- **[`diagnostic.rs`](../../../crates/test_runner/src/diagnostic.rs):** Human-readable failure reporting, full CCR flag decomposition ($T, S, I, X, N, Z, V, C$), and clock/CCK cycle metrics.
+- **[`runner.rs`](../../../crates/test_runner/src/runner.rs):** Test execution loop, CPU prefetch priming, state comparison, cycle count validation, and RAM byte validation:
+  - `run_single_test_detail(test, file_path, index, mode) -> Result<(), TestFailure>`: Executes a single test case with configurable `VerifyMode` (`StateOnly`, `StateAndCycles`, `Full`).
+  - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Transparently decompresses `.json.gz` (Tom Harte) or reads plain `.json` (MAME), running up to `limit` test cases in `StateOnly` mode.
+  - `run_test_file_with_mode(path, limit, mode)`: Configurable execution mode enabling cycle-exact and bus transaction verification.
+- **[`transactions.rs`](../../../crates/test_runner/src/transactions.rs):** Deserializes and parses transaction logs across Tom Harte and MAME formats, matching recorded bus transactions (read/write/TAS direction, 24-bit address, size, bus value, FC lines, strobe signals) against silicon logs.
+- **[`dma_harness.rs`](../../../crates/test_runner/src/dma_harness.rs):** Synthetic Agnus DMA bus contention runner sweeping single-cycle (`run_dma_contention_sweep`) and multi-cycle burst (`run_dma_burst_contention`) stalls across instruction execution phases, validating State Invariance and Cycle Invariance ($C = C_0 + 2 \times \text{wait\_cycles}$).
+- **[`diagnostic.rs`](../../../crates/test_runner/src/diagnostic.rs):** Human-readable failure reporting, full CCR flag decomposition ($T, S, I, X, N, Z, V, C$), clock/CCK cycle metrics, and transaction diff formatting.
 - **[`reporter.rs`](../../../crates/test_runner/src/reporter.rs):** Persistent results recording in `.test_results/`, differential regression detection, and global summary generation.
 
 ### 5.2 CPU State Setup & Execution Flow
