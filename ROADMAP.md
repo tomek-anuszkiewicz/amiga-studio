@@ -108,6 +108,19 @@ This document outlines the phased development plan, hardware milestones, verific
   - Rigorous verification of edge cases: unaligned word/long address errors, prefetch queue reload delays, bus cycle states, and condition code quirks.
   - Cycle-Exact Diagnostics: log the exact execution cycle/CCK phase and bus transaction on test failure during cycle-stepped execution.
 
+### Step 3c: In-Memory Test Mutations & Bus Contention Stress Testing
+- **Address Space Remapping Mutations:**
+  - Execute SingleStepTest suites with programmatic address remapping mutations (per [CPU SingleStepTests.md](Obsidian/Amiga/Design/CPU%20SingleStepTests.md#8-in-code-test-mutation-strategy-chipfast-ram--dma-contention)):
+    - `ForceChipRam`: Offset code, operands, and stack into Chip RAM (`$000000-$07FFFF`) to test contention and Gary bus limits.
+    - `ForceFastRam`: Offset addresses into Auto-Config Fast RAM (`$200000-$27FFFF`) to verify zero-wait-state full-speed execution.
+    - `ForceSlowRam`: Remap addresses into A501 Slow / Trapdoor RAM (`$C00000-$C7FFFF`).
+    - `MixedChipFast`: Map instruction opcodes in Fast RAM while placing data operands in Chip RAM (and vice versa).
+- **Simulated Agnus DMA Bus Contention (`DmaSchedule`):**
+  - Inject parameterized DMA bus contention schedules into the CPU Color Clock phases (CCK1/CCK2):
+    - Alternating cycle stalls (simulating display bitplane and Copper DMA).
+    - Burst stalls (simulating Blitter nastiness blocking the CPU for $N$ consecutive CCK cycles).
+  - Verify bus arbitration invariants: CPU properly pauses instruction phase on `MemoryBusResult::Blocked`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
+
 ### Step 4: Custom Chipsets (Agnus, Denise, Paula, CIAs)
 - Decompose monolithic chip logic into focused subcomponents (Copper, Blitter, DMA, Audio, Floppy, Timers, Ports).
 - Implement interrupt priority line (IPL 1–6) aggregation and main loop arbitration.
