@@ -14,11 +14,10 @@ Execute the automated architectural test suite:
 ```powershell
 cargo test -p test_runner --test test_architecture_rules
 ```
-Ensure all 4 rules pass:
+Ensure all 3 rules pass:
 - File size limit `<= 800` lines (excluding `dispatch_table.rs`).
 - Zero `.unwrap()` / `.expect()` calls in core emulation crates.
 - Zero hardcoded external user/host paths.
-- Zero stale `(Completed)` headings in `ROADMAP.md` active strategy.
 
 ---
 
@@ -35,17 +34,29 @@ Audit the diff against the guidelines in `AGENTS.md`:
 - [ ] Explicit wrapping arithmetic (`wrapping_add`, `wrapping_sub`) on ALU and cycle operations.
 - [ ] Emulated guest faults do not panic the host process.
 
-### B. Inlining Strategy
+### B. Host CPU Mechanical Sympathy & Readability
+- [ ] Branch minimization: hot loops favor flattened, direct dispatch over deep nested `match`/`if` trees ("kod może być rozległy").
+- [ ] Zero allocations: no `Vec`, `Box`, `String`, or `format!` in `step()`, `step_cck()`, or memory paths.
+- [ ] Endianness Bypass: bitwise operations (`AND`, `OR`, `EOR`, `NOT`, `CLR`) avoid redundant byte swapping in hot loops.
+- [ ] **Readability without compromise**: code is clean, idiomatic Rust, self-documenting, and free of cryptic micro-optimizations or convoluted macro mazes.
+
+### C. Inlining Strategy
 - [ ] `#[inline]` on public accessors, single-expression helpers, forwarding wrappers, and cross-crate conversions.
 - [ ] `#[inline(always)]` strictly reserved for ultra-hot CCR condition code flags and inner arithmetic.
 - [ ] No `#[inline]` on functions > 15–20 lines of complex control flow or dispatch function pointers.
-- [ ] `#[inline(never)]` on cold exception/trap vectors.
+- [ ] `#[inline(never)]` on cold exception/trap vectors and error dumps (keeping L1i cache dense).
 
-### C. Workspace & Architecture
+### D. Workspace & Architecture
 - [ ] Respects 3-tier re-export strategy (Tier 1: config, Tier 2: peers memory_bus/m68000, Tier 3: sub-components rtc/copper/blitter).
-- [ ] Zero circular references.
+- [ ] Zero circular references between peer subsystems (`no Rc<RefCell>`).
+- [ ] **WASM Portability**: zero OS calls (`std::time::Instant`, `std::thread`, `std::fs`) in core emulation crates.
+- [ ] **Decoupled SaveState**: all subsystem state structs implement `serde::Serialize` and `Deserialize`.
 
-### D. Documentation & Roadmap
+### E. Specification Compliance & Anti-Hack Rule
+- [ ] Zero silent deviations from hardware specifications.
+- [ ] Zero ad-hoc test-specific hacks to pass synthetic vectors without user escalation.
+
+### F. Documentation & Roadmap
 - [ ] Corresponding design doc under `Obsidian/Amiga/Design/` updated.
 - [ ] Design document pruned of pre-implementation speculative code or draft sketches.
 - [ ] Completed roadmap steps pruned from `ROADMAP.md` and summarized in the baseline section.

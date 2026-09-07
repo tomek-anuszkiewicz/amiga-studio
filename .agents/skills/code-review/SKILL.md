@@ -33,12 +33,25 @@ Analyze all modified and added files using `git diff`:
 2. **Endianness**: Verify Big-Endian multi-byte decoding (`u16::from_be_bytes`, `u32::from_be_bytes`).
 3. **Wrapping Math**: Check ALU operations and cycle additions for wrapping arithmetic (`wrapping_add`, `wrapping_sub`).
 4. **File Sizes**: Ensure no file exceeds 800 lines (excluding `dispatch_table.rs`).
-5. **Inlining Rules**:
+5. **Host CPU Performance & Readability**:
+   - Verify branch-minimization: hot loops favor flattened dispatch instead of nested `match`/`if` cascades ("kod może być rozległy").
+   - Verify zero-allocations in hot execution paths (no `Vec`, `Box`, `format!`, dynamic boxed iterators).
+   - Endianness Bypass: bitwise operations (`AND`, `OR`, `EOR`, `NOT`, `CLR`) and block copies avoid redundant byte swapping in hot loops.
+   - **Readability check**: Confirm code is clean, idiomatic Rust, self-documenting, and free of cryptic micro-optimizations or convoluted macro mazes.
+6. **Inlining Rules**:
    - Small accessors & cross-crate helpers: `#[inline]`.
    - CCR condition code flags & bit calculations: `#[inline(always)]`.
    - Cold exception handlers & diagnostic paths: `#[inline(never)]`.
    - Large functions (>15–20 lines) and dispatch targets: no inlining.
-6. **Path Privacy**: Ensure no host paths (`C:\Users\`, `/home/`, personal disk paths) are present.
+7. **WASM Portability & Host Isolation**:
+   - Core emulation crates (`m68000`, `memory_bus`, `config`, `rtc`) must contain zero OS-specific calls (`no std::time::Instant`, `no std::thread`, `no std::fs`).
+   - All I/O operates on external decoupled byte buffers (`&[u8]`).
+8. **Decoupled State & Save States**:
+   - State structs (`CpuState`, `MemoryBus`, chip states) derive `Serialize` & `Deserialize`.
+   - Zero circular handles (`Rc<RefCell<...>>`) between peer subsystems.
+9. **Specification Integrity (Anti-Hack Rule)**:
+   - Zero silent deviations from hardware specs or ad-hoc special-casing just to force synthetic tests green.
+10. **Path Privacy**: Ensure no host paths (`C:\Users\`, `/home/`, personal disk paths) are present.
 
 ### Step 3: Living Documentation Audit
 1. **Design Documents**: Did the author update `Obsidian/Amiga/Design/`? Were speculative draft snippets or pre-implementation code sketches removed?
@@ -52,6 +65,11 @@ Provide the audit report using the following standard template:
 ### 🛡️ Code & Architecture Compliance Review:
 - [ ] **Architecture Test Suite:** `cargo test -p test_runner --test test_architecture_rules` passed.
 - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
+- [ ] **Host CPU Performance & Sympathy:** Flattened dispatch (branch-minimization), zero heap allocations in hot path, endianness bypass on bitwise ops.
+- [ ] **Readability Without Compromise:** Clean idiomatic Rust, zero cryptic hacks or convoluted macro mazes.
+- [ ] **WASM Core Purity:** Zero OS calls (`Instant`, `thread`, `fs`) in core emulation crates.
+- [ ] **Decoupled SaveState:** Subsystem state derives `Serialize`/`Deserialize`, zero circular references (`Rc<RefCell>`).
+- [ ] **Anti-Hack & Spec Integrity:** Zero ad-hoc test workarounds; hardware specifications followed strictly.
 - [ ] **File Size & Cohesion:** All files <= 800 lines (or recognized exception).
 - [ ] **Inlining Strategy:** Cross-crate `#[inline]`, CCR `#[inline(always)]`, cold paths `#[inline(never)]`.
 - [ ] **Design Docs Pruning:** Living docs updated, speculative code pruned.

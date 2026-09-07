@@ -67,10 +67,11 @@ All agentic pair-programming and automated modifications must adhere strictly to
      - No `std::thread` or OS thread spawning.
      - No `std::fs` calls (load ROMs and disk images as `&[u8]` byte slices passed into public constructors/methods).
 
-6. **Direct Code Flow & Branch-Minimization (Host CPU Pipelining)**:
-   - Modern superscalar host CPUs (x86_64, aarch64) feature deep execution pipelines (14–20+ stages) and heavily penalize branch mispredictions (15–20 wasted cycles per stall).
-   - Cascaded runtime branches (`match opcode`, `match ea_mode`, `if size == Size::Byte`) in the hot instruction dispatch loop cause severe branch predictor thrashing.
-   - For peak performance, the execution core must favor **direct, flattened code flows** (e.g. 65,536-entry direct dispatch table `[fn; 65536]`, direct-threaded handlers, or specialized code generation) where addressing modes, sizes, and registers are statically baked into dedicated handlers, avoiding dynamic runtime conditionals.
+6. **Host CPU Mechanical Sympathy: Branch Prediction, Cache Density & Zero Readability Compromise**:
+   - **Deep Pipelines & Branch Penalties**: Modern host CPUs (x86_64, aarch64) feature 14–20+ execution stages. A single branch misprediction stalls the pipeline and costs 15–20 wasted host cycles.
+   - **Flat Execution over Cascaded Branches ("Kod może być rozległy")**: Cascaded runtime branches (`match opcode`, `match ea_mode`, `if size == Size::Byte`) inside the hot instruction loop destroy branch predictor throughput. The execution core must favor **direct, flattened code flows** (e.g. 65,536-entry static dispatch table `[fn; 65536]`, specialized opcode handlers) where size, addressing mode, and registers are statically baked in. Code may be expansive and unrolled if it eliminates dynamic branching in the hot path.
+   - **Instruction Cache (L1i) Density**: Keep the hot instruction dispatch loop compact and cache-dense (typical L1i is 32–64 KB). Mark heavy, rarely taken exception handling (Address Error 7-word stack frame synthesis, illegal instruction traps, bus fault diagnostics) with `#[inline(never)]` so cold error recovery code never pollutes hot L1i cache lines.
+   - **Readability Without Compromise (Nie rezygnujemy z czytelności)**: High performance must **never** be an excuse for unreadable spaghetti code, cryptic variable names, or convoluted macro mazes. Code must remain clean, modular, self-documenting, and idiomatic Rust. Macros are permitted solely for boilerplate reduction (e.g. static dispatch table population), never to obscure core hardware architecture or control flow.
 
 7. **Module Cohesion & File Size Guidelines**:
    - **Cohesion over Arbitrary Fragmentation**: Group closely related structs, enums, type definitions, and direct handlers in the same file when they cover the same architectural aspect (e.g. `MemoryBank`, `BankHandler`, and bank functions in `map.rs`). Avoid fragmenting tightly coupled concepts across dozens of micro-files.
@@ -154,4 +155,14 @@ All agentic pair-programming and automated modifications must adhere strictly to
     2. What the conflicting test suite or scenario expects.
     3. The proposed architectural alternatives (e.g. configurable parameters, separate test harnesses vs real emulation modes, or formal spec amendments).
 - **Explicit User Decision Required**: No code may deviate from existing documentation without an explicit, recorded decision by the user. Either the documentation is officially updated with user approval, or the code must strictly adhere to the specification.
+
+---
+
+## 7. Audio Input Transcription & Spoken Prompt Confirmation Rule
+
+- **Mandatory Spoken Input Echo:** Whenever the user submits instructions using a voice recording (an attached audio file):
+  - The agent **MUST ALWAYS start its response** by providing a clean, lightly reformatted textual transcription of the user's spoken words (e.g. `> 🎙️ **Rozpoznana treść wiadomości:** "..."`).
+  - Light editing for punctuation and flow is encouraged, but the exact intent, questions, and technical terminology must be strictly preserved.
+  - This guarantees that the user has complete visibility into what the model heard and understood before reviewing the actions taken.
+
 
