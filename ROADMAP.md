@@ -47,18 +47,22 @@ This document outlines the phased development plan, hardware milestones, verific
 > - **Micro-Step Instruction Decomposition (6 Archetypes PoC):** Cycle-exact sub-cycle micro-step engine decomposing all 6 representative instruction archetypes: Internal ALU (`NOP`, `MOVE.w Dx, Dy` - 4 clocks / 2 CCKs), Memory Read (`MOVE.w (Ax), Dy` - 8 clocks / 4 CCKs), Memory Write (`MOVE.w Dx, (Ay)` - 8 clocks / 4 CCKs), Read-Modify-Write Class 0 (`ADD.w Dx, (Ay)` - 12 clocks / 6 CCKs), Branching (`Bcc.s` / `BRA.s` - untaken 8 clocks / taken 10 clocks), and Stack Push/Call (`PEA (An)` - 12 clocks / 6 CCKs, `JSR (An)` - 16 clocks / 8 CCKs). Validated with 100% green unit tests and synthetic CCK1/CCK2 DMA contention stalls.
 > - **Cycle Length, Bus Transaction & DMA Contention Harness:** Cycle length verification (`VerifyMode::StateAndCycles` / `Full`), zero-allocation bus transaction recording in `m68000::Cpu` and matching in `crates/test_runner` (`transactions.rs`) against Tom Harte silicon and MAME logs (read/write/TAS, 24-bit address, size, data, FC lines, strobes). Synthetic Agnus DMA contention runner (`dma_harness.rs`) verifying State Invariance and Cycle Invariance under single-cycle and burst stalls. Validated 100% green on `NOP` and `PEA (An)`.
 
-### Step 1: Systematic Migration of Existing 52 Instructions to CCK Engine
+### Step 1: Systematic Migration & Linearization of Existing 52 Instructions to CCK Engine
+- **Flat, Branchless Linear Execution per Opcode (Rule 2.6 Mechanical Sympathy):**
+  - Eliminate cascaded runtime branching (`match opcode`, `match ea_mode`, `match size`, dynamic EA resolution) in the hot execution path.
+  - Implement unrolled, linear macro-generated handlers where operand size, source/destination addressing modes, and register indices are compile-time constants.
+  - Each handler maps 1:1 with an entry in the 65,536-entry direct dispatch table and executes a straight, deterministic sequence of CCK bus cycles and micro-steps.
 - **Structured Migration Batches:**
   - *Batch 1 (Simple ALU & Immediate):* `ADD`, `ADDA`, `ADDI`, `ADDQ`, `SUB`, `SUBA`, `SUBI`, `SUBQ`, `CMP`, `CMPA`, `CMPI`, `CMPM`, `TST`.
   - *Batch 2 (Bitwise Logic & Bit Ops):* `AND`, `OR`, `BTST`, `BSET`, `BCLR`, `BCHG`.
   - *Batch 3 (Shifts & Rotates):* `ASL`, `ASR`, `LSL`, `LSR` (Dynamic micro-step loops: 6/8 base clocks + 2 clocks per bit shifted).
   - *Batch 4 (Data Movement):* `MOVE.b/w/l`, `MOVEA.w/l`.
   - *Batch 5 (Extended Arithmetic & Control Flow):* `ADDX`, `SUBX`, `BRA`, `Bcc`, `JMP`, `JSR`, `RTS`, `TRAP`, `NOP`.
-- **Milestone Gate:** All 52 migrated instructions pass 100% green in SingleStepTests with both state match AND exact cycle count (`test.length`).
+- **Milestone Gate:** All 52 migrated instructions pass 100% green in SingleStepTests with both state match AND exact cycle count (`test.length`) with zero runtime branching in the hot execution path.
 
 ### Step 2: In-Memory Mutations & Dynamic DMA Contention Stress Testing
 - **Address Space Remapping Mutations:**
-  - Execute SingleStepTest suites with programmatic address remapping mutations on the migrated 52 instructions (per [CPU SingleStepTests.md](Obsidian/Amiga/Design/CPU%20SingleStepTests.md#8-in-code-test-mutation-strategy-chipfast-ram--dma-contention)):
+  - Execute SingleStepTest suites with programmatic address remapping mutations on the linearized 52 instructions (per [CPU SingleStepTests.md](Obsidian/Amiga/Design/CPU%20SingleStepTests.md#8-in-code-test-mutation-strategy-chipfast-ram--dma-contention)):
     - `ForceChipRam`: Offset code, operands, and stack into Chip RAM (`$000000-$07FFFF`) to test contention and Gary bus limits.
     - `ForceFastRam`: Offset addresses into Auto-Config Fast RAM (`$200000-$27FFFF`) to verify zero-wait-state full-speed execution.
     - `ForceSlowRam`: Remap addresses into A501 Slow / Trapdoor RAM (`$C00000-$C7FFFF`).
@@ -68,10 +72,10 @@ This document outlines the phased development plan, hardware milestones, verific
     - Alternating cycle stalls (simulating display bitplane and Copper DMA).
     - Burst stalls (simulating Blitter nastiness blocking the CPU for $N$ consecutive CCK cycles).
   - Verify bus arbitration invariants: CPU properly pauses instruction phase on `MemoryBusResult::Blocked`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
-- **Milestone Gate:** Migrated 52 instructions maintain 100% state invariance and cycle invariance across Chip RAM, Fast RAM, Slow RAM, and under single-cycle and burst DMA contention.
+- **Milestone Gate:** Linearized 52 instructions maintain 100% state invariance and cycle invariance across Chip RAM, Fast RAM, Slow RAM, and under single-cycle and burst DMA contention.
 
 ### Step 3: Implementation of Remaining Complex & Multi-Cycle Instructions
-- **Implement Directly in CCK Engine:**
+- **Implement Directly as Linear Handlers in CCK Engine:**
   - *Batch 6 (Multi-Register Moves):* `MOVEM` (looping bus cycles, predecrement/postincrement register ordering, interrupt sensitivity).
   - *Batch 7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
   - *Batch 8 (BCD & Math Extensions):* `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `NOT`, `EXT`.
