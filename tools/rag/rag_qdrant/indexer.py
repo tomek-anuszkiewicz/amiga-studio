@@ -279,22 +279,34 @@ class KnowledgeIndexer:
             stats["images_analyzed"] = len(self.cache.get("image_descriptions", {}))
             self._save_cache()
 
-        # 5. Build full contexts and Qdrant points metadata
-        file_chunk_data = []  # list of (file_p, p_str, h, is_upd, points_count)
-        all_texts_to_embed = []
-        all_point_tuples = []  # list of (point_id, payload)
+        # 5. Incremental File-by-File Embedding, Upserting & Immediate Cache Checkpointing
+        total_chunks_to_index = sum(len(chunks) for _, _, _, _, chunks in chunked_results)
+        total_files_to_index = len(chunked_results)
+        completed_chunks = 0
+        completed_files = 0
+        f_digits = len(str(total_files_to_index))
+        c_digits = len(str(total_chunks_to_index))
+
+        if progress_cb and total_chunks_to_index > 0:
+            progress_cb(0, total_chunks_to_index, f"Starting incremental indexing across {total_files_to_index} files...", "indexing", False, f"({0:>{f_digits}}/{total_files_to_index})")
 
         for file_p, p_str, h, is_upd, chunks in chunked_results:
+            completed_files += 1
             if not chunks:
                 source_cache[p_str] = {
                     "hash": h,
                     "chunks": 0,
                     "last_indexed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
+                self._save_cache()
                 stats["skipped"] += 1
+                if progress_cb:
+                    count_tag = f"({completed_files:>{f_digits}}/{total_files_to_index})"
+                    progress_cb(completed_chunks, total_chunks_to_index, file_p.name, "skipped", False, count_tag)
                 continue
 
-            file_point_count = 0
+            file_point_tuples = []
+            file_texts = []
             for chunk in chunks:
                 chunk_text = chunk["content"]
                 img_desc_list = []
@@ -318,67 +330,48 @@ class KnowledgeIndexer:
                     "images": chunk["images"],
                     "chunk_id": chunk["chunk_id"]
                 }
-                all_texts_to_embed.append(full_embed_text)
-                all_point_tuples.append((point_id, payload))
-                file_point_count += 1
+                file_texts.append(full_embed_text)
+                file_point_tuples.append((point_id, payload))
 
-            file_chunk_data.append((file_p, p_str, h, is_upd, file_point_count))
+            # Compute embeddings for this file's chunks
+            embeddings = self.get_embeddings(file_texts)
 
-        # 6. High-Throughput Multi-Core Embedding
-        if all_texts_to_embed:
-            total_chunks = len(all_texts_to_embed)
-            e_digits = len(str(total_chunks))
-            embeddings = []
-            if progress_cb:
-                progress_cb(0, total_chunks, f"Starting FastEmbed for {total_chunks} chunks...", "embedding", False, f"({0:>{e_digits}}/{total_chunks})")
-
-            for i in range(0, total_chunks, EMBEDDING_BATCH_SIZE):
-                batch = all_texts_to_embed[i:i + EMBEDDING_BATCH_SIZE]
-                batch_embeddings = self.get_embeddings(batch)
-                embeddings.extend(batch_embeddings)
-                completed_so_far = min(i + EMBEDDING_BATCH_SIZE, total_chunks)
-                if progress_cb:
-                    count_tag = f"({completed_so_far:>{e_digits}}/{total_chunks})"
-                    progress_cb(completed_so_far, total_chunks, "FastEmbed CPU", "embedding", False, count_tag)
-
-            # 7. Batch Upsert to Qdrant
-            all_points = [
+            # Build Qdrant PointStructs
+            file_points = [
                 models.PointStruct(id=pt[0], vector=emb, payload=pt[1])
-                for pt, emb in zip(all_point_tuples, embeddings)
+                for pt, emb in zip(file_point_tuples, embeddings)
             ]
 
-            # Delete old points for updated files before upserting new ones
-            for file_p, p_str, h, is_upd, pt_count in file_chunk_data:
-                if is_upd:
-                    self.delete_file_points(p_str)
+            # Delete old points for this file if it was an update
+            if is_upd:
+                self.delete_file_points(p_str)
 
-            total_points = len(all_points)
-            u_digits = len(str(total_points))
+            # Immediately upsert points for this file to Qdrant
+            for i in range(0, len(file_points), UPSERT_BATCH_SIZE):
+                self.client.upsert(
+                    collection_name=COLLECTION_NAME,
+                    points=file_points[i:i + UPSERT_BATCH_SIZE]
+                )
+
+            # Immediately checkpoint this file to disk!
+            source_cache[p_str] = {
+                "hash": h,
+                "chunks": len(file_points),
+                "last_indexed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            self._save_cache()
+
+            completed_chunks += len(chunks)
+            stats["total_points"] += len(file_points)
+            if is_upd:
+                stats["updated"] += 1
+            else:
+                stats["indexed"] += 1
+
             if progress_cb:
-                progress_cb(0, total_points, "Starting Qdrant upsert...", "upserting", False, f"({0:>{u_digits}}/{total_points})")
+                count_tag = f"({completed_files:>{f_digits}}/{total_files_to_index})"
+                progress_cb(completed_chunks, total_chunks_to_index, file_p.name, "indexing", False, count_tag)
 
-            for i in range(0, total_points, UPSERT_BATCH_SIZE):
-                batch = all_points[i:i + UPSERT_BATCH_SIZE]
-                self.client.upsert(collection_name=COLLECTION_NAME, points=batch)
-                stats["total_points"] += len(batch)
-                completed_pts = min(i + UPSERT_BATCH_SIZE, total_points)
-                if progress_cb:
-                    count_tag = f"({completed_pts:>{u_digits}}/{total_points})"
-                    progress_cb(completed_pts, total_points, "Qdrant Points", "upserting", False, count_tag)
-
-            # Update cache entries
-            for file_p, p_str, h, is_upd, pt_count in file_chunk_data:
-                source_cache[p_str] = {
-                    "hash": h,
-                    "chunks": pt_count,
-                    "last_indexed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                if is_upd:
-                    stats["updated"] += 1
-                else:
-                    stats["indexed"] += 1
-
-        self._save_cache()
         return stats
 
     def get_sources_stats(self) -> List[Dict[str, Any]]:
@@ -398,6 +391,43 @@ class KnowledgeIndexer:
                 "last_updated": last_updated
             })
         return result
+
+    def get_qdrant_sources_stats(self) -> Dict[str, Any]:
+        """Queries Qdrant live database points count for collection and per source."""
+        self.ensure_collection()
+        try:
+            info = self.client.get_collection(COLLECTION_NAME)
+            total_points = info.points_count
+        except Exception:
+            total_points = 0
+
+        sources = ["amiga", "obsidian"]
+        for s in self.cache.get("sources", {}).keys():
+            if s not in sources:
+                sources.append(s)
+
+        result = {"total_points": total_points, "total_files": 0, "sources": {}}
+        total_cached_files = 0
+        for s in sorted(sources):
+            try:
+                cnt = self.client.count(
+                    collection_name=COLLECTION_NAME,
+                    count_filter=models.Filter(
+                        must=[models.FieldCondition(key="source", match=models.MatchValue(value=s))]
+                    ),
+                    exact=True
+                ).count
+            except Exception:
+                cnt = 0
+            cached_files = len(self.cache.get("sources", {}).get(s, {}))
+            total_cached_files += cached_files
+            result["sources"][s] = {
+                "vectors": cnt,
+                "cached_files": cached_files
+            }
+        result["total_files"] = total_cached_files
+        return result
+
 
     def search(
         self,

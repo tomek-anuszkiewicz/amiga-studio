@@ -1,5 +1,6 @@
 import sys
 import argparse
+import time
 from pathlib import Path
 
 # Ensure unbuffered UTF-8 output
@@ -86,6 +87,37 @@ def format_bytes(bytes_val: int) -> str:
         return f"{bytes_val / 1024:.1f} KB"
     else:
         return f"{bytes_val / (1024 * 1024):.2f} MB"
+
+
+def format_time(seconds: float) -> str:
+    m, s = divmod(int(seconds), 60)
+    h, m = divmod(m, 60)
+    if h > 0:
+        return f"{h:02d}:{m:02d}:{s:02d}"
+    return f"{m:02d}:{s:02d}"
+
+
+def print_collection_stats(indexer: KnowledgeIndexer, title: str = "Qdrant Collection Status"):
+    try:
+        from rich.console import Console
+        from rich.table import Table
+        console = Console()
+        stats = indexer.get_qdrant_sources_stats()
+
+        table = Table(title=f"[bold cyan]{title}[/bold cyan] (Collection: [green]{COLLECTION_NAME}[/green])")
+        table.add_column("Source Tag", style="cyan", no_wrap=True)
+        table.add_column("Qdrant Points", justify="right", style="green")
+        table.add_column("Cached Files", justify="right", style="magenta")
+
+        for s, data in stats["sources"].items():
+            table.add_row(s, f"{data['vectors']:,}", str(data['cached_files']))
+
+        table.add_section()
+        table.add_row("[bold]Total[/bold]", f"[bold green]{stats['total_points']:,}[/bold green]", f"[bold magenta]{stats['total_files']}[/bold magenta]")
+        console.print(table)
+        console.print()
+    except Exception as e:
+        print(f"[{title}] Failed to retrieve Qdrant stats: {e}")
 
 
 def print_help():
@@ -236,6 +268,9 @@ def main():
         if args.reindex:
             console.print("[yellow]Forced re-indexing enabled (cache ignored).[/yellow]\n")
 
+        print_collection_stats(indexer, "Initial Qdrant Collection State")
+
+        start_time = time.time()
         console.print("[bold yellow]Scanning & computing SHA256 hashes...[/bold yellow]")
         sys.stdout.flush()
 
@@ -271,16 +306,18 @@ def main():
                     last_reported["action"] = action
                     last_reported["pct"] = -1.0
 
-                step_threshold = 2.0 if action == "embedding" else 5.0
+                step_threshold = 2.0 if action == "indexing" else 5.0
                 if last_reported["pct"] < 0 or (pct - last_reported["pct"] >= step_threshold) or completed == total:
                     last_reported["pct"] = pct
+                    elapsed = time.time() - start_time
+                    time_str = f"[dim]{format_time(elapsed)}[/dim]"
                     col_w = max(len(count_str), 9) if count_str else 9
                     sp = " " * col_w
                     count_col = f"| {count_str:>{col_w}} | " if count_str else f"| {sp} | "
                     if is_bytes:
-                        prefix = f"  [cyan][{action.capitalize():<10} {pct:5.1f}%][/cyan] {format_bytes(completed):>9} / {format_bytes(total):<9} {count_col}"
+                        prefix = f"  {time_str} [cyan][{action.capitalize():<10} {pct:5.1f}%][/cyan] {format_bytes(completed):>9} / {format_bytes(total):<9} {count_col}"
                     else:
-                        prefix = f"  [cyan][{action.capitalize():<10} {pct:5.1f}%][/cyan] {completed:>9} / {total:<9} {count_col}"
+                        prefix = f"  {time_str} [cyan][{action.capitalize():<10} {pct:5.1f}%][/cyan] {completed:>9} / {total:<9} {count_col}"
                     console.print(prefix + escape(filename), highlight=False)
                     sys.stdout.flush()
 
@@ -292,7 +329,9 @@ def main():
                 plan_cb=plan_callback
             )
 
+        total_elapsed = time.time() - start_time
         console.print("\n[bold green]Indexing Complete![/bold green]")
+        console.print(f"  • Total Time Elapsed:    {format_time(total_elapsed)}")
         console.print(f"  • Files Scanned:         {stats['scanned']}")
         console.print(f"  • Newly Indexed:         {stats['indexed']}")
         console.print(f"  • Updated:               {stats['updated']}")
@@ -301,10 +340,18 @@ def main():
         console.print(f"  • Total Vectors Added:   {stats['total_points']}")
         if stats["images_analyzed"] > 0:
             console.print(f"  • Diagrams/OCR Analyzed: {stats['images_analyzed']}")
+        console.print()
         sys.stdout.flush()
+
+        print_collection_stats(indexer, "Final Qdrant Collection State")
     except KeyboardInterrupt:
-        console.print("\n\n[bold yellow]⚠ Indexing cancelled by user (Ctrl+C).[/bold yellow]")
-        console.print("[dim]Operation aborted cleanly. Exiting.[/dim]\n")
+        elapsed = time.time() - start_time if 'start_time' in locals() else 0.0
+        console.print(f"\n\n[bold yellow]⚠ Indexing cancelled by user after {format_time(elapsed)} (Ctrl+C).[/bold yellow]")
+        console.print("[dim]All files completed up to this point were saved to Qdrant and cached.[/dim]\n")
+        try:
+            print_collection_stats(indexer, "Current Qdrant Collection State")
+        except Exception:
+            pass
         sys.stdout.flush()
         import os
         os._exit(130)
