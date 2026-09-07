@@ -6,7 +6,7 @@ This directory contains the ingestion pipeline, indexing scripts, CLI utilities,
 
 ## 1. Quick Overview
 
-- **CLI Indexer**: `bin/amiga_rag.bat` (or `python -m rag_qdrant.cli`)
+- **CLI Indexer**: `bin/amiga_rag.ps1` (or `python -m rag_qdrant.cli`)
 - **FastMCP Server**: `rag_mcp_server.py` (registers `rag_search`, `rag_list_sources`, `rag_status` for AI agents)
 - **Vector Database**: Runs in Docker on `http://localhost:6333` (Collection: `amiga`, unified sources: `amiga` and `obsidian` for general knowledge)
 - **Hash Cache**: Configured via `RAG_CACHE_FILE` in `.env`
@@ -43,23 +43,23 @@ RAG_CACHE_FILE=<PATH_TO_CACHE_DIR>\amiga_rag_cache.json
 
 ## 3. CLI Usage: `amiga_rag`
 
-You can invoke the indexer using the helper batch script:
+You can invoke the indexer using the helper PowerShell script:
 
 ```powershell
 # Check database status and connection
-.\tools\rag\bin\amiga_rag.bat --status
+.\tools\rag\bin\amiga_rag.ps1 --status
 
 # List indexed knowledge sources and vector counts
-.\tools\rag\bin\amiga_rag.bat --list-sources
+.\tools\rag\bin\amiga_rag.ps1 --list-sources
 
 # Index Amiga technical documentation in this repository (tagged as 'amiga')
-.\tools\rag\bin\amiga_rag.bat . --source amiga
+.\tools\rag\bin\amiga_rag.ps1 . --source amiga
 
 # Index Obsidian notes (tagged as 'obsidian' for general knowledge)
-.\tools\rag\bin\amiga_rag.bat <PATH_TO_VAULT> --source obsidian
+.\tools\rag\bin\amiga_rag.ps1 <PATH_TO_VAULT> --source obsidian
 
 # Force re-index of all files (ignores SHA256 cache)
-.\tools\rag\bin\amiga_rag.bat . --source amiga --reindex
+.\tools\rag\bin\amiga_rag.ps1 . --source amiga --reindex
 ```
 
 ---
@@ -72,15 +72,15 @@ It exposes 3 tools to Antigravity:
 2. `rag_list_sources()`: Returns list of active sources and document counts.
 3. `rag_status()`: Checks Qdrant vector database health and point count.
 
-The server is configured in `<USERPROFILE>/.gemini/config/mcp_config.json`:
+The server is configured at the project level in `.agents/mcp_config.json`:
 ```json
 {
   "mcpServers": {
     "amiga-rag": {
       "command": "python",
-      "args": ["<repo_path>\\tools\\rag\\rag_mcp_server.py"],
+      "args": ["tools/rag/rag_mcp_server.py"],
       "env": {
-        "PYTHONPATH": "<repo_path>\\tools\\rag"
+        "PYTHONPATH": "tools/rag"
       }
     }
   }
@@ -97,7 +97,7 @@ tools/rag/
 ├── requirements.txt          # Python dependencies
 ├── rag_mcp_server.py         # FastMCP server for Antigravity AI
 ├── bin/
-│   └── amiga_rag.bat         # CLI batch launcher
+│   └── amiga_rag.ps1         # CLI PowerShell launcher
 └── rag_qdrant/               # Core Python package
     ├── __init__.py
     ├── config.py             # Config & .env loading

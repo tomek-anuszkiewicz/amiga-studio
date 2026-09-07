@@ -5,6 +5,7 @@ import hashlib
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
@@ -18,6 +19,10 @@ from .config import (
     EMBEDDING_MODEL,
     EMBEDDING_DIM,
     GEMINI_API_KEY,
+    NUM_WORKERS,
+    VISION_MAX_WORKERS,
+    EMBEDDING_BATCH_SIZE,
+    UPSERT_BATCH_SIZE,
 )
 from .chunker import MarkdownChunker
 from .vision import VisionAnalyzer
@@ -30,23 +35,17 @@ class KnowledgeIndexer:
         self.cache = self._load_cache()
         self.vision = VisionAnalyzer(self.cache.setdefault("image_descriptions", {}))
         self.fastembed_model = None
-        self.genai_client = None
         self._init_embedder()
 
     def _init_embedder(self):
-        if EMBEDDING_PROVIDER == "fastembed":
-            try:
-                from fastembed import TextEmbedding
-                self.fastembed_model = TextEmbedding(model_name=EMBEDDING_MODEL)
-            except Exception as e:
-                print(f"[Warning] Failed to load FastEmbed model: {e}")
-        elif EMBEDDING_PROVIDER == "gemini":
-            if GEMINI_API_KEY:
-                try:
-                    from google import genai
-                    self.genai_client = genai.Client(api_key=GEMINI_API_KEY)
-                except Exception:
-                    pass
+        try:
+            from fastembed import TextEmbedding
+            self.fastembed_model = TextEmbedding(
+                model_name=EMBEDDING_MODEL,
+                threads=NUM_WORKERS
+            )
+        except Exception as e:
+            print(f"[Warning] Failed to load FastEmbed model: {e}")
 
     def _load_cache(self) -> Dict[str, Any]:
         if CACHE_FILE.is_file():
@@ -96,29 +95,22 @@ class KnowledgeIndexer:
             )
 
     def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Fetch embeddings via FastEmbed (local) or Gemini API."""
+        """Fetch embeddings via CPU-based FastEmbed (multi-core local)."""
         if not texts:
             return []
 
-        if self.fastembed_model:
-            # FastEmbed local inference
-            embeddings = [v.tolist() for v in self.fastembed_model.embed(texts)]
-            return embeddings
+        if not self.fastembed_model:
+            raise RuntimeError("FastEmbed model failed to initialize or is unavailable.")
 
-        if self.genai_client:
-            embeddings = []
-            batch_size = 50
-            for i in range(0, len(texts), batch_size):
-                batch = texts[i:i + batch_size]
-                res = self.genai_client.models.embed_content(
-                    model=EMBEDDING_MODEL,
-                    contents=batch
-                )
-                for emb in res.embeddings:
-                    embeddings.append(emb.values)
-            return embeddings
-
-        raise RuntimeError("No embedding provider configured or available.")
+        # FastEmbed local multi-threaded inference via ONNX Runtime C++ engine (threads=NUM_WORKERS)
+        embeddings = [
+            v.tolist() for v in self.fastembed_model.embed(
+                texts,
+                batch_size=EMBEDDING_BATCH_SIZE,
+                parallel=None
+            )
+        ]
+        return embeddings
 
     def delete_file_points(self, file_path_str: str):
         """Removes all points associated with a specific file path."""
@@ -141,9 +133,10 @@ class KnowledgeIndexer:
         directory: Path,
         source_name: str,
         force: bool = False,
-        progress_cb=None
+        progress_cb=None,
+        plan_cb=None
     ) -> Dict[str, Any]:
-        """Indexes all markdown files and referenced images from directory incrementally."""
+        """Indexes all markdown files and referenced images from directory using multi-core parallelism."""
         self.ensure_collection(force_recreate=force)
         dir_path = directory.resolve()
         source_name = source_name.strip().lower()
@@ -167,7 +160,7 @@ class KnowledgeIndexer:
             "images_analyzed": 0
         }
 
-        # Clean up files deleted on disk from Qdrant and cache
+        # 1. Clean up files deleted on disk from Qdrant and cache
         cached_paths = list(source_cache.keys())
         for old_path in cached_paths:
             if old_path not in active_paths:
@@ -175,59 +168,145 @@ class KnowledgeIndexer:
                 del source_cache[old_path]
                 stats["deleted"] += 1
 
-        # Process active files
-        for i, file_path in enumerate(md_files):
-            file_path_str = str(file_path.resolve())
-            current_hash = self._file_hash(file_path)
+        if not md_files:
+            self._save_cache()
+            return stats
 
-            file_cached = source_cache.get(file_path_str)
-            if not force and file_cached and file_cached.get("hash") == current_hash:
-                stats["skipped"] += 1
+        # 2. Parallel scan & hash to identify modified/new vs skipped files
+        def _check_file(file_p: Path):
+            p_str = str(file_p.resolve())
+            h = self._file_hash(file_p)
+            size = file_p.stat().st_size
+            cached_entry = source_cache.get(p_str)
+            needs_idx = force or (cached_entry is None) or (cached_entry.get("hash") != h)
+            is_upd = cached_entry is not None and needs_idx
+            return file_p, p_str, h, needs_idx, is_upd, size
+
+        total_scanned_bytes = sum(f.stat().st_size for f in md_files)
+        total_files = len(md_files)
+        files_to_index = []
+        total_to_index_bytes = 0
+        total_skipped_bytes = 0
+        scanned_bytes = 0
+        scanned_count = 0
+
+        if progress_cb:
+            progress_cb(0, total_scanned_bytes, f"Checking {total_files} files across {NUM_WORKERS} workers...", "hashing", True, f"({0:>{len(str(total_files))}}/{total_files})")
+
+        with ThreadPoolExecutor(max_workers=NUM_WORKERS) as executor:
+            try:
+                futures = {executor.submit(_check_file, p): p for p in md_files}
+                for future in as_completed(futures):
+                    file_p, p_str, h, needs_idx, is_upd, size = future.result()
+                    scanned_count += 1
+                    scanned_bytes += size
+                    if needs_idx:
+                        files_to_index.append((file_p, p_str, h, is_upd, size))
+                        total_to_index_bytes += size
+                    else:
+                        stats["skipped"] += 1
+                        total_skipped_bytes += size
+
+                    if progress_cb:
+                        count_tag = f"({scanned_count:>{len(str(total_files))}}/{total_files})"
+                        progress_cb(scanned_bytes, total_scanned_bytes, file_p.name, "hashing", True, count_tag)
+            except KeyboardInterrupt:
+                executor.shutdown(wait=False, cancel_futures=True)
+                raise
+
+        if plan_cb:
+            plan_cb({
+                "scanned_files": total_files,
+                "scanned_bytes": total_scanned_bytes,
+                "to_index_files": len(files_to_index),
+                "to_index_bytes": total_to_index_bytes,
+                "skipped_files": stats["skipped"],
+                "skipped_bytes": total_skipped_bytes,
+                "cpu_workers": NUM_WORKERS,
+                "vision_workers": VISION_MAX_WORKERS,
+            })
+
+        if not files_to_index:
+            if progress_cb:
+                progress_cb(total_scanned_bytes, total_scanned_bytes, "All files up to date", "skipped", True, f"({total_files}/{total_files})")
+            self._save_cache()
+            return stats
+
+        # 3. Parallel markdown chunking across CPU workers
+        chunked_results = []
+        all_referenced_images = set()
+
+        def _chunk_worker(item):
+            file_p, p_str, h, is_upd, size = item
+            chunks = self.chunker.chunk_markdown(file_p, dir_path, source_name)
+            return file_p, p_str, h, is_upd, size, chunks
+
+        processed_bytes = 0
+        chunked_count = 0
+        total_to_chunk = len(files_to_index)
+        chunk_digits = len(str(total_to_chunk))
+        with ThreadPoolExecutor(max_workers=NUM_WORKERS) as executor:
+            try:
+                futures = [executor.submit(_chunk_worker, item) for item in files_to_index]
+                for future in as_completed(futures):
+                    file_p, p_str, h, is_upd, size, chunks = future.result()
+                    chunked_count += 1
+                    processed_bytes += size
+                    chunked_results.append((file_p, p_str, h, is_upd, chunks))
+                    for ch in chunks:
+                        all_referenced_images.update(ch.get("images", []))
+                    if progress_cb:
+                        count_tag = f"({chunked_count:>{chunk_digits}}/{total_to_chunk})"
+                        progress_cb(processed_bytes, total_to_index_bytes, file_p.name, "chunked", True, count_tag)
+            except KeyboardInterrupt:
+                executor.shutdown(wait=False, cancel_futures=True)
+                raise
+
+        # 4. Parallel Vision Analysis for referenced diagrams/images
+        if all_referenced_images and self.vision.available:
+            total_images = len(all_referenced_images)
+            v_digits = len(str(total_images))
+            def _vision_progress(completed, total, name):
                 if progress_cb:
-                    progress_cb(i + 1, len(md_files), file_path.name, "skipped")
-                continue
+                    count_tag = f"({completed:>{v_digits}}/{total})"
+                    progress_cb(completed, total, name, "vision", False, count_tag)
 
-            # File is new or modified: remove old vectors if existing
-            if file_cached:
-                self.delete_file_points(file_path_str)
-                is_update = True
-            else:
-                is_update = False
+            self.vision.analyze_images_parallel(
+                list(all_referenced_images),
+                max_workers=VISION_MAX_WORKERS,
+                progress_cb=_vision_progress
+            )
+            stats["images_analyzed"] = len(self.cache.get("image_descriptions", {}))
+            self._save_cache()
 
-            # Chunk file
-            chunks = self.chunker.chunk_markdown(file_path, dir_path, source_name)
+        # 5. Build full contexts and Qdrant points metadata
+        file_chunk_data = []  # list of (file_p, p_str, h, is_upd, points_count)
+        all_texts_to_embed = []
+        all_point_tuples = []  # list of (point_id, payload)
+
+        for file_p, p_str, h, is_upd, chunks in chunked_results:
             if not chunks:
-                source_cache[file_path_str] = {
-                    "hash": current_hash,
+                source_cache[p_str] = {
+                    "hash": h,
                     "chunks": 0,
                     "last_indexed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 stats["skipped"] += 1
                 continue
 
-            # Process vision/images for chunks
-            texts_to_embed = []
+            file_point_count = 0
             for chunk in chunks:
                 chunk_text = chunk["content"]
                 img_desc_list = []
-                for img_p in chunk["images"]:
+                for img_p in chunk.get("images", []):
                     desc = self.vision.analyze_image(img_p)
                     if desc:
                         img_desc_list.append(f"Image [{Path(img_p).name}]: {desc}")
-                        stats["images_analyzed"] += 1
 
                 full_embed_text = chunk_text
                 if img_desc_list:
                     full_embed_text += "\n\n[Associated Diagrams & OCR]:\n" + "\n".join(img_desc_list)
 
-                texts_to_embed.append(full_embed_text)
-
-            # Generate embeddings
-            embeddings = self.get_embeddings(texts_to_embed)
-
-            # Build Qdrant points
-            points = []
-            for chunk, emb, embed_text in zip(chunks, embeddings, texts_to_embed):
                 point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{source_name}:{chunk['chunk_id']}"))
                 payload = {
                     "source": source_name,
@@ -235,31 +314,69 @@ class KnowledgeIndexer:
                     "relative_path": chunk["relative_path"],
                     "header": chunk["header"],
                     "content": chunk["content"],
-                    "full_context": embed_text,
+                    "full_context": full_embed_text,
                     "images": chunk["images"],
                     "chunk_id": chunk["chunk_id"]
                 }
-                points.append(models.PointStruct(id=point_id, vector=emb, payload=payload))
+                all_texts_to_embed.append(full_embed_text)
+                all_point_tuples.append((point_id, payload))
+                file_point_count += 1
 
-            # Upsert into Qdrant
-            if points:
-                self.client.upsert(collection_name=COLLECTION_NAME, points=points)
-                stats["total_points"] += len(points)
+            file_chunk_data.append((file_p, p_str, h, is_upd, file_point_count))
 
-            source_cache[file_path_str] = {
-                "hash": current_hash,
-                "chunks": len(points),
-                "last_indexed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-
-            if is_update:
-                stats["updated"] += 1
-            else:
-                stats["indexed"] += 1
-
+        # 6. High-Throughput Multi-Core Embedding
+        if all_texts_to_embed:
+            total_chunks = len(all_texts_to_embed)
+            e_digits = len(str(total_chunks))
+            embeddings = []
             if progress_cb:
-                status_str = "updated" if is_update else "indexed"
-                progress_cb(i + 1, len(md_files), file_path.name, status_str)
+                progress_cb(0, total_chunks, f"Starting FastEmbed for {total_chunks} chunks...", "embedding", False, f"({0:>{e_digits}}/{total_chunks})")
+
+            for i in range(0, total_chunks, EMBEDDING_BATCH_SIZE):
+                batch = all_texts_to_embed[i:i + EMBEDDING_BATCH_SIZE]
+                batch_embeddings = self.get_embeddings(batch)
+                embeddings.extend(batch_embeddings)
+                completed_so_far = min(i + EMBEDDING_BATCH_SIZE, total_chunks)
+                if progress_cb:
+                    count_tag = f"({completed_so_far:>{e_digits}}/{total_chunks})"
+                    progress_cb(completed_so_far, total_chunks, "FastEmbed CPU", "embedding", False, count_tag)
+
+            # 7. Batch Upsert to Qdrant
+            all_points = [
+                models.PointStruct(id=pt[0], vector=emb, payload=pt[1])
+                for pt, emb in zip(all_point_tuples, embeddings)
+            ]
+
+            # Delete old points for updated files before upserting new ones
+            for file_p, p_str, h, is_upd, pt_count in file_chunk_data:
+                if is_upd:
+                    self.delete_file_points(p_str)
+
+            total_points = len(all_points)
+            u_digits = len(str(total_points))
+            if progress_cb:
+                progress_cb(0, total_points, "Starting Qdrant upsert...", "upserting", False, f"({0:>{u_digits}}/{total_points})")
+
+            for i in range(0, total_points, UPSERT_BATCH_SIZE):
+                batch = all_points[i:i + UPSERT_BATCH_SIZE]
+                self.client.upsert(collection_name=COLLECTION_NAME, points=batch)
+                stats["total_points"] += len(batch)
+                completed_pts = min(i + UPSERT_BATCH_SIZE, total_points)
+                if progress_cb:
+                    count_tag = f"({completed_pts:>{u_digits}}/{total_points})"
+                    progress_cb(completed_pts, total_points, "Qdrant Points", "upserting", False, count_tag)
+
+            # Update cache entries
+            for file_p, p_str, h, is_upd, pt_count in file_chunk_data:
+                source_cache[p_str] = {
+                    "hash": h,
+                    "chunks": pt_count,
+                    "last_indexed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                if is_upd:
+                    stats["updated"] += 1
+                else:
+                    stats["indexed"] += 1
 
         self._save_cache()
         return stats

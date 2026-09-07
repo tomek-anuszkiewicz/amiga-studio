@@ -2,29 +2,47 @@ import sys
 import argparse
 from pathlib import Path
 
-# Ensure UTF-8 output where possible
+# Ensure unbuffered UTF-8 output
 if sys.platform == "win32":
     try:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
+        sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
+        sys.stderr.reconfigure(encoding="utf-8", line_buffering=True)
     except Exception:
         pass
 
-from .config import DEFAULT_SOURCE, QDRANT_URL, COLLECTION_NAME
-from .indexer import KnowledgeIndexer
+import logging
+import warnings
+logging.getLogger("google_genai").setLevel(logging.ERROR)
+try:
+    from google.genai.models import Models, AsyncModels
+    Models._logged_afc_warning = True
+    AsyncModels._logged_afc_warning = True
+except Exception:
+    pass
+
+warnings.filterwarnings("ignore", message=".*automatic function calling.*")
+warnings.filterwarnings("ignore", category=UserWarning, module=".*genai.*")
+
+try:
+    from .config import QDRANT_URL, COLLECTION_NAME, CACHE_FILE, NUM_WORKERS, VISION_MAX_WORKERS
+    from .indexer import KnowledgeIndexer
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from rag_qdrant.config import QDRANT_URL, COLLECTION_NAME, CACHE_FILE, NUM_WORKERS, VISION_MAX_WORKERS
+    from rag_qdrant.indexer import KnowledgeIndexer
+
 
 HELP_TEXT = """
 [bold cyan]amiga_rag[/bold cyan] - Multi-Source Local RAG Indexer (Qdrant)
 
 [bold yellow]USAGE:[/bold yellow]
-  amiga_rag [PATH] [OPTIONS]
+  amiga_rag [PATH] --source NAME [OPTIONS]
 
 [bold yellow]ARGUMENTS:[/bold yellow]
   [green]PATH[/green]                   Directory to index (e.g. [bold].[/bold] for current folder, or [bold]<PATH>[/bold])
 
 [bold yellow]OPTIONS:[/bold yellow]
-  [green]-s, --source NAME[/green]      Tag for the indexed source (e.g. 'amiga', 'obsidian').
-                         Defaults to folder name or RAG_DEFAULT_SOURCE.
+  [green]-s, --source NAME[/green]      [bold red][REQUIRED][/bold red] Tag for the indexed source (e.g. 'amiga', 'obsidian').
   [green]-l, --list-sources[/green]     Display a table of all indexed sources with file & vector counts.
   [green]--status[/green]               Check Qdrant database connectivity and total collection size.
   [green]--reindex[/green]              Force re-indexing of all files (ignores SHA256 cache).
@@ -41,14 +59,13 @@ PLAIN_HELP_TEXT = """
 amiga_rag - Multi-Source Local RAG Indexer (Qdrant)
 
 USAGE:
-  amiga_rag [PATH] [OPTIONS]
+  amiga_rag [PATH] --source NAME [OPTIONS]
 
 ARGUMENTS:
   PATH                   Directory to index (e.g. '.' for current folder, or <PATH>)
 
 OPTIONS:
-  -s, --source NAME      Tag for the indexed source (e.g. 'amiga', 'obsidian').
-                         Defaults to folder name or RAG_DEFAULT_SOURCE.
+  -s, --source NAME      [REQUIRED] Tag for the indexed source (e.g. 'amiga', 'obsidian').
   -l, --list-sources     Display a table of all indexed sources with file & vector counts.
   --status               Check Qdrant database connectivity and total collection size.
   --reindex              Force re-indexing of all files (ignores SHA256 cache).
@@ -60,6 +77,15 @@ EXAMPLES:
   amiga_rag --list-sources
   amiga_rag --status
 """
+
+
+def format_bytes(bytes_val: int) -> str:
+    if bytes_val < 1024:
+        return f"{bytes_val} B"
+    elif bytes_val < 1024 * 1024:
+        return f"{bytes_val / 1024:.1f} KB"
+    else:
+        return f"{bytes_val / (1024 * 1024):.2f} MB"
 
 
 def print_help():
@@ -186,51 +212,117 @@ def main():
         print(f"[Error] Target path '{target_path_str}' does not exist or is not a directory.")
         sys.exit(1)
 
-    # Determine source name
-    source_name = args.source or DEFAULT_SOURCE or target_dir.name.lower()
+    # Determine source name (strictly required)
+    if not args.source:
+        print("\n[Error] The --source (-s) option is required. Example: amiga_rag <PATH> --source amiga\n")
+        sys.exit(1)
+    source_name = args.source.strip().lower()
+
 
     try:
         from rich.console import Console
         from rich.progress import Progress, BarColumn, TextColumn
+        from rich.markup import escape
         console = Console()
-        console.print(f"[bold cyan]Starting indexing for:[/bold cyan] {target_dir}")
-        console.print(f"[bold cyan]Assigned Source Tag:[/bold cyan] [bold green]{source_name}[/bold green]")
+        console.print(f"[bold cyan]─── RAG Indexing Configuration ──────────────────────────[/bold cyan]")
+        console.print(f"  • Target Directory:       [bold]{target_dir}[/bold]")
+        console.print(f"  • Source Tag:             [bold green]{source_name}[/bold green]")
+        console.print(f"  • Qdrant URL:             {QDRANT_URL}")
+        console.print(f"  • Qdrant Collection:      [bold]{COLLECTION_NAME}[/bold]")
+        console.print(f"  • Hash Cache File:        [bold magenta]{CACHE_FILE}[/bold magenta]")
+        console.print(f"  • Planned Workers:        [bold yellow]{NUM_WORKERS} CPU threads[/bold yellow] (FastEmbed & hashing)")
+        console.print(f"  • Diagram Vision:         [bold green]Offline Sidecar Loader (<image>.txt)[/bold green]")
+        console.print(f"[bold cyan]──────────────────────────────────────────────────────────[/bold cyan]\n")
         if args.reindex:
-            console.print("[yellow]Forced re-indexing enabled (cache ignored).[/yellow]")
+            console.print("[yellow]Forced re-indexing enabled (cache ignored).[/yellow]\n")
+
+        console.print("[bold yellow]Scanning & computing SHA256 hashes...[/bold yellow]")
+        sys.stdout.flush()
+
+        def plan_callback(plan):
+            console.print("\n[bold cyan]─── Indexing Execution Plan ───────────────────────────────[/bold cyan]")
+            console.print(f"  • Total Scanned:         {plan['scanned_files']} files ({format_bytes(plan['scanned_bytes'])})")
+            console.print(f"  • Files to Index/Update: [bold green]{plan['to_index_files']}[/bold green] files ([bold green]{format_bytes(plan['to_index_bytes'])}[/bold green])")
+            console.print(f"  • Files Unchanged:       {plan['skipped_files']} files ({format_bytes(plan['skipped_bytes'])})")
+            console.print(f"  • Active Workers:        [bold yellow]{plan['cpu_workers']} CPU threads[/bold yellow], [bold green]Offline Sidecar Vision[/bold green]")
+            console.print("[bold cyan]────────────────────────────────────────────────────────────[/bold cyan]\n")
+            sys.stdout.flush()
+
 
         with Progress(
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("[progress.percentage]{task.percentage:>3.1f}%"),
             TextColumn("({task.completed}/{task.total})"),
             console=console
         ) as progress:
-            task_id = progress.add_task("Scanning...", total=100)
+            task_id = progress.add_task("Preparing...", total=100)
+            last_reported = {"action": "", "pct": -1.0}
 
-            def progress_callback(completed, total, filename, action):
-                progress.update(task_id, total=total, completed=completed, description=f"[{action}] {filename[:30]}")
+            def progress_callback(completed, total, filename, action, is_bytes=True, count_str=""):
+                pct = (completed / total * 100.0) if total > 0 else 100.0
+                if is_bytes:
+                    desc = f"[{action}] {format_bytes(completed)}/{format_bytes(total)} - {filename[:25]}"
+                else:
+                    desc = f"[{action}] {completed}/{total} - {filename[:25]}"
+                progress.update(task_id, total=total, completed=completed, description=desc)
+
+                if last_reported["action"] != action:
+                    last_reported["action"] = action
+                    last_reported["pct"] = -1.0
+
+                step_threshold = 2.0 if action == "embedding" else 5.0
+                if last_reported["pct"] < 0 or (pct - last_reported["pct"] >= step_threshold) or completed == total:
+                    last_reported["pct"] = pct
+                    col_w = max(len(count_str), 9) if count_str else 9
+                    sp = " " * col_w
+                    count_col = f"| {count_str:>{col_w}} | " if count_str else f"| {sp} | "
+                    if is_bytes:
+                        prefix = f"  [cyan][{action.capitalize():<10} {pct:5.1f}%][/cyan] {format_bytes(completed):>9} / {format_bytes(total):<9} {count_col}"
+                    else:
+                        prefix = f"  [cyan][{action.capitalize():<10} {pct:5.1f}%][/cyan] {completed:>9} / {total:<9} {count_col}"
+                    console.print(prefix + escape(filename), highlight=False)
+                    sys.stdout.flush()
 
             stats = indexer.index_directory(
                 directory=target_dir,
                 source_name=source_name,
                 force=args.reindex,
-                progress_cb=progress_callback
+                progress_cb=progress_callback,
+                plan_cb=plan_callback
             )
 
         console.print("\n[bold green]Indexing Complete![/bold green]")
-        console.print(f"  • Files Scanned: {stats['scanned']}")
-        console.print(f"  • Newly Indexed: {stats['indexed']}")
-        console.print(f"  • Updated:       {stats['updated']}")
-        console.print(f"  • Skipped:       {stats['skipped']} (unchanged)")
-        console.print(f"  • Deleted:       {stats['deleted']}")
-        console.print(f"  • Total Vectors Added: {stats['total_points']}")
+        console.print(f"  • Files Scanned:         {stats['scanned']}")
+        console.print(f"  • Newly Indexed:         {stats['indexed']}")
+        console.print(f"  • Updated:               {stats['updated']}")
+        console.print(f"  • Skipped (unchanged):   {stats['skipped']}")
+        console.print(f"  • Deleted from Qdrant:   {stats['deleted']}")
+        console.print(f"  • Total Vectors Added:   {stats['total_points']}")
         if stats["images_analyzed"] > 0:
             console.print(f"  • Diagrams/OCR Analyzed: {stats['images_analyzed']}")
+        sys.stdout.flush()
+    except KeyboardInterrupt:
+        console.print("\n\n[bold yellow]⚠ Indexing cancelled by user (Ctrl+C).[/bold yellow]")
+        console.print("[dim]Operation aborted cleanly. Exiting.[/dim]\n")
+        sys.stdout.flush()
+        import os
+        os._exit(130)
     except Exception as e:
-        print(f"Indexing {target_dir} as source '{source_name}'...")
-        stats = indexer.index_directory(target_dir, source_name, force=args.reindex)
-        print("\nIndexing Complete!", stats)
+        console.print(f"\n[bold red][Error] Indexing failed:[/bold red] {e}")
+        sys.exit(1)
+
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        try:
+            from rich.console import Console
+            Console().print("\n\n[bold yellow]⚠ Operation cancelled by user (Ctrl+C).[/bold yellow]\n")
+        except Exception:
+            print("\n\n[Cancelled] Operation interrupted by user.\n")
+        import os
+        os._exit(130)
+

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "amiga-rag": {
+      "command": "python",
+      "args": ["tools/rag/rag_mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "tools/rag"
+      }
+    }
+  }
+}

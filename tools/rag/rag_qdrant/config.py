@@ -14,24 +14,26 @@ else:
     load_dotenv()
 
 # Qdrant settings
-QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
-COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "amiga")
-QDRANT_TIMEOUT = float(os.getenv("QDRANT_TIMEOUT", "60.0"))
-cache_path = os.getenv("RAG_CACHE_FILE", "amiga_rag_cache.json").strip('"\'')
-CACHE_FILE = Path(cache_path)
+QDRANT_URL = "http://localhost:6333"
+QDRANT_TIMEOUT = 60.0
 
-# Embedding settings: 'fastembed' (local, free, 0 API quota) or 'gemini' (cloud)
-EMBEDDING_PROVIDER = os.getenv("RAG_EMBEDDING_PROVIDER", "fastembed").lower()
+COLLECTION_NAME = "amiga"
+
+cache_env = os.getenv("RAG_CACHE_FILE")
+if not cache_env or not cache_env.strip():
+    raise RuntimeError("RAG_CACHE_FILE environment variable is mandatory and must be defined in .env")
+CACHE_FILE = Path(cache_env.strip('"\''))
+
+# Embedding settings: strictly CPU-based local embeddings (FastEmbed)
+EMBEDDING_PROVIDER = "fastembed"
+EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
+EMBEDDING_DIM = 768
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-if EMBEDDING_PROVIDER == "gemini":
-    EMBEDDING_MODEL = os.getenv("RAG_EMBEDDING_MODEL", "gemini-embedding-001")
-    EMBEDDING_DIM = 768
-else:
-    EMBEDDING_MODEL = os.getenv("RAG_EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
-    EMBEDDING_DIM = 768
+VISION_MODEL = "gemini-flash-latest"
 
-VISION_MODEL = os.getenv("RAG_VISION_MODEL", "gemini-2.5-flash")
-
-# Default source tag fallback
-DEFAULT_SOURCE = os.getenv("RAG_DEFAULT_SOURCE")
+# Concurrency & Parallelism settings (calculated from hardware)
+NUM_WORKERS = os.cpu_count() or 4
+VISION_MAX_WORKERS = os.cpu_count() or 4
+EMBEDDING_BATCH_SIZE = 64
+UPSERT_BATCH_SIZE = 150
