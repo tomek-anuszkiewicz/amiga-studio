@@ -1,4 +1,4 @@
-//! Linear Effective Address (EA) sub-cycle execution primitives
+//! Effective Address (EA) sub-cycle execution primitives
 //!
 //! Provides compile-time constant parameterized effective address decoding,
 //! address resolution, and bus cycle sequencing without cascaded runtime branching.

@@ -333,7 +333,7 @@ impl Cpu {
             AddressingMode::AddressDirect(reg) => {
                 // Writing to address register sign-extends on Word size
                 let final_val = if size == Size::Word {
-                    move_ops::sign_extend_word(val as u16)
+                    movea::sign_extend_word(val as u16)
                 } else {
                     val
                 };
@@ -511,7 +511,7 @@ impl Cpu {
                 }
                 AddressingMode::AddressDirect(reg) => {
                     let final_val = if size == Size::Word {
-                        move_ops::sign_extend_word(val as u16)
+                        movea::sign_extend_word(val as u16)
                     } else {
                         val
                     };

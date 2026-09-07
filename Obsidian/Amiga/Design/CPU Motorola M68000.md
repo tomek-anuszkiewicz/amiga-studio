@@ -544,17 +544,18 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
   - **Silicon Reality (Tom Harte SingleStepTests):** The M68000 Address Generation Unit (AGU) computes the operand address from $A_n$ and simultaneously advances $A_n \leftarrow A_n + \text{increment}$ (2 for word/byte-A7, 4 for long).
   - If the computed base address is odd (`addr & 1 != 0`) for word or long accesses, the Address Error exception triggers on the bus read/write cycle.
   - Crucially, $A_n$ **remains updated with the incremented value** in the final register state.
-  - *Emulator Resolution:* In all linear EA resolvers (`linear_ea.rs`) and specialized instructions (`linear_compare.rs` `CMPM`), the address register update occurs prior to checking unaligned address error traps.
+  - *Emulator Resolution:* In all linear EA resolvers (`ea.rs`) and specialized instructions (`cmpm.rs`), the address register update occurs prior to checking unaligned address error traps.
 
 ### 7.12 Class 0 Read-Modify-Write (RMW) & Bit Manipulation Silicon Timings
 
 - **Class 0 RMW Memory Writeback Sequence (`AND`, `OR`, `EOR`, `NOT` to `<ea>`):**
-  - Memory-destination logical operations follow the Class 0 Read-Modify-Write sub-cycle pipeline:
+  - Memory-destination logical operations follow the Class 0 Read-Modify-Write sub-cycle pipeline in `and.rs`, `or.rs`, `eor.rs`, and `not.rs`:
     - **Step 1 (Read):** Read operand from effective address memory.
     - **Step 2 (Prefetch & Compute):** Perform bitwise operation, compute condition codes ($N, Z, V=0, C=0$), initiate prefetch of next opcode, and store result in internal scratch register.
     - **Step 3+ (Writeback):** Commit modified value to target memory address (for 32-bit `Long` size: write low word to $addr + 2$, followed by high word write to $addr$).
     - Pipeline retires with next instruction opcode already latched into $IR$.
 - **Bit Manipulation Cycle Timings (Tom Harte Silicon Verified):**
+  - Implemented in dedicated per-mnemonic modules (`btst.rs`, `bchg.rs`, `bclr.rs`, `bset.rs`):
   - **Dynamic Bit Ops ($D_n$, `<ea>`):**
     - `BTST Dn, Dm`: 6 clocks (4 prefetch + 2 internal idle).
     - `BCHG Dn, Dm` / `BSET Dn, Dm`: 8 clocks (4 prefetch + 4 internal idle).
@@ -566,28 +567,30 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
     - `BCLR #imm, Dm`: 14 clocks (4 extension read + 4 prefetch + 6 internal idle).
     - Memory targets: Extension word fetch, effective address read, prefetch, and byte writeback.
 
-### 7.13 Linearized Data Movement Architecture & 2-Phase Sub-Cycle Engine (`MOVE`, `MOVEA`)
+### 7.13 Modular Per-Mnemonic Instruction Architecture & Single-Mnemonic Dispatch
 
-Motorola 68000 Group `00ss` (where `ss` $\in \{01, 11, 10\}$ for Byte, Word, Long) comprises 12,288 distinct opcodes. All are executed via compile-time flattened static dispatch tables (`MOVE_REG_TABLE` and `MOVE_MEM_TABLE` in `dispatch_table.rs` and `linear_move.rs`):
+The entire M68000 instruction set is organized into dedicated, single-responsibility files by instruction mnemonic (e.g. `add.rs`, `move.rs`, `movea.rs`, `bra.rs`, `bsr.rs`, `bcc.rs`, `asl.rs`, `asr.rs`, etc.):
 
-- **Branchless 2-Phase Decomposition (`op_move_to_reg` vs `op_move_to_mem`):**
+- **Zero Cascaded Runtime Branching in Dispatch Table (Rule 2.6):**
+  - All 65,536 entries in `dispatch_table.rs` map directly to specialized static opcode handlers.
+  - Methods that previously used dynamic opcode inspection inside the handler are separated into distinct single-mnemonic handlers:
+    - `op_move_to_reg` vs `op_movea`: `move.rs` handles `Dn` destinations; `movea.rs` handles `An` destinations.
+    - `op_bra`, `op_bsr`, and `op_bcc`: separated into `bra.rs`, `bsr.rs`, and `bcc.rs`.
+    - Register and memory shifts/rotates: separated into 8 distinct pairs of handlers across `asl.rs`, `asr.rs`, `lsl.rs`, `lsr.rs`, `roxl.rs`, `roxr.rs`, `rol.rs`, and `ror.rs`.
+    - System control immediate operations: `op_andi_to_ccr`, `op_andi_to_sr`, `op_ori_to_ccr`, `op_ori_to_sr`, `op_eori_to_ccr`, `op_eori_to_sr` mapped directly in `andi.rs`, `ori.rs`, and `eori.rs`.
+- **Branchless 2-Phase Decomposition (`op_move_to_reg` vs `op_move_to_mem` in `move.rs` & `movea.rs`):**
   - **Phase 1: Source Effective Address Resolution & Read:**
     - Resolves source operand using compile-time constants `SRC_M` (mode) and `src_reg`.
     - Handles address error detection, extension word fetches, and pipeline sequencing.
     - Operands are staged in `cpu.scratch`.
   - **Phase 2: Destination Effective Address Resolution & Write:**
-    - **Register Destination (`Dn`, `An`):** Directly commits staged operand into target register. Evaluates condition codes for `MOVE` ($N = \text{MSB}$, $Z = \text{val} == 0$, $V = 0$, $C = 0$, $X$ preserved) or leaves CCR intact for `MOVEA` (with sign-extension for Word size). Completes with next instruction prefetch initiation.
+    - **Register Destination (`Dn`):** Directly commits staged operand into target register. Evaluates condition codes for `MOVE` ($N = \text{MSB}$, $Z = \text{val} == 0$, $V = 0$, $C = 0$, $X$ preserved).
+    - **Address Register Destination (`An` via `movea.rs`):** Sign-extends Word size and leaves CCR untouched.
     - **Memory Destination (`(An)`, `(An)+`, `-(An)`, `(d16,An)`, `(d8,An,Xn)`, `(xxx).w`, `(xxx).l`):** Resolves destination memory address, checks 16/32-bit word alignment, triggers Address Error (Vector 3) if unaligned, initiates write bus cycles, and latches prefetch according to hardware ordering (e.g. `-(An)` prefetch-before-write sequence).
-- **Static Dispatch Performance & Cache Density (Rule 2.6):**
-  - 72 pre-generated handlers in `MOVE_REG_TABLE` (`3 sizes × 2 reg targets × 12 source modes`).
-  - 252 pre-generated handlers in `MOVE_MEM_TABLE` (`3 sizes × 7 memory target modes × 12 source modes`).
-  - Completely eliminates runtime branching (`match opcode`, `match size`, `match ea`) on the hot execution path.
 
-### 7.14 Linearized Extended Arithmetic & Control Flow (`ADDX`, `SUBX`, `BRA`, `Bcc`, `JMP`, `JSR`, `RTS`, `TRAP`, `NOP`)
+### 7.14 Extended Arithmetic, Shifts, and Control Flow
 
-The final migration batch (Step 1 Batch 5) completes the full linearization of all 52 baseline M68000 instructions into the 2-phase Color Clock engine (`CCK1`/`CCK2`), eliminating legacy monolithic interpreters and cascading runtime branching in favor of compile-time static dispatch tables (`ADDX_SUBX_REG_TABLE`, `ADDX_SUBX_MEM_TABLE`, `BCC_TABLE`, `JMP_TABLE`, `JSR_TABLE`):
-
-- **Extended Arithmetic (`ADDX`, `SUBX` in `linear_addx_subx.rs`):**
+- **Extended Arithmetic (`addx.rs`, `subx.rs`):**
   - **Z-Flag Retention Quirk:** The $Z$ condition code flag is cleared if the arithmetic result is non-zero, but **preserved intact** if the result is zero, enabling seamless chaining across multi-precision additions/subtractions.
   - **Register-to-Register Forms:**
     - Byte and Word: 4 clocks (2 CCKs, standard prefetch retire).
@@ -597,7 +600,7 @@ The final migration batch (Step 1 Batch 5) completes the full linearization of a
     - Byte and Word: 18 clocks (2 internal + 4 read Ay + 4 read Ax + 4 prefetch + 4 write Ax).
     - Long: 30 clocks (2 internal + 4 read Ay.low + 4 read Ay.high + 4 read Ax.low + 4 read Ax.high + 4 write Ax.low + 4 prefetch + 4 write Ax.high).
     - **Long Predecrement Address Error AGU Register Commitment:** For 32-bit transfers, the Address Generation Unit decrements $A_y$ by 2 for the initial low word access. If the address is unaligned, the processor triggers an Address Error immediately; $A_y$ remains decremented by 2 (never 4) in the final register state, and the pushed stack frame access address records `initial_Ay - 2`. Destination $A_x$ mirrors this behavior.
-- **Control Flow Instructions (`linear_control.rs`):**
+- **Control Flow Instructions (`bra.rs`, `bsr.rs`, `bcc.rs`, `jmp.rs`, `jsr.rs`, `rts.rs`, `trap.rs`, `nop.rs`):**
   - **NOP:** 4 CPU clocks (2 CCKs), standard prefetch retire.
   - **BRA & Bcc (16 conditions):**
     - Short displacement ($d_8 \neq 0$): 10 clocks if taken (2 internal + 4 target prefetch + 4 target+2 prefetch), 8 clocks if untaken (4 internal + 4 next prefetch).
