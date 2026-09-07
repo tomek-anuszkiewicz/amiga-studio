@@ -1,89 +1,170 @@
 ---
 name: add-m68k-instruction
 description: >-
-  Use this skill when implementing a new Motorola 68000 CPU instruction or addressing mode in the emulator. Provides a step-by-step recipe covering opcode decoding, CCK cycle phases, effective address (EA) resolution, condition code (CCR) calculations, prefetch management, and SingleStepTest validation.
+  Use this skill when implementing a new Motorola 68000 CPU instruction or addressing mode in the emulator. Provides a step-by-step recipe covering flat linear opcode execution, specialized compile-time addressing modes, inlined CCR calculations, CCK cycle phases, prefetch management, and SingleStepTest validation.
 ---
 
-# Recipe: Implementing an M68000 CPU Instruction
+# Recipe: Implementing an M68000 CPU Instruction (Flat & Linear Execution)
 
-Follow this checklist to implement a new instruction in the cycle-exact M68000 emulator core.
-
----
-
-## 1. Consult Reference Specifications
-
-Before writing code, verify exact micro-timing and flag behavior:
-- **Documentation**: Query `amiga-rag` using `rag_search` for the instruction name and timing in the M68000 Programmer's Reference Manual.
-- **Reference Implementations**: When sub-cycle timing or prefetch order is ambiguous, inspect:
-  - `ref_src/Moira-3.0/` (clean C++ cycle-exact 68000 implementation)
-  - `ref_src/mame-mame0289/src/devices/cpu/m68000/` (authoritative microcoded core)
+Follow this specification to implement new instructions in the cycle-exact M68000 emulator core.
 
 ---
 
-## 2. Opcode Decoding & Dispatch
+## 1. Core Architectural Philosophy: Flat, Linear Handlers
 
-1. **Follow the Standard Naming Rule:** Name the opcode handler strictly according to [.agents/rules/opcode-naming.md](../../rules/opcode-naming.md):
-   $$\text{op\_}\langle\text{mnemonic}\rangle\_\langle\text{size}\rangle\_\langle\text{source}\rangle\_\langle\text{destination}\rangle\_\langle\text{hex}\rangle$$
-   (e.g., `op_add_w_ai_dn_d050`, `op_ori_b_imm_dn_0000`, `op_nop_4e71`).
-2. Identify the 16-bit opcode bit pattern, operation size (`.b` = 00/01, `.w` = 01/11, `.l` = 10/10), and operand fields (Data/Address registers, Effective Address mode/register).
-3. Wire the opcode into the decoder dispatch table or match tree:
-   - Ensure reserved or invalid bit combinations branch to an **Illegal Instruction** exception (Vector 4, `$000010`) or Line-A / Line-F exceptions.
+Modern host CPUs (x86_64, aarch64) feature deeply pipelined execution (14–20+ stages). Cascaded dynamic branches (`match opcode`, `match ea_mode`, `match size`) in the hot instruction dispatch loop flush the pipeline and waste 15–20 host cycles per misprediction.
 
----
-
-## 3. Effective Address (EA) & Color Clock (CCK) Phases
-
-1. Bus cycles are modeled in Color Clock phases (**CCK1** and **CCK2**):
-   - $1\ \text{bus access} = 2\ \text{CCK cycles} = 4\ \text{CPU clocks}$.
-2. Check memory bus availability on each access:
-   - If `bus.read()` / `bus.write()` returns `MemoryBusResult::Blocked`, the CPU must hold its current phase and insert a wait state.
-   - If `MemoryBusResult::Ready`, advance to the next execution step.
-3. Check for unaligned access on word (`.w`) and long (`.l`) accesses:
-   - If `address & 1 != 0`, abort normal execution immediately and initiate the **Address Error** sequence (Vector 3).
+Because each handler in `dispatch_table.rs` is dedicated to a specific opcode or addressing mode variant:
+1. **Zero Runtime Addressing Mode Matching:** The addressing mode is known at compile time (e.g. `ai`, `pi`, `pd`, `dn`). Never invoke generic multi-mode dispatchers like `read_ea_operand` inside specialized handlers.
+2. **Zero Runtime Size Matching:** The operand size (`.b`, `.w`, `.l`) is statically fixed for the handler. Write concrete `u8`, `u16`, or `u32` math directly.
+3. **Inlined CCR Calculations:** Calculate Condition Code Register flags ($X, N, Z, V, C$) directly using branchless bitwise formulas for the specific operand size. Never call generic dynamic multi-size CCR functions.
+4. **No Macros & No Const-Generics:** Custom macros (`macro_rules!`) and const-generic matrices (`fn op<const S: usize>`) are strictly forbidden. Handlers must be explicit, self-documenting Rust functions.
 
 ---
 
-## 4. ALU Execution & Condition Codes (CCR)
+## 2. Naming Standard
 
-1. Use **wrapping arithmetic** (`wrapping_add`, `wrapping_sub`, `overflowing_add`, etc.) to prevent debug build panics.
-2. **Dynamic Cycle Accumulation:** Do not hardcode static cycle constants. Micro-operations naturally advance cycle counters based on operand addressing modes, bit loops (e.g. `DIVU`/`DIVS` or `MULS`/`MULU`), branch conditions, and bus wait states.
-3. Update the Condition Code Register (lower byte of `SR`):
-   - **X (Extend, bit 4)**: Set by arithmetic instructions; unchanged by logical operations, `MOVE`, or bit operations.
-   - **N (Negative, bit 3)**: Set if MSB of result is 1; cleared otherwise.
-   - **Z (Zero, bit 2)**: Set if result is 0; cleared otherwise.
-   - **V (Overflow, bit 1)**: Set if signed two's complement overflow occurred; cleared on logical ops.
-   - **C (Carry, bit 0)**: Set if unsigned carry/borrow occurred; cleared on logical ops.
+Name every handler strictly according to [.agents/rules/opcode-naming.md](../../rules/opcode-naming.md):
 
----
+$$\mathbf{\text{op\_}\langle\text{mnemonic}\rangle\_\langle\text{size}\rangle\_\langle\text{source}\rangle\_\langle\text{destination}\rangle\_\langle\text{hex}\rangle}$$
 
-## 5. Prefetch Pipeline Synchronization
-
-1. Any immediate values or 16/32-bit extension words must be consumed from the internal prefetch register (`IRC`), advancing `PC` by 2.
-2. Refill the prefetch queue from the new `PC` address.
-3. Before finishing the instruction, ensure the next opcode is prefetched into `IRC` and transferred to `IR`, leaving `PC` pointing to $Next\_Opcode + 2$.
+- Dual-operand: `op_add_w_ai_dn_d050` (`ADD.W (An), Dn`)
+- Immediate: `op_ori_b_imm_dn_0000` (`ORI.B #imm, Dn`), `op_ori_w_imm_sr_007c` (`ORI #imm, SR`)
+- Single-operand: `op_clr_b_dn_4200` (`CLR.B Dn`), `op_tst_l_dn_4a80` (`TST.L Dn`)
+- Control / Zero-operand: `op_nop_4e71` (`NOP`), `op_rts_4e75` (`RTS`), `op_trap_4e40` (`TRAP #<vec>`)
 
 ---
 
-## 6. Verification with SingleStepTests
+## 3. Reference Implementation Pattern
 
-1. Locate the test file in `ref_src/SingleStepTests-m68000/v1/<INSTRUCTION>.<size>.json`.
-2. Add a corresponding test in `tests/cpu/test_<instruction>.rs`:
-   ```rust
-   use crate::tests::cpu::common::run_test_file;
+### ❌ Bad (Cascaded Dynamic Branches & Generic Helpers):
+```rust
+// ANTI-PATTERN: Evaluates multiple dynamic branches on size and addressing mode at runtime!
+pub fn op_add_bad(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let size = match (cpu.state.ir >> 6) & 3 { ... };
+    let ea_mode = decode_ea_index(...);
+    let val = read_ea_operand_generic(cpu, bus, size, ea_mode)?; // dynamic match!
+    let res = calculate_add_generic(val, size);                 // dynamic match!
+    update_ccr_generic(&mut cpu.state, res, size);              // dynamic match!
+    ...
+}
+```
 
-   #[test]
-   fn test_my_instruction() {
-       run_test_file("ref_src/SingleStepTests-m68000/v1/MY_INSTR.w.json");
-   }
-   ```
-3. Run the test:
+### ✅ Good (Flat, Linear, Compile-Time Specialized):
+```rust
+/// ADD.W (An), Dn (Opcode 0xD050 family: 1101 <Dn:3> 0 01 010 <An:3>)
+pub fn op_add_w_ai_dn_d050(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let ir = cpu.state.ir;
+    let an_reg = (ir & 7) as usize;
+    let dn_reg = ((ir >> 9) & 7) as usize;
+
+    match cpu.state.micro.micro_step {
+        0 => {
+            // Bus cycle: read 16-bit word from (An)
+            let addr = cpu.state.read_a(an_reg);
+            if (addr & 1) != 0 {
+                return trigger_address_error(cpu, addr, true, false, bus);
+            }
+            cpu.initiate_bus_cycle(BusCycle::new_read(
+                addr,
+                BusAccessSize::Word,
+                data_fc(cpu),
+            ));
+            StepResult::StepCompleted
+        }
+        1 => {
+            let src = cpu.state.micro.last_read as u16;
+            let dst = cpu.state.d[dn_reg] as u16;
+            let res = dst.wrapping_add(src);
+
+            // Inlined Word CCR Calculation (Zero host branches)
+            let n = (res as i16) < 0;
+            let z = res == 0;
+            let v = ((src ^ res) & (dst ^ res) & 0x8000) != 0;
+            let c = (res < dst) || (res < src);
+            let x = c;
+
+            // Commit result to Dn
+            cpu.state.d[dn_reg] = (cpu.state.d[dn_reg] & 0xFFFF_0000) | (res as u32);
+            cpu.state.set_flags(x, n, z, v, c);
+
+            // Complete instruction and prefetch next opcode
+            cpu.retire_instruction(bus);
+            StepResult::InstructionCompleted
+        }
+        _ => unreachable!(),
+    }
+}
+```
+
+---
+
+## 4. Inlined Condition Code (CCR) Formulas
+
+Use these branchless boolean bitwise formulas tailored to the exact operand size:
+
+### Addition (`ADD`, `ADDI`, `ADDQ`)
+```rust
+// Word (.W) Example:
+let res = dst.wrapping_add(src);
+let n = (res as i16) < 0;
+let z = res == 0;
+let v = ((src ^ res) & (dst ^ res) & 0x8000) != 0;
+let c = (res < dst) || (res < src);
+let x = c;
+```
+
+### Subtraction & Comparison (`SUB`, `SUBI`, `SUBQ`, `CMP`, `CMPI`)
+```rust
+// Word (.W) Example: res = dst - src
+let res = dst.wrapping_sub(src);
+let n = (res as i16) < 0;
+let z = res == 0;
+let v = ((src ^ dst) & (res ^ dst) & 0x8000) != 0;
+let c = dst < src;
+// Note: On CMP/CMPI, X is unaffected! On SUB/SUBI/SUBQ, x = c.
+```
+
+### Bitwise Logic (`AND`, `OR`, `EOR`, `NOT`) & `MOVE`
+```rust
+// Word (.W) Example:
+let res = dst & src; // or dst | src, etc.
+let n = (res as i16) < 0;
+let z = res == 0;
+let v = false;
+let c = false;
+// X is unaffected!
+```
+
+---
+
+## 5. Register Access & Stack Pointer Banking
+
+- Use `cpu.state.d[idx]` directly for data registers ($D_0$–$D_7$).
+- Use `cpu.state.read_a(idx)` and `cpu.state.write_a(idx, val)` for address registers ($A_0$–$A_7$).
+  - `a[7]` holds the active stack pointer branchlessly.
+- When privilege changes, call `cpu.state.set_supervisor(bool)` or `cpu.state.set_sr(new_sr)`.
+
+---
+
+## 6. Prefetch & Instruction Retirement
+
+- When consuming 16/32-bit immediate or displacement extension words, consume from `cpu.consume_extension_word(bus)`.
+- When execution finishes normally, call `cpu.retire_instruction(bus)` and return `StepResult::InstructionCompleted`.
+- When branching or jumping, reload prefetch using `cpu.state.micro.mark_target_refill_retire(target, new_ir)` or `cpu.reload_pc_and_prefetch(target, bus)`.
+
+---
+
+## 7. SingleStepTest Verification
+
+Validate the instruction against the official test suite:
+1. Locate vector in `ref_src/SingleStepTests-m68000/v1/<MNEMONIC>.<size>.json` or Tom Harte suite.
+2. Run single-step verification:
    ```powershell
-   cargo test tests::cpu::test_my_instruction
+   cargo test -p test_runner --test test_singlestep
    ```
-4. If assertions fail, activate the `m68k-singlestep-test` skill to diagnose the mismatch.
-
----
-
-## 7. Update Design Documentation (Definition of Done)
-
-If implementing or debugging this instruction revealed, clarified, or modified any architectural assumption (e.g. prefetch timing, condition code quirks, or bus wait-state behavior), update [CPU Motorola M68000.md](../../../Obsidian/Amiga/Design/CPU%20Motorola%20M68000.md) or [MemoryBus.md](../../../Obsidian/Amiga/Design/MemoryBus.md).
+3. Run architecture rules verification:
+   ```powershell
+   cargo test -p test_runner --test test_architecture_rules
+   ```
+4. If failures occur, activate `m68k-singlestep-test` skill.
