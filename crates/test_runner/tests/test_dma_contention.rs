@@ -21,8 +21,13 @@ fn load_mame_tests(name: &str, limit: usize) -> Vec<SingleStepTest> {
     let file = File::open(&resolved)
         .unwrap_or_else(|err| panic!("Failed to open test file '{}': {}", resolved.display(), err));
     let reader = BufReader::new(file);
-    let tests: Vec<SingleStepTest> = serde_json::from_reader(reader)
-        .unwrap_or_else(|err| panic!("Failed to parse test file '{}': {}", resolved.display(), err));
+    let tests: Vec<SingleStepTest> = serde_json::from_reader(reader).unwrap_or_else(|err| {
+        panic!(
+            "Failed to parse test file '{}': {}",
+            resolved.display(),
+            err
+        )
+    });
     tests.into_iter().take(limit).collect()
 }
 

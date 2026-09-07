@@ -26,47 +26,59 @@ pub enum ExpectedTransaction {
 }
 
 /// Parses raw JSON array of transactions from a SingleStepTest
-pub fn parse_transactions(values: &[serde_json::Value]) -> Result<Vec<ExpectedTransaction>, String> {
+pub fn parse_transactions(
+    values: &[serde_json::Value],
+) -> Result<Vec<ExpectedTransaction>, String> {
     let mut transactions = Vec::with_capacity(values.len());
     for (idx, val) in values.iter().enumerate() {
-        let arr = val.as_array().ok_or_else(|| {
-            format!("Transaction [{}] is not a JSON array: {:?}", idx, val)
-        })?;
+        let arr = val
+            .as_array()
+            .ok_or_else(|| format!("Transaction [{}] is not a JSON array: {:?}", idx, val))?;
         if arr.is_empty() {
             return Err(format!("Transaction [{}] is an empty array", idx));
         }
-        let tag = arr[0].as_str().ok_or_else(|| {
-            format!("Transaction [{}] tag is not a string: {:?}", idx, arr[0])
-        })?;
+        let tag = arr[0]
+            .as_str()
+            .ok_or_else(|| format!("Transaction [{}] tag is not a string: {:?}", idx, arr[0]))?;
 
         if tag == "n" {
-            let duration = arr.get(1).and_then(|v| v.as_u64()).ok_or_else(|| {
-                format!("Internal transaction [{}] missing numeric duration", idx)
-            })? as u32;
+            let duration =
+                arr.get(1).and_then(|v| v.as_u64()).ok_or_else(|| {
+                    format!("Internal transaction [{}] missing numeric duration", idx)
+                })? as u32;
             transactions.push(ExpectedTransaction::Internal { duration });
         } else {
             let is_read = tag == "r" || tag == "re";
             let is_tas = tag == "t";
-            let duration = arr.get(1).and_then(|v| v.as_u64()).ok_or_else(|| {
-                format!("Bus transaction [{}] missing duration", idx)
-            })? as u32;
-            let fc = arr.get(2).and_then(|v| v.as_u64()).ok_or_else(|| {
-                format!("Bus transaction [{}] missing function code", idx)
-            })? as u8;
-            let addr = arr.get(3).and_then(|v| v.as_u64()).ok_or_else(|| {
-                format!("Bus transaction [{}] missing address", idx)
-            })? as u32;
-            let size_str = arr.get(4).and_then(|v| v.as_str()).ok_or_else(|| {
-                format!("Bus transaction [{}] missing size string", idx)
-            })?;
+            let duration = arr
+                .get(1)
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| format!("Bus transaction [{}] missing duration", idx))?
+                as u32;
+            let fc = arr
+                .get(2)
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| format!("Bus transaction [{}] missing function code", idx))?
+                as u8;
+            let addr = arr
+                .get(3)
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| format!("Bus transaction [{}] missing address", idx))?
+                as u32;
+            let size_str = arr
+                .get(4)
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| format!("Bus transaction [{}] missing size string", idx))?;
             let size = match size_str {
                 ".b" => BusAccessSize::Byte,
                 ".w" => BusAccessSize::Word,
                 other => return Err(format!("Unknown transfer size '{}' at [{}]", other, idx)),
             };
-            let data = arr.get(5).and_then(|v| v.as_u64()).ok_or_else(|| {
-                format!("Bus transaction [{}] missing data value", idx)
-            })? as u16;
+            let data = arr
+                .get(5)
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| format!("Bus transaction [{}] missing data value", idx))?
+                as u16;
 
             let uds = arr.get(6).and_then(|v| v.as_u64()).map(|v| v != 0);
             let lds = arr.get(7).and_then(|v| v.as_u64()).map(|v| v != 0);

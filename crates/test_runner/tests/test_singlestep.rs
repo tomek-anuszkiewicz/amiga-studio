@@ -24,7 +24,8 @@ fn run_dual_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
         mame_passed + mame_failed
     );
     assert_eq!(
-        mame_failed, 0,
+        mame_failed,
+        0,
         "MAME tests failed for {}: {}/{} failed",
         name,
         mame_failed,
@@ -32,8 +33,12 @@ fn run_dual_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
     );
 
     // 2. Real 68k (Tom Harte) SingleStepTests-680x0 suite
-    let harte_res = run_test_file_with_mode(&harte_path, Some(limit), mode)
-        .unwrap_or_else(|err| panic!("Failed to open/parse Real 68k test '{}': {}", harte_path, err));
+    let harte_res = run_test_file_with_mode(&harte_path, Some(limit), mode).unwrap_or_else(|err| {
+        panic!(
+            "Failed to open/parse Real 68k test '{}': {}",
+            harte_path, err
+        )
+    });
     let (harte_passed, harte_failed) = harte_res;
     assert!(
         harte_passed > 0,
@@ -42,7 +47,8 @@ fn run_dual_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
         harte_passed + harte_failed
     );
     assert_eq!(
-        harte_failed, 0,
+        harte_failed,
+        0,
         "Real 68k (Tom Harte) tests failed for {}: {}/{} failed",
         name,
         harte_failed,
@@ -109,9 +115,12 @@ fn test_pea_an_full_verification() {
 
     assert!(!an_tests.is_empty(), "No PEA (An) tests found");
     for (idx, test) in an_tests.iter().enumerate() {
-        if let Err(failure) =
-            test_runner::runner::run_single_test_detail(test, harte_path.to_str().unwrap(), idx, VerifyMode::Full)
-        {
+        if let Err(failure) = test_runner::runner::run_single_test_detail(
+            test,
+            harte_path.to_str().unwrap(),
+            idx,
+            VerifyMode::Full,
+        ) {
             panic!(
                 "PEA (An) Full Verification Failed on {}:\n{}",
                 test.name,
@@ -205,6 +214,40 @@ fn test_suba_l() {
 }
 
 // ============================================================================
+// Extended Arithmetic (ADDX, SUBX)
+// ============================================================================
+
+#[test]
+fn test_addx_b() {
+    run_dual_test("ADDX.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_addx_w() {
+    run_dual_test("ADDX.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_addx_l() {
+    run_dual_test("ADDX.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_subx_b() {
+    run_dual_test("SUBX.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_subx_w() {
+    run_dual_test("SUBX.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_subx_l() {
+    run_dual_test("SUBX.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+// ============================================================================
 // Logical Operations (AND, OR)
 // ============================================================================
 
@@ -236,6 +279,36 @@ fn test_or_w() {
 #[test]
 fn test_or_l() {
     run_dual_test("OR.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_eor_b() {
+    run_dual_test("EOR.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_eor_w() {
+    run_dual_test("EOR.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_eor_l() {
+    run_dual_test("EOR.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_not_b() {
+    run_dual_test("NOT.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_not_w() {
+    run_dual_test("NOT.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_not_l() {
+    run_dual_test("NOT.l", DEFAULT_SAMPLE_LIMIT);
 }
 
 // ============================================================================
@@ -326,6 +399,66 @@ fn test_lsr_l() {
     run_dual_test("LSR.l", DEFAULT_SAMPLE_LIMIT);
 }
 
+#[test]
+fn test_rol_b() {
+    run_dual_test("ROL.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_rol_w() {
+    run_dual_test("ROL.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_rol_l() {
+    run_dual_test("ROL.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ror_b() {
+    run_dual_test("ROR.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ror_w() {
+    run_dual_test("ROR.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ror_l() {
+    run_dual_test("ROR.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxl_b() {
+    run_dual_test("ROXL.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxl_w() {
+    run_dual_test("ROXL.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxl_l() {
+    run_dual_test("ROXL.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxr_b() {
+    run_dual_test("ROXR.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxr_w() {
+    run_dual_test("ROXR.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxr_l() {
+    run_dual_test("ROXR.l", DEFAULT_SAMPLE_LIMIT);
+}
+
 // ============================================================================
 // Compare & Test Operations (Milestone 1.1)
 // ============================================================================
@@ -369,4 +502,3 @@ fn test_tst_w() {
 fn test_tst_l() {
     run_dual_test("TST.l", DEFAULT_SAMPLE_LIMIT);
 }
-

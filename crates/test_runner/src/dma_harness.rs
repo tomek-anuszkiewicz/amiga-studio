@@ -224,7 +224,8 @@ pub fn run_dma_burst_contention(
     let mut cck_step = 0;
     loop {
         // Assert stall for burst_length consecutive CCKs starting at burst_start_phase
-        bus.chip_ram_blocked = cck_step >= burst_start_phase && cck_step < (burst_start_phase + burst_length);
+        bus.chip_ram_blocked =
+            cck_step >= burst_start_phase && cck_step < (burst_start_phase + burst_length);
 
         let res = cpu.step_cck(&mut bus);
         cck_step += 1;
@@ -327,12 +328,23 @@ pub fn run_dma_burst_contention(
 
 fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
     cpu.state.d = [
-        test.initial.d0, test.initial.d1, test.initial.d2, test.initial.d3,
-        test.initial.d4, test.initial.d5, test.initial.d6, test.initial.d7,
+        test.initial.d0,
+        test.initial.d1,
+        test.initial.d2,
+        test.initial.d3,
+        test.initial.d4,
+        test.initial.d5,
+        test.initial.d6,
+        test.initial.d7,
     ];
     cpu.state.a = [
-        test.initial.a0, test.initial.a1, test.initial.a2, test.initial.a3,
-        test.initial.a4, test.initial.a5, test.initial.a6,
+        test.initial.a0,
+        test.initial.a1,
+        test.initial.a2,
+        test.initial.a3,
+        test.initial.a4,
+        test.initial.a5,
+        test.initial.a6,
     ];
     cpu.state.usp = test.initial.usp;
     cpu.state.ssp = test.initial.ssp;

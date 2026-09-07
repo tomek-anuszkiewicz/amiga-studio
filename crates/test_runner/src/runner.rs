@@ -21,7 +21,8 @@ pub enum VerifyMode {
 
 /// Runs a single SingleStepTest returning a concise string error on mismatch
 pub fn run_single_test(test: &SingleStepTest) -> Result<(), String> {
-    run_single_test_detail(test, "unspecified", 0, VerifyMode::StateOnly).map_err(|err| err.to_string())
+    run_single_test_detail(test, "unspecified", 0, VerifyMode::StateOnly)
+        .map_err(|err| err.to_string())
 }
 
 /// Runs a single SingleStepTest against the CPU and MemoryBus, returning detailed diagnostics
@@ -188,11 +189,16 @@ pub fn run_single_test_detail(
             // Note: Section 1.1 of CPU SingleStepTests documents that in the Address Error
             // Internal Information Word at SSP+1, the lower nibble (I/N and Function Code bits)
             // exhibits documented differences between MAME's microcode simulator and Tom Harte real silicon.
-            if addr == cpu.state.ssp.wrapping_add(1) && (actual_byte & 0xF0) == (expected_byte & 0xF0) {
+            if addr == cpu.state.ssp.wrapping_add(1)
+                && (actual_byte & 0xF0) == (expected_byte & 0xF0)
+            {
                 continue;
             }
             // Note: MAME MOVE.l divergence in pushed SR on stack at SSP+9
-            if !is_harte && addr == cpu.state.ssp.wrapping_add(9) && (actual_byte ^ expected_byte) == 0x08 {
+            if !is_harte
+                && addr == cpu.state.ssp.wrapping_add(9)
+                && (actual_byte ^ expected_byte) == 0x08
+            {
                 continue;
             }
             // Note: In M68000 Address Error stack frame, the PC pushed at SSP+10..=SSP+13
@@ -224,9 +230,13 @@ pub fn run_single_test_detail(
         match crate::transactions::parse_transactions(&test.transactions) {
             Ok(expected_txs) => {
                 let recorded = cpu.recorded_transactions().unwrap_or(&[]);
-                if let Err(tx_diffs) = crate::transactions::match_transactions(recorded, &expected_txs, is_harte) {
+                if let Err(tx_diffs) =
+                    crate::transactions::match_transactions(recorded, &expected_txs, is_harte)
+                {
                     for diff in tx_diffs {
-                        failure.diffs.push(StateDiff::TransactionMismatch { details: diff });
+                        failure
+                            .diffs
+                            .push(StateDiff::TransactionMismatch { details: diff });
                     }
                 }
             }

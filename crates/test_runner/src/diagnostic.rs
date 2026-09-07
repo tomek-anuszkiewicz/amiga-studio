@@ -76,7 +76,11 @@ pub fn format_ccr_diff(actual_sr: u16, expected_sr: u16) -> (String, Vec<String>
             "X flag: expected {}, got {} ({})",
             expected.x as u8,
             actual.x as u8,
-            if actual.x { "unexpectedly SET" } else { "unexpectedly CLEARED" }
+            if actual.x {
+                "unexpectedly SET"
+            } else {
+                "unexpectedly CLEARED"
+            }
         ));
     }
     if actual.n != expected.n {
@@ -84,7 +88,11 @@ pub fn format_ccr_diff(actual_sr: u16, expected_sr: u16) -> (String, Vec<String>
             "N flag: expected {}, got {} ({})",
             expected.n as u8,
             actual.n as u8,
-            if actual.n { "unexpectedly SET" } else { "unexpectedly CLEARED" }
+            if actual.n {
+                "unexpectedly SET"
+            } else {
+                "unexpectedly CLEARED"
+            }
         ));
     }
     if actual.z != expected.z {
@@ -92,7 +100,11 @@ pub fn format_ccr_diff(actual_sr: u16, expected_sr: u16) -> (String, Vec<String>
             "Z flag: expected {}, got {} ({})",
             expected.z as u8,
             actual.z as u8,
-            if actual.z { "unexpectedly SET" } else { "unexpectedly CLEARED" }
+            if actual.z {
+                "unexpectedly SET"
+            } else {
+                "unexpectedly CLEARED"
+            }
         ));
     }
     if actual.v != expected.v {
@@ -100,7 +112,11 @@ pub fn format_ccr_diff(actual_sr: u16, expected_sr: u16) -> (String, Vec<String>
             "V flag: expected {}, got {} ({})",
             expected.v as u8,
             actual.v as u8,
-            if actual.v { "unexpectedly SET" } else { "unexpectedly CLEARED" }
+            if actual.v {
+                "unexpectedly SET"
+            } else {
+                "unexpectedly CLEARED"
+            }
         ));
     }
     if actual.c != expected.c {
@@ -108,7 +124,11 @@ pub fn format_ccr_diff(actual_sr: u16, expected_sr: u16) -> (String, Vec<String>
             "C flag: expected {}, got {} ({})",
             expected.c as u8,
             actual.c as u8,
-            if actual.c { "unexpectedly SET" } else { "unexpectedly CLEARED" }
+            if actual.c {
+                "unexpectedly SET"
+            } else {
+                "unexpectedly CLEARED"
+            }
         ));
     }
 
@@ -205,7 +225,9 @@ impl TestFailure {
     /// Formats an actionable, human-readable failure report
     pub fn format_diagnostic(&self) -> String {
         let mut out = String::with_capacity(1024);
-        out.push_str("================================================================================\n");
+        out.push_str(
+            "================================================================================\n",
+        );
         out.push_str(&format!("❌ TEST FAILURE: \"{}\"\n", self.test_name));
         out.push_str(&format!(
             "   Location: {} [Test #{}]\n",
@@ -215,7 +237,9 @@ impl TestFailure {
             "   Cycle:    {} clock cycles (approx. {} CCK cycles)\n",
             self.expected_clocks, self.expected_cck
         ));
-        out.push_str("--------------------------------------------------------------------------------\n");
+        out.push_str(
+            "--------------------------------------------------------------------------------\n",
+        );
         out.push_str("Differences detected:\n");
 
         for diff in &self.diffs {
@@ -238,10 +262,7 @@ impl TestFailure {
                         actual, actual_flags
                     ));
                     if !diverging_flags.is_empty() {
-                        out.push_str(&format!(
-                            "      Diff:     {}\n",
-                            diverging_flags.join(", ")
-                        ));
+                        out.push_str(&format!("      Diff:     {}\n", diverging_flags.join(", ")));
                     }
                 }
                 StateDiff::DataRegister {
@@ -317,7 +338,9 @@ impl TestFailure {
                 }
             }
         }
-        out.push_str("================================================================================\n");
+        out.push_str(
+            "================================================================================\n",
+        );
         out
     }
 }

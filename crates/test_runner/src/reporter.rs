@@ -21,29 +21,64 @@ impl From<&TestFailure> for TestFailureSummary {
     fn from(f: &TestFailure) -> Self {
         let short_error = if let Some(diff) = f.diffs.first() {
             match diff {
-                crate::diagnostic::StateDiff::StatusRegister { diverging_flags, .. } => {
+                crate::diagnostic::StateDiff::StatusRegister {
+                    diverging_flags, ..
+                } => {
                     format!("SR mismatch: {}", diverging_flags.join(", "))
                 }
-                crate::diagnostic::StateDiff::DataRegister { reg, actual, expected } => {
-                    format!("D{} mismatch: got 0x{:08X}, expected 0x{:08X}", reg, actual, expected)
+                crate::diagnostic::StateDiff::DataRegister {
+                    reg,
+                    actual,
+                    expected,
+                } => {
+                    format!(
+                        "D{} mismatch: got 0x{:08X}, expected 0x{:08X}",
+                        reg, actual, expected
+                    )
                 }
-                crate::diagnostic::StateDiff::AddressRegister { reg, actual, expected } => {
-                    format!("A{} mismatch: got 0x{:08X}, expected 0x{:08X}", reg, actual, expected)
+                crate::diagnostic::StateDiff::AddressRegister {
+                    reg,
+                    actual,
+                    expected,
+                } => {
+                    format!(
+                        "A{} mismatch: got 0x{:08X}, expected 0x{:08X}",
+                        reg, actual, expected
+                    )
                 }
                 crate::diagnostic::StateDiff::ProgramCounter { actual, expected } => {
-                    format!("PC mismatch: got 0x{:08X}, expected 0x{:08X}", actual, expected)
+                    format!(
+                        "PC mismatch: got 0x{:08X}, expected 0x{:08X}",
+                        actual, expected
+                    )
                 }
-                crate::diagnostic::StateDiff::RamByte { address, actual, expected } => {
-                    format!("RAM at 0x{:06X}: got 0x{:02X}, expected 0x{:02X}", address, actual, expected)
+                crate::diagnostic::StateDiff::RamByte {
+                    address,
+                    actual,
+                    expected,
+                } => {
+                    format!(
+                        "RAM at 0x{:06X}: got 0x{:02X}, expected 0x{:02X}",
+                        address, actual, expected
+                    )
                 }
                 crate::diagnostic::StateDiff::UserStackPointer { actual, expected } => {
-                    format!("USP mismatch: got 0x{:08X}, expected 0x{:08X}", actual, expected)
+                    format!(
+                        "USP mismatch: got 0x{:08X}, expected 0x{:08X}",
+                        actual, expected
+                    )
                 }
                 crate::diagnostic::StateDiff::SupervisorStackPointer { actual, expected } => {
-                    format!("SSP mismatch: got 0x{:08X}, expected 0x{:08X}", actual, expected)
+                    format!(
+                        "SSP mismatch: got 0x{:08X}, expected 0x{:08X}",
+                        actual, expected
+                    )
                 }
                 crate::diagnostic::StateDiff::CycleLength { actual, expected } => {
-                    format!("Cycles: got {} clocks, expected {} clocks", actual, expected)
+                    format!(
+                        "Cycles: got {} clocks, expected {} clocks",
+                        actual, expected
+                    )
                 }
                 crate::diagnostic::StateDiff::TransactionCountMismatch { actual, expected } => {
                     format!("Transactions: recorded {}, expected {}", actual, expected)
@@ -180,7 +215,11 @@ pub fn record_suite_result(result: &SuiteResult) {
         }
 
         if !improvements.is_empty() {
-            eprintln!("\n🎉 [PROGRESS / FIX] Suite '{}': {} test(s) that previously FAILED now PASSED!", result.suite_name, improvements.len());
+            eprintln!(
+                "\n🎉 [PROGRESS / FIX] Suite '{}': {} test(s) that previously FAILED now PASSED!",
+                result.suite_name,
+                improvements.len()
+            );
             for test in &improvements {
                 eprintln!("   🟢 Fixed:  \"{}\"", test);
             }
@@ -215,7 +254,9 @@ pub fn update_global_summary(base_dir: &Path) {
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 if let Ok(file) = File::open(&path) {
-                    if let Ok(suite) = serde_json::from_reader::<_, SuiteResult>(BufReader::new(file)) {
+                    if let Ok(suite) =
+                        serde_json::from_reader::<_, SuiteResult>(BufReader::new(file))
+                    {
                         total_executed += suite.total_executed;
                         total_passed += suite.passed_count;
                         total_failed += suite.failed_count;
@@ -226,7 +267,8 @@ pub fn update_global_summary(base_dir: &Path) {
                             0.0
                         };
 
-                        let active_failures = suite.failures.iter().map(|f| f.test_name.clone()).collect();
+                        let active_failures =
+                            suite.failures.iter().map(|f| f.test_name.clone()).collect();
 
                         suites_map.insert(
                             suite.suite_name,

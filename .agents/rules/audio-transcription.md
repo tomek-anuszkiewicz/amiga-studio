@@ -10,8 +10,8 @@ Whenever the user communicates using a voice recording (an audio file attached t
 Present the transcription at the very top of the response using a blockquote or callout:
 
 ```markdown
-> 🎙️ **Rozpoznana treść wiadomości / Recognized Spoken Input:**
-> _"[Przeformatowana, czytelna transkrypcja wypowiedzi użytkownika / Formatted transcript]"_
+> 🎙️ **Transcribed User Voice Input:**
+> _"[Formatted transcript of user speech in spoken language]"_
 
 ---
 ```

@@ -23,8 +23,7 @@ fn test_cck_unblocked_read_cycle() {
     bus.write_word_debug(0x002000, 0x55AA);
 
     let mut cpu = Cpu::new();
-    let read_cycle =
-        BusCycle::new_read(0x002000, BusAccessSize::Word, function_code::USER_PROGRAM);
+    let read_cycle = BusCycle::new_read(0x002000, BusAccessSize::Word, function_code::USER_PROGRAM);
     cpu.initiate_bus_cycle(read_cycle);
 
     assert!(cpu.state.micro.is_bus_busy());
@@ -93,8 +92,12 @@ fn test_cck_write_contention_stall_at_cck2() {
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
-    let write_cycle =
-        BusCycle::new_write(0x003000, 0xABCD, BusAccessSize::Word, function_code::USER_DATA);
+    let write_cycle = BusCycle::new_write(
+        0x003000,
+        0xABCD,
+        BusAccessSize::Word,
+        function_code::USER_DATA,
+    );
     cpu.initiate_bus_cycle(write_cycle);
 
     // CCK1: CPU outputs address/data onto bus (always succeeds for write)

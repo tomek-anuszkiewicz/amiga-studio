@@ -35,10 +35,10 @@ Audit the diff against the guidelines in `AGENTS.md`:
 - [ ] Emulated guest faults do not panic the host process.
 
 ### B. Host CPU Mechanical Sympathy & Readability
-- [ ] Branch minimization: hot loops favor flattened, direct dispatch over deep nested `match`/`if` trees ("kod może być rozległy").
+- [ ] Branch minimization: hot loops favor flattened, direct dispatch over deep nested `match`/`if` trees ("code may be expansive").
 - [ ] Zero allocations: no `Vec`, `Box`, `String`, or `format!` in `step()`, `step_cck()`, or memory paths.
 - [ ] Endianness Bypass: bitwise operations (`AND`, `OR`, `EOR`, `NOT`, `CLR`) avoid redundant byte swapping in hot loops.
-- [ ] **Readability without compromise**: code is clean, idiomatic Rust, self-documenting, and free of cryptic micro-optimizations or convoluted macro mazes.
+- [ ] **Readability, Zero Macros & No Const-Generic Handlers**: code is clean, idiomatic Rust, self-documenting, completely free of custom macros (`macro_rules!`), and free of const-generic handler matrices (`<const N: ...>`) in favor of concrete specialized functions.
 
 ### C. Inlining Strategy
 - [ ] `#[inline]` on public accessors, single-expression helpers, forwarding wrappers, and cross-crate conversions.

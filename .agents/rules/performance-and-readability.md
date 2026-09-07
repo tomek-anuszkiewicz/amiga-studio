@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # High Performance & Host CPU Mechanical Sympathy (with Zero Readability Compromise)
 
 ## 1. The Host Hardware Reality (Mechanical Sympathy)
@@ -29,8 +33,9 @@ Modern host CPUs (x86_64, aarch64) are deeply pipelined (14–20+ execution stag
 High performance must **NEVER** be an excuse for unreadable, cryptic, or spaghetti code:
 1. **No Clever Obscurity:** Do not sacrifice clarity for micro-optimizations that LLVM already handles.
 2. **Clean Rust Idioms:** Use descriptive types, strong typing, meaningful enum variants, and clear data flow.
-3. **No Convoluted Macros:** Macros are allowed only for repetitive boilerplate generation (e.g., static dispatch table wiring). Never hide core architectural logic inside unreadable macro mazes.
-4. **Self-Documenting Code:** Write code that reads like hardware specifications. A developer reading the CPU or Blitter core should immediately understand the circuit intent.
+3. **Strict Prohibition of User-Defined Macros (`macro_rules!` Forbidden):** Custom macros are strictly forbidden across the codebase. In the era of LLMs, code generation is cheap, eliminating the historical need for macro deduplication. Macros break IDE code navigation (Go to Definition, Find References, Call Hierarchy), obscure call sites, produce confusing compiler diagnostics, and add unnecessary mental complexity. All repetitive code, static dispatch tables, and handlers must be written as explicit, self-documenting Rust functions, direct calls, or standard `const fn` arrays.
+4. **Prohibition of Const-Generic Functions with Constant Parameters:** Using generic functions where generic parameters are constants (e.g. `fn op_foo<const S: usize, const M: usize>(...)`) is forbidden for instruction handlers, decoding, and core execution paths. Const-generic combinatorics obscure concrete execution flow, complicate backtraces and interactive debugging, and introduce cognitive overhead. In the era of LLMs, code generation is cheap—write explicit, concrete, specialized functions or direct flattened control flows instead of abstract const-generic templates.
+5. **Self-Documenting Code:** Write code that reads like hardware specifications. A developer reading the CPU or Blitter core should immediately understand the circuit intent.
 
 ---
 
@@ -40,4 +45,6 @@ During `/code-review`, verify:
 - [ ] Are cold exception paths (e.g. stack frame creation, traps) annotated with `#[inline(never)]`?
 - [ ] Are hot flag/ALU calculations annotated with `#[inline(always)]`?
 - [ ] Is the hot path 100% allocation-free?
+- [ ] Is the code completely free of custom macros (`macro_rules!`)?
+- [ ] Are opcode handlers and execution paths free of const-generic functions (`<const N: ...>`) in favor of concrete specialized functions?
 - [ ] Is the code clear, well-structured, self-documenting, and free of cryptic tricks?

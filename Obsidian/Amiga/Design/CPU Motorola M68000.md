@@ -460,16 +460,36 @@ Bit manipulation instructions evaluate individual bit positions:
   - Only the **Zero flag ($Z$)** is updated: $Z = 1$ if the tested bit was zero; $Z = 0$ if the tested bit was one.
   - Flags **$X, N, V, C$ are completely unaffected** (preserving existing carry/extend states across bit tests).
 
-### 7.5 Shifts & Rotates Quirks (`ASL`, `ASR`, `LSL`, `LSR`)
+### 7.5 Shifts & Rotates Micro-Step Pipeline & Silicon Quirks (`ASd`, `LSd`, `ROXd`, `ROd`)
+
+Motorola 68000 Group 0xE encompasses four operation types across register and memory forms: Arithmetic Shift (`ASL`/`ASR`), Logical Shift (`LSL`/`LSR`), Rotate with Extend (`ROXL`/`ROXR`), and Rotate without Extend (`ROL`/`ROR`).
+
+- **Register Shift Micro-Step Pipeline & Clocks ($6/8 + 2n$):**
+  - **Prefetch Bus Cycle First:** On real silicon (verified by Tom Harte test vectors), the CPU initiates the next instruction opcode prefetch during micro-step 0 (`cpu.initiate_prefetch()`, 4 clocks / 2 CCKs).
+  - **Internal Idle Clocks:** The execution unit schedules internal processing clocks based on operand size and shift count:
+    - **Byte / Word:** $idle\_clocks = 2 + 2 \times count$ (Total execution time: $6 + 2n$ clocks).
+    - **Long (32-bit):** $idle\_clocks = 4 + 2 \times count$ (Total execution time: $8 + 2n$ clocks).
+  - **Retirement:** Micro-step 2 marks standard sequential prefetch retirement (`mark_standard_prefetch_retire()`), advancing the program counter.
+
+- **Memory Shift Micro-Step Pipeline (Class 0 Read-Modify-Write):**
+  - Memory shifts are strictly **Word size** and shift by **1 bit** only (`count = 1`).
+  - Follows the standard 3-step RMW sub-cycle sequence:
+    - **Step 1 (Read):** Read 16-bit word from effective address memory via linear EA resolution.
+    - **Step 2 (Prefetch & Compute):** Perform 1-bit shift, evaluate condition codes, initiate next opcode prefetch, and latch modified word in internal scratch.
+    - **Step 3 (Writeback):** Write modified 16-bit word back to the target memory address via bus write cycle.
+  - Concludes with pipeline refill from scratch prefetch latch. Total duration: 12–16 clocks depending on addressing mode (e.g. `(An)` is 12 clocks, `-(An)` is 14 clocks).
 
 - **Shift Count Modulo:**
   - When the shift count is held in a data register, the CPU evaluates only the lower 6 bits (`count % 64` / `count & 63`).
 - **Zero Shift Count (`count == 0`):**
   - If the shift count is zero:
-    - $C$ (Carry) is cleared to `0`.
+    - $C$ (Carry) is cleared to `0` for `ASd`, `LSd`, `ROd`. For `ROXd`, $C = X$.
     - $V$ (Overflow) is cleared to `0`.
     - **$X$ (Extend) is completely untouched** (retains prior value).
     - $N$ and $Z$ flags reflect the value of the unshifted operand.
+- **Rotate Variations:**
+  - **`ROd` (Rotate):** Circular rotation without extend bit. The last bit rotated out is copied to $C$. $X$ is completely unaffected.
+  - **`ROXd` (Rotate with Extend):** 9-bit, 17-bit, or 33-bit rotation including the $X$ flag. The last bit shifted out is copied to both $C$ and $X$.
 - **`ASL` Sticky Overflow ($V$) Quirk:**
   - In Arithmetic Shift Left, the $V$ flag indicates whether the sign bit changed.
   - In multi-bit shifts, if the sign bit (MSB) changes at **any intermediate bit shift step**, $V$ is set to `1` and **latches high (sticky)**, remaining `1` even if subsequent shift steps restore the sign bit.
@@ -516,4 +536,76 @@ Bit manipulation instructions evaluate individual bit positions:
 - When `BRA`, `Bcc`, `JMP`, or `JSR` evaluates a target address with an odd destination (`target & 1 != 0`):
   - The MC68000 halts instruction execution and immediately triggers an **Address Error exception (Vector 3)**.
   - Because the instruction fetch pipeline caused the fault, the CPU asserts **Program Space** ($FC = 2$ in User mode, $FC = 6$ in Supervisor mode) in the exception status word.
-  - The pushed program counter in the stack frame points to the instruction boundary or target address.
+  - The pushed program counter in the stack frame points to the instruction boundary or target address.
+
+### 7.11 Post-Increment `(An)+` Address Error AGU Register Commitment
+
+- When resolving Post-Increment addressing modes (`(An)+`, including `CMPM (Ay)+, (Ax)+`):
+  - **Silicon Reality (Tom Harte SingleStepTests):** The M68000 Address Generation Unit (AGU) computes the operand address from $A_n$ and simultaneously advances $A_n \leftarrow A_n + \text{increment}$ (2 for word/byte-A7, 4 for long).
+  - If the computed base address is odd (`addr & 1 != 0`) for word or long accesses, the Address Error exception triggers on the bus read/write cycle.
+  - Crucially, $A_n$ **remains updated with the incremented value** in the final register state.
+  - *Emulator Resolution:* In all linear EA resolvers (`linear_ea.rs`) and specialized instructions (`linear_compare.rs` `CMPM`), the address register update occurs prior to checking unaligned address error traps.
+
+### 7.12 Class 0 Read-Modify-Write (RMW) & Bit Manipulation Silicon Timings
+
+- **Class 0 RMW Memory Writeback Sequence (`AND`, `OR`, `EOR`, `NOT` to `<ea>`):**
+  - Memory-destination logical operations follow the Class 0 Read-Modify-Write sub-cycle pipeline:
+    - **Step 1 (Read):** Read operand from effective address memory.
+    - **Step 2 (Prefetch & Compute):** Perform bitwise operation, compute condition codes ($N, Z, V=0, C=0$), initiate prefetch of next opcode, and store result in internal scratch register.
+    - **Step 3+ (Writeback):** Commit modified value to target memory address (for 32-bit `Long` size: write low word to $addr + 2$, followed by high word write to $addr$).
+    - Pipeline retires with next instruction opcode already latched into $IR$.
+- **Bit Manipulation Cycle Timings (Tom Harte Silicon Verified):**
+  - **Dynamic Bit Ops ($D_n$, `<ea>`):**
+    - `BTST Dn, Dm`: 6 clocks (4 prefetch + 2 internal idle).
+    - `BCHG Dn, Dm` / `BSET Dn, Dm`: 8 clocks (4 prefetch + 4 internal idle).
+    - `BCLR Dn, Dm`: 10 clocks (4 prefetch + 6 internal idle).
+    - Memory targets: Bit modulo 8; `BTST` is read-only; `BCHG`, `BCLR`, and `BSET` execute Class 0 RMW single-byte writeback.
+  - **Static Bit Ops (`#<data>`, `<ea>`):**
+    - `BTST #imm, Dm`: 10 clocks (4 extension read + 4 prefetch + 2 internal idle).
+    - `BCHG #imm, Dm` / `BSET #imm, Dm`: 12 clocks (4 extension read + 4 prefetch + 4 internal idle).
+    - `BCLR #imm, Dm`: 14 clocks (4 extension read + 4 prefetch + 6 internal idle).
+    - Memory targets: Extension word fetch, effective address read, prefetch, and byte writeback.
+
+### 7.13 Linearized Data Movement Architecture & 2-Phase Sub-Cycle Engine (`MOVE`, `MOVEA`)
+
+Motorola 68000 Group `00ss` (where `ss` $\in \{01, 11, 10\}$ for Byte, Word, Long) comprises 12,288 distinct opcodes. All are executed via compile-time flattened static dispatch tables (`MOVE_REG_TABLE` and `MOVE_MEM_TABLE` in `dispatch_table.rs` and `linear_move.rs`):
+
+- **Branchless 2-Phase Decomposition (`op_move_to_reg` vs `op_move_to_mem`):**
+  - **Phase 1: Source Effective Address Resolution & Read:**
+    - Resolves source operand using compile-time constants `SRC_M` (mode) and `src_reg`.
+    - Handles address error detection, extension word fetches, and pipeline sequencing.
+    - Operands are staged in `cpu.scratch`.
+  - **Phase 2: Destination Effective Address Resolution & Write:**
+    - **Register Destination (`Dn`, `An`):** Directly commits staged operand into target register. Evaluates condition codes for `MOVE` ($N = \text{MSB}$, $Z = \text{val} == 0$, $V = 0$, $C = 0$, $X$ preserved) or leaves CCR intact for `MOVEA` (with sign-extension for Word size). Completes with next instruction prefetch initiation.
+    - **Memory Destination (`(An)`, `(An)+`, `-(An)`, `(d16,An)`, `(d8,An,Xn)`, `(xxx).w`, `(xxx).l`):** Resolves destination memory address, checks 16/32-bit word alignment, triggers Address Error (Vector 3) if unaligned, initiates write bus cycles, and latches prefetch according to hardware ordering (e.g. `-(An)` prefetch-before-write sequence).
+- **Static Dispatch Performance & Cache Density (Rule 2.6):**
+  - 72 pre-generated handlers in `MOVE_REG_TABLE` (`3 sizes × 2 reg targets × 12 source modes`).
+  - 252 pre-generated handlers in `MOVE_MEM_TABLE` (`3 sizes × 7 memory target modes × 12 source modes`).
+  - Completely eliminates runtime branching (`match opcode`, `match size`, `match ea`) on the hot execution path.
+
+### 7.14 Linearized Extended Arithmetic & Control Flow (`ADDX`, `SUBX`, `BRA`, `Bcc`, `JMP`, `JSR`, `RTS`, `TRAP`, `NOP`)
+
+The final migration batch (Step 1 Batch 5) completes the full linearization of all 52 baseline M68000 instructions into the 2-phase Color Clock engine (`CCK1`/`CCK2`), eliminating legacy monolithic interpreters and cascading runtime branching in favor of compile-time static dispatch tables (`ADDX_SUBX_REG_TABLE`, `ADDX_SUBX_MEM_TABLE`, `BCC_TABLE`, `JMP_TABLE`, `JSR_TABLE`):
+
+- **Extended Arithmetic (`ADDX`, `SUBX` in `linear_addx_subx.rs`):**
+  - **Z-Flag Retention Quirk:** The $Z$ condition code flag is cleared if the arithmetic result is non-zero, but **preserved intact** if the result is zero, enabling seamless chaining across multi-precision additions/subtractions.
+  - **Register-to-Register Forms:**
+    - Byte and Word: 4 clocks (2 CCKs, standard prefetch retire).
+    - Long: 8 clocks (4 internal ALU clocks in Step 0 + 4 prefetch bus clocks in Step 1).
+  - **Memory Predecrement `-(Ay), -(Ax)` Multi-Precision Ordering:**
+    - In accordance with MC68000 hardware execution, multi-precision 32-bit arithmetic transfers operate low word first, then high word.
+    - Byte and Word: 18 clocks (2 internal + 4 read Ay + 4 read Ax + 4 prefetch + 4 write Ax).
+    - Long: 30 clocks (2 internal + 4 read Ay.low + 4 read Ay.high + 4 read Ax.low + 4 read Ax.high + 4 write Ax.low + 4 prefetch + 4 write Ax.high).
+    - **Long Predecrement Address Error AGU Register Commitment:** For 32-bit transfers, the Address Generation Unit decrements $A_y$ by 2 for the initial low word access. If the address is unaligned, the processor triggers an Address Error immediately; $A_y$ remains decremented by 2 (never 4) in the final register state, and the pushed stack frame access address records `initial_Ay - 2`. Destination $A_x$ mirrors this behavior.
+- **Control Flow Instructions (`linear_control.rs`):**
+  - **NOP:** 4 CPU clocks (2 CCKs), standard prefetch retire.
+  - **BRA & Bcc (16 conditions):**
+    - Short displacement ($d_8 \neq 0$): 10 clocks if taken (2 internal + 4 target prefetch + 4 target+2 prefetch), 8 clocks if untaken (4 internal + 4 next prefetch).
+    - Word displacement ($d_8 = 0$): 10 clocks if taken (2 internal + 4 target prefetch + 4 target+2 prefetch), 12 clocks if untaken (4 extension read + 4 internal + 4 next prefetch).
+    - **BSR (Branch to Subroutine):** 18 clocks for both short and word forms. Pushes 32-bit return PC (2 write cycles to $A_7$) before refilling prefetch from the branch target.
+  - **JMP (Jump):** Supports all 7 control addressing modes (`(An)`, `(d16, An)`, `(d8, An, Xn)`, `(xxx).w`, `(xxx).l`, `(d16, PC)`, `(d8, PC, Xn)`). Cycle times: 8 clocks for `(An)`, 10 clocks for 1-extension modes, 12 clocks for `(xxx).l`, 14 clocks for indexed modes.
+  - **JSR (Jump to Subroutine):** Supports all 7 control addressing modes. Pushes return PC to stack (high word to $A_7-4$, low word to $A_7-2$) and refills prefetch pipeline (16–22 CPU clocks).
+  - **RTS (Return from Subroutine):** 16 clocks (8 CCKs). Reads return PC from stack ($A_7$, $A_7+2$), advances $A_7 \leftarrow A_7 + 4$, checks alignment, and refills pipeline from target address.
+  - **TRAP (Trap Exception Processing):** 34 clocks (17 CCKs). Pushes return PC and SR to supervisor stack ($SSP$), switches to supervisor mode ($S=1, T=0$), fetches exception vector from `$000080 + \text{vec} \times 4$, and initiates double prefetch refill.
+  - **Address Error (Vector 3) & 32-bit Target Fidelity:** Target addresses and stack values retain full 32-bit register width without artificial 24-bit truncation (`& 0x00FF_FFFF`), ensuring cycle-exact diagnostic and stack frame fidelity matching Tom Harte silicon test vectors.
+

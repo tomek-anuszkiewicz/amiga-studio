@@ -4,6 +4,7 @@
 //! 1. File size limit: <= 800 lines (with recognized exceptions).
 //! 2. Zero runtime panics: no `.unwrap()` / `.expect()` in core emulation crates.
 //! 3. Strict path privacy: zero hardcoded user/host paths.
+//! 4. Strict macro prohibition: zero `macro_rules!` definitions in workspace crates.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,13 +16,7 @@ const LINE_COUNT_EXCEPTIONS: &[&str] = &[
 ];
 
 /// Core emulation crates where `.unwrap()` and `.expect()` are strictly forbidden in runtime code.
-const CORE_EMULATION_CRATES: &[&str] = &[
-    "m68000",
-    "memory_bus",
-    "config",
-    "rtc",
-    "debugger",
-];
+const CORE_EMULATION_CRATES: &[&str] = &["m68000", "memory_bus", "config", "rtc", "debugger"];
 
 fn find_repo_root() -> PathBuf {
     // Current test binary runs in target/debug/deps, CWD is repo root
@@ -122,7 +117,12 @@ fn test_zero_runtime_panics_or_unwraps() {
                         let rest = &trimmed[end_idx + 2..];
                         if rest.contains(".unwrap()") || rest.contains(".expect(") {
                             let rel_path = file.strip_prefix(&repo_root).unwrap_or(&file);
-                            violations.push(format!("{}:{} -> {}", rel_path.display(), line_idx + 1, trimmed));
+                            violations.push(format!(
+                                "{}:{} -> {}",
+                                rel_path.display(),
+                                line_idx + 1,
+                                trimmed
+                            ));
                         }
                     }
                     continue;
@@ -149,7 +149,12 @@ fn test_zero_runtime_panics_or_unwraps() {
 
                 if code_part.contains(".unwrap()") || code_part.contains(".expect(") {
                     let rel_path = file.strip_prefix(&repo_root).unwrap_or(&file);
-                    violations.push(format!("{}:{} -> {}", rel_path.display(), line_idx + 1, trimmed));
+                    violations.push(format!(
+                        "{}:{} -> {}",
+                        rel_path.display(),
+                        line_idx + 1,
+                        trimmed
+                    ));
                 }
             }
         }
@@ -172,12 +177,7 @@ fn test_no_external_hardcoded_paths() {
     collect_rs_files(&crates_dir, &mut files_to_check);
 
     let mut violations = Vec::new();
-    let forbidden_patterns = [
-        "C:\\Users\\",
-        "C:/Users/",
-        "/home/",
-        "Google Drive",
-    ];
+    let forbidden_patterns = ["C:\\Users\\", "C:/Users/", "/home/", "Google Drive"];
 
     for file in files_to_check {
         // Skip this test file itself from the literal pattern search
@@ -207,3 +207,80 @@ fn test_no_external_hardcoded_paths() {
         violations.join("\n")
     );
 }
+
+#[test]
+fn test_zero_user_defined_macros() {
+    let repo_root = find_repo_root();
+    let mut files_to_check = Vec::new();
+
+    let crates_dir = repo_root.join("crates");
+    collect_rs_files(&crates_dir, &mut files_to_check);
+
+    let mut violations = Vec::new();
+
+    for file in files_to_check {
+        // Skip this test file itself from the literal pattern search
+        if file.file_name().and_then(|n| n.to_str()) == Some("test_architecture_rules.rs") {
+            continue;
+        }
+
+        let content = fs::read_to_string(&file).expect("Failed to read file");
+        for (line_idx, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") {
+                continue;
+            }
+            if trimmed.contains("macro_rules!") {
+                let rel_path = file.strip_prefix(&repo_root).unwrap_or(&file);
+                violations.push(format!(
+                    "{}:{} -> {}",
+                    rel_path.display(),
+                    line_idx + 1,
+                    trimmed
+                ));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Found custom macros (`macro_rules!`) which are strictly forbidden per AGENTS.md:\n{}",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn test_zero_const_generic_handlers() {
+    let repo_root = find_repo_root();
+    let m68k_src = repo_root.join("crates").join("m68000").join("src");
+    let mut files_to_check = Vec::new();
+    collect_rs_files(&m68k_src, &mut files_to_check);
+
+    let mut violations = Vec::new();
+
+    for file in files_to_check {
+        let content = fs::read_to_string(&file).expect("Failed to read file");
+        for (line_idx, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") {
+                continue;
+            }
+            if trimmed.contains("<const ") {
+                let rel_path = file.strip_prefix(&repo_root).unwrap_or(&file);
+                violations.push(format!(
+                    "{}:{} -> {}",
+                    rel_path.display(),
+                    line_idx + 1,
+                    trimmed
+                ));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Found const-generic functions (`<const N: ...>`) in M68000 core, strictly forbidden per AGENTS.md:\n{}",
+        violations.join("\n")
+    );
+}
+

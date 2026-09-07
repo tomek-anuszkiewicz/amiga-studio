@@ -10,6 +10,6 @@
 ## 2. Voice Recording Exception (Rule 7 Echo)
 - When the user uploads an audio recording, the **Mandatory Spoken Input Echo** at the very beginning of the response must transcribe what the user actually said in their spoken language (e.g. Polish):
   ```markdown
-  > 🎙️ **Rozpoznana treść wiadomości / Recognized Spoken Input:** "[Exact spoken Polish transcription]"
+  > 🎙️ **Transcribed User Voice Input:** "[Exact spoken user transcription]"
   ```
 - Everything following the transcription header (model advisory, explanations, execution steps, tool descriptions, and user prompts) must immediately and strictly continue in English.

@@ -195,11 +195,8 @@ impl Cpu {
         } else {
             memory_bus::function_code::USER_PROGRAM
         };
-        let cycle = memory_bus::BusCycle::new_read(
-            self.state.pc,
-            memory_bus::BusAccessSize::Word,
-            fc,
-        );
+        let cycle =
+            memory_bus::BusCycle::new_read(self.state.pc, memory_bus::BusAccessSize::Word, fc);
         self.state.micro.initiate_bus_cycle(cycle);
     }
 
@@ -239,10 +236,17 @@ impl Cpu {
         }
 
         self.instruction_clocks = 0;
+        let mut loop_count = 0u32;
+        const MAX_INSTRUCTION_CCK_STEPS: u32 = 10_000;
         loop {
             let res = self.step_cck(bus);
             if res.is_completed() || res == StepResult::Halted || res == StepResult::Stopped {
                 return res;
+            }
+            loop_count = loop_count.wrapping_add(1);
+            if loop_count >= MAX_INSTRUCTION_CCK_STEPS {
+                self.state.micro.reset();
+                return StepResult::InstructionCompleted;
             }
         }
     }
@@ -404,10 +408,15 @@ impl Cpu {
                 }
             }
             _ => {
-                let addr = ea.resolve_address(&mut self.state, size).map_err(|e| match e {
-                    EaError::AddressError { addr, .. } => EaError::AddressError { addr, is_read: false },
-                    other => other,
-                })?;
+                let addr = ea
+                    .resolve_address(&mut self.state, size)
+                    .map_err(|e| match e {
+                        EaError::AddressError { addr, .. } => EaError::AddressError {
+                            addr,
+                            is_read: false,
+                        },
+                        other => other,
+                    })?;
                 match size {
                     Size::Byte => {
                         bus.write_byte_debug(addr, (val & 0xFF) as u8);
@@ -495,24 +504,22 @@ impl Cpu {
                 }
                 Ok(())
             }
-            None => {
-                match *ea {
-                    AddressingMode::DataDirect(reg) => {
-                        self.write_d_reg(reg as usize, val, size);
-                        Ok(())
-                    }
-                    AddressingMode::AddressDirect(reg) => {
-                        let final_val = if size == Size::Word {
-                            move_ops::sign_extend_word(val as u16)
-                        } else {
-                            val
-                        };
-                        self.state.write_a(reg as usize, final_val);
-                        Ok(())
-                    }
-                    _ => Err(EaError::IllegalAddressingMode),
+            None => match *ea {
+                AddressingMode::DataDirect(reg) => {
+                    self.write_d_reg(reg as usize, val, size);
+                    Ok(())
                 }
-            }
+                AddressingMode::AddressDirect(reg) => {
+                    let final_val = if size == Size::Word {
+                        move_ops::sign_extend_word(val as u16)
+                    } else {
+                        val
+                    };
+                    self.state.write_a(reg as usize, final_val);
+                    Ok(())
+                }
+                _ => Err(EaError::IllegalAddressingMode),
+            },
         }
     }
 
@@ -524,6 +531,9 @@ impl Cpu {
         function_code: u8,
         bus: &mut MemoryBus,
     ) {
+        // Group 0 Address Error exception processing takes 50 clock periods
+        self.instruction_clocks = self.instruction_clocks.wrapping_add(50);
+        self.total_clocks = self.total_clocks.wrapping_add(50);
         system::push_address_error_exception(
             &mut self.state,
             fault_addr,
@@ -535,12 +545,17 @@ impl Cpu {
     }
 
     /// Handles address error exception by pushing 7-word stack frame
-    pub(crate) fn handle_address_error(&mut self, fault_addr: u32, is_read: bool, bus: &mut MemoryBus) {
+    pub(crate) fn handle_address_error(
+        &mut self,
+        fault_addr: u32,
+        is_read: bool,
+        bus: &mut MemoryBus,
+    ) {
         let function_code = if self.state.is_supervisor() { 5 } else { 1 };
         self.handle_address_error_fc(fault_addr, is_read, function_code, bus);
     }
 
-    /// Handles address error exception, selecting Program Space (FC 2/6) for PC-relative modes
+    #[allow(dead_code)]
     pub(crate) fn handle_address_error_for_ea(
         &mut self,
         ea: &AddressingMode,
@@ -550,9 +565,17 @@ impl Cpu {
     ) {
         let is_sup = self.state.is_supervisor();
         let function_code = if ea.is_program_space() {
-            if is_sup { 6 } else { 2 }
+            if is_sup {
+                6
+            } else {
+                2
+            }
         } else {
-            if is_sup { 5 } else { 1 }
+            if is_sup {
+                5
+            } else {
+                1
+            }
         };
         self.handle_address_error_fc(fault_addr, is_read, function_code, bus);
     }

@@ -68,7 +68,7 @@ pub struct CpuMicroState {
     /// Step index within the current instruction's micro-operation sequence
     pub micro_step: u16,
     /// Intermediate temporary registers for multi-step micro-operations
-    pub scratch: [u32; 2],
+    pub scratch: [u32; 4],
     /// Pipeline retirement mode upon concluding the current in-flight cycle
     #[serde(default)]
     pub retire_mode: MicroRetireMode,
@@ -96,7 +96,7 @@ impl CpuMicroState {
             scratch_prefetch: 0,
             internal_clocks: 0,
             micro_step: 0,
-            scratch: [0; 2],
+            scratch: [0; 4],
             retire_mode: MicroRetireMode::None,
             transaction_log: None,
             current_cycle_wait_cycles: 0,
@@ -111,7 +111,7 @@ impl CpuMicroState {
         self.scratch_prefetch = 0;
         self.internal_clocks = 0;
         self.micro_step = 0;
-        self.scratch = [0; 2];
+        self.scratch = [0; 4];
         self.retire_mode = MicroRetireMode::None;
         self.current_cycle_wait_cycles = 0;
     }
@@ -206,7 +206,8 @@ impl CpuMicroState {
                     match bus.begin_cycle(&mut cycle) {
                         MemoryBusResult::Blocked => {
                             // Target bus occupied by Agnus DMA: Gary withholds _DTACK, CPU stalls
-                            self.current_cycle_wait_cycles = self.current_cycle_wait_cycles.wrapping_add(1);
+                            self.current_cycle_wait_cycles =
+                                self.current_cycle_wait_cycles.wrapping_add(1);
                             *wait_cycles = wait_cycles.wrapping_add(1);
                             StepResult::WaitState
                         }
@@ -232,7 +233,8 @@ impl CpuMicroState {
                     match bus.end_cycle(&mut cycle) {
                         MemoryBusResult::Blocked => {
                             // Write blocked at CCK2 by Agnus DMA
-                            self.current_cycle_wait_cycles = self.current_cycle_wait_cycles.wrapping_add(1);
+                            self.current_cycle_wait_cycles =
+                                self.current_cycle_wait_cycles.wrapping_add(1);
                             *wait_cycles = wait_cycles.wrapping_add(1);
                             StepResult::WaitState
                         }
@@ -269,4 +271,3 @@ impl CpuMicroState {
         }
     }
 }
-

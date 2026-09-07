@@ -24,10 +24,10 @@ Recommend switching back to `Medium` whenever the task is repetitive, mechanical
 When an advisory trigger is met and the active model is suboptimal for the task, include a prominent callout at the beginning of the response (right below the audio transcript if voice input was used):
 
 ```markdown
-> 💡 **Rekomendacja modelu:** Do obecnego zadania ([krótkie uzasadnienie, np. debugowanie kolejki prefetch w SingleStepTests]) zalecane jest przełączenie na model o wyższym poziomie myślenia (**High** / **Pro**), aby zapewnić precyzyjną analizę sekwencji cykl po cyklu.
+> 💡 **Model Recommendation:** For the current task ([brief rationale, e.g. debugging prefetch queue progression in SingleStepTests]), switching to higher reasoning effort (**High** / **Pro**) is recommended to ensure precise cycle-by-cycle analysis.
 ```
 
 Or for reverting to Medium:
 ```markdown
-> 💡 **Rekomendacja modelu:** Wchodzimy w etap powtarzalnej implementacji opcodów według szablonu – możesz bezpiecznie przełączyć na **Medium**, co znacząco skróci czas odpowiedzi i oszczędzi limity tokenów.
+> 💡 **Model Recommendation:** We are entering routine opcode implementation following established patterns — you can safely switch to **Medium** to significantly reduce response latency and conserve token limits.
 ```

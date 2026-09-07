@@ -114,7 +114,12 @@ pub fn execute_add(state: &mut CpuState, src: u32, dst: u32, size: Size, update_
             (dst & !0xFF) | (res as u32)
         }
         Size::Word => {
-            let res = add_w(state, (src & 0xFFFF) as u16, (dst & 0xFFFF) as u16, update_ccr);
+            let res = add_w(
+                state,
+                (src & 0xFFFF) as u16,
+                (dst & 0xFFFF) as u16,
+                update_ccr,
+            );
             (dst & !0xFFFF) | (res as u32)
         }
         Size::Long => add_l(state, src, dst, update_ccr),
@@ -128,7 +133,12 @@ pub fn execute_sub(state: &mut CpuState, src: u32, dst: u32, size: Size, update_
             (dst & !0xFF) | (res as u32)
         }
         Size::Word => {
-            let res = sub_w(state, (src & 0xFFFF) as u16, (dst & 0xFFFF) as u16, update_ccr);
+            let res = sub_w(
+                state,
+                (src & 0xFFFF) as u16,
+                (dst & 0xFFFF) as u16,
+                update_ccr,
+            );
             (dst & !0xFFFF) | (res as u32)
         }
         Size::Long => sub_l(state, src, dst, update_ccr),
@@ -311,4 +321,3 @@ pub fn execute_tst(state: &mut CpuState, val: u32, size: Size) {
     state.set_v(false);
     state.set_c(false);
 }
-

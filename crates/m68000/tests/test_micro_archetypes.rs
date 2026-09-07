@@ -44,7 +44,10 @@ fn test_archetype1_nop_4_clocks() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.instruction_clocks, 4, "NOP must take exactly 4 CPU clocks (2 CCKs)");
+    assert_eq!(
+        cpu.instruction_clocks, 4,
+        "NOP must take exactly 4 CPU clocks (2 CCKs)"
+    );
     assert_eq!(cpu.wait_cycles, 0);
     assert_eq!(cpu.state.pc, 0x001006);
 }
@@ -63,9 +66,16 @@ fn test_archetype1_move_reg_to_reg_4_clocks() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.instruction_clocks, 4, "MOVE.w Dx, Dy must take exactly 4 CPU clocks (2 CCKs)");
+    assert_eq!(
+        cpu.instruction_clocks, 4,
+        "MOVE.w Dx, Dy must take exactly 4 CPU clocks (2 CCKs)"
+    );
     assert_eq!(cpu.state.d[1], 0x0000_5678);
-    assert_eq!(cpu.state.sr & 0x1F, 0x00, "CCR: N=0, Z=0, V=0, C=0 for positive non-zero");
+    assert_eq!(
+        cpu.state.sr & 0x1F,
+        0x00,
+        "CCR: N=0, Z=0, V=0, C=0 for positive non-zero"
+    );
 }
 
 #[test]
@@ -84,7 +94,10 @@ fn test_archetype2_move_mem_read_8_clocks() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.instruction_clocks, 8, "MOVE.w (Ax), Dy must take exactly 8 CPU clocks (4 CCKs)");
+    assert_eq!(
+        cpu.instruction_clocks, 8,
+        "MOVE.w (Ax), Dy must take exactly 8 CPU clocks (4 CCKs)"
+    );
     assert_eq!(cpu.state.d[0] & 0xFFFF, 0xCAFE);
     assert_eq!(cpu.wait_cycles, 0);
 }
@@ -155,7 +168,10 @@ fn test_archetype3_move_mem_write_8_clocks() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.instruction_clocks, 8, "MOVE.w Dx, (Ay) must take exactly 8 CPU clocks (4 CCKs)");
+    assert_eq!(
+        cpu.instruction_clocks, 8,
+        "MOVE.w Dx, (Ay) must take exactly 8 CPU clocks (4 CCKs)"
+    );
     assert_eq!(bus.read_word_debug(0x003000), 0xBEEF);
 }
 
@@ -223,7 +239,10 @@ fn test_archetype4_rmw_add_12_clocks() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.instruction_clocks, 12, "ADD.w Dx, (Ay) RMW must take exactly 12 CPU clocks (6 CCKs)");
+    assert_eq!(
+        cpu.instruction_clocks, 12,
+        "ADD.w Dx, (Ay) RMW must take exactly 12 CPU clocks (6 CCKs)"
+    );
     assert_eq!(bus.read_word_debug(0x004000), 0x0035);
 }
 
@@ -241,8 +260,14 @@ fn test_archetype5_bcc_untaken_8_clocks() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.instruction_clocks, 8, "Bcc.s untaken must take exactly 8 CPU clocks (4 CCKs)");
-    assert_eq!(cpu.state.pc, 0x001006, "PC should fall through sequentially to next instruction");
+    assert_eq!(
+        cpu.instruction_clocks, 8,
+        "Bcc.s untaken must take exactly 8 CPU clocks (4 CCKs)"
+    );
+    assert_eq!(
+        cpu.state.pc, 0x001006,
+        "PC should fall through sequentially to next instruction"
+    );
 }
 
 #[test]
@@ -258,7 +283,10 @@ fn test_archetype5_bcc_taken_10_clocks() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.instruction_clocks, 10, "Bcc.s taken / BRA.s must take exactly 10 CPU clocks (5 CCKs)");
+    assert_eq!(
+        cpu.instruction_clocks, 10,
+        "Bcc.s taken / BRA.s must take exactly 10 CPU clocks (5 CCKs)"
+    );
     assert_eq!(cpu.state.ir, 0x4E71, "Target opcode must be loaded into IR");
     assert_eq!(cpu.state.pc, 0x00100A, "PC must be primed at target + 4");
 }
@@ -277,13 +305,23 @@ fn test_archetype6_pea_12_clocks() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.instruction_clocks, 12, "PEA (An) must take exactly 12 CPU clocks (6 CCKs)");
-    assert_eq!(cpu.state.a7(), 0x005FFC, "Stack pointer must decrement by 4");
+    assert_eq!(
+        cpu.instruction_clocks, 12,
+        "PEA (An) must take exactly 12 CPU clocks (6 CCKs)"
+    );
+    assert_eq!(
+        cpu.state.a7(),
+        0x005FFC,
+        "Stack pointer must decrement by 4"
+    );
 
     let hi = bus.read_word_debug(0x005FFC);
     let lo = bus.read_word_debug(0x005FFE);
     let pushed = ((hi as u32) << 16) | (lo as u32);
-    assert_eq!(pushed, 0x1234_5678, "Full 32-bit address must be pushed to stack");
+    assert_eq!(
+        pushed, 0x1234_5678,
+        "Full 32-bit address must be pushed to stack"
+    );
 }
 
 #[test]
@@ -303,13 +341,26 @@ fn test_archetype6_jsr_16_clocks() {
 
     let res = cpu.step_instruction(&mut bus);
     assert_eq!(res, StepResult::InstructionCompleted);
-    assert_eq!(cpu.instruction_clocks, 16, "JSR (An) must take exactly 16 CPU clocks (8 CCKs)");
-    assert_eq!(cpu.state.a7(), 0x005FFC, "Stack pointer must decrement by 4 for return address");
+    assert_eq!(
+        cpu.instruction_clocks, 16,
+        "JSR (An) must take exactly 16 CPU clocks (8 CCKs)"
+    );
+    assert_eq!(
+        cpu.state.a7(),
+        0x005FFC,
+        "Stack pointer must decrement by 4 for return address"
+    );
 
     let hi = bus.read_word_debug(0x005FFC);
     let lo = bus.read_word_debug(0x005FFE);
     let return_pc = ((hi as u32) << 16) | (lo as u32);
-    assert_eq!(return_pc, 0x001002, "Return PC must point to next sequential instruction");
-    assert_eq!(cpu.state.ir, 0x4E71, "Subroutine first opcode must be loaded into IR");
+    assert_eq!(
+        return_pc, 0x001002,
+        "Return PC must point to next sequential instruction"
+    );
+    assert_eq!(
+        cpu.state.ir, 0x4E71,
+        "Subroutine first opcode must be loaded into IR"
+    );
     assert_eq!(cpu.state.pc, 0x002004, "PC must be primed at target + 4");
 }

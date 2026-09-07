@@ -34,10 +34,10 @@ Analyze all modified and added files using `git diff`:
 3. **Wrapping Math**: Check ALU operations and cycle additions for wrapping arithmetic (`wrapping_add`, `wrapping_sub`).
 4. **File Sizes**: Ensure no file exceeds 800 lines (excluding `dispatch_table.rs`).
 5. **Host CPU Performance & Readability**:
-   - Verify branch-minimization: hot loops favor flattened dispatch instead of nested `match`/`if` cascades ("kod może być rozległy").
+   - Verify branch-minimization: hot loops favor flattened dispatch instead of nested `match`/`if` cascades ("code may be expansive").
    - Verify zero-allocations in hot execution paths (no `Vec`, `Box`, `format!`, dynamic boxed iterators).
    - Endianness Bypass: bitwise operations (`AND`, `OR`, `EOR`, `NOT`, `CLR`) and block copies avoid redundant byte swapping in hot loops.
-   - **Readability check**: Confirm code is clean, idiomatic Rust, self-documenting, and free of cryptic micro-optimizations or convoluted macro mazes.
+   - **Readability, Macro & Const-Generic Prohibition**: Confirm code is clean, idiomatic Rust, self-documenting, strictly free of user-defined macros (`macro_rules!`), and free of const-generic handler functions (`<const N: ...>`). In the era of LLMs, code generation is cheap; macros and const-generic matrices break code navigation and add unnecessary cognitive complexity.
 6. **Inlining Rules**:
    - Small accessors & cross-crate helpers: `#[inline]`.
    - CCR condition code flags & bit calculations: `#[inline(always)]`.
@@ -66,7 +66,7 @@ Provide the audit report using the following standard template:
 - [ ] **Architecture Test Suite:** `cargo test -p test_runner --test test_architecture_rules` passed.
 - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
 - [ ] **Host CPU Performance & Sympathy:** Flattened dispatch (branch-minimization), zero heap allocations in hot path, endianness bypass on bitwise ops.
-- [ ] **Readability Without Compromise:** Clean idiomatic Rust, zero cryptic hacks or convoluted macro mazes.
+- [ ] **Readability, Zero Macros & No Const-Generic Handlers:** Clean idiomatic Rust, zero cryptic hacks, zero custom macros (`macro_rules!`), and concrete handlers without const generics.
 - [ ] **WASM Core Purity:** Zero OS calls (`Instant`, `thread`, `fs`) in core emulation crates.
 - [ ] **Decoupled SaveState:** Subsystem state derives `Serialize`/`Deserialize`, zero circular references (`Rc<RefCell>`).
 - [ ] **Anti-Hack & Spec Integrity:** Zero ad-hoc test workarounds; hardware specifications followed strictly.

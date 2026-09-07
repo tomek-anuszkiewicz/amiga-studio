@@ -19,37 +19,57 @@ fn print_usage() {
 fn print_summary(results_dir: &Path) {
     let summary_file = results_dir.join("summary.json");
     if !summary_file.exists() {
-        eprintln!("No test results found at {:?}. Run tests first using 'cargo test -p test_runner'.", summary_file);
+        eprintln!(
+            "No test results found at {:?}. Run tests first using 'cargo test -p test_runner'.",
+            summary_file
+        );
         return;
     }
 
     let file = File::open(&summary_file).expect("Failed to open summary.json");
-    let summary: GlobalTestSummary = serde_json::from_reader(BufReader::new(file)).expect("Failed to parse summary.json");
+    let summary: GlobalTestSummary =
+        serde_json::from_reader(BufReader::new(file)).expect("Failed to parse summary.json");
 
     println!("\n=========================================================================================");
     println!("📊 M68000 SINGLESTEPTEST COVERAGE SUMMARY");
-    println!("=========================================================================================");
+    println!(
+        "========================================================================================="
+    );
     println!("Suites Tested:    {}", summary.total_suites);
     println!("Total Executed:   {}", summary.total_executed);
     println!("Total Passed:     {}", summary.total_passed);
     println!("Total Failed:     {}", summary.total_failed);
-    println!("Overall Pass Rate: {:.2}%\n", summary.overall_pass_rate_percent);
+    println!(
+        "Overall Pass Rate: {:.2}%\n",
+        summary.overall_pass_rate_percent
+    );
 
-    println!("{:<32} {:>10} {:>10} {:>10} {:>12}", "Suite Name", "Executed", "Passed", "Failed", "Pass Rate");
+    println!(
+        "{:<32} {:>10} {:>10} {:>10} {:>12}",
+        "Suite Name", "Executed", "Passed", "Failed", "Pass Rate"
+    );
     println!("{}", "-".repeat(89));
 
     for (name, stats) in &summary.suites {
         let status_indicator = if stats.failed == 0 { "✅" } else { "❌" };
         println!(
             "{:<30} {} {:>10} {:>10} {:>10} {:>11.1}%",
-            name, status_indicator, stats.total, stats.passed, stats.failed, stats.pass_rate_percent
+            name,
+            status_indicator,
+            stats.total,
+            stats.passed,
+            stats.failed,
+            stats.pass_rate_percent
         );
         if !stats.active_failures.is_empty() {
             for failure in stats.active_failures.iter().take(3) {
                 println!("    ↳ Failed: \"{}\"", failure);
             }
             if stats.active_failures.len() > 3 {
-                println!("    ↳ ... and {} more failures", stats.active_failures.len() - 3);
+                println!(
+                    "    ↳ ... and {} more failures",
+                    stats.active_failures.len() - 3
+                );
             }
         }
     }
@@ -68,7 +88,9 @@ fn print_diff(results_dir: &Path) {
 
     println!("\n=========================================================================================");
     println!("🔍 REGRESSION & DIFFERENTIAL REPORT (Latest Run vs Previous Run)");
-    println!("=========================================================================================");
+    println!(
+        "========================================================================================="
+    );
 
     let mut total_regressions = 0;
     let mut total_improvements = 0;
@@ -119,7 +141,10 @@ fn print_diff(results_dir: &Path) {
                     total_regressions += 1;
                 }
                 for imp in &improvements {
-                    println!("  🟢 IMPROVEMENT: \"{}\" previously FAILED, now PASSED", imp);
+                    println!(
+                        "  🟢 IMPROVEMENT: \"{}\" previously FAILED, now PASSED",
+                        imp
+                    );
                     total_improvements += 1;
                 }
             }
@@ -129,7 +154,10 @@ fn print_diff(results_dir: &Path) {
     if total_regressions == 0 && total_improvements == 0 {
         println!("No status changes detected between runs. All test outcomes remain identical.");
     } else {
-        println!("\nDifferential Summary: {} regressions, {} improvements.", total_regressions, total_improvements);
+        println!(
+            "\nDifferential Summary: {} regressions, {} improvements.",
+            total_regressions, total_improvements
+        );
     }
     println!("=========================================================================================\n");
 }

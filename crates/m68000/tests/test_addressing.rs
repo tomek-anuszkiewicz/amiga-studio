@@ -16,7 +16,9 @@ fn test_addressing_modes_and_a7_byte_quirk() {
 
     // -(A0) with Byte size decrements by 1
     let ea_a0_predec = AddressingMode::Predecrement(0);
-    let addr = ea_a0_predec.resolve_address(&mut state, Size::Byte).unwrap();
+    let addr = ea_a0_predec
+        .resolve_address(&mut state, Size::Byte)
+        .unwrap();
     assert_eq!(addr, 0x001000);
     assert_eq!(state.a[0], 0x001000);
 
@@ -28,7 +30,9 @@ fn test_addressing_modes_and_a7_byte_quirk() {
 
     // -(A7) with Byte size MUST adjust by 2!
     let ea_sp_predec = AddressingMode::Predecrement(7);
-    let addr = ea_sp_predec.resolve_address(&mut state, Size::Byte).unwrap();
+    let addr = ea_sp_predec
+        .resolve_address(&mut state, Size::Byte)
+        .unwrap();
     assert_eq!(addr, 0x002000);
     assert_eq!(state.a7(), 0x002000);
 }

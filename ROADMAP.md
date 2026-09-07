@@ -46,21 +46,12 @@ This document outlines the phased development plan, hardware milestones, verific
 > - **CCK Sub-Cycle Bus Interface & 2-Phase State Machine:** 2-phase Color Clock protocol (CCK1 address/arbitration, CCK2 data commit/_DTACK), structured `BusCycle` with UDS/LDS strobes, `CpuMicroState` machine, and cycle-exact Chip RAM DMA wait-state stalling in `MemoryBus` and `Cpu`.
 > - **Micro-Step Instruction Decomposition (6 Archetypes PoC):** Cycle-exact sub-cycle micro-step engine decomposing all 6 representative instruction archetypes: Internal ALU (`NOP`, `MOVE.w Dx, Dy` - 4 clocks / 2 CCKs), Memory Read (`MOVE.w (Ax), Dy` - 8 clocks / 4 CCKs), Memory Write (`MOVE.w Dx, (Ay)` - 8 clocks / 4 CCKs), Read-Modify-Write Class 0 (`ADD.w Dx, (Ay)` - 12 clocks / 6 CCKs), Branching (`Bcc.s` / `BRA.s` - untaken 8 clocks / taken 10 clocks), and Stack Push/Call (`PEA (An)` - 12 clocks / 6 CCKs, `JSR (An)` - 16 clocks / 8 CCKs). Validated with 100% green unit tests and synthetic CCK1/CCK2 DMA contention stalls.
 > - **Cycle Length, Bus Transaction & DMA Contention Harness:** Cycle length verification (`VerifyMode::StateAndCycles` / `Full`), zero-allocation bus transaction recording in `m68000::Cpu` and matching in `crates/test_runner` (`transactions.rs`) against Tom Harte silicon and MAME logs (read/write/TAS, 24-bit address, size, data, FC lines, strobes). Synthetic Agnus DMA contention runner (`dma_harness.rs`) verifying State Invariance and Cycle Invariance under single-cycle and burst stalls. Validated 100% green on `NOP` and `PEA (An)`.
+> - **Linearized 13 ALU Instructions (Step 1 Batch 1):** Full cycle-exact Color Clock migration of 13 arithmetic/comparison instructions (`ADD`, `ADDA`, `ADDI`, `ADDQ`, `SUB`, `SUBA`, `SUBI`, `SUBQ`, `CMP`, `CMPA`, `CMPI`, `CMPM`, `TST`) with compile-time flattened dispatch (`linear_arithmetic.rs`, `linear_compare.rs`, `linear_ea.rs`), passing 100% green across MAME and Tom Harte SingleStepTests.
+> - **Linearized Logic & Bit Instructions (Step 1 Batch 2):** Full cycle-exact Color Clock migration of bitwise logic (`AND`, `OR`, `EOR`, `NOT`, `ANDI`, `ORI`, `EORI`) and bit manipulation (`BTST`, `BSET`, `BCLR`, `BCHG`) instructions with compile-time flattened dispatch (`linear_logic.rs`, `linear_bits.rs`, `linear_ea.rs`), passing 100% green across MAME and Tom Harte SingleStepTests.
+> - **Linearized Shift & Rotate Instructions (Step 1 Batch 3):** Full cycle-exact Color Clock migration of all Group 0xE shift and rotate instructions (`ASL`, `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR`) across register ($6/8 + 2n$ clocks) and memory (Word size, count = 1, Class 0 RMW writeback, 12–16 clocks) forms with compile-time flattened dispatch (`linear_shifts.rs`), passing 100% green across all 24 suites in SingleStepTests.
+> - **Linearized All 52 Baseline Instructions (Step 1 Complete - Batches 1 to 5):** Full cycle-exact Color Clock migration of all 52 baseline instructions: Batch 1 (ALU & Immediate: 13 instructions), Batch 2 (Bitwise Logic & Bit Ops: 11 instructions), Batch 3 (Shifts & Rotates: 8 instructions), Batch 4 (Data Movement: 12,288 opcodes across 5 instructions), and Batch 5 (Extended Arithmetic & Control Flow: 9 instructions: `ADDX`, `SUBX`, `BRA`, `Bcc`, `JMP`, `JSR`, `RTS`, `TRAP`, `NOP`). Complete compile-time static dispatch tables (`ADDX_SUBX_REG_TABLE`, `ADDX_SUBX_MEM_TABLE`, `BCC_TABLE`, `JMP_TABLE`, `JSR_TABLE`, `MOVE_REG_TABLE`, `MOVE_MEM_TABLE`, etc.), total elimination of legacy monolithic interpreters and cascading branches in hot paths, and 100% green pass rate across SingleStepTests (all 77 suites in `test_singlestep`).
 
-### Step 1: Systematic Migration & Linearization of Existing 52 Instructions to CCK Engine
-- **Flat, Branchless Linear Execution per Opcode (Rule 2.6 Mechanical Sympathy):**
-  - Eliminate cascaded runtime branching (`match opcode`, `match ea_mode`, `match size`, dynamic EA resolution) in the hot execution path.
-  - Implement unrolled, linear macro-generated handlers where operand size, source/destination addressing modes, and register indices are compile-time constants.
-  - Each handler maps 1:1 with an entry in the 65,536-entry direct dispatch table and executes a straight, deterministic sequence of CCK bus cycles and micro-steps.
-- **Structured Migration Batches:**
-  - *Batch 1 (Simple ALU & Immediate):* `ADD`, `ADDA`, `ADDI`, `ADDQ`, `SUB`, `SUBA`, `SUBI`, `SUBQ`, `CMP`, `CMPA`, `CMPI`, `CMPM`, `TST`.
-  - *Batch 2 (Bitwise Logic & Bit Ops):* `AND`, `OR`, `BTST`, `BSET`, `BCLR`, `BCHG`.
-  - *Batch 3 (Shifts & Rotates):* `ASL`, `ASR`, `LSL`, `LSR` (Dynamic micro-step loops: 6/8 base clocks + 2 clocks per bit shifted).
-  - *Batch 4 (Data Movement):* `MOVE.b/w/l`, `MOVEA.w/l`.
-  - *Batch 5 (Extended Arithmetic & Control Flow):* `ADDX`, `SUBX`, `BRA`, `Bcc`, `JMP`, `JSR`, `RTS`, `TRAP`, `NOP`.
-- **Milestone Gate:** All 52 migrated instructions pass 100% green in SingleStepTests with both state match AND exact cycle count (`test.length`) with zero runtime branching in the hot execution path.
-
-### Step 2: In-Memory Mutations & Dynamic DMA Contention Stress Testing
+### Step 1: In-Memory Mutations & Dynamic DMA Contention Stress Testing
 - **Address Space Remapping Mutations:**
   - Execute SingleStepTest suites with programmatic address remapping mutations on the linearized 52 instructions (per [CPU SingleStepTests.md](Obsidian/Amiga/Design/CPU%20SingleStepTests.md#8-in-code-test-mutation-strategy-chipfast-ram--dma-contention)):
     - `ForceChipRam`: Offset code, operands, and stack into Chip RAM (`$000000-$07FFFF`) to test contention and Gary bus limits.
@@ -74,43 +65,43 @@ This document outlines the phased development plan, hardware milestones, verific
   - Verify bus arbitration invariants: CPU properly pauses instruction phase on `MemoryBusResult::Blocked`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
 - **Milestone Gate:** Linearized 52 instructions maintain 100% state invariance and cycle invariance across Chip RAM, Fast RAM, Slow RAM, and under single-cycle and burst DMA contention.
 
-### Step 3: Implementation of Remaining Complex & Multi-Cycle Instructions
+### Step 2: Implementation of Remaining Complex & Multi-Cycle Instructions
 - **Implement Directly as Linear Handlers in CCK Engine:**
   - *Batch 6 (Multi-Register Moves):* `MOVEM` (looping bus cycles, predecrement/postincrement register ordering, interrupt sensitivity).
   - *Batch 7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
-  - *Batch 8 (BCD & Math Extensions):* `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `NOT`, `EXT`.
+  - *Batch 8 (BCD & Math Extensions):* `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `EXT`. (Note: `NOT` migrated in Batch 2).
   - *Batch 9 (Looping & Conditional Setting):* `DBcc`, `Scc`.
   - *Batch 10 (Stack & Frame Control):* `LINK`, `UNLK`, `PEA`, `LEA`, `EXG`, `SWAP`, `CHK`.
   - *Batch 11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
 - **100% SingleStepTest Pass Rate Target:** Complete all 127 MAME suites and 125 Tom Harte suites with both register/memory match and cycle/bus-exact match.
 
-### Step 4: Custom Chipsets (Agnus, Denise, Paula, CIAs)
-- **Step 4.1: Minimal Machine Main Loop (`A500::step_cck`) & Subsystem Orchestration:**
+### Step 3: Custom Chipsets (Agnus, Denise, Paula, CIAs)
+- **Step 3.1: Minimal Machine Main Loop (`A500::step_cck`) & Subsystem Orchestration:**
   - Create the top-level machine struct (`A500`) owning all primary subsystems without circular references: `cpu`, `memory_bus`, `cycle_counter`, `agnus`, `denise`, `paula`, `cia_a`, `cia_b`.
   - Multi-level stepping interfaces: `step_cck(cck: u64)`, `step_instruction()`, `step_cycles(n)`, `step_frame()`.
   - Strict lockstep Color Clock stepping: clock beam counters, advance DMA slots, clock CIAs, drive CPU CCK1/CCK2 bus phases against `MemoryBus`.
   - Central interrupt priority arbitration pipeline: sample Paula (Levels 1, 3, 4, 5), CIA-A (Level 2), and CIA-B (Level 6), calculate highest unmasked level, and drive `cpu.set_ipl()`.
-- **Step 4.2: Machine-Wide Reset Sequencing (`reset_cold` & `reset_warm`):**
+- **Step 3.2: Machine-Wide Reset Sequencing (`reset_cold` & `reset_warm`):**
   - Physical `_RESET` line propagation across all chips.
   - Boot overlay engagement (`map_kickstart_to_low_memory` in `MemoryBus`).
   - *Cold Reset:* Zero physical RAM buffers (`$00`), reset chip registers to power-on defaults (`DMACON = $0000`, `INTENA/INTREQ = $0000`, CIA latches cleared), initialize CPU `SR = $2700`, load initial `SSP`/`PC` from `$000000`/`$000004` (Kickstart ROM), prime prefetch queue (`IR`, `IRC`).
   - *Warm Reset:* Preserve RAM contents intact (ensuring Kickstart memory checksum and resident module discovery pass), re-engage `_OVL`, assert chip reset lines, reload initial vectors.
   - Hardware keyboard reset line: wire `Ctrl-Amiga-Amiga` reset trigger line to main machine reset flow.
-- **Step 4.3: Delayed Signal & Register Mutation Propagation Pipeline:**
+- **Step 3.3: Delayed Signal & Register Mutation Propagation Pipeline:**
   - *Physical Circuit Simulation:* Register reads return the currently latched active state **immediately** ("Read is NOW"). Register writes, strobes, and register mutations (e.g. `DMACON`, `BPLCON0`, `COLORxx`, `INTENA`, `COPJMP1`, `BLTSIZE`, CIA timer latches) do not take instantaneous cross-chip effect; they are staged and propagate after $K$ Color Clock phases / CCK cycles before altering the active execution path.
   - *Zero-Allocation Hot Path Design:* Model staged mutations using fixed-size inline pipeline latches / ring buffers (e.g. `[Option<DelayedWrite>; 4]` or fixed-capacity shift latches) embedded directly within chip structs. Zero dynamic heap allocation (`Vec`, `Box`) during CCK stepping.
   - *Save State Persistence:* The delayed mutation pipeline, staged values, and remaining cycle countdowns are fully serializable in save states (`AgnusState`, `DeniseState`, etc.), guaranteeing deterministic round-trip snapshot capture and rewind/restore even mid-propagation.
-- **Step 4.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
+- **Step 3.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
   - Implement the baseline Agnus horizontal scanline DMA slot schedule (CCK 0..3 DRAM refresh, CCK 4 disk, CCK 5..8 audio, CCK 12..27 sprites, bitplanes, and even/odd slots).
   - CPU and Blitter contention arbitration (`BLTPRI` Blitter Nasty mode).
   - Direct bus lock exposure: drive `MemoryBus::set_chip_ram_blocked(bool)` so the CPU and all custom chips observe bus contention and stall with wait states (`MemoryBusResult::Blocked`), establishing correct bus contention physics even before individual channel internal DSP/rendering logic is fully completed.
-- **Step 4.5: Decomposed Subsystem Deep Implementations:**
+- **Step 3.5: Decomposed Subsystem Deep Implementations:**
   - *Agnus:* Copper coprocessor state machine (`MOVE`, `WAIT`, `SKIP`, `CDANG` danger mode), 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer, ascending/descending modes).
   - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (`blep_tables.rs`) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.
   - *Denise:* Video pixel serializer, bitplanes (1–6), 8 hardware sprites, 32-color palette (RGB444), dual playfield, collision detection registers (`CLXDAT`, `CLXCON`).
   - *CIAs (Dual MOS 8520):* Timers A & B, TOD clock, serial shift register (SDR), parallel/control ports, E-clock synchronization.
 
-### Step 5: Presentation, Host Integration & Full Interactive Debugger GUI
+### Step 4: Presentation, Host Integration & Full Interactive Debugger GUI
 - Video rendering: Decoupled ARGB8888 frame buffer with 4:3 aspect ratio scaling.
 - Audio sink: Ring buffer decoupled from host audio playback (`cpal` / Web Audio).
 - GUI: Native and WebAssembly UI using `egui` + `wgpu`.
