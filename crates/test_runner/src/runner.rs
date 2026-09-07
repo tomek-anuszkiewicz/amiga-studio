@@ -53,6 +53,11 @@ pub fn run_single_test_detail(
         test.initial.d6,
         test.initial.d7,
     ];
+    let initial_sp = if (test.initial.sr & 0x2000) != 0 {
+        test.initial.ssp
+    } else {
+        test.initial.usp
+    };
     cpu.state.a = [
         test.initial.a0,
         test.initial.a1,
@@ -61,6 +66,7 @@ pub fn run_single_test_detail(
         test.initial.a4,
         test.initial.a5,
         test.initial.a6,
+        initial_sp,
     ];
     cpu.state.usp = test.initial.usp;
     cpu.state.ssp = test.initial.ssp;
@@ -77,6 +83,7 @@ pub fn run_single_test_detail(
 
     // Execute instruction
     let _ = cpu.step_instruction(&mut bus);
+    cpu.state.sync_stack_pointers();
 
     // Verify Data Registers
     let expected_d = [

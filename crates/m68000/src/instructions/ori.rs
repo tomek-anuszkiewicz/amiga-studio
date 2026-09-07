@@ -191,7 +191,8 @@ pub fn op_ori_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         return StepResult::InstructionCompleted;
     }
     let imm = cpu.consume_extension_word(bus);
-    cpu.state.sr |= imm;
+    let new_sr = cpu.state.sr | imm;
+    cpu.state.set_sr(new_sr);
     cpu.retire_instruction(bus);
     StepResult::InstructionCompleted
 }

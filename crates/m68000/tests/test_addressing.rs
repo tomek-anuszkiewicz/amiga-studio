@@ -6,7 +6,7 @@ use memory_bus::MemoryBus;
 fn test_addressing_modes_and_a7_byte_quirk() {
     let mut state = CpuState::default();
     state.a[0] = 0x001000;
-    state.set_a7(0x002000); // SP
+    state.write_a(7, 0x002000); // SP
 
     // (A0)+ with Byte size increments by 1
     let ea_a0_byte = AddressingMode::Postincrement(0);
@@ -26,7 +26,7 @@ fn test_addressing_modes_and_a7_byte_quirk() {
     let ea_sp_byte = AddressingMode::Postincrement(7);
     let addr = ea_sp_byte.resolve_address(&mut state, Size::Byte).unwrap();
     assert_eq!(addr, 0x002000);
-    assert_eq!(state.a7(), 0x002002);
+    assert_eq!(state.read_a(7), 0x002002);
 
     // -(A7) with Byte size MUST adjust by 2!
     let ea_sp_predec = AddressingMode::Predecrement(7);
@@ -34,7 +34,7 @@ fn test_addressing_modes_and_a7_byte_quirk() {
         .resolve_address(&mut state, Size::Byte)
         .unwrap();
     assert_eq!(addr, 0x002000);
-    assert_eq!(state.a7(), 0x002000);
+    assert_eq!(state.read_a(7), 0x002000);
 }
 
 #[test]

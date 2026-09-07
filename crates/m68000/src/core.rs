@@ -77,6 +77,7 @@ impl Cpu {
         let ssp_hi = bus.read_word_debug(0x000000);
         let ssp_lo = bus.read_word_debug(0x000002);
         self.state.ssp = ((ssp_hi as u32) << 16) | (ssp_lo as u32);
+        self.state.a[7] = self.state.ssp;
 
         // Fetch initial PC from $000004
         let pc_hi = bus.read_word_debug(0x000004);

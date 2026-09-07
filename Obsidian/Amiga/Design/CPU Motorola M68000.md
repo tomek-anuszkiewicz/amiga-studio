@@ -21,13 +21,13 @@ pub struct CpuState {
     /// Data Registers D0-D7 (32-bit each)
     pub d: [u32; 8],
 
-    /// Address Registers A0-A6 (32-bit each)
-    pub a: [u32; 7],
+    /// Address Registers A0-A7 (32-bit each). A7 holds the currently active stack pointer.
+    pub a: [u32; 8],
 
-    /// User Stack Pointer (active A7 when Supervisor bit S = 0)
+    /// User Stack Pointer (stored A7 when Supervisor bit S = 0)
     pub usp: u32,
 
-    /// Supervisor Stack Pointer (active A7 when Supervisor bit S = 1)
+    /// Supervisor Stack Pointer (stored A7 when Supervisor bit S = 1)
     pub ssp: u32,
 
     /// Program Counter (24-bit addressing on MC68000)
@@ -62,16 +62,42 @@ pub struct CpuState {
 }
 
 impl CpuState {
-    /// Returns the currently active stack pointer (A7) based on the Supervisor flag
-    #[inline]
-    pub fn a7(&self) -> u32 {
-        if (self.sr & 0x2000) != 0 { self.ssp } else { self.usp }
+    /// Read address register by index (0-7 returns A0-A7) branchlessly
+    #[inline(always)]
+    pub fn read_a(&self, idx: usize) -> u32 {
+        self.a[idx]
     }
 
-    /// Sets the currently active stack pointer (A7) based on the Supervisor flag
+    /// Write address register by index (0-7 writes A0-A7) branchlessly
+    #[inline(always)]
+    pub fn write_a(&mut self, idx: usize, val: u32) {
+        self.a[idx] = val;
+    }
+
+    /// Sets supervisor mode, swapping active A7 with stored USP/SSP if privilege changes
     #[inline]
-    pub fn set_a7(&mut self, val: u32) {
-        if (self.sr & 0x2000) != 0 { self.ssp = val; } else { self.usp = val; }
+    pub fn set_supervisor(&mut self, supervisor: bool) {
+        let is_super = (self.sr & 0x2000) != 0;
+        if is_super == supervisor { return; }
+        if supervisor {
+            self.sr |= 0x2000;
+            self.usp = self.a[7];
+            self.a[7] = self.ssp;
+        } else {
+            self.sr &= !0x2000;
+            self.ssp = self.a[7];
+            self.a[7] = self.usp;
+        }
+    }
+
+    /// Flushes the active A7 into ssp (if supervisor) or usp (if user)
+    #[inline]
+    pub fn sync_stack_pointers(&mut self) {
+        if (self.sr & 0x2000) != 0 {
+            self.ssp = self.a[7];
+        } else {
+            self.usp = self.a[7];
+        }
     }
 }
 ```

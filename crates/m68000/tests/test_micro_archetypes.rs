@@ -20,7 +20,7 @@ fn setup_test_machine(base_pc: u32) -> (Cpu, MemoryBus) {
 
     let mut cpu = Cpu::new();
     // Default stack pointer to 0x008000
-    cpu.state.set_a7(0x008000);
+    cpu.state.write_a(7, 0x008000);
     cpu.state.pc = base_pc;
     (cpu, bus)
 }
@@ -300,7 +300,7 @@ fn test_archetype6_pea_12_clocks() {
     bus.write_word_debug(0x001004, 0x4E71);
 
     cpu.state.write_a(0, 0x1234_5678);
-    cpu.state.set_a7(0x006000);
+    cpu.state.write_a(7, 0x006000);
     prime_prefetch(&mut cpu, &mut bus);
 
     let res = cpu.step_instruction(&mut bus);
@@ -310,7 +310,7 @@ fn test_archetype6_pea_12_clocks() {
         "PEA (An) must take exactly 12 CPU clocks (6 CCKs)"
     );
     assert_eq!(
-        cpu.state.a7(),
+        cpu.state.read_a(7),
         0x005FFC,
         "Stack pointer must decrement by 4"
     );
@@ -336,7 +336,7 @@ fn test_archetype6_jsr_16_clocks() {
     bus.write_word_debug(0x002002, 0x4E75); // RTS
 
     cpu.state.write_a(0, 0x002000);
-    cpu.state.set_a7(0x006000);
+    cpu.state.write_a(7, 0x006000);
     prime_prefetch(&mut cpu, &mut bus);
 
     let res = cpu.step_instruction(&mut bus);
@@ -346,7 +346,7 @@ fn test_archetype6_jsr_16_clocks() {
         "JSR (An) must take exactly 16 CPU clocks (8 CCKs)"
     );
     assert_eq!(
-        cpu.state.a7(),
+        cpu.state.read_a(7),
         0x005FFC,
         "Stack pointer must decrement by 4 for return address"
     );

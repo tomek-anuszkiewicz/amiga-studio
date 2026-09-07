@@ -32,7 +32,7 @@ pub fn op_rts(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 
     match cpu.state.micro.micro_step {
         0 => {
-            let sp = cpu.state.a7();
+            let sp = cpu.state.read_a(7);
             if (sp & 1) != 0 {
                 return trigger_address_error(cpu, sp, true, false, bus);
             }
@@ -42,14 +42,15 @@ pub fn op_rts(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         1 => {
             let hi = (cpu.state.micro.last_read as u32) << 16;
             cpu.state.micro.scratch[0] = hi;
-            let sp = cpu.state.a7().wrapping_add(2);
+            let sp = cpu.state.read_a(7).wrapping_add(2);
             cpu.initiate_bus_cycle(BusCycle::new_read(sp, BusAccessSize::Word, fc_d));
             StepResult::StepCompleted
         }
         2 => {
             let lo = cpu.state.micro.last_read as u32;
             let target = cpu.state.micro.scratch[0] | lo;
-            cpu.state.set_a7(cpu.state.a7().wrapping_add(4));
+            let sp = cpu.state.read_a(7).wrapping_add(4);
+            cpu.state.write_a(7, sp);
             if (target & 1) != 0 {
                 return trigger_address_error(cpu, target, true, true, bus);
             }

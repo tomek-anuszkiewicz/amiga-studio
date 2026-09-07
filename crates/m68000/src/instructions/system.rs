@@ -1,6 +1,6 @@
 //! M68000 System and Exception Processing (NOP, TRAP, Address Error)
 
-use crate::state::{CpuState, SR_S, SR_T};
+use crate::state::{CpuState, SR_T};
 use memory_bus::MemoryBus;
 
 pub const VECTOR_RESET_SSP: u32 = 0x000000;
@@ -26,18 +26,18 @@ pub fn push_standard_exception(
 ) {
     let old_sr = state.sr;
     // Switch to supervisor mode, clear trace
-    state.sr |= SR_S;
+    state.set_supervisor(true);
     state.sr &= !SR_T;
 
     // Push PC (high word, low word)
-    let sp = state.ssp.wrapping_sub(4);
-    state.ssp = sp;
+    let sp = state.read_a(7).wrapping_sub(4);
+    state.write_a(7, sp);
     bus.write_word_debug(sp, (return_pc >> 16) as u16);
     bus.write_word_debug(sp.wrapping_add(2), (return_pc & 0xFFFF) as u16);
 
     // Push SR
-    let sp = state.ssp.wrapping_sub(2);
-    state.ssp = sp;
+    let sp = state.read_a(7).wrapping_sub(2);
+    state.write_a(7, sp);
     bus.write_word_debug(sp, old_sr);
 
     // Load new PC from vector
@@ -59,7 +59,7 @@ pub fn push_address_error_exception(
     let ir = state.ir;
 
     // Switch to supervisor mode, clear trace
-    state.sr |= SR_S;
+    state.set_supervisor(true);
     state.sr &= !SR_T;
 
     // Build Internal Information Word:
@@ -78,8 +78,8 @@ pub fn push_address_error_exception(
     // SP + 04: Low 16 bits of Access Address
     // SP + 02: High 16 bits of Access Address
     // SP + 00: Internal Information Word
-    let sp = state.ssp.wrapping_sub(14);
-    state.ssp = sp;
+    let sp = state.read_a(7).wrapping_sub(14);
+    state.write_a(7, sp);
 
     bus.write_word_debug(sp, info_word);
     bus.write_word_debug(sp.wrapping_add(2), (fault_addr >> 16) as u16);

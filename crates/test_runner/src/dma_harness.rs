@@ -56,6 +56,7 @@ pub fn run_dma_contention_sweep(
             break;
         }
     }
+    golden_cpu.state.sync_stack_pointers();
     let base_clocks = golden_cpu.instruction_clocks;
     let golden_state = golden_cpu.state.clone();
 
@@ -91,6 +92,7 @@ pub fn run_dma_contention_sweep(
                 break;
             }
         }
+        cpu.state.sync_stack_pointers();
 
         // Verify Invariant 1: Cycle Invariance
         let expected_clocks = base_clocks + (2 * cpu.wait_cycles);
@@ -236,6 +238,7 @@ pub fn run_dma_burst_contention(
             break;
         }
     }
+    cpu.state.sync_stack_pointers();
 
     // Assert Cycle Invariance
     let expected_clocks = base_clocks + (2 * cpu.wait_cycles);
@@ -337,6 +340,11 @@ fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
         test.initial.d6,
         test.initial.d7,
     ];
+    let initial_sp = if (test.initial.sr & 0x2000) != 0 {
+        test.initial.ssp
+    } else {
+        test.initial.usp
+    };
     cpu.state.a = [
         test.initial.a0,
         test.initial.a1,
@@ -345,6 +353,7 @@ fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
         test.initial.a4,
         test.initial.a5,
         test.initial.a6,
+        initial_sp,
     ];
     cpu.state.usp = test.initial.usp;
     cpu.state.ssp = test.initial.ssp;

@@ -24,7 +24,7 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             let return_pc = base_pc;
             let old_sr = cpu.state.sr;
             // Switch to supervisor mode (S=1, T=0)
-            cpu.state.sr |= 0x2000;
+            cpu.state.set_supervisor(true);
             cpu.state.sr &= !0x8000;
             cpu.state.micro.scratch[0] = return_pc;
             cpu.state.micro.scratch[1] = old_sr as u32;
@@ -33,7 +33,7 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         }
         1 => {
             // Write return PC low word to SP - 2
-            let sp = cpu.state.ssp;
+            let sp = cpu.state.read_a(7);
             let lo = (cpu.state.micro.scratch[0] & 0xFFFF) as u16;
             cpu.initiate_bus_cycle(BusCycle::new_write(
                 sp.wrapping_sub(2),
@@ -45,7 +45,7 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         }
         2 => {
             // Write old SR to SP - 6
-            let sp = cpu.state.ssp;
+            let sp = cpu.state.read_a(7);
             let sr = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
             cpu.initiate_bus_cycle(BusCycle::new_write(
                 sp.wrapping_sub(6),
@@ -56,10 +56,10 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             StepResult::StepCompleted
         }
         3 => {
-            // Write return PC high word to SP - 4 and update ssp
-            let sp = cpu.state.ssp;
+            // Write return PC high word to SP - 4 and update SP
+            let sp = cpu.state.read_a(7);
             let hi = ((cpu.state.micro.scratch[0] >> 16) & 0xFFFF) as u16;
-            cpu.state.ssp = sp.wrapping_sub(6);
+            cpu.state.write_a(7, sp.wrapping_sub(6));
             cpu.initiate_bus_cycle(BusCycle::new_write(
                 sp.wrapping_sub(4),
                 hi,

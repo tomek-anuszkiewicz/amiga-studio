@@ -18,13 +18,13 @@ pub struct CpuState {
     /// Data Registers D0-D7 (32-bit each)
     pub d: [u32; 8],
 
-    /// Address Registers A0-A6 (32-bit each)
-    pub a: [u32; 7],
+    /// Address Registers A0-A7 (32-bit each). A7 holds the active stack pointer (USP or SSP).
+    pub a: [u32; 8],
 
-    /// User Stack Pointer (active A7 when Supervisor bit S = 0)
+    /// User Stack Pointer (stored A7 when Supervisor bit S = 0)
     pub usp: u32,
 
-    /// Supervisor Stack Pointer (active A7 when Supervisor bit S = 1)
+    /// Supervisor Stack Pointer (stored A7 when Supervisor bit S = 1)
     pub ssp: u32,
 
     /// Program Counter (24-bit physical addressing on MC68000)
@@ -64,7 +64,7 @@ impl Default for CpuState {
     fn default() -> Self {
         Self {
             d: [0; 8],
-            a: [0; 7],
+            a: [0; 8],
             usp: 0,
             ssp: 0,
             pc: 0,
@@ -82,43 +82,80 @@ impl Default for CpuState {
 }
 
 impl CpuState {
-    /// Returns the currently active stack pointer (A7) based on the Supervisor flag
-    #[inline]
-    pub fn a7(&self) -> u32 {
-        if (self.sr & SR_S) != 0 {
-            self.ssp
-        } else {
-            self.usp
-        }
-    }
-
-    /// Sets the currently active stack pointer (A7) based on the Supervisor flag
-    #[inline]
-    pub fn set_a7(&mut self, val: u32) {
-        if (self.sr & SR_S) != 0 {
-            self.ssp = val;
-        } else {
-            self.usp = val;
-        }
-    }
-
-    /// Read address register by index (0-6 returns A0-A6, 7 returns active A7)
-    #[inline]
+    /// Read address register by index (0-7 returns A0-A7)
+    #[inline(always)]
     pub fn read_a(&self, idx: usize) -> u32 {
-        if idx < 7 {
-            self.a[idx]
+        self.a[idx]
+    }
+
+    /// Write address register by index (0-7 writes A0-A7)
+    #[inline(always)]
+    pub fn write_a(&mut self, idx: usize, val: u32) {
+        self.a[idx] = val;
+    }
+
+    /// Transitions or sets supervisor mode, swapping active A7 with stored USP/SSP if privilege changes
+    #[inline]
+    pub fn set_supervisor(&mut self, supervisor: bool) {
+        let is_super = (self.sr & SR_S) != 0;
+        if is_super == supervisor {
+            return;
+        }
+        if supervisor {
+            self.sr |= SR_S;
+            self.usp = self.a[7];
+            self.a[7] = self.ssp;
         } else {
-            self.a7()
+            self.sr &= !SR_S;
+            self.ssp = self.a[7];
+            self.a[7] = self.usp;
         }
     }
 
-    /// Write address register by index (0-6 writes A0-A6, 7 writes active A7)
+    /// Updates Status Register (SR) and swaps active A7 with stored USP/SSP if the Supervisor bit changes
     #[inline]
-    pub fn write_a(&mut self, idx: usize, val: u32) {
-        if idx < 7 {
-            self.a[idx] = val;
+    pub fn set_sr(&mut self, new_sr: u16) {
+        let old_s = (self.sr & SR_S) != 0;
+        let new_s = (new_sr & SR_S) != 0;
+        self.sr = new_sr;
+        if old_s != new_s {
+            if new_s {
+                self.usp = self.a[7];
+                self.a[7] = self.ssp;
+            } else {
+                self.ssp = self.a[7];
+                self.a[7] = self.usp;
+            }
+        }
+    }
+
+    /// Flushes the live active stack pointer (`a[7]`) into `ssp` (if supervisor) or `usp` (if user)
+    #[inline]
+    pub fn sync_stack_pointers(&mut self) {
+        if (self.sr & SR_S) != 0 {
+            self.ssp = self.a[7];
         } else {
-            self.set_a7(val);
+            self.usp = self.a[7];
+        }
+    }
+
+    /// Returns the live Supervisor Stack Pointer regardless of current privilege mode
+    #[inline]
+    pub fn ssp(&self) -> u32 {
+        if (self.sr & SR_S) != 0 {
+            self.a[7]
+        } else {
+            self.ssp
+        }
+    }
+
+    /// Returns the live User Stack Pointer regardless of current privilege mode
+    #[inline]
+    pub fn usp(&self) -> u32 {
+        if (self.sr & SR_S) != 0 {
+            self.usp
+        } else {
+            self.a[7]
         }
     }
 

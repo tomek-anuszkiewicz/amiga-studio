@@ -26,8 +26,8 @@ pub fn op_pea(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             }
             1 => {
                 cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let sp = cpu.state.a7().wrapping_sub(4);
-                cpu.state.set_a7(sp);
+                let sp = cpu.state.read_a(7).wrapping_sub(4);
+                cpu.state.write_a(7, sp);
                 if (sp & 1) != 0 {
                     cpu.handle_address_error(sp, false, bus);
                     return StepResult::InstructionCompleted;
@@ -43,7 +43,7 @@ pub fn op_pea(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 return StepResult::StepCompleted;
             }
             2 => {
-                let sp_low = cpu.state.a7().wrapping_add(2);
+                let sp_low = cpu.state.read_a(7).wrapping_add(2);
                 let lo = (cpu.state.micro.scratch[0] & 0xFFFF) as u16;
                 let cycle = BusCycle::new_write(
                     sp_low,
@@ -65,8 +65,8 @@ pub fn op_pea(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     match AddressingMode::decode(mode, reg, Size::Long, pc, &mut ext_reader) {
         Ok(ea) => match ea.resolve_address_unaligned(&mut cpu.state) {
             Ok(addr) => {
-                let sp = cpu.state.a7().wrapping_sub(4);
-                cpu.state.set_a7(sp);
+                let sp = cpu.state.read_a(7).wrapping_sub(4);
+                cpu.state.write_a(7, sp);
                 if (sp & 1) != 0 {
                     cpu.handle_address_error(sp, false, bus);
                     return StepResult::InstructionCompleted;

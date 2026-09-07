@@ -73,8 +73,8 @@ pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 }
                 cpu.state.micro.scratch[0] = target;
                 cpu.state.micro.scratch[1] = return_pc;
-                let sp = cpu.state.a7().wrapping_sub(4);
-                cpu.state.set_a7(sp);
+                let sp = cpu.state.read_a(7).wrapping_sub(4);
+                cpu.state.write_a(7, sp);
                 if (sp & 1) != 0 {
                     return trigger_address_error(cpu, sp, false, false, bus);
                 }
@@ -83,13 +83,13 @@ pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             }
             2 => {
                 cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let sp = cpu.state.a7();
+                let sp = cpu.state.read_a(7);
                 let hi = ((cpu.state.micro.scratch[1] >> 16) & 0xFFFF) as u16;
                 cpu.initiate_bus_cycle(BusCycle::new_write(sp, hi, BusAccessSize::Word, fc_d));
                 StepResult::StepCompleted
             }
             3 => {
-                let sp_low = cpu.state.a7().wrapping_add(2);
+                let sp_low = cpu.state.read_a(7).wrapping_add(2);
                 let lo = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
                 cpu.initiate_bus_cycle(BusCycle::new_write(sp_low, lo, BusAccessSize::Word, fc_d));
                 StepResult::StepCompleted
@@ -116,8 +116,8 @@ pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             0 => {
                 cpu.state.micro.scratch[0] = target;
                 cpu.state.micro.scratch[1] = return_pc;
-                let sp = cpu.state.a7().wrapping_sub(4);
-                cpu.state.set_a7(sp);
+                let sp = cpu.state.read_a(7).wrapping_sub(4);
+                cpu.state.write_a(7, sp);
                 if (sp & 1) != 0 {
                     return trigger_address_error(cpu, sp, false, false, bus);
                 }
@@ -126,13 +126,13 @@ pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             }
             1 => {
                 cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let sp = cpu.state.a7();
+                let sp = cpu.state.read_a(7);
                 let hi = ((cpu.state.micro.scratch[1] >> 16) & 0xFFFF) as u16;
                 cpu.initiate_bus_cycle(BusCycle::new_write(sp, hi, BusAccessSize::Word, fc_d));
                 StepResult::StepCompleted
             }
             2 => {
-                let sp_low = cpu.state.a7().wrapping_add(2);
+                let sp_low = cpu.state.read_a(7).wrapping_add(2);
                 let lo = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
                 cpu.initiate_bus_cycle(BusCycle::new_write(sp_low, lo, BusAccessSize::Word, fc_d));
                 StepResult::StepCompleted
@@ -159,8 +159,8 @@ pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             0 => {
                 cpu.state.micro.scratch[0] = target;
                 cpu.state.micro.scratch[1] = return_pc;
-                let sp = cpu.state.a7().wrapping_sub(4);
-                cpu.state.set_a7(sp);
+                let sp = cpu.state.read_a(7).wrapping_sub(4);
+                cpu.state.write_a(7, sp);
                 if (sp & 1) != 0 {
                     return trigger_address_error(cpu, sp, false, false, bus);
                 }
@@ -174,13 +174,13 @@ pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             }
             2 => {
                 cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let sp = cpu.state.a7();
+                let sp = cpu.state.read_a(7);
                 let hi = ((cpu.state.micro.scratch[1] >> 16) & 0xFFFF) as u16;
                 cpu.initiate_bus_cycle(BusCycle::new_write(sp, hi, BusAccessSize::Word, fc_d));
                 StepResult::StepCompleted
             }
             3 => {
-                let sp_low = cpu.state.a7().wrapping_add(2);
+                let sp_low = cpu.state.read_a(7).wrapping_add(2);
                 let lo = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
                 cpu.initiate_bus_cycle(BusCycle::new_write(sp_low, lo, BusAccessSize::Word, fc_d));
                 StepResult::StepCompleted
