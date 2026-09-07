@@ -2,15 +2,16 @@
 
 ## 1. Rule Mandate
 Whenever the user communicates using a voice recording (an audio file attached to `<USER_REQUEST>` or prompt):
-- The agent **MUST ALWAYS** begin its response by displaying a clean, textual transcription of what the user said.
+- The agent **MUST ALWAYS** begin its response by displaying a clean, textual transcription of what the user said in the language they spoke (e.g. Polish).
 - The transcription should be lightly cleaned up and reformatted for readability (fixing minor colloquial stutters or punctuation while strictly preserving the user's exact meaning and intent).
+- Following the transcript echo, all responses, explanations, plans, and code must strictly be in **English** per the Language Policy.
 
 ## 2. Standard Output Format
 Present the transcription at the very top of the response using a blockquote or callout:
 
 ```markdown
-> 🎙️ **Rozpoznana treść wiadomości:**
-> _"[Przeformatowana, czytelna transkrypcja wypowiedzi użytkownika]"_
+> 🎙️ **Rozpoznana treść wiadomości / Recognized Spoken Input:**
+> _"[Przeformatowana, czytelna transkrypcja wypowiedzi użytkownika / Formatted transcript]"_
 
 ---
 ```

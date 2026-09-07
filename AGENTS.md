@@ -172,5 +172,16 @@ All agentic pair-programming and automated modifications must adhere strictly to
 - **Proactive Model Advisory:** The agent actively monitors the active model and thinking/reasoning budget from session metadata and proactively advises the user when switching between `Medium` and `High` (or Pro) is recommended:
   - **Recommend `High` / `Pro`** when entering complex architectural work, cycle-exact prefetch/pipeline modeling, diagnosing intricate `SingleStepTests` failures (e.g. CCK timing mismatches, address error frames, tricky ALU/CCR behavior), or designing multi-chip bus arbitration (Agnus/Copper/Blitter vs CPU).
   - **Recommend `Medium`** when performing repetitive opcode implementations using established recipes, mechanical refactoring (file splitting >800 lines, inlining updates), running tests, or updating documentation, to maximize interaction speed and preserve token limits.
-  - **Format:** Present recommendations as a prominent, non-blocking callout (e.g. `> 💡 **Rekomendacja modelu:** ...`) immediately under the voice transcript echo or at the very start of the response.
+  - **Format:** Present recommendations as a prominent, non-blocking callout (e.g. `> 💡 **Rekomendacja modelu / Model Recommendation:** ...`) immediately under the voice transcript echo or at the very start of the response.
+
+---
+
+## 9. Language Policy Rule (Strict English Responses, Plans, Artifacts & Code)
+
+- **Input Flexibility**: The user may submit text messages and spoken audio prompts in Polish or English.
+- **Spoken Input Echo Exception**: The mandatory spoken input echo (Rule 7) must transcribe the user's spoken words in their original spoken language (e.g., Polish) to ensure complete visibility and fidelity of speech recognition.
+- **Strict English for All Agent Outputs**:
+  - **Conversational Responses**: The agent must **always respond in English**, regardless of whether the user speaks or writes in Polish.
+  - **Artifacts & Planning Documents**: All plans (`implementation_plan.md`, `walkthrough.md`), design specifications, and architecture proposals must be authored strictly in English.
+  - **Code, Comments & Version Control**: All source code, identifiers, types, comments, docstrings, commit messages, and PR descriptions must strictly be in English.
 
