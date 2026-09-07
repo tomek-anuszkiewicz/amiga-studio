@@ -191,7 +191,7 @@ cargo test tests::cpu
 This repository is configured for autonomous pair-programming with AI agents:
 
 1. **Strict Guardrails:** All agent interactions must follow [AGENTS.md](AGENTS.md) (no panics, wrapping arithmetic, big-endian conversions, zero allocations in hot paths).
-2. **Domain Knowledge RAG:** Use the `amiga-rag` tool (`rag_search`) to query official Commodore Hardware Reference Manuals and PRMs in `Obsidian/Amiga/Reference/`. The RAG pipeline, cache (`rag_cache.json`), and FastMCP server reside in [`tools/rag/`](tools/rag/), backed by the local Qdrant vector database (`amiga` collection).
+2. **Domain Knowledge RAG:** Use the `amiga-rag` tool (`rag_search`) to query official Commodore Hardware Reference Manuals and PRMs in `Obsidian/Amiga/Reference/`. The RAG pipeline and FastMCP server reside in [`tools/rag/`](tools/rag/), backed by the local Qdrant vector database (`amiga` collection, incremental cache configured via `RAG_CACHE_FILE` in `.env`).
 3. **AST & Code Knowledge Graph:** Use `graphify` (`graphify query`, `graphify explain`) to inspect code relationships, types, and architectural hierarchies.
 4. **Instruction Implementation:** Activate the `add-m68k-instruction` skill for a step-by-step checklist (decoding, CCK micro-steps, CCR flag updates, prefetch pipeline, and test harness integration).
 5. **Test Failure Diagnosis:** Activate the `m68k-singlestep-test` skill to diagnose CCR mismatches ($X, N, Z, V, C$), prefetch queue offsets, and Address Error stack frames.

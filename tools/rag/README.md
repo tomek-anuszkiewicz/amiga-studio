@@ -8,8 +8,8 @@ This directory contains the ingestion pipeline, indexing scripts, CLI utilities,
 
 - **CLI Indexer**: `bin/amiga_rag.bat` (or `python -m rag_qdrant.cli`)
 - **FastMCP Server**: `rag_mcp_server.py` (registers `rag_search`, `rag_list_sources`, `rag_status` for AI agents)
-- **Vector Database**: Runs in Docker on `http://localhost:6333` (Collection: `amiga`)
-- **Hash Cache**: `tools/rag/rag_cache.json` (incremental indexing, only re-indexes modified files)
+- **Vector Database**: Runs in Docker on `http://localhost:6333` (Collection: `amiga`, unified sources: `amiga` and `obsidian` for general knowledge)
+- **Hash Cache**: Configured via `RAG_CACHE_FILE` in `.env`
 - **Configuration**: Loaded from `rag_qdrant/config.py` and repository `.env` (`.env`)
 
 ---
@@ -30,6 +30,15 @@ Dependencies:
 - `python-dotenv>=1.0.1`
 - `rich>=13.0.0`
 
+### Environment Configuration (`.env`)
+
+Configure your environment in `.env` (repository root):
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+RAG_CACHE_FILE=<PATH_TO_CACHE_DIR>\amiga_rag_cache.json
+```
+
 ---
 
 ## 3. CLI Usage: `amiga_rag`
@@ -44,13 +53,13 @@ You can invoke the indexer using the helper batch script:
 .\tools\rag\bin\amiga_rag.bat --list-sources
 
 # Index Amiga technical documentation in this repository (tagged as 'amiga')
-.\tools\rag\bin\amiga_rag.bat D:\Programowanie\Amiga --source amiga
+.\tools\rag\bin\amiga_rag.bat . --source amiga
 
-# Index Obsidian notes (tagged as 'obsidian')
-.\tools\rag\bin\amiga_rag.bat D:\GoogleDrive\AI\Obsidian --source obsidian
+# Index Obsidian notes (tagged as 'obsidian' for general knowledge)
+.\tools\rag\bin\amiga_rag.bat <PATH_TO_VAULT> --source obsidian
 
 # Force re-index of all files (ignores SHA256 cache)
-.\tools\rag\bin\amiga_rag.bat D:\Programowanie\Amiga --source amiga --reindex
+.\tools\rag\bin\amiga_rag.bat . --source amiga --reindex
 ```
 
 ---
@@ -63,15 +72,15 @@ It exposes 3 tools to Antigravity:
 2. `rag_list_sources()`: Returns list of active sources and document counts.
 3. `rag_status()`: Checks Qdrant vector database health and point count.
 
-The server is configured in `C:\Users\Tomek\.gemini\config\mcp_config.json`:
+The server is configured in `<USERPROFILE>/.gemini/config/mcp_config.json`:
 ```json
 {
   "mcpServers": {
     "amiga-rag": {
       "command": "python",
-      "args": ["D:\\Programowanie\\Amiga\\tools\\rag\\rag_mcp_server.py"],
+      "args": ["<repo_path>\\tools\\rag\\rag_mcp_server.py"],
       "env": {
-        "PYTHONPATH": "D:\\Programowanie\\Amiga\\tools\\rag"
+        "PYTHONPATH": "<repo_path>\\tools\\rag"
       }
     }
   }
@@ -86,7 +95,6 @@ The server is configured in `C:\Users\Tomek\.gemini\config\mcp_config.json`:
 tools/rag/
 ├── README.md                 # This documentation
 ├── requirements.txt          # Python dependencies
-├── rag_cache.json            # File hashes for incremental indexing
 ├── rag_mcp_server.py         # FastMCP server for Antigravity AI
 ├── bin/
 │   └── amiga_rag.bat         # CLI batch launcher

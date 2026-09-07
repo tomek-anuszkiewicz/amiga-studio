@@ -20,7 +20,7 @@ HELP_TEXT = """
   amiga_rag [PATH] [OPTIONS]
 
 [bold yellow]ARGUMENTS:[/bold yellow]
-  [green]PATH[/green]                   Directory to index (e.g. [bold].[/bold] for current folder, or [bold]D:\\GoogleDrive\\AI\\Obsidian[/bold])
+  [green]PATH[/green]                   Directory to index (e.g. [bold].[/bold] for current folder, or [bold]<PATH>[/bold])
 
 [bold yellow]OPTIONS:[/bold yellow]
   [green]-s, --source NAME[/green]      Tag for the indexed source (e.g. 'amiga', 'obsidian').
@@ -32,7 +32,7 @@ HELP_TEXT = """
 
 [bold yellow]EXAMPLES:[/bold yellow]
   amiga_rag . --source amiga
-  amiga_rag D:\\GoogleDrive\\AI\\Obsidian --source obsidian
+  amiga_rag <PATH_TO_VAULT> --source obsidian
   amiga_rag --list-sources
   amiga_rag --status
 """
@@ -44,7 +44,7 @@ USAGE:
   amiga_rag [PATH] [OPTIONS]
 
 ARGUMENTS:
-  PATH                   Directory to index (e.g. '.' for current folder, or D:\\GoogleDrive\\AI\\Obsidian)
+  PATH                   Directory to index (e.g. '.' for current folder, or <PATH>)
 
 OPTIONS:
   -s, --source NAME      Tag for the indexed source (e.g. 'amiga', 'obsidian').
@@ -56,7 +56,7 @@ OPTIONS:
 
 EXAMPLES:
   amiga_rag . --source amiga
-  amiga_rag D:\\GoogleDrive\\AI\\Obsidian --source obsidian
+  amiga_rag <PATH_TO_VAULT> --source obsidian
   amiga_rag --list-sources
   amiga_rag --status
 """

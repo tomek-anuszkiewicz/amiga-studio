@@ -16,8 +16,8 @@ else:
 # Qdrant settings
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "amiga")
-default_cache = Path(__file__).resolve().parents[1] / "rag_cache.json"
-CACHE_FILE = Path(os.getenv("RAG_CACHE_FILE", str(default_cache)))
+cache_path = os.getenv("RAG_CACHE_FILE", "amiga_rag_cache.json").strip('"\'')
+CACHE_FILE = Path(cache_path)
 
 # Embedding settings: 'fastembed' (local, free, 0 API quota) or 'gemini' (cloud)
 EMBEDDING_PROVIDER = os.getenv("RAG_EMBEDDING_PROVIDER", "fastembed").lower()

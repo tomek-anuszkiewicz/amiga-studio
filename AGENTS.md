@@ -121,3 +121,13 @@ All agentic pair-programming and automated modifications must adhere strictly to
 - **Mandatory Final Task:** Whenever an agent (or human developer) implements, refactors, or modifies a subsystem, you **must update the corresponding design document in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) if any architectural decision, timing model, data structure, or hardware quirk has changed or was clarified.**
 - **Crate Dependency Graph Maintenance:** Whenever crates or workspace dependencies in `Cargo.toml` (new crates, modified inter-crate dependencies, or key external dependencies) are added, altered, or removed, you **must update the Crate Dependency Mermaid Graph in [Obsidian/Amiga/Design/General Architecture.md](Obsidian/Amiga/Design/General%20Architecture.md#2-workspace-crate-architecture--dependencies)**.
 - The design documents under `Obsidian/Amiga/Design/` are living, permanent specifications and must always reflect the exact architectural reality of the implementation.
+
+---
+
+## 5. Strict Path Privacy & Workspace Isolation Rule
+
+- **Zero External Paths**: Never write, hardcode, or commit host paths pointing outside the workspace (e.g., personal folders, Google Drive, user directories, absolute disk paths) into any code, configuration, scripts, or documentation inside this repository.
+- **Privacy & Portability**: External paths leak private user environment details and break cross-machine portability.
+- **Documentation Placeholders**: In documentation, help text, or configuration templates, always use generic placeholders (e.g., `<PATH_TO_VAULT>`, `<PATH_TO_CACHE_DIR>`, `<repo_path>`).
+- **User Consultation Required**: If a situation arises where an external path seems needed or requested, you **must stop and ask the user how to solve it** (e.g. via `.env` variables, CLI arguments, or relative paths) rather than assuming, embedding, or exposing external paths.
+
