@@ -116,12 +116,19 @@ All agentic pair-programming and automated modifications must adhere strictly to
 
 ---
 
-## 4. Documentation Maintenance Rule (Definition of Done)
+## 4. Documentation Maintenance & Quality Assurance (Definition of Done)
 
 - **Mandatory Final Task:** Whenever an agent (or human developer) implements, refactors, or modifies a subsystem, you **must update the corresponding design document in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) if any architectural decision, timing model, data structure, or hardware quirk has changed or was clarified.**
 - **Roadmap Step Completion & Pruning:** Whenever an agent is 100% certain that a roadmap milestone or step in [ROADMAP.md](ROADMAP.md) has been fully implemented and verified (all tests pass 100% green), as part of that **same task/PR you must update [ROADMAP.md](ROADMAP.md)**: remove the detailed completed task from the active implementation list, update the concise completed baseline summary, and renumber/reorder remaining steps so that [ROADMAP.md](ROADMAP.md) always reflects the live, remaining plan.
 - **Design Document Pruning & Post-Implementation Cleanup:** Design specifications under [Obsidian/Amiga/Design](Obsidian/Amiga/Design) often contain tentative draft snippets, forward-looking proposals, or hypothetical code sketches written before implementation. Whenever completing a roadmap step or implementing a feature, you **must review and clean up the relevant design documents**: remove obsolete speculative code, prune superseded draft proposals, and ensure the document reflects the finalized, living architectural reality rather than pre-implementation conjectures.
 - **Crate Dependency Graph Maintenance:** Whenever crates or workspace dependencies in `Cargo.toml` (new crates, modified inter-crate dependencies, or key external dependencies) are added, altered, or removed, you **must update the Crate Dependency Mermaid Graph in [Obsidian/Amiga/Design/General Architecture.md](Obsidian/Amiga/Design/General%20Architecture.md#2-workspace-crate-architecture--dependencies)**.
+- **Automated Architecture Test Execution:** All code changes must pass the automated architectural test suite in `crates/test_runner`:
+  ```powershell
+  cargo test -p test_runner --test test_architecture_rules
+  ```
+  (enforcing file size <= 800 lines, zero runtime panics/unwraps, and path privacy).
+- **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, file size, design doc & roadmap pruning, 100% green tests).
+- **Sub-Agent Milestone Review Protocol (`/code-review`):** Before declaring a roadmap milestone complete, invoke an independent review subagent or follow the `/code-review` workflow to audit the diff with a clean context before user hand-off.
 - The design documents under `Obsidian/Amiga/Design/` are living, permanent specifications and must always reflect the exact architectural reality of the implementation.
 
 ---
