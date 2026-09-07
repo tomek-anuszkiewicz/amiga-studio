@@ -18,11 +18,16 @@ use serde::{Deserialize, Serialize};
 /// Complete register set and state for the Motorola 68000 CPU
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CpuState {
-    /// Data Registers D0-D7 (32-bit each)
-    pub d: [u32; 8],
+    /// Data Registers D0-D7 (32-bit each).
+    /// Private field to prevent direct bypass; accessed via dedicated size-specific methods:
+    /// `d_byte`, `set_d_byte`, `d_word`, `set_d_word`, `d_long`, `set_d_long`, `d_regs`, `set_d_regs`.
+    d: [u32; 8],
 
-    /// Address Registers A0-A7 (32-bit each). A7 holds the currently active stack pointer.
-    pub a: [u32; 8],
+    /// Address Registers A0-A7 (32-bit each). A7 holds the currently active stack pointer (USP or SSP).
+    /// Private field; accessed via:
+    /// `a_word`, `set_a_word` (sign-extended to 32-bit), `a_long`, `set_a_long`, `a_regs`, `set_a_regs`.
+    /// Note: Byte accessors do not exist for address registers in M68000 ISA.
+    a: [u32; 8],
 
     /// User Stack Pointer (stored A7 when Supervisor bit S = 0)
     pub usp: u32,
@@ -62,16 +67,86 @@ pub struct CpuState {
 }
 
 impl CpuState {
-    /// Read address register by index (0-7 returns A0-A7) branchlessly
+    /// Read low byte of data register (preserves upper bits 8-31)
+    #[inline(always)]
+    pub fn d_byte(&self, reg: u8) -> u8 {
+        self.d[reg as usize] as u8
+    }
+
+    /// Write low byte of data register (preserves upper bits 8-31)
+    #[inline(always)]
+    pub fn set_d_byte(&mut self, reg: u8, val: u8) {
+        let idx = reg as usize;
+        self.d[idx] = (self.d[idx] & 0xFFFF_FF00) | (val as u32);
+    }
+
+    /// Read low word of data register (preserves upper bits 16-31)
+    #[inline(always)]
+    pub fn d_word(&self, reg: u8) -> u16 {
+        self.d[reg as usize] as u16
+    }
+
+    /// Write low word of data register (preserves upper bits 16-31)
+    #[inline(always)]
+    pub fn set_d_word(&mut self, reg: u8, val: u16) {
+        let idx = reg as usize;
+        self.d[idx] = (self.d[idx] & 0xFFFF_0000) | (val as u32);
+    }
+
+    /// Read full 32-bit data register
+    #[inline(always)]
+    pub fn d_long(&self, reg: u8) -> u32 {
+        self.d[reg as usize]
+    }
+
+    /// Write full 32-bit data register
+    #[inline(always)]
+    pub fn set_d_long(&mut self, reg: u8, val: u32) {
+        self.d[reg as usize] = val;
+    }
+
+    /// Read 16-bit word from address register
+    #[inline(always)]
+    pub fn a_word(&self, reg: u8) -> u16 {
+        self.a[reg as usize] as u16
+    }
+
+    /// Write 16-bit word into address register, automatically sign-extending to 32 bits
+    #[inline(always)]
+    pub fn set_a_word(&mut self, reg: u8, val: u16) {
+        self.set_a_long(reg, (val as i16 as i32) as u32);
+    }
+
+    /// Read full 32-bit address register
+    #[inline(always)]
+    pub fn a_long(&self, reg: u8) -> u32 {
+        self.a[reg as usize]
+    }
+
+    /// Write full 32-bit address register, updating active SP bank if reg == 7
+    #[inline(always)]
+    pub fn set_a_long(&mut self, reg: u8, val: u32) {
+        let idx = reg as usize;
+        self.a[idx] = val;
+        if idx == 7 {
+            if (self.sr & 0x2000) != 0 {
+                self.ssp = val;
+            } else {
+                self.usp = val;
+            }
+        }
+    }
+
+    /// Read address register by index (0-7 returns A0-A7)
     #[inline(always)]
     pub fn read_a(&self, idx: usize) -> u32 {
         self.a[idx]
     }
 
-    /// Write address register by index (0-7 writes A0-A7) branchlessly
+    /// Write address register by index (0-7 writes A0-A7)
     #[inline(always)]
     pub fn write_a(&mut self, idx: usize, val: u32) {
-        self.a[idx] = val;
+        self.set_a_long(idx as u8, val);
     }
 
     /// Sets supervisor mode, swapping active A7 with stored USP/SSP if privilege changes

@@ -75,10 +75,10 @@ pub struct CycleCounterState {
 /// Motorola 68000 CPU core state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CpuState {
-    /// Data registers D0..D7
-    pub d: [u32; 8],
-    /// Address registers A0..A6
-    pub a: [u32; 7],
+    /// Data registers D0..D7 (private; accessed via dedicated accessors)
+    d: [u32; 8],
+    /// Address registers A0..A7 (private; accessed via dedicated accessors)
+    a: [u32; 8],
     /// User Stack Pointer (USP)
     pub usp: u32,
     /// Supervisor Stack Pointer (SSP)
