@@ -12,6 +12,7 @@ from qdrant_client.http import models
 from .config import (
     QDRANT_URL,
     COLLECTION_NAME,
+    QDRANT_TIMEOUT,
     CACHE_FILE,
     EMBEDDING_PROVIDER,
     EMBEDDING_MODEL,
@@ -24,7 +25,7 @@ from .vision import VisionAnalyzer
 
 class KnowledgeIndexer:
     def __init__(self):
-        self.client = QdrantClient(url=QDRANT_URL)
+        self.client = QdrantClient(url=QDRANT_URL, timeout=QDRANT_TIMEOUT)
         self.chunker = MarkdownChunker()
         self.cache = self._load_cache()
         self.vision = VisionAnalyzer(self.cache.setdefault("image_descriptions", {}))

@@ -16,6 +16,7 @@ else:
 # Qdrant settings
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "amiga")
+QDRANT_TIMEOUT = float(os.getenv("QDRANT_TIMEOUT", "60.0"))
 cache_path = os.getenv("RAG_CACHE_FILE", "amiga_rag_cache.json").strip('"\'')
 CACHE_FILE = Path(cache_path)
 
