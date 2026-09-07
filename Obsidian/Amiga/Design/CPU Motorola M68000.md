@@ -50,6 +50,9 @@ pub struct CpuState {
     /// Sampled Interrupt Priority Level (0..7) driven from outside
     pub ipl: u8,
 
+    /// Program Counter at the start of current instruction + 2 (used for exception stack frames)
+    pub instruction_pc: u32,
+
     /// Execution control flags
     pub stopped: bool,
     pub halted: bool,

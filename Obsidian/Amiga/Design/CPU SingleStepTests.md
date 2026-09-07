@@ -253,296 +253,97 @@ flowchart TD
 
 ---
 
-## 5. Rust Test Harness Implementation (`common.rs`)
+## 5. Rust Test Harness Implementation (`crates/test_runner`)
 
+The test harness is implemented in the dedicated workspace crate [`crates/test_runner`](../../../crates/test_runner). It executes test vectors directly against `m68000::Cpu` and a lightweight test bus (`MemoryBus::new_test()`):
+
+### 5.1 Module Structure
+- **[`schema.rs`](../../../crates/test_runner/src/schema.rs):** Strict deserialization of `SingleStepTest` and `CpuTestState` using `#[serde(deny_unknown_fields)]`.
+- **[`runner.rs`](../../../crates/test_runner/src/runner.rs):** Test execution loop, CPU prefetch priming, state comparison, and RAM byte validation:
+  - `run_single_test_detail(test, file_path, index) -> Result<(), TestFailure>`: Executes a single test case, collecting all discrepancies.
+  - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Transparently decompresses `.json.gz` (Tom Harte) or reads plain `.json` (MAME), running up to `limit` test cases.
+- **[`diagnostic.rs`](../../../crates/test_runner/src/diagnostic.rs):** Human-readable failure reporting, full CCR flag decomposition ($T, S, I, X, N, Z, V, C$), and clock/CCK cycle metrics.
+- **[`reporter.rs`](../../../crates/test_runner/src/reporter.rs):** Persistent results recording in `.test_results/`, differential regression detection, and global summary generation.
+
+### 5.2 CPU State Setup & Execution Flow
 ```rust
-use std::fs::File;
-use std::io::BufReader;
-use std::path::Path;
-use flate2::read::GzDecoder;
-use crate::m68000::cpu::Cpu;
-use crate::m68000::bus::TestMemoryBus;
+let mut bus = MemoryBus::new_test();
+bus.load_test_ram(&test.initial.ram);
 
-/// Loads and executes tests from either a plain `.json` (MAME) or `.json.gz` (Tom Harte) file.
-pub fn run_test_file<P: AsRef<Path>>(test_path: P) {
-    let tests = load_test_file(test_path);
-    for test in tests {
-        run_single_test(&test);
-    }
+let mut cpu = Cpu::new();
+cpu.state.d = [test.initial.d0, test.initial.d1, /* ... */];
+cpu.state.a = [test.initial.a0, test.initial.a1, /* ... */];
+cpu.state.usp = test.initial.usp;
+cpu.state.ssp = test.initial.ssp;
+cpu.state.sr = test.initial.sr;
+
+// Tom Harte suite initializes PC at start of instruction + 4 due to prefetch queue model
+if is_harte {
+    cpu.state.pc = test.initial.pc.wrapping_add(4);
+} else {
+    cpu.state.pc = test.initial.pc;
 }
+cpu.state.ir = (test.initial.prefetch[0] & 0xFFFF) as u16;
+cpu.state.prefetch[0] = (test.initial.prefetch[1] & 0xFFFF) as u16;
 
-/// Runs a bounded subset of tests from a file (useful for rapid TDD iterations on large suites).
-pub fn run_test_sample<P: AsRef<Path>>(test_path: P, sample_size: usize) {
-    let tests = load_test_file(test_path);
-    for test in tests.iter().take(sample_size) {
-        run_single_test(test);
-    }
-}
-
-/// Transparently deserializes either plain `.json` or `.json.gz`.
-pub fn load_test_file<P: AsRef<Path>>(test_path: P) -> Vec<SingleStepTest> {
-    let path = test_path.as_ref();
-    let file = File::open(path)
-        .unwrap_or_else(|_| panic!("Failed to open test file: {:?}", path));
-    let reader = BufReader::new(file);
-
-    if path.extension().and_then(|s| s.to_str()) == Some("gz") {
-        let gz = GzDecoder::new(reader);
-        serde_json::from_reader(gz)
-            .unwrap_or_else(|e| panic!("Failed to parse gzipped JSON {:?}: {}", path, e))
-    } else {
-        serde_json::from_reader(reader)
-            .unwrap_or_else(|e| panic!("Failed to parse JSON {:?}: {}", path, e))
-    }
-}
-
-pub fn run_single_test(test: &SingleStepTest) {
-    let mut bus = TestMemoryBus::new();
-    
-    // 1. Populate RAM
-    for ram_entry in &test.initial.ram {
-        let addr = ram_entry[0];
-        let val = ram_entry[1] as u8;
-        bus.write_byte(addr, val);
-    }
-
-    // 2. Instantiate and configure CPU
-    let mut cpu = Cpu::new();
-    cpu.set_d0(test.initial.d0);
-    cpu.set_d1(test.initial.d1);
-    cpu.set_d2(test.initial.d2);
-    cpu.set_d3(test.initial.d3);
-    cpu.set_d4(test.initial.d4);
-    cpu.set_d5(test.initial.d5);
-    cpu.set_d6(test.initial.d6);
-    cpu.set_d7(test.initial.d7);
-    
-    cpu.set_a0(test.initial.a0);
-    cpu.set_a1(test.initial.a1);
-    cpu.set_a2(test.initial.a2);
-    cpu.set_a3(test.initial.a3);
-    cpu.set_a4(test.initial.a4);
-    cpu.set_a5(test.initial.a5);
-    cpu.set_a6(test.initial.a6);
-    
-    cpu.set_usp(test.initial.usp);
-    cpu.set_ssp(test.initial.ssp);
-    cpu.set_sr(test.initial.sr);
-    cpu.set_pc(test.initial.pc);
-    cpu.set_prefetch(test.initial.prefetch[0] as u16, test.initial.prefetch[1] as u16);
-
-    // 3. Step execution
-    let mut cycles = 0;
-    while !cpu.is_instruction_finished() && cycles < (test.length * 2 + 10) {
-        cpu.step_cck(&mut bus);
-        cycles += 1;
-    }
-
-    // 4. Assert Final Registers
-    assert_eq!(cpu.d0(), test.final_state.d0, "D0 mismatch in test: {}", test.name);
-    assert_eq!(cpu.d1(), test.final_state.d1, "D1 mismatch in test: {}", test.name);
-    assert_eq!(cpu.d2(), test.final_state.d2, "D2 mismatch in test: {}", test.name);
-    assert_eq!(cpu.d3(), test.final_state.d3, "D3 mismatch in test: {}", test.name);
-    assert_eq!(cpu.d4(), test.final_state.d4, "D4 mismatch in test: {}", test.name);
-    assert_eq!(cpu.d5(), test.final_state.d5, "D5 mismatch in test: {}", test.name);
-    assert_eq!(cpu.d6(), test.final_state.d6, "D6 mismatch in test: {}", test.name);
-    assert_eq!(cpu.d7(), test.final_state.d7, "D7 mismatch in test: {}", test.name);
-
-    assert_eq!(cpu.a0(), test.final_state.a0, "A0 mismatch in test: {}", test.name);
-    assert_eq!(cpu.a1(), test.final_state.a1, "A1 mismatch in test: {}", test.name);
-    assert_eq!(cpu.a2(), test.final_state.a2, "A2 mismatch in test: {}", test.name);
-    assert_eq!(cpu.a3(), test.final_state.a3, "A3 mismatch in test: {}", test.name);
-    assert_eq!(cpu.a4(), test.final_state.a4, "A4 mismatch in test: {}", test.name);
-    assert_eq!(cpu.a5(), test.final_state.a5, "A5 mismatch in test: {}", test.name);
-    assert_eq!(cpu.a6(), test.final_state.a6, "A6 mismatch in test: {}", test.name);
-
-    assert_eq!(cpu.usp(), test.final_state.usp, "USP mismatch in test: {}", test.name);
-    assert_eq!(cpu.ssp(), test.final_state.ssp, "SSP mismatch in test: {}", test.name);
-    assert_eq!(cpu.sr(), test.final_state.sr, "SR mismatch in test: {}", test.name);
-    assert_eq!(cpu.pc(), test.final_state.pc, "PC mismatch in test: {}", test.name);
-    assert_eq!(cpu.prefetch(), [test.final_state.prefetch[0] as u16, test.final_state.prefetch[1] as u16], "Prefetch mismatch in test: {}", test.name);
-
-    // 5. Assert Final RAM
-    for ram_entry in &test.final_state.ram {
-        let addr = ram_entry[0];
-        let expected = ram_entry[1] as u8;
-        let actual = bus.read_byte(addr);
-        assert_eq!(actual, expected, "RAM mismatch at 0x{:06X} in test: {}", addr, test.name);
-    }
-}
+// Execute instruction
+let _ = cpu.step_instruction(&mut bus);
 ```
 
 ---
 
-## 6. Rust Test Structure & Organization
+## 6. Integration Test Suite Structure (`tests/test_singlestep.rs`)
 
-Each JSON file in `ref_src/SingleStepTests-m68000/v1/` has a corresponding test function or test module.
-
-### 6.1 Directory & Module Layout
-```text
-tests/
-  cpu/
-    mod.rs
-    common.rs
-
-    // Arithmetic & Logic
-    test_add_b.rs          // ADD.b.json
-    test_add_w.rs          // ADD.w.json
-    test_add_l.rs          // ADD.l.json
-    test_adda_w.rs         // ADDA.w.json
-    test_adda_l.rs         // ADDA.l.json
-    test_addx_b.rs         // ADDX.b.json
-    test_addx_w.rs         // ADDX.w.json
-    test_addx_l.rs         // ADDX.l.json
-    test_sub_b.rs          // SUB.b.json
-    test_sub_w.rs          // SUB.w.json
-    test_sub_l.rs          // SUB.l.json
-    test_mulu.rs           // MULU.json
-    test_muls.rs           // MULS.json
-    test_divu.rs           // DIVU.json
-    test_divs.rs           // DIVS.json
-    test_and_b.rs          // AND.b.json
-    test_or_b.rs           // OR.b.json
-    test_eor_b.rs          // EOR.b.json
-    test_neg_b.rs          // NEG.b.json
-    test_not_b.rs          // NOT.b.json
-    test_clr_b.rs          // CLR.b.json
-    test_tst_b.rs          // TST.b.json
-    test_cmp_b.rs          // CMP.b.json
-
-    // Shifts & Rotates
-    test_asl_b.rs          // ASL.b.json
-    test_asr_b.rs          // ASR.b.json
-    test_lsl_b.rs          // LSL.b.json
-    test_lsr_b.rs          // LSR.b.json
-    test_rol_b.rs          // ROL.b.json
-    test_ror_b.rs          // ROR.b.json
-    test_roxl_b.rs         // ROXL.b.json
-    test_roxr_b.rs         // ROXR.b.json
-
-    // Data Movement
-    test_move_b.rs         // MOVE.b.json
-    test_move_w.rs         // MOVE.w.json
-    test_move_l.rs         // MOVE.l.json
-    test_moveq.rs          // MOVE.q.json
-    test_movea_w.rs        // MOVEA.w.json
-    test_movea_l.rs        // MOVEA.l.json
-    test_movem_w.rs        // MOVEM.w.json
-    test_movem_l.rs        // MOVEM.l.json
-    test_movep_w.rs        // MOVEP.w.json
-    test_movep_l.rs        // MOVEP.l.json
-    test_lea.rs            // LEA.json
-    test_pea.rs            // PEA.json
-    test_exg.rs            // EXG.json
-    test_swap.rs           // SWAP.json
-    test_ext_w.rs          // EXT.w.json
-    test_ext_l.rs          // EXT.l.json
-
-    // BCD & Bit Operations
-    test_abcd.rs           // ABCD.json
-    test_sbcd.rs           // SBCD.json
-    test_nbcd.rs           // NBCD.json
-    test_btst.rs           // BTST.json
-    test_bset.rs           // BSET.json
-    test_bclr.rs           // BCLR.json
-    test_bchg.rs           // BCHG.json
-
-    // Branch & Control Flow
-    test_bcc.rs            // Bcc.json
-    test_dbcc.rs           // DBcc.json
-    test_bsr.rs            // BSR.json
-    test_jmp.rs            // JMP.json
-    test_jsr.rs            // JSR.json
-    test_rts.rs            // RTS.json
-    test_rte.rs            // RTE.json
-    test_rtr.rs            // RTR.json
-    test_link.rs           // LINK.json
-    test_unlink.rs         // UNLINK.json
-    test_nop.rs            // NOP.json
-
-    // Status Register & System Operations
-    test_andi_to_ccr.rs    // ANDItoCCR.json
-    test_andi_to_sr.rs     // ANDItoSR.json
-    test_eori_to_ccr.rs    // EORItoCCR.json
-    test_eori_to_sr.rs     // EORItoSR.json
-    test_ori_to_ccr.rs     // ORItoCCR.json
-    test_ori_to_sr.rs      // ORItoSR.json
-    test_move_to_ccr.rs    // MOVEtoCCR.json
-    test_move_to_sr.rs     // MOVEtoSR.json
-    test_move_from_sr.rs   // MOVEfromSR.json
-    test_move_to_usp.rs    // MOVEtoUSP.json
-    test_move_from_usp.rs  // MOVEfromUSP.json
-
-    // Exceptions, Interrupts & Error Cases
-    test_illegal_linea.rs  // ILLEGAL_LINEA.json (Line 1010)
-    test_illegal_linef.rs  // ILLEGAL_LINEF.json (Line 1111)
-    test_chk.rs            // CHK.json
-    test_trap.rs           // TRAP.json
-    test_trapv.rs          // TRAPV.json
-    test_reset.rs          // RESET.json
-    test_stop.rs           // STOP.json
-```
-
-### 6.2 Example Individual Test File (`test_add_b.rs`)
-
-Tests can target both MAME and Tom Harte suites independently or as a combined verification run:
+Integration tests reside in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs). Rather than scattering tests across dozens of individual files, tests use a unified dual-suite runner function `run_dual_test`:
 
 ```rust
-use crate::tests::cpu::common::run_test_file;
+/// Helper function to execute a test against both MAME and Real 68k (Tom Harte) suites
+fn run_dual_test(name: &str, limit: usize) {
+    let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", name);
+    let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json.gz", name);
 
-#[test]
-fn test_mame_add_b() {
-    run_test_file("ref_src/SingleStepTests-m68000/v1/ADD.b.json");
-}
+    // 1. Validate against MAME suite
+    let (mame_passed, mame_failed) = run_test_file(&mame_path, Some(limit))
+        .unwrap_or_else(|err| panic!("Failed MAME test '{}': {}", mame_path, err));
+    assert_eq!(mame_failed, 0, "MAME tests failed for {}: {}/{} failed", name, mame_failed, mame_passed + mame_failed);
 
-#[test]
-fn test_harte_add_b() {
-    run_test_file("ref_src/SingleStepTests-680x0/68000/v1/ADD.b.json.gz");
-}
-```
-
-### 6.3 Example Exception Test File (`test_illegal_linea.rs`)
-
-```rust
-use crate::tests::cpu::common::run_test_file;
-
-#[test]
-fn test_illegal_linea() {
-    // Sourced from MAME suite (provides dedicated Line-A exception vector 10 verification)
-    run_test_file("ref_src/SingleStepTests-m68000/v1/ILLEGAL_LINEA.json");
+    // 2. Validate against Tom Harte (Real 68k) suite
+    let (harte_passed, harte_failed) = run_test_file(&harte_path, Some(limit))
+        .unwrap_or_else(|err| panic!("Failed Real 68k test '{}': {}", harte_path, err));
+    assert_eq!(harte_failed, 0, "Real 68k tests failed for {}: {}/{} failed", name, harte_failed, harte_passed + harte_failed);
 }
 ```
+
+Tests are grouped into cohesive categories within `test_singlestep.rs`:
+- **System & Control Flow:** `test_nop`, `test_rts`, `test_trap`, `test_bcc`, `test_jmp`, `test_jsr`
+- **Data Movement:** `test_move_b/w/l`, `test_movea_w/l`
+- **Integer Arithmetic:** `test_add_b/w/l`, `test_adda_w/l`, `test_sub_b/w/l`, `test_suba_w/l`
+- **Logic & Bit Manipulation:** `test_and_b/w/l`, `test_or_b/w/l`, `test_btst`, `test_bset`, `test_bclr`, `test_bchg`
+- **Shifts & Rotates:** `test_asl_b/w/l`, `test_asr_b/w/l`, `test_lsl_b/w/l`, `test_lsr_b/w/l`
 
 ---
 
-## 7. Running Tests
+## 7. Running Tests & CLI Commands
 
-Individual instruction suites, specific suites, or entire test runs can be executed selectively:
+Tests are executed via standard Cargo commands or through the dedicated `test_runner` CLI:
+
 ```powershell
-# Run only NOP tests (both MAME and Harte)
-cargo test tests::cpu::test_nop
+# Run all single-step integration tests
+cargo test -p test_runner
 
-# Run specific arithmetic tests (MAME suite)
-cargo test tests::cpu::test_mame_add_b
+# Run all tests for a specific opcode across both suites
+cargo test -p test_runner -- test_add_b
+cargo test -p test_runner -- test_move_w
+cargo test -p test_runner -- test_nop
 
-# Run specific arithmetic tests (Tom Harte suite)
-cargo test tests::cpu::test_harte_add_b
+# Check for regressions or improvements against previous test run
+cargo run -p test_runner -- --diff
 
-# Run all tests for ADD.b across both suites
-cargo test test_add_b
+# Display global pass/fail matrix and coverage summary
+cargo run -p test_runner -- --summary
 
-# Run exception & trap tests
-cargo test tests::cpu::test_illegal_linea
-cargo test tests::cpu::test_trap
-
-# Run all MAME single-step tests
-cargo test tests::cpu::mame
-
-# Run all Tom Harte single-step tests
-cargo test tests::cpu::harte
-
-# Run all CPU tests
-cargo test tests::cpu
+# Run a specific opcode suite directly with live diagnostic failure logs
+cargo run -p test_runner -- --suite ADD.b
 ```
 
 ---
