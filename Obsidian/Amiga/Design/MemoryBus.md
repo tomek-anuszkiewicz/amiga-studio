@@ -158,6 +158,17 @@ Implement explicit address mapping methods without using "OVL" or "overlay" in i
 - `map_kickstart_to_low_memory()`: Routes `$000000-$07FFFF` accesses to Kickstart ROM.
 - `map_chip_ram_to_low_memory()`: Restores physical Chip RAM mapping at `$000000-$07FFFF`.
 
+### Kickstart ROM Space ($F80000-$FFFFFF) & Boot Overlay Writes
+- **Physical Hardware Behavior (Gary & Mask-ROM):**
+  - The Amiga 500 Kickstart ROM (256 KB or 512 KB) is physically read-only (Mask-ROM/EPROM without a write-enable `_WE` line).
+  - When the M68000 initiates a write bus cycle (`R/_W = LOW`) targeting Kickstart ROM space (`$F80000-$FFFFFF`) or low memory during boot overlay (`$000000-$07FFFF` while `_OVL` is active):
+    - The Gary custom chip decodes the address and asserts `_DTACK` to terminate the bus transaction cleanly.
+    - Data placed on the data bus (`D0-D15`) is discarded (silent drop / no-op) by the un-writable ROM hardware.
+    - No Bus Error exception (`_BERR`) is asserted, and execution proceeds uninterrupted.
+- **Emulator Implementation:**
+  - `write_kickstart_rom`: Implemented as a direct no-op (`fn write_kickstart_rom(_bus: &mut MemoryBus, _addr: u32, _val: u8) {}`).
+  - `write_chip_ram`: When `low_memory_overlay == true` and `addr < 0x080000`, writes are safely discarded without altering underlying Chip RAM or ROM.
+
 ### DMA Arbitration Methods
 Expose methods to simulate Agnus cycle stealing:
 - `lock_chip_ram()`: Sets `chip_ram_blocked = true`.
