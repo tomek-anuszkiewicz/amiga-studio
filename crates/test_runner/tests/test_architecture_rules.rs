@@ -1,7 +1,8 @@
 //! Automated Architecture & Engineering Rules Validation Tests
 //!
 //! Enforces guidelines from AGENTS.md:
-//! 1. File size limit: <= 800 lines (with recognized exceptions).
+//! 1. Rust source file size limit: <= 800 lines in crates/*/src/ (with recognized exceptions).
+//!    Documentation (.md) has no line count limits.
 //! 2. Zero runtime panics: no `.unwrap()` / `.expect()` in core emulation crates.
 //! 3. Strict path privacy: zero hardcoded user/host paths.
 //! 4. Strict macro prohibition: zero `macro_rules!` definitions in workspace crates.
@@ -83,7 +84,7 @@ fn test_file_size_limits() {
 
     assert!(
         violations.is_empty(),
-        "Architecture Rule Violation: The following file(s) exceed the 800-line limit per AGENTS.md:\n{}",
+        "Architecture Rule Violation: The following Rust source file(s) exceed the 800-line limit per AGENTS.md:\n{}",
         violations.join("\n")
     );
 }

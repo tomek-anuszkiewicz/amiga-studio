@@ -15,7 +15,7 @@ Execute the automated architectural test suite:
 cargo test -p test_runner --test test_architecture_rules
 ```
 Ensure all 3 rules pass:
-- File size limit `<= 800` lines (excluding `dispatch_table.rs`).
+- Rust source file size limit `<= 800` lines in `crates/*/src/` (excluding `dispatch_table.rs`). Documentation files have NO line limits.
 - Zero `.unwrap()` / `.expect()` calls in core emulation crates.
 - Zero hardcoded external user/host paths.
 

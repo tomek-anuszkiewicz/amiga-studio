@@ -32,7 +32,7 @@ Analyze all modified and added files using `git diff`:
 1. **Zero Panics**: Search for `.unwrap()` or `.expect(` in `crates/*/src/`. Emulated guest execution must never crash or panic the host.
 2. **Endianness**: Verify Big-Endian multi-byte decoding (`u16::from_be_bytes`, `u32::from_be_bytes`).
 3. **Wrapping Math**: Check ALU operations and cycle additions for wrapping arithmetic (`wrapping_add`, `wrapping_sub`).
-4. **File Sizes**: Ensure no file exceeds 800 lines (excluding `dispatch_table.rs`).
+4. **Rust Source File Sizes**: Ensure no Rust source file in `crates/*/src/` exceeds 800 lines (excluding `dispatch_table.rs`). Technical documentation and specifications have NO line count limits.
 5. **Host CPU Performance & Readability**:
    - Verify branch-minimization: hot loops favor flattened dispatch instead of nested `match`/`if` cascades ("code may be expansive").
    - Verify zero-allocations in hot execution paths (no `Vec`, `Box`, `format!`, dynamic boxed iterators).
@@ -70,7 +70,7 @@ Provide the audit report using the following standard template:
 - [ ] **WASM Core Purity:** Zero OS calls (`Instant`, `thread`, `fs`) in core emulation crates.
 - [ ] **Decoupled SaveState:** Subsystem state derives `Serialize`/`Deserialize`, zero circular references (`Rc<RefCell>`).
 - [ ] **Anti-Hack & Spec Integrity:** Zero ad-hoc test workarounds; hardware specifications followed strictly.
-- [ ] **File Size & Cohesion:** All files <= 800 lines (or recognized exception).
+- [ ] **Rust File Size & Cohesion:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Technical documentation has no line limits.
 - [ ] **Inlining Strategy:** Cross-crate `#[inline]`, CCR `#[inline(always)]`, cold paths `#[inline(never)]`.
 - [ ] **Design Docs Pruning:** Living docs updated, speculative code pruned.
 - [ ] **Roadmap Discipline:** Completed steps removed from active roadmap and summarized.

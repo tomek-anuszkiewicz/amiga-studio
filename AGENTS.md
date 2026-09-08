@@ -75,13 +75,14 @@ All agentic pair-programming and automated modifications must adhere strictly to
    - **Strict Prohibition of User-Defined Macros (`macro_rules!` is Strictly Forbidden)**: Writing custom macros (`macro_rules!`) is strictly forbidden across the entire codebase. In the era of LLMs, code generation is cheap, eliminating the historical need for macro-based boilerplate reduction. Macros break IDE code navigation (Go to Definition, Find References, Call Hierarchy), obscure call sites, produce opaque compiler diagnostics, and add unnecessary cognitive complexity. All repetitive code, static dispatch tables, and handlers must be written as explicit, self-documenting Rust functions, direct calls, or compile-time `const fn` arrays.
    - **Prohibition of Const-Generic Functions with Constant Parameters (Avoid Const-Generic Matrices)**: Using generic functions where generic parameters are constants (e.g. `fn op_foo<const S: usize, const M: usize>(...)`) is forbidden for instruction handlers, decoding logic, and core execution paths. While const generics historically reduced typing for human developers by synthesizing combinatorial matrices at compile time, they obscure concrete execution paths, complicate backtraces and interactive debugging, fragment IDE code navigation, and add unnecessary cognitive overhead. In the era of LLMs, code generation is cheap. Handlers and execution logic must be authored as explicit, concrete, specialized Rust functions or direct flattened control flows rather than abstract const-generic templates.
 
-7. **Module Cohesion & File Size Guidelines**:
+7. **Module Cohesion & Rust Source File Size Guidelines (`.rs` Files Only)**:
+   - **Strict Scope: Rust Source Code Files Only (`.rs`)**: The 800-line threshold applies strictly to Rust source code files in `crates/*/src/`. Technical documentation, architectural design specifications, and reference manuals under `Obsidian/` and docs directories have **no line count limits** and should be as long, exhaustive, and detailed as necessary to serve as complete, living single-source-of-truth documents.
    - **Cohesion over Arbitrary Fragmentation**: Group closely related structs, enums, type definitions, and direct handlers in the same file when they cover the same architectural aspect (e.g. `MemoryBank`, `BankHandler`, and bank functions in `map.rs`). Avoid fragmenting tightly coupled concepts across dozens of micro-files.
-   - **Size Thresholds**:
+   - **Rust Source Size Thresholds**:
      - *< 300 lines*: Healthy baseline for single-aspect modules and state structures.
      - *300–600 lines*: Ideal sweet spot for cohesive units combining types, enums, and operational logic.
      - *600–800 lines*: Review trigger. Review for multiple responsibilities (SRP violation), independent sub-domains, or test code that should be separated into submodules.
-     - *> 800 lines*: Split mandate. Files exceeding 800 lines must be split into submodules unless they meet the criteria for a Recognized Exception.
+     - *> 800 lines*: Split mandate. Rust source files exceeding 800 lines must be split into submodules unless they meet the criteria for a Recognized Exception.
    - **Recognized Exceptions (Allowed to exceed 800 lines)**:
      - Compile-time static dispatch and lookup tables (e.g. `dispatch_table.rs` with 65,536-entry opcode decoding, BLEP sinc tables).
      - Exhaustive linear instruction decoders or atomic hardware circuit state machines where splitting obscures sequential cycle timing.
@@ -129,13 +130,13 @@ All agentic pair-programming and automated modifications must adhere strictly to
   ```powershell
   cargo test -p test_runner --test test_architecture_rules
   ```
-  (enforcing file size <= 800 lines, zero runtime panics/unwraps, and path privacy).
+  (enforcing Rust source file size <= 800 lines in `crates/*/src/`, zero runtime panics/unwraps, and path privacy).
 - **Mandatory Full SingleStepTests on M68000 Changes:** Whenever completing an implementation plan, milestone, or modifying any code inside `crates/m68000`, the agent **must execute the full, exhaustive SingleStepTests suite** without sampling limits:
   ```powershell
   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
   ```
   This validates all ~300,000 test cases across MAME and Tom Harte hardware vectors in parallel (typically completing in 12–15s). Tasks touching `crates/m68000` cannot be declared complete without running this full test pass.
-- **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, file size, design doc & roadmap pruning, 100% green tests).
+- **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, Rust source file size <= 800 lines, design doc & roadmap pruning, 100% green tests).
 - **Sub-Agent Milestone Review Protocol (`/code-review`):** Before declaring a roadmap milestone complete, invoke an independent review subagent or follow the `/code-review` workflow to audit the diff with a clean context before user hand-off.
 - The design documents under `Obsidian/Amiga/Design/` are living, permanent specifications and must always reflect the exact architectural reality of the implementation.
 
@@ -178,7 +179,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
 
 - **Proactive Model Advisory:** The agent actively monitors the active model and thinking/reasoning budget from session metadata and proactively advises the user when switching between `Medium` and `High` (or Pro) is recommended:
   - **Recommend `High` / `Pro`** when entering complex architectural work, cycle-exact prefetch/pipeline modeling, diagnosing intricate `SingleStepTests` failures (e.g. CCK timing mismatches, address error frames, tricky ALU/CCR behavior), or designing multi-chip bus arbitration (Agnus/Copper/Blitter vs CPU).
-  - **Recommend `Medium`** when performing repetitive opcode implementations using established recipes, mechanical refactoring (file splitting >800 lines, inlining updates), running tests, or updating documentation, to maximize interaction speed and preserve token limits.
+  - **Recommend `Medium`** when performing repetitive opcode implementations using established recipes, mechanical refactoring (splitting Rust source files >800 lines, inlining updates), running tests, or updating documentation, to maximize interaction speed and preserve token limits.
   - **Format:** Present recommendations as a prominent, non-blocking callout (e.g. `> 💡 **Model Recommendation:** ...`) immediately under the voice transcript echo or at the very start of the response.
 
 ---
