@@ -84,15 +84,6 @@ pub fn asl_l(state: &mut CpuState, count: u32, val: u32) -> u32 {
     v
 }
 
-#[inline]
-pub fn execute_asl(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
-    match s {
-        0 => asl_b(state, count, val as u8) as u32,
-        1 => asl_w(state, count, val as u16) as u32,
-        _ => asl_l(state, count, val),
-    }
-}
-
 // ============================================================================
 // Micro-Step ALU Callbacks
 // ============================================================================

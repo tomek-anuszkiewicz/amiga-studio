@@ -48,8 +48,7 @@ fn test_unaligned_address_error() {
     let mut bus = MemoryBus::new();
     bus.map_chip_ram_to_low_memory();
     let mut cpu = Cpu::new();
-    let res = m68000::micro::engine::trigger_address_error_step(
-        &mut cpu,
+    let res = cpu.trigger_address_error_step(
         0x001001,
         true,
         false,

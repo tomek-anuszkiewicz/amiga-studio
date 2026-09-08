@@ -232,18 +232,6 @@ impl Cpu {
         self.state.micro.initiate_bus_cycle(cycle);
     }
 
-    /// Schedules an instruction prefetch read cycle from PC
-    #[inline]
-    pub fn initiate_prefetch(&mut self) {
-        let fc = if self.state.is_supervisor() {
-            memory_bus::function_code::SUPERVISOR_PROGRAM
-        } else {
-            memory_bus::function_code::USER_PROGRAM
-        };
-        let cycle = BusCycle::new_read(self.state.pc, BusAccessSize::Word, fc);
-        self.state.micro.initiate_bus_cycle(cycle);
-    }
-
     /// Executes the CCK1 sub-phase for an in-flight bus transaction
     #[inline]
     pub fn step_active_bus_cck1(&mut self, bus: &mut MemoryBus) -> StepResult {
@@ -596,13 +584,13 @@ impl Cpu {
         self.state.micro.enable_transaction_recording(enabled);
     }
 
-    /// Returns recorded bus transactions if recording is enabled
+    /// Test & verification harness helper: returns recorded bus transactions if recording is enabled
     #[inline]
     pub fn recorded_transactions(&self) -> Option<&[crate::micro::RecordedTransaction]> {
         self.state.micro.transaction_log.as_deref()
     }
 
-    /// Clears the recorded transactions buffer
+    /// Test & verification harness helper: clears the recorded transactions buffer
     #[inline]
     pub fn clear_transactions(&mut self) {
         if let Some(ref mut log) = self.state.micro.transaction_log {

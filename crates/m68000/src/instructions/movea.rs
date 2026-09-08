@@ -266,10 +266,4 @@ pub const fn decode_movea_steps(is_long: bool, mode: u8, reg: u8) -> Option<&'st
     }
 }
 
-/// Sign-extends a word to 32 bits for MOVEA.W
-#[inline(always)]
-pub fn sign_extend_word(val: u16) -> u32 {
-    (val as i16 as i32) as u32
-}
-
 

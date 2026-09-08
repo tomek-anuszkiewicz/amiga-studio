@@ -25,15 +25,6 @@ pub fn btst_b(state: &mut CpuState, bit_num: u32, val: u8) {
     state.set_ccr_z_only(!bit_val);
 }
 
-#[inline]
-pub fn execute_btst(state: &mut CpuState, bit_num: u32, val: u32, is_register: bool) {
-    if is_register {
-        btst_l(state, bit_num, val);
-    } else {
-        btst_b(state, bit_num, (val & 0xFF) as u8);
-    }
-}
-
 // ============================================================================
 // Immediate Bit Latching Callbacks
 // ============================================================================

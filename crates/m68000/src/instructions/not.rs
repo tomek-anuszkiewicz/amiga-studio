@@ -4,7 +4,7 @@
 
 use crate::micro::common;
 use crate::micro::ea;
-use crate::micro::types::{MicroAction, MicroStep, Size};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
 
 // ============================================================================
@@ -30,20 +30,6 @@ pub fn not_l(state: &mut CpuState, d: u32) -> u32 {
     let res = !d;
     state.set_ccr_nz_clear_vc((res & 0x8000_0000) != 0, res == 0);
     res
-}
-
-pub fn execute_not(state: &mut CpuState, val: u32, size: Size) -> u32 {
-    match size {
-        Size::Byte => {
-            let res = not_b(state, (val & 0xFF) as u8);
-            (val & !0xFF) | (res as u32)
-        }
-        Size::Word => {
-            let res = not_w(state, (val & 0xFFFF) as u16);
-            (val & !0xFFFF) | (res as u32)
-        }
-        Size::Long => not_l(state, val),
-    }
 }
 
 // ============================================================================

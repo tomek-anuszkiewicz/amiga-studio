@@ -72,15 +72,6 @@ pub fn lsl_l(state: &mut CpuState, count: u32, val: u32) -> u32 {
     res
 }
 
-#[inline]
-pub fn execute_lsl(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
-    match s {
-        0 => lsl_b(state, count, val as u8) as u32,
-        1 => lsl_w(state, count, val as u16) as u32,
-        _ => lsl_l(state, count, val),
-    }
-}
-
 // ============================================================================
 // Micro-Step ALU Callbacks
 // ============================================================================

@@ -28,15 +28,6 @@ pub fn bchg_b(state: &mut CpuState, bit_num: u32, val: u8) -> u8 {
     val ^ mask
 }
 
-#[inline]
-pub fn execute_bchg(state: &mut CpuState, bit_num: u32, val: u32, is_register: bool) -> u32 {
-    if is_register {
-        bchg_l(state, bit_num, val)
-    } else {
-        bchg_b(state, bit_num, (val & 0xFF) as u8) as u32
-    }
-}
-
 // ============================================================================
 // Micro-Step ALU Callbacks
 // ============================================================================

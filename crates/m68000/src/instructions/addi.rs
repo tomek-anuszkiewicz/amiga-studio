@@ -97,10 +97,6 @@ pub fn alu_addi_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.write_buffer = res;
 }
 
-pub fn set_write_l_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.write_buffer = (state.micro.scratch[1] >> 16) & 0xFFFF;
-}
-
 // ============================================================================
 // Static Micro-Step Slices: ADDI Byte
 // ============================================================================

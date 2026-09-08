@@ -4,7 +4,7 @@
 //! Extend (X) flag is unaffected. Destination register Dn is not modified.
 
 use crate::micro::ea;
-use crate::micro::types::{MicroAction, MicroStep, Size};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
 
 // ============================================================================
@@ -36,15 +36,6 @@ pub fn cmp_l(state: &mut CpuState, s: u32, d: u32) {
     let n = (res & 0x8000_0000) != 0;
     let z = res == 0;
     state.set_ccr_nzvc(n, z, v, c);
-}
-
-/// Unified core compare function
-pub fn execute_cmp(state: &mut CpuState, src: u32, dst: u32, size: Size) {
-    match size {
-        Size::Byte => cmp_b(state, (src & 0xFF) as u8, (dst & 0xFF) as u8),
-        Size::Word => cmp_w(state, (src & 0xFFFF) as u16, (dst & 0xFFFF) as u16),
-        Size::Long => cmp_l(state, src, dst),
-    }
 }
 
 // ============================================================================

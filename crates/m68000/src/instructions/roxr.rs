@@ -75,15 +75,6 @@ pub fn roxr_l(state: &mut CpuState, count: u32, val: u32) -> u32 {
     v
 }
 
-#[inline]
-pub fn execute_roxr(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
-    match s {
-        0 => roxr_b(state, count, val as u8) as u32,
-        1 => roxr_w(state, count, val as u16) as u32,
-        _ => roxr_l(state, count, val),
-    }
-}
-
 // ============================================================================
 // Micro-Step ALU Callbacks
 // ============================================================================

@@ -5,7 +5,7 @@
 //! Extend (X) flag is unaffected. Operand is not modified.
 
 use crate::micro::ea;
-use crate::micro::types::{MicroAction, MicroStep, Size};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
 
 // ============================================================================
@@ -25,14 +25,6 @@ pub fn tst_w(state: &mut CpuState, d: u16) {
 #[inline(always)]
 pub fn tst_l(state: &mut CpuState, d: u32) {
     state.set_ccr_nz_clear_vc((d & 0x8000_0000) != 0, d == 0);
-}
-
-pub fn execute_tst(state: &mut CpuState, val: u32, size: Size) {
-    match size {
-        Size::Byte => tst_b(state, (val & 0xFF) as u8),
-        Size::Word => tst_w(state, (val & 0xFFFF) as u16),
-        Size::Long => tst_l(state, val),
-    }
 }
 
 // ============================================================================

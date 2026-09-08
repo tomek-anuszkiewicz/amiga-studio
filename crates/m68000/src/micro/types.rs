@@ -174,45 +174,6 @@ impl MicroStep {
         }
     }
 
-    /// Standard 16-bit Word read from `ea_addr`
-    #[inline(always)]
-    pub const fn bus_read_word() -> Self {
-        Self {
-            action: MicroAction::BusReadWord,
-            alu_fn: None,
-            base_clocks: 4,
-        }
-    }
-
-    /// Standard 8-bit Byte read from `ea_addr`
-    #[inline(always)]
-    pub const fn bus_read_byte() -> Self {
-        Self {
-            action: MicroAction::BusReadByte,
-            alu_fn: None,
-            base_clocks: 4,
-        }
-    }
-
-    /// Read high word of 32-bit long operand from `ea_addr`
-    #[inline(always)]
-    pub const fn bus_read_long_high() -> Self {
-        Self {
-            action: MicroAction::BusReadLongHigh,
-            alu_fn: None,
-            base_clocks: 4,
-        }
-    }
-
-    /// Read low word of 32-bit long operand from `ea_addr + 2`
-    #[inline(always)]
-    pub const fn bus_read_long_low() -> Self {
-        Self {
-            action: MicroAction::BusReadLongLow,
-            alu_fn: None,
-            base_clocks: 4,
-        }
-    }
 }
 
 /// Static descriptor mapping an opcode to its slice of MicroSteps and registers

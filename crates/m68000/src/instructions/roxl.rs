@@ -75,15 +75,6 @@ pub fn roxl_l(state: &mut CpuState, count: u32, val: u32) -> u32 {
     v
 }
 
-#[inline]
-pub fn execute_roxl(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
-    match s {
-        0 => roxl_b(state, count, val as u8) as u32,
-        1 => roxl_w(state, count, val as u16) as u32,
-        _ => roxl_l(state, count, val),
-    }
-}
-
 // ============================================================================
 // Micro-Step ALU Callbacks
 // ============================================================================

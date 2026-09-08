@@ -91,15 +91,4 @@ pub const fn decode_bcc_steps(d8: u8) -> &'static [MicroStep] {
     }
 }
 
-/// Evaluates Bcc branch condition and returns the target PC if taken (for external queries)
-#[inline]
-pub fn evaluate_bcc(state: &CpuState, cond: u8, base_pc: u32, displacement: i32) -> Option<u32> {
-    if state.eval_condition(cond) {
-        let target = base_pc.wrapping_add(displacement as u32) & 0x00FF_FFFF;
-        Some(target)
-    } else {
-        None
-    }
-}
-
 

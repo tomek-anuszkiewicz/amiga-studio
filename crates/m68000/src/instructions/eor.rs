@@ -5,7 +5,7 @@
 
 use crate::micro::common;
 use crate::micro::ea;
-use crate::micro::types::{MicroAction, MicroStep, Size};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
 
 // ============================================================================
@@ -31,20 +31,6 @@ pub fn eor_l(state: &mut CpuState, s: u32, d: u32) -> u32 {
     let res = d ^ s;
     state.set_ccr_nz_clear_vc((res & 0x8000_0000) != 0, res == 0);
     res
-}
-
-pub fn execute_eor(state: &mut CpuState, src: u32, dst: u32, size: Size) -> u32 {
-    match size {
-        Size::Byte => {
-            let res = eor_b(state, (src & 0xFF) as u8, (dst & 0xFF) as u8);
-            (dst & !0xFF) | (res as u32)
-        }
-        Size::Word => {
-            let res = eor_w(state, (src & 0xFFFF) as u16, (dst & 0xFFFF) as u16);
-            (dst & !0xFFFF) | (res as u32)
-        }
-        Size::Long => eor_l(state, src, dst),
-    }
 }
 
 // ============================================================================

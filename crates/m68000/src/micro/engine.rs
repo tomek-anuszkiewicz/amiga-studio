@@ -142,12 +142,6 @@ impl CpuMicroState {
         self.active_bus_cycle.is_some()
     }
 
-    /// Returns whether the current instruction is marked for retirement
-    #[inline(always)]
-    pub fn is_instruction_done(&self) -> bool {
-        self.retire_mode != MicroRetireMode::None
-    }
-
     /// Marks instruction to retire via standard prefetch upon completing the in-flight cycle
     #[inline(always)]
     pub fn mark_standard_prefetch_retire(&mut self) {
@@ -270,57 +264,4 @@ impl CpuMicroState {
             StepResult::StepCompleted
         }
     }
-}
-
-// ============================================================================
-// Backward-Compatible Delegation Functions (Forward to `Cpu` methods)
-// ============================================================================
-
-/// Helper to execute the CCK1 sub-phase for an in-flight bus transaction
-#[inline(always)]
-pub fn step_active_bus_cck1(cpu: &mut crate::core::Cpu, bus: &mut MemoryBus) -> StepResult {
-    cpu.step_active_bus_cck1(bus)
-}
-
-/// Triggers a cycle-exact Group 0 Address Error on unaligned word/long access
-#[inline(never)]
-pub fn trigger_address_error_step(
-    cpu: &mut crate::core::Cpu,
-    addr: u32,
-    is_read: bool,
-    is_program_space: bool,
-    bus: &mut MemoryBus,
-) -> StepResult {
-    cpu.trigger_address_error_step(addr, is_read, is_program_space, bus)
-}
-
-/// Initiates a cycle-exact bus read cycle and steps CCK1
-#[inline(always)]
-pub fn initiate_read_cycle(
-    cpu: &mut crate::core::Cpu,
-    bus: &mut MemoryBus,
-    addr: u32,
-    size: memory_bus::BusAccessSize,
-    fc: u8,
-) -> StepResult {
-    cpu.initiate_read_cycle(bus, addr, size, fc)
-}
-
-/// Initiates a cycle-exact bus write cycle and steps CCK1
-#[inline(always)]
-pub fn initiate_write_cycle(
-    cpu: &mut crate::core::Cpu,
-    bus: &mut MemoryBus,
-    addr: u32,
-    val: u16,
-    size: memory_bus::BusAccessSize,
-    fc: u8,
-) -> StepResult {
-    cpu.initiate_write_cycle(bus, addr, val, size, fc)
-}
-
-/// Executes the active instruction's micro-step sequence directly
-#[inline(always)]
-pub fn execute_micro_step(cpu: &mut crate::core::Cpu, bus: &mut MemoryBus) -> StepResult {
-    cpu.execute_micro_step(bus)
 }
