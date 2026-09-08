@@ -5,7 +5,6 @@
 //! Execution time: 34 CPU clocks (17 CCKs).
 
 use crate::core::{Cpu, StepResult};
-use crate::micro::engine::trigger_address_error_step;
 use crate::micro::types::{MicroAction, MicroStep};
 use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
 
@@ -101,7 +100,7 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             let lo = cpu.state.micro.last_read as u32;
             let target = (cpu.state.micro.scratch[0] | lo) & 0x00FF_FFFF;
             if (target & 1) != 0 {
-                return trigger_address_error_step(cpu, target, true, true, bus);
+                return cpu.trigger_address_error_step(target, true, true, bus);
             }
             cpu.state.micro.scratch[0] = target;
             cpu.initiate_bus_cycle(BusCycle::new_read(target, BusAccessSize::Word, fc_p));

@@ -5,7 +5,6 @@
 use crate::core::{Cpu, StepResult};
 use crate::micro::common;
 use crate::micro::ea;
-use crate::micro::engine::{initiate_read_cycle, initiate_write_cycle, trigger_address_error_step};
 use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
 use memory_bus::MemoryBus;
@@ -236,12 +235,12 @@ pub fn execute_movem_transfer(
         let ea = cpu.state.micro.ea_addr;
         if (ea & 1) != 0 {
             if is_predec {
-                return Some(trigger_address_error_step(cpu, ea.wrapping_sub(2), false, false, bus));
+                return Some(cpu.trigger_address_error_step(ea.wrapping_sub(2), false, false, bus));
             } else if is_postinc {
                 cpu.state.write_a(reg_ea, ea.wrapping_add(2));
-                return Some(trigger_address_error_step(cpu, ea, true, false, bus));
+                return Some(cpu.trigger_address_error_step(ea, true, false, bus));
             } else {
-                return Some(trigger_address_error_step(cpu, ea, !is_reg_to_mem, false, bus));
+                return Some(cpu.trigger_address_error_step(ea, !is_reg_to_mem, false, bus));
             }
         }
     }
@@ -314,7 +313,7 @@ pub fn execute_movem_transfer(
             } else {
                 cpu.state.micro.ea_addr.wrapping_add(2)
             };
-            return Some(initiate_read_cycle(cpu, bus, addr, memory_bus::BusAccessSize::Word, fc));
+            return Some(cpu.initiate_read_cycle(bus, addr, memory_bus::BusAccessSize::Word, fc));
         } else {
             let reg_val = movem_read_reg(&cpu.state, is_predec, bit_idx);
             let (addr, data) = if is_predec {
@@ -330,7 +329,7 @@ pub fn execute_movem_transfer(
             } else {
                 (cpu.state.micro.ea_addr.wrapping_add(2), (reg_val & 0xFFFF) as u16)
             };
-            return Some(initiate_write_cycle(cpu, bus, addr, data, memory_bus::BusAccessSize::Word, fc));
+            return Some(cpu.initiate_write_cycle(bus, addr, data, memory_bus::BusAccessSize::Word, fc));
         }
     }
 
@@ -338,7 +337,7 @@ pub fn execute_movem_transfer(
     if !is_reg_to_mem {
         let new_state = 1 | (16 << 1) | (1 << 7);
         cpu.state.micro.scratch[3] = new_state;
-        Some(initiate_read_cycle(cpu, bus, cpu.state.micro.ea_addr, memory_bus::BusAccessSize::Word, fc))
+        Some(cpu.initiate_read_cycle(bus, cpu.state.micro.ea_addr, memory_bus::BusAccessSize::Word, fc))
     } else {
         if is_predec {
             cpu.state.write_a(reg_ea, cpu.state.micro.ea_addr);
