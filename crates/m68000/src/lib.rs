@@ -23,7 +23,7 @@ pub mod state;
 
 pub use core::{Cpu, StepResult};
 pub use micro::{
-    CpuMicroState, MicroAction, MicroStep, OpcodeDescriptor, RecordedTransaction, Size,
+    CpuMicroState, MicroStep, OpcodeDescriptor, RecordedTransaction, Size, StepFn,
     OPCODE_DESCRIPTOR_TABLE,
 };
 pub use state::CpuState;

@@ -6,7 +6,8 @@
 //! Execution time: 16 to 22 CPU clocks depending on addressing mode.
 
 use crate::micro::common;
-use crate::micro::types::{MicroAction, MicroStep};
+use crate::core::Cpu;
+use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
 #[inline(always)]
@@ -65,7 +66,7 @@ pub fn alu_jsr_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 /// JSR (An): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
 pub static STEPS_JSR_AI: [MicroStep; 5] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_ai),
         base_clocks: 0,
     },
@@ -78,7 +79,7 @@ pub static STEPS_JSR_AI: [MicroStep; 5] = [
 /// JSR (d16, An): 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
 pub static STEPS_JSR_D16_AN: [MicroStep; 5] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_d16_an),
         base_clocks: 2,
     },
@@ -91,7 +92,7 @@ pub static STEPS_JSR_D16_AN: [MicroStep; 5] = [
 /// JSR (d8, An, Xn): 22 CPU clocks / 11 CCKs (2 reads, 2 writes)
 pub static STEPS_JSR_IDX_AN: [MicroStep; 5] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_idx_an),
         base_clocks: 6,
     },
@@ -104,7 +105,7 @@ pub static STEPS_JSR_IDX_AN: [MicroStep; 5] = [
 /// JSR (xxx).W: 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
 pub static STEPS_JSR_ABSW: [MicroStep; 5] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_absw),
         base_clocks: 2,
     },
@@ -117,13 +118,13 @@ pub static STEPS_JSR_ABSW: [MicroStep; 5] = [
 /// JSR (xxx).L: 20 CPU clocks / 10 CCKs (3 reads, 2 writes)
 pub static STEPS_JSR_ABSL: [MicroStep; 7] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
         base_clocks: 0,
     },
     common::FETCH_EXTENSION,
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_absl_lo),
         base_clocks: 0,
     },
@@ -136,7 +137,7 @@ pub static STEPS_JSR_ABSL: [MicroStep; 7] = [
 /// JSR (d16, PC): 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
 pub static STEPS_JSR_D16_PC: [MicroStep; 5] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_d16_pc),
         base_clocks: 2,
     },
@@ -149,7 +150,7 @@ pub static STEPS_JSR_D16_PC: [MicroStep; 5] = [
 /// JSR (d8, PC, Xn): 22 CPU clocks / 11 CCKs (2 reads, 2 writes)
 pub static STEPS_JSR_IDX_PC: [MicroStep; 5] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_idx_pc),
         base_clocks: 6,
     },

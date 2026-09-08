@@ -4,7 +4,8 @@
 //! Execution time: 10 CPU clocks (2 internal idle clocks + 2 bus prefetch cycles).
 
 use crate::micro::common;
-use crate::micro::types::{MicroAction, MicroStep};
+use crate::core::Cpu;
+use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
 #[inline(always)]
@@ -24,7 +25,7 @@ pub fn alu_bra_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 /// BRA.S (8-bit short displacement, 10 CPU clocks / 5 CCKs)
 pub static STEPS_BRA_SHORT: [MicroStep; 3] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(alu_bra_short),
         base_clocks: 2,
     },
@@ -35,7 +36,7 @@ pub static STEPS_BRA_SHORT: [MicroStep; 3] = [
 /// BRA.W (16-bit word displacement, 10 CPU clocks / 5 CCKs)
 pub static STEPS_BRA_WORD: [MicroStep; 3] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(alu_bra_word),
         base_clocks: 2,
     },

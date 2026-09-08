@@ -89,14 +89,14 @@ pub fn push_address_error_exception(
 // CCR and SR Manipulation (ORI, ANDI, EORI)
 // ============================================================================
 
-pub fn op_ori_to_ccr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+pub fn op_ori_to_ccr(cpu: &mut Cpu, bus: &mut MemoryBus) -> Option<StepResult> {
     let imm = cpu.consume_extension_word(bus) & 0x1F;
     cpu.state.sr = (cpu.state.sr & !0x1F) | ((cpu.state.sr | imm) & 0x1F);
     cpu.retire_instruction(bus);
-    StepResult::InstructionCompleted
+    Some(StepResult::InstructionCompleted)
 }
 
-pub fn op_ori_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+pub fn op_ori_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> Option<StepResult> {
     if !cpu.state.is_supervisor() {
         let ret_pc = cpu.state.instruction_pc;
         push_standard_exception(
@@ -106,23 +106,23 @@ pub fn op_ori_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             bus,
         );
         cpu.reload_pc_and_prefetch(cpu.state.pc, bus);
-        return StepResult::InstructionCompleted;
+        return Some(StepResult::InstructionCompleted);
     }
     let imm = cpu.consume_extension_word(bus);
     let new_sr = cpu.state.sr | imm;
     cpu.state.set_sr(new_sr);
     cpu.retire_instruction(bus);
-    StepResult::InstructionCompleted
+    Some(StepResult::InstructionCompleted)
 }
 
-pub fn op_andi_to_ccr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+pub fn op_andi_to_ccr(cpu: &mut Cpu, bus: &mut MemoryBus) -> Option<StepResult> {
     let imm = cpu.consume_extension_word(bus) & 0x1F;
     cpu.state.sr = (cpu.state.sr & !0x1F) | (cpu.state.sr & imm);
     cpu.retire_instruction(bus);
-    StepResult::InstructionCompleted
+    Some(StepResult::InstructionCompleted)
 }
 
-pub fn op_andi_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+pub fn op_andi_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> Option<StepResult> {
     if !cpu.state.is_supervisor() {
         let ret_pc = cpu.state.instruction_pc;
         push_standard_exception(
@@ -132,23 +132,23 @@ pub fn op_andi_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             bus,
         );
         cpu.reload_pc_and_prefetch(cpu.state.pc, bus);
-        return StepResult::InstructionCompleted;
+        return Some(StepResult::InstructionCompleted);
     }
     let imm = cpu.consume_extension_word(bus);
     let new_sr = cpu.state.sr & imm;
     cpu.state.set_sr(new_sr);
     cpu.retire_instruction(bus);
-    StepResult::InstructionCompleted
+    Some(StepResult::InstructionCompleted)
 }
 
-pub fn op_eori_to_ccr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+pub fn op_eori_to_ccr(cpu: &mut Cpu, bus: &mut MemoryBus) -> Option<StepResult> {
     let imm = cpu.consume_extension_word(bus) & 0x1F;
     cpu.state.sr = (cpu.state.sr & !0x1F) | ((cpu.state.sr ^ imm) & 0x1F);
     cpu.retire_instruction(bus);
-    StepResult::InstructionCompleted
+    Some(StepResult::InstructionCompleted)
 }
 
-pub fn op_eori_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+pub fn op_eori_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> Option<StepResult> {
     if !cpu.state.is_supervisor() {
         let ret_pc = cpu.state.instruction_pc;
         push_standard_exception(
@@ -158,12 +158,12 @@ pub fn op_eori_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             bus,
         );
         cpu.reload_pc_and_prefetch(cpu.state.pc, bus);
-        return StepResult::InstructionCompleted;
+        return Some(StepResult::InstructionCompleted);
     }
     let imm = cpu.consume_extension_word(bus);
     let new_sr = cpu.state.sr ^ imm;
     cpu.state.set_sr(new_sr);
     cpu.retire_instruction(bus);
-    StepResult::InstructionCompleted
+    Some(StepResult::InstructionCompleted)
 }
 

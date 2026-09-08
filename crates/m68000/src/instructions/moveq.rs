@@ -3,7 +3,8 @@
 //! Moves an 8-bit sign-extended immediate value into a data register.
 //! Execution time: 4 CPU clocks (2 CCKs / 1 prefetch cycle).
 
-use crate::micro::types::{MicroAction, MicroStep};
+use crate::core::Cpu;
+use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
 #[inline(always)]
@@ -17,7 +18,7 @@ pub fn alu_moveq(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 /// MOVEQ #<data>, Dn (4 CPU clocks / 2 CCKs)
 pub static STEPS_MOVEQ: [MicroStep; 1] = [MicroStep {
-    action: MicroAction::PrefetchNextOpcodeAndRetire,
+    step_fn: Cpu::step_prefetch_next_opcode_and_retire,
     alu_fn: Some(alu_moveq),
     base_clocks: 4,
 }];

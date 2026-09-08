@@ -5,7 +5,7 @@
 use crate::core::{Cpu, StepResult};
 use crate::micro::common;
 use crate::micro::ea;
-use crate::micro::types::{MicroAction, MicroStep};
+use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use memory_bus::{CckPhase, MemoryBus};
 
@@ -25,17 +25,17 @@ pub fn alu_movem_fetch_mask(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 const FETCH_MASK: MicroStep = MicroStep {
-    action: MicroAction::FetchExtension,
+    step_fn: Cpu::step_fetch_extension,
     alu_fn: Some(alu_movem_fetch_mask),
     base_clocks: 4,
 };
 const FETCH_EXT: MicroStep = MicroStep {
-    action: MicroAction::FetchExtension,
+    step_fn: Cpu::step_fetch_extension,
     alu_fn: None,
     base_clocks: 4,
 };
 const MOVEM_TRANSFER: MicroStep = MicroStep {
-    action: MicroAction::MovemTransfer,
+    step_fn: crate::instructions::movem::execute_movem_transfer,
     alu_fn: None,
     base_clocks: 0,
 };
@@ -69,7 +69,7 @@ pub static STEPS_MOVEM_PD: [MicroStep; 4] = [
 pub static STEPS_MOVEM_D16: [MicroStep; 4] = [
     FETCH_MASK,
     MicroStep {
-        action: MicroAction::FetchExtension,
+        step_fn: Cpu::step_fetch_extension,
         alu_fn: Some(ea::ea_calc_src_d16_an),
         base_clocks: 4,
     },
@@ -80,7 +80,7 @@ pub static STEPS_MOVEM_D16: [MicroStep; 4] = [
 pub static STEPS_MOVEM_IDX: [MicroStep; 5] = [
     FETCH_MASK,
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(ea::ea_calc_src_idx_an),
         base_clocks: 2,
     },
@@ -92,7 +92,7 @@ pub static STEPS_MOVEM_IDX: [MicroStep; 5] = [
 pub static STEPS_MOVEM_ABSW: [MicroStep; 4] = [
     FETCH_MASK,
     MicroStep {
-        action: MicroAction::FetchExtension,
+        step_fn: Cpu::step_fetch_extension,
         alu_fn: Some(ea::ea_calc_absw),
         base_clocks: 4,
     },
@@ -103,12 +103,12 @@ pub static STEPS_MOVEM_ABSW: [MicroStep; 4] = [
 pub static STEPS_MOVEM_ABSL: [MicroStep; 5] = [
     FETCH_MASK,
     MicroStep {
-        action: MicroAction::FetchExtension,
+        step_fn: Cpu::step_fetch_extension,
         alu_fn: Some(ea::ea_calc_absl_hi),
         base_clocks: 4,
     },
     MicroStep {
-        action: MicroAction::FetchExtension,
+        step_fn: Cpu::step_fetch_extension,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 4,
     },
@@ -119,7 +119,7 @@ pub static STEPS_MOVEM_ABSL: [MicroStep; 5] = [
 pub static STEPS_MOVEM_PCD16: [MicroStep; 4] = [
     FETCH_MASK,
     MicroStep {
-        action: MicroAction::FetchExtension,
+        step_fn: Cpu::step_fetch_extension,
         alu_fn: Some(ea::ea_calc_d16_pc),
         base_clocks: 4,
     },
@@ -130,7 +130,7 @@ pub static STEPS_MOVEM_PCD16: [MicroStep; 4] = [
 pub static STEPS_MOVEM_PCIDX: [MicroStep; 5] = [
     FETCH_MASK,
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: Some(ea::ea_calc_idx_pc),
         base_clocks: 2,
     },

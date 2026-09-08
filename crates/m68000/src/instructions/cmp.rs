@@ -4,7 +4,8 @@
 //! Extend (X) flag is unaffected. Destination register Dn is not modified.
 
 use crate::micro::ea;
-use crate::micro::types::{MicroAction, MicroStep};
+use crate::core::Cpu;
+use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
 // ============================================================================
@@ -108,182 +109,182 @@ pub fn alu_cmp_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 // Byte: <ea>, Dn
 pub static STEPS_CMP_B_DN_DN: [MicroStep; 1] = [
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_b_dn_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_b_dn_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_B_AI_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_src_ai), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: Some(ea::ea_calc_src_ai), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_B_PI_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_src_pi_b), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: Some(ea::ea_calc_src_pi_b), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_B_PD_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_src_pd_b), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: Some(ea::ea_calc_src_pd_b), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_B_D16_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_B_IDX_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_B_ABSW_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_B_ABSL_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_B_D16PC_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_B_IDXPC_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_b_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_B_IMM_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(alu_cmp_b_imm_dn), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(alu_cmp_b_imm_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: None, base_clocks: 4 },
 ];
 
 // Word: <ea>, Dn
 pub static STEPS_CMP_W_DN_DN: [MicroStep; 1] = [
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_dn_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_dn_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_AN_DN: [MicroStep; 1] = [
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_an_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_an_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_AI_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_src_ai), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::ea_calc_src_ai), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_PI_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_src_pi_w), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::ea_calc_src_pi_w), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_PD_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_src_pd_w), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::ea_calc_src_pd_w), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_D16_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_IDX_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_ABSW_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_ABSL_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_D16PC_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_IDXPC_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_w_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_W_IMM_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(alu_cmp_w_imm_dn), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(alu_cmp_w_imm_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: None, base_clocks: 4 },
 ];
 
 // Long: <ea>, Dn
 pub static STEPS_CMP_L_DN_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 2 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_dn_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: None, base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_dn_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_AN_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 2 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_an_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: None, base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_an_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_AI_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea::ea_calc_src_ai), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: Some(ea::ea_calc_src_ai), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_PI_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea::ea_calc_src_pi_l), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: Some(ea::ea_calc_src_pi_l), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_PD_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_D16_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_IDX_DN: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_ABSW_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_ABSL_DN: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_D16PC_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_IDXPC_DN: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_CMP_L_IMM_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmp_l_mem_dn), base_clocks: 4 },
 ];
 
 // ============================================================================

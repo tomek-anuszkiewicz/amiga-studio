@@ -4,13 +4,14 @@
 //! Execution time: 10 CPU clocks if taken; 8/12 CPU clocks if not taken.
 
 use crate::micro::common;
-use crate::micro::types::{MicroAction, MicroStep};
+use crate::core::Cpu;
+use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
 /// Taken branch execution steps (10 CPU clocks / 5 CCKs)
 pub static STEPS_BRANCH_TAKEN: [MicroStep; 3] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: None,
         base_clocks: 2,
     },
@@ -21,7 +22,7 @@ pub static STEPS_BRANCH_TAKEN: [MicroStep; 3] = [
 /// Untaken short branch execution steps (8 CPU clocks / 4 CCKs)
 pub static STEPS_BRANCH_NOT_TAKEN_SHORT: [MicroStep; 2] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: None,
         base_clocks: 4,
     },
@@ -31,7 +32,7 @@ pub static STEPS_BRANCH_NOT_TAKEN_SHORT: [MicroStep; 2] = [
 /// Untaken word branch execution steps (12 CPU clocks / 6 CCKs)
 pub static STEPS_BRANCH_NOT_TAKEN_WORD: [MicroStep; 3] = [
     MicroStep {
-        action: MicroAction::Alu,
+        step_fn: Cpu::step_alu,
         alu_fn: None,
         base_clocks: 4,
     },
@@ -70,14 +71,14 @@ pub fn alu_bcc_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
 /// Bcc.S condition evaluation step
 pub static STEPS_BCC_SHORT: [MicroStep; 1] = [MicroStep {
-    action: MicroAction::BranchEval,
+    step_fn: Cpu::step_branch_eval,
     alu_fn: Some(alu_bcc_short),
     base_clocks: 0,
 }];
 
 /// Bcc.W condition evaluation step
 pub static STEPS_BCC_WORD: [MicroStep; 1] = [MicroStep {
-    action: MicroAction::BranchEval,
+    step_fn: Cpu::step_branch_eval,
     alu_fn: Some(alu_bcc_word),
     base_clocks: 0,
 }];

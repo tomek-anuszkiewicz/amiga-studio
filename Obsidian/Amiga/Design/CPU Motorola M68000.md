@@ -309,11 +309,12 @@ Instruction execution is driven via a cycle-exact micro-step state machine clock
   - **`Stopped`**: CPU entered or remains in stopped state (`STOP` instruction).
   - **`Halted`**: CPU entered halted state (double bus fault / fatal reset).
 
-#### Specialized Atomic Micro-Actions (`MicroAction`)
-To eliminate nested dynamic runtime size checks in the hot execution loop, transfer size is specialized directly into atomic action variants:
-- **Operand Reads:** `BusReadByte`, `BusReadWord`, `BusReadLongHigh`, `BusReadLongLow`.
-- **Operand Writes:** `BusWriteByte` (preserves unaddressed byte in 16-bit cell), `BusWriteWord`, `BusWriteLongHigh`, `BusWriteLongLow`.
-- **Stack & Control Flow:** `BusPopStack`, `BusPushStackHigh`, `BusPushStackLow`, `BusReadTargetOpcode`, `PrefetchTargetAndRetire`, `BranchEval`.
+#### Specialized Direct Micro-Step Execution Handlers (`StepFn`)
+To eliminate nested dynamic runtime size checks and dynamic branching (`match`) in the hot execution loop, micro-step operations are specialized directly into atomic function pointers (`StepFn = fn(&mut Cpu, &mut MemoryBus) -> Option<StepResult>`):
+- **Operand Reads:** `Cpu::step_bus_read_byte`, `Cpu::step_bus_read_word`, `Cpu::step_bus_read_long_high`, `Cpu::step_bus_read_long_low`.
+- **Operand Writes:** `Cpu::step_bus_write_byte` (preserves unaddressed byte in 16-bit cell), `Cpu::step_bus_write_word`, `Cpu::step_bus_write_long_high`, `Cpu::step_bus_write_long_low`.
+- **Stack & Control Flow:** `Cpu::step_bus_pop_stack`, `Cpu::step_bus_push_stack_high`, `Cpu::step_bus_push_stack_low`, `Cpu::step_bus_read_target_opcode`, `Cpu::step_prefetch_target_and_retire`, `Cpu::step_branch_eval`.
+- **Multi-Register Block Transfers:** `crate::instructions::movem::execute_movem_transfer`.
 
 #### Pipeline & Dispatch Table Invariants
 1. **Immutable `ir` During Micro-Steps:** The 65,536-entry static descriptor table (`OPCODE_DESCRIPTOR_TABLE`) is indexed upon instruction prefetch to cache `current_steps: &'static [MicroStep]`. Intermediate multi-step operations (e.g. `JSR` or taken `Bcc`) must never overwrite `cpu.state.ir` before final retirement. Target opcodes are staged in `scratch_prefetch` or `TargetRefill { target, new_ir }`, and committed to `cpu.state.ir` only upon retirement.

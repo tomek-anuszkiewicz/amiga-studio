@@ -22,8 +22,8 @@ The architecture mirrors the physical two-level microcode design of the Motorola
    Because immediate values, displacements, and 32-bit addresses are fetched dynamically from memory during execution, **the micro-step sequence is a pure, immutable function of the 16-bit opcode word (`IR`)**. Exactly 65,536 static entries cover 100% of the instruction set.
 2. **Zero Runtime Heap Allocation**:
    The entire micro-step table is static `const` data embedded in the host binary (`.rodata`). It requires **0 bytes of dynamic heap allocation** (`Vec`, `Box`, `malloc`) during runtime.
-3. **Specialized Atomic Micro-Actions (Zero-Branch Dispatch)**:
-   Transfer size (Byte vs. Word vs. 32-bit Long decomposition) is **baked directly into the atomic `MicroAction` variant** (`BusReadByte`, `BusReadWord`, `BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, `BusWriteLongLow`). This eliminates nested `match size` branches in the hot CCK execution loop, honoring host CPU mechanical sympathy.
+3. **Specialized Atomic Micro-Step Handlers (Zero-Branch Direct Dispatch)**:
+   Transfer size (Byte vs. Word vs. 32-bit Long decomposition) is **specialized directly into atomic `StepFn` function pointers** (`Cpu::step_bus_read_byte`, `Cpu::step_bus_read_word`, `Cpu::step_bus_write_byte`, `Cpu::step_bus_write_word`, `Cpu::step_bus_write_long_high`, `Cpu::step_bus_write_long_low`). This eliminates nested `match size` branches and dynamic `match step.action` switches in the hot CCK execution loop, honoring host CPU mechanical sympathy.
 4. **Pre-Allocated CPU-Level Prefetch Array**:
    `prefetch: [u16; 2]` and `ir: u16` are fixed fields inside `CpuState` (modeling hardware registers `IRC`, `IR`, and `IRD`). Zero dynamic queues.
 5. **Parametric, Bus-Free ALU Function Pointers (`AluFn`)**:
@@ -36,7 +36,7 @@ The architecture mirrors the physical two-level microcode design of the Motorola
    - **`BusWriteWord`**: Drives both $\overline{\text{UDS}}$ and $\overline{\text{LDS}}$ simultaneously on even address boundaries.
    - **`BusWriteLongHigh` & `BusWriteLongLow`**: Decomposed into two sequential 16-bit Word bus write cycles (High Word followed by Low Word).
 8. **Two-Word Pipeline Refill for Control Flow (`JMP`, `JSR`, `RTS`, `Bcc`)**:
-   When program execution flow changes, the prefetch stream is flushed and refilled from the target address via two sequential program-space read bus cycles (`BusReadTargetOpcode` and `PrefetchTargetAndRetire`).
+   When program execution flow changes, the prefetch stream is flushed and refilled from the target address via two sequential program-space read bus cycles (`Cpu::step_bus_read_target_opcode` and `Cpu::step_prefetch_target_and_retire`).
 9. **Decoupled Internal Delay Countdown**:
    Variable-cycle operations (`DIVU`, `DIVS`, `MULU`, `MULS`, multi-bit shifts, 3-input indexed EA calculation, taken branch penalties) calculate their math instantly, compute the hardware cycle penalty, and set `cpu.state.micro.internal_clocks`. The host ticks down this counter with 3 assembly instructions, leaving the external bus completely idle for Amiga custom chips (Copper, Blitter, Denise).
 10. **Automatic Self-Modifying Code (SMC) Immunity**:
@@ -44,7 +44,7 @@ The architecture mirrors the physical two-level microcode design of the Motorola
 11. **Cached Slice Pointer Dispatch (`current_steps: &'static [MicroStep]`)**:
     Upon opcode prefetch and retirement, `state.micro.current_steps` caches the slice pointer directly from `OPCODE_DESCRIPTOR_TABLE[ir]`. All subsequent CCK ticks during the instruction index `current_steps[micro_step]` directly, completely eliminating 65,536-entry table lookups in the hot execution loop.
 12. **Dynamic Transfer Loop for Block Operations (`MOVEM`)**:
-    `MOVEM` register count (0 to 16) is dynamically driven by the 16-bit extension mask in `scratch[0]` via `MicroAction::MovemTransfer`. Each set bit performs an atomic bus cycle and advances the mask, looping with 0 heap allocation and exact cycle timing.
+    `MOVEM` register count (0 to 16) is dynamically driven by the 16-bit extension mask in `scratch[0]` via `crate::instructions::movem::execute_movem_transfer`. Each set bit performs an atomic bus cycle and advances the mask, looping with 0 heap allocation and exact cycle timing.
 13. **Cycle-Exact Hardware Exception Stacking**:
     Group 0 (Address/Bus Error) and Group 1/2 (Interrupts/Traps) exception stacking are modeled as dedicated micro-sequences (`EXCEPTION_GROUP0_STEPS`, `EXCEPTION_GROUP1_STEPS`). Stack writes and vector reads interact with `MemoryBus` and experience Chip RAM DMA wait states identical to real hardware.
 
@@ -61,23 +61,23 @@ Because all memory operands are already latched into `CpuState` (`prefetch[0]`, 
 
 ### 2.2 The `MicroStep` Descriptor (Stateless & Cache-Dense)
 
-Each micro-step is an immutable, 4-byte `Copy` struct in `.rodata`:
-- `action`: Atomic `MicroAction` variant (e.g. `BusReadWord`, `BusWriteByte`, `Alu`).
+Each micro-step is an immutable, cache-dense `Copy` struct in `.rodata`:
+- `step_fn`: Direct atomic execution function pointer (`StepFn = fn(&mut Cpu, &mut MemoryBus) -> Option<StepResult>`).
 - `alu_fn`: Optional function pointer to pure internal ALU logic (`Option<AluFn>`).
 - `base_clocks`: Base CPU clocks consumed (4 for bus cycles, 0 for instantaneous ALU / branch evaluation).
 
-Pre-decoded register indices (`reg_src`, `reg_dst`) are held once per opcode in `OpcodeDescriptor` and cached into `state.micro.reg_src` / `reg_dst`, keeping each `MicroStep` down to just 4 bytes for maximum host L1i cache density.
+Pre-decoded register indices (`reg_src`, `reg_dst`) are held once per opcode in `OpcodeDescriptor` and cached into `state.micro.reg_src` / `reg_dst`.
 
-### 2.3 Specialized Atomic Micro-Actions (`MicroAction`)
+### 2.3 Specialized Atomic Micro-Step Handlers (`StepFn`)
 
-By baking operand width directly into the atomic variant, the execution loop completely eliminates runtime size checks (`match size`):
+By baking operand width directly into specialized handler functions, the execution loop completely eliminates runtime size checks (`match size`) and dynamic action matching (`match step.action`):
 
 | Category | Primitives | Hardware Operation & Bus Semantics |
 | :--- | :--- | :--- |
-| **Operand Reads (Data Space)** | `BusReadByte`, `BusReadWord`, `BusReadLongHigh`, `BusReadLongLow` | Reads from `ea_addr` (or `ea_addr + 2`). Stalls on CCK1 if Chip RAM blocked. Latches into `last_read` / `scratch[0]`. |
-| **Operand Writes (Data Space)** | `BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, `BusWriteLongLow` | Drives data from `write_buffer` to `ea_addr`. Stalls on CCK2 if Chip RAM blocked. Even byte writes preserve low byte; odd byte writes preserve high byte. |
-| **Stack Operations (Data Space)** | `BusPopStack`, `BusPopStackHigh`, `BusPopStackLow`, `BusPushStackHigh`, `BusPushStackLow`, `BusPushStackLowAndRetire` | Stack reads and pushes over `SP` ($A_7$). Postincrements / predecrements stack pointer on even word boundaries. |
-| **Prefetch & Refill (Program Space)** | `FetchExtension`, `BusPrefetchToScratch`, `BusReadTargetOpcode`, `PrefetchTargetAndRetire`, `PrefetchNextOpcodeAndRetire` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline and manages instruction retirement. |
+| **Operand Reads (Data Space)** | `step_bus_read_byte`, `step_bus_read_word`, `step_bus_read_long_high`, `step_bus_read_long_low` | Reads from `ea_addr` (or `ea_addr + 2`). Stalls on CCK1 if Chip RAM blocked. Latches into `last_read` / `scratch[0]`. |
+| **Operand Writes (Data Space)** | `step_bus_write_byte`, `step_bus_write_word`, `step_bus_write_long_high`, `step_bus_write_long_low` | Drives data from `write_buffer` to `ea_addr`. Stalls on CCK2 if Chip RAM blocked. Even byte writes preserve low byte; odd byte writes preserve high byte. |
+| **Stack Operations (Data Space)** | `step_bus_pop_stack`, `step_bus_pop_stack_high`, `step_bus_pop_stack_low`, `step_bus_push_stack_high`, `step_bus_push_stack_low`, `step_bus_push_stack_low_and_retire` | Stack reads and pushes over `SP` ($A_7$). Postincrements / predecrements stack pointer on even word boundaries. |
+| **Prefetch & Refill (Program Space)** | `step_fetch_extension`, `step_bus_prefetch_to_scratch`, `step_bus_read_target_opcode`, `step_prefetch_target_and_retire`, `step_prefetch_next_opcode_and_retire` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline and manages instruction retirement. |
 | **RMW & Block Transfers** | `BusWriteWordAndRetire`, `BusWriteByteAndRetire`, `BusWriteLongLowAndRetire`, `BusWriteLongHighAndRetire`, `MovemTransfer` | Read-Modify-Write retirement sequences and iterative `MOVEM` multi-register bus cycles driven by mask in `scratch[0]`. |
 | **Internal & Exceptions** | `Alu`, `BranchEval`, `OriToCcr`, `OriToSr`, `AndiToCcr`, `AndiToSr`, `EoriToCcr`, `EoriToSr`, `Trap` | Instantaneous (0 CCK) internal operations, CCR/SR updates, condition evaluation, and exception vector initiation. |
 
@@ -418,7 +418,7 @@ Reg:   D0  D1  D2  D3  D4  D5  D6  D7  A0  A1  A2  A3  A4  A5  A6  A7   (Predecr
 ```
 
 #### The `MovemTransfer` Loop Mechanics:
-Because a static array cannot predict the number of registers at compile time, `MOVEM` is modeled via the atomic **`MicroAction::MovemTransfer`** sub-loop:
+Because a static array cannot predict the number of registers at compile time, `MOVEM` is modeled via the atomic **`execute_movem_transfer`** sub-loop:
 1. **Step 0 (`FetchExtension`)**: Reads the 16-bit register mask from `PC` into `state.micro.scratch[0]`, advancing `PC += 2`.
 2. **Step 1 (`Alu`)**: Resolves `ea_addr = An` (or calculates displacement/index).
 3. **Step 2 (`MovemTransfer`)**:
@@ -788,12 +788,12 @@ The table below catalogs representative micro-step sequences for each fundamenta
 | **Host Mechanical Sympathy** | Static dispatch array; flat contiguous micro-steps; zero dynamic branching in inner loops; host L1d cache residency. |
 | **Cached Slice Pointer Dispatch** | Active step slice pointer `state.micro.current_steps` cached upon opcode prefetch; eliminates 64K table lookups during instruction execution. |
 | **Zero Runtime Allocations** | Complete microcode ROM is `const` in `.rodata`; zero heap allocation during emulation loops. |
-| **Zero Cascaded Size Branches** | Transfer size specialized directly into `MicroAction` (`BusReadByte`, `BusReadWord`, `BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, `BusWriteLongLow`). |
-| **Dynamic Multi-Register Transfer** | `MOVEM` dynamic register counts (0 to 16) executed cleanly via `MicroAction::MovemTransfer` sub-loop with zero heap allocation. |
+| **Zero Cascaded Size Branches** | Transfer size specialized directly into `StepFn` handlers (`step_bus_read_byte`, `step_bus_read_word`, `step_bus_write_byte`, `step_bus_write_word`, `step_bus_write_long_high`, `step_bus_write_long_low`). |
+| **Dynamic Multi-Register Transfer** | `MOVEM` dynamic register counts (0 to 16) executed cleanly via `execute_movem_transfer` sub-loop with zero heap allocation. |
 | **Byte Write Strobe Fidelity** | Strict $\overline{\text{UDS}}$ / $\overline{\text{LDS}}$ parity driving: even writes preserve low byte, odd writes preserve high byte. Zero Address Error on odd byte. |
-| **Control Flow & Refill Fidelity** | Exact two-word Program Space pipeline refill (`BusReadTargetOpcode` + `PrefetchTargetAndRetire`) on JMP, JSR, RTS, and taken Bcc. |
+| **Control Flow & Refill Fidelity** | Exact two-word Program Space pipeline refill (`step_bus_read_target_opcode` + `step_prefetch_target_and_retire`) on JMP, JSR, RTS, and taken Bcc. |
 | **Cycle-Exact Exception Stacking** | Group 0 (7-word diagnostic frame) and Group 1/2 (3-word frame) stacking modeled as cycle-exact bus writes stalling on Chip RAM DMA. |
-| **Dynamic Branch Sequencing** | `BranchEval` micro-action dynamically selects between 10-clock taken and 8/12-clock not-taken micro-paths with zero heap allocation. |
+| **Dynamic Branch Sequencing** | `step_branch_eval` handler dynamically selects between 10-clock taken and 8/12-clock not-taken micro-paths with zero heap allocation. |
 | **32-Bit Write Decomposition** | Long writes cleanly decomposed into two atomic 16-bit bus write cycles (`BusWriteLongHigh` and `BusWriteLongLow`). |
 | **Cycle-Exact Wait States** | Stalling pauses directly on the active bus step; wait states accumulated in increments of 1 CCK (2 clocks). ALU step never re-run. |
 | **Fast-Path Non-Contended Access** | Single-comparison bypass (`addr < 0x200000`) for Fast RAM, Kickstart ROM, and Slow RAM, maximizing branch predictor efficiency. |

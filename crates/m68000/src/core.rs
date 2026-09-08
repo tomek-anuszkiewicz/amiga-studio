@@ -1,7 +1,7 @@
 //! Cycle-exact Motorola 68000 CPU Execution Core
 
 use crate::instructions::system;
-use crate::micro::types::{self, MicroAction};
+use crate::micro::types;
 use crate::state::CpuState;
 use memory_bus::{BusAccessSize, CckPhase, MemoryBus};
 
@@ -389,72 +389,8 @@ impl Cpu {
                     alu(&mut self.state, reg_src, reg_dst);
                 }
             }
-            match step.action {
-                MicroAction::Alu => {
-                    if let Some(res) = self.execute_alu_step(step) {
-                        return res;
-                    }
-                }
-                MicroAction::BranchEval => continue,
-                MicroAction::MovemTransfer => {
-                    if let Some(res) =
-                        crate::instructions::movem::execute_movem_transfer(self, bus)
-                    {
-                        return res;
-                    }
-                }
-                // --- Operand Reads (Data Space) ---
-                MicroAction::BusReadByte => return self.step_bus_read_byte(bus),
-                MicroAction::BusReadWord => return self.step_bus_read_word(bus),
-                MicroAction::BusReadLongHigh => return self.step_bus_read_long_high(bus),
-                MicroAction::BusReadLongLow => return self.step_bus_read_long_low(bus),
-
-                // --- Operand Writes (Data Space) ---
-                MicroAction::BusWriteByte => return self.step_bus_write_byte(bus),
-                MicroAction::BusWriteWord => return self.step_bus_write_word(bus),
-                MicroAction::BusWriteLongHigh => return self.step_bus_write_long_high(bus),
-                MicroAction::BusWriteLongLow => return self.step_bus_write_long_low(bus),
-                MicroAction::BusWriteWordAndRetire => {
-                    return self.step_bus_write_word_and_retire(bus);
-                }
-                MicroAction::BusWriteByteAndRetire => {
-                    return self.step_bus_write_byte_and_retire(bus);
-                }
-                MicroAction::BusWriteLongLowAndRetire => {
-                    return self.step_bus_write_long_low_and_retire(bus);
-                }
-                MicroAction::BusWriteLongHighAndRetire => {
-                    return self.step_bus_write_long_high_and_retire(bus);
-                }
-
-                // --- Stack Operations (Data Space) ---
-                MicroAction::BusPopStack => return self.step_bus_pop_stack(bus),
-                MicroAction::BusPopStackHigh => return self.step_bus_pop_stack_high(bus),
-                MicroAction::BusPopStackLow => return self.step_bus_pop_stack_low(bus),
-                MicroAction::BusPushStackHigh => return self.step_bus_push_stack_high(bus),
-                MicroAction::BusPushStackLow => return self.step_bus_push_stack_low(bus),
-                MicroAction::BusPushStackLowAndRetire => {
-                    return self.step_bus_push_stack_low_and_retire(bus);
-                }
-
-                // --- Instruction Prefetch & Pipeline Refill (Program Space) ---
-                MicroAction::FetchExtension => return self.step_fetch_extension(bus),
-                MicroAction::BusPrefetchToScratch => return self.step_bus_prefetch_to_scratch(bus),
-                MicroAction::PrefetchNextOpcodeAndRetire => {
-                    return self.step_prefetch_next_opcode_and_retire(bus);
-                }
-                MicroAction::BusReadTargetOpcode => return self.step_bus_read_target_opcode(bus),
-                MicroAction::PrefetchTargetAndRetire => {
-                    return self.step_prefetch_target_and_retire(bus);
-                }
-
-                MicroAction::OriToCcr => return system::op_ori_to_ccr(self, bus),
-                MicroAction::OriToSr => return system::op_ori_to_sr(self, bus),
-                MicroAction::AndiToCcr => return system::op_andi_to_ccr(self, bus),
-                MicroAction::AndiToSr => return system::op_andi_to_sr(self, bus),
-                MicroAction::EoriToCcr => return system::op_eori_to_ccr(self, bus),
-                MicroAction::EoriToSr => return system::op_eori_to_sr(self, bus),
-                MicroAction::Trap => return crate::instructions::trap::op_trap(self, bus),
+            if let Some(res) = (step.step_fn)(self, bus) {
+                return res;
             }
         }
         StepResult::InstructionCompleted

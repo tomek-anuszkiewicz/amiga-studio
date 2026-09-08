@@ -1,12 +1,17 @@
 //! Motorola 68000 Micro-Step State Machine Type Definitions
 //!
-//! Defines the atomic `MicroStep` descriptor, `MicroAction` primitives,
+//! Defines the atomic `MicroStep` descriptor, `StepFn` primitives,
 //! ALU function pointers (`AluFn`), size enums, and opcode descriptors.
 
+use crate::core::{Cpu, StepResult};
 use crate::state::CpuState;
-use memory_bus::BusAccessSize;
+use memory_bus::{BusAccessSize, MemoryBus};
 use serde::{Deserialize, Serialize};
 
+/// Atomic step execution function.
+/// Takes the full CPU and memory bus, returning `Some(StepResult)` when a bus cycle
+/// or clock-consuming operation finishes, or `None` if the micro-step is instantaneous.
+pub type StepFn = fn(cpu: &mut Cpu, bus: &mut MemoryBus) -> Option<StepResult>;
 
 /// Pure internal ALU operation.
 /// Operates strictly on `CpuState` using pre-decoded register indices.
@@ -40,89 +45,12 @@ pub enum Size {
     Long,
 }
 
-
-/// Specialized atomic bus action or internal CPU stage
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum MicroAction {
-    /// Internal instantaneous ALU operation or EA calculation (0 CCKs)
-    Alu,
-    /// Evaluate Bcc condition; sets internal_clocks and routes to taken vs not-taken steps
-    BranchEval,
-
-    // --- Operand Memory Reads (Data Space) ---
-    /// Read 8-bit Byte from ea_addr into last_read (strobe based on ea_addr & 1)
-    BusReadByte,
-    /// Read 16-bit Word from ea_addr into last_read (both strobes asserted)
-    BusReadWord,
-    /// Read 16-bit High Word of 32-bit operand from ea_addr into scratch[0]
-    BusReadLongHigh,
-    /// Read 16-bit Low Word of 32-bit operand from ea_addr + 2, assemble into last_read
-    BusReadLongLow,
-
-    // --- Operand Memory Writes (Data Space) ---
-    /// Write 8-bit Byte (write_buffer & 0xFF) to ea_addr (preserves unaddressed byte)
-    BusWriteByte,
-    /// Write 16-bit Word (write_buffer & 0xFFFF) to ea_addr (both strobes asserted)
-    BusWriteWord,
-    /// Write 16-bit High Word ((write_buffer >> 16) & 0xFFFF) to ea_addr
-    BusWriteLongHigh,
-    /// Write 16-bit Low Word (write_buffer & 0xFFFF) to ea_addr + 2
-    BusWriteLongLow,
-
-    // --- Stack Operations (Data Space) ---
-    /// Pop 16-bit word from stack (SP) and increment SP += 2
-    BusPopStack,
-    /// Pop 16-bit high word of 32-bit address from stack (SP) and increment SP += 2 into scratch[0]
-    BusPopStackHigh,
-    /// Pop 16-bit low word of 32-bit address from stack (SP), assemble target into ea_addr, and increment SP += 2
-    BusPopStackLow,
-    /// Push 16-bit Most Significant Word to -(SP)
-    BusPushStackHigh,
-    /// Push 16-bit Least Significant Word to -(SP)
-    BusPushStackLow,
-    /// Push 16-bit Least Significant Word to -(SP) and retire with scratch_prefetch (e.g. PEA)
-    BusPushStackLowAndRetire,
-
-    // --- Instruction Prefetch & Pipeline Refill (Program Space) ---
-    /// Fetch extension word from PC and advance PC += 2
-    FetchExtension,
-    /// Class 0 RMW: Fetch next opcode into scratch_prefetch before writing memory result
-    BusPrefetchToScratch,
-    /// Pipeline Refill Cycle 1: Fetch target opcode from ea_addr into scratch_prefetch
-    BusReadTargetOpcode,
-    /// Pipeline Refill Cycle 2: Fetch target prefetch from ea_addr + 2, set PC = ea_addr + 4, retire
-    PrefetchTargetAndRetire,
-    /// Standard sequential prefetch: ir = prefetch[0], prefetch[0] = last_read, PC += 2, retire
-    PrefetchNextOpcodeAndRetire,
-    /// Write 16-bit Word to ea_addr and retire at CCK2 (used by Class 0 RMW)
-    BusWriteWordAndRetire,
-    /// Write 8-bit Byte to ea_addr and retire at CCK2 (used by Class 0 RMW)
-    BusWriteByteAndRetire,
-    /// Write 16-bit Low Word to ea_addr + 2 and retire at CCK2 (used by Class 0 Long RMW)
-    BusWriteLongLowAndRetire,
-    /// Write 16-bit High Word to ea_addr and retire at CCK2 (used by MOVE.l -(An))
-    BusWriteLongHighAndRetire,
-
-    // --- Multi-register block transfer ---
-    /// Multi-register block transfer step (loops until register mask in scratch[0] is zero)
-    MovemTransfer,
-
-    // --- System Register & Exception Operations ---
-    OriToCcr,
-    OriToSr,
-    AndiToCcr,
-    AndiToSr,
-    EoriToCcr,
-    EoriToSr,
-    Trap,
-}
-
 /// Stateless, cache-dense atomic micro-step descriptor
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct MicroStep {
-    /// Atomic bus action or instantaneous step type
-    pub action: MicroAction,
+    /// Function pointer executing the bus cycle or cycle action
+    pub step_fn: StepFn,
     /// Function pointer for ALU operations (None for pure bus steps)
     pub alu_fn: Option<AluFn>,
     /// Base CPU clocks consumed (4 for bus cycles, 0 for instantaneous ALU)
@@ -131,7 +59,7 @@ pub struct MicroStep {
 
 impl PartialEq for MicroStep {
     fn eq(&self, other: &Self) -> bool {
-        self.action == other.action
+        self.step_fn as usize == other.step_fn as usize
             && (match (self.alu_fn, other.alu_fn) {
                 (None, None) => true,
                 (Some(a), Some(b)) => a as usize == b as usize,
@@ -148,7 +76,7 @@ impl MicroStep {
     #[inline(always)]
     pub const fn alu(alu_fn: AluFn) -> Self {
         Self {
-            action: MicroAction::Alu,
+            step_fn: Cpu::step_alu,
             alu_fn: Some(alu_fn),
             base_clocks: 0,
         }
@@ -156,14 +84,13 @@ impl MicroStep {
 
     /// Creates a generic bus cycle micro-step
     #[inline(always)]
-    pub const fn bus(action: MicroAction, base_clocks: u8) -> Self {
+    pub const fn bus(step_fn: StepFn, base_clocks: u8) -> Self {
         Self {
-            action,
+            step_fn,
             alu_fn: None,
             base_clocks,
         }
     }
-
 }
 
 /// Static descriptor mapping an opcode to its slice of MicroSteps and registers

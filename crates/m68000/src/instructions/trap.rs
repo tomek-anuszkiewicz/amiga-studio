@@ -5,12 +5,12 @@
 //! Execution time: 34 CPU clocks (17 CCKs).
 
 use crate::core::{Cpu, StepResult};
-use crate::micro::types::{MicroAction, MicroStep};
+use crate::micro::types::MicroStep;
 use memory_bus::{CckPhase, MemoryBus};
 
 pub static STEPS_TRAP: [MicroStep; 9] = [
     MicroStep {
-        action: MicroAction::Trap,
+        step_fn: op_trap,
         alu_fn: None,
         base_clocks: 0,
     };
@@ -18,7 +18,7 @@ pub static STEPS_TRAP: [MicroStep; 9] = [
 ];
 
 /// Execution handler for `TRAP #<vector>` (34 CPU clocks / 17 CCKs)
-pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> Option<StepResult> {
     let opcode = cpu.state.ir;
     let vec = (opcode & 0x000F) as u32;
     let vector_addr = 0x0000_0080 + vec * 4;
@@ -38,7 +38,7 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             cpu.state.micro.scratch[2] = vector_addr;
             cpu.total_clocks = cpu.total_clocks.wrapping_add(2);
             cpu.instruction_clocks = cpu.instruction_clocks.wrapping_add(2);
-            StepResult::StepCompleted
+            Some(StepResult::StepCompleted)
         }
         1 => {
             // Write return PC low word to SP - 2
@@ -48,7 +48,7 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             if res == StepResult::StepCompleted && cpu.state.micro.phase == CckPhase::Cck1 {
                 cpu.state.micro.micro_step = 2;
             }
-            res
+            Some(res)
         }
         2 => {
             // Write old SR to SP - 6
@@ -58,7 +58,7 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             if res == StepResult::StepCompleted && cpu.state.micro.phase == CckPhase::Cck1 {
                 cpu.state.micro.micro_step = 3;
             }
-            res
+            Some(res)
         }
         3 => {
             // Write return PC high word to SP - 4 and update SP on completion
@@ -69,7 +69,7 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 cpu.state.write_a(7, sp.wrapping_sub(6));
                 cpu.state.micro.micro_step = 4;
             }
-            res
+            Some(res)
         }
         4 => {
             // Read vector high word from vector_addr
@@ -79,7 +79,7 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 cpu.state.micro.scratch[0] = (cpu.state.micro.last_read as u32) << 16;
                 cpu.state.micro.micro_step = 5;
             }
-            res
+            Some(res)
         }
         5 => {
             // Read vector low word from vector_addr + 2
@@ -89,12 +89,12 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 let lo = cpu.state.micro.last_read as u32;
                 let target = (cpu.state.micro.scratch[0] | lo) & 0x00FF_FFFF;
                 if (target & 1) != 0 {
-                    return cpu.trigger_address_error_step(target, true, true, bus);
+                    return Some(cpu.trigger_address_error_step(target, true, true, bus));
                 }
                 cpu.state.micro.scratch[0] = target;
                 cpu.state.micro.micro_step = 6;
             }
-            res
+            Some(res)
         }
         6 => {
             // Read target opcode
@@ -105,12 +105,12 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 cpu.state.micro.internal_clocks = 2;
                 cpu.state.micro.micro_step = 7;
             }
-            res
+            Some(res)
         }
         7 => {
             // 2 internal clocks: handled by core step_cck when internal_clocks > 0
             cpu.state.micro.micro_step = 8;
-            StepResult::StepCompleted
+            Some(StepResult::StepCompleted)
         }
         8 => {
             // Read target + 2 word and refill prefetch pipeline
@@ -119,9 +119,9 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             let res = cpu.step_read_prog_word_at(bus, target.wrapping_add(2));
             if res == StepResult::StepCompleted && cpu.state.micro.phase == CckPhase::Cck1 {
                 let target_prefetch = cpu.state.micro.last_read;
-                return cpu.retire_target_refill(target, target_prefetch, new_ir);
+                return Some(cpu.retire_target_refill(target, target_prefetch, new_ir));
             }
-            res
+            Some(res)
         }
         _ => unreachable!(),
     }

@@ -5,7 +5,8 @@
 //! Neither memory location is modified. Extend (X) flag is unaffected.
 
 use crate::micro::ea;
-use crate::micro::types::{MicroAction, MicroStep};
+use crate::core::Cpu;
+use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
 // ============================================================================
@@ -63,23 +64,23 @@ pub fn alu_cmpm_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_CMPM_B: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_src_pi_b), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea_calc_dst_pi_b_latch_src), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpm_b), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: Some(ea::ea_calc_src_pi_b), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: Some(ea_calc_dst_pi_b_latch_src), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmpm_b), base_clocks: 4 },
 ];
 
 pub static STEPS_CMPM_W: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_src_pi_w), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea_calc_dst_pi_w_latch_src), base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpm_w), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::ea_calc_src_pi_w), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea_calc_dst_pi_w_latch_src), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmpm_w), base_clocks: 4 },
 ];
 
 pub static STEPS_CMPM_L: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea::ea_calc_src_pi_l), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea_calc_dst_pi_l_latch_src), base_clocks: 4 },
-    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpm_l), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: Some(ea::ea_calc_src_pi_l), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: Some(ea_calc_dst_pi_l_latch_src), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmpm_l), base_clocks: 4 },
 ];
 
 /// Decodes the micro-step sequence for CMPM based on size (0 = Byte, 1 = Word, 2 = Long)
