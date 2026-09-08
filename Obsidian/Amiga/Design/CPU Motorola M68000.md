@@ -437,17 +437,16 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
     - `MemoryBus` returns `MemoryBusResult::Blocked`.
     - **Action:** CPU stalls at the current micro-step. Does NOT advance `step`. Repeats CCK1 on next clock.
   - If unblocked:
-    - `MemoryBus` loads data into `read_latch` and returns `MemoryBusResult::Phase1Ready`.
+    - Address and strobes accepted; `MemoryBus` returns `MemoryBusResult::Phase1Ready`.
 - **CCK2 (S4–S7):**
-  - The CPU reads directly from `self.read_latch`, isolated from the external memory bus.
-  - `MemoryBus` returns `MemoryBusResult::Ready(latch)`.
+  - Data bus is sampled directly at $S_6$ into the CPU internal register (`CpuMicroState.last_read`).
+  - `MemoryBus` returns `MemoryBusResult::Ready(data)`.
   - The CPU micro-step completes and advances to the next step.
 
-### 3.2 Write Transaction Contention (Unbuffered)
-- **CCK1 (S0–S3):** The CPU outputs the address and write data onto its external pins.
-  - `MemoryBus` stores incoming data in temporary register (`pending_write_data`).
-  - Returns `MemoryBusResult::Phase1Ready`. The CPU always proceeds to CCK2.
-- **CCK2 (S4–S7):** The memory bus attempts to commit the write to RAM.
+### 3.2 Write Transaction Contention
+- **CCK1 (S0–S3):** The CPU outputs the address onto its external pins and asserts `_AS`.
+  - Returns `MemoryBusResult::Phase1Ready`. The CPU proceeds to CCK2.
+- **CCK2 (S4–S7):** The memory bus commits the write to RAM/registers.
   - If target is Chip RAM and `chip_ram_blocked == true`:
     - Gary withholds `_DTACK`.
     - `MemoryBus` returns `MemoryBusResult::Blocked`.

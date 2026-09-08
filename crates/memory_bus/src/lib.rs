@@ -72,11 +72,6 @@ pub struct MemoryBus {
     /// Kickstart ROM buffer (256 KB or 512 KB)
     pub kickstart_rom: Vec<u8>,
 
-    /// Internal transparent read latch holding data between CCK1 and CCK2
-    pub read_latch: u16,
-
-    /// Pending write data registered during CCK1 write phase
-    pub pending_write_data: u16,
 
     /// Flag indicating whether Agnus/DMA currently blocks the Chip RAM bus
     pub chip_ram_blocked: bool,
@@ -137,8 +132,6 @@ impl MemoryBus {
             slow_ram: None,
             fast_ram: None,
             kickstart_rom: Vec::new(),
-            read_latch: 0xFFFF,
-            pending_write_data: 0,
             chip_ram_blocked: false,
             low_memory_overlay: false,
             cia_a_registers: [0xFF; 16],
@@ -192,8 +185,6 @@ impl MemoryBus {
             slow_ram,
             fast_ram,
             kickstart_rom: vec![0xFF; KICKSTART_SIZE_256K],
-            read_latch: 0xFFFF,
-            pending_write_data: 0,
             chip_ram_blocked: false,
             low_memory_overlay: true,
             cia_a_registers: [0xFF; 16],
@@ -279,14 +270,12 @@ impl MemoryBus {
             fast_ram.fill(0x00);
         }
         self.chip_ram_blocked = false;
-        self.read_latch = 0xFFFF;
         self.map_kickstart_to_low_memory();
     }
 
     /// Warm Reset: Preserves RAM contents and re-engages Kickstart overlay
     pub fn reset_warm(&mut self) {
         self.chip_ram_blocked = false;
-        self.read_latch = 0xFFFF;
         self.map_kickstart_to_low_memory();
     }
 }

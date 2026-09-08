@@ -42,48 +42,45 @@ flowchart TD
 
 ## 2. 2-Phase Bus Timing & Transparent Memory Interleaving
 
-A critical architectural triumph of the Amiga is its ability to share Chip RAM between the Motorola 68000 CPU and custom chip DMA channels **without slowing down the CPU**:
+A critical architectural triumph of the Amiga is its ability to share Chip RAM between the Motorola 68000 CPU and custom chip DMA channels:
 
 ```
 CPU Clock:  | S0 | S1 | S2 | S3 | S4 | S5 | S6 | S7 |
             |-------------------|-------------------|
 CCK Slot:   |       CCK1        |       CCK2        |
-READ:       | Fetch to Buffer   | CPU Reads Buffer  |
-            | (Physical RAM)    | (RAM FREE FOR DMA)|
+READ:       | Address & Strobes | Sample Data (S6)  |
+            | (Bus Arbitrated)  | (CPU Samples Bus) |
             |-------------------|-------------------|
-WRITE:      | Internal Prep     | Commit Write      |
-            | (RAM FREE FOR DMA)| (Physical RAM)    |
+WRITE:      | Address & Control | Commit Write (S4) |
+            | (Bus Arbitrated)  | (Physical RAM)    |
 ```
 
-### 2.1 The Hardware Secret: 2-Clock CPU vs 1-Clock RAM
+### 2.1 The Hardware Timing: 2-Clock CPU vs 1-Clock RAM
 - **Motorola 68000 Bus Cycle:** A standard 68000 read or write cycle spans **4 CPU clocks** ($S_0$ through $S_7$), which equals **2 Color Clocks (CCK1 and CCK2)**.
-- **Amiga Chip RAM Speed:** The Amiga DRAM memory bus is engineered to complete an entire physical read or write cycle in **only 1 Color Clock (280 ns)**!
+- **Amiga Chip RAM Speed:** The Amiga DRAM memory bus completes a physical memory transfer in **1 Color Clock (280 ns)**.
 
-### 2.2 Read Cycle Interleaving (Buffered Read)
+### 2.2 Read Cycle Execution
 1. **During CCK1 ($S_0$–$S_3$):**
    - The CPU presents the target address and asserts strobes (`_AS`, `_UDS`/`_LDS`).
-   - If Chip RAM is available (unblocked), physical RAM access occurs immediately during CCK1.
-   - The fetched 16-bit word is latched into an internal transparent hardware buffer (`MemoryBus.read_latch`).
+   - If target is Chip RAM and Agnus DMA is active (`chip_ram_blocked == true`), Gary withholds `_DTACK` and the CPU stalls (wait states).
+   - If unblocked, arbitration passes and the CPU transitions to CCK2.
 2. **During CCK2 ($S_4$–$S_7$):**
-   - **The physical Chip RAM bus is completely freed for custom chip DMA!**
-   - Meanwhile, the CPU reads the data safely from `read_latch`, isolated from the bus.
-   - Gary asserts `_DTACK`, the CPU completes its cycle, and neither CPU nor DMA suffered any wait states.
+   - At $S_6$, data driven on $D_0$–$D_{15}$ is sampled directly by the CPU into its internal input register (`CpuMicroState.last_read`).
+   - Gary asserts `_DTACK`, the CPU completes its cycle, and the bus transaction finishes without an intermediate bus latch.
 
-### 2.3 Write Cycle Interleaving (Direct / Unbuffered Write)
+### 2.3 Write Cycle Execution
 1. **During CCK1 ($S_0$–$S_3$):**
-   - The CPU calculates the address, outputs control lines, and prepares the data internally.
-   - **The CPU does not require physical memory access during CCK1.**
-   - Custom chip DMA can freely utilize the Chip RAM bus during CCK1 without interference.
+   - The CPU presents the target address, asserts `_AS`, and arbitrates for bus readiness.
+   - If target is Chip RAM and occupied by DMA, the CPU stalls before $S_4$.
 2. **During CCK2 ($S_4$–$S_7$):**
-   - The CPU drives write data onto `D0`–`D15` and asserts data strobes.
-   - The write is committed directly to physical Chip RAM without buffering.
-   - If a DMA channel with higher priority (such as Blitter Nasty) has claimed CCK2, Gary withholds `_DTACK`, causing the CPU to wait until the bus becomes available.
+   - The CPU drives write data onto `D0`–`D15` and asserts data strobes during $S_4$.
+   - The write is committed directly to physical Chip RAM.
+   - `_DTACK` is acknowledged and the cycle completes.
 
-### 2.4 Conclusion: Full-Speed 50/50 Division
-In normal operating mode (standard display modes, Blitter Nasty disabled), **memory access is seamlessly interleaved 50/50 between CPU and DMA**:
-- During reads, the CPU uses physical RAM in CCK1 and DMA uses CCK2.
-- During writes, DMA uses physical RAM in CCK1 and the CPU uses CCK2.
-- The CPU runs at **100% full speed ($7.09\ \text{MHz}$)** without a single wait state!
+### 2.4 Conclusion: Interleaved Time-Slot Architecture
+In normal operating mode (standard display modes, Blitter Nasty disabled), memory access is cleanly arbitrated across odd/even clock slots:
+- DMA channels (Audio, Disk, Copper, Bitplane) take priority during their allocated odd slots.
+- The CPU runs smoothly in interleaved slots without unnecessary contention.
 
 ---
 
@@ -96,7 +93,7 @@ To prevent tight coupling and synchronization bugs, responsibilities are cleanly
 | **`CycleCounter`** | **Pure 64-bit CCK Cycle Counter:** Tracks elapsed global Color Clocks (`total_cck: u64`). Does not track bus phases, beam coordinates, or E-Clock dividers. | `cycle_counter.rs` |
 | **`Agnus` (Beam)** | **Master Raster Beam Tracking:** Coordinates horizontal beam position (`HPOS`), vertical scanlines (`VPOS`), `LOF` interlace field bit, and display timing registers `VHPOSR` / `VPOSR`. | `chips/agnus/beam.rs` (see [Agnus.md](Agnus.md)) |
 | **`CIA`** | **E-Clock Division & Prescalers:** Tracks internal E-Clock sub-phase divider ($0..4$) to step Timers A and B every 5 CCKs. | `chips/cia/mod.rs` (see [CIA.md](CIA.md)) |
-| **`MemoryBus` / CPU** | **Bus Phase State Machine:** Manages CCK1 vs CCK2 arbitration, wait states, and `read_latch` buffer. | `memory_bus/mod.rs` (see [MemoryBus.md](MemoryBus.md)) |
+| **`MemoryBus` / CPU** | **Bus Phase State Machine:** Manages CCK1 vs CCK2 arbitration, wait states, and data bus transfer. | `memory_bus/mod.rs` (see [MemoryBus.md](MemoryBus.md)) |
 
 ---
 

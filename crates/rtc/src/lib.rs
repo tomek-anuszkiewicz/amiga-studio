@@ -243,7 +243,7 @@ fn decompose_timestamp(mut ts: i64) -> (i32, u32, u32, u32, u32, u32, u32) {
     let min = (ts % 60) as u32;
     ts /= 60;
     let hour = (ts % 24) as u32;
-    let days = (ts / 24) as i64;
+    let days = ts / 24;
 
     // Day of week (1970-01-01 was a Thursday = 4)
     let wday = ((days + 4) % 7) as u32;

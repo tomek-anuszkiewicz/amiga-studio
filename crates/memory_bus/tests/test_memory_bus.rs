@@ -37,35 +37,34 @@ fn test_2phase_cck_arbitration_and_contention() {
     bus.map_chip_ram_to_low_memory();
     bus.write_word_debug(0x001000, 0xCAFE);
 
-    // 1. Unblocked Read
-    let res1 = bus.read_phase1(0x001000, false, false);
-    assert_eq!(res1, MemoryBusResult::Phase1Ready);
-    let res2 = bus.read_phase2(0x001000);
-    assert_eq!(res2, MemoryBusResult::Ready(0xCAFE));
+    // 1. Unblocked Read (Phase 1 Ready -> Phase 2 Delivers 0xCAFE)
+    let mut read_cycle = BusCycle::new_read(0x001000, BusAccessSize::Word, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut read_cycle), MemoryBusResult::Phase1Ready);
+    assert_eq!(bus.end_cycle(&mut read_cycle), MemoryBusResult::Ready(0xCAFE));
+    assert_eq!(read_cycle.data, 0xCAFE);
 
-    // 2. Blocked Read due to Agnus DMA
+    // 2. Blocked Read due to Agnus DMA (Blocked at CCK1)
     bus.lock_chip_ram();
-    let res_blocked = bus.read_phase1(0x001000, false, false);
-    assert_eq!(res_blocked, MemoryBusResult::Blocked);
+    let mut blocked_read = BusCycle::new_read(0x001000, BusAccessSize::Word, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut blocked_read), MemoryBusResult::Blocked);
 
     // 3. Unlock and verify read succeeds
     bus.unlock_chip_ram();
-    let res1_ok = bus.read_phase1(0x001000, false, false);
-    assert_eq!(res1_ok, MemoryBusResult::Phase1Ready);
-    let res2_ok = bus.read_phase2(0x001000);
-    assert_eq!(res2_ok, MemoryBusResult::Ready(0xCAFE));
+    let mut read_ok = BusCycle::new_read(0x001000, BusAccessSize::Word, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut read_ok), MemoryBusResult::Phase1Ready);
+    assert_eq!(bus.end_cycle(&mut read_ok), MemoryBusResult::Ready(0xCAFE));
 
-    // 4. Write Phase 1 & 2
-    let write_res1 = bus.write_phase1(0x002000, 0xBEEF);
-    assert_eq!(write_res1, MemoryBusResult::Phase1Ready);
-    let write_res2 = bus.write_phase2(0x002000, 0xBEEF, false, false);
-    assert_eq!(write_res2, MemoryBusResult::Ready(0));
+    // 4. Write Phase 1 & 2 (Phase 1 Ready -> Phase 2 Commits Write)
+    let mut write_cycle = BusCycle::new_write(0x002000, 0xBEEF, BusAccessSize::Word, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut write_cycle), MemoryBusResult::Phase1Ready);
+    assert_eq!(bus.end_cycle(&mut write_cycle), MemoryBusResult::Ready(0));
     assert_eq!(bus.read_word_debug(0x002000), 0xBEEF);
 
-    // 5. Blocked Write at Phase 2
+    // 5. Blocked Write at Phase 2 (CCK2: Gary withholds _DTACK when Agnus DMA active)
     bus.lock_chip_ram();
-    let write_blocked = bus.write_phase2(0x002000, 0x1234, false, false);
-    assert_eq!(write_blocked, MemoryBusResult::Blocked);
+    let mut blocked_write = BusCycle::new_write(0x002000, 0x1234, BusAccessSize::Word, function_code::USER_DATA);
+    assert_eq!(bus.begin_cycle(&mut blocked_write), MemoryBusResult::Phase1Ready);
+    assert_eq!(bus.end_cycle(&mut blocked_write), MemoryBusResult::Blocked);
     // Value remains unwritten
     assert_eq!(bus.read_word_debug(0x002000), 0xBEEF);
 }

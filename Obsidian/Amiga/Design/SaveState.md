@@ -255,8 +255,6 @@ pub struct MemoryBusState {
     pub kickstart_overlay_active: bool,
     /// Chip RAM bus lock flag
     pub chip_ram_blocked: bool,
-    /// Phase 1 read latch register
-    pub read_latch: u16,
     /// Chip RAM buffer (Base64 in JSON)
     pub chip_ram: Vec<u8>,
     /// Optional Slow RAM buffer

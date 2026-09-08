@@ -85,12 +85,11 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
 
 The Motorola 68000 bus cycle spans 4 CPU clocks ($S_0$ through $S_7$), which maps to two Color Clock slots (CCK / 3.54 MHz): **Phase 1 / CCK1 (S0–S3)** and **Phase 2 / CCK2 (S4–S7)**.
 
-While the CPU requires 2 Color Clocks to complete an instruction bus transaction, **Amiga Chip RAM can complete a physical access in just 1 Color Clock (280 ns)**. The hardware exploits this difference to interleave access 50/50 between CPU and DMA without slowing down the CPU:
-- **Read Cycle:** On CCK1, data is read from physical Chip RAM into `read_latch`. On CCK2, the CPU reads safely from `read_latch` while **the physical Chip RAM bus is completely freed for custom chip DMA**.
-- **Write Cycle:** On CCK1, the CPU prepares address and data internally without needing physical memory access (leaving CCK1 free for DMA). On CCK2, the CPU commits the unbuffered write directly to physical Chip RAM.
+While the CPU requires 2 Color Clocks to complete an instruction bus transaction, **Amiga Chip RAM can complete a physical access in just 1 Color Clock (280 ns)**. The hardware exploits this difference to interleave access 50/50 between CPU and custom chip DMA:
+- **Read Cycle:** At CCK1, the CPU asserts address and strobes. Gary arbitrates access against Agnus DMA. At CCK2 ($S_6$), data is driven onto $D_0–D_{15}$ and sampled directly into the CPU's internal register (`CpuMicroState.last_read`). No artificial intermediate bus latch is needed.
+- **Write Cycle:** At CCK1, the CPU drives address and data onto pins (`BusCycle`). At CCK2, Gary asserts $\overline{\text{DTACK}}$ (or withholds it if Agnus DMA is active), and the write commits directly to physical Chip RAM.
 
 Maintain the following internal bus state:
-- `read_latch: u16`: Transparent buffer holding sampled read data between phases.
 - `chip_ram_blocked: bool`: Flag indicating whether Agnus / Blitter / DMA is currently occupying the Chip RAM bus.
 
 ### Types & Structures
@@ -98,9 +97,10 @@ Maintain the following internal bus state:
 use serde::{Deserialize, Serialize};
 
 /// Color Clock (CCK) sub-cycle phase of the 4-clock M68000 bus cycle
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CckPhase {
     /// Color Clock Phase 1 (CPU S0–S3): Address output, _AS strobe, contention arbitration
+    #[default]
     Cck1,
     /// Color Clock Phase 2 (CPU S4–S7): Data latch/write commit, _DTACK acknowledgement
     Cck2,
@@ -141,18 +141,18 @@ pub enum MemoryBusResult {
 1. **`begin_cycle(&mut self, cycle: &mut BusCycle) -> MemoryBusResult` (CCK1 / S0–S3):**
    - Address is masked to 24 bits (`addr & 0x00FF_FFFF`).
    - If **Read**:
-     - Detect targeted region. If Chip RAM (or Slow RAM) and `chip_ram_blocked == true`, return `MemoryBusResult::Blocked` (Gary withholds `_DTACK`, CPU holds at CCK1).
-     - Otherwise, perform read into `self.read_latch` and return `MemoryBusResult::Phase1Ready`.
+     - Detect targeted region. If Chip RAM (or Slow RAM) and `chip_ram_blocked == true`, return `MemoryBusResult::Blocked` (Gary withholds $\overline{\text{DTACK}}$, CPU holds at CCK1).
+     - Otherwise, return `MemoryBusResult::Phase1Ready`.
    - If **Write**:
-     - CPU places address and data onto bus lines (`pending_write_data = cycle.data`). Returns `MemoryBusResult::Phase1Ready`.
+     - Returns `MemoryBusResult::Phase1Ready` (address and data driven on pins).
 2. **`end_cycle(&mut self, cycle: &mut BusCycle) -> MemoryBusResult` (CCK2 / S4–S7):**
    - Address is masked to 24 bits (`addr & 0x00FF_FFFF`).
    - If **Read**:
-     - Reads safely from `self.read_latch` without external contention (bus is free for DMA).
+     - Performs physical memory read directly at CCK2 (state $S_6$).
      - Extracts byte (based on `uds`/`lds`) or full word into `cycle.data`.
      - Returns `MemoryBusResult::Ready(cycle.data)`.
    - If **Write**:
-     - If target is Chip RAM and `chip_ram_blocked == true`, return `MemoryBusResult::Blocked` (Gary withholds `_DTACK`, CPU stalls at CCK2).
+     - If target is Chip RAM and `chip_ram_blocked == true`, return `MemoryBusResult::Blocked` (Gary withholds $\overline{\text{DTACK}}$, CPU stalls at CCK2).
      - Otherwise, commits byte or word to memory and returns `MemoryBusResult::Ready(0)`.
 
 ---
@@ -242,14 +242,12 @@ impl MemoryBus {
             fast_ram.fill(0x00);
         }
         self.chip_ram_blocked = false;
-        self.read_latch = 0xFFFF;
         self.map_kickstart_to_low_memory();
     }
 
     /// Warm Reset: Preserves RAM contents (allowing Kickstart resident tags to survive)
     pub fn reset_warm(&mut self) {
         self.chip_ram_blocked = false;
-        self.read_latch = 0xFFFF;
         self.map_kickstart_to_low_memory();
     }
 }
