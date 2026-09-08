@@ -1,4 +1,7 @@
-//! Sub-cycle timing and 2-phase CCK bus arbitration (CCK1 and CCK2)
+//! Sub-cycle timing and Color Clock (CCK) phases
+//!
+//! Models the Amiga 2-phase Color Clock execution model (CCK1 and CCK2)
+//! corresponding to the 4-clock M68000 CPU bus cycle.
 
 use super::MemoryBus;
 use serde::{Deserialize, Serialize};
@@ -15,7 +18,7 @@ pub mod function_code {
 /// Color Clock (CCK) sub-cycle phase of the 4-clock M68000 bus cycle
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CckPhase {
-    /// Color Clock Phase 1 (CPU S0–S3): Address output, _AS strobe, contention arbitration
+    /// Color Clock Phase 1 (CPU S0–S3): Address output, _AS strobe, contention check
     #[default]
     Cck1,
     /// Color Clock Phase 2 (CPU S4–S7): Data latch/write commit, _DTACK acknowledgement
@@ -40,132 +43,7 @@ pub enum BusAccessSize {
     Word,
 }
 
-/// Structured M68000 bus cycle representation
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BusCycle {
-    /// 24-bit physical memory address
-    pub addr: u32,
-    /// 16-bit data bus transfer value
-    pub data: u16,
-    /// Access size (Byte or Word)
-    pub size: BusAccessSize,
-    /// Function Code lines (FC0-FC2)
-    pub fc: u8,
-    /// Read (true) vs Write (false) direction
-    pub is_read: bool,
-    /// Upper Data Strobe (_UDS, asserts for bits 15..8 / even byte)
-    pub uds: bool,
-    /// Lower Data Strobe (_LDS, asserts for bits 7..0 / odd byte)
-    pub lds: bool,
-}
-
-impl BusCycle {
-    /// Constructs a new Read bus cycle with automatically determined UDS/LDS strobes
-    #[inline]
-    pub fn new_read(addr: u32, size: BusAccessSize, fc: u8) -> Self {
-        let (uds, lds) = match size {
-            BusAccessSize::Word => (true, true),
-            BusAccessSize::Byte => {
-                if (addr & 1) == 0 {
-                    (true, false)
-                } else {
-                    (false, true)
-                }
-            }
-        };
-        Self {
-            addr: addr & 0x00FF_FFFF,
-            data: 0,
-            size,
-            fc,
-            is_read: true,
-            uds,
-            lds,
-        }
-    }
-
-    /// Constructs a new Write bus cycle with automatically determined UDS/LDS strobes
-    #[inline]
-    pub fn new_write(addr: u32, data: u16, size: BusAccessSize, fc: u8) -> Self {
-        let (uds, lds) = match size {
-            BusAccessSize::Word => (true, true),
-            BusAccessSize::Byte => {
-                if (addr & 1) == 0 {
-                    (true, false)
-                } else {
-                    (false, true)
-                }
-            }
-        };
-        Self {
-            addr: addr & 0x00FF_FFFF,
-            data,
-            size,
-            fc,
-            is_read: false,
-            uds,
-            lds,
-        }
-    }
-}
-
-/// Result of an M68000 bus transaction phase
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum MemoryBusResult {
-    /// Phase 1 completed; proceed to Phase 2
-    Phase1Ready,
-    /// Transaction completed successfully (carries 16-bit word or zero-extended 8-bit byte on read, 0 on write)
-    Ready(u16),
-    /// Target bus is currently occupied by DMA (CPU must hold state and retry/insert wait states)
-    Blocked,
-}
-
 impl MemoryBus {
-    /// Begin a structured bus cycle (CCK1 / S0-S3): checks bus contention and presents bus signals
-    pub fn begin_cycle(&mut self, cycle: &mut BusCycle) -> MemoryBusResult {
-        let addr = cycle.addr & 0x00FF_FFFF;
-        if cycle.is_read {
-            if self.is_chip_ram_target(addr) && self.chip_ram_blocked {
-                return MemoryBusResult::Blocked;
-            }
-            MemoryBusResult::Phase1Ready
-        } else {
-            MemoryBusResult::Phase1Ready
-        }
-    }
-
-    /// End a structured bus cycle (CCK2 / S4-S7): samples read data directly or commits write
-    pub fn end_cycle(&mut self, cycle: &mut BusCycle) -> MemoryBusResult {
-        let addr = cycle.addr & 0x00FF_FFFF;
-        if cycle.is_read {
-            let word = self.read_word_internal(addr & !1);
-            cycle.data = match cycle.size {
-                BusAccessSize::Word => word,
-                BusAccessSize::Byte => {
-                    if cycle.uds {
-                        (word >> 8) & 0xFF
-                    } else {
-                        word & 0xFF
-                    }
-                }
-            };
-            MemoryBusResult::Ready(cycle.data)
-        } else {
-            if self.is_chip_ram_target(addr) && self.chip_ram_blocked {
-                return MemoryBusResult::Blocked;
-            }
-            match cycle.size {
-                BusAccessSize::Byte => {
-                    self.write_byte_internal(addr, (cycle.data & 0xFF) as u8);
-                }
-                BusAccessSize::Word => {
-                    self.write_word_internal(addr, cycle.data);
-                }
-            }
-            MemoryBusResult::Ready(0)
-        }
-    }
-
     /// Helper to identify whether an address targets Chip RAM or contention-affected Slow RAM
     #[inline]
     pub fn is_chip_ram_target(&self, addr: u32) -> bool {

@@ -10,6 +10,7 @@ pub mod micro {
     pub mod dispatch_table;
     pub mod ea;
     pub mod engine;
+    pub mod step_execution;
     pub mod types;
 
     pub use common::*;
@@ -22,7 +23,7 @@ pub mod state;
 
 pub use core::{Cpu, StepResult};
 pub use micro::{
-    CpuMicroState, MicroAction, MicroRetireMode, MicroStep, OpcodeDescriptor,
-    RecordedTransaction, Size, OPCODE_DESCRIPTOR_TABLE,
+    CpuMicroState, MicroAction, MicroStep, OpcodeDescriptor, RecordedTransaction, Size,
+    OPCODE_DESCRIPTOR_TABLE,
 };
 pub use state::CpuState;

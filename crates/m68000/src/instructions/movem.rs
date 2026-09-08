@@ -7,7 +7,7 @@ use crate::micro::common;
 use crate::micro::ea;
 use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
-use memory_bus::MemoryBus;
+use memory_bus::{CckPhase, MemoryBus};
 
 // ============================================================================
 // Pure ALU Callbacks: MOVEM
@@ -216,17 +216,15 @@ pub fn execute_movem_transfer(
     let reg_ea = (ir & 7) as usize;
     let is_predec = is_reg_to_mem && mode == 4;
     let is_postinc = !is_reg_to_mem && mode == 3;
-    let fc = crate::micro::types::data_fc(&cpu.state);
 
     let mask = cpu.state.micro.scratch[2] as u16;
     let state_raw = cpu.state.micro.scratch[3];
-    let bus_in_flight = (state_raw & 1) != 0;
     let mut bit_idx = ((state_raw >> 1) & 0x1F) as u8;
     let mut sub_word = ((state_raw >> 6) & 1) as u8;
     let dummy_read_active = ((state_raw >> 7) & 1) != 0;
 
     // 1. Initial check: mask == 0 and address alignment
-    if !bus_in_flight && bit_idx == 0 && sub_word == 0 && !dummy_read_active {
+    if bit_idx == 0 && sub_word == 0 && !dummy_read_active && cpu.state.micro.phase == CckPhase::Cck1 {
         if mask == 0 {
             cpu.state.micro.scratch[3] = 0;
             cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);
@@ -245,9 +243,10 @@ pub fn execute_movem_transfer(
         }
     }
 
-    // 2. Process finished bus cycle
-    if bus_in_flight {
-        if dummy_read_active {
+    // 2. Dummy read at conclusion of mem-to-reg transfer
+    if dummy_read_active {
+        let res = cpu.step_read_word_at(bus, cpu.state.micro.ea_addr);
+        if res == StepResult::StepCompleted && cpu.state.micro.phase == CckPhase::Cck1 {
             if is_postinc {
                 cpu.state.write_a(reg_ea, cpu.state.micro.ea_addr);
             }
@@ -255,65 +254,45 @@ pub fn execute_movem_transfer(
             cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);
             return None;
         }
-
-        if !is_reg_to_mem {
-            if !is_long {
-                let val = (cpu.state.micro.last_read as i16 as i32) as u32;
-                movem_write_reg(&mut cpu.state, bit_idx, val);
-                cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(2);
-                bit_idx += 1;
-            } else if sub_word == 0 {
-                cpu.state.micro.scratch[1] = (cpu.state.micro.last_read as u32) << 16;
-                sub_word = 1;
-            } else {
-                let val = cpu.state.micro.scratch[1] | (cpu.state.micro.last_read as u32);
-                movem_write_reg(&mut cpu.state, bit_idx, val);
-                cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(4);
-                sub_word = 0;
-                bit_idx += 1;
-            }
-        } else if is_predec {
-            if !is_long {
-                cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_sub(2);
-                bit_idx += 1;
-            } else if sub_word == 0 {
-                sub_word = 1;
-            } else {
-                cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_sub(4);
-                sub_word = 0;
-                bit_idx += 1;
-            }
-        } else if !is_long {
-            cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(2);
-            bit_idx += 1;
-        } else if sub_word == 0 {
-            sub_word = 1;
-        } else {
-            cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(4);
-            sub_word = 0;
-            bit_idx += 1;
-        }
+        return Some(res);
     }
 
-    // 3. Find next register in mask
+    // 3. Find next register in mask (if starting new register)
     if sub_word == 0 {
         while bit_idx < 16 && (mask & (1 << bit_idx)) == 0 {
             bit_idx += 1;
         }
     }
 
-    // 4. Initiate transfer if register found
+    // 4. Transfer word if register found
     if bit_idx < 16 {
-        let new_state = 1 | ((bit_idx as u32) << 1) | ((sub_word as u32) << 6);
-        cpu.state.micro.scratch[3] = new_state;
-
         if !is_reg_to_mem {
             let addr = if sub_word == 0 {
                 cpu.state.micro.ea_addr
             } else {
                 cpu.state.micro.ea_addr.wrapping_add(2)
             };
-            return Some(cpu.initiate_read_cycle(bus, addr, memory_bus::BusAccessSize::Word, fc));
+            let res = cpu.step_read_word_at(bus, addr);
+            if res == StepResult::StepCompleted && cpu.state.micro.phase == CckPhase::Cck1 {
+                // CCK2 completed
+                if !is_long {
+                    let val = (cpu.state.micro.last_read as i16 as i32) as u32;
+                    movem_write_reg(&mut cpu.state, bit_idx, val);
+                    cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(2);
+                    bit_idx += 1;
+                } else if sub_word == 0 {
+                    cpu.state.micro.scratch[1] = (cpu.state.micro.last_read as u32) << 16;
+                    sub_word = 1;
+                } else {
+                    let val = cpu.state.micro.scratch[1] | (cpu.state.micro.last_read as u32);
+                    movem_write_reg(&mut cpu.state, bit_idx, val);
+                    cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(4);
+                    sub_word = 0;
+                    bit_idx += 1;
+                }
+                cpu.state.micro.scratch[3] = ((bit_idx as u32) << 1) | ((sub_word as u32) << 6);
+            }
+            return Some(res);
         } else {
             let reg_val = movem_read_reg(&cpu.state, is_predec, bit_idx);
             let (addr, data) = if is_predec {
@@ -329,15 +308,50 @@ pub fn execute_movem_transfer(
             } else {
                 (cpu.state.micro.ea_addr.wrapping_add(2), (reg_val & 0xFFFF) as u16)
             };
-            return Some(cpu.initiate_write_cycle(bus, addr, data, memory_bus::BusAccessSize::Word, fc));
+            let res = cpu.step_write_word_at(bus, addr, data);
+            if res == StepResult::StepCompleted && cpu.state.micro.phase == CckPhase::Cck1 {
+                // CCK2 completed
+                if is_predec {
+                    if !is_long {
+                        cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_sub(2);
+                        bit_idx += 1;
+                    } else if sub_word == 0 {
+                        sub_word = 1;
+                    } else {
+                        cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_sub(4);
+                        sub_word = 0;
+                        bit_idx += 1;
+                    }
+                } else if !is_long {
+                    cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(2);
+                    bit_idx += 1;
+                } else if sub_word == 0 {
+                    sub_word = 1;
+                } else {
+                    cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(4);
+                    sub_word = 0;
+                    bit_idx += 1;
+                }
+                cpu.state.micro.scratch[3] = ((bit_idx as u32) << 1) | ((sub_word as u32) << 6);
+            }
+            return Some(res);
         }
     }
 
     // 5. Conclude transfers
     if !is_reg_to_mem {
-        let new_state = 1 | (16 << 1) | (1 << 7);
-        cpu.state.micro.scratch[3] = new_state;
-        Some(cpu.initiate_read_cycle(bus, cpu.state.micro.ea_addr, memory_bus::BusAccessSize::Word, fc))
+        // Start dummy read
+        cpu.state.micro.scratch[3] = (16 << 1) | (1 << 7);
+        let res = cpu.step_read_word_at(bus, cpu.state.micro.ea_addr);
+        if res == StepResult::StepCompleted && cpu.state.micro.phase == CckPhase::Cck1 {
+            if is_postinc {
+                cpu.state.write_a(reg_ea, cpu.state.micro.ea_addr);
+            }
+            cpu.state.micro.scratch[3] = 0;
+            cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);
+            return None;
+        }
+        Some(res)
     } else {
         if is_predec {
             cpu.state.write_a(reg_ea, cpu.state.micro.ea_addr);
@@ -347,4 +361,5 @@ pub fn execute_movem_transfer(
         None
     }
 }
+
 

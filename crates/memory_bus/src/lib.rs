@@ -8,9 +8,7 @@ pub mod big_array;
 pub mod map;
 pub mod test_injection;
 
-pub use arbitration::{
-    function_code, BusAccessSize, BusCycle, CckPhase, MemoryBusResult,
-};
+pub use arbitration::{function_code, BusAccessSize, CckPhase};
 pub use config::{A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard};
 pub use map::{
     build_bank_map, build_preset_bank_map, get_preset_bank_map, handler_for_bank, BankHandler,
@@ -254,10 +252,40 @@ impl MemoryBus {
         self.chip_ram_blocked = false;
     }
 
-    /// Queries whether the Chip RAM bus is currently blocked by custom chips
+    /// Queries whether an access to the given address is currently blocked by Agnus DMA cycle stealing
     #[inline]
-    pub fn is_chip_ram_blocked(&self) -> bool {
+    pub fn is_chip_ram_blocked(&self, addr: u32) -> bool {
+        self.chip_ram_blocked && self.is_chip_ram_target(addr)
+    }
+
+    /// Queries whether the Chip RAM bus lock flag is asserted by Agnus/DMA
+    #[inline]
+    pub fn is_chip_ram_bus_locked(&self) -> bool {
         self.chip_ram_blocked
+    }
+
+    /// Reads an 8-bit byte from the 24-bit physical address space
+    #[inline(always)]
+    pub fn read_byte(&self, addr: u32) -> u8 {
+        self.read_byte_internal(addr)
+    }
+
+    /// Reads a 16-bit Big-Endian word from the 24-bit physical address space
+    #[inline(always)]
+    pub fn read_word(&self, addr: u32) -> u16 {
+        self.read_word_internal(addr)
+    }
+
+    /// Writes an 8-bit byte to the 24-bit physical address space
+    #[inline(always)]
+    pub fn write_byte(&mut self, addr: u32, val: u8) {
+        self.write_byte_internal(addr, val);
+    }
+
+    /// Writes a 16-bit Big-Endian word to the 24-bit physical address space
+    #[inline(always)]
+    pub fn write_word(&mut self, addr: u32, val: u16) {
+        self.write_word_internal(addr, val);
     }
 
     /// Cold / Hard Reset: Wipes all RAM to zero and re-engages Kickstart overlay

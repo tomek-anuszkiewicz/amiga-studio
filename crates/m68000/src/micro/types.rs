@@ -220,13 +220,3 @@ pub enum RecordedTransaction {
         duration: u32,
     },
 }
-
-/// Instruction retirement and pipeline refill mode when finishing micro-operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum MicroRetireMode {
-    #[default]
-    None,
-    StandardPrefetch,
-    ScratchPrefetch,
-    TargetRefill { target: u32, new_ir: u16 },
-}

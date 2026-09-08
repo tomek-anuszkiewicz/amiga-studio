@@ -15,7 +15,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
    - The primary synchronization unit is the Amiga Color Clock (**CCK**, ~3.54 MHz PAL / ~3.58 MHz NTSC).
    - CPU bus cycles and execution stages are modeled using Color Clock phases: **CCK1** and **CCK2**.
      - $1\ \text{M68000 bus cycle} = 4\ \text{CPU clocks} = 2\ \text{CCK cycles}\ (\text{CCK1} + \text{CCK2})$.
-   - All memory bus operations must respect bus readiness via `MemoryBusResult` (`Ready` vs `Blocked`/`Wait`). If Chip RAM is blocked by custom chip DMA, the CPU waits additional CCK cycles without advancing its instruction phase.
+   - All memory bus operations must respect bus readiness (evaluating `is_chip_ram_blocked(addr)` across CCK1/CCK2). If Chip RAM is blocked by custom chip DMA, the CPU waits additional CCK cycles (`StepResult::WaitState`) without advancing its instruction phase.
 
 3. **Decoupled Architecture & Ownership**:
    - The top-level machine struct (`A500`) owns all major subsystems: `Cpu` (`M68000`), `MemoryBus`, `CycleCounter`, `Agnus`, `Denise`, `Paula`, `CiaA`, and `CiaB`.

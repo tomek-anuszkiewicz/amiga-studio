@@ -1,9 +1,9 @@
 //! Cycle-exact Motorola 68000 CPU Execution Core
 
 use crate::instructions::system;
-use crate::micro::types::{self, MicroAction, MicroRetireMode};
+use crate::micro::types::{self, MicroAction};
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, BusCycle, CckPhase, MemoryBus};
+use memory_bus::{BusAccessSize, CckPhase, MemoryBus};
 
 /// Execution result returned by CPU step operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -101,27 +101,7 @@ impl Cpu {
             return StepResult::Stopped;
         }
 
-        // 1. If an external bus transaction is currently in flight:
-        if self.state.micro.is_bus_busy() {
-            let res = self.state.micro.step_cck(bus, &mut self.wait_cycles);
-            self.total_clocks = self.total_clocks.wrapping_add(2);
-            self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-
-            if res.is_wait() {
-                return StepResult::WaitState;
-            }
-
-            // If the bus cycle just completed, handle retirement or latch intermediate data
-            if !self.state.micro.is_bus_busy() {
-                if let Some(completed_res) = self.handle_bus_cycle_completion() {
-                    return completed_res;
-                }
-            }
-
-            return StepResult::StepCompleted;
-        }
-
-        // 2. If internal execution clocks remain:
+        // 1. If internal execution clocks remain (e.g. multi-cycle shift/div or TRAP):
         if self.state.micro.internal_clocks > 0 {
             self.state.micro.internal_clocks = self.state.micro.internal_clocks.saturating_sub(2);
             self.total_clocks = self.total_clocks.wrapping_add(2);
@@ -132,7 +112,7 @@ impl Cpu {
             return StepResult::StepCompleted;
         }
 
-        // Check if current instruction uses static micro-steps:
+        // 2. Check if current instruction uses static micro-steps:
         if self.state.micro.micro_step == 0 && self.state.micro.current_steps.is_empty() {
             self.initiate_current_instruction();
         }
@@ -149,72 +129,42 @@ impl Cpu {
         StepResult::Halted
     }
 
-    /// Handles post-bus-cycle latching or instruction retirement
-    #[inline]
-    fn handle_bus_cycle_completion(&mut self) -> Option<StepResult> {
-        match self.state.micro.retire_mode {
-            MicroRetireMode::None => {
-                // Capture intermediate read data for multi-step sequences
-                if !self.state.micro.current_steps.is_empty() {
-                    let prev_idx = self.state.micro.micro_step.saturating_sub(1) as usize;
-                    if prev_idx < self.state.micro.current_steps.len() {
-                        match self.state.micro.current_steps[prev_idx].action {
-                            MicroAction::BusPrefetchToScratch => {
-                                self.state.micro.scratch_prefetch = self.state.micro.last_read;
-                            }
-                            MicroAction::FetchExtension => {
-                                self.state.prefetch[0] = self.state.micro.last_read;
-                            }
-                            MicroAction::BusReadLongHigh => {
-                                self.state.micro.scratch[0] =
-                                    (self.state.micro.last_read as u32) << 16;
-                            }
-                            MicroAction::BusReadLongLow => {
-                                self.state.micro.scratch[1] = self.state.micro.scratch[0]
-                                    | (self.state.micro.last_read as u32);
-                            }
-                            MicroAction::BusReadTargetOpcode => {
-                                self.state.micro.scratch_prefetch = self.state.micro.last_read;
-                            }
-                            MicroAction::BusPopStackHigh => {
-                                self.state.micro.scratch[0] =
-                                    (self.state.micro.last_read as u32) << 16;
-                            }
-                            MicroAction::BusPopStackLow => {
-                                self.state.micro.ea_addr = self.state.micro.scratch[0]
-                                    | (self.state.micro.last_read as u32);
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                None
-            }
-            MicroRetireMode::StandardPrefetch => {
-                self.state.ir = self.state.prefetch[0];
-                self.state.prefetch[0] = self.state.micro.last_read;
-                self.state.pc = self.state.pc.wrapping_add(2);
-                self.state.micro.reset();
-                self.initiate_current_instruction();
-                Some(StepResult::InstructionCompleted)
-            }
-            MicroRetireMode::ScratchPrefetch => {
-                self.state.ir = self.state.prefetch[0];
-                self.state.prefetch[0] = self.state.micro.scratch_prefetch;
-                self.state.pc = self.state.pc.wrapping_add(2);
-                self.state.micro.reset();
-                self.initiate_current_instruction();
-                Some(StepResult::InstructionCompleted)
-            }
-            MicroRetireMode::TargetRefill { target, new_ir } => {
-                self.state.ir = new_ir;
-                self.state.prefetch[0] = self.state.micro.last_read;
-                self.state.pc = target.wrapping_add(4);
-                self.state.micro.reset();
-                self.initiate_current_instruction();
-                Some(StepResult::InstructionCompleted)
-            }
-        }
+    /// Retires an instruction sequentially using standard prefetch refill
+    #[inline(always)]
+    pub(crate) fn retire_standard(&mut self, next_op: u16) -> StepResult {
+        self.state.ir = self.state.prefetch[0];
+        self.state.prefetch[0] = next_op;
+        self.state.pc = self.state.pc.wrapping_add(2);
+        self.state.micro.reset();
+        self.initiate_current_instruction();
+        StepResult::InstructionCompleted
+    }
+
+    /// Retires an instruction using scratch_prefetch (Class 0 RMW where prefetch precedes write)
+    #[inline(always)]
+    pub(crate) fn retire_scratch_prefetch(&mut self) -> StepResult {
+        self.state.ir = self.state.prefetch[0];
+        self.state.prefetch[0] = self.state.micro.scratch_prefetch;
+        self.state.pc = self.state.pc.wrapping_add(2);
+        self.state.micro.reset();
+        self.initiate_current_instruction();
+        StepResult::InstructionCompleted
+    }
+
+    /// Retires an instruction after branch/jump pipeline refill
+    #[inline(always)]
+    pub(crate) fn retire_target_refill(
+        &mut self,
+        target: u32,
+        target_prefetch: u16,
+        new_ir: u16,
+    ) -> StepResult {
+        self.state.ir = new_ir;
+        self.state.prefetch[0] = target_prefetch;
+        self.state.pc = target.wrapping_add(4);
+        self.state.micro.reset();
+        self.initiate_current_instruction();
+        StepResult::InstructionCompleted
     }
 
     /// Loads the active instruction's micro-step descriptor from the static table
@@ -226,52 +176,186 @@ impl Cpu {
         }
     }
 
-    /// Schedules a structured bus transaction onto the CPU micro-state machine
-    #[inline]
-    pub fn initiate_bus_cycle(&mut self, cycle: BusCycle) {
-        self.state.micro.initiate_bus_cycle(cycle);
-    }
-
-    /// Executes the CCK1 sub-phase for an in-flight bus transaction
-    #[inline]
-    pub fn step_active_bus_cck1(&mut self, bus: &mut MemoryBus) -> StepResult {
-        if self.state.micro.is_bus_busy() && self.state.micro.phase == CckPhase::Cck1 {
-            let bus_res = self.state.micro.step_cck(bus, &mut self.wait_cycles);
-            self.total_clocks = self.total_clocks.wrapping_add(2);
-            self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-            if bus_res.is_wait() {
-                return StepResult::WaitState;
+    /// Fundamental 2-phase Color Clock (CCK) read word primitive with specific Function Code
+    pub fn step_read_word_at_fc(
+        &mut self,
+        bus: &mut MemoryBus,
+        addr: u32,
+        function_code: u8,
+    ) -> StepResult {
+        let addr = addr & 0x00FF_FFFF;
+        match self.state.micro.phase {
+            CckPhase::Cck1 => {
+                if bus.is_chip_ram_blocked(addr) {
+                    self.wait_cycles = self.wait_cycles.wrapping_add(1);
+                    self.total_clocks = self.total_clocks.wrapping_add(2);
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles =
+                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                    return StepResult::WaitState;
+                }
+                self.total_clocks = self.total_clocks.wrapping_add(2);
+                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                self.state.micro.phase = CckPhase::Cck2;
+                StepResult::StepCompleted
             }
-            return StepResult::StepCompleted;
+            CckPhase::Cck2 => {
+                let data = bus.read_word(addr);
+                self.state.micro.last_read = data;
+                self.state.micro.record_bus_transaction(
+                    true,
+                    false,
+                    function_code,
+                    addr,
+                    BusAccessSize::Word,
+                    data,
+                    true,
+                    true,
+                );
+                self.total_clocks = self.total_clocks.wrapping_add(2);
+                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                self.state.micro.phase = CckPhase::Cck1;
+                self.state.micro.current_cycle_wait_cycles = 0;
+                StepResult::StepCompleted
+            }
         }
-        StepResult::StepCompleted
     }
 
-    /// Initiates a cycle-exact bus read cycle and steps CCK1
+    /// Read word in data space (FC1 or FC5)
     #[inline(always)]
-    pub fn initiate_read_cycle(
-        &mut self,
-        bus: &mut MemoryBus,
-        addr: u32,
-        size: BusAccessSize,
-        fc: u8,
-    ) -> StepResult {
-        self.initiate_bus_cycle(BusCycle::new_read(addr, size, fc));
-        self.step_active_bus_cck1(bus)
+    pub fn step_read_word_at(&mut self, bus: &mut MemoryBus, addr: u32) -> StepResult {
+        let fc = types::data_fc(&self.state);
+        self.step_read_word_at_fc(bus, addr, fc)
     }
 
-    /// Initiates a cycle-exact bus write cycle and steps CCK1
+    /// Read word in program space (FC2 or FC6)
     #[inline(always)]
-    pub fn initiate_write_cycle(
-        &mut self,
-        bus: &mut MemoryBus,
-        addr: u32,
-        val: u16,
-        size: BusAccessSize,
-        fc: u8,
-    ) -> StepResult {
-        self.initiate_bus_cycle(BusCycle::new_write(addr, val, size, fc));
-        self.step_active_bus_cck1(bus)
+    pub fn step_read_prog_word_at(&mut self, bus: &mut MemoryBus, addr: u32) -> StepResult {
+        let fc = types::prog_fc(&self.state);
+        self.step_read_word_at_fc(bus, addr, fc)
+    }
+
+    /// Fundamental 2-phase Color Clock (CCK) read byte primitive
+    pub fn step_read_byte_at(&mut self, bus: &mut MemoryBus, addr: u32) -> StepResult {
+        let addr = addr & 0x00FF_FFFF;
+        match self.state.micro.phase {
+            CckPhase::Cck1 => {
+                if bus.is_chip_ram_blocked(addr) {
+                    self.wait_cycles = self.wait_cycles.wrapping_add(1);
+                    self.total_clocks = self.total_clocks.wrapping_add(2);
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles =
+                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                    return StepResult::WaitState;
+                }
+                self.total_clocks = self.total_clocks.wrapping_add(2);
+                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                self.state.micro.phase = CckPhase::Cck2;
+                StepResult::StepCompleted
+            }
+            CckPhase::Cck2 => {
+                let data = bus.read_byte(addr);
+                self.state.micro.last_read = data as u16;
+                let fc = types::data_fc(&self.state);
+                let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
+                self.state.micro.record_bus_transaction(
+                    true,
+                    false,
+                    fc,
+                    addr,
+                    BusAccessSize::Byte,
+                    data as u16,
+                    uds,
+                    lds,
+                );
+                self.total_clocks = self.total_clocks.wrapping_add(2);
+                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                self.state.micro.phase = CckPhase::Cck1;
+                self.state.micro.current_cycle_wait_cycles = 0;
+                StepResult::StepCompleted
+            }
+        }
+    }
+
+    /// Fundamental 2-phase Color Clock (CCK) write word primitive
+    pub fn step_write_word_at(&mut self, bus: &mut MemoryBus, addr: u32, data: u16) -> StepResult {
+        let addr = addr & 0x00FF_FFFF;
+        match self.state.micro.phase {
+            CckPhase::Cck1 => {
+                self.total_clocks = self.total_clocks.wrapping_add(2);
+                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                self.state.micro.phase = CckPhase::Cck2;
+                StepResult::StepCompleted
+            }
+            CckPhase::Cck2 => {
+                if bus.is_chip_ram_blocked(addr) {
+                    self.wait_cycles = self.wait_cycles.wrapping_add(1);
+                    self.total_clocks = self.total_clocks.wrapping_add(2);
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles =
+                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                    return StepResult::WaitState;
+                }
+                bus.write_word(addr, data);
+                let fc = types::data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    addr,
+                    BusAccessSize::Word,
+                    data,
+                    true,
+                    true,
+                );
+                self.total_clocks = self.total_clocks.wrapping_add(2);
+                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                self.state.micro.phase = CckPhase::Cck1;
+                self.state.micro.current_cycle_wait_cycles = 0;
+                StepResult::StepCompleted
+            }
+        }
+    }
+
+    /// Fundamental 2-phase Color Clock (CCK) write byte primitive
+    pub fn step_write_byte_at(&mut self, bus: &mut MemoryBus, addr: u32, data: u8) -> StepResult {
+        let addr = addr & 0x00FF_FFFF;
+        match self.state.micro.phase {
+            CckPhase::Cck1 => {
+                self.total_clocks = self.total_clocks.wrapping_add(2);
+                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                self.state.micro.phase = CckPhase::Cck2;
+                StepResult::StepCompleted
+            }
+            CckPhase::Cck2 => {
+                if bus.is_chip_ram_blocked(addr) {
+                    self.wait_cycles = self.wait_cycles.wrapping_add(1);
+                    self.total_clocks = self.total_clocks.wrapping_add(2);
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles =
+                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                    return StepResult::WaitState;
+                }
+                bus.write_byte(addr, data);
+                let fc = types::data_fc(&self.state);
+                let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    addr,
+                    BusAccessSize::Byte,
+                    data as u16,
+                    uds,
+                    lds,
+                );
+                self.total_clocks = self.total_clocks.wrapping_add(2);
+                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                self.state.micro.phase = CckPhase::Cck1;
+                self.state.micro.current_cycle_wait_cycles = 0;
+                StepResult::StepCompleted
+            }
+        }
     }
 
     /// Triggers a cycle-exact Group 0 Address Error on unaligned word/long access
@@ -298,29 +382,17 @@ impl Cpu {
     pub fn execute_micro_step(&mut self, bus: &mut MemoryBus) -> StepResult {
         while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
             let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
-            if let Some(alu) = step.alu_fn {
-                let reg_src = self.state.micro.reg_src;
-                let reg_dst = self.state.micro.reg_dst;
-                alu(&mut self.state, reg_src, reg_dst);
+            if self.state.micro.phase == CckPhase::Cck1 && self.state.micro.current_cycle_wait_cycles == 0 {
+                if let Some(alu) = step.alu_fn {
+                    let reg_src = self.state.micro.reg_src;
+                    let reg_dst = self.state.micro.reg_dst;
+                    alu(&mut self.state, reg_src, reg_dst);
+                }
             }
             match step.action {
                 MicroAction::Alu => {
-                    let clocks = if self.state.micro.internal_clocks > 0 {
-                        self.state.micro.internal_clocks
-                    } else {
-                        step.base_clocks as u16
-                    };
-                    if clocks > 0 {
-                        self.state.micro.internal_clocks = clocks.saturating_sub(2);
-                        self.total_clocks = self.total_clocks.wrapping_add(2);
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                        if self.state.micro.internal_clocks == 0 {
-                            self.state.micro.micro_step =
-                                self.state.micro.micro_step.wrapping_add(1);
-                        }
-                        return StepResult::StepCompleted;
-                    } else {
-                        self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                    if let Some(res) = self.execute_alu_step(step) {
+                        return res;
                     }
                 }
                 MicroAction::BranchEval => continue,
@@ -332,184 +404,57 @@ impl Cpu {
                     }
                 }
                 // --- Operand Reads (Data Space) ---
-                MicroAction::BusReadByte => {
-                    let addr = self.state.micro.ea_addr;
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Byte, fc);
-                }
-                MicroAction::BusReadWord | MicroAction::BusReadLongHigh => {
-                    let addr = self.state.micro.ea_addr;
-                    if (addr & 1) != 0 {
-                        return self.trigger_address_error_step(addr, true, false, bus);
-                    }
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
-                }
-                MicroAction::BusReadLongLow => {
-                    self.state.micro.scratch[0] = (self.state.micro.last_read as u32) << 16;
-                    let addr = self.state.micro.ea_addr.wrapping_add(2);
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
-                }
+                MicroAction::BusReadByte => return self.step_bus_read_byte(bus),
+                MicroAction::BusReadWord => return self.step_bus_read_word(bus),
+                MicroAction::BusReadLongHigh => return self.step_bus_read_long_high(bus),
+                MicroAction::BusReadLongLow => return self.step_bus_read_long_low(bus),
 
                 // --- Operand Writes (Data Space) ---
-                MicroAction::BusWriteByte => {
-                    let addr = self.state.micro.ea_addr;
-                    let val = (self.state.micro.write_buffer & 0xFF) as u16;
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Byte, fc);
-                }
-                MicroAction::BusWriteWord => {
-                    let addr = self.state.micro.ea_addr;
-                    if (addr & 1) != 0 {
-                        return self.trigger_address_error_step(addr, false, false, bus);
-                    }
-                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
-                }
-                MicroAction::BusWriteLongHigh => {
-                    let addr = self.state.micro.ea_addr;
-                    if (addr & 1) != 0 {
-                        return self.trigger_address_error_step(addr, false, false, bus);
-                    }
-                    let val = ((self.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
-                }
-                MicroAction::BusWriteLongLow => {
-                    let addr = self.state.micro.ea_addr.wrapping_add(2);
-                    if (addr & 1) != 0 {
-                        return self.trigger_address_error_step(addr, false, false, bus);
-                    }
-                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
-                }
+                MicroAction::BusWriteByte => return self.step_bus_write_byte(bus),
+                MicroAction::BusWriteWord => return self.step_bus_write_word(bus),
+                MicroAction::BusWriteLongHigh => return self.step_bus_write_long_high(bus),
+                MicroAction::BusWriteLongLow => return self.step_bus_write_long_low(bus),
                 MicroAction::BusWriteWordAndRetire => {
-                    let addr = self.state.micro.ea_addr;
-                    if (addr & 1) != 0 {
-                        self.state.ir = self.state.prefetch[0];
-                        return self.trigger_address_error_step(addr, false, false, bus);
-                    }
-                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                    self.state.micro.mark_scratch_prefetch_retire();
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
+                    return self.step_bus_write_word_and_retire(bus);
                 }
                 MicroAction::BusWriteByteAndRetire => {
-                    let addr = self.state.micro.ea_addr;
-                    let val = (self.state.micro.write_buffer & 0xFF) as u16;
-                    self.state.micro.mark_scratch_prefetch_retire();
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Byte, fc);
+                    return self.step_bus_write_byte_and_retire(bus);
                 }
                 MicroAction::BusWriteLongLowAndRetire => {
-                    let addr = self.state.micro.ea_addr.wrapping_add(2);
-                    if (addr & 1) != 0 {
-                        return self.trigger_address_error_step(addr, false, false, bus);
-                    }
-                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                    self.state.micro.mark_scratch_prefetch_retire();
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
+                    return self.step_bus_write_long_low_and_retire(bus);
                 }
                 MicroAction::BusWriteLongHighAndRetire => {
-                    let addr = self.state.micro.ea_addr;
-                    if (addr & 1) != 0 {
-                        return self.trigger_address_error_step(addr, false, false, bus);
-                    }
-                    let val = ((self.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
-                    self.state.micro.mark_scratch_prefetch_retire();
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
+                    return self.step_bus_write_long_high_and_retire(bus);
                 }
 
                 // --- Stack Operations (Data Space) ---
-                MicroAction::BusPopStack
-                | MicroAction::BusPopStackHigh
-                | MicroAction::BusPopStackLow => {
-                    let sp = self.state.read_a(7);
-                    if (sp & 1) != 0 {
-                        return self.trigger_address_error_step(sp, true, false, bus);
-                    }
-                    self.state.write_a(7, sp.wrapping_add(2));
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_read_cycle(bus, sp, BusAccessSize::Word, fc);
-                }
-                MicroAction::BusPushStackHigh => {
-                    let sp = self.state.read_a(7).wrapping_sub(4);
-                    self.state.write_a(7, sp);
-                    if (sp & 1) != 0 {
-                        return self.trigger_address_error_step(sp, false, false, bus);
-                    }
-                    let val = ((self.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, sp, val, BusAccessSize::Word, fc);
-                }
-                MicroAction::BusPushStackLow => {
-                    let sp_low = self.state.read_a(7).wrapping_add(2);
-                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, sp_low, val, BusAccessSize::Word, fc);
-                }
+                MicroAction::BusPopStack => return self.step_bus_pop_stack(bus),
+                MicroAction::BusPopStackHigh => return self.step_bus_pop_stack_high(bus),
+                MicroAction::BusPopStackLow => return self.step_bus_pop_stack_low(bus),
+                MicroAction::BusPushStackHigh => return self.step_bus_push_stack_high(bus),
+                MicroAction::BusPushStackLow => return self.step_bus_push_stack_low(bus),
                 MicroAction::BusPushStackLowAndRetire => {
-                    let sp_low = self.state.read_a(7).wrapping_add(2);
-                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                    self.state.micro.mark_scratch_prefetch_retire();
-                    let fc = types::data_fc(&self.state);
-                    return self.initiate_write_cycle(bus, sp_low, val, BusAccessSize::Word, fc);
+                    return self.step_bus_push_stack_low_and_retire(bus);
                 }
 
                 // --- Instruction Prefetch & Pipeline Refill (Program Space) ---
-                MicroAction::FetchExtension => {
-                    let addr = self.state.pc;
-                    self.state.pc = self.state.pc.wrapping_add(2);
-                    let fc = types::prog_fc(&self.state);
-                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
-                }
-                MicroAction::BusPrefetchToScratch => {
-                    let addr = self.state.pc;
-                    let fc = types::prog_fc(&self.state);
-                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
-                }
+                MicroAction::FetchExtension => return self.step_fetch_extension(bus),
+                MicroAction::BusPrefetchToScratch => return self.step_bus_prefetch_to_scratch(bus),
                 MicroAction::PrefetchNextOpcodeAndRetire => {
-                    let addr = self.state.pc;
-                    self.state.micro.mark_standard_prefetch_retire();
-                    let fc = types::prog_fc(&self.state);
-                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
+                    return self.step_prefetch_next_opcode_and_retire(bus);
                 }
-                MicroAction::BusReadTargetOpcode => {
-                    let addr = self.state.micro.ea_addr;
-                    if (addr & 1) != 0 {
-                        return self.trigger_address_error_step(addr, true, true, bus);
-                    }
-                    let fc = types::prog_fc(&self.state);
-                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
-                }
+                MicroAction::BusReadTargetOpcode => return self.step_bus_read_target_opcode(bus),
                 MicroAction::PrefetchTargetAndRetire => {
-                    let addr = self.state.micro.ea_addr.wrapping_add(2);
-                    let target = self.state.micro.ea_addr;
-                    let scratch_pref = self.state.micro.scratch_prefetch;
-                    self.state
-                        .micro
-                        .mark_target_refill_retire(target, scratch_pref);
-                    let fc = types::prog_fc(&self.state);
-                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
+                    return self.step_prefetch_target_and_retire(bus);
                 }
+
                 MicroAction::OriToCcr => return system::op_ori_to_ccr(self, bus),
                 MicroAction::OriToSr => return system::op_ori_to_sr(self, bus),
                 MicroAction::AndiToCcr => return system::op_andi_to_ccr(self, bus),
                 MicroAction::AndiToSr => return system::op_andi_to_sr(self, bus),
                 MicroAction::EoriToCcr => return system::op_eori_to_ccr(self, bus),
                 MicroAction::EoriToSr => return system::op_eori_to_sr(self, bus),
-                MicroAction::Trap => {
-                    let res = crate::instructions::trap::op_trap(self, bus);
-                    if self.state.micro.is_bus_busy() && self.state.micro.phase == CckPhase::Cck1 {
-                        return self.step_active_bus_cck1(bus);
-                    }
-                    return res;
-                }
+                MicroAction::Trap => return crate::instructions::trap::op_trap(self, bus),
             }
         }
         StepResult::InstructionCompleted

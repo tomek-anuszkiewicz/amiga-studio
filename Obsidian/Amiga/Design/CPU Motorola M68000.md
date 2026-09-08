@@ -433,26 +433,23 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 
 ### 3.1 Read Transaction Contention
 - **CCK1 (S0–S3):** The CPU asserts the target address and `_AS`.
-  - If target is Chip RAM and Agnus DMA is active (`chip_ram_blocked == true`):
-    - `MemoryBus` returns `MemoryBusResult::Blocked`.
-    - **Action:** CPU stalls at the current micro-step. Does NOT advance `step`. Repeats CCK1 on next clock.
+  - If target is Chip RAM and Agnus DMA is active (`is_chip_ram_blocked(addr) == true`):
+    - **Action:** CPU stalls at CCK1 (`StepResult::WaitState`). Does NOT advance micro-step. Repeats CCK1 on next clock.
   - If unblocked:
-    - Address and strobes accepted; `MemoryBus` returns `MemoryBusResult::Phase1Ready`.
+    - Address and strobes accepted; CPU advances `phase` to `CckPhase::Cck2`.
 - **CCK2 (S4–S7):**
-  - Data bus is sampled directly at $S_6$ into the CPU internal register (`CpuMicroState.last_read`).
-  - `MemoryBus` returns `MemoryBusResult::Ready(data)`.
+  - Data bus is sampled directly at $S_6$ into the CPU internal register (`CpuMicroState.last_read`) via `bus.read_word(addr)`.
   - The CPU micro-step completes and advances to the next step.
 
 ### 3.2 Write Transaction Contention
 - **CCK1 (S0–S3):** The CPU outputs the address onto its external pins and asserts `_AS`.
-  - Returns `MemoryBusResult::Phase1Ready`. The CPU proceeds to CCK2.
+  - CPU proceeds to CCK2 (`phase = CckPhase::Cck2`).
 - **CCK2 (S4–S7):** The memory bus commits the write to RAM/registers.
-  - If target is Chip RAM and `chip_ram_blocked == true`:
+  - If target is Chip RAM and `is_chip_ram_blocked(addr) == true`:
     - Gary withholds `_DTACK`.
-    - `MemoryBus` returns `MemoryBusResult::Blocked`.
-    - **Action:** CPU stalls at CCK2, holding write pins asserted until Agnus frees the bus.
+    - **Action:** CPU stalls at CCK2 (`StepResult::WaitState`), holding write pins asserted until Agnus frees the bus.
   - If unblocked:
-    - Byte/word commits to memory. Returns `MemoryBusResult::Ready(0)`.
+    - Byte/word commits to memory via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)`. `phase` resets to `CckPhase::Cck1`.
 
 ### 3.3 Micro-Step State Machine & Instruction Lifecycle
 
@@ -462,21 +459,8 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 Instruction execution is driven via a micro-step state machine clocked at Color Clock (CCK) granularity (2 CPU clocks per CCK, 4 clocks per bus cycle).
 
 ```rust
-use memory_bus::{BusCycle, CckPhase};
+use memory_bus::CckPhase;
 use serde::{Deserialize, Serialize};
-
-/// Instruction retirement and pipeline refill mode upon concluding in-flight micro-operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum MicroRetireMode {
-    /// Instruction is actively progressing through micro-steps
-    None,
-    /// Standard sequential prefetch: ir = prefetch[0], prefetch[0] = last_read, pc += 2
-    StandardPrefetch,
-    /// RMW / Stack push: ir = prefetch[0], prefetch[0] = scratch_prefetch, pc += 2
-    ScratchPrefetch,
-    /// Taken branch / jump target refill: ir = new_ir, prefetch[0] = last_read, pc = target + 4
-    TargetRefill { target: u32, new_ir: u16 },
-}
 
 /// Sub-cycle execution micro-state of the M68000 CPU
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -497,8 +481,6 @@ pub struct CpuMicroState {
     pub ea_addr: u32,
     /// Intermediate temporary registers for multi-step micro-operations
     pub scratch: [u32; 4],
-    /// Pipeline retirement mode upon concluding the current in-flight cycle
-    pub retire_mode: MicroRetireMode,
     /// Wait cycles accumulated during the currently active bus cycle
     pub current_cycle_wait_cycles: u32,
 }
@@ -509,7 +491,7 @@ pub enum StepResult {
     StepCompleted,
     /// Instruction has retired (completed writeback and prefetched next opcode into IR/prefetch[0])
     InstructionCompleted,
-    /// CPU stalled due to bus wait-state (MemoryBusResult::Blocked)
+    /// CPU stalled due to bus wait-state (contention stall)
     WaitState,
     /// CPU entered or is in stopped state (STOP instruction)
     Stopped,

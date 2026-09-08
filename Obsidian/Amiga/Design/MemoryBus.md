@@ -113,47 +113,33 @@ pub enum BusAccessSize {
     Word,
 }
 
-/// Structured M68000 bus cycle representation
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BusCycle {
-    pub addr: u32,
-    pub data: u16,
-    pub size: BusAccessSize,
-    pub fc: u8,
-    pub is_read: bool,
-    pub uds: bool,
-    pub lds: bool,
-}
-
-/// Result of an M68000 bus transaction phase
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum MemoryBusResult {
-    /// Phase 1 completed; proceed to Phase 2
-    Phase1Ready,
-    /// Transaction completed successfully (carries 16-bit word or zero-extended 8-bit byte on read, 0 on write)
-    Ready(u16),
-    /// Target bus is currently occupied (CPU must hold state and retry/insert wait states)
-    Blocked,
+/// M68000 Function Code lines (FC0-FC2)
+pub mod function_code {
+    pub const USER_DATA: u8 = 1;
+    pub const USER_PROGRAM: u8 = 2;
+    pub const SUPERVISOR_DATA: u8 = 5;
+    pub const SUPERVISOR_PROGRAM: u8 = 6;
+    pub const CPU_SPACE: u8 = 7;
 }
 ```
 
-### Structured 2-Phase Transaction API (`begin_cycle` and `end_cycle`)
-1. **`begin_cycle(&mut self, cycle: &mut BusCycle) -> MemoryBusResult` (CCK1 / S0–S3):**
-   - Address is masked to 24 bits (`addr & 0x00FF_FFFF`).
-   - If **Read**:
-     - Detect targeted region. If Chip RAM (or Slow RAM) and `chip_ram_blocked == true`, return `MemoryBusResult::Blocked` (Gary withholds $\overline{\text{DTACK}}$, CPU holds at CCK1).
-     - Otherwise, return `MemoryBusResult::Phase1Ready`.
-   - If **Write**:
-     - Returns `MemoryBusResult::Phase1Ready` (address and data driven on pins).
-2. **`end_cycle(&mut self, cycle: &mut BusCycle) -> MemoryBusResult` (CCK2 / S4–S7):**
-   - Address is masked to 24 bits (`addr & 0x00FF_FFFF`).
-   - If **Read**:
-     - Performs physical memory read directly at CCK2 (state $S_6$).
-     - Extracts byte (based on `uds`/`lds`) or full word into `cycle.data`.
-     - Returns `MemoryBusResult::Ready(cycle.data)`.
-   - If **Write**:
-     - If target is Chip RAM and `chip_ram_blocked == true`, return `MemoryBusResult::Blocked` (Gary withholds $\overline{\text{DTACK}}$, CPU stalls at CCK2).
-     - Otherwise, commits byte or word to memory and returns `MemoryBusResult::Ready(0)`.
+### Direct Passive Bus API & Contention Arbitration
+The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU micro-engine, Copper, Blitter) query contention status directly and execute single-cycle or multi-phase bus transactions:
+
+1. **`is_chip_ram_blocked(&self, addr: u32) -> bool`:**
+   - Evaluates whether `addr` targets Chip RAM (or contention-affected Slow RAM) AND `chip_ram_blocked == true`.
+   - Used by the CPU at CCK1 (on reads) or CCK2 (on writes) to insert wait states when Gary withholds $\overline{\text{DTACK}}$.
+2. **Direct Memory Access Methods:**
+   - `read_byte(&self, addr: u32) -> u8` / `read_word(&self, addr: u32) -> u16`
+   - `write_byte(&mut self, addr: u32, val: u8)` / `write_word(&mut self, addr: u32, val: u16)`
+   - All addresses are automatically masked to 24 bits (`addr & 0x00FF_FFFF`) and dispatched via the 256-entry bank dispatch table.
+3. **2-Phase CCK Execution Flow (CPU Driven):**
+   - **Read Transaction (`step_read_word_at` / `step_read_prog_word_at`):**
+     - **CCK1 ($S_0–S_3$):** If `is_chip_ram_blocked(addr)` is true, the CPU increments wait cycles and returns `StepResult::WaitState` without advancing `phase`. When unblocked, advances `phase` to `Cck2`.
+     - **CCK2 ($S_4–S_7$):** Data is read directly via `read_word(addr)` and recorded into `last_read` (and optional `transaction_log`). Resets `phase` to `Cck1`, completing the bus cycle and allowing the micro-step to advance.
+   - **Write Transaction (`step_write_word_at` / `step_write_byte_at`):**
+     - **CCK1 ($S_0–S_3$):** CPU drives address and data onto bus, advancing `phase` to `Cck2`.
+     - **CCK2 ($S_4–S_7$):** If `is_chip_ram_blocked(addr)` is true, Gary withholds $\overline{\text{DTACK}}$, CPU stalls at CCK2 with `StepResult::WaitState`. When unblocked, data commits to memory via `write_word(addr, val)` and `phase` resets to `Cck1`.
 
 ---
 

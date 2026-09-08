@@ -3,7 +3,7 @@
 - **Parent Specification:** [[CPU Motorola M68000.md]]
 - **Module Location:** `crates/m68000/`
 - **Execution Model:** Cycle-exact micro-operations mapped to Color Clock phases (**CCK1** and **CCK2**).
-- **Bus Interface:** Interacts with memory strictly via [[MemoryBus.md]], respecting `MemoryBusResult::Ready` vs `MemoryBusResult::Blocked`.
+- **Bus Interface:** Interacts with memory strictly via [[MemoryBus.md]], querying `is_chip_ram_blocked(addr)` and executing direct 2-phase CCK read/write transactions (`step_read_word_at`, `step_write_word_at`).
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md) (zero custom macros, zero const-generic handlers, wrapping arithmetic, Big-Endian decoding, zero panics).
 - **Test Validation:** Verified via [[CPU SingleStepTests.md]] and skill `m68k-singlestep-test`.
 
@@ -189,8 +189,6 @@ pub struct CpuMicroState {
     pub ea_addr: u32,
     /// Intermediate scratch registers (scratch[0] holds MOVEM mask)
     pub scratch: [u32; 4],
-    /// Instruction retirement mode
-    pub retire_mode: MicroRetireMode,
     /// Wait cycles accumulated during bus stalls
     pub current_cycle_wait_cycles: u32,
 }

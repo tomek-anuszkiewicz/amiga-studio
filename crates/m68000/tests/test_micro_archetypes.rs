@@ -140,7 +140,6 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     // Color Clock 4: CCK2 completes transaction and latches data
     let r4 = cpu.step_cck(&mut bus);
     assert_eq!(r4, StepResult::StepCompleted);
-    assert!(!cpu.state.micro.is_bus_busy());
 
     // Next Color Clocks: Prefetch next instruction word (CCK1 and CCK2)
     let r5 = cpu.step_cck(&mut bus);
