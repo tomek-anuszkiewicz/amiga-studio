@@ -4,6 +4,7 @@
 //! but remains unchanged if the result is zero (preserving chained multi-precision zero status).
 
 use crate::core::Cpu;
+use crate::micro::ea;
 use crate::micro::types::{MicroStep, Size};
 use crate::state::CpuState;
 
@@ -121,30 +122,30 @@ pub static STEPS_SUBX_L_DN_DN: [MicroStep; 2] = [
 ];
 
 pub static STEPS_SUBX_B_PD_PD: [MicroStep; 5] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(crate::instructions::addx::ea_calc_src_pd_b_2clocks), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_pd_b), base_clocks: 2 },
     MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: Some(crate::instructions::addx::latch_src_b_and_calc_dst_pd_b), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: Some(ea::latch_src_b_and_calc_dst_pd_b), base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_bus_prefetch_to_scratch, alu_fn: Some(alu_subx_b_mem), base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_bus_write_byte_and_retire, alu_fn: None, base_clocks: 4 },
 ];
 
 pub static STEPS_SUBX_W_PD_PD: [MicroStep; 5] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(crate::instructions::addx::ea_calc_src_pd_w_2clocks), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_pd_w), base_clocks: 2 },
     MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(crate::instructions::addx::latch_src_w_and_calc_dst_pd_w), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::latch_src_w_and_calc_dst_pd_w), base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_bus_prefetch_to_scratch, alu_fn: Some(alu_subx_w_mem), base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_bus_write_word_and_retire, alu_fn: None, base_clocks: 4 },
 ];
 
 pub static STEPS_SUBX_L_PD_PD: [MicroStep; 8] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(crate::instructions::addx::ea_calc_src_pd_l_2clocks), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_pd_l_split), base_clocks: 2 },
     MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(crate::instructions::addx::latch_src_lo_and_read_src_hi), base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(crate::instructions::addx::latch_src_hi_and_calc_dst_pd_l), base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(crate::instructions::addx::latch_dst_lo_and_read_dst_hi), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::latch_src_lo_and_read_src_hi), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::latch_src_hi_and_calc_dst_pd_l), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::latch_dst_lo_and_read_dst_hi), base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_bus_write_word, alu_fn: Some(latch_dst_and_calc_subx_l), base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_bus_prefetch_to_scratch, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_write_word_and_retire, alu_fn: Some(crate::instructions::addx::set_write_hi), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_write_word_and_retire, alu_fn: Some(ea::set_write_hi), base_clocks: 4 },
 ];
 
 /// Decodes the micro-step sequence for SUBX based on addressing type and size

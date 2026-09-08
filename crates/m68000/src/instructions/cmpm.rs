@@ -13,31 +13,6 @@ use crate::state::CpuState;
 // Micro-Step Callbacks
 // ============================================================================
 
-/// Latches source byte into scratch[1] and sets destination address register indirect with postincrement
-pub fn ea_calc_dst_pi_b_latch_src(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.scratch[1] = (state.micro.last_read & 0xFF) as u32;
-    let ax = state.read_a(reg_dst as usize);
-    state.micro.ea_addr = ax;
-    let inc = if reg_dst == 7 { 2 } else { 1 };
-    state.write_a(reg_dst as usize, ax.wrapping_add(inc));
-}
-
-/// Latches source word into scratch[1] and sets destination address register indirect with postincrement
-pub fn ea_calc_dst_pi_w_latch_src(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.scratch[1] = state.micro.last_read as u32;
-    let ax = state.read_a(reg_dst as usize);
-    state.micro.ea_addr = ax;
-    state.write_a(reg_dst as usize, ax.wrapping_add(2));
-}
-
-/// Latches source longword into scratch[2] and sets destination address register indirect with postincrement
-pub fn ea_calc_dst_pi_l_latch_src(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.scratch[2] = state.micro.scratch[1];
-    let ax = state.read_a(reg_dst as usize);
-    state.micro.ea_addr = ax;
-    state.write_a(reg_dst as usize, ax.wrapping_add(4));
-}
-
 /// ALU compare callback for Byte
 pub fn alu_cmpm_b(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let s = (state.micro.scratch[1] & 0xFF) as u8;
@@ -65,20 +40,20 @@ pub fn alu_cmpm_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
 pub static STEPS_CMPM_B: [MicroStep; 3] = [
     MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: Some(ea::ea_calc_src_pi_b), base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: Some(ea_calc_dst_pi_b_latch_src), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_byte, alu_fn: Some(ea::latch_src_b_and_calc_dst_pi_b), base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmpm_b), base_clocks: 4 },
 ];
 
 pub static STEPS_CMPM_W: [MicroStep; 3] = [
     MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::ea_calc_src_pi_w), base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea_calc_dst_pi_w_latch_src), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::latch_src_w_and_calc_dst_pi_w), base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmpm_w), base_clocks: 4 },
 ];
 
 pub static STEPS_CMPM_L: [MicroStep; 5] = [
     MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: Some(ea::ea_calc_src_pi_l), base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: Some(ea_calc_dst_pi_l_latch_src), base_clocks: 4 },
+    MicroStep { step_fn: Cpu::step_bus_read_long_high, alu_fn: Some(ea::latch_src_l_and_calc_dst_pi_l), base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_bus_read_long_low, alu_fn: None, base_clocks: 4 },
     MicroStep { step_fn: Cpu::step_prefetch_next_opcode_and_retire, alu_fn: Some(alu_cmpm_l), base_clocks: 4 },
 ];

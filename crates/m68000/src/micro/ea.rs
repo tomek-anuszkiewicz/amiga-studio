@@ -349,3 +349,87 @@ pub fn ea_calc_pea_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.write_buffer = base_pc.wrapping_add(xn).wrapping_add(disp8 as u32);
 }
+
+// ============================================================================
+// Compound Dual-Memory Operand Helpers (ADDX, SUBX, CMPM)
+// ============================================================================
+
+/// Latches source byte into scratch[1] and calculates destination predecrement -(Ax)
+#[inline(always)]
+pub fn latch_src_b_and_calc_dst_pd_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    state.micro.scratch[1] = (state.micro.last_read & 0xFF) as u32;
+    ea_calc_dst_pd_b(state, 0, reg_dst);
+}
+
+/// Latches source word into scratch[1] and calculates destination predecrement -(Ax)
+#[inline(always)]
+pub fn latch_src_w_and_calc_dst_pd_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    state.micro.scratch[1] = state.micro.last_read as u32;
+    ea_calc_dst_pd_w(state, 0, reg_dst);
+}
+
+/// Long predecrement split for source -(Ay): decrements by 2, saves Ay - 4 in scratch[0], ea_addr = low word
+#[inline(always)]
+pub fn ea_calc_src_pd_l_split(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
+    let an = state.read_a(reg_src as usize);
+    let low_addr = an.wrapping_sub(2);
+    state.write_a(reg_src as usize, low_addr);
+    state.micro.scratch[0] = an.wrapping_sub(4);
+    state.micro.ea_addr = low_addr;
+}
+
+/// Latches source low word into scratch[1] and sets ea_addr for source high word
+#[inline(always)]
+pub fn latch_src_lo_and_read_src_hi(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
+    state.write_a(reg_src as usize, state.micro.scratch[0]);
+    state.micro.scratch[1] = state.micro.last_read as u32;
+    state.micro.ea_addr = state.micro.scratch[0];
+}
+
+/// Latches source high word into scratch[1] and prepares destination -(Ax) split predecrement
+#[inline(always)]
+pub fn latch_src_hi_and_calc_dst_pd_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    state.micro.scratch[1] |= (state.micro.last_read as u32) << 16;
+    let ax = state.read_a(reg_dst as usize);
+    let low_addr = ax.wrapping_sub(2);
+    state.write_a(reg_dst as usize, low_addr);
+    state.micro.scratch[0] = ax.wrapping_sub(4);
+    state.micro.ea_addr = low_addr;
+}
+
+/// Latches destination low word into scratch[2] and sets ea_addr for destination high word
+#[inline(always)]
+pub fn latch_dst_lo_and_read_dst_hi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    state.write_a(reg_dst as usize, state.micro.scratch[0]);
+    state.micro.scratch[2] = state.micro.last_read as u32;
+    state.micro.ea_addr = state.micro.scratch[0];
+}
+
+/// Sets ea_addr to high word and buffers high word result for write-back
+#[inline(always)]
+pub fn set_write_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    state.micro.ea_addr = state.micro.scratch[0];
+    state.micro.write_buffer = (state.micro.scratch[1] >> 16) & 0xFFFF;
+}
+
+/// Latches source byte into scratch[1] and calculates destination postincrement (Ax)+
+#[inline(always)]
+pub fn latch_src_b_and_calc_dst_pi_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    state.micro.scratch[1] = (state.micro.last_read & 0xFF) as u32;
+    ea_calc_dst_pi_b(state, 0, reg_dst);
+}
+
+/// Latches source word into scratch[1] and calculates destination postincrement (Ax)+
+#[inline(always)]
+pub fn latch_src_w_and_calc_dst_pi_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    state.micro.scratch[1] = state.micro.last_read as u32;
+    ea_calc_dst_pi_w(state, 0, reg_dst);
+}
+
+/// Latches source longword into scratch[2] and calculates destination postincrement (Ax)+
+#[inline(always)]
+pub fn latch_src_l_and_calc_dst_pi_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    state.micro.scratch[2] = state.micro.scratch[1];
+    ea_calc_dst_pi_l(state, 0, reg_dst);
+}
+
