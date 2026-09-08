@@ -25,10 +25,7 @@ pub fn execute_tst(state: &mut CpuState, val: u32, size: Size) {
         }
         Size::Long => ((val & 0x8000_0000) != 0, val == 0),
     };
-    state.set_n(n);
-    state.set_z(z);
-    state.set_v(false);
-    state.set_c(false);
+    state.set_ccr_nz_clear_vc(n, z);
 }
 
 /// Execution handler for `TST <ea>`

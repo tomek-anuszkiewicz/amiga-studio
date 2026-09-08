@@ -28,15 +28,11 @@ pub fn execute_rol(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
     let mut v = val & mask;
 
     if count == 0 {
-        state.set_v(false);
-        state.set_c(false);
-        // X flag unaffected
-        state.set_n((v & msb) != 0);
-        state.set_z(v == 0);
+        // X flag unaffected, V=0, C=0
+        state.set_ccr_nz_clear_vc((v & msb) != 0, v == 0);
         return (val & !mask) | v;
     }
 
-    state.set_v(false);
     let k = count % width;
     let last_out = if k == 0 {
         (v & 1) != 0
@@ -44,9 +40,7 @@ pub fn execute_rol(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
         v = ((v << k) | (v >> (width - k))) & mask;
         (v & 1) != 0
     };
-    state.set_c(last_out);
-    state.set_n((v & msb) != 0);
-    state.set_z(v == 0);
+    state.set_ccr_nzc_clear_v((v & msb) != 0, v == 0, last_out);
 
     (val & !mask) | v
 }

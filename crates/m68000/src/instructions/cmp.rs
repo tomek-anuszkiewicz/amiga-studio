@@ -23,10 +23,7 @@ pub fn execute_cmp(state: &mut CpuState, src: u32, dst: u32, size: Size) {
             let v = (((s ^ d) & (d ^ res)) & 0x80) != 0;
             let n = (res & 0x80) != 0;
             let z = res == 0;
-            state.set_c(c);
-            state.set_v(v);
-            state.set_n(n);
-            state.set_z(z);
+            state.set_ccr_nzvc(n, z, v, c);
         }
         Size::Word => {
             let s = (src & 0xFFFF) as u16;
@@ -35,20 +32,14 @@ pub fn execute_cmp(state: &mut CpuState, src: u32, dst: u32, size: Size) {
             let v = (((s ^ d) & (d ^ res)) & 0x8000) != 0;
             let n = (res & 0x8000) != 0;
             let z = res == 0;
-            state.set_c(c);
-            state.set_v(v);
-            state.set_n(n);
-            state.set_z(z);
+            state.set_ccr_nzvc(n, z, v, c);
         }
         Size::Long => {
             let (res, c) = dst.overflowing_sub(src);
             let v = (((src ^ dst) & (dst ^ res)) & 0x8000_0000) != 0;
             let n = (res & 0x8000_0000) != 0;
             let z = res == 0;
-            state.set_c(c);
-            state.set_v(v);
-            state.set_n(n);
-            state.set_z(z);
+            state.set_ccr_nzvc(n, z, v, c);
         }
     }
 }

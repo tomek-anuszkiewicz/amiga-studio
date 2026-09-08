@@ -15,30 +15,21 @@ use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
 #[inline(always)]
 pub fn not_b(state: &mut CpuState, d: u8) -> u8 {
     let res = !d;
-    state.set_n((res & 0x80) != 0);
-    state.set_z(res == 0);
-    state.set_v(false);
-    state.set_c(false);
+    state.set_ccr_nz_clear_vc((res & 0x80) != 0, res == 0);
     res
 }
 
 #[inline(always)]
 pub fn not_w(state: &mut CpuState, d: u16) -> u16 {
     let res = !d;
-    state.set_n((res & 0x8000) != 0);
-    state.set_z(res == 0);
-    state.set_v(false);
-    state.set_c(false);
+    state.set_ccr_nz_clear_vc((res & 0x8000) != 0, res == 0);
     res
 }
 
 #[inline(always)]
 pub fn not_l(state: &mut CpuState, d: u32) -> u32 {
     let res = !d;
-    state.set_n((res & 0x8000_0000) != 0);
-    state.set_z(res == 0);
-    state.set_v(false);
-    state.set_c(false);
+    state.set_ccr_nz_clear_vc((res & 0x8000_0000) != 0, res == 0);
     res
 }
 
@@ -78,10 +69,7 @@ pub fn op_not(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                     let reg_d = (cpu.state.ir & 7) as usize;
                     let val = cpu.state.d_long(reg_d);
                     let res = !val;
-                    cpu.state.set_n((res & 0x8000_0000) != 0);
-                    cpu.state.set_z(res == 0);
-                    cpu.state.set_v(false);
-                    cpu.state.set_c(false);
+                    cpu.state.set_ccr_nz_clear_vc((res & 0x8000_0000) != 0, res == 0);
                     cpu.write_d_reg(reg_d, res, Size::Long);
                     cpu.initiate_prefetch();
                     cpu.state.micro.mark_standard_prefetch_retire();
@@ -99,10 +87,7 @@ pub fn op_not(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 let r = !(val as u16);
                 (r as u32, (r & 0x8000) != 0, r == 0)
             };
-            cpu.state.set_n(n);
-            cpu.state.set_z(z);
-            cpu.state.set_v(false);
-            cpu.state.set_c(false);
+            cpu.state.set_ccr_nz_clear_vc(n, z);
             cpu.write_d_reg(reg_d, res, size);
             cpu.initiate_prefetch();
             cpu.state.micro.mark_standard_prefetch_retire();
@@ -129,10 +114,7 @@ pub fn op_not(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                     (r, (r & 0x8000_0000) != 0, r == 0)
                 }
             };
-            cpu.state.set_n(n);
-            cpu.state.set_z(z);
-            cpu.state.set_v(false);
-            cpu.state.set_c(false);
+            cpu.state.set_ccr_nz_clear_vc(n, z);
 
             cpu.state.micro.scratch[1] = res;
             cpu.initiate_prefetch();

@@ -102,9 +102,9 @@ pub fn op_add_w_ai_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 
 ## 4. Inlined Condition Code (CCR) Formulas
 
-Use these branchless boolean bitwise formulas tailored to the exact operand size:
+Always use the branchless `set_ccr_*` helper methods in `CpuState`. Any flag not specified in the method name is strictly preserved.
 
-### Addition (`ADD`, `ADDI`, `ADDQ`)
+### Addition (`ADD`, `ADDI`, `ADDQ`, `NEG`)
 ```rust
 // Word (.W) Example:
 let res = dst.wrapping_add(src);
@@ -112,10 +112,10 @@ let n = (res as i16) < 0;
 let z = res == 0;
 let v = ((src ^ res) & (dst ^ res) & 0x8000) != 0;
 let c = (res < dst) || (res < src);
-let x = c;
+cpu.state.set_ccr_xnzvc(c, n, z, v, c); // Updates X, N, Z, V, C
 ```
 
-### Subtraction & Comparison (`SUB`, `SUBI`, `SUBQ`, `CMP`, `CMPI`)
+### Subtraction (`SUB`, `SUBI`, `SUBQ`)
 ```rust
 // Word (.W) Example: res = dst - src
 let res = dst.wrapping_sub(src);
@@ -123,18 +123,32 @@ let n = (res as i16) < 0;
 let z = res == 0;
 let v = ((src ^ dst) & (res ^ dst) & 0x8000) != 0;
 let c = dst < src;
-// Note: On CMP/CMPI, X is unaffected! On SUB/SUBI/SUBQ, x = c.
+cpu.state.set_ccr_xnzvc(c, n, z, v, c); // Updates X, N, Z, V, C
 ```
 
-### Bitwise Logic (`AND`, `OR`, `EOR`, `NOT`) & `MOVE`
+### Comparison (`CMP`, `CMPI`, `CMPA`, `TST`, `CHK`)
 ```rust
-// Word (.W) Example:
-let res = dst & src; // or dst | src, etc.
+// Word (.W) Example: res = dst - src
+let res = dst.wrapping_sub(src);
 let n = (res as i16) < 0;
 let z = res == 0;
-let v = false;
-let c = false;
-// X is unaffected!
+let v = ((src ^ dst) & (res ^ dst) & 0x8000) != 0;
+let c = dst < src;
+cpu.state.set_ccr_nzvc(n, z, v, c); // Updates N, Z, V, C; leaves X untouched!
+```
+
+### Bitwise Logic (`AND`, `OR`, `EOR`, `NOT`, `ORI`, `ANDI`, `EORI`) & `MOVE`
+```rust
+// Word (.W) Example:
+let res = dst & src; // or dst | src, !src, etc.
+let n = (res as i16) < 0;
+let z = res == 0;
+cpu.state.set_ccr_nz_clear_vc(n, z); // Sets N and Z, forces V=0 and C=0; leaves X untouched!
+```
+
+### Single Bit Operations (`BTST`, `BSET`, `BCLR`, `BCHG`)
+```rust
+cpu.state.set_ccr_z_only(bit == 0); // Updates Z only; leaves X, N, V, C untouched!
 ```
 
 ---

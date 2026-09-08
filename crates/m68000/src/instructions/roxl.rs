@@ -28,24 +28,20 @@ pub fn execute_roxl(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
     let mut v = val & mask;
 
     if count == 0 {
-        state.set_v(false);
-        state.set_c(state.get_x());
-        // X flag unaffected
-        state.set_n((v & msb) != 0);
-        state.set_z(v == 0);
+        // X flag unaffected, V=0, C=X
+        let x = state.get_x();
+        state.set_ccr_nzc_clear_v((v & msb) != 0, v == 0, x);
         return (val & !mask) | v;
     }
 
-    state.set_v(false);
+    let mut x = state.get_x();
     for _ in 0..count {
-        let carry_in = if state.get_x() { 1 } else { 0 };
+        let carry_in = if x { 1 } else { 0 };
         let carry_out = (v & msb) != 0;
         v = ((v << 1) & mask) | carry_in;
-        state.set_x(carry_out);
+        x = carry_out;
     }
-    state.set_c(state.get_x());
-    state.set_n((v & msb) != 0);
-    state.set_z(v == 0);
+    state.set_ccr_xnzvc(x, (v & msb) != 0, v == 0, false, x);
 
     (val & !mask) | v
 }

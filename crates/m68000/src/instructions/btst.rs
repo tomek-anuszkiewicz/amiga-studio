@@ -19,7 +19,7 @@ pub fn execute_btst(state: &mut CpuState, bit_num: u32, val: u32, is_register: b
         bit_num % 8
     };
     let bit_val = (val & (1 << bit_idx)) != 0;
-    state.set_z(!bit_val);
+    state.set_ccr_z_only(!bit_val);
 }
 
 /// Dynamic bit test: `BTST Dn, <ea>`

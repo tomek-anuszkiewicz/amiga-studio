@@ -28,24 +28,19 @@ pub fn execute_asr(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
     let mut v = val & mask;
 
     if count == 0 {
-        state.set_v(false);
-        state.set_c(false);
-        // X flag unaffected
-        state.set_n((v & msb) != 0);
-        state.set_z(v == 0);
+        // X flag unaffected, V=0, C=0
+        state.set_ccr_nz_clear_vc((v & msb) != 0, v == 0);
         return (val & !mask) | v;
     }
 
-    state.set_v(false);
-    let mut last_out = false;
-    if count <= width {
+    let last_out = if count <= width {
+        let mut lo = false;
         for _ in 0..count {
-            last_out = (v & 1) != 0;
+            lo = (v & 1) != 0;
             let sign_bit = v & msb;
             v = (v >> 1) | sign_bit;
         }
-        state.set_x(last_out);
-        state.set_c(last_out);
+        lo
     } else {
         // Count exceeds width: silicon exhaustion
         if (v & msb) != 0 {
@@ -53,12 +48,9 @@ pub fn execute_asr(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
         } else {
             v = 0;
         }
-        state.set_x(false);
-        state.set_c(false);
-    }
-
-    state.set_n((v & msb) != 0);
-    state.set_z(v == 0);
+        false
+    };
+    state.set_ccr_xnzvc(last_out, (v & msb) != 0, v == 0, false, last_out);
 
     (val & !mask) | v
 }

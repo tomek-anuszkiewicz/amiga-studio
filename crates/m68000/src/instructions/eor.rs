@@ -16,30 +16,21 @@ use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
 #[inline(always)]
 pub fn eor_b(state: &mut CpuState, s: u8, d: u8) -> u8 {
     let res = d ^ s;
-    state.set_n((res & 0x80) != 0);
-    state.set_z(res == 0);
-    state.set_v(false);
-    state.set_c(false);
+    state.set_ccr_nz_clear_vc((res & 0x80) != 0, res == 0);
     res
 }
 
 #[inline(always)]
 pub fn eor_w(state: &mut CpuState, s: u16, d: u16) -> u16 {
     let res = d ^ s;
-    state.set_n((res & 0x8000) != 0);
-    state.set_z(res == 0);
-    state.set_v(false);
-    state.set_c(false);
+    state.set_ccr_nz_clear_vc((res & 0x8000) != 0, res == 0);
     res
 }
 
 #[inline(always)]
 pub fn eor_l(state: &mut CpuState, s: u32, d: u32) -> u32 {
     let res = d ^ s;
-    state.set_n((res & 0x8000_0000) != 0);
-    state.set_z(res == 0);
-    state.set_v(false);
-    state.set_c(false);
+    state.set_ccr_nz_clear_vc((res & 0x8000_0000) != 0, res == 0);
     res
 }
 

@@ -21,7 +21,7 @@ pub fn execute_bchg(state: &mut CpuState, bit_num: u32, val: u32, is_register: b
     };
     let bit_mask = 1 << bit_idx;
     let bit_val = (val & bit_mask) != 0;
-    state.set_z(!bit_val);
+    state.set_ccr_z_only(!bit_val);
     val ^ bit_mask
 }
 

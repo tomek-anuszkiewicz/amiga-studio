@@ -20,11 +20,7 @@ pub fn add_b(state: &mut CpuState, s: u8, d: u8, update_ccr: bool) -> u8 {
         let v = ((!(s ^ d) & (d ^ res)) & 0x80) != 0;
         let n = (res & 0x80) != 0;
         let z = res == 0;
-        state.set_x(c);
-        state.set_c(c);
-        state.set_v(v);
-        state.set_n(n);
-        state.set_z(z);
+        state.set_ccr_xnzvc(c, n, z, v, c);
     }
     res
 }
@@ -36,11 +32,7 @@ pub fn add_w(state: &mut CpuState, s: u16, d: u16, update_ccr: bool) -> u16 {
         let v = ((!(s ^ d) & (d ^ res)) & 0x8000) != 0;
         let n = (res & 0x8000) != 0;
         let z = res == 0;
-        state.set_x(c);
-        state.set_c(c);
-        state.set_v(v);
-        state.set_n(n);
-        state.set_z(z);
+        state.set_ccr_xnzvc(c, n, z, v, c);
     }
     res
 }
@@ -52,11 +44,7 @@ pub fn add_l(state: &mut CpuState, s: u32, d: u32, update_ccr: bool) -> u32 {
         let v = ((!(s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
         let n = (res & 0x8000_0000) != 0;
         let z = res == 0;
-        state.set_x(c);
-        state.set_c(c);
-        state.set_v(v);
-        state.set_n(n);
-        state.set_z(z);
+        state.set_ccr_xnzvc(c, n, z, v, c);
     }
     res
 }

@@ -21,10 +21,7 @@ pub fn update_ccr_move(state: &mut CpuState, val: u32, size: Size) {
         Size::Word => ((val as u16 & 0x8000) != 0, (val as u16) == 0),
         Size::Long => ((val & 0x8000_0000) != 0, val == 0),
     };
-    state.set_n(is_negative);
-    state.set_z(is_zero);
-    state.set_v(false);
-    state.set_c(false);
+    state.set_ccr_nz_clear_vc(is_negative, is_zero);
 }
 
 /// Execution handler for MOVE <ea>, Dn
@@ -58,11 +55,7 @@ pub fn op_move_to_reg(
         SIZE_WORD => (val as u16) == 0,
         _ => val == 0,
     };
-    cpu.state.set_n(n);
-    cpu.state.set_z(z);
-    cpu.state.set_v(false);
-    cpu.state.set_c(false);
-    // Extend flag (X) is completely unaffected
+    cpu.state.set_ccr_nz_clear_vc(n, z);
 
     cpu.write_d_reg(dst_reg, val, size_from_const(s));
 
@@ -547,11 +540,7 @@ pub fn op_move_to_mem(
             SIZE_WORD => (val as u16) == 0,
             _ => val == 0,
         };
-        cpu.state.set_n(n);
-        cpu.state.set_z(z);
-        cpu.state.set_v(false);
-        cpu.state.set_c(false);
-        // Extend flag (X) is completely unaffected
+        cpu.state.set_ccr_nz_clear_vc(n, z);
 
         cpu.state.micro.scratch[1] = val;
         cpu.state.micro.scratch[2] = 1; // Enter destination phase

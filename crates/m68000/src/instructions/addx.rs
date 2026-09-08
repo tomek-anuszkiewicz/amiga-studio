@@ -20,13 +20,8 @@ pub fn execute_addx(state: &mut CpuState, src: u32, dst: u32, size: Size) -> u32
             let c = c1 || c2;
             let v = ((!(s ^ d) & (d ^ res)) & 0x80) != 0;
             let n = (res & 0x80) != 0;
-            if res != 0 {
-                state.set_z(false);
-            }
-            state.set_x(c);
-            state.set_c(c);
-            state.set_v(v);
-            state.set_n(n);
+            let z = if res != 0 { false } else { state.get_z() };
+            state.set_ccr_xnzvc(c, n, z, v, c);
             (dst & !0xFF) | (res as u32)
         }
         Size::Word => {
@@ -37,13 +32,8 @@ pub fn execute_addx(state: &mut CpuState, src: u32, dst: u32, size: Size) -> u32
             let c = c1 || c2;
             let v = ((!(s ^ d) & (d ^ res)) & 0x8000) != 0;
             let n = (res & 0x8000) != 0;
-            if res != 0 {
-                state.set_z(false);
-            }
-            state.set_x(c);
-            state.set_c(c);
-            state.set_v(v);
-            state.set_n(n);
+            let z = if res != 0 { false } else { state.get_z() };
+            state.set_ccr_xnzvc(c, n, z, v, c);
             (dst & !0xFFFF) | (res as u32)
         }
         Size::Long => {
@@ -54,13 +44,8 @@ pub fn execute_addx(state: &mut CpuState, src: u32, dst: u32, size: Size) -> u32
             let c = c1 || c2;
             let v = ((!(s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
             let n = (res & 0x8000_0000) != 0;
-            if res != 0 {
-                state.set_z(false);
-            }
-            state.set_x(c);
-            state.set_c(c);
-            state.set_v(v);
-            state.set_n(n);
+            let z = if res != 0 { false } else { state.get_z() };
+            state.set_ccr_xnzvc(c, n, z, v, c);
             res
         }
     }

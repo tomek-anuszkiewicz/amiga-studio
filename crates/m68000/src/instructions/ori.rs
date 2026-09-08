@@ -241,14 +241,10 @@ pub fn op_ori_b_imm_dn(cpu: &mut Cpu, _bus: &mut MemoryBus) -> StepResult {
             let dst = cpu.state.d_byte(dn_reg);
             let res = dst | imm;
 
-            // Inlined Byte CCR Calculation (Zero host branches)
+            // Inlined Byte CCR Calculation (Zero host branches, preserves X, clears V and C)
             let n = (res as i8) < 0;
             let z = res == 0;
-            cpu.state.set_n(n);
-            cpu.state.set_z(z);
-            cpu.state.set_v(false);
-            cpu.state.set_c(false);
-            // Extend flag (X) is completely unaffected
+            cpu.state.set_ccr_nz_clear_vc(n, z);
 
             // Write back lower byte to Dn, preserving upper 24 bits
             cpu.state.set_d_byte(dn_reg, res);

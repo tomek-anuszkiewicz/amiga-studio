@@ -258,6 +258,62 @@ impl CpuState {
         (self.sr & SR_S) != 0
     }
 
+    // --- Branchless Multi-Flag CCR Setters (Mechanical Sympathy) ---
+
+    /// Sets all 5 flags (X, N, Z, V, C) simultaneously in a single 16-bit operation without branching.
+    /// Used by: ADD, ADDI, ADDQ, SUB, SUBI, SUBQ, NEG, arithmetic shifts, etc.
+    #[inline(always)]
+    pub fn set_ccr_xnzvc(&mut self, x: bool, n: bool, z: bool, v: bool, c: bool) {
+        let flags = ((x as u16) << 4)
+            | ((n as u16) << 3)
+            | ((z as u16) << 2)
+            | ((v as u16) << 1)
+            | (c as u16);
+        self.sr = (self.sr & !CCR_ALL) | flags;
+    }
+
+    /// Sets N, Z, V, C simultaneously without branching, strictly preserving Extend (X).
+    /// Used by: CMP, CMPI, CMPA, CMPM, CHK.
+    #[inline(always)]
+    pub fn set_ccr_nzvc(&mut self, n: bool, z: bool, v: bool, c: bool) {
+        let flags = ((n as u16) << 3)
+            | ((z as u16) << 2)
+            | ((v as u16) << 1)
+            | (c as u16);
+        self.sr = (self.sr & !0x000F) | flags;
+    }
+
+    /// Sets N and Z, clears V=0 and C=0, and strictly preserves Extend (X).
+    /// Used by: ORI, ANDI, EORI, OR, AND, EOR, NOT, MOVE, MOVEQ, CLR, EXT, TST, TAS, SWAP.
+    #[inline(always)]
+    pub fn set_ccr_nz_clear_vc(&mut self, n: bool, z: bool) {
+        let flags = ((n as u16) << 3) | ((z as u16) << 2);
+        self.sr = (self.sr & !0x000F) | flags;
+    }
+
+    /// Sets N, Z, C, clears V=0, and strictly preserves Extend (X).
+    /// Used by: ROL, ROR (count > 0).
+    #[inline(always)]
+    pub fn set_ccr_nzc_clear_v(&mut self, n: bool, z: bool, c: bool) {
+        let flags = ((n as u16) << 3) | ((z as u16) << 2) | (c as u16);
+        self.sr = (self.sr & !0x000F) | flags;
+    }
+
+    /// Sets Zero (Z) flag branchlessly, strictly preserving X, N, V, C.
+    /// Used by: BTST, BSET, BCLR, BCHG.
+    #[inline(always)]
+    pub fn set_ccr_z_only(&mut self, z: bool) {
+        let flag = (z as u16) << 2;
+        self.sr = (self.sr & !CCR_Z) | flag;
+    }
+
+    /// Sets the entire 5-bit Condition Code byte directly.
+    /// Used by: MOVE to CCR, RTE, RTR.
+    #[inline(always)]
+    pub fn set_ccr_raw(&mut self, ccr: u8) {
+        self.sr = (self.sr & !CCR_ALL) | ((ccr as u16) & CCR_ALL);
+    }
+
     // --- Condition Code Helpers ---
 
     #[inline]
