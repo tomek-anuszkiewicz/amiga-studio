@@ -6,7 +6,7 @@
 
 use crate::core::{Cpu, StepResult};
 use crate::micro::engine::trigger_address_error_step;
-use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::micro::types::{MicroAction, MicroStep};
 use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
 
 pub static STEPS_TRAP: [MicroStep; 9] = [
@@ -14,7 +14,6 @@ pub static STEPS_TRAP: [MicroStep; 9] = [
         action: MicroAction::Trap,
         alu_fn: None,
         base_clocks: 0,
-        flags: flags::NONE,
     };
     9
 ];

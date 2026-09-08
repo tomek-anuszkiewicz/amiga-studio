@@ -1,5 +1,6 @@
 //! M68000 System and Exception Processing (NOP, TRAP, Address Error)
 
+use crate::core::{Cpu, StepResult};
 use crate::state::{CpuState, SR_T};
 use memory_bus::MemoryBus;
 
@@ -94,3 +95,86 @@ pub fn push_address_error_exception(
     let lo = bus.read_word_debug(VECTOR_ADDRESS_ERROR.wrapping_add(2));
     state.pc = ((hi as u32) << 16) | (lo as u32);
 }
+
+// ============================================================================
+// CCR and SR Manipulation (ORI, ANDI, EORI)
+// ============================================================================
+
+pub fn op_ori_to_ccr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let imm = cpu.consume_extension_word(bus) & 0x1F;
+    cpu.state.sr = (cpu.state.sr & !0x1F) | ((cpu.state.sr | imm) & 0x1F);
+    cpu.retire_instruction(bus);
+    StepResult::InstructionCompleted
+}
+
+pub fn op_ori_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    if !cpu.state.is_supervisor() {
+        let ret_pc = cpu.state.instruction_pc;
+        push_standard_exception(
+            &mut cpu.state,
+            VECTOR_PRIVILEGE_VIOLATION,
+            ret_pc,
+            bus,
+        );
+        cpu.reload_pc_and_prefetch(cpu.state.pc, bus);
+        return StepResult::InstructionCompleted;
+    }
+    let imm = cpu.consume_extension_word(bus);
+    let new_sr = cpu.state.sr | imm;
+    cpu.state.set_sr(new_sr);
+    cpu.retire_instruction(bus);
+    StepResult::InstructionCompleted
+}
+
+pub fn op_andi_to_ccr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let imm = cpu.consume_extension_word(bus) & 0x1F;
+    cpu.state.sr = (cpu.state.sr & !0x1F) | (cpu.state.sr & imm);
+    cpu.retire_instruction(bus);
+    StepResult::InstructionCompleted
+}
+
+pub fn op_andi_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    if !cpu.state.is_supervisor() {
+        let ret_pc = cpu.state.instruction_pc;
+        push_standard_exception(
+            &mut cpu.state,
+            VECTOR_PRIVILEGE_VIOLATION,
+            ret_pc,
+            bus,
+        );
+        cpu.reload_pc_and_prefetch(cpu.state.pc, bus);
+        return StepResult::InstructionCompleted;
+    }
+    let imm = cpu.consume_extension_word(bus);
+    let new_sr = cpu.state.sr & imm;
+    cpu.state.set_sr(new_sr);
+    cpu.retire_instruction(bus);
+    StepResult::InstructionCompleted
+}
+
+pub fn op_eori_to_ccr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let imm = cpu.consume_extension_word(bus) & 0x1F;
+    cpu.state.sr = (cpu.state.sr & !0x1F) | ((cpu.state.sr ^ imm) & 0x1F);
+    cpu.retire_instruction(bus);
+    StepResult::InstructionCompleted
+}
+
+pub fn op_eori_to_sr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    if !cpu.state.is_supervisor() {
+        let ret_pc = cpu.state.instruction_pc;
+        push_standard_exception(
+            &mut cpu.state,
+            VECTOR_PRIVILEGE_VIOLATION,
+            ret_pc,
+            bus,
+        );
+        cpu.reload_pc_and_prefetch(cpu.state.pc, bus);
+        return StepResult::InstructionCompleted;
+    }
+    let imm = cpu.consume_extension_word(bus);
+    let new_sr = cpu.state.sr ^ imm;
+    cpu.state.set_sr(new_sr);
+    cpu.retire_instruction(bus);
+    StepResult::InstructionCompleted
+}
+

@@ -3,11 +3,9 @@
 //! Unconditional relative branch with 8-bit short or 16-bit word displacement.
 //! Execution time: 10 CPU clocks (2 internal idle clocks + 2 bus prefetch cycles).
 
-use crate::core::{Cpu, StepResult};
 use crate::micro::common;
-use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
-use memory_bus::MemoryBus;
 
 #[inline(always)]
 pub fn alu_bra_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
@@ -29,7 +27,6 @@ pub static STEPS_BRA_SHORT: [MicroStep; 3] = [
         action: MicroAction::Alu,
         alu_fn: Some(alu_bra_short),
         base_clocks: 2,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PREFETCH_TARGET_RETIRE,
@@ -41,7 +38,6 @@ pub static STEPS_BRA_WORD: [MicroStep; 3] = [
         action: MicroAction::Alu,
         alu_fn: Some(alu_bra_word),
         base_clocks: 2,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PREFETCH_TARGET_RETIRE,
@@ -56,9 +52,4 @@ pub const fn decode_bra_steps(d8: u8) -> &'static [MicroStep] {
     }
 }
 
-/// Legacy execution handler forwarding to micro-step state machine
-pub fn op_bra(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let d8 = (cpu.state.ir & 0x00FF) as u8;
-    cpu.state.micro.current_steps = decode_bra_steps(d8);
-    crate::micro::execute_micro_step(cpu, bus)
-}
+

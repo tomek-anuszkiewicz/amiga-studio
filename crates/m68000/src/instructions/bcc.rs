@@ -3,11 +3,9 @@
 //! Evaluates the 14 conditional branches using 8-bit short or 16-bit word displacements.
 //! Execution time: 10 CPU clocks if taken; 8/12 CPU clocks if not taken.
 
-use crate::core::{Cpu, StepResult};
 use crate::micro::common;
-use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
-use memory_bus::MemoryBus;
 
 /// Taken branch execution steps (10 CPU clocks / 5 CCKs)
 pub static STEPS_BRANCH_TAKEN: [MicroStep; 3] = [
@@ -15,7 +13,6 @@ pub static STEPS_BRANCH_TAKEN: [MicroStep; 3] = [
         action: MicroAction::Alu,
         alu_fn: None,
         base_clocks: 2,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PREFETCH_TARGET_RETIRE,
@@ -27,7 +24,6 @@ pub static STEPS_BRANCH_NOT_TAKEN_SHORT: [MicroStep; 2] = [
         action: MicroAction::Alu,
         alu_fn: None,
         base_clocks: 4,
-        flags: flags::NONE,
     },
     common::RETIRE_STANDARD,
 ];
@@ -38,7 +34,6 @@ pub static STEPS_BRANCH_NOT_TAKEN_WORD: [MicroStep; 3] = [
         action: MicroAction::Alu,
         alu_fn: None,
         base_clocks: 4,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PREFETCH_TARGET_RETIRE,
@@ -78,7 +73,6 @@ pub static STEPS_BCC_SHORT: [MicroStep; 1] = [MicroStep {
     action: MicroAction::BranchEval,
     alu_fn: Some(alu_bcc_short),
     base_clocks: 0,
-    flags: flags::NONE,
 }];
 
 /// Bcc.W condition evaluation step
@@ -86,7 +80,6 @@ pub static STEPS_BCC_WORD: [MicroStep; 1] = [MicroStep {
     action: MicroAction::BranchEval,
     alu_fn: Some(alu_bcc_word),
     base_clocks: 0,
-    flags: flags::NONE,
 }];
 
 /// Compile-time opcode decoder for Bcc ($6200..=$6FFF)
@@ -109,63 +102,4 @@ pub fn evaluate_bcc(state: &CpuState, cond: u8, base_pc: u32, displacement: i32)
     }
 }
 
-/// Execution handler for conditional branches `Bcc` (`cond >= 2`)
-pub fn op_bcc(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let d8 = (cpu.state.ir & 0x00FF) as u8;
-    cpu.state.micro.current_steps = decode_bcc_steps(d8);
-    crate::micro::execute_micro_step(cpu, bus)
-}
 
-// --- Specialized Opcode Forwarders ---
-
-pub fn op_bhi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_bls(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_bcs(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_bne(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_beq(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_bvc(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_bvs(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_bpl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_bmi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_bge(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_blt(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_bgt(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}
-
-pub fn op_ble(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bcc(cpu, bus)
-}

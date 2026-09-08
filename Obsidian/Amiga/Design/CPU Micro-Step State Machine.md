@@ -76,8 +76,6 @@ pub struct MicroStep {
     pub alu_fn: Option<AluFn>,
     /// Base CPU clocks consumed (4 for bus cycles, 0 for instantaneous ALU)
     pub base_clocks: u8,
-    /// Step flags (Read, Write, Prefetch, ProgramSpace, DataSpace)
-    pub flags: u8,
 }
 ```
 

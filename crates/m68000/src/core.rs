@@ -1,6 +1,6 @@
 //! Cycle-exact Motorola 68000 CPU Execution Core
 
-use crate::instructions::*;
+use crate::instructions::system;
 use crate::state::CpuState;
 use memory_bus::MemoryBus;
 

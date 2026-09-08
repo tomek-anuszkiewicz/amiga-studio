@@ -550,12 +550,12 @@ fn execute_system_op(
     action: super::types::MicroAction,
 ) -> StepResult {
     match action {
-        super::types::MicroAction::OriToCcr => crate::instructions::ori::op_ori_to_ccr(cpu, bus),
-        super::types::MicroAction::OriToSr => crate::instructions::ori::op_ori_to_sr(cpu, bus),
-        super::types::MicroAction::AndiToCcr => crate::instructions::andi::op_andi_to_ccr(cpu, bus),
-        super::types::MicroAction::AndiToSr => crate::instructions::andi::op_andi_to_sr(cpu, bus),
-        super::types::MicroAction::EoriToCcr => crate::instructions::eori::op_eori_to_ccr(cpu, bus),
-        super::types::MicroAction::EoriToSr => crate::instructions::eori::op_eori_to_sr(cpu, bus),
+        super::types::MicroAction::OriToCcr => crate::instructions::system::op_ori_to_ccr(cpu, bus),
+        super::types::MicroAction::OriToSr => crate::instructions::system::op_ori_to_sr(cpu, bus),
+        super::types::MicroAction::AndiToCcr => crate::instructions::system::op_andi_to_ccr(cpu, bus),
+        super::types::MicroAction::AndiToSr => crate::instructions::system::op_andi_to_sr(cpu, bus),
+        super::types::MicroAction::EoriToCcr => crate::instructions::system::op_eori_to_ccr(cpu, bus),
+        super::types::MicroAction::EoriToSr => crate::instructions::system::op_eori_to_sr(cpu, bus),
         super::types::MicroAction::Trap => {
             let res = crate::instructions::trap::op_trap(cpu, bus);
             if cpu.state.micro.is_bus_busy() && cpu.state.micro.phase == memory_bus::CckPhase::Cck1 {

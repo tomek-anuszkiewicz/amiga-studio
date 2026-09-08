@@ -7,15 +7,6 @@ use crate::state::CpuState;
 use memory_bus::BusAccessSize;
 use serde::{Deserialize, Serialize};
 
-/// Bitwise flags categorizing micro-step operations
-pub mod flags {
-    pub const NONE: u8 = 0;
-    pub const READ: u8 = 1 << 0;
-    pub const WRITE: u8 = 1 << 1;
-    pub const PREFETCH: u8 = 1 << 2;
-    pub const PROGRAM_SPACE: u8 = 1 << 3;
-    pub const DATA_SPACE: u8 = 1 << 4;
-}
 
 /// Pure internal ALU operation.
 /// Operates strictly on `CpuState` using pre-decoded register indices.
@@ -136,7 +127,7 @@ pub enum MicroAction {
     Trap,
 }
 
-/// Stateless, cache-dense atomic micro-step descriptor (4 bytes)
+/// Stateless, cache-dense atomic micro-step descriptor
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct MicroStep {
@@ -146,8 +137,6 @@ pub struct MicroStep {
     pub alu_fn: Option<AluFn>,
     /// Base CPU clocks consumed (4 for bus cycles, 0 for instantaneous ALU)
     pub base_clocks: u8,
-    /// Step flags (Read, Write, Prefetch, ProgramSpace, DataSpace)
-    pub flags: u8,
 }
 
 impl PartialEq for MicroStep {
@@ -159,7 +148,6 @@ impl PartialEq for MicroStep {
                 _ => false,
             })
             && self.base_clocks == other.base_clocks
-            && self.flags == other.flags
     }
 }
 
@@ -173,18 +161,16 @@ impl MicroStep {
             action: MicroAction::Alu,
             alu_fn: Some(alu_fn),
             base_clocks: 0,
-            flags: 0,
         }
     }
 
     /// Creates a generic bus cycle micro-step
     #[inline(always)]
-    pub const fn bus(action: MicroAction, base_clocks: u8, flags: u8) -> Self {
+    pub const fn bus(action: MicroAction, base_clocks: u8) -> Self {
         Self {
             action,
             alu_fn: None,
             base_clocks,
-            flags,
         }
     }
 
@@ -195,7 +181,6 @@ impl MicroStep {
             action: MicroAction::BusReadWord,
             alu_fn: None,
             base_clocks: 4,
-            flags: flags::READ | flags::DATA_SPACE,
         }
     }
 
@@ -206,7 +191,6 @@ impl MicroStep {
             action: MicroAction::BusReadByte,
             alu_fn: None,
             base_clocks: 4,
-            flags: flags::READ | flags::DATA_SPACE,
         }
     }
 
@@ -217,7 +201,6 @@ impl MicroStep {
             action: MicroAction::BusReadLongHigh,
             alu_fn: None,
             base_clocks: 4,
-            flags: flags::READ | flags::DATA_SPACE,
         }
     }
 
@@ -228,7 +211,6 @@ impl MicroStep {
             action: MicroAction::BusReadLongLow,
             alu_fn: None,
             base_clocks: 4,
-            flags: flags::READ | flags::DATA_SPACE,
         }
     }
 }

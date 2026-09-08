@@ -5,11 +5,9 @@
 //! `(d16, PC)`, `(d8, PC, Xn)`.
 //! Execution time: 16 to 22 CPU clocks depending on addressing mode.
 
-use crate::core::{Cpu, StepResult};
 use crate::micro::common;
-use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
-use memory_bus::MemoryBus;
 
 #[inline(always)]
 pub fn alu_jsr_ai(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
@@ -70,7 +68,6 @@ pub static STEPS_JSR_AI: [MicroStep; 5] = [
         action: MicroAction::Alu,
         alu_fn: Some(alu_jsr_ai),
         base_clocks: 0,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PUSH_STACK_HIGH,
@@ -84,7 +81,6 @@ pub static STEPS_JSR_D16_AN: [MicroStep; 5] = [
         action: MicroAction::Alu,
         alu_fn: Some(alu_jsr_d16_an),
         base_clocks: 2,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PUSH_STACK_HIGH,
@@ -98,7 +94,6 @@ pub static STEPS_JSR_IDX_AN: [MicroStep; 5] = [
         action: MicroAction::Alu,
         alu_fn: Some(alu_jsr_idx_an),
         base_clocks: 6,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PUSH_STACK_HIGH,
@@ -112,7 +107,6 @@ pub static STEPS_JSR_ABSW: [MicroStep; 5] = [
         action: MicroAction::Alu,
         alu_fn: Some(alu_jsr_absw),
         base_clocks: 2,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PUSH_STACK_HIGH,
@@ -126,14 +120,12 @@ pub static STEPS_JSR_ABSL: [MicroStep; 7] = [
         action: MicroAction::Alu,
         alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
         base_clocks: 0,
-        flags: flags::NONE,
     },
     common::FETCH_EXTENSION,
     MicroStep {
         action: MicroAction::Alu,
         alu_fn: Some(alu_jsr_absl_lo),
         base_clocks: 0,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PUSH_STACK_HIGH,
@@ -147,7 +139,6 @@ pub static STEPS_JSR_D16_PC: [MicroStep; 5] = [
         action: MicroAction::Alu,
         alu_fn: Some(alu_jsr_d16_pc),
         base_clocks: 2,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PUSH_STACK_HIGH,
@@ -161,7 +152,6 @@ pub static STEPS_JSR_IDX_PC: [MicroStep; 5] = [
         action: MicroAction::Alu,
         alu_fn: Some(alu_jsr_idx_pc),
         base_clocks: 6,
-        flags: flags::NONE,
     },
     common::READ_TARGET_OPCODE,
     common::PUSH_STACK_HIGH,
@@ -186,66 +176,4 @@ pub const fn decode_jsr_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]>
     }
 }
 
-/// Execution handler for `JSR <ea>`
-pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let mode = ((cpu.state.ir >> 3) & 7) as u8;
-    let reg = (cpu.state.ir & 7) as u8;
-    if let Some(steps) = decode_jsr_steps(mode, reg) {
-        cpu.state.micro.current_steps = steps;
-        cpu.state.micro.reg_src = reg;
-        crate::micro::execute_micro_step(cpu, bus)
-    } else {
-        cpu.state.halted = true;
-        StepResult::Halted
-    }
-}
 
-// --- Specialized Opcode Forwarders ---
-
-pub fn op_jsr_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_an(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}
-
-pub fn op_jsr_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_jsr(cpu, bus)
-}

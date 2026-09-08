@@ -4,11 +4,9 @@
 //! Supports 8-bit short and 16-bit word displacements.
 //! Execution time: 18 CPU clocks (2 internal + 2 stack writes + 2 prefetch).
 
-use crate::core::{Cpu, StepResult};
 use crate::micro::common;
-use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
-use memory_bus::MemoryBus;
 
 #[inline(always)]
 pub fn alu_bsr_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
@@ -32,7 +30,6 @@ pub static STEPS_BSR_SHORT: [MicroStep; 5] = [
         action: MicroAction::Alu,
         alu_fn: Some(alu_bsr_short),
         base_clocks: 2,
-        flags: flags::NONE,
     },
     common::PUSH_STACK_HIGH,
     common::PUSH_STACK_LOW,
@@ -46,7 +43,6 @@ pub static STEPS_BSR_WORD: [MicroStep; 5] = [
         action: MicroAction::Alu,
         alu_fn: Some(alu_bsr_word),
         base_clocks: 2,
-        flags: flags::NONE,
     },
     common::PUSH_STACK_HIGH,
     common::PUSH_STACK_LOW,
@@ -63,9 +59,4 @@ pub const fn decode_bsr_steps(d8: u8) -> &'static [MicroStep] {
     }
 }
 
-/// Legacy execution handler forwarding to micro-step state machine
-pub fn op_bsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let d8 = (cpu.state.ir & 0x00FF) as u8;
-    cpu.state.micro.current_steps = decode_bsr_steps(d8);
-    crate::micro::execute_micro_step(cpu, bus)
-}
+

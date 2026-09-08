@@ -3,12 +3,10 @@
 //! Shifts bits to the left, shifting 0 into LSB and the MSB into C and X flags.
 //! Detects arithmetic overflow (V flag set if most significant bit changes at any time).
 
-use crate::core::{Cpu, StepResult};
 use crate::micro::common;
 use crate::micro::ea;
-use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
-use memory_bus::MemoryBus;
 
 // ============================================================================
 // Leaf ALU ASL Functions (Branchless & Endian-Neutral)
@@ -158,28 +156,28 @@ pub fn alu_asl_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_ASL_B_IMM: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_b_imm_dn), base_clocks: 0, flags: 0 },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_b_imm_dn), base_clocks: 0 },
     common::RETIRE_STANDARD,
 ];
 pub static STEPS_ASL_W_IMM: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_w_imm_dn), base_clocks: 0, flags: 0 },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_w_imm_dn), base_clocks: 0 },
     common::RETIRE_STANDARD,
 ];
 pub static STEPS_ASL_L_IMM: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_l_imm_dn), base_clocks: 0, flags: 0 },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_l_imm_dn), base_clocks: 0 },
     common::RETIRE_STANDARD,
 ];
 
 pub static STEPS_ASL_B_REG: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_b_reg_dn), base_clocks: 0, flags: 0 },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_b_reg_dn), base_clocks: 0 },
     common::RETIRE_STANDARD,
 ];
 pub static STEPS_ASL_W_REG: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_w_reg_dn), base_clocks: 0, flags: 0 },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_w_reg_dn), base_clocks: 0 },
     common::RETIRE_STANDARD,
 ];
 pub static STEPS_ASL_L_REG: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_l_reg_dn), base_clocks: 0, flags: 0 },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asl_l_reg_dn), base_clocks: 0 },
     common::RETIRE_STANDARD,
 ];
 
@@ -188,45 +186,45 @@ pub static STEPS_ASL_L_REG: [MicroStep; 2] = [
 // ============================================================================
 
 pub static STEPS_ASL_W_AI: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4 },
     common::RMW_WRITE_WORD_RETIRE,
 ];
 pub static STEPS_ASL_W_PI: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_dst_pi_w), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_dst_pi_w), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4 },
     common::RMW_WRITE_WORD_RETIRE,
 ];
 pub static STEPS_ASL_W_PD: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_w), base_clocks: 2, flags: 0 },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_w), base_clocks: 2 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4 },
     common::RMW_WRITE_WORD_RETIRE,
 ];
 pub static STEPS_ASL_W_D16: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4 },
     common::RMW_WRITE_WORD_RETIRE,
 ];
 pub static STEPS_ASL_W_IDX: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4 },
     common::RMW_WRITE_WORD_RETIRE,
 ];
 pub static STEPS_ASL_W_ABSW: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4 },
     common::RMW_WRITE_WORD_RETIRE,
 ];
 pub static STEPS_ASL_W_ABSL: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asl_w_mem), base_clocks: 4 },
     common::RMW_WRITE_WORD_RETIRE,
 ];
 
@@ -270,29 +268,4 @@ pub const fn decode_asl_mem_steps(mode: u8, reg: u8) -> Option<&'static [MicroSt
     }
 }
 
-// ============================================================================
-// Legacy Stubs (to be removed in Phase 7)
-// ============================================================================
 
-pub fn op_asl_reg(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    crate::micro::engine::execute_micro_step(cpu, bus)
-}
-
-pub fn op_asl_mem(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    crate::micro::engine::execute_micro_step(cpu, bus)
-}
-
-pub fn op_asl_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_reg(cpu, bus) }
-pub fn op_asl_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_reg(cpu, bus) }
-pub fn op_asl_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_reg(cpu, bus) }
-pub fn op_asl_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_reg(cpu, bus) }
-pub fn op_asl_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_reg(cpu, bus) }
-pub fn op_asl_w_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_reg(cpu, bus) }
-
-pub fn op_asl_w_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_mem(cpu, bus) }
-pub fn op_asl_w_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_mem(cpu, bus) }
-pub fn op_asl_w_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_mem(cpu, bus) }
-pub fn op_asl_w_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_mem(cpu, bus) }
-pub fn op_asl_w_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_mem(cpu, bus) }
-pub fn op_asl_w_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_mem(cpu, bus) }
-pub fn op_asl_w_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asl_mem(cpu, bus) }

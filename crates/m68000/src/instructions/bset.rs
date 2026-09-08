@@ -3,12 +3,10 @@
 //! Tests and sets a single bit in a Data Register (modulo 32) or memory operand (modulo 8).
 //! Updates Z flag (set if bit was 0 prior to setting, cleared if bit was 1). Other condition codes unaffected.
 
-use crate::core::{Cpu, StepResult};
 use crate::micro::common;
 use crate::micro::ea;
-use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
-use memory_bus::MemoryBus;
 
 // ============================================================================
 // Leaf ALU BSET Functions (Branchless & Endian-Neutral)
@@ -76,49 +74,49 @@ pub fn alu_bset_b_imm_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_BSET_DYN_DN: [MicroStep; 2] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 4, flags: 0 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_bset_l_dyn_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_bset_l_dyn_dn), base_clocks: 4 },
 ];
 pub static STEPS_BSET_DYN_AI: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_DYN_PI: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_dst_pi_b), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_dst_pi_b), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_DYN_PD: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2, flags: 0 },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_DYN_D16: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_DYN_IDX: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_DYN_ABSW: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_DYN_ABSL: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_dyn_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 
@@ -127,57 +125,57 @@ pub static STEPS_BSET_DYN_ABSL: [MicroStep; 5] = [
 // ============================================================================
 
 pub static STEPS_BSET_STAT_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 4, flags: 0 },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_bset_l_imm_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4 },
+    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_bset_l_imm_dn), base_clocks: 4 },
 ];
 pub static STEPS_BSET_STAT_AI: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm_calc_ai), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm_calc_ai), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_PI: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm_calc_pi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm_calc_pi), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_PD: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2, flags: 0 },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4 },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_D16: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_IDX: [MicroStep; 6] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4 },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_ABSW: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_ABSL: [MicroStep; 6] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
-    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4 },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bset_b_imm_mem), base_clocks: 4 },
     common::RMW_WRITE_BYTE_RETIRE,
 ];
 
@@ -221,33 +219,4 @@ pub const fn decode_bset_stat_steps(mode: u8, reg: u8) -> Option<&'static [Micro
     }
 }
 
-// ============================================================================
-// Legacy Stubs (to be removed in Phase 7)
-// ============================================================================
 
-pub fn op_bset_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    crate::micro::engine::execute_micro_step(cpu, bus)
-}
-
-pub fn op_bset_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    crate::micro::engine::execute_micro_step(cpu, bus)
-}
-
-pub fn op_bset_b_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_dn(cpu, bus) }
-pub fn op_bset_b_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_dn(cpu, bus) }
-pub fn op_bset_b_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_dn(cpu, bus) }
-pub fn op_bset_b_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_dn(cpu, bus) }
-pub fn op_bset_b_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_dn(cpu, bus) }
-pub fn op_bset_b_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_dn(cpu, bus) }
-pub fn op_bset_b_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_dn(cpu, bus) }
-
-pub fn op_bset_b_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_imm(cpu, bus) }
-pub fn op_bset_b_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_imm(cpu, bus) }
-pub fn op_bset_b_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_imm(cpu, bus) }
-pub fn op_bset_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_imm(cpu, bus) }
-pub fn op_bset_b_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_imm(cpu, bus) }
-pub fn op_bset_b_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_imm(cpu, bus) }
-pub fn op_bset_b_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_imm(cpu, bus) }
-
-pub fn op_bset_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_dn(cpu, bus) }
-pub fn op_bset_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bset_imm(cpu, bus) }

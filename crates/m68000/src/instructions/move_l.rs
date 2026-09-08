@@ -4,21 +4,21 @@
 
 use crate::micro::common;
 use crate::micro::ea;
-use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
 
 // ============================================================================
 // Atomic Micro-Step Constants
 // ============================================================================
 
-const READ_HI: MicroStep = MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE };
-const READ_LO: MicroStep = MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE };
-const WRITE_HI: MicroStep = MicroStep { action: MicroAction::BusWriteLongHigh, alu_fn: None, base_clocks: 4, flags: flags::WRITE | flags::DATA_SPACE };
-const WRITE_LO: MicroStep = MicroStep { action: MicroAction::BusWriteLongLow, alu_fn: None, base_clocks: 4, flags: flags::WRITE | flags::DATA_SPACE };
-const WRITE_OP: MicroStep = MicroStep { action: MicroAction::BusWriteWord, alu_fn: None, base_clocks: 4, flags: flags::WRITE | flags::DATA_SPACE };
-const WRITE_HI_RETIRE: MicroStep = MicroStep { action: MicroAction::BusWriteLongHighAndRetire, alu_fn: None, base_clocks: 4, flags: flags::WRITE | flags::DATA_SPACE };
-const PREFETCH_SCRATCH: MicroStep = MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE };
-const FETCH_EXT: MicroStep = MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE };
+const READ_HI: MicroStep = MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4 };
+const READ_LO: MicroStep = MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4 };
+const WRITE_HI: MicroStep = MicroStep { action: MicroAction::BusWriteLongHigh, alu_fn: None, base_clocks: 4 };
+const WRITE_LO: MicroStep = MicroStep { action: MicroAction::BusWriteLongLow, alu_fn: None, base_clocks: 4 };
+const WRITE_OP: MicroStep = MicroStep { action: MicroAction::BusWriteWord, alu_fn: None, base_clocks: 4 };
+const WRITE_HI_RETIRE: MicroStep = MicroStep { action: MicroAction::BusWriteLongHighAndRetire, alu_fn: None, base_clocks: 4 };
+const PREFETCH_SCRATCH: MicroStep = MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: None, base_clocks: 4 };
+const FETCH_EXT: MicroStep = MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4 };
 const PREFETCH_RETIRE: MicroStep = common::RETIRE_STANDARD;
 
 // ============================================================================
@@ -86,7 +86,7 @@ pub fn alu_move_l_src_imm(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_MOVE_L_DN_DN: [MicroStep; 1] = [
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_dn_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_dn_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_DN_AI: [MicroStep; 5] = [
     MicroStep::alu(alu_move_l_src_dn), MicroStep::alu(ea::ea_calc_dst_ai),
@@ -104,27 +104,27 @@ pub static STEPS_MOVE_L_DN_PD: [MicroStep; 6] = [
     MicroStep::alu(ea::ea_calc_dst_pd_l_hi), WRITE_HI_RETIRE,
 ];
 pub static STEPS_MOVE_L_DN_D16: [MicroStep; 5] = [
-    MicroStep::alu(alu_move_l_src_dn), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep::alu(alu_move_l_src_dn), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_DN_IDX: [MicroStep; 6] = [
-    MicroStep::alu(alu_move_l_src_dn), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE },
+    MicroStep::alu(alu_move_l_src_dn), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
     FETCH_EXT, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_DN_ABSW: [MicroStep; 5] = [
-    MicroStep::alu(alu_move_l_src_dn), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep::alu(alu_move_l_src_dn), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_DN_ABSL: [MicroStep; 6] = [
-    MicroStep::alu(alu_move_l_src_dn), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep::alu(alu_move_l_src_dn), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_AN_DN: [MicroStep; 1] = [
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_an_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_an_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_AN_AI: [MicroStep; 5] = [
     MicroStep::alu(alu_move_l_src_an), MicroStep::alu(ea::ea_calc_dst_ai),
@@ -142,28 +142,28 @@ pub static STEPS_MOVE_L_AN_PD: [MicroStep; 6] = [
     MicroStep::alu(ea::ea_calc_dst_pd_l_hi), WRITE_HI_RETIRE,
 ];
 pub static STEPS_MOVE_L_AN_D16: [MicroStep; 5] = [
-    MicroStep::alu(alu_move_l_src_an), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep::alu(alu_move_l_src_an), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_AN_IDX: [MicroStep; 6] = [
-    MicroStep::alu(alu_move_l_src_an), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE },
+    MicroStep::alu(alu_move_l_src_an), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
     FETCH_EXT, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_AN_ABSW: [MicroStep; 5] = [
-    MicroStep::alu(alu_move_l_src_an), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep::alu(alu_move_l_src_an), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_AN_ABSL: [MicroStep; 6] = [
-    MicroStep::alu(alu_move_l_src_an), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep::alu(alu_move_l_src_an), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_AI_DN: [MicroStep; 4] = [
     MicroStep::alu(ea::ea_calc_src_ai), READ_HI,
-    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_AI_AI: [MicroStep; 8] = [
     MicroStep::alu(ea::ea_calc_src_ai), READ_HI,
@@ -187,32 +187,32 @@ pub static STEPS_MOVE_L_AI_PD: [MicroStep; 9] = [
 pub static STEPS_MOVE_L_AI_D16: [MicroStep; 8] = [
     MicroStep::alu(ea::ea_calc_src_ai), READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_AI_IDX: [MicroStep; 9] = [
     MicroStep::alu(ea::ea_calc_src_ai), READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 }, FETCH_EXT,
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_AI_ABSW: [MicroStep; 8] = [
     MicroStep::alu(ea::ea_calc_src_ai), READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_AI_ABSL: [MicroStep; 9] = [
     MicroStep::alu(ea::ea_calc_src_ai), READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PI_DN: [MicroStep; 4] = [
     MicroStep::alu(ea::ea_calc_src_pi_l), READ_HI,
-    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_PI_AI: [MicroStep; 8] = [
     MicroStep::alu(ea::ea_calc_src_pi_l), READ_HI,
@@ -236,431 +236,431 @@ pub static STEPS_MOVE_L_PI_PD: [MicroStep; 9] = [
 pub static STEPS_MOVE_L_PI_D16: [MicroStep; 8] = [
     MicroStep::alu(ea::ea_calc_src_pi_l), READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PI_IDX: [MicroStep; 9] = [
     MicroStep::alu(ea::ea_calc_src_pi_l), READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 }, FETCH_EXT,
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PI_ABSW: [MicroStep; 8] = [
     MicroStep::alu(ea::ea_calc_src_pi_l), READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PI_ABSL: [MicroStep; 9] = [
     MicroStep::alu(ea::ea_calc_src_pi_l), READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PD_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2, flags: flags::NONE }, READ_HI,
-    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2 }, READ_HI,
+    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_PD_AI: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2, flags: flags::NONE }, READ_HI,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     MicroStep::alu(ea::ea_calc_dst_ai), WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PD_PI: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2, flags: flags::NONE }, READ_HI,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     MicroStep::alu(ea::ea_calc_move_dst_pi_l), WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PD_PD: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2, flags: flags::NONE }, READ_HI,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     PREFETCH_SCRATCH, MicroStep::alu(ea::ea_calc_dst_pd_l_lo),
     WRITE_OP, MicroStep::alu(ea::ea_calc_dst_pd_l_hi),
     WRITE_HI_RETIRE,
 ];
 pub static STEPS_MOVE_L_PD_D16: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2, flags: flags::NONE }, READ_HI,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PD_IDX: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2, flags: flags::NONE }, READ_HI,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 }, FETCH_EXT,
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PD_ABSW: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2, flags: flags::NONE }, READ_HI,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PD_ABSL: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2, flags: flags::NONE }, READ_HI,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_D16_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
-    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 }, READ_HI,
+    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_D16_AI: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     MicroStep::alu(ea::ea_calc_dst_ai), WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_D16_PI: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     MicroStep::alu(ea::ea_calc_move_dst_pi_l), WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_D16_PD: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     PREFETCH_SCRATCH, MicroStep::alu(ea::ea_calc_dst_pd_l_lo),
     WRITE_OP, MicroStep::alu(ea::ea_calc_dst_pd_l_hi),
     WRITE_HI_RETIRE,
 ];
 pub static STEPS_MOVE_L_D16_D16: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_D16_IDX: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 }, FETCH_EXT,
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_D16_ABSW: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_D16_ABSL: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IDX_DN: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_IDX_AI: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
     MicroStep::alu(alu_move_l_src_mem), MicroStep::alu(ea::ea_calc_dst_ai),
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IDX_PI: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
     MicroStep::alu(alu_move_l_src_mem), MicroStep::alu(ea::ea_calc_move_dst_pi_l),
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IDX_PD: [MicroStep; 10] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
     MicroStep::alu(alu_move_l_src_mem), PREFETCH_SCRATCH,
     MicroStep::alu(ea::ea_calc_dst_pd_l_lo), WRITE_OP,
     MicroStep::alu(ea::ea_calc_dst_pd_l_hi), WRITE_HI_RETIRE,
 ];
 pub static STEPS_MOVE_L_IDX_D16: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IDX_IDX: [MicroStep; 10] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE },
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
     FETCH_EXT, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IDX_ABSW: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IDX_ABSL: [MicroStep; 10] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSW_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
-    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, READ_HI,
+    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_ABSW_AI: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     MicroStep::alu(ea::ea_calc_dst_ai), WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSW_PI: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     MicroStep::alu(ea::ea_calc_move_dst_pi_l), WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSW_PD: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     PREFETCH_SCRATCH, MicroStep::alu(ea::ea_calc_dst_pd_l_lo),
     WRITE_OP, MicroStep::alu(ea::ea_calc_dst_pd_l_hi),
     WRITE_HI_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSW_D16: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSW_IDX: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 }, FETCH_EXT,
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSW_ABSW: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSW_ABSL: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSL_DN: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     READ_HI, READ_LO,
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_ABSL_AI: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     READ_HI, READ_LO,
     MicroStep::alu(alu_move_l_src_mem), MicroStep::alu(ea::ea_calc_dst_ai),
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSL_PI: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     READ_HI, READ_LO,
     MicroStep::alu(alu_move_l_src_mem), MicroStep::alu(ea::ea_calc_move_dst_pi_l),
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSL_PD: [MicroStep; 10] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     READ_HI, READ_LO,
     MicroStep::alu(alu_move_l_src_mem), PREFETCH_SCRATCH,
     MicroStep::alu(ea::ea_calc_dst_pd_l_lo), WRITE_OP,
     MicroStep::alu(ea::ea_calc_dst_pd_l_hi), WRITE_HI_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSL_D16: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSL_IDX: [MicroStep; 10] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE },
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
     FETCH_EXT, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSL_ABSW: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_ABSL_ABSL: [MicroStep; 10] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCD16_DN: [MicroStep; 4] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
-    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 }, READ_HI,
+    READ_LO, MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_PCD16_AI: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     MicroStep::alu(ea::ea_calc_dst_ai), WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCD16_PI: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     MicroStep::alu(ea::ea_calc_move_dst_pi_l), WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCD16_PD: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
     PREFETCH_SCRATCH, MicroStep::alu(ea::ea_calc_dst_pd_l_lo),
     WRITE_OP, MicroStep::alu(ea::ea_calc_dst_pd_l_hi),
     WRITE_HI_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCD16_D16: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCD16_IDX: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 }, FETCH_EXT,
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCD16_ABSW: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCD16_ABSL: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, READ_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 4 }, READ_HI,
     READ_LO, MicroStep::alu(alu_move_l_src_mem),
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCIDX_DN: [MicroStep; 5] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_mem_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_PCIDX_AI: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
     MicroStep::alu(alu_move_l_src_mem), MicroStep::alu(ea::ea_calc_dst_ai),
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCIDX_PI: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
     MicroStep::alu(alu_move_l_src_mem), MicroStep::alu(ea::ea_calc_move_dst_pi_l),
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCIDX_PD: [MicroStep; 10] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
     MicroStep::alu(alu_move_l_src_mem), PREFETCH_SCRATCH,
     MicroStep::alu(ea::ea_calc_dst_pd_l_lo), WRITE_OP,
     MicroStep::alu(ea::ea_calc_dst_pd_l_hi), WRITE_HI_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCIDX_D16: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCIDX_IDX: [MicroStep; 10] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE },
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
     FETCH_EXT, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCIDX_ABSW: [MicroStep; 9] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_PCIDX_ABSL: [MicroStep; 10] = [
-    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2, flags: flags::NONE }, FETCH_EXT,
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 }, FETCH_EXT,
     READ_HI, READ_LO,
-    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep::alu(alu_move_l_src_mem), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IMM_DN: [MicroStep; 3] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_imm_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4 },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_move_l_imm_dn), base_clocks: 4 },
 ];
 pub static STEPS_MOVE_L_IMM_AI: [MicroStep; 7] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4 },
     MicroStep::alu(alu_move_l_src_imm), MicroStep::alu(ea::ea_calc_dst_ai),
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IMM_PI: [MicroStep; 7] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4 },
     MicroStep::alu(alu_move_l_src_imm), MicroStep::alu(ea::ea_calc_move_dst_pi_l),
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IMM_PD: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4 },
     MicroStep::alu(alu_move_l_src_imm), PREFETCH_SCRATCH,
     MicroStep::alu(ea::ea_calc_dst_pd_l_lo), WRITE_OP,
     MicroStep::alu(ea::ea_calc_dst_pd_l_hi), WRITE_HI_RETIRE,
 ];
 pub static STEPS_MOVE_L_IMM_D16: [MicroStep; 7] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep::alu(alu_move_l_src_imm), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4 },
+    MicroStep::alu(alu_move_l_src_imm), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IMM_IDX: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep::alu(alu_move_l_src_imm), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: flags::NONE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4 },
+    MicroStep::alu(alu_move_l_src_imm), MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
     FETCH_EXT, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IMM_ABSW: [MicroStep; 7] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep::alu(alu_move_l_src_imm), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4 },
+    MicroStep::alu(alu_move_l_src_imm), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
     WRITE_HI, WRITE_LO,
     PREFETCH_RETIRE,
 ];
 pub static STEPS_MOVE_L_IMM_ABSL: [MicroStep; 8] = [
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep::alu(alu_move_l_src_imm), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
-    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE }, WRITE_HI,
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4 }, MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4 },
+    MicroStep::alu(alu_move_l_src_imm), MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 }, WRITE_HI,
     WRITE_LO, PREFETCH_RETIRE,
 ];
 

@@ -6,7 +6,7 @@ use crate::core::{Cpu, StepResult};
 use crate::micro::common;
 use crate::micro::ea;
 use crate::micro::engine::{initiate_read_cycle, initiate_write_cycle, trigger_address_error_step};
-use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
 use memory_bus::MemoryBus;
 
@@ -29,19 +29,16 @@ const FETCH_MASK: MicroStep = MicroStep {
     action: MicroAction::FetchExtension,
     alu_fn: Some(alu_movem_fetch_mask),
     base_clocks: 4,
-    flags: flags::READ | flags::PROGRAM_SPACE,
 };
 const FETCH_EXT: MicroStep = MicroStep {
     action: MicroAction::FetchExtension,
     alu_fn: None,
     base_clocks: 4,
-    flags: flags::READ | flags::PROGRAM_SPACE,
 };
 const MOVEM_TRANSFER: MicroStep = MicroStep {
     action: MicroAction::MovemTransfer,
     alu_fn: None,
     base_clocks: 0,
-    flags: flags::NONE,
 };
 const PREFETCH_RETIRE: MicroStep = common::RETIRE_STANDARD;
 
@@ -76,7 +73,6 @@ pub static STEPS_MOVEM_D16: [MicroStep; 4] = [
         action: MicroAction::FetchExtension,
         alu_fn: Some(ea::ea_calc_src_d16_an),
         base_clocks: 4,
-        flags: flags::READ | flags::PROGRAM_SPACE,
     },
     MOVEM_TRANSFER,
     PREFETCH_RETIRE,
@@ -88,7 +84,6 @@ pub static STEPS_MOVEM_IDX: [MicroStep; 5] = [
         action: MicroAction::Alu,
         alu_fn: Some(ea::ea_calc_src_idx_an),
         base_clocks: 2,
-        flags: flags::NONE,
     },
     FETCH_EXT,
     MOVEM_TRANSFER,
@@ -101,7 +96,6 @@ pub static STEPS_MOVEM_ABSW: [MicroStep; 4] = [
         action: MicroAction::FetchExtension,
         alu_fn: Some(ea::ea_calc_absw),
         base_clocks: 4,
-        flags: flags::READ | flags::PROGRAM_SPACE,
     },
     MOVEM_TRANSFER,
     PREFETCH_RETIRE,
@@ -113,13 +107,11 @@ pub static STEPS_MOVEM_ABSL: [MicroStep; 5] = [
         action: MicroAction::FetchExtension,
         alu_fn: Some(ea::ea_calc_absl_hi),
         base_clocks: 4,
-        flags: flags::READ | flags::PROGRAM_SPACE,
     },
     MicroStep {
         action: MicroAction::FetchExtension,
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 4,
-        flags: flags::READ | flags::PROGRAM_SPACE,
     },
     MOVEM_TRANSFER,
     PREFETCH_RETIRE,
@@ -131,7 +123,6 @@ pub static STEPS_MOVEM_PCD16: [MicroStep; 4] = [
         action: MicroAction::FetchExtension,
         alu_fn: Some(ea::ea_calc_d16_pc),
         base_clocks: 4,
-        flags: flags::READ | flags::PROGRAM_SPACE,
     },
     MOVEM_TRANSFER,
     PREFETCH_RETIRE,
@@ -143,7 +134,6 @@ pub static STEPS_MOVEM_PCIDX: [MicroStep; 5] = [
         action: MicroAction::Alu,
         alu_fn: Some(ea::ea_calc_idx_pc),
         base_clocks: 2,
-        flags: flags::NONE,
     },
     FETCH_EXT,
     MOVEM_TRANSFER,

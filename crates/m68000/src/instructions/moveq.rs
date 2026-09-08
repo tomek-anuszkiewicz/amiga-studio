@@ -3,7 +3,7 @@
 //! Moves an 8-bit sign-extended immediate value into a data register.
 //! Execution time: 4 CPU clocks (2 CCKs / 1 prefetch cycle).
 
-use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::micro::types::{MicroAction, MicroStep};
 use crate::state::CpuState;
 
 #[inline(always)]
@@ -20,7 +20,6 @@ pub static STEPS_MOVEQ: [MicroStep; 1] = [MicroStep {
     action: MicroAction::PrefetchNextOpcodeAndRetire,
     alu_fn: Some(alu_moveq),
     base_clocks: 4,
-    flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE,
 }];
 
 /// Compile-time opcode decoder for MOVEQ ($7000..=$7FFF with bit 8 == 0)
