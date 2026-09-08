@@ -16,7 +16,7 @@ use memory_bus::MemoryBus;
 pub fn alu_subi_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = (state.prefetch[0] & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
-    let res = crate::instructions::sub::sub_b(state, s, d, true);
+    let res = crate::instructions::sub::sub_b(state, s, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFF) | (res as u32));
 }
@@ -24,7 +24,7 @@ pub fn alu_subi_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub fn alu_subi_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = state.prefetch[0];
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
-    let res = crate::instructions::sub::sub_w(state, s, d, true);
+    let res = crate::instructions::sub::sub_w(state, s, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (res as u32));
 }
@@ -32,28 +32,28 @@ pub fn alu_subi_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub fn alu_subi_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = state.micro.scratch[1];
     let d = state.d_long(reg_dst as usize);
-    let res = crate::instructions::sub::sub_l(state, s, d, true);
+    let res = crate::instructions::sub::sub_l(state, s, d);
     state.set_d_long(reg_dst as usize, res);
 }
 
 pub fn alu_subi_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let s = (state.micro.scratch[1] & 0xFF) as u8;
     let d = (state.micro.last_read & 0xFF) as u8;
-    let res = crate::instructions::sub::sub_b(state, s, d, true);
+    let res = crate::instructions::sub::sub_b(state, s, d);
     state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_subi_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let s = (state.micro.scratch[1] & 0xFFFF) as u16;
     let d = state.micro.last_read;
-    let res = crate::instructions::sub::sub_w(state, s, d, true);
+    let res = crate::instructions::sub::sub_w(state, s, d);
     state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_subi_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let s = state.micro.scratch[3];
     let d = state.micro.scratch[1];
-    let res = crate::instructions::sub::sub_l(state, s, d, true);
+    let res = crate::instructions::sub::sub_l(state, s, d);
     state.micro.write_buffer = res;
 }
 

@@ -5,7 +5,7 @@
 
 use crate::micro::common;
 use crate::micro::ea;
-use crate::micro::types::{flags, MicroAction, MicroStep, Size};
+use crate::micro::types::{flags, MicroAction, MicroStep};
 use crate::state::CpuState;
 
 // ============================================================================
@@ -13,54 +13,33 @@ use crate::state::CpuState;
 // ============================================================================
 
 #[inline(always)]
-pub fn add_b(state: &mut CpuState, s: u8, d: u8, update_ccr: bool) -> u8 {
+pub fn add_b(state: &mut CpuState, s: u8, d: u8) -> u8 {
     let (res, c) = d.overflowing_add(s);
-    if update_ccr {
-        let v = ((!(s ^ d) & (d ^ res)) & 0x80) != 0;
-        let n = (res & 0x80) != 0;
-        let z = res == 0;
-        state.set_ccr_xnzvc(c, n, z, v, c);
-    }
+    let v = ((!(s ^ d) & (d ^ res)) & 0x80) != 0;
+    let n = (res & 0x80) != 0;
+    let z = res == 0;
+    state.set_ccr_xnzvc(c, n, z, v, c);
     res
 }
 
 #[inline(always)]
-pub fn add_w(state: &mut CpuState, s: u16, d: u16, update_ccr: bool) -> u16 {
+pub fn add_w(state: &mut CpuState, s: u16, d: u16) -> u16 {
     let (res, c) = d.overflowing_add(s);
-    if update_ccr {
-        let v = ((!(s ^ d) & (d ^ res)) & 0x8000) != 0;
-        let n = (res & 0x8000) != 0;
-        let z = res == 0;
-        state.set_ccr_xnzvc(c, n, z, v, c);
-    }
+    let v = ((!(s ^ d) & (d ^ res)) & 0x8000) != 0;
+    let n = (res & 0x8000) != 0;
+    let z = res == 0;
+    state.set_ccr_xnzvc(c, n, z, v, c);
     res
 }
 
 #[inline(always)]
-pub fn add_l(state: &mut CpuState, s: u32, d: u32, update_ccr: bool) -> u32 {
+pub fn add_l(state: &mut CpuState, s: u32, d: u32) -> u32 {
     let (res, c) = d.overflowing_add(s);
-    if update_ccr {
-        let v = ((!(s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
-        let n = (res & 0x8000_0000) != 0;
-        let z = res == 0;
-        state.set_ccr_xnzvc(c, n, z, v, c);
-    }
+    let v = ((!(s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
+    let n = (res & 0x8000_0000) != 0;
+    let z = res == 0;
+    state.set_ccr_xnzvc(c, n, z, v, c);
     res
-}
-
-/// Unified core ALU function
-pub fn execute_add(state: &mut CpuState, src: u32, dst: u32, size: Size, update_ccr: bool) -> u32 {
-    match size {
-        Size::Byte => {
-            let res = add_b(state, (src & 0xFF) as u8, (dst & 0xFF) as u8, update_ccr);
-            (dst & !0xFF) | (res as u32)
-        }
-        Size::Word => {
-            let res = add_w(state, (src & 0xFFFF) as u16, (dst & 0xFFFF) as u16, update_ccr);
-            (dst & !0xFFFF) | (res as u32)
-        }
-        Size::Long => add_l(state, src, dst, update_ccr),
-    }
 }
 
 // ============================================================================
@@ -70,7 +49,7 @@ pub fn execute_add(state: &mut CpuState, src: u32, dst: u32, size: Size, update_
 pub fn alu_add_b_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let s = (state.d_long(reg_src as usize) & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
-    let res = add_b(state, s, d, true);
+    let res = add_b(state, s, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFF) | (res as u32));
 }
@@ -78,7 +57,7 @@ pub fn alu_add_b_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 pub fn alu_add_w_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let s = (state.d_long(reg_src as usize) & 0xFFFF) as u16;
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
-    let res = add_w(state, s, d, true);
+    let res = add_w(state, s, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (res as u32));
 }
@@ -86,7 +65,7 @@ pub fn alu_add_w_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 pub fn alu_add_w_an_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let s = (state.read_a(reg_src as usize) & 0xFFFF) as u16;
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
-    let res = add_w(state, s, d, true);
+    let res = add_w(state, s, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (res as u32));
 }
@@ -94,21 +73,21 @@ pub fn alu_add_w_an_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 pub fn alu_add_l_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let s = state.d_long(reg_src as usize);
     let d = state.d_long(reg_dst as usize);
-    let res = add_l(state, s, d, true);
+    let res = add_l(state, s, d);
     state.set_d_long(reg_dst as usize, res);
 }
 
 pub fn alu_add_l_an_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let s = state.read_a(reg_src as usize);
     let d = state.d_long(reg_dst as usize);
-    let res = add_l(state, s, d, true);
+    let res = add_l(state, s, d);
     state.set_d_long(reg_dst as usize, res);
 }
 
 pub fn alu_add_b_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = (state.micro.last_read & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
-    let res = add_b(state, s, d, true);
+    let res = add_b(state, s, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFF) | (res as u32));
 }
@@ -116,7 +95,7 @@ pub fn alu_add_b_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub fn alu_add_w_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = state.micro.last_read;
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
-    let res = add_w(state, s, d, true);
+    let res = add_w(state, s, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (res as u32));
 }
@@ -124,14 +103,14 @@ pub fn alu_add_w_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub fn alu_add_l_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = state.micro.scratch[1];
     let d = state.d_long(reg_dst as usize);
-    let res = add_l(state, s, d, true);
+    let res = add_l(state, s, d);
     state.set_d_long(reg_dst as usize, res);
 }
 
 pub fn alu_add_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = (state.prefetch[0] & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
-    let res = add_b(state, s, d, true);
+    let res = add_b(state, s, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFF) | (res as u32));
 }
@@ -139,7 +118,7 @@ pub fn alu_add_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub fn alu_add_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = state.prefetch[0];
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
-    let res = add_w(state, s, d, true);
+    let res = add_w(state, s, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (res as u32));
 }
@@ -147,21 +126,21 @@ pub fn alu_add_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub fn alu_add_b_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let s = (state.d_long(reg_src as usize) & 0xFF) as u8;
     let d = (state.micro.last_read & 0xFF) as u8;
-    let res = add_b(state, s, d, true);
+    let res = add_b(state, s, d);
     state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_add_w_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let s = (state.d_long(reg_src as usize) & 0xFFFF) as u16;
     let d = state.micro.last_read;
-    let res = add_w(state, s, d, true);
+    let res = add_w(state, s, d);
     state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_add_l_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let s = state.d_long(reg_src as usize);
     let d = state.micro.scratch[1];
-    let res = add_l(state, s, d, true);
+    let res = add_l(state, s, d);
     state.micro.write_buffer = res;
 }
 

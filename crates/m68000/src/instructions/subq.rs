@@ -17,21 +17,21 @@ use memory_bus::MemoryBus;
 
 pub fn alu_subq_b_imm_dn(state: &mut CpuState, imm: u8, reg_dst: u8) {
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
-    let res = sub_b(state, imm, d, true);
+    let res = sub_b(state, imm, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFF) | (res as u32));
 }
 
 pub fn alu_subq_w_imm_dn(state: &mut CpuState, imm: u8, reg_dst: u8) {
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
-    let res = sub_w(state, imm as u16, d, true);
+    let res = sub_w(state, imm as u16, d);
     let orig = state.d_long(reg_dst as usize);
     state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (res as u32));
 }
 
 pub fn alu_subq_l_imm_dn(state: &mut CpuState, imm: u8, reg_dst: u8) {
     let d = state.d_long(reg_dst as usize);
-    let res = sub_l(state, imm as u32, d, true);
+    let res = sub_l(state, imm as u32, d);
     state.set_d_long(reg_dst as usize, res);
 }
 
@@ -47,19 +47,19 @@ pub fn alu_subq_l_imm_an(state: &mut CpuState, imm: u8, reg_dst: u8) {
 
 pub fn alu_subq_b_imm_mem(state: &mut CpuState, imm: u8, _reg_dst: u8) {
     let d = (state.micro.last_read & 0xFF) as u8;
-    let res = sub_b(state, imm, d, true);
+    let res = sub_b(state, imm, d);
     state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_subq_w_imm_mem(state: &mut CpuState, imm: u8, _reg_dst: u8) {
     let d = state.micro.last_read;
-    let res = sub_w(state, imm as u16, d, true);
+    let res = sub_w(state, imm as u16, d);
     state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_subq_l_imm_mem(state: &mut CpuState, imm: u8, _reg_dst: u8) {
     let d = state.micro.scratch[1];
-    let res = sub_l(state, imm as u32, d, true);
+    let res = sub_l(state, imm as u32, d);
     state.micro.write_buffer = res;
 }
 
