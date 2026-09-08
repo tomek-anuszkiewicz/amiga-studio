@@ -5,7 +5,19 @@
 
 pub mod core;
 pub mod instructions;
-pub mod micro;
+pub mod micro {
+    pub mod common;
+    pub mod dispatch_table;
+    pub mod ea;
+    pub mod engine;
+    pub mod types;
+
+    pub use common::*;
+    pub use dispatch_table::*;
+    pub use ea::*;
+    pub use engine::*;
+    pub use types::*;
+}
 pub mod state;
 
 pub use core::{Cpu, StepResult};
