@@ -38,8 +38,6 @@ impl StepResult {
 #[derive(Debug, Clone)]
 pub struct Cpu {
     pub state: CpuState,
-    /// Total CPU clocks executed (1 CCK = 2 CPU clocks)
-    pub total_clocks: u64,
     /// CPU clocks consumed by the current instruction
     pub instruction_clocks: u32,
 }
@@ -54,7 +52,6 @@ impl Cpu {
     pub fn new() -> Self {
         Self {
             state: CpuState::default(),
-            total_clocks: 0,
             instruction_clocks: 0,
         }
     }
@@ -66,7 +63,6 @@ impl Cpu {
         self.state.halted = false;
         self.state.step = 0;
         self.state.micro.reset();
-        self.total_clocks = 0;
         self.instruction_clocks = 0;
 
         // Fetch initial SSP from $000000
@@ -100,7 +96,6 @@ impl Cpu {
         // 1. If internal execution clocks remain (e.g. multi-cycle shift/div or TRAP):
         if self.state.micro.internal_clocks > 0 {
             self.state.micro.internal_clocks = self.state.micro.internal_clocks.saturating_sub(2);
-            self.total_clocks = self.total_clocks.wrapping_add(2);
             self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
             if self.state.micro.internal_clocks == 0 {
                 self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
@@ -181,24 +176,20 @@ impl Cpu {
     ) -> StepResult {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
-            CckPhase::Cck1 => {
-                match bus.read_word(addr) {
-                    BusResult::WaitState => {
-                        self.total_clocks = self.total_clocks.wrapping_add(2);
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                        self.state.micro.current_cycle_wait_cycles =
-                            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                        StepResult::WaitState
-                    }
-                    BusResult::Ready(data) => {
-                        self.state.micro.last_read = data;
-                        self.total_clocks = self.total_clocks.wrapping_add(2);
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                        self.state.micro.phase = CckPhase::Cck2;
-                        StepResult::StepCompleted
-                    }
+            CckPhase::Cck1 => match bus.read_word(addr) {
+                BusResult::WaitState => {
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles =
+                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                    StepResult::WaitState
                 }
-            }
+                BusResult::Ready(data) => {
+                    self.state.micro.last_read = data;
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.phase = CckPhase::Cck2;
+                    StepResult::StepCompleted
+                }
+            },
             CckPhase::Cck2 => {
                 self.state.micro.record_bus_transaction(
                     true,
@@ -210,7 +201,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.total_clocks = self.total_clocks.wrapping_add(2);
                 self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                 self.state.micro.phase = CckPhase::Cck1;
                 self.state.micro.current_cycle_wait_cycles = 0;
@@ -237,27 +227,27 @@ impl Cpu {
     pub fn step_read_byte_at(&mut self, bus: &mut MemoryBus, addr: u32) -> StepResult {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
-            CckPhase::Cck1 => {
-                match bus.read_byte(addr) {
-                    BusResult::WaitState => {
-                        self.total_clocks = self.total_clocks.wrapping_add(2);
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                        self.state.micro.current_cycle_wait_cycles =
-                            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                        StepResult::WaitState
-                    }
-                    BusResult::Ready(data) => {
-                        self.state.micro.last_read = data as u16;
-                        self.total_clocks = self.total_clocks.wrapping_add(2);
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                        self.state.micro.phase = CckPhase::Cck2;
-                        StepResult::StepCompleted
-                    }
+            CckPhase::Cck1 => match bus.read_byte(addr) {
+                BusResult::WaitState => {
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles =
+                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                    StepResult::WaitState
                 }
-            }
+                BusResult::Ready(data) => {
+                    self.state.micro.last_read = data as u16;
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.phase = CckPhase::Cck2;
+                    StepResult::StepCompleted
+                }
+            },
             CckPhase::Cck2 => {
                 let fc = types::data_fc(&self.state);
-                let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
+                let (uds, lds) = if (addr & 1) == 0 {
+                    (true, false)
+                } else {
+                    (false, true)
+                };
                 self.state.micro.record_bus_transaction(
                     true,
                     false,
@@ -268,7 +258,6 @@ impl Cpu {
                     uds,
                     lds,
                 );
-                self.total_clocks = self.total_clocks.wrapping_add(2);
                 self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                 self.state.micro.phase = CckPhase::Cck1;
                 self.state.micro.current_cycle_wait_cycles = 0;
@@ -282,40 +271,35 @@ impl Cpu {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => {
-                self.total_clocks = self.total_clocks.wrapping_add(2);
                 self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                 self.state.micro.phase = CckPhase::Cck2;
                 StepResult::StepCompleted
             }
-            CckPhase::Cck2 => {
-                match bus.write_word(addr, data) {
-                    BusResult::WaitState => {
-                        self.total_clocks = self.total_clocks.wrapping_add(2);
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                        self.state.micro.current_cycle_wait_cycles =
-                            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                        StepResult::WaitState
-                    }
-                    BusResult::Ready(()) => {
-                        let fc = types::data_fc(&self.state);
-                        self.state.micro.record_bus_transaction(
-                            false,
-                            false,
-                            fc,
-                            addr,
-                            BusAccessSize::Word,
-                            data,
-                            true,
-                            true,
-                        );
-                        self.total_clocks = self.total_clocks.wrapping_add(2);
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                        self.state.micro.phase = CckPhase::Cck1;
-                        self.state.micro.current_cycle_wait_cycles = 0;
-                        StepResult::StepCompleted
-                    }
+            CckPhase::Cck2 => match bus.write_word(addr, data) {
+                BusResult::WaitState => {
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles =
+                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                    StepResult::WaitState
                 }
-            }
+                BusResult::Ready(()) => {
+                    let fc = types::data_fc(&self.state);
+                    self.state.micro.record_bus_transaction(
+                        false,
+                        false,
+                        fc,
+                        addr,
+                        BusAccessSize::Word,
+                        data,
+                        true,
+                        true,
+                    );
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.phase = CckPhase::Cck1;
+                    self.state.micro.current_cycle_wait_cycles = 0;
+                    StepResult::StepCompleted
+                }
+            },
         }
     }
 
@@ -324,41 +308,40 @@ impl Cpu {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => {
-                self.total_clocks = self.total_clocks.wrapping_add(2);
                 self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                 self.state.micro.phase = CckPhase::Cck2;
                 StepResult::StepCompleted
             }
-            CckPhase::Cck2 => {
-                match bus.write_byte(addr, data) {
-                    BusResult::WaitState => {
-                        self.total_clocks = self.total_clocks.wrapping_add(2);
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                        self.state.micro.current_cycle_wait_cycles =
-                            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                        StepResult::WaitState
-                    }
-                    BusResult::Ready(()) => {
-                        let fc = types::data_fc(&self.state);
-                        let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
-                        self.state.micro.record_bus_transaction(
-                            false,
-                            false,
-                            fc,
-                            addr,
-                            BusAccessSize::Byte,
-                            data as u16,
-                            uds,
-                            lds,
-                        );
-                        self.total_clocks = self.total_clocks.wrapping_add(2);
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                        self.state.micro.phase = CckPhase::Cck1;
-                        self.state.micro.current_cycle_wait_cycles = 0;
-                        StepResult::StepCompleted
-                    }
+            CckPhase::Cck2 => match bus.write_byte(addr, data) {
+                BusResult::WaitState => {
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles =
+                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                    StepResult::WaitState
                 }
-            }
+                BusResult::Ready(()) => {
+                    let fc = types::data_fc(&self.state);
+                    let (uds, lds) = if (addr & 1) == 0 {
+                        (true, false)
+                    } else {
+                        (false, true)
+                    };
+                    self.state.micro.record_bus_transaction(
+                        false,
+                        false,
+                        fc,
+                        addr,
+                        BusAccessSize::Byte,
+                        data as u16,
+                        uds,
+                        lds,
+                    );
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.phase = CckPhase::Cck1;
+                    self.state.micro.current_cycle_wait_cycles = 0;
+                    StepResult::StepCompleted
+                }
+            },
         }
     }
 
@@ -377,7 +360,6 @@ impl Cpu {
             types::data_fc(&self.state)
         };
         self.instruction_clocks = self.instruction_clocks.wrapping_add(8);
-        self.total_clocks = self.total_clocks.wrapping_add(8);
         self.handle_address_error_fc(addr, is_read, fc, bus);
         StepResult::InstructionCompleted
     }
@@ -386,7 +368,9 @@ impl Cpu {
     pub fn execute_micro_step(&mut self, bus: &mut MemoryBus) -> StepResult {
         while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
             let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
-            if self.state.micro.phase == CckPhase::Cck1 && self.state.micro.current_cycle_wait_cycles == 0 {
+            if self.state.micro.phase == CckPhase::Cck1
+                && self.state.micro.current_cycle_wait_cycles == 0
+            {
                 if let Some(alu) = step.alu_fn {
                     let reg_src = self.state.micro.reg_src;
                     let reg_dst = self.state.micro.reg_dst;
@@ -400,7 +384,6 @@ impl Cpu {
         StepResult::InstructionCompleted
     }
 
-
     /// Enables or disables transaction recording for cycle-exact test harnesses
     #[inline]
     pub fn enable_transaction_recording(&mut self, enabled: bool) {
@@ -412,7 +395,6 @@ impl Cpu {
     pub fn recorded_transactions(&self) -> Option<&[crate::micro::RecordedTransaction]> {
         self.state.micro.transaction_log.as_deref()
     }
-
 
     /// Records an internal CPU operation duration and schedules internal execution clocks
     #[inline]
@@ -481,7 +463,6 @@ impl Cpu {
     ) {
         // Group 0 Address Error exception processing takes 50 clock periods
         self.instruction_clocks = self.instruction_clocks.wrapping_add(50);
-        self.total_clocks = self.total_clocks.wrapping_add(50);
         system::push_address_error_exception(
             &mut self.state,
             fault_addr,

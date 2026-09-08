@@ -13,7 +13,6 @@ impl Cpu {
         };
         if clocks > 0 {
             self.state.micro.internal_clocks = clocks.saturating_sub(2);
-            self.total_clocks = self.total_clocks.wrapping_add(2);
             self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
             if self.state.micro.internal_clocks == 0 {
                 self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
@@ -155,7 +154,10 @@ impl Cpu {
         Some(res)
     }
 
-    pub fn step_bus_write_long_low_and_retire(&mut self, bus: &mut MemoryBus) -> Option<StepResult> {
+    pub fn step_bus_write_long_low_and_retire(
+        &mut self,
+        bus: &mut MemoryBus,
+    ) -> Option<StepResult> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
         if (addr & 1) != 0 {
             return Some(self.trigger_address_error_step(addr, false, false, bus));
@@ -168,7 +170,10 @@ impl Cpu {
         Some(res)
     }
 
-    pub fn step_bus_write_long_high_and_retire(&mut self, bus: &mut MemoryBus) -> Option<StepResult> {
+    pub fn step_bus_write_long_high_and_retire(
+        &mut self,
+        bus: &mut MemoryBus,
+    ) -> Option<StepResult> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
             return Some(self.trigger_address_error_step(addr, false, false, bus));
@@ -252,7 +257,10 @@ impl Cpu {
         Some(res)
     }
 
-    pub fn step_bus_push_stack_low_and_retire(&mut self, bus: &mut MemoryBus) -> Option<StepResult> {
+    pub fn step_bus_push_stack_low_and_retire(
+        &mut self,
+        bus: &mut MemoryBus,
+    ) -> Option<StepResult> {
         let sp_low = self.state.read_a(7).wrapping_add(2);
         let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
         let res = self.step_write_word_at(bus, sp_low, val);
@@ -283,7 +291,10 @@ impl Cpu {
         Some(res)
     }
 
-    pub fn step_prefetch_next_opcode_and_retire(&mut self, bus: &mut MemoryBus) -> Option<StepResult> {
+    pub fn step_prefetch_next_opcode_and_retire(
+        &mut self,
+        bus: &mut MemoryBus,
+    ) -> Option<StepResult> {
         let addr = self.state.pc;
         let res = self.step_read_prog_word_at(bus, addr);
         if res == StepResult::StepCompleted && self.state.micro.phase == CckPhase::Cck1 {

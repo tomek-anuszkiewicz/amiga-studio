@@ -36,7 +36,6 @@ pub fn op_trap(cpu: &mut Cpu, bus: &mut MemoryBus) -> Option<StepResult> {
             cpu.state.micro.scratch[0] = return_pc;
             cpu.state.micro.scratch[1] = old_sr as u32;
             cpu.state.micro.scratch[2] = vector_addr;
-            cpu.total_clocks = cpu.total_clocks.wrapping_add(2);
             cpu.instruction_clocks = cpu.instruction_clocks.wrapping_add(2);
             Some(StepResult::StepCompleted)
         }

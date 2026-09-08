@@ -502,7 +502,7 @@ Execution is driven by the Amiga Color Clock (CCK, ~3.54 MHz). $1\ \text{M68000 
 flowchart TD
     Start(["step_cck()"]) --> CheckInternal{"internal_clocks > 0?"}
     
-    CheckInternal -- Yes --> DecClocks["internal_clocks -= 2<br/>total_clocks += 2<br/>(Bus is Idle)"] --> RetStep["return StepCompleted"]
+    CheckInternal -- Yes --> DecClocks["internal_clocks -= 2<br/>(Bus is Idle)"] --> RetStep["return StepCompleted"]
     CheckInternal -- No --> FetchStep["Fetch steps[micro_step]"]
     
     FetchStep --> IsZeroCycle{"clocks == 0?<br/>(Alu / BranchEval)"}
