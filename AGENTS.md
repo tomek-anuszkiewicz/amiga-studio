@@ -15,7 +15,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
    - The primary synchronization unit is the Amiga Color Clock (**CCK**, ~3.54 MHz PAL / ~3.58 MHz NTSC).
    - CPU bus cycles and execution stages are modeled using Color Clock phases: **CCK1** and **CCK2**.
      - $1\ \text{M68000 bus cycle} = 4\ \text{CPU clocks} = 2\ \text{CCK cycles}\ (\text{CCK1} + \text{CCK2})$.
-   - All memory bus operations must respect bus readiness (evaluating `is_chip_ram_blocked(addr)` across CCK1/CCK2). If Chip RAM is blocked by custom chip DMA, the CPU waits additional CCK cycles (`StepResult::WaitState`) without advancing its instruction phase.
+   - All memory bus operations must respect bus readiness (memory access methods `read_byte`, `read_word`, `write_byte`, `write_word` return `BusResult::WaitState` when Chip RAM is blocked by custom chip DMA). If Chip RAM is blocked, the CPU waits additional CCK cycles (`StepResult::WaitState`) without advancing its instruction phase.
 
 3. **Decoupled Architecture & Ownership**:
    - The top-level machine struct (`A500`) owns all major subsystems: `Cpu` (`M68000`), `MemoryBus`, `CycleCounter`, `Agnus`, `Denise`, `Paula`, `CiaA`, and `CiaB`.
@@ -90,7 +90,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
 8. **Method Inlining Strategy (`#[inline]`, `#[inline(always)]`, `#[inline(never)]`)**:
    - In Rust, `#[inline]` serves two functions: it is an aggressive inlining hint to LLVM, and crucially, it emits intermediate representation (MIR/LLVM IR) into crate metadata, enabling **cross-crate inlining** across workspace crates without requiring whole-program LTO.
    - **Use `#[inline]` on**:
-     - Public getters, setters, and single-expression accessors called across crates (e.g., `pub fn chip_ram(&self) -> ChipRamSize`, `pub fn is_chip_ram_blocked(&self) -> bool`).
+     - Public getters, setters, and single-expression accessors called across crates (e.g., `pub fn chip_ram(&self) -> ChipRamSize`, `pub fn is_chip_ram_locked(&self) -> bool`).
      - Lightweight forwarding/delegation wrappers (e.g., `pub fn step_cck(&mut self, cck: u64) { self.rtc.step_cck(cck); }`).
      - Endian conversion and byte/word packing helpers.
    - **Use `#[inline(always)]` on**:

@@ -3,7 +3,7 @@
 use crate::instructions::system;
 use crate::micro::types;
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, CckPhase, MemoryBus};
+use memory_bus::{BusAccessSize, BusResult, CckPhase, MemoryBus};
 
 /// Execution result returned by CPU step operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -182,28 +182,31 @@ impl Cpu {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => {
-                if bus.is_chip_ram_blocked(addr) {
-                    self.total_clocks = self.total_clocks.wrapping_add(2);
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                    self.state.micro.current_cycle_wait_cycles =
-                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                    return StepResult::WaitState;
+                match bus.read_word(addr) {
+                    BusResult::WaitState => {
+                        self.total_clocks = self.total_clocks.wrapping_add(2);
+                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                        self.state.micro.current_cycle_wait_cycles =
+                            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                        StepResult::WaitState
+                    }
+                    BusResult::Ready(data) => {
+                        self.state.micro.last_read = data;
+                        self.total_clocks = self.total_clocks.wrapping_add(2);
+                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                        self.state.micro.phase = CckPhase::Cck2;
+                        StepResult::StepCompleted
+                    }
                 }
-                self.total_clocks = self.total_clocks.wrapping_add(2);
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                self.state.micro.phase = CckPhase::Cck2;
-                StepResult::StepCompleted
             }
             CckPhase::Cck2 => {
-                let data = bus.read_word(addr);
-                self.state.micro.last_read = data;
                 self.state.micro.record_bus_transaction(
                     true,
                     false,
                     function_code,
                     addr,
                     BusAccessSize::Word,
-                    data,
+                    self.state.micro.last_read,
                     true,
                     true,
                 );
@@ -235,21 +238,24 @@ impl Cpu {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => {
-                if bus.is_chip_ram_blocked(addr) {
-                    self.total_clocks = self.total_clocks.wrapping_add(2);
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                    self.state.micro.current_cycle_wait_cycles =
-                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                    return StepResult::WaitState;
+                match bus.read_byte(addr) {
+                    BusResult::WaitState => {
+                        self.total_clocks = self.total_clocks.wrapping_add(2);
+                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                        self.state.micro.current_cycle_wait_cycles =
+                            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                        StepResult::WaitState
+                    }
+                    BusResult::Ready(data) => {
+                        self.state.micro.last_read = data as u16;
+                        self.total_clocks = self.total_clocks.wrapping_add(2);
+                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                        self.state.micro.phase = CckPhase::Cck2;
+                        StepResult::StepCompleted
+                    }
                 }
-                self.total_clocks = self.total_clocks.wrapping_add(2);
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                self.state.micro.phase = CckPhase::Cck2;
-                StepResult::StepCompleted
             }
             CckPhase::Cck2 => {
-                let data = bus.read_byte(addr);
-                self.state.micro.last_read = data as u16;
                 let fc = types::data_fc(&self.state);
                 let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
                 self.state.micro.record_bus_transaction(
@@ -258,7 +264,7 @@ impl Cpu {
                     fc,
                     addr,
                     BusAccessSize::Byte,
-                    data as u16,
+                    self.state.micro.last_read,
                     uds,
                     lds,
                 );
@@ -282,30 +288,33 @@ impl Cpu {
                 StepResult::StepCompleted
             }
             CckPhase::Cck2 => {
-                if bus.is_chip_ram_blocked(addr) {
-                    self.total_clocks = self.total_clocks.wrapping_add(2);
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                    self.state.micro.current_cycle_wait_cycles =
-                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                    return StepResult::WaitState;
+                match bus.write_word(addr, data) {
+                    BusResult::WaitState => {
+                        self.total_clocks = self.total_clocks.wrapping_add(2);
+                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                        self.state.micro.current_cycle_wait_cycles =
+                            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                        StepResult::WaitState
+                    }
+                    BusResult::Ready(()) => {
+                        let fc = types::data_fc(&self.state);
+                        self.state.micro.record_bus_transaction(
+                            false,
+                            false,
+                            fc,
+                            addr,
+                            BusAccessSize::Word,
+                            data,
+                            true,
+                            true,
+                        );
+                        self.total_clocks = self.total_clocks.wrapping_add(2);
+                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                        self.state.micro.phase = CckPhase::Cck1;
+                        self.state.micro.current_cycle_wait_cycles = 0;
+                        StepResult::StepCompleted
+                    }
                 }
-                bus.write_word(addr, data);
-                let fc = types::data_fc(&self.state);
-                self.state.micro.record_bus_transaction(
-                    false,
-                    false,
-                    fc,
-                    addr,
-                    BusAccessSize::Word,
-                    data,
-                    true,
-                    true,
-                );
-                self.total_clocks = self.total_clocks.wrapping_add(2);
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                self.state.micro.phase = CckPhase::Cck1;
-                self.state.micro.current_cycle_wait_cycles = 0;
-                StepResult::StepCompleted
             }
         }
     }
@@ -321,31 +330,34 @@ impl Cpu {
                 StepResult::StepCompleted
             }
             CckPhase::Cck2 => {
-                if bus.is_chip_ram_blocked(addr) {
-                    self.total_clocks = self.total_clocks.wrapping_add(2);
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                    self.state.micro.current_cycle_wait_cycles =
-                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                    return StepResult::WaitState;
+                match bus.write_byte(addr, data) {
+                    BusResult::WaitState => {
+                        self.total_clocks = self.total_clocks.wrapping_add(2);
+                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                        self.state.micro.current_cycle_wait_cycles =
+                            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                        StepResult::WaitState
+                    }
+                    BusResult::Ready(()) => {
+                        let fc = types::data_fc(&self.state);
+                        let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
+                        self.state.micro.record_bus_transaction(
+                            false,
+                            false,
+                            fc,
+                            addr,
+                            BusAccessSize::Byte,
+                            data as u16,
+                            uds,
+                            lds,
+                        );
+                        self.total_clocks = self.total_clocks.wrapping_add(2);
+                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                        self.state.micro.phase = CckPhase::Cck1;
+                        self.state.micro.current_cycle_wait_cycles = 0;
+                        StepResult::StepCompleted
+                    }
                 }
-                bus.write_byte(addr, data);
-                let fc = types::data_fc(&self.state);
-                let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
-                self.state.micro.record_bus_transaction(
-                    false,
-                    false,
-                    fc,
-                    addr,
-                    BusAccessSize::Byte,
-                    data as u16,
-                    uds,
-                    lds,
-                );
-                self.total_clocks = self.total_clocks.wrapping_add(2);
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                self.state.micro.phase = CckPhase::Cck1;
-                self.state.micro.current_cycle_wait_cycles = 0;
-                StepResult::StepCompleted
             }
         }
     }

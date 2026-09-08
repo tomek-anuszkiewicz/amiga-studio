@@ -8,7 +8,7 @@ pub mod big_array;
 pub mod map;
 pub mod test_injection;
 
-pub use arbitration::{function_code, BusAccessSize, CckPhase};
+pub use arbitration::{function_code, BusAccessSize, BusResult, CckPhase};
 pub use config::{A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard};
 pub use map::{
     build_bank_map, build_preset_bank_map, get_preset_bank_map, handler_for_bank, BankHandler,
@@ -252,40 +252,78 @@ impl MemoryBus {
         self.chip_ram_blocked = false;
     }
 
-    /// Queries whether an access to the given address is currently blocked by Agnus DMA cycle stealing
+    /// Queries whether the Chip RAM bus lock flag is asserted by Agnus/DMA.
+    ///
+    /// # Architectural Note
+    /// This method is strictly an external inspection/diagnostic getter for test assertions and debuggers.
+    /// It must NOT be used in CPU stepping or bus arbitration logic; clients must perform bus accesses
+    /// via `read_byte`, `read_word`, `write_byte`, or `write_word` and check the returned `BusResult`.
     #[inline]
-    pub fn is_chip_ram_blocked(&self, addr: u32) -> bool {
-        self.chip_ram_blocked && self.is_chip_ram_target(addr)
-    }
-
-    /// Queries whether the Chip RAM bus lock flag is asserted by Agnus/DMA
-    #[inline]
-    pub fn is_chip_ram_bus_locked(&self) -> bool {
+    pub fn is_chip_ram_locked(&self) -> bool {
         self.chip_ram_blocked
     }
 
-    /// Reads an 8-bit byte from the 24-bit physical address space
+    /// Reads an 8-bit byte from the 24-bit physical address space, checking for Chip RAM bus contention.
+    /// Returns `BusResult::WaitState` if the target is Chip RAM (or Slow RAM) and Agnus/DMA is blocking the bus.
     #[inline(always)]
-    pub fn read_byte(&self, addr: u32) -> u8 {
-        self.read_byte_internal(addr)
+    pub fn read_byte(&self, addr: u32) -> BusResult<u8> {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+            return BusResult::WaitState;
+        }
+        BusResult::Ready(self.read_byte_internal(addr))
     }
 
-    /// Reads a 16-bit Big-Endian word from the 24-bit physical address space
+    /// Reads a 16-bit Big-Endian word from the 24-bit physical address space, checking for Chip RAM bus contention.
+    /// Returns `BusResult::WaitState` if the target is Chip RAM (or Slow RAM) and Agnus/DMA is blocking the bus.
     #[inline(always)]
-    pub fn read_word(&self, addr: u32) -> u16 {
-        self.read_word_internal(addr)
+    pub fn read_word(&self, addr: u32) -> BusResult<u16> {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+            return BusResult::WaitState;
+        }
+        BusResult::Ready(self.read_word_internal(addr))
     }
 
-    /// Writes an 8-bit byte to the 24-bit physical address space
+    /// Generic read dispatching by `BusAccessSize` (Byte or Word).
     #[inline(always)]
-    pub fn write_byte(&mut self, addr: u32, val: u8) {
+    pub fn read(&self, addr: u32, size: BusAccessSize) -> BusResult<u16> {
+        match size {
+            BusAccessSize::Byte => match self.read_byte(addr) {
+                BusResult::Ready(val) => BusResult::Ready(val as u16),
+                BusResult::WaitState => BusResult::WaitState,
+            },
+            BusAccessSize::Word => self.read_word(addr),
+        }
+    }
+
+    /// Writes an 8-bit byte to the 24-bit physical address space, checking for Chip RAM bus contention.
+    /// Returns `BusResult::WaitState` if the target is Chip RAM (or Slow RAM) and Agnus/DMA is blocking the bus.
+    #[inline(always)]
+    pub fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+            return BusResult::WaitState;
+        }
         self.write_byte_internal(addr, val);
+        BusResult::Ready(())
     }
 
-    /// Writes a 16-bit Big-Endian word to the 24-bit physical address space
+    /// Writes a 16-bit Big-Endian word to the 24-bit physical address space, checking for Chip RAM bus contention.
+    /// Returns `BusResult::WaitState` if the target is Chip RAM (or Slow RAM) and Agnus/DMA is blocking the bus.
     #[inline(always)]
-    pub fn write_word(&mut self, addr: u32, val: u16) {
+    pub fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+            return BusResult::WaitState;
+        }
         self.write_word_internal(addr, val);
+        BusResult::Ready(())
+    }
+
+    /// Generic write dispatching by `BusAccessSize` (Byte or Word).
+    #[inline(always)]
+    pub fn write(&mut self, addr: u32, val: u16, size: BusAccessSize) -> BusResult<()> {
+        match size {
+            BusAccessSize::Byte => self.write_byte(addr, val as u8),
+            BusAccessSize::Word => self.write_word(addr, val),
+        }
     }
 
     /// Cold / Hard Reset: Wipes all RAM to zero and re-engages Kickstart overlay

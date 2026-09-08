@@ -2,7 +2,7 @@
 
 - **Module Location:** `m68000/`
 - **Execution Model:** Cycle-exact micro-operations mapped to Color Clock phases (**CCK1** and **CCK2**).
-- **Bus Interface:** Interacts with memory strictly via [MemoryBus.md](MemoryBus.md), querying `is_chip_ram_blocked(addr)` and executing direct 2-phase Color Clock read/write transactions (`step_bus_read_word`, `step_bus_write_word`, etc.).
+- **Bus Interface:** Interacts with memory strictly via [MemoryBus.md](MemoryBus.md), handling `BusResult::WaitState` and executing direct 2-phase Color Clock read/write transactions (`step_bus_read_word`, `step_bus_write_word`, etc.).
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md) (wrapping arithmetic, Big-Endian decoding, zero panics).
 - **Test Validation:** Verified via [CPU SingleStepTests.md](CPU%20SingleStepTests.md) and skill `m68k-singlestep-test`.
 
@@ -265,24 +265,22 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 - $1\ \text{M68000 bus cycle} = 4\ \text{CPU clocks (S0-S7)} = 2\ \text{CCK cycles (CCK1 + CCK2)}$.
 
 ### 3.1 Read Transaction Contention
-- **CCK1 (S0–S3):** The CPU asserts the target address and `_AS`.
-  - If target is Chip RAM and Agnus DMA is active (`is_chip_ram_blocked(addr) == true`):
+- **CCK1 (S0–S3):** The CPU asserts the target address and attempts reading via `bus.read_word(addr)` or `bus.read_byte(addr)`:
+  - If `BusResult::WaitState` (Chip RAM access blocked by active Agnus DMA):
     - **Action:** CPU stalls at CCK1 (`StepResult::WaitState`). Does NOT advance micro-step. Repeats CCK1 on next clock.
-  - If unblocked:
-    - Address and strobes accepted; CPU advances `phase` to `CckPhase::Cck2`.
+  - If `BusResult::Ready(data)`:
+    - Data is latched into `CpuMicroState.last_read`; CPU advances `phase` to `CckPhase::Cck2`.
 - **CCK2 (S4–S7):**
-  - Data bus is sampled directly at $S_6$ into the CPU internal register (`CpuMicroState.last_read`) via `bus.read_word(addr)`.
-  - The CPU micro-step completes and advances to the next step.
+  - Physical bus is already idle/released for custom chip DMA. The transaction is recorded, completing the bus cycle and advancing to the next step (`phase = CckPhase::Cck1`).
 
 ### 3.2 Write Transaction Contention
-- **CCK1 (S0–S3):** The CPU outputs the address onto its external pins and asserts `_AS`.
+- **CCK1 (S0–S3):** The CPU outputs the address internally and asserts `_AS`.
   - CPU proceeds to CCK2 (`phase = CckPhase::Cck2`).
-- **CCK2 (S4–S7):** The memory bus commits the write to RAM/registers.
-  - If target is Chip RAM and `is_chip_ram_blocked(addr) == true`:
-    - Gary withholds `_DTACK`.
+- **CCK2 (S4–S7):** The memory bus attempts committing the write via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)`:
+  - If `BusResult::WaitState` (Gary withholds `_DTACK` due to Chip RAM DMA contention):
     - **Action:** CPU stalls at CCK2 (`StepResult::WaitState`), holding write pins asserted until Agnus frees the bus.
-  - If unblocked:
-    - Byte/word commits to memory via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)`. `phase` resets to `CckPhase::Cck1`.
+  - If `BusResult::Ready(())`:
+    - Byte/word commits to memory, transaction is recorded, and `phase` resets to `CckPhase::Cck1`.
 
 ### 3.3 Micro-Step State Machine & Instruction Lifecycle
 

@@ -3,7 +3,7 @@
 - **Parent Specification:** [[CPU Motorola M68000.md]]
 - **Module Location:** `crates/m68000/`
 - **Execution Model:** Cycle-exact micro-operations mapped to Color Clock phases (**CCK1** and **CCK2**).
-- **Bus Interface:** Interacts with memory strictly via [[MemoryBus.md]], querying `is_chip_ram_blocked(addr)` and executing direct 2-phase CCK read/write transactions (`step_read_word_at`, `step_write_word_at`).
+- **Bus Interface:** Interacts with memory strictly via [[MemoryBus.md]], handling `BusResult::WaitState` and executing direct 2-phase CCK read/write transactions (`step_read_word_at`, `step_write_word_at`).
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md) (zero custom macros, zero const-generic handlers, wrapping arithmetic, Big-Endian decoding, zero panics).
 - **Test Validation:** Verified via [[CPU SingleStepTests.md]] and skill `m68k-singlestep-test`.
 
@@ -134,11 +134,11 @@ On the Amiga 500, the 4-clock M68000 bus cycle maps to **two Color Clock phases 
 ```
 
 - **READ Cycles (`BusReadByte`, `BusReadWord`, `BusReadLongHigh`, `BusReadLongLow`, `FetchExtension`, `PrefetchNextOpcodeAndRetire`):**
-  - **CCK1 (S0–S3):** Bus contention check (`bus.is_chip_ram_blocked(addr)`). If blocked $\to$ insert wait state (CPU stalls in CCK1). If unblocked $\to$ reads directly from `bus` into `state.micro.last_read`, advancing `phase = CCK2`.
-  - **CCK2 (S4–S7):** **Do nothing on the bus!** Physical Chip RAM is already released for custom chip DMA (Blitter, Copper). The CPU finishes the 4-clock cycle (or prefetch retirement) and advances to the next micro-step (`phase = CCK1`).
+  - **CCK1 (S0–S3):** Bus read attempt via `bus.read_word(addr)` or `bus.read_byte(addr)`. If `BusResult::WaitState` $\to$ insert wait state (CPU stalls in CCK1). If `BusResult::Ready(data)` $\to$ latches data into `state.micro.last_read`, advancing `phase = CCK2`.
+  - **CCK2 (S4–S7):** **Do nothing on the bus!** Physical Chip RAM is already released for custom chip DMA (Blitter, Copper). The CPU records the transaction, finishes the 4-clock cycle (or prefetch retirement), and advances to the next micro-step (`phase = CCK1`).
 - **WRITE Cycles (`BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, `BusWriteLongLow`, `BusPushStackHigh`, `BusPushStackLow`):**
   - **CCK1 (S0–S3):** **CPU does not touch the bus!** Internal address propagation only. Chip RAM remains completely free for Agnus DMA. Advances `phase = CCK2`.
-  - **CCK2 (S4–S7):** Bus contention check (`bus.is_chip_ram_blocked(addr)`). If blocked $\to$ Gary withholds $\overline{\text{DTACK}}$, insert wait state (CPU stalls in CCK2). Once unblocked $\to$ commits write directly to `bus`, advancing to the next micro-step (`phase = CCK1`).
+  - **CCK2 (S4–S7):** Bus write attempt via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)`. If `BusResult::WaitState` (Gary withholds $\overline{\text{DTACK}}$) $\to$ insert wait state (CPU stalls in CCK2). Once `BusResult::Ready(())` $\to$ write is committed to `bus`, recording the transaction and advancing to the next micro-step (`phase = CCK1`).
 
 Byte strobes ($\overline{\text{UDS}}$ / $\overline{\text{LDS}}$) are derived natively by `bus.read_byte(addr)` / `bus.write_byte(addr, val)` from `addr & 1`. **The CPU core eliminates all manual strobe calculations, `BusCycle` allocations, and intermediate latch buffering.**
 
@@ -537,8 +537,8 @@ The full CCK stepping engine is implemented in [`crates/m68000/src/micro/engine.
    - A fast internal loop executes zero-cycle micro-operations (`Alu`, `BranchEval`) within the same host tick until encountering a bus cycle (`base_clocks > 0`).
    - If a subsequent bus cycle stalls due to Chip RAM contention, the ALU calculation is **never repeated**.
 3. **Two-Phase External Bus Execution (`phase`):**
-   - **CCK1 (Phase 1):** Read actions query `bus.is_chip_ram_blocked(addr)`. If blocked, the CPU accumulates a wait cycle and returns `StepResult::WaitState` without advancing phase. If unblocked, samples memory data into `last_read` / `prefetch` and advances `phase = CckPhase::Cck2`. For write actions, the CPU does not touch the bus (bus idle for DMA) and simply advances to CCK2.
-   - **CCK2 (Phase 2):** Write actions query `bus.is_chip_ram_blocked(addr)`. If blocked, stalls on `StepResult::WaitState`. If unblocked, commits data directly to `bus` via `write_byte` / `write_word`. Resets `phase = CckPhase::Cck1`, completing the 4-clock bus cycle.
+   - **CCK1 (Phase 1):** Read actions issue `bus.read_word(addr)` / `bus.read_byte(addr)`. If `BusResult::WaitState`, the CPU accumulates a wait cycle and returns `StepResult::WaitState` without advancing phase. If `BusResult::Ready(data)`, samples memory data into `last_read` / `prefetch` and advances `phase = CckPhase::Cck2`. For write actions, the CPU does not touch the bus (bus idle for DMA) and simply advances to CCK2.
+   - **CCK2 (Phase 2):** Write actions issue `bus.write_word(addr, val)` / `bus.write_byte(addr, val)`. If `BusResult::WaitState`, stalls on `StepResult::WaitState`. If `BusResult::Ready(())`, commits data, resets `phase = CckPhase::Cck1`, completing the 4-clock bus cycle.
 4. **Pipeline Advance & Instruction Retirement:**
    - On retirement actions (`PrefetchNextOpcodeAndRetire`, `PrefetchTargetAndRetire`, etc.), shifts `ir = prefetch[0]`, `prefetch[0] = last_read`, advances `pc += 2`, updates `current_steps`, and returns `StepResult::InstructionCompleted`.
 

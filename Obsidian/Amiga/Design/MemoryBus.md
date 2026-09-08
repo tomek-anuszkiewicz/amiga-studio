@@ -85,22 +85,34 @@ The bus timing and transfer types reside in [`crates/memory_bus/src/arbitration.
 - **Function Code Lines (`function_code::*`)**: FC0–FC2 qualifiers (`USER_DATA = 1`, `USER_PROGRAM = 2`, `SUPERVISOR_DATA = 5`, `SUPERVISOR_PROGRAM = 6`, `CPU_SPACE = 7`).
 
 ### Direct Passive Bus API & Contention Arbitration
-The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU micro-engine, Copper, Blitter) query contention status directly and execute single-cycle or multi-phase bus transactions:
+The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU micro-engine, Copper, Blitter) execute single-cycle or multi-phase bus transactions directly against memory. Contention arbitration is encapsulated within the bus access methods, returning a dedicated `BusResult<T>`:
 
-1. **`is_chip_ram_blocked(&self, addr: u32) -> bool`:**
-   - Evaluates whether `addr` targets Chip RAM (or contention-affected Slow RAM) AND `chip_ram_blocked == true`.
-   - Used by the CPU at CCK1 (on reads) or CCK2 (on writes) to insert wait states when Gary withholds $\overline{\text{DTACK}}$.
+1. **`BusResult<T>` Type:**
+   ```rust
+   #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+   pub enum BusResult<T> {
+       /// Bus access completed successfully with requested data (or `()` for write)
+       Ready(T),
+       /// Bus access stalled due to Agnus DMA cycle stealing / wait state
+       WaitState,
+   }
+   ```
 2. **Direct Memory Access Methods:**
-   - `read_byte(&self, addr: u32) -> u8` / `read_word(&self, addr: u32) -> u16`
-   - `write_byte(&mut self, addr: u32, val: u8)` / `write_word(&mut self, addr: u32, val: u16)`
+   - `read_byte(&self, addr: u32) -> BusResult<u8>`
+   - `read_word(&self, addr: u32) -> BusResult<u16>`
+   - `write_byte(&mut self, addr: u32, val: u8) -> BusResult<()>`
+   - `write_word(&mut self, addr: u32, val: u16) -> BusResult<()>`
+   - `read(&self, addr: u32, size: BusAccessSize) -> BusResult<u16>`
+   - `write(&mut self, addr: u32, val: u16, size: BusAccessSize) -> BusResult<()>`
+   - All accesses verify whether the target address resides in Chip RAM (or contention-affected Slow RAM) and `chip_ram_blocked == true`. If blocked, the method returns `BusResult::WaitState` immediately without modifying state or reading corrupted/stale bus data.
    - All addresses are automatically masked to 24 bits (`addr & 0x00FF_FFFF`) and dispatched via the 256-entry bank dispatch table.
 3. **2-Phase CCK Execution Flow (CPU Driven):**
-   - **Read Transaction (`step_read_word_at` / `step_read_prog_word_at`):**
-     - **CCK1 ($S_0–S_3$):** If `is_chip_ram_blocked(addr)` is true, the CPU increments wait cycles and returns `StepResult::WaitState` without advancing `phase`. When unblocked, advances `phase` to `Cck2`.
-     - **CCK2 ($S_4–S_7$):** Data is read directly via `read_word(addr)` and recorded into `last_read` (and optional `transaction_log`). Resets `phase` to `Cck1`, completing the bus cycle and allowing the micro-step to advance.
+   - **Read Transaction (`step_read_word_at` / `step_read_prog_word_at` / `step_read_byte_at`):**
+     - **CCK1 ($S_0–S_3$):** CPU issues `bus.read_word(addr)` (or `read_byte`). If `BusResult::WaitState`, CPU increments wait cycles and returns `StepResult::WaitState` without advancing `phase`. When `BusResult::Ready(data)` is returned, data latches into `state.micro.last_read` and advances `phase` to `Cck2`.
+     - **CCK2 ($S_4–S_7$):** CPU does nothing on the physical bus (already released for Agnus DMA). Records bus transaction and resets `phase` to `Cck1`, completing the bus cycle and allowing the micro-step to advance.
    - **Write Transaction (`step_write_word_at` / `step_write_byte_at`):**
-     - **CCK1 ($S_0–S_3$):** CPU drives address and data onto bus, advancing `phase` to `Cck2`.
-     - **CCK2 ($S_4–S_7$):** If `is_chip_ram_blocked(addr)` is true, Gary withholds $\overline{\text{DTACK}}$, CPU stalls at CCK2 with `StepResult::WaitState`. When unblocked, data commits to memory via `write_word(addr, val)` and `phase` resets to `Cck1`.
+     - **CCK1 ($S_0–S_3$):** CPU drives address and data internally, advancing `phase` to `Cck2` without touching the physical bus.
+     - **CCK2 ($S_4–S_7$):** CPU issues `bus.write_word(addr, val)` (or `write_byte`). If `BusResult::WaitState` (Agnus DMA active, Gary withholds $\overline{\text{DTACK}}$), CPU stalls at CCK2 with `StepResult::WaitState`. When `BusResult::Ready(())` is returned, data has committed to memory; CPU records transaction and `phase` resets to `Cck1`.
 
 ---
 
@@ -165,7 +177,7 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
 Expose methods to simulate Agnus cycle stealing:
 - `lock_chip_ram()`: Sets `chip_ram_blocked = true`.
 - `unlock_chip_ram()`: Sets `chip_ram_blocked = false`.
-- `is_chip_ram_blocked() -> bool`: Queries current arbitration status.
+- `is_chip_ram_locked() -> bool`: Inspection/diagnostic getter querying the raw lock flag. Note: Never used in execution logic; contention is evaluated via `read_*` and `write_*` methods returning `BusResult`.
 
 ### Test Memory & Direct State Injection for Test Runners
 To support headless unit testing, SingleStepTests, and debugger inspection without side effects:

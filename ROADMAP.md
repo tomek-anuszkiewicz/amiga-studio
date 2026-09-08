@@ -49,7 +49,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - Inject parameterized DMA bus contention schedules into the CPU Color Clock phases (CCK1/CCK2):
     - Alternating cycle stalls (simulating display bitplane and Copper DMA).
     - Burst stalls (simulating Blitter nastiness blocking the CPU for $N$ consecutive CCK cycles).
-  - Verify bus arbitration invariants: CPU properly pauses instruction phase on `StepResult::WaitState` when `is_chip_ram_blocked`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
+  - Verify bus arbitration invariants: CPU properly pauses instruction phase on `StepResult::WaitState` when memory access returns `BusResult::WaitState`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
 - **Milestone Gate:** Linearized 52 instructions maintain 100% state invariance and cycle invariance across Chip RAM, Fast RAM, Slow RAM, and under single-cycle and burst DMA contention.
 
 ### Step 2: Implementation of Remaining Complex & Multi-Cycle Instructions

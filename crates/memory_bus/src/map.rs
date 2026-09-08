@@ -3,7 +3,7 @@
 //! Provides single-instruction O(1) memory bank dispatch using a 256-entry table
 //! of direct function pointers to bank read/write handler methods.
 
-use super::{MemoryBank, MemoryBus};
+use super::{arbitration::BusResult, MemoryBank, MemoryBus};
 use config::{A500Config, A500Preset};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -464,18 +464,22 @@ impl MemoryBus {
     /// Handles the Amiga TAS unbroken RMW hardware bug:
     /// In Chip RAM and Slow RAM, Gary / Agnus fails to latch the write phase, dropping the write.
     /// In Fast RAM, the write phase succeeds.
-    pub fn write_tas_byte(&mut self, addr: u32, data: u8) {
+    pub fn write_tas_byte(&mut self, addr: u32, data: u8) -> BusResult<()> {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+            return BusResult::WaitState;
+        }
         if self.test_memory.is_some() {
             self.write_byte_internal(addr, data);
-            return;
+            return BusResult::Ready(());
         }
         let addr = addr & 0x00FF_FFFF;
         // Check if target is Chip RAM or Slow RAM
         if addr < 0x100000 || (0xC00000..=0xC7FFFF).contains(&addr) {
             // Hardware bug: Gary drops the write phase. Memory is unmodified.
-            return;
+            return BusResult::Ready(());
         }
         // In Fast RAM, write succeeds
         self.write_byte_internal(addr, data);
+        BusResult::Ready(())
     }
 }
