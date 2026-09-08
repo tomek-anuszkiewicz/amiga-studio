@@ -331,36 +331,171 @@ impl Cpu {
                         return res;
                     }
                 }
-                MicroAction::BusReadByte
-                | MicroAction::BusReadWord
-                | MicroAction::BusReadLongHigh
-                | MicroAction::BusReadLongLow => {
-                    return self.execute_bus_read(bus, step.action);
+                // --- Operand Reads (Data Space) ---
+                MicroAction::BusReadByte => {
+                    let addr = self.state.micro.ea_addr;
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Byte, fc);
                 }
-                MicroAction::BusWriteByte
-                | MicroAction::BusWriteWord
-                | MicroAction::BusWriteLongHigh
-                | MicroAction::BusWriteLongLow
-                | MicroAction::BusWriteWordAndRetire
-                | MicroAction::BusWriteByteAndRetire
-                | MicroAction::BusWriteLongLowAndRetire
-                | MicroAction::BusWriteLongHighAndRetire => {
-                    return self.execute_bus_write(bus, step.action);
+                MicroAction::BusReadWord | MicroAction::BusReadLongHigh => {
+                    let addr = self.state.micro.ea_addr;
+                    if (addr & 1) != 0 {
+                        return self.trigger_address_error_step(addr, true, false, bus);
+                    }
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
                 }
+                MicroAction::BusReadLongLow => {
+                    self.state.micro.scratch[0] = (self.state.micro.last_read as u32) << 16;
+                    let addr = self.state.micro.ea_addr.wrapping_add(2);
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
+                }
+
+                // --- Operand Writes (Data Space) ---
+                MicroAction::BusWriteByte => {
+                    let addr = self.state.micro.ea_addr;
+                    let val = (self.state.micro.write_buffer & 0xFF) as u16;
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Byte, fc);
+                }
+                MicroAction::BusWriteWord => {
+                    let addr = self.state.micro.ea_addr;
+                    if (addr & 1) != 0 {
+                        return self.trigger_address_error_step(addr, false, false, bus);
+                    }
+                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
+                }
+                MicroAction::BusWriteLongHigh => {
+                    let addr = self.state.micro.ea_addr;
+                    if (addr & 1) != 0 {
+                        return self.trigger_address_error_step(addr, false, false, bus);
+                    }
+                    let val = ((self.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
+                }
+                MicroAction::BusWriteLongLow => {
+                    let addr = self.state.micro.ea_addr.wrapping_add(2);
+                    if (addr & 1) != 0 {
+                        return self.trigger_address_error_step(addr, false, false, bus);
+                    }
+                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
+                }
+                MicroAction::BusWriteWordAndRetire => {
+                    let addr = self.state.micro.ea_addr;
+                    if (addr & 1) != 0 {
+                        self.state.ir = self.state.prefetch[0];
+                        return self.trigger_address_error_step(addr, false, false, bus);
+                    }
+                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
+                    self.state.micro.mark_scratch_prefetch_retire();
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
+                }
+                MicroAction::BusWriteByteAndRetire => {
+                    let addr = self.state.micro.ea_addr;
+                    let val = (self.state.micro.write_buffer & 0xFF) as u16;
+                    self.state.micro.mark_scratch_prefetch_retire();
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Byte, fc);
+                }
+                MicroAction::BusWriteLongLowAndRetire => {
+                    let addr = self.state.micro.ea_addr.wrapping_add(2);
+                    if (addr & 1) != 0 {
+                        return self.trigger_address_error_step(addr, false, false, bus);
+                    }
+                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
+                    self.state.micro.mark_scratch_prefetch_retire();
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
+                }
+                MicroAction::BusWriteLongHighAndRetire => {
+                    let addr = self.state.micro.ea_addr;
+                    if (addr & 1) != 0 {
+                        return self.trigger_address_error_step(addr, false, false, bus);
+                    }
+                    let val = ((self.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
+                    self.state.micro.mark_scratch_prefetch_retire();
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc);
+                }
+
+                // --- Stack Operations (Data Space) ---
                 MicroAction::BusPopStack
                 | MicroAction::BusPopStackHigh
-                | MicroAction::BusPopStackLow
-                | MicroAction::BusPushStackHigh
-                | MicroAction::BusPushStackLow
-                | MicroAction::BusPushStackLowAndRetire => {
-                    return self.execute_stack_op(bus, step.action);
+                | MicroAction::BusPopStackLow => {
+                    let sp = self.state.read_a(7);
+                    if (sp & 1) != 0 {
+                        return self.trigger_address_error_step(sp, true, false, bus);
+                    }
+                    self.state.write_a(7, sp.wrapping_add(2));
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_read_cycle(bus, sp, BusAccessSize::Word, fc);
                 }
-                MicroAction::FetchExtension
-                | MicroAction::BusPrefetchToScratch
-                | MicroAction::PrefetchNextOpcodeAndRetire
-                | MicroAction::BusReadTargetOpcode
-                | MicroAction::PrefetchTargetAndRetire => {
-                    return self.execute_prefetch_and_refill(bus, step.action);
+                MicroAction::BusPushStackHigh => {
+                    let sp = self.state.read_a(7).wrapping_sub(4);
+                    self.state.write_a(7, sp);
+                    if (sp & 1) != 0 {
+                        return self.trigger_address_error_step(sp, false, false, bus);
+                    }
+                    let val = ((self.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, sp, val, BusAccessSize::Word, fc);
+                }
+                MicroAction::BusPushStackLow => {
+                    let sp_low = self.state.read_a(7).wrapping_add(2);
+                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, sp_low, val, BusAccessSize::Word, fc);
+                }
+                MicroAction::BusPushStackLowAndRetire => {
+                    let sp_low = self.state.read_a(7).wrapping_add(2);
+                    let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
+                    self.state.micro.mark_scratch_prefetch_retire();
+                    let fc = types::data_fc(&self.state);
+                    return self.initiate_write_cycle(bus, sp_low, val, BusAccessSize::Word, fc);
+                }
+
+                // --- Instruction Prefetch & Pipeline Refill (Program Space) ---
+                MicroAction::FetchExtension => {
+                    let addr = self.state.pc;
+                    self.state.pc = self.state.pc.wrapping_add(2);
+                    let fc = types::prog_fc(&self.state);
+                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
+                }
+                MicroAction::BusPrefetchToScratch => {
+                    let addr = self.state.pc;
+                    let fc = types::prog_fc(&self.state);
+                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
+                }
+                MicroAction::PrefetchNextOpcodeAndRetire => {
+                    let addr = self.state.pc;
+                    self.state.micro.mark_standard_prefetch_retire();
+                    let fc = types::prog_fc(&self.state);
+                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
+                }
+                MicroAction::BusReadTargetOpcode => {
+                    let addr = self.state.micro.ea_addr;
+                    if (addr & 1) != 0 {
+                        return self.trigger_address_error_step(addr, true, true, bus);
+                    }
+                    let fc = types::prog_fc(&self.state);
+                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
+                }
+                MicroAction::PrefetchTargetAndRetire => {
+                    let addr = self.state.micro.ea_addr.wrapping_add(2);
+                    let target = self.state.micro.ea_addr;
+                    let scratch_pref = self.state.micro.scratch_prefetch;
+                    self.state
+                        .micro
+                        .mark_target_refill_retire(target, scratch_pref);
+                    let fc = types::prog_fc(&self.state);
+                    return self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc);
                 }
                 MicroAction::OriToCcr => return system::op_ori_to_ccr(self, bus),
                 MicroAction::OriToSr => return system::op_ori_to_sr(self, bus),
@@ -380,187 +515,6 @@ impl Cpu {
         StepResult::InstructionCompleted
     }
 
-    #[inline]
-    fn execute_bus_read(&mut self, bus: &mut MemoryBus, action: MicroAction) -> StepResult {
-        let fc = types::data_fc(&self.state);
-        match action {
-            MicroAction::BusReadByte => {
-                let addr = self.state.micro.ea_addr;
-                self.initiate_read_cycle(bus, addr, BusAccessSize::Byte, fc)
-            }
-            MicroAction::BusReadWord => {
-                let addr = self.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return self.trigger_address_error_step(addr, true, false, bus);
-                }
-                self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusReadLongHigh => {
-                let addr = self.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return self.trigger_address_error_step(addr, true, false, bus);
-                }
-                self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusReadLongLow => {
-                self.state.micro.scratch[0] = (self.state.micro.last_read as u32) << 16;
-                let addr = self.state.micro.ea_addr.wrapping_add(2);
-                self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc)
-            }
-            _ => StepResult::StepCompleted,
-        }
-    }
-
-    #[inline]
-    fn execute_bus_write(&mut self, bus: &mut MemoryBus, action: MicroAction) -> StepResult {
-        let fc = types::data_fc(&self.state);
-        match action {
-            MicroAction::BusWriteByte => {
-                let addr = self.state.micro.ea_addr;
-                let val = (self.state.micro.write_buffer & 0xFF) as u16;
-                self.initiate_write_cycle(bus, addr, val, BusAccessSize::Byte, fc)
-            }
-            MicroAction::BusWriteWord => {
-                let addr = self.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return self.trigger_address_error_step(addr, false, false, bus);
-                }
-                let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusWriteLongHigh => {
-                let addr = self.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return self.trigger_address_error_step(addr, false, false, bus);
-                }
-                let val = ((self.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
-                self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusWriteLongLow => {
-                let addr = self.state.micro.ea_addr.wrapping_add(2);
-                if (addr & 1) != 0 {
-                    return self.trigger_address_error_step(addr, false, false, bus);
-                }
-                let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusWriteWordAndRetire => {
-                let addr = self.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    self.state.ir = self.state.prefetch[0];
-                    return self.trigger_address_error_step(addr, false, false, bus);
-                }
-                let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                self.state.micro.mark_scratch_prefetch_retire();
-                self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusWriteByteAndRetire => {
-                let addr = self.state.micro.ea_addr;
-                let val = (self.state.micro.write_buffer & 0xFF) as u16;
-                self.state.micro.mark_scratch_prefetch_retire();
-                self.initiate_write_cycle(bus, addr, val, BusAccessSize::Byte, fc)
-            }
-            MicroAction::BusWriteLongLowAndRetire => {
-                let addr = self.state.micro.ea_addr.wrapping_add(2);
-                if (addr & 1) != 0 {
-                    return self.trigger_address_error_step(addr, false, false, bus);
-                }
-                let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                self.state.micro.mark_scratch_prefetch_retire();
-                self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusWriteLongHighAndRetire => {
-                let addr = self.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return self.trigger_address_error_step(addr, false, false, bus);
-                }
-                let val = ((self.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
-                self.state.micro.mark_scratch_prefetch_retire();
-                self.initiate_write_cycle(bus, addr, val, BusAccessSize::Word, fc)
-            }
-            _ => StepResult::StepCompleted,
-        }
-    }
-
-    #[inline]
-    fn execute_stack_op(&mut self, bus: &mut MemoryBus, action: MicroAction) -> StepResult {
-        let fc = types::data_fc(&self.state);
-        match action {
-            MicroAction::BusPopStack
-            | MicroAction::BusPopStackHigh
-            | MicroAction::BusPopStackLow => {
-                let sp = self.state.read_a(7);
-                if (sp & 1) != 0 {
-                    return self.trigger_address_error_step(sp, true, false, bus);
-                }
-                self.state.write_a(7, sp.wrapping_add(2));
-                self.initiate_read_cycle(bus, sp, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusPushStackHigh => {
-                let sp = self.state.read_a(7).wrapping_sub(4);
-                self.state.write_a(7, sp);
-                if (sp & 1) != 0 {
-                    return self.trigger_address_error_step(sp, false, false, bus);
-                }
-                let val = ((self.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
-                self.initiate_write_cycle(bus, sp, val, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusPushStackLow => {
-                let sp_low = self.state.read_a(7).wrapping_add(2);
-                let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                self.initiate_write_cycle(bus, sp_low, val, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusPushStackLowAndRetire => {
-                let sp_low = self.state.read_a(7).wrapping_add(2);
-                let val = (self.state.micro.write_buffer & 0xFFFF) as u16;
-                self.state.micro.mark_scratch_prefetch_retire();
-                self.initiate_write_cycle(bus, sp_low, val, BusAccessSize::Word, fc)
-            }
-            _ => StepResult::StepCompleted,
-        }
-    }
-
-    #[inline]
-    fn execute_prefetch_and_refill(
-        &mut self,
-        bus: &mut MemoryBus,
-        action: MicroAction,
-    ) -> StepResult {
-        let fc = types::prog_fc(&self.state);
-        match action {
-            MicroAction::FetchExtension => {
-                let addr = self.state.pc;
-                self.state.pc = self.state.pc.wrapping_add(2);
-                self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusPrefetchToScratch => {
-                let addr = self.state.pc;
-                self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc)
-            }
-            MicroAction::PrefetchNextOpcodeAndRetire => {
-                let addr = self.state.pc;
-                self.state.micro.mark_standard_prefetch_retire();
-                self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc)
-            }
-            MicroAction::BusReadTargetOpcode => {
-                let addr = self.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return self.trigger_address_error_step(addr, true, true, bus);
-                }
-                self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc)
-            }
-            MicroAction::PrefetchTargetAndRetire => {
-                let addr = self.state.micro.ea_addr.wrapping_add(2);
-                let target = self.state.micro.ea_addr;
-                let scratch_pref = self.state.micro.scratch_prefetch;
-                self.state
-                    .micro
-                    .mark_target_refill_retire(target, scratch_pref);
-                self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc)
-            }
-            _ => StepResult::StepCompleted,
-        }
-    }
 
     /// Enables or disables transaction recording for cycle-exact test harnesses
     #[inline]
