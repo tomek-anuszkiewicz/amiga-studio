@@ -1,135 +1,106 @@
-//! CMPM (Compare Memory) instruction handlers
+//! CMPM (Compare Memory) Instruction Handlers
 //!
 //! Compares memory operands via postincrement: `CMPM (Ay)+, (Ax)+`.
 //! Evaluates ((Ax) - (Ay)) and updates N, Z, V, and C flags.
 //! Neither memory location is modified. Extend (X) flag is unaffected.
 
-use crate::addressing::Size;
 use crate::core::{Cpu, StepResult};
-use crate::instructions::cmp::execute_cmp;
-use crate::instructions::ea::{
-    bus_size_from_const, data_fc, size_from_const, trigger_address_error, SIZE_BYTE, SIZE_LONG,
-    SIZE_WORD,
-};
-use memory_bus::{BusCycle, MemoryBus};
+use crate::micro::ea;
+use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::state::CpuState;
+use memory_bus::MemoryBus;
 
-/// Execution handler for `CMPM (Ay)+, (Ax)+`
-pub fn op_cmpm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let ir = cpu.state.ir;
-    let s = ((ir >> 6) & 3) as u8;
-    let size = size_from_const(s);
-    let bus_size = bus_size_from_const(s);
-    let fc = data_fc(cpu);
+// ============================================================================
+// Micro-Step Callbacks
+// ============================================================================
 
-    if s == SIZE_LONG {
-        match cpu.state.micro.micro_step {
-            0 => {
-                let reg_y = (cpu.state.ir & 7) as usize;
-                let addr_y = cpu.state.read_a(reg_y);
-                cpu.state.write_a(reg_y, addr_y.wrapping_add(4));
-                if (addr_y & 1) != 0 {
-                    return trigger_address_error(cpu, addr_y, true, false, bus);
-                }
-                cpu.state.micro.scratch[0] = addr_y;
-                cpu.initiate_bus_cycle(BusCycle::new_read(addr_y, bus_size, fc));
-                StepResult::StepCompleted
-            }
-            1 => {
-                let hi_y = cpu.state.micro.last_read;
-                cpu.state.micro.scratch[1] = (hi_y as u32) << 16;
-                let addr_y2 = cpu.state.micro.scratch[0].wrapping_add(2);
-                cpu.initiate_bus_cycle(BusCycle::new_read(addr_y2, bus_size, fc));
-                StepResult::StepCompleted
-            }
-            2 => {
-                let lo_y = cpu.state.micro.last_read;
-                cpu.state.micro.scratch[1] |= lo_y as u32;
-                let reg_x = ((cpu.state.ir >> 9) & 7) as usize;
-                let addr_x = cpu.state.read_a(reg_x);
-                cpu.state.write_a(reg_x, addr_x.wrapping_add(4));
-                if (addr_x & 1) != 0 {
-                    return trigger_address_error(cpu, addr_x, true, false, bus);
-                }
-                cpu.state.micro.scratch[0] = addr_x;
-                cpu.initiate_bus_cycle(BusCycle::new_read(addr_x, bus_size, fc));
-                StepResult::StepCompleted
-            }
-            3 => {
-                let hi_x = cpu.state.micro.last_read;
-                let addr_x2 = cpu.state.micro.scratch[0].wrapping_add(2);
-                cpu.state.micro.scratch[0] = (hi_x as u32) << 16;
-                cpu.initiate_bus_cycle(BusCycle::new_read(addr_x2, bus_size, fc));
-                StepResult::StepCompleted
-            }
-            4 => {
-                let lo_x = cpu.state.micro.last_read;
-                let val_x = cpu.state.micro.scratch[0] | (lo_x as u32);
-                let val_y = cpu.state.micro.scratch[1];
-                execute_cmp(&mut cpu.state, val_y, val_x, Size::Long);
-                cpu.initiate_prefetch();
-                cpu.state.micro.mark_standard_prefetch_retire();
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
-    } else {
-        match cpu.state.micro.micro_step {
-            0 => {
-                let reg_y = (cpu.state.ir & 7) as usize;
-                let addr_y = cpu.state.read_a(reg_y);
-                let inc = if reg_y == 7 && s == SIZE_BYTE {
-                    2
-                } else if s == SIZE_WORD {
-                    2
-                } else {
-                    1
-                };
-                cpu.state.write_a(reg_y, addr_y.wrapping_add(inc));
-                if s != SIZE_BYTE && (addr_y & 1) != 0 {
-                    return trigger_address_error(cpu, addr_y, true, false, bus);
-                }
-                cpu.initiate_bus_cycle(BusCycle::new_read(addr_y, bus_size, fc));
-                StepResult::StepCompleted
-            }
-            1 => {
-                let val_y = match s {
-                    SIZE_BYTE => (cpu.state.micro.last_read & 0xFF) as u32,
-                    _ => cpu.state.micro.last_read as u32,
-                };
-                cpu.state.micro.scratch[1] = val_y;
-                let reg_x = ((cpu.state.ir >> 9) & 7) as usize;
-                let addr_x = cpu.state.read_a(reg_x);
-                let inc = if reg_x == 7 && s == SIZE_BYTE {
-                    2
-                } else if s == SIZE_WORD {
-                    2
-                } else {
-                    1
-                };
-                cpu.state.write_a(reg_x, addr_x.wrapping_add(inc));
-                if s != SIZE_BYTE && (addr_x & 1) != 0 {
-                    return trigger_address_error(cpu, addr_x, true, false, bus);
-                }
-                cpu.initiate_bus_cycle(BusCycle::new_read(addr_x, bus_size, fc));
-                StepResult::StepCompleted
-            }
-            2 => {
-                let val_y = cpu.state.micro.scratch[1];
-                let val_x = match s {
-                    SIZE_BYTE => (cpu.state.micro.last_read & 0xFF) as u32,
-                    _ => cpu.state.micro.last_read as u32,
-                };
-                execute_cmp(&mut cpu.state, val_y, val_x, size);
-                cpu.initiate_prefetch();
-                cpu.state.micro.mark_standard_prefetch_retire();
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
+/// Latches source byte into scratch[1] and sets destination address register indirect with postincrement
+pub fn ea_calc_dst_pi_b_latch_src(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    state.micro.scratch[1] = (state.micro.last_read & 0xFF) as u32;
+    let ax = state.read_a(reg_dst as usize);
+    state.micro.ea_addr = ax;
+    let inc = if reg_dst == 7 { 2 } else { 1 };
+    state.write_a(reg_dst as usize, ax.wrapping_add(inc));
+}
+
+/// Latches source word into scratch[1] and sets destination address register indirect with postincrement
+pub fn ea_calc_dst_pi_w_latch_src(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    state.micro.scratch[1] = state.micro.last_read as u32;
+    let ax = state.read_a(reg_dst as usize);
+    state.micro.ea_addr = ax;
+    state.write_a(reg_dst as usize, ax.wrapping_add(2));
+}
+
+/// Latches source longword into scratch[2] and sets destination address register indirect with postincrement
+pub fn ea_calc_dst_pi_l_latch_src(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    state.micro.scratch[2] = state.micro.scratch[1];
+    let ax = state.read_a(reg_dst as usize);
+    state.micro.ea_addr = ax;
+    state.write_a(reg_dst as usize, ax.wrapping_add(4));
+}
+
+/// ALU compare callback for Byte
+pub fn alu_cmpm_b(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let s = (state.micro.scratch[1] & 0xFF) as u8;
+    let d = (state.micro.last_read & 0xFF) as u8;
+    crate::instructions::cmp::cmp_b(state, s, d);
+}
+
+/// ALU compare callback for Word
+pub fn alu_cmpm_w(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let s = (state.micro.scratch[1] & 0xFFFF) as u16;
+    let d = state.micro.last_read;
+    crate::instructions::cmp::cmp_w(state, s, d);
+}
+
+/// ALU compare callback for Long
+pub fn alu_cmpm_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let s = state.micro.scratch[2];
+    let d = state.micro.scratch[1];
+    crate::instructions::cmp::cmp_l(state, s, d);
+}
+
+// ============================================================================
+// Static Micro-Step Slices
+// ============================================================================
+
+pub static STEPS_CMPM_B: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_src_pi_b), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea_calc_dst_pi_b_latch_src), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpm_b), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPM_W: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_src_pi_w), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea_calc_dst_pi_w_latch_src), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpm_w), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPM_L: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea::ea_calc_src_pi_l), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea_calc_dst_pi_l_latch_src), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpm_l), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+/// Decodes the micro-step sequence for CMPM based on size (0 = Byte, 1 = Word, 2 = Long)
+pub const fn decode_cmpm_steps(size: u8) -> Option<&'static [MicroStep]> {
+    match size {
+        0 => Some(&STEPS_CMPM_B),
+        1 => Some(&STEPS_CMPM_W),
+        2 => Some(&STEPS_CMPM_L),
+        _ => None,
     }
 }
 
-// --- Specialized Opcode Forwarders ---
+// ============================================================================
+// Legacy Stubs (to be removed in Phase 7)
+// ============================================================================
+
+pub fn op_cmpm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    crate::micro::engine::execute_micro_step(cpu, bus)
+}
 
 pub fn op_cmpm_b_pi_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_cmpm(cpu, bus)
@@ -142,4 +113,3 @@ pub fn op_cmpm_l_pi_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 pub fn op_cmpm_w_pi_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_cmpm(cpu, bus)
 }
-

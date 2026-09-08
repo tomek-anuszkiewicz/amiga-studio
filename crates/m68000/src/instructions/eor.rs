@@ -1,13 +1,14 @@
 //! M68000 EOR Instruction (`EOR Dn, <ea>`)
 //!
-//! Provides cycle-exact Color Clock execution handlers and branchless
-//! size-specialized ALU logic functions (`eor_b`, `eor_w`, `eor_l`, `execute_eor`).
+//! Evaluates bitwise exclusive OR between source data register and destination,
+//! updating CCR flags (N, Z set according to result, V and C cleared, X unaffected).
 
-use crate::addressing::Size;
 use crate::core::{Cpu, StepResult};
-use crate::instructions::ea::*;
+use crate::micro::common;
+use crate::micro::ea;
+use crate::micro::types::{flags, MicroAction, MicroStep, Size};
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
+use memory_bus::MemoryBus;
 
 // ============================================================================
 // Leaf ALU EOR Functions (Branchless & Endian-Neutral)
@@ -49,190 +50,297 @@ pub fn execute_eor(state: &mut CpuState, src: u32, dst: u32, size: Size) -> u32 
 }
 
 // ============================================================================
-// EOR: Dn, <ea> (Class 0 Read-Modify-Write)
+// Micro-Step ALU Callbacks: Dn, <ea>
 // ============================================================================
 
-pub fn op_eor_dn_to_ea(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let ir = cpu.state.ir;
-    let s = ((ir >> 6) & 3) as u8;
-    let m = decode_ea_index(((ir >> 3) & 7) as u8, (ir & 7) as u8);
-    exec_eor_dn_to_ea(cpu, bus, s, m)
+pub fn alu_eor_b_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let s = (state.d_long(reg_src as usize) & 0xFF) as u8;
+    let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
+    let res = eor_b(state, s, d);
+    let orig = state.d_long(reg_dst as usize);
+    state.set_d_long(reg_dst as usize, (orig & !0xFF) | (res as u32));
 }
 
-#[inline(always)]
-fn exec_eor_dn_to_ea(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepResult {
-    let size = size_from_const(s);
-    let bus_size = bus_size_from_const(s);
-    let fc = data_fc(cpu);
+pub fn alu_eor_w_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let s = (state.d_long(reg_src as usize) & 0xFFFF) as u16;
+    let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
+    let res = eor_w(state, s, d);
+    let orig = state.d_long(reg_dst as usize);
+    state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (res as u32));
+}
 
-    if m == EA_DN {
-        if s == SIZE_LONG {
-            match cpu.state.micro.micro_step {
-                0 => {
-                    cpu.record_internal_clocks(4);
-                    StepResult::StepCompleted
-                }
-                1 => {
-                    let reg_s = ((cpu.state.ir >> 9) & 7) as usize;
-                    let reg_d = (cpu.state.ir & 7) as usize;
-                    let s_val = cpu.state.d_long(reg_s);
-                    let d_val = cpu.state.d_long(reg_d);
-                    let res = execute_eor(&mut cpu.state, s_val, d_val, Size::Long);
-                    cpu.write_d_reg(reg_d, res, Size::Long);
-                    cpu.initiate_prefetch();
-                    cpu.state.micro.mark_standard_prefetch_retire();
-                    StepResult::StepCompleted
-                }
-                _ => unreachable!(),
-            }
-        } else {
-            let reg_s = ((cpu.state.ir >> 9) & 7) as usize;
-            let reg_d = (cpu.state.ir & 7) as usize;
-            let s_val = cpu.state.d_long(reg_s);
-            let d_val = cpu.state.d_long(reg_d);
-            let res = execute_eor(&mut cpu.state, s_val, d_val, size);
-            cpu.write_d_reg(reg_d, res, size);
-            cpu.initiate_prefetch();
-            cpu.state.micro.mark_standard_prefetch_retire();
-            StepResult::StepCompleted
-        }
-    } else {
-        let phase = cpu.state.micro.scratch[2];
-        if phase == 0 {
-            let mem_val = match read_ea_operand(cpu, bus, cpu.state.micro.micro_step, s, m) {
-                Ok(v) => v,
-                Err(res) => return res,
-            };
-            let reg_d = ((cpu.state.ir >> 9) & 7) as usize;
-            let d_val = cpu.state.d_long(reg_d);
-            let res = execute_eor(&mut cpu.state, d_val, mem_val, size);
-            cpu.state.micro.scratch[1] = res;
-            cpu.initiate_prefetch();
-            cpu.state.micro.scratch[2] = 1;
-            return StepResult::StepCompleted;
-        }
+pub fn alu_eor_l_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let s = state.d_long(reg_src as usize);
+    let d = state.d_long(reg_dst as usize);
+    let res = eor_l(state, s, d);
+    state.set_d_long(reg_dst as usize, res);
+}
 
-        if s == SIZE_LONG {
-            if phase == 1 {
-                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let addr2 = cpu.state.micro.scratch[0].wrapping_add(2);
-                let lo = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(addr2, lo, BusAccessSize::Word, fc));
-                cpu.state.micro.scratch[2] = 2;
-                StepResult::StepCompleted
-            } else {
-                let addr = cpu.state.micro.scratch[0];
-                let hi = ((cpu.state.micro.scratch[1] >> 16) & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(addr, hi, BusAccessSize::Word, fc));
-                cpu.state.micro.mark_scratch_prefetch_retire();
-                StepResult::StepCompleted
-            }
-        } else {
-            cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-            let addr = cpu.state.micro.scratch[0];
-            let val = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
-            cpu.initiate_bus_cycle(BusCycle::new_write(addr, val, bus_size, fc));
-            cpu.state.micro.mark_scratch_prefetch_retire();
-            StepResult::StepCompleted
-        }
+pub fn alu_eor_b_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
+    let s = (state.d_long(reg_src as usize) & 0xFF) as u8;
+    let d = (state.micro.last_read & 0xFF) as u8;
+    let res = eor_b(state, s, d);
+    state.micro.write_buffer = res as u32;
+}
+
+pub fn alu_eor_w_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
+    let s = (state.d_long(reg_src as usize) & 0xFFFF) as u16;
+    let d = state.micro.last_read;
+    let res = eor_w(state, s, d);
+    state.micro.write_buffer = res as u32;
+}
+
+pub fn alu_eor_l_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
+    let s = state.d_long(reg_src as usize);
+    let d = state.micro.scratch[1];
+    let res = eor_l(state, s, d);
+    state.micro.write_buffer = res;
+}
+
+// ============================================================================
+// Static Micro-Step Slices: EOR Dn, <ea>
+// ============================================================================
+
+// Byte
+pub static STEPS_EOR_B_DN_DN: [MicroStep; 1] = [
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_eor_b_dn_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+pub static STEPS_EOR_B_DN_AI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_b_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_EOR_B_DN_PI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_dst_pi_b), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_b_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_EOR_B_DN_PD: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_b_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_EOR_B_DN_D16: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_b_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_EOR_B_DN_IDX: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_b_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_EOR_B_DN_ABSW: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_b_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_EOR_B_DN_ABSL: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_b_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+
+// Word
+pub static STEPS_EOR_W_DN_DN: [MicroStep; 1] = [
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_eor_w_dn_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+pub static STEPS_EOR_W_DN_AI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_w_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_EOR_W_DN_PI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_dst_pi_w), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_w_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_EOR_W_DN_PD: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_w), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_w_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_EOR_W_DN_D16: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_w_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_EOR_W_DN_IDX: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_w_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_EOR_W_DN_ABSW: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_w_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_EOR_W_DN_ABSL: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_w_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+
+// Long
+pub static STEPS_EOR_L_DN_DN: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 4, flags: 0 },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_eor_l_dn_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+pub static STEPS_EOR_L_DN_AI: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_l_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_EOR_L_DN_PI: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea::ea_calc_dst_pi_l), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_l_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_EOR_L_DN_PD: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_l), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_l_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_EOR_L_DN_D16: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_l_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_EOR_L_DN_IDX: [MicroStep; 7] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_l_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_EOR_L_DN_ABSW: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_l_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_EOR_L_DN_ABSL: [MicroStep; 7] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_eor_l_dn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+
+// ============================================================================
+// Static Decoder Function
+// ============================================================================
+
+/// Decodes the micro-step sequence for EOR based on size, mode, and reg
+pub const fn decode_eor_steps(size: u8, mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
+    match size {
+        0 => match mode {
+            0 => Some(&STEPS_EOR_B_DN_DN),
+            2 => Some(&STEPS_EOR_B_DN_AI),
+            3 => Some(&STEPS_EOR_B_DN_PI),
+            4 => Some(&STEPS_EOR_B_DN_PD),
+            5 => Some(&STEPS_EOR_B_DN_D16),
+            6 => Some(&STEPS_EOR_B_DN_IDX),
+            7 => match reg {
+                0 => Some(&STEPS_EOR_B_DN_ABSW),
+                1 => Some(&STEPS_EOR_B_DN_ABSL),
+                _ => None,
+            },
+            _ => None,
+        },
+        1 => match mode {
+            0 => Some(&STEPS_EOR_W_DN_DN),
+            2 => Some(&STEPS_EOR_W_DN_AI),
+            3 => Some(&STEPS_EOR_W_DN_PI),
+            4 => Some(&STEPS_EOR_W_DN_PD),
+            5 => Some(&STEPS_EOR_W_DN_D16),
+            6 => Some(&STEPS_EOR_W_DN_IDX),
+            7 => match reg {
+                0 => Some(&STEPS_EOR_W_DN_ABSW),
+                1 => Some(&STEPS_EOR_W_DN_ABSL),
+                _ => None,
+            },
+            _ => None,
+        },
+        2 => match mode {
+            0 => Some(&STEPS_EOR_L_DN_DN),
+            2 => Some(&STEPS_EOR_L_DN_AI),
+            3 => Some(&STEPS_EOR_L_DN_PI),
+            4 => Some(&STEPS_EOR_L_DN_PD),
+            5 => Some(&STEPS_EOR_L_DN_D16),
+            6 => Some(&STEPS_EOR_L_DN_IDX),
+            7 => match reg {
+                0 => Some(&STEPS_EOR_L_DN_ABSW),
+                1 => Some(&STEPS_EOR_L_DN_ABSL),
+                _ => None,
+            },
+            _ => None,
+        },
+        _ => None,
     }
 }
 
-// --- Specialized Opcode Forwarders ---
+// ============================================================================
+// Legacy Stubs (to be removed in Phase 7)
+// ============================================================================
 
-pub fn op_eor_b_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
+pub fn op_eor_dn_to_ea(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
-pub fn op_eor_b_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
+pub fn op_eor_b_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_b_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_b_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_b_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_b_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_b_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_b_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
 
-pub fn op_eor_b_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
+pub fn op_eor_l_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_l_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_l_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_l_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_l_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_l_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_l_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
 
-pub fn op_eor_b_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_b_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_b_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_b_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_l_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_l_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_l_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_l_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_l_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_l_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_l_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_w_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_w_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_w_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_w_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_w_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_w_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
-pub fn op_eor_w_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_eor_dn_to_ea(cpu, bus)
-}
-
+pub fn op_eor_w_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_w_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_w_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_w_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_w_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_w_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }
+pub fn op_eor_w_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_eor_dn_to_ea(cpu, bus) }

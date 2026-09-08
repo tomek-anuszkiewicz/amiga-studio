@@ -4,172 +4,163 @@
 //! `(An)`, `(d16, An)`, `(d8, An, Xn)`, `(xxx).w`, `(xxx).l`, `(d16, PC)`, `(d8, PC, Xn)`.
 
 use crate::core::{Cpu, StepResult};
-use crate::instructions::ea::{
-    decode_ea_index, trigger_address_error, EA_AI, EA_AL, EA_AW, EA_DI, EA_DIPC, EA_IX, EA_IXPC,
-};
-use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
+use crate::micro::common;
+use crate::micro::types::{flags, MicroAction, MicroStep};
+use memory_bus::MemoryBus;
 
-#[inline(always)]
-fn prog_fc(cpu: &Cpu) -> u8 {
-    if cpu.state.is_supervisor() {
-        memory_bus::function_code::SUPERVISOR_PROGRAM
-    } else {
-        memory_bus::function_code::USER_PROGRAM
+/// JMP (An): 8 CPU clocks / 4 CCKs
+pub static STEPS_JMP_AI: [MicroStep; 3] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_src_ai),
+        base_clocks: 0,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JMP (d16, An): 10 CPU clocks / 5 CCKs
+pub static STEPS_JMP_D16_AN: [MicroStep; 3] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_src_d16_an),
+        base_clocks: 2,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JMP (d8, An, Xn): 14 CPU clocks / 7 CCKs
+pub static STEPS_JMP_IDX_AN: [MicroStep; 3] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_src_idx_an_pure),
+        base_clocks: 6,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JMP (xxx).W: 10 CPU clocks / 5 CCKs
+pub static STEPS_JMP_ABSW: [MicroStep; 3] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_absw),
+        base_clocks: 2,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JMP (xxx).L: 12 CPU clocks / 6 CCKs
+pub static STEPS_JMP_ABSL: [MicroStep; 5] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
+        base_clocks: 0,
+        flags: flags::NONE,
+    },
+    common::FETCH_EXTENSION,
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_absl_lo),
+        base_clocks: 0,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JMP (d16, PC): 10 CPU clocks / 5 CCKs
+pub static STEPS_JMP_D16_PC: [MicroStep; 3] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_d16_pc),
+        base_clocks: 2,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JMP (d8, PC, Xn): 14 CPU clocks / 7 CCKs
+pub static STEPS_JMP_IDX_PC: [MicroStep; 3] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_idx_pc_pure),
+        base_clocks: 6,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// Compile-time opcode decoder for JMP ($4ED0..=$4EFF)
+pub const fn decode_jmp_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
+    match mode {
+        2 => Some(&STEPS_JMP_AI),
+        5 => Some(&STEPS_JMP_D16_AN),
+        6 => Some(&STEPS_JMP_IDX_AN),
+        7 => match reg {
+            0 => Some(&STEPS_JMP_ABSW),
+            1 => Some(&STEPS_JMP_ABSL),
+            2 => Some(&STEPS_JMP_D16_PC),
+            3 => Some(&STEPS_JMP_IDX_PC),
+            _ => None,
+        },
+        _ => None,
     }
 }
 
-/// Calculates target address for control addressing modes
+/// Resolves control addressing mode target (retained for backward compatibility)
 #[inline(always)]
 pub fn resolve_control_target(cpu: &Cpu, mode: u8, reg: usize, base_pc: u32) -> u32 {
     match mode {
-        EA_AI => cpu.state.read_a(reg),
-        EA_DI => {
+        2 => cpu.state.read_a(reg),
+        5 => {
             let disp = cpu.state.prefetch[0] as i16 as i32;
             cpu.state.read_a(reg).wrapping_add(disp as u32)
         }
-        EA_IX => {
+        6 => {
             let ext = cpu.state.prefetch[0];
             let base = cpu.state.read_a(reg);
             let disp = (ext & 0xFF) as i8 as i32;
-            let idx_reg = ((ext >> 12) & 7) as usize;
-            let is_a = (ext & 0x8000) != 0;
-            let is_long = (ext & 0x0800) != 0;
-            let idx_val = if is_a {
-                cpu.state.read_a(idx_reg)
-            } else {
-                cpu.state.d_long(idx_reg)
-            };
-            let idx_ext = if is_long {
-                idx_val as i32
-            } else {
-                (idx_val as i16) as i32
-            };
-            base.wrapping_add(disp as u32).wrapping_add(idx_ext as u32)
+            let xn = crate::micro::ea::read_index_reg(&cpu.state, ext);
+            base.wrapping_add(disp as u32).wrapping_add(xn)
         }
-        EA_AW => cpu.state.prefetch[0] as i16 as i32 as u32,
-        EA_DIPC => {
-            let disp = cpu.state.prefetch[0] as i16 as i32;
-            base_pc.wrapping_add(disp as u32)
-        }
-        EA_IXPC => {
-            let ext = cpu.state.prefetch[0];
-            let base = base_pc;
-            let disp = (ext & 0xFF) as i8 as i32;
-            let idx_reg = ((ext >> 12) & 7) as usize;
-            let is_a = (ext & 0x8000) != 0;
-            let is_long = (ext & 0x0800) != 0;
-            let idx_val = if is_a {
-                cpu.state.read_a(idx_reg)
-            } else {
-                cpu.state.d_long(idx_reg)
-            };
-            let idx_ext = if is_long {
-                idx_val as i32
-            } else {
-                (idx_val as i16) as i32
-            };
-            base.wrapping_add(disp as u32).wrapping_add(idx_ext as u32)
-        }
+        7 => match reg {
+            0 => cpu.state.prefetch[0] as i16 as i32 as u32,
+            2 => {
+                let disp = cpu.state.prefetch[0] as i16 as i32;
+                base_pc.wrapping_add(disp as u32)
+            }
+            3 => {
+                let ext = cpu.state.prefetch[0];
+                let disp = (ext & 0xFF) as i8 as i32;
+                let xn = crate::micro::ea::read_index_reg(&cpu.state, ext);
+                base_pc.wrapping_add(disp as u32).wrapping_add(xn)
+            }
+            _ => 0,
+        },
         _ => 0,
     }
 }
 
 /// Execution handler for `JMP <ea>`
 pub fn op_jmp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let reg = (cpu.state.ir & 7) as usize;
-    let m = decode_ea_index(((cpu.state.ir >> 3) & 7) as u8, (cpu.state.ir & 7) as u8);
-    let base_pc = cpu.state.pc.wrapping_sub(2);
-    let fc_p = prog_fc(cpu);
-
-    if m == EA_AL {
-        // JMP (xxx).L: 12 CPU clocks (4 extension read + 2 prefetch cycles)
-        match cpu.state.micro.micro_step {
-            0 => {
-                let ext_pc = base_pc.wrapping_add(2);
-                cpu.initiate_bus_cycle(BusCycle::new_read(ext_pc, BusAccessSize::Word, fc_p));
-                StepResult::StepCompleted
-            }
-            1 => {
-                let hi = (cpu.state.prefetch[0] as u32) << 16;
-                let lo = cpu.state.micro.last_read as u32;
-                let target = hi | lo;
-                if (target & 1) != 0 {
-                    return trigger_address_error(cpu, target, true, true, bus);
-                }
-                cpu.state.micro.scratch[0] = target;
-                cpu.initiate_bus_cycle(BusCycle::new_read(target, BusAccessSize::Word, fc_p));
-                StepResult::StepCompleted
-            }
-            2 => {
-                let new_ir = cpu.state.micro.last_read;
-                let target = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(
-                    target.wrapping_add(2),
-                    BusAccessSize::Word,
-                    fc_p,
-                ));
-                cpu.state.micro.mark_target_refill_retire(target, new_ir);
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
-    } else if m == EA_AI {
-        // JMP (An): 8 CPU clocks (2 prefetch cycles)
-        let target = resolve_control_target(cpu, m, reg, base_pc);
-        if (target & 1) != 0 {
-            return trigger_address_error(cpu, target, true, true, bus);
-        }
-        match cpu.state.micro.micro_step {
-            0 => {
-                cpu.state.micro.scratch[0] = target;
-                cpu.initiate_bus_cycle(BusCycle::new_read(target, BusAccessSize::Word, fc_p));
-                StepResult::StepCompleted
-            }
-            1 => {
-                let new_ir = cpu.state.micro.last_read;
-                let target = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(
-                    target.wrapping_add(2),
-                    BusAccessSize::Word,
-                    fc_p,
-                ));
-                cpu.state.micro.mark_target_refill_retire(target, new_ir);
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
+    let mode = ((cpu.state.ir >> 3) & 7) as u8;
+    let reg = (cpu.state.ir & 7) as u8;
+    if let Some(steps) = decode_jmp_steps(mode, reg) {
+        cpu.state.micro.current_steps = steps;
+        cpu.state.micro.reg_src = reg;
+        crate::micro::execute_micro_step(cpu, bus)
     } else {
-        // Modes with 1 extension word: (d16,An), (xxx).w, (d16,PC) -> 10 clocks (2 internal + 2 prefetch)
-        // (d8,An,Xn), (d8,PC,Xn) -> 14 clocks (6 internal + 2 prefetch)
-        let target = resolve_control_target(cpu, m, reg, base_pc);
-        if (target & 1) != 0 {
-            return trigger_address_error(cpu, target, true, true, bus);
-        }
-        let internal_clocks = if m == EA_IX || m == EA_IXPC { 6 } else { 2 };
-        match cpu.state.micro.micro_step {
-            0 => {
-                cpu.state.micro.scratch[0] = target;
-                cpu.state.micro.internal_clocks = internal_clocks;
-                StepResult::StepCompleted
-            }
-            1 => {
-                let target = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(target, BusAccessSize::Word, fc_p));
-                StepResult::StepCompleted
-            }
-            2 => {
-                let new_ir = cpu.state.micro.last_read;
-                let target = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(
-                    target.wrapping_add(2),
-                    BusAccessSize::Word,
-                    fc_p,
-                ));
-                cpu.state.micro.mark_target_refill_retire(target, new_ir);
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
+        cpu.state.halted = true;
+        StepResult::Halted
     }
 }
 
@@ -222,4 +213,3 @@ pub fn op_jmp_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 pub fn op_jmp_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_jmp(cpu, bus)
 }
-

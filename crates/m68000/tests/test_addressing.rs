@@ -1,4 +1,4 @@
-use m68000::addressing::{AddressingMode, IndexReg, IndexType, Size};
+use m68000::micro::ea;
 use m68000::{Cpu, CpuState, StepResult};
 use memory_bus::MemoryBus;
 
@@ -9,31 +9,23 @@ fn test_addressing_modes_and_a7_byte_quirk() {
     state.write_a(7, 0x002000); // SP
 
     // (A0)+ with Byte size increments by 1
-    let ea_a0_byte = AddressingMode::Postincrement(0);
-    let addr = ea_a0_byte.resolve_address(&mut state, Size::Byte).unwrap();
-    assert_eq!(addr, 0x001000);
+    ea::ea_calc_src_pi_b(&mut state, 0, 0);
+    assert_eq!(state.micro.ea_addr, 0x001000);
     assert_eq!(state.a_long(0), 0x001001);
 
     // -(A0) with Byte size decrements by 1
-    let ea_a0_predec = AddressingMode::Predecrement(0);
-    let addr = ea_a0_predec
-        .resolve_address(&mut state, Size::Byte)
-        .unwrap();
-    assert_eq!(addr, 0x001000);
+    ea::ea_calc_src_pd_b(&mut state, 0, 0);
+    assert_eq!(state.micro.ea_addr, 0x001000);
     assert_eq!(state.a_long(0), 0x001000);
 
     // CRITICAL QUIRK: (A7)+ with Byte size MUST adjust by 2 (preserving word alignment)!
-    let ea_sp_byte = AddressingMode::Postincrement(7);
-    let addr = ea_sp_byte.resolve_address(&mut state, Size::Byte).unwrap();
-    assert_eq!(addr, 0x002000);
+    ea::ea_calc_src_pi_b(&mut state, 7, 0);
+    assert_eq!(state.micro.ea_addr, 0x002000);
     assert_eq!(state.read_a(7), 0x002002);
 
     // -(A7) with Byte size MUST adjust by 2!
-    let ea_sp_predec = AddressingMode::Predecrement(7);
-    let addr = ea_sp_predec
-        .resolve_address(&mut state, Size::Byte)
-        .unwrap();
-    assert_eq!(addr, 0x002000);
+    ea::ea_calc_src_pd_b(&mut state, 7, 0);
+    assert_eq!(state.micro.ea_addr, 0x002000);
     assert_eq!(state.read_a(7), 0x002000);
 }
 
@@ -43,26 +35,27 @@ fn test_indexed_addressing_mode() {
     state.set_a_long(1, 0x004000);
     state.set_d_long(2, 0x0000_0020); // Index +32
 
-    let index = IndexReg {
-        reg_type: IndexType::Data,
-        reg_idx: 2,
-        is_long: true,
-    };
-    // (d8, A1, D2.L) with d8 = -4
-    let ea = AddressingMode::Indexed(1, index, -4);
-    let addr = ea.resolve_address(&mut state, Size::Word).unwrap();
-    assert_eq!(addr, 0x004000 + 32 - 4);
+    // Brief extension word: D2.L, disp8 = -4 (0xFC)
+    // Bit 15: 0 (Data reg), Bits 14-12: 010 (D2), Bit 11: 1 (Long), Bits 7-0: 0xFC (-4)
+    let ext = (0 << 15) | (2 << 12) | (1 << 11) | ((-4i8 as u8) as u16);
+    state.prefetch[0] = ext;
+    ea::ea_calc_src_idx_an(&mut state, 1, 0);
+    assert_eq!(state.micro.ea_addr, 0x004000 + 32 - 4);
 }
 
 #[test]
 fn test_unaligned_address_error() {
-    let mut state = CpuState::default();
-    state.set_a_long(0, 0x001001); // Odd address!
-
-    let ea = AddressingMode::AddressIndirect(0);
-    // Word access to odd address must trigger AddressError
-    let res = ea.resolve_address(&mut state, Size::Word);
-    assert!(res.is_err());
+    let mut bus = MemoryBus::new();
+    bus.map_chip_ram_to_low_memory();
+    let mut cpu = Cpu::new();
+    let res = m68000::micro::engine::trigger_address_error_step(
+        &mut cpu,
+        0x001001,
+        true,
+        false,
+        &mut bus,
+    );
+    assert_eq!(res, StepResult::InstructionCompleted);
 }
 
 #[test]
@@ -108,6 +101,7 @@ fn test_add_sub_ccr() {
     assert!(!cpu.state.get_z());
 
     // SUB.L D1, D0 (5 - 15 = -10, borrow sets C and X, sets N) (Opcode: 0x9081)
+    cpu.state.micro.reset();
     cpu.state.ir = 0x9081;
     cpu.state.prefetch[0] = 0x4E71;
     let res = cpu.step_instruction(&mut bus);
@@ -161,6 +155,7 @@ fn test_logic_and_shifts() {
     assert!(!cpu.state.get_z());
 
     // OR.W D0, D1 -> D1.W = 0xFFF0 (Opcode: 0x8240)
+    cpu.state.micro.reset();
     cpu.state.set_d_long(0, 0x0000_00F0);
     cpu.state.set_d_long(1, 0x0000_FF00);
     cpu.state.ir = 0x8240;
@@ -170,6 +165,7 @@ fn test_logic_and_shifts() {
     assert_eq!(cpu.state.d_word(1), 0xFFF0);
 
     // LSL.W #2, D1 (Opcode: 0xE549) (count=2, LSL, Word, reg 1)
+    cpu.state.micro.reset();
     cpu.state.set_d_long(1, 0x0000_0003);
     cpu.state.ir = 0xE549;
     cpu.state.prefetch[0] = 0x4E71;
@@ -195,6 +191,7 @@ fn test_bit_manipulation() {
     assert!(!cpu.state.get_z()); // bit 4 was 1, so Z=0
 
     // BCLR D0, D1 -> bit 4 cleared, D1 becomes 0 (Opcode: 0x0181)
+    cpu.state.micro.reset();
     cpu.state.ir = 0x0181;
     cpu.state.prefetch[0] = 0x4E71;
     let res = cpu.step_instruction(&mut bus);

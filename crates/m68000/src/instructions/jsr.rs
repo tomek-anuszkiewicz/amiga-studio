@@ -6,198 +6,197 @@
 //! Execution time: 16 to 22 CPU clocks depending on addressing mode.
 
 use crate::core::{Cpu, StepResult};
-use crate::instructions::ea::{
-    decode_ea_index, trigger_address_error, EA_AI, EA_AL, EA_IX, EA_IXPC,
-};
-use crate::instructions::jmp::resolve_control_target;
-use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
+use crate::micro::common;
+use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::state::CpuState;
+use memory_bus::MemoryBus;
 
 #[inline(always)]
-fn prog_fc(cpu: &Cpu) -> u8 {
-    if cpu.state.is_supervisor() {
-        memory_bus::function_code::SUPERVISOR_PROGRAM
-    } else {
-        memory_bus::function_code::USER_PROGRAM
-    }
+pub fn alu_jsr_ai(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
+    state.micro.ea_addr = state.read_a(reg_src as usize);
+    state.micro.write_buffer = state.pc.wrapping_sub(2);
 }
 
 #[inline(always)]
-fn data_fc(cpu: &Cpu) -> u8 {
-    if cpu.state.is_supervisor() {
-        memory_bus::function_code::SUPERVISOR_DATA
-    } else {
-        memory_bus::function_code::USER_DATA
+pub fn alu_jsr_d16_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
+    let disp = (state.prefetch[0] as i16) as i32;
+    state.micro.ea_addr = state.read_a(reg_src as usize).wrapping_add(disp as u32);
+    state.micro.write_buffer = state.pc;
+}
+
+#[inline(always)]
+pub fn alu_jsr_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
+    let ext = state.prefetch[0];
+    let disp8 = (ext & 0xFF) as i8 as i32;
+    let xn = crate::micro::ea::read_index_reg(state, ext);
+    let an = state.read_a(reg_src as usize);
+    state.micro.ea_addr = an.wrapping_add(xn).wrapping_add(disp8 as u32);
+    state.micro.write_buffer = state.pc;
+}
+
+#[inline(always)]
+pub fn alu_jsr_absw(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    state.micro.ea_addr = state.prefetch[0] as i16 as i32 as u32;
+    state.micro.write_buffer = state.pc;
+}
+
+#[inline(always)]
+pub fn alu_jsr_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    state.micro.ea_addr = state.micro.scratch[0] | (state.prefetch[0] as u32);
+    state.micro.write_buffer = state.pc;
+}
+
+#[inline(always)]
+pub fn alu_jsr_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let disp = (state.prefetch[0] as i16) as i32;
+    let base_pc = state.pc.wrapping_sub(2);
+    state.micro.ea_addr = base_pc.wrapping_add(disp as u32);
+    state.micro.write_buffer = state.pc;
+}
+
+#[inline(always)]
+pub fn alu_jsr_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let ext = state.prefetch[0];
+    let disp8 = (ext & 0xFF) as i8 as i32;
+    let xn = crate::micro::ea::read_index_reg(state, ext);
+    let base_pc = state.pc.wrapping_sub(2);
+    state.micro.ea_addr = base_pc.wrapping_add(xn).wrapping_add(disp8 as u32);
+    state.micro.write_buffer = state.pc;
+}
+
+/// JSR (An): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
+pub static STEPS_JSR_AI: [MicroStep; 5] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(alu_jsr_ai),
+        base_clocks: 0,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JSR (d16, An): 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
+pub static STEPS_JSR_D16_AN: [MicroStep; 5] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(alu_jsr_d16_an),
+        base_clocks: 2,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JSR (d8, An, Xn): 22 CPU clocks / 11 CCKs (2 reads, 2 writes)
+pub static STEPS_JSR_IDX_AN: [MicroStep; 5] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(alu_jsr_idx_an),
+        base_clocks: 6,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JSR (xxx).W: 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
+pub static STEPS_JSR_ABSW: [MicroStep; 5] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(alu_jsr_absw),
+        base_clocks: 2,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JSR (xxx).L: 20 CPU clocks / 10 CCKs (3 reads, 2 writes)
+pub static STEPS_JSR_ABSL: [MicroStep; 7] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
+        base_clocks: 0,
+        flags: flags::NONE,
+    },
+    common::FETCH_EXTENSION,
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(alu_jsr_absl_lo),
+        base_clocks: 0,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JSR (d16, PC): 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
+pub static STEPS_JSR_D16_PC: [MicroStep; 5] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(alu_jsr_d16_pc),
+        base_clocks: 2,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// JSR (d8, PC, Xn): 22 CPU clocks / 11 CCKs (2 reads, 2 writes)
+pub static STEPS_JSR_IDX_PC: [MicroStep; 5] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(alu_jsr_idx_pc),
+        base_clocks: 6,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// Compile-time opcode decoder for JSR ($4E90..=$4EBF)
+pub const fn decode_jsr_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
+    match mode {
+        2 => Some(&STEPS_JSR_AI),
+        5 => Some(&STEPS_JSR_D16_AN),
+        6 => Some(&STEPS_JSR_IDX_AN),
+        7 => match reg {
+            0 => Some(&STEPS_JSR_ABSW),
+            1 => Some(&STEPS_JSR_ABSL),
+            2 => Some(&STEPS_JSR_D16_PC),
+            3 => Some(&STEPS_JSR_IDX_PC),
+            _ => None,
+        },
+        _ => None,
     }
 }
 
 /// Execution handler for `JSR <ea>`
 pub fn op_jsr(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let reg = (cpu.state.ir & 7) as usize;
-    let m = decode_ea_index(((cpu.state.ir >> 3) & 7) as u8, (cpu.state.ir & 7) as u8);
-    let base_pc = cpu.state.pc.wrapping_sub(2);
-    let fc_p = prog_fc(cpu);
-    let fc_d = data_fc(cpu);
-
-    let (return_pc, target, internal_clocks) = match m {
-        EA_AI => (base_pc, resolve_control_target(cpu, m, reg, base_pc), 0),
-        EA_AL => {
-            // Evaluated in step 0 & 1
-            (base_pc.wrapping_add(4), 0, 0)
-        }
-        EA_IX | EA_IXPC => (
-            base_pc.wrapping_add(2),
-            resolve_control_target(cpu, m, reg, base_pc),
-            6,
-        ),
-        _ => (
-            base_pc.wrapping_add(2),
-            resolve_control_target(cpu, m, reg, base_pc),
-            2,
-        ),
-    };
-
-    if m == EA_AL {
-        // JSR (xxx).L: 20 CPU clocks (4 extension read + 4 prefetch target + 4 SP write + 4 SP+2 write + 4 prefetch target+2)
-        match cpu.state.micro.micro_step {
-            0 => {
-                let ext_pc = base_pc.wrapping_add(2);
-                cpu.initiate_bus_cycle(BusCycle::new_read(ext_pc, BusAccessSize::Word, fc_p));
-                StepResult::StepCompleted
-            }
-            1 => {
-                let hi = (cpu.state.prefetch[0] as u32) << 16;
-                let lo = cpu.state.micro.last_read as u32;
-                let target = hi | lo;
-                if (target & 1) != 0 {
-                    return trigger_address_error(cpu, target, true, true, bus);
-                }
-                cpu.state.micro.scratch[0] = target;
-                cpu.state.micro.scratch[1] = return_pc;
-                let sp = cpu.state.read_a(7).wrapping_sub(4);
-                cpu.state.write_a(7, sp);
-                if (sp & 1) != 0 {
-                    return trigger_address_error(cpu, sp, false, false, bus);
-                }
-                cpu.initiate_bus_cycle(BusCycle::new_read(target, BusAccessSize::Word, fc_p));
-                StepResult::StepCompleted
-            }
-            2 => {
-                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let sp = cpu.state.read_a(7);
-                let hi = ((cpu.state.micro.scratch[1] >> 16) & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(sp, hi, BusAccessSize::Word, fc_d));
-                StepResult::StepCompleted
-            }
-            3 => {
-                let sp_low = cpu.state.read_a(7).wrapping_add(2);
-                let lo = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(sp_low, lo, BusAccessSize::Word, fc_d));
-                StepResult::StepCompleted
-            }
-            4 => {
-                let target = cpu.state.micro.scratch[0];
-                let new_ir = cpu.state.micro.scratch_prefetch;
-                cpu.initiate_bus_cycle(BusCycle::new_read(
-                    target.wrapping_add(2),
-                    BusAccessSize::Word,
-                    fc_p,
-                ));
-                cpu.state.micro.mark_target_refill_retire(target, new_ir);
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
-    } else if m == EA_AI {
-        // JSR (An): 16 CPU clocks
-        if (target & 1) != 0 {
-            return trigger_address_error(cpu, target, true, true, bus);
-        }
-        match cpu.state.micro.micro_step {
-            0 => {
-                cpu.state.micro.scratch[0] = target;
-                cpu.state.micro.scratch[1] = return_pc;
-                let sp = cpu.state.read_a(7).wrapping_sub(4);
-                cpu.state.write_a(7, sp);
-                if (sp & 1) != 0 {
-                    return trigger_address_error(cpu, sp, false, false, bus);
-                }
-                cpu.initiate_bus_cycle(BusCycle::new_read(target, BusAccessSize::Word, fc_p));
-                StepResult::StepCompleted
-            }
-            1 => {
-                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let sp = cpu.state.read_a(7);
-                let hi = ((cpu.state.micro.scratch[1] >> 16) & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(sp, hi, BusAccessSize::Word, fc_d));
-                StepResult::StepCompleted
-            }
-            2 => {
-                let sp_low = cpu.state.read_a(7).wrapping_add(2);
-                let lo = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(sp_low, lo, BusAccessSize::Word, fc_d));
-                StepResult::StepCompleted
-            }
-            3 => {
-                let target = cpu.state.micro.scratch[0];
-                let new_ir = cpu.state.micro.scratch_prefetch;
-                cpu.initiate_bus_cycle(BusCycle::new_read(
-                    target.wrapping_add(2),
-                    BusAccessSize::Word,
-                    fc_p,
-                ));
-                cpu.state.micro.mark_target_refill_retire(target, new_ir);
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
+    let mode = ((cpu.state.ir >> 3) & 7) as u8;
+    let reg = (cpu.state.ir & 7) as u8;
+    if let Some(steps) = decode_jsr_steps(mode, reg) {
+        cpu.state.micro.current_steps = steps;
+        cpu.state.micro.reg_src = reg;
+        crate::micro::execute_micro_step(cpu, bus)
     } else {
-        // JSR with extension word: 18 or 22 CPU clocks
-        if (target & 1) != 0 {
-            return trigger_address_error(cpu, target, true, true, bus);
-        }
-        match cpu.state.micro.micro_step {
-            0 => {
-                cpu.state.micro.scratch[0] = target;
-                cpu.state.micro.scratch[1] = return_pc;
-                let sp = cpu.state.read_a(7).wrapping_sub(4);
-                cpu.state.write_a(7, sp);
-                if (sp & 1) != 0 {
-                    return trigger_address_error(cpu, sp, false, false, bus);
-                }
-                cpu.state.micro.internal_clocks = internal_clocks;
-                StepResult::StepCompleted
-            }
-            1 => {
-                let target = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(target, BusAccessSize::Word, fc_p));
-                StepResult::StepCompleted
-            }
-            2 => {
-                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let sp = cpu.state.read_a(7);
-                let hi = ((cpu.state.micro.scratch[1] >> 16) & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(sp, hi, BusAccessSize::Word, fc_d));
-                StepResult::StepCompleted
-            }
-            3 => {
-                let sp_low = cpu.state.read_a(7).wrapping_add(2);
-                let lo = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(sp_low, lo, BusAccessSize::Word, fc_d));
-                StepResult::StepCompleted
-            }
-            4 => {
-                let target = cpu.state.micro.scratch[0];
-                let new_ir = cpu.state.micro.scratch_prefetch;
-                cpu.initiate_bus_cycle(BusCycle::new_read(
-                    target.wrapping_add(2),
-                    BusAccessSize::Word,
-                    fc_p,
-                ));
-                cpu.state.micro.mark_target_refill_retire(target, new_ir);
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
+        cpu.state.halted = true;
+        StepResult::Halted
     }
 }
 
@@ -250,4 +249,3 @@ pub fn op_jsr_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 pub fn op_jsr_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_jsr(cpu, bus)
 }
-

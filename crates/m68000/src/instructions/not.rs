@@ -2,11 +2,12 @@
 //!
 //! Performs bitwise NOT (one's complement) on a destination data register or memory location.
 
-use crate::addressing::Size;
 use crate::core::{Cpu, StepResult};
-use crate::instructions::ea::*;
+use crate::micro::common;
+use crate::micro::ea;
+use crate::micro::types::{flags, MicroAction, MicroStep, Size};
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
+use memory_bus::MemoryBus;
 
 // ============================================================================
 // Leaf ALU NOT Functions (Branchless & Endian-Neutral)
@@ -48,201 +49,291 @@ pub fn execute_not(state: &mut CpuState, val: u32, size: Size) -> u32 {
 }
 
 // ============================================================================
-// NOT: <ea> (Class 0 Read-Modify-Write)
+// Micro-Step ALU Callbacks
 // ============================================================================
 
-pub fn op_not(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let s = ((cpu.state.ir >> 6) & 3) as u8;
-    let m = decode_ea_index(((cpu.state.ir >> 3) & 7) as u8, (cpu.state.ir & 7) as u8);
-    let size = size_from_const(s);
-    let bus_size = bus_size_from_const(s);
-    let fc = data_fc(cpu);
+pub fn alu_not_b_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
+    let res = not_b(state, d);
+    let orig = state.d_long(reg_dst as usize);
+    state.set_d_long(reg_dst as usize, (orig & !0xFF) | (res as u32));
+}
 
-    if m == EA_DN {
-        if s == SIZE_LONG {
-            match cpu.state.micro.micro_step {
-                0 => {
-                    cpu.record_internal_clocks(2);
-                    StepResult::StepCompleted
-                }
-                1 => {
-                    let reg_d = (cpu.state.ir & 7) as usize;
-                    let val = cpu.state.d_long(reg_d);
-                    let res = !val;
-                    cpu.state.set_ccr_nz_clear_vc((res & 0x8000_0000) != 0, res == 0);
-                    cpu.write_d_reg(reg_d, res, Size::Long);
-                    cpu.initiate_prefetch();
-                    cpu.state.micro.mark_standard_prefetch_retire();
-                    StepResult::StepCompleted
-                }
-                _ => unreachable!(),
-            }
-        } else {
-            let reg_d = (cpu.state.ir & 7) as usize;
-            let val = cpu.state.d_long(reg_d);
-            let (res, n, z) = if s == SIZE_BYTE {
-                let r = !(val as u8);
-                (r as u32, (r & 0x80) != 0, r == 0)
-            } else {
-                let r = !(val as u16);
-                (r as u32, (r & 0x8000) != 0, r == 0)
-            };
-            cpu.state.set_ccr_nz_clear_vc(n, z);
-            cpu.write_d_reg(reg_d, res, size);
-            cpu.initiate_prefetch();
-            cpu.state.micro.mark_standard_prefetch_retire();
-            StepResult::StepCompleted
-        }
-    } else {
-        let phase = cpu.state.micro.scratch[2];
-        if phase == 0 {
-            let mem_val = match read_ea_operand(cpu, bus, cpu.state.micro.micro_step, s, m) {
-                Ok(v) => v,
-                Err(res) => return res,
-            };
-            let (res, n, z) = match s {
-                SIZE_BYTE => {
-                    let r = !(mem_val as u8);
-                    (r as u32, (r & 0x80) != 0, r == 0)
-                }
-                SIZE_WORD => {
-                    let r = !(mem_val as u16);
-                    (r as u32, (r & 0x8000) != 0, r == 0)
-                }
-                _ => {
-                    let r = !mem_val;
-                    (r, (r & 0x8000_0000) != 0, r == 0)
-                }
-            };
-            cpu.state.set_ccr_nz_clear_vc(n, z);
+pub fn alu_not_w_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
+    let res = not_w(state, d);
+    let orig = state.d_long(reg_dst as usize);
+    state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (res as u32));
+}
 
-            cpu.state.micro.scratch[1] = res;
-            cpu.initiate_prefetch();
-            cpu.state.micro.scratch[2] = 1;
-            return StepResult::StepCompleted;
-        }
+pub fn alu_not_l_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let d = state.d_long(reg_dst as usize);
+    let res = not_l(state, d);
+    state.set_d_long(reg_dst as usize, res);
+}
 
-        if s == SIZE_LONG {
-            if phase == 1 {
-                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let addr2 = cpu.state.micro.scratch[0].wrapping_add(2);
-                let lo = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(addr2, lo, BusAccessSize::Word, fc));
-                cpu.state.micro.scratch[2] = 2;
-                return StepResult::StepCompleted;
-            } else {
-                let addr = cpu.state.micro.scratch[0];
-                let hi = ((cpu.state.micro.scratch[1] >> 16) & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(addr, hi, BusAccessSize::Word, fc));
-                cpu.state.micro.mark_scratch_prefetch_retire();
-                return StepResult::StepCompleted;
-            }
-        } else {
-            cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-            let addr = cpu.state.micro.scratch[0];
-            let val = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
-            cpu.initiate_bus_cycle(BusCycle::new_write(addr, val, bus_size, fc));
-            cpu.state.micro.mark_scratch_prefetch_retire();
-            return StepResult::StepCompleted;
-        }
+pub fn alu_not_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let d = (state.micro.last_read & 0xFF) as u8;
+    let res = not_b(state, d);
+    state.micro.write_buffer = res as u32;
+}
+
+pub fn alu_not_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let d = state.micro.last_read;
+    let res = not_w(state, d);
+    state.micro.write_buffer = res as u32;
+}
+
+pub fn alu_not_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let d = state.micro.scratch[1];
+    let res = not_l(state, d);
+    state.micro.write_buffer = res;
+}
+
+// ============================================================================
+// Static Micro-Step Slices: NOT <ea>
+// ============================================================================
+
+// Byte
+pub static STEPS_NOT_B_DN: [MicroStep; 1] = [
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_not_b_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+pub static STEPS_NOT_B_AI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_NOT_B_PI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_dst_pi_b), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_NOT_B_PD: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_NOT_B_D16: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_NOT_B_IDX: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_NOT_B_ABSW: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_NOT_B_ABSL: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+
+// Word
+pub static STEPS_NOT_W_DN: [MicroStep; 1] = [
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_not_w_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+pub static STEPS_NOT_W_AI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_NOT_W_PI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_dst_pi_w), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_NOT_W_PD: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_w), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_NOT_W_D16: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_NOT_W_IDX: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_NOT_W_ABSW: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_NOT_W_ABSL: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+
+// Long
+pub static STEPS_NOT_L_DN: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_not_l_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+pub static STEPS_NOT_L_AI: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_NOT_L_PI: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: Some(ea::ea_calc_dst_pi_l), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_NOT_L_PD: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_l), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_NOT_L_D16: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_NOT_L_IDX: [MicroStep; 7] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_NOT_L_ABSW: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+pub static STEPS_NOT_L_ABSL: [MicroStep; 7] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_not_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_LONG_HIGH,
+    common::RMW_WRITE_LONG_LOW_RETIRE,
+];
+
+// ============================================================================
+// Static Decoder Function
+// ============================================================================
+
+/// Decodes the micro-step sequence for NOT based on size, mode, and reg
+pub const fn decode_not_steps(size: u8, mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
+    match size {
+        0 => match mode {
+            0 => Some(&STEPS_NOT_B_DN),
+            2 => Some(&STEPS_NOT_B_AI),
+            3 => Some(&STEPS_NOT_B_PI),
+            4 => Some(&STEPS_NOT_B_PD),
+            5 => Some(&STEPS_NOT_B_D16),
+            6 => Some(&STEPS_NOT_B_IDX),
+            7 => match reg {
+                0 => Some(&STEPS_NOT_B_ABSW),
+                1 => Some(&STEPS_NOT_B_ABSL),
+                _ => None,
+            },
+            _ => None,
+        },
+        1 => match mode {
+            0 => Some(&STEPS_NOT_W_DN),
+            2 => Some(&STEPS_NOT_W_AI),
+            3 => Some(&STEPS_NOT_W_PI),
+            4 => Some(&STEPS_NOT_W_PD),
+            5 => Some(&STEPS_NOT_W_D16),
+            6 => Some(&STEPS_NOT_W_IDX),
+            7 => match reg {
+                0 => Some(&STEPS_NOT_W_ABSW),
+                1 => Some(&STEPS_NOT_W_ABSL),
+                _ => None,
+            },
+            _ => None,
+        },
+        2 => match mode {
+            0 => Some(&STEPS_NOT_L_DN),
+            2 => Some(&STEPS_NOT_L_AI),
+            3 => Some(&STEPS_NOT_L_PI),
+            4 => Some(&STEPS_NOT_L_PD),
+            5 => Some(&STEPS_NOT_L_D16),
+            6 => Some(&STEPS_NOT_L_IDX),
+            7 => match reg {
+                0 => Some(&STEPS_NOT_L_ABSW),
+                1 => Some(&STEPS_NOT_L_ABSL),
+                _ => None,
+            },
+            _ => None,
+        },
+        _ => None,
     }
 }
 
-// --- Specialized Opcode Forwarders ---
+// ============================================================================
+// Legacy Stubs (to be removed in Phase 7)
+// ============================================================================
 
-pub fn op_not_b_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
+pub fn op_not(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
-pub fn op_not_b_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
+pub fn op_not_b_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_b_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_b_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_b_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_b_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_b_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_b_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_b_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
 
-pub fn op_not_b_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
+pub fn op_not_l_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_l_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_l_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_l_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_l_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_l_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_l_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_l_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
 
-pub fn op_not_b_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_b_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_b_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_b_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_b_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_l_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_l_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_l_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_l_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_l_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_l_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_l_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_l_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_w_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_w_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_w_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_w_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_w_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_w_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_w_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
-pub fn op_not_w_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_not(cpu, bus)
-}
-
+pub fn op_not_w_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_w_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_w_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_w_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_w_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_w_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_w_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }
+pub fn op_not_w_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_not(cpu, bus) }

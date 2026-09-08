@@ -1,6 +1,5 @@
 //! Cycle-exact Motorola 68000 CPU Execution Core
 
-use crate::addressing::{AddressingMode, EaError, Size};
 use crate::instructions::*;
 use crate::state::CpuState;
 use memory_bus::MemoryBus;
@@ -114,12 +113,44 @@ impl Cpu {
             // If the bus cycle just completed, check retirement mode
             if !self.state.micro.is_bus_busy() {
                 match self.state.micro.retire_mode {
-                    crate::micro::MicroRetireMode::None => {}
+                    crate::micro::MicroRetireMode::None => {
+                        // Capture intermediate read data for multi-step sequences
+                        if !self.state.micro.current_steps.is_empty() {
+                            let prev_idx = self.state.micro.micro_step.saturating_sub(1) as usize;
+                            if prev_idx < self.state.micro.current_steps.len() {
+                                match self.state.micro.current_steps[prev_idx].action {
+                                    crate::micro::MicroAction::BusPrefetchToScratch => {
+                                        self.state.micro.scratch_prefetch = self.state.micro.last_read;
+                                    }
+                                    crate::micro::MicroAction::FetchExtension => {
+                                        self.state.prefetch[0] = self.state.micro.last_read;
+                                    }
+                                    crate::micro::MicroAction::BusReadLongHigh => {
+                                        self.state.micro.scratch[0] = (self.state.micro.last_read as u32) << 16;
+                                    }
+                                    crate::micro::MicroAction::BusReadLongLow => {
+                                        self.state.micro.scratch[1] = self.state.micro.scratch[0] | (self.state.micro.last_read as u32);
+                                    }
+                                    crate::micro::MicroAction::BusReadTargetOpcode => {
+                                        self.state.micro.scratch_prefetch = self.state.micro.last_read;
+                                    }
+                                    crate::micro::MicroAction::BusPopStackHigh => {
+                                        self.state.micro.scratch[0] = (self.state.micro.last_read as u32) << 16;
+                                    }
+                                    crate::micro::MicroAction::BusPopStackLow => {
+                                        self.state.micro.ea_addr = self.state.micro.scratch[0] | (self.state.micro.last_read as u32);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
                     crate::micro::MicroRetireMode::StandardPrefetch => {
                         self.state.ir = self.state.prefetch[0];
                         self.state.prefetch[0] = self.state.micro.last_read;
                         self.state.pc = self.state.pc.wrapping_add(2);
                         self.state.micro.reset();
+                        self.initiate_current_instruction();
                         return StepResult::InstructionCompleted;
                     }
                     crate::micro::MicroRetireMode::ScratchPrefetch => {
@@ -127,6 +158,7 @@ impl Cpu {
                         self.state.prefetch[0] = self.state.micro.scratch_prefetch;
                         self.state.pc = self.state.pc.wrapping_add(2);
                         self.state.micro.reset();
+                        self.initiate_current_instruction();
                         return StepResult::InstructionCompleted;
                     }
                     crate::micro::MicroRetireMode::TargetRefill { target, new_ir } => {
@@ -134,6 +166,7 @@ impl Cpu {
                         self.state.prefetch[0] = self.state.micro.last_read;
                         self.state.pc = target.wrapping_add(4);
                         self.state.micro.reset();
+                        self.initiate_current_instruction();
                         return StepResult::InstructionCompleted;
                     }
                 }
@@ -153,33 +186,30 @@ impl Cpu {
             return StepResult::StepCompleted;
         }
 
-        // 3. Dispatch current micro-step of current instruction
-        self.state.instruction_pc = self.state.pc.wrapping_sub(2);
-        let handler = crate::dispatch_table::DISPATCH_TABLE[self.state.ir as usize];
-        let res = handler(self, bus);
-
-        // If the handler initiated a bus cycle on CCK1, immediately execute CCK1 for that cycle
-        if self.state.micro.is_bus_busy() && self.state.micro.phase == memory_bus::CckPhase::Cck1 {
-            let bus_res = self.state.micro.step_cck(bus, &mut self.wait_cycles);
-            self.total_clocks = self.total_clocks.wrapping_add(2);
-            self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-            if bus_res.is_wait() {
-                return StepResult::WaitState;
-            }
-            return StepResult::StepCompleted;
+        // Check if current instruction uses static micro-steps:
+        if self.state.micro.micro_step == 0 && self.state.micro.current_steps.is_empty() {
+            self.initiate_current_instruction();
         }
 
-        // If handler completed synchronously (for non-migrated opcodes):
-        if res.is_completed() {
-            if self.instruction_clocks == 0 {
-                self.total_clocks = self.total_clocks.wrapping_add(4);
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(4);
-            }
-            self.state.micro.reset();
-            return StepResult::InstructionCompleted;
+        self.state.instruction_pc = self.state.pc.wrapping_sub(4);
+
+        // 3. Execute via cycle-exact Micro-Step State Machine:
+        if !self.state.micro.current_steps.is_empty() {
+            return crate::micro::engine::execute_micro_step(self, bus);
         }
 
-        res
+        // Unimplemented / Illegal opcode:
+        self.state.halted = true;
+        StepResult::Halted
+    }
+
+    /// Loads the active instruction's micro-step descriptor from the static table
+    #[inline(always)]
+    pub(crate) fn initiate_current_instruction(&mut self) {
+        let desc = &crate::micro::dispatch_table::OPCODE_DESCRIPTOR_TABLE[self.state.ir as usize];
+        if !desc.steps.is_empty() {
+            self.state.micro.initiate_instruction(desc);
+        }
     }
 
     /// Schedules a structured bus transaction onto the CPU micro-state machine
@@ -278,251 +308,7 @@ impl Cpu {
         self.state.pc = self.state.pc.wrapping_add(2);
     }
 
-    /// Read value from effective address
-    pub fn read_ea_value(
-        &mut self,
-        ea: &AddressingMode,
-        size: Size,
-        bus: &mut MemoryBus,
-    ) -> Result<u32, EaError> {
-        match *ea {
-            AddressingMode::DataDirect(reg) => {
-                let d = self.state.d_long(reg as usize);
-                Ok(match size {
-                    Size::Byte => d & 0xFF,
-                    Size::Word => d & 0xFFFF,
-                    Size::Long => d,
-                })
-            }
-            AddressingMode::AddressDirect(reg) => {
-                let a = self.state.read_a(reg as usize);
-                Ok(match size {
-                    Size::Byte => a & 0xFF,
-                    Size::Word => a & 0xFFFF,
-                    Size::Long => a,
-                })
-            }
-            AddressingMode::Immediate(val) => Ok(val),
-            _ => {
-                let addr = ea.resolve_address(&mut self.state, size)?;
-                match size {
-                    Size::Byte => Ok(bus.read_byte_debug(addr) as u32),
-                    Size::Word => Ok(bus.read_word_debug(addr) as u32),
-                    Size::Long => {
-                        let hi = bus.read_word_debug(addr) as u32;
-                        let lo = bus.read_word_debug(addr.wrapping_add(2)) as u32;
-                        Ok((hi << 16) | lo)
-                    }
-                }
-            }
-        }
-    }
 
-    /// Write value to effective address
-    pub fn write_ea_value(
-        &mut self,
-        ea: &AddressingMode,
-        val: u32,
-        size: Size,
-        bus: &mut MemoryBus,
-    ) -> Result<(), EaError> {
-        match *ea {
-            AddressingMode::DataDirect(reg) => {
-                self.write_d_reg(reg as usize, val, size);
-                Ok(())
-            }
-            AddressingMode::AddressDirect(reg) => {
-                // Writing to address register sign-extends on Word size
-                let final_val = if size == Size::Word {
-                    movea::sign_extend_word(val as u16)
-                } else {
-                    val
-                };
-                self.state.write_a(reg as usize, final_val);
-                Ok(())
-            }
-            AddressingMode::Immediate(_) => Err(EaError::IllegalAddressingMode),
-            AddressingMode::Postincrement(reg) => {
-                let a = self.state.read_a(reg as usize);
-                if size != Size::Byte && (a & 1) != 0 {
-                    return Err(EaError::AddressError {
-                        addr: a,
-                        is_read: false,
-                    });
-                }
-                let delta = if size == Size::Byte && reg == 7 {
-                    2
-                } else {
-                    size.byte_count()
-                };
-                self.state.write_a(reg as usize, a.wrapping_add(delta));
-                match size {
-                    Size::Byte => {
-                        bus.write_byte_debug(a, (val & 0xFF) as u8);
-                    }
-                    Size::Word => {
-                        bus.write_word_debug(a, (val & 0xFFFF) as u16);
-                    }
-                    Size::Long => {
-                        bus.write_word_debug(a, (val >> 16) as u16);
-                        bus.write_word_debug(a.wrapping_add(2), (val & 0xFFFF) as u16);
-                    }
-                }
-                Ok(())
-            }
-            AddressingMode::Predecrement(reg) => {
-                let a = self.state.read_a(reg as usize);
-                if size == Size::Long {
-                    let addr_low = a.wrapping_sub(2);
-                    self.state.write_a(reg as usize, addr_low);
-                    if (addr_low & 1) != 0 {
-                        return Err(EaError::AddressError {
-                            addr: addr_low,
-                            is_read: false,
-                        });
-                    }
-                    let addr_high = a.wrapping_sub(4);
-                    self.state.write_a(reg as usize, addr_high);
-                    bus.write_word_debug(addr_low, (val & 0xFFFF) as u16);
-                    bus.write_word_debug(addr_high, (val >> 16) as u16);
-                    Ok(())
-                } else {
-                    let delta = if size == Size::Byte && reg == 7 {
-                        2
-                    } else {
-                        size.byte_count()
-                    };
-                    let new_a = a.wrapping_sub(delta);
-                    self.state.write_a(reg as usize, new_a);
-                    if size != Size::Byte && (new_a & 1) != 0 {
-                        return Err(EaError::AddressError {
-                            addr: new_a,
-                            is_read: false,
-                        });
-                    }
-                    match size {
-                        Size::Byte => bus.write_byte_debug(new_a, (val & 0xFF) as u8),
-                        Size::Word => bus.write_word_debug(new_a, (val & 0xFFFF) as u16),
-                        Size::Long => unreachable!(),
-                    }
-                    Ok(())
-                }
-            }
-            _ => {
-                let addr = ea
-                    .resolve_address(&mut self.state, size)
-                    .map_err(|e| match e {
-                        EaError::AddressError { addr, .. } => EaError::AddressError {
-                            addr,
-                            is_read: false,
-                        },
-                        other => other,
-                    })?;
-                match size {
-                    Size::Byte => {
-                        bus.write_byte_debug(addr, (val & 0xFF) as u8);
-                    }
-                    Size::Word => {
-                        bus.write_word_debug(addr, (val & 0xFFFF) as u16);
-                    }
-                    Size::Long => {
-                        bus.write_word_debug(addr, (val >> 16) as u16);
-                        bus.write_word_debug(addr.wrapping_add(2), (val & 0xFFFF) as u16);
-                    }
-                }
-                Ok(())
-            }
-        }
-    }
-
-    /// Reads value from EA for a Read-Modify-Write operation.
-    /// If EA is memory-based, resolves the address ONCE and returns `(value, Some(addr))`.
-    /// If EA is register-based (`DataDirect`), returns `(value, None)`.
-    pub fn read_ea_modify(
-        &mut self,
-        ea: &AddressingMode,
-        size: Size,
-        bus: &mut MemoryBus,
-    ) -> Result<(u32, Option<u32>), EaError> {
-        match *ea {
-            AddressingMode::DataDirect(reg) => {
-                let d = self.state.d_long(reg as usize);
-                let val = match size {
-                    Size::Byte => d & 0xFF,
-                    Size::Word => d & 0xFFFF,
-                    Size::Long => d,
-                };
-                Ok((val, None))
-            }
-            AddressingMode::AddressDirect(reg) => {
-                let a = self.state.read_a(reg as usize);
-                let val = match size {
-                    Size::Byte => a & 0xFF,
-                    Size::Word => a & 0xFFFF,
-                    Size::Long => a,
-                };
-                Ok((val, None))
-            }
-            AddressingMode::Immediate(val) => Ok((val, None)),
-            _ => {
-                let addr = ea.resolve_address(&mut self.state, size)?;
-                let val = match size {
-                    Size::Byte => bus.read_byte_debug(addr) as u32,
-                    Size::Word => bus.read_word_debug(addr) as u32,
-                    Size::Long => {
-                        let hi = bus.read_word_debug(addr) as u32;
-                        let lo = bus.read_word_debug(addr.wrapping_add(2)) as u32;
-                        (hi << 16) | lo
-                    }
-                };
-                Ok((val, Some(addr)))
-            }
-        }
-    }
-
-    /// Writes modified value back to EA without re-resolving address.
-    pub fn write_ea_modify(
-        &mut self,
-        ea: &AddressingMode,
-        addr: Option<u32>,
-        val: u32,
-        size: Size,
-        bus: &mut MemoryBus,
-    ) -> Result<(), EaError> {
-        match addr {
-            Some(addr) => {
-                match size {
-                    Size::Byte => {
-                        bus.write_byte_debug(addr, (val & 0xFF) as u8);
-                    }
-                    Size::Word => {
-                        bus.write_word_debug(addr, (val & 0xFFFF) as u16);
-                    }
-                    Size::Long => {
-                        bus.write_word_debug(addr, (val >> 16) as u16);
-                        bus.write_word_debug(addr.wrapping_add(2), (val & 0xFFFF) as u16);
-                    }
-                }
-                Ok(())
-            }
-            None => match *ea {
-                AddressingMode::DataDirect(reg) => {
-                    self.write_d_reg(reg as usize, val, size);
-                    Ok(())
-                }
-                AddressingMode::AddressDirect(reg) => {
-                    let final_val = if size == Size::Word {
-                        movea::sign_extend_word(val as u16)
-                    } else {
-                        val
-                    };
-                    self.state.write_a(reg as usize, final_val);
-                    Ok(())
-                }
-                _ => Err(EaError::IllegalAddressingMode),
-            },
-        }
-    }
 
     /// Handles address error exception with specific function code
     pub(crate) fn handle_address_error_fc(
@@ -543,50 +329,6 @@ impl Cpu {
             bus,
         );
         self.reload_pc_and_prefetch(self.state.pc, bus);
-    }
-
-    /// Handles address error exception by pushing 7-word stack frame
-    pub(crate) fn handle_address_error(
-        &mut self,
-        fault_addr: u32,
-        is_read: bool,
-        bus: &mut MemoryBus,
-    ) {
-        let function_code = if self.state.is_supervisor() { 5 } else { 1 };
-        self.handle_address_error_fc(fault_addr, is_read, function_code, bus);
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn handle_address_error_for_ea(
-        &mut self,
-        ea: &AddressingMode,
-        fault_addr: u32,
-        is_read: bool,
-        bus: &mut MemoryBus,
-    ) {
-        let is_sup = self.state.is_supervisor();
-        let function_code = if ea.is_program_space() {
-            if is_sup {
-                6
-            } else {
-                2
-            }
-        } else {
-            if is_sup {
-                5
-            } else {
-                1
-            }
-        };
-        self.handle_address_error_fc(fault_addr, is_read, function_code, bus);
-    }
-
-    #[inline]
-    pub(crate) fn write_d_reg(&mut self, reg: usize, val: u32, size: Size) {
-        match size {
-            Size::Byte => self.state.set_d_byte(reg, val as u8),
-            Size::Word => self.state.set_d_word(reg, val as u16),
-            Size::Long => self.state.set_d_long(reg, val),
-        }
+        self.state.micro.reset();
     }
 }

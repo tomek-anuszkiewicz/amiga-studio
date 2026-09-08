@@ -3,12 +3,13 @@
 //! Quirk note: In SUBX, the Z flag is cleared if the result is non-zero,
 //! but remains unchanged if the result is zero (preserving chained multi-precision zero status).
 
-use crate::addressing::Size;
 use crate::core::{Cpu, StepResult};
-use crate::instructions::ea::*;
+use crate::micro::types::{flags, MicroAction, MicroStep, Size};
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
+use memory_bus::MemoryBus;
 
+/// Evaluates pure SUBX arithmetic and updates CCR flags (X, N, Z, V, C)
+#[inline(always)]
 pub fn execute_subx(state: &mut CpuState, src: u32, dst: u32, size: Size) -> u32 {
     let x = if state.get_x() { 1 } else { 0 };
     match size {
@@ -51,241 +52,145 @@ pub fn execute_subx(state: &mut CpuState, src: u32, dst: u32, size: Size) -> u32
     }
 }
 
-/// Cycle-exact register-to-register SUBX Dy, Dx handler
-pub fn op_subx_reg(
-    cpu: &mut Cpu,
-    _bus: &mut MemoryBus,
-) -> StepResult {
-    let ir = cpu.state.ir;
-    let s = ((ir >> 6) & 3) as u8;
-    let rx = ((ir >> 9) & 7) as usize;
-    let ry = (ir & 7) as usize;
-    let size = size_from_const(s);
+// ============================================================================
+// Micro-Step Callbacks: Register-to-Register (Dy, Dx)
+// ============================================================================
 
-    if s == SIZE_LONG {
-        match cpu.state.micro.micro_step {
-            0 => {
-                cpu.record_internal_clocks(4);
-                StepResult::StepCompleted
-            }
-            1 => {
-                let src = cpu.state.d_long(ry);
-                let dst = cpu.state.d_long(rx);
-                let res = execute_subx(&mut cpu.state, src, dst, Size::Long);
-                cpu.write_d_reg(rx, res, Size::Long);
-                cpu.initiate_prefetch();
-                cpu.state.micro.mark_standard_prefetch_retire();
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
-    } else {
-        let src = cpu.state.d_long(ry);
-        let dst = cpu.state.d_long(rx);
-        let res = execute_subx(&mut cpu.state, src, dst, size);
-        cpu.write_d_reg(rx, res, size);
-        cpu.initiate_prefetch();
-        cpu.state.micro.mark_standard_prefetch_retire();
-        StepResult::StepCompleted
-    }
+pub fn alu_subx_b_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let s = state.d_long(reg_src as usize);
+    let d = state.d_long(reg_dst as usize);
+    let res = execute_subx(state, s, d, Size::Byte);
+    state.set_d_long(reg_dst as usize, res);
 }
 
-/// Cycle-exact memory predecrement SUBX -(Ay), -(Ax) handler
-pub fn op_subx_mem(
-    cpu: &mut Cpu,
-    bus: &mut MemoryBus,
-) -> StepResult {
-    let ir = cpu.state.ir;
-    let s = ((ir >> 6) & 3) as u8;
-    let bus_size = bus_size_from_const(s);
-    let size = size_from_const(s);
-    let fc = data_fc(cpu);
-    let ry = (ir & 7) as usize;
-    let rx = ((ir >> 9) & 7) as usize;
+pub fn alu_subx_w_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let s = state.d_long(reg_src as usize);
+    let d = state.d_long(reg_dst as usize);
+    let res = execute_subx(state, s, d, Size::Word);
+    state.set_d_long(reg_dst as usize, res);
+}
 
-    if s == SIZE_LONG {
-        match cpu.state.micro.micro_step {
-            0 => {
-                cpu.state.micro.internal_clocks = 2;
-                let orig_y = cpu.state.read_a(ry);
-                let first_y = orig_y.wrapping_sub(2);
-                if (first_y & 1) != 0 {
-                    cpu.state.write_a(ry, first_y);
-                    return trigger_address_error(cpu, first_y, true, false, bus);
-                }
-                let addr_y = orig_y.wrapping_sub(4);
-                cpu.state.write_a(ry, addr_y);
-                cpu.state.micro.scratch[0] = addr_y;
-                StepResult::StepCompleted
-            }
-            1 => {
-                let addr_y = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(
-                    addr_y.wrapping_add(2),
-                    BusAccessSize::Word,
-                    fc,
-                ));
-                StepResult::StepCompleted
-            }
-            2 => {
-                let lo_y = cpu.state.micro.last_read as u32;
-                cpu.state.micro.scratch[1] = lo_y;
-                let addr_y = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(addr_y, BusAccessSize::Word, fc));
-                StepResult::StepCompleted
-            }
-            3 => {
-                let hi_y = (cpu.state.micro.last_read as u32) << 16;
-                cpu.state.micro.scratch[1] |= hi_y;
-                let orig_x = cpu.state.read_a(rx);
-                let first_x = orig_x.wrapping_sub(2);
-                if (first_x & 1) != 0 {
-                    cpu.state.write_a(rx, first_x);
-                    return trigger_address_error(cpu, first_x, true, false, bus);
-                }
-                let addr_x = orig_x.wrapping_sub(4);
-                cpu.state.write_a(rx, addr_x);
-                cpu.state.micro.scratch[0] = addr_x;
-                cpu.initiate_bus_cycle(BusCycle::new_read(
-                    addr_x.wrapping_add(2),
-                    BusAccessSize::Word,
-                    fc,
-                ));
-                StepResult::StepCompleted
-            }
-            4 => {
-                let lo_x = cpu.state.micro.last_read as u32;
-                cpu.state.micro.scratch[2] = lo_x;
-                let addr_x = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(addr_x, BusAccessSize::Word, fc));
-                StepResult::StepCompleted
-            }
-            5 => {
-                let hi_x = (cpu.state.micro.last_read as u32) << 16;
-                let val_x = cpu.state.micro.scratch[2] | hi_x;
-                let val_y = cpu.state.micro.scratch[1];
-                let res = execute_subx(&mut cpu.state, val_y, val_x, Size::Long);
-                cpu.state.micro.scratch[1] = res;
-                let addr_x = cpu.state.micro.scratch[0];
-                let low_word = (res & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(
-                    addr_x.wrapping_add(2),
-                    low_word,
-                    BusAccessSize::Word,
-                    fc,
-                ));
-                StepResult::StepCompleted
-            }
-            6 => {
-                cpu.initiate_prefetch();
-                StepResult::StepCompleted
-            }
-            7 => {
-                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let addr_x = cpu.state.micro.scratch[0];
-                let hi_word = ((cpu.state.micro.scratch[1] >> 16) & 0xFFFF) as u16;
-                cpu.initiate_bus_cycle(BusCycle::new_write(
-                    addr_x,
-                    hi_word,
-                    BusAccessSize::Word,
-                    fc,
-                ));
-                cpu.state.micro.mark_scratch_prefetch_retire();
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
+pub fn alu_subx_l_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let s = state.d_long(reg_src as usize);
+    let d = state.d_long(reg_dst as usize);
+    let res = execute_subx(state, s, d, Size::Long);
+    state.set_d_long(reg_dst as usize, res);
+}
+
+// ============================================================================
+// Micro-Step Callbacks: Predecrement Memory -(Ay), -(Ax)
+// ============================================================================
+
+pub fn alu_subx_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let s = state.micro.scratch[1];
+    let d = (state.micro.last_read & 0xFF) as u32;
+    let res = execute_subx(state, s, d, Size::Byte);
+    state.micro.write_buffer = res & 0xFF;
+}
+
+pub fn alu_subx_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let s = state.micro.scratch[1];
+    let d = state.micro.last_read as u32;
+    let res = execute_subx(state, s, d, Size::Word);
+    state.micro.write_buffer = res & 0xFFFF;
+}
+
+pub fn latch_dst_and_calc_subx_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let ax_val = state.micro.scratch[2] | ((state.micro.last_read as u32) << 16);
+    let ay_val = state.micro.scratch[1];
+    let res = execute_subx(state, ay_val, ax_val, Size::Long);
+    state.micro.scratch[1] = res;
+    state.micro.ea_addr = state.micro.scratch[0].wrapping_add(2);
+    state.micro.write_buffer = res & 0xFFFF;
+}
+
+// ============================================================================
+// Static Micro-Step Slices
+// ============================================================================
+
+pub static STEPS_SUBX_B_DN_DN: [MicroStep; 1] = [
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_subx_b_dn_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_SUBX_W_DN_DN: [MicroStep; 1] = [
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_subx_w_dn_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_SUBX_L_DN_DN: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 4, flags: 0 },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_subx_l_dn_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_SUBX_B_PD_PD: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(crate::instructions::addx::ea_calc_src_pd_b_2clocks), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(crate::instructions::addx::latch_src_b_and_calc_dst_pd_b), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_subx_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusWriteByteAndRetire, alu_fn: None, base_clocks: 4, flags: flags::WRITE | flags::DATA_SPACE },
+];
+
+pub static STEPS_SUBX_W_PD_PD: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(crate::instructions::addx::ea_calc_src_pd_w_2clocks), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(crate::instructions::addx::latch_src_w_and_calc_dst_pd_w), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_subx_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusWriteWordAndRetire, alu_fn: None, base_clocks: 4, flags: flags::WRITE | flags::DATA_SPACE },
+];
+
+pub static STEPS_SUBX_L_PD_PD: [MicroStep; 8] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(crate::instructions::addx::ea_calc_src_pd_l_2clocks), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(crate::instructions::addx::latch_src_lo_and_read_src_hi), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(crate::instructions::addx::latch_src_hi_and_calc_dst_pd_l), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(crate::instructions::addx::latch_dst_lo_and_read_dst_hi), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusWriteWord, alu_fn: Some(latch_dst_and_calc_subx_l), base_clocks: 4, flags: flags::WRITE | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusWriteWordAndRetire, alu_fn: Some(crate::instructions::addx::set_write_hi), base_clocks: 4, flags: flags::WRITE | flags::DATA_SPACE },
+];
+
+/// Decodes the micro-step sequence for SUBX based on addressing type and size
+pub const fn decode_subx_steps(is_memory: bool, size: u8) -> Option<&'static [MicroStep]> {
+    if !is_memory {
+        match size {
+            0 => Some(&STEPS_SUBX_B_DN_DN),
+            1 => Some(&STEPS_SUBX_W_DN_DN),
+            2 => Some(&STEPS_SUBX_L_DN_DN),
+            _ => None,
         }
     } else {
-        match cpu.state.micro.micro_step {
-            0 => {
-                cpu.state.micro.internal_clocks = 2;
-                let dec_y = if ry == 7 && s == SIZE_BYTE {
-                    2
-                } else if s == SIZE_WORD {
-                    2
-                } else {
-                    1
-                };
-                let addr_y = cpu.state.read_a(ry).wrapping_sub(dec_y);
-                cpu.state.write_a(ry, addr_y);
-                if s == SIZE_WORD && (addr_y & 1) != 0 {
-                    return trigger_address_error(cpu, addr_y, true, false, bus);
-                }
-                cpu.state.micro.scratch[0] = addr_y;
-                StepResult::StepCompleted
-            }
-            1 => {
-                let addr_y = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(addr_y, bus_size, fc));
-                StepResult::StepCompleted
-            }
-            2 => {
-                let val_y = cpu.state.micro.last_read as u32;
-                cpu.state.micro.scratch[1] = val_y;
-                let dec_x = if rx == 7 && s == SIZE_BYTE {
-                    2
-                } else if s == SIZE_WORD {
-                    2
-                } else {
-                    1
-                };
-                let addr_x = cpu.state.read_a(rx).wrapping_sub(dec_x);
-                cpu.state.write_a(rx, addr_x);
-                if s == SIZE_WORD && (addr_x & 1) != 0 {
-                    return trigger_address_error(cpu, addr_x, true, false, bus);
-                }
-                cpu.state.micro.scratch[0] = addr_x;
-                cpu.initiate_bus_cycle(BusCycle::new_read(addr_x, bus_size, fc));
-                StepResult::StepCompleted
-            }
-            3 => {
-                let val_x = cpu.state.micro.last_read as u32;
-                let val_y = cpu.state.micro.scratch[1];
-                let res = execute_subx(&mut cpu.state, val_y, val_x, size);
-                cpu.state.micro.scratch[1] = res;
-                cpu.initiate_prefetch();
-                StepResult::StepCompleted
-            }
-            4 => {
-                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let addr_x = cpu.state.micro.scratch[0];
-                let write_val = if s == SIZE_BYTE {
-                    (cpu.state.micro.scratch[1] & 0xFF) as u16
-                } else {
-                    cpu.state.micro.scratch[1] as u16
-                };
-                cpu.initiate_bus_cycle(BusCycle::new_write(addr_x, write_val, bus_size, fc));
-                cpu.state.micro.mark_scratch_prefetch_retire();
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
+        match size {
+            0 => Some(&STEPS_SUBX_B_PD_PD),
+            1 => Some(&STEPS_SUBX_W_PD_PD),
+            2 => Some(&STEPS_SUBX_L_PD_PD),
+            _ => None,
         }
     }
 }
 
-// --- Specialized Opcode Forwarders ---
+// ============================================================================
+// Legacy Stubs (to be removed in Phase 7)
+// ============================================================================
 
 pub fn op_subx_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_subx_reg(cpu, bus)
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
 pub fn op_subx_b_pd_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_subx_mem(cpu, bus)
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
 pub fn op_subx_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_subx_reg(cpu, bus)
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
 pub fn op_subx_l_pd_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_subx_mem(cpu, bus)
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
 pub fn op_subx_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_subx_reg(cpu, bus)
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
 pub fn op_subx_w_pd_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_subx_mem(cpu, bus)
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
-

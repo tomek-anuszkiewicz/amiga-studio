@@ -11,6 +11,7 @@ pub const CCR_Z: u16 = 0x0004;
 pub const CCR_V: u16 = 0x0002;
 pub const CCR_C: u16 = 0x0001;
 pub const CCR_ALL: u16 = 0x001F;
+pub const SR_MASK: u16 = SR_T | SR_S | SR_I_MASK | CCR_ALL;
 
 /// Complete register set and state snapshot for the Motorola 68000 CPU
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -208,9 +209,10 @@ impl CpuState {
     /// Updates Status Register (SR) and swaps active A7 with stored USP/SSP if the Supervisor bit changes
     #[inline]
     pub fn set_sr(&mut self, new_sr: u16) {
+        let masked_sr = new_sr & SR_MASK;
         let old_s = (self.sr & SR_S) != 0;
-        let new_s = (new_sr & SR_S) != 0;
-        self.sr = new_sr;
+        let new_s = (masked_sr & SR_S) != 0;
+        self.sr = masked_sr;
         if old_s != new_s {
             if new_s {
                 self.usp = self.a[7];

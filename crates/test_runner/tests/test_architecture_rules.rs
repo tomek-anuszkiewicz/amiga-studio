@@ -12,9 +12,7 @@ use std::path::{Path, PathBuf};
 
 /// Recognized exceptions allowed to exceed the 800-line threshold
 /// (e.g. compile-time static dispatch tables).
-const LINE_COUNT_EXCEPTIONS: &[&str] = &[
-    "dispatch_table.rs", // 65,536-entry static opcode jump table
-];
+const LINE_COUNT_EXCEPTIONS: &[&str] = &[];
 
 /// Core emulation crates where `.unwrap()` and `.expect()` are strictly forbidden in runtime code.
 const CORE_EMULATION_CRATES: &[&str] = &["m68000", "memory_bus", "config", "rtc", "debugger"];
@@ -283,5 +281,21 @@ fn test_zero_const_generic_handlers() {
         "Architecture Rule Violation: Found const-generic functions (`<const N: ...>`) in M68000 core, strictly forbidden per AGENTS.md:\n{}",
         violations.join("\n")
     );
+}
+
+#[test]
+fn test_audit_micro_step_coverage() {
+    let mut micro_covered = 0;
+
+    for op in 0..=65535usize {
+        let desc = &m68000::micro::OPCODE_DESCRIPTOR_TABLE[op];
+        if !desc.steps.is_empty() {
+            micro_covered += 1;
+        }
+    }
+
+    println!("AUDIT RESULTS:");
+    println!("  Micro-step covered: {} / 65536 ({:.2}%)", micro_covered, (micro_covered as f64 / 65536.0) * 100.0);
+    assert!(micro_covered >= 40000, "Expected >=40000 opcodes covered, got {}", micro_covered);
 }
 

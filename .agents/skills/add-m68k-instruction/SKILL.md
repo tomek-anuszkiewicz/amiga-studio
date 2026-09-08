@@ -10,29 +10,24 @@ Follow this specification to implement new instructions in the cycle-exact M6800
 
 ---
 
-## 1. Core Architectural Philosophy: Flat, Linear Handlers
+## 1. Core Architectural Philosophy: Micro-Step State Machine
 
 Modern host CPUs (x86_64, aarch64) feature deeply pipelined execution (14–20+ stages). Cascaded dynamic branches (`match opcode`, `match ea_mode`, `match size`) in the hot instruction dispatch loop flush the pipeline and waste 15–20 host cycles per misprediction.
 
-Because each handler in `dispatch_table.rs` is dedicated to a specific opcode or addressing mode variant:
-1. **Zero Runtime Addressing Mode Matching:** The addressing mode is known at compile time (e.g. `ai`, `pi`, `pd`, `dn`). Never invoke generic multi-mode dispatchers like `read_ea_operand` inside specialized handlers.
-2. **Zero Runtime Size Matching:** The operand size (`.b`, `.w`, `.l`) is statically fixed for the handler. Write concrete `u8`, `u16`, or `u32` math directly.
-3. **Inlined CCR Calculations:** Calculate Condition Code Register flags ($X, N, Z, V, C$) directly using branchless bitwise formulas for the specific operand size. Never call generic dynamic multi-size CCR functions.
-4. **No Macros & No Const-Generics:** Custom macros (`macro_rules!`) and const-generic matrices (`fn op<const S: usize>`) are strictly forbidden. Handlers must be explicit, self-documenting Rust functions.
-5. **Zero `#[inline]` on Opcode Handlers:** Because opcode handlers (`pub fn op_...`) are indirect function pointer targets in `DISPATCH_TABLE: [OpcodeHandler; 65536]`, indirect calls can never be inlined at the call site. Never annotate top-level opcode methods with `#[inline]` or `#[inline(always)]` (per Rule 2.8 in `AGENTS.md`). Keep inlining strictly *internal* to the method body (e.g. inlined CCR formulas and branchless arithmetic).
+The M68000 core models execution via the **Cycle-Exact Micro-Step State Machine**:
+1. **The 65,536 Static Descriptor Table (`OPCODE_DESCRIPTOR_TABLE`)**: Every 16-bit opcode maps to an `OpcodeDescriptor` referencing an immutable slice of atomic `MicroStep`s and pre-decoded register indices (`reg_src`, `reg_dst`).
+2. **Cached Slice Pointer Dispatch (`current_steps`)**: Upon opcode prefetch/retirement, `state.micro.current_steps` caches the slice pointer, completely eliminating 65,536-entry table lookups during execution ticks.
+3. **Parametric, Bus-Free ALU Functions (`AluFn`)**: ALU calculations do **not** take `MemoryBus`. By the time the ALU executes, all operands have arrived in `CpuState` (`prefetch[0]`, `last_read`, or registers). `AluFn` has signature `fn(&mut CpuState, reg_src: u8, reg_dst: u8)`.
+4. **Specialized Atomic Micro-Actions**: Transfer size is specialized directly into `MicroAction` (`BusReadByte`, `BusReadWord`, `BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, etc.), eliminating all runtime size branches in the hot CCK loop.
+5. **No Macros & No Const-Generics**: Custom macros (`macro_rules!`) and const-generic matrices (`fn op<const S: usize>`) are strictly forbidden.
 
 ---
 
 ## 2. Naming Standard
 
-Name every handler strictly according to [.agents/rules/opcode-naming.md](../../rules/opcode-naming.md):
-
-$$\mathbf{\text{op\_}\langle\text{mnemonic}\rangle\_\langle\text{size}\rangle\_\langle\text{source}\rangle\_\langle\text{destination}\rangle}$$
-
-- Dual-operand: `op_add_w_ai_dn` (`ADD.W (An), Dn`)
-- Immediate: `op_ori_b_imm_dn` (`ORI.B #imm, Dn`), `op_ori_w_imm_sr` (`ORI #imm, SR`)
-- Single-operand: `op_clr_b_dn` (`CLR.B Dn`), `op_tst_l_dn` (`TST.L Dn`)
-- Control / Zero-operand: `op_nop` (`NOP`), `op_rts` (`RTS`), `op_trap` (`TRAP #<vec>`)
+Name ALU handlers and micro-step sequences consistently:
+- ALU callback: `alu_<mnemonic>_<size>_<source>_<destination>` (e.g. `alu_add_w_mem_dn`, `alu_ori_b_imm_dn`)
+- Step slice: `STEPS_<MNEMONIC>_<SIZE>_<SOURCE>_<DESTINATION>` (e.g. `STEPS_ADD_W_AI_DN`)
 
 ---
 
@@ -51,51 +46,44 @@ pub fn op_add_bad(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 }
 ```
 
-### ✅ Good (Flat, Linear, Compile-Time Specialized):
+### ✅ Good (Micro-Step State Machine Architecture):
+
+#### 1. Parametric ALU Callback (`AluFn`)
 ```rust
-/// ADD.W (An), Dn (Opcode 0xD050 family: 1101 <Dn:3> 0 01 010 <An:3>)
-pub fn op_add_w_ai_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let ir = cpu.state.ir;
-    let an_reg = (ir & 7) as usize;
-    let dn_reg = ((ir >> 9) & 7) as usize;
-
-    match cpu.state.micro.micro_step {
-        0 => {
-            // Bus cycle: read 16-bit word from (An)
-            let addr = cpu.state.read_a(an_reg);
-            if (addr & 1) != 0 {
-                return trigger_address_error(cpu, addr, true, false, bus);
-            }
-            cpu.initiate_bus_cycle(BusCycle::new_read(
-                addr,
-                BusAccessSize::Word,
-                data_fc(cpu),
-            ));
-            StepResult::StepCompleted
-        }
-        1 => {
-            let src = cpu.state.micro.last_read as u16;
-            let dst = cpu.state.d[dn_reg] as u16;
-            let res = dst.wrapping_add(src);
-
-            // Inlined Word CCR Calculation (Zero host branches)
-            let n = (res as i16) < 0;
-            let z = res == 0;
-            let v = ((src ^ res) & (dst ^ res) & 0x8000) != 0;
-            let c = (res < dst) || (res < src);
-            let x = c;
-
-            // Commit result to Dn
-            cpu.state.d[dn_reg] = (cpu.state.d[dn_reg] & 0xFFFF_0000) | (res as u32);
-            cpu.state.set_flags(x, n, z, v, c);
-
-            // Complete instruction and prefetch next opcode
-            cpu.retire_instruction(bus);
-            StepResult::InstructionCompleted
-        }
-        _ => unreachable!(),
-    }
+/// ADD.W memory operand into Dn
+pub fn alu_add_w_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let s = state.micro.last_read;
+    let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
+    let res = add_w(state, s, d, true); // Inlined branchless CCR calculation
+    let orig = state.d_long(reg_dst as usize);
+    state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (res as u32));
 }
+```
+
+#### 2. Immutable Micro-Step Sequence
+```rust
+/// ADD.W (An), Dn (Opcode family 0xD050):
+/// Step 0: Read 16-bit word from (An) into last_read (4 clocks / 2 CCKs)
+/// Step 1: Execute ALU add + prefetch next opcode and retire (4 clocks / 2 CCKs)
+pub static STEPS_ADD_W_AI_DN: [MicroStep; 2] = [
+    MicroStep {
+        action: MicroAction::BusReadWord,
+        alu_fn: Some(ea::ea_calc_src_ai),
+        base_clocks: 4,
+        flags: flags::READ | flags::DATA_SPACE,
+    },
+    MicroStep {
+        action: MicroAction::PrefetchNextOpcodeAndRetire,
+        alu_fn: Some(alu_add_w_mem_dn),
+        base_clocks: 4,
+        flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE,
+    },
+];
+```
+
+#### 3. Opcode Descriptor Registration
+```rust
+table[opcode as usize] = OpcodeDescriptor::new(&STEPS_ADD_W_AI_DN, an_reg, dn_reg);
 ```
 
 ---
@@ -174,9 +162,10 @@ Always use size-specific accessor methods annotated with `#[inline(always)]`:
 
 ## 6. Prefetch & Instruction Retirement
 
-- When consuming 16/32-bit immediate or displacement extension words, consume from `cpu.consume_extension_word(bus)`.
-- When execution finishes normally, call `cpu.retire_instruction(bus)` and return `StepResult::InstructionCompleted`.
-- When branching or jumping, reload prefetch using `cpu.state.micro.mark_target_refill_retire(target, new_ir)` or `cpu.reload_pc_and_prefetch(target, bus)`.
+- **Extension Fetching**: Extension words (immediates, displacements, brief index words) are fetched via `MicroAction::FetchExtension`, optionally invoking an address calculation callback (`ea_calc_*`).
+- **Standard Retirement**: Sequential instructions conclude with `MicroAction::PrefetchNextOpcodeAndRetire`, which reads the next opcode into `last_read`, updates `ir = prefetch[0]`, `prefetch[0] = last_read`, advances `pc += 2`, and caches the next opcode's `current_steps`.
+- **Class 0 RMW Retirement**: Memory read-modify-write instructions prefetch the next opcode into `scratch_prefetch` via `MicroAction::BusPrefetchToScratch`, then commit the write cycle and retire via `MicroAction::BusWriteWordAndRetire` (or `BusWriteByteAndRetire` / `BusWriteLongLowAndRetire`).
+- **Pipeline Refills (JMP, JSR, RTS, Taken Bcc)**: Flushes the prefetch queue and performs a two-word refill directly from the target address via `MicroAction::BusReadTargetOpcode` followed by `MicroAction::PrefetchTargetAndRetire`.
 
 ---
 

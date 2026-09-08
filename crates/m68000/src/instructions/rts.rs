@@ -4,8 +4,18 @@
 //! Execution time: 16 CPU clocks (8 CCKs).
 
 use crate::core::{Cpu, StepResult};
-use crate::instructions::ea::trigger_address_error;
+use crate::micro::common;
+use crate::micro::engine::trigger_address_error_step;
+use crate::micro::types::MicroStep;
 use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
+
+/// Cycle-exact micro-step sequence for `RTS` (16 CPU clocks / 8 CCKs)
+pub static STEPS_RTS: [MicroStep; 4] = [
+    common::POP_STACK_HIGH,
+    common::POP_STACK_LOW,
+    common::READ_TARGET_OPCODE,
+    common::PREFETCH_TARGET_RETIRE,
+];
 
 #[inline(always)]
 fn prog_fc(cpu: &Cpu) -> u8 {
@@ -34,7 +44,7 @@ pub fn op_rts(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
         0 => {
             let sp = cpu.state.read_a(7);
             if (sp & 1) != 0 {
-                return trigger_address_error(cpu, sp, true, false, bus);
+                return trigger_address_error_step(cpu, sp, true, false, bus);
             }
             cpu.initiate_bus_cycle(BusCycle::new_read(sp, BusAccessSize::Word, fc_d));
             StepResult::StepCompleted
@@ -52,7 +62,7 @@ pub fn op_rts(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             let sp = cpu.state.read_a(7).wrapping_add(4);
             cpu.state.write_a(7, sp);
             if (target & 1) != 0 {
-                return trigger_address_error(cpu, target, true, true, bus);
+                return trigger_address_error_step(cpu, target, true, true, bus);
             }
             cpu.state.micro.scratch[0] = target;
             cpu.initiate_bus_cycle(BusCycle::new_read(target, BusAccessSize::Word, fc_p));

@@ -1,267 +1,330 @@
-//! CMPI (Compare Immediate) instruction handlers
+//! M68000 CMPI Instruction (`CMPI #<imm>, <ea>`)
 //!
-//! Compares an immediate operand with an effective address operand: `CMPI #<data>, <ea>`.
-//! Evaluates (<ea> - immediate) and updates N, Z, V, and C flags.
-//! Destination operand is not modified. Extend (X) flag is unaffected.
+//! Compares an immediate value with a destination data register or memory effective address.
+//! Neither operand is modified. Extend (X) flag is unaffected.
 
-use crate::addressing::Size;
 use crate::core::{Cpu, StepResult};
-use crate::instructions::cmp::execute_cmp;
-use crate::instructions::ea::{
-    decode_ea_index, read_ea_operand, size_from_const, EA_DN, SIZE_BYTE,
-    SIZE_LONG,
-};
+use crate::micro::ea;
+use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::state::CpuState;
 use memory_bus::MemoryBus;
 
-/// Execution handler for `CMPI #<data>, <ea>`
-pub fn op_cmpi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let ir = cpu.state.ir;
-    let s = ((ir >> 6) & 3) as u8;
-    let m = decode_ea_index(((ir >> 3) & 7) as u8, (ir & 7) as u8);
-    let size = size_from_const(s);
+// ============================================================================
+// Micro-Step Callbacks
+// ============================================================================
 
-    if m == EA_DN {
-        if s == SIZE_LONG {
-            // Long immediate CMPI: 14 clocks (3 prefetch cycles + 2 internal clocks)
-            match cpu.state.micro.micro_step {
-                0 => {
-                    let hi = cpu.state.prefetch[0];
-                    cpu.state.micro.scratch[0] = (hi as u32) << 16;
-                    cpu.initiate_prefetch();
-                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                    StepResult::StepCompleted
-                }
-                1 => {
-                    let lo = cpu.state.micro.last_read;
-                    cpu.state.micro.scratch[0] |= lo as u32;
-                    cpu.initiate_prefetch();
-                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                    StepResult::StepCompleted
-                }
-                2 => {
-                    cpu.state.prefetch[0] = cpu.state.micro.last_read;
-                    cpu.record_internal_clocks(2);
-                    StepResult::StepCompleted
-                }
-                3 => {
-                    let imm = cpu.state.micro.scratch[0];
-                    let reg_d = (cpu.state.ir & 7) as usize;
-                    let d = cpu.state.d_long(reg_d);
-                    execute_cmp(&mut cpu.state, imm, d, Size::Long);
-                    cpu.initiate_prefetch();
-                    cpu.state.micro.mark_standard_prefetch_retire();
-                    StepResult::StepCompleted
-                }
-                _ => unreachable!(),
-            }
-        } else {
-            // Byte / Word immediate CMPI: 8 clocks (2 prefetch cycles)
-            match cpu.state.micro.micro_step {
-                0 => {
-                    let imm = match s {
-                        SIZE_BYTE => (cpu.state.prefetch[0] & 0xFF) as u32,
-                        _ => cpu.state.prefetch[0] as u32,
-                    };
-                    cpu.state.micro.scratch[0] = imm;
-                    cpu.initiate_prefetch();
-                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                    StepResult::StepCompleted
-                }
-                1 => {
-                    cpu.state.prefetch[0] = cpu.state.micro.last_read;
-                    let imm = cpu.state.micro.scratch[0];
-                    let reg_d = (cpu.state.ir & 7) as usize;
-                    let d = cpu.state.d_long(reg_d);
-                    execute_cmp(&mut cpu.state, imm, d, size);
-                    cpu.initiate_prefetch();
-                    cpu.state.micro.mark_standard_prefetch_retire();
-                    StepResult::StepCompleted
-                }
-                _ => unreachable!(),
-            }
-        }
-    } else {
-        // Memory destination CMPI: Strictly read-only, zero writeback cycles!
-        if s == SIZE_LONG {
-            let step = cpu.state.micro.micro_step;
-            if step == 0 {
-                let hi = cpu.state.prefetch[0];
-                cpu.state.micro.scratch[3] = (hi as u32) << 16;
-                cpu.initiate_prefetch();
-                cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                return StepResult::StepCompleted;
-            } else if step == 1 {
-                let lo = cpu.state.micro.last_read;
-                cpu.state.micro.scratch[3] |= lo as u32;
-                cpu.initiate_prefetch();
-                cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                return StepResult::StepCompleted;
-            }
+pub fn alu_cmpi_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let s = (state.prefetch[0] & 0xFF) as u8;
+    let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
+    crate::instructions::cmp::cmp_b(state, s, d);
+}
 
-            let ea_step = step - 2;
-            if ea_step == 0 {
-                cpu.state.prefetch[0] = cpu.state.micro.last_read;
-            }
-            let mem_val = match read_ea_operand(cpu, bus, ea_step, s, m) {
-                Ok(v) => v,
-                Err(res) => return res,
-            };
+pub fn alu_cmpi_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let s = state.prefetch[0];
+    let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
+    crate::instructions::cmp::cmp_w(state, s, d);
+}
 
-            let imm = cpu.state.micro.scratch[3];
-            execute_cmp(&mut cpu.state, imm, mem_val, Size::Long);
-            cpu.initiate_prefetch();
-            cpu.state.micro.mark_standard_prefetch_retire();
-            StepResult::StepCompleted
-        } else {
-            let step = cpu.state.micro.micro_step;
-            if step == 0 {
-                let imm = match s {
-                    SIZE_BYTE => (cpu.state.prefetch[0] & 0xFF) as u32,
-                    _ => cpu.state.prefetch[0] as u32,
-                };
-                cpu.state.micro.scratch[3] = imm;
-                cpu.initiate_prefetch();
-                cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                return StepResult::StepCompleted;
-            }
+pub fn alu_cmpi_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let s = state.micro.scratch[1];
+    let d = state.d_long(reg_dst as usize);
+    crate::instructions::cmp::cmp_l(state, s, d);
+}
 
-            let ea_step = step - 1;
-            if ea_step == 0 {
-                cpu.state.prefetch[0] = cpu.state.micro.last_read;
-            }
-            let mem_val = match read_ea_operand(cpu, bus, ea_step, s, m) {
-                Ok(v) => v,
-                Err(res) => return res,
-            };
+pub fn alu_cmpi_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let s = (state.micro.scratch[1] & 0xFF) as u8;
+    let d = (state.micro.last_read & 0xFF) as u8;
+    crate::instructions::cmp::cmp_b(state, s, d);
+}
 
-            let imm = cpu.state.micro.scratch[3];
-            execute_cmp(&mut cpu.state, imm, mem_val, size);
-            cpu.initiate_prefetch();
-            cpu.state.micro.mark_standard_prefetch_retire();
-            StepResult::StepCompleted
-        }
+pub fn alu_cmpi_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let s = (state.micro.scratch[1] & 0xFFFF) as u16;
+    let d = state.micro.last_read;
+    crate::instructions::cmp::cmp_w(state, s, d);
+}
+
+pub fn alu_cmpi_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let s = state.micro.scratch[3];
+    let d = state.micro.scratch[1];
+    crate::instructions::cmp::cmp_l(state, s, d);
+}
+
+// ============================================================================
+// Static Micro-Step Slices: CMPI Byte
+// ============================================================================
+
+pub static STEPS_CMPI_B_DN: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(alu_cmpi_b_imm_dn), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_B_AI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_b_calc_ai), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_B_PI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_b_calc_pi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_B_PD: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_b), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_B_D16: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_b), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_B_IDX: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_b), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_B_ABSW: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_b), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_B_ABSL: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_b), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_b_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+// ============================================================================
+// Static Micro-Step Slices: CMPI Word
+// ============================================================================
+
+pub static STEPS_CMPI_W_DN: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(alu_cmpi_w_imm_dn), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_W_AI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_w_calc_ai), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_W_PI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_w_calc_pi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_W_PD: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_w), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_w), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_W_D16: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_w), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_W_IDX: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_w), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_W_ABSW: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_w), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_W_ABSL: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_w), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+// ============================================================================
+// Static Micro-Step Slices: CMPI Long
+// ============================================================================
+
+pub static STEPS_CMPI_L_DN: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_l_imm_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_L_AI: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_l_lo_calc_ai), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_L_PI: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_l_lo_calc_pi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_L_PD: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_l), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_L_D16: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_L_IDX: [MicroStep; 7] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_L_ABSW: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+pub static STEPS_CMPI_L_ABSL: [MicroStep; 7] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::addi::latch_imm_l_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadLongHigh, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusReadLongLow, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_cmpi_l_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+
+/// Decodes the micro-step sequence for CMPI based on size and destination EA
+pub const fn decode_cmpi_steps(size: u8, mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
+    match size {
+        0 => match mode {
+            0 => Some(&STEPS_CMPI_B_DN),
+            2 => Some(&STEPS_CMPI_B_AI),
+            3 => Some(&STEPS_CMPI_B_PI),
+            4 => Some(&STEPS_CMPI_B_PD),
+            5 => Some(&STEPS_CMPI_B_D16),
+            6 => Some(&STEPS_CMPI_B_IDX),
+            7 => match reg {
+                0 => Some(&STEPS_CMPI_B_ABSW),
+                1 => Some(&STEPS_CMPI_B_ABSL),
+                _ => None,
+            },
+            _ => None,
+        },
+        1 => match mode {
+            0 => Some(&STEPS_CMPI_W_DN),
+            2 => Some(&STEPS_CMPI_W_AI),
+            3 => Some(&STEPS_CMPI_W_PI),
+            4 => Some(&STEPS_CMPI_W_PD),
+            5 => Some(&STEPS_CMPI_W_D16),
+            6 => Some(&STEPS_CMPI_W_IDX),
+            7 => match reg {
+                0 => Some(&STEPS_CMPI_W_ABSW),
+                1 => Some(&STEPS_CMPI_W_ABSL),
+                _ => None,
+            },
+            _ => None,
+        },
+        2 => match mode {
+            0 => Some(&STEPS_CMPI_L_DN),
+            2 => Some(&STEPS_CMPI_L_AI),
+            3 => Some(&STEPS_CMPI_L_PI),
+            4 => Some(&STEPS_CMPI_L_PD),
+            5 => Some(&STEPS_CMPI_L_D16),
+            6 => Some(&STEPS_CMPI_L_IDX),
+            7 => match reg {
+                0 => Some(&STEPS_CMPI_L_ABSW),
+                1 => Some(&STEPS_CMPI_L_ABSL),
+                _ => None,
+            },
+            _ => None,
+        },
+        _ => None,
     }
 }
 
-// --- Specialized Opcode Forwarders ---
+// ============================================================================
+// Legacy Stubs (to be removed in Phase 7)
+// ============================================================================
 
-pub fn op_cmpi_b_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
+pub fn op_cmpi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
-pub fn op_cmpi_b_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
+pub fn op_cmpi_b_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_b_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_b_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_b_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_b_imm_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_b_imm_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_b_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_b_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
 
-pub fn op_cmpi_b_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
+pub fn op_cmpi_l_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_l_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_l_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_l_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_l_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_l_imm_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_l_imm_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_l_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_l_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
 
-pub fn op_cmpi_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_b_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_b_imm_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_b_imm_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_b_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_b_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_l_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_l_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_l_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_l_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_l_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_l_imm_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_l_imm_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_l_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_l_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_w_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_w_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_w_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_w_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_w_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_w_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_w_imm_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_w_imm_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_w_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
-pub fn op_cmpi_w_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_cmpi(cpu, bus)
-}
-
+pub fn op_cmpi_w_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_w_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_w_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_w_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_w_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_w_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_w_imm_pcdisp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_w_imm_pcidx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_w_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }
+pub fn op_cmpi_w_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_cmpi(cpu, bus) }

@@ -95,8 +95,43 @@ fn test_trap() {
 }
 
 #[test]
+fn test_ori_to_ccr() {
+    run_dual_test("ORItoCCR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ori_to_sr() {
+    run_dual_test("ORItoSR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_andi_to_ccr() {
+    run_dual_test("ANDItoCCR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_andi_to_sr() {
+    run_dual_test("ANDItoSR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_eori_to_ccr() {
+    run_dual_test("EORItoCCR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_eori_to_sr() {
+    run_dual_test("EORItoSR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
 fn test_bcc() {
     run_dual_test("Bcc", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_bsr() {
+    run_dual_test("BSR", DEFAULT_SAMPLE_LIMIT);
 }
 
 #[test]
@@ -169,6 +204,11 @@ fn test_move_l() {
 }
 
 #[test]
+fn test_move_q() {
+    run_dual_test("MOVE.q", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
 fn test_movea_w() {
     run_dual_test("MOVEA.w", DEFAULT_SAMPLE_LIMIT);
 }
@@ -176,6 +216,16 @@ fn test_movea_w() {
 #[test]
 fn test_movea_l() {
     run_dual_test("MOVEA.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_movem_w() {
+    run_dual_test("MOVEM.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_movem_l() {
+    run_dual_test("MOVEM.l", DEFAULT_SAMPLE_LIMIT);
 }
 
 // ============================================================================
@@ -521,3 +571,4 @@ fn test_tst_w() {
 fn test_tst_l() {
     run_dual_test("TST.l", DEFAULT_SAMPLE_LIMIT);
 }
+

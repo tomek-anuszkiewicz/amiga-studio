@@ -302,12 +302,12 @@ force the host CPU through 8–15 conditional branches per emulated instruction.
 
 #### Direct-Threaded / Table-Driven Opcode Dispatch
 To maximize host throughput, verified reference emulators (Musashi via `m68kmake`, WinUAE via `gencpu`, and Moira via C++ template specialization) structure the CPU core as **direct, flattened code flows**:
-- **65,536-Entry Direct Dispatch Table (`[fn; 65536]`):** Every 16-bit opcode indexes directly into a precalculated array of specialized handlers (`DISPATCH_TABLE` in `dispatch_table.rs`). Each implemented opcode routes to a statically typed function named canonically per `.agents/rules/opcode-naming.md` (`op_<mnemonic>_<size>_<source>_<destination>`).
-- **Statically Inlined Parameters & Forwarding Architecture:**
-  - Forwarder functions reside in per-mnemonic instruction modules (`crates/m68000/src/instructions/<mnemonic>.rs`, and flat move modules `move_b.rs`, `move_w.rs`, `move_l.rs`).
-  - During migration, forwarders cleanly delegate to existing instruction execution routines (`#[inline(always)]`).
-  - Progressively, each specialized opcode handler inlines operand size (`.b`, `.w`, `.l`), addressing mode, register indices, and CCR arithmetic directly, eliminating runtime `match mode` and `if size == ...` branches.
-  - Modern CPU Branch Target Buffers (BTBs) predict indirect table dispatches with high efficiency, maximizing instruction cache locality and superscalar throughput.
+- **65,536-Entry Direct Descriptor Table (`OPCODE_DESCRIPTOR_TABLE: [OpcodeDescriptor; 65536]`):** Every 16-bit opcode indexes directly into a precalculated array of static opcode descriptors (`crates/m68000/src/micro/dispatch_table.rs`). Each entry contains a reference to an immutable slice of specialized atomic `MicroStep`s, along with pre-decoded register indices (`reg_src`, `reg_dst`).
+- **Cached Slice Pointer Dispatch (`current_steps`):**
+  - Upon opcode prefetch and retirement, `state.micro.current_steps` caches the slice pointer directly from `OPCODE_DESCRIPTOR_TABLE[ir]`. All subsequent CCK ticks during the instruction index `current_steps[micro_step]` directly, completely eliminating 65,536-entry table lookups in the hot execution loop.
+  - Micro-steps cleanly decouple atomic bus cycles (`BusReadWord`, `BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, etc.) from parametric, bus-free ALU operations (`AluFn`).
+  - Pre-decoded register operands (`reg_src`, `reg_dst`) collapse repetitive opcode implementations across all 8 data/address registers into a single shared ALU routine per operation, with zero dynamic branching or macro boilerplate.
+  - Host CPU Branch Target Buffers (BTBs) predict indirect dispatches with high efficiency, maximizing instruction cache locality and superscalar throughput.
 
 ### 2.2 Endianness Bypass & Fast-Path Optimization Opportunities
 
@@ -526,7 +526,7 @@ To eliminate nested dynamic runtime size checks in the hot execution loop, trans
 - **Stack & Control Flow:** `BusPopStack`, `BusPushStackHigh`, `BusPushStackLow`, `BusReadTargetOpcode`, `PrefetchTargetAndRetire`, `BranchEval`.
 
 #### Pipeline & Dispatch Table Invariants
-1. **Immutable `ir` During Micro-Steps:** The 65,536-entry static dispatch table (`DISPATCH_TABLE`) is indexed directly by `cpu.state.ir`. Intermediate multi-step operations (e.g. `JSR` or taken `Bcc`) must never overwrite `cpu.state.ir` before final retirement. Target opcodes are staged in `scratch_prefetch` or `TargetRefill { target, new_ir }`, and committed to `cpu.state.ir` only upon retirement.
+1. **Immutable `ir` During Micro-Steps:** The 65,536-entry static descriptor table (`OPCODE_DESCRIPTOR_TABLE`) is indexed upon instruction prefetch to cache `current_steps: &'static [MicroStep]`. Intermediate multi-step operations (e.g. `JSR` or taken `Bcc`) must never overwrite `cpu.state.ir` before final retirement. Target opcodes are staged in `scratch_prefetch` or `TargetRefill { target, new_ir }`, and committed to `cpu.state.ir` only upon retirement.
 2. **32-Bit Internal Program Counter:** The MC68000 Program Counter register is 32-bit wide internally. Across branch and jump target refills, `pc` is computed as `target.wrapping_add(4)` without 24-bit truncation mask `& 0x00FF_FFFF` (matching verified hardware tests in SingleStepTests).
 3. **Control Addressing Modes Alignment:** Control addressing modes in `PEA` and `LEA` compute effective addresses without checking word alignment. Odd addresses can be pushed onto the stack by `PEA` without generating Vector 3 Address Error. Only an unaligned Stack Pointer ($SP$) during stack writeback triggers an Address Error.
 

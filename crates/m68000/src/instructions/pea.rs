@@ -1,90 +1,141 @@
 //! PEA (Push Effective Address) instruction handler
+//!
+//! Pushes effective address onto the stack using control addressing modes:
+//! `(An)`, `(d16, An)`, `(d8, An, Xn)`, `(xxx).w`, `(xxx).l`, `(d16, PC)`, `(d8, PC, Xn)`.
+//! Execution time: 12 to 20 CPU clocks depending on addressing mode.
 
-use crate::addressing::{AddressingMode, Size};
 use crate::core::{Cpu, StepResult};
-use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
+use crate::micro::common;
+use crate::micro::types::{flags, MicroAction, MicroStep};
+use memory_bus::MemoryBus;
 
-pub fn op_pea(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let opcode = cpu.state.ir;
-    let mode = ((opcode >> 3) & 0x07) as u8;
-    let reg = (opcode & 0x07) as u8;
+/// PEA (An): 12 CPU clocks / 6 CCKs (1 read, 2 writes)
+pub static STEPS_PEA_AI: [MicroStep; 4] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_pea_ai),
+        base_clocks: 0,
+        flags: flags::NONE,
+    },
+    common::RMW_PREFETCH_SCRATCH,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW_RETIRE,
+];
 
-    // Archetype 6: PEA (An) (Stack Push - Multi-Cycle, 12 clocks / 6 CCKs)
-    if mode == 2 {
-        let fc_data = if cpu.state.is_supervisor() {
-            memory_bus::function_code::SUPERVISOR_DATA
-        } else {
-            memory_bus::function_code::USER_DATA
-        };
+/// PEA (d16, An): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
+pub static STEPS_PEA_D16_AN: [MicroStep; 4] = [
+    MicroStep {
+        action: MicroAction::FetchExtension,
+        alu_fn: Some(crate::micro::ea::ea_calc_pea_d16_an),
+        base_clocks: 4,
+        flags: flags::READ | flags::PROGRAM_SPACE,
+    },
+    common::RMW_PREFETCH_SCRATCH,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW_RETIRE,
+];
 
-        match cpu.state.micro.micro_step {
-            0 => {
-                let addr = cpu.state.read_a(reg as usize);
-                cpu.state.micro.scratch[0] = addr;
-                cpu.initiate_prefetch();
-                return StepResult::StepCompleted;
-            }
-            1 => {
-                cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-                let sp = cpu.state.read_a(7).wrapping_sub(4);
-                cpu.state.write_a(7, sp);
-                if (sp & 1) != 0 {
-                    cpu.handle_address_error(sp, false, bus);
-                    return StepResult::InstructionCompleted;
-                }
-                let hi = ((cpu.state.micro.scratch[0] >> 16) & 0xFFFF) as u16;
-                let cycle = BusCycle::new_write(
-                    sp,
-                    hi,
-                    BusAccessSize::Word,
-                    fc_data,
-                );
-                cpu.initiate_bus_cycle(cycle);
-                return StepResult::StepCompleted;
-            }
-            2 => {
-                let sp_low = cpu.state.read_a(7).wrapping_add(2);
-                let lo = (cpu.state.micro.scratch[0] & 0xFFFF) as u16;
-                let cycle = BusCycle::new_write(
-                    sp_low,
-                    lo,
-                    BusAccessSize::Word,
-                    fc_data,
-                );
-                cpu.initiate_bus_cycle(cycle);
-                cpu.state.micro.mark_scratch_prefetch_retire();
-                return StepResult::StepCompleted;
-            }
-            _ => unreachable!(),
-        }
-    }
+/// PEA (d8, An, Xn): 20 CPU clocks / 10 CCKs (2 reads, 2 writes)
+pub static STEPS_PEA_IDX_AN: [MicroStep; 5] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_pea_idx_an),
+        base_clocks: 4,
+        flags: flags::NONE,
+    },
+    common::FETCH_EXTENSION,
+    common::RMW_PREFETCH_SCRATCH,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW_RETIRE,
+];
 
-    // Fallback for other addressing modes (absolute, PC-relative, etc.)
-    let pc = cpu.state.pc.wrapping_sub(2);
-    let mut ext_reader = || cpu.consume_extension_word(bus);
-    match AddressingMode::decode(mode, reg, Size::Long, pc, &mut ext_reader) {
-        Ok(ea) => match ea.resolve_address_unaligned(&mut cpu.state) {
-            Ok(addr) => {
-                let sp = cpu.state.read_a(7).wrapping_sub(4);
-                cpu.state.write_a(7, sp);
-                if (sp & 1) != 0 {
-                    cpu.handle_address_error(sp, false, bus);
-                    return StepResult::InstructionCompleted;
-                }
-                bus.write_word_debug(sp, (addr >> 16) as u16);
-                bus.write_word_debug(sp.wrapping_add(2), (addr & 0xFFFF) as u16);
-                cpu.retire_instruction(bus);
-                StepResult::InstructionCompleted
-            }
-            Err(_) => {
-                cpu.state.halted = true;
-                StepResult::Halted
-            }
+/// PEA (xxx).W: 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
+pub static STEPS_PEA_ABSW: [MicroStep; 4] = [
+    MicroStep {
+        action: MicroAction::FetchExtension,
+        alu_fn: Some(crate::micro::ea::ea_calc_pea_absw),
+        base_clocks: 4,
+        flags: flags::READ | flags::PROGRAM_SPACE,
+    },
+    common::RMW_PREFETCH_SCRATCH,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW_RETIRE,
+];
+
+/// PEA (xxx).L: 20 CPU clocks / 10 CCKs (3 reads, 2 writes)
+pub static STEPS_PEA_ABSL: [MicroStep; 5] = [
+    MicroStep {
+        action: MicroAction::FetchExtension,
+        alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
+        base_clocks: 4,
+        flags: flags::READ | flags::PROGRAM_SPACE,
+    },
+    MicroStep {
+        action: MicroAction::FetchExtension,
+        alu_fn: Some(crate::micro::ea::ea_calc_pea_absl_lo),
+        base_clocks: 4,
+        flags: flags::READ | flags::PROGRAM_SPACE,
+    },
+    common::RMW_PREFETCH_SCRATCH,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW_RETIRE,
+];
+
+/// PEA (d16, PC): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
+pub static STEPS_PEA_D16_PC: [MicroStep; 4] = [
+    MicroStep {
+        action: MicroAction::FetchExtension,
+        alu_fn: Some(crate::micro::ea::ea_calc_pea_d16_pc),
+        base_clocks: 4,
+        flags: flags::READ | flags::PROGRAM_SPACE,
+    },
+    common::RMW_PREFETCH_SCRATCH,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW_RETIRE,
+];
+
+/// PEA (d8, PC, Xn): 20 CPU clocks / 10 CCKs (2 reads, 2 writes)
+pub static STEPS_PEA_IDX_PC: [MicroStep; 5] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(crate::micro::ea::ea_calc_pea_idx_pc),
+        base_clocks: 4,
+        flags: flags::NONE,
+    },
+    common::FETCH_EXTENSION,
+    common::RMW_PREFETCH_SCRATCH,
+    common::PUSH_STACK_HIGH,
+    common::PUSH_STACK_LOW_RETIRE,
+];
+
+/// Compile-time opcode decoder for PEA ($4840..=$487F)
+pub const fn decode_pea_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
+    match mode {
+        2 => Some(&STEPS_PEA_AI),
+        5 => Some(&STEPS_PEA_D16_AN),
+        6 => Some(&STEPS_PEA_IDX_AN),
+        7 => match reg {
+            0 => Some(&STEPS_PEA_ABSW),
+            1 => Some(&STEPS_PEA_ABSL),
+            2 => Some(&STEPS_PEA_D16_PC),
+            3 => Some(&STEPS_PEA_IDX_PC),
+            _ => None,
         },
-        Err(_) => {
-            cpu.state.halted = true;
-            StepResult::Halted
-        }
+        _ => None,
+    }
+}
+
+/// Execution handler for `PEA <ea>`
+pub fn op_pea(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    let mode = ((cpu.state.ir >> 3) & 7) as u8;
+    let reg = (cpu.state.ir & 7) as u8;
+    if let Some(steps) = decode_pea_steps(mode, reg) {
+        cpu.state.micro.current_steps = steps;
+        cpu.state.micro.reg_src = reg;
+        crate::micro::execute_micro_step(cpu, bus)
+    } else {
+        cpu.state.halted = true;
+        StepResult::Halted
     }
 }
 
@@ -149,4 +200,3 @@ pub fn op_pea_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 pub fn op_pea_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
     op_pea(cpu, bus)
 }
-

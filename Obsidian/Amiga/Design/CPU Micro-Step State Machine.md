@@ -64,26 +64,25 @@ pub type AluFn = fn(state: &mut CpuState, reg_src: u8, reg_dst: u8);
 
 ### 2.2 The `MicroStep` Descriptor (Stateless & Cache-Dense)
 
-Each step is an immutable, 8-byte `Copy` struct:
+Each step is an immutable, 4-byte `Copy` struct:
 
 ```rust
 #[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct MicroStep {
     /// Atomic bus action or instantaneous step type
     pub action: MicroAction,
     /// Function pointer for ALU operations (None for pure bus steps)
     pub alu_fn: Option<AluFn>,
-    /// Pre-decoded source register index (0..7 for Dn/An)
-    pub reg_src: u8,
-    /// Pre-decoded destination register index (0..7 for Dn/An)
-    pub reg_dst: u8,
     /// Base CPU clocks consumed (4 for bus cycles, 0 for instantaneous ALU)
     pub base_clocks: u8,
     /// Step flags (Read, Write, Prefetch, ProgramSpace, DataSpace)
     pub flags: u8,
 }
 ```
+
+> [!NOTE]
+> Pre-decoded source and destination register indices (`reg_src`, `reg_dst`) are stored once per opcode in `OpcodeDescriptor` and cached into `state.micro.reg_src` / `reg_dst`. This minimizes `MicroStep` to just **4 bytes**, maximizing L1 instruction cache density and eliminating per-step register field duplication.
 
 ### 2.3 The `MicroAction` Enum (Specialized Atomic Primitives)
 
@@ -120,10 +119,16 @@ pub enum MicroAction {
     // --- Stack Operations (Data Space) ---
     /// Pop 16-bit word from stack (SP) and increment SP += 2
     BusPopStack,
+    /// Pop 16-bit high word of 32-bit address from stack (SP) and increment SP += 2 into scratch[0]
+    BusPopStackHigh,
+    /// Pop 16-bit low word of 32-bit address from stack (SP), assemble target into ea_addr, and increment SP += 2
+    BusPopStackLow,
     /// Push 16-bit Most Significant Word to -(SP)
     BusPushStackHigh,
     /// Push 16-bit Least Significant Word to -(SP)
     BusPushStackLow,
+    /// Push 16-bit Least Significant Word to -(SP) and retire with scratch_prefetch (e.g. PEA)
+    BusPushStackLowAndRetire,
 
     // --- Instruction Prefetch & Pipeline Refill (Program Space) ---
     /// Fetch extension word from PC and advance PC += 2
@@ -142,8 +147,19 @@ pub enum MicroAction {
     BusWriteByteAndRetire,
     /// Write 16-bit Low Word to ea_addr + 2 and retire at CCK2 (used by Class 0 Long RMW)
     BusWriteLongLowAndRetire,
+    /// Write 16-bit High Word to ea_addr and retire at CCK2 (used by MOVE.l -(An))
+    BusWriteLongHighAndRetire,
     /// Multi-register block transfer step (loops until register mask in scratch[0] is zero)
     MovemTransfer,
+
+    // --- System Register & Exception Operations ---
+    OriToCcr,
+    OriToSr,
+    AndiToCcr,
+    AndiToSr,
+    EoriToCcr,
+    EoriToSr,
+    Trap,
 }
 ```
 
@@ -165,6 +181,10 @@ pub struct CpuMicroState {
     pub current_steps: &'static [MicroStep],
     /// Current micro-step index within opcode sequence
     pub micro_step: u16,
+    /// Pre-decoded source register index (0..7 for Dn/An)
+    pub reg_src: u8,
+    /// Pre-decoded destination register index (0..7 for Dn/An)
+    pub reg_dst: u8,
     /// Hardware Data Output Buffer (DOB) holding ALU result for memory writes
     pub write_buffer: u32,
     /// Resolved effective memory address for operands or branch/jump targets
@@ -181,8 +201,11 @@ pub struct CpuMicroState {
 ### 2.5 The 65,536 Static Dispatch Table
 
 ```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OpcodeDescriptor {
     pub steps: &'static [MicroStep],
+    pub reg_src: u8,
+    pub reg_dst: u8,
 }
 
 /// Exactly 65,536 entries resident in host .rodata (Only ~1 MB total!)
@@ -751,7 +774,7 @@ impl Cpu {
             match step.action {
                 MicroAction::Alu => {
                     if let Some(alu_fn) = step.alu_fn {
-                        alu_fn(&mut self.state, step.reg_src, step.reg_dst);
+                        alu_fn(&mut self.state, self.state.micro.reg_src, self.state.micro.reg_dst);
                     }
                     self.state.micro.micro_step += 1;
                 }

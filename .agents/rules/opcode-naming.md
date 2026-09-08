@@ -1,6 +1,6 @@
 # M68000 Opcode Handler Naming & Bitfield Decoding Rules
 
-This rule enforces total naming consistency and architectural alignment across the 65,536-entry dispatch table (`dispatch_table.rs`) and all per-mnemonic instruction execution modules in `crates/m68000`.
+This rule enforces total naming consistency and architectural alignment across the 65,536-entry static descriptor table (`crates/m68000/src/micro/dispatch_table.rs`) and all per-mnemonic instruction execution modules in `crates/m68000`.
 
 ---
 

@@ -1,221 +1,253 @@
-//! BCHG (Bit Change) instruction handler and operation logic
+//! BCHG (Bit Change) instruction handlers and operation logic
 //!
 //! Tests and inverts a single bit in a Data Register (modulo 32) or memory operand (modulo 8).
 //! Updates Z flag (set if bit was 0 prior to change, cleared if bit was 1). Other condition codes unaffected.
 
-use crate::addressing::Size;
 use crate::core::{Cpu, StepResult};
-use crate::instructions::ea::{
-    data_fc, decode_ea_index, read_ea_operand, EA_DN, SIZE_BYTE,
-};
+use crate::micro::common;
+use crate::micro::ea;
+use crate::micro::types::{flags, MicroAction, MicroStep};
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
+use memory_bus::MemoryBus;
 
-/// Evaluates CCR updates and flips the bit for BCHG
+// ============================================================================
+// Leaf ALU BCHG Functions (Branchless & Endian-Neutral)
+// ============================================================================
+
+#[inline(always)]
+pub fn bchg_l(state: &mut CpuState, bit_num: u32, val: u32) -> u32 {
+    let bit_idx = bit_num & 31;
+    let mask = 1 << bit_idx;
+    state.set_ccr_z_only((val & mask) == 0);
+    val ^ mask
+}
+
+#[inline(always)]
+pub fn bchg_b(state: &mut CpuState, bit_num: u32, val: u8) -> u8 {
+    let bit_idx = bit_num & 7;
+    let mask = 1 << bit_idx;
+    state.set_ccr_z_only((val & mask) == 0);
+    val ^ mask
+}
+
 #[inline]
 pub fn execute_bchg(state: &mut CpuState, bit_num: u32, val: u32, is_register: bool) -> u32 {
-    let bit_idx = if is_register {
-        bit_num % 32
+    if is_register {
+        bchg_l(state, bit_num, val)
     } else {
-        bit_num % 8
-    };
-    let bit_mask = 1 << bit_idx;
-    let bit_val = (val & bit_mask) != 0;
-    state.set_ccr_z_only(!bit_val);
-    val ^ bit_mask
+        bchg_b(state, bit_num, (val & 0xFF) as u8) as u32
+    }
 }
 
-/// Dynamic bit change: `BCHG Dn, <ea>`
+// ============================================================================
+// Micro-Step ALU Callbacks
+// ============================================================================
+
+pub fn alu_bchg_l_dyn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let bit_num = state.d_long(reg_src as usize);
+    let val = state.d_long(reg_dst as usize);
+    let res = bchg_l(state, bit_num, val);
+    state.set_d_long(reg_dst as usize, res);
+}
+
+pub fn alu_bchg_b_dyn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
+    let bit_num = state.d_long(reg_src as usize);
+    let val = (state.micro.last_read & 0xFF) as u8;
+    let res = bchg_b(state, bit_num, val);
+    state.micro.write_buffer = res as u32;
+}
+
+pub fn alu_bchg_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let bit_num = state.micro.scratch[3];
+    let val = state.d_long(reg_dst as usize);
+    let res = bchg_l(state, bit_num, val);
+    state.set_d_long(reg_dst as usize, res);
+}
+
+pub fn alu_bchg_b_imm_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let bit_num = state.micro.scratch[3];
+    let val = (state.micro.last_read & 0xFF) as u8;
+    let res = bchg_b(state, bit_num, val);
+    state.micro.write_buffer = res as u32;
+}
+
+// ============================================================================
+// Static Micro-Step Slices: Dynamic BCHG Dn, <ea>
+// ============================================================================
+
+pub static STEPS_BCHG_DYN_DN: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 4, flags: 0 },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_bchg_l_dyn_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+pub static STEPS_BCHG_DYN_AI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_DYN_PI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: Some(ea::ea_calc_dst_pi_b), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_DYN_PD: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_DYN_D16: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_DYN_IDX: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_DYN_ABSW: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_DYN_ABSL: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_dyn_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+
+// ============================================================================
+// Static Micro-Step Slices: Static BCHG #imm, <ea>
+// ============================================================================
+
+pub static STEPS_BCHG_STAT_DN: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: None, base_clocks: 4, flags: 0 },
+    MicroStep { action: MicroAction::PrefetchNextOpcodeAndRetire, alu_fn: Some(alu_bchg_l_imm_dn), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+];
+pub static STEPS_BCHG_STAT_AI: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm_calc_ai), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_STAT_PI: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm_calc_pi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_STAT_PD: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_STAT_D16: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_STAT_IDX: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_STAT_ABSW: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+pub static STEPS_BCHG_STAT_ABSL: [MicroStep; 6] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadByte, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_bchg_b_imm_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_BYTE_RETIRE,
+];
+
+// ============================================================================
+// Static Decoder Functions
+// ============================================================================
+
+/// Decodes the micro-step sequence for dynamic BCHG Dn, <ea>
+pub const fn decode_bchg_dyn_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
+    match mode {
+        0 => Some(&STEPS_BCHG_DYN_DN),
+        2 => Some(&STEPS_BCHG_DYN_AI),
+        3 => Some(&STEPS_BCHG_DYN_PI),
+        4 => Some(&STEPS_BCHG_DYN_PD),
+        5 => Some(&STEPS_BCHG_DYN_D16),
+        6 => Some(&STEPS_BCHG_DYN_IDX),
+        7 => match reg {
+            0 => Some(&STEPS_BCHG_DYN_ABSW),
+            1 => Some(&STEPS_BCHG_DYN_ABSL),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// Decodes the micro-step sequence for static BCHG #imm, <ea>
+pub const fn decode_bchg_stat_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
+    match mode {
+        0 => Some(&STEPS_BCHG_STAT_DN),
+        2 => Some(&STEPS_BCHG_STAT_AI),
+        3 => Some(&STEPS_BCHG_STAT_PI),
+        4 => Some(&STEPS_BCHG_STAT_PD),
+        5 => Some(&STEPS_BCHG_STAT_D16),
+        6 => Some(&STEPS_BCHG_STAT_IDX),
+        7 => match reg {
+            0 => Some(&STEPS_BCHG_STAT_ABSW),
+            1 => Some(&STEPS_BCHG_STAT_ABSL),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+// ============================================================================
+// Legacy Stubs (to be removed in Phase 7)
+// ============================================================================
+
 pub fn op_bchg_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let m = decode_ea_index(((cpu.state.ir >> 3) & 7) as u8, (cpu.state.ir & 7) as u8);
-    let reg_bit = ((cpu.state.ir >> 9) & 7) as usize;
-    let bit_num = cpu.state.d_long(reg_bit);
-
-    if m == EA_DN {
-        let reg_d = (cpu.state.ir & 7) as usize;
-        match cpu.state.micro.micro_step {
-            0 => {
-                let val = cpu.state.d_long(reg_d);
-                let res = execute_bchg(&mut cpu.state, bit_num, val, true);
-                cpu.write_d_reg(reg_d, res, Size::Long);
-                cpu.initiate_prefetch();
-                StepResult::StepCompleted
-            }
-            1 => {
-                cpu.record_internal_clocks(4);
-                StepResult::StepCompleted
-            }
-            2 => {
-                cpu.state.ir = cpu.state.prefetch[0];
-                cpu.state.prefetch[0] = cpu.state.micro.last_read;
-                cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                cpu.state.micro.reset();
-                StepResult::InstructionCompleted
-            }
-            _ => unreachable!(),
-        }
-    } else {
-        let phase = cpu.state.micro.scratch[2];
-        if phase == 0 {
-            let val = match read_ea_operand(cpu, bus, cpu.state.micro.micro_step, SIZE_BYTE, m) {
-                Ok(v) => v,
-                Err(res) => return res,
-            };
-            let res = execute_bchg(&mut cpu.state, bit_num, val, false);
-            cpu.state.micro.scratch[1] = res;
-            cpu.initiate_prefetch();
-            cpu.state.micro.scratch[2] = 1;
-            StepResult::StepCompleted
-        } else {
-            cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-            let addr = cpu.state.micro.scratch[0];
-            let val = (cpu.state.micro.scratch[1] & 0xFF) as u16;
-            let fc = data_fc(cpu);
-            cpu.initiate_bus_cycle(BusCycle::new_write(addr, val, BusAccessSize::Byte, fc));
-            cpu.state.micro.mark_scratch_prefetch_retire();
-            StepResult::StepCompleted
-        }
-    }
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
-/// Static bit change: `BCHG #<data>, <ea>`
 pub fn op_bchg_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let m = decode_ea_index(((cpu.state.ir >> 3) & 7) as u8, (cpu.state.ir & 7) as u8);
-
-    if m == EA_DN {
-        let reg_d = (cpu.state.ir & 7) as usize;
-        match cpu.state.micro.micro_step {
-            0 => {
-                let bit_num = (cpu.state.prefetch[0] & 0xFF) as u32;
-                cpu.state.micro.scratch[3] = bit_num;
-                cpu.initiate_prefetch();
-                cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                StepResult::StepCompleted
-            }
-            1 => {
-                cpu.state.prefetch[0] = cpu.state.micro.last_read;
-                let bit_num = cpu.state.micro.scratch[3];
-                let val = cpu.state.d_long(reg_d);
-                let res = execute_bchg(&mut cpu.state, bit_num, val, true);
-                cpu.write_d_reg(reg_d, res, Size::Long);
-                cpu.initiate_prefetch();
-                StepResult::StepCompleted
-            }
-            2 => {
-                cpu.record_internal_clocks(4);
-                StepResult::StepCompleted
-            }
-            3 => {
-                cpu.state.ir = cpu.state.prefetch[0];
-                cpu.state.prefetch[0] = cpu.state.micro.last_read;
-                cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                cpu.state.micro.reset();
-                StepResult::InstructionCompleted
-            }
-            _ => unreachable!(),
-        }
-    } else {
-        let phase = cpu.state.micro.scratch[2];
-        if phase == 0 {
-            let step = cpu.state.micro.micro_step;
-            if step == 0 {
-                let bit_num = (cpu.state.prefetch[0] & 0xFF) as u32;
-                cpu.state.micro.scratch[3] = bit_num;
-                cpu.initiate_prefetch();
-                cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                return StepResult::StepCompleted;
-            }
-
-            let ea_step = step - 1;
-            if ea_step == 0 {
-                cpu.state.prefetch[0] = cpu.state.micro.last_read;
-            }
-            let val = match read_ea_operand(cpu, bus, ea_step, SIZE_BYTE, m) {
-                Ok(v) => v,
-                Err(res) => return res,
-            };
-
-            let bit_num = cpu.state.micro.scratch[3];
-            let res = execute_bchg(&mut cpu.state, bit_num, val, false);
-            cpu.state.micro.scratch[1] = res;
-            cpu.initiate_prefetch();
-            cpu.state.micro.scratch[2] = 1;
-            StepResult::StepCompleted
-        } else {
-            cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-            let addr = cpu.state.micro.scratch[0];
-            let val = (cpu.state.micro.scratch[1] & 0xFF) as u16;
-            let fc = data_fc(cpu);
-            cpu.initiate_bus_cycle(BusCycle::new_write(addr, val, BusAccessSize::Byte, fc));
-            cpu.state.micro.mark_scratch_prefetch_retire();
-            StepResult::StepCompleted
-        }
-    }
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
-// --- Specialized Opcode Forwarders ---
+pub fn op_bchg_b_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_dn(cpu, bus) }
+pub fn op_bchg_b_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_dn(cpu, bus) }
+pub fn op_bchg_b_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_dn(cpu, bus) }
+pub fn op_bchg_b_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_dn(cpu, bus) }
+pub fn op_bchg_b_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_dn(cpu, bus) }
+pub fn op_bchg_b_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_dn(cpu, bus) }
+pub fn op_bchg_b_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_dn(cpu, bus) }
 
-pub fn op_bchg_b_dn_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_dn(cpu, bus)
-}
+pub fn op_bchg_b_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_imm(cpu, bus) }
+pub fn op_bchg_b_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_imm(cpu, bus) }
+pub fn op_bchg_b_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_imm(cpu, bus) }
+pub fn op_bchg_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_imm(cpu, bus) }
+pub fn op_bchg_b_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_imm(cpu, bus) }
+pub fn op_bchg_b_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_imm(cpu, bus) }
+pub fn op_bchg_b_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_imm(cpu, bus) }
 
-pub fn op_bchg_b_dn_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_dn(cpu, bus)
-}
-
-pub fn op_bchg_b_dn_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_dn(cpu, bus)
-}
-
-pub fn op_bchg_b_dn_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_dn(cpu, bus)
-}
-
-pub fn op_bchg_b_dn_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_dn(cpu, bus)
-}
-
-pub fn op_bchg_b_dn_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_dn(cpu, bus)
-}
-
-pub fn op_bchg_b_dn_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_dn(cpu, bus)
-}
-
-pub fn op_bchg_b_imm_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_imm(cpu, bus)
-}
-
-pub fn op_bchg_b_imm_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_imm(cpu, bus)
-}
-
-pub fn op_bchg_b_imm_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_imm(cpu, bus)
-}
-
-pub fn op_bchg_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_imm(cpu, bus)
-}
-
-pub fn op_bchg_b_imm_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_imm(cpu, bus)
-}
-
-pub fn op_bchg_b_imm_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_imm(cpu, bus)
-}
-
-pub fn op_bchg_b_imm_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_imm(cpu, bus)
-}
-
-pub fn op_bchg_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_dn(cpu, bus)
-}
-
-pub fn op_bchg_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_bchg_imm(cpu, bus)
-}
-
+pub fn op_bchg_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_dn(cpu, bus) }
+pub fn op_bchg_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_bchg_imm(cpu, bus) }

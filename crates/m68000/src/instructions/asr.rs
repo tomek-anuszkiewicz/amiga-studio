@@ -3,205 +3,308 @@
 //! Shifts bits to the right, duplicating the MSB (sign-bit) and shifting LSB into C and X flags.
 //! V flag is always cleared.
 
-use crate::addressing::Size;
 use crate::core::{Cpu, StepResult};
-use crate::instructions::ea::{
-    data_fc, decode_ea_index, read_ea_operand, size_from_const, SIZE_BYTE, SIZE_LONG, SIZE_WORD,
-};
+use crate::micro::common;
+use crate::micro::ea;
+use crate::micro::types::{flags, MicroAction, MicroStep};
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
+use memory_bus::MemoryBus;
 
-/// Evaluates ASR shift operation and updates condition codes (X, N, Z, V, C)
+// ============================================================================
+// Leaf ALU ASR Functions (Branchless & Endian-Neutral)
+// ============================================================================
+
 #[inline(always)]
-pub fn execute_asr(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
-    let width = match s {
-        SIZE_BYTE => 8u32,
-        SIZE_WORD => 16u32,
-        _ => 32u32,
-    };
-    let mask = match s {
-        SIZE_BYTE => 0xFFu32,
-        SIZE_WORD => 0xFFFFu32,
-        _ => 0xFFFF_FFFFu32,
-    };
-    let msb = 1u32 << (width - 1);
-    let mut v = val & mask;
-
+pub fn asr_b(state: &mut CpuState, count: u32, val: u8) -> u8 {
+    let msb = (val & 0x80) != 0;
     if count == 0 {
-        // X flag unaffected, V=0, C=0
-        state.set_ccr_nz_clear_vc((v & msb) != 0, v == 0);
-        return (val & !mask) | v;
+        state.set_ccr_nz_clear_vc(msb, val == 0);
+        return val;
     }
-
-    let last_out = if count <= width {
+    let mut v = val as i8;
+    let last_out = if count <= 8 {
         let mut lo = false;
         for _ in 0..count {
             lo = (v & 1) != 0;
-            let sign_bit = v & msb;
-            v = (v >> 1) | sign_bit;
+            v >>= 1;
         }
         lo
     } else {
-        // Count exceeds width: silicon exhaustion
-        if (v & msb) != 0 {
-            v = mask;
+        if msb {
+            v = -1;
         } else {
             v = 0;
         }
         false
     };
-    state.set_ccr_xnzvc(last_out, (v & msb) != 0, v == 0, false, last_out);
-
-    (val & !mask) | v
+    let res = v as u8;
+    state.set_ccr_xnzvc(last_out, (res & 0x80) != 0, res == 0, false, last_out);
+    res
 }
 
-/// Sized wrapper for ASR
-#[inline]
-pub fn execute_asr_sized(state: &mut CpuState, count: u32, val: u32, size: Size) -> u32 {
-    let s = match size {
-        Size::Byte => SIZE_BYTE,
-        Size::Word => SIZE_WORD,
-        Size::Long => SIZE_LONG,
-    };
-    execute_asr(state, s, count, val)
-}
-
-/// Register shift: `ASR Dx, Dy` or `ASR #<data>, Dy`
-pub fn op_asr_reg(
-    cpu: &mut Cpu,
-    _bus: &mut MemoryBus,
-) -> StepResult {
-    let ir = cpu.state.ir;
-    let s = ((ir >> 6) & 3) as u8;
-    let is_reg_count = ((ir >> 5) & 1) != 0;
-
-    match cpu.state.micro.micro_step {
-        0 => {
-            let count = if is_reg_count {
-                let reg_cnt = ((ir >> 9) & 7) as usize;
-                cpu.state.d_long(reg_cnt) & 63
-            } else {
-                let raw = ((ir >> 9) & 7) as u32;
-                if raw == 0 {
-                    8
-                } else {
-                    raw
-                }
-            };
-
-            let reg_dst = (ir & 7) as usize;
-            let val = cpu.state.d_long(reg_dst);
-            let res = execute_asr(&mut cpu.state, s, count, val);
-            let size = size_from_const(s);
-            cpu.write_d_reg(reg_dst, res, size);
-
-            cpu.state.micro.scratch[0] = count;
-            cpu.initiate_prefetch();
-            StepResult::StepCompleted
-        }
-        1 => {
-            let count = cpu.state.micro.scratch[0];
-            let idle_clocks = (if s == SIZE_LONG {
-                4 + (2 * count)
-            } else {
-                2 + (2 * count)
-            }) as u16;
-            cpu.record_internal_clocks(idle_clocks);
-            StepResult::StepCompleted
-        }
-        2 => {
-            cpu.state.ir = cpu.state.prefetch[0];
-            cpu.state.prefetch[0] = cpu.state.micro.last_read;
-            cpu.state.pc = cpu.state.pc.wrapping_add(2);
-            cpu.state.micro.reset();
-            StepResult::InstructionCompleted
-        }
-        _ => unreachable!(),
+#[inline(always)]
+pub fn asr_w(state: &mut CpuState, count: u32, val: u16) -> u16 {
+    let msb = (val & 0x8000) != 0;
+    if count == 0 {
+        state.set_ccr_nz_clear_vc(msb, val == 0);
+        return val;
     }
-}
-
-/// Memory shift: `ASR <ea>` (word size, count = 1)
-pub fn op_asr_mem(
-    cpu: &mut Cpu,
-    bus: &mut MemoryBus,
-) -> StepResult {
-    let ir = cpu.state.ir;
-    let m = decode_ea_index(((ir >> 3) & 7) as u8, (ir & 7) as u8);
-    let fc = data_fc(cpu);
-    let phase = cpu.state.micro.scratch[2];
-
-    if phase == 0 {
-        let mem_val = match read_ea_operand(cpu, bus, cpu.state.micro.micro_step, SIZE_WORD, m) {
-            Ok(v) => v,
-            Err(res) => return res,
-        };
-
-        let res = execute_asr(&mut cpu.state, SIZE_WORD, 1, mem_val);
-        cpu.state.micro.scratch[1] = res;
-        cpu.initiate_prefetch();
-        cpu.state.micro.scratch[2] = 1;
-        StepResult::StepCompleted
+    let mut v = val as i16;
+    let last_out = if count <= 16 {
+        let mut lo = false;
+        for _ in 0..count {
+            lo = (v & 1) != 0;
+            v >>= 1;
+        }
+        lo
     } else {
-        cpu.state.micro.scratch_prefetch = cpu.state.micro.last_read;
-        let addr = cpu.state.micro.scratch[0];
-        let val = (cpu.state.micro.scratch[1] & 0xFFFF) as u16;
-        cpu.initiate_bus_cycle(BusCycle::new_write(addr, val, BusAccessSize::Word, fc));
-        cpu.state.micro.mark_scratch_prefetch_retire();
-        StepResult::StepCompleted
+        if msb {
+            v = -1;
+        } else {
+            v = 0;
+        }
+        false
+    };
+    let res = v as u16;
+    state.set_ccr_xnzvc(last_out, (res & 0x8000) != 0, res == 0, false, last_out);
+    res
+}
+
+#[inline(always)]
+pub fn asr_l(state: &mut CpuState, count: u32, val: u32) -> u32 {
+    let msb = (val & 0x8000_0000) != 0;
+    if count == 0 {
+        state.set_ccr_nz_clear_vc(msb, val == 0);
+        return val;
+    }
+    let mut v = val as i32;
+    let last_out = if count <= 32 {
+        let mut lo = false;
+        for _ in 0..count {
+            lo = (v & 1) != 0;
+            v >>= 1;
+        }
+        lo
+    } else {
+        if msb {
+            v = -1;
+        } else {
+            v = 0;
+        }
+        false
+    };
+    let res = v as u32;
+    state.set_ccr_xnzvc(last_out, (res & 0x8000_0000) != 0, res == 0, false, last_out);
+    res
+}
+
+#[inline]
+pub fn execute_asr(state: &mut CpuState, s: u8, count: u32, val: u32) -> u32 {
+    match s {
+        0 => asr_b(state, count, val as u8) as u32,
+        1 => asr_w(state, count, val as u16) as u32,
+        _ => asr_l(state, count, val),
     }
 }
 
-// --- Specialized Opcode Forwarders ---
+// ============================================================================
+// Micro-Step ALU Callbacks
+// ============================================================================
 
-pub fn op_asr_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_reg(cpu, bus)
+pub fn alu_asr_b_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let count = reg_src as u32;
+    let val = state.d_byte(reg_dst as usize);
+    let res = asr_b(state, count, val);
+    state.set_d_byte(reg_dst as usize, res);
+    state.micro.record_internal_clocks(2 + (2 * count as u16));
 }
 
-pub fn op_asr_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_reg(cpu, bus)
+pub fn alu_asr_w_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let count = reg_src as u32;
+    let val = state.d_word(reg_dst as usize);
+    let res = asr_w(state, count, val);
+    state.set_d_word(reg_dst as usize, res);
+    state.micro.record_internal_clocks(2 + (2 * count as u16));
 }
 
-pub fn op_asr_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_reg(cpu, bus)
+pub fn alu_asr_l_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let count = reg_src as u32;
+    let val = state.d_long(reg_dst as usize);
+    let res = asr_l(state, count, val);
+    state.set_d_long(reg_dst as usize, res);
+    state.micro.record_internal_clocks(4 + (2 * count as u16));
 }
 
-pub fn op_asr_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_reg(cpu, bus)
+pub fn alu_asr_b_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let count = state.d_long(reg_src as usize) & 63;
+    let val = state.d_byte(reg_dst as usize);
+    let res = asr_b(state, count, val);
+    state.set_d_byte(reg_dst as usize, res);
+    state.micro.record_internal_clocks(2 + (2 * count as u16));
 }
 
-pub fn op_asr_w_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_mem(cpu, bus)
+pub fn alu_asr_w_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let count = state.d_long(reg_src as usize) & 63;
+    let val = state.d_word(reg_dst as usize);
+    let res = asr_w(state, count, val);
+    state.set_d_word(reg_dst as usize, res);
+    state.micro.record_internal_clocks(2 + (2 * count as u16));
 }
 
-pub fn op_asr_w_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_mem(cpu, bus)
+pub fn alu_asr_l_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let count = state.d_long(reg_src as usize) & 63;
+    let val = state.d_long(reg_dst as usize);
+    let res = asr_l(state, count, val);
+    state.set_d_long(reg_dst as usize, res);
+    state.micro.record_internal_clocks(4 + (2 * count as u16));
 }
 
-pub fn op_asr_w_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_mem(cpu, bus)
+pub fn alu_asr_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let d = state.micro.last_read;
+    let res = asr_w(state, 1, d);
+    state.micro.write_buffer = res as u32;
 }
 
-pub fn op_asr_w_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_mem(cpu, bus)
+// ============================================================================
+// Static Micro-Step Slices: ASR Register
+// ============================================================================
+
+pub static STEPS_ASR_B_IMM: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asr_b_imm_dn), base_clocks: 0, flags: 0 },
+    common::RETIRE_STANDARD,
+];
+pub static STEPS_ASR_W_IMM: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asr_w_imm_dn), base_clocks: 0, flags: 0 },
+    common::RETIRE_STANDARD,
+];
+pub static STEPS_ASR_L_IMM: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asr_l_imm_dn), base_clocks: 0, flags: 0 },
+    common::RETIRE_STANDARD,
+];
+
+pub static STEPS_ASR_B_REG: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asr_b_reg_dn), base_clocks: 0, flags: 0 },
+    common::RETIRE_STANDARD,
+];
+pub static STEPS_ASR_W_REG: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asr_w_reg_dn), base_clocks: 0, flags: 0 },
+    common::RETIRE_STANDARD,
+];
+pub static STEPS_ASR_L_REG: [MicroStep; 2] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(alu_asr_l_reg_dn), base_clocks: 0, flags: 0 },
+    common::RETIRE_STANDARD,
+];
+
+// ============================================================================
+// Static Micro-Step Slices: ASR Memory (Word only, Count = 1)
+// ============================================================================
+
+pub static STEPS_ASR_W_AI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asr_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_ASR_W_PI: [MicroStep; 3] = [
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: Some(ea::ea_calc_dst_pi_w), base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asr_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_ASR_W_PD: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_pd_w), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asr_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_ASR_W_D16: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asr_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_ASR_W_IDX: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::Alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2, flags: 0 },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asr_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_ASR_W_ABSW: [MicroStep; 4] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asr_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+pub static STEPS_ASR_W_ABSL: [MicroStep; 5] = [
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::FetchExtension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4, flags: flags::READ | flags::PROGRAM_SPACE },
+    MicroStep { action: MicroAction::BusReadWord, alu_fn: None, base_clocks: 4, flags: flags::READ | flags::DATA_SPACE },
+    MicroStep { action: MicroAction::BusPrefetchToScratch, alu_fn: Some(alu_asr_w_mem), base_clocks: 4, flags: flags::READ | flags::PREFETCH | flags::PROGRAM_SPACE },
+    common::RMW_WRITE_WORD_RETIRE,
+];
+
+// ============================================================================
+// Static Decoder Functions
+// ============================================================================
+
+/// Decodes the micro-step sequence for ASR register shift
+pub const fn decode_asr_reg_steps(is_reg_count: bool, size: u8) -> Option<&'static [MicroStep]> {
+    if is_reg_count {
+        match size {
+            0 => Some(&STEPS_ASR_B_REG),
+            1 => Some(&STEPS_ASR_W_REG),
+            2 => Some(&STEPS_ASR_L_REG),
+            _ => None,
+        }
+    } else {
+        match size {
+            0 => Some(&STEPS_ASR_B_IMM),
+            1 => Some(&STEPS_ASR_W_IMM),
+            2 => Some(&STEPS_ASR_L_IMM),
+            _ => None,
+        }
+    }
 }
 
-pub fn op_asr_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_reg(cpu, bus)
+/// Decodes the micro-step sequence for ASR memory shift (Word only, Count = 1)
+pub const fn decode_asr_mem_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
+    match mode {
+        2 => Some(&STEPS_ASR_W_AI),
+        3 => Some(&STEPS_ASR_W_PI),
+        4 => Some(&STEPS_ASR_W_PD),
+        5 => Some(&STEPS_ASR_W_D16),
+        6 => Some(&STEPS_ASR_W_IDX),
+        7 => match reg {
+            0 => Some(&STEPS_ASR_W_ABSW),
+            1 => Some(&STEPS_ASR_W_ABSL),
+            _ => None,
+        },
+        _ => None,
+    }
 }
 
-pub fn op_asr_w_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_mem(cpu, bus)
+// ============================================================================
+// Legacy Stubs (to be removed in Phase 7)
+// ============================================================================
+
+pub fn op_asr_reg(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
-pub fn op_asr_w_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_reg(cpu, bus)
+pub fn op_asr_mem(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    crate::micro::engine::execute_micro_step(cpu, bus)
 }
 
-pub fn op_asr_w_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_mem(cpu, bus)
-}
+pub fn op_asr_b_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_reg(cpu, bus) }
+pub fn op_asr_b_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_reg(cpu, bus) }
+pub fn op_asr_l_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_reg(cpu, bus) }
+pub fn op_asr_l_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_reg(cpu, bus) }
+pub fn op_asr_w_dn_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_reg(cpu, bus) }
+pub fn op_asr_w_imm_dn(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_reg(cpu, bus) }
 
-pub fn op_asr_w_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    op_asr_mem(cpu, bus)
-}
-
+pub fn op_asr_w_absl(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_mem(cpu, bus) }
+pub fn op_asr_w_absw(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_mem(cpu, bus) }
+pub fn op_asr_w_ai(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_mem(cpu, bus) }
+pub fn op_asr_w_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_mem(cpu, bus) }
+pub fn op_asr_w_idx(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_mem(cpu, bus) }
+pub fn op_asr_w_pd(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_mem(cpu, bus) }
+pub fn op_asr_w_pi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult { op_asr_mem(cpu, bus) }

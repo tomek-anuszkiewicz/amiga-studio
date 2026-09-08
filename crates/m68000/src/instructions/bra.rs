@@ -4,85 +4,61 @@
 //! Execution time: 10 CPU clocks (2 internal idle clocks + 2 bus prefetch cycles).
 
 use crate::core::{Cpu, StepResult};
-use crate::instructions::ea::trigger_address_error;
-use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
+use crate::micro::common;
+use crate::micro::types::{flags, MicroAction, MicroStep};
+use crate::state::CpuState;
+use memory_bus::MemoryBus;
 
 #[inline(always)]
-fn prog_fc(cpu: &Cpu) -> u8 {
-    if cpu.state.is_supervisor() {
-        memory_bus::function_code::SUPERVISOR_PROGRAM
+pub fn alu_bra_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let d8 = (state.ir & 0xFF) as i8;
+    let base_pc = state.pc.wrapping_sub(2);
+    state.micro.ea_addr = base_pc.wrapping_add(d8 as i32 as u32);
+}
+
+#[inline(always)]
+pub fn alu_bra_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let disp = state.prefetch[0] as i16 as i32;
+    let base_pc = state.pc.wrapping_sub(2);
+    state.micro.ea_addr = base_pc.wrapping_add(disp as u32);
+}
+
+/// BRA.S (8-bit short displacement, 10 CPU clocks / 5 CCKs)
+pub static STEPS_BRA_SHORT: [MicroStep; 3] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(alu_bra_short),
+        base_clocks: 2,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// BRA.W (16-bit word displacement, 10 CPU clocks / 5 CCKs)
+pub static STEPS_BRA_WORD: [MicroStep; 3] = [
+    MicroStep {
+        action: MicroAction::Alu,
+        alu_fn: Some(alu_bra_word),
+        base_clocks: 2,
+        flags: flags::NONE,
+    },
+    common::READ_TARGET_OPCODE,
+    common::PREFETCH_TARGET_RETIRE,
+];
+
+/// Compile-time opcode decoder for BRA ($6000..=$60FF)
+pub const fn decode_bra_steps(d8: u8) -> &'static [MicroStep] {
+    if d8 != 0 {
+        &STEPS_BRA_SHORT
     } else {
-        memory_bus::function_code::USER_PROGRAM
+        &STEPS_BRA_WORD
     }
 }
 
-/// Specialized execution handler for unconditional `BRA`
+/// Legacy execution handler forwarding to micro-step state machine
 pub fn op_bra(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
-    let opcode = cpu.state.ir;
-    let d8 = (opcode & 0x00FF) as i8;
-    let base_pc = cpu.state.pc.wrapping_sub(2);
-    let fc_p = prog_fc(cpu);
-
-    if d8 != 0 {
-        // --- 8-bit Short Displacement Branch (10 CPU clocks) ---
-        let target = base_pc.wrapping_add(d8 as i32 as u32);
-        if (target & 1) != 0 {
-            return trigger_address_error(cpu, target, true, true, bus);
-        }
-        match cpu.state.micro.micro_step {
-            0 => {
-                cpu.state.micro.scratch[0] = target;
-                cpu.state.micro.internal_clocks = 2;
-                StepResult::StepCompleted
-            }
-            1 => {
-                let target = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(target, BusAccessSize::Word, fc_p));
-                StepResult::StepCompleted
-            }
-            2 => {
-                let new_ir = cpu.state.micro.last_read;
-                let target = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(
-                    target.wrapping_add(2),
-                    BusAccessSize::Word,
-                    fc_p,
-                ));
-                cpu.state.micro.mark_target_refill_retire(target, new_ir);
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
-    } else {
-        // --- 16-bit Word Displacement Branch (10 CPU clocks) ---
-        let disp = cpu.state.prefetch[0] as i16 as i32;
-        let target = base_pc.wrapping_add(disp as u32);
-        if (target & 1) != 0 {
-            return trigger_address_error(cpu, target, true, true, bus);
-        }
-        match cpu.state.micro.micro_step {
-            0 => {
-                cpu.state.micro.scratch[0] = target;
-                cpu.state.micro.internal_clocks = 2;
-                StepResult::StepCompleted
-            }
-            1 => {
-                let target = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(target, BusAccessSize::Word, fc_p));
-                StepResult::StepCompleted
-            }
-            2 => {
-                let new_ir = cpu.state.micro.last_read;
-                let target = cpu.state.micro.scratch[0];
-                cpu.initiate_bus_cycle(BusCycle::new_read(
-                    target.wrapping_add(2),
-                    BusAccessSize::Word,
-                    fc_p,
-                ));
-                cpu.state.micro.mark_target_refill_retire(target, new_ir);
-                StepResult::StepCompleted
-            }
-            _ => unreachable!(),
-        }
-    }
+    let d8 = (cpu.state.ir & 0x00FF) as u8;
+    cpu.state.micro.current_steps = decode_bra_steps(d8);
+    crate::micro::execute_micro_step(cpu, bus)
 }
