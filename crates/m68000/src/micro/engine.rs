@@ -327,27 +327,243 @@ pub fn trigger_address_error_step(
     StepResult::InstructionCompleted
 }
 
+/// Initiates a cycle-exact bus read cycle and steps CCK1
 #[inline(always)]
-fn movem_read_reg(state: &crate::state::CpuState, is_predec: bool, bit_idx: u8) -> u32 {
-    if is_predec {
-        if bit_idx < 8 {
-            state.read_a((7 - bit_idx) as usize)
-        } else {
-            state.d_long((15 - bit_idx) as usize)
+pub fn initiate_read_cycle(
+    cpu: &mut crate::core::Cpu,
+    bus: &mut MemoryBus,
+    addr: u32,
+    size: memory_bus::BusAccessSize,
+    fc: u8,
+) -> StepResult {
+    cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, size, fc));
+    step_active_bus_cck1(cpu, bus)
+}
+
+/// Initiates a cycle-exact bus write cycle and steps CCK1
+#[inline(always)]
+pub fn initiate_write_cycle(
+    cpu: &mut crate::core::Cpu,
+    bus: &mut MemoryBus,
+    addr: u32,
+    val: u16,
+    size: memory_bus::BusAccessSize,
+    fc: u8,
+) -> StepResult {
+    cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(addr, val, size, fc));
+    step_active_bus_cck1(cpu, bus)
+}
+
+#[inline]
+fn execute_bus_read(
+    cpu: &mut crate::core::Cpu,
+    bus: &mut MemoryBus,
+    action: super::types::MicroAction,
+) -> StepResult {
+    let fc = super::types::data_fc(&cpu.state);
+    match action {
+        super::types::MicroAction::BusReadByte => {
+            initiate_read_cycle(cpu, bus, cpu.state.micro.ea_addr, memory_bus::BusAccessSize::Byte, fc)
         }
-    } else if bit_idx < 8 {
-        state.d_long(bit_idx as usize)
-    } else {
-        state.read_a((bit_idx - 8) as usize)
+        super::types::MicroAction::BusReadWord => {
+            let addr = cpu.state.micro.ea_addr;
+            if (addr & 1) != 0 {
+                return trigger_address_error_step(cpu, addr, true, false, bus);
+            }
+            initiate_read_cycle(cpu, bus, addr, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusReadLongHigh => {
+            let addr = cpu.state.micro.ea_addr;
+            if (addr & 1) != 0 {
+                return trigger_address_error_step(cpu, addr, true, false, bus);
+            }
+            initiate_read_cycle(cpu, bus, addr, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusReadLongLow => {
+            cpu.state.micro.scratch[0] = (cpu.state.micro.last_read as u32) << 16;
+            let addr = cpu.state.micro.ea_addr.wrapping_add(2);
+            initiate_read_cycle(cpu, bus, addr, memory_bus::BusAccessSize::Word, fc)
+        }
+        _ => StepResult::StepCompleted,
     }
 }
 
-#[inline(always)]
-fn movem_write_reg(state: &mut crate::state::CpuState, bit_idx: u8, val: u32) {
-    if bit_idx < 8 {
-        state.set_d_long(bit_idx as usize, val);
-    } else {
-        state.write_a((bit_idx - 8) as usize, val);
+#[inline]
+fn execute_bus_write(
+    cpu: &mut crate::core::Cpu,
+    bus: &mut MemoryBus,
+    action: super::types::MicroAction,
+) -> StepResult {
+    let fc = super::types::data_fc(&cpu.state);
+    match action {
+        super::types::MicroAction::BusWriteByte => {
+            let addr = cpu.state.micro.ea_addr;
+            let val = (cpu.state.micro.write_buffer & 0xFF) as u16;
+            initiate_write_cycle(cpu, bus, addr, val, memory_bus::BusAccessSize::Byte, fc)
+        }
+        super::types::MicroAction::BusWriteWord => {
+            let addr = cpu.state.micro.ea_addr;
+            if (addr & 1) != 0 {
+                return trigger_address_error_step(cpu, addr, false, false, bus);
+            }
+            let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
+            initiate_write_cycle(cpu, bus, addr, val, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusWriteLongHigh => {
+            let addr = cpu.state.micro.ea_addr;
+            if (addr & 1) != 0 {
+                return trigger_address_error_step(cpu, addr, false, false, bus);
+            }
+            let val = ((cpu.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
+            initiate_write_cycle(cpu, bus, addr, val, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusWriteLongLow => {
+            let addr = cpu.state.micro.ea_addr.wrapping_add(2);
+            if (addr & 1) != 0 {
+                return trigger_address_error_step(cpu, addr, false, false, bus);
+            }
+            let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
+            initiate_write_cycle(cpu, bus, addr, val, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusWriteWordAndRetire => {
+            let addr = cpu.state.micro.ea_addr;
+            if (addr & 1) != 0 {
+                cpu.state.ir = cpu.state.prefetch[0];
+                return trigger_address_error_step(cpu, addr, false, false, bus);
+            }
+            let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
+            cpu.state.micro.mark_scratch_prefetch_retire();
+            initiate_write_cycle(cpu, bus, addr, val, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusWriteByteAndRetire => {
+            let addr = cpu.state.micro.ea_addr;
+            let val = (cpu.state.micro.write_buffer & 0xFF) as u16;
+            cpu.state.micro.mark_scratch_prefetch_retire();
+            initiate_write_cycle(cpu, bus, addr, val, memory_bus::BusAccessSize::Byte, fc)
+        }
+        super::types::MicroAction::BusWriteLongLowAndRetire => {
+            let addr = cpu.state.micro.ea_addr.wrapping_add(2);
+            if (addr & 1) != 0 {
+                return trigger_address_error_step(cpu, addr, false, false, bus);
+            }
+            let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
+            cpu.state.micro.mark_scratch_prefetch_retire();
+            initiate_write_cycle(cpu, bus, addr, val, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusWriteLongHighAndRetire => {
+            let addr = cpu.state.micro.ea_addr;
+            if (addr & 1) != 0 {
+                return trigger_address_error_step(cpu, addr, false, false, bus);
+            }
+            let val = ((cpu.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
+            cpu.state.micro.mark_scratch_prefetch_retire();
+            initiate_write_cycle(cpu, bus, addr, val, memory_bus::BusAccessSize::Word, fc)
+        }
+        _ => StepResult::StepCompleted,
+    }
+}
+
+#[inline]
+fn execute_stack_op(
+    cpu: &mut crate::core::Cpu,
+    bus: &mut MemoryBus,
+    action: super::types::MicroAction,
+) -> StepResult {
+    let fc = super::types::data_fc(&cpu.state);
+    match action {
+        super::types::MicroAction::BusPopStack
+        | super::types::MicroAction::BusPopStackHigh
+        | super::types::MicroAction::BusPopStackLow => {
+            let sp = cpu.state.read_a(7);
+            if (sp & 1) != 0 {
+                return trigger_address_error_step(cpu, sp, true, false, bus);
+            }
+            cpu.state.write_a(7, sp.wrapping_add(2));
+            initiate_read_cycle(cpu, bus, sp, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusPushStackHigh => {
+            let sp = cpu.state.read_a(7).wrapping_sub(4);
+            cpu.state.write_a(7, sp);
+            if (sp & 1) != 0 {
+                return trigger_address_error_step(cpu, sp, false, false, bus);
+            }
+            let val = ((cpu.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
+            initiate_write_cycle(cpu, bus, sp, val, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusPushStackLow => {
+            let sp_low = cpu.state.read_a(7).wrapping_add(2);
+            let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
+            initiate_write_cycle(cpu, bus, sp_low, val, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusPushStackLowAndRetire => {
+            let sp_low = cpu.state.read_a(7).wrapping_add(2);
+            let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
+            cpu.state.micro.mark_scratch_prefetch_retire();
+            initiate_write_cycle(cpu, bus, sp_low, val, memory_bus::BusAccessSize::Word, fc)
+        }
+        _ => StepResult::StepCompleted,
+    }
+}
+
+#[inline]
+fn execute_prefetch_and_refill(
+    cpu: &mut crate::core::Cpu,
+    bus: &mut MemoryBus,
+    action: super::types::MicroAction,
+) -> StepResult {
+    let fc = super::types::prog_fc(&cpu.state);
+    match action {
+        super::types::MicroAction::FetchExtension => {
+            let addr = cpu.state.pc;
+            cpu.state.pc = cpu.state.pc.wrapping_add(2);
+            initiate_read_cycle(cpu, bus, addr, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusPrefetchToScratch => {
+            let addr = cpu.state.pc;
+            initiate_read_cycle(cpu, bus, addr, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::PrefetchNextOpcodeAndRetire => {
+            let addr = cpu.state.pc;
+            cpu.state.micro.mark_standard_prefetch_retire();
+            initiate_read_cycle(cpu, bus, addr, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::BusReadTargetOpcode => {
+            let addr = cpu.state.micro.ea_addr;
+            if (addr & 1) != 0 {
+                return trigger_address_error_step(cpu, addr, true, true, bus);
+            }
+            initiate_read_cycle(cpu, bus, addr, memory_bus::BusAccessSize::Word, fc)
+        }
+        super::types::MicroAction::PrefetchTargetAndRetire => {
+            let addr = cpu.state.micro.ea_addr.wrapping_add(2);
+            cpu.state.micro.mark_target_refill_retire(cpu.state.micro.ea_addr, cpu.state.micro.scratch_prefetch);
+            initiate_read_cycle(cpu, bus, addr, memory_bus::BusAccessSize::Word, fc)
+        }
+        _ => StepResult::StepCompleted,
+    }
+}
+
+#[inline]
+fn execute_system_op(
+    cpu: &mut crate::core::Cpu,
+    bus: &mut MemoryBus,
+    action: super::types::MicroAction,
+) -> StepResult {
+    match action {
+        super::types::MicroAction::OriToCcr => crate::instructions::ori::op_ori_to_ccr(cpu, bus),
+        super::types::MicroAction::OriToSr => crate::instructions::ori::op_ori_to_sr(cpu, bus),
+        super::types::MicroAction::AndiToCcr => crate::instructions::andi::op_andi_to_ccr(cpu, bus),
+        super::types::MicroAction::AndiToSr => crate::instructions::andi::op_andi_to_sr(cpu, bus),
+        super::types::MicroAction::EoriToCcr => crate::instructions::eori::op_eori_to_ccr(cpu, bus),
+        super::types::MicroAction::EoriToSr => crate::instructions::eori::op_eori_to_sr(cpu, bus),
+        super::types::MicroAction::Trap => {
+            let res = crate::instructions::trap::op_trap(cpu, bus);
+            if cpu.state.micro.is_bus_busy() && cpu.state.micro.phase == memory_bus::CckPhase::Cck1 {
+                return step_active_bus_cck1(cpu, bus);
+            }
+            res
+        }
+        _ => StepResult::StepCompleted,
     }
 }
 
@@ -379,365 +595,51 @@ pub fn execute_micro_step(cpu: &mut crate::core::Cpu, bus: &mut MemoryBus) -> St
                     cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);
                 }
             }
-            super::types::MicroAction::BusReadByte => {
-                let addr = cpu.state.micro.ea_addr;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Byte, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusReadWord => {
-                let addr = cpu.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return trigger_address_error_step(cpu, addr, true, false, bus);
-                }
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusReadLongHigh => {
-                let addr = cpu.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return trigger_address_error_step(cpu, addr, true, false, bus);
-                }
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusReadLongLow => {
-                cpu.state.micro.scratch[0] = (cpu.state.micro.last_read as u32) << 16;
-                let addr = cpu.state.micro.ea_addr.wrapping_add(2);
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusWriteByte => {
-                let addr = cpu.state.micro.ea_addr;
-                let val = (cpu.state.micro.write_buffer & 0xFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(addr, val, memory_bus::BusAccessSize::Byte, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusWriteWord => {
-                let addr = cpu.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return trigger_address_error_step(cpu, addr, false, false, bus);
-                }
-                let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(addr, val, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusWriteLongHigh => {
-                let addr = cpu.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return trigger_address_error_step(cpu, addr, false, false, bus);
-                }
-                let val = ((cpu.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(addr, val, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusWriteLongLow => {
-                let addr = cpu.state.micro.ea_addr.wrapping_add(2);
-                if (addr & 1) != 0 {
-                    return trigger_address_error_step(cpu, addr, false, false, bus);
-                }
-                let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(addr, val, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::FetchExtension => {
-                let addr = cpu.state.pc;
-                let fc = super::types::prog_fc(&cpu.state);
-                cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusPrefetchToScratch => {
-                let addr = cpu.state.pc;
-                let fc = super::types::prog_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::PrefetchNextOpcodeAndRetire => {
-                let addr = cpu.state.pc;
-                let fc = super::types::prog_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc));
-                cpu.state.micro.mark_standard_prefetch_retire();
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusWriteWordAndRetire => {
-                let addr = cpu.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    cpu.state.ir = cpu.state.prefetch[0];
-                    return trigger_address_error_step(cpu, addr, false, false, bus);
-                }
-                let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(addr, val, memory_bus::BusAccessSize::Word, fc));
-                cpu.state.micro.mark_scratch_prefetch_retire();
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusWriteByteAndRetire => {
-                let addr = cpu.state.micro.ea_addr;
-                let val = (cpu.state.micro.write_buffer & 0xFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(addr, val, memory_bus::BusAccessSize::Byte, fc));
-                cpu.state.micro.mark_scratch_prefetch_retire();
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusWriteLongLowAndRetire => {
-                let addr = cpu.state.micro.ea_addr.wrapping_add(2);
-                if (addr & 1) != 0 {
-                    return trigger_address_error_step(cpu, addr, false, false, bus);
-                }
-                let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(addr, val, memory_bus::BusAccessSize::Word, fc));
-                cpu.state.micro.mark_scratch_prefetch_retire();
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusWriteLongHighAndRetire => {
-                let addr = cpu.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return trigger_address_error_step(cpu, addr, false, false, bus);
-                }
-                let val = ((cpu.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(addr, val, memory_bus::BusAccessSize::Word, fc));
-                cpu.state.micro.mark_scratch_prefetch_retire();
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusPopStack => {
-                let sp = cpu.state.read_a(7);
-                if (sp & 1) != 0 {
-                    return trigger_address_error_step(cpu, sp, true, false, bus);
-                }
-                cpu.state.write_a(7, sp.wrapping_add(2));
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(sp, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusPopStackHigh => {
-                let sp = cpu.state.read_a(7);
-                if (sp & 1) != 0 {
-                    return trigger_address_error_step(cpu, sp, true, false, bus);
-                }
-                cpu.state.write_a(7, sp.wrapping_add(2));
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(sp, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusPopStackLow => {
-                let sp = cpu.state.read_a(7);
-                if (sp & 1) != 0 {
-                    return trigger_address_error_step(cpu, sp, true, false, bus);
-                }
-                cpu.state.write_a(7, sp.wrapping_add(2));
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(sp, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusPushStackHigh => {
-                let sp = cpu.state.read_a(7).wrapping_sub(4);
-                cpu.state.write_a(7, sp);
-                if (sp & 1) != 0 {
-                    return trigger_address_error_step(cpu, sp, false, false, bus);
-                }
-                let val = ((cpu.state.micro.write_buffer >> 16) & 0xFFFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(sp, val, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusPushStackLow => {
-                let sp_low = cpu.state.read_a(7).wrapping_add(2);
-                let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(sp_low, val, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusPushStackLowAndRetire => {
-                let sp_low = cpu.state.read_a(7).wrapping_add(2);
-                let val = (cpu.state.micro.write_buffer & 0xFFFF) as u16;
-                let fc = super::types::data_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(sp_low, val, memory_bus::BusAccessSize::Word, fc));
-                cpu.state.micro.mark_scratch_prefetch_retire();
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BusReadTargetOpcode => {
-                let addr = cpu.state.micro.ea_addr;
-                if (addr & 1) != 0 {
-                    return trigger_address_error_step(cpu, addr, true, true, bus);
-                }
-                let fc = super::types::prog_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc));
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::PrefetchTargetAndRetire => {
-                let addr = cpu.state.micro.ea_addr.wrapping_add(2);
-                let fc = super::types::prog_fc(&cpu.state);
-                cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc));
-                cpu.state.micro.mark_target_refill_retire(cpu.state.micro.ea_addr, cpu.state.micro.scratch_prefetch);
-                return step_active_bus_cck1(cpu, bus);
-            }
-            super::types::MicroAction::BranchEval => {
-                continue;
-            }
+            super::types::MicroAction::BranchEval => continue,
             super::types::MicroAction::MovemTransfer => {
-                let ir = cpu.state.ir;
-                let is_reg_to_mem = (ir & 0x0400) == 0;
-                let is_long = (ir & 0x0040) != 0;
-                let mode = ((ir >> 3) & 7) as u8;
-                let reg_ea = (ir & 7) as usize;
-                let is_predec = is_reg_to_mem && mode == 4;
-                let is_postinc = !is_reg_to_mem && mode == 3;
-                let fc = super::types::data_fc(&cpu.state);
-
-                let mask = cpu.state.micro.scratch[2] as u16;
-                let state_raw = cpu.state.micro.scratch[3];
-                let bus_in_flight = (state_raw & 1) != 0;
-                let mut bit_idx = ((state_raw >> 1) & 0x1F) as u8;
-                let mut sub_word = ((state_raw >> 6) & 1) as u8;
-                let dummy_read_active = ((state_raw >> 7) & 1) != 0;
-
-                // 1. Initial check: mask == 0 and address alignment
-                if !bus_in_flight && bit_idx == 0 && sub_word == 0 && !dummy_read_active {
-                    if mask == 0 {
-                        cpu.state.micro.scratch[3] = 0;
-                        cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);
-                        continue;
-                    }
-                    let ea = cpu.state.micro.ea_addr;
-                    if (ea & 1) != 0 {
-                        if is_predec {
-                            return trigger_address_error_step(cpu, ea.wrapping_sub(2), false, false, bus);
-                        } else if is_postinc {
-                            cpu.state.write_a(reg_ea, ea.wrapping_add(2));
-                            return trigger_address_error_step(cpu, ea, true, false, bus);
-                        } else {
-                            return trigger_address_error_step(cpu, ea, !is_reg_to_mem, false, bus);
-                        }
-                    }
-                }
-
-                // 2. Process finished bus cycle
-                if bus_in_flight {
-                    if dummy_read_active {
-                        if is_postinc {
-                            cpu.state.write_a(reg_ea, cpu.state.micro.ea_addr);
-                        }
-                        cpu.state.micro.scratch[3] = 0;
-                        cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);
-                        continue;
-                    }
-
-                    if !is_reg_to_mem {
-                        if !is_long {
-                            let val = (cpu.state.micro.last_read as i16 as i32) as u32;
-                            movem_write_reg(&mut cpu.state, bit_idx, val);
-                            cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(2);
-                            bit_idx += 1;
-                        } else if sub_word == 0 {
-                            cpu.state.micro.scratch[1] = (cpu.state.micro.last_read as u32) << 16;
-                            sub_word = 1;
-                        } else {
-                            let val = cpu.state.micro.scratch[1] | (cpu.state.micro.last_read as u32);
-                            movem_write_reg(&mut cpu.state, bit_idx, val);
-                            cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(4);
-                            sub_word = 0;
-                            bit_idx += 1;
-                        }
-                    } else if is_predec {
-                        if !is_long {
-                            cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_sub(2);
-                            bit_idx += 1;
-                        } else if sub_word == 0 {
-                            sub_word = 1;
-                        } else {
-                            cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_sub(4);
-                            sub_word = 0;
-                            bit_idx += 1;
-                        }
-                    } else if !is_long {
-                        cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(2);
-                        bit_idx += 1;
-                    } else if sub_word == 0 {
-                        sub_word = 1;
-                    } else {
-                        cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_add(4);
-                        sub_word = 0;
-                        bit_idx += 1;
-                    }
-                }
-
-                // 3. Find next register in mask
-                if sub_word == 0 {
-                    while bit_idx < 16 && (mask & (1 << bit_idx)) == 0 {
-                        bit_idx += 1;
-                    }
-                }
-
-                // 4. Initiate transfer if register found
-                if bit_idx < 16 {
-                    let new_state = 1 | ((bit_idx as u32) << 1) | ((sub_word as u32) << 6);
-                    cpu.state.micro.scratch[3] = new_state;
-
-                    if !is_reg_to_mem {
-                        let addr = if sub_word == 0 {
-                            cpu.state.micro.ea_addr
-                        } else {
-                            cpu.state.micro.ea_addr.wrapping_add(2)
-                        };
-                        cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(addr, memory_bus::BusAccessSize::Word, fc));
-                        return step_active_bus_cck1(cpu, bus);
-                    } else {
-                        let reg_val = movem_read_reg(&cpu.state, is_predec, bit_idx);
-                        let (addr, data) = if is_predec {
-                            if !is_long || sub_word == 0 {
-                                (cpu.state.micro.ea_addr.wrapping_sub(2), (reg_val & 0xFFFF) as u16)
-                            } else {
-                                (cpu.state.micro.ea_addr.wrapping_sub(4), (reg_val >> 16) as u16)
-                            }
-                        } else if !is_long {
-                            (cpu.state.micro.ea_addr, (reg_val & 0xFFFF) as u16)
-                        } else if sub_word == 0 {
-                            (cpu.state.micro.ea_addr, (reg_val >> 16) as u16)
-                        } else {
-                            (cpu.state.micro.ea_addr.wrapping_add(2), (reg_val & 0xFFFF) as u16)
-                        };
-                        cpu.initiate_bus_cycle(memory_bus::BusCycle::new_write(addr, data, memory_bus::BusAccessSize::Word, fc));
-                        return step_active_bus_cck1(cpu, bus);
-                    }
-                }
-
-                // 5. Conclude transfers
-                if !is_reg_to_mem {
-                    let new_state = 1 | (16 << 1) | (1 << 7);
-                    cpu.state.micro.scratch[3] = new_state;
-                    cpu.initiate_bus_cycle(memory_bus::BusCycle::new_read(cpu.state.micro.ea_addr, memory_bus::BusAccessSize::Word, fc));
-                    return step_active_bus_cck1(cpu, bus);
-                } else {
-                    if is_predec {
-                        cpu.state.write_a(reg_ea, cpu.state.micro.ea_addr);
-                    }
-                    cpu.state.micro.scratch[3] = 0;
-                    cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);
-                    continue;
+                if let Some(res) = crate::instructions::movem::execute_movem_transfer(cpu, bus) {
+                    return res;
                 }
             }
-            super::types::MicroAction::OriToCcr => return crate::instructions::ori::op_ori_to_ccr(cpu, bus),
-            super::types::MicroAction::OriToSr => return crate::instructions::ori::op_ori_to_sr(cpu, bus),
-            super::types::MicroAction::AndiToCcr => return crate::instructions::andi::op_andi_to_ccr(cpu, bus),
-            super::types::MicroAction::AndiToSr => return crate::instructions::andi::op_andi_to_sr(cpu, bus),
-            super::types::MicroAction::EoriToCcr => return crate::instructions::eori::op_eori_to_ccr(cpu, bus),
-            super::types::MicroAction::EoriToSr => return crate::instructions::eori::op_eori_to_sr(cpu, bus),
-            super::types::MicroAction::Trap => {
-                let res = crate::instructions::trap::op_trap(cpu, bus);
-                if cpu.state.micro.is_bus_busy() && cpu.state.micro.phase == memory_bus::CckPhase::Cck1 {
-                    return step_active_bus_cck1(cpu, bus);
-                }
-                return res;
+            super::types::MicroAction::BusReadByte
+            | super::types::MicroAction::BusReadWord
+            | super::types::MicroAction::BusReadLongHigh
+            | super::types::MicroAction::BusReadLongLow => {
+                return execute_bus_read(cpu, bus, step.action);
+            }
+            super::types::MicroAction::BusWriteByte
+            | super::types::MicroAction::BusWriteWord
+            | super::types::MicroAction::BusWriteLongHigh
+            | super::types::MicroAction::BusWriteLongLow
+            | super::types::MicroAction::BusWriteWordAndRetire
+            | super::types::MicroAction::BusWriteByteAndRetire
+            | super::types::MicroAction::BusWriteLongLowAndRetire
+            | super::types::MicroAction::BusWriteLongHighAndRetire => {
+                return execute_bus_write(cpu, bus, step.action);
+            }
+            super::types::MicroAction::BusPopStack
+            | super::types::MicroAction::BusPopStackHigh
+            | super::types::MicroAction::BusPopStackLow
+            | super::types::MicroAction::BusPushStackHigh
+            | super::types::MicroAction::BusPushStackLow
+            | super::types::MicroAction::BusPushStackLowAndRetire => {
+                return execute_stack_op(cpu, bus, step.action);
+            }
+            super::types::MicroAction::FetchExtension
+            | super::types::MicroAction::BusPrefetchToScratch
+            | super::types::MicroAction::PrefetchNextOpcodeAndRetire
+            | super::types::MicroAction::BusReadTargetOpcode
+            | super::types::MicroAction::PrefetchTargetAndRetire => {
+                return execute_prefetch_and_refill(cpu, bus, step.action);
+            }
+            super::types::MicroAction::OriToCcr
+            | super::types::MicroAction::OriToSr
+            | super::types::MicroAction::AndiToCcr
+            | super::types::MicroAction::AndiToSr
+            | super::types::MicroAction::EoriToCcr
+            | super::types::MicroAction::EoriToSr
+            | super::types::MicroAction::Trap => {
+                return execute_system_op(cpu, bus, step.action);
             }
         }
     }
