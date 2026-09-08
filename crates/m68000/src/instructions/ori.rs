@@ -228,15 +228,12 @@ pub fn op_ori_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 pub fn op_ori_b_imm_dn(cpu: &mut Cpu, _bus: &mut MemoryBus) -> StepResult {
     match cpu.state.micro.micro_step {
         0 => {
-            // Immediate byte is located in bits 7..0 of the current prefetch word
-            let imm = (cpu.state.prefetch[0] & 0xFF) as u8;
-            cpu.state.micro.scratch[0] = imm as u32;
             prefetch_extension(cpu);
             StepResult::StepCompleted
         }
         1 => {
+            let imm = (cpu.state.prefetch[0] & 0xFF) as u8;
             cpu.state.prefetch[0] = cpu.state.micro.last_read;
-            let imm = cpu.state.micro.scratch[0] as u8;
             let dn_reg = (cpu.state.ir & 7) as usize;
             let dst = cpu.state.d_byte(dn_reg);
             let res = dst | imm;
