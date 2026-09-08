@@ -590,13 +590,6 @@ impl Cpu {
         self.state.micro.transaction_log.as_deref()
     }
 
-    /// Test & verification harness helper: clears the recorded transactions buffer
-    #[inline]
-    pub fn clear_transactions(&mut self) {
-        if let Some(ref mut log) = self.state.micro.transaction_log {
-            log.clear();
-        }
-    }
 
     /// Records an internal CPU operation duration and schedules internal execution clocks
     #[inline]

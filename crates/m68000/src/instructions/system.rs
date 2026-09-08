@@ -4,19 +4,8 @@ use crate::core::{Cpu, StepResult};
 use crate::state::{CpuState, SR_T};
 use memory_bus::MemoryBus;
 
-pub const VECTOR_RESET_SSP: u32 = 0x000000;
-pub const VECTOR_RESET_PC: u32 = 0x000004;
-pub const VECTOR_BUS_ERROR: u32 = 0x000008;
 pub const VECTOR_ADDRESS_ERROR: u32 = 0x00000C;
-pub const VECTOR_ILLEGAL_INSTRUCTION: u32 = 0x000010;
-pub const VECTOR_ZERO_DIVIDE: u32 = 0x000014;
-pub const VECTOR_CHK: u32 = 0x000018;
-pub const VECTOR_TRAPV: u32 = 0x00001C;
 pub const VECTOR_PRIVILEGE_VIOLATION: u32 = 0x000020;
-pub const VECTOR_TRACE: u32 = 0x000024;
-pub const VECTOR_LINE_A: u32 = 0x000028;
-pub const VECTOR_LINE_F: u32 = 0x00002C;
-pub const VECTOR_TRAP_BASE: u32 = 0x000080;
 
 /// Initiates standard 3-word exception processing (TRAP, Interrupts, etc.)
 pub fn push_standard_exception(

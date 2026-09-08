@@ -130,12 +130,6 @@ impl CpuState {
         self.read_a(reg) as u16
     }
 
-    /// Writes 16-bit word to address register An, always sign-extending to 32 bits per M68000 hardware specification
-    #[inline(always)]
-    pub fn set_a_word(&mut self, reg: usize, val: u16) {
-        let sign_extended = (val as i16 as i32) as u32;
-        self.write_a(reg, sign_extended);
-    }
 
     /// Reads full 32-bit value of address register An
     #[inline(always)]
@@ -234,25 +228,6 @@ impl CpuState {
         }
     }
 
-    /// Returns the live Supervisor Stack Pointer regardless of current privilege mode
-    #[inline]
-    pub fn ssp(&self) -> u32 {
-        if (self.sr & SR_S) != 0 {
-            self.a[7]
-        } else {
-            self.ssp
-        }
-    }
-
-    /// Returns the live User Stack Pointer regardless of current privilege mode
-    #[inline]
-    pub fn usp(&self) -> u32 {
-        if (self.sr & SR_S) != 0 {
-            self.usp
-        } else {
-            self.a[7]
-        }
-    }
 
     /// Returns true if CPU is running in Supervisor mode
     #[inline]
@@ -309,13 +284,6 @@ impl CpuState {
         self.sr = (self.sr & !CCR_Z) | flag;
     }
 
-    /// Sets the entire 5-bit Condition Code byte directly.
-    /// Used by: MOVE to CCR, RTE, RTR.
-    #[inline(always)]
-    pub fn set_ccr_raw(&mut self, ccr: u8) {
-        self.sr = (self.sr & !CCR_ALL) | ((ccr as u16) & CCR_ALL);
-    }
-
     // --- Condition Code Helpers ---
 
     #[inline]
@@ -324,26 +292,8 @@ impl CpuState {
     }
 
     #[inline]
-    pub fn set_x(&mut self, val: bool) {
-        if val {
-            self.sr |= CCR_X;
-        } else {
-            self.sr &= !CCR_X;
-        }
-    }
-
-    #[inline]
     pub fn get_n(&self) -> bool {
         (self.sr & CCR_N) != 0
-    }
-
-    #[inline]
-    pub fn set_n(&mut self, val: bool) {
-        if val {
-            self.sr |= CCR_N;
-        } else {
-            self.sr &= !CCR_N;
-        }
     }
 
     #[inline]
@@ -352,40 +302,13 @@ impl CpuState {
     }
 
     #[inline]
-    pub fn set_z(&mut self, val: bool) {
-        if val {
-            self.sr |= CCR_Z;
-        } else {
-            self.sr &= !CCR_Z;
-        }
-    }
-
-    #[inline]
     pub fn get_v(&self) -> bool {
         (self.sr & CCR_V) != 0
     }
 
     #[inline]
-    pub fn set_v(&mut self, val: bool) {
-        if val {
-            self.sr |= CCR_V;
-        } else {
-            self.sr &= !CCR_V;
-        }
-    }
-
-    #[inline]
     pub fn get_c(&self) -> bool {
         (self.sr & CCR_C) != 0
-    }
-
-    #[inline]
-    pub fn set_c(&mut self, val: bool) {
-        if val {
-            self.sr |= CCR_C;
-        } else {
-            self.sr &= !CCR_C;
-        }
     }
 
     /// Evaluates M68000 branch/conditional tests (conditions 0000..1111)

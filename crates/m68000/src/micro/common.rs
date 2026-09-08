@@ -80,48 +80,6 @@ pub const RMW_WRITE_LONG_LOW_RETIRE: MicroStep = MicroStep {
     base_clocks: 4,
 };
 
-// ============================================================================
-// Standard Operand Memory Writes (e.g. MOVE, Stack)
-// ============================================================================
-
-/// Standard 8-bit byte memory write
-pub const WRITE_BYTE: MicroStep = MicroStep {
-    action: MicroAction::BusWriteByte,
-    alu_fn: None,
-    base_clocks: 4,
-};
-
-/// Standard 16-bit word memory write
-pub const WRITE_WORD: MicroStep = MicroStep {
-    action: MicroAction::BusWriteWord,
-    alu_fn: None,
-    base_clocks: 4,
-};
-
-/// Standard 32-bit long memory write (cycle 1: high word)
-pub const WRITE_LONG_HIGH: MicroStep = MicroStep {
-    action: MicroAction::BusWriteLongHigh,
-    alu_fn: None,
-    base_clocks: 4,
-};
-
-/// Standard 32-bit long memory write (cycle 2: low word)
-pub const WRITE_LONG_LOW: MicroStep = MicroStep {
-    action: MicroAction::BusWriteLongLow,
-    alu_fn: None,
-    base_clocks: 4,
-};
-
-// ============================================================================
-// Stack Operations
-// ============================================================================
-
-/// Pops 16-bit word from (SP) and increments SP += 2
-pub const POP_STACK: MicroStep = MicroStep {
-    action: MicroAction::BusPopStack,
-    alu_fn: None,
-    base_clocks: 4,
-};
 
 /// Pops high word of 32-bit address from (SP), stores into scratch[0], and increments SP += 2
 pub const POP_STACK_HIGH: MicroStep = MicroStep {

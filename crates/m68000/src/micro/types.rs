@@ -40,16 +40,6 @@ pub enum Size {
     Long,
 }
 
-impl Size {
-    #[inline(always)]
-    pub fn byte_count(self) -> u32 {
-        match self {
-            Size::Byte => 1,
-            Size::Word => 2,
-            Size::Long => 4,
-        }
-    }
-}
 
 /// Specialized atomic bus action or internal CPU stage
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
