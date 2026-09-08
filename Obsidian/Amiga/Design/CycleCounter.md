@@ -97,50 +97,19 @@ To prevent tight coupling and synchronization bugs, responsibilities are cleanly
 
 ---
 
-## 4. Rust Engine Implementation
+## 4. Rust Engine Architecture & Public API
 
-The `CycleCounter` is an ultra-lean, copyable, zero-allocation struct whose sole responsibility is counting master Color Clocks:
+The `CycleCounter` is an ultra-lean, copyable, zero-allocation struct whose sole responsibility is counting master Color Clocks. Implementation resides in [`crates/cycle_counter/src/lib.rs`](file:///d:/Programowanie/Amiga/crates/cycle_counter/src/lib.rs):
 
-```rust
-use serde::{Deserialize, Serialize};
-
-/// Master hardware cycle counter tracking elapsed Color Clocks (CCK).
-/// At ~3.55 MHz, a 64-bit integer will run for over 164,000 years without overflowing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub struct CycleCounter {
-    /// Monotonically increasing Color Clock count.
-    total_cck: u64,
-}
-
-impl CycleCounter {
-    pub const PAL_CCK_PER_FRAME: u64 = 70_937;
-    pub const NTSC_CCK_PER_FRAME: u64 = 59_605;
-
-    #[inline(always)]
-    pub fn new() -> Self {
-        Self { total_cck: 0 }
-    }
-
-    /// Advance global emulation time by exactly 1 Color Clock (~280 ns).
-    #[inline(always)]
-    pub fn step_cck(&mut self) {
-        self.total_cck = self.total_cck.wrapping_add(1);
-    }
-
-    /// Advance global emulation time by a designated number of Color Clocks.
-    #[inline(always)]
-    pub fn advance_cck(&mut self, count: u64) {
-        self.total_cck = self.total_cck.wrapping_add(count);
-    }
-
-    #[inline(always)]
-    pub fn total_cck(&self) -> u64 {
-        self.total_cck
-    }
-
-    #[inline(always)]
-    pub fn reset(&mut self) {
-        self.total_cck = 0;
-    }
-}
-```
+- **State Representation (`CycleCounter`):**
+  - Holds a single private 64-bit monotonically increasing counter (`total_cck: u64`). At ~3.55 MHz, a 64-bit integer runs for over 164,000 years without overflowing.
+  - Implements `Default`, `Copy`, `Clone`, `PartialEq`, `Eq`, `Serialize`, `Deserialize`.
+- **Core Operational Methods:**
+  - `new() -> Self`: Initializes master counter to 0.
+  - `step_cck(&mut self)`: Advances global time by exactly 1 Color Clock (~280 ns) using wrapping addition. Annotated with `#[inline(always)]`.
+  - `advance_cck(&mut self, count: u64)`: Advances global time by `count` Color Clocks with wrapping arithmetic. Annotated with `#[inline(always)]`.
+  - `total_cck(&self) -> u64`: Returns elapsed Color Clock count. Annotated with `#[inline(always)]`.
+  - `reset(&mut self)`: Resets elapsed count to 0.
+- **Timing Constants:**
+  - `PAL_CCK_PER_FRAME`: 70,937 CCKs per video frame.
+  - `NTSC_CCK_PER_FRAME`: 59,605 CCKs per video frame.

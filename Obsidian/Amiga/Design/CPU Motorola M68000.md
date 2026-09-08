@@ -2,7 +2,7 @@
 
 - **Module Location:** `m68000/`
 - **Execution Model:** Cycle-exact micro-operations mapped to Color Clock phases (**CCK1** and **CCK2**).
-- **Bus Interface:** Interacts with memory strictly via [MemoryBus.md](MemoryBus.md), respecting `MemoryBusResult::Ready` vs `MemoryBusResult::Blocked`.
+- **Bus Interface:** Interacts with memory strictly via [MemoryBus.md](MemoryBus.md), querying `is_chip_ram_blocked(addr)` and executing direct 2-phase Color Clock read/write transactions (`step_bus_read_word`, `step_bus_write_word`, etc.).
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md) (wrapping arithmetic, Big-Endian decoding, zero panics).
 - **Test Validation:** Verified via [CPU SingleStepTests.md](CPU%20SingleStepTests.md) and skill `m68k-singlestep-test`.
 
@@ -10,215 +10,48 @@
 
 ## 1. CPU State & Register Architecture
 
-The CPU exposes a fully queryable, read-only state snapshot for inspection, debugging, and save states:
+The CPU exposes a fully queryable, read-only state snapshot (`CpuState`) for inspection, debugging, and save states. The complete implementation resides in [`crates/m68000/src/state.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/state.rs).
 
-```rust
-use serde::{Deserialize, Serialize};
+### 1.1 Complete M68000 Programmer's Model & State Fields
 
-/// Complete register set and state for the Motorola 68000 CPU
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CpuState {
-    /// Data Registers D0-D7 (32-bit each).
-    /// Private field to prevent direct bypass; accessed via dedicated size-specific methods:
-    /// `d_byte`, `set_d_byte`, `d_word`, `set_d_word`, `d_long`, `set_d_long`, `d_regs`, `set_d_regs`.
-    d: [u32; 8],
+| Register / Field | Width | Description | Hardware Behavior / Access Rules |
+| :--- | :---: | :--- | :--- |
+| **`d[0..=7]`** ($D_0-D_7$) | 32-bit | Data Registers | General data registers. Supports Byte, Word, and Long transfers. Low-size writes preserve unaffected high bits. Encapsulated via `d_byte`, `set_d_byte`, `d_word`, `set_d_word`, `d_long`, `set_d_long`. |
+| **`a[0..=7]`** ($A_0-A_7$) | 32-bit | Address Registers | Base, pointer, and software stack registers. Byte accesses are invalid. Word writes are sign-extended to 32 bits (`set_a_word`). $A_7$ holds the currently active stack pointer ($USP$ or $SSP$). |
+| **`usp`** ($USP$) | 32-bit | User Stack Pointer | Banked $A_7$ when running in User Mode ($SR.S = 0$). |
+| **`ssp`** ($SSP$) | 32-bit | Supervisor Stack Pointer | Banked $A_7$ when running in Supervisor Mode ($SR.S = 1$). |
+| **`pc`** ($PC$) | 32-bit | Program Counter | Points to instruction memory. 24-bit physical address space on MC68000; internally 32-bit wide. |
+| **`sr`** ($SR$) | 16-bit | Status Register | High byte: System Byte (Trace, Supervisor, Interrupt Mask). Low byte: Condition Code Register (CCR). |
+| **`prefetch[0..=1]`** | $2 \times 16$-bit | Instruction Prefetch Queue | Models hardware `IRC` (Capture) and `IRD` (Decode) holding staged instruction words. |
+| **`ir`** ($IR$) | 16-bit | Instruction Register | Holds the opcode currently being executed. Immutable during micro-steps. |
+| **`step`** | 16-bit | Sub-Cycle Phase / Step Index | Index within current micro-step sequence across Color Clock phases (CCK1/CCK2). |
+| **`ipl`** ($IPL$) | 8-bit | Interrupt Priority Level | Sampled interrupt priority lines (0..7) driven by Paula/arbitration. |
+| **`instruction_pc`** | 32-bit | Instruction Base PC | $PC + 2$ at instruction start; recorded for exception stack frames. |
+| **`stopped`** | bool | STOP Instruction Latch | Processor halted awaiting interrupt higher than current interrupt mask. |
+| **`halted`** | bool | Double Bus Fault Latch | Processor halted due to catastrophic hardware failure / reset. |
+| **`micro`** | `CpuMicroState` | Execution Micro-State | Tracks Color Clock phase, latched bus words, Data Output Buffer, and wait cycles. |
 
-    /// Address Registers A0-A7 (32-bit each). A7 holds the currently active stack pointer (USP or SSP).
-    /// Private field; accessed via:
-    /// `a_word`, `set_a_word` (sign-extended to 32-bit), `a_long`, `set_a_long`, `a_regs`, `set_a_regs`.
-    /// Note: Byte accessors do not exist for address registers in M68000 ISA.
-    a: [u32; 8],
+#### Status Register (SR) Bit Allocation
 
-    /// User Stack Pointer (stored A7 when Supervisor bit S = 0)
-    pub usp: u32,
-
-    /// Supervisor Stack Pointer (stored A7 when Supervisor bit S = 1)
-    pub ssp: u32,
-
-    /// Program Counter (24-bit addressing on MC68000)
-    pub pc: u32,
-
-    /// Status Register (16-bit)
-    /// - System Byte (Bits 8-15): Trace (T, bit 15), Supervisor (S, bit 13), Interrupt Mask (I2-I0, bits 10-8)
-    /// - User Byte / CCR (Bits 0-7): Extend (X, bit 4), Negative (N, bit 3), Zero (Z, bit 2), Overflow (V, bit 1), Carry (C, bit 0)
-    pub sr: u16,
-
-    /// Internal Prefetch Queue [IRC (Capture), IRD (Decode)]
-    pub prefetch: [u16; 2],
-
-    /// Current Instruction Register (holds opcode being decoded/executed)
-    pub ir: u16,
-
-    /// Sub-cycle execution phase / step index within current instruction (CCK1/CCK2)
-    pub step: u16,
-
-    /// Sampled Interrupt Priority Level (0..7) driven from outside
-    pub ipl: u8,
-
-    /// Program Counter at the start of current instruction + 2 (used for exception stack frames)
-    pub instruction_pc: u32,
-
-    /// Execution control flags
-    pub stopped: bool,
-    pub halted: bool,
-
-    /// Sub-cycle execution micro-state (Color Clock phase and in-flight bus cycle)
-    pub micro: CpuMicroState,
-}
-
-impl CpuState {
-    /// Read low byte of data register (preserves upper bits 8-31)
-    #[inline(always)]
-    pub fn d_byte(&self, reg: u8) -> u8 {
-        self.d[reg as usize] as u8
-    }
-
-    /// Write low byte of data register (preserves upper bits 8-31)
-    #[inline(always)]
-    pub fn set_d_byte(&mut self, reg: u8, val: u8) {
-        let idx = reg as usize;
-        self.d[idx] = (self.d[idx] & 0xFFFF_FF00) | (val as u32);
-    }
-
-    /// Read low word of data register (preserves upper bits 16-31)
-    #[inline(always)]
-    pub fn d_word(&self, reg: u8) -> u16 {
-        self.d[reg as usize] as u16
-    }
-
-    /// Write low word of data register (preserves upper bits 16-31)
-    #[inline(always)]
-    pub fn set_d_word(&mut self, reg: u8, val: u16) {
-        let idx = reg as usize;
-        self.d[idx] = (self.d[idx] & 0xFFFF_0000) | (val as u32);
-    }
-
-    /// Read full 32-bit data register
-    #[inline(always)]
-    pub fn d_long(&self, reg: u8) -> u32 {
-        self.d[reg as usize]
-    }
-
-    /// Write full 32-bit data register
-    #[inline(always)]
-    pub fn set_d_long(&mut self, reg: u8, val: u32) {
-        self.d[reg as usize] = val;
-    }
-
-    /// Read 16-bit word from address register
-    #[inline(always)]
-    pub fn a_word(&self, reg: u8) -> u16 {
-        self.a[reg as usize] as u16
-    }
-
-    /// Write 16-bit word into address register, automatically sign-extending to 32 bits
-    #[inline(always)]
-    pub fn set_a_word(&mut self, reg: u8, val: u16) {
-        self.set_a_long(reg, (val as i16 as i32) as u32);
-    }
-
-    /// Read full 32-bit address register
-    #[inline(always)]
-    pub fn a_long(&self, reg: u8) -> u32 {
-        self.a[reg as usize]
-    }
-
-    /// Write full 32-bit address register, updating active SP bank if reg == 7
-    #[inline(always)]
-    pub fn set_a_long(&mut self, reg: u8, val: u32) {
-        let idx = reg as usize;
-        self.a[idx] = val;
-        if idx == 7 {
-            if (self.sr & 0x2000) != 0 {
-                self.ssp = val;
-            } else {
-                self.usp = val;
-            }
-        }
-    }
-
-    /// Read address register by index (0-7 returns A0-A7)
-    #[inline(always)]
-    pub fn read_a(&self, idx: usize) -> u32 {
-        self.a[idx]
-    }
-
-    /// Write address register by index (0-7 writes A0-A7)
-    #[inline(always)]
-    pub fn write_a(&mut self, idx: usize, val: u32) {
-        self.set_a_long(idx as u8, val);
-    }
-
-    /// Sets supervisor mode, swapping active A7 with stored USP/SSP if privilege changes
-    #[inline]
-    pub fn set_supervisor(&mut self, supervisor: bool) {
-        let is_super = (self.sr & 0x2000) != 0;
-        if is_super == supervisor { return; }
-        if supervisor {
-            self.sr |= 0x2000;
-            self.usp = self.a[7];
-            self.a[7] = self.ssp;
-        } else {
-            self.sr &= !0x2000;
-            self.ssp = self.a[7];
-            self.a[7] = self.usp;
-        }
-    }
-
-    /// Flushes the active A7 into ssp (if supervisor) or usp (if user)
-    #[inline]
-    pub fn sync_stack_pointers(&mut self) {
-        if (self.sr & 0x2000) != 0 {
-            self.ssp = self.a[7];
-        } else {
-            self.usp = self.a[7];
-        }
-    }
-
-    // --- Branchless Multi-Flag CCR Setters (Mechanical Sympathy) ---
-
-    /// Sets all 5 flags (X, N, Z, V, C) simultaneously in a single 16-bit operation without branching
-    #[inline(always)]
-    pub fn set_ccr_xnzvc(&mut self, x: bool, n: bool, z: bool, v: bool, c: bool) {
-        let flags = ((x as u16) << 4) | ((n as u16) << 3) | ((z as u16) << 2) | ((v as u16) << 1) | (c as u16);
-        self.sr = (self.sr & !0x001F) | flags;
-    }
-
-    /// Sets N, Z, V, C simultaneously without branching, strictly preserving Extend (X)
-    #[inline(always)]
-    pub fn set_ccr_nzvc(&mut self, n: bool, z: bool, v: bool, c: bool) {
-        let flags = ((n as u16) << 3) | ((z as u16) << 2) | ((v as u16) << 1) | (c as u16);
-        self.sr = (self.sr & !0x000F) | flags;
-    }
-
-    /// Sets N and Z, clears V=0 and C=0, and strictly preserves Extend (X)
-    #[inline(always)]
-    pub fn set_ccr_nz_clear_vc(&mut self, n: bool, z: bool) {
-        let flags = ((n as u16) << 3) | ((z as u16) << 2);
-        self.sr = (self.sr & !0x000F) | flags;
-    }
-
-    /// Sets N, Z, C, clears V=0, and strictly preserves Extend (X)
-    #[inline(always)]
-    pub fn set_ccr_nzc_clear_v(&mut self, n: bool, z: bool, c: bool) {
-        let flags = ((n as u16) << 3) | ((z as u16) << 2) | (c as u16);
-        self.sr = (self.sr & !0x000F) | flags;
-    }
-
-    /// Sets Zero (Z) flag branchlessly, strictly preserving X, N, V, C
-    #[inline(always)]
-    pub fn set_ccr_z_only(&mut self, z: bool) {
-        let flag = (z as u16) << 2;
-        self.sr = (self.sr & !0x0004) | flag;
-    }
-
-    /// Sets the entire 5-bit Condition Code byte directly
-    #[inline(always)]
-    pub fn set_ccr_raw(&mut self, ccr: u8) {
-        self.sr = (self.sr & !0x001F) | ((ccr as u16) & 0x001F);
-    }
-}
+```text
+Bit:   15   14   13   12   11   10    9    8    7    6    5    4    3    2    1    0
+Field:  T    0    S    0    0   I2   I1   I0    0    0    0    X    N    Z    V    C
+       └──────── System Byte (Privileged) ────────┘   └── Unused ──┘   └───── CCR (User Byte) ────┘
 ```
+
+- **System Byte (Bits 8–15, Privileged):**
+  - **Bit 15 (`T`)**: Trace Mode enable.
+  - **Bit 13 (`S`)**: Supervisor state (`1` = Supervisor, `0` = User). Swaps active $A_7$ between $SSP$ and $USP$.
+  - **Bits 10–8 (`I2-I0`)**: Interrupt Priority Mask (levels 0 through 7).
+- **User Byte / Condition Code Register (CCR, Bits 0–4):**
+  - **Bit 4 (`X`)**: Extend flag (used for multi-precision arithmetic).
+  - **Bit 3 (`N`)**: Negative flag (set if result MSB is 1).
+  - **Bit 2 (`Z`)**: Zero flag (set if result is zero).
+  - **Bit 1 (`V`)**: Overflow flag (set on 2's complement arithmetic overflow).
+  - **Bit 0 (`C`)**: Carry flag (set on borrow or carry out).
+
+#### Mechanical Sympathy: Branchless Condition Code Setters
+To avoid host branch mispredictions in hot execution paths, the core employs direct branchless bitwise CCR updates (`set_ccr_xnzvc`, `set_ccr_nzvc`, `set_ccr_nz_clear_vc`, `set_ccr_nzc_clear_v`, `set_ccr_z_only`, `set_ccr_raw`). All CCR setter methods are marked `#[inline(always)]` in [`crates/m68000/src/state.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/state.rs).
 
 ### 1.2 Complete M68000 Addressing Modes Specification
 
@@ -456,49 +289,25 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 > [!NOTE]
 > For the complete, dedicated microcode architectural blueprint, specialized atomic bus primitives, strobe semantics, and cycle traces across all 10 instruction classes, see [[CPU Micro-Step State Machine.md]].
 
-Instruction execution is driven via a micro-step state machine clocked at Color Clock (CCK) granularity (2 CPU clocks per CCK, 4 clocks per bus cycle).
+Instruction execution is driven via a cycle-exact micro-step state machine clocked at Color Clock (CCK) granularity (2 CPU clocks per CCK, 4 clocks per bus cycle). The execution engine and micro-state tracking are implemented in [`crates/m68000/src/micro/engine.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/engine.rs) and [`crates/m68000/src/core.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/core.rs).
 
-```rust
-use memory_bus::CckPhase;
-use serde::{Deserialize, Serialize};
+- **Execution Micro-State (`CpuMicroState`):**
+  - `phase`: Color Clock sub-phase (`CckPhase::Cck1` or `CckPhase::Cck2`).
+  - `last_read`: Last 16-bit word received from a completed memory read cycle.
+  - `scratch_prefetch`: Latched prefetch word for pipeline refills and RMW sequences.
+  - `internal_clocks`: Remaining internal CPU clocks for multi-cycle arithmetic/shift operations.
+  - `micro_step`: Index of the currently executing micro-operation within the active opcode sequence.
+  - `write_buffer`: Hardware Data Output Buffer (DOB) holding ALU results for memory writes.
+  - `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
+  - `scratch`: Intermediate temporary registers (e.g. `scratch[0]` holding the MOVEM transfer mask).
+  - `current_cycle_wait_cycles`: Wait cycles accumulated while stalled by Agnus DMA contention.
 
-/// Sub-cycle execution micro-state of the M68000 CPU
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CpuMicroState {
-    /// Current Color Clock phase (CCK1 or CCK2)
-    pub phase: CckPhase,
-    /// Last 16-bit word received from completed bus read cycle
-    pub last_read: u16,
-    /// Intermediate latched prefetch word (e.g. for Class 0 RMW where prefetch precedes write)
-    pub scratch_prefetch: u16,
-    /// Internal execution CPU clocks remaining (non-bus micro-operations)
-    pub internal_clocks: u16,
-    /// Step index within the current instruction's micro-operation sequence
-    pub micro_step: u16,
-    /// Hardware Data Output Buffer (DOB) holding ALU result for memory writes
-    pub write_buffer: u32,
-    /// Resolved effective memory address for operands or branch/jump targets
-    pub ea_addr: u32,
-    /// Intermediate temporary registers for multi-step micro-operations
-    pub scratch: [u32; 4],
-    /// Wait cycles accumulated during the currently active bus cycle
-    pub current_cycle_wait_cycles: u32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StepResult {
-    /// Micro-step completed within the current instruction
-    StepCompleted,
-    /// Instruction has retired (completed writeback and prefetched next opcode into IR/prefetch[0])
-    InstructionCompleted,
-    /// CPU stalled due to bus wait-state (contention stall)
-    WaitState,
-    /// CPU entered or is in stopped state (STOP instruction)
-    Stopped,
-    /// CPU entered halted state (double bus fault / fatal reset)
-    Halted,
-}
-```
+- **Micro-Step Execution Outcomes (`StepResult`):**
+  - **`StepCompleted`**: Micro-step completed within the current instruction.
+  - **`InstructionCompleted`**: Instruction has retired (completed writeback and prefetched next opcode).
+  - **`WaitState`**: CPU stalled due to bus wait-state (contention stall in Chip RAM).
+  - **`Stopped`**: CPU entered or remains in stopped state (`STOP` instruction).
+  - **`Halted`**: CPU entered halted state (double bus fault / fatal reset).
 
 #### Specialized Atomic Micro-Actions (`MicroAction`)
 To eliminate nested dynamic runtime size checks in the hot execution loop, transfer size is specialized directly into atomic action variants:

@@ -41,23 +41,8 @@
 
 To eliminate branch mispredictions and cascaded conditional checks in hot memory access loops, the 16 MB physical address space is divided into **256 banks of 64 KB each** ($256 \times 64\text{ KB} = 16\text{ MB}$).
 
-- **Direct Function Pointer Method Dispatch**: Mimicking the CPU's direct opcode table (`[OpcodeHandler; 65536]`), `bank_map` is a 256-entry array of `BankHandler` structs containing direct function pointers to read and write handler methods:
-  ```rust
-  pub type BankReadByteFn = fn(&MemoryBus, u32) -> u8;
-  pub type BankWriteByteFn = fn(&mut MemoryBus, u32, u8);
-
-  #[derive(Clone, Copy, PartialEq, Eq)]
-  pub struct BankHandler {
-      pub bank: MemoryBank,
-      pub read_byte: BankReadByteFn,
-      pub write_byte: BankWriteByteFn,
-  }
-  ```
-- **Zero Runtime Branches**: Memory accesses execute directly through the table:
-  ```rust
-  (self.bank_map[(addr >> 16) as usize].read_byte)(self, addr);
-  (self.bank_map[(addr >> 16) as usize].write_byte)(self, addr, val);
-  ```
+- **Direct Function Pointer Method Dispatch**: Mimicking the CPU's direct opcode table (`[OpcodeHandler; 65536]`), `bank_map` is a 256-entry array of `BankHandler` structs containing direct function pointers (`BankReadByteFn`, `BankWriteByteFn`) targeting specialized read/write handlers. Implementation resides in [`crates/memory_bus/src/map.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/map.rs).
+- **Zero Runtime Branches**: Memory accesses execute directly through table indexing `(self.bank_map[(addr >> 16) as usize].read_byte)(self, addr)`.
 - **Zero Runtime Setup (`static`/`const`)**: Precalculated as compile-time `static` arrays (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), eliminating all initialization loops or runtime reallocation overhead.
 - **Direct Dispatch**:
   - `$00..=$07`: `CHIP_RAM_HANDLER`
@@ -92,36 +77,12 @@ While the CPU requires 2 Color Clocks to complete an instruction bus transaction
 Maintain the following internal bus state:
 - `chip_ram_blocked: bool`: Flag indicating whether Agnus / Blitter / DMA is currently occupying the Chip RAM bus.
 
-### Types & Structures
-```rust
-use serde::{Deserialize, Serialize};
+### Types & Arbitration Primitives
 
-/// Color Clock (CCK) sub-cycle phase of the 4-clock M68000 bus cycle
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CckPhase {
-    /// Color Clock Phase 1 (CPU S0–S3): Address output, _AS strobe, contention arbitration
-    #[default]
-    Cck1,
-    /// Color Clock Phase 2 (CPU S4–S7): Data latch/write commit, _DTACK acknowledgement
-    Cck2,
-}
-
-/// Bus access transfer size
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BusAccessSize {
-    Byte,
-    Word,
-}
-
-/// M68000 Function Code lines (FC0-FC2)
-pub mod function_code {
-    pub const USER_DATA: u8 = 1;
-    pub const USER_PROGRAM: u8 = 2;
-    pub const SUPERVISOR_DATA: u8 = 5;
-    pub const SUPERVISOR_PROGRAM: u8 = 6;
-    pub const CPU_SPACE: u8 = 7;
-}
-```
+The bus timing and transfer types reside in [`crates/memory_bus/src/arbitration.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/arbitration.rs):
+- **`CckPhase` (`Cck1`, `Cck2`)**: Models the Color Clock sub-cycle phases of the 4-clock M68000 bus cycle (`Cck1` for address output and contention arbitration; `Cck2` for data commit and $\overline{\text{DTACK}}$ acknowledgement).
+- **`BusAccessSize` (`Byte`, `Word`)**: Bus transfer operand widths.
+- **Function Code Lines (`function_code::*`)**: FC0–FC2 qualifiers (`USER_DATA = 1`, `USER_PROGRAM = 2`, `SUPERVISOR_DATA = 5`, `SUPERVISOR_PROGRAM = 6`, `CPU_SPACE = 7`).
 
 ### Direct Passive Bus API & Contention Arbitration
 The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU micro-engine, Copper, Blitter) query contention status directly and execute single-cycle or multi-phase bus transactions:
@@ -214,27 +175,15 @@ To support headless unit testing, SingleStepTests, and debugger inspection witho
 
 ---
 
-## 5. Memory Bus Reset Methods
+## 5. Memory Bus Reset Semantics
 
-```rust
-impl MemoryBus {
-    /// Cold / Hard Reset: Wipes all physical RAM to zero and re-engages Kickstart overlay
-    pub fn reset_cold(&mut self) {
-        self.chip_ram.fill(0x00);
-        if let Some(slow_ram) = &mut self.slow_ram {
-            slow_ram.fill(0x00);
-        }
-        if let Some(fast_ram) = &mut self.fast_ram {
-            fast_ram.fill(0x00);
-        }
-        self.chip_ram_blocked = false;
-        self.map_kickstart_to_low_memory();
-    }
+The memory bus reset behavior is implemented in [`crates/memory_bus/src/lib.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/lib.rs):
 
-    /// Warm Reset: Preserves RAM contents (allowing Kickstart resident tags to survive)
-    pub fn reset_warm(&mut self) {
-        self.chip_ram_blocked = false;
-        self.map_kickstart_to_low_memory();
-    }
-}
-```
+- **Cold / Hard Reset (`reset_cold`)**:
+  - Wipes all physical RAM (Chip RAM, Slow RAM, Fast RAM) to zero.
+  - Clears bus contention locks (`chip_ram_blocked = false`).
+  - Re-engages the low-memory boot overlay (`_OVL`), mapping `$000000-$07FFFF` directly to Kickstart ROM.
+- **Warm Reset (`reset_warm`)**:
+  - Preserves all RAM contents intact, allowing Kickstart resident modules and Exec ColdCapture/CoolCapture vectors to survive reboot.
+  - Clears bus contention locks (`chip_ram_blocked = false`).
+  - Re-engages the low-memory boot overlay (`_OVL`).

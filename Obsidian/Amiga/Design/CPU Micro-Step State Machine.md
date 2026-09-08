@@ -49,206 +49,71 @@ The architecture mirrors the physical two-level microcode design of the Motorola
     Group 0 (Address/Bus Error) and Group 1/2 (Interrupts/Traps) exception stacking are modeled as dedicated micro-sequences (`EXCEPTION_GROUP0_STEPS`, `EXCEPTION_GROUP1_STEPS`). Stack writes and vector reads interact with `MemoryBus` and experience Chip RAM DMA wait states identical to real hardware.
 
 ---
-
 ## 2. Data Structures & Type Definitions
+
+The microcode data structures and static lookup tables are implemented in [`crates/m68000/src/micro/`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/).
 
 ### 2.1 The `AluFn` Function Pointer (Pure Internal CPU Operation)
 
-Because all memory operands are already latched into `CpuState` before the ALU step runs, `AluFn` does **not** need `MemoryBus`:
-
-```rust
-/// Pure internal ALU operation.
-/// Operates strictly on CpuState using pre-decoded register indices.
-pub type AluFn = fn(state: &mut CpuState, reg_src: u8, reg_dst: u8);
-```
+Because all memory operands are already latched into `CpuState` (`prefetch[0]`, `last_read`, or `d[]/a[]`) before the ALU step runs, `AluFn` does **not** take `MemoryBus`. ALU handlers execute purely internally, operating directly on `CpuState` with pre-decoded register indices:
+- Signature: `fn(state: &mut CpuState, reg_src: u8, reg_dst: u8)`
+- Implementation: [`crates/m68000/src/micro/engine.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/engine.rs) and [`crates/m68000/src/micro/alu.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/alu.rs).
 
 ### 2.2 The `MicroStep` Descriptor (Stateless & Cache-Dense)
 
-Each step is an immutable, 4-byte `Copy` struct:
+Each micro-step is an immutable, 4-byte `Copy` struct in `.rodata`:
+- `action`: Atomic `MicroAction` variant (e.g. `BusReadWord`, `BusWriteByte`, `Alu`).
+- `alu_fn`: Optional function pointer to pure internal ALU logic (`Option<AluFn>`).
+- `base_clocks`: Base CPU clocks consumed (4 for bus cycles, 0 for instantaneous ALU / branch evaluation).
 
-```rust
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MicroStep {
-    /// Atomic bus action or instantaneous step type
-    pub action: MicroAction,
-    /// Function pointer for ALU operations (None for pure bus steps)
-    pub alu_fn: Option<AluFn>,
-    /// Base CPU clocks consumed (4 for bus cycles, 0 for instantaneous ALU)
-    pub base_clocks: u8,
-}
-```
+Pre-decoded register indices (`reg_src`, `reg_dst`) are held once per opcode in `OpcodeDescriptor` and cached into `state.micro.reg_src` / `reg_dst`, keeping each `MicroStep` down to just 4 bytes for maximum host L1i cache density.
 
-> [!NOTE]
-> Pre-decoded source and destination register indices (`reg_src`, `reg_dst`) are stored once per opcode in `OpcodeDescriptor` and cached into `state.micro.reg_src` / `reg_dst`. This minimizes `MicroStep` to just **4 bytes**, maximizing L1 instruction cache density and eliminating per-step register field duplication.
+### 2.3 Specialized Atomic Micro-Actions (`MicroAction`)
 
-### 2.3 The `MicroAction` Enum (Specialized Atomic Primitives)
+By baking operand width directly into the atomic variant, the execution loop completely eliminates runtime size checks (`match size`):
 
-By specializing read and write actions by transfer size, **the CPU core eliminates all runtime size checks and dynamic branches in the hot loop**:
+| Category | Primitives | Hardware Operation & Bus Semantics |
+| :--- | :--- | :--- |
+| **Operand Reads (Data Space)** | `BusReadByte`, `BusReadWord`, `BusReadLongHigh`, `BusReadLongLow` | Reads from `ea_addr` (or `ea_addr + 2`). Stalls on CCK1 if Chip RAM blocked. Latches into `last_read` / `scratch[0]`. |
+| **Operand Writes (Data Space)** | `BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, `BusWriteLongLow` | Drives data from `write_buffer` to `ea_addr`. Stalls on CCK2 if Chip RAM blocked. Even byte writes preserve low byte; odd byte writes preserve high byte. |
+| **Stack Operations (Data Space)** | `BusPopStack`, `BusPopStackHigh`, `BusPopStackLow`, `BusPushStackHigh`, `BusPushStackLow`, `BusPushStackLowAndRetire` | Stack reads and pushes over `SP` ($A_7$). Postincrements / predecrements stack pointer on even word boundaries. |
+| **Prefetch & Refill (Program Space)** | `FetchExtension`, `BusPrefetchToScratch`, `BusReadTargetOpcode`, `PrefetchTargetAndRetire`, `PrefetchNextOpcodeAndRetire` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline and manages instruction retirement. |
+| **RMW & Block Transfers** | `BusWriteWordAndRetire`, `BusWriteByteAndRetire`, `BusWriteLongLowAndRetire`, `BusWriteLongHighAndRetire`, `MovemTransfer` | Read-Modify-Write retirement sequences and iterative `MOVEM` multi-register bus cycles driven by mask in `scratch[0]`. |
+| **Internal & Exceptions** | `Alu`, `BranchEval`, `OriToCcr`, `OriToSr`, `AndiToCcr`, `AndiToSr`, `EoriToCcr`, `EoriToSr`, `Trap` | Instantaneous (0 CCK) internal operations, CCR/SR updates, condition evaluation, and exception vector initiation. |
 
-```rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MicroAction {
-    /// Internal instantaneous ALU operation or EA calculation (0 CCKs)
-    Alu,
-    /// Evaluate Bcc condition; sets internal_clocks and routes to taken vs not-taken steps
-    BranchEval,
+Full enum definition: [`crates/m68000/src/micro/actions.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/actions.rs).
 
-    // --- Operand Memory Reads (Data Space) ---
-    /// Read 8-bit Byte from ea_addr into last_read (strobe based on ea_addr & 1)
-    BusReadByte,
-    /// Read 16-bit Word from ea_addr into last_read (both strobes asserted)
-    BusReadWord,
-    /// Read 16-bit High Word of 32-bit operand from ea_addr into scratch[0]
-    BusReadLongHigh,
-    /// Read 16-bit Low Word of 32-bit operand from ea_addr + 2, assemble into last_read
-    BusReadLongLow,
+### 2.4 CPU Micro-State Storage (`CpuMicroState`)
 
-    // --- Operand Memory Writes (Data Space) ---
-    /// Write 8-bit Byte (write_buffer & 0xFF) to ea_addr (preserves unaddressed byte)
-    BusWriteByte,
-    /// Write 16-bit Word (write_buffer & 0xFFFF) to ea_addr (both strobes asserted)
-    BusWriteWord,
-    /// Write 16-bit High Word ((write_buffer >> 16) & 0xFFFF) to ea_addr
-    BusWriteLongHigh,
-    /// Write 16-bit Low Word (write_buffer & 0xFFFF) to ea_addr + 2
-    BusWriteLongLow,
+Embedded in `CpuState` to track sub-cycle progress across Color Clock phases:
+- `phase`: Current Color Clock sub-phase (`CckPhase::Cck1` or `CckPhase::Cck2`).
+- `last_read`: Last 16-bit word received from completed bus read cycle.
+- `scratch_prefetch`: Latched prefetch word for pipeline refills and RMW sequences.
+- `internal_clocks`: Non-bus execution clocks countdown (DIVU/MULU/shifts/indexed EA).
+- `current_steps`: Cached slice pointer to active opcode's `&'static [MicroStep]`.
+- `micro_step`: Step index within the current instruction's micro-operation sequence.
+- `reg_src`, `reg_dst`: Pre-decoded register indices ($0..7$ for $D_n / A_n$).
+- `write_buffer`: Hardware Data Output Buffer (DOB) holding ALU result for memory writes.
+- `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
+- `scratch`: Intermediate scratch registers (`scratch[0]` holds `MOVEM` register transfer mask).
+- `current_cycle_wait_cycles`: Wait cycles accumulated during bus stalls in the current cycle.
 
-    // --- Stack Operations (Data Space) ---
-    /// Pop 16-bit word from stack (SP) and increment SP += 2
-    BusPopStack,
-    /// Pop 16-bit high word of 32-bit address from stack (SP) and increment SP += 2 into scratch[0]
-    BusPopStackHigh,
-    /// Pop 16-bit low word of 32-bit address from stack (SP), assemble target into ea_addr, and increment SP += 2
-    BusPopStackLow,
-    /// Push 16-bit Most Significant Word to -(SP)
-    BusPushStackHigh,
-    /// Push 16-bit Least Significant Word to -(SP)
-    BusPushStackLow,
-    /// Push 16-bit Least Significant Word to -(SP) and retire with scratch_prefetch (e.g. PEA)
-    BusPushStackLowAndRetire,
+### 2.5 The 65,536 Static Dispatch Universe (`OPCODE_DESCRIPTOR_TABLE`)
 
-    // --- Instruction Prefetch & Pipeline Refill (Program Space) ---
-    /// Fetch extension word from PC and advance PC += 2
-    FetchExtension,
-    /// Class 0 RMW: Fetch next opcode into scratch_prefetch before writing memory result
-    BusPrefetchToScratch,
-    /// Pipeline Refill Cycle 1: Fetch target opcode from ea_addr into scratch_prefetch
-    BusReadTargetOpcode,
-    /// Pipeline Refill Cycle 2: Fetch target prefetch from ea_addr + 2, set PC = ea_addr + 4, retire
-    PrefetchTargetAndRetire,
-    /// Standard sequential prefetch: ir = prefetch[0], prefetch[0] = last_read, PC += 2, retire
-    PrefetchNextOpcodeAndRetire,
-    /// Write 16-bit Word to ea_addr and retire at CCK2 (used by Class 0 RMW)
-    BusWriteWordAndRetire,
-    /// Write 8-bit Byte to ea_addr and retire at CCK2 (used by Class 0 RMW)
-    BusWriteByteAndRetire,
-    /// Write 16-bit Low Word to ea_addr + 2 and retire at CCK2 (used by Class 0 Long RMW)
-    BusWriteLongLowAndRetire,
-    /// Write 16-bit High Word to ea_addr and retire at CCK2 (used by MOVE.l -(An))
-    BusWriteLongHighAndRetire,
-    /// Multi-register block transfer step (loops until register mask in scratch[0] is zero)
-    MovemTransfer,
-
-    // --- System Register & Exception Operations ---
-    OriToCcr,
-    OriToSr,
-    AndiToCcr,
-    AndiToSr,
-    EoriToCcr,
-    EoriToSr,
-    Trap,
-}
-```
-
-### 2.4 CPU Micro-State Storage (`write_buffer` and `current_steps`)
-
-Inside `CpuMicroState` (part of `CpuState`):
-
-```rust
-pub struct CpuMicroState {
-    /// Color Clock sub-phase (CCK1 or CCK2)
-    pub phase: CckPhase,
-    /// Last 16-bit word received from memory read
-    pub last_read: u16,
-    /// Latched prefetch word for pipeline refills and RMW
-    pub scratch_prefetch: u16,
-    /// Internal non-bus execution clocks countdown (DIVU/MULU/shifts)
-    pub internal_clocks: u16,
-    /// Cached pointer to the active opcode's slice of MicroSteps (eliminates 64K table lookups)
-    pub current_steps: &'static [MicroStep],
-    /// Current micro-step index within opcode sequence
-    pub micro_step: u16,
-    /// Pre-decoded source register index (0..7 for Dn/An)
-    pub reg_src: u8,
-    /// Pre-decoded destination register index (0..7 for Dn/An)
-    pub reg_dst: u8,
-    /// Hardware Data Output Buffer (DOB) holding ALU result for memory writes
-    pub write_buffer: u32,
-    /// Resolved effective memory address for operands or branch/jump targets
-    pub ea_addr: u32,
-    /// Intermediate scratch registers (scratch[0] holds MOVEM mask)
-    pub scratch: [u32; 4],
-    /// Wait cycles accumulated during bus stalls
-    pub current_cycle_wait_cycles: u32,
-}
-```
-
-### 2.5 The 65,536 Static Dispatch Table
-
-```rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct OpcodeDescriptor {
-    pub steps: &'static [MicroStep],
-    pub reg_src: u8,
-    pub reg_dst: u8,
-}
-
-/// Exactly 65,536 entries resident in host .rodata (Only ~1 MB total!)
-pub static OPCODE_DESCRIPTOR_TABLE: [OpcodeDescriptor; 65536] = [
-    /* Compile-time generated table mapping each opcode to its slice of MicroSteps */
-];
-```
+- Embedded in host `.rodata` via [`crates/m68000/src/micro/table.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/table.rs).
+- Exactly 65,536 `OpcodeDescriptor` entries mapping every 16-bit opcode word directly to its pre-compiled `&'static [MicroStep]` sequence and pre-decoded register indices (`reg_src`, `reg_dst`).
+- Requires **zero dynamic heap allocations** (`0` bytes allocated at runtime).
 
 ---
 
 ## 3. Parametric ALU Handlers: 8x Code Reduction
 
-Passing `reg_src` and `reg_dst` into `AluFn` collapses code duplication across all registers without using forbidden macros or const-generics:
+Passing `reg_src` and `reg_dst` into `AluFn` collapses code duplication across all register combinations without using forbidden macros or const-generics:
+1. **Register Destinations:** The ALU reads `state.d_byte(reg_dst)` or `state.d_word(reg_dst)`, evaluates condition codes via branchless CCR setters, and writes directly back to the register.
+2. **Memory Destinations:** When targeting memory (e.g. `ORI.B #$42, (A0)`), the ALU reads `state.micro.last_read`, evaluates condition codes, and latches the result into `state.micro.write_buffer` (DOB) for the subsequent write bus cycle.
+3. **Effective Address Arithmetic:** Because `Alu` micro-steps consume 0 CCKs, effective address calculations (such as `(d16, An)` or `(d8, An, Xn)`) use the identical `AluFn` mechanism to compute and store addresses in `state.micro.ea_addr`.
 
-### Example 1: Register Destination (`alu_ori_b`)
-```rust
-pub fn alu_ori_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let imm = (state.prefetch[0] & 0xFF) as u8; // Immediate is already prefetched!
-    let dst = state.d_byte(reg_dst);
-    let res = dst | imm;
-    
-    state.set_ccr_nz_clear_vc((res as i8) < 0, res == 0);
-    state.set_d_byte(reg_dst, res);
-}
-```
-
-### Example 2: Memory Destination (`alu_ori_b_mem`)
-When the target is memory (e.g. `ORI.B #$42, (A0)`), the ALU stores the result into `state.micro.write_buffer`:
-```rust
-pub fn alu_ori_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let imm = (state.prefetch[0] & 0xFF) as u8;
-    let dst = (state.micro.last_read & 0xFF) as u8;
-    let res = dst | imm;
-
-    state.set_ccr_nz_clear_vc((res as i8) < 0, res == 0);
-    state.micro.write_buffer = res as u32; // Latched in DOB for subsequent write cycle!
-}
-```
-
-### Example 3: Effective Address Calculation (`ea_calc_d16_an`)
-Because `Alu` micro-steps take 0 CCKs, calculating effective addresses uses the exact same `AluFn` mechanism:
-```rust
-pub fn ea_calc_d16_an(state: &mut CpuState, _reg_src: u8, reg_an: u8) {
-    let disp = (state.prefetch[0] as i16) as i32;
-    state.micro.ea_addr = state.read_a(reg_an as usize).wrapping_add(disp as u32);
-}
-```
+All specialized ALU handlers reside in [`crates/m68000/src/micro/alu.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/alu.rs).
 
 ---
 
@@ -269,93 +134,16 @@ On the Amiga 500, the 4-clock M68000 bus cycle maps to **two Color Clock phases 
 ```
 
 - **READ Cycles (`BusReadByte`, `BusReadWord`, `BusReadLongHigh`, `BusReadLongLow`, `FetchExtension`, `PrefetchNextOpcodeAndRetire`):**
-  - **CCK1 (S0–S3):** Bus contention check (`if bus.is_chip_ram_target(addr) && bus.chip_ram_blocked`). If blocked $\to$ insert wait state (CPU stalls in CCK1). If unblocked $\to$ reads directly from `bus` into `state.micro.last_read`, advancing `phase = CCK2`.
+  - **CCK1 (S0–S3):** Bus contention check (`bus.is_chip_ram_blocked(addr)`). If blocked $\to$ insert wait state (CPU stalls in CCK1). If unblocked $\to$ reads directly from `bus` into `state.micro.last_read`, advancing `phase = CCK2`.
   - **CCK2 (S4–S7):** **Do nothing on the bus!** Physical Chip RAM is already released for custom chip DMA (Blitter, Copper). The CPU finishes the 4-clock cycle (or prefetch retirement) and advances to the next micro-step (`phase = CCK1`).
 - **WRITE Cycles (`BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, `BusWriteLongLow`, `BusPushStackHigh`, `BusPushStackLow`):**
   - **CCK1 (S0–S3):** **CPU does not touch the bus!** Internal address propagation only. Chip RAM remains completely free for Agnus DMA. Advances `phase = CCK2`.
-  - **CCK2 (S4–S7):** Bus contention check (`if bus.is_chip_ram_target(addr) && bus.chip_ram_blocked`). If blocked $\to$ Gary withholds $\overline{\text{DTACK}}$, insert wait state (CPU stalls in CCK2). Once unblocked $\to$ commits write directly to `bus`, advancing to the next micro-step (`phase = CCK1`).
+  - **CCK2 (S4–S7):** Bus contention check (`bus.is_chip_ram_blocked(addr)`). If blocked $\to$ Gary withholds $\overline{\text{DTACK}}$, insert wait state (CPU stalls in CCK2). Once unblocked $\to$ commits write directly to `bus`, advancing to the next micro-step (`phase = CCK1`).
 
 Byte strobes ($\overline{\text{UDS}}$ / $\overline{\text{LDS}}$) are derived natively by `bus.read_byte(addr)` / `bus.write_byte(addr, val)` from `addr & 1`. **The CPU core eliminates all manual strobe calculations, `BusCycle` allocations, and intermediate latch buffering.**
 
-#### Execution Core Dispatch:
-```rust
-match cpu.state.micro.phase {
-    CckPhase::Cck1 => {
-        // READ in CCK1: Check contention & read immediately
-        if is_read_action(step.action) {
-            if bus.is_chip_ram_target(addr) && bus.chip_ram_blocked {
-                cpu.state.micro.current_cycle_wait_cycles += 1;
-                return StepResult::WaitState; // Stalls in CCK1
-            }
-            match step.action {
-                MicroAction::BusReadByte => cpu.state.micro.last_read = bus.read_byte(addr) as u16,
-                MicroAction::BusReadWord => cpu.state.micro.last_read = bus.read_word(addr),
-                MicroAction::BusReadLongHigh => cpu.state.micro.scratch[0] = (bus.read_word(addr) as u32) << 16,
-                MicroAction::BusReadLongLow => {
-                    let low = bus.read_word(addr.wrapping_add(2)) as u32;
-                    cpu.state.micro.last_read = (cpu.state.micro.scratch[0] | low) as u16;
-                }
-                MicroAction::FetchExtension => {
-                    cpu.state.prefetch[0] = bus.read_word(cpu.state.pc);
-                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                }
-                MicroAction::BusPrefetchToScratch => {
-                    cpu.state.micro.scratch_prefetch = bus.read_word(cpu.state.pc);
-                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
-                }
-                MicroAction::PrefetchNextOpcodeAndRetire => {
-                    cpu.state.micro.last_read = bus.read_word(cpu.state.pc);
-                }
-                _ => {}
-            }
-        }
-        // WRITE in CCK1: Bus is idle for CPU (free for DMA). Advance to CCK2.
-        cpu.state.micro.phase = CckPhase::Cck2;
-        StepResult::StepCompleted
-    }
-
-    CckPhase::Cck2 => {
-        // WRITE in CCK2: Check contention & commit write
-        if is_write_action(step.action) {
-            if bus.is_chip_ram_target(addr) && bus.chip_ram_blocked {
-                cpu.state.micro.current_cycle_wait_cycles += 1;
-                return StepResult::WaitState; // Stalls in CCK2
-            }
-            match step.action {
-                MicroAction::BusWriteByte => bus.write_byte(addr, (cpu.state.micro.write_buffer & 0xFF) as u8),
-                MicroAction::BusWriteWord => bus.write_word(addr, (cpu.state.micro.write_buffer & 0xFFFF) as u16),
-                MicroAction::BusWriteLongHigh => bus.write_word(addr, ((cpu.state.micro.write_buffer >> 16) & 0xFFFF) as u16),
-                MicroAction::BusWriteLongLow => bus.write_word(addr.wrapping_add(2), (cpu.state.micro.write_buffer & 0xFFFF) as u16),
-                MicroAction::BusWriteByteAndRetire => {
-                    bus.write_byte(addr, (cpu.state.micro.write_buffer & 0xFF) as u8);
-                    cpu.retire_rmw_instruction();
-                    return StepResult::InstructionCompleted;
-                }
-                MicroAction::BusWriteWordAndRetire => {
-                    bus.write_word(addr, (cpu.state.micro.write_buffer & 0xFFFF) as u16);
-                    cpu.retire_rmw_instruction();
-                    return StepResult::InstructionCompleted;
-                }
-                MicroAction::BusWriteLongLowAndRetire => {
-                    bus.write_word(addr.wrapping_add(2), (cpu.state.micro.write_buffer & 0xFFFF) as u16);
-                    cpu.retire_rmw_instruction();
-                    return StepResult::InstructionCompleted;
-                }
-                _ => {}
-            }
-        }
-        // READ in CCK2: Bus is idle for CPU (data was already read in CCK1)!
-        cpu.state.micro.phase = CckPhase::Cck1;
-        cpu.state.micro.micro_step += 1;
-        if is_retire_action(step.action) {
-            cpu.retire_instruction(step.action);
-            StepResult::InstructionCompleted
-        } else {
-            StepResult::StepCompleted
-        }
-    }
-}
-```
+#### Execution Dispatch Implementation
+The 2-phase Color Clock stepping logic is implemented via dedicated, single-purpose helper functions (`step_bus_read_byte`, `step_bus_read_word`, `step_bus_write_byte`, `step_bus_write_word`, etc.) in [`crates/m68000/src/micro/engine.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/engine.rs). Each helper executes the exact CCK1/CCK2 protocol with zero branch cascading and zero heap allocation.
 
 ### 4.2 Byte Strobe Activation & Byte Preservation
 
@@ -700,11 +488,7 @@ SP - 6  -->  [ Program Counter (PC) Low 16-bits ]
 
 In Motorola 68000 silicon, the Stack Pointer (`A7`, both `USP` and `SSP`) must **always remain on an even 16-bit word boundary**.
 - When addressing mode `-(An)` is evaluated with `An = A7` for an **8-bit Byte** operation (e.g. `MOVE.B D0, -(SP)`):
-  - In `ea_calc_predec_an`: the decrement amount is forced to **2 bytes** instead of 1:
-    ```rust
-    let step_size = if reg_an == 7 && size == Size::Byte { 2 } else { size.bytes() };
-    state.set_a(reg_an, state.read_a(reg_an).wrapping_sub(step_size));
-    ```
+  - In `ea_calc_predec_an`: the decrement amount is forced to **2 bytes** instead of 1 (advancing $A_7 \leftarrow A_7 - 2$).
   - The byte is written to the high byte (even address) with $\overline{\text{UDS}}$ asserted.
   - This ensures that stack frames and popped values never become misaligned.
 
@@ -745,165 +529,18 @@ flowchart TD
 
 ### 6.1 Concrete Implementation: The High-Throughput `step_cck()` Dispatcher
 
-```rust
-impl Cpu {
-    /// Executes one Color Clock (CCK, ~280 ns) phase of M68000 CPU execution.
-    ///
-    /// Interacts directly with the Amiga MemoryBus. If Chip RAM is blocked by Agnus DMA,
-    /// stalls the CPU without advancing phase or instruction state.
-    pub fn step_cck(&mut self, bus: &mut MemoryBus) -> StepResult {
-        // 1. Non-bus internal calculation delay (DIVU, MULU, shifts, indexed EA AU delay)
-        if self.state.micro.internal_clocks > 0 {
-            self.state.micro.internal_clocks = self.state.micro.internal_clocks.saturating_sub(2);
-            self.state.total_cycles = self.state.total_cycles.wrapping_add(2);
-            return StepResult::StepCompleted; // External bus remains completely idle for Agnus DMA
-        }
+The full CCK stepping engine is implemented in [`crates/m68000/src/micro/engine.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/engine.rs) and driven via [`crates/m68000/src/core.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/core.rs):
 
-        // 2. Fast fall-through loop for instantaneous (0 CCK) micro-steps (Alu, BranchEval)
-        loop {
-            let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
-            if step.base_clocks > 0 {
-                break; // Proceed to 2-phase bus execution below
-            }
-
-            // Execute instantaneous ALU or Branch Evaluation
-            match step.action {
-                MicroAction::Alu => {
-                    if let Some(alu_fn) = step.alu_fn {
-                        alu_fn(&mut self.state, self.state.micro.reg_src, self.state.micro.reg_dst);
-                    }
-                    self.state.micro.micro_step += 1;
-                }
-                MicroAction::BranchEval => {
-                    self.eval_branch_condition(step);
-                }
-                _ => {
-                    self.state.micro.micro_step += 1;
-                }
-            }
-        }
-
-        // 3. Two-Phase External Bus Execution
-        let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
-        let addr = if is_program_space_action(step.action) {
-            self.state.pc
-        } else {
-            self.state.micro.ea_addr
-        };
-
-        // Fast-path non-contended check: Only Chip RAM (< $200000) experiences DMA wait states
-        let is_chip_ram = addr < 0x200000;
-
-        match self.state.micro.phase {
-            CckPhase::Cck1 => {
-                if is_read_action(step.action) {
-                    // Contention check: Agnus DMA taking Chip RAM slot in CCK1?
-                    if is_chip_ram && bus.is_chip_ram_blocked() {
-                        self.state.micro.current_cycle_wait_cycles += 1;
-                        return StepResult::WaitState; // Stalls in CCK1
-                    }
-
-                    // Unblocked: Read data from memory into last_read / prefetch
-                    match step.action {
-                        MicroAction::BusReadByte => {
-                            self.state.micro.last_read = bus.read_byte(addr) as u16;
-                        }
-                        MicroAction::BusReadWord => {
-                            self.state.micro.last_read = bus.read_word(addr);
-                        }
-                        MicroAction::BusReadLongHigh => {
-                            self.state.micro.scratch[0] = (bus.read_word(addr) as u32) << 16;
-                        }
-                        MicroAction::BusReadLongLow => {
-                            let low = bus.read_word(addr.wrapping_add(2)) as u32;
-                            self.state.micro.last_read = (self.state.micro.scratch[0] | low) as u16;
-                        }
-                        MicroAction::FetchExtension => {
-                            self.state.prefetch[0] = bus.read_word(self.state.pc);
-                            self.state.pc = self.state.pc.wrapping_add(2);
-                        }
-                        MicroAction::BusPrefetchToScratch => {
-                            self.state.micro.scratch_prefetch = bus.read_word(self.state.pc);
-                            self.state.pc = self.state.pc.wrapping_add(2);
-                        }
-                        MicroAction::PrefetchNextOpcodeAndRetire => {
-                            self.state.micro.last_read = bus.read_word(self.state.pc);
-                        }
-                        MicroAction::MovemTransfer => {
-                            self.execute_movem_read(bus);
-                        }
-                        _ => {}
-                    }
-                }
-                // In CCK1 for writes, bus is idle for CPU (available for DMA). Advance to CCK2.
-                self.state.micro.phase = CckPhase::Cck2;
-                self.state.total_cycles = self.state.total_cycles.wrapping_add(2);
-                StepResult::StepCompleted
-            }
-
-            CckPhase::Cck2 => {
-                if is_write_action(step.action) {
-                    // Contention check: Agnus DMA taking Chip RAM slot in CCK2?
-                    if is_chip_ram && bus.is_chip_ram_blocked() {
-                        self.state.micro.current_cycle_wait_cycles += 1;
-                        return StepResult::WaitState; // Stalls in CCK2
-                    }
-
-                    // Unblocked: Commit write directly to bus
-                    match step.action {
-                        MicroAction::BusWriteByte => {
-                            bus.write_byte(addr, (self.state.micro.write_buffer & 0xFF) as u8);
-                        }
-                        MicroAction::BusWriteWord => {
-                            bus.write_word(addr, (self.state.micro.write_buffer & 0xFFFF) as u16);
-                        }
-                        MicroAction::BusWriteLongHigh => {
-                            bus.write_word(addr, ((self.state.micro.write_buffer >> 16) & 0xFFFF) as u16);
-                        }
-                        MicroAction::BusWriteLongLow => {
-                            bus.write_word(addr.wrapping_add(2), (self.state.micro.write_buffer & 0xFFFF) as u16);
-                        }
-                        MicroAction::BusWriteByteAndRetire => {
-                            bus.write_byte(addr, (self.state.micro.write_buffer & 0xFF) as u8);
-                            return self.retire_rmw_instruction();
-                        }
-                        MicroAction::BusWriteWordAndRetire => {
-                            bus.write_word(addr, (self.state.micro.write_buffer & 0xFFFF) as u16);
-                            return self.retire_rmw_instruction();
-                        }
-                        MicroAction::BusWriteLongLowAndRetire => {
-                            bus.write_word(addr.wrapping_add(2), (self.state.micro.write_buffer & 0xFFFF) as u16);
-                            return self.retire_rmw_instruction();
-                        }
-                        MicroAction::MovemTransfer => {
-                            self.execute_movem_write(bus);
-                        }
-                        _ => {}
-                    }
-                }
-
-                // Finish 4-clock cycle: advance phase back to CCK1
-                self.state.micro.phase = CckPhase::Cck1;
-                self.state.total_cycles = self.state.total_cycles.wrapping_add(2);
-
-                // For MOVEM, repeat step if mask bits remain
-                if step.action == MicroAction::MovemTransfer && self.state.micro.scratch[0] != 0 {
-                    return StepResult::StepCompleted;
-                }
-
-                self.state.micro.micro_step += 1;
-
-                if is_retire_action(step.action) {
-                    self.retire_instruction(step.action);
-                    StepResult::InstructionCompleted
-                } else {
-                    StepResult::StepCompleted
-                }
-            }
-        }
-    }
-}
-```
+1. **Internal Execution Delay Countdown:**
+   - If `internal_clocks > 0`, decrements by 2 clocks (1 CCK), advances `total_cycles`, and returns `StepResult::StepCompleted` while keeping the external bus completely idle for custom chip DMA (Blitter, Copper, Denise).
+2. **Instantaneous Fall-Through Micro-Steps:**
+   - A fast internal loop executes zero-cycle micro-operations (`Alu`, `BranchEval`) within the same host tick until encountering a bus cycle (`base_clocks > 0`).
+   - If a subsequent bus cycle stalls due to Chip RAM contention, the ALU calculation is **never repeated**.
+3. **Two-Phase External Bus Execution (`phase`):**
+   - **CCK1 (Phase 1):** Read actions query `bus.is_chip_ram_blocked(addr)`. If blocked, the CPU accumulates a wait cycle and returns `StepResult::WaitState` without advancing phase. If unblocked, samples memory data into `last_read` / `prefetch` and advances `phase = CckPhase::Cck2`. For write actions, the CPU does not touch the bus (bus idle for DMA) and simply advances to CCK2.
+   - **CCK2 (Phase 2):** Write actions query `bus.is_chip_ram_blocked(addr)`. If blocked, stalls on `StepResult::WaitState`. If unblocked, commits data directly to `bus` via `write_byte` / `write_word`. Resets `phase = CckPhase::Cck1`, completing the 4-clock bus cycle.
+4. **Pipeline Advance & Instruction Retirement:**
+   - On retirement actions (`PrefetchNextOpcodeAndRetire`, `PrefetchTargetAndRetire`, etc.), shifts `ir = prefetch[0]`, `prefetch[0] = last_read`, advances `pc += 2`, updates `current_steps`, and returns `StepResult::InstructionCompleted`.
 
 ---
 
