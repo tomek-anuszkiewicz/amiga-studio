@@ -6,7 +6,7 @@
 use crate::addressing::Size;
 use crate::core::{Cpu, StepResult};
 use crate::instructions::ea::{
-    data_fc, decode_ea_index, prefetch_extension, read_ea_operand, EA_DN, SIZE_BYTE,
+    data_fc, decode_ea_index, read_ea_operand, EA_DN, SIZE_BYTE,
 };
 use crate::state::CpuState;
 use memory_bus::{BusAccessSize, BusCycle, MemoryBus};
@@ -88,7 +88,8 @@ pub fn op_bchg_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             0 => {
                 let bit_num = (cpu.state.prefetch[0] & 0xFF) as u32;
                 cpu.state.micro.scratch[3] = bit_num;
-                prefetch_extension(cpu);
+                cpu.initiate_prefetch();
+                cpu.state.pc = cpu.state.pc.wrapping_add(2);
                 StepResult::StepCompleted
             }
             1 => {
@@ -120,7 +121,8 @@ pub fn op_bchg_imm(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             if step == 0 {
                 let bit_num = (cpu.state.prefetch[0] & 0xFF) as u32;
                 cpu.state.micro.scratch[3] = bit_num;
-                prefetch_extension(cpu);
+                cpu.initiate_prefetch();
+                cpu.state.pc = cpu.state.pc.wrapping_add(2);
                 return StepResult::StepCompleted;
             }
 

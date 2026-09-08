@@ -8,7 +8,7 @@ use crate::addressing::Size;
 use crate::core::{Cpu, StepResult};
 use crate::instructions::cmp::execute_cmp;
 use crate::instructions::ea::{
-    decode_ea_index, prefetch_extension, read_ea_operand, size_from_const, EA_DN, SIZE_BYTE,
+    decode_ea_index, read_ea_operand, size_from_const, EA_DN, SIZE_BYTE,
     SIZE_LONG,
 };
 use memory_bus::MemoryBus;
@@ -27,13 +27,15 @@ pub fn op_cmpi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                 0 => {
                     let hi = cpu.state.prefetch[0];
                     cpu.state.micro.scratch[0] = (hi as u32) << 16;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     StepResult::StepCompleted
                 }
                 1 => {
                     let lo = cpu.state.micro.last_read;
                     cpu.state.micro.scratch[0] |= lo as u32;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     StepResult::StepCompleted
                 }
                 2 => {
@@ -61,7 +63,8 @@ pub fn op_cmpi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                         _ => cpu.state.prefetch[0] as u32,
                     };
                     cpu.state.micro.scratch[0] = imm;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     StepResult::StepCompleted
                 }
                 1 => {
@@ -84,12 +87,14 @@ pub fn op_cmpi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
             if step == 0 {
                 let hi = cpu.state.prefetch[0];
                 cpu.state.micro.scratch[3] = (hi as u32) << 16;
-                prefetch_extension(cpu);
+                cpu.initiate_prefetch();
+                cpu.state.pc = cpu.state.pc.wrapping_add(2);
                 return StepResult::StepCompleted;
             } else if step == 1 {
                 let lo = cpu.state.micro.last_read;
                 cpu.state.micro.scratch[3] |= lo as u32;
-                prefetch_extension(cpu);
+                cpu.initiate_prefetch();
+                cpu.state.pc = cpu.state.pc.wrapping_add(2);
                 return StepResult::StepCompleted;
             }
 
@@ -115,7 +120,8 @@ pub fn op_cmpi(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
                     _ => cpu.state.prefetch[0] as u32,
                 };
                 cpu.state.micro.scratch[3] = imm;
-                prefetch_extension(cpu);
+                cpu.initiate_prefetch();
+                cpu.state.pc = cpu.state.pc.wrapping_add(2);
                 return StepResult::StepCompleted;
             }
 

@@ -6,7 +6,7 @@
 use crate::addressing::Size;
 use crate::core::{Cpu, StepResult};
 use crate::instructions::ea::{
-    bus_size_from_const, data_fc, decode_ea_index, prefetch_extension, read_ea_operand,
+    bus_size_from_const, data_fc, decode_ea_index, read_ea_operand,
     size_from_const, trigger_address_error, EA_AI, EA_AL, EA_AW, EA_DI, EA_IX, EA_PD, EA_PI,
     SIZE_BYTE, SIZE_LONG, SIZE_WORD,
 };
@@ -265,7 +265,8 @@ fn write_move_dst(
                 let disp = cpu.state.prefetch[0] as i16 as i32;
                 let addr = cpu.state.read_a(dst_reg).wrapping_add(disp as u32);
                 cpu.state.micro.scratch[0] = addr;
-                prefetch_extension(cpu);
+                cpu.initiate_prefetch();
+                cpu.state.pc = cpu.state.pc.wrapping_add(2);
                 StepResult::StepCompleted
             }
             1 => {
@@ -337,7 +338,8 @@ fn write_move_dst(
                     .read_a(dst_reg)
                     .wrapping_add(disp.wrapping_add(x_idx) as u32);
                 cpu.state.micro.scratch[0] = addr;
-                prefetch_extension(cpu);
+                cpu.initiate_prefetch();
+                cpu.state.pc = cpu.state.pc.wrapping_add(2);
                 StepResult::StepCompleted
             }
             1 => {
@@ -395,7 +397,8 @@ fn write_move_dst(
             0 => {
                 let addr = (cpu.state.prefetch[0] as i16 as i32) as u32;
                 cpu.state.micro.scratch[0] = addr;
-                prefetch_extension(cpu);
+                cpu.initiate_prefetch();
+                cpu.state.pc = cpu.state.pc.wrapping_add(2);
                 StepResult::StepCompleted
             }
             1 => {
@@ -448,12 +451,14 @@ fn write_move_dst(
         EA_AL => match dst_step {
             0 => {
                 cpu.state.micro.scratch[0] = (cpu.state.prefetch[0] as u32) << 16;
-                prefetch_extension(cpu);
+                cpu.initiate_prefetch();
+                cpu.state.pc = cpu.state.pc.wrapping_add(2);
                 StepResult::StepCompleted
             }
             1 => {
                 cpu.state.micro.scratch[0] |= cpu.state.micro.last_read as u32;
-                prefetch_extension(cpu);
+                cpu.initiate_prefetch();
+                cpu.state.pc = cpu.state.pc.wrapping_add(2);
                 StepResult::StepCompleted
             }
             2 => {

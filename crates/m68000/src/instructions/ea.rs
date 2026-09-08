@@ -96,13 +96,6 @@ pub fn trigger_address_error(
     StepResult::InstructionCompleted
 }
 
-/// Prefetches the next extension word from PC and advances PC by 2
-#[inline(always)]
-pub fn prefetch_extension(cpu: &mut Cpu) {
-    cpu.initiate_prefetch();
-    cpu.state.pc = cpu.state.pc.wrapping_add(2);
-}
-
 /// Converts compile-time size constant to Size enum
 #[inline(always)]
 pub const fn size_from_const(s: u8) -> Size {
@@ -155,7 +148,8 @@ pub fn read_ea_operand(
                     0 => {
                         let hi = cpu.state.prefetch[0];
                         cpu.state.micro.scratch[1] = (hi as u32) << 16;
-                        prefetch_extension(cpu);
+                        cpu.initiate_prefetch();
+                        cpu.state.pc = cpu.state.pc.wrapping_add(2);
                         Err(StepResult::StepCompleted)
                     }
                     1 => {
@@ -321,7 +315,8 @@ pub fn read_ea_operand(
                 0 => {
                     let disp = cpu.state.prefetch[0] as i16 as i32;
                     cpu.state.micro.scratch[0] = cpu.state.read_a(reg).wrapping_add(disp as u32);
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     Err(StepResult::StepCompleted)
                 }
                 1 => {
@@ -381,7 +376,8 @@ pub fn read_ea_operand(
                         .state
                         .read_a(reg)
                         .wrapping_add(disp.wrapping_add(x_idx) as u32);
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     Err(StepResult::StepCompleted)
                 }
                 1 => {
@@ -426,7 +422,8 @@ pub fn read_ea_operand(
             match step {
                 0 => {
                     cpu.state.micro.scratch[0] = (cpu.state.prefetch[0] as i16 as i32) as u32;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     Err(StepResult::StepCompleted)
                 }
                 1 => {
@@ -467,12 +464,14 @@ pub fn read_ea_operand(
             match step {
                 0 => {
                     cpu.state.micro.scratch[0] = (cpu.state.prefetch[0] as u32) << 16;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     Err(StepResult::StepCompleted)
                 }
                 1 => {
                     cpu.state.micro.scratch[0] |= cpu.state.micro.last_read as u32;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     Err(StepResult::StepCompleted)
                 }
                 2 => {
@@ -515,7 +514,8 @@ pub fn read_ea_operand(
                 0 => {
                     let disp = cpu.state.prefetch[0] as i16 as i32;
                     cpu.state.micro.scratch[0] = pc_base.wrapping_add(disp as u32);
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     Err(StepResult::StepCompleted)
                 }
                 1 => {
@@ -573,7 +573,8 @@ pub fn read_ea_operand(
                     };
                     cpu.state.micro.scratch[0] =
                         pc_base.wrapping_add(disp.wrapping_add(x_idx) as u32);
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     Err(StepResult::StepCompleted)
                 }
                 1 => {

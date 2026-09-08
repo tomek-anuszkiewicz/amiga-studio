@@ -27,13 +27,15 @@ fn exec_ori(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepResult {
                 0 => {
                     let hi = cpu.state.prefetch[0];
                     cpu.state.micro.scratch[0] = (hi as u32) << 16;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     StepResult::StepCompleted
                 }
                 1 => {
                     let lo = cpu.state.micro.last_read;
                     cpu.state.micro.scratch[0] |= lo as u32;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     StepResult::StepCompleted
                 }
                 2 => {
@@ -61,7 +63,8 @@ fn exec_ori(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepResult {
                         _ => cpu.state.prefetch[0] as u32,
                     };
                     cpu.state.micro.scratch[0] = imm;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     StepResult::StepCompleted
                 }
                 1 => {
@@ -90,12 +93,14 @@ fn exec_ori(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepResult {
                 if step == 0 {
                     let hi = cpu.state.prefetch[0];
                     cpu.state.micro.scratch[3] = (hi as u32) << 16;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     return StepResult::StepCompleted;
                 } else if step == 1 {
                     let lo = cpu.state.micro.last_read;
                     cpu.state.micro.scratch[3] |= lo as u32;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     return StepResult::StepCompleted;
                 }
 
@@ -138,7 +143,8 @@ fn exec_ori(cpu: &mut Cpu, bus: &mut MemoryBus, s: u8, m: u8) -> StepResult {
                         _ => cpu.state.prefetch[0] as u32,
                     };
                     cpu.state.micro.scratch[3] = imm;
-                    prefetch_extension(cpu);
+                    cpu.initiate_prefetch();
+                    cpu.state.pc = cpu.state.pc.wrapping_add(2);
                     return StepResult::StepCompleted;
                 }
 
@@ -228,7 +234,8 @@ pub fn op_ori_b_imm_disp(cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
 pub fn op_ori_b_imm_dn(cpu: &mut Cpu, _bus: &mut MemoryBus) -> StepResult {
     match cpu.state.micro.micro_step {
         0 => {
-            prefetch_extension(cpu);
+            cpu.initiate_prefetch();
+            cpu.state.pc = cpu.state.pc.wrapping_add(2);
             StepResult::StepCompleted
         }
         1 => {
