@@ -362,14 +362,18 @@ impl Cpu {
                 | MicroAction::PrefetchTargetAndRetire => {
                     return self.execute_prefetch_and_refill(bus, step.action);
                 }
-                MicroAction::OriToCcr
-                | MicroAction::OriToSr
-                | MicroAction::AndiToCcr
-                | MicroAction::AndiToSr
-                | MicroAction::EoriToCcr
-                | MicroAction::EoriToSr
-                | MicroAction::Trap => {
-                    return self.execute_system_op(bus, step.action);
+                MicroAction::OriToCcr => return system::op_ori_to_ccr(self, bus),
+                MicroAction::OriToSr => return system::op_ori_to_sr(self, bus),
+                MicroAction::AndiToCcr => return system::op_andi_to_ccr(self, bus),
+                MicroAction::AndiToSr => return system::op_andi_to_sr(self, bus),
+                MicroAction::EoriToCcr => return system::op_eori_to_ccr(self, bus),
+                MicroAction::EoriToSr => return system::op_eori_to_sr(self, bus),
+                MicroAction::Trap => {
+                    let res = crate::instructions::trap::op_trap(self, bus);
+                    if self.state.micro.is_bus_busy() && self.state.micro.phase == CckPhase::Cck1 {
+                        return self.step_active_bus_cck1(bus);
+                    }
+                    return res;
                 }
             }
         }
@@ -553,26 +557,6 @@ impl Cpu {
                     .micro
                     .mark_target_refill_retire(target, scratch_pref);
                 self.initiate_read_cycle(bus, addr, BusAccessSize::Word, fc)
-            }
-            _ => StepResult::StepCompleted,
-        }
-    }
-
-    #[inline]
-    fn execute_system_op(&mut self, bus: &mut MemoryBus, action: MicroAction) -> StepResult {
-        match action {
-            MicroAction::OriToCcr => system::op_ori_to_ccr(self, bus),
-            MicroAction::OriToSr => system::op_ori_to_sr(self, bus),
-            MicroAction::AndiToCcr => system::op_andi_to_ccr(self, bus),
-            MicroAction::AndiToSr => system::op_andi_to_sr(self, bus),
-            MicroAction::EoriToCcr => system::op_eori_to_ccr(self, bus),
-            MicroAction::EoriToSr => system::op_eori_to_sr(self, bus),
-            MicroAction::Trap => {
-                let res = crate::instructions::trap::op_trap(self, bus);
-                if self.state.micro.is_bus_busy() && self.state.micro.phase == CckPhase::Cck1 {
-                    return self.step_active_bus_cck1(bus);
-                }
-                res
             }
             _ => StepResult::StepCompleted,
         }
