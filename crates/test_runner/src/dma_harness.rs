@@ -78,11 +78,25 @@ pub fn run_dma_contention_sweep(
         init_cpu_state(&mut cpu, test);
 
         let mut cck_step = 0;
+        let mut wait_states = 0;
         loop {
             // Inject 1-CCK Chip RAM DMA stall at target phase
-            bus.chip_ram_blocked = cck_step == stall_phase;
+            let is_stalled = cck_step == stall_phase;
+            bus.chip_ram_blocked = is_stalled;
+            if is_stalled {
+                bus.invert_test_memory();
+            }
 
             let res = cpu.step_cck(&mut bus);
+
+            if is_stalled {
+                bus.invert_test_memory();
+            }
+
+            if res == StepResult::WaitState {
+                wait_states += 1;
+            }
+
             cck_step += 1;
             if res.is_completed() || res == StepResult::Halted || res == StepResult::Stopped {
                 break;
@@ -95,7 +109,7 @@ pub fn run_dma_contention_sweep(
         cpu.state.sync_stack_pointers();
 
         // Verify Invariant 1: Cycle Invariance
-        let expected_clocks = base_clocks + (2 * cpu.wait_cycles);
+        let expected_clocks = base_clocks + (2 * wait_states);
         if cpu.instruction_clocks != expected_clocks {
             return Err(DmaContentionFailure {
                 test_name: test.name.clone(),
@@ -103,7 +117,7 @@ pub fn run_dma_contention_sweep(
                 burst_length: 1,
                 base_clocks,
                 actual_clocks: cpu.instruction_clocks,
-                wait_cycles: cpu.wait_cycles,
+                wait_cycles: wait_states,
                 diffs: vec![StateDiff::CycleLength {
                     actual: cpu.instruction_clocks,
                     expected: expected_clocks,
@@ -179,7 +193,7 @@ pub fn run_dma_contention_sweep(
                 burst_length: 1,
                 base_clocks,
                 actual_clocks: cpu.instruction_clocks,
-                wait_cycles: cpu.wait_cycles,
+                wait_cycles: wait_states,
                 diffs,
             });
         }
@@ -228,12 +242,26 @@ pub fn run_dma_burst_contention(
     init_cpu_state(&mut cpu, test);
 
     let mut cck_step = 0;
+    let mut wait_states = 0;
     loop {
         // Assert stall for burst_length consecutive CCKs starting at burst_start_phase
-        bus.chip_ram_blocked =
+        let is_stalled =
             cck_step >= burst_start_phase && cck_step < (burst_start_phase + burst_length);
+        bus.chip_ram_blocked = is_stalled;
+        if is_stalled {
+            bus.invert_test_memory();
+        }
 
         let res = cpu.step_cck(&mut bus);
+
+        if is_stalled {
+            bus.invert_test_memory();
+        }
+
+        if res == StepResult::WaitState {
+            wait_states += 1;
+        }
+
         cck_step += 1;
         if res.is_completed() || res == StepResult::Halted || res == StepResult::Stopped {
             break;
@@ -245,7 +273,7 @@ pub fn run_dma_burst_contention(
     cpu.state.sync_stack_pointers();
 
     // Assert Cycle Invariance
-    let expected_clocks = base_clocks + (2 * cpu.wait_cycles);
+    let expected_clocks = base_clocks + (2 * wait_states);
     if cpu.instruction_clocks != expected_clocks {
         return Err(DmaContentionFailure {
             test_name: test.name.clone(),
@@ -253,7 +281,7 @@ pub fn run_dma_burst_contention(
             burst_length,
             base_clocks,
             actual_clocks: cpu.instruction_clocks,
-            wait_cycles: cpu.wait_cycles,
+            wait_cycles: wait_states,
             diffs: vec![StateDiff::CycleLength {
                 actual: cpu.instruction_clocks,
                 expected: expected_clocks,
@@ -329,7 +357,7 @@ pub fn run_dma_burst_contention(
             burst_length,
             base_clocks,
             actual_clocks: cpu.instruction_clocks,
-            wait_cycles: cpu.wait_cycles,
+            wait_cycles: wait_states,
             diffs,
         });
     }

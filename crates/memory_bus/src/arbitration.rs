@@ -52,6 +52,10 @@ impl MemoryBus {
             // Overlay maps low memory to Kickstart ROM (ROM has zero contention)
             return false;
         }
+        // In synthetic test harnesses (SingleStepTests flat memory), all test memory is treated as Chip RAM
+        if self.test_memory.is_some() {
+            return true;
+        }
         // Chip RAM range: $000000-$07FFFF (or $000000-$0FFFFF for 1MB)
         // Slow RAM range: $C00000-$C7FFFF (handled via Gary; subject to shared Agnus bus contention)
         addr < (self.chip_ram.len() as u32) || (0xC00000..=0xC7FFFF).contains(&addr)

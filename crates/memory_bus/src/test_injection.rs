@@ -82,4 +82,17 @@ impl MemoryBus {
     pub fn write_word_debug(&mut self, addr: u32, val: u16) {
         self.write_word_internal(addr, val);
     }
+
+    /// Inverts all bytes in test memory (used by DMA contention tests to detect unauthorized bus access)
+    pub fn invert_test_memory(&mut self) {
+        if let Some(test_mem) = &mut self.test_memory {
+            for val in test_mem.values_mut() {
+                *val = !*val;
+            }
+        }
+        for byte in &mut self.chip_ram {
+            *byte = !*byte;
+        }
+        self.unmapped_byte = !self.unmapped_byte;
+    }
 }

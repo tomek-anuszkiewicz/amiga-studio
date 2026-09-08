@@ -48,7 +48,6 @@ fn test_archetype1_nop_4_clocks() {
         cpu.instruction_clocks, 4,
         "NOP must take exactly 4 CPU clocks (2 CCKs)"
     );
-    assert_eq!(cpu.wait_cycles, 0);
     assert_eq!(cpu.state.pc, 0x001006);
 }
 
@@ -99,7 +98,6 @@ fn test_archetype2_move_mem_read_8_clocks() {
         "MOVE.w (Ax), Dy must take exactly 8 CPU clocks (4 CCKs)"
     );
     assert_eq!(cpu.state.d_word(0), 0xCAFE);
-    assert_eq!(cpu.wait_cycles, 0);
 }
 
 #[test]
@@ -121,13 +119,11 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     // Color Clock 1: instruction handler initiates bus read, but Gary withholds _DTACK at CCK1 -> WaitState
     let r1 = cpu.step_cck(&mut bus);
     assert_eq!(r1, StepResult::WaitState);
-    assert_eq!(cpu.wait_cycles, 1);
     assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck1);
 
     // Color Clock 2: still blocked -> WaitState
     let r2 = cpu.step_cck(&mut bus);
     assert_eq!(r2, StepResult::WaitState);
-    assert_eq!(cpu.wait_cycles, 2);
 
     // Agnus completes DMA transfer and frees the bus
     bus.unlock_chip_ram();
@@ -149,7 +145,6 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
 
     // Total clocks = 8 base clocks + 2 * (2 wait states) = 12 clocks
     assert_eq!(cpu.instruction_clocks, 12);
-    assert_eq!(cpu.wait_cycles, 2);
     assert_eq!(cpu.state.d_word(0), 0xCAFE);
 }
 
@@ -197,13 +192,11 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 2: CCK2 write blocked by DMA -> WaitState
     let r2 = cpu.step_cck(&mut bus);
     assert_eq!(r2, StepResult::WaitState);
-    assert_eq!(cpu.wait_cycles, 1);
     assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck2);
 
     // Color Clock 3: still blocked -> WaitState
     let r3 = cpu.step_cck(&mut bus);
     assert_eq!(r3, StepResult::WaitState);
-    assert_eq!(cpu.wait_cycles, 2);
 
     // Agnus frees bus
     bus.unlock_chip_ram();
@@ -220,7 +213,6 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     assert_eq!(r6, StepResult::InstructionCompleted);
 
     assert_eq!(cpu.instruction_clocks, 12);
-    assert_eq!(cpu.wait_cycles, 2);
 }
 
 #[test]

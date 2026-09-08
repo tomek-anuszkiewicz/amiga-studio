@@ -38,8 +38,6 @@ impl StepResult {
 #[derive(Debug, Clone)]
 pub struct Cpu {
     pub state: CpuState,
-    /// Number of wait-state cycles currently accumulated
-    pub wait_cycles: u32,
     /// Total CPU clocks executed (1 CCK = 2 CPU clocks)
     pub total_clocks: u64,
     /// CPU clocks consumed by the current instruction
@@ -56,7 +54,6 @@ impl Cpu {
     pub fn new() -> Self {
         Self {
             state: CpuState::default(),
-            wait_cycles: 0,
             total_clocks: 0,
             instruction_clocks: 0,
         }
@@ -69,7 +66,6 @@ impl Cpu {
         self.state.halted = false;
         self.state.step = 0;
         self.state.micro.reset();
-        self.wait_cycles = 0;
         self.total_clocks = 0;
         self.instruction_clocks = 0;
 
@@ -187,7 +183,6 @@ impl Cpu {
         match self.state.micro.phase {
             CckPhase::Cck1 => {
                 if bus.is_chip_ram_blocked(addr) {
-                    self.wait_cycles = self.wait_cycles.wrapping_add(1);
                     self.total_clocks = self.total_clocks.wrapping_add(2);
                     self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                     self.state.micro.current_cycle_wait_cycles =
@@ -241,7 +236,6 @@ impl Cpu {
         match self.state.micro.phase {
             CckPhase::Cck1 => {
                 if bus.is_chip_ram_blocked(addr) {
-                    self.wait_cycles = self.wait_cycles.wrapping_add(1);
                     self.total_clocks = self.total_clocks.wrapping_add(2);
                     self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                     self.state.micro.current_cycle_wait_cycles =
@@ -289,7 +283,6 @@ impl Cpu {
             }
             CckPhase::Cck2 => {
                 if bus.is_chip_ram_blocked(addr) {
-                    self.wait_cycles = self.wait_cycles.wrapping_add(1);
                     self.total_clocks = self.total_clocks.wrapping_add(2);
                     self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                     self.state.micro.current_cycle_wait_cycles =
@@ -329,7 +322,6 @@ impl Cpu {
             }
             CckPhase::Cck2 => {
                 if bus.is_chip_ram_blocked(addr) {
-                    self.wait_cycles = self.wait_cycles.wrapping_add(1);
                     self.total_clocks = self.total_clocks.wrapping_add(2);
                     self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                     self.state.micro.current_cycle_wait_cycles =
