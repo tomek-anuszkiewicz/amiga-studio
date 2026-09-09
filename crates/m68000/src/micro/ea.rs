@@ -91,7 +91,6 @@ pub fn ea_calc_src_d16_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
 }
 
 /// Address Register Indirect with Index: (d8, An, Xn) -> ea_addr = An + Xn + disp8
-/// Consumes 2 internal CPU clock cycles (1 CCK) for the 3-input addition.
 #[inline(always)]
 pub fn ea_calc_src_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let ext = state.prefetch[0];
@@ -99,7 +98,6 @@ pub fn ea_calc_src_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let xn = read_index_reg(state, ext);
     let an = state.read_a(reg_src as usize);
     state.micro.ea_addr = an.wrapping_add(xn).wrapping_add(disp8 as u32);
-    state.micro.internal_clocks = 2; // 2 clocks / 1 CCK wait
 }
 
 /// Absolute Short: (xxx).W -> ea_addr = sign_extend(word)
@@ -152,7 +150,6 @@ pub fn ea_calc_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let xn = read_index_reg(state, ext);
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.ea_addr = base_pc.wrapping_add(xn).wrapping_add(disp8 as u32);
-    state.micro.internal_clocks = 2; // 2 clocks / 1 CCK wait
 }
 
 // ============================================================================
@@ -243,31 +240,22 @@ pub fn ea_calc_dst_idx_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let xn = read_index_reg(state, ext);
     let an = state.read_a(reg_dst as usize);
     state.micro.ea_addr = an.wrapping_add(xn).wrapping_add(disp8 as u32);
-    state.micro.internal_clocks = 2;
 }
 
 // ============================================================================
-// Control Addressing Helpers (Pure Calculations Without Overriding internal_clocks)
+// Control Addressing Helpers
 // ============================================================================
 
-/// Address Register Indirect with Index without overriding internal_clocks
+/// Address Register Indirect with Index helper
 #[inline(always)]
-pub fn ea_calc_src_idx_an_pure(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    let ext = state.prefetch[0];
-    let disp8 = (ext & 0xFF) as i8 as i32;
-    let xn = read_index_reg(state, ext);
-    let an = state.read_a(reg_src as usize);
-    state.micro.ea_addr = an.wrapping_add(xn).wrapping_add(disp8 as u32);
+pub fn ea_calc_src_idx_an_pure(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    ea_calc_src_idx_an(state, reg_src, reg_dst);
 }
 
-/// PC Indirect with Index without overriding internal_clocks
+/// PC Indirect with Index helper
 #[inline(always)]
-pub fn ea_calc_idx_pc_pure(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let ext = state.prefetch[0];
-    let disp8 = (ext & 0xFF) as i8 as i32;
-    let xn = read_index_reg(state, ext);
-    let base_pc = state.pc.wrapping_sub(2);
-    state.micro.ea_addr = base_pc.wrapping_add(xn).wrapping_add(disp8 as u32);
+pub fn ea_calc_idx_pc_pure(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    ea_calc_idx_pc(state, reg_src, reg_dst);
 }
 
 // ============================================================================

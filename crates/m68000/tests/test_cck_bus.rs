@@ -1,17 +1,17 @@
-use m68000::Cpu;
+use m68000::{Cpu, MicroStep};
 use memory_bus::{BusResult, CckPhase, MemoryBus};
 
 #[test]
 fn test_micro_state_initial_and_reset() {
     let mut cpu = Cpu::new();
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
-    assert_eq!(cpu.state.micro.internal_clocks, 0);
+    assert_eq!(cpu.state.micro.clocks_remaining, -1);
 
     cpu.state.micro.phase = CckPhase::Cck2;
-    cpu.state.micro.internal_clocks = 4;
+    cpu.state.micro.clocks_remaining = 4;
     cpu.state.micro.reset();
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
-    assert_eq!(cpu.state.micro.internal_clocks, 0);
+    assert_eq!(cpu.state.micro.clocks_remaining, -1);
 }
 
 #[test]
@@ -104,19 +104,34 @@ fn test_cck_write_contention_stall_at_cck2() {
 }
 
 #[test]
-fn test_internal_clocks_stepping() {
+fn test_clocks_remaining_micro_stepping() {
     let mut bus = MemoryBus::new();
     let mut cpu = Cpu::new();
 
-    cpu.state.micro.internal_clocks = 4; // 4 CPU clocks = 2 CCKs
+    // 4 CPU clocks = 2 CCK steps
+    static TEST_STEPS: [MicroStep; 1] = [MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: None,
+        base_clocks: 4,
+    }];
 
-    let res1 = cpu.step_cck(&mut bus);
-    assert!(!res1);
-    assert_eq!(cpu.state.micro.internal_clocks, 2);
+    cpu.state.micro.current_steps = &TEST_STEPS;
+    cpu.state.micro.micro_step = 0;
+    cpu.state.micro.clocks_remaining = -1;
 
-    let res2 = cpu.step_cck(&mut bus);
-    assert!(!res2);
-    assert_eq!(cpu.state.micro.internal_clocks, 0);
+    let initial_cycles = cpu.cycle_counter();
+
+    // 1st CCK step: consumes 2 clocks, 2 remaining
+    let finished1 = cpu.step_cck(&mut bus);
+    assert!(!finished1);
+    assert_eq!(cpu.state.micro.clocks_remaining, 2);
+    assert_eq!(cpu.cycle_counter(), initial_cycles + 2);
+
+    // 2nd CCK step: consumes 2 clocks, completes step
+    let finished2 = cpu.step_cck(&mut bus);
+    assert!(finished2);
+    assert_eq!(cpu.state.micro.clocks_remaining, -1);
+    assert_eq!(cpu.cycle_counter(), initial_cycles + 4);
 }
 
 #[test]

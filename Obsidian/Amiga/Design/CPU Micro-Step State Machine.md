@@ -38,7 +38,7 @@ The architecture mirrors the physical two-level microcode design of the Motorola
 8. **Two-Word Pipeline Refill for Control Flow (`JMP`, `JSR`, `RTS`, `Bcc`)**:
    When program execution flow changes, the prefetch stream is flushed and refilled from the target address via two sequential program-space read bus cycles (`Cpu::step_bus_read_target_opcode` and `Cpu::step_prefetch_target_and_retire`).
 9. **Decoupled Internal Delay Countdown**:
-   Variable-cycle operations (`DIVU`, `DIVS`, `MULU`, `MULS`, multi-bit shifts, 3-input indexed EA calculation, taken branch penalties) calculate their math instantly, compute the hardware cycle penalty, and set `cpu.state.micro.internal_clocks`. The host ticks down this counter with 3 assembly instructions, leaving the external bus completely idle for Amiga custom chips (Copper, Blitter, Denise).
+   Variable-cycle operations (`DIVU`, `DIVS`, `MULU`, `MULS`, multi-bit shifts) calculate their math instantly, compute the hardware cycle penalty, and set `cpu.state.micro.clocks_remaining`. The host ticks down this counter by 2 clocks per CCK, leaving the external bus completely idle for Amiga custom chips (Copper, Blitter, Denise).
 10. **Automatic Self-Modifying Code (SMC) Immunity**:
     Because opcodes directly index the static 65,536 table upon prefetch, and operands are read live from memory, **the engine requires zero bus snooping, zero page dirty tracking, and zero cache invalidation**.
 11. **Cached Slice Pointer Dispatch (`current_steps: &'static [MicroStep]`)**:
@@ -109,9 +109,7 @@ Embedded in `CpuState` to track sub-cycle progress across Color Clock phases wit
 - `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
 - `ea_high`: High word of 32-bit absolute addresses (`(xxx).L`) or high address for split accesses.
 - `movem_mask`: 16-bit register transfer mask for `MOVEM`.
-- `movem_state`: Internal packing state (bit index and sub-word tracker) for `MOVEM`.
-- `internal_clocks`: Non-bus execution clocks countdown (DIVU/MULU/shifts/indexed EA).
-- `clocks_remaining`: Clocks remaining for the active micro-step countdown (-1 when uninitialized / between steps).
+- `clocks_remaining`: Clocks remaining for the active micro-step countdown (-1 when uninitialized / between steps, decrements by 2 on each CCK).
 - `current_steps`: Cached slice pointer to active opcode's `&'static [MicroStep]`.
 - `micro_step`: Step index within the current instruction's micro-operation sequence.
 - `reg_src`, `reg_dst`: Pre-decoded register indices ($0..7$ for $D_n / A_n$).
@@ -299,18 +297,17 @@ Conditional branches (`BEQ`, `BNE`, `BGT`, `BLT`, etc.) introduce dynamic runtim
 
 ```mermaid
 flowchart TD
-    Eval["Step 0: BranchEval (0 CCKs)<br/>eval_condition(cond)"]
+    Eval["Step 0: alu_bcc_short / alu_bcc_word (0 CCKs)<br/>eval_condition(cond)"]
     
-    Eval -- "Taken" --> TakenPath["internal_clocks = 2<br/>ea_addr = base_pc + disp<br/>micro_step = 1"]
-    TakenPath --> Refill1["Step 1: BusReadTargetOpcode<br/>Read target (4 clocks)"]
-    Refill1 --> Refill2["Step 2: PrefetchTargetAndRetire<br/>Read target + 2 (4 clocks)<br/>PC = target + 4<br/>Retire! (Total: 10 clocks)"]
+    Eval -- "Taken" --> TakenPath["current_steps = &STEPS_BRANCH_TAKEN<br/>micro_step = 0"]
+    TakenPath --> Refill1["Step 0: step_alu (2 clocks)<br/>Step 1-2: READ_TARGET_OPCODE (4 clocks)"]
+    Refill1 --> Refill2["Step 3-4: PREFETCH_TARGET_RETIRE (4 clocks)<br/>PC = target + 4<br/>Retire! (Total: 10 clocks)"]
     
-    Eval -- "Not Taken (Short .B)" --> NotTakenB["internal_clocks = 4<br/>micro_step = 3"]
-    NotTakenB --> SeqRetire["Step 3: PrefetchNextOpcodeAndRetire<br/>Read PC (4 clocks)<br/>PC += 2<br/>Retire! (Total: 8 clocks)"]
+    Eval -- "Not Taken (Short .B)" --> NotTakenB["current_steps = &STEPS_BRANCH_NOT_TAKEN_SHORT<br/>micro_step = 0"]
+    NotTakenB --> SeqRetire["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-3: PREFETCH_NEXT_RETIRE (4 clocks)<br/>Retire! (Total: 8 clocks)"]
     
-    Eval -- "Not Taken (Word .W)" --> NotTakenW["internal_clocks = 4<br/>micro_step = 4"]
-    NotTakenW --> SkipExt["Step 4: FetchExtension (4 clocks)"]
-    SkipExt --> SeqRetireW["Step 5: PrefetchNextOpcodeAndRetire (4 clocks)<br/>Retire! (Total: 12 clocks)"]
+    Eval -- "Not Taken (Word .W)" --> NotTakenW["current_steps = &STEPS_BRANCH_NOT_TAKEN_WORD<br/>micro_step = 0"]
+    NotTakenW --> SkipExt["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-5: PREFETCH_TARGET_RETIRE (8 clocks)<br/>Retire! (Total: 12 clocks)"]
 ```
 
 ---
@@ -390,38 +387,31 @@ flowchart TD
         IR["IR = $D070 (Opcode)<br/>prefetch[0] = Extension Word (8-bit disp + D1.W)"]
     end
 
-    subgraph S0["Step 0: Extension Advance & EA Computation (4 Clocks / 2 CCKs)"]
-        EA["AU Decodes Extension Word:<br/>ea_addr = A0 + D1.W + 8<br/>internal_clocks = 2"]
-        FetchExt["Bus Read at PC:<br/>prefetch[0] = next word (PC+4)<br/>PC += 2"]
-        EA --- FetchExt
+    subgraph S0["Step 0: AU 3-Input Add Calculation (2 Clocks / 1 CCK)"]
+        EA["step_alu with ea_calc_src_idx_an:<br/>ea_addr = A0 + D1.W + 8<br/>Bus is completely idle!"]
     end
 
-    subgraph Wait["Internal Wait State (2 Clocks / 1 CCK)"]
-        AUWait["AU 3-input addition delay<br/>internal_clocks -= 2<br/>Bus is completely idle!"]
+    subgraph S1["Step 1-2: Fetch Extension Word (4 Clocks / 2 CCKs)"]
+        FetchExt["FETCH_EXT_READ & FINISH:<br/>prefetch[0] = next word (PC+4)<br/>PC += 2"]
     end
 
-    subgraph S1["Step 1: Read Memory Operand (4 Clocks / 2 CCKs)"]
-        ReadOp["BusReadWord at ea_addr:<br/>last_read = Memory[ea_addr]"]
+    subgraph S2["Step 3-4: Read Memory Operand (4 Clocks / 2 CCKs)"]
+        ReadOp["READ_SRC_WORD & FINISH:<br/>source = Memory[ea_addr]"]
     end
 
-    subgraph S2["Step 2: Instantaneous ALU (0 CCKs)"]
-        Exec["Alu (alu_add_w):<br/>D0 = D0 + last_read<br/>Set CCR (X,N,Z,V,C)"]
+    subgraph S3["Step 5-6: Opcode Prefetch, ALU & Retirement (4 Clocks / 2 CCKs)"]
+        Prefetch["PREFETCH_NEXT_READ (alu_add_w) & RETIRE:<br/>D0 = D0 + source, set CCR<br/>Refill IR and prefetch[0]<br/>Retire! (Total: 14 clocks / 7 CCKs)"]
     end
 
-    subgraph S3["Step 3: Opcode Prefetch & Retirement (4 Clocks / 2 CCKs)"]
-        Prefetch["PrefetchNextOpcodeAndRetire:<br/>Refill IR and prefetch[0]<br/>Retire! (Total: 14 clocks)"]
-    end
-
-    P --> S0 --> Wait --> S1 --> S2 --> S3
+    P --> S0 --> S1 --> S2 --> S3
 ```
 
 | Step | Action | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `FetchExtension`<br/>*(with `ea_calc_d8_an_xn`)* | 4 (2 CCKs) | 1. AU decodes `prefetch[0]`: extracts `disp8 = +8`, `Xn = D1.W`, and sets `ea_addr = A0 + D1.W + 8`.<br/>2. Sets `state.micro.internal_clocks = 2` for hardware 3-input addition delay.<br/>3. Bus reads next word from `PC`, updating `prefetch[0]`, `PC += 2`. |
-| **—** | *Internal Delay* | **2 (1 CCK)** | Bus remains completely idle while `internal_clocks` ticks down from 2 to 0. |
-| **1** | `BusReadWord` | 4 (2 CCKs) | Initiates 16-bit word read from `ea_addr`. Latching memory operand into `last_read`. |
-| **2** | `Alu`<br/>*(`alu_add_w`)* | **0 (Instant)** | Computes `D0 = D0.wrapping_add(last_read)`. Updates CCR flags ($X, N, Z, V, C$). |
-| **3** | `PrefetchNextOpcodeAndRetire` | 4 (2 CCKs) | Reads next opcode from `PC`, refills `IR = prefetch[0]`, `prefetch[0] = last_read`, and retires! |
+| **0** | `step_alu`<br/>*(with `ea_calc_src_idx_an`)* | 2 (1 CCK) | AU decodes `prefetch[0]`: extracts `disp8 = +8`, `Xn = D1.W`, and sets `ea_addr = A0 + D1.W + 8`. Consumes 2 clocks (1 CCK) idle AU addition. |
+| **1-2** | `FETCH_EXT_READ`<br/>`FETCH_EXT_FINISH` | 4 (2 CCKs) | Reads extension word from `PC` into `prefetch[0]`, `PC += 2`. |
+| **3-4** | `READ_SRC_WORD`<br/>`READ_WORD_FINISH` | 4 (2 CCKs) | Reads 16-bit operand from `ea_addr` into `source`. |
+| **5-6** | `PREFETCH_NEXT_READ`<br/>`PREFETCH_NEXT_RETIRE` | 4 (2 CCKs) | Computes `D0 = D0 + source`, sets CCR flags, refills `IR` and `prefetch[0]`, and retires! |
 
 **Total Duration**: $4\ (\text{FetchExtension}) + 2\ (\text{Internal Delay}) + 4\ (\text{BusReadWord}) + 0\ (\text{ALU}) + 4\ (\text{Prefetch}) = \mathbf{14\ \text{CPU clocks}}\ (7\ \text{CCKs})$!
 
@@ -547,39 +537,34 @@ Execution is driven by the Amiga Color Clock (CCK, ~3.54 MHz). $1\ \text{M68000 
 
 ```mermaid
 flowchart TD
-    Start(["step_cck()"]) --> CheckInternal{"internal_clocks > 0?"}
+    Start(["step_cck()"]) --> Adv["advance_clocks(2)"]
+    Adv --> CheckSeq["Execute Micro-Step (execute_micro_step)"]
     
-    CheckInternal -- Yes --> DecClocks["internal_clocks -= 2<br/>(Bus is Idle)"] --> RetStep["return StepCompleted"]
-    CheckInternal -- No --> FetchStep["Fetch steps[micro_step]"]
+    CheckSeq --> InitCheck{"clocks_remaining < 0?"}
+    InitCheck -- Yes --> Init["clocks_remaining = base_clocks<br/>Execute alu_fn (if any)"] --> ExecStep
+    InitCheck -- No --> ExecStep["Execute step_fn(self, bus)"]
     
-    FetchStep --> IsZeroCycle{"clocks == 0?<br/>(Alu / BranchEval)"}
-    IsZeroCycle -- Yes --> ExecZero["Execute Alu / BranchEval<br/>micro_step += 1"] --> FetchStep
+    ExecStep --> BusRes{"BusResult?"}
+    BusRes -- WaitState --> Stall["current_cycle_wait_cycles += 1<br/>return false"]
+    BusRes -- Ready --> Dec["clocks_remaining -= 2"]
     
-    IsZeroCycle -- No --> PhaseCheck{"Phase?"}
+    Dec --> DoneCheck{"clocks_remaining <= 0?"}
+    DoneCheck -- No --> Hold["return false (bus idle)"]
+    DoneCheck -- Yes --> Next["clocks_remaining = -1<br/>micro_step += 1"]
     
-    PhaseCheck -- CCK1 --> ReadCheck{"Is Read Step?"}
-    ReadCheck -- Yes --> CheckContendR{"Chip RAM<br/>Blocked?"}
-    CheckContendR -- Blocked --> Wait1["wait_cycles += 1<br/>return WaitState (hold CCK1)"]
-    CheckContendR -- Ready --> LatchRead["Read from bus into last_read<br/>phase = CCK2<br/>return StepCompleted"]
-    ReadCheck -- No (Write) --> FreeWrite["Bus is Free for DMA!<br/>phase = CCK2<br/>return StepCompleted"]
-    
-    PhaseCheck -- CCK2 --> WriteCheck{"Is Write Step?"}
-    WriteCheck -- Yes --> CheckContendW{"Chip RAM<br/>Blocked?"}
-    CheckContendW -- Blocked --> Wait2["wait_cycles += 1<br/>return WaitState (hold CCK2)"]
-    CheckContendW -- Ready --> CommitWrite["Commit write to bus"] --> StepDone
-    WriteCheck -- No (Read) --> StepDone["Bus is Free for DMA!<br/>phase = CCK1<br/>micro_step += 1"]
-    
-    StepDone --> CheckRetire{"Is Retire Step?"}
-    CheckRetire -- Yes --> Retire["ir = prefetch[0]<br/>prefetch[0] = last_read<br/>pc += 2<br/>return true"]
-    CheckRetire -- No --> RetStep["return false"]
+    Next --> RetCheck{"micro_step >= steps.len()?"}
+    RetCheck -- Yes --> Retire["retire_current_instruction()<br/>return true"]
+    RetCheck -- No --> RetFalse["return false"]
 ```
 
 ### 6.1 Concrete Implementation: The High-Throughput `step_cck()` Dispatcher
 
 The full CCK stepping engine is implemented in [`crates/m68000/src/micro/engine.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/engine.rs) and driven via [`crates/m68000/src/core.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/core.rs):
 
-1. **Internal Execution Delay Countdown:**
-   - If `clocks_remaining > 0` (or `internal_clocks > 0`), decrements by 2 clocks (1 CCK), advances `instruction_clocks`, and returns `false` while keeping the external bus completely idle for custom chip DMA (Blitter, Copper, Denise).
+1. **Uniform Micro-Step Timing via `clocks_remaining`:**
+   - On each CCK tick, `step_cck` advances global clocks by 2 (`self.advance_clocks(2)`).
+   - If entering a step (`clocks_remaining < 0`), initializes `clocks_remaining = step.base_clocks` and fires `alu_fn`. Dynamic shift/ALU operations can directly override `clocks_remaining`.
+   - On completion of a ready CCK phase, decrements `clocks_remaining -= 2`. If `clocks_remaining <= 0`, concludes the micro-step and advances to the next.
 2. **Instantaneous Fall-Through Micro-Steps:**
    - A fast internal loop executes zero-cycle micro-operations (`alu_fn`) when entering a step or when `base_clocks == 0` within the same host tick until encountering a bus cycle.
    - If a subsequent bus cycle stalls due to Chip RAM contention, the ALU calculation is **never repeated**.
@@ -755,7 +740,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 
 | Step | Action | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `BranchEval` | **0 (Instant)** | Evaluates `Z == 0`.<br/>- **Taken**: sets `internal_clocks = 2`, `ea_addr = base_pc + disp8`. Advances to **Step 1**.<br/>- **Not Taken**: sets `internal_clocks = 4`. Skips to **Step 3**. |
+| **0** | `BranchEval` | **0 (Instant)** | Evaluates condition code.<br/>- **Taken**: sets `current_steps = &STEPS_BRANCH_TAKEN`, `micro_step = 0`. *(Total: 10 clocks)*<br/>- **Not Taken**: sets `current_steps = &STEPS_BRANCH_NOT_TAKEN_SHORT`, `micro_step = 0`. *(Total: 8 clocks)* |
 | **1 (Taken)** | `BusReadTargetOpcode` | 4 (2 CCKs) | **Refill 1:** Reads target opcode from `ea_addr` into `scratch_prefetch`. |
 | **2 (Taken)** | `PrefetchTargetAndRetire` | 4 (2 CCKs) | **Refill 2:** Reads `ea_addr + 2`. Sets `IR = scratch_prefetch`, `prefetch[0] = last_read`, `PC = ea_addr + 4`, and retires! *(Total: 10 clocks)* |
 | **3 (Not Taken)** | `PrefetchNextOpcodeAndRetire` | 4 (2 CCKs) | Performs standard sequential prefetch from `PC`, advancing to next instruction. Retires! *(Total: 8 clocks)* |
@@ -765,7 +750,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 
 | Step | Action | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `BranchEval` | **0 (Instant)** | Evaluates `Z == 1`.<br/>- **Taken**: sets `internal_clocks = 2`, `ea_addr = base_pc + disp16`. Advances to **Step 1**.<br/>- **Not Taken**: sets `internal_clocks = 4`. Skips to **Step 4**. |
+| **0** | `BranchEval` | **0 (Instant)** | Evaluates condition code.<br/>- **Taken**: sets `current_steps = &STEPS_BRANCH_TAKEN`, `micro_step = 0`. *(Total: 10 clocks)*<br/>- **Not Taken**: sets `current_steps = &STEPS_BRANCH_NOT_TAKEN_WORD`, `micro_step = 0`. *(Total: 12 clocks)* |
 | **1 (Taken)** | `BusReadTargetOpcode` | 4 (2 CCKs) | **Refill 1:** Reads target opcode from `ea_addr`. |
 | **2 (Taken)** | `PrefetchTargetAndRetire` | 4 (2 CCKs) | **Refill 2:** Reads `ea_addr + 2`. Loads new `IR`, sets `PC = ea_addr + 4`, retires! *(Total: 10 clocks)* |
 | **4 (Not Taken)** | `FetchExtension` | 4 (2 CCKs) | Bus read to skip over displacement extension word in memory stream. |
@@ -778,13 +763,13 @@ The table below catalogs representative micro-step sequences for each fundamenta
 #### Archetype: `DIVU.W (A0), D0` (Opcode `$80D0`)
 - **Total Duration**: Variable: 108 to 140 CPU clocks.
 - **Result Writing**: Register destination (`D0`). Sets quotient and remainder. Zero memory writes.
-- **Prefetch**: Reads divisor word, waits internal division delay (`internal_clocks`), then completes sequential opcode prefetch.
+- **Prefetch**: Reads divisor word, waits internal division delay (`clocks_remaining`), then completes sequential opcode prefetch.
 
 | Step | Action | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
 | **0** | `BusReadWord` | 4 (2 CCKs) | Reads 16-bit divisor from memory at `(A0)`. Latches into `last_read`. |
-| **1** | `Alu` | **0 (Instant)** | Calls `alu_divu_w(&mut state, 0, 0)`. Divides `D0` by `last_read`. Sets CCR flags. Sets quotient & remainder in `D0`. Sets `state.micro.internal_clocks = 76 + quot_ones * 2`. Advances to Step 2. |
-| **2** | `PrefetchNextOpcodeAndRetire` | 4 (2 CCKs) | Sits in idle bus countdown for `internal_clocks` (freeing Chip RAM for Blitter/Copper). Once `internal_clocks == 0`, completes opcode prefetch from `PC` and retires! |
+| **1** | `Alu` | **0 (Instant)** | Calls `alu_divu_w(&mut state, 0, 0)`. Divides `D0` by `last_read`. Sets CCR flags. Sets quotient & remainder in `D0`. Sets `state.micro.clocks_remaining = 76 + quot_ones * 2`. Advances to Step 2. |
+| **2** | `PrefetchNextOpcodeAndRetire` | 4 (2 CCKs) | Sits in idle bus countdown for `clocks_remaining` (freeing Chip RAM for Blitter/Copper). Once `clocks_remaining == 0`, completes opcode prefetch from `PC` and retires! |
 
 ---
 

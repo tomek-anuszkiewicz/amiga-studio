@@ -98,17 +98,7 @@ impl Cpu {
         // Every active CCK phase step advances global and instruction clocks by 2 CPU clocks (1 CCK)
         self.advance_clocks(2);
 
-        // 1. If internal execution clocks remain (e.g. multi-cycle shift/div or TRAP):
-        if self.state.micro.internal_clocks > 0 {
-            self.state.micro.internal_clocks = self.state.micro.internal_clocks.saturating_sub(2);
-            if self.state.micro.internal_clocks == 0 {
-                self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-                self.state.micro.clocks_remaining = -1;
-            }
-            return false;
-        }
-
-        // 2. Check if current instruction uses static micro-steps:
+        // 1. Check if current instruction uses static micro-steps:
         if self.state.micro.micro_step == 0 && self.state.micro.current_steps.is_empty() {
             self.state.instruction_pc = self.state.pc.wrapping_sub(4);
             self.initiate_current_instruction();
@@ -341,8 +331,9 @@ impl Cpu {
         while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
             let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
 
-            // 1. If entering this micro-step for the first time, execute alu_fn and determine initial clocks
+            // 1. If entering this micro-step for the first time, initialize clocks and execute alu_fn:
             if self.state.micro.clocks_remaining < 0 {
+                self.state.micro.clocks_remaining = step.base_clocks as i16;
                 let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
                 if let Some(alu) = step.alu_fn {
                     let reg_src = self.state.micro.reg_src;
@@ -356,16 +347,6 @@ impl Cpu {
                     self.state.micro.clocks_remaining = -1;
                     continue;
                 }
-
-                let clocks = if self.state.micro.internal_clocks > 0 {
-                    let c = self.state.micro.internal_clocks;
-                    self.state.micro.internal_clocks = 0;
-                    c as i16
-                } else {
-                    step.base_clocks as i16
-                };
-
-                self.state.micro.clocks_remaining = clocks;
             }
 
             // 2. If instantaneous step (0 clocks, e.g. pure ALU setup):
@@ -460,12 +441,6 @@ impl Cpu {
     #[inline]
     pub fn recorded_transactions(&self) -> Option<&[crate::micro::RecordedTransaction]> {
         self.state.micro.transaction_log.as_deref()
-    }
-
-    /// Records an internal CPU operation duration and schedules internal execution clocks
-    #[inline]
-    pub fn record_internal_clocks(&mut self, clocks: u16) {
-        self.state.micro.record_internal_clocks(clocks);
     }
 
     /// Records an internal CPU operation duration into the transaction log without scheduling clocks

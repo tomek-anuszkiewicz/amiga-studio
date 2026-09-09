@@ -17,8 +17,6 @@ pub struct CpuMicroState {
     /// Instruction Register Capture prefetch latch (68000 IRC)
     #[serde(default)]
     pub irc: u16,
-    /// Internal execution CPU clocks remaining (non-bus micro-operations)
-    pub internal_clocks: u16,
     /// Step index within the current instruction's micro-operation sequence
     pub micro_step: u16,
     /// Intermediate high-word buffer for 32-bit address/immediate assembly
@@ -95,7 +93,6 @@ impl CpuMicroState {
         Self {
             phase: CckPhase::Cck1,
             irc: 0,
-            internal_clocks: 0,
             micro_step: 0,
             ea_high: 0,
             movem_mask: 0,
@@ -122,7 +119,6 @@ impl CpuMicroState {
     pub fn reset(&mut self) {
         self.phase = CckPhase::Cck1;
         self.irc = 0;
-        self.internal_clocks = 0;
         self.micro_step = 0;
         self.ea_high = 0;
         self.movem_mask = 0;
@@ -162,17 +158,6 @@ impl CpuMicroState {
             self.transaction_log = Some(Vec::new());
         } else {
             self.transaction_log = None;
-        }
-    }
-
-    /// Records an internal CPU operation (no bus transaction)
-    #[inline]
-    pub fn record_internal_clocks(&mut self, clocks: u16) {
-        self.internal_clocks = clocks;
-        if let Some(ref mut log) = self.transaction_log {
-            log.push(RecordedTransaction::Internal {
-                duration: clocks as u32,
-            });
         }
     }
 
