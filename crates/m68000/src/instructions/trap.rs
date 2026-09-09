@@ -48,5 +48,5 @@ pub static STEPS_TRAP: [MicroStep; 17] = [
     common::READ_TARGET_OPCODE_FINISH,
     common::ALU_INTERNAL_2CLK,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];

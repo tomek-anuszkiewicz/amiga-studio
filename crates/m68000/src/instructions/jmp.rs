@@ -8,15 +8,11 @@ use crate::micro::types::MicroStep;
 
 /// JMP (An): 8 CPU clocks / 4 CCKs
 pub static STEPS_JMP_AI: [MicroStep; 5] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(crate::micro::ea::ea_calc_src_ai),
-        base_clocks: 0,
-    },
+    MicroStep::alu(crate::micro::ea::ea_calc_src_ai),
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JMP (d16, An): 10 CPU clocks / 5 CCKs
@@ -29,20 +25,20 @@ pub static STEPS_JMP_D16_AN: [MicroStep; 5] = [
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JMP (d8, An, Xn): 14 CPU clocks / 7 CCKs
 pub static STEPS_JMP_IDX_AN: [MicroStep; 5] = [
     MicroStep {
         step_fn: None,
-        alu_fn: Some(crate::micro::ea::ea_calc_src_idx_an_pure),
+        alu_fn: Some(crate::micro::ea::ea_calc_src_idx_an),
         base_clocks: 6,
     },
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JMP (xxx).W: 10 CPU clocks / 5 CCKs
@@ -55,27 +51,19 @@ pub static STEPS_JMP_ABSW: [MicroStep; 5] = [
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JMP (xxx).L: 12 CPU clocks / 6 CCKs
 pub static STEPS_JMP_ABSL: [MicroStep; 8] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
-        base_clocks: 0,
-    },
+    MicroStep::alu(crate::micro::ea::ea_calc_absl_hi),
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(crate::micro::ea::ea_calc_absl_lo),
-        base_clocks: 0,
-    },
+    MicroStep::alu(crate::micro::ea::ea_calc_absl_lo),
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JMP (d16, PC): 10 CPU clocks / 5 CCKs
@@ -88,20 +76,20 @@ pub static STEPS_JMP_D16_PC: [MicroStep; 5] = [
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JMP (d8, PC, Xn): 14 CPU clocks / 7 CCKs
 pub static STEPS_JMP_IDX_PC: [MicroStep; 5] = [
     MicroStep {
         step_fn: None,
-        alu_fn: Some(crate::micro::ea::ea_calc_idx_pc_pure),
+        alu_fn: Some(crate::micro::ea::ea_calc_idx_pc),
         base_clocks: 6,
     },
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// Compile-time opcode decoder for JMP ($4ED0..=$4EFF)

@@ -128,7 +128,7 @@ pub static STEPS_ADDA_W_PD_AN: [MicroStep; 4] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADDA_W_D16_AN: [MicroStep; 6] = [
+pub static STEPS_ADDA_W_D16_AN_AN: [MicroStep; 6] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -144,7 +144,7 @@ pub static STEPS_ADDA_W_D16_AN: [MicroStep; 6] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADDA_W_IDX_AN: [MicroStep; 7] = [
+pub static STEPS_ADDA_W_IDX_AN_AN: [MicroStep; 7] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -199,7 +199,7 @@ pub static STEPS_ADDA_W_ABSL_AN: [MicroStep; 8] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADDA_W_PCD16_AN: [MicroStep; 6] = [
+pub static STEPS_ADDA_W_D16_PC_AN: [MicroStep; 6] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -215,7 +215,7 @@ pub static STEPS_ADDA_W_PCD16_AN: [MicroStep; 6] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADDA_W_PCIDX_AN: [MicroStep; 7] = [
+pub static STEPS_ADDA_W_IDX_PC_AN: [MicroStep; 7] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -318,7 +318,7 @@ pub static STEPS_ADDA_L_PD_AN: [MicroStep; 6] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADDA_L_D16_AN: [MicroStep; 8] = [
+pub static STEPS_ADDA_L_D16_AN_AN: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -336,7 +336,7 @@ pub static STEPS_ADDA_L_D16_AN: [MicroStep; 8] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADDA_L_IDX_AN: [MicroStep; 9] = [
+pub static STEPS_ADDA_L_IDX_AN_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -397,7 +397,7 @@ pub static STEPS_ADDA_L_ABSL_AN: [MicroStep; 10] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADDA_L_PCD16_AN: [MicroStep; 8] = [
+pub static STEPS_ADDA_L_D16_PC_AN: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -415,7 +415,7 @@ pub static STEPS_ADDA_L_PCD16_AN: [MicroStep; 8] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADDA_L_PCIDX_AN: [MicroStep; 9] = [
+pub static STEPS_ADDA_L_IDX_PC_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -469,13 +469,13 @@ pub const fn decode_adda_steps(is_long: bool, mode: u8, reg: u8) -> Option<&'sta
             2 => Some(&STEPS_ADDA_W_AI_AN),
             3 => Some(&STEPS_ADDA_W_PI_AN),
             4 => Some(&STEPS_ADDA_W_PD_AN),
-            5 => Some(&STEPS_ADDA_W_D16_AN),
-            6 => Some(&STEPS_ADDA_W_IDX_AN),
+            5 => Some(&STEPS_ADDA_W_D16_AN_AN),
+            6 => Some(&STEPS_ADDA_W_IDX_AN_AN),
             7 => match reg {
                 0 => Some(&STEPS_ADDA_W_ABSW_AN),
                 1 => Some(&STEPS_ADDA_W_ABSL_AN),
-                2 => Some(&STEPS_ADDA_W_PCD16_AN),
-                3 => Some(&STEPS_ADDA_W_PCIDX_AN),
+                2 => Some(&STEPS_ADDA_W_D16_PC_AN),
+                3 => Some(&STEPS_ADDA_W_IDX_PC_AN),
                 4 => Some(&STEPS_ADDA_W_IMM_AN),
                 _ => None,
             },
@@ -489,13 +489,13 @@ pub const fn decode_adda_steps(is_long: bool, mode: u8, reg: u8) -> Option<&'sta
             2 => Some(&STEPS_ADDA_L_AI_AN),
             3 => Some(&STEPS_ADDA_L_PI_AN),
             4 => Some(&STEPS_ADDA_L_PD_AN),
-            5 => Some(&STEPS_ADDA_L_D16_AN),
-            6 => Some(&STEPS_ADDA_L_IDX_AN),
+            5 => Some(&STEPS_ADDA_L_D16_AN_AN),
+            6 => Some(&STEPS_ADDA_L_IDX_AN_AN),
             7 => match reg {
                 0 => Some(&STEPS_ADDA_L_ABSW_AN),
                 1 => Some(&STEPS_ADDA_L_ABSL_AN),
-                2 => Some(&STEPS_ADDA_L_PCD16_AN),
-                3 => Some(&STEPS_ADDA_L_PCIDX_AN),
+                2 => Some(&STEPS_ADDA_L_D16_PC_AN),
+                3 => Some(&STEPS_ADDA_L_IDX_PC_AN),
                 4 => Some(&STEPS_ADDA_L_IMM_AN),
                 _ => None,
             },

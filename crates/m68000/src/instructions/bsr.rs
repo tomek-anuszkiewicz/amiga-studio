@@ -38,7 +38,7 @@ pub static STEPS_BSR_SHORT: [MicroStep; 9] = [
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// BSR.W (16-bit word displacement, 18 CPU clocks / 9 CCKs)
@@ -55,7 +55,7 @@ pub static STEPS_BSR_WORD: [MicroStep; 9] = [
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// Compile-time opcode decoder for BSR ($6100..=$61FF)

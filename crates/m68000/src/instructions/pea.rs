@@ -10,11 +10,7 @@ use crate::micro::types::MicroStep;
 
 /// PEA (An): 12 CPU clocks / 6 CCKs (1 read, 2 writes)
 pub static STEPS_PEA_AI: [MicroStep; 7] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(crate::micro::ea::ea_calc_pea_ai),
-        base_clocks: 0,
-    },
+    MicroStep::alu(crate::micro::ea::ea_calc_pea_ai),
     common::PREFETCH_IRC_READ,
     common::PREFETCH_IRC_FINISH,
     common::PUSH_STACK_HIGH_IDLE,

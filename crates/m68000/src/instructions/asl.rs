@@ -154,57 +154,33 @@ pub fn alu_asl_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_ASL_B_IMM: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(alu_asl_b_imm_dn),
-        base_clocks: 0,
-    },
+    MicroStep::alu(alu_asl_b_imm_dn),
     common::PREFETCH_NEXT_READ,
     common::PREFETCH_NEXT_RETIRE,
 ];
 pub static STEPS_ASL_W_IMM: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(alu_asl_w_imm_dn),
-        base_clocks: 0,
-    },
+    MicroStep::alu(alu_asl_w_imm_dn),
     common::PREFETCH_NEXT_READ,
     common::PREFETCH_NEXT_RETIRE,
 ];
 pub static STEPS_ASL_L_IMM: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(alu_asl_l_imm_dn),
-        base_clocks: 0,
-    },
+    MicroStep::alu(alu_asl_l_imm_dn),
     common::PREFETCH_NEXT_READ,
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_ASL_B_REG: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(alu_asl_b_reg_dn),
-        base_clocks: 0,
-    },
+    MicroStep::alu(alu_asl_b_reg_dn),
     common::PREFETCH_NEXT_READ,
     common::PREFETCH_NEXT_RETIRE,
 ];
 pub static STEPS_ASL_W_REG: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(alu_asl_w_reg_dn),
-        base_clocks: 0,
-    },
+    MicroStep::alu(alu_asl_w_reg_dn),
     common::PREFETCH_NEXT_READ,
     common::PREFETCH_NEXT_RETIRE,
 ];
 pub static STEPS_ASL_L_REG: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(alu_asl_l_reg_dn),
-        base_clocks: 0,
-    },
+    MicroStep::alu(alu_asl_l_reg_dn),
     common::PREFETCH_NEXT_READ,
     common::PREFETCH_NEXT_RETIRE,
 ];
@@ -261,7 +237,7 @@ pub static STEPS_ASL_W_PD: [MicroStep; 6] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_ASL_W_D16: [MicroStep; 8] = [
+pub static STEPS_ASL_W_D16_AN: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
@@ -279,7 +255,7 @@ pub static STEPS_ASL_W_D16: [MicroStep; 8] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_ASL_W_IDX: [MicroStep; 9] = [
+pub static STEPS_ASL_W_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
@@ -370,8 +346,8 @@ pub const fn decode_asl_mem_steps(mode: u8, reg: u8) -> Option<&'static [MicroSt
         2 => Some(&STEPS_ASL_W_AI),
         3 => Some(&STEPS_ASL_W_PI),
         4 => Some(&STEPS_ASL_W_PD),
-        5 => Some(&STEPS_ASL_W_D16),
-        6 => Some(&STEPS_ASL_W_IDX),
+        5 => Some(&STEPS_ASL_W_D16_AN),
+        6 => Some(&STEPS_ASL_W_IDX_AN),
         7 => match reg {
             0 => Some(&STEPS_ASL_W_ABSW),
             1 => Some(&STEPS_ASL_W_ABSL),

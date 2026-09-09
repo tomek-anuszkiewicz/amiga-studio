@@ -127,7 +127,7 @@ pub static STEPS_MOVEA_W_PD: [MicroStep; 5] = [
     common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEA_W_D16: [MicroStep; 6] = [
+pub static STEPS_MOVEA_W_D16_AN: [MicroStep; 6] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -144,7 +144,7 @@ pub static STEPS_MOVEA_W_D16: [MicroStep; 6] = [
     common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEA_W_IDX: [MicroStep; 7] = [
+pub static STEPS_MOVEA_W_IDX_AN: [MicroStep; 7] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -202,7 +202,7 @@ pub static STEPS_MOVEA_W_ABSL: [MicroStep; 8] = [
     common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEA_W_PCD16: [MicroStep; 6] = [
+pub static STEPS_MOVEA_W_D16_PC: [MicroStep; 6] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -219,7 +219,7 @@ pub static STEPS_MOVEA_W_PCD16: [MicroStep; 6] = [
     common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEA_W_PCIDX: [MicroStep; 7] = [
+pub static STEPS_MOVEA_W_IDX_PC: [MicroStep; 7] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -322,7 +322,7 @@ pub static STEPS_MOVEA_L_PD: [MicroStep; 7] = [
     common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEA_L_D16: [MicroStep; 8] = [
+pub static STEPS_MOVEA_L_D16_AN: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -341,7 +341,7 @@ pub static STEPS_MOVEA_L_D16: [MicroStep; 8] = [
     common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEA_L_IDX: [MicroStep; 9] = [
+pub static STEPS_MOVEA_L_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -405,7 +405,7 @@ pub static STEPS_MOVEA_L_ABSL: [MicroStep; 10] = [
     common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEA_L_PCD16: [MicroStep; 8] = [
+pub static STEPS_MOVEA_L_D16_PC: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -424,7 +424,7 @@ pub static STEPS_MOVEA_L_PCD16: [MicroStep; 8] = [
     common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEA_L_PCIDX: [MicroStep; 9] = [
+pub static STEPS_MOVEA_L_IDX_PC: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -478,13 +478,13 @@ pub const fn decode_movea_steps(is_long: bool, mode: u8, reg: u8) -> Option<&'st
             2 => Some(&STEPS_MOVEA_L_AI),
             3 => Some(&STEPS_MOVEA_L_PI),
             4 => Some(&STEPS_MOVEA_L_PD),
-            5 => Some(&STEPS_MOVEA_L_D16),
-            6 => Some(&STEPS_MOVEA_L_IDX),
+            5 => Some(&STEPS_MOVEA_L_D16_AN),
+            6 => Some(&STEPS_MOVEA_L_IDX_AN),
             7 => match reg {
                 0 => Some(&STEPS_MOVEA_L_ABSW),
                 1 => Some(&STEPS_MOVEA_L_ABSL),
-                2 => Some(&STEPS_MOVEA_L_PCD16),
-                3 => Some(&STEPS_MOVEA_L_PCIDX),
+                2 => Some(&STEPS_MOVEA_L_D16_PC),
+                3 => Some(&STEPS_MOVEA_L_IDX_PC),
                 4 => Some(&STEPS_MOVEA_L_IMM),
                 _ => None,
             },
@@ -497,13 +497,13 @@ pub const fn decode_movea_steps(is_long: bool, mode: u8, reg: u8) -> Option<&'st
             2 => Some(&STEPS_MOVEA_W_AI),
             3 => Some(&STEPS_MOVEA_W_PI),
             4 => Some(&STEPS_MOVEA_W_PD),
-            5 => Some(&STEPS_MOVEA_W_D16),
-            6 => Some(&STEPS_MOVEA_W_IDX),
+            5 => Some(&STEPS_MOVEA_W_D16_AN),
+            6 => Some(&STEPS_MOVEA_W_IDX_AN),
             7 => match reg {
                 0 => Some(&STEPS_MOVEA_W_ABSW),
                 1 => Some(&STEPS_MOVEA_W_ABSL),
-                2 => Some(&STEPS_MOVEA_W_PCD16),
-                3 => Some(&STEPS_MOVEA_W_PCIDX),
+                2 => Some(&STEPS_MOVEA_W_D16_PC),
+                3 => Some(&STEPS_MOVEA_W_IDX_PC),
                 4 => Some(&STEPS_MOVEA_W_IMM),
                 _ => None,
             },

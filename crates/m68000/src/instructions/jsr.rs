@@ -65,11 +65,7 @@ pub fn alu_jsr_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
 /// JSR (An): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
 pub static STEPS_JSR_AI: [MicroStep; 9] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(alu_jsr_ai),
-        base_clocks: 0,
-    },
+    MicroStep::alu(alu_jsr_ai),
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PUSH_STACK_HIGH_IDLE,
@@ -77,7 +73,7 @@ pub static STEPS_JSR_AI: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JSR (d16, An): 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
@@ -94,7 +90,7 @@ pub static STEPS_JSR_D16_AN: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JSR (d8, An, Xn): 22 CPU clocks / 11 CCKs (2 reads, 2 writes)
@@ -111,7 +107,7 @@ pub static STEPS_JSR_IDX_AN: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JSR (xxx).W: 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
@@ -128,23 +124,15 @@ pub static STEPS_JSR_ABSW: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JSR (xxx).L: 20 CPU clocks / 10 CCKs (3 reads, 2 writes)
 pub static STEPS_JSR_ABSL: [MicroStep; 12] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
-        base_clocks: 0,
-    },
+    MicroStep::alu(crate::micro::ea::ea_calc_absl_hi),
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(alu_jsr_absl_lo),
-        base_clocks: 0,
-    },
+    MicroStep::alu(alu_jsr_absl_lo),
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PUSH_STACK_HIGH_IDLE,
@@ -152,7 +140,7 @@ pub static STEPS_JSR_ABSL: [MicroStep; 12] = [
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JSR (d16, PC): 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
@@ -169,7 +157,7 @@ pub static STEPS_JSR_D16_PC: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// JSR (d8, PC, Xn): 22 CPU clocks / 11 CCKs (2 reads, 2 writes)
@@ -186,7 +174,7 @@ pub static STEPS_JSR_IDX_PC: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// Compile-time opcode decoder for JSR ($4E90..=$4EBF)

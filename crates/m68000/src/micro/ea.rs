@@ -241,22 +241,6 @@ pub fn ea_calc_dst_idx_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 // ============================================================================
-// Control Addressing Helpers
-// ============================================================================
-
-/// Address Register Indirect with Index helper
-#[inline(always)]
-pub fn ea_calc_src_idx_an_pure(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    ea_calc_src_idx_an(state, reg_src, reg_dst);
-}
-
-/// PC Indirect with Index helper
-#[inline(always)]
-pub fn ea_calc_idx_pc_pure(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    ea_calc_idx_pc(state, reg_src, reg_dst);
-}
-
-// ============================================================================
 // PEA (Push Effective Address) Helpers (destination = EA)
 // ============================================================================
 
@@ -343,7 +327,7 @@ pub fn latch_src_lo_and_read_src_hi(state: &mut CpuState, reg_src: u8, _reg_dst:
 
 /// Prepares destination -(Ax) split predecrement
 #[inline(always)]
-pub fn calc_dst_pd_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+pub fn ea_calc_dst_pd_l_split(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let ax = state.read_a(reg_dst as usize);
     let low_addr = ax.wrapping_sub(2);
     state.write_a(reg_dst as usize, low_addr);

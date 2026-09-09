@@ -31,7 +31,7 @@ pub static STEPS_BRA_SHORT: [MicroStep; 5] = [
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// BRA.W (16-bit word displacement, 10 CPU clocks / 5 CCKs)
@@ -44,7 +44,7 @@ pub static STEPS_BRA_WORD: [MicroStep; 5] = [
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// Compile-time opcode decoder for BRA ($6000..=$60FF)

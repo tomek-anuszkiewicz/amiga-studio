@@ -31,16 +31,11 @@ const FETCH_MASK_READ: MicroStep = MicroStep {
 };
 const FETCH_MASK_FINISH: MicroStep = common::FETCH_EXT_FINISH;
 
-const FETCH_EXT_READ: MicroStep = common::FETCH_EXT_READ;
-const FETCH_EXT_FINISH: MicroStep = common::FETCH_EXT_FINISH;
-
 const MOVEM_TRANSFER: MicroStep = MicroStep {
     step_fn: Some(crate::instructions::movem::execute_movem_transfer),
     alu_fn: None,
     base_clocks: 0,
 };
-const PREFETCH_RETIRE_READ: MicroStep = common::PREFETCH_NEXT_READ;
-const PREFETCH_RETIRE_FINISH: MicroStep = common::PREFETCH_NEXT_RETIRE;
 
 // ============================================================================
 // Static Step Slices: MOVEM
@@ -51,8 +46,8 @@ pub static STEPS_MOVEM_AI: [MicroStep; 6] = [
     FETCH_MASK_FINISH,
     MicroStep::alu(ea::ea_calc_src_ai),
     MOVEM_TRANSFER,
-    PREFETCH_RETIRE_READ,
-    PREFETCH_RETIRE_FINISH,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEM_PI: [MicroStep; 6] = [
@@ -60,8 +55,8 @@ pub static STEPS_MOVEM_PI: [MicroStep; 6] = [
     FETCH_MASK_FINISH,
     MicroStep::alu(ea::ea_calc_src_ai),
     MOVEM_TRANSFER,
-    PREFETCH_RETIRE_READ,
-    PREFETCH_RETIRE_FINISH,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEM_PD: [MicroStep; 6] = [
@@ -69,11 +64,11 @@ pub static STEPS_MOVEM_PD: [MicroStep; 6] = [
     FETCH_MASK_FINISH,
     MicroStep::alu(ea::ea_calc_src_ai),
     MOVEM_TRANSFER,
-    PREFETCH_RETIRE_READ,
-    PREFETCH_RETIRE_FINISH,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEM_D16: [MicroStep; 7] = [
+pub static STEPS_MOVEM_D16_AN: [MicroStep; 7] = [
     FETCH_MASK_READ,
     FETCH_MASK_FINISH,
     MicroStep {
@@ -81,13 +76,13 @@ pub static STEPS_MOVEM_D16: [MicroStep; 7] = [
         alu_fn: Some(ea::ea_calc_src_d16_an),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
+    common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
-    PREFETCH_RETIRE_READ,
-    PREFETCH_RETIRE_FINISH,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEM_IDX: [MicroStep; 8] = [
+pub static STEPS_MOVEM_IDX_AN: [MicroStep; 8] = [
     FETCH_MASK_READ,
     FETCH_MASK_FINISH,
     MicroStep {
@@ -95,11 +90,11 @@ pub static STEPS_MOVEM_IDX: [MicroStep; 8] = [
         alu_fn: Some(ea::ea_calc_src_idx_an),
         base_clocks: 2,
     },
-    FETCH_EXT_READ,
-    FETCH_EXT_FINISH,
+    common::FETCH_EXT_READ,
+    common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
-    PREFETCH_RETIRE_READ,
-    PREFETCH_RETIRE_FINISH,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEM_ABSW: [MicroStep; 7] = [
@@ -110,10 +105,10 @@ pub static STEPS_MOVEM_ABSW: [MicroStep; 7] = [
         alu_fn: Some(ea::ea_calc_absw),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
+    common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
-    PREFETCH_RETIRE_READ,
-    PREFETCH_RETIRE_FINISH,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEM_ABSL: [MicroStep; 9] = [
@@ -124,19 +119,19 @@ pub static STEPS_MOVEM_ABSL: [MicroStep; 9] = [
         alu_fn: Some(ea::ea_calc_absl_hi),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
+    common::FETCH_EXT_FINISH,
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
+    common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
-    PREFETCH_RETIRE_READ,
-    PREFETCH_RETIRE_FINISH,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEM_PCD16: [MicroStep; 7] = [
+pub static STEPS_MOVEM_D16_PC: [MicroStep; 7] = [
     FETCH_MASK_READ,
     FETCH_MASK_FINISH,
     MicroStep {
@@ -144,13 +139,13 @@ pub static STEPS_MOVEM_PCD16: [MicroStep; 7] = [
         alu_fn: Some(ea::ea_calc_d16_pc),
         base_clocks: 2,
     },
-    FETCH_EXT_FINISH,
+    common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
-    PREFETCH_RETIRE_READ,
-    PREFETCH_RETIRE_FINISH,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_MOVEM_PCIDX: [MicroStep; 8] = [
+pub static STEPS_MOVEM_IDX_PC: [MicroStep; 8] = [
     FETCH_MASK_READ,
     FETCH_MASK_FINISH,
     MicroStep {
@@ -158,11 +153,11 @@ pub static STEPS_MOVEM_PCIDX: [MicroStep; 8] = [
         alu_fn: Some(ea::ea_calc_idx_pc),
         base_clocks: 2,
     },
-    FETCH_EXT_READ,
-    FETCH_EXT_FINISH,
+    common::FETCH_EXT_READ,
+    common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
-    PREFETCH_RETIRE_READ,
-    PREFETCH_RETIRE_FINISH,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
 // ============================================================================
@@ -179,8 +174,8 @@ pub const fn decode_movem_steps(
         match mode {
             2 => Some(&STEPS_MOVEM_AI),
             4 => Some(&STEPS_MOVEM_PD),
-            5 => Some(&STEPS_MOVEM_D16),
-            6 => Some(&STEPS_MOVEM_IDX),
+            5 => Some(&STEPS_MOVEM_D16_AN),
+            6 => Some(&STEPS_MOVEM_IDX_AN),
             7 => match reg {
                 0 => Some(&STEPS_MOVEM_ABSW),
                 1 => Some(&STEPS_MOVEM_ABSL),
@@ -192,13 +187,13 @@ pub const fn decode_movem_steps(
         match mode {
             2 => Some(&STEPS_MOVEM_AI),
             3 => Some(&STEPS_MOVEM_PI),
-            5 => Some(&STEPS_MOVEM_D16),
-            6 => Some(&STEPS_MOVEM_IDX),
+            5 => Some(&STEPS_MOVEM_D16_AN),
+            6 => Some(&STEPS_MOVEM_IDX_AN),
             7 => match reg {
                 0 => Some(&STEPS_MOVEM_ABSW),
                 1 => Some(&STEPS_MOVEM_ABSL),
-                2 => Some(&STEPS_MOVEM_PCD16),
-                3 => Some(&STEPS_MOVEM_PCIDX),
+                2 => Some(&STEPS_MOVEM_D16_PC),
+                3 => Some(&STEPS_MOVEM_IDX_PC),
                 _ => None,
             },
             _ => None,

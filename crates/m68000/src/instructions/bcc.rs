@@ -17,7 +17,7 @@ pub static STEPS_BRANCH_TAKEN: [MicroStep; 5] = [
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 /// Untaken short branch execution steps (8 CPU clocks / 4 CCKs)
@@ -51,7 +51,7 @@ pub static STEPS_BRANCH_NOT_TAKEN_WORD: [MicroStep; 6] = [
     common::READ_TARGET_OPCODE_READ,
     common::READ_TARGET_OPCODE_FINISH,
     common::PREFETCH_TARGET_READ,
-    common::PREFETCH_TARGET_RETIRE_2CLK,
+    common::PREFETCH_TARGET_FINISH,
 ];
 
 #[inline(always)]
@@ -84,18 +84,10 @@ pub fn alu_bcc_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 /// Bcc.S condition evaluation step
-pub static STEPS_BCC_SHORT: [MicroStep; 1] = [MicroStep {
-    step_fn: None,
-    alu_fn: Some(alu_bcc_short),
-    base_clocks: 0,
-}];
+pub static STEPS_BCC_SHORT: [MicroStep; 1] = [MicroStep::alu(alu_bcc_short)];
 
 /// Bcc.W condition evaluation step
-pub static STEPS_BCC_WORD: [MicroStep; 1] = [MicroStep {
-    step_fn: None,
-    alu_fn: Some(alu_bcc_word),
-    base_clocks: 0,
-}];
+pub static STEPS_BCC_WORD: [MicroStep; 1] = [MicroStep::alu(alu_bcc_word)];
 
 /// Compile-time opcode decoder for Bcc ($6200..=$6FFF)
 pub const fn decode_bcc_steps(d8: u8) -> &'static [MicroStep] {

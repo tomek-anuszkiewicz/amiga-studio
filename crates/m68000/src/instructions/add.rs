@@ -200,7 +200,7 @@ pub static STEPS_ADD_B_PD_DN: [MicroStep; 4] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_B_D16_DN: [MicroStep; 6] = [
+pub static STEPS_ADD_B_D16_AN_DN: [MicroStep; 6] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -216,7 +216,7 @@ pub static STEPS_ADD_B_D16_DN: [MicroStep; 6] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_B_IDX_DN: [MicroStep; 7] = [
+pub static STEPS_ADD_B_IDX_AN_DN: [MicroStep; 7] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -271,7 +271,7 @@ pub static STEPS_ADD_B_ABSL_DN: [MicroStep; 8] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_B_PCD16_DN: [MicroStep; 6] = [
+pub static STEPS_ADD_B_D16_PC_DN: [MicroStep; 6] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -287,7 +287,7 @@ pub static STEPS_ADD_B_PCD16_DN: [MicroStep; 6] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_B_PCIDX_DN: [MicroStep; 7] = [
+pub static STEPS_ADD_B_IDX_PC_DN: [MicroStep; 7] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -374,7 +374,7 @@ pub static STEPS_ADD_W_PD_DN: [MicroStep; 4] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_W_D16_DN: [MicroStep; 6] = [
+pub static STEPS_ADD_W_D16_AN_DN: [MicroStep; 6] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -390,7 +390,7 @@ pub static STEPS_ADD_W_D16_DN: [MicroStep; 6] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_W_IDX_DN: [MicroStep; 7] = [
+pub static STEPS_ADD_W_IDX_AN_DN: [MicroStep; 7] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -445,7 +445,7 @@ pub static STEPS_ADD_W_ABSL_DN: [MicroStep; 8] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_W_PCD16_DN: [MicroStep; 6] = [
+pub static STEPS_ADD_W_D16_PC_DN: [MicroStep; 6] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -461,7 +461,7 @@ pub static STEPS_ADD_W_PCD16_DN: [MicroStep; 6] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_W_PCIDX_DN: [MicroStep; 7] = [
+pub static STEPS_ADD_W_IDX_PC_DN: [MicroStep; 7] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -564,7 +564,7 @@ pub static STEPS_ADD_L_PD_DN: [MicroStep; 6] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_L_D16_DN: [MicroStep; 8] = [
+pub static STEPS_ADD_L_D16_AN_DN: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -582,7 +582,7 @@ pub static STEPS_ADD_L_D16_DN: [MicroStep; 8] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_L_IDX_DN: [MicroStep; 9] = [
+pub static STEPS_ADD_L_IDX_AN_DN: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -643,7 +643,7 @@ pub static STEPS_ADD_L_ABSL_DN: [MicroStep; 10] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_L_PCD16_DN: [MicroStep; 8] = [
+pub static STEPS_ADD_L_D16_PC_DN: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -661,7 +661,7 @@ pub static STEPS_ADD_L_PCD16_DN: [MicroStep; 8] = [
     },
     common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ADD_L_PCIDX_DN: [MicroStep; 9] = [
+pub static STEPS_ADD_L_IDX_PC_DN: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -754,7 +754,7 @@ pub static STEPS_ADD_B_DN_PD: [MicroStep; 6] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
-pub static STEPS_ADD_B_DN_D16: [MicroStep; 8] = [
+pub static STEPS_ADD_B_DN_D16_AN: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
@@ -772,7 +772,7 @@ pub static STEPS_ADD_B_DN_D16: [MicroStep; 8] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
-pub static STEPS_ADD_B_DN_IDX: [MicroStep; 9] = [
+pub static STEPS_ADD_B_DN_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
@@ -883,7 +883,7 @@ pub static STEPS_ADD_W_DN_PD: [MicroStep; 6] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_ADD_W_DN_D16: [MicroStep; 8] = [
+pub static STEPS_ADD_W_DN_D16_AN: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
@@ -901,7 +901,7 @@ pub static STEPS_ADD_W_DN_D16: [MicroStep; 8] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_ADD_W_DN_IDX: [MicroStep; 9] = [
+pub static STEPS_ADD_W_DN_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
@@ -1024,7 +1024,7 @@ pub static STEPS_ADD_L_DN_PD: [MicroStep; 10] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW_RETIRE,
 ];
-pub static STEPS_ADD_L_DN_D16: [MicroStep; 12] = [
+pub static STEPS_ADD_L_DN_D16_AN: [MicroStep; 12] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
@@ -1046,7 +1046,7 @@ pub static STEPS_ADD_L_DN_D16: [MicroStep; 12] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_LOW_RETIRE,
 ];
-pub static STEPS_ADD_L_DN_IDX: [MicroStep; 13] = [
+pub static STEPS_ADD_L_DN_IDX_AN: [MicroStep; 13] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
@@ -1139,13 +1139,13 @@ pub const fn decode_add_steps(
                 2 => Some(&STEPS_ADD_B_AI_DN),
                 3 => Some(&STEPS_ADD_B_PI_DN),
                 4 => Some(&STEPS_ADD_B_PD_DN),
-                5 => Some(&STEPS_ADD_B_D16_DN),
-                6 => Some(&STEPS_ADD_B_IDX_DN),
+                5 => Some(&STEPS_ADD_B_D16_AN_DN),
+                6 => Some(&STEPS_ADD_B_IDX_AN_DN),
                 7 => match reg {
                     0 => Some(&STEPS_ADD_B_ABSW_DN),
                     1 => Some(&STEPS_ADD_B_ABSL_DN),
-                    2 => Some(&STEPS_ADD_B_PCD16_DN),
-                    3 => Some(&STEPS_ADD_B_PCIDX_DN),
+                    2 => Some(&STEPS_ADD_B_D16_PC_DN),
+                    3 => Some(&STEPS_ADD_B_IDX_PC_DN),
                     4 => Some(&STEPS_ADD_B_IMM_DN),
                     _ => None,
                 },
@@ -1157,13 +1157,13 @@ pub const fn decode_add_steps(
                 2 => Some(&STEPS_ADD_W_AI_DN),
                 3 => Some(&STEPS_ADD_W_PI_DN),
                 4 => Some(&STEPS_ADD_W_PD_DN),
-                5 => Some(&STEPS_ADD_W_D16_DN),
-                6 => Some(&STEPS_ADD_W_IDX_DN),
+                5 => Some(&STEPS_ADD_W_D16_AN_DN),
+                6 => Some(&STEPS_ADD_W_IDX_AN_DN),
                 7 => match reg {
                     0 => Some(&STEPS_ADD_W_ABSW_DN),
                     1 => Some(&STEPS_ADD_W_ABSL_DN),
-                    2 => Some(&STEPS_ADD_W_PCD16_DN),
-                    3 => Some(&STEPS_ADD_W_PCIDX_DN),
+                    2 => Some(&STEPS_ADD_W_D16_PC_DN),
+                    3 => Some(&STEPS_ADD_W_IDX_PC_DN),
                     4 => Some(&STEPS_ADD_W_IMM_DN),
                     _ => None,
                 },
@@ -1175,13 +1175,13 @@ pub const fn decode_add_steps(
                 2 => Some(&STEPS_ADD_L_AI_DN),
                 3 => Some(&STEPS_ADD_L_PI_DN),
                 4 => Some(&STEPS_ADD_L_PD_DN),
-                5 => Some(&STEPS_ADD_L_D16_DN),
-                6 => Some(&STEPS_ADD_L_IDX_DN),
+                5 => Some(&STEPS_ADD_L_D16_AN_DN),
+                6 => Some(&STEPS_ADD_L_IDX_AN_DN),
                 7 => match reg {
                     0 => Some(&STEPS_ADD_L_ABSW_DN),
                     1 => Some(&STEPS_ADD_L_ABSL_DN),
-                    2 => Some(&STEPS_ADD_L_PCD16_DN),
-                    3 => Some(&STEPS_ADD_L_PCIDX_DN),
+                    2 => Some(&STEPS_ADD_L_D16_PC_DN),
+                    3 => Some(&STEPS_ADD_L_IDX_PC_DN),
                     4 => Some(&STEPS_ADD_L_IMM_DN),
                     _ => None,
                 },
@@ -1196,8 +1196,8 @@ pub const fn decode_add_steps(
                 2 => Some(&STEPS_ADD_B_DN_AI),
                 3 => Some(&STEPS_ADD_B_DN_PI),
                 4 => Some(&STEPS_ADD_B_DN_PD),
-                5 => Some(&STEPS_ADD_B_DN_D16),
-                6 => Some(&STEPS_ADD_B_DN_IDX),
+                5 => Some(&STEPS_ADD_B_DN_D16_AN),
+                6 => Some(&STEPS_ADD_B_DN_IDX_AN),
                 7 => match reg {
                     0 => Some(&STEPS_ADD_B_DN_ABSW),
                     1 => Some(&STEPS_ADD_B_DN_ABSL),
@@ -1209,8 +1209,8 @@ pub const fn decode_add_steps(
                 2 => Some(&STEPS_ADD_W_DN_AI),
                 3 => Some(&STEPS_ADD_W_DN_PI),
                 4 => Some(&STEPS_ADD_W_DN_PD),
-                5 => Some(&STEPS_ADD_W_DN_D16),
-                6 => Some(&STEPS_ADD_W_DN_IDX),
+                5 => Some(&STEPS_ADD_W_DN_D16_AN),
+                6 => Some(&STEPS_ADD_W_DN_IDX_AN),
                 7 => match reg {
                     0 => Some(&STEPS_ADD_W_DN_ABSW),
                     1 => Some(&STEPS_ADD_W_DN_ABSL),
@@ -1222,8 +1222,8 @@ pub const fn decode_add_steps(
                 2 => Some(&STEPS_ADD_L_DN_AI),
                 3 => Some(&STEPS_ADD_L_DN_PI),
                 4 => Some(&STEPS_ADD_L_DN_PD),
-                5 => Some(&STEPS_ADD_L_DN_D16),
-                6 => Some(&STEPS_ADD_L_DN_IDX),
+                5 => Some(&STEPS_ADD_L_DN_D16_AN),
+                6 => Some(&STEPS_ADD_L_DN_IDX_AN),
                 7 => match reg {
                     0 => Some(&STEPS_ADD_L_DN_ABSW),
                     1 => Some(&STEPS_ADD_L_DN_ABSL),

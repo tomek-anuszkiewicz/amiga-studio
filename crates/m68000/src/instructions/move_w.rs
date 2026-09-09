@@ -120,7 +120,7 @@ pub static STEPS_MOVE_W_DN_PD: [MicroStep; 6] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_DN_D16: [MicroStep; 7] = [
+pub static STEPS_MOVE_W_DN_D16_AN: [MicroStep; 7] = [
     MicroStep::alu(alu_move_w_src_dn),
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
@@ -133,7 +133,7 @@ pub static STEPS_MOVE_W_DN_D16: [MicroStep; 7] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_DN_IDX: [MicroStep; 8] = [
+pub static STEPS_MOVE_W_DN_IDX_AN: [MicroStep; 8] = [
     MicroStep::alu(alu_move_w_src_dn),
     MicroStep {
         step_fn: None,
@@ -211,7 +211,7 @@ pub static STEPS_MOVE_W_AN_PD: [MicroStep; 6] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_AN_D16: [MicroStep; 7] = [
+pub static STEPS_MOVE_W_AN_D16_AN: [MicroStep; 7] = [
     MicroStep::alu(alu_move_w_src_an),
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
@@ -224,7 +224,7 @@ pub static STEPS_MOVE_W_AN_D16: [MicroStep; 7] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_AN_IDX: [MicroStep; 8] = [
+pub static STEPS_MOVE_W_AN_IDX_AN: [MicroStep; 8] = [
     MicroStep::alu(alu_move_w_src_an),
     MicroStep {
         step_fn: None,
@@ -326,7 +326,7 @@ pub static STEPS_MOVE_W_AI_PD: [MicroStep; 8] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_AI_D16: [MicroStep; 9] = [
+pub static STEPS_MOVE_W_AI_D16_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_ai),
@@ -345,7 +345,7 @@ pub static STEPS_MOVE_W_AI_D16: [MicroStep; 9] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_AI_IDX: [MicroStep; 10] = [
+pub static STEPS_MOVE_W_AI_IDX_AN: [MicroStep; 10] = [
     MicroStep {
         step_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_ai),
@@ -465,7 +465,7 @@ pub static STEPS_MOVE_W_PI_PD: [MicroStep; 8] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_PI_D16: [MicroStep; 9] = [
+pub static STEPS_MOVE_W_PI_D16_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
@@ -484,7 +484,7 @@ pub static STEPS_MOVE_W_PI_D16: [MicroStep; 9] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PI_IDX: [MicroStep; 10] = [
+pub static STEPS_MOVE_W_PI_IDX_AN: [MicroStep; 10] = [
     MicroStep {
         step_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
@@ -608,7 +608,7 @@ pub static STEPS_MOVE_W_PD_PD: [MicroStep; 9] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_PD_D16: [MicroStep; 10] = [
+pub static STEPS_MOVE_W_PD_D16_AN: [MicroStep; 10] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
@@ -628,7 +628,7 @@ pub static STEPS_MOVE_W_PD_D16: [MicroStep; 10] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PD_IDX: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_PD_IDX_AN: [MicroStep; 11] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
@@ -695,7 +695,7 @@ pub static STEPS_MOVE_W_PD_ABSL: [MicroStep; 12] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_D16_DN: [MicroStep; 6] = [
+pub static STEPS_MOVE_W_D16_AN_DN: [MicroStep; 6] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -711,7 +711,7 @@ pub static STEPS_MOVE_W_D16_DN: [MicroStep; 6] = [
     },
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_D16_AI: [MicroStep; 10] = [
+pub static STEPS_MOVE_W_D16_AN_AI: [MicroStep; 10] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -727,7 +727,7 @@ pub static STEPS_MOVE_W_D16_AI: [MicroStep; 10] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_D16_PI: [MicroStep; 10] = [
+pub static STEPS_MOVE_W_D16_AN_PI: [MicroStep; 10] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -743,7 +743,7 @@ pub static STEPS_MOVE_W_D16_PI: [MicroStep; 10] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_D16_PD: [MicroStep; 10] = [
+pub static STEPS_MOVE_W_D16_AN_PD: [MicroStep; 10] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -759,7 +759,7 @@ pub static STEPS_MOVE_W_D16_PD: [MicroStep; 10] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_D16_D16: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_D16_AN_D16_AN: [MicroStep; 11] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -780,7 +780,7 @@ pub static STEPS_MOVE_W_D16_D16: [MicroStep; 11] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_D16_IDX: [MicroStep; 12] = [
+pub static STEPS_MOVE_W_D16_AN_IDX_AN: [MicroStep; 12] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -802,7 +802,7 @@ pub static STEPS_MOVE_W_D16_IDX: [MicroStep; 12] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_D16_ABSW: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_D16_AN_ABSW: [MicroStep; 11] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -823,7 +823,7 @@ pub static STEPS_MOVE_W_D16_ABSW: [MicroStep; 11] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_D16_ABSL: [MicroStep; 13] = [
+pub static STEPS_MOVE_W_D16_AN_ABSL: [MicroStep; 13] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
@@ -850,7 +850,7 @@ pub static STEPS_MOVE_W_D16_ABSL: [MicroStep; 13] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_IDX_DN: [MicroStep; 7] = [
+pub static STEPS_MOVE_W_IDX_AN_DN: [MicroStep; 7] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -867,7 +867,7 @@ pub static STEPS_MOVE_W_IDX_DN: [MicroStep; 7] = [
     },
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_IDX_AI: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_IDX_AN_AI: [MicroStep; 11] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -884,7 +884,7 @@ pub static STEPS_MOVE_W_IDX_AI: [MicroStep; 11] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_IDX_PI: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_IDX_AN_PI: [MicroStep; 11] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -901,7 +901,7 @@ pub static STEPS_MOVE_W_IDX_PI: [MicroStep; 11] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_IDX_PD: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_IDX_AN_PD: [MicroStep; 11] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -918,7 +918,7 @@ pub static STEPS_MOVE_W_IDX_PD: [MicroStep; 11] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_IDX_D16: [MicroStep; 12] = [
+pub static STEPS_MOVE_W_IDX_AN_D16_AN: [MicroStep; 12] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -940,7 +940,7 @@ pub static STEPS_MOVE_W_IDX_D16: [MicroStep; 12] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_IDX_IDX: [MicroStep; 13] = [
+pub static STEPS_MOVE_W_IDX_AN_IDX_AN: [MicroStep; 13] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -963,7 +963,7 @@ pub static STEPS_MOVE_W_IDX_IDX: [MicroStep; 13] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_IDX_ABSW: [MicroStep; 12] = [
+pub static STEPS_MOVE_W_IDX_AN_ABSW: [MicroStep; 12] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -985,7 +985,7 @@ pub static STEPS_MOVE_W_IDX_ABSW: [MicroStep; 12] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_IDX_ABSL: [MicroStep; 14] = [
+pub static STEPS_MOVE_W_IDX_AN_ABSL: [MicroStep; 14] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
@@ -1077,7 +1077,7 @@ pub static STEPS_MOVE_W_ABSW_PD: [MicroStep; 10] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_ABSW_D16: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_ABSW_D16_AN: [MicroStep; 11] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
@@ -1098,7 +1098,7 @@ pub static STEPS_MOVE_W_ABSW_D16: [MicroStep; 11] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_ABSW_IDX: [MicroStep; 12] = [
+pub static STEPS_MOVE_W_ABSW_IDX_AN: [MicroStep; 12] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
@@ -1256,7 +1256,7 @@ pub static STEPS_MOVE_W_ABSL_PD: [MicroStep; 12] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_ABSL_D16: [MicroStep; 13] = [
+pub static STEPS_MOVE_W_ABSL_D16_AN: [MicroStep; 13] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
@@ -1283,7 +1283,7 @@ pub static STEPS_MOVE_W_ABSL_D16: [MicroStep; 13] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_ABSL_IDX: [MicroStep; 14] = [
+pub static STEPS_MOVE_W_ABSL_IDX_AN: [MicroStep; 14] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
@@ -1371,7 +1371,7 @@ pub static STEPS_MOVE_W_ABSL_ABSL: [MicroStep; 15] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCD16_DN: [MicroStep; 6] = [
+pub static STEPS_MOVE_W_D16_PC_DN: [MicroStep; 6] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -1387,7 +1387,7 @@ pub static STEPS_MOVE_W_PCD16_DN: [MicroStep; 6] = [
     },
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCD16_AI: [MicroStep; 10] = [
+pub static STEPS_MOVE_W_D16_PC_AI: [MicroStep; 10] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -1403,7 +1403,7 @@ pub static STEPS_MOVE_W_PCD16_AI: [MicroStep; 10] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCD16_PI: [MicroStep; 10] = [
+pub static STEPS_MOVE_W_D16_PC_PI: [MicroStep; 10] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -1419,7 +1419,7 @@ pub static STEPS_MOVE_W_PCD16_PI: [MicroStep; 10] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCD16_PD: [MicroStep; 10] = [
+pub static STEPS_MOVE_W_D16_PC_PD: [MicroStep; 10] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -1435,7 +1435,7 @@ pub static STEPS_MOVE_W_PCD16_PD: [MicroStep; 10] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCD16_D16: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_D16_PC_D16_AN: [MicroStep; 11] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -1456,7 +1456,7 @@ pub static STEPS_MOVE_W_PCD16_D16: [MicroStep; 11] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCD16_IDX: [MicroStep; 12] = [
+pub static STEPS_MOVE_W_D16_PC_IDX_AN: [MicroStep; 12] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -1478,7 +1478,7 @@ pub static STEPS_MOVE_W_PCD16_IDX: [MicroStep; 12] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCD16_ABSW: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_D16_PC_ABSW: [MicroStep; 11] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -1499,7 +1499,7 @@ pub static STEPS_MOVE_W_PCD16_ABSW: [MicroStep; 11] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCD16_ABSL: [MicroStep; 13] = [
+pub static STEPS_MOVE_W_D16_PC_ABSL: [MicroStep; 13] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
@@ -1526,7 +1526,7 @@ pub static STEPS_MOVE_W_PCD16_ABSL: [MicroStep; 13] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCIDX_DN: [MicroStep; 7] = [
+pub static STEPS_MOVE_W_IDX_PC_DN: [MicroStep; 7] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -1543,7 +1543,7 @@ pub static STEPS_MOVE_W_PCIDX_DN: [MicroStep; 7] = [
     },
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCIDX_AI: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_IDX_PC_AI: [MicroStep; 11] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -1560,7 +1560,7 @@ pub static STEPS_MOVE_W_PCIDX_AI: [MicroStep; 11] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCIDX_PI: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_IDX_PC_PI: [MicroStep; 11] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -1577,7 +1577,7 @@ pub static STEPS_MOVE_W_PCIDX_PI: [MicroStep; 11] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCIDX_PD: [MicroStep; 11] = [
+pub static STEPS_MOVE_W_IDX_PC_PD: [MicroStep; 11] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -1594,7 +1594,7 @@ pub static STEPS_MOVE_W_PCIDX_PD: [MicroStep; 11] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCIDX_D16: [MicroStep; 12] = [
+pub static STEPS_MOVE_W_IDX_PC_D16_AN: [MicroStep; 12] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -1616,7 +1616,7 @@ pub static STEPS_MOVE_W_PCIDX_D16: [MicroStep; 12] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCIDX_IDX: [MicroStep; 13] = [
+pub static STEPS_MOVE_W_IDX_PC_IDX_AN: [MicroStep; 13] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -1639,7 +1639,7 @@ pub static STEPS_MOVE_W_PCIDX_IDX: [MicroStep; 13] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCIDX_ABSW: [MicroStep; 12] = [
+pub static STEPS_MOVE_W_IDX_PC_ABSW: [MicroStep; 12] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -1661,7 +1661,7 @@ pub static STEPS_MOVE_W_PCIDX_ABSW: [MicroStep; 12] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_PCIDX_ABSL: [MicroStep; 14] = [
+pub static STEPS_MOVE_W_IDX_PC_ABSL: [MicroStep; 14] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
@@ -1738,7 +1738,7 @@ pub static STEPS_MOVE_W_IMM_PD: [MicroStep; 7] = [
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_MOVE_W_IMM_D16: [MicroStep; 8] = [
+pub static STEPS_MOVE_W_IMM_D16_AN: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(alu_move_w_src_imm),
@@ -1756,7 +1756,7 @@ pub static STEPS_MOVE_W_IMM_D16: [MicroStep; 8] = [
     PREFETCH_NEXT_READ,
     PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_MOVE_W_IMM_IDX: [MicroStep; 9] = [
+pub static STEPS_MOVE_W_IMM_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(alu_move_w_src_imm),
@@ -1828,8 +1828,8 @@ static MOVE_W_LOOKUP: [[&[MicroStep]; 8]; 12] = [
         &STEPS_MOVE_W_DN_AI,
         &STEPS_MOVE_W_DN_PI,
         &STEPS_MOVE_W_DN_PD,
-        &STEPS_MOVE_W_DN_D16,
-        &STEPS_MOVE_W_DN_IDX,
+        &STEPS_MOVE_W_DN_D16_AN,
+        &STEPS_MOVE_W_DN_IDX_AN,
         &STEPS_MOVE_W_DN_ABSW,
         &STEPS_MOVE_W_DN_ABSL,
     ],
@@ -1838,8 +1838,8 @@ static MOVE_W_LOOKUP: [[&[MicroStep]; 8]; 12] = [
         &STEPS_MOVE_W_AN_AI,
         &STEPS_MOVE_W_AN_PI,
         &STEPS_MOVE_W_AN_PD,
-        &STEPS_MOVE_W_AN_D16,
-        &STEPS_MOVE_W_AN_IDX,
+        &STEPS_MOVE_W_AN_D16_AN,
+        &STEPS_MOVE_W_AN_IDX_AN,
         &STEPS_MOVE_W_AN_ABSW,
         &STEPS_MOVE_W_AN_ABSL,
     ],
@@ -1848,8 +1848,8 @@ static MOVE_W_LOOKUP: [[&[MicroStep]; 8]; 12] = [
         &STEPS_MOVE_W_AI_AI,
         &STEPS_MOVE_W_AI_PI,
         &STEPS_MOVE_W_AI_PD,
-        &STEPS_MOVE_W_AI_D16,
-        &STEPS_MOVE_W_AI_IDX,
+        &STEPS_MOVE_W_AI_D16_AN,
+        &STEPS_MOVE_W_AI_IDX_AN,
         &STEPS_MOVE_W_AI_ABSW,
         &STEPS_MOVE_W_AI_ABSL,
     ],
@@ -1858,8 +1858,8 @@ static MOVE_W_LOOKUP: [[&[MicroStep]; 8]; 12] = [
         &STEPS_MOVE_W_PI_AI,
         &STEPS_MOVE_W_PI_PI,
         &STEPS_MOVE_W_PI_PD,
-        &STEPS_MOVE_W_PI_D16,
-        &STEPS_MOVE_W_PI_IDX,
+        &STEPS_MOVE_W_PI_D16_AN,
+        &STEPS_MOVE_W_PI_IDX_AN,
         &STEPS_MOVE_W_PI_ABSW,
         &STEPS_MOVE_W_PI_ABSL,
     ],
@@ -1868,38 +1868,38 @@ static MOVE_W_LOOKUP: [[&[MicroStep]; 8]; 12] = [
         &STEPS_MOVE_W_PD_AI,
         &STEPS_MOVE_W_PD_PI,
         &STEPS_MOVE_W_PD_PD,
-        &STEPS_MOVE_W_PD_D16,
-        &STEPS_MOVE_W_PD_IDX,
+        &STEPS_MOVE_W_PD_D16_AN,
+        &STEPS_MOVE_W_PD_IDX_AN,
         &STEPS_MOVE_W_PD_ABSW,
         &STEPS_MOVE_W_PD_ABSL,
     ],
     [
-        &STEPS_MOVE_W_D16_DN,
-        &STEPS_MOVE_W_D16_AI,
-        &STEPS_MOVE_W_D16_PI,
-        &STEPS_MOVE_W_D16_PD,
-        &STEPS_MOVE_W_D16_D16,
-        &STEPS_MOVE_W_D16_IDX,
-        &STEPS_MOVE_W_D16_ABSW,
-        &STEPS_MOVE_W_D16_ABSL,
+        &STEPS_MOVE_W_D16_AN_DN,
+        &STEPS_MOVE_W_D16_AN_AI,
+        &STEPS_MOVE_W_D16_AN_PI,
+        &STEPS_MOVE_W_D16_AN_PD,
+        &STEPS_MOVE_W_D16_AN_D16_AN,
+        &STEPS_MOVE_W_D16_AN_IDX_AN,
+        &STEPS_MOVE_W_D16_AN_ABSW,
+        &STEPS_MOVE_W_D16_AN_ABSL,
     ],
     [
-        &STEPS_MOVE_W_IDX_DN,
-        &STEPS_MOVE_W_IDX_AI,
-        &STEPS_MOVE_W_IDX_PI,
-        &STEPS_MOVE_W_IDX_PD,
-        &STEPS_MOVE_W_IDX_D16,
-        &STEPS_MOVE_W_IDX_IDX,
-        &STEPS_MOVE_W_IDX_ABSW,
-        &STEPS_MOVE_W_IDX_ABSL,
+        &STEPS_MOVE_W_IDX_AN_DN,
+        &STEPS_MOVE_W_IDX_AN_AI,
+        &STEPS_MOVE_W_IDX_AN_PI,
+        &STEPS_MOVE_W_IDX_AN_PD,
+        &STEPS_MOVE_W_IDX_AN_D16_AN,
+        &STEPS_MOVE_W_IDX_AN_IDX_AN,
+        &STEPS_MOVE_W_IDX_AN_ABSW,
+        &STEPS_MOVE_W_IDX_AN_ABSL,
     ],
     [
         &STEPS_MOVE_W_ABSW_DN,
         &STEPS_MOVE_W_ABSW_AI,
         &STEPS_MOVE_W_ABSW_PI,
         &STEPS_MOVE_W_ABSW_PD,
-        &STEPS_MOVE_W_ABSW_D16,
-        &STEPS_MOVE_W_ABSW_IDX,
+        &STEPS_MOVE_W_ABSW_D16_AN,
+        &STEPS_MOVE_W_ABSW_IDX_AN,
         &STEPS_MOVE_W_ABSW_ABSW,
         &STEPS_MOVE_W_ABSW_ABSL,
     ],
@@ -1908,38 +1908,38 @@ static MOVE_W_LOOKUP: [[&[MicroStep]; 8]; 12] = [
         &STEPS_MOVE_W_ABSL_AI,
         &STEPS_MOVE_W_ABSL_PI,
         &STEPS_MOVE_W_ABSL_PD,
-        &STEPS_MOVE_W_ABSL_D16,
-        &STEPS_MOVE_W_ABSL_IDX,
+        &STEPS_MOVE_W_ABSL_D16_AN,
+        &STEPS_MOVE_W_ABSL_IDX_AN,
         &STEPS_MOVE_W_ABSL_ABSW,
         &STEPS_MOVE_W_ABSL_ABSL,
     ],
     [
-        &STEPS_MOVE_W_PCD16_DN,
-        &STEPS_MOVE_W_PCD16_AI,
-        &STEPS_MOVE_W_PCD16_PI,
-        &STEPS_MOVE_W_PCD16_PD,
-        &STEPS_MOVE_W_PCD16_D16,
-        &STEPS_MOVE_W_PCD16_IDX,
-        &STEPS_MOVE_W_PCD16_ABSW,
-        &STEPS_MOVE_W_PCD16_ABSL,
+        &STEPS_MOVE_W_D16_PC_DN,
+        &STEPS_MOVE_W_D16_PC_AI,
+        &STEPS_MOVE_W_D16_PC_PI,
+        &STEPS_MOVE_W_D16_PC_PD,
+        &STEPS_MOVE_W_D16_PC_D16_AN,
+        &STEPS_MOVE_W_D16_PC_IDX_AN,
+        &STEPS_MOVE_W_D16_PC_ABSW,
+        &STEPS_MOVE_W_D16_PC_ABSL,
     ],
     [
-        &STEPS_MOVE_W_PCIDX_DN,
-        &STEPS_MOVE_W_PCIDX_AI,
-        &STEPS_MOVE_W_PCIDX_PI,
-        &STEPS_MOVE_W_PCIDX_PD,
-        &STEPS_MOVE_W_PCIDX_D16,
-        &STEPS_MOVE_W_PCIDX_IDX,
-        &STEPS_MOVE_W_PCIDX_ABSW,
-        &STEPS_MOVE_W_PCIDX_ABSL,
+        &STEPS_MOVE_W_IDX_PC_DN,
+        &STEPS_MOVE_W_IDX_PC_AI,
+        &STEPS_MOVE_W_IDX_PC_PI,
+        &STEPS_MOVE_W_IDX_PC_PD,
+        &STEPS_MOVE_W_IDX_PC_D16_AN,
+        &STEPS_MOVE_W_IDX_PC_IDX_AN,
+        &STEPS_MOVE_W_IDX_PC_ABSW,
+        &STEPS_MOVE_W_IDX_PC_ABSL,
     ],
     [
         &STEPS_MOVE_W_IMM_DN,
         &STEPS_MOVE_W_IMM_AI,
         &STEPS_MOVE_W_IMM_PI,
         &STEPS_MOVE_W_IMM_PD,
-        &STEPS_MOVE_W_IMM_D16,
-        &STEPS_MOVE_W_IMM_IDX,
+        &STEPS_MOVE_W_IMM_D16_AN,
+        &STEPS_MOVE_W_IMM_IDX_AN,
         &STEPS_MOVE_W_IMM_ABSW,
         &STEPS_MOVE_W_IMM_ABSL,
     ],

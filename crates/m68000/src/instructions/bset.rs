@@ -156,7 +156,7 @@ pub static STEPS_BSET_DYN_PD: [MicroStep; 7] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
-pub static STEPS_BSET_DYN_D16: [MicroStep; 8] = [
+pub static STEPS_BSET_DYN_D16_AN: [MicroStep; 8] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
@@ -174,7 +174,7 @@ pub static STEPS_BSET_DYN_D16: [MicroStep; 8] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
-pub static STEPS_BSET_DYN_IDX: [MicroStep; 9] = [
+pub static STEPS_BSET_DYN_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
@@ -323,7 +323,7 @@ pub static STEPS_BSET_STAT_PD: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
-pub static STEPS_BSET_STAT_D16: [MicroStep; 10] = [
+pub static STEPS_BSET_STAT_D16_AN: [MicroStep; 10] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm),
@@ -347,7 +347,7 @@ pub static STEPS_BSET_STAT_D16: [MicroStep; 10] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
-pub static STEPS_BSET_STAT_IDX: [MicroStep; 11] = [
+pub static STEPS_BSET_STAT_IDX_AN: [MicroStep; 11] = [
     MicroStep {
         step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm),
@@ -438,8 +438,8 @@ pub const fn decode_bset_dyn_steps(mode: u8, reg: u8) -> Option<&'static [MicroS
         2 => Some(&STEPS_BSET_DYN_AI),
         3 => Some(&STEPS_BSET_DYN_PI),
         4 => Some(&STEPS_BSET_DYN_PD),
-        5 => Some(&STEPS_BSET_DYN_D16),
-        6 => Some(&STEPS_BSET_DYN_IDX),
+        5 => Some(&STEPS_BSET_DYN_D16_AN),
+        6 => Some(&STEPS_BSET_DYN_IDX_AN),
         7 => match reg {
             0 => Some(&STEPS_BSET_DYN_ABSW),
             1 => Some(&STEPS_BSET_DYN_ABSL),
@@ -456,8 +456,8 @@ pub const fn decode_bset_stat_steps(mode: u8, reg: u8) -> Option<&'static [Micro
         2 => Some(&STEPS_BSET_STAT_AI),
         3 => Some(&STEPS_BSET_STAT_PI),
         4 => Some(&STEPS_BSET_STAT_PD),
-        5 => Some(&STEPS_BSET_STAT_D16),
-        6 => Some(&STEPS_BSET_STAT_IDX),
+        5 => Some(&STEPS_BSET_STAT_D16_AN),
+        6 => Some(&STEPS_BSET_STAT_IDX_AN),
         7 => match reg {
             0 => Some(&STEPS_BSET_STAT_ABSW),
             1 => Some(&STEPS_BSET_STAT_ABSL),

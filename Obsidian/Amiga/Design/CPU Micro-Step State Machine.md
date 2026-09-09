@@ -121,6 +121,45 @@ Embedded in `CpuState` to track sub-cycle progress across Color Clock phases wit
 - Exactly 65,536 `OpcodeDescriptor` entries mapping every 16-bit opcode word directly to its pre-compiled `&'static [MicroStep]` sequence and pre-decoded register indices (`reg_src`, `reg_dst`).
 - Requires **zero dynamic heap allocations** (`0` bytes allocated at runtime).
 
+### 2.6 Addressing Mode Naming Convention & Canonical Module Layout
+
+#### Canonical Addressing Mode Identifiers
+To maintain rigorous mechanical sympathy and consistency with the Motorola M68000 Programmer's Reference Manual, static micro-step array slices and effective address functions follow standardized addressing mode identifiers:
+
+| Suffix | M68000 Addressing Mode | Syntax | Hardware Semantics |
+| :--- | :--- | :--- | :--- |
+| `DN` | Data Register Direct | `Dn` | Operand resides directly in $D_0 \dots D_7$. |
+| `AN` | Address Register Direct | `An` | Operand resides directly in $A_0 \dots A_7$. |
+| `AI` | Address Register Indirect | `(An)` | Base pointer in $A_n$, zero displacement. |
+| `PI` | Address Register Indirect with Postincrement | `(An)+` | Access memory at $A_n$, post-advance $A_n$ by operand size. |
+| `PD` | Address Register Indirect with Predecrement | `-(An)` | Pre-decrement $A_n$ by operand size, access memory at updated $A_n$. |
+| `D16_AN` | Address Register Indirect with Displacement | `(d16, An)` | 16-bit signed displacement fetched from PC stream added to $A_n$. |
+| `IDX_AN` | Address Register Indirect with Index | `(d8, An, Xn)` | 8-bit signed displacement + index register ($D_n/A_n$) added to $A_n$. Consumes 2 clocks internal delay. |
+| `ABSW` | Absolute Short | `(xxx).W` | 16-bit sign-extended absolute memory address. |
+| `ABSL` | Absolute Long | `(xxx).L` | 32-bit absolute memory address fetched via 2 extension reads. |
+| `D16_PC` | Program Counter Indirect with Displacement | `(d16, PC)` | 16-bit signed displacement added to base PC. Program Space read ($FC_2/FC_6$). |
+| `IDX_PC` | Program Counter Indirect with Index | `(d8, PC, Xn)` | 8-bit signed displacement + index register added to base PC. Consumes 2 clocks internal delay. |
+| `IMM` | Immediate Data | `#<data>` | Operand embedded in instruction stream at PC. |
+
+Composite array names follow the strict convention `STEPS_<MNEMONIC>_<SIZE>_<SRC>_<DST>` (or `STEPS_<MNEMONIC>_<SRC>_<DST>` if size is inherent, and `STEPS_<MNEMONIC>_<MODE>` for single-operand instructions like `JMP` or `NOT`).
+
+#### Standardized Common Micro-Step Constants (`crates/m68000/src/micro/common.rs`)
+All instruction modules reuse shared atomic Color Clock micro-step primitives rather than duplicating local slice definitions:
+- **Operand Writes:** `WRITE_DST_BYTE`, `WRITE_DST_BYTE_RETIRE`, `WRITE_DST_WORD`, `WRITE_DST_WORD_RETIRE`, `WRITE_DST_LONG_HIGH`, `WRITE_DST_LONG_LOW`, `WRITE_DST_LONG_LOW_RETIRE`.
+- **Operand Reads:** `READ_SRC_BYTE`, `READ_BYTE_FINISH`, `READ_SRC_WORD`, `READ_WORD_FINISH`, `READ_SRC_LONG_HIGH`, `READ_SRC_LONG_LOW`.
+- **Prefetch & Extension:** `FETCH_EXT_READ`, `FETCH_EXT_FINISH`, `PREFETCH_IRC_READ`, `PREFETCH_IRC_FINISH`, `PREFETCH_NEXT_READ`, `PREFETCH_NEXT_RETIRE`.
+- **Control Flow Refills:** `READ_TARGET_OPCODE_READ`, `READ_TARGET_OPCODE_FINISH`, `PREFETCH_TARGET_READ`, `PREFETCH_TARGET_FINISH`.
+- **Stack Operations:** `PUSH_STACK_HIGH_IDLE`, `PUSH_STACK_HIGH_WRITE`, `PUSH_STACK_LOW_WRITE`, `PUSH_STACK_LOW_WRITE_RETIRE`, `POP_STACK_HIGH_READ`, `POP_STACK_HIGH_FINISH`, `POP_STACK_LOW_READ`, `POP_STACK_LOW_FINISH`.
+
+#### Canonical Layout for Instruction Modules
+To guarantee zero cognitive friction and seamless codebase navigation across all instruction files, every module adheres to the standard 6-section sequence:
+1. **Module Doc Comment:** High-level summary of mnemonic, addressing modes, and timing.
+2. **Imports:** Imports from `crate::micro::common::*`, `crate::core::*`, `crate::micro::ea`.
+3. **Leaf ALU Functions:** Inline arithmetic/logic helpers (`#[inline(always)] fn alu_...`) operating purely on `CpuState`.
+4. **Specialized Micro-Step Handlers:** Instruction-specific `StepFn` callbacks (if any required).
+5. **Static Micro-Step Arrays:** `pub static STEPS_...: [MicroStep; N] = [...]`, ordered strictly by canonical addressing mode progression (`DN`, `AN`, `AI`, `PI`, `PD`, `D16_AN`, `IDX_AN`, `ABSW`, `ABSL`, `D16_PC`, `IDX_PC`, `IMM`). All instantaneous internal steps use `MicroStep::alu(...)`.
+6. **Opcode Decoder:** Fast compile-time function `pub const fn decode_..._steps(...) -> Option<&'static [MicroStep]>`.
+
 ---
 
 ## 3. Parametric ALU Handlers: 8x Code Reduction
@@ -300,13 +339,13 @@ flowchart TD
     
     Eval -- "Taken" --> TakenPath["current_steps = &STEPS_BRANCH_TAKEN<br/>micro_step = 0"]
     TakenPath --> Refill1["Step 0: step_alu (2 clocks)<br/>Step 1-2: READ_TARGET_OPCODE (4 clocks)"]
-    Refill1 --> Refill2["Step 3-4: PREFETCH_TARGET_RETIRE (4 clocks)<br/>PC = target + 4<br/>Retire! (Total: 10 clocks)"]
+    Refill1 --> Refill2["Step 3-4: PREFETCH_TARGET_READ & FINISH (4 clocks)<br/>PC = target + 4<br/>Retire! (Total: 10 clocks)"]
     
     Eval -- "Not Taken (Short .B)" --> NotTakenB["current_steps = &STEPS_BRANCH_NOT_TAKEN_SHORT<br/>micro_step = 0"]
-    NotTakenB --> SeqRetire["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-3: PREFETCH_NEXT_RETIRE (4 clocks)<br/>Retire! (Total: 8 clocks)"]
+    NotTakenB --> SeqRetire["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-3: PREFETCH_NEXT_READ & RETIRE (4 clocks)<br/>Retire! (Total: 8 clocks)"]
     
     Eval -- "Not Taken (Word .W)" --> NotTakenW["current_steps = &STEPS_BRANCH_NOT_TAKEN_WORD<br/>micro_step = 0"]
-    NotTakenW --> SkipExt["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-5: PREFETCH_TARGET_RETIRE (8 clocks)<br/>Retire! (Total: 12 clocks)"]
+    NotTakenW --> SkipExt["Step 0-1: step_alu idle (4 clocks)<br/>Step 2-3: FETCH_EXT_READ & FINISH (4 clocks)<br/>Step 4-5: PREFETCH_NEXT_READ & RETIRE (4 clocks)<br/>Retire! (Total: 12 clocks)"]
 ```
 
 ---
@@ -824,7 +863,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 | **21** | `READ_TARGET_OPCODE_FINISH` | 2 (CCK2) | Latches handler opcode into `irc`. |
 | **22** | `ALU_INTERNAL_2CLK` | 2 (CCK1/2) | 2-clock internal hardware pipeline alignment delay. |
 | **23** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads second instruction word from `ea_addr + 2` into `prefetch[0]`. |
-| **24** | `PREFETCH_TARGET_RETIRE_2CLK` | 2 (CCK2) | Arms `target_refill = true`, latches `IR = irc`, sets `PC = ea_addr + 4`, retires exception! |
+| **24** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Arms `target_refill = true`, latches `IR = irc`, sets `PC = ea_addr + 4`, retires exception! |
 
 
 ---
