@@ -279,7 +279,7 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
-    // Phase 3: CMPM opcodes ($B000..=$BFFF, dir == 1, mode == 1)
+    // Phase 3: CMP, CMPA, CMPM, EOR opcodes ($B000..=$BFFF)
     let mut op = 0xB000usize;
     while op <= 0xBFFF {
         let ir = op as u16;
@@ -289,8 +289,17 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         let mode = ((ir >> 3) & 7) as u8;
         let reg = (ir & 7) as u8;
 
-        if size < 3 && dir == 1 {
-            if mode == 1 {
+        if size < 3 {
+            if dir == 0 {
+                // CMP <ea>, Dn
+                if let Some(steps) = crate::instructions::cmp::decode_cmp_steps(size, mode, reg) {
+                    table[op] = OpcodeDescriptor {
+                        steps,
+                        reg_src: reg,
+                        reg_dst: reg_d,
+                    };
+                }
+            } else if mode == 1 {
                 // CMPM (Ay)+, (Ax)+
                 if let Some(steps) = crate::instructions::cmpm::decode_cmpm_steps(size) {
                     table[op] = OpcodeDescriptor {
@@ -306,6 +315,16 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
                     steps,
                     reg_src: reg_d,
                     reg_dst: reg,
+                };
+            }
+        } else {
+            // CMPA.W (dir == 0) and CMPA.L (dir == 1)
+            let is_long = dir != 0;
+            if let Some(steps) = crate::instructions::cmpa::decode_cmpa_steps(is_long, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: reg,
+                    reg_dst: reg_d,
                 };
             }
         }
@@ -598,6 +617,44 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         let reg = (ir & 7) as u8;
         if size < 3 {
             if let Some(steps) = crate::instructions::eori::decode_eori_steps(size, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Phase 7: CMPI opcodes ($0C00..=$0CFF where size < 3)
+    let mut op = 0x0C00usize;
+    while op <= 0x0CFF {
+        let ir = op as u16;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+        if size < 3 {
+            if let Some(steps) = crate::instructions::cmpi::decode_cmpi_steps(size, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Phase 7: TST opcodes ($4A00..=$4AFF where size < 3)
+    let mut op = 0x4A00usize;
+    while op <= 0x4AFF {
+        let ir = op as u16;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+        if size < 3 {
+            if let Some(steps) = crate::instructions::tst::decode_tst_steps(size, mode, reg) {
                 table[op] = OpcodeDescriptor {
                     steps,
                     reg_src: 0,

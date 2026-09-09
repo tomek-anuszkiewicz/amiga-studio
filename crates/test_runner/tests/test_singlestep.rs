@@ -451,3 +451,47 @@ fn test_cmpm_l() {
         is_cmpm_postinc_opcode(t.initial.prefetch[0])
     });
 }
+
+#[test]
+fn test_cmp_b() {
+    run_dual_test("CMP.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_cmp_w() {
+    run_dual_test("CMP.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_cmp_l() {
+    run_dual_test("CMP.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_cmpa_w() {
+    run_dual_test("CMPA.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_cmpa_l() {
+    run_dual_test("CMPA.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+// ============================================================================
+// Test (TST Archetype)
+// ============================================================================
+
+#[test]
+fn test_tst_b() {
+    run_dual_test("TST.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_tst_w() {
+    run_dual_test("TST.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_tst_l() {
+    run_dual_test("TST.l", DEFAULT_SAMPLE_LIMIT);
+}

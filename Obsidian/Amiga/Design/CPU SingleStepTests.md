@@ -36,8 +36,8 @@ To ensure robust, ground-truth verification and eliminate single-source simulati
 ### 1.2 Opcode Packaging Quirk: CMP and CMPM
 In both the MAME and Tom Harte suites, there are **no separate `CMPM.b.json`, `CMPM.w.json`, or `CMPM.l.json` files**. Instead, all `CMPM (Ay)+, (Ax)+` test cases are bundled together inside `CMP.b.json`, `CMP.w.json`, and `CMP.l.json` alongside standard `CMP <ea>, Dn`.
 
-- The test runner provides [`is_cmpm_postinc_opcode`](crates/test_runner/src/runner.rs) (`(op & 0xF138) == 0xB108`) to isolate `CMPM` cases while only the `CMPM` archetype is active.
-- **Roadmap Reminder (Batch 1.3):** When standard `CMP`, `CMPA`, and `CMPI` are implemented, update/remove the `strip_prefix("CMPM.")` filter in [`crates/test_runner/tests/test_dma_cartesian.rs`](crates/test_runner/tests/test_dma_cartesian.rs) and introduce full `CMP` integration tests in [`crates/test_runner/tests/test_singlestep.rs`](crates/test_runner/tests/test_singlestep.rs) so the entire `CMP` vector suite is validated.
+- The test runner provides [`is_cmpm_postinc_opcode`](crates/test_runner/src/runner.rs) (`(op & 0xF138) == 0xB108`) to isolate `CMPM` cases when specific post-increment testing is required.
+- **Batch 1.3 Complete:** Standard `CMP`, `CMPA`, and `CMPI` are fully implemented and verified. Both isolated `CMPM` tests and exhaustive full-suite `CMP.<size>.json` integration tests run in [`crates/test_runner/tests/test_singlestep.rs`](crates/test_runner/tests/test_singlestep.rs) and [`crates/test_runner/tests/test_dma_cartesian.rs`](crates/test_runner/tests/test_dma_cartesian.rs).
 
 ---
 

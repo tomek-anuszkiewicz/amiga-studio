@@ -234,11 +234,18 @@ fn test_dma_cartesian_shifts() {
     run_cartesian_for_opcodes(&["ASL.b", "ASL.w", "ASL.l"]);
 }
 
+#[test]
+fn test_dma_cartesian_cmp() {
+    run_cartesian_for_opcodes(&[
+        "CMP.b", "CMP.w", "CMP.l", "CMPA.w", "CMPA.l", "CMPM.b", "CMPM.w", "CMPM.l",
+    ]);
+}
+
 // ============================================================================
-// Comparisons (CMPM)
+// Test (TST)
 // ============================================================================
 
 #[test]
-fn test_dma_cartesian_cmpm() {
-    run_cartesian_for_opcodes(&["CMPM.b", "CMPM.w", "CMPM.l"]);
+fn test_dma_cartesian_tst() {
+    run_cartesian_for_opcodes(&["TST.b", "TST.w", "TST.l"]);
 }
