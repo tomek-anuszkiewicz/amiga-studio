@@ -297,7 +297,7 @@ Instruction execution is driven via a cycle-exact micro-step state machine clock
   - `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
   - `ea_high`: High word of 32-bit absolute addresses (`(xxx).L`) or high address for split accesses.
   - `movem_mask`: 16-bit register transfer mask for `MOVEM`.
-  - `clocks_remaining`: Remaining CPU clocks for the active micro-step countdown (-1 when uninitialized / between steps).
+  - `clocks_remaining`: Remaining CPU clocks for the active micro-step countdown (0 when completed or between steps).
   - `micro_step`: Index of the currently executing micro-operation within the active opcode sequence.
   - `current_cycle_wait_cycles`: Wait cycles accumulated while stalled by Agnus DMA contention.
   - `target_refill`: Indicates whether instruction retirement must perform a branch/jump target refill.

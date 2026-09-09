@@ -307,7 +307,7 @@ impl Cpu {
         self.state.micro.current_steps = &crate::micro::common::STEPS_ADDRESS_ERROR;
         self.state.micro.micro_step = 0;
         self.state.micro.phase = CckPhase::Cck1;
-        self.state.micro.clocks_remaining = -1;
+        self.state.micro.clocks_remaining = 0;
     }
 
     /// Triggers address error during a microcode bus step (forwards to `trigger_address_error`)
@@ -331,44 +331,8 @@ impl Cpu {
         while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
             let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
 
-            // 1. If entering this micro-step for the first time, initialize clocks and execute alu_fn:
-            if self.state.micro.clocks_remaining < 0 {
-                self.state.micro.clocks_remaining = step.base_clocks as i16;
-                let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
-                if let Some(alu) = step.alu_fn {
-                    let reg_src = self.state.micro.reg_src;
-                    let reg_dst = self.state.micro.reg_dst;
-                    alu(&mut self.state, reg_src, reg_dst);
-                }
-
-                // If alu_fn redirected execution to a new step sequence (e.g. Bcc branch taken vs untaken),
-                // restart immediately at the new sequence
-                if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
-                    self.state.micro.clocks_remaining = -1;
-                    continue;
-                }
-            }
-
-            // 2. If instantaneous step (0 clocks, e.g. pure ALU setup):
-            if self.state.micro.clocks_remaining == 0 && step.alu_fn.is_some() {
-                let prev_micro_step = self.state.micro.micro_step;
-                let bus_res = (step.step_fn)(self, bus);
-                if self.state.micro.current_steps.is_empty() {
-                    return true;
-                }
-                if bus_res == BusResult::WaitState {
-                    return false;
-                }
-                if self.state.micro.micro_step == prev_micro_step {
-                    self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-                }
-                self.state.micro.clocks_remaining = -1;
-                continue;
-            }
-
-            // 3. Dynamic multi-cycle step (base_clocks == 0 without alu_fn, e.g. MOVEM transfer):
+            // 1. Dynamic multi-cycle step (base_clocks == 0 without alu_fn, e.g. MOVEM transfer):
             if step.base_clocks == 0 && step.alu_fn.is_none() {
-                let prev_micro_step = self.state.micro.micro_step;
                 let bus_res = (step.step_fn)(self, bus);
                 if self.state.micro.current_steps.is_empty() {
                     return true;
@@ -377,9 +341,6 @@ impl Cpu {
                     BusResult::WaitState => return false,
                     BusResult::Ready(()) => {
                         self.state.micro.current_cycle_wait_cycles = 0;
-                        if self.state.micro.micro_step != prev_micro_step {
-                            self.state.micro.clocks_remaining = -1;
-                        }
                         if (self.state.micro.micro_step as usize) >= self.state.micro.current_steps.len() {
                             self.retire_current_instruction();
                             return true;
@@ -389,7 +350,42 @@ impl Cpu {
                 }
             }
 
-            // 3. Clock-consuming step (each CCK consumes 2 clocks):
+            // 2. Step initialization:
+            // When entering this step (clocks_remaining == 0), initialize duration and fire alu_fn
+            if self.state.micro.clocks_remaining == 0 {
+                self.state.micro.clocks_remaining = step.base_clocks as u16;
+                let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
+                if let Some(alu) = step.alu_fn {
+                    let reg_src = self.state.micro.reg_src;
+                    let reg_dst = self.state.micro.reg_dst;
+                    alu(&mut self.state, reg_src, reg_dst);
+                }
+
+                // If alu_fn redirected execution to a new step sequence (e.g. Bcc branch taken vs untaken),
+                // restart immediately at the new sequence with 0 clocks
+                if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
+                    self.state.micro.clocks_remaining = 0;
+                    continue;
+                }
+
+                // If pure instantaneous ALU step (0 base clocks and alu_fn did not request multi-cycle duration):
+                if self.state.micro.clocks_remaining == 0 {
+                    let prev_micro_step = self.state.micro.micro_step;
+                    let bus_res = (step.step_fn)(self, bus);
+                    if self.state.micro.current_steps.is_empty() {
+                        return true;
+                    }
+                    if bus_res == BusResult::WaitState {
+                        return false;
+                    }
+                    if self.state.micro.micro_step == prev_micro_step {
+                        self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                    }
+                    continue;
+                }
+            }
+
+            // 4. Clock-consuming step execution (each CCK consumes 2 clocks):
             let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
             let prev_micro_step = self.state.micro.micro_step;
             let bus_res = (step.step_fn)(self, bus);
@@ -400,7 +396,7 @@ impl Cpu {
             // If step redirected execution to a new step sequence (e.g. Address Error),
             // conclude this CCK and begin the new sequence on next CCK.
             if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
-                self.state.micro.clocks_remaining = -1;
+                self.state.micro.clocks_remaining = 0;
                 return false;
             }
 
@@ -408,13 +404,12 @@ impl Cpu {
                 BusResult::WaitState => return false,
                 BusResult::Ready(()) => {
                     self.state.micro.current_cycle_wait_cycles = 0;
-                    self.state.micro.clocks_remaining -= 2;
+                    self.state.micro.clocks_remaining = self.state.micro.clocks_remaining.saturating_sub(2);
 
-                    if self.state.micro.clocks_remaining <= 0 {
+                    if self.state.micro.clocks_remaining == 0 {
                         if self.state.micro.micro_step == prev_micro_step {
                             self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
                         }
-                        self.state.micro.clocks_remaining = -1;
                     }
 
                     if (self.state.micro.micro_step as usize) >= self.state.micro.current_steps.len() {

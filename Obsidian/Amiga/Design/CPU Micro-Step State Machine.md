@@ -109,7 +109,7 @@ Embedded in `CpuState` to track sub-cycle progress across Color Clock phases wit
 - `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
 - `ea_high`: High word of 32-bit absolute addresses (`(xxx).L`) or high address for split accesses.
 - `movem_mask`: 16-bit register transfer mask for `MOVEM`.
-- `clocks_remaining`: Clocks remaining for the active micro-step countdown (-1 when uninitialized / between steps, decrements by 2 on each CCK).
+- `clocks_remaining`: Clocks remaining for the active micro-step countdown (0 when completed or between steps, decrements by 2 on each CCK).
 - `current_steps`: Cached slice pointer to active opcode's `&'static [MicroStep]`.
 - `micro_step`: Step index within the current instruction's micro-operation sequence.
 - `reg_src`, `reg_dst`: Pre-decoded register indices ($0..7$ for $D_n / A_n$).
@@ -540,17 +540,19 @@ flowchart TD
     Start(["step_cck()"]) --> Adv["advance_clocks(2)"]
     Adv --> CheckSeq["Execute Micro-Step (execute_micro_step)"]
     
-    CheckSeq --> InitCheck{"clocks_remaining < 0?"}
-    InitCheck -- Yes --> Init["clocks_remaining = base_clocks<br/>Execute alu_fn (if any)"] --> ExecStep
-    InitCheck -- No --> ExecStep["Execute step_fn(self, bus)"]
+    CheckSeq --> InitCheck{"clocks_remaining == 0?"}
+    InitCheck -- Yes --> Init["clocks_remaining = base_clocks<br/>Execute alu_fn (if any)"] --> InstCheck{"clocks_remaining == 0?"}
+    InstCheck -- Yes (Instant ALU) --> InstExec["micro_step += 1<br/>continue to next step"] --> CheckSeq
+    InstCheck -- No --> ExecStep["Execute step_fn(self, bus)"]
+    InitCheck -- No --> ExecStep
     
     ExecStep --> BusRes{"BusResult?"}
     BusRes -- WaitState --> Stall["current_cycle_wait_cycles += 1<br/>return false"]
     BusRes -- Ready --> Dec["clocks_remaining -= 2"]
     
-    Dec --> DoneCheck{"clocks_remaining <= 0?"}
+    Dec --> DoneCheck{"clocks_remaining == 0?"}
     DoneCheck -- No --> Hold["return false (bus idle)"]
-    DoneCheck -- Yes --> Next["clocks_remaining = -1<br/>micro_step += 1"]
+    DoneCheck -- Yes --> Next["micro_step += 1"]
     
     Next --> RetCheck{"micro_step >= steps.len()?"}
     RetCheck -- Yes --> Retire["retire_current_instruction()<br/>return true"]
@@ -561,10 +563,10 @@ flowchart TD
 
 The full CCK stepping engine is implemented in [`crates/m68000/src/micro/engine.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/engine.rs) and driven via [`crates/m68000/src/core.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/core.rs):
 
-1. **Uniform Micro-Step Timing via `clocks_remaining`:**
+1. **Uniform Micro-Step Timing via `clocks_remaining: u16`:**
    - On each CCK tick, `step_cck` advances global clocks by 2 (`self.advance_clocks(2)`).
-   - If entering a step (`clocks_remaining < 0`), initializes `clocks_remaining = step.base_clocks` and fires `alu_fn`. Dynamic shift/ALU operations can directly override `clocks_remaining`.
-   - On completion of a ready CCK phase, decrements `clocks_remaining -= 2`. If `clocks_remaining <= 0`, concludes the micro-step and advances to the next.
+   - If entering a step (`clocks_remaining == 0`), initializes `clocks_remaining = step.base_clocks` and fires `alu_fn`. Dynamic shift/ALU operations directly set `clocks_remaining = duration`.
+   - On completion of a ready CCK phase, decrements `clocks_remaining = clocks_remaining.saturating_sub(2)`. When it reaches 0, concludes the micro-step and advances to the next (`micro_step += 1`).
 2. **Instantaneous Fall-Through Micro-Steps:**
    - A fast internal loop executes zero-cycle micro-operations (`alu_fn`) when entering a step or when `base_clocks == 0` within the same host tick until encountering a bus cycle.
    - If a subsequent bus cycle stalls due to Chip RAM contention, the ALU calculation is **never repeated**.

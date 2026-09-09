@@ -5,13 +5,13 @@ use memory_bus::{BusResult, CckPhase, MemoryBus};
 fn test_micro_state_initial_and_reset() {
     let mut cpu = Cpu::new();
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
-    assert_eq!(cpu.state.micro.clocks_remaining, -1);
+    assert_eq!(cpu.state.micro.clocks_remaining, 0);
 
     cpu.state.micro.phase = CckPhase::Cck2;
     cpu.state.micro.clocks_remaining = 4;
     cpu.state.micro.reset();
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
-    assert_eq!(cpu.state.micro.clocks_remaining, -1);
+    assert_eq!(cpu.state.micro.clocks_remaining, 0);
 }
 
 #[test]
@@ -117,7 +117,7 @@ fn test_clocks_remaining_micro_stepping() {
 
     cpu.state.micro.current_steps = &TEST_STEPS;
     cpu.state.micro.micro_step = 0;
-    cpu.state.micro.clocks_remaining = -1;
+    cpu.state.micro.clocks_remaining = 0;
 
     let initial_cycles = cpu.cycle_counter();
 
@@ -130,7 +130,7 @@ fn test_clocks_remaining_micro_stepping() {
     // 2nd CCK step: consumes 2 clocks, completes step
     let finished2 = cpu.step_cck(&mut bus);
     assert!(finished2);
-    assert_eq!(cpu.state.micro.clocks_remaining, -1);
+    assert_eq!(cpu.state.micro.clocks_remaining, 0);
     assert_eq!(cpu.cycle_counter(), initial_cycles + 4);
 }
 

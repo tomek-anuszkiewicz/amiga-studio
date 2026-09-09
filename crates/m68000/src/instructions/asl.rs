@@ -95,7 +95,7 @@ pub fn alu_asl_b_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_b(state, count, val);
     state.set_d_byte(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as i16;
+    state.micro.clocks_remaining = duration as u16;
     state.micro.record_internal_transaction(duration);
 }
 
@@ -105,7 +105,7 @@ pub fn alu_asl_w_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_w(state, count, val);
     state.set_d_word(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as i16;
+    state.micro.clocks_remaining = duration as u16;
     state.micro.record_internal_transaction(duration);
 }
 
@@ -115,7 +115,7 @@ pub fn alu_asl_l_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_l(state, count, val);
     state.set_d_long(reg_dst as usize, res);
     let duration = 4 + (2 * count);
-    state.micro.clocks_remaining = duration as i16;
+    state.micro.clocks_remaining = duration as u16;
     state.micro.record_internal_transaction(duration);
 }
 
@@ -125,7 +125,7 @@ pub fn alu_asl_b_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_b(state, count, val);
     state.set_d_byte(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as i16;
+    state.micro.clocks_remaining = duration as u16;
     state.micro.record_internal_transaction(duration);
 }
 
@@ -135,7 +135,7 @@ pub fn alu_asl_w_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_w(state, count, val);
     state.set_d_word(reg_dst as usize, res);
     let duration = 2 + (2 * count);
-    state.micro.clocks_remaining = duration as i16;
+    state.micro.clocks_remaining = duration as u16;
     state.micro.record_internal_transaction(duration);
 }
 
@@ -145,7 +145,7 @@ pub fn alu_asl_l_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let res = asl_l(state, count, val);
     state.set_d_long(reg_dst as usize, res);
     let duration = 4 + (2 * count);
-    state.micro.clocks_remaining = duration as i16;
+    state.micro.clocks_remaining = duration as u16;
     state.micro.record_internal_transaction(duration);
 }
 

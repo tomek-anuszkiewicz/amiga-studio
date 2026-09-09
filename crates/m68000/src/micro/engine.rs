@@ -34,9 +34,9 @@ pub struct CpuMicroState {
     /// Optional transaction log for cycle-exact verification (disabled by default)
     #[serde(skip)]
     pub transaction_log: Option<Vec<RecordedTransaction>>,
-    /// Clocks remaining for the active micro-step (-1 when uninitialized / between steps)
-    #[serde(default = "default_clocks_remaining")]
-    pub clocks_remaining: i16,
+    /// Clocks remaining for the active micro-step (0 when completed or between steps)
+    #[serde(default)]
+    pub clocks_remaining: u16,
     /// Wait cycles accumulated during the currently active bus cycle
     #[serde(default)]
     pub current_cycle_wait_cycles: u32,
@@ -77,9 +77,6 @@ pub struct CpuMicroState {
     pub ssp_base: u32,
 }
 
-const fn default_clocks_remaining() -> i16 {
-    -1
-}
 
 impl Default for CpuMicroState {
     fn default() -> Self {
@@ -99,7 +96,7 @@ impl CpuMicroState {
             movem_state: 0,
             read_to_dest: false,
             transaction_log: None,
-            clocks_remaining: -1,
+            clocks_remaining: 0,
             current_cycle_wait_cycles: 0,
             source: 0,
             destination: 0,
@@ -124,7 +121,7 @@ impl CpuMicroState {
         self.movem_mask = 0;
         self.movem_state = 0;
         self.read_to_dest = false;
-        self.clocks_remaining = -1;
+        self.clocks_remaining = 0;
         self.current_cycle_wait_cycles = 0;
         self.source = 0;
         self.destination = 0;
@@ -147,7 +144,7 @@ impl CpuMicroState {
         self.reg_dst = desc.reg_dst;
         self.micro_step = 0;
         self.phase = CckPhase::Cck1;
-        self.clocks_remaining = -1;
+        self.clocks_remaining = 0;
         self.current_cycle_wait_cycles = 0;
     }
 
