@@ -413,3 +413,46 @@ pub static STEPS_PRIVILEGE_VIOLATION: [MicroStep; 17] = [
     PREFETCH_TARGET_READ,
     PREFETCH_TARGET_FINISH,
 ];
+
+// ============================================================================
+// Divide-by-Zero Exception Pipeline (Vector 5, 38 CPU clocks total)
+// ============================================================================
+
+pub static STEPS_DIV_ZERO: [MicroStep; 16] = [
+    MicroStep {
+        step_fn: None,
+        alu_fn: None,
+        base_clocks: 8,
+    },
+    EXCEPTION_PUSH_PCLO_IDLE,
+    EXCEPTION_PUSH_PCLO_WRITE,
+    EXCEPTION_PUSH_SR_IDLE,
+    EXCEPTION_PUSH_SR_WRITE,
+    EXCEPTION_PUSH_PCHI_IDLE,
+    EXCEPTION_PUSH_PCHI_WRITE,
+    READ_VECTOR_HIGH_READ,
+    BUS_READ_IDLE,
+    READ_VECTOR_LOW_READ,
+    READ_VECTOR_LOW_FINISH,
+    READ_TARGET_OPCODE_READ,
+    BUS_READ_IDLE,
+    ALU_IDLE,
+    PREFETCH_TARGET_READ,
+    PREFETCH_TARGET_FINISH,
+];
+
+#[inline(never)]
+pub fn trigger_divide_by_zero(state: &mut CpuState) {
+    let old_sr = state.sr;
+    let updated_sr = old_sr & !0x000F;
+    state.sr = updated_sr;
+    state.set_supervisor(true);
+    state.sr &= !0x8000;
+
+    state.micro.source = state.instruction_pc;
+    state.micro.destination = updated_sr as u32;
+    state.micro.ea_addr = 0x0000_0014; // Vector 5 (address 20)
+    state.micro.current_steps = &STEPS_DIV_ZERO;
+    state.micro.micro_step = 0;
+    state.micro.clocks_remaining = 0;
+}

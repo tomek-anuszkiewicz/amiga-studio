@@ -1,16 +1,10 @@
-//! M68000 Stack Frame Instructions (`LINK An, #d16` and `UNLK An`)
+//! M68000 LINK Instruction (`LINK An, #d16`)
 //!
-//! - `LINK An, #d16`:
-//!   1. Pushes current `An` onto stack at `SP - 4` (high word then low word).
-//!   2. Sets `An = SP - 4`.
-//!   3. Sets `SP = SP + d16` (sign-extended displacement).
-//!   Timing: 16 CPU clocks (8 CCK phases).
-//!
-//! - `UNLK An`:
-//!   1. Sets `SP = An`.
-//!   2. Pops 32-bit long from `(SP)` into `An` (high word then low word).
-//!   3. Increments `SP += 4`.
-//!   Timing: 12 CPU clocks (6 CCK phases).
+//! Allocates a stack frame:
+//! 1. Pushes current `An` onto stack at `SP - 4` (high word then low word).
+//! 2. Sets `An = SP - 4`.
+//! 3. Sets `SP = SP + d16` (sign-extended displacement).
+//! Timing: 16 CPU clocks (8 CCK phases).
 //!
 //! Flags: Condition codes are completely unaffected.
 
@@ -46,27 +40,6 @@ pub fn alu_link_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 // ============================================================================
-// Micro-Step ALU Callbacks: UNLK
-// ============================================================================
-
-pub fn alu_unlk_setup(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let an = reg_dst;
-    let sp = state.a_long(an as usize);
-    state.micro.ea_addr = sp;
-    if (sp & 1) == 0 {
-        state.set_a_long(7, sp);
-    }
-}
-
-pub fn alu_unlk_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let an = reg_dst;
-    let sp = state.micro.ea_addr;
-    let data = state.micro.source;
-    state.set_a_long(7, sp.wrapping_add(4));
-    state.set_a_long(an as usize, data);
-}
-
-// ============================================================================
 // Static Micro-Step Slices
 // ============================================================================
 
@@ -81,19 +54,6 @@ pub static STEPS_LINK: [MicroStep; 9] = [
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_link_finish),
-        base_clocks: 2,
-    },
-    common::BUS_READ_IDLE,
-];
-
-pub static STEPS_UNLK: [MicroStep; 6] = [
-    MicroStep::alu(alu_unlk_setup),
-    common::READ_SRC_LONG_HIGH,
-    common::BUS_READ_IDLE,
-    common::READ_SRC_LONG_LOW,
-    MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
-        alu_fn: Some(alu_unlk_finish),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,

@@ -18,8 +18,7 @@ Group closely related structs, enums, type definitions, and direct handlers in t
 ## 4. Recognized Exceptions (Permitted to Exceed 800 Lines)
 Splitting these files hurts performance, breaks static table locality, and damages readability:
 1. **Compile-time static dispatch and lookup tables**: e.g., `dispatch_table.rs` (65,536-entry opcode decoding logic, compile-time tables), precalculated BLEP windowed sinc tables, and large mathematical LUTs.
-2. **Atomic hardware circuit state machines**: Sequential execution flows where splitting clock cycle phases across files obscures circuit timing.
-3. **Exhaustive linear decoders / pattern matchers**: Addressing mode decoders or exception vectors intended to be audited linearly from top to bottom.
+2. **Exhaustive linear instruction decoders or atomic hardware circuit state machines**: Sequential execution flows where splitting clock cycle phases across files obscures circuit timing (e.g., `add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`, `move_b.rs`, `move_w.rs`, `move_l.rs`).
 
 ## 5. When to Split (Architectural Triggers)
 Split regardless of line count when:
@@ -27,3 +26,24 @@ Split regardless of line count when:
 - Pure serializable state structs are mixed with heavy operational simulation logic.
 - In-file unit tests grow beyond ~150–200 lines (move to `tests/*.rs`).
 - Sub-features are completely independent (e.g. Paula's audio DACs vs floppy disk controller vs UART).
+
+## 6. Strict Flat Instruction Hierarchy (`crates/m68000/src/instructions/`)
+The instruction directory is governed by a **strict flat hierarchy rule**:
+1. **Zero Subdirectories in `instructions/`**:
+   - Creating subdirectories or multi-file submodules under `crates/m68000/src/instructions/` (such as `instructions/add/`, `instructions/cmpi/`, `instructions/mul/`) is **strictly forbidden**.
+   - All instruction files must reside flat directly under `crates/m68000/src/instructions/<mnemonic>.rs`.
+2. **Strict 1:1 Mnemonic Alignment**:
+   - Each M68000 instruction mnemonic must have its own dedicated `.rs` file directly under `instructions/`.
+   - Bundling multiple distinct mnemonics into legacy umbrella files (such as `mul.rs`, `div.rs`, `link_unlk.rs`, `bcd.rs`, `privileged.rs`) is strictly forbidden.
+   - For example:
+     - `mulu.rs` and `muls.rs` are separate files.
+     - `divu.rs` and `divs.rs` are separate files.
+     - `link.rs` and `unlk.rs` are separate files.
+     - `abcd.rs`, `sbcd.rs`, and `nbcd.rs` are separate files.
+     - `trapv.rs`, `rtr.rs`, `rte.rs`, `stop.rs`, `reset.rs`, and `move_usp.rs` are separate files.
+3. **Addressing Mode Combinatorics (<800 lines exception)**:
+   - When an instruction implementation exceeds 800 lines due to exhaustive addressing mode coverage (e.g., `add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`), it qualifies as an authorized **Recognized Exception** registered in `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`. It must **NEVER** be split into a subdirectory.
+4. **Justified Architectural Exceptions**:
+   - `move_sr_ccr.rs` and `logic_sr_ccr.rs`: Grouping status/condition register operations isolates privilege checks, SR masking, and CCR extraction without causing `ori.rs`, `andi.rs`, `eori.rs` (~789 lines each) or `move_w.rs` (~1,800 lines) to violate line limits.
+   - `move_b.rs`, `move_w.rs`, `move_l.rs`: Size-based slices for general `MOVE`.
+   - `bcc.rs`, `dbcc.rs`, `scc.rs`: Condition code instruction families.

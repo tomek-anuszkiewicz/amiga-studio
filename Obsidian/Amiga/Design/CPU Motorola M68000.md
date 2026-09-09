@@ -563,7 +563,21 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
 
 ### 7.13 Modular Per-Mnemonic Instruction Architecture & Single-Mnemonic Dispatch
 
-The entire M68000 instruction set is organized into dedicated, single-responsibility files by instruction mnemonic (e.g. `add.rs`, `move.rs`, `movea.rs`, `bra.rs`, `bsr.rs`, `bcc.rs`, `asl.rs`, `asr.rs`, etc.):
+The entire M68000 instruction set is organized into dedicated, single-responsibility files directly under [`crates/m68000/src/instructions/`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/) following strict architectural rules:
+
+- **1:1 Mnemonic-to-File Hierarchy & Zero Subdirectories Mandate:**
+  - Every distinct M68000 instruction mnemonic has its own dedicated flat `.rs` file (e.g. `add.rs`, `sub.rs`, `mulu.rs`, `muls.rs`, `divu.rs`, `divs.rs`, `link.rs`, `unlk.rs`, `abcd.rs`, `sbcd.rs`, `nbcd.rs`, `trapv.rs`, `rtr.rs`, `rte.rs`, `stop.rs`, `reset.rs`, `move_usp.rs`, `bra.rs`, `bsr.rs`, `bcc.rs`, `asl.rs`, `asr.rs`, etc.).
+  - **Zero Subdirectories:** Creating subdirectories or multi-file submodules under `crates/m68000/src/instructions/` is strictly forbidden. The hierarchy must remain 100% flat; any nested subdirectory at any depth causes `cargo test -p test_runner --test test_architecture_rules` to fail immediately.
+  - **Elimination of Legacy Umbrella Files:** Disparate instructions are never grouped into composite umbrella modules. All legacy multi-instruction files have been decomposed:
+    - `mul.rs` $\rightarrow$ [`mulu.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/mulu.rs), [`muls.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/muls.rs)
+    - `div.rs` $\rightarrow$ [`divu.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/divu.rs), [`divs.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/divs.rs) (shared zero-divide exception micro-step sequences centralized in [`micro/common.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/common.rs))
+    - `link_unlk.rs` $\rightarrow$ [`link.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/link.rs), [`unlk.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/unlk.rs)
+    - `bcd.rs` $\rightarrow$ [`abcd.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/abcd.rs), [`sbcd.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/sbcd.rs), [`nbcd.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/nbcd.rs)
+    - `privileged.rs` $\rightarrow$ [`trapv.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/trapv.rs), [`rtr.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/rtr.rs), [`rte.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/rte.rs), [`stop.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/stop.rs), [`reset.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/reset.rs), [`move_usp.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/move_usp.rs)
+  - **Justified Exceptions:**
+    - `move_sr_ccr.rs`: Tightly coupled status register transfers sharing underlying privilege check and CCR/SR state latching (`MOVE to CCR`, `MOVE from SR`, `MOVE to SR`).
+    - `logic_sr_ccr.rs`: Immediate status operations with identical privilege validation (`ANDI/EORI/ORI to CCR/SR`).
+    - Size-based decompositions (`move_b.rs`, `move_w.rs`, `move_l.rs`) where high-cardinality addressing mode matrices make a single file unmanageable.
 
 - **Zero Cascaded Runtime Branching in Dispatch Table (Rule 2.6):**
   - All 65,536 entries in `dispatch_table.rs` map directly to specialized static opcode handlers.

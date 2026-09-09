@@ -632,14 +632,14 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
                 };
             }
         } else if dir == 0 {
-            if let Some(steps) = crate::instructions::mul::decode_mulu_steps(mode, reg) {
+            if let Some(steps) = crate::instructions::mulu::decode_mulu_steps(mode, reg) {
                 table[op] = OpcodeDescriptor {
                     steps,
                     reg_src: reg,
                     reg_dst: reg_d,
                 };
             }
-        } else if let Some(steps) = crate::instructions::mul::decode_muls_steps(mode, reg) {
+        } else if let Some(steps) = crate::instructions::muls::decode_muls_steps(mode, reg) {
             table[op] = OpcodeDescriptor {
                 steps,
                 reg_src: reg,
@@ -669,14 +669,14 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
                 };
             }
         } else if dir == 0 {
-            if let Some(steps) = crate::instructions::div::decode_divu_steps(mode, reg) {
+            if let Some(steps) = crate::instructions::divu::decode_divu_steps(mode, reg) {
                 table[op] = OpcodeDescriptor {
                     steps,
                     reg_src: reg,
                     reg_dst: reg_d,
                 };
             }
-        } else if let Some(steps) = crate::instructions::div::decode_divs_steps(mode, reg) {
+        } else if let Some(steps) = crate::instructions::divs::decode_divs_steps(mode, reg) {
             table[op] = OpcodeDescriptor {
                 steps,
                 reg_src: reg,
@@ -844,7 +844,7 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         let ir = op as u16;
         let mode = ((ir >> 3) & 7) as u8;
         let reg = (ir & 7) as u8;
-        if let Some(steps) = crate::instructions::bcd::decode_nbcd_steps(mode, reg) {
+        if let Some(steps) = crate::instructions::nbcd::decode_nbcd_steps(mode, reg) {
             table[op] = OpcodeDescriptor {
                 steps,
                 reg_src: 0,
@@ -880,9 +880,9 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
             let ry = (op & 7) as u8;
             let is_mem = (op & 8) != 0;
             let steps: &'static [super::types::MicroStep] = if is_mem {
-                &crate::instructions::bcd::STEPS_ABCD_PD_PD
+                &crate::instructions::abcd::STEPS_ABCD_PD_PD
             } else {
-                &crate::instructions::bcd::STEPS_ABCD_DN_DN
+                &crate::instructions::abcd::STEPS_ABCD_DN_DN
             };
             table[op] = OpcodeDescriptor {
                 steps,
@@ -901,9 +901,9 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
             let ry = (op & 7) as u8;
             let is_mem = (op & 8) != 0;
             let steps: &'static [super::types::MicroStep] = if is_mem {
-                &crate::instructions::bcd::STEPS_SBCD_PD_PD
+                &crate::instructions::sbcd::STEPS_SBCD_PD_PD
             } else {
-                &crate::instructions::bcd::STEPS_SBCD_DN_DN
+                &crate::instructions::sbcd::STEPS_SBCD_DN_DN
             };
             table[op] = OpcodeDescriptor {
                 steps,
@@ -965,13 +965,13 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
     while reg < 8 {
         let op_link = 0x4E50 | (reg as usize);
         table[op_link] = OpcodeDescriptor {
-            steps: &crate::instructions::link_unlk::STEPS_LINK,
+            steps: &crate::instructions::link::STEPS_LINK,
             reg_src: 0,
             reg_dst: reg,
         };
         let op_unlk = 0x4E58 | (reg as usize);
         table[op_unlk] = OpcodeDescriptor {
-            steps: &crate::instructions::link_unlk::STEPS_UNLK,
+            steps: &crate::instructions::unlk::STEPS_UNLK,
             reg_src: 0,
             reg_dst: reg,
         };
@@ -1016,27 +1016,27 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
 
     // Batch 1.11: Privileged & System Control Operations
     table[0x4E70] = OpcodeDescriptor {
-        steps: &crate::instructions::privileged::STEPS_RESET,
+        steps: &crate::instructions::reset::STEPS_RESET,
         reg_src: 0,
         reg_dst: 0,
     };
     table[0x4E72] = OpcodeDescriptor {
-        steps: &crate::instructions::privileged::STEPS_STOP,
+        steps: &crate::instructions::stop::STEPS_STOP,
         reg_src: 0,
         reg_dst: 0,
     };
     table[0x4E73] = OpcodeDescriptor {
-        steps: &crate::instructions::privileged::STEPS_RTE,
+        steps: &crate::instructions::rte::STEPS_RTE,
         reg_src: 0,
         reg_dst: 0,
     };
     table[0x4E76] = OpcodeDescriptor {
-        steps: &crate::instructions::privileged::STEPS_TRAPV,
+        steps: &crate::instructions::trapv::STEPS_TRAPV,
         reg_src: 0,
         reg_dst: 0,
     };
     table[0x4E77] = OpcodeDescriptor {
-        steps: &crate::instructions::privileged::STEPS_RTR,
+        steps: &crate::instructions::rtr::STEPS_RTR,
         reg_src: 0,
         reg_dst: 0,
     };
@@ -1044,12 +1044,12 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
     let mut reg = 0u8;
     while reg < 8 {
         table[0x4E60 | (reg as usize)] = OpcodeDescriptor {
-            steps: &crate::instructions::privileged::STEPS_MOVE_TO_USP,
+            steps: &crate::instructions::move_usp::STEPS_MOVE_TO_USP,
             reg_src: reg,
             reg_dst: 0,
         };
         table[0x4E68 | (reg as usize)] = OpcodeDescriptor {
-            steps: &crate::instructions::privileged::STEPS_MOVE_FROM_USP,
+            steps: &crate::instructions::move_usp::STEPS_MOVE_FROM_USP,
             reg_src: 0,
             reg_dst: reg,
         };

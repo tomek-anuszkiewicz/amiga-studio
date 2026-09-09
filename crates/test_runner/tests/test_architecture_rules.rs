@@ -453,6 +453,19 @@ fn test_inlining_guidelines_compliance() {
     }
 }
 
+fn collect_subdirectories_recursive(dir: &Path, repo_root: &Path, subdirs: &mut Vec<String>) {
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let rel_path = path.strip_prefix(repo_root).unwrap_or(&path);
+                subdirs.push(rel_path.display().to_string());
+                collect_subdirectories_recursive(&path, repo_root, subdirs);
+            }
+        }
+    }
+}
+
 #[test]
 fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
     let repo_root = find_repo_root();
@@ -467,22 +480,52 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
         inst_dir.display()
     );
 
-    let entries = fs::read_dir(&inst_dir).expect("Failed to read instructions directory");
+    // 1. Assert zero subdirectories exist at any recursion depth
     let mut subdirectories = Vec::new();
-
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            let rel_path = path.strip_prefix(&repo_root).unwrap_or(&path);
-            subdirectories.push(rel_path.display().to_string());
-        }
-    }
-
+    collect_subdirectories_recursive(&inst_dir, &repo_root, &mut subdirectories);
     assert!(
         subdirectories.is_empty(),
         "Architecture Rule Violation: Subdirectories in `crates/m68000/src/instructions/` are strictly forbidden per AGENTS.md.\n\
         All instructions must be flat `<mnemonic>.rs` files directly under `instructions/`.\n\
         Found subdirectories:\n{}",
         subdirectories.join("\n")
+    );
+
+    // 2. Assert that legacy bundled multi-instruction files are not present
+    let forbidden_legacy_files = [
+        "mul.rs",
+        "div.rs",
+        "link_unlk.rs",
+        "bcd.rs",
+        "privileged.rs",
+    ];
+    let mut forbidden_found = Vec::new();
+    for file_name in &forbidden_legacy_files {
+        if inst_dir.join(file_name).exists() {
+            forbidden_found.push(*file_name);
+        }
+    }
+    assert!(
+        forbidden_found.is_empty(),
+        "Architecture Rule Violation: Legacy bundled instruction file(s) found in `crates/m68000/src/instructions/`:\n\
+        {:?}\n\
+        Instructions must adhere to 1:1 mnemonic-to-file mapping (e.g. mulu.rs/muls.rs, divu.rs/divs.rs, link.rs/unlk.rs, abcd.rs/sbcd.rs/nbcd.rs, trapv.rs/rtr.rs/rte.rs/stop.rs/reset.rs/move_usp.rs).",
+        forbidden_found
+    );
+
+    // 3. Assert that every entry in instructions/ is a valid .rs file
+    let entries = fs::read_dir(&inst_dir).expect("Failed to read instructions directory");
+    let mut non_rs_files = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() && path.extension().and_then(|ext| ext.to_str()) != Some("rs") {
+            let rel_path = path.strip_prefix(&repo_root).unwrap_or(&path);
+            non_rs_files.push(rel_path.display().to_string());
+        }
+    }
+    assert!(
+        non_rs_files.is_empty(),
+        "Architecture Rule Violation: Found non-Rust source file(s) in `crates/m68000/src/instructions/`:\n{}",
+        non_rs_files.join("\n")
     );
 }
