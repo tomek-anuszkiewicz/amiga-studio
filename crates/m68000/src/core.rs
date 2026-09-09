@@ -8,8 +8,6 @@ use memory_bus::{BusResult, MemoryBus};
 #[derive(Debug, Clone)]
 pub struct Cpu {
     pub state: CpuState,
-    /// CPU clocks consumed by the current instruction
-    pub instruction_clocks: u32,
 }
 
 impl Default for Cpu {
@@ -22,7 +20,6 @@ impl Cpu {
     pub fn new() -> Self {
         Self {
             state: CpuState::default(),
-            instruction_clocks: 0,
         }
     }
 
@@ -32,7 +29,6 @@ impl Cpu {
         self.state.stopped = false;
         self.state.halted = false;
         self.state.micro.reset();
-        self.instruction_clocks = 0;
         self.state.cycle_counter = 0;
 
         // Fetch initial SSP from $000000
@@ -55,10 +51,9 @@ impl Cpu {
     }
 
 
-    /// Advances instruction clocks and the global cycle counter
+    /// Advances the global cycle counter
     #[inline(always)]
     pub fn advance_clocks(&mut self, clocks: u32) {
-        self.instruction_clocks = self.instruction_clocks.wrapping_add(clocks);
         self.state.cycle_counter = self.state.cycle_counter.wrapping_add(clocks as u64);
     }
 
@@ -287,18 +282,18 @@ impl Cpu {
             return 0;
         }
 
-        self.instruction_clocks = 0;
+        let start_cycles = self.state.cycle_counter;
         let mut loop_count = 0u32;
         const MAX_INSTRUCTION_CCK_STEPS: u32 = 10_000;
         loop {
             let completed = self.step_cck(bus);
             if completed || self.state.halted || self.state.stopped {
-                return self.instruction_clocks;
+                return self.state.cycle_counter.wrapping_sub(start_cycles) as u32;
             }
             loop_count = loop_count.wrapping_add(1);
             if loop_count >= MAX_INSTRUCTION_CCK_STEPS {
                 self.state.micro.reset();
-                return self.instruction_clocks;
+                return self.state.cycle_counter.wrapping_sub(start_cycles) as u32;
             }
         }
     }

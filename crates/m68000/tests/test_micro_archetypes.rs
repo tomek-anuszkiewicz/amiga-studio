@@ -43,9 +43,8 @@ fn test_archetype1_nop_4_clocks() {
     prime_prefetch(&mut cpu, &mut bus);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks, 4);
     assert_eq!(
-        cpu.instruction_clocks, 4,
+        clocks, 4,
         "NOP must take exactly 4 CPU clocks (2 CCKs)"
     );
     assert_eq!(cpu.state.pc, 0x001006);
@@ -64,9 +63,8 @@ fn test_archetype1_move_reg_to_reg_4_clocks() {
     cpu.state.set_d_long(1, 0x0000_0000);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks, 4);
     assert_eq!(
-        cpu.instruction_clocks, 4,
+        clocks, 4,
         "MOVE.w Dx, Dy must take exactly 4 CPU clocks (2 CCKs)"
     );
     assert_eq!(cpu.state.d_long(1), 0x0000_5678);
@@ -92,9 +90,8 @@ fn test_archetype2_move_mem_read_8_clocks() {
     prime_prefetch(&mut cpu, &mut bus);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks, 8);
     assert_eq!(
-        cpu.instruction_clocks, 8,
+        clocks, 8,
         "MOVE.w (Ax), Dy must take exactly 8 CPU clocks (4 CCKs)"
     );
     assert_eq!(cpu.state.d_word(0), 0xCAFE);
@@ -145,7 +142,7 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     assert!(r6);
 
     // Total clocks = 8 base clocks + 2 * (2 wait states) = 12 clocks
-    assert_eq!(cpu.instruction_clocks, 12);
+    assert_eq!(cpu.cycle_counter(), 12);
     assert_eq!(cpu.state.d_word(0), 0xCAFE);
 }
 
@@ -162,9 +159,8 @@ fn test_archetype3_move_mem_write_8_clocks() {
     prime_prefetch(&mut cpu, &mut bus);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks, 8);
     assert_eq!(
-        cpu.instruction_clocks, 8,
+        clocks, 8,
         "MOVE.w Dx, (Ay) must take exactly 8 CPU clocks (4 CCKs)"
     );
     assert_eq!(bus.read_word_debug(0x003000), 0xBEEF);
@@ -217,7 +213,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     let r6 = cpu.step_cck(&mut bus);
     assert!(r6);
 
-    assert_eq!(cpu.instruction_clocks, 12);
+    assert_eq!(cpu.cycle_counter(), 12);
 }
 
 #[test]
@@ -234,9 +230,8 @@ fn test_archetype4_rmw_add_12_clocks() {
     prime_prefetch(&mut cpu, &mut bus);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks, 12);
     assert_eq!(
-        cpu.instruction_clocks, 12,
+        clocks, 12,
         "ADD.w Dx, (Ay) RMW must take exactly 12 CPU clocks (6 CCKs)"
     );
     assert_eq!(bus.read_word_debug(0x004000), 0x0035);
@@ -255,9 +250,8 @@ fn test_archetype5_bcc_untaken_8_clocks() {
     prime_prefetch(&mut cpu, &mut bus);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks, 8);
     assert_eq!(
-        cpu.instruction_clocks, 8,
+        clocks, 8,
         "Bcc.s untaken must take exactly 8 CPU clocks (4 CCKs)"
     );
     assert_eq!(
@@ -278,9 +272,8 @@ fn test_archetype5_bcc_taken_10_clocks() {
     prime_prefetch(&mut cpu, &mut bus);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks, 10);
     assert_eq!(
-        cpu.instruction_clocks, 10,
+        clocks, 10,
         "Bcc.s taken / BRA.s must take exactly 10 CPU clocks (5 CCKs)"
     );
     assert_eq!(cpu.state.ir, 0x4E71, "Target opcode must be loaded into IR");
@@ -300,9 +293,8 @@ fn test_archetype6_pea_12_clocks() {
     prime_prefetch(&mut cpu, &mut bus);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks, 12);
     assert_eq!(
-        cpu.instruction_clocks, 12,
+        clocks, 12,
         "PEA (An) must take exactly 12 CPU clocks (6 CCKs)"
     );
     assert_eq!(
@@ -336,9 +328,8 @@ fn test_archetype6_jsr_16_clocks() {
     prime_prefetch(&mut cpu, &mut bus);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks, 16);
     assert_eq!(
-        cpu.instruction_clocks, 16,
+        clocks, 16,
         "JSR (An) must take exactly 16 CPU clocks (8 CCKs)"
     );
     assert_eq!(

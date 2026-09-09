@@ -151,14 +151,12 @@ fn test_cycle_counter_monotonic_accumulation() {
     // Step first NOP: should take 4 CPU clocks (2 CCK steps)
     let clocks1 = cpu.step_instruction(&mut bus);
     assert_eq!(clocks1, 4);
-    assert_eq!(cpu.instruction_clocks, 4);
     assert_eq!(cpu.state.cycle_counter, 4);
     assert_eq!(cpu.cycle_counter(), 4);
 
-    // Step second NOP: instruction_clocks resets to 4, cycle_counter accumulates to 8
+    // Step second NOP: returns 4 clocks, cycle_counter accumulates to 8
     let clocks2 = cpu.step_instruction(&mut bus);
     assert_eq!(clocks2, 4);
-    assert_eq!(cpu.instruction_clocks, 4);
     assert_eq!(cpu.state.cycle_counter, 8);
     assert_eq!(cpu.cycle_counter(), 8);
 

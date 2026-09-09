@@ -57,7 +57,7 @@ pub fn run_dma_contention_sweep(
         }
     }
     golden_cpu.state.sync_stack_pointers();
-    let base_clocks = golden_cpu.instruction_clocks;
+    let base_clocks = golden_cpu.cycle_counter() as u32;
     let golden_state = golden_cpu.state.clone();
 
     // Collect golden modified RAM
@@ -104,19 +104,20 @@ pub fn run_dma_contention_sweep(
         cpu.state.sync_stack_pointers();
 
         // Verify Invariant 1: Cycle Invariance
-        let extra_clocks = cpu.instruction_clocks.saturating_sub(base_clocks);
+        let actual_clocks = cpu.cycle_counter() as u32;
+        let extra_clocks = actual_clocks.saturating_sub(base_clocks);
         let wait_states = extra_clocks / 2;
         let expected_clocks = base_clocks + (2 * wait_states);
-        if cpu.instruction_clocks != expected_clocks || wait_states > 1 {
+        if actual_clocks != expected_clocks || wait_states > 1 {
             return Err(DmaContentionFailure {
                 test_name: test.name.clone(),
                 stall_phase,
                 burst_length: 1,
                 base_clocks,
-                actual_clocks: cpu.instruction_clocks,
+                actual_clocks,
                 wait_cycles: wait_states,
                 diffs: vec![StateDiff::CycleLength {
-                    actual: cpu.instruction_clocks,
+                    actual: actual_clocks,
                     expected: expected_clocks,
                 }],
             });
@@ -189,7 +190,7 @@ pub fn run_dma_contention_sweep(
                 stall_phase,
                 burst_length: 1,
                 base_clocks,
-                actual_clocks: cpu.instruction_clocks,
+                actual_clocks,
                 wait_cycles: wait_states,
                 diffs,
             });
@@ -221,7 +222,7 @@ pub fn run_dma_burst_contention(
             break;
         }
     }
-    let base_clocks = golden_cpu.instruction_clocks;
+    let base_clocks = golden_cpu.cycle_counter() as u32;
     let golden_state = golden_cpu.state.clone();
 
     let mut golden_ram = Vec::new();
@@ -265,19 +266,20 @@ pub fn run_dma_burst_contention(
     cpu.state.sync_stack_pointers();
 
     // Assert Cycle Invariance
-    let extra_clocks = cpu.instruction_clocks.saturating_sub(base_clocks);
+    let actual_clocks = cpu.cycle_counter() as u32;
+    let extra_clocks = actual_clocks.saturating_sub(base_clocks);
     let wait_states = extra_clocks / 2;
     let expected_clocks = base_clocks + (2 * wait_states);
-    if cpu.instruction_clocks != expected_clocks || wait_states > (burst_length as u32) {
+    if actual_clocks != expected_clocks || wait_states > (burst_length as u32) {
         return Err(DmaContentionFailure {
             test_name: test.name.clone(),
             stall_phase: burst_start_phase,
             burst_length,
             base_clocks,
-            actual_clocks: cpu.instruction_clocks,
+            actual_clocks,
             wait_cycles: wait_states,
             diffs: vec![StateDiff::CycleLength {
-                actual: cpu.instruction_clocks,
+                actual: actual_clocks,
                 expected: expected_clocks,
             }],
         });
@@ -350,7 +352,7 @@ pub fn run_dma_burst_contention(
             stall_phase: burst_start_phase,
             burst_length,
             base_clocks,
-            actual_clocks: cpu.instruction_clocks,
+            actual_clocks,
             wait_cycles: wait_states,
             diffs,
         });

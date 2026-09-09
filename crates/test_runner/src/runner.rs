@@ -13,7 +13,7 @@ pub enum VerifyMode {
     /// Verify CPU registers and RAM contents (baseline for opcodes awaiting cycle migration)
     #[default]
     StateOnly,
-    /// Verify CPU registers, RAM contents, and instruction clock cycles (cpu.instruction_clocks == test.length)
+    /// Verify CPU registers, RAM contents, and instruction clock cycles (actual_clocks == test.length)
     StateAndCycles,
     /// Full verification: registers, RAM, cycle count, and complete bus transaction sequence
     Full,
@@ -87,7 +87,7 @@ pub fn run_single_test_detail(
     cpu.state.prefetch[1] = 0;
 
     // Execute instruction
-    let _ = cpu.step_instruction(&mut bus);
+    let actual_clocks = cpu.step_instruction(&mut bus);
     cpu.state.sync_stack_pointers();
 
     // Verify Data Registers
@@ -244,10 +244,10 @@ pub fn run_single_test_detail(
 
     // Verify Cycle Length
     if (mode == VerifyMode::StateAndCycles || mode == VerifyMode::Full)
-        && cpu.instruction_clocks != test.length
+        && actual_clocks != test.length
     {
         failure.diffs.push(StateDiff::CycleLength {
-            actual: cpu.instruction_clocks,
+            actual: actual_clocks,
             expected: test.length,
         });
     }
