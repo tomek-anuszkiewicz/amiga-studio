@@ -17,7 +17,7 @@ impl Cpu {
     pub fn step_bus_read_target_opcode_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, true, bus);
+            self.trigger_address_error(addr, true, true);
             return BusResult::Ready(());
         }
         match bus.read_word(addr & 0x00FF_FFFF) {
@@ -33,7 +33,7 @@ impl Cpu {
     pub fn step_prefetch_target_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, true, bus);
+            self.trigger_address_error(addr, true, true);
             return BusResult::Ready(());
         }
         match bus.read_word(addr & 0x00FF_FFFF) {
@@ -56,11 +56,11 @@ impl Cpu {
     // ========================================================================
 
     /// CCK1: Decrements SP -= 4, validates alignment, and idles bus for high word write
-    pub fn step_bus_push_stack_high_idle(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+    pub fn step_bus_push_stack_high_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         let sp = self.state.read_a(7).wrapping_sub(4);
         self.state.write_a(7, sp);
         if (sp & 1) != 0 {
-            self.trigger_address_error_step(sp, false, false, bus);
+            self.trigger_address_error(sp, false, false);
             return BusResult::Ready(());
         }
         BusResult::Ready(())
@@ -94,7 +94,7 @@ impl Cpu {
     pub fn step_bus_pop_stack_high_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let sp = self.state.read_a(7);
         if (sp & 1) != 0 {
-            self.trigger_address_error_step(sp, true, false, bus);
+            self.trigger_address_error(sp, true, false);
             return BusResult::Ready(());
         }
         match bus.read_word(sp & 0x00FF_FFFF) {
@@ -117,7 +117,7 @@ impl Cpu {
     pub fn step_bus_pop_stack_low_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let sp = self.state.read_a(7);
         if (sp & 1) != 0 {
-            self.trigger_address_error_step(sp, true, false, bus);
+            self.trigger_address_error(sp, true, false);
             return BusResult::Ready(());
         }
         match bus.read_word(sp & 0x00FF_FFFF) {
@@ -141,10 +141,10 @@ impl Cpu {
     // ========================================================================
 
     /// CCK1: Validates stack alignment and idles bus for return PC low word write to SP - 2
-    pub fn step_bus_write_trap_pclo_idle(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+    pub fn step_bus_write_trap_pclo_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         let sp = self.state.read_a(7).wrapping_sub(2);
         if (sp & 1) != 0 {
-            self.trigger_address_error_step(sp, false, false, bus);
+            self.trigger_address_error(sp, false, false);
             return BusResult::Ready(());
         }
         BusResult::Ready(())
@@ -161,10 +161,10 @@ impl Cpu {
     }
 
     /// CCK1: Validates stack alignment and idles bus for old SR write to SP - 6
-    pub fn step_bus_write_trap_sr_idle(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+    pub fn step_bus_write_trap_sr_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         let sp = self.state.read_a(7).wrapping_sub(6);
         if (sp & 1) != 0 {
-            self.trigger_address_error_step(sp, false, false, bus);
+            self.trigger_address_error(sp, false, false);
             return BusResult::Ready(());
         }
         BusResult::Ready(())
@@ -181,10 +181,10 @@ impl Cpu {
     }
 
     /// CCK1: Validates stack alignment and idles bus for return PC high word write to SP - 4
-    pub fn step_bus_write_trap_pchi_idle(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+    pub fn step_bus_write_trap_pchi_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         let sp = self.state.read_a(7).wrapping_sub(4);
         if (sp & 1) != 0 {
-            self.trigger_address_error_step(sp, false, false, bus);
+            self.trigger_address_error(sp, false, false);
             return BusResult::Ready(());
         }
         BusResult::Ready(())
@@ -208,7 +208,7 @@ impl Cpu {
     pub fn step_bus_read_vector_high_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, false, bus);
+            self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
         match bus.read_word(addr & 0x00FF_FFFF) {
@@ -224,7 +224,7 @@ impl Cpu {
     pub fn step_bus_read_vector_low_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, false, bus);
+            self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
         match bus.read_word(addr & 0x00FF_FFFF) {
@@ -237,7 +237,7 @@ impl Cpu {
     }
 
     /// CCK2: Finishes exception vector low word read, checks target alignment, and updates `ea_addr`
-    pub fn step_bus_read_vector_low_finish(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+    pub fn step_bus_read_vector_low_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         let val = (self.state.micro.source & 0xFFFF) as u16;
         let target = (self.state.micro.ea_high | (val as u32)) & 0x00FF_FFFF;
         if (target & 1) != 0 {
@@ -247,7 +247,7 @@ impl Cpu {
                 self.state.halted = true;
                 return BusResult::Ready(());
             }
-            self.trigger_address_error_step(target, true, true, bus);
+            self.trigger_address_error(target, true, true);
             return BusResult::Ready(());
         }
         self.state.micro.ea_addr = target;

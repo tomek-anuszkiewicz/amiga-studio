@@ -215,18 +215,6 @@ impl Cpu {
         self.state.micro.clocks_remaining = 0;
     }
 
-    /// Triggers address error during a microcode bus step (forwards to `trigger_address_error`)
-    #[inline(always)]
-    pub fn trigger_address_error_step(
-        &mut self,
-        addr: u32,
-        is_read: bool,
-        is_program_space: bool,
-        _bus: &mut dyn AddressBus,
-    ) {
-        self.trigger_address_error(addr, is_read, is_program_space);
-    }
-
     /// Executes exactly one full M68000 instruction via direct table dispatch
     pub fn step_instruction(&mut self, bus: &mut dyn AddressBus) -> u32 {
         if self.state.halted || self.state.stopped {

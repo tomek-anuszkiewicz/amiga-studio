@@ -156,7 +156,7 @@ pub static STEPS_ADDX_B_PD_PD: [MicroStep; 9] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_b_mem),
         base_clocks: 2,
     },
@@ -180,7 +180,7 @@ pub static STEPS_ADDX_W_PD_PD: [MicroStep; 9] = [
     common::READ_DST_WORD,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_w_mem),
         base_clocks: 2,
     },

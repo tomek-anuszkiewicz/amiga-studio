@@ -714,7 +714,7 @@ pub static STEPS_ADD_B_DN_AI: [MicroStep; 6] = [
     },
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_b_dn_mem),
         base_clocks: 2,
     },
@@ -730,7 +730,7 @@ pub static STEPS_ADD_B_DN_PI: [MicroStep; 6] = [
     },
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_b_dn_mem),
         base_clocks: 2,
     },
@@ -746,7 +746,7 @@ pub static STEPS_ADD_B_DN_PD: [MicroStep; 6] = [
     },
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_b_dn_mem),
         base_clocks: 2,
     },
@@ -764,7 +764,7 @@ pub static STEPS_ADD_B_DN_D16_AN: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_b_dn_mem),
         base_clocks: 2,
     },
@@ -783,7 +783,7 @@ pub static STEPS_ADD_B_DN_IDX_AN: [MicroStep; 9] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_b_dn_mem),
         base_clocks: 2,
     },
@@ -801,7 +801,7 @@ pub static STEPS_ADD_B_DN_ABSW: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_b_dn_mem),
         base_clocks: 2,
     },
@@ -825,7 +825,7 @@ pub static STEPS_ADD_B_DN_ABSL: [MicroStep; 10] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_b_dn_mem),
         base_clocks: 2,
     },
@@ -843,7 +843,7 @@ pub static STEPS_ADD_W_DN_AI: [MicroStep; 6] = [
     },
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_w_dn_mem),
         base_clocks: 2,
     },
@@ -859,7 +859,7 @@ pub static STEPS_ADD_W_DN_PI: [MicroStep; 6] = [
     },
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_w_dn_mem),
         base_clocks: 2,
     },
@@ -875,7 +875,7 @@ pub static STEPS_ADD_W_DN_PD: [MicroStep; 6] = [
     },
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_w_dn_mem),
         base_clocks: 2,
     },
@@ -893,7 +893,7 @@ pub static STEPS_ADD_W_DN_D16_AN: [MicroStep; 8] = [
     common::READ_DST_WORD,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_w_dn_mem),
         base_clocks: 2,
     },
@@ -912,7 +912,7 @@ pub static STEPS_ADD_W_DN_IDX_AN: [MicroStep; 9] = [
     common::READ_DST_WORD,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_w_dn_mem),
         base_clocks: 2,
     },
@@ -930,7 +930,7 @@ pub static STEPS_ADD_W_DN_ABSW: [MicroStep; 8] = [
     common::READ_DST_WORD,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_w_dn_mem),
         base_clocks: 2,
     },
@@ -954,7 +954,7 @@ pub static STEPS_ADD_W_DN_ABSL: [MicroStep; 10] = [
     common::READ_DST_WORD,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_w_dn_mem),
         base_clocks: 2,
     },
@@ -974,7 +974,7 @@ pub static STEPS_ADD_L_DN_AI: [MicroStep; 10] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_dn_mem),
         base_clocks: 2,
     },
@@ -994,7 +994,7 @@ pub static STEPS_ADD_L_DN_PI: [MicroStep; 10] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_dn_mem),
         base_clocks: 2,
     },
@@ -1014,7 +1014,7 @@ pub static STEPS_ADD_L_DN_PD: [MicroStep; 10] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_dn_mem),
         base_clocks: 2,
     },
@@ -1036,7 +1036,7 @@ pub static STEPS_ADD_L_DN_D16_AN: [MicroStep; 12] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_dn_mem),
         base_clocks: 2,
     },
@@ -1059,7 +1059,7 @@ pub static STEPS_ADD_L_DN_IDX_AN: [MicroStep; 13] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_dn_mem),
         base_clocks: 2,
     },
@@ -1081,7 +1081,7 @@ pub static STEPS_ADD_L_DN_ABSW: [MicroStep; 12] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_dn_mem),
         base_clocks: 2,
     },
@@ -1109,7 +1109,7 @@ pub static STEPS_ADD_L_DN_ABSL: [MicroStep; 14] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_dn_mem),
         base_clocks: 2,
     },

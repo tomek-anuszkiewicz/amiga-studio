@@ -24,7 +24,7 @@ impl Cpu {
     pub fn step_bus_read_src_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, false, bus);
+            self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
         let addr = addr & 0x00FF_FFFF;
@@ -53,7 +53,7 @@ impl Cpu {
     pub fn step_bus_read_dst_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, false, bus);
+            self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
         let addr = addr & 0x00FF_FFFF;
@@ -70,7 +70,7 @@ impl Cpu {
     pub fn step_bus_read_src_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, false, bus);
+            self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
         let addr = addr & 0x00FF_FFFF;
@@ -87,7 +87,7 @@ impl Cpu {
     pub fn step_bus_read_src_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, false, bus);
+            self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
         let addr = addr & 0x00FF_FFFF;
@@ -105,7 +105,7 @@ impl Cpu {
     pub fn step_bus_read_dst_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, false, bus);
+            self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
         let addr = addr & 0x00FF_FFFF;
@@ -122,7 +122,7 @@ impl Cpu {
     pub fn step_bus_read_dst_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, false, bus);
+            self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
         let addr = addr & 0x00FF_FFFF;
@@ -140,7 +140,7 @@ impl Cpu {
     pub fn step_bus_read_src_split_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, false, bus);
+            self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
         let addr = addr & 0x00FF_FFFF;
@@ -158,7 +158,7 @@ impl Cpu {
     pub fn step_bus_read_dst_split_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, true, false, bus);
+            self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
         let addr = addr & 0x00FF_FFFF;
@@ -187,7 +187,7 @@ impl Cpu {
     pub fn step_bus_write_dst_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, false, false, bus);
+            self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
         let val = (self.state.micro.destination & 0xFFFF) as u16;
@@ -202,7 +202,7 @@ impl Cpu {
     pub fn step_bus_write_dst_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, false, false, bus);
+            self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
         let val = ((self.state.micro.destination >> 16) & 0xFFFF) as u16;
@@ -217,7 +217,7 @@ impl Cpu {
     pub fn step_bus_write_dst_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
         if (addr & 1) != 0 {
-            self.trigger_address_error_step(addr, false, false, bus);
+            self.trigger_address_error(addr, false, false);
             return BusResult::Ready(());
         }
         let val = (self.state.micro.destination & 0xFFFF) as u16;
@@ -248,18 +248,6 @@ impl Cpu {
 
     /// CCK1: Prefetch next opcode from PC into `self.state.micro.irc`
     pub fn step_prefetch_next_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.pc & 0x00FF_FFFF;
-        match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
-            BusResult::Ready(data) => {
-                self.state.micro.irc = data;
-                BusResult::Ready(())
-            }
-        }
-    }
-
-    /// CCK1: Prefetch to IRC from PC directly into `self.state.micro.irc`
-    pub fn step_prefetch_irc_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.pc & 0x00FF_FFFF;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,

@@ -96,7 +96,7 @@ pub static STEPS_NOT_B_AI: [MicroStep; 6] = [
     },
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_b_mem),
         base_clocks: 2,
     },
@@ -112,7 +112,7 @@ pub static STEPS_NOT_B_PI: [MicroStep; 6] = [
     },
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_b_mem),
         base_clocks: 2,
     },
@@ -128,7 +128,7 @@ pub static STEPS_NOT_B_PD: [MicroStep; 6] = [
     },
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_b_mem),
         base_clocks: 2,
     },
@@ -146,7 +146,7 @@ pub static STEPS_NOT_B_D16: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_b_mem),
         base_clocks: 2,
     },
@@ -165,7 +165,7 @@ pub static STEPS_NOT_B_IDX: [MicroStep; 9] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_b_mem),
         base_clocks: 2,
     },
@@ -183,7 +183,7 @@ pub static STEPS_NOT_B_ABSW: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_b_mem),
         base_clocks: 2,
     },
@@ -207,7 +207,7 @@ pub static STEPS_NOT_B_ABSL: [MicroStep; 10] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_b_mem),
         base_clocks: 2,
     },
@@ -233,7 +233,7 @@ pub static STEPS_NOT_W_AI: [MicroStep; 6] = [
     },
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_w_mem),
         base_clocks: 2,
     },
@@ -249,7 +249,7 @@ pub static STEPS_NOT_W_PI: [MicroStep; 6] = [
     },
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_w_mem),
         base_clocks: 2,
     },
@@ -265,7 +265,7 @@ pub static STEPS_NOT_W_PD: [MicroStep; 6] = [
     },
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_w_mem),
         base_clocks: 2,
     },
@@ -283,7 +283,7 @@ pub static STEPS_NOT_W_D16: [MicroStep; 8] = [
     common::READ_DST_WORD,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_w_mem),
         base_clocks: 2,
     },
@@ -302,7 +302,7 @@ pub static STEPS_NOT_W_IDX: [MicroStep; 9] = [
     common::READ_DST_WORD,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_w_mem),
         base_clocks: 2,
     },
@@ -320,7 +320,7 @@ pub static STEPS_NOT_W_ABSW: [MicroStep; 8] = [
     common::READ_DST_WORD,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_w_mem),
         base_clocks: 2,
     },
@@ -344,7 +344,7 @@ pub static STEPS_NOT_W_ABSL: [MicroStep; 10] = [
     common::READ_DST_WORD,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_w_mem),
         base_clocks: 2,
     },
@@ -377,7 +377,7 @@ pub static STEPS_NOT_L_AI: [MicroStep; 10] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_l_mem),
         base_clocks: 2,
     },
@@ -397,7 +397,7 @@ pub static STEPS_NOT_L_PI: [MicroStep; 10] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_l_mem),
         base_clocks: 2,
     },
@@ -417,7 +417,7 @@ pub static STEPS_NOT_L_PD: [MicroStep; 10] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_l_mem),
         base_clocks: 2,
     },
@@ -439,7 +439,7 @@ pub static STEPS_NOT_L_D16: [MicroStep; 12] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_l_mem),
         base_clocks: 2,
     },
@@ -462,7 +462,7 @@ pub static STEPS_NOT_L_IDX: [MicroStep; 13] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_l_mem),
         base_clocks: 2,
     },
@@ -484,7 +484,7 @@ pub static STEPS_NOT_L_ABSW: [MicroStep; 12] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_l_mem),
         base_clocks: 2,
     },
@@ -512,7 +512,7 @@ pub static STEPS_NOT_L_ABSL: [MicroStep; 14] = [
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_read),
+        step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_not_l_mem),
         base_clocks: 2,
     },

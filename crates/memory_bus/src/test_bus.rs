@@ -91,11 +91,6 @@ impl TestMemoryBus {
         }
     }
 
-    /// Reads a byte from test RAM without advancing cycles or recording transactions
-    pub fn read_test_ram(&self, addr: u32) -> u8 {
-        self.read_byte_debug(addr)
-    }
-
     /// Inverts all bytes in test memory (used by DMA contention tests to detect unauthorized bus writes)
     pub fn invert_test_memory(&mut self) {
         if let Some(test_mem) = &mut self.test_memory {

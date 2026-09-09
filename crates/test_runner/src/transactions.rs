@@ -12,7 +12,6 @@ pub enum ExpectedTransaction {
         is_read: bool,
         is_tas: bool,
         duration: u32,
-        fc: u8,
         addr: u32,
         size: BusAccessSize,
         data: u16,
@@ -54,7 +53,7 @@ pub fn parse_transactions(
                 .and_then(|v| v.as_u64())
                 .ok_or_else(|| format!("Bus transaction [{}] missing duration", idx))?
                 as u32;
-            let fc = arr
+            let _fc = arr
                 .get(2)
                 .and_then(|v| v.as_u64())
                 .ok_or_else(|| format!("Bus transaction [{}] missing function code", idx))?
@@ -86,7 +85,6 @@ pub fn parse_transactions(
                 is_read,
                 is_tas,
                 duration,
-                fc,
                 addr: addr & 0x00FF_FFFF,
                 size,
                 data,

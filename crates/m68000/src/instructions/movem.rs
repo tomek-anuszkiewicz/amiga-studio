@@ -259,12 +259,12 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusRes
         let ea = cpu.state.micro.ea_addr;
         if (ea & 1) != 0 {
             if is_predec {
-                cpu.trigger_address_error_step(ea.wrapping_sub(2), false, false, bus);
+                cpu.trigger_address_error(ea.wrapping_sub(2), false, false);
             } else if is_postinc {
                 cpu.state.write_a(reg_ea, ea.wrapping_add(2));
-                cpu.trigger_address_error_step(ea, true, false, bus);
+                cpu.trigger_address_error(ea, true, false);
             } else {
-                cpu.trigger_address_error_step(ea, !is_reg_to_mem, false, bus);
+                cpu.trigger_address_error(ea, !is_reg_to_mem, false);
             }
             return BusResult::Ready(());
         }

@@ -252,18 +252,6 @@ impl MemoryBus {
         BusResult::Ready(self.read_word_internal(addr))
     }
 
-    /// Generic read dispatching by `BusAccessSize` (Byte or Word).
-    #[inline(always)]
-    pub fn read(&self, addr: u32, size: BusAccessSize) -> BusResult<u16> {
-        match size {
-            BusAccessSize::Byte => match self.read_byte(addr) {
-                BusResult::Ready(val) => BusResult::Ready(val as u16),
-                BusResult::WaitState => BusResult::WaitState,
-            },
-            BusAccessSize::Word => self.read_word(addr),
-        }
-    }
-
     /// Writes an 8-bit byte to the 24-bit physical address space, checking for Chip RAM bus contention.
     /// Returns `BusResult::WaitState` if the target is Chip RAM (or Slow RAM) and Agnus/DMA is blocking the bus.
     #[inline(always)]
@@ -284,15 +272,6 @@ impl MemoryBus {
         }
         self.write_word_internal(addr, val);
         BusResult::Ready(())
-    }
-
-    /// Generic write dispatching by `BusAccessSize` (Byte or Word).
-    #[inline(always)]
-    pub fn write(&mut self, addr: u32, val: u16, size: BusAccessSize) -> BusResult<()> {
-        match size {
-            BusAccessSize::Byte => self.write_byte(addr, val as u8),
-            BusAccessSize::Word => self.write_word(addr, val),
-        }
     }
 
     /// Cold / Hard Reset: Wipes all RAM to zero and re-engages Kickstart overlay

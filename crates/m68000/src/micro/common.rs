@@ -24,7 +24,7 @@ pub const FETCH_EXT_READ: MicroStep = MicroStep::cck(Cpu::step_fetch_extension_r
 pub const FETCH_EXT_FINISH: MicroStep = MicroStep::cck(Cpu::step_fetch_extension_finish);
 
 /// CCK1: Prefetch next opcode directly to IRC
-pub const PREFETCH_IRC_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_irc_read);
+pub const PREFETCH_IRC_READ: MicroStep = PREFETCH_NEXT_READ;
 
 /// CCK2: Prefetch next opcode to IRC finish (latches into irc and advances prefetch)
 pub const PREFETCH_IRC_FINISH: MicroStep = MicroStep::cck(Cpu::step_prefetch_irc_finish);
@@ -79,9 +79,6 @@ pub const READ_SRC_SPLIT_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_src
 
 /// CCK1: Reads split high word of 32-bit destination operand into bits 16..31 of `destination`
 pub const READ_DST_SPLIT_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_split_high);
-
-/// CCK2: Finishes reading split high word (idle CCK)
-pub const READ_SPLIT_HIGH_FINISH: MicroStep = MicroStep::cck_idle();
 
 /// CCK2: Writes high word of 32-bit destination to memory (non-retiring)
 pub const WRITE_DST_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_long_high);

@@ -23,7 +23,6 @@ pub mod micro {
 pub mod state;
 
 pub use core::Cpu;
-pub use memory_bus::{AddressBus, TestMemoryBus};
 pub use micro::{
     common::VECTOR_ADDRESS_ERROR, CpuMicroState, MicroStep, OpcodeDescriptor, Size, StepFn,
     OPCODE_DESCRIPTOR_TABLE,
