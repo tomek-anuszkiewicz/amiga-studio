@@ -29,6 +29,11 @@ const FETCH_MASK_READ: MicroStep = MicroStep {
     base_clocks: 2,
 };
 const FETCH_MASK_FINISH: MicroStep = common::FETCH_EXT_FINISH;
+const FETCH_MASK_FINISH_AI: MicroStep = MicroStep {
+    step_fn: Some(Cpu::step_fetch_extension_finish),
+    alu_fn: Some(ea::ea_calc_src_ai),
+    base_clocks: 2,
+};
 
 const MOVEM_TRANSFER: MicroStep = MicroStep {
     step_fn: Some(crate::instructions::movem::execute_movem_transfer),
@@ -40,28 +45,25 @@ const MOVEM_TRANSFER: MicroStep = MicroStep {
 // Static Step Slices: MOVEM
 // ============================================================================
 
-pub static STEPS_MOVEM_AI: [MicroStep; 6] = [
+pub static STEPS_MOVEM_AI: [MicroStep; 5] = [
     FETCH_MASK_READ,
-    FETCH_MASK_FINISH,
-    MicroStep::alu(ea::ea_calc_src_ai),
+    FETCH_MASK_FINISH_AI,
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
 ];
 
-pub static STEPS_MOVEM_PI: [MicroStep; 6] = [
+pub static STEPS_MOVEM_PI: [MicroStep; 5] = [
     FETCH_MASK_READ,
-    FETCH_MASK_FINISH,
-    MicroStep::alu(ea::ea_calc_src_ai),
+    FETCH_MASK_FINISH_AI,
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
 ];
 
-pub static STEPS_MOVEM_PD: [MicroStep; 6] = [
+pub static STEPS_MOVEM_PD: [MicroStep; 5] = [
     FETCH_MASK_READ,
-    FETCH_MASK_FINISH,
-    MicroStep::alu(ea::ea_calc_src_ai),
+    FETCH_MASK_FINISH_AI,
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,

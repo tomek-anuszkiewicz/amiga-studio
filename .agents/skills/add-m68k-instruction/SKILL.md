@@ -126,7 +126,22 @@ pub static STEPS_SUB_W_AI_DN: [MicroStep; 4] = [
 ];
 ```
 
-#### 3. Register-to-Memory RMW Class 0 (e.g. `SUB.W Dn, (An)` — 12 clocks / 6 CCKs):
+#### 3. Register-to-Memory Store (e.g. `MOVE.W Dn, (An)` — 8 clocks / 4 CCKs):
+Fused ALU callback pattern: source extraction, CCR evaluation, and destination EA are combined into `alu_move_w_dn_dst_ai` attached to the first CCK write setup step:
+```rust
+pub static STEPS_MOVE_W_DN_AI: [MicroStep; 4] = [
+    MicroStep {
+        step_fn: None,
+        alu_fn: Some(alu_move_w_dn_dst_ai),
+        base_clocks: 2,
+    },
+    common::WRITE_DST_WORD,
+    common::PREFETCH_NEXT_READ,
+    common::BUS_READ_IDLE,
+];
+```
+
+#### 4. Register-to-Memory RMW Class 0 (e.g. `SUB.W Dn, (An)` — 12 clocks / 6 CCKs):
 Notice the M68000 RMW pipeline: read operand $\to$ prefetch next opcode to `irc` while executing ALU $\to$ write result and retire:
 ```rust
 pub static STEPS_SUB_W_DN_AI: [MicroStep; 6] = [
@@ -144,6 +159,31 @@ pub static STEPS_SUB_W_DN_AI: [MicroStep; 6] = [
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_WORD,
+];
+```
+
+#### 5. Dual Staging Registers ($X_1, X_2$) for Multi-Phase Transfers (`CMPM`, `MOVEM`):
+For multi-phase transfers, pre-calculate staged addresses into `state.micro.addr1` and `state.micro.addr2` in the initial ALU step, and consume them directly via `common::READ_ADDR1_*` and `common::READ_ADDR2_*`:
+```rust
+pub static STEPS_CMPM_W: [MicroStep; 6] = [
+    MicroStep {
+        step_fn: Some(Cpu::step_bus_read_src_word),
+        alu_fn: Some(ea::ea_calc_src_pi_w),
+        base_clocks: 2,
+    },
+    common::BUS_READ_IDLE,
+    MicroStep {
+        step_fn: Some(Cpu::step_bus_read_dst_word),
+        alu_fn: Some(ea::ea_calc_dst_pi_w),
+        base_clocks: 2,
+    },
+    common::BUS_READ_IDLE,
+    MicroStep {
+        step_fn: Some(Cpu::step_prefetch_next_read),
+        alu_fn: Some(alu_cmpm_w),
+        base_clocks: 2,
+    },
+    common::BUS_READ_IDLE,
 ];
 ```
 

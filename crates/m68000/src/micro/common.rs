@@ -92,6 +92,30 @@ pub const WRITE_DST_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst
 /// CCK2: Writes low word of 32-bit destination to memory + 2 (deprecated alias, use `WRITE_DST_LONG_LOW`)
 pub const WRITE_DST_LONG_LOW_RETIRE: MicroStep = WRITE_DST_LONG_LOW;
 
+/// CCK1: Reads source byte from staged `addr1` into `source`
+pub const READ_ADDR1_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr1_byte);
+
+/// CCK1: Reads source word from staged `addr1` into `source`
+pub const READ_ADDR1_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr1_word);
+
+/// CCK1: Reads destination byte from staged `addr2` into `destination`
+pub const READ_ADDR2_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr2_byte);
+
+/// CCK1: Reads destination word from staged `addr2` into `destination`
+pub const READ_ADDR2_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr2_word);
+
+/// CCK1: Reads source long high word from staged `addr1` into `source`
+pub const READ_ADDR1_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr1_long_high);
+
+/// CCK1: Reads source long low word from staged `addr1 + 2` into `source`
+pub const READ_ADDR1_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr1_long_low);
+
+/// CCK1: Reads destination long high word from staged `addr2` into `destination`
+pub const READ_ADDR2_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr2_long_high);
+
+/// CCK1: Reads destination long low word from staged `addr2 + 2` into `destination`
+pub const READ_ADDR2_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr2_long_low);
+
 // ============================================================================
 // 2-Clock Control Flow, Stack & Target Refill Building Blocks
 // ============================================================================

@@ -37,6 +37,12 @@ pub struct CpuMicroState {
     /// Resolved effective memory address for operands or branch/jump targets
     #[serde(default)]
     pub ea_addr: u32,
+    /// Dual Staging Register 1 (X1 / Source EA / High-word / Low-word split EA)
+    #[serde(default)]
+    pub addr1: u32,
+    /// Dual Staging Register 2 (X2 / Destination EA / High-word / Low-word split EA)
+    #[serde(default)]
+    pub addr2: u32,
     /// Pre-decoded source register index (0..7 for Dn/An)
     #[serde(default)]
     pub reg_src: u8,
@@ -82,6 +88,8 @@ impl CpuMicroState {
             source: 0,
             destination: 0,
             ea_addr: 0,
+            addr1: 0,
+            addr2: 0,
             reg_src: 0,
             reg_dst: 0,
             current_steps: &EMPTY_STEPS,
@@ -104,6 +112,8 @@ impl CpuMicroState {
         self.source = 0;
         self.destination = 0;
         self.ea_addr = 0;
+        self.addr1 = 0;
+        self.addr2 = 0;
         self.reg_src = 0;
         self.reg_dst = 0;
         self.current_steps = &EMPTY_STEPS;
