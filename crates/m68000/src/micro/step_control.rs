@@ -239,7 +239,7 @@ impl Cpu {
     /// CCK2: Finishes exception vector low word read, checks target alignment, and updates `ea_addr`
     pub fn step_bus_read_vector_low_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         let val = (self.state.micro.source & 0xFFFF) as u16;
-        let target = (self.state.micro.ea_high | (val as u32)) & 0x00FF_FFFF;
+        let target = self.state.micro.ea_high | (val as u32);
         if (target & 1) != 0 {
             if self.state.micro.current_steps.as_ptr()
                 == crate::micro::common::STEPS_ADDRESS_ERROR.as_ptr()

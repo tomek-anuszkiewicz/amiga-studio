@@ -1,4 +1,6 @@
-use test_runner::runner::{run_test_file_with_mode, VerifyMode};
+use test_runner::is_cmpm_postinc_opcode;
+use test_runner::runner::{run_test_file_filtered_with_mode, run_test_file_with_mode, VerifyMode};
+use test_runner::schema::SingleStepTest;
 
 /// Default number of test cases to run per opcode from each test suite
 const DEFAULT_SAMPLE_LIMIT: usize = 50;
@@ -58,6 +60,63 @@ fn run_dual_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
             harte_path, err
         )
     });
+    let (harte_passed, harte_failed) = harte_res;
+    assert!(
+        harte_passed > 0,
+        "No Real 68k tests passed for {} (total executed: {})",
+        name,
+        harte_passed + harte_failed
+    );
+    assert_eq!(
+        harte_failed,
+        0,
+        "Real 68k (Tom Harte) tests failed for {}: {}/{} failed",
+        name,
+        harte_failed,
+        harte_passed + harte_failed
+    );
+}
+
+/// Helper function to execute a filtered test against both suites
+fn run_dual_test_filtered<F>(name: &str, limit: usize, filter: F)
+where
+    F: Fn(&SingleStepTest) -> bool + Copy,
+{
+    let effective = resolve_limit(limit);
+    let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", name);
+    let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", name);
+
+    // 1. MAME SingleStepTests suite
+    let mame_res =
+        run_test_file_filtered_with_mode(&mame_path, effective, VerifyMode::StateOnly, filter)
+            .unwrap_or_else(|err| {
+                panic!("Failed to open/parse MAME test '{}': {}", mame_path, err)
+            });
+    let (mame_passed, mame_failed) = mame_res;
+    assert!(
+        mame_passed > 0,
+        "No MAME tests passed for {} (total executed: {})",
+        name,
+        mame_passed + mame_failed
+    );
+    assert_eq!(
+        mame_failed,
+        0,
+        "MAME tests failed for {}: {}/{} failed",
+        name,
+        mame_failed,
+        mame_passed + mame_failed
+    );
+
+    // 2. Real 68k (Tom Harte) SingleStepTests-680x0 suite
+    let harte_res =
+        run_test_file_filtered_with_mode(&harte_path, effective, VerifyMode::StateOnly, filter)
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Failed to open/parse Real 68k test '{}': {}",
+                    harte_path, err
+                )
+            });
     let (harte_passed, harte_failed) = harte_res;
     assert!(
         harte_passed > 0,
@@ -277,4 +336,33 @@ fn test_asl_w() {
 #[test]
 fn test_asl_l() {
     run_dual_test("ASL.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+// ============================================================================
+// Comparisons (CMPM Archetype)
+// NOTE (ROADMAP Batch 1.3): `CMP.<size>.json` contains both standard `CMP` and `CMPM`.
+// Once standard `CMP`, `CMPA`, and `CMPI` are implemented, add `test_cmp_b`,
+// `test_cmp_w`, and `test_cmp_l` for the full files while retaining or adjusting
+// these `CMPM`-filtered tests.
+// ============================================================================
+
+#[test]
+fn test_cmpm_b() {
+    run_dual_test_filtered("CMP.b", DEFAULT_SAMPLE_LIMIT, |t| {
+        is_cmpm_postinc_opcode(t.initial.prefetch[0])
+    });
+}
+
+#[test]
+fn test_cmpm_w() {
+    run_dual_test_filtered("CMP.w", DEFAULT_SAMPLE_LIMIT, |t| {
+        is_cmpm_postinc_opcode(t.initial.prefetch[0])
+    });
+}
+
+#[test]
+fn test_cmpm_l() {
+    run_dual_test_filtered("CMP.l", DEFAULT_SAMPLE_LIMIT, |t| {
+        is_cmpm_postinc_opcode(t.initial.prefetch[0])
+    });
 }

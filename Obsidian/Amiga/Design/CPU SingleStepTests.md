@@ -33,6 +33,12 @@ To ensure robust, ground-truth verification and eliminate single-source simulati
 3. **Comprehensive Coverage:** MAME provides specialized exception vector suites (`ILLEGAL_LINEA`, `ILLEGAL_LINEF`, `STOP`) that are not present in Tom Harte's 125-opcode collection.
 
 
+### 1.2 Opcode Packaging Quirk: CMP and CMPM
+In both the MAME and Tom Harte suites, there are **no separate `CMPM.b.json`, `CMPM.w.json`, or `CMPM.l.json` files**. Instead, all `CMPM (Ay)+, (Ax)+` test cases are bundled together inside `CMP.b.json`, `CMP.w.json`, and `CMP.l.json` alongside standard `CMP <ea>, Dn`.
+
+- The test runner provides [`is_cmpm_postinc_opcode`](crates/test_runner/src/runner.rs) (`(op & 0xF138) == 0xB108`) to isolate `CMPM` cases while only the `CMPM` archetype is active.
+- **Roadmap Reminder (Batch 1.3):** When standard `CMP`, `CMPA`, and `CMPI` are implemented, update/remove the `strip_prefix("CMPM.")` filter in [`crates/test_runner/tests/test_dma_cartesian.rs`](crates/test_runner/tests/test_dma_cartesian.rs) and introduce full `CMP` integration tests in [`crates/test_runner/tests/test_singlestep.rs`](crates/test_runner/tests/test_singlestep.rs) so the entire `CMP` vector suite is validated.
+
 ---
 
 ## 2. JSON Test Schema
@@ -355,38 +361,22 @@ cargo run -p test_runner -- --suite ADD.b
 
 To verify the CPU's bus arbitration and wait-state handling under real Amiga hardware conditions, we do **not** generate duplicate JSON files on disk. Instead, the test runner applies **programmatic test mutations in memory**:
 
-### 8.1 Address Remapping Modes
-The test harness provides a parameter to remap the arbitrary test addresses from the JSON into Amiga-specific address spaces:
-- **`MemoryMappingMode::Direct`**: Executes tests using raw addresses from the JSON file in sparse test memory.
-- **`MemoryMappingMode::ForceChipRam`**: Offsets all code, data, and stack addresses into Chip RAM (`$000000-$07FFFF`). Validates that the CPU handles Chip RAM contention and respects `MemoryBusResult::Blocked`.
-- **`MemoryMappingMode::ForceFastRam`**: Offsets addresses into Fast RAM (`$200000-$27FFFF`). Validates that the CPU executes at full speed without bus delays.
-- **`MemoryMappingMode::MixedChipFast`**: Maps instruction opcodes in Fast RAM while placing data operands in Chip RAM (or vice versa), testing mixed-bus execution.
+### 8.1 Memory Classification & Gary Bus Equivalence
+The test harness classifies accessed memory addresses using `MemoryType`:
+- **`MemoryType::ChipRam`**: Contended by Agnus DMA ($000000-$07FFFF); memory bus accesses stall with `BusResult::WaitState` when `chip_ram_blocked` is asserted.
+- **`MemoryType::FastRam`**: Uncontended memory; completely immune to Agnus DMA contention, executing with **zero wait states** even during 100% DMA bus stalls.
 
-### 8.2 Parameterized DMA Contention Scheduling
-The test harness can inject a simulated Agnus DMA schedule into the execution loop:
-```rust
-pub struct DmaSchedule {
-    /// Closure or pattern indicating if Agnus occupies the bus at this CCK cycle
-    pub is_blocked: Box<dyn Fn(u64) -> bool>,
-}
+### 8.2 Full Cartesian Permutation Engine (`run_dma_full_cartesian_permutation`)
+Rather than testing a small subset of arbitrary schedules, the test harness evaluates the full combinatorial Cartesian product across both dimensions:
+1. **Address Permutation Space ($2^k$):** Memory cells accessed by the instruction are dynamically discovered during an uncontended pre-flight pass (`run_preflight`) and clustered into up to $k \le 4$ functional roles (`cluster_contacts`). Every combination of `ChipRam` vs `FastRam` is swept.
+2. **DMA Schedule Permutation Space ($2^M$):** Each CCK cycle $t \in [0, M)$ of the instruction execution window is evaluated across all $2^M$ bit patterns (every possible combination of stalled vs free CCK slots).
+3. **Hardware Invariants Verified per Run:**
+   - **State Invariance:** CPU registers ($D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, $PC$, prefetch) and RAM contents match the golden uncontended run 100% bit-identically across all permutations.
+   - **Cycle Invariance:** Contended execution total CPU clocks satisfy $C = C_0 + 2 \times \text{wait\_cycles}$, where wait cycles only accumulate when contested `ChipRam` cells are accessed during an active DMA stall.
+   - **Fast RAM Immunity:** When all accessed contacts are assigned `FastRam`, wait states are strictly 0 ($C = C_0$) regardless of active DMA stalls.
 
-impl DmaSchedule {
-    /// Agnus blocks every alternate cycle (simulating bitplane DMA)
-    pub fn alternate_cycles() -> Self {
-        Self { is_blocked: Box::new(|cck| cck % 2 != 0) }
-    }
-
-    /// Blitter nastiness: Agnus blocks the bus for N consecutive CCK cycles
-    pub fn burst(duration: u64) -> Self {
-        Self { is_blocked: Box::new(move |cck| cck < duration) }
-    }
-}
-```
-
-### 8.3 Invariant Under Bus Mutations
-When running a test mutation with simulated DMA blocks:
-1. **Registers & Memory:** The final register state ($D_0-D_7$, $A_0-A_6$, $SR$, $PC$, prefetch) and RAM contents **must match the JSON final state exactly**.
-2. **Cycle Count:** The total elapsed CCK count naturally increases by the exact number of wait states inserted by the DMA schedule.
+### 8.3 Memory Inversion Guard (`invert_chip_ram`)
+During stalled CCK cycles, the test bus temporarily inverts contested Chip RAM cells (`bus.invert_chip_ram()`) before stepping the CPU, and re-inverts them afterwards. Any unauthorized read during a wait state captures inverted/corrupted data, and any unauthorized write modifies inverted storage which becomes permanently corrupted upon un-inversion, immediately failing state assertions.
 
 ---
 

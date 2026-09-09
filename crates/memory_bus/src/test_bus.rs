@@ -10,6 +10,17 @@ use super::{
 };
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
+/// Classification of memory type for contention and bus arbitration verification
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MemoryType {
+    /// Chip RAM (contended): Blocked during Agnus DMA; wait states apply
+    ChipRam,
+    /// Fast RAM (uncontended): Zero wait states, immune to DMA contention
+    FastRam,
+}
+
 /// Lightweight test memory bus for synthetic CPU test runners and verification harnesses
 #[derive(Debug, Clone, Default)]
 pub struct TestMemoryBus {
@@ -21,6 +32,10 @@ pub struct TestMemoryBus {
     pub unmapped_byte: u8,
     /// Flag simulating custom chip (Agnus DMA) contention stalling CPU Chip RAM access
     pub chip_ram_blocked: bool,
+    /// Explicit classification for specific addresses or word regions
+    pub address_classification: HashMap<u32, MemoryType>,
+    /// Counter of write attempts intercepted during DMA wait states
+    pub stall_write_attempts: usize,
 }
 
 impl TestMemoryBus {
@@ -31,6 +46,8 @@ impl TestMemoryBus {
             transaction_log: None,
             unmapped_byte: 0xFF,
             chip_ram_blocked: false,
+            address_classification: HashMap::new(),
+            stall_write_attempts: 0,
         }
     }
 
@@ -84,7 +101,7 @@ impl TestMemoryBus {
     pub fn load_test_ram(&mut self, entries: &[[u32; 2]]) {
         if let Some(test_mem) = &mut self.test_memory {
             for entry in entries {
-                let addr = entry[0] & 0x00FF_FFFF;
+                let addr = entry[0];
                 let val = (entry[1] & 0xFF) as u8;
                 test_mem.insert(addr, val);
             }
@@ -101,12 +118,25 @@ impl TestMemoryBus {
         self.unmapped_byte = !self.unmapped_byte;
     }
 
+    /// Inverts bytes in test memory that belong to Chip RAM (contended regions).
+    /// Used by DMA contention tests to detect unauthorized bus reads or writes during stalls,
+    /// while preserving uncontended Fast RAM contents intact.
+    pub fn invert_chip_ram(&mut self) {
+        let classifications = &self.address_classification;
+        if let Some(test_mem) = &mut self.test_memory {
+            for (&addr, val) in test_mem.iter_mut() {
+                if Self::is_chip_ram_target_internal(classifications, addr) {
+                    *val = !*val;
+                }
+            }
+        }
+    }
+
     /// Side-effect-free byte read for debugger inspection and test result assertions
     #[inline]
     pub fn read_byte_debug(&self, addr: u32) -> u8 {
-        let addr_masked = addr & 0x00FF_FFFF;
         match &self.test_memory {
-            Some(map) => *map.get(&addr_masked).unwrap_or(&self.unmapped_byte),
+            Some(map) => *map.get(&addr).unwrap_or(&self.unmapped_byte),
             None => self.unmapped_byte,
         }
     }
@@ -114,11 +144,10 @@ impl TestMemoryBus {
     /// Side-effect-free word read for debugger inspection and test result assertions
     #[inline]
     pub fn read_word_debug(&self, addr: u32) -> u16 {
-        let addr_masked = addr & 0x00FF_FFFF;
         let (b0, b1) = match &self.test_memory {
             Some(map) => (
-                *map.get(&addr_masked).unwrap_or(&self.unmapped_byte),
-                *map.get(&(addr_masked.wrapping_add(1) & 0x00FF_FFFF))
+                *map.get(&addr).unwrap_or(&self.unmapped_byte),
+                *map.get(&(addr.wrapping_add(1)))
                     .unwrap_or(&self.unmapped_byte),
             ),
             None => (self.unmapped_byte, self.unmapped_byte),
@@ -129,39 +158,67 @@ impl TestMemoryBus {
     /// Side-effect-free byte write for test setup
     #[inline]
     pub fn write_byte_debug(&mut self, addr: u32, val: u8) {
-        let addr_masked = addr & 0x00FF_FFFF;
         if let Some(map) = &mut self.test_memory {
-            map.insert(addr_masked, val);
+            map.insert(addr, val);
         }
     }
 
     /// Side-effect-free word write for test setup
     #[inline]
     pub fn write_word_debug(&mut self, addr: u32, val: u16) {
-        let addr_masked = addr & 0x00FF_FFFF;
         let bytes = val.to_be_bytes();
         if let Some(map) = &mut self.test_memory {
-            map.insert(addr_masked, bytes[0]);
-            map.insert(addr_masked.wrapping_add(1) & 0x00FF_FFFF, bytes[1]);
+            map.insert(addr, bytes[0]);
+            map.insert(addr.wrapping_add(1), bytes[1]);
         }
+    }
+
+    /// Sets the memory classification (Chip, Fast) for an address
+    #[inline]
+    pub fn set_address_type(&mut self, addr: u32, mem_type: MemoryType) {
+        self.address_classification.insert(addr, mem_type);
+    }
+
+    /// Clears all dynamic address classifications
+    #[inline]
+    pub fn clear_address_classification(&mut self) {
+        self.address_classification.clear();
+    }
+
+    #[inline]
+    fn is_chip_ram_target_internal(classification: &HashMap<u32, MemoryType>, addr: u32) -> bool {
+        // 1. Check explicit classification first (exact byte or word boundary)
+        if let Some(&mem_type) = classification.get(&addr) {
+            return mem_type == MemoryType::ChipRam;
+        }
+        if let Some(&mem_type) = classification.get(&(addr & !1)) {
+            return mem_type == MemoryType::ChipRam;
+        }
+        // If not explicitly classified as Chip RAM, it is uncontended (Fast RAM)
+        false
+    }
+
+    /// Checks whether an address targets Chip RAM (subject to DMA contention)
+    #[inline]
+    pub fn is_chip_ram_target(&self, addr: u32) -> bool {
+        Self::is_chip_ram_target_internal(&self.address_classification, addr)
     }
 }
 
 impl AddressBus for TestMemoryBus {
     #[inline]
     fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
-        if self.chip_ram_blocked {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
             return BusResult::WaitState;
         }
-        let addr_masked = addr & 0x00FF_FFFF;
         let val = match &self.test_memory {
-            Some(map) => *map.get(&addr_masked).unwrap_or(&self.unmapped_byte),
+            Some(map) => *map.get(&addr).unwrap_or(&self.unmapped_byte),
             None => self.unmapped_byte,
         };
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {
                 is_read: true,
-                addr: addr_masked,
+                addr,
                 size: BusAccessSize::Byte,
                 data: val as u16,
             });
@@ -171,14 +228,13 @@ impl AddressBus for TestMemoryBus {
 
     #[inline]
     fn read_word(&mut self, addr: u32) -> BusResult<u16> {
-        if self.chip_ram_blocked {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
             return BusResult::WaitState;
         }
-        let addr_masked = addr & 0x00FF_FFFF;
         let (b0, b1) = match &self.test_memory {
             Some(map) => (
-                *map.get(&addr_masked).unwrap_or(&self.unmapped_byte),
-                *map.get(&(addr_masked.wrapping_add(1) & 0x00FF_FFFF))
+                *map.get(&addr).unwrap_or(&self.unmapped_byte),
+                *map.get(&(addr.wrapping_add(1)))
                     .unwrap_or(&self.unmapped_byte),
             ),
             None => (self.unmapped_byte, self.unmapped_byte),
@@ -187,7 +243,7 @@ impl AddressBus for TestMemoryBus {
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {
                 is_read: true,
-                addr: addr_masked,
+                addr,
                 size: BusAccessSize::Word,
                 data: val,
             });
@@ -197,17 +253,17 @@ impl AddressBus for TestMemoryBus {
 
     #[inline]
     fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
-        if self.chip_ram_blocked {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+            self.stall_write_attempts += 1;
             return BusResult::WaitState;
         }
-        let addr_masked = addr & 0x00FF_FFFF;
         if let Some(map) = &mut self.test_memory {
-            map.insert(addr_masked, val);
+            map.insert(addr, val);
         }
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {
                 is_read: false,
-                addr: addr_masked,
+                addr,
                 size: BusAccessSize::Byte,
                 data: val as u16,
             });
@@ -217,19 +273,19 @@ impl AddressBus for TestMemoryBus {
 
     #[inline]
     fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
-        if self.chip_ram_blocked {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+            self.stall_write_attempts += 1;
             return BusResult::WaitState;
         }
-        let addr_masked = addr & 0x00FF_FFFF;
         let bytes = val.to_be_bytes();
         if let Some(map) = &mut self.test_memory {
-            map.insert(addr_masked, bytes[0]);
-            map.insert(addr_masked.wrapping_add(1) & 0x00FF_FFFF, bytes[1]);
+            map.insert(addr, bytes[0]);
+            map.insert(addr.wrapping_add(1), bytes[1]);
         }
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {
                 is_read: false,
-                addr: addr_masked,
+                addr,
                 size: BusAccessSize::Word,
                 data: val,
             });

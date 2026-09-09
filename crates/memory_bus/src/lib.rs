@@ -21,7 +21,7 @@ pub use map::{
 };
 pub use rtc;
 pub use rtc::RtcMsm6242b;
-pub use test_bus::TestMemoryBus;
+pub use test_bus::{MemoryType, TestMemoryBus};
 
 use serde::{Deserialize, Serialize};
 

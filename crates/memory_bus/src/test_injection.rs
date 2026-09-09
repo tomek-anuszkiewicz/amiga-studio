@@ -6,7 +6,7 @@ impl MemoryBus {
     /// Loads a sequence of [address, byte] tuples into physical memory without triggering bus cycles or latches
     pub fn load_test_ram(&mut self, entries: &[[u32; 2]]) {
         for entry in entries {
-            let addr = entry[0] & 0x00FF_FFFF;
+            let addr = entry[0];
             let val = (entry[1] & 0xFF) as u8;
 
             // In SingleStepTests, memory is loaded directly regardless of overlay

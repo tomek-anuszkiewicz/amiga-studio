@@ -19,6 +19,18 @@ pub enum VerifyMode {
     Full,
 }
 
+/// Identifies whether an opcode word is a `CMPM (Ay)+, (Ax)+` instruction.
+///
+/// Binary opcode format: `1011 [Ax:3] 1 [Size:2] 001 [Ay:3]`
+/// - Bits 15..12: `1011` ($B, the CMP/CMPM/EOR family)
+/// - Bit 8: `1` (identifies CMPM instead of regular register/memory CMP)
+/// - Bits 5..3: `001` (Address Register Indirect with Postincrement `(Ay)+`)
+/// - Registers `Ax` (bits 11..9), `Ay` (bits 2..0), and `Size` (bits 7..6) are masked out.
+#[inline]
+pub fn is_cmpm_postinc_opcode(op: u32) -> bool {
+    (op as u16 & 0xF138) == 0xB108
+}
+
 /// Runs a single SingleStepTest returning a concise string error on mismatch
 pub fn run_single_test(test: &SingleStepTest) -> Result<(), String> {
     run_single_test_detail(test, "unspecified", 0, VerifyMode::StateOnly)
@@ -186,8 +198,8 @@ pub fn run_single_test_detail(
     }
 
     // Verify Program Counter (accommodates both MAME prefetch-ahead PC and Tom Harte architectural PC)
-    let pc_matches = (cpu.state.pc & 0x00FF_FFFF) == (test.final_state.pc & 0x00FF_FFFF)
-        || (cpu.state.pc.wrapping_sub(4) & 0x00FF_FFFF) == (test.final_state.pc & 0x00FF_FFFF);
+    let pc_matches =
+        cpu.state.pc == test.final_state.pc || cpu.state.pc.wrapping_sub(4) == test.final_state.pc;
     if !pc_matches {
         failure.diffs.push(StateDiff::ProgramCounter {
             actual: cpu.state.pc,
@@ -197,7 +209,7 @@ pub fn run_single_test_detail(
 
     // Verify RAM modifications
     for entry in &test.final_state.ram {
-        let addr = entry[0] & 0x00FF_FFFF;
+        let addr = entry[0];
         let expected_byte = (entry[1] & 0xFF) as u8;
         let actual_byte = bus.read_byte_debug(addr);
         if actual_byte != expected_byte {
@@ -350,6 +362,80 @@ pub fn run_test_file_with_mode(
     }
 
     // Determine suite name from path, e.g. "MAME::ADD.b" or "Real68k::ADD.b"
+    let is_harte = path.contains("SingleStepTests-680x0");
+    let stem = std::path::Path::new(path)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(path)
+        .trim_end_matches(".gz")
+        .trim_end_matches(".json");
+    let suite_prefix = if is_harte { "Real68k" } else { "MAME" };
+    let suite_name = format!("{}::{}", suite_prefix, stem);
+
+    let suite_result = SuiteResult {
+        suite_name,
+        file_path: path.to_string(),
+        total_executed: count,
+        passed_count: passed,
+        failed_count: failed,
+        passed_test_names: passed_names,
+        failures: failure_summaries,
+    };
+
+    record_suite_result(&suite_result);
+
+    Ok((passed, failed))
+}
+
+/// Loads and executes filtered tests from a plain JSON or gzip (.json.gz) test suite file with specified verification mode
+pub fn run_test_file_filtered_with_mode<F>(
+    path: &str,
+    limit: Option<usize>,
+    mode: VerifyMode,
+    filter: F,
+) -> Result<(usize, usize), Box<dyn std::error::Error>>
+where
+    F: Fn(&SingleStepTest) -> bool,
+{
+    let resolved = resolve_test_path(path);
+    let file = File::open(&resolved)?;
+    let reader = BufReader::new(file);
+
+    let tests: Vec<SingleStepTest> = if path.ends_with(".gz") {
+        let mut gz = GzDecoder::new(reader);
+        let mut json_str = String::new();
+        gz.read_to_string(&mut json_str)?;
+        serde_json::from_str(&json_str)?
+    } else {
+        serde_json::from_reader(reader)?
+    };
+
+    let filtered_tests: Vec<&SingleStepTest> = tests.iter().filter(|t| filter(t)).collect();
+
+    let count = match limit {
+        Some(max) => filtered_tests.len().min(max),
+        None => filtered_tests.len(),
+    };
+
+    let mut passed = 0;
+    let mut failed = 0;
+    let mut passed_names = Vec::with_capacity(count);
+    let mut failure_summaries = Vec::new();
+
+    for (idx, test) in filtered_tests.into_iter().take(count).enumerate() {
+        match run_single_test_detail(test, path, idx, mode) {
+            Ok(()) => {
+                passed += 1;
+                passed_names.push(test.name.clone());
+            }
+            Err(failure) => {
+                failed += 1;
+                eprintln!("{}", failure.format_diagnostic());
+                failure_summaries.push(TestFailureSummary::from(&failure));
+            }
+        }
+    }
+
     let is_harte = path.contains("SingleStepTests-680x0");
     let stem = std::path::Path::new(path)
         .file_name()

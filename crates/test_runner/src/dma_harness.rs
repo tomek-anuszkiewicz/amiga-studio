@@ -8,8 +8,9 @@
 
 use crate::diagnostic::StateDiff;
 use crate::schema::SingleStepTest;
+use m68000::state::CpuState;
 use m68000::Cpu;
-use memory_bus::TestMemoryBus;
+use memory_bus::{MemoryType, TestMemoryBus};
 
 /// Failure diagnostic for DMA contention invariance violation
 #[derive(Debug, Clone)]
@@ -33,22 +34,37 @@ impl std::fmt::Display for DmaContentionFailure {
     }
 }
 
+/// Statistics returned from a full Cartesian DMA permutation run
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CartesianPermutationStats {
+    pub total_permutations: usize,
+    pub address_permutations: usize,
+    pub dma_permutations: usize,
+    pub dma_cycles_swept: usize,
+}
+
 impl std::error::Error for DmaContentionFailure {}
 
-/// Executes a SingleStepTest with DMA stalls swept across all CCK phases of instruction execution
-pub fn run_dma_contention_sweep(
-    test: &SingleStepTest,
-    max_phases: usize,
-) -> Result<(), DmaContentionFailure> {
-    // 1. Establish golden baseline without contention
+/// Pre-flight analysis result capturing golden state and memory contacts
+pub struct PreFlight {
+    pub base_clocks: u32,
+    pub base_cck_count: u64,
+    pub golden_state: CpuState,
+    pub golden_ram: Vec<(u32, u8)>,
+    pub unique_contacts: Vec<u32>,
+}
+
+/// Executes an uncontended golden run to determine base timings and unique memory contact cells
+pub fn run_preflight(test: &SingleStepTest) -> PreFlight {
     let mut golden_bus = TestMemoryBus::new();
     golden_bus.set_unmapped_byte(0x00);
     golden_bus.load_test_ram(&test.initial.ram);
+    golden_bus.enable_transaction_recording(true);
 
     let mut golden_cpu = Cpu::new();
     init_cpu_state(&mut golden_cpu, test);
 
-    let mut base_cck_count = 0;
+    let mut base_cck_count = 0u64;
     loop {
         let completed = golden_cpu.step_cck(&mut golden_bus);
         base_cck_count += 1;
@@ -60,232 +76,230 @@ pub fn run_dma_contention_sweep(
     let base_clocks = golden_cpu.cycle_counter() as u32;
     let golden_state = golden_cpu.state.clone();
 
-    // Collect golden modified RAM
     let mut golden_ram = Vec::new();
     for entry in &test.final_state.ram {
-        let addr = entry[0] & 0x00FF_FFFF;
+        let addr = entry[0];
         golden_ram.push((addr, golden_bus.read_byte_debug(addr)));
     }
 
-    // 2. Sweep single-cycle DMA stalls across all phases: 0..base_cck_count
-    let sweep_limit = base_cck_count.min(max_phases);
-    for stall_phase in 0..sweep_limit {
-        let mut bus = TestMemoryBus::new();
-        bus.set_unmapped_byte(0x00);
-        bus.load_test_ram(&test.initial.ram);
-
-        let mut cpu = Cpu::new();
-        init_cpu_state(&mut cpu, test);
-
-        let mut cck_step = 0;
-        loop {
-            // Inject 1-CCK Chip RAM DMA stall at target phase
-            let is_stalled = cck_step == stall_phase;
-            bus.chip_ram_blocked = is_stalled;
-            if is_stalled {
-                bus.invert_test_memory();
+    let mut unique_contacts: Vec<u32> = Vec::new();
+    if let Some(txs) = golden_bus.recorded_transactions() {
+        for tx in txs {
+            let word_addr = tx.addr & !1;
+            if !unique_contacts.contains(&word_addr) {
+                unique_contacts.push(word_addr);
             }
-
-            let completed = cpu.step_cck(&mut bus);
-
-            if is_stalled {
-                bus.invert_test_memory();
-            }
-
-            cck_step += 1;
-            if completed || cpu.state.halted || cpu.state.stopped {
-                break;
-            }
-            if cck_step > (base_cck_count * 4 + 100) {
-                // Watchdog threshold
-                break;
-            }
-        }
-        cpu.state.sync_stack_pointers();
-
-        // Verify Invariant 1: Cycle Invariance
-        let actual_clocks = cpu.cycle_counter() as u32;
-        let extra_clocks = actual_clocks.saturating_sub(base_clocks);
-        let wait_states = extra_clocks / 2;
-        let expected_clocks = base_clocks + (2 * wait_states);
-        if actual_clocks != expected_clocks || wait_states > 1 {
-            return Err(DmaContentionFailure {
-                test_name: test.name.clone(),
-                stall_phase,
-                burst_length: 1,
-                base_clocks,
-                actual_clocks,
-                wait_cycles: wait_states,
-                diffs: vec![StateDiff::CycleLength {
-                    actual: actual_clocks,
-                    expected: expected_clocks,
-                }],
-            });
-        }
-
-        // Verify Invariant 2: State Invariance (Registers & RAM)
-        let mut diffs = Vec::new();
-        for i in 0..8 {
-            let actual = cpu.state.d_regs()[i];
-            let expected = golden_state.d_regs()[i];
-            if actual != expected {
-                diffs.push(StateDiff::DataRegister {
-                    reg: i,
-                    actual,
-                    expected,
-                });
-            }
-        }
-        for i in 0..7 {
-            let actual = cpu.state.a_regs()[i];
-            let expected = golden_state.a_regs()[i];
-            if actual != expected {
-                diffs.push(StateDiff::AddressRegister {
-                    reg: i,
-                    actual,
-                    expected,
-                });
-            }
-        }
-        if cpu.state.usp != golden_state.usp {
-            diffs.push(StateDiff::UserStackPointer {
-                actual: cpu.state.usp,
-                expected: golden_state.usp,
-            });
-        }
-        if cpu.state.ssp != golden_state.ssp {
-            diffs.push(StateDiff::SupervisorStackPointer {
-                actual: cpu.state.ssp,
-                expected: golden_state.ssp,
-            });
-        }
-        if cpu.state.sr != golden_state.sr {
-            diffs.push(StateDiff::StatusRegister {
-                actual: cpu.state.sr,
-                expected: golden_state.sr,
-                details: "SR changed under DMA contention".to_string(),
-                diverging_flags: vec![],
-            });
-        }
-        if cpu.state.pc != golden_state.pc {
-            diffs.push(StateDiff::ProgramCounter {
-                actual: cpu.state.pc,
-                expected: golden_state.pc,
-            });
-        }
-        for (addr, expected_byte) in &golden_ram {
-            let actual_byte = bus.read_byte_debug(*addr);
-            if actual_byte != *expected_byte {
-                diffs.push(StateDiff::RamByte {
-                    address: *addr,
-                    actual: actual_byte,
-                    expected: *expected_byte,
-                });
-            }
-        }
-
-        if !diffs.is_empty() {
-            return Err(DmaContentionFailure {
-                test_name: test.name.clone(),
-                stall_phase,
-                burst_length: 1,
-                base_clocks,
-                actual_clocks,
-                wait_cycles: wait_states,
-                diffs,
-            });
         }
     }
 
-    Ok(())
+    PreFlight {
+        base_clocks,
+        base_cck_count,
+        golden_state,
+        golden_ram,
+        unique_contacts,
+    }
 }
 
-/// Executes a SingleStepTest with a multi-cycle burst DMA stall injected at a specific phase
-pub fn run_dma_burst_contention(
+fn cluster_contacts(contacts: &[u32], pc: u32, sp: u32) -> Vec<Vec<u32>> {
+    if contacts.len() <= 4 {
+        return contacts.iter().map(|&c| vec![c]).collect();
+    }
+
+    let mut code_group = Vec::new();
+    let mut stack_group = Vec::new();
+    let mut op1_group = Vec::new();
+    let mut op2_group = Vec::new();
+
+    let pc_range = pc.saturating_sub(4)..=pc.saturating_add(16);
+    let sp_range = sp.saturating_sub(32)..=sp.saturating_add(32);
+
+    for &addr in contacts {
+        if pc_range.contains(&addr) {
+            code_group.push(addr);
+        } else if sp_range.contains(&addr) || addr < 0x400 {
+            stack_group.push(addr);
+        } else if op1_group.is_empty() || op1_group.contains(&addr) {
+            op1_group.push(addr);
+        } else {
+            op2_group.push(addr);
+        }
+    }
+
+    let mut groups = Vec::new();
+    if !code_group.is_empty() {
+        groups.push(code_group);
+    }
+    if !stack_group.is_empty() {
+        groups.push(stack_group);
+    }
+    if !op1_group.is_empty() {
+        groups.push(op1_group);
+    }
+    if !op2_group.is_empty() {
+        groups.push(op2_group);
+    }
+
+    groups
+}
+
+/// Executes an instruction across the full Cartesian product of:
+/// 1. Address permutations: 2^k combinations of Chip vs Fast RAM for all touched contacts.
+/// 2. DMA schedule permutations: 2^M combinations of stalled vs unstalled CCK cycles (0..M).
+pub fn run_dma_full_cartesian_permutation(
     test: &SingleStepTest,
-    burst_start_phase: usize,
-    burst_length: usize,
-) -> Result<(), DmaContentionFailure> {
-    // 1. Establish golden baseline without contention
-    let mut golden_bus = TestMemoryBus::new();
-    golden_bus.set_unmapped_byte(0x00);
-    golden_bus.load_test_ram(&test.initial.ram);
+    max_dma_cycles: usize,
+) -> Result<CartesianPermutationStats, DmaContentionFailure> {
+    let preflight = run_preflight(test);
 
-    let mut golden_cpu = Cpu::new();
-    init_cpu_state(&mut golden_cpu, test);
+    let initial_sp = if (test.initial.sr & 0x2000) != 0 {
+        test.initial.ssp
+    } else {
+        test.initial.usp
+    };
+    let contact_groups = cluster_contacts(&preflight.unique_contacts, test.initial.pc, initial_sp);
+    let k = contact_groups.len();
+    let num_addr_permutations = 1 << k;
 
-    let mut base_cck_count = 0;
-    loop {
-        let completed = golden_cpu.step_cck(&mut golden_bus);
-        base_cck_count += 1;
-        if completed || golden_cpu.state.halted || golden_cpu.state.stopped {
-            break;
+    let dma_cycles = (preflight.base_cck_count as usize).min(max_dma_cycles);
+    let num_dma_permutations = 1 << dma_cycles;
+    let total_permutations = num_addr_permutations * num_dma_permutations;
+
+    // Randomize starting cycle within [0, base_cck_count - dma_cycles].
+    // This shifts the contention window along the instruction timeline while strictly
+    // ensuring that [start_cycle, start_cycle + dma_cycles] never exceeds base_cck_count
+    // (guaranteed to never get outside the instruction boundary).
+    let max_start = (preflight.base_cck_count as usize).saturating_sub(dma_cycles);
+    let start_cycle = if max_start > 0 {
+        let mut hash = 0x811c_9dc5_u32;
+        for b in test.name.bytes() {
+            hash = (hash ^ (b as u32)).wrapping_mul(0x0100_0193);
+        }
+        hash = hash.wrapping_mul(31).wrapping_add(test.initial.pc);
+        hash = hash.wrapping_mul(31).wrapping_add(test.initial.d0);
+        (hash as usize) % (max_start + 1)
+    } else {
+        0
+    };
+
+    for dma_mask in 0..num_dma_permutations {
+        for addr_mask in 0..num_addr_permutations {
+            let mut bus = TestMemoryBus::new();
+            bus.set_unmapped_byte(0x00);
+            bus.load_test_ram(&test.initial.ram);
+
+            let all_fast = addr_mask == (num_addr_permutations - 1);
+
+            for (i, group) in contact_groups.iter().enumerate() {
+                let mem_type = if (addr_mask & (1 << i)) != 0 {
+                    MemoryType::FastRam
+                } else {
+                    MemoryType::ChipRam
+                };
+                for &word_addr in group {
+                    bus.set_address_type(word_addr, mem_type);
+                    bus.set_address_type(word_addr.wrapping_add(1), mem_type);
+                }
+            }
+
+            let mut cpu = Cpu::new();
+            init_cpu_state(&mut cpu, test);
+
+            let mut cck_step = 0u64;
+            loop {
+                let is_stalled = (cck_step >= start_cycle as u64)
+                    && (cck_step < (start_cycle + dma_cycles) as u64)
+                    && ((dma_mask & (1 << ((cck_step as usize) - start_cycle))) != 0);
+
+                bus.chip_ram_blocked = is_stalled;
+                if is_stalled {
+                    bus.invert_chip_ram();
+                }
+
+                let completed = cpu.step_cck(&mut bus);
+
+                if is_stalled {
+                    bus.invert_chip_ram();
+                }
+
+                cck_step += 1;
+                if completed || cpu.state.halted || cpu.state.stopped {
+                    break;
+                }
+                if cck_step > (preflight.base_cck_count * 4 + 100) {
+                    break;
+                }
+            }
+            cpu.state.sync_stack_pointers();
+
+            // 1. Assert Cycle Invariance
+            let actual_clocks = cpu.cycle_counter() as u32;
+            let extra_clocks = actual_clocks.saturating_sub(preflight.base_clocks);
+            let wait_states = extra_clocks / 2;
+            let expected_clocks = preflight.base_clocks + (2 * wait_states);
+
+            if actual_clocks != expected_clocks {
+                return Err(DmaContentionFailure {
+                    test_name: test.name.clone(),
+                    stall_phase: addr_mask,
+                    burst_length: dma_mask,
+                    base_clocks: preflight.base_clocks,
+                    actual_clocks,
+                    wait_cycles: wait_states,
+                    diffs: vec![StateDiff::CycleLength {
+                        actual: actual_clocks,
+                        expected: expected_clocks,
+                    }],
+                });
+            }
+
+            // 2. Assert Fast RAM Immunity
+            if all_fast && wait_states > 0 {
+                return Err(DmaContentionFailure {
+                    test_name: test.name.clone(),
+                    stall_phase: addr_mask,
+                    burst_length: dma_mask,
+                    base_clocks: preflight.base_clocks,
+                    actual_clocks,
+                    wait_cycles: wait_states,
+                    diffs: vec![StateDiff::CycleLength {
+                        actual: actual_clocks,
+                        expected: preflight.base_clocks,
+                    }],
+                });
+            }
+
+            // 3. Assert State Invariance
+            let diffs =
+                diff_cpu_and_ram(&cpu, &preflight.golden_state, &bus, &preflight.golden_ram);
+            if !diffs.is_empty() {
+                return Err(DmaContentionFailure {
+                    test_name: test.name.clone(),
+                    stall_phase: addr_mask,
+                    burst_length: dma_mask,
+                    base_clocks: preflight.base_clocks,
+                    actual_clocks,
+                    wait_cycles: wait_states,
+                    diffs,
+                });
+            }
         }
     }
-    let base_clocks = golden_cpu.cycle_counter() as u32;
-    let golden_state = golden_cpu.state.clone();
 
-    let mut golden_ram = Vec::new();
-    for entry in &test.final_state.ram {
-        let addr = entry[0] & 0x00FF_FFFF;
-        golden_ram.push((addr, golden_bus.read_byte_debug(addr)));
-    }
+    Ok(CartesianPermutationStats {
+        total_permutations,
+        address_permutations: num_addr_permutations,
+        dma_permutations: num_dma_permutations,
+        dma_cycles_swept: dma_cycles,
+    })
+}
 
-    // 2. Inject burst stall
-    let mut bus = TestMemoryBus::new();
-    bus.set_unmapped_byte(0x00);
-    bus.load_test_ram(&test.initial.ram);
-
-    let mut cpu = Cpu::new();
-    init_cpu_state(&mut cpu, test);
-
-    let mut cck_step = 0;
-    loop {
-        // Assert stall for burst_length consecutive CCKs starting at burst_start_phase
-        let is_stalled =
-            cck_step >= burst_start_phase && cck_step < (burst_start_phase + burst_length);
-        bus.chip_ram_blocked = is_stalled;
-        if is_stalled {
-            bus.invert_test_memory();
-        }
-
-        let completed = cpu.step_cck(&mut bus);
-
-        if is_stalled {
-            bus.invert_test_memory();
-        }
-
-        cck_step += 1;
-        if completed || cpu.state.halted || cpu.state.stopped {
-            break;
-        }
-        if cck_step > (base_cck_count * 4 + burst_length * 2 + 100) {
-            break;
-        }
-    }
-    cpu.state.sync_stack_pointers();
-
-    // Assert Cycle Invariance
-    let actual_clocks = cpu.cycle_counter() as u32;
-    let extra_clocks = actual_clocks.saturating_sub(base_clocks);
-    let wait_states = extra_clocks / 2;
-    let expected_clocks = base_clocks + (2 * wait_states);
-    if actual_clocks != expected_clocks || wait_states > (burst_length as u32) {
-        return Err(DmaContentionFailure {
-            test_name: test.name.clone(),
-            stall_phase: burst_start_phase,
-            burst_length,
-            base_clocks,
-            actual_clocks,
-            wait_cycles: wait_states,
-            diffs: vec![StateDiff::CycleLength {
-                actual: actual_clocks,
-                expected: expected_clocks,
-            }],
-        });
-    }
-
-    // Assert State Invariance
+fn diff_cpu_and_ram(
+    cpu: &Cpu,
+    golden_state: &CpuState,
+    bus: &TestMemoryBus,
+    golden_ram: &[(u32, u8)],
+) -> Vec<StateDiff> {
     let mut diffs = Vec::new();
     for i in 0..8 {
         let actual = cpu.state.d_regs()[i];
@@ -325,7 +339,7 @@ pub fn run_dma_burst_contention(
         diffs.push(StateDiff::StatusRegister {
             actual: cpu.state.sr,
             expected: golden_state.sr,
-            details: "SR changed under burst DMA contention".to_string(),
+            details: "SR changed under DMA contention".to_string(),
             diverging_flags: vec![],
         });
     }
@@ -335,7 +349,7 @@ pub fn run_dma_burst_contention(
             expected: golden_state.pc,
         });
     }
-    for (addr, expected_byte) in &golden_ram {
+    for (addr, expected_byte) in golden_ram {
         let actual_byte = bus.read_byte_debug(*addr);
         if actual_byte != *expected_byte {
             diffs.push(StateDiff::RamByte {
@@ -345,20 +359,7 @@ pub fn run_dma_burst_contention(
             });
         }
     }
-
-    if !diffs.is_empty() {
-        return Err(DmaContentionFailure {
-            test_name: test.name.clone(),
-            stall_phase: burst_start_phase,
-            burst_length,
-            base_clocks,
-            actual_clocks,
-            wait_cycles: wait_states,
-            diffs,
-        });
-    }
-
-    Ok(())
+    diffs
 }
 
 fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {

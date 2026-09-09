@@ -7,7 +7,7 @@ This document outlines the phased development plan, hardware milestones, verific
 ## 1. Hardware Roadmap & Milestones
 
 ### Phase 1: Baseline Amiga 500 (Rev 5 / Rev 6a OCS) — Immediate Focus
-- **CPU:** Motorola 68000 cycle-exact core based on the **Microcode Archetype Baseline** (Native 2-clock micro-step slices: $1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$, 16 orthogonal archetype modules covering 100% of bus cycle types, addressing modes, wait-state arbitration, and prefetch refills; 100% SingleStepTests pass across all active archetypes; 27 derived/isomorphic instructions scheduled for reintroduction in Step 2).
+- **CPU:** Motorola 68000 cycle-exact core based on the **Microcode Archetype Baseline** (Native 2-clock micro-step slices: $1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$, 16 orthogonal archetype modules covering 100% of bus cycle types, addressing modes, wait-state arbitration, and prefetch refills; verified under exhaustive Cartesian $2^k \times 2^M$ DMA contention and Chip/Fast RAM permutations with 100% state and cycle invariance; 100% SingleStepTests pass across all active archetypes; 27 derived/isomorphic instructions scheduled for reintroduction in Step 1).
 - **Memory Configuration:**
   - 512 KB Chip RAM (`$000000-$07FFFF`).
   - Optional 512 KB Trapdoor Slow RAM (`$C00000-$C7FFFF`).
@@ -38,37 +38,32 @@ This document outlines the phased development plan, hardware milestones, verific
 ---
 ## 2. Core Implementation Strategy (Remaining Milestones)
 
-### Step 1: In-Memory Mutations & Dynamic DMA Contention Stress Testing
-- **Address Space Remapping Mutations:**
-  - Execute SingleStepTest suites with programmatic address remapping mutations on the linearized 52 instructions (per [CPU SingleStepTests.md](Obsidian/Amiga/Design/CPU%20SingleStepTests.md#8-in-code-test-mutation-strategy-chipfast-ram--dma-contention)):
-    - `ForceChipRam`: Offset code, operands, and stack into Chip RAM (`$000000-$07FFFF`) to test contention and Gary bus limits.
-    - `ForceFastRam`: Offset addresses into Auto-Config Fast RAM (`$200000-$27FFFF`) to verify zero-wait-state full-speed execution.
-    - `ForceSlowRam`: Remap addresses into A501 Slow / Trapdoor RAM (`$C00000-$C7FFFF`).
-    - `MixedChipFast`: Map instruction opcodes in Fast RAM while placing data operands in Chip RAM (and vice versa).
-- **Simulated Agnus DMA Bus Contention (`DmaSchedule`):**
-  - Inject parameterized DMA bus contention schedules into the CPU Color Clock phases (CCK1/CCK2):
-    - Alternating cycle stalls (simulating display bitplane and Copper DMA).
-    - Burst stalls (simulating Blitter nastiness blocking the CPU for $N$ consecutive CCK cycles).
-  - Verify bus arbitration invariants: CPU properly pauses active micro-step when memory access returns `BusResult::WaitState`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
-- **Milestone Gate:** Linearized instructions maintain 100% state invariance and cycle invariance across Chip RAM, Fast RAM, Slow RAM, and under single-cycle and burst DMA contention.
-
-### Step 2: Reintroduction of Isomorphic Instructions & Complex Operations
+### Step 1: Reintroduction of Isomorphic Instructions & Complex Operations
 - **Phase A: Reintroduction of Isomorphic & Derived Instructions (from Archetype Blueprints):**
-  - *Batch 2.1 (Isomorphic Arithmetic):* `SUB`, `SUBA`, `SUBI`, `SUBQ`, `SUBX` (derived from `ADD*` archetypes).
-  - *Batch 2.2 (Isomorphic Logic):* `AND`, `ANDI`, `OR`, `ORI`, `EOR`, `EORI` (derived from `NOT`/`ADD` bitwise ALU blueprints).
-  - *Batch 2.3 (Comparisons & Tests):* `CMP`, `CMPA`, `CMPI`, `TST` (derived from `CMPM` and subtractive flags).
-  - *Batch 2.4 (Isomorphic Shifts & Rotates):* `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR` (derived from `ASL` archetype).
-  - *Batch 2.5 (Isomorphic Bit Operations):* `BTST`, `BCLR`, `BCHG` (derived from `BSET` archetype).
-  - *Batch 2.6 (Remaining Move Sizes):* `MOVE.B`, `MOVE.L` (derived from `MOVE.W` archetype).
+  - *Batch 1.1 (Isomorphic Arithmetic):* `SUB`, `SUBA`, `SUBI`, `SUBQ`, `SUBX` (derived from `ADD*` archetypes).
+  - *Batch 1.2 (Isomorphic Logic):* `AND`, `ANDI`, `OR`, `ORI`, `EOR`, `EORI` (derived from `NOT`/`ADD` bitwise ALU blueprints).
+  - *Batch 1.3 (Comparisons & Tests):* `CMP`, `CMPA`, `CMPI`, `TST` (derived from `CMPM` and subtractive flags).
+    - *Test Harness Update Note:* MAME and Tom Harte bundle `CMP` and `CMPM` into `CMP.<size>.json` without separate `CMPM.<size>.json` files. When implementing `CMP`/`CMPA`/`CMPI`, update the `load_mame_tests` guard in [`test_dma_cartesian.rs`](crates/test_runner/tests/test_dma_cartesian.rs) and add full `CMP` tests alongside the filtered `CMPM` tests in [`test_singlestep.rs`](crates/test_runner/tests/test_singlestep.rs) so the entire `CMP` vector file is tested.
+  - *Batch 1.4 (Isomorphic Shifts & Rotates):* `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR` (derived from `ASL` archetype).
+  - *Batch 1.5 (Isomorphic Bit Operations):* `BTST`, `BCLR`, `BCHG` (derived from `BSET` archetype).
+  - *Batch 1.6 (Remaining Move Sizes):* `MOVE.B`, `MOVE.L` (derived from `MOVE.W` archetype).
 - **Phase B: Implementation of Remaining Complex & Multi-Cycle Instructions:**
-  - *Batch 2.7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
-  - *Batch 2.8 (BCD & Math Extensions):* `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `EXT`.
-  - *Batch 2.9 (Looping & Conditional Setting):* `DBcc`, `Scc`.
-  - *Batch 2.10 (Stack & Frame Control):* `LINK`, `UNLK`, `LEA`, `EXG`, `SWAP`, `CHK`.
-  - *Batch 2.11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
-- **100% SingleStepTest Pass Rate Target:** Complete remaining suites with both register/memory match and cycle/bus-exact match.
+  - *Batch 1.7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
+  - *Batch 1.8 (BCD & Math Extensions):* `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `EXT`.
+  - *Batch 1.9 (Looping & Conditional Setting):* `DBcc`, `Scc`.
+  - *Batch 1.10 (Stack & Frame Control):* `LINK`, `UNLK`, `LEA`, `EXG`, `SWAP`, `CHK`.
+  - *Batch 1.11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
+- **Dual-Tier Verification Gate for Every Instruction Batch:**
+  As each batch of instructions is reintroduced or implemented, it must pass a mandatory two-tier verification gate before the batch is declared complete:
+  1. **Tier 1 — SingleStepTest Vector Verification:** 100% pass rate against MAME and Tom Harte hardware vectors in `crates/test_runner/tests/test_singlestep.rs`, validating architectural registers ($D_0-D_7, A_0-A_7$), CCR flags ($X, N, Z, V, C$), bus transaction counts, and prefetch behavior.
+  2. **Tier 2 — Mandatory Cartesian DMA Contention Verification:** Every implemented or reintroduced instruction must be integrated into the Cartesian stress suite in `crates/test_runner/tests/test_dma_cartesian.rs`, asserting all hardware invariants across the full combinatorial product of $2^k$ memory classifications (Chip vs Fast RAM) and $2^M$ DMA cycle schedules:
+     - *Cycle Invariance:* $C = C_0 + 2 \times \text{wait\_states}$.
+     - *Fast RAM Immunity:* strictly 0 wait states under 100% Fast RAM ($C = C_0$).
+     - *State Invariance:* bit-for-bit register and memory match with uncontended golden execution across the entire $2^k \times 2^M$ permutation space.
+     - *Chip RAM Contention Poisoning:* memory inversion poisoning verifying that any illegal read/write during Agnus DMA stalls triggers assertion failures.
 
-### Step 3: Comprehensive Opcode Benchmarking & Performance Profiling
+
+### Step 2: Comprehensive Opcode Benchmarking & Performance Profiling
 - **Automated Per-Opcode Micro-Benchmark Harness:**
   - Develop an exhaustive automated micro-benchmark harness (e.g. using `criterion` and dedicated throughput harnesses in `crates/test_runner`) measuring host execution time, nanoseconds per instruction, and throughput (MIPS) across all 65,536 dispatch entries and instruction variants.
   - Test diverse operand combinations: data register direct, address register indirect with displacement/indexing, and immediate/memory forms under both cached and unblocked bus scenarios.
@@ -82,33 +77,33 @@ This document outlines the phased development plan, hardware milestones, verific
 - **Fidelity & Regression Validation Gate:**
   - Ensure every optimized handler retains 100% cycle-exact Color Clock fidelity and passes the full exhaustive SingleStepTests suite (`$env:SINGLESTEP_FULL = "1"`) with zero regressions.
 
-### Step 4: Custom Chipsets (Agnus, Denise, Paula, CIAs)
-- **Step 4.1: Minimal Machine Main Loop (`A500::step_cck`) & Subsystem Orchestration:**
+### Step 3: Custom Chipsets (Agnus, Denise, Paula, CIAs)
+- **Step 3.1: Minimal Machine Main Loop (`A500::step_cck`) & Subsystem Orchestration:**
   - Create the top-level machine struct (`A500`) owning all primary subsystems without circular references: `cpu`, `memory_bus`, `cycle_counter`, `agnus`, `denise`, `paula`, `cia_a`, `cia_b`.
   - Multi-level stepping interfaces: `step_cck(cck: u64)`, `step_instruction()`, `step_cycles(n)`, `step_frame()`.
   - Strict lockstep Color Clock stepping: clock beam counters, advance DMA slots, clock CIAs, drive CPU CCK1/CCK2 bus phases against `MemoryBus`.
   - Central interrupt priority arbitration pipeline: sample Paula (Levels 1, 3, 4, 5), CIA-A (Level 2), and CIA-B (Level 6), calculate highest unmasked level, and drive `cpu.set_ipl()`.
-- **Step 4.2: Machine-Wide Reset Sequencing (`reset_cold` & `reset_warm`):**
+- **Step 3.2: Machine-Wide Reset Sequencing (`reset_cold` & `reset_warm`):**
   - Physical `_RESET` line propagation across all chips.
   - Boot overlay engagement (`map_kickstart_to_low_memory` in `MemoryBus`).
   - *Cold Reset:* Zero physical RAM buffers (`$00`), reset chip registers to power-on defaults (`DMACON = $0000`, `INTENA/INTREQ = $0000`, CIA latches cleared), initialize CPU `SR = $2700`, load initial `SSP`/`PC` from `$000000`/`$000004` (Kickstart ROM), prime prefetch queue (`IR`, `IRC`).
   - *Warm Reset:* Preserve RAM contents intact (ensuring Kickstart memory checksum and resident module discovery pass), re-engage `_OVL`, assert chip reset lines, reload initial vectors.
   - Hardware keyboard reset line: wire `Ctrl-Amiga-Amiga` reset trigger line to main machine reset flow.
-- **Step 4.3: Delayed Signal & Register Mutation Propagation Pipeline:**
+- **Step 3.3: Delayed Signal & Register Mutation Propagation Pipeline:**
   - *Physical Circuit Simulation:* Register reads return the currently latched active state **immediately** ("Read is NOW"). Register writes, strobes, and register mutations (e.g. `DMACON`, `BPLCON0`, `COLORxx`, `INTENA`, `COPJMP1`, `BLTSIZE`, CIA timer latches) do not take instantaneous cross-chip effect; they are staged and propagate after $K$ Color Clock phases / CCK cycles before altering the active execution path.
   - *Zero-Allocation Hot Path Design:* Model staged mutations using fixed-size inline pipeline latches / ring buffers (e.g. `[Option<DelayedWrite>; 4]` or fixed-capacity shift latches) embedded directly within chip structs. Zero dynamic heap allocation (`Vec`, `Box`) during CCK stepping.
   - *Save State Persistence:* The delayed mutation pipeline, staged values, and remaining cycle countdowns are fully serializable in save states (`AgnusState`, `DeniseState`, etc.), guaranteeing deterministic round-trip snapshot capture and rewind/restore even mid-propagation.
-- **Step 4.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
+- **Step 3.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
   - Implement the baseline Agnus horizontal scanline DMA slot schedule (CCK 0..3 DRAM refresh, CCK 4 disk, CCK 5..8 audio, CCK 12..27 sprites, bitplanes, and even/odd slots).
   - CPU and Blitter contention arbitration (`BLTPRI` Blitter Nasty mode).
   - Direct bus lock exposure: drive bus lock methods (`lock_chip_ram` / `unlock_chip_ram`) so the CPU and all custom chips observe bus contention and stall with wait states (`BusResult::WaitState`), establishing correct bus contention physics even before individual channel internal DSP/rendering logic is fully completed.
-- **Step 4.5: Decomposed Subsystem Deep Implementations:**
+- **Step 3.5: Decomposed Subsystem Deep Implementations:**
   - *Agnus:* Copper coprocessor state machine (`MOVE`, `WAIT`, `SKIP`, `CDANG` danger mode), 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer, ascending/descending modes).
   - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (`blep_tables.rs`) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.
   - *Denise:* Video pixel serializer, bitplanes (1–6), 8 hardware sprites, 32-color palette (RGB444), dual playfield, collision detection registers (`CLXDAT`, `CLXCON`).
   - *CIAs (Dual MOS 8520):* Timers A & B, TOD clock, serial shift register (SDR), parallel/control ports, E-clock synchronization.
 
-### Step 5: Presentation, Host Integration & Full Interactive Debugger GUI
+### Step 4: Presentation, Host Integration & Full Interactive Debugger GUI
 - Video rendering: Decoupled ARGB8888 frame buffer with 4:3 aspect ratio scaling.
 - Audio sink: Ring buffer decoupled from host audio playback (`cpal` / Web Audio).
 - GUI: Native and WebAssembly UI using `egui` + `wgpu`.

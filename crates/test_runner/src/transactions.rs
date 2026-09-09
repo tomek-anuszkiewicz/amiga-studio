@@ -85,7 +85,7 @@ pub fn parse_transactions(
                 is_read,
                 is_tas,
                 duration,
-                addr: addr & 0x00FF_FFFF,
+                addr,
                 size,
                 data,
                 uds,
@@ -140,7 +140,7 @@ pub fn match_transactions(
                     i, rec.is_read, exp_read
                 ));
             }
-            if (rec.addr & 0x00FF_FFFF) != (exp_addr & 0x00FF_FFFF) {
+            if rec.addr != *exp_addr {
                 diffs.push(format!(
                     "Transaction [{}]: Address mismatch: actual ${:06X}, expected ${:06X}",
                     i, rec.addr, exp_addr

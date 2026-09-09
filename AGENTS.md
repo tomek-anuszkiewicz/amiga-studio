@@ -137,7 +137,13 @@ All agentic pair-programming and automated modifications must adhere strictly to
   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
   ```
   This validates all ~300,000 test cases across MAME and Tom Harte hardware vectors in parallel (typically completing in 12–15s). Tasks touching `crates/m68000` cannot be declared complete without running this full test pass.
+- **Mandatory Cartesian DMA Contention Verification on M68000 Changes:** In addition to SingleStepTests, all implemented opcodes must pass the exhaustive Cartesian DMA Contention test suite:
+  ```powershell
+  cargo test -p test_runner --test test_dma_cartesian
+  ```
+  validating cycle invariance ($C = C_0 + 2 \times \text{wait\_states}$), Fast RAM immunity, and state invariance across the full $2^k \times 2^M$ permutation space.
 - **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, Rust source file size <= 800 lines, design doc & roadmap pruning, 100% green tests).
+
 - **Sub-Agent Milestone Review Protocol (`/code-review`):** Before declaring a roadmap milestone complete, invoke an independent review subagent or follow the `/code-review` workflow to audit the diff with a clean context before user hand-off.
 - The design documents under `Obsidian/Amiga/Design/` are living, permanent specifications and must always reflect the exact architectural reality of the implementation.
 
