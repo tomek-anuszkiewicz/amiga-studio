@@ -749,3 +749,37 @@ fn test_dbcc() {
 fn test_scc() {
     run_dual_test("Scc", DEFAULT_SAMPLE_LIMIT);
 }
+
+// ============================================================================
+// Stack & Frame Control (Batch 1.10: SWAP, EXG, LINK, UNLK, LEA, CHK)
+// ============================================================================
+
+#[test]
+fn test_swap() {
+    run_dual_test("SWAP", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_exg() {
+    run_dual_test("EXG", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_link() {
+    run_dual_test("LINK", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_unlink() {
+    run_dual_test("UNLINK", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_lea() {
+    run_dual_test("LEA", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_chk() {
+    run_dual_test("CHK", DEFAULT_SAMPLE_LIMIT);
+}

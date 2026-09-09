@@ -283,3 +283,12 @@ fn test_dma_cartesian_bcd_math() {
 fn test_dma_cartesian_looping_and_scc() {
     run_cartesian_for_opcodes(&["DBcc", "Scc"]);
 }
+
+// ============================================================================
+// Stack & Frame Control (Batch 1.10: SWAP, EXG, LINK, UNLK, LEA, CHK)
+// ============================================================================
+
+#[test]
+fn test_dma_cartesian_stack_frame_control() {
+    run_cartesian_for_opcodes(&["SWAP", "EXG", "LINK", "UNLINK", "LEA", "CHK"]);
+}

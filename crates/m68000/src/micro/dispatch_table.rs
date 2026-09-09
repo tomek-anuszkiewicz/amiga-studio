@@ -914,6 +914,106 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
+    // Batch 1.10: SWAP ($4840..=$4847)
+    let mut reg = 0u8;
+    while reg < 8 {
+        let op = 0x4840 | (reg as usize);
+        table[op] = OpcodeDescriptor {
+            steps: &crate::instructions::swap::STEPS_SWAP,
+            reg_src: 0,
+            reg_dst: reg,
+        };
+        reg += 1;
+    }
+
+    // Batch 1.10: EXG ($C000..=$CFFF where bits 15..12 == 0xC, bit 8 == 1)
+    let mut op = 0xC000usize;
+    while op <= 0xCFFF {
+        if (op & 0xF1F8) == 0xC140 {
+            // EXG Dx, Dy (opmode 0b01000)
+            let rx = ((op >> 9) & 7) as u8;
+            let ry = (op & 7) as u8;
+            table[op] = OpcodeDescriptor {
+                steps: &crate::instructions::exg::STEPS_EXG_DX_DY,
+                reg_src: ry,
+                reg_dst: rx,
+            };
+        } else if (op & 0xF1F8) == 0xC148 {
+            // EXG Ax, Ay (opmode 0b01001)
+            let rx = ((op >> 9) & 7) as u8;
+            let ry = (op & 7) as u8;
+            table[op] = OpcodeDescriptor {
+                steps: &crate::instructions::exg::STEPS_EXG_AX_AY,
+                reg_src: ry,
+                reg_dst: rx,
+            };
+        } else if (op & 0xF1F8) == 0xC188 {
+            // EXG Dx, Ay (opmode 0b10001)
+            let rx = ((op >> 9) & 7) as u8;
+            let ry = (op & 7) as u8;
+            table[op] = OpcodeDescriptor {
+                steps: &crate::instructions::exg::STEPS_EXG_DX_AY,
+                reg_src: ry,
+                reg_dst: rx,
+            };
+        }
+        op += 1;
+    }
+
+    // Batch 1.10: LINK ($4E50..=$4E57) and UNLK ($4E58..=$4E5F)
+    let mut reg = 0u8;
+    while reg < 8 {
+        let op_link = 0x4E50 | (reg as usize);
+        table[op_link] = OpcodeDescriptor {
+            steps: &crate::instructions::link_unlk::STEPS_LINK,
+            reg_src: 0,
+            reg_dst: reg,
+        };
+        let op_unlk = 0x4E58 | (reg as usize);
+        table[op_unlk] = OpcodeDescriptor {
+            steps: &crate::instructions::link_unlk::STEPS_UNLK,
+            reg_src: 0,
+            reg_dst: reg,
+        };
+        reg += 1;
+    }
+
+    // Batch 1.10: LEA ($41C0..=$4FFF where (op & 0xF1C0) == 0x41C0)
+    let mut op = 0x41C0usize;
+    while op <= 0x4FFF {
+        if (op & 0xF1C0) == 0x41C0 {
+            let an = ((op >> 9) & 7) as u8;
+            let mode = ((op >> 3) & 7) as u8;
+            let reg = (op & 7) as u8;
+            if let Some(steps) = crate::instructions::lea::decode_lea_steps(mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: reg,
+                    reg_dst: an,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Batch 1.10: CHK ($4180..=$4FFF where (op & 0xF1C0) == 0x4180)
+    let mut op = 0x4180usize;
+    while op <= 0x4FFF {
+        if (op & 0xF1C0) == 0x4180 {
+            let dn = ((op >> 9) & 7) as u8;
+            let mode = ((op >> 3) & 7) as u8;
+            let reg = (op & 7) as u8;
+            if let Some(steps) = crate::instructions::chk::decode_chk_steps(mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: reg,
+                    reg_dst: dn,
+                };
+            }
+        }
+        op += 1;
+    }
+
     table
 }
 

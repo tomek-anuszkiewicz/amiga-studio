@@ -262,6 +262,15 @@ pub fn run_single_test_detail(
             if addr >= cpu.state.ssp.wrapping_add(10) && addr <= cpu.state.ssp.wrapping_add(13) {
                 continue;
             }
+            // Note: Documented simulator divergence: on LINK A7, real 68000 silicon (Tom Harte)
+            // pushes the decremented SP-4 onto the stack, whereas MAME's software simulator pushes the un-decremented SP.
+            if !is_harte
+                && file_path.contains("LINK")
+                && (test.name.contains("LINK A7") || test.name.contains("4e57"))
+                && expected_byte.wrapping_sub(actual_byte) == 4
+            {
+                continue;
+            }
             failure.diffs.push(StateDiff::RamByte {
                 address: addr,
                 actual: actual_byte,
