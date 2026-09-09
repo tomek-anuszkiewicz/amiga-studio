@@ -14,6 +14,7 @@ Operational, communication, and interaction rules are modularized under `.agents
 - **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
 - **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user conflict escalation before code changes.
 - **Mechanical Sympathy & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros, zero const-generics, cache density, and zero runtime heap allocations in hot paths.
+- **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing, and multi-agent workflows.
 - **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Architecture queries and AST relationships via graphify.
 
 ---
