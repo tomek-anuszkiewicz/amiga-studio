@@ -766,6 +766,139 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
+    // Batch 1.8: CLR opcodes ($4200..=$42FF where size < 3)
+    let mut op = 0x4200usize;
+    while op <= 0x42FF {
+        let ir = op as u16;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+        if size < 3 {
+            if let Some(steps) = crate::instructions::clr::decode_clr_steps(size, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Batch 1.8: NEG opcodes ($4400..=$44FF where size < 3)
+    let mut op = 0x4400usize;
+    while op <= 0x44FF {
+        let ir = op as u16;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+        if size < 3 {
+            if let Some(steps) = crate::instructions::neg::decode_neg_steps(size, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Batch 1.8: NEGX opcodes ($4000..=$40FF where size < 3)
+    let mut op = 0x4000usize;
+    while op <= 0x40FF {
+        let ir = op as u16;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+        if size < 3 {
+            if let Some(steps) = crate::instructions::negx::decode_negx_steps(size, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Batch 1.8: NBCD ($4800..=$483F)
+    let mut op = 0x4800usize;
+    while op <= 0x483F {
+        let ir = op as u16;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+        if let Some(steps) = crate::instructions::bcd::decode_nbcd_steps(mode, reg) {
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: 0,
+                reg_dst: reg,
+            };
+        }
+        op += 1;
+    }
+
+    // Batch 1.8: EXT.W ($4880..=$4887) and EXT.L ($48C0..=$48C7)
+    let mut reg = 0u8;
+    while reg < 8 {
+        let op_w = 0x4880 | (reg as usize);
+        table[op_w] = OpcodeDescriptor {
+            steps: &crate::instructions::ext::STEPS_EXT_W,
+            reg_src: 0,
+            reg_dst: reg,
+        };
+        let op_l = 0x48C0 | (reg as usize);
+        table[op_l] = OpcodeDescriptor {
+            steps: &crate::instructions::ext::STEPS_EXT_L,
+            reg_src: 0,
+            reg_dst: reg,
+        };
+        reg += 1;
+    }
+
+    // Batch 1.8: ABCD ($C000..=$CFFF where bits 15..12 == 0xC, bit 8 == 1, bits 7..4 == 0)
+    let mut op = 0xC000usize;
+    while op <= 0xCFFF {
+        if (op & 0xF1F0) == 0xC100 {
+            let rx = ((op >> 9) & 7) as u8;
+            let ry = (op & 7) as u8;
+            let is_mem = (op & 8) != 0;
+            let steps: &'static [super::types::MicroStep] = if is_mem {
+                &crate::instructions::bcd::STEPS_ABCD_PD_PD
+            } else {
+                &crate::instructions::bcd::STEPS_ABCD_DN_DN
+            };
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: ry,
+                reg_dst: rx,
+            };
+        }
+        op += 1;
+    }
+
+    // Batch 1.8: SBCD ($8000..=$8FFF where bits 15..12 == 0x8, bit 8 == 1, bits 7..4 == 0)
+    let mut op = 0x8000usize;
+    while op <= 0x8FFF {
+        if (op & 0xF1F0) == 0x8100 {
+            let rx = ((op >> 9) & 7) as u8;
+            let ry = (op & 7) as u8;
+            let is_mem = (op & 8) != 0;
+            let steps: &'static [super::types::MicroStep] = if is_mem {
+                &crate::instructions::bcd::STEPS_SBCD_PD_PD
+            } else {
+                &crate::instructions::bcd::STEPS_SBCD_DN_DN
+            };
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: ry,
+                reg_dst: rx,
+            };
+        }
+        op += 1;
+    }
+
     table
 }
 

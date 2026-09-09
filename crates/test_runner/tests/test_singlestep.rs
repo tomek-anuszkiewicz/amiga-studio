@@ -661,3 +661,77 @@ fn test_divu() {
 fn test_divs() {
     run_dual_test("DIVS", DEFAULT_SAMPLE_LIMIT);
 }
+
+// ============================================================================
+// BCD & Math Extensions (Batch 1.8: CLR, NEG, NEGX, EXT, ABCD, SBCD, NBCD)
+// ============================================================================
+
+#[test]
+fn test_clr_b() {
+    run_dual_test("CLR.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_clr_w() {
+    run_dual_test("CLR.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_clr_l() {
+    run_dual_test("CLR.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_neg_b() {
+    run_dual_test("NEG.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_neg_w() {
+    run_dual_test("NEG.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_neg_l() {
+    run_dual_test("NEG.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_negx_b() {
+    run_dual_test("NEGX.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_negx_w() {
+    run_dual_test("NEGX.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_negx_l() {
+    run_dual_test("NEGX.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ext_w() {
+    run_dual_test("EXT.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ext_l() {
+    run_dual_test("EXT.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_abcd() {
+    run_dual_test("ABCD", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_sbcd() {
+    run_dual_test("SBCD", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_nbcd() {
+    run_dual_test("NBCD", DEFAULT_SAMPLE_LIMIT);
+}

@@ -262,3 +262,15 @@ fn test_dma_cartesian_tst() {
 fn test_dma_cartesian_mul_div() {
     run_cartesian_for_opcodes(&["MULU", "MULS", "DIVU", "DIVS"]);
 }
+
+// ============================================================================
+// BCD & Math Extensions (Batch 1.8: CLR, NEG, NEGX, EXT, ABCD, SBCD, NBCD)
+// ============================================================================
+
+#[test]
+fn test_dma_cartesian_bcd_math() {
+    run_cartesian_for_opcodes(&[
+        "CLR.b", "CLR.w", "CLR.l", "NEG.b", "NEG.w", "NEG.l", "NEGX.b", "NEGX.w", "NEGX.l",
+        "EXT.w", "EXT.l", "ABCD", "SBCD", "NBCD",
+    ]);
+}
