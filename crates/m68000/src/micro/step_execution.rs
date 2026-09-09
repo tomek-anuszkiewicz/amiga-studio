@@ -20,7 +20,7 @@ impl Cpu {
     pub fn step_bus_read_src_byte(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr & 0x00FF_FFFF;
         match bus.read_byte(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.source = data as u32;
                 self.state.micro.read_to_dest = false;
@@ -39,7 +39,7 @@ impl Cpu {
         }
         let addr = addr & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.source = data as u32;
                 self.state.micro.read_to_dest = false;
@@ -53,7 +53,7 @@ impl Cpu {
     pub fn step_bus_read_dst_byte(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr & 0x00FF_FFFF;
         match bus.read_byte(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.destination = data as u32;
                 self.state.micro.read_to_dest = true;
@@ -72,7 +72,7 @@ impl Cpu {
         }
         let addr = addr & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.destination = data as u32;
                 self.state.micro.read_to_dest = true;
@@ -91,7 +91,7 @@ impl Cpu {
         }
         let addr = addr & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.source = (data as u32) << 16;
                 self.state.micro.read_to_dest = false;
@@ -110,7 +110,7 @@ impl Cpu {
         }
         let addr = addr & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.source = (self.state.micro.source & 0xFFFF_0000) | (data as u32);
                 self.state.micro.read_to_dest = false;
@@ -129,7 +129,7 @@ impl Cpu {
         }
         let addr = addr & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.destination = (data as u32) << 16;
                 self.state.micro.read_to_dest = true;
@@ -148,7 +148,7 @@ impl Cpu {
         }
         let addr = addr & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.destination =
                     (self.state.micro.destination & 0xFFFF_0000) | (data as u32);
@@ -190,7 +190,7 @@ impl Cpu {
         }
         let addr = addr & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.source = (self.state.micro.source & 0x0000_FFFF) | ((data as u32) << 16);
                 self.state.micro.read_to_dest = false;
@@ -209,7 +209,7 @@ impl Cpu {
         }
         let addr = addr & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.destination = (self.state.micro.destination & 0x0000_FFFF) | ((data as u32) << 16);
                 self.state.micro.read_to_dest = true;
@@ -277,7 +277,7 @@ impl Cpu {
         let val = (self.state.micro.destination & 0xFF) as u8;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_byte(addr_masked, val) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(()) => {
                 let fc = crate::micro::types::data_fc(&self.state);
                 let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
@@ -313,7 +313,7 @@ impl Cpu {
         let val = (self.state.micro.destination & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(()) => {
                 let fc = crate::micro::types::data_fc(&self.state);
                 self.state.micro.record_bus_transaction(
@@ -348,7 +348,7 @@ impl Cpu {
         let val = ((self.state.micro.destination >> 16) & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(()) => {
                 let fc = crate::micro::types::data_fc(&self.state);
                 self.state.micro.record_bus_transaction(
@@ -377,7 +377,7 @@ impl Cpu {
         let val = (self.state.micro.destination & 0xFFFF) as u16;
         let addr_masked = addr & 0x00FF_FFFF;
         match bus.write_word(addr_masked, val) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(()) => {
                 let fc = crate::micro::types::data_fc(&self.state);
                 self.state.micro.record_bus_transaction(
@@ -406,7 +406,7 @@ impl Cpu {
     pub fn step_fetch_extension_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.pc & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.prefetch[0] = data;
                 self.state.micro.phase = CckPhase::Cck2;
@@ -438,7 +438,7 @@ impl Cpu {
     pub fn step_prefetch_next_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.pc & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.irc = data;
                 self.state.micro.phase = CckPhase::Cck2;
@@ -475,7 +475,7 @@ impl Cpu {
     pub fn step_prefetch_irc_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.pc & 0x00FF_FFFF;
         match bus.read_word(addr) {
-            BusResult::WaitState => BusResult::WaitState,
+            BusResult::WaitState => self.on_wait_state(),
             BusResult::Ready(data) => {
                 self.state.micro.irc = data;
                 self.state.micro.phase = CckPhase::Cck2;

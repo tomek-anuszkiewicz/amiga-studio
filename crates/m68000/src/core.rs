@@ -61,6 +61,16 @@ impl Cpu {
         self.state.micro.current_cycle_wait_cycles > 0
     }
 
+    /// Handles a bus wait state stall at the memory access primitive level:
+    /// advances instruction clocks by 2 CPU clocks (1 CCK) and increments wait cycles.
+    #[inline(always)]
+    pub fn on_wait_state(&mut self) -> BusResult<()> {
+        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+        self.state.micro.current_cycle_wait_cycles =
+            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+        BusResult::WaitState
+    }
+
     /// CCK phase stepping primitive
     pub fn step_cck(&mut self, bus: &mut MemoryBus) -> bool {
         if self.state.halted || self.state.stopped {
@@ -131,7 +141,7 @@ impl Cpu {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => match bus.read_word(addr) {
-                BusResult::WaitState => BusResult::WaitState,
+                BusResult::WaitState => self.on_wait_state(),
                 BusResult::Ready(data) => {
                     self.state.micro.source = data as u32;
                     self.state.micro.phase = CckPhase::Cck2;
@@ -174,7 +184,7 @@ impl Cpu {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => match bus.read_byte(addr) {
-                BusResult::WaitState => BusResult::WaitState,
+                BusResult::WaitState => self.on_wait_state(),
                 BusResult::Ready(data) => {
                     self.state.micro.source = data as u32;
                     self.state.micro.phase = CckPhase::Cck2;
@@ -213,7 +223,7 @@ impl Cpu {
                 BusResult::Ready(())
             }
             CckPhase::Cck2 => match bus.write_word(addr, data) {
-                BusResult::WaitState => BusResult::WaitState,
+                BusResult::WaitState => self.on_wait_state(),
                 BusResult::Ready(()) => {
                     let fc = types::data_fc(&self.state);
                     self.state.micro.record_bus_transaction(
@@ -242,7 +252,7 @@ impl Cpu {
                 BusResult::Ready(())
             }
             CckPhase::Cck2 => match bus.write_byte(addr, data) {
-                BusResult::WaitState => BusResult::WaitState,
+                BusResult::WaitState => self.on_wait_state(),
                 BusResult::Ready(()) => {
                     let fc = types::data_fc(&self.state);
                     let (uds, lds) = if (addr & 1) == 0 {
@@ -325,9 +335,6 @@ impl Cpu {
                     return true;
                 }
                 if bus_res == BusResult::WaitState {
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                    self.state.micro.current_cycle_wait_cycles =
-                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
                     return false;
                 }
                 if self.state.micro.micro_step == prev_micro_step {
@@ -345,12 +352,7 @@ impl Cpu {
                     return true;
                 }
                 match bus_res {
-                    BusResult::WaitState => {
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                        self.state.micro.current_cycle_wait_cycles =
-                            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                        return false;
-                    }
+                    BusResult::WaitState => return false,
                     BusResult::Ready(()) => {
                         self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                         self.state.micro.current_cycle_wait_cycles = 0;
@@ -374,12 +376,7 @@ impl Cpu {
             }
 
             match bus_res {
-                BusResult::WaitState => {
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                    self.state.micro.current_cycle_wait_cycles =
-                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                    return false;
-                }
+                BusResult::WaitState => return false,
                 BusResult::Ready(()) => {
                     self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                     self.state.micro.current_cycle_wait_cycles = 0;
