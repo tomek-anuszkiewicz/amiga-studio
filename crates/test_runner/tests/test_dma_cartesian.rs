@@ -222,7 +222,7 @@ fn test_dma_cartesian_logic() {
 
 #[test]
 fn test_dma_cartesian_bitops() {
-    run_cartesian_for_opcodes(&["BSET"]);
+    run_cartesian_for_opcodes(&["BSET", "BTST", "BCLR", "BCHG"]);
 }
 
 // ============================================================================

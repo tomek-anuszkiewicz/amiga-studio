@@ -427,7 +427,7 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
-    // Phase 4: Dynamic BSET opcodes ($0100..=$0FFF where (op & 0xF100) == 0x0100 && op_type == 3)
+    // Phase 4: Dynamic bit manipulation opcodes ($0100..=$0FFF where (op & 0xF100) == 0x0100)
     let mut op = 0x0100usize;
     while op <= 0x0FFF {
         if (op & 0xF100) == 0x0100 {
@@ -437,20 +437,26 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
             let mode = ((ir >> 3) & 7) as u8;
             let reg = (ir & 7) as u8;
 
-            if op_type == 3 {
-                if let Some(steps) = crate::instructions::bset::decode_bset_dyn_steps(mode, reg) {
-                    table[op] = OpcodeDescriptor {
-                        steps,
-                        reg_src: reg_s,
-                        reg_dst: reg,
-                    };
-                }
+            let maybe_steps = match op_type {
+                0 => crate::instructions::btst::decode_btst_dyn_steps(mode, reg),
+                1 => crate::instructions::bchg::decode_bchg_dyn_steps(mode, reg),
+                2 => crate::instructions::bclr::decode_bclr_dyn_steps(mode, reg),
+                3 => crate::instructions::bset::decode_bset_dyn_steps(mode, reg),
+                _ => None,
+            };
+
+            if let Some(steps) = maybe_steps {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: reg_s,
+                    reg_dst: reg,
+                };
             }
         }
         op += 1;
     }
 
-    // Phase 4: Static BSET opcodes ($0800..=$08FF where op_type == 3)
+    // Phase 4: Static bit manipulation opcodes ($0800..=$08FF)
     let mut op = 0x0800usize;
     while op <= 0x08FF {
         let ir = op as u16;
@@ -458,14 +464,20 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         let mode = ((ir >> 3) & 7) as u8;
         let reg = (ir & 7) as u8;
 
-        if op_type == 3 {
-            if let Some(steps) = crate::instructions::bset::decode_bset_stat_steps(mode, reg) {
-                table[op] = OpcodeDescriptor {
-                    steps,
-                    reg_src: 0,
-                    reg_dst: reg,
-                };
-            }
+        let maybe_steps = match op_type {
+            0 => crate::instructions::btst::decode_btst_stat_steps(mode, reg),
+            1 => crate::instructions::bchg::decode_bchg_stat_steps(mode, reg),
+            2 => crate::instructions::bclr::decode_bclr_stat_steps(mode, reg),
+            3 => crate::instructions::bset::decode_bset_stat_steps(mode, reg),
+            _ => None,
+        };
+
+        if let Some(steps) = maybe_steps {
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: 0,
+                reg_dst: reg,
+            };
         }
         op += 1;
     }

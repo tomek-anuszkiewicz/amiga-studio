@@ -604,3 +604,22 @@ fn test_roxr_w() {
 fn test_roxr_l() {
     run_dual_test("ROXR.l", DEFAULT_SAMPLE_LIMIT);
 }
+
+// ============================================================================
+// Bit Manipulation (Batch 1.5: BSET, BTST, BCLR, BCHG)
+// ============================================================================
+
+#[test]
+fn test_btst() {
+    run_dual_test("BTST", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_bclr() {
+    run_dual_test("BCLR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_bchg() {
+    run_dual_test("BCHG", DEFAULT_SAMPLE_LIMIT);
+}
