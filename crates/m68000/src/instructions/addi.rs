@@ -138,7 +138,7 @@ pub static STEPS_ADDI_B_AI: [MicroStep; 8] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE_RETIRE,
+    common::WRITE_DST_BYTE,
 ];
 
 pub static STEPS_ADDI_B_PI: [MicroStep; 8] = [
@@ -157,7 +157,7 @@ pub static STEPS_ADDI_B_PI: [MicroStep; 8] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE_RETIRE,
+    common::WRITE_DST_BYTE,
 ];
 
 pub static STEPS_ADDI_B_PD: [MicroStep; 9] = [
@@ -181,7 +181,7 @@ pub static STEPS_ADDI_B_PD: [MicroStep; 9] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE_RETIRE,
+    common::WRITE_DST_BYTE,
 ];
 
 pub static STEPS_ADDI_B_D16: [MicroStep; 10] = [
@@ -206,7 +206,7 @@ pub static STEPS_ADDI_B_D16: [MicroStep; 10] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE_RETIRE,
+    common::WRITE_DST_BYTE,
 ];
 
 pub static STEPS_ADDI_B_IDX: [MicroStep; 11] = [
@@ -232,7 +232,7 @@ pub static STEPS_ADDI_B_IDX: [MicroStep; 11] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE_RETIRE,
+    common::WRITE_DST_BYTE,
 ];
 
 pub static STEPS_ADDI_B_ABSW: [MicroStep; 10] = [
@@ -257,7 +257,7 @@ pub static STEPS_ADDI_B_ABSW: [MicroStep; 10] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE_RETIRE,
+    common::WRITE_DST_BYTE,
 ];
 
 pub static STEPS_ADDI_B_ABSL: [MicroStep; 12] = [
@@ -288,7 +288,7 @@ pub static STEPS_ADDI_B_ABSL: [MicroStep; 12] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE_RETIRE,
+    common::WRITE_DST_BYTE,
 ];
 
 // ============================================================================
@@ -322,7 +322,7 @@ pub static STEPS_ADDI_W_AI: [MicroStep; 8] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 
 pub static STEPS_ADDI_W_PI: [MicroStep; 8] = [
@@ -341,7 +341,7 @@ pub static STEPS_ADDI_W_PI: [MicroStep; 8] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 
 pub static STEPS_ADDI_W_PD: [MicroStep; 9] = [
@@ -365,7 +365,7 @@ pub static STEPS_ADDI_W_PD: [MicroStep; 9] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 
 pub static STEPS_ADDI_W_D16: [MicroStep; 10] = [
@@ -390,7 +390,7 @@ pub static STEPS_ADDI_W_D16: [MicroStep; 10] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 
 pub static STEPS_ADDI_W_IDX: [MicroStep; 11] = [
@@ -416,7 +416,7 @@ pub static STEPS_ADDI_W_IDX: [MicroStep; 11] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 
 pub static STEPS_ADDI_W_ABSW: [MicroStep; 10] = [
@@ -441,7 +441,7 @@ pub static STEPS_ADDI_W_ABSW: [MicroStep; 10] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 
 pub static STEPS_ADDI_W_ABSL: [MicroStep; 12] = [
@@ -472,7 +472,7 @@ pub static STEPS_ADDI_W_ABSL: [MicroStep; 12] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 
 // ============================================================================
@@ -531,7 +531,7 @@ pub static STEPS_ADDI_L_AI: [MicroStep; 14] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_HIGH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_LOW_RETIRE,
+    common::WRITE_DST_LONG_LOW,
 ];
 
 pub static STEPS_ADDI_L_PI: [MicroStep; 14] = [
@@ -560,7 +560,7 @@ pub static STEPS_ADDI_L_PI: [MicroStep; 14] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_HIGH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_LOW_RETIRE,
+    common::WRITE_DST_LONG_LOW,
 ];
 
 pub static STEPS_ADDI_L_PD: [MicroStep; 15] = [
@@ -594,7 +594,7 @@ pub static STEPS_ADDI_L_PD: [MicroStep; 15] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_HIGH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_LOW_RETIRE,
+    common::WRITE_DST_LONG_LOW,
 ];
 
 pub static STEPS_ADDI_L_D16: [MicroStep; 16] = [
@@ -629,7 +629,7 @@ pub static STEPS_ADDI_L_D16: [MicroStep; 16] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_HIGH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_LOW_RETIRE,
+    common::WRITE_DST_LONG_LOW,
 ];
 
 pub static STEPS_ADDI_L_IDX: [MicroStep; 17] = [
@@ -665,7 +665,7 @@ pub static STEPS_ADDI_L_IDX: [MicroStep; 17] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_HIGH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_LOW_RETIRE,
+    common::WRITE_DST_LONG_LOW,
 ];
 
 pub static STEPS_ADDI_L_ABSW: [MicroStep; 16] = [
@@ -700,7 +700,7 @@ pub static STEPS_ADDI_L_ABSW: [MicroStep; 16] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_HIGH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_LOW_RETIRE,
+    common::WRITE_DST_LONG_LOW,
 ];
 
 pub static STEPS_ADDI_L_ABSL: [MicroStep; 18] = [
@@ -741,7 +741,7 @@ pub static STEPS_ADDI_L_ABSL: [MicroStep; 18] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_HIGH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_LONG_LOW_RETIRE,
+    common::WRITE_DST_LONG_LOW,
 ];
 
 /// Decodes the micro-step sequence for ADDI based on size and destination EA

@@ -16,7 +16,6 @@ const READ_SRC_WORD: MicroStep = common::READ_SRC_WORD;
 const BUS_READ_IDLE: MicroStep = common::BUS_READ_IDLE;
 const BUS_WRITE_IDLE: MicroStep = common::BUS_WRITE_IDLE;
 const WRITE_DST_WORD: MicroStep = common::WRITE_DST_WORD;
-const WRITE_DST_WORD_RETIRE: MicroStep = common::WRITE_DST_WORD_RETIRE;
 const PREFETCH_IRC_READ: MicroStep = common::PREFETCH_IRC_READ;
 const PREFETCH_IRC_FINISH: MicroStep = common::PREFETCH_IRC_FINISH;
 const FETCH_EXT_READ: MicroStep = common::FETCH_EXT_READ;
@@ -117,7 +116,7 @@ pub static STEPS_MOVE_W_DN_PD: [MicroStep; 6] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_DN_D16_AN: [MicroStep; 7] = [
     MicroStep::alu(alu_move_w_src_dn),
@@ -208,7 +207,7 @@ pub static STEPS_MOVE_W_AN_PD: [MicroStep; 6] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_AN_D16_AN: [MicroStep; 7] = [
     MicroStep::alu(alu_move_w_src_an),
@@ -323,7 +322,7 @@ pub static STEPS_MOVE_W_AI_PD: [MicroStep; 8] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_AI_D16_AN: [MicroStep; 9] = [
     MicroStep {
@@ -462,7 +461,7 @@ pub static STEPS_MOVE_W_PI_PD: [MicroStep; 8] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_PI_D16_AN: [MicroStep; 9] = [
     MicroStep {
@@ -605,7 +604,7 @@ pub static STEPS_MOVE_W_PD_PD: [MicroStep; 9] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_PD_D16_AN: [MicroStep; 10] = [
     MicroStep {
@@ -756,7 +755,7 @@ pub static STEPS_MOVE_W_D16_AN_PD: [MicroStep; 10] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_D16_AN_D16_AN: [MicroStep; 11] = [
     MicroStep {
@@ -915,7 +914,7 @@ pub static STEPS_MOVE_W_IDX_AN_PD: [MicroStep; 11] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_IDX_AN_D16_AN: [MicroStep; 12] = [
     MicroStep {
@@ -1074,7 +1073,7 @@ pub static STEPS_MOVE_W_ABSW_PD: [MicroStep; 10] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_ABSW_D16_AN: [MicroStep; 11] = [
     MicroStep {
@@ -1253,7 +1252,7 @@ pub static STEPS_MOVE_W_ABSL_PD: [MicroStep; 12] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_ABSL_D16_AN: [MicroStep; 13] = [
     MicroStep {
@@ -1432,7 +1431,7 @@ pub static STEPS_MOVE_W_D16_PC_PD: [MicroStep; 10] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_D16_PC_D16_AN: [MicroStep; 11] = [
     MicroStep {
@@ -1591,7 +1590,7 @@ pub static STEPS_MOVE_W_IDX_PC_PD: [MicroStep; 11] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_IDX_PC_D16_AN: [MicroStep; 12] = [
     MicroStep {
@@ -1735,7 +1734,7 @@ pub static STEPS_MOVE_W_IMM_PD: [MicroStep; 7] = [
     PREFETCH_IRC_READ,
     PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
-    WRITE_DST_WORD_RETIRE,
+    WRITE_DST_WORD,
 ];
 pub static STEPS_MOVE_W_IMM_D16_AN: [MicroStep; 8] = [
     MicroStep {

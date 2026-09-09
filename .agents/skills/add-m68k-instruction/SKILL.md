@@ -143,7 +143,7 @@ pub static STEPS_SUB_W_DN_AI: [MicroStep; 6] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 ```
 

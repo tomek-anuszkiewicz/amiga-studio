@@ -16,7 +16,7 @@ pub static STEPS_PEA_AI: [MicroStep; 7] = [
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
-    common::PUSH_STACK_LOW_WRITE_RETIRE,
+    common::PUSH_STACK_LOW_WRITE,
 ];
 
 /// PEA (d16, An): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
@@ -32,7 +32,7 @@ pub static STEPS_PEA_D16_AN: [MicroStep; 8] = [
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
-    common::PUSH_STACK_LOW_WRITE_RETIRE,
+    common::PUSH_STACK_LOW_WRITE,
 ];
 
 /// PEA (d8, An, Xn): 20 CPU clocks / 10 CCKs (2 reads, 2 writes)
@@ -49,7 +49,7 @@ pub static STEPS_PEA_IDX_AN: [MicroStep; 9] = [
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
-    common::PUSH_STACK_LOW_WRITE_RETIRE,
+    common::PUSH_STACK_LOW_WRITE,
 ];
 
 /// PEA (xxx).W: 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
@@ -65,7 +65,7 @@ pub static STEPS_PEA_ABSW: [MicroStep; 8] = [
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
-    common::PUSH_STACK_LOW_WRITE_RETIRE,
+    common::PUSH_STACK_LOW_WRITE,
 ];
 
 /// PEA (xxx).L: 20 CPU clocks / 10 CCKs (3 reads, 2 writes)
@@ -87,7 +87,7 @@ pub static STEPS_PEA_ABSL: [MicroStep; 10] = [
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
-    common::PUSH_STACK_LOW_WRITE_RETIRE,
+    common::PUSH_STACK_LOW_WRITE,
 ];
 
 /// PEA (d16, PC): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
@@ -103,7 +103,7 @@ pub static STEPS_PEA_D16_PC: [MicroStep; 8] = [
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
-    common::PUSH_STACK_LOW_WRITE_RETIRE,
+    common::PUSH_STACK_LOW_WRITE,
 ];
 
 /// PEA (d8, PC, Xn): 20 CPU clocks / 10 CCKs (2 reads, 2 writes)
@@ -120,7 +120,7 @@ pub static STEPS_PEA_IDX_PC: [MicroStep; 9] = [
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
     common::BUS_WRITE_IDLE,
-    common::PUSH_STACK_LOW_WRITE_RETIRE,
+    common::PUSH_STACK_LOW_WRITE,
 ];
 
 /// Compile-time opcode decoder for PEA ($4840..=$487F)

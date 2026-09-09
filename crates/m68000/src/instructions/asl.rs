@@ -203,7 +203,7 @@ pub static STEPS_ASL_W_AI: [MicroStep; 6] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 pub static STEPS_ASL_W_PI: [MicroStep; 6] = [
     MicroStep {
@@ -219,7 +219,7 @@ pub static STEPS_ASL_W_PI: [MicroStep; 6] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 pub static STEPS_ASL_W_PD: [MicroStep; 6] = [
     MicroStep {
@@ -235,7 +235,7 @@ pub static STEPS_ASL_W_PD: [MicroStep; 6] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 pub static STEPS_ASL_W_D16_AN: [MicroStep; 8] = [
     MicroStep {
@@ -253,7 +253,7 @@ pub static STEPS_ASL_W_D16_AN: [MicroStep; 8] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 pub static STEPS_ASL_W_IDX_AN: [MicroStep; 9] = [
     MicroStep {
@@ -272,7 +272,7 @@ pub static STEPS_ASL_W_IDX_AN: [MicroStep; 9] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 pub static STEPS_ASL_W_ABSW: [MicroStep; 8] = [
     MicroStep {
@@ -290,7 +290,7 @@ pub static STEPS_ASL_W_ABSW: [MicroStep; 8] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 pub static STEPS_ASL_W_ABSL: [MicroStep; 10] = [
     MicroStep {
@@ -314,7 +314,7 @@ pub static STEPS_ASL_W_ABSL: [MicroStep; 10] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 
 // ============================================================================

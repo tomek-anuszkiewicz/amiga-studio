@@ -162,7 +162,7 @@ pub static STEPS_SUBX_B_PD_PD: [MicroStep; 9] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE_RETIRE,
+    common::WRITE_DST_BYTE,
 ];
 
 pub static STEPS_SUBX_W_PD_PD: [MicroStep; 9] = [
@@ -186,7 +186,7 @@ pub static STEPS_SUBX_W_PD_PD: [MicroStep; 9] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 
 pub static STEPS_SUBX_L_PD_PD: [MicroStep; 15] = [
@@ -228,7 +228,7 @@ pub static STEPS_SUBX_L_PD_PD: [MicroStep; 15] = [
         base_clocks: 2,
     },
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD_RETIRE,
+    common::WRITE_DST_WORD,
 ];
 
 // ============================================================================

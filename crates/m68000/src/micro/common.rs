@@ -53,16 +53,16 @@ pub const READ_DST_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_word)
 /// CCK1: Reads destination byte from memory into `destination`
 pub const READ_DST_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_byte);
 
-/// CCK2: Writes word from `destination` to memory (non-retiring)
+/// CCK2: Writes word from `destination` to memory
 pub const WRITE_DST_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_word);
 
-/// CCK2: Writes word from `destination` to memory and retires
+/// CCK2: Writes word from `destination` to memory (deprecated alias, use `WRITE_DST_WORD`)
 pub const WRITE_DST_WORD_RETIRE: MicroStep = WRITE_DST_WORD;
 
 /// CCK2: Writes byte from `destination` to memory
 pub const WRITE_DST_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_byte);
 
-/// CCK2: Writes byte from `destination` to memory (canonical alias)
+/// CCK2: Writes byte from `destination` to memory (deprecated alias, use `WRITE_DST_BYTE`)
 pub const WRITE_DST_BYTE_RETIRE: MicroStep = WRITE_DST_BYTE;
 
 /// CCK1: Reads source long high word from memory into `source`
@@ -83,13 +83,13 @@ pub const READ_SRC_SPLIT_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_src
 /// CCK1: Reads split high word of 32-bit destination operand into bits 16..31 of `destination`
 pub const READ_DST_SPLIT_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_split_high);
 
-/// CCK2: Writes high word of 32-bit destination to memory (non-retiring)
+/// CCK2: Writes high word of 32-bit destination to memory
 pub const WRITE_DST_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_long_high);
 
 /// CCK2: Writes low word of 32-bit destination to memory + 2
 pub const WRITE_DST_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_long_low);
 
-/// CCK2: Writes low word of 32-bit destination to memory + 2 (canonical alias)
+/// CCK2: Writes low word of 32-bit destination to memory + 2 (deprecated alias, use `WRITE_DST_LONG_LOW`)
 pub const WRITE_DST_LONG_LOW_RETIRE: MicroStep = WRITE_DST_LONG_LOW;
 
 // ============================================================================
@@ -115,10 +115,10 @@ pub const PUSH_STACK_HIGH_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_push_st
 /// CCK2: Stack push high word write to SP
 pub const PUSH_STACK_HIGH_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_push_stack_high_write);
 
-/// CCK2: Stack push low word write to SP + 2 (non-retiring, for JSR/BSR)
+/// CCK2: Stack push low word write to SP + 2
 pub const PUSH_STACK_LOW_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_push_stack_low_write);
 
-/// CCK2: Stack push low word write to SP + 2 and retires (for PEA)
+/// CCK2: Stack push low word write to SP + 2 (deprecated alias, use `PUSH_STACK_LOW_WRITE`)
 pub const PUSH_STACK_LOW_WRITE_RETIRE: MicroStep = PUSH_STACK_LOW_WRITE;
 
 /// CCK1: Stack pop high word read from (SP)
