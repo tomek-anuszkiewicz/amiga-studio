@@ -177,6 +177,16 @@ pub fn ea_calc_move_dst_pi_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     }
 }
 
+/// MOVE Destination Address Register Indirect with Postincrement (Long):
+/// On 68000 silicon, post-increment on a pure WRITE operation is suppressed if an Address Error occurs.
+pub fn ea_calc_move_dst_pi_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let an = state.read_a(reg_dst as usize);
+    state.micro.ea_addr = an;
+    if (an & 1) == 0 {
+        state.write_a(reg_dst as usize, an.wrapping_add(4));
+    }
+}
+
 /// Destination Address Register Indirect with Predecrement (Byte): -(An) -> An -= (2 if A7 else 1), ea_addr = An
 pub fn ea_calc_dst_pd_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let dec = if reg_dst == 7 { 2 } else { 1 };

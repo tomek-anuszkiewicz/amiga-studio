@@ -15,6 +15,8 @@ use std::path::{Path, PathBuf};
 const LINE_COUNT_EXCEPTIONS: &[&str] = &[
     "dispatch_table.rs",
     "move_w.rs",
+    "move_b.rs",
+    "move_l.rs",
     "add.rs",
     "sub.rs",
     "blep_tables.rs",

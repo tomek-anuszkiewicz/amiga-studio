@@ -26,6 +26,8 @@ pub mod jmp;
 pub mod jsr;
 pub mod lsl;
 pub mod lsr;
+pub mod move_b;
+pub mod move_l;
 pub mod move_w;
 pub mod movea;
 pub mod movem;

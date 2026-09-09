@@ -356,6 +356,49 @@ impl Cpu {
         }
     }
 
+    /// CCK2: Writes low word of 32-bit destination to memory at predecrement address (An - 2)
+    pub fn step_bus_write_dst_pd_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.ea_addr;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, false, false);
+            return BusResult::Ready(());
+        }
+        let val = (self.state.micro.destination & 0xFFFF) as u16;
+        let addr_masked = addr & 0x00FF_FFFF;
+        match bus.write_word(addr_masked, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => {
+                let reg_dst = self.state.micro.reg_dst as usize;
+                self.state.write_a(reg_dst, addr);
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK2: Writes high word of 32-bit destination to memory at predecrement address (An - 4)
+    pub fn step_bus_write_dst_pd_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.ea_addr.wrapping_sub(2);
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, false, false);
+            return BusResult::Ready(());
+        }
+        let val = ((self.state.micro.destination >> 16) & 0xFFFF) as u16;
+        let addr_masked = addr & 0x00FF_FFFF;
+        match bus.write_word(addr_masked, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => {
+                let reg_dst = self.state.micro.reg_dst as usize;
+                self.state.write_a(reg_dst, addr);
+                self.state.micro.ea_addr = addr;
+                self.state.pc = self.state.pc.wrapping_add(2);
+                self.state.ir = self.state.prefetch[0];
+                self.state.prefetch[0] = self.state.micro.irc;
+                self.state.micro.prefetch_retired = true;
+                BusResult::Ready(())
+            }
+        }
+    }
+
     /// CCK1: Extension word fetch from PC directly into `self.state.prefetch[0]`
     pub fn step_fetch_extension_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.pc & 0x00FF_FFFF;

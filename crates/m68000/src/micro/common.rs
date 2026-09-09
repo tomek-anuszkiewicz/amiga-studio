@@ -92,6 +92,12 @@ pub const WRITE_DST_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst
 /// CCK2: Writes low word of 32-bit destination to memory + 2 (deprecated alias, use `WRITE_DST_LONG_LOW`)
 pub const WRITE_DST_LONG_LOW_RETIRE: MicroStep = WRITE_DST_LONG_LOW;
 
+/// CCK2: Writes low word of 32-bit destination to memory at predecrement address (An - 2)
+pub const WRITE_DST_PD_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_pd_long_low);
+
+/// CCK2: Writes high word of 32-bit destination to memory at predecrement address (An - 4)
+pub const WRITE_DST_PD_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_pd_long_high);
+
 /// CCK1: Reads source byte from staged `addr1` into `source`
 pub const READ_ADDR1_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr1_byte);
 

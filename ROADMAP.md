@@ -45,7 +45,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - *Completed:* **Batch 1.3 (Comparisons & Tests):** `CMP`, `CMPA`, `CMPI`, `TST` (derived from `CMPM` and subtractive flags; 100% SingleStepTests & Cartesian DMA verified).
   - *Completed:* **Batch 1.4 (Isomorphic Shifts & Rotates):** `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR` (derived from `ASL` archetype; 100% SingleStepTests & Cartesian DMA verified).
   - *Completed:* **Batch 1.5 (Isomorphic Bit Operations):** `BTST`, `BCLR`, `BCHG` (derived from `BSET` archetype; 100% SingleStepTests & Cartesian DMA verified).
-  - *Batch 1.6 (Remaining Move Sizes):* `MOVE.B`, `MOVE.L` (derived from `MOVE.W` archetype).
+  - *Completed:* **Batch 1.6 (Remaining Move Sizes):** `MOVE.B`, `MOVE.L` (derived from `MOVE.W` archetype; 100% SingleStepTests & Cartesian DMA verified).
 - **Phase B: Implementation of Remaining Complex & Multi-Cycle Instructions:**
   - *Batch 1.7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
   - *Batch 1.8 (BCD & Math Extensions):* `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `EXT`.

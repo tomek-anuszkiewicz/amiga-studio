@@ -172,7 +172,7 @@ fn test_dma_cartesian_branches() {
 
 #[test]
 fn test_dma_cartesian_move() {
-    run_cartesian_for_opcodes(&["MOVE.w", "MOVE.q", "MOVEA.w", "MOVEA.l"]);
+    run_cartesian_for_opcodes(&["MOVE.b", "MOVE.w", "MOVE.l", "MOVE.q", "MOVEA.w", "MOVEA.l"]);
 }
 
 #[test]

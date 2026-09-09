@@ -623,3 +623,17 @@ fn test_bclr() {
 fn test_bchg() {
     run_dual_test("BCHG", DEFAULT_SAMPLE_LIMIT);
 }
+
+// ============================================================================
+// Moves (Batch 1.6: MOVE.B, MOVE.W, MOVE.L)
+// ============================================================================
+
+#[test]
+fn test_move_b() {
+    run_dual_test("MOVE.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_move_l() {
+    run_dual_test("MOVE.l", DEFAULT_SAMPLE_LIMIT);
+}

@@ -153,6 +153,49 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
+    // Phase 6: MOVE.B ($1000..=$1FFF)
+    let mut op = 0x1000usize;
+    while op <= 0x1FFF {
+        let ir = op as u16;
+        let dst_reg = ((ir >> 9) & 7) as u8;
+        let dst_mode = ((ir >> 6) & 7) as u8;
+        let src_mode = ((ir >> 3) & 7) as u8;
+        let src_reg = (ir & 7) as u8;
+        if let Some(steps) =
+            crate::instructions::move_b::decode_move_b_steps(src_mode, src_reg, dst_mode, dst_reg)
+        {
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: src_reg,
+                reg_dst: dst_reg,
+            };
+        }
+        op += 1;
+    }
+
+    // Phase 6: MOVE.L & MOVEA.L ($2000..=$2FFF)
+    let mut op = 0x2000usize;
+    while op <= 0x2FFF {
+        let ir = op as u16;
+        let dst_reg = ((ir >> 9) & 7) as u8;
+        let dst_mode = ((ir >> 6) & 7) as u8;
+        let src_mode = ((ir >> 3) & 7) as u8;
+        let src_reg = (ir & 7) as u8;
+        let steps_opt = if dst_mode == 1 {
+            crate::instructions::movea::decode_movea_steps(true, src_mode, src_reg)
+        } else {
+            crate::instructions::move_l::decode_move_l_steps(src_mode, src_reg, dst_mode, dst_reg)
+        };
+        if let Some(steps) = steps_opt {
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: src_reg,
+                reg_dst: dst_reg,
+            };
+        }
+        op += 1;
+    }
+
     // Phase 6: MOVE.W & MOVEA.W ($3000..=$3FFF)
     let mut op = 0x3000usize;
     while op <= 0x3FFF {
