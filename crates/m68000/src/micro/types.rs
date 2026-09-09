@@ -144,8 +144,6 @@ pub fn default_empty_steps() -> &'static [MicroStep] {
 pub enum RecordedTransaction {
     Bus {
         is_read: bool,
-        is_tas: bool,
-        fc: u8,
         addr: u32,
         size: BusAccessSize,
         data: u16,
@@ -154,4 +152,5 @@ pub enum RecordedTransaction {
         duration: u32,
     },
 }
+
 

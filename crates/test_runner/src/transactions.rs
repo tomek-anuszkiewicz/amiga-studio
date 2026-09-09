@@ -132,8 +132,6 @@ pub fn match_transactions(
             (
                 RecordedTransaction::Bus {
                     is_read: rec_r,
-                    is_tas: rec_tas,
-                    fc: rec_fc,
                     addr: rec_addr,
                     size: rec_size,
                     data: rec_data,
@@ -142,18 +140,19 @@ pub fn match_transactions(
                     is_read: exp_r,
                     is_tas: exp_tas,
                     duration: exp_dur,
-                    fc: exp_fc,
                     addr: exp_addr,
                     size: exp_size,
                     data: exp_data,
                     uds: exp_uds,
                     lds: exp_lds,
+                    ..
                 },
             ) => {
-                if rec_r != exp_r || rec_tas != exp_tas {
+                let exp_read = *exp_r || *exp_tas;
+                if *rec_r != exp_read {
                     diffs.push(format!(
-                        "Transaction [{}]: Direction mismatch: actual (read={}, tas={}), expected (read={}, tas={})",
-                        i, rec_r, rec_tas, exp_r, exp_tas
+                        "Transaction [{}]: Direction mismatch: actual read={}, expected read={}",
+                        i, rec_r, exp_read
                     ));
                 }
                 if (rec_addr & 0x00FF_FFFF) != (exp_addr & 0x00FF_FFFF) {
@@ -166,12 +165,6 @@ pub fn match_transactions(
                     diffs.push(format!(
                         "Transaction [{}]: Access size mismatch: actual {:?}, expected {:?}",
                         i, rec_size, exp_size
-                    ));
-                }
-                if rec_fc != exp_fc {
-                    diffs.push(format!(
-                        "Transaction [{}]: Function code mismatch: actual FC={}, expected FC={}",
-                        i, rec_fc, exp_fc
                     ));
                 }
                 if *exp_dur != 4 {

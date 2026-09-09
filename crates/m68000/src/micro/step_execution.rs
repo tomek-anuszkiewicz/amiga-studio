@@ -153,7 +153,6 @@ impl Cpu {
 
     /// CCK2: Finishes bus read word cycle, records transaction, and releases bus for Agnus DMA
     pub fn step_bus_read_word_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
-        let fc = crate::micro::types::data_fc(&self.state);
         let val = if self.state.micro.read_to_dest {
             (self.state.micro.destination & 0xFFFF) as u16
         } else {
@@ -161,8 +160,6 @@ impl Cpu {
         };
         self.state.micro.record_bus_transaction(
             true,
-            false,
-            fc,
             self.state.micro.ea_addr,
             BusAccessSize::Word,
             val,
@@ -208,7 +205,6 @@ impl Cpu {
 
     /// CCK2: Finishes bus read split high word cycle, records transaction from bits 16..31
     pub fn step_bus_read_split_high_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
-        let fc = crate::micro::types::data_fc(&self.state);
         let val = if self.state.micro.read_to_dest {
             ((self.state.micro.destination >> 16) & 0xFFFF) as u16
         } else {
@@ -216,8 +212,6 @@ impl Cpu {
         };
         self.state.micro.record_bus_transaction(
             true,
-            false,
-            fc,
             self.state.micro.ea_addr,
             BusAccessSize::Word,
             val,
@@ -227,7 +221,6 @@ impl Cpu {
 
     /// CCK2: Finishes bus read byte cycle, records transaction, and releases bus for Agnus DMA
     pub fn step_bus_read_byte_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
-        let fc = crate::micro::types::data_fc(&self.state);
         let addr = self.state.micro.ea_addr;
         let val = if self.state.micro.read_to_dest {
             (self.state.micro.destination & 0xFF) as u16
@@ -236,8 +229,6 @@ impl Cpu {
         };
         self.state.micro.record_bus_transaction(
             true,
-            false,
-            fc,
             addr,
             BusAccessSize::Byte,
             val,
@@ -259,11 +250,8 @@ impl Cpu {
         match bus.write_byte(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                let fc = crate::micro::types::data_fc(&self.state);
                 self.state.micro.record_bus_transaction(
                     false,
-                    false,
-                    fc,
                     addr_masked,
                     BusAccessSize::Byte,
                     val as u16,
@@ -291,11 +279,8 @@ impl Cpu {
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                let fc = crate::micro::types::data_fc(&self.state);
                 self.state.micro.record_bus_transaction(
                     false,
-                    false,
-                    fc,
                     addr_masked,
                     BusAccessSize::Word,
                     val,
@@ -323,11 +308,8 @@ impl Cpu {
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                let fc = crate::micro::types::data_fc(&self.state);
                 self.state.micro.record_bus_transaction(
                     false,
-                    false,
-                    fc,
                     addr_masked,
                     memory_bus::BusAccessSize::Word,
                     val,
@@ -349,11 +331,8 @@ impl Cpu {
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                let fc = crate::micro::types::data_fc(&self.state);
                 self.state.micro.record_bus_transaction(
                     false,
-                    false,
-                    fc,
                     addr_masked,
                     memory_bus::BusAccessSize::Word,
                     val,
@@ -383,12 +362,9 @@ impl Cpu {
 
     /// CCK2: Extension word finish - logs prefetch[0] transaction, advances PC += 2
     pub fn step_fetch_extension_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
-        let fc = crate::micro::types::prog_fc(&self.state);
         let addr = self.state.pc & 0x00FF_FFFF;
         self.state.micro.record_bus_transaction(
             true,
-            false,
-            fc,
             addr,
             memory_bus::BusAccessSize::Word,
             self.state.prefetch[0],
@@ -411,12 +387,9 @@ impl Cpu {
 
     /// CCK2: Prefetch next opcode finish and latches into irc
     pub fn step_prefetch_next_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
-        let fc = crate::micro::types::prog_fc(&self.state);
         let addr = self.state.pc & 0x00FF_FFFF;
         self.state.micro.record_bus_transaction(
             true,
-            false,
-            fc,
             addr,
             memory_bus::BusAccessSize::Word,
             self.state.micro.irc,
@@ -450,12 +423,9 @@ impl Cpu {
 
     /// CCK2: Prefetch to IRC finish - advances prefetch pipeline into IR
     pub fn step_prefetch_irc_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
-        let fc = crate::micro::types::prog_fc(&self.state);
         let addr = self.state.pc & 0x00FF_FFFF;
         self.state.micro.record_bus_transaction(
             true,
-            false,
-            fc,
             addr,
             memory_bus::BusAccessSize::Word,
             self.state.micro.irc,

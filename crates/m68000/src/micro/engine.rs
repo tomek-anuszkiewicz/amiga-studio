@@ -160,8 +160,6 @@ impl CpuMicroState {
     pub fn record_bus_transaction(
         &mut self,
         is_read: bool,
-        is_tas: bool,
-        fc: u8,
         addr: u32,
         size: BusAccessSize,
         data: u16,
@@ -169,8 +167,6 @@ impl CpuMicroState {
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction::Bus {
                 is_read,
-                is_tas,
-                fc,
                 addr: addr & 0x00FF_FFFF,
                 size,
                 data,

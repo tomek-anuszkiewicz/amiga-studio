@@ -288,12 +288,8 @@ pub fn execute_movem_transfer(
                 }
             }
         } else {
-            // CCK2: log transaction and conclude
-            let fc = crate::micro::types::data_fc(&cpu.state);
             cpu.state.micro.record_bus_transaction(
                 true,
-                false,
-                fc,
                 addr,
                 BusAccessSize::Word,
                 cpu.state.micro.source as u16,
@@ -334,12 +330,8 @@ pub fn execute_movem_transfer(
                         }
                     }
                 } else {
-                    // CCK2: commit word into register / buffer and advance
-                    let fc = crate::micro::types::data_fc(&cpu.state);
                     cpu.state.micro.record_bus_transaction(
                         true,
-                        false,
-                        fc,
                         addr,
                         BusAccessSize::Word,
                         cpu.state.micro.source as u16,
@@ -390,11 +382,8 @@ pub fn execute_movem_transfer(
                     match bus.write_word(addr_masked, data) {
                         BusResult::WaitState => BusResult::WaitState,
                         BusResult::Ready(()) => {
-                            let fc = crate::micro::types::data_fc(&cpu.state);
                             cpu.state.micro.record_bus_transaction(
                                 false,
-                                false,
-                                fc,
                                 addr_masked,
                                 BusAccessSize::Word,
                                 data,
