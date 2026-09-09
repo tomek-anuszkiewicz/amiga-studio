@@ -7,7 +7,7 @@ This document outlines the phased development plan, hardware milestones, verific
 ## 1. Hardware Roadmap & Milestones
 
 ### Phase 1: Baseline Amiga 500 (Rev 5 / Rev 6a OCS) — Immediate Focus
-- **CPU:** Motorola 68000 cycle-exact core (Native 2-clock micro-step slices: $1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$, all 43 instruction modules migrated, legacy 4-clock engine pruned, 100% SingleStepTests pass).
+- **CPU:** Motorola 68000 cycle-exact core based on the **Microcode Archetype Baseline** (Native 2-clock micro-step slices: $1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$, 16 orthogonal archetype modules covering 100% of bus cycle types, addressing modes, wait-state arbitration, and prefetch refills; 100% SingleStepTests pass across all active archetypes; 27 derived/isomorphic instructions scheduled for reintroduction in Step 2).
 - **Memory Configuration:**
   - 512 KB Chip RAM (`$000000-$07FFFF`).
   - Optional 512 KB Trapdoor Slow RAM (`$C00000-$C7FFFF`).
@@ -50,15 +50,22 @@ This document outlines the phased development plan, hardware milestones, verific
     - Alternating cycle stalls (simulating display bitplane and Copper DMA).
     - Burst stalls (simulating Blitter nastiness blocking the CPU for $N$ consecutive CCK cycles).
   - Verify bus arbitration invariants: CPU properly pauses instruction phase on `StepResult::WaitState` when memory access returns `BusResult::WaitState`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
-- **Milestone Gate:** Linearized 52 instructions maintain 100% state invariance and cycle invariance across Chip RAM, Fast RAM, Slow RAM, and under single-cycle and burst DMA contention.
+- **Milestone Gate:** Linearized instructions maintain 100% state invariance and cycle invariance across Chip RAM, Fast RAM, Slow RAM, and under single-cycle and burst DMA contention.
 
-### Step 2: Implementation of Remaining Complex & Multi-Cycle Instructions
-- **Implement Directly as Linear Handlers in CCK Engine:**
-  - *Batch 7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
-  - *Batch 8 (BCD & Math Extensions):* `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `EXT`. (Note: `NOT` migrated in Batch 2).
-  - *Batch 9 (Looping & Conditional Setting):* `DBcc`, `Scc`.
-  - *Batch 10 (Stack & Frame Control):* `LINK`, `UNLK`, `LEA`, `EXG`, `SWAP`, `CHK`. (Note: `PEA` completed).
-  - *Batch 11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
+### Step 2: Reintroduction of Isomorphic Instructions & Complex Operations
+- **Phase A: Reintroduction of Isomorphic & Derived Instructions (from Archetype Blueprints):**
+  - *Batch 2.1 (Isomorphic Arithmetic):* `SUB`, `SUBA`, `SUBI`, `SUBQ`, `SUBX` (derived from `ADD*` archetypes).
+  - *Batch 2.2 (Isomorphic Logic):* `AND`, `ANDI`, `OR`, `ORI`, `EOR`, `EORI` (derived from `NOT`/`ADD` bitwise ALU blueprints).
+  - *Batch 2.3 (Comparisons & Tests):* `CMP`, `CMPA`, `CMPI`, `TST` (derived from `CMPM` and subtractive flags).
+  - *Batch 2.4 (Isomorphic Shifts & Rotates):* `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR` (derived from `ASL` archetype).
+  - *Batch 2.5 (Isomorphic Bit Operations):* `BTST`, `BCLR`, `BCHG` (derived from `BSET` archetype).
+  - *Batch 2.6 (Remaining Move Sizes):* `MOVE.B`, `MOVE.L` (derived from `MOVE.W` archetype).
+- **Phase B: Implementation of Remaining Complex & Multi-Cycle Instructions:**
+  - *Batch 2.7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
+  - *Batch 2.8 (BCD & Math Extensions):* `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `EXT`.
+  - *Batch 2.9 (Looping & Conditional Setting):* `DBcc`, `Scc`.
+  - *Batch 2.10 (Stack & Frame Control):* `LINK`, `UNLK`, `LEA`, `EXG`, `SWAP`, `CHK`.
+  - *Batch 2.11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
 - **100% SingleStepTest Pass Rate Target:** Complete remaining suites with both register/memory match and cycle/bus-exact match.
 
 ### Step 3: Comprehensive Opcode Benchmarking & Performance Profiling

@@ -72,20 +72,11 @@ pub const READ_DST_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_l
 /// CCK2: Writes word from `destination` to memory (non-retiring)
 pub const WRITE_DST_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_word);
 
-/// CCK2: Writes byte from `destination` to memory (non-retiring)
-pub const WRITE_DST_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_byte);
-
 /// CCK2: Writes high word of 32-bit destination to memory (non-retiring)
 pub const WRITE_DST_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_long_high);
 
-/// CCK2: Writes low word of 32-bit destination to memory + 2 (non-retiring)
-pub const WRITE_DST_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_long_low);
-
 /// CCK2: Writes low word of 32-bit destination to memory + 2 and retires
 pub const WRITE_DST_LONG_LOW_RETIRE: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_long_low_and_retire);
-
-/// CCK2: Writes high word of 32-bit destination to memory and retires (used by MOVE.L -(An))
-pub const WRITE_DST_LONG_HIGH_RETIRE: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_long_high_and_retire);
 
 // ============================================================================
 // 2-Clock Control Flow, Stack & Target Refill Building Blocks

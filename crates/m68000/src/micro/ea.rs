@@ -203,16 +203,6 @@ pub fn ea_calc_move_dst_pi_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     }
 }
 
-/// MOVE Destination Address Register Indirect with Postincrement (Long):
-/// On 68000 silicon, post-increment on a pure WRITE operation is suppressed if an Address Error occurs.
-#[inline(always)]
-pub fn ea_calc_move_dst_pi_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let an = state.read_a(reg_dst as usize);
-    state.micro.ea_addr = an;
-    if (an & 1) == 0 {
-        state.write_a(reg_dst as usize, an.wrapping_add(4));
-    }
-}
 
 /// Destination Address Register Indirect with Predecrement (Byte): -(An) -> An -= (2 if A7 else 1), ea_addr = An
 #[inline(always)]
@@ -239,21 +229,6 @@ pub fn ea_calc_dst_pd_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     state.micro.ea_addr = an;
 }
 
-/// Destination Address Register Indirect with Predecrement (Long cycle 1, low word): -(An) -> An -= 2, ea_addr = An
-#[inline(always)]
-pub fn ea_calc_dst_pd_l_lo(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let an = state.read_a(reg_dst as usize).wrapping_sub(2);
-    state.write_a(reg_dst as usize, an);
-    state.micro.ea_addr = an;
-}
-
-/// Destination Address Register Indirect with Predecrement (Long cycle 2, high word): -(An) -> An -= 2, ea_addr = An
-#[inline(always)]
-pub fn ea_calc_dst_pd_l_hi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let an = state.read_a(reg_dst as usize).wrapping_sub(2);
-    state.write_a(reg_dst as usize, an);
-    state.micro.ea_addr = an;
-}
 
 /// Destination Address Register Indirect with Displacement: (d16, An) -> ea_addr = An + disp16
 #[inline(always)]
@@ -372,19 +347,6 @@ pub fn ea_calc_pea_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // Compound Dual-Memory Operand Helpers (ADDX, SUBX, CMPM)
 // ============================================================================
 
-/// Latches source byte into scratch[1] and calculates destination predecrement -(Ax)
-#[inline(always)]
-pub fn latch_src_b_and_calc_dst_pd_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.scratch[1] = (state.micro.last_read & 0xFF) as u32;
-    ea_calc_dst_pd_b(state, 0, reg_dst);
-}
-
-/// Latches source word into scratch[1] and calculates destination predecrement -(Ax)
-#[inline(always)]
-pub fn latch_src_w_and_calc_dst_pd_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.scratch[1] = state.micro.last_read as u32;
-    ea_calc_dst_pd_w(state, 0, reg_dst);
-}
 
 /// Long predecrement split for source -(Ay): decrements by 2, saves Ay - 4 in scratch[0], ea_addr = low word
 #[inline(always)]
@@ -432,24 +394,4 @@ pub fn set_write_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.write_buffer = val;
 }
 
-/// Latches source byte into scratch[1] and calculates destination postincrement (Ax)+
-#[inline(always)]
-pub fn latch_src_b_and_calc_dst_pi_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.scratch[1] = (state.micro.last_read & 0xFF) as u32;
-    ea_calc_dst_pi_b(state, 0, reg_dst);
-}
-
-/// Latches source word into scratch[1] and calculates destination postincrement (Ax)+
-#[inline(always)]
-pub fn latch_src_w_and_calc_dst_pi_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.scratch[1] = state.micro.last_read as u32;
-    ea_calc_dst_pi_w(state, 0, reg_dst);
-}
-
-/// Latches source longword into scratch[2] and calculates destination postincrement (Ax)+
-#[inline(always)]
-pub fn latch_src_l_and_calc_dst_pi_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.micro.scratch[2] = state.micro.scratch[1];
-    ea_calc_dst_pi_l(state, 0, reg_dst);
-}
 

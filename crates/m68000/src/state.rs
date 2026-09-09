@@ -268,13 +268,6 @@ impl CpuState {
         self.sr = (self.sr & !0x000F) | flags;
     }
 
-    /// Sets N, Z, C, clears V=0, and strictly preserves Extend (X).
-    /// Used by: ROL, ROR (count > 0).
-    #[inline(always)]
-    pub fn set_ccr_nzc_clear_v(&mut self, n: bool, z: bool, c: bool) {
-        let flags = ((n as u16) << 3) | ((z as u16) << 2) | (c as u16);
-        self.sr = (self.sr & !0x000F) | flags;
-    }
 
     /// Sets Zero (Z) flag branchlessly, strictly preserving X, N, V, C.
     /// Used by: BTST, BSET, BCLR, BCHG.

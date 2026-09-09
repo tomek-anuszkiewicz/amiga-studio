@@ -11,6 +11,37 @@ use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
 // ============================================================================
+// Core Leaf ALU Compare Functions (Branchless & Cycle-Exact CCR)
+// ============================================================================
+
+#[inline(always)]
+pub fn cmp_b(state: &mut CpuState, s: u8, d: u8) {
+    let (res, c) = d.overflowing_sub(s);
+    let v = (((s ^ d) & (d ^ res)) & 0x80) != 0;
+    let n = (res & 0x80) != 0;
+    let z = res == 0;
+    state.set_ccr_nzvc(n, z, v, c);
+}
+
+#[inline(always)]
+pub fn cmp_w(state: &mut CpuState, s: u16, d: u16) {
+    let (res, c) = d.overflowing_sub(s);
+    let v = (((s ^ d) & (d ^ res)) & 0x8000) != 0;
+    let n = (res & 0x8000) != 0;
+    let z = res == 0;
+    state.set_ccr_nzvc(n, z, v, c);
+}
+
+#[inline(always)]
+pub fn cmp_l(state: &mut CpuState, s: u32, d: u32) {
+    let (res, c) = d.overflowing_sub(s);
+    let v = (((s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
+    let n = (res & 0x8000_0000) != 0;
+    let z = res == 0;
+    state.set_ccr_nzvc(n, z, v, c);
+}
+
+// ============================================================================
 // Micro-Step Callbacks
 // ============================================================================
 
@@ -18,21 +49,21 @@ use crate::state::CpuState;
 pub fn alu_cmpm_b(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let s = (state.micro.source & 0xFF) as u8;
     let d = (state.micro.destination & 0xFF) as u8;
-    crate::instructions::cmp::cmp_b(state, s, d);
+    cmp_b(state, s, d);
 }
 
 /// ALU compare callback for Word
 pub fn alu_cmpm_w(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let s = (state.micro.source & 0xFFFF) as u16;
     let d = (state.micro.destination & 0xFFFF) as u16;
-    crate::instructions::cmp::cmp_w(state, s, d);
+    cmp_w(state, s, d);
 }
 
 /// ALU compare callback for Long
 pub fn alu_cmpm_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let s = state.micro.source;
     let d = state.micro.destination;
-    crate::instructions::cmp::cmp_l(state, s, d);
+    cmp_l(state, s, d);
 }
 
 // ============================================================================

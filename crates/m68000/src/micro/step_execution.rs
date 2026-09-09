@@ -383,39 +383,6 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Writes byte from `self.state.micro.destination` to memory (non-retiring)
-    pub fn step_bus_write_dst_byte(&mut self, bus: &mut MemoryBus) -> Option<StepResult> {
-        let addr = self.state.micro.ea_addr;
-        let val = (self.state.micro.destination & 0xFF) as u8;
-        let addr_masked = addr & 0x00FF_FFFF;
-        match bus.write_byte(addr_masked, val) {
-            BusResult::WaitState => {
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                self.state.micro.current_cycle_wait_cycles =
-                    self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                Some(StepResult::WaitState)
-            }
-            BusResult::Ready(()) => {
-                let fc = crate::micro::types::data_fc(&self.state);
-                let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
-                self.state.micro.record_bus_transaction(
-                    false,
-                    false,
-                    fc,
-                    addr_masked,
-                    BusAccessSize::Byte,
-                    val as u16,
-                    uds,
-                    lds,
-                );
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                self.state.micro.phase = CckPhase::Cck1;
-                self.state.micro.current_cycle_wait_cycles = 0;
-                self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-                Some(StepResult::StepCompleted)
-            }
-        }
-    }
 
     /// CCK2: Writes high word of 32-bit destination to memory
     pub fn step_bus_write_dst_long_high(&mut self, bus: &mut MemoryBus) -> Option<StepResult> {
@@ -488,76 +455,6 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Writes low word of 32-bit destination to memory + 2 (non-retiring)
-    pub fn step_bus_write_dst_long_low(&mut self, bus: &mut MemoryBus) -> Option<StepResult> {
-        let addr = self.state.micro.ea_addr.wrapping_add(2);
-        if (addr & 1) != 0 {
-            return Some(self.trigger_address_error_step(addr, false, false, bus));
-        }
-        let val = (self.state.micro.destination & 0xFFFF) as u16;
-        let addr_masked = addr & 0x00FF_FFFF;
-        match bus.write_word(addr_masked, val) {
-            BusResult::WaitState => {
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                self.state.micro.current_cycle_wait_cycles =
-                    self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                Some(StepResult::WaitState)
-            }
-            BusResult::Ready(()) => {
-                let fc = crate::micro::types::data_fc(&self.state);
-                self.state.micro.record_bus_transaction(
-                    false,
-                    false,
-                    fc,
-                    addr_masked,
-                    memory_bus::BusAccessSize::Word,
-                    val,
-                    true,
-                    true,
-                );
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                self.state.micro.phase = CckPhase::Cck1;
-                self.state.micro.current_cycle_wait_cycles = 0;
-                self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-                Some(StepResult::StepCompleted)
-            }
-        }
-    }
-
-    /// CCK2: Writes high word of 32-bit destination to memory and retires (used by MOVE.L -(An))
-    pub fn step_bus_write_dst_long_high_and_retire(&mut self, bus: &mut MemoryBus) -> Option<StepResult> {
-        let addr = self.state.micro.ea_addr;
-        if (addr & 1) != 0 {
-            return Some(self.trigger_address_error_step(addr, false, false, bus));
-        }
-        let val = ((self.state.micro.destination >> 16) & 0xFFFF) as u16;
-        let addr_masked = addr & 0x00FF_FFFF;
-        match bus.write_word(addr_masked, val) {
-            BusResult::WaitState => {
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                self.state.micro.current_cycle_wait_cycles =
-                    self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                Some(StepResult::WaitState)
-            }
-            BusResult::Ready(()) => {
-                let fc = crate::micro::types::data_fc(&self.state);
-                self.state.micro.record_bus_transaction(
-                    false,
-                    false,
-                    fc,
-                    addr_masked,
-                    memory_bus::BusAccessSize::Word,
-                    val,
-                    true,
-                    true,
-                );
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                self.state.micro.phase = CckPhase::Cck1;
-                self.state.micro.current_cycle_wait_cycles = 0;
-                Some(self.retire_scratch_prefetch())
-            }
-        }
-    }
 
     /// CCK1: Extension word fetch from PC into `self.state.micro.last_read`
     pub fn step_fetch_extension_read(&mut self, bus: &mut MemoryBus) -> Option<StepResult> {

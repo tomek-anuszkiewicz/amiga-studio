@@ -1,53 +1,25 @@
-//! M68000 Instruction Implementations by Mnemonic
+//! M68000 Instruction Implementations by Mnemonic (Microcode Archetype Baseline)
 
 pub mod add;
 pub mod adda;
 pub mod addi;
 pub mod addq;
 pub mod addx;
-pub mod and;
-pub mod andi;
 pub mod asl;
-pub mod asr;
 pub mod bcc;
-pub mod bchg;
-pub mod bclr;
 pub mod bra;
 pub mod bset;
 pub mod bsr;
-pub mod btst;
-pub mod cmp;
-pub mod cmpa;
-pub mod cmpi;
 pub mod cmpm;
-pub mod eor;
-pub mod eori;
 pub mod jmp;
 pub mod jsr;
-pub mod lsl;
-pub mod lsr;
-pub mod move_b;
-pub mod move_l;
 pub mod move_w;
 pub mod movea;
 pub mod movem;
 pub mod moveq;
 pub mod nop;
 pub mod not;
-pub mod or;
-pub mod ori;
 pub mod pea;
-pub mod rol;
-pub mod ror;
-pub mod roxl;
-pub mod roxr;
 pub mod rts;
-pub mod sub;
-pub mod suba;
-pub mod subi;
-pub mod subq;
-pub mod subx;
 pub mod system;
 pub mod trap;
-pub mod tst;
-

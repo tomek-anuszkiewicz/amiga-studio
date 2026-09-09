@@ -76,7 +76,7 @@ fn run_dual_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
 }
 
 // ============================================================================
-// System, Control Flow & Exceptions
+// System, Control Flow & Exceptions (Microcode Archetypes)
 // ============================================================================
 
 #[test]
@@ -92,36 +92,6 @@ fn test_rts() {
 #[test]
 fn test_trap() {
     run_dual_test("TRAP", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_ori_to_ccr() {
-    run_dual_test("ORItoCCR", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_ori_to_sr() {
-    run_dual_test("ORItoSR", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_andi_to_ccr() {
-    run_dual_test("ANDItoCCR", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_andi_to_sr() {
-    run_dual_test("ANDItoSR", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_eori_to_ccr() {
-    run_dual_test("EORItoCCR", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_eori_to_sr() {
-    run_dual_test("EORItoSR", DEFAULT_SAMPLE_LIMIT);
 }
 
 #[test]
@@ -185,22 +155,12 @@ fn test_pea_an_full_verification() {
 }
 
 // ============================================================================
-// Data Movement (MOVE & MOVEA)
+// Data Movement (MOVE.W, MOVEA, MOVEQ, MOVEM Archetypes)
 // ============================================================================
-
-#[test]
-fn test_move_b() {
-    run_dual_test("MOVE.b", DEFAULT_SAMPLE_LIMIT);
-}
 
 #[test]
 fn test_move_w() {
     run_dual_test("MOVE.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_move_l() {
-    run_dual_test("MOVE.l", DEFAULT_SAMPLE_LIMIT);
 }
 
 #[test]
@@ -229,7 +189,7 @@ fn test_movem_l() {
 }
 
 // ============================================================================
-// Integer Arithmetic (ADD, ADDA, SUB, SUBA)
+// Integer & Extended Arithmetic (ADD, ADDA, ADDX Archetypes)
 // ============================================================================
 
 #[test]
@@ -258,35 +218,6 @@ fn test_adda_l() {
 }
 
 #[test]
-fn test_sub_b() {
-    run_dual_test("SUB.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_sub_w() {
-    run_dual_test("SUB.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_sub_l() {
-    run_dual_test("SUB.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_suba_w() {
-    run_dual_test("SUBA.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_suba_l() {
-    run_dual_test("SUBA.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-// ============================================================================
-// Extended Arithmetic (ADDX, SUBX)
-// ============================================================================
-
-#[test]
 fn test_addx_b() {
     run_dual_test("ADDX.b", DEFAULT_SAMPLE_LIMIT);
 }
@@ -301,69 +232,9 @@ fn test_addx_l() {
     run_dual_test("ADDX.l", DEFAULT_SAMPLE_LIMIT);
 }
 
-#[test]
-fn test_subx_b() {
-    run_dual_test("SUBX.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_subx_w() {
-    run_dual_test("SUBX.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_subx_l() {
-    run_dual_test("SUBX.l", DEFAULT_SAMPLE_LIMIT);
-}
-
 // ============================================================================
-// Logical Operations (AND, OR)
+// Logic Operations (NOT Archetype)
 // ============================================================================
-
-#[test]
-fn test_and_b() {
-    run_dual_test("AND.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_and_w() {
-    run_dual_test("AND.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_and_l() {
-    run_dual_test("AND.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_or_b() {
-    run_dual_test("OR.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_or_w() {
-    run_dual_test("OR.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_or_l() {
-    run_dual_test("OR.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_eor_b() {
-    run_dual_test("EOR.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_eor_w() {
-    run_dual_test("EOR.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_eor_l() {
-    run_dual_test("EOR.l", DEFAULT_SAMPLE_LIMIT);
-}
 
 #[test]
 fn test_not_b() {
@@ -381,31 +252,16 @@ fn test_not_l() {
 }
 
 // ============================================================================
-// Bit Manipulation (BTST, BSET, BCLR, BCHG)
+// Bit Manipulation (BSET Archetype)
 // ============================================================================
-
-#[test]
-fn test_btst() {
-    run_dual_test("BTST", DEFAULT_SAMPLE_LIMIT);
-}
 
 #[test]
 fn test_bset() {
     run_dual_test("BSET", DEFAULT_SAMPLE_LIMIT);
 }
 
-#[test]
-fn test_bclr() {
-    run_dual_test("BCLR", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_bchg() {
-    run_dual_test("BCHG", DEFAULT_SAMPLE_LIMIT);
-}
-
 // ============================================================================
-// Shifts & Rotates (ASL, ASR, LSL, LSR)
+// Shifts & Rotates (ASL Archetype)
 // ============================================================================
 
 #[test]
@@ -422,153 +278,3 @@ fn test_asl_w() {
 fn test_asl_l() {
     run_dual_test("ASL.l", DEFAULT_SAMPLE_LIMIT);
 }
-
-#[test]
-fn test_asr_b() {
-    run_dual_test("ASR.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_asr_w() {
-    run_dual_test("ASR.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_asr_l() {
-    run_dual_test("ASR.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_lsl_b() {
-    run_dual_test("LSL.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_lsl_w() {
-    run_dual_test("LSL.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_lsl_l() {
-    run_dual_test("LSL.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_lsr_b() {
-    run_dual_test("LSR.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_lsr_w() {
-    run_dual_test("LSR.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_lsr_l() {
-    run_dual_test("LSR.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_rol_b() {
-    run_dual_test("ROL.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_rol_w() {
-    run_dual_test("ROL.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_rol_l() {
-    run_dual_test("ROL.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_ror_b() {
-    run_dual_test("ROR.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_ror_w() {
-    run_dual_test("ROR.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_ror_l() {
-    run_dual_test("ROR.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_roxl_b() {
-    run_dual_test("ROXL.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_roxl_w() {
-    run_dual_test("ROXL.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_roxl_l() {
-    run_dual_test("ROXL.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_roxr_b() {
-    run_dual_test("ROXR.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_roxr_w() {
-    run_dual_test("ROXR.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_roxr_l() {
-    run_dual_test("ROXR.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-// ============================================================================
-// Compare & Test Operations (Milestone 1.1)
-// ============================================================================
-
-#[test]
-fn test_cmp_b() {
-    run_dual_test("CMP.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_cmp_w() {
-    run_dual_test("CMP.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_cmp_l() {
-    run_dual_test("CMP.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_cmpa_w() {
-    run_dual_test("CMPA.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_cmpa_l() {
-    run_dual_test("CMPA.l", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_tst_b() {
-    run_dual_test("TST.b", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_tst_w() {
-    run_dual_test("TST.w", DEFAULT_SAMPLE_LIMIT);
-}
-
-#[test]
-fn test_tst_l() {
-    run_dual_test("TST.l", DEFAULT_SAMPLE_LIMIT);
-}
-

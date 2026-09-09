@@ -64,6 +64,33 @@ pub fn alu_bset_b_imm_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 // ============================================================================
+// Immediate Bit Latching Callbacks
+// ============================================================================
+
+#[inline(always)]
+pub fn latch_bit_imm(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let imm = (state.prefetch[0] & 0xFF) as u32;
+    state.micro.source = imm;
+    state.micro.scratch[3] = imm;
+}
+
+#[inline(always)]
+pub fn latch_bit_imm_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let imm = (state.prefetch[0] & 0xFF) as u32;
+    state.micro.source = imm;
+    state.micro.scratch[3] = imm;
+    ea::ea_calc_dst_ai(state, 0, reg_dst);
+}
+
+#[inline(always)]
+pub fn latch_bit_imm_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
+    let imm = (state.prefetch[0] & 0xFF) as u32;
+    state.micro.source = imm;
+    state.micro.scratch[3] = imm;
+    ea::ea_calc_dst_pi_b(state, 0, reg_dst);
+}
+
+// ============================================================================
 // Static Micro-Step Slices: Dynamic BSET Dn, <ea>
 // ============================================================================
 
@@ -147,7 +174,7 @@ pub static STEPS_BSET_DYN_ABSL: [MicroStep; 10] = [
 // ============================================================================
 
 pub static STEPS_BSET_STAT_DN: [MicroStep; 6] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(latch_bit_imm), base_clocks: 2 },
     common::FETCH_EXT_FINISH,
     MicroStep { step_fn: Cpu::step_alu, alu_fn: None, base_clocks: 2 },
     MicroStep { step_fn: Cpu::step_alu, alu_fn: None, base_clocks: 2 },
@@ -155,7 +182,7 @@ pub static STEPS_BSET_STAT_DN: [MicroStep; 6] = [
     common::PREFETCH_NEXT_RETIRE,
 ];
 pub static STEPS_BSET_STAT_AI: [MicroStep; 8] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(crate::instructions::btst::latch_bit_imm_calc_ai), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(latch_bit_imm_calc_ai), base_clocks: 2 },
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
@@ -165,7 +192,7 @@ pub static STEPS_BSET_STAT_AI: [MicroStep; 8] = [
     common::WRITE_DST_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_PI: [MicroStep; 8] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(crate::instructions::btst::latch_bit_imm_calc_pi), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(latch_bit_imm_calc_pi), base_clocks: 2 },
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
@@ -175,7 +202,7 @@ pub static STEPS_BSET_STAT_PI: [MicroStep; 8] = [
     common::WRITE_DST_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_PD: [MicroStep; 9] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(latch_bit_imm), base_clocks: 2 },
     common::FETCH_EXT_FINISH,
     MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2 },
     common::READ_DST_BYTE,
@@ -186,7 +213,7 @@ pub static STEPS_BSET_STAT_PD: [MicroStep; 9] = [
     common::WRITE_DST_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_D16: [MicroStep; 10] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(latch_bit_imm), base_clocks: 2 },
     common::FETCH_EXT_FINISH,
     MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 2 },
     common::FETCH_EXT_FINISH,
@@ -198,7 +225,7 @@ pub static STEPS_BSET_STAT_D16: [MicroStep; 10] = [
     common::WRITE_DST_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_IDX: [MicroStep; 11] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(latch_bit_imm), base_clocks: 2 },
     common::FETCH_EXT_FINISH,
     MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
     common::FETCH_EXT_READ,
@@ -211,7 +238,7 @@ pub static STEPS_BSET_STAT_IDX: [MicroStep; 11] = [
     common::WRITE_DST_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_ABSW: [MicroStep; 10] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(latch_bit_imm), base_clocks: 2 },
     common::FETCH_EXT_FINISH,
     MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absw), base_clocks: 2 },
     common::FETCH_EXT_FINISH,
@@ -223,7 +250,7 @@ pub static STEPS_BSET_STAT_ABSW: [MicroStep; 10] = [
     common::WRITE_DST_BYTE_RETIRE,
 ];
 pub static STEPS_BSET_STAT_ABSL: [MicroStep; 12] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(crate::instructions::btst::latch_bit_imm), base_clocks: 2 },
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(latch_bit_imm), base_clocks: 2 },
     common::FETCH_EXT_FINISH,
     MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 2 },
     common::FETCH_EXT_FINISH,

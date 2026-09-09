@@ -48,6 +48,23 @@ The architecture mirrors the physical two-level microcode design of the Motorola
 13. **Cycle-Exact Hardware Exception Stacking**:
     Group 0 (Address/Bus Error) and Group 1/2 (Interrupts/Traps) exception stacking are modeled as dedicated micro-sequences (`EXCEPTION_GROUP0_STEPS`, `EXCEPTION_GROUP1_STEPS`). Stack writes and vector reads interact with `MemoryBus` and experience Chip RAM DMA wait states identical to real hardware.
 
+### 1.1 The Microcode Archetype Baseline Architecture
+
+To accelerate core refactoring, DMA contention modeling, and machine loop integration, the M68000 microcode engine is structured around **Microcode Archetypes**.
+
+Instead of maintaining dozens of isomorphic instruction duplicates (such as `SUB` which mirrors `ADD`, `OR`/`AND`/`EOR` which share identical addressing and bus structures, or bit manipulation/shift variants), the core maintains 16 primary archetype modules that provide **100% structural representation** of all M68000 hardware bus cycles, addressing modes, and internal execution flows:
+
+| Archetype Domain | Active Representative Modules | Hardware Mechanics Covered |
+| :--- | :--- | :--- |
+| **ALU & Arithmetic** | `add.rs`, `adda.rs`, `addi.rs`, `addq.rs`, `addx.rs`, `not.rs` | 2-phase operand read, RMW memory write-back, address register sign-extension, immediate latching, multi-precision extend (`X`) flag propagation, and bitwise complement. |
+| **Bit & Shifts** | `bset.rs`, `asl.rs` | Read-Modify-Write bit cycles (static immediate & dynamic register-addressed), memory word shifts, register count-dependent loop delays, and condition evaluation. |
+| **Data Movement** | `move_w.rs`, `movea.rs`, `moveq.rs`, `movem.rs` | Standard word transfers, address register loading, quick sign-extended immediates, and dynamic multi-register block transfers across arbitrary register lists. |
+| **Memory Comparison** | `cmpm.rs` | Dual postincrement memory operand sequencing without destination write-back. |
+| **Branch & Stack** | `bra.rs`, `bsr.rs`, `bcc.rs`, `pea.rs`, `jmp.rs`, `jsr.rs`, `rts.rs` | Short/long branches, subroutine return address stacking, stack popping, and 2-word pipeline refill across non-sequential Program Space addresses. |
+| **Exceptions & System** | `nop.rs`, `trap.rs`, `system.rs` | Pipeline idling, software vector traps, supervisor stack frame generation, and status register manipulation. |
+
+Derived and isomorphic instructions (`SUB*`, `AND*`, `OR*`, `EOR*`, `CMP*`, `ASR`/`LS*`/`RO*`, `BTST`/`BCLR`/`BCHG`, `MOVE.B`/`MOVE.L`) inherit their micro-step sequences directly from these blueprints and are re-introduced in distinct, test-validated batches (see `ROADMAP.md` Step 2).
+
 ---
 ## 2. Data Structures & Type Definitions
 

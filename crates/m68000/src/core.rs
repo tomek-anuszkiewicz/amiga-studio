@@ -431,22 +431,6 @@ impl Cpu {
         }
     }
 
-    /// Retire current instruction and refill prefetch pipeline for sequential instructions
-    #[inline]
-    pub fn retire_instruction(&mut self, bus: &mut MemoryBus) {
-        self.state.ir = self.state.prefetch[0];
-        self.state.prefetch[0] = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
-        self.state.pc = self.state.pc.wrapping_add(2);
-    }
-
-    /// Consumes the next extension word from the prefetch pipeline
-    #[inline]
-    pub fn consume_extension_word(&mut self, bus: &mut MemoryBus) -> u16 {
-        let ext = self.state.prefetch[0];
-        self.state.prefetch[0] = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
-        self.state.pc = self.state.pc.wrapping_add(2);
-        ext
-    }
 
     /// Reloads PC and prefetches the next two instruction words (after branch or jump)
     pub fn reload_pc_and_prefetch(&mut self, target_pc: u32, bus: &mut MemoryBus) {
