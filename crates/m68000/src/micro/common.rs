@@ -24,11 +24,17 @@ pub const FETCH_EXT_READ: MicroStep = MicroStep::cck(Cpu::step_fetch_extension_r
 /// CCK2: Instruction extension word finish (latches into prefetch[0], PC += 2)
 pub const FETCH_EXT_FINISH: MicroStep = MicroStep::cck(Cpu::step_fetch_extension_finish);
 
-/// CCK1: Prefetch next opcode to scratch buffer
-pub const PREFETCH_SCRATCH_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_scratch_read);
+/// CCK1: Prefetch next opcode directly to IRC
+pub const PREFETCH_IRC_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_irc_read);
 
-/// CCK2: Prefetch next opcode to scratch finish (latches into scratch_prefetch)
-pub const PREFETCH_SCRATCH_FINISH: MicroStep = MicroStep::cck(Cpu::step_prefetch_scratch_finish);
+/// CCK2: Prefetch next opcode to IRC finish (latches into irc and advances prefetch)
+pub const PREFETCH_IRC_FINISH: MicroStep = MicroStep::cck(Cpu::step_prefetch_irc_finish);
+
+/// CCK1: Forwarding alias for prefetch to IRC
+pub const PREFETCH_SCRATCH_READ: MicroStep = PREFETCH_IRC_READ;
+
+/// CCK2: Forwarding alias for prefetch to IRC finish
+pub const PREFETCH_SCRATCH_FINISH: MicroStep = PREFETCH_IRC_FINISH;
 
 /// CCK1: Bus write idle step (internal address/pin setup, bus free for Agnus DMA)
 pub const BUS_WRITE_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_idle);
@@ -69,6 +75,15 @@ pub const READ_DST_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_
 /// CCK1: Reads destination long low word from memory into `destination`
 pub const READ_DST_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_long_low);
 
+/// CCK1: Reads split high word of 32-bit source operand into bits 16..31 of `source`
+pub const READ_SRC_SPLIT_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_src_split_high);
+
+/// CCK1: Reads split high word of 32-bit destination operand into bits 16..31 of `destination`
+pub const READ_DST_SPLIT_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_split_high);
+
+/// CCK2: Finishes reading split high word and records transaction from bits 16..31
+pub const READ_SPLIT_HIGH_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_read_split_high_finish);
+
 /// CCK2: Writes word from `destination` to memory (non-retiring)
 pub const WRITE_DST_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_word);
 
@@ -85,7 +100,7 @@ pub const WRITE_DST_LONG_LOW_RETIRE: MicroStep = MicroStep::cck(Cpu::step_bus_wr
 /// CCK1: Reads first word of target instruction from `ea_addr`
 pub const READ_TARGET_OPCODE_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_target_opcode_read);
 
-/// CCK2: Latches target opcode into `scratch_prefetch` and logs transaction
+/// CCK2: Latches target opcode into `irc` and logs transaction
 pub const READ_TARGET_OPCODE_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_read_target_opcode_finish);
 
 /// CCK1: Reads second word of target pipeline from `ea_addr + 2`

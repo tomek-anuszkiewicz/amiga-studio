@@ -101,20 +101,21 @@ Handlers are organized cleanly across [`crates/m68000/src/micro/step_execution.r
 
 ### 2.4 CPU Micro-State Storage (`CpuMicroState`)
 
-Embedded in `CpuState` to track sub-cycle progress across Color Clock phases:
+Embedded in `CpuState` to track sub-cycle progress across Color Clock phases with zero intermediate buffers:
 - `phase`: Current Color Clock sub-phase (`CckPhase::Cck1` or `CckPhase::Cck2`).
-- `last_read`: Last 16-bit word received from completed bus read cycle.
-- `source`: Explicit 32-bit storage for ALU source operand.
-- `destination`: Explicit 32-bit storage for ALU destination operand and write-back data.
-- `scratch_prefetch`: Latched prefetch word for pipeline refills and RMW sequences.
+- `source`: Explicit 32-bit storage for ALU source operand (incoming bus data is stored directly here on CCK1).
+- `destination`: Explicit 32-bit storage for ALU destination operand and write-back data (bus write cycles read directly from here).
+- `irc`: Instruction Register Capture — physical 68000 prefetch latch holding prefetched opcodes before retirement into IR.
+- `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
+- `ea_high`: High word of 32-bit absolute addresses (`(xxx).L`) or high address for split accesses.
+- `movem_mask`: 16-bit register transfer mask for `MOVEM`.
+- `movem_state`: Internal packing state (bit index and sub-word tracker) for `MOVEM`.
 - `internal_clocks`: Non-bus execution clocks countdown (DIVU/MULU/shifts/indexed EA).
 - `clocks_remaining`: Clocks remaining for the active micro-step countdown (-1 when uninitialized / between steps).
 - `current_steps`: Cached slice pointer to active opcode's `&'static [MicroStep]`.
 - `micro_step`: Step index within the current instruction's micro-operation sequence.
 - `reg_src`, `reg_dst`: Pre-decoded register indices ($0..7$ for $D_n / A_n$).
-- `write_buffer`: Hardware Data Output Buffer (DOB) holding ALU result for memory writes.
-- `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
-- `scratch`: Intermediate scratch registers (`scratch[0]` holds `MOVEM` register transfer mask).
+- `read_to_dest`: Indicates whether the active CCK1 read was targeted to `destination` (true) or `source` (false) for CCK2 logging.
 - `current_cycle_wait_cycles`: Wait cycles accumulated during bus stalls in the current cycle.
 
 ### 2.5 The 65,536 Static Dispatch Universe (`OPCODE_DESCRIPTOR_TABLE`)
@@ -129,7 +130,7 @@ Embedded in `CpuState` to track sub-cycle progress across Color Clock phases:
 
 Passing `reg_src` and `reg_dst` into `AluFn` collapses code duplication across all register combinations without using forbidden macros or const-generics:
 1. **Register Destinations:** The ALU reads `state.d_byte(reg_dst)` or `state.d_word(reg_dst)`, evaluates condition codes via branchless CCR setters, and writes directly back to the register.
-2. **Memory Destinations:** When targeting memory (e.g. `ORI.B #$42, (A0)`), the ALU reads `state.micro.last_read`, evaluates condition codes, and latches the result into `state.micro.write_buffer` (DOB) for the subsequent write bus cycle.
+2. **Memory Destinations:** When targeting memory (e.g. `ORI.B #$42, (A0)`), the ALU reads `state.micro.destination`, evaluates condition codes, and stores the result directly back into `state.micro.destination` for the subsequent write bus cycle.
 3. **Effective Address Arithmetic:** Because `Alu` micro-steps consume 0 CCKs, effective address calculations (such as `(d16, An)` or `(d8, An, Xn)`) use the identical `AluFn` mechanism to compute and store addresses in `state.micro.ea_addr`.
 
 All specialized ALU handlers reside in [`crates/m68000/src/micro/alu.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/alu.rs).
@@ -146,18 +147,18 @@ On the Amiga 500, the 4-clock M68000 bus cycle maps to **two Color Clock phases 
             ┌──────────────────────┬──────────────────────┐
             │     CCK1 (S0–S3)     │     CCK2 (S4–S7)     │
 ────────────┼──────────────────────┼──────────────────────┤
- READ Cycle │ Read to latch buffer │ CPU idle / DMA slot  │
+ READ Cycle │ Read to target reg   │ CPU idle / DMA slot  │
 ────────────┼──────────────────────┼──────────────────────┤
  WRITE Cycle│ CPU setup (idle bus) │ Write to DRAM / Wait │
 ────────────┴──────────────────────┴──────────────────────┘
 ```
 
 - **READ Cycles (`BusReadByte`, `BusReadWord`, `BusReadLongHigh`, `BusReadLongLow`, `FetchExtension`, `PrefetchNextOpcodeAndRetire`):**
-  - **CCK1 (S0–S3):** Bus read attempt via `bus.read_word(addr)` or `bus.read_byte(addr)`. If `BusResult::WaitState` $\to$ insert wait state (CPU stalls in CCK1). If `BusResult::Ready(data)` $\to$ latches data into `state.micro.last_read`, advancing `phase = CCK2`.
-  - **CCK2 (S4–S7):** **Do nothing on the bus!** Physical Chip RAM is already released for custom chip DMA (Blitter, Copper). The CPU records the transaction, finishes the 4-clock cycle (or prefetch retirement), and advances to the next micro-step (`phase = CCK1`).
+  - **CCK1 (S0–S3):** Bus read attempt via `bus.read_word(addr)` or `bus.read_byte(addr)`. If `BusResult::WaitState` $\to$ insert wait state (CPU stalls in CCK1). If `BusResult::Ready(data)` $\to$ stores data directly into `source`, `destination`, `prefetch[0]`, or `irc`, advancing `phase = CCK2`.
+  - **CCK2 (S4–S7):** **Do nothing on the bus!** Physical Chip RAM is already released for custom chip DMA (Blitter, Copper). The CPU records the transaction directly from the target register, finishes the 4-clock cycle (or prefetch retirement), and advances to the next micro-step (`phase = CCK1`).
 - **WRITE Cycles (`BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, `BusWriteLongLow`, `BusPushStackHigh`, `BusPushStackLow`):**
   - **CCK1 (S0–S3):** **CPU does not touch the bus!** Internal address propagation only. Chip RAM remains completely free for Agnus DMA. Advances `phase = CCK2`.
-  - **CCK2 (S4–S7):** Bus write attempt via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)`. If `BusResult::WaitState` (Gary withholds $\overline{\text{DTACK}}$) $\to$ insert wait state (CPU stalls in CCK2). Once `BusResult::Ready(())` $\to$ write is committed to `bus`, recording the transaction and advancing to the next micro-step (`phase = CCK1`).
+  - **CCK2 (S4–S7):** Bus write attempt via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)` reading directly from `state.micro.destination`. If `BusResult::WaitState` (Gary withholds $\overline{\text{DTACK}}$) $\to$ insert wait state (CPU stalls in CCK2). Once `BusResult::Ready(())` $\to$ write is committed to `bus`, recording the transaction and advancing to the next micro-step (`phase = CCK1`).
 
 Byte strobes ($\overline{\text{UDS}}$ / $\overline{\text{LDS}}$) are derived natively by `bus.read_byte(addr)` / `bus.write_byte(addr, val)` from `addr & 1`. **The CPU core eliminates all manual strobe calculations, `BusCycle` allocations, and intermediate latch buffering.**
 

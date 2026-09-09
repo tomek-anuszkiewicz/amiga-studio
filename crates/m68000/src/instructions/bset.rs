@@ -45,7 +45,6 @@ pub fn alu_bset_b_dyn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let val = (state.micro.destination & 0xFF) as u8;
     let res = bset_b(state, bit_num, val);
     state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
-    state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_bset_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
@@ -60,7 +59,6 @@ pub fn alu_bset_b_imm_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let val = (state.micro.destination & 0xFF) as u8;
     let res = bset_b(state, bit_num, val);
     state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
-    state.micro.write_buffer = res as u32;
 }
 
 // ============================================================================
@@ -71,14 +69,12 @@ pub fn alu_bset_b_imm_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 pub fn latch_bit_imm(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let imm = (state.prefetch[0] & 0xFF) as u32;
     state.micro.source = imm;
-    state.micro.scratch[3] = imm;
 }
 
 #[inline(always)]
 pub fn latch_bit_imm_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let imm = (state.prefetch[0] & 0xFF) as u32;
     state.micro.source = imm;
-    state.micro.scratch[3] = imm;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
@@ -86,7 +82,6 @@ pub fn latch_bit_imm_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub fn latch_bit_imm_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let imm = (state.prefetch[0] & 0xFF) as u32;
     state.micro.source = imm;
-    state.micro.scratch[3] = imm;
     ea::ea_calc_dst_pi_b(state, 0, reg_dst);
 }
 

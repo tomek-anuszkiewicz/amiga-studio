@@ -37,61 +37,52 @@ pub fn alu_addi_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 pub fn latch_imm_b(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let s = (state.prefetch[0] & 0xFF) as u32;
-    state.micro.scratch[1] = s;
     state.micro.source = s;
 }
 
 pub fn latch_imm_w(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let s = state.prefetch[0] as u32;
-    state.micro.scratch[1] = s;
     state.micro.source = s;
 }
 
 pub fn latch_imm_b_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = (state.prefetch[0] & 0xFF) as u32;
-    state.micro.scratch[1] = s;
     state.micro.source = s;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_imm_b_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = (state.prefetch[0] & 0xFF) as u32;
-    state.micro.scratch[1] = s;
     state.micro.source = s;
     ea::ea_calc_dst_pi_b(state, 0, reg_dst);
 }
 
 pub fn latch_imm_w_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = state.prefetch[0] as u32;
-    state.micro.scratch[1] = s;
     state.micro.source = s;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_imm_w_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = state.prefetch[0] as u32;
-    state.micro.scratch[1] = s;
     state.micro.source = s;
     ea::ea_calc_dst_pi_w(state, 0, reg_dst);
 }
 
 pub fn latch_imm_l_lo_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.micro.scratch[0] | (state.prefetch[0] as u32);
-    state.micro.scratch[3] = s;
+    let s = state.micro.source | (state.prefetch[0] as u32);
     state.micro.source = s;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_imm_l_lo_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.micro.scratch[0] | (state.prefetch[0] as u32);
-    state.micro.scratch[3] = s;
+    let s = state.micro.source | (state.prefetch[0] as u32);
     state.micro.source = s;
     ea::ea_calc_dst_pi_l(state, 0, reg_dst);
 }
 
 pub fn latch_imm_l_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let s = state.micro.scratch[0] | (state.prefetch[0] as u32);
-    state.micro.scratch[3] = s;
+    let s = state.micro.source | (state.prefetch[0] as u32);
     state.micro.source = s;
 }
 
@@ -100,7 +91,6 @@ pub fn alu_addi_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let d = (state.micro.destination & 0xFF) as u8;
     let res = crate::instructions::add::add_b(state, s, d);
     state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
-    state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_addi_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
@@ -108,7 +98,6 @@ pub fn alu_addi_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let d = (state.micro.destination & 0xFFFF) as u16;
     let res = crate::instructions::add::add_w(state, s, d);
     state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
-    state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_addi_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
@@ -116,7 +105,6 @@ pub fn alu_addi_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let d = state.micro.destination;
     let res = crate::instructions::add::add_l(state, s, d);
     state.micro.destination = res;
-    state.micro.write_buffer = res;
 }
 
 // ============================================================================

@@ -14,18 +14,25 @@ use serde::{Deserialize, Serialize};
 pub struct CpuMicroState {
     /// Current Color Clock phase (CCK1 or CCK2)
     pub phase: CckPhase,
-    /// Last 16-bit word received from completed bus read cycle
+    /// Instruction Register Capture prefetch latch (68000 IRC)
     #[serde(default)]
-    pub last_read: u16,
-    /// Intermediate latched prefetch word (e.g. for Class 0 RMW where prefetch precedes write)
-    #[serde(default)]
-    pub scratch_prefetch: u16,
+    pub irc: u16,
     /// Internal execution CPU clocks remaining (non-bus micro-operations)
     pub internal_clocks: u16,
     /// Step index within the current instruction's micro-operation sequence
     pub micro_step: u16,
-    /// Intermediate temporary registers for multi-step micro-operations
-    pub scratch: [u32; 4],
+    /// Intermediate high-word buffer for 32-bit address/immediate assembly
+    #[serde(default)]
+    pub ea_high: u32,
+    /// Active 16-bit register mask for MOVEM block transfers
+    #[serde(default)]
+    pub movem_mask: u16,
+    /// Transfer progress state for MOVEM block transfers
+    #[serde(default)]
+    pub movem_state: u16,
+    /// Tracks whether the last memory read targeted destination vs source (for shared CCK2 loggers)
+    #[serde(default)]
+    pub read_to_dest: bool,
     /// Optional transaction log for cycle-exact verification (disabled by default)
     #[serde(skip)]
     pub transaction_log: Option<Vec<RecordedTransaction>>,
@@ -43,9 +50,6 @@ pub struct CpuMicroState {
     /// Decoded destination operand buffer and ALU output result buffer
     #[serde(default)]
     pub destination: u32,
-    /// Hardware Data Output Buffer (DOB) holding ALU result for memory writes
-    #[serde(default)]
-    pub write_buffer: u32,
     /// Resolved effective memory address for operands or branch/jump targets
     #[serde(default)]
     pub ea_addr: u32,
@@ -81,17 +85,18 @@ impl CpuMicroState {
     pub fn new() -> Self {
         Self {
             phase: CckPhase::Cck1,
-            last_read: 0,
-            scratch_prefetch: 0,
+            irc: 0,
             internal_clocks: 0,
             micro_step: 0,
-            scratch: [0; 4],
+            ea_high: 0,
+            movem_mask: 0,
+            movem_state: 0,
+            read_to_dest: false,
             transaction_log: None,
             clocks_remaining: -1,
             current_cycle_wait_cycles: 0,
             source: 0,
             destination: 0,
-            write_buffer: 0,
             ea_addr: 0,
             reg_src: 0,
             reg_dst: 0,
@@ -104,16 +109,17 @@ impl CpuMicroState {
     /// Resets the micro-state machine to initial power-on / reset state
     pub fn reset(&mut self) {
         self.phase = CckPhase::Cck1;
-        self.last_read = 0;
-        self.scratch_prefetch = 0;
+        self.irc = 0;
         self.internal_clocks = 0;
         self.micro_step = 0;
-        self.scratch = [0; 4];
+        self.ea_high = 0;
+        self.movem_mask = 0;
+        self.movem_state = 0;
+        self.read_to_dest = false;
         self.clocks_remaining = -1;
         self.current_cycle_wait_cycles = 0;
         self.source = 0;
         self.destination = 0;
-        self.write_buffer = 0;
         self.ea_addr = 0;
         self.reg_src = 0;
         self.reg_dst = 0;

@@ -100,14 +100,12 @@ impl Cpu {
     pub(crate) fn retire_current_instruction(&mut self) {
         if self.state.micro.target_refill {
             let target = self.state.micro.ea_addr;
-            let target_prefetch = self.state.micro.last_read;
-            let new_ir = self.state.micro.scratch_prefetch;
+            let new_ir = self.state.micro.irc;
             self.state.ir = new_ir;
-            self.state.prefetch[0] = target_prefetch;
             self.state.pc = target.wrapping_add(4);
         } else if !self.state.micro.prefetch_retired {
             self.state.ir = self.state.prefetch[0];
-            self.state.prefetch[0] = self.state.micro.scratch_prefetch;
+            self.state.prefetch[0] = self.state.micro.irc;
             self.state.pc = self.state.pc.wrapping_add(2);
         }
         self.state.micro.reset();
@@ -135,7 +133,7 @@ impl Cpu {
             CckPhase::Cck1 => match bus.read_word(addr) {
                 BusResult::WaitState => BusResult::WaitState,
                 BusResult::Ready(data) => {
-                    self.state.micro.last_read = data;
+                    self.state.micro.source = data as u32;
                     self.state.micro.phase = CckPhase::Cck2;
                     BusResult::Ready(())
                 }
@@ -147,7 +145,7 @@ impl Cpu {
                     function_code,
                     addr,
                     BusAccessSize::Word,
-                    self.state.micro.last_read,
+                    self.state.micro.source as u16,
                     true,
                     true,
                 );
@@ -178,7 +176,7 @@ impl Cpu {
             CckPhase::Cck1 => match bus.read_byte(addr) {
                 BusResult::WaitState => BusResult::WaitState,
                 BusResult::Ready(data) => {
-                    self.state.micro.last_read = data as u16;
+                    self.state.micro.source = data as u32;
                     self.state.micro.phase = CckPhase::Cck2;
                     BusResult::Ready(())
                 }
@@ -196,7 +194,7 @@ impl Cpu {
                     fc,
                     addr,
                     BusAccessSize::Byte,
-                    self.state.micro.last_read,
+                    self.state.micro.source as u16,
                     uds,
                     lds,
                 );

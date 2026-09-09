@@ -32,7 +32,7 @@ fn test_cck_unblocked_read_cycle() {
     let res2 = cpu.step_read_word_at(&mut bus, 0x002000);
     assert_eq!(res2, BusResult::Ready(()));
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
-    assert_eq!(cpu.state.micro.last_read, 0x55AA);
+    assert_eq!(cpu.state.micro.source as u16, 0x55AA);
 }
 
 #[test]
@@ -68,7 +68,7 @@ fn test_cck_read_contention_stall_at_cck1() {
     let res4 = cpu.step_read_word_at(&mut bus, 0x002000);
     assert_eq!(res4, BusResult::Ready(()));
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
-    assert_eq!(cpu.state.micro.last_read, 0x1234);
+    assert_eq!(cpu.state.micro.source as u16, 0x1234);
 }
 
 #[test]

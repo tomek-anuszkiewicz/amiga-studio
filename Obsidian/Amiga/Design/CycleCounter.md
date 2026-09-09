@@ -65,7 +65,7 @@ WRITE:      | Address & Control | Commit Write (S4) |
    - If target is Chip RAM and Agnus DMA is active (`chip_ram_blocked == true`), Gary withholds `_DTACK` and the CPU stalls (wait states).
    - If unblocked, arbitration passes and the CPU transitions to CCK2.
 2. **During CCK2 ($S_4$–$S_7$):**
-   - At $S_6$, data driven on $D_0$–$D_{15}$ is sampled directly by the CPU into its internal input register (`CpuMicroState.last_read`).
+   - At $S_6$, data driven on $D_0$–$D_{15}$ is sampled directly by the CPU into its internal target register (`source`, `destination`, `prefetch[0]`, or `irc`).
    - Gary asserts `_DTACK`, the CPU completes its cycle, and the bus transaction finishes without an intermediate bus latch.
 
 ### 2.3 Write Cycle Execution

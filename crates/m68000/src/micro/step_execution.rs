@@ -22,8 +22,8 @@ impl Cpu {
         match bus.read_byte(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data as u16;
                 self.state.micro.source = data as u32;
+                self.state.micro.read_to_dest = false;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
@@ -41,8 +41,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
                 self.state.micro.source = data as u32;
+                self.state.micro.read_to_dest = false;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
@@ -55,8 +55,8 @@ impl Cpu {
         match bus.read_byte(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data as u16;
                 self.state.micro.destination = data as u32;
+                self.state.micro.read_to_dest = true;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
@@ -74,8 +74,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
                 self.state.micro.destination = data as u32;
+                self.state.micro.read_to_dest = true;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
@@ -93,9 +93,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
                 self.state.micro.source = (data as u32) << 16;
-                self.state.micro.scratch[0] = (data as u32) << 16;
+                self.state.micro.read_to_dest = false;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
@@ -113,9 +112,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
                 self.state.micro.source = (self.state.micro.source & 0xFFFF_0000) | (data as u32);
-                self.state.micro.scratch[1] = self.state.micro.source;
+                self.state.micro.read_to_dest = false;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
@@ -133,8 +131,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
                 self.state.micro.destination = (data as u32) << 16;
+                self.state.micro.read_to_dest = true;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
@@ -152,9 +150,9 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
                 self.state.micro.destination =
                     (self.state.micro.destination & 0xFFFF_0000) | (data as u32);
+                self.state.micro.read_to_dest = true;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
@@ -164,13 +162,78 @@ impl Cpu {
     /// CCK2: Finishes bus read word cycle, records transaction, and releases bus for Agnus DMA
     pub fn step_bus_read_word_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let fc = crate::micro::types::data_fc(&self.state);
+        let val = if self.state.micro.read_to_dest {
+            (self.state.micro.destination & 0xFFFF) as u16
+        } else {
+            (self.state.micro.source & 0xFFFF) as u16
+        };
         self.state.micro.record_bus_transaction(
             true,
             false,
             fc,
             self.state.micro.ea_addr,
             BusAccessSize::Word,
-            self.state.micro.last_read,
+            val,
+            true,
+            true,
+        );
+        self.state.micro.phase = CckPhase::Cck1;
+        BusResult::Ready(())
+    }
+
+    /// CCK1: Reads high word of 32-bit split source operand (predecrement) into bits 16..31 of `source`
+    pub fn step_bus_read_src_split_high(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let addr = self.state.micro.ea_addr;
+        if (addr & 1) != 0 {
+            self.trigger_address_error_step(addr, true, false, bus);
+            return BusResult::Ready(());
+        }
+        let addr = addr & 0x00FF_FFFF;
+        match bus.read_word(addr) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.source = (self.state.micro.source & 0x0000_FFFF) | ((data as u32) << 16);
+                self.state.micro.read_to_dest = false;
+                self.state.micro.phase = CckPhase::Cck2;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Reads high word of 32-bit split destination operand (predecrement) into bits 16..31 of `destination`
+    pub fn step_bus_read_dst_split_high(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let addr = self.state.micro.ea_addr;
+        if (addr & 1) != 0 {
+            self.trigger_address_error_step(addr, true, false, bus);
+            return BusResult::Ready(());
+        }
+        let addr = addr & 0x00FF_FFFF;
+        match bus.read_word(addr) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.destination = (self.state.micro.destination & 0x0000_FFFF) | ((data as u32) << 16);
+                self.state.micro.read_to_dest = true;
+                self.state.micro.phase = CckPhase::Cck2;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK2: Finishes bus read split high word cycle, records transaction from bits 16..31
+    pub fn step_bus_read_split_high_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+        let fc = crate::micro::types::data_fc(&self.state);
+        let val = if self.state.micro.read_to_dest {
+            ((self.state.micro.destination >> 16) & 0xFFFF) as u16
+        } else {
+            ((self.state.micro.source >> 16) & 0xFFFF) as u16
+        };
+        self.state.micro.record_bus_transaction(
+            true,
+            false,
+            fc,
+            self.state.micro.ea_addr,
+            BusAccessSize::Word,
+            val,
             true,
             true,
         );
@@ -183,13 +246,18 @@ impl Cpu {
         let fc = crate::micro::types::data_fc(&self.state);
         let addr = self.state.micro.ea_addr;
         let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
+        let val = if self.state.micro.read_to_dest {
+            (self.state.micro.destination & 0xFF) as u16
+        } else {
+            (self.state.micro.source & 0xFF) as u16
+        };
         self.state.micro.record_bus_transaction(
             true,
             false,
             fc,
             addr,
             BusAccessSize::Byte,
-            self.state.micro.last_read,
+            val,
             uds,
             lds,
         );
@@ -334,20 +402,20 @@ impl Cpu {
         self.step_bus_write_dst_long_low(bus)
     }
 
-    /// CCK1: Extension word fetch from PC into `self.state.micro.last_read`
+    /// CCK1: Extension word fetch from PC directly into `self.state.prefetch[0]`
     pub fn step_fetch_extension_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.pc & 0x00FF_FFFF;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
+                self.state.prefetch[0] = data;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
     }
 
-    /// CCK2: Extension word finish - latches into prefetch[0], advances PC += 2
+    /// CCK2: Extension word finish - logs prefetch[0] transaction, advances PC += 2
     pub fn step_fetch_extension_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let fc = crate::micro::types::prog_fc(&self.state);
         let addr = self.state.pc & 0x00FF_FFFF;
@@ -357,30 +425,29 @@ impl Cpu {
             fc,
             addr,
             memory_bus::BusAccessSize::Word,
-            self.state.micro.last_read,
+            self.state.prefetch[0],
             true,
             true,
         );
-        self.state.prefetch[0] = self.state.micro.last_read;
         self.state.pc = self.state.pc.wrapping_add(2);
         self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
-    /// CCK1: Prefetch next opcode from PC into `self.state.micro.last_read`
+    /// CCK1: Prefetch next opcode from PC into `self.state.micro.irc`
     pub fn step_prefetch_next_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.pc & 0x00FF_FFFF;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
+                self.state.micro.irc = data;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
     }
 
-    /// CCK2: Prefetch next opcode finish and latches into scratch_prefetch
+    /// CCK2: Prefetch next opcode finish and latches into irc
     pub fn step_prefetch_next_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let fc = crate::micro::types::prog_fc(&self.state);
         let addr = self.state.pc & 0x00FF_FFFF;
@@ -390,11 +457,10 @@ impl Cpu {
             fc,
             addr,
             memory_bus::BusAccessSize::Word,
-            self.state.micro.last_read,
+            self.state.micro.irc,
             true,
             true,
         );
-        self.state.micro.scratch_prefetch = self.state.micro.last_read;
         self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
@@ -405,21 +471,27 @@ impl Cpu {
         self.step_prefetch_next_finish(bus)
     }
 
-    /// CCK1: Prefetch to scratch buffer from PC into `self.state.micro.last_read`
-    pub fn step_prefetch_scratch_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+    /// CCK1: Prefetch to IRC from PC directly into `self.state.micro.irc`
+    pub fn step_prefetch_irc_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.pc & 0x00FF_FFFF;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
+                self.state.micro.irc = data;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
     }
 
-    /// CCK2: Prefetch to scratch buffer finish - advances prefetch pipeline into IR
-    pub fn step_prefetch_scratch_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+    /// CCK1: Legacy forwarding alias for prefetch to scratch/IRC
+    #[inline(always)]
+    pub fn step_prefetch_scratch_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        self.step_prefetch_irc_read(bus)
+    }
+
+    /// CCK2: Prefetch to IRC finish - advances prefetch pipeline into IR
+    pub fn step_prefetch_irc_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let fc = crate::micro::types::prog_fc(&self.state);
         let addr = self.state.pc & 0x00FF_FFFF;
         self.state.micro.record_bus_transaction(
@@ -428,16 +500,21 @@ impl Cpu {
             fc,
             addr,
             memory_bus::BusAccessSize::Word,
-            self.state.micro.last_read,
+            self.state.micro.irc,
             true,
             true,
         );
-        self.state.micro.scratch_prefetch = self.state.micro.last_read;
         self.state.ir = self.state.prefetch[0];
-        self.state.prefetch[0] = self.state.micro.last_read;
+        self.state.prefetch[0] = self.state.micro.irc;
         self.state.pc = self.state.pc.wrapping_add(2);
         self.state.micro.prefetch_retired = true;
         self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
+    }
+
+    /// CCK2: Legacy forwarding alias for prefetch to scratch/IRC finish
+    #[inline(always)]
+    pub fn step_prefetch_scratch_finish(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        self.step_prefetch_irc_finish(bus)
     }
 }

@@ -15,7 +15,6 @@ pub fn alu_jsr_ai(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.read_a(reg_src as usize);
     let ret = state.pc.wrapping_sub(2);
     state.micro.destination = ret;
-    state.micro.write_buffer = ret;
 }
 
 #[inline(always)]
@@ -23,7 +22,6 @@ pub fn alu_jsr_d16_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let disp = (state.prefetch[0] as i16) as i32;
     state.micro.ea_addr = state.read_a(reg_src as usize).wrapping_add(disp as u32);
     state.micro.destination = state.pc;
-    state.micro.write_buffer = state.pc;
 }
 
 #[inline(always)]
@@ -34,21 +32,18 @@ pub fn alu_jsr_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let an = state.read_a(reg_src as usize);
     state.micro.ea_addr = an.wrapping_add(xn).wrapping_add(disp8 as u32);
     state.micro.destination = state.pc;
-    state.micro.write_buffer = state.pc;
 }
 
 #[inline(always)]
 pub fn alu_jsr_absw(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.prefetch[0] as i16 as i32 as u32;
     state.micro.destination = state.pc;
-    state.micro.write_buffer = state.pc;
 }
 
 #[inline(always)]
 pub fn alu_jsr_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.ea_addr = state.micro.scratch[0] | (state.prefetch[0] as u32);
+    state.micro.ea_addr = state.micro.ea_high | (state.prefetch[0] as u32);
     state.micro.destination = state.pc;
-    state.micro.write_buffer = state.pc;
 }
 
 #[inline(always)]
@@ -57,7 +52,6 @@ pub fn alu_jsr_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.ea_addr = base_pc.wrapping_add(disp as u32);
     state.micro.destination = state.pc;
-    state.micro.write_buffer = state.pc;
 }
 
 #[inline(always)]
@@ -68,7 +62,6 @@ pub fn alu_jsr_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.ea_addr = base_pc.wrapping_add(xn).wrapping_add(disp8 as u32);
     state.micro.destination = state.pc;
-    state.micro.write_buffer = state.pc;
 }
 
 /// JSR (An): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)

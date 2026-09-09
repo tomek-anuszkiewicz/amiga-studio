@@ -61,21 +61,18 @@ pub fn alu_not_b_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let d = (state.micro.destination & 0xFF) as u8;
     let res = not_b(state, d);
     state.micro.destination = (state.micro.destination & !0xFF) | (res as u32);
-    state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_not_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let d = (state.micro.destination & 0xFFFF) as u16;
     let res = not_w(state, d);
     state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
-    state.micro.write_buffer = res as u32;
 }
 
 pub fn alu_not_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let d = state.micro.destination;
     let res = not_l(state, d);
     state.micro.destination = res;
-    state.micro.write_buffer = res;
 }
 
 // ============================================================================

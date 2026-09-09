@@ -14,7 +14,7 @@ impl Cpu {
     // Target Opcode Refill Handlers (2 Clocks / 1 CCK per step)
     // ========================================================================
 
-    /// CCK1: Reads first word of target instruction from `ea_addr`
+    /// CCK1: Reads first word of target instruction directly into `self.state.micro.irc`
     pub fn step_bus_read_target_opcode_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
         if (addr & 1) != 0 {
@@ -24,18 +24,17 @@ impl Cpu {
         match bus.read_word(addr & 0x00FF_FFFF) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
+                self.state.micro.irc = data;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
     }
 
-    /// CCK2: Latches target opcode into `scratch_prefetch` and logs transaction
+    /// CCK2: Logs target opcode transaction from `irc`
     pub fn step_bus_read_target_opcode_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr & 0x00FF_FFFF;
-        let data = self.state.micro.last_read;
-        self.state.micro.scratch_prefetch = data;
+        let data = self.state.micro.irc;
         let fc = prog_fc(&self.state);
         self.state.micro.record_bus_transaction(
             true,
@@ -51,7 +50,7 @@ impl Cpu {
         BusResult::Ready(())
     }
 
-    /// CCK1: Reads second word of target pipeline from `ea_addr + 2`
+    /// CCK1: Reads second word of target pipeline directly into `self.state.prefetch[0]`
     pub fn step_prefetch_target_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
         if (addr & 1) != 0 {
@@ -61,17 +60,17 @@ impl Cpu {
         match bus.read_word(addr & 0x00FF_FFFF) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
+                self.state.prefetch[0] = data;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
     }
 
-    /// CCK2: Logs second target word transaction and arms target refill retirement
+    /// CCK2: Logs second target word transaction from `prefetch[0]` and arms target refill retirement
     pub fn step_prefetch_target_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2) & 0x00FF_FFFF;
-        let target_prefetch = self.state.micro.last_read;
+        let target_prefetch = self.state.prefetch[0];
         let fc = prog_fc(&self.state);
         self.state.micro.record_bus_transaction(
             true,
@@ -110,15 +109,10 @@ impl Cpu {
         BusResult::Ready(())
     }
 
-    /// CCK2: Writes high word of destination/write_buffer to SP
+    /// CCK2: Writes high word of destination to SP
     pub fn step_bus_push_stack_high_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let sp = self.state.read_a(7) & 0x00FF_FFFF;
-        let src = if self.state.micro.destination != 0 {
-            self.state.micro.destination
-        } else {
-            self.state.micro.write_buffer
-        };
-        let val = ((src >> 16) & 0xFFFF) as u16;
+        let val = ((self.state.micro.destination >> 16) & 0xFFFF) as u16;
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
@@ -139,15 +133,10 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Writes low word of destination/write_buffer to SP + 2
+    /// CCK2: Writes low word of destination to SP + 2
     pub fn step_bus_push_stack_low_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let sp_low = self.state.read_a(7).wrapping_add(2) & 0x00FF_FFFF;
-        let src = if self.state.micro.destination != 0 {
-            self.state.micro.destination
-        } else {
-            self.state.micro.write_buffer
-        };
-        let val = (src & 0xFFFF) as u16;
+        let val = (self.state.micro.destination & 0xFFFF) as u16;
         match bus.write_word(sp_low, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
@@ -178,7 +167,7 @@ impl Cpu {
     // Stack Pop Handlers (RTS)
     // ========================================================================
 
-    /// CCK1: Reads high word of return PC from (SP)
+    /// CCK1: Reads high word of return PC from (SP) into `ea_high`
     pub fn step_bus_pop_stack_high_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let sp = self.state.read_a(7);
         if (sp & 1) != 0 {
@@ -188,7 +177,7 @@ impl Cpu {
         match bus.read_word(sp & 0x00FF_FFFF) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
+                self.state.micro.ea_high = (data as u32) << 16;
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
@@ -198,9 +187,8 @@ impl Cpu {
     /// CCK2: Latches high word of return PC, advances SP += 2, and logs transaction
     pub fn step_bus_pop_stack_high_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let sp = self.state.read_a(7);
-        let data = self.state.micro.last_read;
+        let data = ((self.state.micro.ea_high >> 16) & 0xFFFF) as u16;
         self.state.write_a(7, sp.wrapping_add(2));
-        self.state.micro.scratch[0] = (data as u32) << 16;
         let fc = data_fc(&self.state);
         self.state.micro.record_bus_transaction(
             true,
@@ -216,7 +204,7 @@ impl Cpu {
         BusResult::Ready(())
     }
 
-    /// CCK1: Reads low word of return PC from (SP)
+    /// CCK1: Reads low word of return PC from (SP) and combines into `ea_addr`
     pub fn step_bus_pop_stack_low_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let sp = self.state.read_a(7);
         if (sp & 1) != 0 {
@@ -226,7 +214,7 @@ impl Cpu {
         match bus.read_word(sp & 0x00FF_FFFF) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.last_read = data;
+                self.state.micro.ea_addr = self.state.micro.ea_high | (data as u32);
                 self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
@@ -236,9 +224,8 @@ impl Cpu {
     /// CCK2: Latches full return PC into `ea_addr`, advances SP += 2, and logs transaction
     pub fn step_bus_pop_stack_low_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let sp = self.state.read_a(7);
-        let data = self.state.micro.last_read;
+        let data = (self.state.micro.ea_addr & 0xFFFF) as u16;
         self.state.write_a(7, sp.wrapping_add(2));
-        self.state.micro.ea_addr = self.state.micro.scratch[0] | (data as u32);
         let fc = data_fc(&self.state);
         self.state.micro.record_bus_transaction(
             true,

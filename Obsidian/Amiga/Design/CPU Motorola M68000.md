@@ -269,14 +269,14 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
   - If `BusResult::WaitState` (Chip RAM access blocked by active Agnus DMA):
     - **Action:** CPU stalls at CCK1 (accumulating wait state, `is_wait_state() == true`). Does NOT advance micro-step. Repeats CCK1 on next clock.
   - If `BusResult::Ready(data)`:
-    - Data is latched into `CpuMicroState.last_read`; CPU advances `phase` to `CckPhase::Cck2`.
+    - Data is stored directly into the target register (`source`, `destination`, `prefetch[0]`, or `irc`); CPU advances `phase` to `CckPhase::Cck2`.
 - **CCK2 (S4–S7):**
-  - Physical bus is already idle/released for custom chip DMA. The transaction is recorded, completing the bus cycle and advancing to the next step (`phase = CckPhase::Cck1`).
+  - Physical bus is already idle/released for custom chip DMA. The transaction is recorded directly from the target register, completing the bus cycle and advancing to the next step (`phase = CckPhase::Cck1`).
 
 ### 3.2 Write Transaction Contention
 - **CCK1 (S0–S3):** The CPU outputs the address internally and asserts `_AS`.
   - CPU proceeds to CCK2 (`phase = CckPhase::Cck2`).
-- **CCK2 (S4–S7):** The memory bus attempts committing the write via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)`:
+- **CCK2 (S4–S7):** The memory bus attempts committing the write via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)` reading directly from `state.micro.destination`:
   - If `BusResult::WaitState` (Gary withholds `_DTACK` due to Chip RAM DMA contention):
     - **Action:** CPU stalls at CCK2 (`is_wait_state() == true`), holding write pins asserted until Agnus frees the bus.
   - If `BusResult::Ready(())`:
@@ -291,13 +291,15 @@ Instruction execution is driven via a cycle-exact micro-step state machine clock
 
 - **Execution Micro-State (`CpuMicroState`):**
   - `phase`: Color Clock sub-phase (`CckPhase::Cck1` or `CckPhase::Cck2`).
-  - `last_read`: Last 16-bit word received from a completed memory read cycle.
-  - `scratch_prefetch`: Latched prefetch word for pipeline refills and RMW sequences.
+  - `source`: Explicit 32-bit storage for ALU source operand (incoming bus data is stored directly here on CCK1).
+  - `destination`: Explicit 32-bit storage for ALU destination operand and write-back data (bus write cycles read directly from here).
+  - `irc`: Instruction Register Capture — physical 68000 prefetch latch holding prefetched opcodes before retirement into IR.
+  - `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
+  - `ea_high`: High word of 32-bit absolute addresses (`(xxx).L`) or high address for split accesses.
+  - `movem_mask`: 16-bit register transfer mask for `MOVEM`.
+  - `movem_state`: Internal packing state (bit index and sub-word tracker) for `MOVEM`.
   - `internal_clocks`: Remaining internal CPU clocks for multi-cycle arithmetic/shift operations.
   - `micro_step`: Index of the currently executing micro-operation within the active opcode sequence.
-  - `write_buffer`: Hardware Data Output Buffer (DOB) holding ALU results for memory writes.
-  - `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
-  - `scratch`: Intermediate temporary registers (e.g. `scratch[0]` holding the MOVEM transfer mask).
   - `current_cycle_wait_cycles`: Wait cycles accumulated while stalled by Agnus DMA contention.
   - `target_refill`: Indicates whether instruction retirement must perform a branch/jump target refill.
   - `prefetch_retired`: Indicates whether prefetch pipeline has already retired into IR during microcode execution.

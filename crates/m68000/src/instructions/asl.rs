@@ -141,7 +141,6 @@ pub fn alu_asl_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let d = (state.micro.destination & 0xFFFF) as u16;
     let res = asl_w(state, 1, d);
     state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
-    state.micro.write_buffer = res as u32;
 }
 
 // ============================================================================
