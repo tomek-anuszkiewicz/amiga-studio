@@ -38,25 +38,6 @@ This document outlines the phased development plan, hardware milestones, verific
 ---
 ## 2. Core Implementation Strategy (Remaining Milestones)
 
-### Completed Baseline: Step 1 — M68000 Full Instruction Set Implementation & Dual-Tier Verification
-- **100% M68000 Instruction Set Coverage (Batches 1.1–1.11 Complete):**
-  - **Batch 1.1 (Isomorphic Arithmetic):** `SUB`, `SUBA`, `SUBI`, `SUBQ`, `SUBX`.
-  - **Batch 1.2 (Isomorphic Logic):** `AND`, `ANDI`, `OR`, `ORI`, `EOR`, `EORI`.
-  - **Batch 1.3 (Comparisons & Tests):** `CMP`, `CMPA`, `CMPI`, `TST`.
-  - **Batch 1.4 (Isomorphic Shifts & Rotates):** `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR`.
-  - **Batch 1.5 (Isomorphic Bit Operations):** `BTST`, `BCLR`, `BCHG`.
-  - **Batch 1.6 (Remaining Move Sizes):** `MOVE.B`, `MOVE.L`.
-  - **Batch 1.7 (Multiplication & Division):** `MULU`, `MULS`, `DIVU`, `DIVS`.
-  - **Batch 1.8 (BCD & Math Extensions):** `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `EXT`.
-  - **Batch 1.9 (Looping & Conditional Setting):** `DBcc`, `Scc`.
-  - **Batch 1.10 (Stack & Frame Control):** `LINK`, `UNLK`, `LEA`, `EXG`, `SWAP`, `CHK`.
-  - **Batch 1.11 (Privileged & Atomic Hardware Ops):** `MOVE to/from SR/CCR`, `MOVE USP`, `STOP`, `RESET`, `TAS`, `RTE`, `RTR`, `TRAPV`, `ORI/ANDI/EORI to CCR/SR`.
-- **Dual-Tier Verification Gate (100% Green):**
-  - **Tier 1 (SingleStepTests):** 100% pass rate across all 127 suites (~300,000 vectors across MAME and Tom Harte hardware captures).
-  - **Tier 2 (Cartesian DMA Contention):** 100% pass across all 19 suites, asserting Cycle Invariance ($C = C_0 + 2 \times \text{wait\_states}$), Fast RAM Immunity, and State Invariance across the full $2^k \times 2^M$ permutation space.
-
----
-
 ### Step 1: Comprehensive Opcode Benchmarking & Performance Profiling (Active)
 - **Automated Per-Opcode Micro-Benchmark Harness:**
   - Develop an exhaustive automated micro-benchmark harness (e.g. using `criterion` and dedicated throughput harnesses in `crates/test_runner`) measuring host execution time, nanoseconds per instruction, and throughput (MIPS) across all 65,536 dispatch entries and instruction variants.
