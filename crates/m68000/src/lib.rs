@@ -10,6 +10,7 @@ pub mod micro {
     pub mod dispatch_table;
     pub mod ea;
     pub mod engine;
+    pub mod step_control;
     pub mod step_execution;
     pub mod types;
 

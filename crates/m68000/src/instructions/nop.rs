@@ -7,4 +7,7 @@ use crate::micro::common;
 use crate::micro::types::MicroStep;
 
 /// Micro-step execution sequence for `NOP` (4 clocks / 2 CCKs)
-pub static STEPS_NOP: [MicroStep; 1] = [common::RETIRE_STANDARD];
+pub static STEPS_NOP: [MicroStep; 2] = [
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
+];

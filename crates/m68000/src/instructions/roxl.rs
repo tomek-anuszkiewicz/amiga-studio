@@ -129,8 +129,9 @@ pub fn alu_roxl_l_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_roxl_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let d = state.micro.last_read;
+    let d = (state.micro.destination & 0xFFFF) as u16;
     let res = roxl_w(state, 1, d);
+    state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
     state.micro.write_buffer = res as u32;
 }
 
@@ -138,77 +139,108 @@ pub fn alu_roxl_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // Static Micro-Step Slices: ROXL Register
 // ============================================================================
 
-pub static STEPS_ROXL_B_IMM: [MicroStep; 2] = [
+pub static STEPS_ROXL_B_IMM: [MicroStep; 3] = [
     MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(alu_roxl_b_imm_dn), base_clocks: 0 },
-    common::RETIRE_STANDARD,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ROXL_W_IMM: [MicroStep; 2] = [
+pub static STEPS_ROXL_W_IMM: [MicroStep; 3] = [
     MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(alu_roxl_w_imm_dn), base_clocks: 0 },
-    common::RETIRE_STANDARD,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ROXL_L_IMM: [MicroStep; 2] = [
+pub static STEPS_ROXL_L_IMM: [MicroStep; 3] = [
     MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(alu_roxl_l_imm_dn), base_clocks: 0 },
-    common::RETIRE_STANDARD,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
-pub static STEPS_ROXL_B_REG: [MicroStep; 2] = [
+pub static STEPS_ROXL_B_REG: [MicroStep; 3] = [
     MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(alu_roxl_b_reg_dn), base_clocks: 0 },
-    common::RETIRE_STANDARD,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ROXL_W_REG: [MicroStep; 2] = [
+pub static STEPS_ROXL_W_REG: [MicroStep; 3] = [
     MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(alu_roxl_w_reg_dn), base_clocks: 0 },
-    common::RETIRE_STANDARD,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
-pub static STEPS_ROXL_L_REG: [MicroStep; 2] = [
+pub static STEPS_ROXL_L_REG: [MicroStep; 3] = [
     MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(alu_roxl_l_reg_dn), base_clocks: 0 },
-    common::RETIRE_STANDARD,
+    common::PREFETCH_NEXT_READ,
+    common::PREFETCH_NEXT_RETIRE,
 ];
 
 // ============================================================================
 // Static Micro-Step Slices: ROXL Memory (Word only, Count = 1)
 // ============================================================================
 
-pub static STEPS_ROXL_W_AI: [MicroStep; 3] = [
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_prefetch_to_scratch, alu_fn: Some(alu_roxl_w_mem), base_clocks: 4 },
-    common::RMW_WRITE_WORD_RETIRE,
+pub static STEPS_ROXL_W_AI: [MicroStep; 6] = [
+    MicroStep { step_fn: Cpu::step_bus_read_dst_word, alu_fn: Some(ea::ea_calc_dst_ai), base_clocks: 2 },
+    common::READ_WORD_FINISH,
+    MicroStep { step_fn: Cpu::step_prefetch_scratch_read, alu_fn: Some(alu_roxl_w_mem), base_clocks: 2 },
+    common::PREFETCH_SCRATCH_FINISH,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_ROXL_W_PI: [MicroStep; 3] = [
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: Some(ea::ea_calc_dst_pi_w), base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_prefetch_to_scratch, alu_fn: Some(alu_roxl_w_mem), base_clocks: 4 },
-    common::RMW_WRITE_WORD_RETIRE,
+pub static STEPS_ROXL_W_PI: [MicroStep; 6] = [
+    MicroStep { step_fn: Cpu::step_bus_read_dst_word, alu_fn: Some(ea::ea_calc_dst_pi_w), base_clocks: 2 },
+    common::READ_WORD_FINISH,
+    MicroStep { step_fn: Cpu::step_prefetch_scratch_read, alu_fn: Some(alu_roxl_w_mem), base_clocks: 2 },
+    common::PREFETCH_SCRATCH_FINISH,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_ROXL_W_PD: [MicroStep; 4] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_dst_pd_w), base_clocks: 2 },
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_prefetch_to_scratch, alu_fn: Some(alu_roxl_w_mem), base_clocks: 4 },
-    common::RMW_WRITE_WORD_RETIRE,
+pub static STEPS_ROXL_W_PD: [MicroStep; 6] = [
+    MicroStep { step_fn: Cpu::step_bus_read_dst_word, alu_fn: Some(ea::ea_calc_dst_pd_w), base_clocks: 2 },
+    common::READ_WORD_FINISH,
+    MicroStep { step_fn: Cpu::step_prefetch_scratch_read, alu_fn: Some(alu_roxl_w_mem), base_clocks: 2 },
+    common::PREFETCH_SCRATCH_FINISH,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_ROXL_W_D16: [MicroStep; 4] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_prefetch_to_scratch, alu_fn: Some(alu_roxl_w_mem), base_clocks: 4 },
-    common::RMW_WRITE_WORD_RETIRE,
+pub static STEPS_ROXL_W_D16: [MicroStep; 8] = [
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_dst_d16_an), base_clocks: 2 },
+    common::FETCH_EXT_FINISH,
+    common::READ_DST_WORD,
+    common::READ_WORD_FINISH,
+    MicroStep { step_fn: Cpu::step_prefetch_scratch_read, alu_fn: Some(alu_roxl_w_mem), base_clocks: 2 },
+    common::PREFETCH_SCRATCH_FINISH,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_ROXL_W_IDX: [MicroStep; 5] = [
+pub static STEPS_ROXL_W_IDX: [MicroStep; 9] = [
     MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_dst_idx_an), base_clocks: 2 },
-    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_prefetch_to_scratch, alu_fn: Some(alu_roxl_w_mem), base_clocks: 4 },
-    common::RMW_WRITE_WORD_RETIRE,
+    common::FETCH_EXT_READ,
+    common::FETCH_EXT_FINISH,
+    common::READ_DST_WORD,
+    common::READ_WORD_FINISH,
+    MicroStep { step_fn: Cpu::step_prefetch_scratch_read, alu_fn: Some(alu_roxl_w_mem), base_clocks: 2 },
+    common::PREFETCH_SCRATCH_FINISH,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_ROXL_W_ABSW: [MicroStep; 4] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absw), base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_prefetch_to_scratch, alu_fn: Some(alu_roxl_w_mem), base_clocks: 4 },
-    common::RMW_WRITE_WORD_RETIRE,
+pub static STEPS_ROXL_W_ABSW: [MicroStep; 8] = [
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absw), base_clocks: 2 },
+    common::FETCH_EXT_FINISH,
+    common::READ_DST_WORD,
+    common::READ_WORD_FINISH,
+    MicroStep { step_fn: Cpu::step_prefetch_scratch_read, alu_fn: Some(alu_roxl_w_mem), base_clocks: 2 },
+    common::PREFETCH_SCRATCH_FINISH,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_WORD_RETIRE,
 ];
-pub static STEPS_ROXL_W_ABSL: [MicroStep; 5] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_fetch_extension, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_read_word, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_bus_prefetch_to_scratch, alu_fn: Some(alu_roxl_w_mem), base_clocks: 4 },
-    common::RMW_WRITE_WORD_RETIRE,
+pub static STEPS_ROXL_W_ABSL: [MicroStep; 10] = [
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 2 },
+    common::FETCH_EXT_FINISH,
+    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 2 },
+    common::FETCH_EXT_FINISH,
+    common::READ_DST_WORD,
+    common::READ_WORD_FINISH,
+    MicroStep { step_fn: Cpu::step_prefetch_scratch_read, alu_fn: Some(alu_roxl_w_mem), base_clocks: 2 },
+    common::PREFETCH_SCRATCH_FINISH,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_DST_WORD_RETIRE,
 ];
 
 // ============================================================================

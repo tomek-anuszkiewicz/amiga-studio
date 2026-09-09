@@ -13,13 +13,16 @@ use crate::state::CpuState;
 #[inline(always)]
 pub fn alu_jsr_ai(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.read_a(reg_src as usize);
-    state.micro.write_buffer = state.pc.wrapping_sub(2);
+    let ret = state.pc.wrapping_sub(2);
+    state.micro.destination = ret;
+    state.micro.write_buffer = ret;
 }
 
 #[inline(always)]
 pub fn alu_jsr_d16_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let disp = (state.prefetch[0] as i16) as i32;
     state.micro.ea_addr = state.read_a(reg_src as usize).wrapping_add(disp as u32);
+    state.micro.destination = state.pc;
     state.micro.write_buffer = state.pc;
 }
 
@@ -30,18 +33,21 @@ pub fn alu_jsr_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let xn = crate::micro::ea::read_index_reg(state, ext);
     let an = state.read_a(reg_src as usize);
     state.micro.ea_addr = an.wrapping_add(xn).wrapping_add(disp8 as u32);
+    state.micro.destination = state.pc;
     state.micro.write_buffer = state.pc;
 }
 
 #[inline(always)]
 pub fn alu_jsr_absw(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.prefetch[0] as i16 as i32 as u32;
+    state.micro.destination = state.pc;
     state.micro.write_buffer = state.pc;
 }
 
 #[inline(always)]
 pub fn alu_jsr_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.micro.scratch[0] | (state.prefetch[0] as u32);
+    state.micro.destination = state.pc;
     state.micro.write_buffer = state.pc;
 }
 
@@ -50,6 +56,7 @@ pub fn alu_jsr_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let disp = (state.prefetch[0] as i16) as i32;
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.ea_addr = base_pc.wrapping_add(disp as u32);
+    state.micro.destination = state.pc;
     state.micro.write_buffer = state.pc;
 }
 
@@ -60,104 +67,134 @@ pub fn alu_jsr_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let xn = crate::micro::ea::read_index_reg(state, ext);
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.ea_addr = base_pc.wrapping_add(xn).wrapping_add(disp8 as u32);
+    state.micro.destination = state.pc;
     state.micro.write_buffer = state.pc;
 }
 
 /// JSR (An): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
-pub static STEPS_JSR_AI: [MicroStep; 5] = [
+pub static STEPS_JSR_AI: [MicroStep; 9] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_ai),
         base_clocks: 0,
     },
-    common::READ_TARGET_OPCODE,
-    common::PUSH_STACK_HIGH,
-    common::PUSH_STACK_LOW,
-    common::PREFETCH_TARGET_RETIRE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PUSH_STACK_HIGH_IDLE,
+    common::PUSH_STACK_HIGH_WRITE,
+    common::BUS_WRITE_IDLE,
+    common::PUSH_STACK_LOW_WRITE,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// JSR (d16, An): 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
-pub static STEPS_JSR_D16_AN: [MicroStep; 5] = [
+pub static STEPS_JSR_D16_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_d16_an),
         base_clocks: 2,
     },
-    common::READ_TARGET_OPCODE,
-    common::PUSH_STACK_HIGH,
-    common::PUSH_STACK_LOW,
-    common::PREFETCH_TARGET_RETIRE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PUSH_STACK_HIGH_IDLE,
+    common::PUSH_STACK_HIGH_WRITE,
+    common::BUS_WRITE_IDLE,
+    common::PUSH_STACK_LOW_WRITE,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// JSR (d8, An, Xn): 22 CPU clocks / 11 CCKs (2 reads, 2 writes)
-pub static STEPS_JSR_IDX_AN: [MicroStep; 5] = [
+pub static STEPS_JSR_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_idx_an),
         base_clocks: 6,
     },
-    common::READ_TARGET_OPCODE,
-    common::PUSH_STACK_HIGH,
-    common::PUSH_STACK_LOW,
-    common::PREFETCH_TARGET_RETIRE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PUSH_STACK_HIGH_IDLE,
+    common::PUSH_STACK_HIGH_WRITE,
+    common::BUS_WRITE_IDLE,
+    common::PUSH_STACK_LOW_WRITE,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// JSR (xxx).W: 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
-pub static STEPS_JSR_ABSW: [MicroStep; 5] = [
+pub static STEPS_JSR_ABSW: [MicroStep; 9] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_absw),
         base_clocks: 2,
     },
-    common::READ_TARGET_OPCODE,
-    common::PUSH_STACK_HIGH,
-    common::PUSH_STACK_LOW,
-    common::PREFETCH_TARGET_RETIRE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PUSH_STACK_HIGH_IDLE,
+    common::PUSH_STACK_HIGH_WRITE,
+    common::BUS_WRITE_IDLE,
+    common::PUSH_STACK_LOW_WRITE,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// JSR (xxx).L: 20 CPU clocks / 10 CCKs (3 reads, 2 writes)
-pub static STEPS_JSR_ABSL: [MicroStep; 7] = [
+pub static STEPS_JSR_ABSL: [MicroStep; 12] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
         base_clocks: 0,
     },
-    common::FETCH_EXTENSION,
+    common::FETCH_EXT_READ,
+    common::FETCH_EXT_FINISH,
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_absl_lo),
         base_clocks: 0,
     },
-    common::READ_TARGET_OPCODE,
-    common::PUSH_STACK_HIGH,
-    common::PUSH_STACK_LOW,
-    common::PREFETCH_TARGET_RETIRE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PUSH_STACK_HIGH_IDLE,
+    common::PUSH_STACK_HIGH_WRITE,
+    common::BUS_WRITE_IDLE,
+    common::PUSH_STACK_LOW_WRITE,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// JSR (d16, PC): 18 CPU clocks / 9 CCKs (2 reads, 2 writes)
-pub static STEPS_JSR_D16_PC: [MicroStep; 5] = [
+pub static STEPS_JSR_D16_PC: [MicroStep; 9] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_d16_pc),
         base_clocks: 2,
     },
-    common::READ_TARGET_OPCODE,
-    common::PUSH_STACK_HIGH,
-    common::PUSH_STACK_LOW,
-    common::PREFETCH_TARGET_RETIRE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PUSH_STACK_HIGH_IDLE,
+    common::PUSH_STACK_HIGH_WRITE,
+    common::BUS_WRITE_IDLE,
+    common::PUSH_STACK_LOW_WRITE,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// JSR (d8, PC, Xn): 22 CPU clocks / 11 CCKs (2 reads, 2 writes)
-pub static STEPS_JSR_IDX_PC: [MicroStep; 5] = [
+pub static STEPS_JSR_IDX_PC: [MicroStep; 9] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_jsr_idx_pc),
         base_clocks: 6,
     },
-    common::READ_TARGET_OPCODE,
-    common::PUSH_STACK_HIGH,
-    common::PUSH_STACK_LOW,
-    common::PREFETCH_TARGET_RETIRE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PUSH_STACK_HIGH_IDLE,
+    common::PUSH_STACK_HIGH_WRITE,
+    common::BUS_WRITE_IDLE,
+    common::PUSH_STACK_LOW_WRITE,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// Compile-time opcode decoder for JSR ($4E90..=$4EBF)

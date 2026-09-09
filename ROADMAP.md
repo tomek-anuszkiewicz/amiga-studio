@@ -7,7 +7,7 @@ This document outlines the phased development plan, hardware milestones, verific
 ## 1. Hardware Roadmap & Milestones
 
 ### Phase 1: Baseline Amiga 500 (Rev 5 / Rev 6a OCS) — Immediate Focus
-- **CPU:** Motorola 68000 cycle-exact core (Color Clock phase execution CCK1/CCK2).
+- **CPU:** Motorola 68000 cycle-exact core (Native 2-clock micro-step slices: $1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$, all 43 instruction modules migrated, legacy 4-clock engine pruned, 100% SingleStepTests pass).
 - **Memory Configuration:**
   - 512 KB Chip RAM (`$000000-$07FFFF`).
   - Optional 512 KB Trapdoor Slow RAM (`$C00000-$C7FFFF`).
@@ -54,13 +54,12 @@ This document outlines the phased development plan, hardware milestones, verific
 
 ### Step 2: Implementation of Remaining Complex & Multi-Cycle Instructions
 - **Implement Directly as Linear Handlers in CCK Engine:**
-  - *Batch 6 (Multi-Register Moves):* `MOVEM` (looping bus cycles, predecrement/postincrement register ordering, interrupt sensitivity).
   - *Batch 7 (Multiplication & Division):* `MULU` / `MULS` (38–70 clocks data-dependent), `DIVU` / `DIVS` (38–158 clocks data-dependent, divide-by-zero trap vector 5).
   - *Batch 8 (BCD & Math Extensions):* `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `EXT`. (Note: `NOT` migrated in Batch 2).
   - *Batch 9 (Looping & Conditional Setting):* `DBcc`, `Scc`.
-  - *Batch 10 (Stack & Frame Control):* `LINK`, `UNLK`, `PEA`, `LEA`, `EXG`, `SWAP`, `CHK`.
+  - *Batch 10 (Stack & Frame Control):* `LINK`, `UNLK`, `LEA`, `EXG`, `SWAP`, `CHK`. (Note: `PEA` completed).
   - *Batch 11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
-- **100% SingleStepTest Pass Rate Target:** Complete all 127 MAME suites and 125 Tom Harte suites with both register/memory match and cycle/bus-exact match.
+- **100% SingleStepTest Pass Rate Target:** Complete remaining suites with both register/memory match and cycle/bus-exact match.
 
 ### Step 3: Comprehensive Opcode Benchmarking & Performance Profiling
 - **Automated Per-Opcode Micro-Benchmark Harness:**

@@ -124,13 +124,17 @@ pub fn ea_calc_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 /// Immediate Long Cycle 1: High word -> latch in scratch[0]
 #[inline(always)]
 pub fn ea_calc_imm_l_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.scratch[0] = (state.prefetch[0] as u32) << 16;
+    let hi = (state.prefetch[0] as u32) << 16;
+    state.micro.scratch[0] = hi;
+    state.micro.source = hi;
 }
 
 /// Immediate Long Cycle 2: Low word -> assemble into scratch[1]
 #[inline(always)]
 pub fn ea_calc_imm_l_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.scratch[1] = state.micro.scratch[0] | (state.prefetch[0] as u32);
+    let val = state.micro.scratch[0] | (state.prefetch[0] as u32);
+    state.micro.scratch[1] = val;
+    state.micro.source = val;
 }
 
 /// Program Counter with Displacement: (d16, PC) -> ea_addr = PC + disp16
@@ -300,14 +304,18 @@ pub fn ea_calc_idx_pc_pure(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 /// PEA (An): write_buffer = An
 #[inline(always)]
 pub fn ea_calc_pea_ai(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    state.micro.write_buffer = state.read_a(reg_src as usize);
+    let ea = state.read_a(reg_src as usize);
+    state.micro.destination = ea;
+    state.micro.write_buffer = ea;
 }
 
 /// PEA (d16, An): write_buffer = An + disp16
 #[inline(always)]
 pub fn ea_calc_pea_d16_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let disp = (state.prefetch[0] as i16) as i32;
-    state.micro.write_buffer = state.read_a(reg_src as usize).wrapping_add(disp as u32);
+    let ea = state.read_a(reg_src as usize).wrapping_add(disp as u32);
+    state.micro.destination = ea;
+    state.micro.write_buffer = ea;
 }
 
 /// PEA (d8, An, Xn): write_buffer = An + Xn + disp8
@@ -317,19 +325,25 @@ pub fn ea_calc_pea_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let disp8 = (ext & 0xFF) as i8 as i32;
     let xn = read_index_reg(state, ext);
     let an = state.read_a(reg_src as usize);
-    state.micro.write_buffer = an.wrapping_add(xn).wrapping_add(disp8 as u32);
+    let ea = an.wrapping_add(xn).wrapping_add(disp8 as u32);
+    state.micro.destination = ea;
+    state.micro.write_buffer = ea;
 }
 
 /// PEA (xxx).W: write_buffer = sign_extend(word)
 #[inline(always)]
 pub fn ea_calc_pea_absw(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.write_buffer = state.prefetch[0] as i16 as i32 as u32;
+    let ea = state.prefetch[0] as i16 as i32 as u32;
+    state.micro.destination = ea;
+    state.micro.write_buffer = ea;
 }
 
 /// PEA (xxx).L: assemble low word into write_buffer
 #[inline(always)]
 pub fn ea_calc_pea_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.write_buffer = state.micro.scratch[0] | (state.prefetch[0] as u32);
+    let ea = state.micro.scratch[0] | (state.prefetch[0] as u32);
+    state.micro.destination = ea;
+    state.micro.write_buffer = ea;
 }
 
 /// PEA (d16, PC): write_buffer = PC + disp16
@@ -337,7 +351,9 @@ pub fn ea_calc_pea_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 pub fn ea_calc_pea_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let disp = (state.prefetch[0] as i16) as i32;
     let base_pc = state.pc.wrapping_sub(2);
-    state.micro.write_buffer = base_pc.wrapping_add(disp as u32);
+    let ea = base_pc.wrapping_add(disp as u32);
+    state.micro.destination = ea;
+    state.micro.write_buffer = ea;
 }
 
 /// PEA (d8, PC, Xn): write_buffer = PC + Xn + disp8
@@ -347,7 +363,9 @@ pub fn ea_calc_pea_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let disp8 = (ext & 0xFF) as i8 as i32;
     let xn = read_index_reg(state, ext);
     let base_pc = state.pc.wrapping_sub(2);
-    state.micro.write_buffer = base_pc.wrapping_add(xn).wrapping_add(disp8 as u32);
+    let ea = base_pc.wrapping_add(xn).wrapping_add(disp8 as u32);
+    state.micro.destination = ea;
+    state.micro.write_buffer = ea;
 }
 
 // ============================================================================
@@ -409,7 +427,9 @@ pub fn latch_dst_lo_and_read_dst_hi(state: &mut CpuState, _reg_src: u8, reg_dst:
 #[inline(always)]
 pub fn set_write_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.micro.scratch[0];
-    state.micro.write_buffer = (state.micro.scratch[1] >> 16) & 0xFFFF;
+    let val = (state.micro.scratch[1] >> 16) & 0xFFFF;
+    state.micro.destination = val;
+    state.micro.write_buffer = val;
 }
 
 /// Latches source byte into scratch[1] and calculates destination postincrement (Ax)+

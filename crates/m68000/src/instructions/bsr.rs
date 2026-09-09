@@ -14,7 +14,8 @@ pub fn alu_bsr_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let d8 = (state.ir & 0xFF) as i8;
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.ea_addr = base_pc.wrapping_add(d8 as i32 as u32);
-    state.micro.write_buffer = base_pc; // return_pc = opcode_pc + 2
+    state.micro.destination = base_pc; // return_pc = opcode_pc + 2
+    state.micro.write_buffer = base_pc;
 }
 
 #[inline(always)]
@@ -22,33 +23,42 @@ pub fn alu_bsr_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let disp = state.prefetch[0] as i16 as i32;
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.ea_addr = base_pc.wrapping_add(disp as u32);
-    state.micro.write_buffer = state.pc; // return_pc = opcode_pc + 4
+    state.micro.destination = state.pc; // return_pc = opcode_pc + 4
+    state.micro.write_buffer = state.pc;
 }
 
 /// BSR.S (8-bit short displacement, 18 CPU clocks / 9 CCKs)
-pub static STEPS_BSR_SHORT: [MicroStep; 5] = [
+pub static STEPS_BSR_SHORT: [MicroStep; 9] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_bsr_short),
         base_clocks: 2,
     },
-    common::PUSH_STACK_HIGH,
-    common::PUSH_STACK_LOW,
-    common::READ_TARGET_OPCODE,
-    common::PREFETCH_TARGET_RETIRE,
+    common::PUSH_STACK_HIGH_IDLE,
+    common::PUSH_STACK_HIGH_WRITE,
+    common::BUS_WRITE_IDLE,
+    common::PUSH_STACK_LOW_WRITE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// BSR.W (16-bit word displacement, 18 CPU clocks / 9 CCKs)
-pub static STEPS_BSR_WORD: [MicroStep; 5] = [
+pub static STEPS_BSR_WORD: [MicroStep; 9] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_bsr_word),
         base_clocks: 2,
     },
-    common::PUSH_STACK_HIGH,
-    common::PUSH_STACK_LOW,
-    common::READ_TARGET_OPCODE,
-    common::PREFETCH_TARGET_RETIRE,
+    common::PUSH_STACK_HIGH_IDLE,
+    common::PUSH_STACK_HIGH_WRITE,
+    common::BUS_WRITE_IDLE,
+    common::PUSH_STACK_LOW_WRITE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// Compile-time opcode decoder for BSR ($6100..=$61FF)

@@ -34,6 +34,12 @@ pub struct CpuMicroState {
     pub current_cycle_wait_cycles: u32,
 
     // --- Micro-Step State Machine Fields ---
+    /// Decoded source operand buffer for ALU operations
+    #[serde(default)]
+    pub source: u32,
+    /// Decoded destination operand buffer and ALU output result buffer
+    #[serde(default)]
+    pub destination: u32,
     /// Hardware Data Output Buffer (DOB) holding ALU result for memory writes
     #[serde(default)]
     pub write_buffer: u32,
@@ -69,6 +75,8 @@ impl CpuMicroState {
             scratch: [0; 4],
             transaction_log: None,
             current_cycle_wait_cycles: 0,
+            source: 0,
+            destination: 0,
             write_buffer: 0,
             ea_addr: 0,
             reg_src: 0,
@@ -86,6 +94,8 @@ impl CpuMicroState {
         self.micro_step = 0;
         self.scratch = [0; 4];
         self.current_cycle_wait_cycles = 0;
+        self.source = 0;
+        self.destination = 0;
         self.write_buffer = 0;
         self.ea_addr = 0;
         self.reg_src = 0;

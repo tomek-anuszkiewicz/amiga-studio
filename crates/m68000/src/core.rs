@@ -368,9 +368,13 @@ impl Cpu {
     pub fn execute_micro_step(&mut self, bus: &mut MemoryBus) -> StepResult {
         while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
             let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
-            if self.state.micro.phase == CckPhase::Cck1
-                && self.state.micro.current_cycle_wait_cycles == 0
-            {
+            let should_run_alu = if step.base_clocks == 4 {
+                self.state.micro.phase == CckPhase::Cck1
+                    && self.state.micro.current_cycle_wait_cycles == 0
+            } else {
+                self.state.micro.current_cycle_wait_cycles == 0
+            };
+            if should_run_alu {
                 if let Some(alu) = step.alu_fn {
                     let reg_src = self.state.micro.reg_src;
                     let reg_dst = self.state.micro.reg_dst;

@@ -91,6 +91,26 @@ impl MicroStep {
             base_clocks,
         }
     }
+
+    /// Creates a 2-clock Color Clock (CCK) micro-step (1 CCK = 2 CPU clocks)
+    #[inline(always)]
+    pub const fn cck(step_fn: StepFn) -> Self {
+        Self {
+            step_fn,
+            alu_fn: None,
+            base_clocks: 2,
+        }
+    }
+
+    /// Creates a 2-clock Color Clock (CCK) micro-step with an attached ALU callback
+    #[inline(always)]
+    pub const fn cck_alu(step_fn: StepFn, alu_fn: AluFn) -> Self {
+        Self {
+            step_fn,
+            alu_fn: Some(alu_fn),
+            base_clocks: 2,
+        }
+    }
 }
 
 /// Static descriptor mapping an opcode to its slice of MicroSteps and registers

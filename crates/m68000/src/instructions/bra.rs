@@ -23,25 +23,29 @@ pub fn alu_bra_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 /// BRA.S (8-bit short displacement, 10 CPU clocks / 5 CCKs)
-pub static STEPS_BRA_SHORT: [MicroStep; 3] = [
+pub static STEPS_BRA_SHORT: [MicroStep; 5] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_bra_short),
         base_clocks: 2,
     },
-    common::READ_TARGET_OPCODE,
-    common::PREFETCH_TARGET_RETIRE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// BRA.W (16-bit word displacement, 10 CPU clocks / 5 CCKs)
-pub static STEPS_BRA_WORD: [MicroStep; 3] = [
+pub static STEPS_BRA_WORD: [MicroStep; 5] = [
     MicroStep {
         step_fn: Cpu::step_alu,
         alu_fn: Some(alu_bra_word),
         base_clocks: 2,
     },
-    common::READ_TARGET_OPCODE,
-    common::PREFETCH_TARGET_RETIRE,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
 
 /// Compile-time opcode decoder for BRA ($6000..=$60FF)

@@ -7,9 +7,13 @@ use crate::micro::common;
 use crate::micro::types::MicroStep;
 
 /// Cycle-exact micro-step sequence for `RTS` (16 CPU clocks / 8 CCKs)
-pub static STEPS_RTS: [MicroStep; 4] = [
-    common::POP_STACK_HIGH,
-    common::POP_STACK_LOW,
-    common::READ_TARGET_OPCODE,
-    common::PREFETCH_TARGET_RETIRE,
+pub static STEPS_RTS: [MicroStep; 8] = [
+    common::POP_STACK_HIGH_READ,
+    common::POP_STACK_HIGH_FINISH,
+    common::POP_STACK_LOW_READ,
+    common::POP_STACK_LOW_FINISH,
+    common::READ_TARGET_OPCODE_READ,
+    common::READ_TARGET_OPCODE_FINISH,
+    common::PREFETCH_TARGET_READ,
+    common::PREFETCH_TARGET_RETIRE_2CLK,
 ];

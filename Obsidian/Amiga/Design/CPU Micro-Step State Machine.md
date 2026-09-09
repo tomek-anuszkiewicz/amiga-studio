@@ -64,30 +64,31 @@ Because all memory operands are already latched into `CpuState` (`prefetch[0]`, 
 Each micro-step is an immutable, cache-dense `Copy` struct in `.rodata`:
 - `step_fn`: Direct atomic execution function pointer (`StepFn = fn(&mut Cpu, &mut MemoryBus) -> Option<StepResult>`).
 - `alu_fn`: Optional function pointer to pure internal ALU logic (`Option<AluFn>`).
-- `base_clocks`: Base CPU clocks consumed (4 for bus cycles, 0 for instantaneous ALU / branch evaluation).
+- `base_clocks`: Base CPU clocks consumed (2 for 1 CCK micro-steps, 0 for instantaneous ALU / branch evaluation).
 
 Pre-decoded register indices (`reg_src`, `reg_dst`) are held once per opcode in `OpcodeDescriptor` and cached into `state.micro.reg_src` / `reg_dst`.
 
-### 2.3 Specialized Atomic Micro-Step Handlers (`StepFn`)
+### 2.3 Specialized 2-Clock Atomic Micro-Step Handlers (`StepFn`)
 
-By baking operand width directly into specialized handler functions, the execution loop completely eliminates runtime size checks (`match size`) and dynamic action matching (`match step.action`):
+By decomposing 4-clock bus cycles into native 2-clock slices ($1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$), the execution core eliminates runtime size checks (`match size`) and dynamic action matching:
 
-| Category | Primitives | Hardware Operation & Bus Semantics |
+| Category | Primitives (CCK1 / CCK2 Slices) | Hardware Operation & Bus Semantics |
 | :--- | :--- | :--- |
-| **Operand Reads (Data Space)** | `step_bus_read_byte`, `step_bus_read_word`, `step_bus_read_long_high`, `step_bus_read_long_low` | Reads from `ea_addr` (or `ea_addr + 2`). Stalls on CCK1 if Chip RAM blocked. Latches into `last_read` / `scratch[0]`. |
-| **Operand Writes (Data Space)** | `step_bus_write_byte`, `step_bus_write_word`, `step_bus_write_long_high`, `step_bus_write_long_low` | Drives data from `write_buffer` to `ea_addr`. Stalls on CCK2 if Chip RAM blocked. Even byte writes preserve low byte; odd byte writes preserve high byte. |
-| **Stack Operations (Data Space)** | `step_bus_pop_stack`, `step_bus_pop_stack_high`, `step_bus_pop_stack_low`, `step_bus_push_stack_high`, `step_bus_push_stack_low`, `step_bus_push_stack_low_and_retire` | Stack reads and pushes over `SP` ($A_7$). Postincrements / predecrements stack pointer on even word boundaries. |
-| **Prefetch & Refill (Program Space)** | `step_fetch_extension`, `step_bus_prefetch_to_scratch`, `step_bus_read_target_opcode`, `step_prefetch_target_and_retire`, `step_prefetch_next_opcode_and_retire` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline and manages instruction retirement. |
-| **RMW & Block Transfers** | `BusWriteWordAndRetire`, `BusWriteByteAndRetire`, `BusWriteLongLowAndRetire`, `BusWriteLongHighAndRetire`, `MovemTransfer` | Read-Modify-Write retirement sequences and iterative `MOVEM` multi-register bus cycles driven by mask in `scratch[0]`. |
-| **Internal & Exceptions** | `Alu`, `BranchEval`, `OriToCcr`, `OriToSr`, `AndiToCcr`, `AndiToSr`, `EoriToCcr`, `EoriToSr`, `Trap` | Instantaneous (0 CCK) internal operations, CCR/SR updates, condition evaluation, and exception vector initiation. |
+| **Operand Reads (Data Space)** | `step_bus_read_src_word`, `step_bus_read_src_byte`, `step_bus_read_dst_word`, `step_bus_read_dst_byte`, `step_bus_read_src_long_high`, `step_bus_read_src_long_low`, `step_bus_read_dst_long_high`, `step_bus_read_dst_long_low` | **CCK1**: Reads from `ea_addr`. Stalls if Chip RAM blocked. Latches into `source`/`destination`.<br>**CCK2** (`step_bus_read_word_finish`, `step_bus_read_byte_finish`): Physical bus free for Agnus DMA. Records transaction. |
+| **Operand Writes (Data Space)** | `step_bus_write_idle`, `step_bus_write_dst_word`, `step_bus_write_dst_byte`, `step_bus_write_dst_long_high`, `step_bus_write_dst_long_low`, `step_bus_write_dst_word_and_retire`, `step_bus_write_dst_byte_and_retire` | **CCK1** (`step_bus_write_idle`): Internal setup; physical bus free for Agnus DMA.<br>**CCK2**: Drives data from `destination` to memory. Stalls if wait states asserted. Records transaction and retires if retirement step. |
+| **Stack Operations (Data Space)** | `step_bus_push_stack_high_idle`, `step_bus_push_stack_high_write`, `step_bus_push_stack_low_write`, `step_bus_push_stack_low_write_and_retire`, `step_bus_pop_stack_high_read`, `step_bus_pop_stack_high_finish`, `step_bus_pop_stack_low_read`, `step_bus_pop_stack_low_finish` | Stack reads and pushes over `SP` ($A_7$). Validates address alignment, adjusts SP, and transfers high/low words across CCK1/CCK2 phases. |
+| **Prefetch & Refill (Program Space)** | `step_fetch_extension_read`, `step_fetch_extension_finish`, `step_prefetch_scratch_read`, `step_prefetch_scratch_finish`, `step_prefetch_next_read`, `step_prefetch_next_and_retire`, `step_bus_read_target_opcode_read`, `step_bus_read_target_opcode_finish`, `step_prefetch_target_read`, `step_prefetch_target_and_retire_2clk` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline across 2-clock phases and manages standard or target retirement. |
+| **Internal & Exceptions** | `step_alu`, `step_write_word_at`, `step_write_byte_at`, `step_read_word_at`, `step_read_byte_at` | Instantaneous (0 CCK) internal operations, CCR updates, condition evaluation, and 2-phase CCK bus primitives for exception processing. |
 
-Full enum definition: [`crates/m68000/src/micro/actions.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/actions.rs).
+Handlers are organized cleanly across [`crates/m68000/src/micro/step_execution.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/step_execution.rs) and [`crates/m68000/src/micro/step_control.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/step_control.rs).
 
 ### 2.4 CPU Micro-State Storage (`CpuMicroState`)
 
 Embedded in `CpuState` to track sub-cycle progress across Color Clock phases:
 - `phase`: Current Color Clock sub-phase (`CckPhase::Cck1` or `CckPhase::Cck2`).
 - `last_read`: Last 16-bit word received from completed bus read cycle.
+- `source`: Explicit 32-bit storage for ALU source operand.
+- `destination`: Explicit 32-bit storage for ALU destination operand and write-back data.
 - `scratch_prefetch`: Latched prefetch word for pipeline refills and RMW sequences.
 - `internal_clocks`: Non-bus execution clocks countdown (DIVU/MULU/shifts/indexed EA).
 - `current_steps`: Cached slice pointer to active opcode's `&'static [MicroStep]`.
