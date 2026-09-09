@@ -194,6 +194,132 @@ impl Cpu {
         }
     }
 
+    /// CCK1: Reads low word of 32-bit split source operand (predecrement) using `self.state.micro.addr1.wrapping_add(2)` into bits 0..15 of `source`
+    pub fn step_bus_read_addr1_pd_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.addr1.wrapping_add(2);
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, true, false);
+            return BusResult::Ready(());
+        }
+        let addr = addr & 0x00FF_FFFF;
+        match bus.read_word(addr) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.source = data as u32 & 0xFFFF;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Reads high word of 32-bit split source operand (predecrement) using `self.state.micro.addr1` into bits 16..31 of `source`
+    pub fn step_bus_read_addr1_pd_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.addr1;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, true, false);
+            return BusResult::Ready(());
+        }
+        let addr = addr & 0x00FF_FFFF;
+        match bus.read_word(addr) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.source =
+                    (self.state.micro.source & 0x0000_FFFF) | ((data as u32) << 16);
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Reads low word of 32-bit split destination operand (predecrement) using `self.state.micro.addr2.wrapping_add(2)` into bits 0..15 of `destination`
+    pub fn step_bus_read_addr2_pd_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.addr2.wrapping_add(2);
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, true, false);
+            return BusResult::Ready(());
+        }
+        let addr = addr & 0x00FF_FFFF;
+        match bus.read_word(addr) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.destination = data as u32 & 0xFFFF;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Reads high word of 32-bit split destination operand (predecrement) using `self.state.micro.addr2` into bits 16..31 of `destination`
+    pub fn step_bus_read_addr2_pd_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.addr2;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, true, false);
+            return BusResult::Ready(());
+        }
+        let addr = addr & 0x00FF_FFFF;
+        match bus.read_word(addr) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.destination =
+                    (self.state.micro.destination & 0x0000_FFFF) | ((data as u32) << 16);
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK2: Writes byte from `self.state.micro.destination` to memory using `self.state.micro.addr2`
+    pub fn step_bus_write_addr2_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.addr2;
+        let val = (self.state.micro.destination & 0xFF) as u8;
+        let addr_masked = addr & 0x00FF_FFFF;
+        match bus.write_byte(addr_masked, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => BusResult::Ready(()),
+        }
+    }
+
+    /// CCK2: Writes word from `self.state.micro.destination` to memory using `self.state.micro.addr2`
+    pub fn step_bus_write_addr2_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.addr2;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, false, false);
+            return BusResult::Ready(());
+        }
+        let val = (self.state.micro.destination & 0xFFFF) as u16;
+        let addr_masked = addr & 0x00FF_FFFF;
+        match bus.write_word(addr_masked, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => BusResult::Ready(()),
+        }
+    }
+
+    /// CCK2: Writes low word of 32-bit destination to memory at predecrement address `addr2 + 2`
+    pub fn step_bus_write_addr2_pd_long_low(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.addr2.wrapping_add(2);
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, false, false);
+            return BusResult::Ready(());
+        }
+        let val = (self.state.micro.destination & 0xFFFF) as u16;
+        let addr_masked = addr & 0x00FF_FFFF;
+        match bus.write_word(addr_masked, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => BusResult::Ready(()),
+        }
+    }
+
+    /// CCK2: Writes high word of 32-bit destination to memory at predecrement address `addr2`
+    pub fn step_bus_write_addr2_pd_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.micro.addr2;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, false, false);
+            return BusResult::Ready(());
+        }
+        let val = ((self.state.micro.destination >> 16) & 0xFFFF) as u16;
+        let addr_masked = addr & 0x00FF_FFFF;
+        match bus.write_word(addr_masked, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => BusResult::Ready(()),
+        }
+    }
+
     /// CCK1: Reads high word of 32-bit source operand into bits 16..31 of `source`
     pub fn step_bus_read_src_long_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;

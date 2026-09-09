@@ -82,16 +82,12 @@ pub static STEPS_SBCD_DN_DN: [MicroStep; 3] = [
 pub static STEPS_SBCD_PD_PD: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
-        alu_fn: Some(ea::ea_calc_src_pd_b),
+        alu_fn: Some(ea::ea_calc_dual_pd_b),
         base_clocks: 2,
     },
-    common::READ_SRC_BYTE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(ea::ea_calc_dst_pd_b),
-        base_clocks: 2,
-    },
-    common::READ_DST_BYTE,
+    common::READ_ADDR1_BYTE,
+    common::BUS_READ_IDLE,
+    common::READ_ADDR2_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
@@ -100,5 +96,5 @@ pub static STEPS_SBCD_PD_PD: [MicroStep; 9] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE,
+    common::WRITE_ADDR2_BYTE,
 ];

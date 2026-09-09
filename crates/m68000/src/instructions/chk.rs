@@ -290,9 +290,12 @@ pub static STEPS_CHK_IDX_PC: [MicroStep; 8] = [
 ];
 
 /// CHK #<data>, Dn: 14 CPU clocks / 7 CCKs (or 42 clocks if trap)
-pub static STEPS_CHK_IMM: [MicroStep; 6] = [
-    MicroStep::alu(latch_imm_chk),
-    FETCH_EXT_READ,
+pub static STEPS_CHK_IMM: [MicroStep; 5] = [
+    MicroStep {
+        step_fn: Some(Cpu::step_fetch_extension_read),
+        alu_fn: Some(latch_imm_chk),
+        base_clocks: 2,
+    },
     FETCH_EXT_FINISH,
     MicroStep {
         step_fn: None,

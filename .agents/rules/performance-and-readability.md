@@ -27,6 +27,12 @@ Modern host CPUs (x86_64, aarch64) are deeply pipelined (14–20+ execution stag
 ### C. Zero Allocation in Emulation Loop
 - Strictly zero dynamic heap allocations (`Vec::new`, `Box::new`, `format!`, `String`) inside `step()`, `step_cck()`, memory access, or interrupt polling.
 
+### D. Fused CCK ALU Micro-Operations & Dual Staging (`addr1`, `addr2`)
+- **Fuse ALU into 2-Clock CCK Phases:** Fuse ALU calculations, CCR updates, and Effective Address arithmetic directly into `MicroStep.alu_fn` of natural 2-clock Color Clock phases (`BUS_READ_IDLE`, `BUS_WRITE_IDLE`, prefetch/extension steps) rather than introducing separate zero-clock micro-steps.
+- **Dual Staging Architecture:** For dual-memory instructions (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`), use dedicated staging registers `state.micro.addr1` and `state.micro.addr2`.
+- **Address Error Invariance:** Byte operations may calculate both addresses upfront. Word and long operations **must** defer destination address calculation to the CCK2 idle phase of the source read, ensuring unaligned source reads trigger Address Error with the destination register completely untouched.
+- **Direct Staged Writes:** Target memory writes directly via `WRITE_ADDR2_BYTE`, `WRITE_ADDR2_WORD`, `WRITE_ADDR2_PD_LONG_LOW`, and `WRITE_ADDR2_PD_LONG_HIGH`. Never juggle temporary pointers in `scratch[0..2]`, shift `destination >>= 16`, or use pointer-swapping helpers (`set_write_hi`).
+
 ---
 
 ## 3. The Non-Negotiable Constraint: Readability Without Compromise
@@ -48,4 +54,8 @@ During `/code-review`, verify:
 - [ ] Is the code completely free of custom macros (`macro_rules!`)?
 - [ ] Are opcode handlers and execution paths free of const-generic functions (`<const N: ...>`) in favor of concrete specialized functions?
 - [ ] Are all bus and internal idle cycles explicitly named with IDLE (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`), with zero anonymous idle structs or legacy finish aliases?
+- [ ] Are dual-memory instructions (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`) using `addr1` and `addr2` with direct `WRITE_ADDR2_*` writes and zero scratch juggling / `destination >>= 16`?
+- [ ] For word and long dual-memory operations, is destination address calculation deferred to CCK2 of the source read to guarantee hardware Address Error invariance?
+- [ ] Are ALU and effective address calculations fused onto 2-clock CCK phases (`alu_fn`) rather than using zero-clock dispatch steps?
 - [ ] Is the code clear, well-structured, self-documenting, and free of cryptic tricks?
+

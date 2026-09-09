@@ -43,9 +43,12 @@ pub fn alu_link_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 // Static Micro-Step Slices
 // ============================================================================
 
-pub static STEPS_LINK: [MicroStep; 9] = [
-    MicroStep::alu(alu_link_setup),
-    common::FETCH_EXT_READ,
+pub static STEPS_LINK: [MicroStep; 8] = [
+    MicroStep {
+        step_fn: Some(Cpu::step_fetch_extension_read),
+        alu_fn: Some(alu_link_setup),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_LONG_HIGH,

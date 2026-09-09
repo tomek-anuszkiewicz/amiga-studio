@@ -9,9 +9,12 @@ use crate::micro::common;
 use crate::micro::types::MicroStep;
 
 /// PEA (An): 12 CPU clocks / 6 CCKs (1 read, 2 writes)
-pub static STEPS_PEA_AI: [MicroStep; 7] = [
-    MicroStep::alu(crate::micro::ea::ea_calc_pea_ai),
-    common::PREFETCH_IRC_READ,
+pub static STEPS_PEA_AI: [MicroStep; 6] = [
+    MicroStep {
+        step_fn: Some(Cpu::step_prefetch_next_read),
+        alu_fn: Some(crate::micro::ea::ea_calc_pea_ai),
+        base_clocks: 2,
+    },
     common::PREFETCH_IRC_FINISH,
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,

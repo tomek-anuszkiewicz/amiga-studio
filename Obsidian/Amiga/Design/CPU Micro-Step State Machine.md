@@ -28,8 +28,8 @@ The architecture mirrors the physical two-level microcode design of the Motorola
    `prefetch: [u16; 2]` and `ir: u16` are fixed fields inside `CpuState` (modeling hardware registers `IRC`, `IR`, and `IRD`). Zero dynamic queues.
 5. **Parametric, Bus-Free ALU Function Pointers (`AluFn`)**:
    ALU steps do **not** take `MemoryBus`. By the time the ALU executes, all operands have already arrived in `CpuState` (`prefetch[0]`, `last_read`, or `d[]/a[]`). ALU functions take `(&mut CpuState, reg_src: u8, reg_dst: u8)`. This parameterization collapses 8–64 repetitive opcode functions into **one shared, elegant function per operation**.
-6. **Zero-Cycle ALU Micro-Ops (Instantaneous Internal Ops)**:
-   ALU calculations, flag updates, and Effective Address arithmetic consume **0 CCK cycles**. They execute instantly and immediately fall through to the subsequent bus step within the same host tick. If the subsequent bus step stalls due to Agnus DMA, **the ALU step is never repeated**, eliminating re-entrancy bugs and branch checks.
+6. **Fused CCK ALU Micro-Operations (Zero-Overhead Internal Operations)**:
+   ALU calculations, condition code flag updates, and Effective Address arithmetic are fused directly onto native 2-clock Color Clock phases (`MicroStep.alu_fn`) where operand data has arrived (e.g. CCK2 read idle `BUS_READ_IDLE`, CCK1 extension fetch, or internal 2-clock processing phases). This eliminates separate 0-clock dispatch steps and redundant state machine iterations while guaranteeing 100% cycle-exact execution, Address Error verification, and Chip RAM DMA contention timing. Standalone 0-clock micro-steps (`base_clocks: 0`) are reserved exclusively for dynamic countdown delay loops (`clocks_remaining` in `MUL`/`DIV`/shifts) or single-instruction branch slice trampolines (`Bcc`/`DBcc`/`Scc`).
 7. **Data Output Buffer (`write_buffer: u32`) & Exact Write Strobe Preservation**:
    Results destined for memory are held in `state.micro.write_buffer: u32` (hardware `DOB`). Memory writes strictly respect 68000 bus widths:
    - **`BusWriteByte`**: Drives $\overline{\text{UDS}}$ (even address, high byte) or $\overline{\text{LDS}}$ (odd address, low byte). The unaddressed byte in the 16-bit memory cell is **strictly preserved**.
@@ -150,7 +150,7 @@ All instruction modules reuse shared atomic Color Clock micro-step primitives ra
 - **Bus & Internal Idle Primitives:** `BUS_WRITE_IDLE` (CCK1 write setup / bus idle), `BUS_READ_IDLE` (CCK2 read completion / bus idle), `ALU_IDLE` (internal processing 2-clock delay / bus idle), `ALU_IDLE_4CLK` (4-clock internal execution delay / bus idle), `ALU_IDLE_8CLK` (8-clock internal exception delay / bus idle), `ALU_IDLE_128CLK` (128-clock `RESET` bus idle delay).
 - **Operand Writes:** `WRITE_DST_BYTE`, `WRITE_DST_WORD`, `WRITE_DST_LONG_HIGH`, `WRITE_DST_LONG_LOW`.
 - **Operand Reads:** `READ_SRC_BYTE`, `READ_SRC_WORD`, `READ_SRC_LONG_HIGH`, `READ_SRC_LONG_LOW`, `READ_DST_BYTE`, `READ_DST_WORD`, `READ_DST_LONG_HIGH`, `READ_DST_LONG_LOW`, `BUS_READ_IDLE` (shared CCK2 idle completion).
-- **Dual Staged Address Reads:** `READ_ADDR1_BYTE`, `READ_ADDR1_WORD`, `READ_ADDR1_LONG_HIGH`, `READ_ADDR1_LONG_LOW`, `READ_ADDR2_BYTE`, `READ_ADDR2_WORD`, `READ_ADDR2_LONG_HIGH`, `READ_ADDR2_LONG_LOW`.
+- **Dual Staged Address Reads & Writes:** `READ_ADDR1_BYTE`, `READ_ADDR1_WORD`, `READ_ADDR1_LONG_HIGH`, `READ_ADDR1_LONG_LOW`, `READ_ADDR1_PD_LONG_HIGH`, `READ_ADDR1_PD_LONG_LOW`, `READ_ADDR2_BYTE`, `READ_ADDR2_WORD`, `READ_ADDR2_LONG_HIGH`, `READ_ADDR2_LONG_LOW`, `READ_ADDR2_PD_LONG_HIGH`, `READ_ADDR2_PD_LONG_LOW`, `WRITE_ADDR2_BYTE`, `WRITE_ADDR2_WORD`, `WRITE_ADDR2_PD_LONG_HIGH`, `WRITE_ADDR2_PD_LONG_LOW`.
 - **Prefetch & Extension:** `FETCH_EXT_READ`, `FETCH_EXT_FINISH`, `PREFETCH_IRC_READ`, `PREFETCH_IRC_FINISH`, `PREFETCH_NEXT_READ`, `BUS_READ_IDLE` (prefetch next finish / retirement).
 - **Control Flow Refills:** `READ_TARGET_OPCODE_READ`, `BUS_READ_IDLE` (target opcode read finish), `PREFETCH_TARGET_READ`, `PREFETCH_TARGET_FINISH`.
 - **Stack Operations:** `PUSH_STACK_HIGH_IDLE` (CCK1 push setup / bus idle), `PUSH_STACK_HIGH_WRITE`, `PUSH_STACK_LOW_WRITE`, `POP_STACK_HIGH_READ`, `POP_STACK_HIGH_FINISH`, `POP_STACK_LOW_READ`, `POP_STACK_LOW_FINISH`.
@@ -163,7 +163,7 @@ To guarantee zero cognitive friction and seamless codebase navigation across all
 3. **Leaf ALU Functions:** Direct arithmetic/logic helpers (`#[inline(always)] fn add_w(...)`, `sub_b(...)`) called directly by ALU callbacks to execute branchless wrapping math and CCR flag updates.
 4. **Micro-Step ALU Callbacks (`AluFn`):** Functor callbacks (`fn alu_...`) stored as function pointers in `MicroStep.alu_fn`, dispatched dynamically via the micro-step engine.
 5. **Specialized Micro-Step Handlers (`StepFn`):** Instruction-specific bus/execution handlers (if any required).
-6. **Static Micro-Step Arrays:** `pub static STEPS_...: [MicroStep; N] = [...]`, ordered strictly by canonical addressing mode progression (`DN`, `AN`, `AI`, `PI`, `PD`, `D16_AN`, `IDX_AN`, `ABSW`, `ABSL`, `D16_PC`, `IDX_PC`, `IMM`). All instantaneous internal steps use `MicroStep::alu(...)`.
+6. **Static Micro-Step Arrays:** `pub static STEPS_...: [MicroStep; N] = [...]`, ordered strictly by canonical addressing mode progression (`DN`, `AN`, `AI`, `PI`, `PD`, `D16_AN`, `IDX_AN`, `ABSW`, `ABSL`, `D16_PC`, `IDX_PC`, `IMM`). Internal ALU logic and effective address calculations are fused directly onto 2-clock micro-step primitives (`alu_fn`), eliminating zero-clock dispatch overhead.
 7. **Opcode Decoder:** Fast compile-time function `pub const fn decode_..._steps(...) -> Option<&'static [MicroStep]>`.
 
 ---

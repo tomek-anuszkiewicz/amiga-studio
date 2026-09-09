@@ -109,25 +109,31 @@ All agentic pair-programming and automated modifications must adhere strictly to
    - **Use `#[inline(never)]` on**:
      - Cold exception paths, address error dumps, illegal instruction traps, and diagnostic panic paths. Keeping cold recovery logic out-of-line ensures the hot instruction dispatch loop remains dense and contiguous in the host CPU's instruction cache.
 
-111: 
-112: 9. **Workspace Flat Layout & 3-Tier Re-Export (`pub use`) Strategy**:
-113:    - Keep crate directories in `crates/*` **strictly flat** (no nested crate folders). Express domain containment and API hierarchy through Rust `pub use` re-exports:
-114:      - **Tier 1 (Foundational Blueprint - `config`)**: Machine-wide presets/timings. Never re-exported by peer subsystems.
-115:      - **Tier 2 (Peer Subsystems - `memory_bus`, `m68000`, `agnus`, `denise`, `paula`, `cia`)**: Peers owned by the top-level machine (`A500`). Peers **never re-export other peers**.
-116:      - **Tier 3 (Contained Sub-Components - `rtc`, `copper`, `blitter`)**: Conceptually and physically owned by a specific subsystem. The parent peer **must** re-export them via namespaced modules and convenience shortcuts (`pub use rtc; pub use rtc::RtcMsm6242b;`).
-117:      - **Tier 0 (Top-Level Facade - `a500` machine)**: Owns all peers and acts as the unified gateway for host frontends (`web-wasm`, `desktop-gui`, `cli`).
-118: 
-119: 10. **Mandatory Idle Micro-Step Naming & Prohibition of Anonymous Idle Structs (`crates/m68000/src/instructions/`)**:
-120:     - **Canonical Idle Constants**: Any M68000 micro-step where the memory bus performs no transfer (or internal ALU idle cycles) **must** explicitly feature `IDLE` in its identifier:
-121:       - Bus idle phases: `common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE` (or stack/exception variants `PUSH_STACK_HIGH_IDLE`, `EXCEPTION_PUSH_*_IDLE`, `AERR_PUSH_*_IDLE`).
-122:       - Internal ALU idle cycles: `common::ALU_IDLE` (2-clk), `common::ALU_IDLE_4CLK` (4-clk), `common::ALU_IDLE_8CLK` (8-clk), `common::ALU_IDLE_128CLK` (128-clk).
-123:     - **Prohibition of Anonymous Idle Structs**: Inlining raw struct literals like `MicroStep { step_fn: None, alu_fn: None, base_clocks: N }` inside instruction arrays or handlers is **strictly forbidden**. Always reference the canonical constants in `common::`.
-124:     - **Prohibition of Obscuring Legacy Aliases**: Using misleading finish/retire aliases (such as `READ_WORD_FINISH` or `PREFETCH_NEXT_RETIRE`) that obscure bus inactivity is strictly prohibited. Micro-steps performing no bus operation must be unambiguously identified with `IDLE`.
-125:     - Automated architecture tests (`test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs`) actively enforce this across all instruction files.
-126: 
-127: ---
-128: 
-129: ## 3. Knowledge Base & Reference Navigation
+9. **Workspace Flat Layout & 3-Tier Re-Export (`pub use`) Strategy**:
+   - Keep crate directories in `crates/*` **strictly flat** (no nested crate folders). Express domain containment and API hierarchy through Rust `pub use` re-exports:
+     - **Tier 1 (Foundational Blueprint - `config`)**: Machine-wide presets/timings. Never re-exported by peer subsystems.
+     - **Tier 2 (Peer Subsystems - `memory_bus`, `m68000`, `agnus`, `denise`, `paula`, `cia`)**: Peers owned by the top-level machine (`A500`). Peers **never re-export other peers**.
+     - **Tier 3 (Contained Sub-Components - `rtc`, `copper`, `blitter`)**: Conceptually and physically owned by a specific subsystem. The parent peer **must** re-export them via namespaced modules and convenience shortcuts (`pub use rtc; pub use rtc::RtcMsm6242b;`).
+     - **Tier 0 (Top-Level Facade - `a500` machine)**: Owns all peers and acts as the unified gateway for host frontends (`web-wasm`, `desktop-gui`, `cli`).
+
+10. **Mandatory Idle Micro-Step Naming & Prohibition of Anonymous Idle Structs (`crates/m68000/src/instructions/`)**:
+    - **Canonical Idle Constants**: Any M68000 micro-step where the memory bus performs no transfer (or internal ALU idle cycles) **must** explicitly feature `IDLE` in its identifier:
+      - Bus idle phases: `common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE` (or stack/exception variants `PUSH_STACK_HIGH_IDLE`, `EXCEPTION_PUSH_*_IDLE`, `AERR_PUSH_*_IDLE`).
+      - Internal ALU idle cycles: `common::ALU_IDLE` (2-clk), `common::ALU_IDLE_4CLK` (4-clk), `common::ALU_IDLE_8CLK` (8-clk), `common::ALU_IDLE_128CLK` (128-clk).
+    - **Prohibition of Anonymous Idle Structs**: Inlining raw struct literals like `MicroStep { step_fn: None, alu_fn: None, base_clocks: N }` inside instruction arrays or handlers is **strictly forbidden**. Always reference the canonical constants in `common::`.
+    - **Prohibition of Obscuring Legacy Aliases**: Using misleading finish/retire aliases (such as `READ_WORD_FINISH` or `PREFETCH_NEXT_RETIRE`) that obscure bus inactivity is strictly prohibited. Micro-steps performing no bus operation must be unambiguously identified with `IDLE`.
+    - Automated architecture tests (`test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs`) actively enforce this across all instruction files.
+
+11. **Dual Staging Architecture (`addr1`, `addr2`) & Split Address Error Invariance (`crates/m68000/`)**:
+    - **Dual Staging Registers**: For dual-memory instructions (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`), always stage effective addresses in `state.micro.addr1` ($X_1$, source) and `state.micro.addr2` ($X_2$, destination).
+    - **Byte Operations Upfront Calculation**: For byte operations (`CMPM.b`, `ABCD`, `SBCD`, `ADDX.b`, `SUBX.b`), precalculate both `addr1` and `addr2` in a single upfront ALU step (`ea_calc_dual_pi_b` / `ea_calc_dual_pd_b`). Byte transfers never fault on alignment.
+    - **Word/Long Split Calculation & Address Error Invariance**: For word and long operations (`CMPM.w/l`, `ADDX.w/l`, `SUBX.w/l`), source address calculation must occur in Step 0, while destination address calculation must be deferred and fused into the **CCK2 idle phase of the source read**. If the source address is unaligned (odd), the CPU immediately triggers Vector 3 Address Error with the destination register ($Ax$, or USP/SSP) completely untouched.
+    - **Direct Staged Writes**: Memory writes must use dedicated `WRITE_ADDR2_*` blocks (`WRITE_ADDR2_BYTE`, `WRITE_ADDR2_WORD`, `WRITE_ADDR2_PD_LONG_LOW`, `WRITE_ADDR2_PD_LONG_HIGH`). Staging temporary pointers in `scratch[0..2]`, shifting `destination >>= 16`, or using pointer-swapping helpers (`set_write_hi`) is strictly forbidden.
+    - **Fused CCK Operations**: Always fuse ALU/EA calculations onto natural 2-clock Color Clock phases (`MicroStep.alu_fn`) rather than introducing separate zero-clock micro-steps.
+
+---
+
+## 3. Knowledge Base & Reference Navigation
 130: 
 131: - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
 132: - **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and Guru Book reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via the `rag_search` tool (`amiga-rag`).

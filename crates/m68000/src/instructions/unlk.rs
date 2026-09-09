@@ -38,9 +38,12 @@ pub fn alu_unlk_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 // Static Micro-Step Slices
 // ============================================================================
 
-pub static STEPS_UNLK: [MicroStep; 6] = [
-    MicroStep::alu(alu_unlk_setup),
-    common::READ_SRC_LONG_HIGH,
+pub static STEPS_UNLK: [MicroStep; 5] = [
+    MicroStep {
+        step_fn: Some(Cpu::step_bus_read_src_long_high),
+        alu_fn: Some(alu_unlk_setup),
+        base_clocks: 2,
+    },
     common::BUS_READ_IDLE,
     common::READ_SRC_LONG_LOW,
     MicroStep {

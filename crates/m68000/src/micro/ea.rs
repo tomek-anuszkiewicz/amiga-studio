@@ -40,17 +40,19 @@ pub fn ea_calc_src_pi_b(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     state.write_a(reg_src as usize, an.wrapping_add(inc));
 }
 
-/// Address Register Indirect with Postincrement (Word): (An)+ -> ea_addr = An, An += 2
+/// Address Register Indirect with Postincrement (Word): (An)+ -> ea_addr = An, addr1 = An, An += 2
 pub fn ea_calc_src_pi_w(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let an = state.read_a(reg_src as usize);
     state.micro.ea_addr = an;
+    state.micro.addr1 = an;
     state.write_a(reg_src as usize, an.wrapping_add(2));
 }
 
-/// Address Register Indirect with Postincrement (Long): (An)+ -> ea_addr = An, An += 4
+/// Address Register Indirect with Postincrement (Long): (An)+ -> ea_addr = An, addr1 = An, An += 4
 pub fn ea_calc_src_pi_l(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let an = state.read_a(reg_src as usize);
     state.micro.ea_addr = an;
+    state.micro.addr1 = an;
     state.write_a(reg_src as usize, an.wrapping_add(4));
 }
 
@@ -67,6 +69,7 @@ pub fn ea_calc_src_pd_w(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let an = state.read_a(reg_src as usize).wrapping_sub(2);
     state.write_a(reg_src as usize, an);
     state.micro.ea_addr = an;
+    state.micro.addr1 = an;
 }
 
 /// Address Register Indirect with Predecrement (Long): -(An) -> An -= 4, ea_addr = An
@@ -158,17 +161,19 @@ pub fn ea_calc_dst_pi_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     state.write_a(reg_dst as usize, an.wrapping_add(inc));
 }
 
-/// Destination Address Register Indirect with Postincrement (Word): (An)+ -> ea_addr = An, An += 2
+/// Destination Address Register Indirect with Postincrement (Word): (An)+ -> ea_addr = An, addr2 = An, An += 2
 pub fn ea_calc_dst_pi_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let an = state.read_a(reg_dst as usize);
     state.micro.ea_addr = an;
+    state.micro.addr2 = an;
     state.write_a(reg_dst as usize, an.wrapping_add(2));
 }
 
-/// Destination Address Register Indirect with Postincrement (Long): (An)+ -> ea_addr = An, An += 4
+/// Destination Address Register Indirect with Postincrement (Long): (An)+ -> ea_addr = An, addr2 = An, An += 4
 pub fn ea_calc_dst_pi_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let an = state.read_a(reg_dst as usize);
     state.micro.ea_addr = an;
+    state.micro.addr2 = an;
     state.write_a(reg_dst as usize, an.wrapping_add(4));
 }
 
@@ -205,6 +210,7 @@ pub fn ea_calc_dst_pd_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let an = state.read_a(reg_dst as usize).wrapping_sub(2);
     state.write_a(reg_dst as usize, an);
     state.micro.ea_addr = an;
+    state.micro.addr2 = an;
 }
 
 /// Destination Address Register Indirect with Predecrement (Long): -(An) -> An -= 4, ea_addr = An
@@ -287,41 +293,105 @@ pub fn ea_calc_pea_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 // ============================================================================
-// Compound Dual-Memory Operand Helpers (ADDX, SUBX, CMPM)
+// Dual-Memory Operand Effective Address Calculations (CMPM, ADDX, SUBX, ABCD, SBCD)
 // ============================================================================
 
-/// Long predecrement split for source -(Ay): decrements by 2, saves Ay - 4 in ea_high, ea_addr = low word
+/// Postincrement Byte: (Ay)+ -> addr1 = Ay, Ay += (2 if A7 else 1); (Ax)+ -> addr2 = Ax, Ax += (2 if A7 else 1)
+pub fn ea_calc_dual_pi_b(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let inc_s = if reg_src == 7 { 2 } else { 1 };
+    let a_s = state.read_a(reg_src as usize);
+    state.micro.addr1 = a_s;
+    state.write_a(reg_src as usize, a_s.wrapping_add(inc_s));
+
+    let inc_d = if reg_dst == 7 { 2 } else { 1 };
+    let a_d = state.read_a(reg_dst as usize);
+    state.micro.addr2 = a_d;
+    state.write_a(reg_dst as usize, a_d.wrapping_add(inc_d));
+}
+
+/// Postincrement Word: (Ay)+ -> addr1 = Ay, Ay += 2; (Ax)+ -> addr2 = Ax, Ax += 2
+pub fn ea_calc_dual_pi_w(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let a_s = state.read_a(reg_src as usize);
+    state.micro.addr1 = a_s;
+    state.write_a(reg_src as usize, a_s.wrapping_add(2));
+
+    let a_d = state.read_a(reg_dst as usize);
+    state.micro.addr2 = a_d;
+    state.write_a(reg_dst as usize, a_d.wrapping_add(2));
+}
+
+/// Postincrement Long: (Ay)+ -> addr1 = Ay, Ay += 4; (Ax)+ -> addr2 = Ax, Ax += 4
+pub fn ea_calc_dual_pi_l(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let a_s = state.read_a(reg_src as usize);
+    state.micro.addr1 = a_s;
+    state.write_a(reg_src as usize, a_s.wrapping_add(4));
+
+    let a_d = state.read_a(reg_dst as usize);
+    state.micro.addr2 = a_d;
+    state.write_a(reg_dst as usize, a_d.wrapping_add(4));
+}
+
+/// Predecrement Byte: -(Ay) -> Ay -= (2 if A7 else 1), addr1 = Ay; -(Ax) -> Ax -= (2 if A7 else 1), addr2 = Ax
+pub fn ea_calc_dual_pd_b(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let dec_s = if reg_src == 7 { 2 } else { 1 };
+    let a_s = state.read_a(reg_src as usize).wrapping_sub(dec_s);
+    state.write_a(reg_src as usize, a_s);
+    state.micro.addr1 = a_s;
+
+    let dec_d = if reg_dst == 7 { 2 } else { 1 };
+    let a_d = state.read_a(reg_dst as usize).wrapping_sub(dec_d);
+    state.write_a(reg_dst as usize, a_d);
+    state.micro.addr2 = a_d;
+}
+
+/// Predecrement Word: -(Ay) -> Ay -= 2, addr1 = Ay; -(Ax) -> Ax -= 2, addr2 = Ax
+pub fn ea_calc_dual_pd_w(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let a_s = state.read_a(reg_src as usize).wrapping_sub(2);
+    state.write_a(reg_src as usize, a_s);
+    state.micro.addr1 = a_s;
+
+    let a_d = state.read_a(reg_dst as usize).wrapping_sub(2);
+    state.write_a(reg_dst as usize, a_d);
+    state.micro.addr2 = a_d;
+}
+
+/// Predecrement Long: -(Ay) -> Ay -= 4, addr1 = Ay; -(Ax) -> Ax -= 4, addr2 = Ax
+pub fn ea_calc_dual_pd_l(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
+    let a_s = state.read_a(reg_src as usize).wrapping_sub(4);
+    state.write_a(reg_src as usize, a_s);
+    state.micro.addr1 = a_s;
+
+    let a_d = state.read_a(reg_dst as usize).wrapping_sub(4);
+    state.write_a(reg_dst as usize, a_d);
+    state.micro.addr2 = a_d;
+}
+
+/// Predecrement Long Split Step 1 for Source -(Ay): Ay -= 2, sets ea_addr = low word, addr1 = Ay - 4
 pub fn ea_calc_src_pd_l_split(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let an = state.read_a(reg_src as usize);
     let low_addr = an.wrapping_sub(2);
     state.write_a(reg_src as usize, low_addr);
-    state.micro.ea_high = an.wrapping_sub(4);
+    state.micro.addr1 = an.wrapping_sub(4);
     state.micro.ea_addr = low_addr;
 }
 
-/// Prepares ea_addr for source high word
+/// Predecrement Long Split Step 2 for Source -(Ay): Ay -= 2, sets ea_addr = high word
 pub fn latch_src_lo_and_read_src_hi(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    state.write_a(reg_src as usize, state.micro.ea_high);
-    state.micro.ea_addr = state.micro.ea_high;
+    state.write_a(reg_src as usize, state.micro.addr1);
+    state.micro.ea_addr = state.micro.addr1;
 }
 
-/// Prepares destination -(Ax) split predecrement
+/// Predecrement Long Split Step 1 for Destination -(Ax): Ax -= 2, sets ea_addr = low word, addr2 = Ax - 4
 pub fn ea_calc_dst_pd_l_split(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let ax = state.read_a(reg_dst as usize);
     let low_addr = ax.wrapping_sub(2);
     state.write_a(reg_dst as usize, low_addr);
-    state.micro.ea_high = ax.wrapping_sub(4);
+    state.micro.addr2 = ax.wrapping_sub(4);
     state.micro.ea_addr = low_addr;
 }
 
-/// Prepares ea_addr for destination high word
+/// Predecrement Long Split Step 2 for Destination -(Ax): Ax -= 2, sets ea_addr = high word
 pub fn latch_dst_lo_and_read_dst_hi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    state.write_a(reg_dst as usize, state.micro.ea_high);
-    state.micro.ea_addr = state.micro.ea_high;
-}
-
-/// Sets ea_addr to high word and shifts destination right by 16 for high word write-back
-pub fn set_write_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.ea_addr = state.micro.ea_high;
-    state.micro.destination >>= 16;
+    state.write_a(reg_dst as usize, state.micro.addr2);
+    state.micro.ea_addr = state.micro.addr2;
 }

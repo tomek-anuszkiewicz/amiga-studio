@@ -5,6 +5,7 @@
 //! `(d16, PC)`, `(d8, PC, Xn)`.
 //! Execution time: 16 to 22 CPU clocks depending on addressing mode.
 
+use crate::core::Cpu;
 use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
@@ -57,9 +58,12 @@ pub fn alu_jsr_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 /// JSR (An): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
-pub static STEPS_JSR_AI: [MicroStep; 9] = [
-    MicroStep::alu(alu_jsr_ai),
-    common::READ_TARGET_OPCODE_READ,
+pub static STEPS_JSR_AI: [MicroStep; 8] = [
+    MicroStep {
+        step_fn: Some(Cpu::step_bus_read_target_opcode_read),
+        alu_fn: Some(alu_jsr_ai),
+        base_clocks: 2,
+    },
     common::BUS_READ_IDLE,
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
@@ -121,12 +125,18 @@ pub static STEPS_JSR_ABSW: [MicroStep; 9] = [
 ];
 
 /// JSR (xxx).L: 20 CPU clocks / 10 CCKs (3 reads, 2 writes)
-pub static STEPS_JSR_ABSL: [MicroStep; 12] = [
-    MicroStep::alu(crate::micro::ea::ea_calc_absl_hi),
-    common::FETCH_EXT_READ,
+pub static STEPS_JSR_ABSL: [MicroStep; 10] = [
+    MicroStep {
+        step_fn: Some(Cpu::step_fetch_extension_read),
+        alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
-    MicroStep::alu(alu_jsr_absl_lo),
-    common::READ_TARGET_OPCODE_READ,
+    MicroStep {
+        step_fn: Some(Cpu::step_bus_read_target_opcode_read),
+        alu_fn: Some(alu_jsr_absl_lo),
+        base_clocks: 2,
+    },
     common::BUS_READ_IDLE,
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,

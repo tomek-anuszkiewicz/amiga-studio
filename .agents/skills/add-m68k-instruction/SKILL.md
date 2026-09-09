@@ -198,30 +198,87 @@ pub static STEPS_SUB_W_DN_AI: [MicroStep; 6] = [
 ];
 ```
 
-#### 5. Dual Staging Registers ($X_1, X_2$) for Multi-Phase Transfers (`CMPM`, `MOVEM`):
-For multi-phase transfers, pre-calculate staged addresses into `state.micro.addr1` and `state.micro.addr2` in the initial ALU step, and consume them directly via `common::READ_ADDR1_*` and `common::READ_ADDR2_*`:
+#### 5. Dual Staging Registers ($X_1, X_2$) for Dual-Memory Operations (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`):
+For dual-memory instructions operating on two memory addresses (source $Ay$ and destination $Ax$), always utilize the dedicated staging registers `state.micro.addr1` and `state.micro.addr2`:
+
+##### A. Byte Dual-Memory Operations (`CMPM.b`, `ABCD`, `SBCD`, `ADDX.b`, `SUBX.b`):
+- **Upfront Calculation Safe:** Byte memory accesses **never trigger Address Errors**.
+- Calculate both `addr1` and `addr2` in a single upfront ALU step (e.g. `ea_calc_dual_pi_b` or `ea_calc_dual_pd_b`), eliminating all intermediate ALU steps:
 ```rust
-pub static STEPS_CMPM_W: [MicroStep; 6] = [
+pub static STEPS_ABCD_PD_PD: [MicroStep; 9] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_src_word),
-        alu_fn: Some(ea::ea_calc_src_pi_w),
+        step_fn: None,
+        alu_fn: Some(ea::ea_calc_dual_pd_b),
         base_clocks: 2,
     },
+    common::READ_ADDR1_BYTE,
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: Some(Cpu::step_bus_read_dst_word),
-        alu_fn: Some(ea::ea_calc_dst_pi_w),
-        base_clocks: 2,
-    },
+    common::READ_ADDR2_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
-        alu_fn: Some(alu_cmpm_w),
+        alu_fn: Some(alu_abcd_mem),
         base_clocks: 2,
     },
-    common::BUS_READ_IDLE,
+    common::PREFETCH_IRC_FINISH,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_ADDR2_BYTE,
 ];
 ```
+
+##### B. Word Dual-Memory Operations (`CMPM.w`, `ADDX.w`, `SUBX.w`):
+- **Address Error Invariance Mandate:** If $Ay$ is unaligned (odd), the source read immediately triggers an Address Error exception. On real 68000 silicon, $Ax$ (or SSP/USP if A7) was **never touched** and must remain unchanged in the saved exception state.
+- **Rule:** Do NOT calculate $Ax$ in Step 0. Calculate $Ay$ (`addr1`) in Step 0, and fuse $Ax$ (`addr2`) calculation into the **CCK2 idle phase of the source read**:
+```rust
+pub static STEPS_ADDX_W_PD_PD: [MicroStep; 9] = [
+    MicroStep {
+        step_fn: None,
+        alu_fn: Some(ea::ea_calc_src_pd_w),
+        base_clocks: 2,
+    },
+    common::READ_ADDR1_WORD,
+    MicroStep {
+        step_fn: None,
+        alu_fn: Some(ea::ea_calc_dst_pd_w), // Fused in CCK2 of src read: only runs if src was aligned!
+        base_clocks: 2,
+    },
+    common::READ_ADDR2_WORD,
+    common::BUS_READ_IDLE,
+    MicroStep {
+        step_fn: Some(Cpu::step_prefetch_next_read),
+        alu_fn: Some(alu_addx_w_mem),
+        base_clocks: 2,
+    },
+    common::PREFETCH_IRC_FINISH,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_ADDR2_WORD,
+];
+```
+
+##### C. Long Dual-Memory Operations (`CMPM.l`, `ADDX.l`, `SUBX.l`):
+- **Predecrement Long Split:** 68000 decrements $An$ by 2 first for the low-word read (checking for Address Error), then by another 2 for the high-word read (`ea_calc_src_pd_l_split` / `latch_src_lo_and_read_src_hi`).
+- **Direct Write-Back via `addr2`:** Stage the base destination address in `addr2`. Use direct staged writes `WRITE_ADDR2_PD_LONG_LOW` (writes `destination & 0xFFFF` to `addr2 + 2`) and `WRITE_ADDR2_PD_LONG_HIGH` (writes `(destination >> 16) & 0xFFFF` to `addr2`).
+- **Strict Prohibition:** Never juggle temporary pointers in `scratch[0..2]`, never shift `destination >>= 16`, and never use helper functions that mutate write pointers (`set_write_hi`). Direct writes eliminate all scratch register overhead.
+```rust
+pub static STEPS_ADDX_L_PD_PD: [MicroStep; 15] = [
+    MicroStep { step_fn: None, alu_fn: Some(ea::ea_calc_src_pd_l_split), base_clocks: 2 },
+    common::READ_SRC_WORD,
+    MicroStep { step_fn: None, alu_fn: Some(ea::latch_src_lo_and_read_src_hi), base_clocks: 2 },
+    common::READ_SRC_SPLIT_HIGH,
+    MicroStep { step_fn: None, alu_fn: Some(ea::ea_calc_dst_pd_l_split), base_clocks: 2 },
+    common::READ_DST_WORD,
+    MicroStep { step_fn: None, alu_fn: Some(ea::latch_dst_lo_and_read_dst_hi), base_clocks: 2 },
+    common::READ_DST_SPLIT_HIGH,
+    MicroStep { step_fn: None, alu_fn: Some(alu_addx_l_mem), base_clocks: 2 },
+    common::BUS_WRITE_IDLE,
+    common::WRITE_ADDR2_PD_LONG_LOW,  // Writes low word to addr2 + 2
+    common::PREFETCH_IRC_READ,
+    common::PREFETCH_IRC_FINISH,
+    common::BUS_WRITE_IDLE,
+    common::WRITE_ADDR2_PD_LONG_HIGH, // Writes high word to addr2
+];
+```
+
 
 ### Step 3.4: Decoder Function
 Implement a `const fn` decoder that maps addressing mode, size, and direction to the static slice:

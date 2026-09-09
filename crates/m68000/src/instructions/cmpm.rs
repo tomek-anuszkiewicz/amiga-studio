@@ -72,16 +72,12 @@ pub fn alu_cmpm_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
 pub static STEPS_CMPM_B: [MicroStep; 6] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_src_byte),
-        alu_fn: Some(ea::ea_calc_src_pi_b),
+        step_fn: Some(Cpu::step_bus_read_addr1_byte),
+        alu_fn: Some(ea::ea_calc_dual_pi_b),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: Some(Cpu::step_bus_read_dst_byte),
-        alu_fn: Some(ea::ea_calc_dst_pi_b),
-        base_clocks: 2,
-    },
+    common::READ_ADDR2_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
@@ -93,13 +89,13 @@ pub static STEPS_CMPM_B: [MicroStep; 6] = [
 
 pub static STEPS_CMPM_W: [MicroStep; 6] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_src_word),
+        step_fn: Some(Cpu::step_bus_read_addr1_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_dst_word),
+        step_fn: Some(Cpu::step_bus_read_addr2_word),
         alu_fn: Some(ea::ea_calc_dst_pi_w),
         base_clocks: 2,
     },
@@ -114,20 +110,20 @@ pub static STEPS_CMPM_W: [MicroStep; 6] = [
 
 pub static STEPS_CMPM_L: [MicroStep; 10] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_src_long_high),
+        step_fn: Some(Cpu::step_bus_read_addr1_long_high),
         alu_fn: Some(ea::ea_calc_src_pi_l),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    common::READ_SRC_LONG_LOW,
+    common::READ_ADDR1_LONG_LOW,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_dst_long_high),
+        step_fn: Some(Cpu::step_bus_read_addr2_long_high),
         alu_fn: Some(ea::ea_calc_dst_pi_l),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    common::READ_DST_LONG_LOW,
+    common::READ_ADDR2_LONG_LOW,
     common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),

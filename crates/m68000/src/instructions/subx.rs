@@ -97,12 +97,11 @@ pub fn alu_subx_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.destination = (state.micro.destination & !0xFFFF) | (res as u32);
 }
 
-pub fn latch_dst_and_calc_subx_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+pub fn alu_subx_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let s = state.micro.source;
     let d = state.micro.destination;
     let res = subx_l(state, s, d);
     state.micro.destination = res;
-    state.micro.ea_addr = state.micro.ea_high.wrapping_add(2);
 }
 
 // ============================================================================
@@ -140,16 +139,12 @@ pub static STEPS_SUBX_L_DN_DN: [MicroStep; 3] = [
 pub static STEPS_SUBX_B_PD_PD: [MicroStep; 9] = [
     MicroStep {
         step_fn: None,
-        alu_fn: Some(ea::ea_calc_src_pd_b),
+        alu_fn: Some(ea::ea_calc_dual_pd_b),
         base_clocks: 2,
     },
-    common::READ_SRC_BYTE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: Some(ea::ea_calc_dst_pd_b),
-        base_clocks: 2,
-    },
-    common::READ_DST_BYTE,
+    common::READ_ADDR1_BYTE,
+    common::BUS_READ_IDLE,
+    common::READ_ADDR2_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
@@ -158,7 +153,7 @@ pub static STEPS_SUBX_B_PD_PD: [MicroStep; 9] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_BYTE,
+    common::WRITE_ADDR2_BYTE,
 ];
 
 pub static STEPS_SUBX_W_PD_PD: [MicroStep; 9] = [
@@ -167,13 +162,13 @@ pub static STEPS_SUBX_W_PD_PD: [MicroStep; 9] = [
         alu_fn: Some(ea::ea_calc_src_pd_w),
         base_clocks: 2,
     },
-    common::READ_SRC_WORD,
+    common::READ_ADDR1_WORD,
     MicroStep {
         step_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_w),
         base_clocks: 2,
     },
-    common::READ_DST_WORD,
+    common::READ_ADDR2_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
@@ -182,7 +177,7 @@ pub static STEPS_SUBX_W_PD_PD: [MicroStep; 9] = [
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD,
+    common::WRITE_ADDR2_WORD,
 ];
 
 pub static STEPS_SUBX_L_PD_PD: [MicroStep; 15] = [
@@ -212,19 +207,15 @@ pub static STEPS_SUBX_L_PD_PD: [MicroStep; 15] = [
     common::READ_DST_SPLIT_HIGH,
     MicroStep {
         step_fn: None,
-        alu_fn: Some(latch_dst_and_calc_subx_l),
+        alu_fn: Some(alu_subx_l_mem),
         base_clocks: 2,
     },
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD,
+    common::WRITE_ADDR2_PD_LONG_LOW,
     common::PREFETCH_IRC_READ,
-    MicroStep {
-        step_fn: Some(Cpu::step_prefetch_irc_finish),
-        alu_fn: Some(ea::set_write_hi),
-        base_clocks: 2,
-    },
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
-    common::WRITE_DST_WORD,
+    common::WRITE_ADDR2_PD_LONG_HIGH,
 ];
 
 // ============================================================================

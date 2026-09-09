@@ -125,6 +125,34 @@ pub const READ_ADDR2_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_ad
 /// CCK1: Reads destination long low word from staged `addr2 + 2` into `destination`
 pub const READ_ADDR2_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr2_long_low);
 
+/// CCK1: Reads split low word of 32-bit source operand (predecrement) from `addr1 + 2` into `source`
+pub const READ_ADDR1_PD_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr1_pd_long_low);
+
+/// CCK1: Reads split high word of 32-bit source operand (predecrement) from `addr1` into `source`
+pub const READ_ADDR1_PD_LONG_HIGH: MicroStep =
+    MicroStep::cck(Cpu::step_bus_read_addr1_pd_long_high);
+
+/// CCK1: Reads split low word of 32-bit destination operand (predecrement) from `addr2 + 2` into `destination`
+pub const READ_ADDR2_PD_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr2_pd_long_low);
+
+/// CCK1: Reads split high word of 32-bit destination operand (predecrement) from `addr2` into `destination`
+pub const READ_ADDR2_PD_LONG_HIGH: MicroStep =
+    MicroStep::cck(Cpu::step_bus_read_addr2_pd_long_high);
+
+/// CCK2: Writes byte from `destination` to staged `addr2`
+pub const WRITE_ADDR2_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_write_addr2_byte);
+
+/// CCK2: Writes word from `destination` to staged `addr2`
+pub const WRITE_ADDR2_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_write_addr2_word);
+
+/// CCK2: Writes low word of 32-bit destination to memory at predecrement address `addr2 + 2`
+pub const WRITE_ADDR2_PD_LONG_LOW: MicroStep =
+    MicroStep::cck(Cpu::step_bus_write_addr2_pd_long_low);
+
+/// CCK2: Writes high word of 32-bit destination to memory at predecrement address `addr2`
+pub const WRITE_ADDR2_PD_LONG_HIGH: MicroStep =
+    MicroStep::cck(Cpu::step_bus_write_addr2_pd_long_high);
+
 // ============================================================================
 // 2-Clock Control Flow, Stack & Target Refill Building Blocks
 // ============================================================================
