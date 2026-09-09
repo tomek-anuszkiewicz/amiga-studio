@@ -7,7 +7,7 @@ This document outlines the phased development plan, hardware milestones, verific
 ## 1. Hardware Roadmap & Milestones
 
 ### Phase 1: Baseline Amiga 500 (Rev 5 / Rev 6a OCS) — Immediate Focus
-- **CPU:** Motorola 68000 cycle-exact core based on the **Microcode Archetype Baseline** (Native 2-clock micro-step slices: $1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$, 16 orthogonal archetype modules covering 100% of bus cycle types, addressing modes, wait-state arbitration, and prefetch refills; verified under exhaustive Cartesian $2^k \times 2^M$ DMA contention and Chip/Fast RAM permutations with 100% state and cycle invariance; 100% SingleStepTests pass across all active archetypes; 27 derived/isomorphic instructions scheduled for reintroduction in Step 1).
+- **CPU:** Motorola 68000 cycle-exact core based on the **Microcode Archetype Baseline** (Native 2-clock micro-step slices: $1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$, 16 orthogonal archetype modules covering 100% of bus cycle types, addressing modes, wait-state arbitration, and prefetch refills, plus completed Batch 1.1 isomorphic arithmetic `SUB`, `SUBA`, `SUBI`, `SUBQ`, `SUBX`; verified under exhaustive Cartesian $2^k \times 2^M$ DMA contention and Chip/Fast RAM permutations with 100% state and cycle invariance; 100% SingleStepTests pass across all active instructions; remaining derived/isomorphic instructions scheduled in Step 1).
 - **Memory Configuration:**
   - 512 KB Chip RAM (`$000000-$07FFFF`).
   - Optional 512 KB Trapdoor Slow RAM (`$C00000-$C7FFFF`).
@@ -40,7 +40,7 @@ This document outlines the phased development plan, hardware milestones, verific
 
 ### Step 1: Reintroduction of Isomorphic Instructions & Complex Operations
 - **Phase A: Reintroduction of Isomorphic & Derived Instructions (from Archetype Blueprints):**
-  - *Batch 1.1 (Isomorphic Arithmetic):* `SUB`, `SUBA`, `SUBI`, `SUBQ`, `SUBX` (derived from `ADD*` archetypes).
+  - *Completed:* **Batch 1.1 (Isomorphic Arithmetic):** `SUB`, `SUBA`, `SUBI`, `SUBQ`, `SUBX` (derived from `ADD*` archetypes; 100% SingleStepTests & Cartesian DMA verified).
   - *Batch 1.2 (Isomorphic Logic):* `AND`, `ANDI`, `OR`, `ORI`, `EOR`, `EORI` (derived from `NOT`/`ADD` bitwise ALU blueprints).
   - *Batch 1.3 (Comparisons & Tests):* `CMP`, `CMPA`, `CMPI`, `TST` (derived from `CMPM` and subtractive flags).
     - *Test Harness Update Note:* MAME and Tom Harte bundle `CMP` and `CMPM` into `CMP.<size>.json` without separate `CMPM.<size>.json` files. When implementing `CMP`/`CMPA`/`CMPI`, update the `load_mame_tests` guard in [`test_dma_cartesian.rs`](crates/test_runner/tests/test_dma_cartesian.rs) and add full `CMP` tests alongside the filtered `CMPM` tests in [`test_singlestep.rs`](crates/test_runner/tests/test_singlestep.rs) so the entire `CMP` vector file is tested.

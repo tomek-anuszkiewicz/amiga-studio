@@ -235,6 +235,50 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
+    // Phase 3: SUB, SUBA, SUBX opcodes ($9000..=$9FFF)
+    let mut op = 0x9000usize;
+    while op <= 0x9FFF {
+        let ir = op as u16;
+        let reg_d = ((ir >> 9) & 7) as u8;
+        let dir = ((ir >> 8) & 1) as u8;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+
+        if size < 3 {
+            let is_subx = dir == 1 && (mode == 0 || mode == 1);
+            if is_subx {
+                let is_memory = mode == 1;
+                if let Some(steps) = crate::instructions::subx::decode_subx_steps(is_memory, size) {
+                    table[op] = OpcodeDescriptor {
+                        steps,
+                        reg_src: reg,
+                        reg_dst: reg_d,
+                    };
+                }
+            } else if let Some(steps) =
+                crate::instructions::sub::decode_sub_steps(dir, size, mode, reg)
+            {
+                let (reg_src, reg_dst) = if dir == 0 { (reg, reg_d) } else { (reg_d, reg) };
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src,
+                    reg_dst,
+                };
+            }
+        } else {
+            let is_long = dir != 0;
+            if let Some(steps) = crate::instructions::suba::decode_suba_steps(is_long, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: reg,
+                    reg_dst: reg_d,
+                };
+            }
+        }
+        op += 1;
+    }
+
     // Phase 3: CMPM opcodes ($B000..=$BFFF, dir == 1, mode == 1)
     let mut op = 0xB000usize;
     while op <= 0xBFFF {
@@ -258,7 +302,7 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
-    // Phase 3: ADDQ opcodes ($5000..=$5FFF, !is_sub)
+    // Phase 3: ADDQ and SUBQ opcodes ($5000..=$5FFF)
     let mut op = 0x5000usize;
     while op <= 0x5FFF {
         let ir = op as u16;
@@ -272,8 +316,20 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         if size < 3 {
             // Byte on An is not valid in M68000
             let valid = !(mode == 1 && size == 0);
-            if valid && !is_sub {
-                if let Some(steps) = crate::instructions::addq::decode_addq_steps(size, mode, reg) {
+            if valid {
+                if !is_sub {
+                    if let Some(steps) =
+                        crate::instructions::addq::decode_addq_steps(size, mode, reg)
+                    {
+                        table[op] = OpcodeDescriptor {
+                            steps,
+                            reg_src: imm,
+                            reg_dst: reg,
+                        };
+                    }
+                } else if let Some(steps) =
+                    crate::instructions::subq::decode_subq_steps(size, mode, reg)
+                {
                     table[op] = OpcodeDescriptor {
                         steps,
                         reg_src: imm,
@@ -294,6 +350,25 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         let reg = (ir & 7) as u8;
         if size < 3 {
             if let Some(steps) = crate::instructions::addi::decode_addi_steps(size, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Phase 3: SUBI opcodes ($0400..=$04FF)
+    let mut op = 0x0400usize;
+    while op <= 0x04FF {
+        let ir = op as u16;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+        if size < 3 {
+            if let Some(steps) = crate::instructions::subi::decode_subi_steps(size, mode, reg) {
                 table[op] = OpcodeDescriptor {
                     steps,
                     reg_src: 0,

@@ -12,8 +12,13 @@ use std::path::{Path, PathBuf};
 
 /// Recognized exceptions allowed to exceed the 800-line threshold
 /// (e.g. compile-time static dispatch tables, exhaustive linear instruction decoders/slices).
-const LINE_COUNT_EXCEPTIONS: &[&str] =
-    &["dispatch_table.rs", "move_w.rs", "add.rs", "blep_tables.rs"];
+const LINE_COUNT_EXCEPTIONS: &[&str] = &[
+    "dispatch_table.rs",
+    "move_w.rs",
+    "add.rs",
+    "sub.rs",
+    "blep_tables.rs",
+];
 
 /// Core emulation crates where `.unwrap()` and `.expect()` are strictly forbidden in runtime code.
 const CORE_EMULATION_CRATES: &[&str] = &["m68000", "memory_bus", "config", "rtc", "debugger"];

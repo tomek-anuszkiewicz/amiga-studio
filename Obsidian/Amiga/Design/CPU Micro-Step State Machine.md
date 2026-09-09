@@ -56,14 +56,14 @@ Instead of maintaining dozens of isomorphic instruction duplicates (such as `SUB
 
 | Archetype Domain | Active Representative Modules | Hardware Mechanics Covered |
 | :--- | :--- | :--- |
-| **ALU & Arithmetic** | `add.rs`, `adda.rs`, `addi.rs`, `addq.rs`, `addx.rs`, `not.rs` | 2-phase operand read, RMW memory write-back, address register sign-extension, immediate latching, multi-precision extend (`X`) flag propagation, and bitwise complement. |
+| **ALU & Arithmetic** | `add.rs`, `adda.rs`, `addi.rs`, `addq.rs`, `addx.rs`, `sub.rs`, `suba.rs`, `subi.rs`, `subq.rs`, `subx.rs`, `not.rs` | 2-phase operand read, RMW memory write-back, address register sign-extension, immediate latching, multi-precision extend (`X`) flag propagation, subtractive borrow/overflow evaluation, and bitwise complement. |
 | **Bit & Shifts** | `bset.rs`, `asl.rs` | Read-Modify-Write bit cycles (static immediate & dynamic register-addressed), memory word shifts, register count-dependent loop delays, and condition evaluation. |
 | **Data Movement** | `move_w.rs`, `movea.rs`, `moveq.rs`, `movem.rs` | Standard word transfers, address register loading, quick sign-extended immediates, and dynamic multi-register block transfers across arbitrary register lists. |
 | **Memory Comparison** | `cmpm.rs` | Dual postincrement memory operand sequencing without destination write-back. |
 | **Branch & Stack** | `bra.rs`, `bsr.rs`, `bcc.rs`, `pea.rs`, `jmp.rs`, `jsr.rs`, `rts.rs` | Short/long branches, subroutine return address stacking, stack popping, and 2-word pipeline refill across non-sequential Program Space addresses. |
 | **Exceptions & System** | `nop.rs`, `trap.rs`, `system.rs` | Pipeline idling, software vector traps, supervisor stack frame generation, and status register manipulation. |
 
-Derived and isomorphic instructions (`SUB*`, `AND*`, `OR*`, `EOR*`, `CMP*`, `ASR`/`LS*`/`RO*`, `BTST`/`BCLR`/`BCHG`, `MOVE.B`/`MOVE.L`) inherit their micro-step sequences directly from these blueprints and are re-introduced in distinct, test-validated batches (see `ROADMAP.md` Step 2).
+Derived and isomorphic instructions (`SUB*` [completed in Batch 1.1], `AND*`, `OR*`, `EOR*`, `CMP*`, `ASR`/`LS*`/`RO*`, `BTST`/`BCLR`/`BCHG`, `MOVE.B`/`MOVE.L`) inherit their micro-step sequences directly from these blueprints and are re-introduced in distinct, test-validated batches (see `ROADMAP.md` Step 1).
 
 ---
 ## 2. Data Structures & Type Definitions

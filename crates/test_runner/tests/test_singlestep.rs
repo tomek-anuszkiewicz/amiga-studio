@@ -291,6 +291,46 @@ fn test_addx_l() {
     run_dual_test("ADDX.l", DEFAULT_SAMPLE_LIMIT);
 }
 
+#[test]
+fn test_sub_b() {
+    run_dual_test("SUB.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_sub_w() {
+    run_dual_test("SUB.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_sub_l() {
+    run_dual_test("SUB.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_suba_w() {
+    run_dual_test("SUBA.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_suba_l() {
+    run_dual_test("SUBA.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_subx_b() {
+    run_dual_test("SUBX.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_subx_w() {
+    run_dual_test("SUBX.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_subx_l() {
+    run_dual_test("SUBX.l", DEFAULT_SAMPLE_LIMIT);
+}
+
 // ============================================================================
 // Logic Operations (NOT Archetype)
 // ============================================================================

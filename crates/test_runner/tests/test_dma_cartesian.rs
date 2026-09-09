@@ -194,6 +194,16 @@ fn test_dma_cartesian_addx() {
     run_cartesian_for_opcodes(&["ADDX.b", "ADDX.w", "ADDX.l"]);
 }
 
+#[test]
+fn test_dma_cartesian_sub() {
+    run_cartesian_for_opcodes(&["SUB.b", "SUB.w", "SUB.l", "SUBA.w", "SUBA.l"]);
+}
+
+#[test]
+fn test_dma_cartesian_subx() {
+    run_cartesian_for_opcodes(&["SUBX.b", "SUBX.w", "SUBX.l"]);
+}
+
 // ============================================================================
 // Logic Operations (NOT)
 // ============================================================================
