@@ -134,38 +134,46 @@ All agentic pair-programming and automated modifications must adhere strictly to
 ---
 
 ## 3. Knowledge Base & Reference Navigation
-130: 
-131: - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
-132: - **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and Guru Book reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via the `rag_search` tool (`amiga-rag`).
-133: - **RAG Tooling & Infrastructure**: The indexing pipeline, CLI indexer (`amiga_rag`), and FastMCP server reside in [`tools/rag`](tools/rag), backed by the local Qdrant vector database (`amiga` collection).
-134: - **Reference Emulator Source Code**: Verified reference implementations (MAME, Moira, Musashi, vAmiga, WinUAE) are located in [ref_src](ref_src).
-135: - **Single-Step Test Vectors**: Official test suite for the M68000 CPU is located in [ref_src/SingleStepTests-m68000/v1](ref_src/SingleStepTests-m68000/v1).
-136: 
-137: ---
-138: 
-139: ## 4. Documentation Maintenance & Quality Assurance (Definition of Done)
-140: 
-141: - **Mandatory Final Task:** Whenever an agent (or human developer) implements, refactors, or modifies a subsystem, you **must update the corresponding design document in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) if any architectural decision, timing model, data structure, or hardware quirk has changed or was clarified.**
-142: - **Roadmap Step Completion & Pruning:** Whenever an agent is 100% certain that a roadmap milestone or step in [ROADMAP.md](ROADMAP.md) has been fully implemented and verified (all tests pass 100% green), as part of that **same task/PR you must update [ROADMAP.md](ROADMAP.md)**: remove the detailed completed task from the active implementation list, update the concise completed baseline summary, and renumber/reorder remaining steps so that [ROADMAP.md](ROADMAP.md) always reflects the live, remaining plan.
-143: - **Design Document Pruning & Post-Implementation Cleanup (Eliminate Implemented Code Duplication):** Design specifications under [Obsidian/Amiga/Design](Obsidian/Amiga/Design) often contain tentative draft snippets, forward-looking proposals, or hypothetical code sketches written before implementation. Whenever completing a roadmap step or implementing a feature, you **must review and clean up the relevant design documents**: remove obsolete speculative code, prune superseded draft proposals, and ensure the document reflects the finalized, living architectural reality rather than pre-implementation conjectures. Crucially, **design documents must never duplicate code that has already been written**: once a struct, enum, function, or subsystem is implemented in `crates/`, all redundant Rust code snippets, mock implementations, and duplicate code blocks must be removed from the design documentation and replaced with concise architectural descriptions, tables, and direct markdown links to the living Rust source files. The codebase itself is the single source of truth for code.
-144: - **Crate Dependency Graph Maintenance:** Whenever crates or workspace dependencies in `Cargo.toml` (new crates, modified inter-crate dependencies, or key external dependencies) are added, altered, or removed, you **must update the Crate Dependency Mermaid Graph in [Obsidian/Amiga/Design/General Architecture.md](Obsidian/Amiga/Design/General%20Architecture.md#2-workspace-crate-architecture--dependencies)**.
-145: - **Mandatory Code Formatting (`cargo fmt --all`):** Whenever an agent (or human developer) implements, refactors, or modifies code, you **must run `cargo fmt --all`** across the workspace. All code changes must pass the formatting compliance check (`cargo fmt --all -- --check`), which is also automatically validated during architecture tests.
-146: - **Automated Architecture Test Execution:** All code changes must pass the automated architectural test suite in `crates/test_runner`:
-147:   ```powershell
-148:   cargo test -p test_runner --test test_architecture_rules
-149:   ```
-150:   (enforcing standard `cargo fmt` formatting compliance, Rust source file size <= 800 lines in `crates/*/src/`, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, canonical idle micro-step naming, path privacy, and inlining compliance [cold exception `#[inline(never)]`, leaf ALU and CCR `#[inline(always)]`]).
-151: - **Mandatory Full SingleStepTests on M68000 Changes:** Whenever completing an implementation plan, milestone, or modifying any code inside `crates/m68000`, the agent **must execute the full, exhaustive SingleStepTests suite** without sampling limits:
-152:   ```powershell
-153:   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
-154:   ```
-155:   This validates all ~300,000 test cases across MAME and Tom Harte hardware vectors in parallel (typically completing in 12–15s). Tasks touching `crates/m68000` cannot be declared complete without running this full test pass.
-156: - **Mandatory Cartesian DMA Contention Verification on M68000 Changes:** In addition to SingleStepTests, all implemented opcodes must pass the exhaustive Cartesian DMA Contention test suite:
-157:   ```powershell
-158:   cargo test -p test_runner --test test_dma_cartesian
-159:   ```
-160:   validating cycle invariance ($C = C_0 + 2 \times \text{wait\_states}$), Fast RAM immunity, and state invariance across the full $2^k \times 2^M$ permutation space.
-161: - **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, canonical idle micro-step naming, Rust source file size <= 800 lines, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, design doc & roadmap pruning, removal of implemented code snippets from design documentation, 100% green tests).
+
+- **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
+- **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and Guru Book reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via the `rag_search` tool (`amiga-rag`).
+- **RAG Tooling & Infrastructure**: The indexing pipeline, CLI indexer (`amiga_rag`), and FastMCP server reside in [`tools/rag`](tools/rag), backed by the local Qdrant vector database (`amiga` collection).
+- **Reference Emulator Source Code**: Verified reference implementations (MAME, Moira, Musashi, vAmiga, WinUAE) are located in [ref_src](ref_src).
+- **Single-Step Test Vectors**: Official test suite for the M68000 CPU is located in [ref_src/SingleStepTests-m68000/v1](ref_src/SingleStepTests-m68000/v1).
+
+---
+
+## 4. Documentation Maintenance & Quality Assurance (Definition of Done)
+
+- **Mandatory Final Task:** Whenever an agent (or human developer) implements, refactors, or modifies a subsystem, you **must update the corresponding design document in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) if any architectural decision, timing model, data structure, or hardware quirk has changed or was clarified.**
+- **Roadmap Step Completion & Pruning:** Whenever an agent is 100% certain that a roadmap milestone or step in [ROADMAP.md](ROADMAP.md) has been fully implemented and verified (all tests pass 100% green), as part of that **same task/PR you must update [ROADMAP.md](ROADMAP.md)**: remove the detailed completed task from the active implementation list, update the concise completed baseline summary, and renumber/reorder remaining steps so that [ROADMAP.md](ROADMAP.md) always reflects the live, remaining plan.
+- **Design Document Pruning & Post-Implementation Cleanup (Eliminate Implemented Code Duplication):** Design specifications under [Obsidian/Amiga/Design](Obsidian/Amiga/Design) often contain tentative draft snippets, forward-looking proposals, or hypothetical code sketches written before implementation. Whenever completing a roadmap step or implementing a feature, you **must review and clean up the relevant design documents**: remove obsolete speculative code, prune superseded draft proposals, and ensure the document reflects the finalized, living architectural reality rather than pre-implementation conjectures. Crucially, **design documents must never duplicate code that has already been written**: once a struct, enum, function, or subsystem is implemented in `crates/`, all redundant Rust code snippets, mock implementations, and duplicate code blocks must be removed from the design documentation and replaced with concise architectural descriptions, tables, and direct markdown links to the living Rust source files. The codebase itself is the single source of truth for code.
+- **Crate Dependency Graph Maintenance:** Whenever crates or workspace dependencies in `Cargo.toml` (new crates, modified inter-crate dependencies, or key external dependencies) are added, altered, or removed, you **must update the Crate Dependency Mermaid Graph in [Obsidian/Amiga/Design/General Architecture.md](Obsidian/Amiga/Design/General%20Architecture.md#2-workspace-crate-architecture--dependencies)**.
+- **Mandatory Code Formatting (`cargo fmt --all`):** Whenever an agent (or human developer) implements, refactors, or modifies code, you **must run `cargo fmt --all`** across the workspace. All code changes must pass the formatting compliance check (`cargo fmt --all -- --check`), which is also automatically validated during architecture tests.
+- **Automated Architecture Test Execution:** All code changes must pass the automated architectural test suite in `crates/test_runner`:
+  ```powershell
+  cargo test -p test_runner --test test_architecture_rules
+  ```
+  (enforcing standard `cargo fmt` formatting compliance, Rust source file size <= 800 lines in `crates/*/src/`, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, canonical idle micro-step naming, path privacy, and inlining compliance [cold exception `#[inline(never)]`, leaf ALU and CCR `#[inline(always)]`]).
+- **Mandatory Full SingleStepTests on M68000 Changes:** Whenever completing an implementation plan, milestone, or modifying any code inside `crates/m68000`, the agent **must execute the full, exhaustive SingleStepTests suite** without sampling limits:
+  ```powershell
+  $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+  ```
+  This validates all ~300,000 test cases across MAME and Tom Harte hardware vectors in parallel (typically completing in 12–15s). Tasks touching `crates/m68000` cannot be declared complete without running this full test pass.
+- **Mandatory Cartesian DMA Contention Verification on M68000 Changes:** In addition to SingleStepTests, all implemented opcodes must pass the exhaustive Cartesian DMA Contention test suite:
+  ```powershell
+  cargo test -p test_runner --test test_dma_cartesian
+  ```
+  validating cycle invariance ($C = C_0 + 2 \times \text{wait\_states}$), Fast RAM immunity, and state invariance across the full $2^k \times 2^M$ permutation space.
+- **Mandatory Defect Retrospection & Institutional Prevention (Blameless Root-Cause Analysis)**:
+  Whenever a task involves fixing a bug, resolving a regression, correcting an oversight, or refactoring code due to an omission:
+  1. **Root-Cause Retrospection ("Why did this happen?")**: The agent (or developer) must perform a structured self-retrospection: Why did the bug or oversight occur in the first place? Was it an underspecified requirement, an ambiguous hardware manual, a missing edge-case in test vectors, a misunderstanding of cycle phases, lack of an invariant check, an ad-hoc assumption, or a missing architectural rule?
+  2. **Institutionalization ("How do we ensure this never repeats?")**: Merely patching the immediate symptom is strictly insufficient. The learning must be institutionalized across the engineering lifecycle:
+     - **Regression & Invariant Tests**: Write dedicated unit/integration tests reproducing the exact failure mode and adjacent edge cases.
+     - **Architectural Linting / Enforcement**: If the defect stems from violating architectural rules, naming conventions, or structural patterns, evaluate whether to encode an automated enforcement check into `crates/test_runner/tests/test_architecture_rules.rs`.
+     - **Documentation & Guidelines**: If the defect was caused by an ambiguous or missing specification, update the corresponding design document under `Obsidian/Amiga/Design/` or add an explicit rule to `AGENTS.md`.
+     - **Definition of Done & Review Checklist**: If the oversight could easily recur in future implementations, add an explicit checkpoint to the Definition of Done and `/code-review` workflow.
+- **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, canonical idle micro-step naming, Rust source file size <= 800 lines, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, defect retrospection & regression test coverage if bug fixing, design doc & roadmap pruning, removal of implemented code snippets from design documentation, 100% green tests).
 
 - **Sub-Agent Milestone Review Protocol (`/code-review`):** Before declaring a roadmap milestone complete, invoke an independent review subagent or follow the `/code-review` workflow to audit the diff with a clean context before user hand-off.
 - The design documents under `Obsidian/Amiga/Design/` are living, permanent specifications and must always reflect the exact architectural reality of the implementation.

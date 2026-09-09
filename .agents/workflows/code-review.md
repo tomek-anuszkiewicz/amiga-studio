@@ -68,6 +68,11 @@ Audit the diff against the guidelines in `AGENTS.md`:
 - [ ] Completed roadmap steps pruned from `ROADMAP.md` and summarized in the baseline section.
 - [ ] Crate dependency Mermaid graph updated in `General Architecture.md` if `Cargo.toml` dependencies changed.
 
+### G. Defect Retrospection & Institutional Prevention (If Bug Fix / Refactor)
+- [ ] Root cause identified and documented ("Why did this happen?").
+- [ ] Dedicated regression test(s) added covering the exact failure mode and adjacent edge cases.
+- [ ] Institutional prevention evaluated: architectural rule, lint, design doc, or DoD checklist updated to ensure this class of defect never recurs.
+
 ---
 
 ## 3. Full Test Suite Verification

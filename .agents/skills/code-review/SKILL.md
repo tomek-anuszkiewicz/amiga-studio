@@ -57,10 +57,11 @@ Analyze all modified and added files using `git diff`:
    - Ensure all micro-steps where the memory bus does not perform an active transfer or address strobe explicitly feature `IDLE` (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`).
    - Strictly prohibit anonymous idle structs (`MicroStep { step_fn: None, alu_fn: None, ... }`) and legacy aliases (`READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`, `REFILL_FIRST_FINISH`, `REFILL_SECOND_FINISH`).
 
-### Step 3: Living Documentation Audit
-1. **Design Documents**: Did the author update `Obsidian/Amiga/Design/`? Were speculative draft snippets, pre-implementation sketches, and duplicate code snippets of already-written code removed? (The codebase is the single source of truth; design docs must not duplicate implemented Rust code).
-2. **Roadmap**: If a step in `ROADMAP.md` is 100% complete, was it removed from the active list and added to the baseline summary?
-3. **Crate Graph**: Were crate dependencies in `General Architecture.md` updated if `Cargo.toml` was touched?
+### Step 3: Living Documentation & Defect Retrospection Audit
+1. **Defect Retrospection (if bug fix / refactor)**: Did the author perform root-cause analysis ("Why did this happen?")? Are dedicated regression tests in place covering edge cases? Were systemic safeguards (architectural rules, lints, or DoD criteria) added to ensure this class of defect never recurs?
+2. **Design Documents**: Did the author update `Obsidian/Amiga/Design/`? Were speculative draft snippets, pre-implementation sketches, and duplicate code snippets of already-written code removed? (The codebase is the single source of truth; design docs must not duplicate implemented Rust code).
+3. **Roadmap**: If a step in `ROADMAP.md` is 100% complete, was it removed from the active list and added to the baseline summary?
+4. **Crate Graph**: Were crate dependencies in `General Architecture.md` updated if `Cargo.toml` was touched?
 
 ### Step 4: Issue Audit Report
 Provide the audit report using the following standard template:
@@ -77,6 +78,7 @@ Provide the audit report using the following standard template:
 - [ ] **Anti-Hack & Spec Integrity:** Zero ad-hoc test workarounds; hardware specifications followed strictly.
 - [ ] **Rust File Size, Cohesion & Flat Instructions:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Zero subdirectories in `crates/m68000/src/instructions/` (strict flat instruction hierarchy, 1:1 mnemonic files, zero umbrella files). Technical documentation has no line limits.
 - [ ] **Inlining Strategy:** Cross-crate `#[inline]`, CCR `#[inline(always)]`, cold paths `#[inline(never)]`.
+- [ ] **Defect Retrospection & Prevention:** Root cause analyzed, regression tests added, systemic safeguards/docs updated (if bug fix).
 - [ ] **Design Docs Pruning & Implemented Code Removal:** Living docs updated, speculative code pruned, and all code snippets for implemented features removed from `Obsidian/Amiga/Design/`.
 - [ ] **Roadmap Discipline:** Completed steps removed from active roadmap and summarized.
 - [ ] **Path Privacy:** Zero external host paths.
