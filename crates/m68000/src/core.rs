@@ -83,14 +83,87 @@ impl Cpu {
             self.initiate_current_instruction();
         }
 
-        // 3. Execute via cycle-exact Micro-Step State Machine:
-        if !self.state.micro.current_steps.is_empty() {
-            return self.execute_micro_step(bus);
+        if self.state.micro.current_steps.is_empty() {
+            self.state.halted = true;
+            return false;
         }
 
-        // Unimplemented / Illegal opcode:
-        self.state.halted = true;
-        false
+        // 2. Execute via cycle-exact Micro-Step State Machine:
+        while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
+            let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
+
+            // 2a. Step initialization (executed once upon entering this micro_step):
+            if self.state.micro.clocks_remaining == 0 {
+                self.state.micro.clocks_remaining = step.base_clocks as u16;
+                let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
+
+                if let Some(alu) = step.alu_fn {
+                    let reg_src = self.state.micro.reg_src;
+                    let reg_dst = self.state.micro.reg_dst;
+                    alu(&mut self.state, reg_src, reg_dst);
+                }
+
+                // If ALU redirected execution to a new step sequence (e.g. Bcc branch taken),
+                // restart immediately at step 0 of the new sequence
+                if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
+                    self.state.micro.clocks_remaining = 0;
+                    continue;
+                }
+
+                // Instantaneous zero-clock step (pure ALU / EA calculation):
+                // Advance micro_step and continue within the same CCK.
+                if step.alu_fn.is_some() && self.state.micro.clocks_remaining == 0 {
+                    self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                    continue;
+                }
+            }
+
+            // 2b. Unified clock-consuming bus cycle execution (consumes 1 CCK = 2 CPU clocks):
+            let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
+            let prev_micro_step = self.state.micro.micro_step;
+
+            let bus_res = match step.step_fn {
+                Some(step_fn) => step_fn(self, bus),
+                None => BusResult::Ready(()),
+            };
+            if self.state.micro.current_steps.is_empty() {
+                return true;
+            }
+
+            // If step redirected execution to a new step sequence (e.g. Address Error),
+            // conclude this CCK and begin the new sequence on next CCK.
+            if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
+                self.state.micro.clocks_remaining = 0;
+                return false;
+            }
+
+            match bus_res {
+                BusResult::WaitState => return false,
+                BusResult::Ready(()) => {
+                    self.state.micro.clocks_remaining =
+                        self.state.micro.clocks_remaining.saturating_sub(2);
+
+                    if (step.base_clocks > 0 || step.alu_fn.is_some())
+                        && self.state.micro.clocks_remaining == 0
+                        && self.state.micro.micro_step == prev_micro_step
+                    {
+                        self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                    }
+
+                    if (self.state.micro.micro_step as usize)
+                        >= self.state.micro.current_steps.len()
+                    {
+                        self.retire_current_instruction();
+                        return true;
+                    }
+
+                    return false;
+                }
+            }
+        }
+
+        self.retire_current_instruction();
+        true
     }
 
     /// Retires the active instruction sequentially or via branch target refill
@@ -152,122 +225,6 @@ impl Cpu {
         _bus: &mut dyn AddressBus,
     ) {
         self.trigger_address_error(addr, is_read, is_program_space);
-    }
-
-    /// Executes the active instruction's micro-step sequence directly
-    pub fn execute_micro_step(&mut self, bus: &mut dyn AddressBus) -> bool {
-        if self.state.halted || self.state.stopped {
-            return true;
-        }
-
-        while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
-            let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
-
-            // 1. Dynamic multi-cycle step (base_clocks == 0 without alu_fn, e.g. MOVEM transfer):
-            if step.base_clocks == 0 && step.alu_fn.is_none() {
-                let bus_res = match step.step_fn {
-                    Some(step_fn) => step_fn(self, bus),
-                    None => BusResult::Ready(()),
-                };
-                if self.state.micro.current_steps.is_empty() {
-                    return true;
-                }
-                match bus_res {
-                    BusResult::WaitState => return false,
-                    BusResult::Ready(()) => {
-                        if (self.state.micro.micro_step as usize)
-                            >= self.state.micro.current_steps.len()
-                        {
-                            self.retire_current_instruction();
-                            return true;
-                        }
-                        return false;
-                    }
-                }
-            }
-
-            // 2. Step initialization:
-            // When entering this step (clocks_remaining == 0), initialize duration and fire alu_fn
-            if self.state.micro.clocks_remaining == 0 {
-                self.state.micro.clocks_remaining = step.base_clocks as u16;
-                let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
-                if let Some(alu) = step.alu_fn {
-                    let reg_src = self.state.micro.reg_src;
-                    let reg_dst = self.state.micro.reg_dst;
-                    alu(&mut self.state, reg_src, reg_dst);
-                }
-
-                // If alu_fn redirected execution to a new step sequence (e.g. Bcc branch taken vs untaken),
-                // restart immediately at the new sequence with 0 clocks
-                if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
-                    self.state.micro.clocks_remaining = 0;
-                    continue;
-                }
-
-                // If pure instantaneous ALU step (0 base clocks and alu_fn did not request multi-cycle duration):
-                if self.state.micro.clocks_remaining == 0 {
-                    let prev_micro_step = self.state.micro.micro_step;
-                    let bus_res = match step.step_fn {
-                        Some(step_fn) => step_fn(self, bus),
-                        None => BusResult::Ready(()),
-                    };
-                    if self.state.micro.current_steps.is_empty() {
-                        return true;
-                    }
-                    if bus_res == BusResult::WaitState {
-                        return false;
-                    }
-                    if self.state.micro.micro_step == prev_micro_step {
-                        self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-                    }
-                    continue;
-                }
-            }
-
-            // 4. Clock-consuming step execution (each CCK consumes 2 clocks):
-            let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
-            let prev_micro_step = self.state.micro.micro_step;
-            let bus_res = match step.step_fn {
-                Some(step_fn) => step_fn(self, bus),
-                None => BusResult::Ready(()),
-            };
-            if self.state.micro.current_steps.is_empty() {
-                return true;
-            }
-
-            // If step redirected execution to a new step sequence (e.g. Address Error),
-            // conclude this CCK and begin the new sequence on next CCK.
-            if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
-                self.state.micro.clocks_remaining = 0;
-                return false;
-            }
-
-            match bus_res {
-                BusResult::WaitState => return false,
-                BusResult::Ready(()) => {
-                    self.state.micro.clocks_remaining =
-                        self.state.micro.clocks_remaining.saturating_sub(2);
-
-                    if self.state.micro.clocks_remaining == 0
-                        && self.state.micro.micro_step == prev_micro_step
-                    {
-                        self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-                    }
-
-                    if (self.state.micro.micro_step as usize)
-                        >= self.state.micro.current_steps.len()
-                    {
-                        self.retire_current_instruction();
-                        return true;
-                    }
-
-                    return false;
-                }
-            }
-        }
-
-        self.retire_current_instruction();
-        true
     }
 
     /// Executes exactly one full M68000 instruction via direct table dispatch
