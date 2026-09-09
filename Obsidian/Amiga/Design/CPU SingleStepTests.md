@@ -396,6 +396,9 @@ Having access to both the MAME and Tom Harte test suites provides an invaluable 
 | **`(An)+` Address Error AGU** | ⚠️ Aborts without advancing $A_n$ on address error | ✅ Real Silicon: $A_n$ advances in AGU prior to bus error trap | **Tom Harte Suite** |
 | **Address Error Stack Frame PC** | Pushes $PC$ based on internal simulator microcode stage | Pushes target - 4 on jumps / hardware prefetch PC on faults | **Both (accommodated in runner)** |
 | **PC-Relative Function Codes** | Uses Program Space (FC 2 / 6) on PC-relative operand faults | Uses Data Space (FC 1 / 5) on certain operand evaluations | **Handled in runner status word check** |
+| **`LINK A7` Pushed SP** | ⚠️ Simulator artifact: pushes un-decremented $SP$ | ✅ Real Silicon: $SP$ decrements before write latch, pushing $SP-4$ | **Tom Harte Suite** |
+| **`CHK` No-Trap $N$ Flag** | ⚠️ Simulator artifact: forces $N=0$ | ✅ Real Silicon: preserves prior $N$ flag ($N$ is officially undefined in PRM) | **Tom Harte Suite** |
+
 
 ### 9.2 Triangulation Protocol
 When diagnosing a test mismatch:

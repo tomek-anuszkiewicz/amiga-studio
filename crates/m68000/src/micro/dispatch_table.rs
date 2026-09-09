@@ -1014,6 +1014,141 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
+    // Batch 1.11: Privileged & System Control Operations
+    table[0x4E70] = OpcodeDescriptor {
+        steps: &crate::instructions::privileged::STEPS_RESET,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+    table[0x4E72] = OpcodeDescriptor {
+        steps: &crate::instructions::privileged::STEPS_STOP,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+    table[0x4E73] = OpcodeDescriptor {
+        steps: &crate::instructions::privileged::STEPS_RTE,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+    table[0x4E76] = OpcodeDescriptor {
+        steps: &crate::instructions::privileged::STEPS_TRAPV,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+    table[0x4E77] = OpcodeDescriptor {
+        steps: &crate::instructions::privileged::STEPS_RTR,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+
+    let mut reg = 0u8;
+    while reg < 8 {
+        table[0x4E60 | (reg as usize)] = OpcodeDescriptor {
+            steps: &crate::instructions::privileged::STEPS_MOVE_TO_USP,
+            reg_src: reg,
+            reg_dst: 0,
+        };
+        table[0x4E68 | (reg as usize)] = OpcodeDescriptor {
+            steps: &crate::instructions::privileged::STEPS_MOVE_FROM_USP,
+            reg_src: 0,
+            reg_dst: reg,
+        };
+        reg += 1;
+    }
+
+    // Batch 1.11: Immediate Logic to CCR / SR
+    table[0x003C] = OpcodeDescriptor {
+        steps: &crate::instructions::logic_sr_ccr::STEPS_ORI_TO_CCR,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+    table[0x007C] = OpcodeDescriptor {
+        steps: &crate::instructions::logic_sr_ccr::STEPS_ORI_TO_SR,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+    table[0x023C] = OpcodeDescriptor {
+        steps: &crate::instructions::logic_sr_ccr::STEPS_ANDI_TO_CCR,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+    table[0x027C] = OpcodeDescriptor {
+        steps: &crate::instructions::logic_sr_ccr::STEPS_ANDI_TO_SR,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+    table[0x0A3C] = OpcodeDescriptor {
+        steps: &crate::instructions::logic_sr_ccr::STEPS_EORI_TO_CCR,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+    table[0x0A7C] = OpcodeDescriptor {
+        steps: &crate::instructions::logic_sr_ccr::STEPS_EORI_TO_SR,
+        reg_src: 0,
+        reg_dst: 0,
+    };
+
+    // Batch 1.11: MOVE <ea>, CCR ($44C0..=$44FF)
+    let mut op = 0x44C0usize;
+    while op <= 0x44FF {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if let Some(steps) = crate::instructions::move_sr_ccr::decode_move_to_ccr_steps(mode, reg) {
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: reg,
+                reg_dst: 0,
+            };
+        }
+        op += 1;
+    }
+
+    // Batch 1.11: MOVE <ea>, SR ($46C0..=$46FF)
+    let mut op = 0x46C0usize;
+    while op <= 0x46FF {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if let Some(steps) = crate::instructions::move_sr_ccr::decode_move_to_sr_steps(mode, reg) {
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: reg,
+                reg_dst: 0,
+            };
+        }
+        op += 1;
+    }
+
+    // Batch 1.11: MOVE SR, <ea> ($40C0..=$40FF)
+    let mut op = 0x40C0usize;
+    while op <= 0x40FF {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if let Some(steps) = crate::instructions::move_sr_ccr::decode_move_from_sr_steps(mode, reg)
+        {
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: 0,
+                reg_dst: reg,
+            };
+        }
+        op += 1;
+    }
+
+    // Batch 1.11: TAS <ea> ($4AC0..=$4AFF)
+    let mut op = 0x4AC0usize;
+    while op <= 0x4AFF {
+        let mode = ((op >> 3) & 7) as u8;
+        let reg = (op & 7) as u8;
+        if let Some(steps) = crate::instructions::tas::decode_tas_steps(mode, reg) {
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: reg,
+                reg_dst: reg,
+            };
+        }
+        op += 1;
+    }
+
     table
 }
 

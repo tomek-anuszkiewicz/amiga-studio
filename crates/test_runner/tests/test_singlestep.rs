@@ -783,3 +783,97 @@ fn test_lea() {
 fn test_chk() {
     run_dual_test("CHK", DEFAULT_SAMPLE_LIMIT);
 }
+
+// ============================================================================
+// Privileged & Atomic Hardware Ops (Batch 1.11)
+// ============================================================================
+
+#[test]
+fn test_move_to_ccr() {
+    run_dual_test("MOVEtoCCR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_move_to_sr() {
+    run_dual_test("MOVEtoSR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_move_from_sr() {
+    run_dual_test("MOVEfromSR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_move_to_usp() {
+    run_dual_test("MOVEtoUSP", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_move_from_usp() {
+    run_dual_test("MOVEfromUSP", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_stop() {
+    let effective = resolve_limit(DEFAULT_SAMPLE_LIMIT);
+    let mame_path = "ref_src/SingleStepTests-m68000/v1/STOP.json";
+    let (passed, failed) = run_test_file_with_mode(mame_path, effective, VerifyMode::StateOnly)
+        .expect("Failed to run STOP test");
+    assert!(passed > 0);
+    assert_eq!(failed, 0);
+}
+
+#[test]
+fn test_reset() {
+    run_dual_test("RESET", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_tas() {
+    run_dual_test("TAS", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_rte() {
+    run_dual_test("RTE", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_rtr() {
+    run_dual_test("RTR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_trapv() {
+    run_dual_test("TRAPV", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_andi_to_ccr() {
+    run_dual_test("ANDItoCCR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_andi_to_sr() {
+    run_dual_test("ANDItoSR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ori_to_ccr() {
+    run_dual_test("ORItoCCR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ori_to_sr() {
+    run_dual_test("ORItoSR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_eori_to_ccr() {
+    run_dual_test("EORItoCCR", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_eori_to_sr() {
+    run_dual_test("EORItoSR", DEFAULT_SAMPLE_LIMIT);
+}

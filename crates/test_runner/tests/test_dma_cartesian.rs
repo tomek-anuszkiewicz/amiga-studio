@@ -292,3 +292,29 @@ fn test_dma_cartesian_looping_and_scc() {
 fn test_dma_cartesian_stack_frame_control() {
     run_cartesian_for_opcodes(&["SWAP", "EXG", "LINK", "UNLINK", "LEA", "CHK"]);
 }
+
+// ============================================================================
+// Privileged & Atomic Hardware Ops (Batch 1.11)
+// ============================================================================
+
+#[test]
+fn test_dma_cartesian_privileged_and_atomic() {
+    run_cartesian_for_opcodes(&[
+        "TAS",
+        "RTE",
+        "RTR",
+        "TRAPV",
+        "MOVEtoCCR",
+        "MOVEtoSR",
+        "MOVEfromSR",
+        "MOVEtoUSP",
+        "MOVEfromUSP",
+        "RESET",
+        "ANDItoCCR",
+        "ANDItoSR",
+        "ORItoCCR",
+        "ORItoSR",
+        "EORItoCCR",
+        "EORItoSR",
+    ]);
+}

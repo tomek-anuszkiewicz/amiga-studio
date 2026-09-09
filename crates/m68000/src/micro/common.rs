@@ -313,3 +313,103 @@ pub static STEPS_ADDRESS_ERROR: [MicroStep; 25] = [
     PREFETCH_TARGET_READ,
     PREFETCH_TARGET_FINISH,
 ];
+
+// ============================================================================
+// Multi-Clock Idle Building Blocks
+// ============================================================================
+
+/// 4-clock internal idle sequence (2 CCKs)
+pub const ALU_IDLE_4CLK: MicroStep = MicroStep {
+    step_fn: None,
+    alu_fn: None,
+    base_clocks: 4,
+};
+
+/// 8-clock internal idle sequence (4 CCKs)
+pub const ALU_IDLE_8CLK: MicroStep = MicroStep {
+    step_fn: None,
+    alu_fn: None,
+    base_clocks: 8,
+};
+
+/// 128-clock internal idle sequence for RESET instruction (64 CCKs)
+pub const ALU_IDLE_128CLK: MicroStep = MicroStep {
+    step_fn: None,
+    alu_fn: None,
+    base_clocks: 128,
+};
+
+// ============================================================================
+// Prefetch Queue Refill Building Blocks (SR / CCR Modifications)
+// ============================================================================
+
+/// CCK1: Refills first word of prefetch queue from PC - 2 directly into `prefetch[0]`
+pub const REFILL_FIRST_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_refill_first);
+
+/// CCK2: Finishes first refill read cycle
+pub const REFILL_FIRST_FINISH: MicroStep = BUS_READ_IDLE;
+
+/// CCK1: Refills second word of prefetch queue from PC directly into `micro.irc`
+pub const REFILL_SECOND_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_refill_second);
+
+/// CCK2: Finishes second refill read cycle
+pub const REFILL_SECOND_FINISH: MicroStep = BUS_READ_IDLE;
+
+// ============================================================================
+// Stack Pop Status Register Building Blocks (RTE, RTR)
+// ============================================================================
+
+/// CCK1: Stack pop status word read from (SP)
+pub const POP_STACK_SR_READ: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_sr_read);
+
+/// CCK2: Stack pop status word finish: SP += 2
+pub const POP_STACK_SR_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_sr_finish);
+
+/// CCK2: Stack pop PC low word finish for RTE: SP += 2, apply restored SR
+pub const POP_STACK_RTE_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_rte_finish);
+
+/// CCK2: Stack pop status word finish for RTR: SP += 2, set CCR
+pub const POP_STACK_CCR_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_ccr_finish);
+
+// ============================================================================
+// Privilege Violation Exception Pipeline (Vector 8, 34 Clocks / 17 CCKs)
+// ============================================================================
+
+/// Initial setup for Privilege Violation exception: saves old SR, switches to supervisor
+pub fn alu_privilege_violation_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let vector_addr = 0x0000_0020;
+    let return_pc = state.instruction_pc;
+    let old_sr = state.sr;
+    state.set_supervisor(true);
+    state.sr &= !0x8000;
+    state.micro.source = return_pc;
+    state.micro.destination = old_sr as u32;
+    state.micro.ea_addr = vector_addr;
+}
+
+pub static ALU_PRIVILEGE_VIOLATION_INIT: MicroStep = MicroStep {
+    step_fn: None,
+    alu_fn: Some(alu_privilege_violation_init),
+    base_clocks: 2,
+};
+
+/// Microcode pipeline for Privilege Violation exception (Vector 8, 34 CPU clocks / 17 CCKs)
+pub static STEPS_PRIVILEGE_VIOLATION: [MicroStep; 17] = [
+    ALU_PRIVILEGE_VIOLATION_INIT,
+    ALU_IDLE,
+    EXCEPTION_PUSH_PCLO_IDLE,
+    EXCEPTION_PUSH_PCLO_WRITE,
+    EXCEPTION_PUSH_SR_IDLE,
+    EXCEPTION_PUSH_SR_WRITE,
+    EXCEPTION_PUSH_PCHI_IDLE,
+    EXCEPTION_PUSH_PCHI_WRITE,
+    READ_VECTOR_HIGH_READ,
+    BUS_READ_IDLE,
+    READ_VECTOR_LOW_READ,
+    READ_VECTOR_LOW_FINISH,
+    READ_TARGET_OPCODE_READ,
+    BUS_READ_IDLE,
+    ALU_IDLE,
+    PREFETCH_TARGET_READ,
+    PREFETCH_TARGET_FINISH,
+];

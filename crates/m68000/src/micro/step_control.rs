@@ -401,4 +401,83 @@ impl Cpu {
             }
         }
     }
+
+    // ========================================================================
+    // Prefetch Queue Refill Handlers (SR / CCR Modifications)
+    // ========================================================================
+
+    /// CCK1: Refills first word of prefetch queue from PC - 2 directly into `prefetch[0]`
+    pub fn step_bus_read_refill_first(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.pc.wrapping_sub(2);
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, true, true);
+            return BusResult::Ready(());
+        }
+        match bus.read_word(addr & 0x00FF_FFFF) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.prefetch[0] = data;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Refills second word of prefetch queue from PC directly into `micro.irc`
+    pub fn step_bus_read_refill_second(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let addr = self.state.pc;
+        if (addr & 1) != 0 {
+            self.trigger_address_error(addr, true, true);
+            return BusResult::Ready(());
+        }
+        match bus.read_word(addr & 0x00FF_FFFF) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.irc = data;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    // ========================================================================
+    // Stack Pop Handlers for SR and CCR (RTE, RTR)
+    // ========================================================================
+
+    /// CCK1: Reads status word from (SP) into `micro.source`
+    pub fn step_bus_pop_stack_sr_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
+        let sp = self.state.read_a(7);
+        if (sp & 1) != 0 {
+            self.trigger_address_error(sp, true, false);
+            return BusResult::Ready(());
+        }
+        match bus.read_word(sp & 0x00FF_FFFF) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.source = data as u32;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK2: Latches status word into `micro.source`, advances SP += 2
+    pub fn step_bus_pop_stack_sr_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
+        let sp = self.state.read_a(7);
+        self.state.write_a(7, sp.wrapping_add(2));
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Latches full return PC and sets restored SR for RTE, advances SP += 2
+    pub fn step_bus_pop_stack_rte_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
+        let sp = self.state.read_a(7);
+        self.state.write_a(7, sp.wrapping_add(2));
+        self.state.set_sr(self.state.micro.source as u16);
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Latches low byte of status word into CCR, advances SP += 2
+    pub fn step_bus_pop_stack_ccr_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
+        let sp = self.state.read_a(7);
+        self.state.write_a(7, sp.wrapping_add(2));
+        self.state.set_ccr((self.state.micro.source & 0xFF) as u8);
+        BusResult::Ready(())
+    }
 }

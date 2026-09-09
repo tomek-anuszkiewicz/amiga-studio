@@ -234,6 +234,18 @@ impl CpuState {
         (self.sr & SR_S) != 0
     }
 
+    /// Returns the 8-bit Condition Code Register (lower byte of SR, bits 0..=4)
+    #[inline(always)]
+    pub fn get_ccr(&self) -> u8 {
+        (self.sr & 0x001F) as u8
+    }
+
+    /// Sets the Condition Code Register (lower byte of SR, bits 0..=4)
+    #[inline(always)]
+    pub fn set_ccr(&mut self, ccr: u8) {
+        self.sr = (self.sr & !0x001F) | ((ccr as u16) & 0x001F);
+    }
+
     // --- Branchless Multi-Flag CCR Setters (Mechanical Sympathy) ---
 
     /// Sets all 5 flags (X, N, Z, V, C) simultaneously in a single 16-bit operation without branching.
