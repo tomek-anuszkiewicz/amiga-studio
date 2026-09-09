@@ -274,32 +274,33 @@ impl CpuState {
 
     // --- Condition Code Helpers ---
 
-    #[inline]
+    #[inline(always)]
     pub fn get_x(&self) -> bool {
         (self.sr & CCR_X) != 0
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn get_n(&self) -> bool {
         (self.sr & CCR_N) != 0
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn get_z(&self) -> bool {
         (self.sr & CCR_Z) != 0
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn get_v(&self) -> bool {
         (self.sr & CCR_V) != 0
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn get_c(&self) -> bool {
         (self.sr & CCR_C) != 0
     }
 
     /// Evaluates M68000 branch/conditional tests (conditions 0000..1111)
+    #[inline(always)]
     pub fn eval_condition(&self, cond: u8) -> bool {
         let c = self.get_c();
         let v = self.get_v();

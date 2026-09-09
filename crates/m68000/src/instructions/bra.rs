@@ -7,14 +7,12 @@ use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
-#[inline(always)]
 pub fn alu_bra_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let d8 = (state.ir & 0xFF) as i8;
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.ea_addr = base_pc.wrapping_add(d8 as i32 as u32);
 }
 
-#[inline(always)]
 pub fn alu_bra_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let disp = state.prefetch[0] as i16 as i32;
     let base_pc = state.pc.wrapping_sub(2);

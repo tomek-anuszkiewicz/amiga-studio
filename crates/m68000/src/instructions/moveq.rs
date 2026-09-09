@@ -8,7 +8,6 @@ use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
-#[inline(always)]
 pub fn alu_moveq(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let d8 = (state.ir & 0xFF) as i8 as i32 as u32;
     state.set_d_long(reg_dst as usize, d8);

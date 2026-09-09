@@ -54,7 +54,6 @@ pub static STEPS_BRANCH_NOT_TAKEN_WORD: [MicroStep; 6] = [
     common::PREFETCH_TARGET_FINISH,
 ];
 
-#[inline(always)]
 pub fn alu_bcc_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let cond = ((state.ir >> 8) & 0x0F) as u8;
     if state.eval_condition(cond) {
@@ -68,7 +67,6 @@ pub fn alu_bcc_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.micro_step = 0;
 }
 
-#[inline(always)]
 pub fn alu_bcc_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let cond = ((state.ir >> 8) & 0x0F) as u8;
     if state.eval_condition(cond) {

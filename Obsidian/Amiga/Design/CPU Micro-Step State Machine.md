@@ -156,10 +156,11 @@ All instruction modules reuse shared atomic Color Clock micro-step primitives ra
 To guarantee zero cognitive friction and seamless codebase navigation across all instruction files, every module adheres to the standard 6-section sequence:
 1. **Module Doc Comment:** High-level summary of mnemonic, addressing modes, and timing.
 2. **Imports:** Imports from `crate::micro::common::*`, `crate::core::*`, `crate::micro::ea`.
-3. **Leaf ALU Functions:** Inline arithmetic/logic helpers (`#[inline(always)] fn alu_...`) operating purely on `CpuState`.
-4. **Specialized Micro-Step Handlers:** Instruction-specific `StepFn` callbacks (if any required).
-5. **Static Micro-Step Arrays:** `pub static STEPS_...: [MicroStep; N] = [...]`, ordered strictly by canonical addressing mode progression (`DN`, `AN`, `AI`, `PI`, `PD`, `D16_AN`, `IDX_AN`, `ABSW`, `ABSL`, `D16_PC`, `IDX_PC`, `IMM`). All instantaneous internal steps use `MicroStep::alu(...)`.
-6. **Opcode Decoder:** Fast compile-time function `pub const fn decode_..._steps(...) -> Option<&'static [MicroStep]>`.
+3. **Leaf ALU Functions:** Direct arithmetic/logic helpers (`#[inline(always)] fn add_w(...)`, `sub_b(...)`) called directly by ALU callbacks to execute branchless wrapping math and CCR flag updates.
+4. **Micro-Step ALU Callbacks (`AluFn`):** Functor callbacks (`fn alu_...`) stored as function pointers in `MicroStep.alu_fn`, dispatched dynamically via the micro-step engine.
+5. **Specialized Micro-Step Handlers (`StepFn`):** Instruction-specific bus/execution handlers (if any required).
+6. **Static Micro-Step Arrays:** `pub static STEPS_...: [MicroStep; N] = [...]`, ordered strictly by canonical addressing mode progression (`DN`, `AN`, `AI`, `PI`, `PD`, `D16_AN`, `IDX_AN`, `ABSW`, `ABSL`, `D16_PC`, `IDX_PC`, `IMM`). All instantaneous internal steps use `MicroStep::alu(...)`.
+7. **Opcode Decoder:** Fast compile-time function `pub const fn decode_..._steps(...) -> Option<&'static [MicroStep]>`.
 
 ---
 

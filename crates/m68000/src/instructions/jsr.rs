@@ -9,21 +9,18 @@ use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
-#[inline(always)]
 pub fn alu_jsr_ai(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.read_a(reg_src as usize);
     let ret = state.pc.wrapping_sub(2);
     state.micro.destination = ret;
 }
 
-#[inline(always)]
 pub fn alu_jsr_d16_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let disp = (state.prefetch[0] as i16) as i32;
     state.micro.ea_addr = state.read_a(reg_src as usize).wrapping_add(disp as u32);
     state.micro.destination = state.pc;
 }
 
-#[inline(always)]
 pub fn alu_jsr_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let ext = state.prefetch[0];
     let disp8 = (ext & 0xFF) as i8 as i32;
@@ -33,19 +30,16 @@ pub fn alu_jsr_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     state.micro.destination = state.pc;
 }
 
-#[inline(always)]
 pub fn alu_jsr_absw(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.prefetch[0] as i16 as i32 as u32;
     state.micro.destination = state.pc;
 }
 
-#[inline(always)]
 pub fn alu_jsr_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.micro.ea_high | (state.prefetch[0] as u32);
     state.micro.destination = state.pc;
 }
 
-#[inline(always)]
 pub fn alu_jsr_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let disp = (state.prefetch[0] as i16) as i32;
     let base_pc = state.pc.wrapping_sub(2);
@@ -53,7 +47,6 @@ pub fn alu_jsr_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.destination = state.pc;
 }
 
-#[inline(always)]
 pub fn alu_jsr_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let ext = state.prefetch[0];
     let disp8 = (ext & 0xFF) as i8 as i32;
