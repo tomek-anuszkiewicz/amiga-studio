@@ -23,9 +23,6 @@ pub struct CpuMicroState {
     /// Transfer progress state for MOVEM block transfers
     #[serde(default)]
     pub movem_state: u16,
-    /// Tracks whether the last memory read targeted destination vs source (for shared CCK2 loggers)
-    #[serde(default)]
-    pub read_to_dest: bool,
     /// Clocks remaining for the active micro-step (0 when completed or between steps)
     #[serde(default)]
     pub clocks_remaining: u16,
@@ -81,7 +78,6 @@ impl CpuMicroState {
             ea_high: 0,
             movem_mask: 0,
             movem_state: 0,
-            read_to_dest: false,
             clocks_remaining: 0,
             source: 0,
             destination: 0,
@@ -104,7 +100,6 @@ impl CpuMicroState {
         self.ea_high = 0;
         self.movem_mask = 0;
         self.movem_state = 0;
-        self.read_to_dest = false;
         self.clocks_remaining = 0;
         self.source = 0;
         self.destination = 0;

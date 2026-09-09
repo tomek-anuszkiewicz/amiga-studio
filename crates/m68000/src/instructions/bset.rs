@@ -115,11 +115,11 @@ pub static STEPS_BSET_DYN_AI: [MicroStep; 6] = [
     },
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_dyn_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -131,11 +131,11 @@ pub static STEPS_BSET_DYN_PI: [MicroStep; 6] = [
     },
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_dyn_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -148,11 +148,11 @@ pub static STEPS_BSET_DYN_PD: [MicroStep; 7] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_dyn_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -166,11 +166,11 @@ pub static STEPS_BSET_DYN_D16: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_dyn_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -185,11 +185,11 @@ pub static STEPS_BSET_DYN_IDX: [MicroStep; 9] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_dyn_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -203,11 +203,11 @@ pub static STEPS_BSET_DYN_ABSW: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_dyn_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -227,11 +227,11 @@ pub static STEPS_BSET_DYN_ABSL: [MicroStep; 10] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_dyn_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -274,11 +274,11 @@ pub static STEPS_BSET_STAT_AI: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_imm_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -292,11 +292,11 @@ pub static STEPS_BSET_STAT_PI: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_imm_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -315,11 +315,11 @@ pub static STEPS_BSET_STAT_PD: [MicroStep; 9] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_imm_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -339,11 +339,11 @@ pub static STEPS_BSET_STAT_D16: [MicroStep; 10] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_imm_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -364,11 +364,11 @@ pub static STEPS_BSET_STAT_IDX: [MicroStep; 11] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_imm_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -388,11 +388,11 @@ pub static STEPS_BSET_STAT_ABSW: [MicroStep; 10] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_imm_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];
@@ -418,11 +418,11 @@ pub static STEPS_BSET_STAT_ABSL: [MicroStep; 12] = [
     common::READ_DST_BYTE,
     common::READ_BYTE_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_scratch_read),
+        step_fn: Some(Cpu::step_prefetch_irc_read),
         alu_fn: Some(alu_bset_b_imm_mem),
         base_clocks: 2,
     },
-    common::PREFETCH_SCRATCH_FINISH,
+    common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE_RETIRE,
 ];

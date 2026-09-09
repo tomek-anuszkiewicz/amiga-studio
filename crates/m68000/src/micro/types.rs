@@ -84,26 +84,6 @@ impl MicroStep {
         }
     }
 
-    /// Creates a 2-clock ALU micro-step (1 CCK, no bus cycle)
-    #[inline(always)]
-    pub const fn alu_cck(alu_fn: AluFn) -> Self {
-        Self {
-            step_fn: None,
-            alu_fn: Some(alu_fn),
-            base_clocks: 2,
-        }
-    }
-
-    /// Creates a generic bus cycle micro-step
-    #[inline(always)]
-    pub const fn bus(step_fn: StepFn, base_clocks: u8) -> Self {
-        Self {
-            step_fn: Some(step_fn),
-            alu_fn: None,
-            base_clocks,
-        }
-    }
-
     /// Creates a 2-clock Color Clock (CCK) micro-step (1 CCK = 2 CPU clocks)
     #[inline(always)]
     pub const fn cck(step_fn: StepFn) -> Self {
@@ -121,16 +101,6 @@ impl MicroStep {
             step_fn: None,
             alu_fn: None,
             base_clocks: 2,
-        }
-    }
-
-    /// Creates an idle micro-step for arbitrary clock count
-    #[inline(always)]
-    pub const fn idle(base_clocks: u8) -> Self {
-        Self {
-            step_fn: None,
-            alu_fn: None,
-            base_clocks,
         }
     }
 }

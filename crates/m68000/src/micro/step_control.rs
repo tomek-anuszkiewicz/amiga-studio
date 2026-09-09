@@ -51,15 +51,6 @@ impl Cpu {
         BusResult::Ready(())
     }
 
-    /// CCK2: Legacy forwarding alias for target refill
-    #[inline(always)]
-    pub fn step_prefetch_target_and_retire_2clk(
-        &mut self,
-        bus: &mut dyn AddressBus,
-    ) -> BusResult<()> {
-        self.step_prefetch_target_finish(bus)
-    }
-
     // ========================================================================
     // Stack Push Handlers (PEA, JSR, BSR)
     // ========================================================================
@@ -93,15 +84,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
         }
-    }
-
-    /// CCK2: Legacy forwarding alias for retiring low word push
-    #[inline(always)]
-    pub fn step_bus_push_stack_low_write_and_retire(
-        &mut self,
-        bus: &mut dyn AddressBus,
-    ) -> BusResult<()> {
-        self.step_bus_push_stack_low_write(bus)
     }
 
     // ========================================================================

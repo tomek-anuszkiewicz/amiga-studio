@@ -17,8 +17,8 @@ const READ_WORD_FINISH: MicroStep = common::READ_WORD_FINISH;
 const BUS_WRITE_IDLE: MicroStep = common::BUS_WRITE_IDLE;
 const WRITE_DST_WORD: MicroStep = common::WRITE_DST_WORD;
 const WRITE_DST_WORD_RETIRE: MicroStep = common::WRITE_DST_WORD_RETIRE;
-const PREFETCH_SCRATCH_READ: MicroStep = common::PREFETCH_SCRATCH_READ;
-const PREFETCH_SCRATCH_FINISH: MicroStep = common::PREFETCH_SCRATCH_FINISH;
+const PREFETCH_IRC_READ: MicroStep = common::PREFETCH_IRC_READ;
+const PREFETCH_IRC_FINISH: MicroStep = common::PREFETCH_IRC_FINISH;
 const FETCH_EXT_READ: MicroStep = common::FETCH_EXT_READ;
 const FETCH_EXT_FINISH: MicroStep = common::FETCH_EXT_FINISH;
 const PREFETCH_NEXT_READ: MicroStep = common::PREFETCH_NEXT_READ;
@@ -115,8 +115,8 @@ pub static STEPS_MOVE_W_DN_PI: [MicroStep; 6] = [
 pub static STEPS_MOVE_W_DN_PD: [MicroStep; 6] = [
     MicroStep::alu(alu_move_w_src_dn),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -206,8 +206,8 @@ pub static STEPS_MOVE_W_AN_PI: [MicroStep; 6] = [
 pub static STEPS_MOVE_W_AN_PD: [MicroStep; 6] = [
     MicroStep::alu(alu_move_w_src_an),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -321,8 +321,8 @@ pub static STEPS_MOVE_W_AI_PD: [MicroStep; 8] = [
     READ_WORD_FINISH,
     MicroStep::alu(alu_move_w_src_mem),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -460,8 +460,8 @@ pub static STEPS_MOVE_W_PI_PD: [MicroStep; 8] = [
     READ_WORD_FINISH,
     MicroStep::alu(alu_move_w_src_mem),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -603,8 +603,8 @@ pub static STEPS_MOVE_W_PD_PD: [MicroStep; 9] = [
     READ_WORD_FINISH,
     MicroStep::alu(alu_move_w_src_mem),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -754,8 +754,8 @@ pub static STEPS_MOVE_W_D16_PD: [MicroStep; 10] = [
     READ_WORD_FINISH,
     MicroStep::alu(alu_move_w_src_mem),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -913,8 +913,8 @@ pub static STEPS_MOVE_W_IDX_PD: [MicroStep; 11] = [
     READ_WORD_FINISH,
     MicroStep::alu(alu_move_w_src_mem),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -1072,8 +1072,8 @@ pub static STEPS_MOVE_W_ABSW_PD: [MicroStep; 10] = [
     READ_WORD_FINISH,
     MicroStep::alu(alu_move_w_src_mem),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -1251,8 +1251,8 @@ pub static STEPS_MOVE_W_ABSL_PD: [MicroStep; 12] = [
     READ_WORD_FINISH,
     MicroStep::alu(alu_move_w_src_mem),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -1430,8 +1430,8 @@ pub static STEPS_MOVE_W_PCD16_PD: [MicroStep; 10] = [
     READ_WORD_FINISH,
     MicroStep::alu(alu_move_w_src_mem),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -1589,8 +1589,8 @@ pub static STEPS_MOVE_W_PCIDX_PD: [MicroStep; 11] = [
     READ_WORD_FINISH,
     MicroStep::alu(alu_move_w_src_mem),
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];
@@ -1733,8 +1733,8 @@ pub static STEPS_MOVE_W_IMM_PD: [MicroStep; 7] = [
     },
     FETCH_EXT_FINISH,
     MicroStep::alu(ea::ea_calc_dst_pd_w),
-    PREFETCH_SCRATCH_READ,
-    PREFETCH_SCRATCH_FINISH,
+    PREFETCH_IRC_READ,
+    PREFETCH_IRC_FINISH,
     BUS_WRITE_IDLE,
     WRITE_DST_WORD_RETIRE,
 ];

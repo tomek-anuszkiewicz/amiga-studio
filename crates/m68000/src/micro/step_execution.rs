@@ -15,7 +15,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.source = data as u32;
-                self.state.micro.read_to_dest = false;
                 BusResult::Ready(())
             }
         }
@@ -33,7 +32,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.source = data as u32;
-                self.state.micro.read_to_dest = false;
                 BusResult::Ready(())
             }
         }
@@ -46,7 +44,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.destination = data as u32;
-                self.state.micro.read_to_dest = true;
                 BusResult::Ready(())
             }
         }
@@ -64,7 +61,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.destination = data as u32;
-                self.state.micro.read_to_dest = true;
                 BusResult::Ready(())
             }
         }
@@ -82,7 +78,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.source = (data as u32) << 16;
-                self.state.micro.read_to_dest = false;
                 BusResult::Ready(())
             }
         }
@@ -101,7 +96,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.source =
                     (self.state.micro.source & 0xFFFF_0000) | (data as u32 & 0xFFFF);
-                self.state.micro.read_to_dest = false;
                 BusResult::Ready(())
             }
         }
@@ -119,7 +113,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.destination = (data as u32) << 16;
-                self.state.micro.read_to_dest = true;
                 BusResult::Ready(())
             }
         }
@@ -138,7 +131,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.destination =
                     (self.state.micro.destination & 0xFFFF_0000) | (data as u32 & 0xFFFF);
-                self.state.micro.read_to_dest = true;
                 BusResult::Ready(())
             }
         }
@@ -157,7 +149,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.source =
                     (self.state.micro.source & 0x0000_FFFF) | ((data as u32) << 16);
-                self.state.micro.read_to_dest = false;
                 BusResult::Ready(())
             }
         }
@@ -176,7 +167,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.destination =
                     (self.state.micro.destination & 0x0000_FFFF) | ((data as u32) << 16);
-                self.state.micro.read_to_dest = true;
                 BusResult::Ready(())
             }
         }
@@ -193,15 +183,6 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Legacy forwarding alias for retiring byte write
-    #[inline(always)]
-    pub fn step_bus_write_dst_byte_and_retire(
-        &mut self,
-        bus: &mut dyn AddressBus,
-    ) -> BusResult<()> {
-        self.step_bus_write_dst_byte(bus)
-    }
-
     /// CCK2: Writes word from `self.state.micro.destination` to memory
     pub fn step_bus_write_dst_word(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
@@ -215,15 +196,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
         }
-    }
-
-    /// CCK2: Legacy forwarding alias for retiring word write
-    #[inline(always)]
-    pub fn step_bus_write_dst_word_and_retire(
-        &mut self,
-        bus: &mut dyn AddressBus,
-    ) -> BusResult<()> {
-        self.step_bus_write_dst_word(bus)
     }
 
     /// CCK2: Writes high word of 32-bit destination to memory
@@ -254,15 +226,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
         }
-    }
-
-    /// CCK2: Legacy forwarding alias for retiring long low write
-    #[inline(always)]
-    pub fn step_bus_write_dst_long_low_and_retire(
-        &mut self,
-        bus: &mut dyn AddressBus,
-    ) -> BusResult<()> {
-        self.step_bus_write_dst_long_low(bus)
     }
 
     /// CCK1: Extension word fetch from PC directly into `self.state.prefetch[0]`
@@ -307,12 +270,6 @@ impl Cpu {
         }
     }
 
-    /// CCK1: Legacy forwarding alias for prefetch to scratch/IRC
-    #[inline(always)]
-    pub fn step_prefetch_scratch_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        self.step_prefetch_irc_read(bus)
-    }
-
     /// CCK2: Prefetch to IRC finish - advances prefetch pipeline into IR
     pub fn step_prefetch_irc_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         self.state.ir = self.state.prefetch[0];
@@ -320,11 +277,5 @@ impl Cpu {
         self.state.pc = self.state.pc.wrapping_add(2);
         self.state.micro.prefetch_retired = true;
         BusResult::Ready(())
-    }
-
-    /// CCK2: Legacy forwarding alias for prefetch to scratch/IRC finish
-    #[inline(always)]
-    pub fn step_prefetch_scratch_finish(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        self.step_prefetch_irc_finish(bus)
     }
 }

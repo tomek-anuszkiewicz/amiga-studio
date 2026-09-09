@@ -29,12 +29,6 @@ pub const PREFETCH_IRC_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_irc_r
 /// CCK2: Prefetch next opcode to IRC finish (latches into irc and advances prefetch)
 pub const PREFETCH_IRC_FINISH: MicroStep = MicroStep::cck(Cpu::step_prefetch_irc_finish);
 
-/// CCK1: Forwarding alias for prefetch to IRC
-pub const PREFETCH_SCRATCH_READ: MicroStep = PREFETCH_IRC_READ;
-
-/// CCK2: Forwarding alias for prefetch to IRC finish
-pub const PREFETCH_SCRATCH_FINISH: MicroStep = PREFETCH_IRC_FINISH;
-
 /// CCK1: Bus write idle step (internal address/pin setup, bus free for Agnus DMA)
 pub const BUS_WRITE_IDLE: MicroStep = MicroStep::cck_idle();
 
@@ -56,13 +50,14 @@ pub const READ_DST_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_word)
 /// CCK1: Reads destination byte from memory into `destination`
 pub const READ_DST_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_byte);
 
+/// CCK2: Writes word from `destination` to memory (non-retiring)
+pub const WRITE_DST_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_word);
+
 /// CCK2: Writes word from `destination` to memory and retires
-pub const WRITE_DST_WORD_RETIRE: MicroStep =
-    MicroStep::cck(Cpu::step_bus_write_dst_word_and_retire);
+pub const WRITE_DST_WORD_RETIRE: MicroStep = WRITE_DST_WORD;
 
 /// CCK2: Writes byte from `destination` to memory and retires
-pub const WRITE_DST_BYTE_RETIRE: MicroStep =
-    MicroStep::cck(Cpu::step_bus_write_dst_byte_and_retire);
+pub const WRITE_DST_BYTE_RETIRE: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_byte);
 
 /// CCK1: Reads source long high word from memory into `source`
 pub const READ_SRC_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_src_long_high);
@@ -85,15 +80,11 @@ pub const READ_DST_SPLIT_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst
 /// CCK2: Finishes reading split high word (idle CCK)
 pub const READ_SPLIT_HIGH_FINISH: MicroStep = MicroStep::cck_idle();
 
-/// CCK2: Writes word from `destination` to memory (non-retiring)
-pub const WRITE_DST_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_word);
-
 /// CCK2: Writes high word of 32-bit destination to memory (non-retiring)
 pub const WRITE_DST_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_long_high);
 
 /// CCK2: Writes low word of 32-bit destination to memory + 2 and retires
-pub const WRITE_DST_LONG_LOW_RETIRE: MicroStep =
-    MicroStep::cck(Cpu::step_bus_write_dst_long_low_and_retire);
+pub const WRITE_DST_LONG_LOW_RETIRE: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_long_low);
 
 // ============================================================================
 // 2-Clock Control Flow, Stack & Target Refill Building Blocks
@@ -110,8 +101,7 @@ pub const READ_TARGET_OPCODE_FINISH: MicroStep = MicroStep::cck_idle();
 pub const PREFETCH_TARGET_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_target_read);
 
 /// CCK2: Logs second target word transaction and completes pipeline refill retirement
-pub const PREFETCH_TARGET_RETIRE_2CLK: MicroStep =
-    MicroStep::cck(Cpu::step_prefetch_target_and_retire_2clk);
+pub const PREFETCH_TARGET_RETIRE_2CLK: MicroStep = MicroStep::cck(Cpu::step_prefetch_target_finish);
 
 /// CCK1: Stack push high word setup: SP -= 4, address check, idle bus
 pub const PUSH_STACK_HIGH_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_push_stack_high_idle);
@@ -122,9 +112,8 @@ pub const PUSH_STACK_HIGH_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_push_s
 /// CCK2: Stack push low word write to SP + 2 (non-retiring, for JSR/BSR)
 pub const PUSH_STACK_LOW_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_push_stack_low_write);
 
-/// CCK2: Stack push low word write to SP + 2 and retires with scratch prefetch (for PEA)
-pub const PUSH_STACK_LOW_WRITE_RETIRE: MicroStep =
-    MicroStep::cck(Cpu::step_bus_push_stack_low_write_and_retire);
+/// CCK2: Stack push low word write to SP + 2 and retires (for PEA)
+pub const PUSH_STACK_LOW_WRITE_RETIRE: MicroStep = PUSH_STACK_LOW_WRITE;
 
 /// CCK1: Stack pop high word read from (SP)
 pub const POP_STACK_HIGH_READ: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_high_read);
