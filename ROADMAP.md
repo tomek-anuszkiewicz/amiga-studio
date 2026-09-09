@@ -43,7 +43,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - *Completed:* **Batch 1.1 (Isomorphic Arithmetic):** `SUB`, `SUBA`, `SUBI`, `SUBQ`, `SUBX` (derived from `ADD*` archetypes; 100% SingleStepTests & Cartesian DMA verified).
   - *Completed:* **Batch 1.2 (Isomorphic Logic):** `AND`, `ANDI`, `OR`, `ORI`, `EOR`, `EORI` (derived from `NOT`/`ADD` bitwise ALU blueprints; 100% SingleStepTests & Cartesian DMA verified).
   - *Completed:* **Batch 1.3 (Comparisons & Tests):** `CMP`, `CMPA`, `CMPI`, `TST` (derived from `CMPM` and subtractive flags; 100% SingleStepTests & Cartesian DMA verified).
-  - *Batch 1.4 (Isomorphic Shifts & Rotates):* `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR` (derived from `ASL` archetype).
+  - *Completed:* **Batch 1.4 (Isomorphic Shifts & Rotates):** `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR` (derived from `ASL` archetype; 100% SingleStepTests & Cartesian DMA verified).
   - *Batch 1.5 (Isomorphic Bit Operations):* `BTST`, `BCLR`, `BCHG` (derived from `BSET` archetype).
   - *Batch 1.6 (Remaining Move Sizes):* `MOVE.B`, `MOVE.L` (derived from `MOVE.W` archetype).
 - **Phase B: Implementation of Remaining Complex & Multi-Cycle Instructions:**

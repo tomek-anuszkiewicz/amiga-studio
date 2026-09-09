@@ -231,7 +231,11 @@ fn test_dma_cartesian_bitops() {
 
 #[test]
 fn test_dma_cartesian_shifts() {
-    run_cartesian_for_opcodes(&["ASL.b", "ASL.w", "ASL.l"]);
+    run_cartesian_for_opcodes(&[
+        "ASL.b", "ASL.w", "ASL.l", "ASR.b", "ASR.w", "ASR.l", "LSL.b", "LSL.w", "LSL.l", "LSR.b",
+        "LSR.w", "LSR.l", "ROL.b", "ROL.w", "ROL.l", "ROR.b", "ROR.w", "ROR.l", "ROXL.b", "ROXL.w",
+        "ROXL.l", "ROXR.b", "ROXR.w", "ROXR.l",
+    ]);
 }
 
 #[test]

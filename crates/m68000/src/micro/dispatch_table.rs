@@ -470,7 +470,7 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
-    // Phase 5: ASL opcodes ($E000..=$EFFF where shift_type == 0 && dir == 1)
+    // Phase 5: Shift & Rotate opcodes ($E000..=$EFFF)
     let mut op = 0xE000usize;
     while op <= 0xEFFF {
         let ir = op as u16;
@@ -483,14 +483,24 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
                 let mode = ((ir >> 3) & 7) as u8;
                 let reg = (ir & 7) as u8;
 
-                if shift_type == 0 && dir == 1 {
-                    if let Some(steps) = crate::instructions::asl::decode_asl_mem_steps(mode, reg) {
-                        table[op] = OpcodeDescriptor {
-                            steps,
-                            reg_src: 0,
-                            reg_dst: reg,
-                        };
-                    }
+                let maybe_steps = match (shift_type, dir) {
+                    (0, 0) => crate::instructions::asr::decode_asr_mem_steps(mode, reg),
+                    (0, 1) => crate::instructions::asl::decode_asl_mem_steps(mode, reg),
+                    (1, 0) => crate::instructions::lsr::decode_lsr_mem_steps(mode, reg),
+                    (1, 1) => crate::instructions::lsl::decode_lsl_mem_steps(mode, reg),
+                    (2, 0) => crate::instructions::roxr::decode_roxr_mem_steps(mode, reg),
+                    (2, 1) => crate::instructions::roxl::decode_roxl_mem_steps(mode, reg),
+                    (3, 0) => crate::instructions::ror::decode_ror_mem_steps(mode, reg),
+                    (3, 1) => crate::instructions::rol::decode_rol_mem_steps(mode, reg),
+                    _ => None,
+                };
+
+                if let Some(steps) = maybe_steps {
+                    table[op] = OpcodeDescriptor {
+                        steps,
+                        reg_src: 0,
+                        reg_dst: reg,
+                    };
                 }
             }
         } else {
@@ -502,23 +512,31 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
             let shift_type = ((ir >> 3) & 3) as u8;
             let reg_dst = (ir & 7) as u8;
 
-            if shift_type == 0 && dir == 1 {
-                if let Some(steps) =
-                    crate::instructions::asl::decode_asl_reg_steps(is_reg_count, size)
-                {
-                    let reg_src = if is_reg_count {
-                        raw_cnt
-                    } else if raw_cnt == 0 {
-                        8
-                    } else {
-                        raw_cnt
-                    };
-                    table[op] = OpcodeDescriptor {
-                        steps,
-                        reg_src,
-                        reg_dst,
-                    };
-                }
+            let maybe_steps = match (shift_type, dir) {
+                (0, 0) => crate::instructions::asr::decode_asr_reg_steps(is_reg_count, size),
+                (0, 1) => crate::instructions::asl::decode_asl_reg_steps(is_reg_count, size),
+                (1, 0) => crate::instructions::lsr::decode_lsr_reg_steps(is_reg_count, size),
+                (1, 1) => crate::instructions::lsl::decode_lsl_reg_steps(is_reg_count, size),
+                (2, 0) => crate::instructions::roxr::decode_roxr_reg_steps(is_reg_count, size),
+                (2, 1) => crate::instructions::roxl::decode_roxl_reg_steps(is_reg_count, size),
+                (3, 0) => crate::instructions::ror::decode_ror_reg_steps(is_reg_count, size),
+                (3, 1) => crate::instructions::rol::decode_rol_reg_steps(is_reg_count, size),
+                _ => None,
+            };
+
+            if let Some(steps) = maybe_steps {
+                let reg_src = if is_reg_count {
+                    raw_cnt
+                } else if raw_cnt == 0 {
+                    8
+                } else {
+                    raw_cnt
+                };
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src,
+                    reg_dst,
+                };
             }
         }
         op += 1;

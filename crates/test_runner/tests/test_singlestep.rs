@@ -495,3 +495,112 @@ fn test_tst_w() {
 fn test_tst_l() {
     run_dual_test("TST.l", DEFAULT_SAMPLE_LIMIT);
 }
+
+// ============================================================================
+// Shifts & Rotates (Batch 1.4: ASR, LSL, LSR, ROL, ROR, ROXL, ROXR)
+// ============================================================================
+
+#[test]
+fn test_asr_b() {
+    run_dual_test("ASR.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_asr_w() {
+    run_dual_test("ASR.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_asr_l() {
+    run_dual_test("ASR.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_lsl_b() {
+    run_dual_test("LSL.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_lsl_w() {
+    run_dual_test("LSL.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_lsl_l() {
+    run_dual_test("LSL.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_lsr_b() {
+    run_dual_test("LSR.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_lsr_w() {
+    run_dual_test("LSR.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_lsr_l() {
+    run_dual_test("LSR.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_rol_b() {
+    run_dual_test("ROL.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_rol_w() {
+    run_dual_test("ROL.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_rol_l() {
+    run_dual_test("ROL.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ror_b() {
+    run_dual_test("ROR.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ror_w() {
+    run_dual_test("ROR.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_ror_l() {
+    run_dual_test("ROR.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxl_b() {
+    run_dual_test("ROXL.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxl_w() {
+    run_dual_test("ROXL.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxl_l() {
+    run_dual_test("ROXL.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxr_b() {
+    run_dual_test("ROXR.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxr_w() {
+    run_dual_test("ROXR.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_roxr_l() {
+    run_dual_test("ROXR.l", DEFAULT_SAMPLE_LIMIT);
+}
