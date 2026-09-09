@@ -118,3 +118,42 @@ fn test_internal_clocks_stepping() {
     assert!(!res2);
     assert_eq!(cpu.state.micro.internal_clocks, 0);
 }
+
+#[test]
+fn test_cycle_counter_monotonic_accumulation() {
+    let mut bus = MemoryBus::new();
+    bus.map_chip_ram_to_low_memory();
+    let mut cpu = Cpu::new();
+    assert_eq!(cpu.state.cycle_counter, 0);
+    assert_eq!(cpu.cycle_counter(), 0);
+
+    // Write NOP ($4E71) instructions at $1000 and $1002
+    bus.write_word_debug(0x1000, 0x4E71);
+    bus.write_word_debug(0x1002, 0x4E71);
+    bus.write_word_debug(0x1004, 0x4E71);
+
+    cpu.state.pc = 0x1000;
+    cpu.state.ir = 0x4E71;
+    cpu.state.prefetch[0] = 0x4E71;
+    cpu.state.pc = 0x1004;
+
+    // Step first NOP: should take 4 CPU clocks (2 CCK steps)
+    let clocks1 = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks1, 4);
+    assert_eq!(cpu.instruction_clocks, 4);
+    assert_eq!(cpu.state.cycle_counter, 4);
+    assert_eq!(cpu.cycle_counter(), 4);
+
+    // Step second NOP: instruction_clocks resets to 4, cycle_counter accumulates to 8
+    let clocks2 = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks2, 4);
+    assert_eq!(cpu.instruction_clocks, 4);
+    assert_eq!(cpu.state.cycle_counter, 8);
+    assert_eq!(cpu.cycle_counter(), 8);
+
+    // Manual reset of cycle counter
+    cpu.reset_cycle_counter();
+    assert_eq!(cpu.state.cycle_counter, 0);
+    assert_eq!(cpu.cycle_counter(), 0);
+}
+

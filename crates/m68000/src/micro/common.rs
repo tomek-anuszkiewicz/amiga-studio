@@ -4,6 +4,7 @@
 //! across all Motorola 68000 instructions.
 
 use crate::core::Cpu;
+use crate::state::CpuState;
 use super::types::MicroStep;
 
 
@@ -176,5 +177,111 @@ pub const READ_VECTOR_LOW_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_ve
 
 /// CCK2: Logs exception vector low word read transaction, checks target alignment, and updates ea_addr
 pub const READ_VECTOR_LOW_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_low_finish);
+
+// ============================================================================
+// Group 0 Address Error Exception Building Blocks & Pipeline (50 Clocks / 25 CCKs)
+// ============================================================================
+
+/// Exception Vector 3 address ($00000C) for Group 0 Address Error
+pub const VECTOR_ADDRESS_ERROR: u32 = 0x0000_000C;
+
+/// Initial setup for Address Error exception:
+/// Sets supervisor mode (S=1, T=0), checks for double-bus fault,
+/// snapshots SSP, return PC, old SR, and sets vector address ($00000C).
+pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let old_sr = state.sr;
+    state.set_supervisor(true);
+    state.sr &= !0x8000;
+
+    let ssp = state.read_a(7);
+    if (ssp & 1) != 0 {
+        state.halted = true;
+    }
+    state.micro.ssp_base = ssp;
+    state.micro.source = state.instruction_pc;
+    state.micro.destination = old_sr as u32;
+    state.micro.ea_addr = VECTOR_ADDRESS_ERROR;
+
+    state.micro.record_internal_transaction(4);
+}
+
+/// CCK1: Address Error initial ALU step (S=1, T=0, SSP check, vector setup)
+pub static ALU_AERR_INIT: MicroStep = MicroStep {
+    step_fn: Cpu::step_alu,
+    alu_fn: Some(alu_aerr_init),
+    base_clocks: 2,
+};
+
+/// CCK1: Address Error stack push low word of return PC setup to SSP - 2
+pub const AERR_PUSH_PCLO_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_pclo_idle);
+
+/// CCK2: Address Error stack push low word of return PC write to SSP - 2
+pub const AERR_PUSH_PCLO_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_pclo_write);
+
+/// CCK1: Address Error stack push SR setup to SSP - 6
+pub const AERR_PUSH_SR_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_sr_idle);
+
+/// CCK2: Address Error stack push SR write to SSP - 6
+pub const AERR_PUSH_SR_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_sr_write);
+
+/// CCK1: Address Error stack push high word of return PC setup to SSP - 4
+pub const AERR_PUSH_PCHI_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_pchi_idle);
+
+/// CCK2: Address Error stack push high word of return PC write to SSP - 4
+pub const AERR_PUSH_PCHI_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_pchi_write);
+
+/// CCK1: Address Error stack push IR setup to SSP - 8
+pub const AERR_PUSH_IR_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_ir_idle);
+
+/// CCK2: Address Error stack push IR write to SSP - 8
+pub const AERR_PUSH_IR_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_ir_write);
+
+/// CCK1: Address Error stack push access address low word setup to SSP - 10
+pub const AERR_PUSH_ADDR_LO_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_addr_lo_idle);
+
+/// CCK2: Address Error stack push access address low word write to SSP - 10
+pub const AERR_PUSH_ADDR_LO_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_addr_lo_write);
+
+/// CCK1: Address Error stack push info word setup to SSP - 14
+pub const AERR_PUSH_INFO_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_info_idle);
+
+/// CCK2: Address Error stack push info word write to SSP - 14
+pub const AERR_PUSH_INFO_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_info_write);
+
+/// CCK1: Address Error stack push access address high word setup to SSP - 12
+pub const AERR_PUSH_ADDR_HI_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_addr_hi_idle);
+
+/// CCK2: Address Error stack push access address high word write to SSP - 12 and commit SSP = SSP - 14
+pub const AERR_PUSH_ADDR_HI_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_write_aerr_addr_hi_write);
+
+/// Microcode pipeline for Group 0 Address Error exception processing (50 CPU clocks / 25 CCKs)
+pub static STEPS_ADDRESS_ERROR: [MicroStep; 25] = [
+    ALU_AERR_INIT,
+    ALU_IDLE,
+    AERR_PUSH_PCLO_IDLE,
+    AERR_PUSH_PCLO_WRITE,
+    AERR_PUSH_SR_IDLE,
+    AERR_PUSH_SR_WRITE,
+    AERR_PUSH_PCHI_IDLE,
+    AERR_PUSH_PCHI_WRITE,
+    AERR_PUSH_IR_IDLE,
+    AERR_PUSH_IR_WRITE,
+    AERR_PUSH_ADDR_LO_IDLE,
+    AERR_PUSH_ADDR_LO_WRITE,
+    AERR_PUSH_INFO_IDLE,
+    AERR_PUSH_INFO_WRITE,
+    AERR_PUSH_ADDR_HI_IDLE,
+    AERR_PUSH_ADDR_HI_WRITE,
+    READ_VECTOR_HIGH_READ,
+    READ_VECTOR_HIGH_FINISH,
+    READ_VECTOR_LOW_READ,
+    READ_VECTOR_LOW_FINISH,
+    READ_TARGET_OPCODE_READ,
+    READ_TARGET_OPCODE_FINISH,
+    ALU_INTERNAL_2CLK,
+    PREFETCH_TARGET_READ,
+    PREFETCH_TARGET_RETIRE_2CLK,
+];
+
 
 

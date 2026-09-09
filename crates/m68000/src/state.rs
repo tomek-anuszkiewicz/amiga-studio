@@ -59,6 +59,10 @@ pub struct CpuState {
     /// Sub-cycle execution micro-state (Color Clock phase and in-flight bus cycle)
     #[serde(default)]
     pub micro: crate::micro::CpuMicroState,
+
+    /// Monotonically increasing CPU clock cycle counter since reset (incremented by 2 per CCK micro-step)
+    #[serde(default)]
+    pub cycle_counter: u64,
 }
 
 impl Default for CpuState {
@@ -78,6 +82,7 @@ impl Default for CpuState {
             stopped: false,
             halted: false,
             micro: crate::micro::CpuMicroState::default(),
+            cycle_counter: 0,
         }
     }
 }
@@ -330,5 +335,17 @@ impl CpuState {
             0x0F => z || (n && !v) || (!n && v),        // Less or Equal (LE)
             _ => unreachable!(),
         }
+    }
+
+    /// Returns total elapsed CPU clock cycles since reset
+    #[inline(always)]
+    pub fn cycle_counter(&self) -> u64 {
+        self.cycle_counter
+    }
+
+    /// Resets the cycle counter to zero
+    #[inline(always)]
+    pub fn reset_cycle_counter(&mut self) {
+        self.cycle_counter = 0;
     }
 }

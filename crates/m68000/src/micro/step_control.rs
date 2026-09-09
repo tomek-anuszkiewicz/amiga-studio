@@ -422,6 +422,10 @@ impl Cpu {
         );
         let target = (self.state.micro.ea_high | (val as u32)) & 0x00FF_FFFF;
         if (target & 1) != 0 {
+            if self.state.micro.current_steps.as_ptr() == crate::micro::common::STEPS_ADDRESS_ERROR.as_ptr() {
+                self.state.halted = true;
+                return BusResult::Ready(());
+            }
             self.trigger_address_error_step(target, true, true, bus);
             return BusResult::Ready(());
         }
@@ -434,5 +438,256 @@ impl Cpu {
     pub fn step_alu_internal_2clk(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         self.state.micro.record_internal_transaction(2);
         BusResult::Ready(())
+    }
+
+    // ========================================================================
+    // Group 0 Address Error Exception Handlers
+    // ========================================================================
+
+    /// CCK1: Validates SSP alignment and idles bus for PC low word write to SSP - 2
+    pub fn step_bus_write_aerr_pclo_idle(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(2);
+        if (sp & 1) != 0 {
+            self.state.halted = true;
+            return BusResult::Ready(());
+        }
+        self.state.micro.phase = CckPhase::Cck2;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Writes return PC low word to SSP - 2
+    pub fn step_bus_write_aerr_pclo_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(2) & 0x00FF_FFFF;
+        let val = (self.state.micro.source & 0xFFFF) as u16;
+        match bus.write_word(sp, val) {
+            BusResult::WaitState => self.on_wait_state(),
+            BusResult::Ready(()) => {
+                let fc = data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    sp,
+                    BusAccessSize::Word,
+                    val,
+                    true,
+                    true,
+                );
+                self.state.micro.phase = CckPhase::Cck1;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Validates SSP alignment and idles bus for old SR write to SSP - 6
+    pub fn step_bus_write_aerr_sr_idle(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(6);
+        if (sp & 1) != 0 {
+            self.state.halted = true;
+            return BusResult::Ready(());
+        }
+        self.state.micro.phase = CckPhase::Cck2;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Writes old SR to SSP - 6
+    pub fn step_bus_write_aerr_sr_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(6) & 0x00FF_FFFF;
+        let val = (self.state.micro.destination & 0xFFFF) as u16;
+        match bus.write_word(sp, val) {
+            BusResult::WaitState => self.on_wait_state(),
+            BusResult::Ready(()) => {
+                let fc = data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    sp,
+                    BusAccessSize::Word,
+                    val,
+                    true,
+                    true,
+                );
+                self.state.micro.phase = CckPhase::Cck1;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Validates SSP alignment and idles bus for return PC high word write to SSP - 4
+    pub fn step_bus_write_aerr_pchi_idle(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(4);
+        if (sp & 1) != 0 {
+            self.state.halted = true;
+            return BusResult::Ready(());
+        }
+        self.state.micro.phase = CckPhase::Cck2;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Writes return PC high word to SSP - 4
+    pub fn step_bus_write_aerr_pchi_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(4) & 0x00FF_FFFF;
+        let val = ((self.state.micro.source >> 16) & 0xFFFF) as u16;
+        match bus.write_word(sp, val) {
+            BusResult::WaitState => self.on_wait_state(),
+            BusResult::Ready(()) => {
+                let fc = data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    sp,
+                    BusAccessSize::Word,
+                    val,
+                    true,
+                    true,
+                );
+                self.state.micro.phase = CckPhase::Cck1;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Validates SSP alignment and idles bus for instruction register (IR) write to SSP - 8
+    pub fn step_bus_write_aerr_ir_idle(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(8);
+        if (sp & 1) != 0 {
+            self.state.halted = true;
+            return BusResult::Ready(());
+        }
+        self.state.micro.phase = CckPhase::Cck2;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Writes instruction register (IR) to SSP - 8
+    pub fn step_bus_write_aerr_ir_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(8) & 0x00FF_FFFF;
+        let val = self.state.ir;
+        match bus.write_word(sp, val) {
+            BusResult::WaitState => self.on_wait_state(),
+            BusResult::Ready(()) => {
+                let fc = data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    sp,
+                    BusAccessSize::Word,
+                    val,
+                    true,
+                    true,
+                );
+                self.state.micro.phase = CckPhase::Cck1;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Validates SSP alignment and idles bus for access address low word write to SSP - 10
+    pub fn step_bus_write_aerr_addr_lo_idle(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(10);
+        if (sp & 1) != 0 {
+            self.state.halted = true;
+            return BusResult::Ready(());
+        }
+        self.state.micro.phase = CckPhase::Cck2;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Writes access address low word to SSP - 10
+    pub fn step_bus_write_aerr_addr_lo_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(10) & 0x00FF_FFFF;
+        let val = (self.state.micro.fault_addr & 0xFFFF) as u16;
+        match bus.write_word(sp, val) {
+            BusResult::WaitState => self.on_wait_state(),
+            BusResult::Ready(()) => {
+                let fc = data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    sp,
+                    BusAccessSize::Word,
+                    val,
+                    true,
+                    true,
+                );
+                self.state.micro.phase = CckPhase::Cck1;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Validates SSP alignment and idles bus for internal information word write to SSP - 14
+    pub fn step_bus_write_aerr_info_idle(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(14);
+        if (sp & 1) != 0 {
+            self.state.halted = true;
+            return BusResult::Ready(());
+        }
+        self.state.micro.phase = CckPhase::Cck2;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Writes internal information word to SSP - 14
+    pub fn step_bus_write_aerr_info_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(14) & 0x00FF_FFFF;
+        let val = self.state.micro.info_word;
+        match bus.write_word(sp, val) {
+            BusResult::WaitState => self.on_wait_state(),
+            BusResult::Ready(()) => {
+                let fc = data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    sp,
+                    BusAccessSize::Word,
+                    val,
+                    true,
+                    true,
+                );
+                self.state.micro.phase = CckPhase::Cck1;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Validates SSP alignment and idles bus for access address high word write to SSP - 12
+    pub fn step_bus_write_aerr_addr_hi_idle(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.micro.ssp_base.wrapping_sub(12);
+        if (sp & 1) != 0 {
+            self.state.halted = true;
+            return BusResult::Ready(());
+        }
+        self.state.micro.phase = CckPhase::Cck2;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Writes access address high word to SSP - 12 and commits updated SSP = SSP - 14
+    pub fn step_bus_write_aerr_addr_hi_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp_base = self.state.micro.ssp_base;
+        let sp = sp_base.wrapping_sub(12) & 0x00FF_FFFF;
+        let val = ((self.state.micro.fault_addr >> 16) & 0xFFFF) as u16;
+        match bus.write_word(sp, val) {
+            BusResult::WaitState => self.on_wait_state(),
+            BusResult::Ready(()) => {
+                let fc = data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    sp,
+                    BusAccessSize::Word,
+                    val,
+                    true,
+                    true,
+                );
+                self.state.write_a(7, sp_base.wrapping_sub(14));
+                self.state.micro.phase = CckPhase::Cck1;
+                BusResult::Ready(())
+            }
+        }
     }
 }

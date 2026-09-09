@@ -94,6 +94,7 @@ To prevent tight coupling and synchronization bugs, responsibilities are cleanly
 | **`Agnus` (Beam)** | **Master Raster Beam Tracking:** Coordinates horizontal beam position (`HPOS`), vertical scanlines (`VPOS`), `LOF` interlace field bit, and display timing registers `VHPOSR` / `VPOSR`. | `chips/agnus/beam.rs` (see [Agnus.md](Agnus.md)) |
 | **`CIA`** | **E-Clock Division & Prescalers:** Tracks internal E-Clock sub-phase divider ($0..4$) to step Timers A and B every 5 CCKs. | `chips/cia/mod.rs` (see [CIA.md](CIA.md)) |
 | **`MemoryBus` / CPU** | **Bus Phase State Machine:** Manages CCK1 vs CCK2 arbitration, wait states, and data bus transfer. | `memory_bus/mod.rs` (see [MemoryBus.md](MemoryBus.md)) |
+| **`CpuState` (M68000)** | **Monotonic CPU Clock Cycle Counter:** Tracks elapsed CPU clocks (`cycle_counter: u64`) since reset, incrementing by 2 clocks per CCK micro-step / wait state stall. Queryable globally via `cpu.state.cycle_counter`. | `crates/m68000/src/state.rs` (see [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)) |
 
 ---
 

@@ -806,25 +806,40 @@ The table below catalogs representative micro-step sequences for each fundamenta
 
 ### Class 12: Group 0 Diagnostic Hardware Exception (Address Error Vector 3)
 
-#### Archetype: Misaligned Word Read (`MOVE.W ($1001), D0` at `$002000`)
+#### Archetype: Misaligned Word Access (Total Duration: Exactly 50 CPU clocks / 25 CCKs)
 - **Total Duration**: Exactly 50 CPU clocks (25 CCKs).
-- **Diagnostic Stacking**: Pushes 7-word diagnostic frame onto Supervisor Stack (`SSP`).
+- **Physical Silicon Stacking Order**: Interleaved hardware write sequence matching Motorola M68000 PRM Figure B-9 and MAME `state_address_error_df`.
+- **Double Bus Fault**: If $SSP$ is odd during exception setup or stack writes, or if the low vector address is odd, the processor halts immediately (`self.state.halted = true`).
 - **Prefetch**: Vector fetch + two-word pipeline refill from exception handler.
 
-| Step | Action | Clocks | Description / Bus Transaction |
+| Step | Handler | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `Alu` | **0 (Instant)** | Misalignment detected (`addr & 1 != 0`). Switches to Supervisor mode (`SR.S = 1, SR.T = 0`). Latches `write_buffer = SSP - 14`. Diverts `current_steps` to `EXCEPTION_GROUP0_STEPS`. |
-| **1** | `BusPushStackHigh` | 4 (2 CCKs) | Pushes SSW (`FC = %001, R/W = 1, I/N = 0`) to `SSP - 2`. |
-| **2** | `BusPushStackHigh` | 4 (2 CCKs) | Pushes Access Address High (`$0000`) to `SSP - 4`. |
-| **3** | `BusPushStackLow` | 4 (2 CCKs) | Pushes Access Address Low (`$1001`) to `SSP - 6`. |
-| **4** | `BusPushStackHigh` | 4 (2 CCKs) | Pushes Instruction Register `IR` (`$3039`) to `SSP - 8`. |
-| **5** | `BusPushStackHigh` | 4 (2 CCKs) | Pushes Pre-exception Status Register `SR` to `SSP - 10`. |
-| **6** | `BusPushStackHigh` | 4 (2 CCKs) | Pushes Fault `PC` High (`$0000`) to `SSP - 12`. |
-| **7** | `BusPushStackLow` | 4 (2 CCKs) | Pushes Fault `PC` Low (`$2002`) to `SSP - 14`, commits `SSP = SSP - 14`. |
-| **8** | `BusReadWord` | 4 (2 CCKs) | Reads Vector 3 High Word from address `$00000C` into `ea_addr[31..16]`. |
-| **9** | `BusReadWord` | 4 (2 CCKs) | Reads Vector 3 Low Word from address `$00000E` into `ea_addr[15..0]`. |
-| **10** | `BusReadTargetOpcode` | 4 (2 CCKs) | **Refill 1:** Reads first opcode of exception handler at `ea_addr` into `scratch_prefetch`. |
-| **11** | `PrefetchTargetAndRetire` | 4 (2 CCKs) | **Refill 2:** Reads next word at `ea_addr + 2`. Loads `IR = scratch_prefetch`, `PC = ea_addr + 4`, and retires! |
+| **0** | `ALU_AERR_INIT` | 2 (CCK1) | S=1, T=0, double-bus fault check on SSP, snapshots `ssp_base`, return PC, old SR, vector `$00000C`. Internal duration 4 logged. |
+| **1** | `ALU_IDLE` | 2 (CCK2) | Internal execution cycle completing initial 4-clock hardware delay. |
+| **2** | `AERR_PUSH_PCLO_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for return PC low word write to `SSP - 2`. |
+| **3** | `AERR_PUSH_PCLO_WRITE` | 2 (CCK2) | Writes return PC low word (`source & 0xFFFF`) to `SSP - 2`. Stalls on Chip RAM DMA contention. |
+| **4** | `AERR_PUSH_SR_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for Status Register write to `SSP - 6`. |
+| **5** | `AERR_PUSH_SR_WRITE` | 2 (CCK2) | Writes pre-exception `SR` (`destination & 0xFFFF`) to `SSP - 6`. Stalls on Chip RAM DMA contention. |
+| **6** | `AERR_PUSH_PCHI_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for return PC high word write to `SSP - 4`. |
+| **7** | `AERR_PUSH_PCHI_WRITE` | 2 (CCK2) | Writes return PC high word (`(source >> 16) & 0xFFFF`) to `SSP - 4`. Stalls on Chip RAM DMA contention. |
+| **8** | `AERR_PUSH_IR_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for Instruction Register write to `SSP - 8`. |
+| **9** | `AERR_PUSH_IR_WRITE` | 2 (CCK2) | Writes opcode `state.ir` to `SSP - 8`. Stalls on Chip RAM DMA contention. |
+| **10** | `AERR_PUSH_ADDR_LO_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for Access Address low word write to `SSP - 10`. |
+| **11** | `AERR_PUSH_ADDR_LO_WRITE` | 2 (CCK2) | Writes `fault_addr & 0xFFFF` to `SSP - 10`. Stalls on Chip RAM DMA contention. |
+| **12** | `AERR_PUSH_INFO_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for Internal Information Word write to `SSP - 14`. |
+| **13** | `AERR_PUSH_INFO_WRITE` | 2 (CCK2) | Writes Special Status Word (`(IR & 0xFFE0) \| R/W \| FC`) to `SSP - 14`. Stalls on Chip RAM DMA contention. |
+| **14** | `AERR_PUSH_ADDR_HI_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for Access Address high word write to `SSP - 12`. |
+| **15** | `AERR_PUSH_ADDR_HI_WRITE` | 2 (CCK2) | Writes `(fault_addr >> 16) & 0xFFFF` to `SSP - 12` and commits `SSP = ssp_base - 14`. |
+| **16** | `READ_VECTOR_HIGH_READ` | 2 (CCK1) | Vector fetch high word read from `$00000C` into `ea_high`. |
+| **17** | `READ_VECTOR_HIGH_FINISH` | 2 (CCK2) | Logs vector high word transaction. |
+| **18** | `READ_VECTOR_LOW_READ` | 2 (CCK1) | Vector fetch low word read from `$00000E` into `source`. |
+| **19** | `READ_VECTOR_LOW_FINISH` | 2 (CCK2) | Checks target alignment (halts if double fault), sets `ea_addr = handler_address`. |
+| **20** | `READ_TARGET_OPCODE_READ` | 2 (CCK1) | **Refill 1:** Reads first instruction opcode of handler from `ea_addr`. |
+| **21** | `READ_TARGET_OPCODE_FINISH` | 2 (CCK2) | Latches handler opcode into `irc`. |
+| **22** | `ALU_INTERNAL_2CLK` | 2 (CCK1/2) | 2-clock internal hardware pipeline alignment delay. |
+| **23** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads second instruction word from `ea_addr + 2` into `prefetch[0]`. |
+| **24** | `PREFETCH_TARGET_RETIRE_2CLK` | 2 (CCK2) | Arms `target_refill = true`, latches `IR = irc`, sets `PC = ea_addr + 4`, retires exception! |
+
 
 ---
 

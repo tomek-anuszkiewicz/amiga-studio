@@ -21,5 +21,4 @@ pub mod nop;
 pub mod not;
 pub mod pea;
 pub mod rts;
-pub mod system;
 pub mod trap;

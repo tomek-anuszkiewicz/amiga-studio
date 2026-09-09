@@ -68,6 +68,15 @@ pub struct CpuMicroState {
     /// Indicates whether prefetch pipeline has already retired into IR during microcode execution
     #[serde(default)]
     pub prefetch_retired: bool,
+    /// Fault address for Group 0 Address Error / Bus Error exception
+    #[serde(default)]
+    pub fault_addr: u32,
+    /// Internal Information Word for Group 0 exception frame
+    #[serde(default)]
+    pub info_word: u16,
+    /// Base supervisor stack pointer at start of exception frame stacking
+    #[serde(default)]
+    pub ssp_base: u32,
 }
 
 const fn default_clocks_remaining() -> i16 {
@@ -103,6 +112,9 @@ impl CpuMicroState {
             current_steps: &EMPTY_STEPS,
             target_refill: false,
             prefetch_retired: false,
+            fault_addr: 0,
+            info_word: 0,
+            ssp_base: 0,
         }
     }
 
@@ -126,6 +138,9 @@ impl CpuMicroState {
         self.current_steps = &EMPTY_STEPS;
         self.target_refill = false;
         self.prefetch_retired = false;
+        self.fault_addr = 0;
+        self.info_word = 0;
+        self.ssp_base = 0;
     }
 
     /// Initializes active micro-steps for a new instruction

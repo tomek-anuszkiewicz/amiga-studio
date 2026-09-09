@@ -99,6 +99,8 @@ pub struct CpuState {
     pub stopped: bool,
     /// Halted state (e.g. double bus fault)
     pub halted: bool,
+    /// Monotonically increasing CPU clock cycle counter since reset
+    pub cycle_counter: u64,
 }
 
 /// Agnus state (Master Beam, Copper, Blitter, DMA).

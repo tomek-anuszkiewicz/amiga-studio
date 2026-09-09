@@ -1,6 +1,5 @@
 //! Cycle-exact Motorola 68000 CPU Execution Core
 
-use crate::instructions::system;
 use crate::micro::types;
 use crate::state::CpuState;
 use memory_bus::{BusAccessSize, BusResult, CckPhase, MemoryBus};
@@ -35,6 +34,7 @@ impl Cpu {
         self.state.step = 0;
         self.state.micro.reset();
         self.instruction_clocks = 0;
+        self.state.cycle_counter = 0;
 
         // Fetch initial SSP from $000000
         let ssp_hi = bus.read_word_debug(0x000000);
@@ -61,26 +61,46 @@ impl Cpu {
         self.state.micro.current_cycle_wait_cycles > 0
     }
 
+    /// Advances instruction clocks and the global cycle counter
+    #[inline(always)]
+    pub fn advance_clocks(&mut self, clocks: u32) {
+        self.instruction_clocks = self.instruction_clocks.wrapping_add(clocks);
+        self.state.cycle_counter = self.state.cycle_counter.wrapping_add(clocks as u64);
+    }
+
+    /// Returns total elapsed CPU clock cycles since reset
+    #[inline(always)]
+    pub fn cycle_counter(&self) -> u64 {
+        self.state.cycle_counter
+    }
+
+    /// Resets the global cycle counter to zero
+    #[inline(always)]
+    pub fn reset_cycle_counter(&mut self) {
+        self.state.cycle_counter = 0;
+    }
+
     /// Handles a bus wait state stall at the memory access primitive level:
-    /// advances instruction clocks by 2 CPU clocks (1 CCK) and increments wait cycles.
+    /// increments wait cycles and returns BusResult::WaitState.
     #[inline(always)]
     pub fn on_wait_state(&mut self) -> BusResult<()> {
-        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
         self.state.micro.current_cycle_wait_cycles =
             self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
         BusResult::WaitState
     }
 
-    /// CCK phase stepping primitive
+    /// CCK phase stepping primitive (each invocation steps exactly 1 CCK = 2 CPU clocks)
     pub fn step_cck(&mut self, bus: &mut MemoryBus) -> bool {
         if self.state.halted || self.state.stopped {
             return false;
         }
 
+        // Every active CCK phase step advances global and instruction clocks by 2 CPU clocks (1 CCK)
+        self.advance_clocks(2);
+
         // 1. If internal execution clocks remain (e.g. multi-cycle shift/div or TRAP):
         if self.state.micro.internal_clocks > 0 {
             self.state.micro.internal_clocks = self.state.micro.internal_clocks.saturating_sub(2);
-            self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
             if self.state.micro.internal_clocks == 0 {
                 self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
                 self.state.micro.clocks_remaining = -1;
@@ -90,10 +110,9 @@ impl Cpu {
 
         // 2. Check if current instruction uses static micro-steps:
         if self.state.micro.micro_step == 0 && self.state.micro.current_steps.is_empty() {
+            self.state.instruction_pc = self.state.pc.wrapping_sub(4);
             self.initiate_current_instruction();
         }
-
-        self.state.instruction_pc = self.state.pc.wrapping_sub(4);
 
         // 3. Execute via cycle-exact Micro-Step State Machine:
         if !self.state.micro.current_steps.is_empty() {
@@ -277,26 +296,48 @@ impl Cpu {
         }
     }
 
-    /// Triggers a cycle-exact Group 0 Address Error on unaligned word/long access
+    /// Triggers a cycle-exact Group 0 Address Error on unaligned word/long access (50 CPU clocks / 25 CCKs)
     #[inline(never)]
-    pub fn trigger_address_error_step(
+    pub fn trigger_address_error(
         &mut self,
-        addr: u32,
+        fault_addr: u32,
         is_read: bool,
         is_program_space: bool,
-        bus: &mut MemoryBus,
     ) {
         let fc = if is_program_space {
             types::prog_fc(&self.state)
         } else {
             types::data_fc(&self.state)
         };
-        self.instruction_clocks = self.instruction_clocks.wrapping_add(8);
-        self.handle_address_error_fc(addr, is_read, fc, bus);
+        let rw_bit = if is_read { 0x10 } else { 0x00 };
+        let info_word = (self.state.ir & 0xFFE0) | rw_bit | ((fc as u16) & 0x07);
+
+        self.state.micro.fault_addr = fault_addr;
+        self.state.micro.info_word = info_word;
+        self.state.micro.current_steps = &crate::micro::common::STEPS_ADDRESS_ERROR;
+        self.state.micro.micro_step = 0;
+        self.state.micro.phase = CckPhase::Cck1;
+        self.state.micro.clocks_remaining = -1;
+    }
+
+    /// Triggers address error during a microcode bus step (forwards to `trigger_address_error`)
+    #[inline(always)]
+    pub fn trigger_address_error_step(
+        &mut self,
+        addr: u32,
+        is_read: bool,
+        is_program_space: bool,
+        _bus: &mut MemoryBus,
+    ) {
+        self.trigger_address_error(addr, is_read, is_program_space);
     }
 
     /// Executes the active instruction's micro-step sequence directly
     pub fn execute_micro_step(&mut self, bus: &mut MemoryBus) -> bool {
+        if self.state.halted || self.state.stopped {
+            return true;
+        }
+
         while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
             let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
 
@@ -354,7 +395,6 @@ impl Cpu {
                 match bus_res {
                     BusResult::WaitState => return false,
                     BusResult::Ready(()) => {
-                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                         self.state.micro.current_cycle_wait_cycles = 0;
                         if self.state.micro.micro_step != prev_micro_step {
                             self.state.micro.clocks_remaining = -1;
@@ -369,16 +409,23 @@ impl Cpu {
             }
 
             // 3. Clock-consuming step (each CCK consumes 2 clocks):
+            let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
             let prev_micro_step = self.state.micro.micro_step;
             let bus_res = (step.step_fn)(self, bus);
             if self.state.micro.current_steps.is_empty() {
                 return true;
             }
 
+            // If step redirected execution to a new step sequence (e.g. Address Error),
+            // conclude this CCK and begin the new sequence on next CCK.
+            if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
+                self.state.micro.clocks_remaining = -1;
+                return false;
+            }
+
             match bus_res {
                 BusResult::WaitState => return false,
                 BusResult::Ready(()) => {
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                     self.state.micro.current_cycle_wait_cycles = 0;
                     self.state.micro.clocks_remaining -= 2;
 
@@ -457,26 +504,5 @@ impl Cpu {
         self.state.pc = self.state.pc.wrapping_add(2);
         self.state.prefetch[0] = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);
-    }
-
-    /// Handles address error exception with specific function code
-    pub(crate) fn handle_address_error_fc(
-        &mut self,
-        fault_addr: u32,
-        is_read: bool,
-        function_code: u8,
-        bus: &mut MemoryBus,
-    ) {
-        // Group 0 Address Error exception processing takes 50 clock periods
-        self.instruction_clocks = self.instruction_clocks.wrapping_add(50);
-        system::push_address_error_exception(
-            &mut self.state,
-            fault_addr,
-            is_read,
-            function_code,
-            bus,
-        );
-        self.reload_pc_and_prefetch(self.state.pc, bus);
-        self.state.micro.reset();
     }
 }

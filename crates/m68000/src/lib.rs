@@ -24,7 +24,7 @@ pub mod state;
 
 pub use core::Cpu;
 pub use micro::{
-    CpuMicroState, MicroStep, OpcodeDescriptor, RecordedTransaction, Size, StepFn,
-    OPCODE_DESCRIPTOR_TABLE,
+    common::VECTOR_ADDRESS_ERROR, CpuMicroState, MicroStep, OpcodeDescriptor, RecordedTransaction,
+    Size, StepFn, OPCODE_DESCRIPTOR_TABLE,
 };
 pub use state::CpuState;
