@@ -34,141 +34,27 @@ graph TD
 * **Single Mutation Vector**: Configuration can only be modified atomically via `apply_preset(preset)`.
 * **RTC Model**: Held internally as an explicit `RtcModel` enum.
 
-```rust
-use serde::{Deserialize, Serialize};
-
-/// Canonical hardware configuration presets
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum A500Preset {
-    /// Preset 1: Bare Stock A500 (512 KB Chip RAM, no expansions, no RTC)
-    Bare512k,
-    /// Preset 2: Standard A500 + A501 (512 KB Chip + 512 KB Slow RAM + MSM6242B RTC)
-    Standard1Mb,
-    /// Preset 3: Power User A500 (512 KB Chip + 512 KB Slow + 4 MB Fast RAM + MSM6242B RTC)
-    ExpandedPowerUser,
-}
-
-/// Real-Time Clock hardware model
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RtcModel {
-    /// No RTC installed (returns floating bus $FF at $DC0000..$DC003F)
-    None,
-    /// OKI MSM6242B (standard on A501 expansion, A500+, and A2000)
-    Msm6242b,
-}
-
-/// Master configuration struct for the Amiga 500 emulator
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct A500Config {
-    preset: A500Preset,
-    video_standard: VideoStandard,
-    chip_ram: ChipRamSize,
-    slow_ram: SlowRamSize,
-    fast_ram: FastRamSize,
-    rtc: RtcModel,
-}
-
-impl A500Config {
-    pub fn from_preset(preset: A500Preset, video: VideoStandard) -> Self;
-    pub fn bare_512k(video: VideoStandard) -> Self;
-    pub fn standard_1mb(video: VideoStandard) -> Self;
-    pub fn expanded_power_user(video: VideoStandard) -> Self;
-
-    /// The only mutation vector: applies a canonical preset atomically
-    pub fn apply_preset(&mut self, preset: A500Preset);
-
-    // Read-only getters
-    pub fn active_preset(&self) -> A500Preset;
-    pub fn video_standard(&self) -> VideoStandard;
-    pub fn chip_ram(&self) -> ChipRamSize;
-    pub fn slow_ram(&self) -> SlowRamSize;
-    pub fn fast_ram(&self) -> FastRamSize;
-    pub fn rtc(&self) -> RtcModel;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum VideoStandard {
-    /// PAL: 50 Hz vertical refresh, ~3.546895 MHz Color Clock (CCK)
-    Pal,
-    /// NTSC: 60 Hz vertical refresh, ~3.579545 MHz Color Clock (CCK)
-    Ntsc,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ChipRamSize {
-    Kb512,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SlowRamSize {
-    None,
-    Kb512,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FastRamSize {
-    None,
-    Mb4,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum AgnusModel {
-    /// OCS 8370 (NTSC 512 KB) / 8371 (PAL 512 KB)
-    Ocs512Kb,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DeniseModel {
-    /// OCS 8362 (Standard OCS Denise)
-    Ocs8362,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum GamePortDevice {
-    /// Two-button quadrature mouse (default on Port 1)
-    Mouse,
-    /// Atari-standard digital 2-button joystick (default on Port 2)
-    Joystick,
-    /// Nothing plugged in
-    None,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FloppyConfig {
-    pub df0_enabled: bool,
-    pub df1_enabled: bool,
-    pub df2_enabled: bool,
-    pub df3_enabled: bool,
-}
-```
+The master configuration is encapsulated in [`A500Config`](file:///d:/Programowanie/Amiga/crates/config/src/lib.rs), which strictly enforces immutability and single-point mutation:
+- **Encapsulated Types (Defined in [`crates/config/src/types.rs`](file:///d:/Programowanie/Amiga/crates/config/src/types.rs)):**
+  - **`A500Preset`**: Canonical hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`).
+  - **`VideoStandard`**: Display timing standard (`Pal` at ~50 Hz / 3.546895 MHz CCK, `Ntsc` at ~60 Hz / 3.579545 MHz CCK).
+  - **`ChipRamSize`**: Chip RAM sizing (`Kb512`).
+  - **`SlowRamSize`**: Trapdoor pseudo-fast RAM (`None`, `Kb512` at `$C00000`).
+  - **`FastRamSize`**: Auto-config expansion RAM (`None`, `Mb4` at `$200000`).
+  - **`RtcModel`**: Real-time clock hardware (`None` [floating open bus `$FF`], `Msm6242b` [OKI MSM6242B at `$DC0000`]).
+  - **`AgnusModel`**, **`DeniseModel`**, **`GamePortDevice`**, **`FloppyConfig`**: Subsystem models and peripheral options.
+- **Constructors & Mutation**:
+  - Constructors: `A500Config::bare_512k(video)`, `standard_1mb(video)`, `expanded_power_user(video)`, or `from_preset(preset, video)`.
+  - Mutation Vector: Atomic preset application via `config.apply_preset(preset)`. All fields are accessed externally via read-only getters (`active_preset()`, `chip_ram()`, `slow_ram()`, `fast_ram()`, `rtc()`, `video_standard()`).
 
 ---
 
 ## 3. ROM & Image Injection Interfaces
 
-Because the emulator core is decoupled from the host filesystem, ROMs and disk images are injected as byte slices:
-
-```rust
-impl A500 {
-    /// Instantiate a new machine with the specified configuration and Kickstart ROM image
-    pub fn new(config: A500Config, kickstart_rom: &[u8]) -> Result<Self, ConfigError> {
-        // Validate Kickstart ROM length (256 KB or 512 KB)
-        // Initialize MemoryBus, CPU, Agnus, Denise, Paula, CIAs
-        // Perform initial Cold Reset
-        todo!()
-    }
-
-    /// Insert or swap an ADF floppy disk image into a specific drive (e.g. DF0)
-    pub fn insert_floppy(&mut self, drive: usize, adf_bytes: &[u8]) -> Result<(), FloppyError> {
-        todo!()
-    }
-
-    /// Eject disk from specified drive
-    pub fn eject_floppy(&mut self, drive: usize) {
-        todo!()
-    }
-}
-```
+Because the emulator core is system-agnostic and decoupled from the host filesystem (Rule 1.1 and Rule 2.5 in [AGENTS.md](../../../AGENTS.md)), all ROMs and disk images are injected strictly as external byte slices (`&[u8]`):
+- **Kickstart ROM Injection**: The top-level machine constructor accepts `kickstart_rom: &[u8]`, validating exact length (256 KB or 512 KB) before loading into `MemoryBus` and executing initial cold reset.
+- **Floppy ADF Injection**: Disk drives accept ADF images as raw byte slices `&[u8]`, enabling seamless operation in both desktop environments and WebAssembly canvas contexts.
+- **Zero Host I/O in Core**: No `std::fs` operations exist inside the core emulation engine.
 
 ---
 

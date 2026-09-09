@@ -86,16 +86,9 @@ The bus timing and transfer types reside in [`crates/memory_bus/src/arbitration.
 ### Direct Passive Bus API & Contention Arbitration
 The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU micro-engine, Copper, Blitter) execute single-cycle or multi-phase bus transactions directly against memory. Contention arbitration is encapsulated within the bus access methods, returning a dedicated `BusResult<T>`:
 
-1. **`BusResult<T>` Type:**
-   ```rust
-   #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-   pub enum BusResult<T> {
-       /// Bus access completed successfully with requested data (or `()` for write)
-       Ready(T),
-       /// Bus access stalled due to Agnus DMA cycle stealing / wait state
-       WaitState,
-   }
-   ```
+1. **`BusResult<T>` Return Semantics (Defined in [`crates/memory_bus/src/arbitration.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/arbitration.rs)):**
+   - **`BusResult::Ready(T)`**: Bus access completed successfully with requested data (or `()` for write transfers).
+   - **`BusResult::WaitState`**: Bus access stalled due to Agnus DMA cycle stealing / Chip RAM contention.
 2. **Direct Memory Access Methods:**
    - `read_byte(&self, addr: u32) -> BusResult<u8>`
    - `read_word(&self, addr: u32) -> BusResult<u16>`

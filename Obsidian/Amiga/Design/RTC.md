@@ -138,27 +138,14 @@ To support both interactive real-time emulation and headless benchmark/warp exec
 
 ## 6. Save State Architecture (`RtcState`)
 
-Per [SaveState.md](SaveState.md), RTC state is serialized as an independent, decoupled snapshot:
-
-```rust
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RtcState {
-    /// Active RTC model
-    pub model: RtcModel,
-    /// 16 4-bit register latches ($0..$F)
-    pub registers: [u8; 16],
-    /// Control register D latched value
-    pub control_d: u8,
-    /// Control register E latched value
-    pub control_e: u8,
-    /// Control register F latched value
-    pub control_f: u8,
-    /// Offset in seconds relative to host epoch
-    pub time_diff: i64,
-    /// Master clock cycle timestamp of last time latching
-    pub last_measure_cck: u64,
-}
-```
+Per [SaveState.md](SaveState.md), RTC state is serialized as an independent, decoupled snapshot defined in [`RtcState`](file:///d:/Programowanie/Amiga/crates/rtc/src/state.rs):
+- **`model` (`RtcModel`)**: Active RTC hardware configuration (`None` or `Msm6242b`).
+- **`registers` (`[u8; 16]`)**: 16 4-bit register latches (`$0..$F`) holding BCD digits.
+- **`control_d` (`u8`)**: Latched value of Control Register D (Hold, Busy, IRQ, 30s adjustment).
+- **`control_e` (`u8`)**: Latched value of Control Register E (Mask, Intr/Std, period t0/t1).
+- **`control_f` (`u8`)**: Latched value of Control Register F (Reset, Stop, 24/12 hour, Test).
+- **`time_diff` (`i64`)**: Offset in seconds relative to host epoch.
+- **`last_measure_cck` (`u64`)**: Master clock cycle timestamp of last time latching.
 
 ---
 

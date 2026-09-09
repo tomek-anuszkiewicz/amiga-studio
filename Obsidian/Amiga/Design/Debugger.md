@@ -22,28 +22,18 @@ graph TD
 
 ## 2. Execution Control & Stepping Primitives
 
-The debugger provides fine-grained stepping modes:
-
-```rust
-pub enum StepMode {
-    /// Step forward exactly 1 Color Clock (CCK, ~280 ns)
-    StepCck,
-    /// Step forward until the current M68000 instruction completes
-    StepInstruction,
-    /// Step forward until the raster beam advances to the next scanline
-    StepScanline,
-    /// Step forward until the display finishes a full video frame (VBlank)
-    StepFrame,
-    /// Continue free-running execution until a breakpoint or trap occurs
-    Continue,
-}
-```
+The debugger provides fine-grained stepping modes via [`StepMode`](file:///d:/Programowanie/Amiga/crates/debugger/src/stepping.rs):
+- **`StepCck`**: Steps forward exactly 1 Color Clock (CCK, ~280 ns).
+- **`StepInstruction`**: Steps forward until the current M68000 instruction completes and retires.
+- **`StepScanline`**: Steps forward until the raster beam advances to the next scanline.
+- **`StepFrame`**: Steps forward until the display finishes a full video frame (VBlank transition).
+- **`Continue`**: Runs free-running execution until a breakpoint or exception occurs.
 
 ---
 
 ## 3. Breakpoints & Watchpoints
 
-The debugger maintains a collection of traps evaluated during execution:
+The debugger maintains a collection of traps evaluated during execution (defined in [`crates/debugger/src/breakpoints.rs`](file:///d:/Programowanie/Amiga/crates/debugger/src/breakpoints.rs)):
 
 ### 3.1 Breakpoint Types
 1. **Instruction Breakpoint (`PcBreakpoint`):**
@@ -71,26 +61,9 @@ The debugger maintains a collection of traps evaluated during execution:
 - Returns formatted strings: `00FC0004: 4E71            NOP`.
 
 #### 4.1.1 Standalone Disassembler API (Zero-Dependency)
-The disassembler is built-in and decoupled from any specific machine or bus struct, operating via a simple closure or reader trait:
-
-```rust
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Disassembly {
-    /// Program counter address where instruction begins
-    pub pc: u32,
-    /// Raw instruction word and extension words (up to 5 words for MC68000)
-    pub words: [u16; 5],
-    pub word_count: usize,
-    /// Mnemonic string (e.g. "MOVE.W", "ADD.L", "BRA")
-    pub mnemonic: &'static str,
-    /// Formatted operand string (e.g. "D0, (A1)", "#$0042, D1")
-    pub operands: String,
-}
-
-/// Disassembles one instruction starting at `pc` using a side-effect-free word reader function.
-/// Returns the Disassembly structure and the total number of bytes consumed (word_count * 2).
-pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32);
-```
+The disassembler is built-in and decoupled from any specific machine or bus struct, operating via [`disassemble`](file:///d:/Programowanie/Amiga/crates/debugger/src/disassembler.rs):
+- Operates against a side-effect-free word reader closure `Fn(u32) -> u16`.
+- Returns a [`Disassembly`](file:///d:/Programowanie/Amiga/crates/debugger/src/disassembler.rs) struct containing `pc`, raw instruction words (`words: [u16; 5]`, `word_count`), mnemonic (`&'static str`), and formatted operands (`String`), alongside total consumed instruction stream bytes.
 
 ### 4.2 Copper List Disassembler
 - Traverses the Copper instruction stream starting from `COP1LC` or `COP2LC`.
@@ -109,16 +82,10 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
 
 ## 5. Execution Trace History (Ring Buffer)
 
-The debugger maintains an in-memory ring buffer (e.g. 1024 entries) recording recent CPU execution:
-
-```rust
-pub struct TraceEntry {
-    pub cck: u64,
-    pub pc: u32,
-    pub opcode: u16,
-    pub disassembly: String,
-    pub registers: CpuState,
-}
-```
+The debugger maintains an in-memory ring buffer (e.g. 1024 entries) of [`TraceEntry`](file:///d:/Programowanie/Amiga/crates/debugger/src/trace.rs) records capturing:
+- Master Color Clock cycle (`cck: u64`).
+- Program counter (`pc: u32`) and raw opcode (`opcode: u16`).
+- Disassembled text representation (`disassembly: String`).
+- CPU register state snapshot (`registers: CpuState`).
 
 When a crash, illegal instruction, or unhandled exception occurs, this ring buffer provides an instant post-mortem trace of the instructions leading up to the fault.

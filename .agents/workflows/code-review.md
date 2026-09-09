@@ -61,7 +61,7 @@ Audit the diff against the guidelines in `AGENTS.md`:
 
 ### F. Documentation & Roadmap
 - [ ] Corresponding design doc under `Obsidian/Amiga/Design/` updated.
-- [ ] Design document pruned of pre-implementation speculative code or draft sketches.
+- [ ] Design document pruned of pre-implementation speculative code, draft sketches, and duplicate code snippets of already-written code (the codebase is the single source of truth; design docs must not duplicate implemented code).
 - [ ] Completed roadmap steps pruned from `ROADMAP.md` and summarized in the baseline section.
 - [ ] Crate dependency Mermaid graph updated in `General Architecture.md` if `Cargo.toml` dependencies changed.
 

@@ -161,48 +161,9 @@ While CPU state schemas are identical, the two suites format their bus transacti
 
 ## 3. Rust Deserialization Data Structures
 
-To enforce strict validation, all structs use `#[serde(deny_unknown_fields)]`:
-
-```rust
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SingleStepTest {
-    pub name: String,
-    pub initial: CpuTestState,
-    #[serde(rename = "final")]
-    pub final_state: CpuTestState,
-    pub transactions: Vec<serde_json::Value>,
-    pub length: u32,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CpuTestState {
-    pub d0: u32,
-    pub d1: u32,
-    pub d2: u32,
-    pub d3: u32,
-    pub d4: u32,
-    pub d5: u32,
-    pub d6: u32,
-    pub d7: u32,
-    pub a0: u32,
-    pub a1: u32,
-    pub a2: u32,
-    pub a3: u32,
-    pub a4: u32,
-    pub a5: u32,
-    pub a6: u32,
-    pub usp: u32,
-    pub ssp: u32,
-    pub sr: u16,
-    pub pc: u32,
-    pub prefetch: [u32; 2],
-    pub ram: Vec<[u32; 2]>, // [address, byte]
-}
-```
+To enforce strict validation, all structs defined in [`crates/test_runner/src/schema.rs`](file:///d:/Programowanie/Amiga/crates/test_runner/src/schema.rs) use `#[serde(deny_unknown_fields)]`:
+- **`SingleStepTest`**: Encapsulates test `name`, `initial: CpuTestState`, `final_state: CpuTestState`, `transactions: Vec<serde_json::Value>`, and expected execution `length: u32`.
+- **`CpuTestState`**: Deserializes registers `d0..d7`, `a0..a6`, `usp`, `ssp`, `sr`, `pc`, `prefetch: [u32; 2]`, and initial/final `ram: Vec<[u32; 2]>` (`[address, byte]`).
 
 ---
 
@@ -275,53 +236,19 @@ The test harness is implemented in the dedicated workspace crate [`crates/test_r
 - **[`reporter.rs`](../../../crates/test_runner/src/reporter.rs):** Persistent results recording in `.test_results/`, differential regression detection, and global summary generation.
 
 ### 5.2 CPU State Setup & Execution Flow
-```rust
-let mut bus = TestMemoryBus::new();
-bus.load_test_ram(&test.initial.ram);
-
-let mut cpu = Cpu::new();
-cpu.state.d = [test.initial.d0, test.initial.d1, /* ... */];
-cpu.state.a = [test.initial.a0, test.initial.a1, /* ... */];
-cpu.state.usp = test.initial.usp;
-cpu.state.ssp = test.initial.ssp;
-cpu.state.sr = test.initial.sr;
-
-// Tom Harte suite initializes PC at start of instruction + 4 due to prefetch queue model
-if is_harte {
-    cpu.state.pc = test.initial.pc.wrapping_add(4);
-} else {
-    cpu.state.pc = test.initial.pc;
-}
-cpu.state.ir = (test.initial.prefetch[0] & 0xFFFF) as u16;
-cpu.state.prefetch[0] = (test.initial.prefetch[1] & 0xFFFF) as u16;
-
-// Execute instruction
-let _ = cpu.step_instruction(&mut bus);
-```
+Implemented directly in [`crates/test_runner/src/runner.rs`](file:///d:/Programowanie/Amiga/crates/test_runner/src/runner.rs):
+- Instantiates a clean [`TestMemoryBus`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/test_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
+- Primes CPU registers $D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, and Program Counter (accounting for Tom Harte's $+4$ prefetch offset).
+- Primes prefetch queue registers `ir` and `prefetch[0]`.
+- Drives instruction stepping via `cpu.step_instruction(&mut bus)` or CCK-by-CCK via `cpu.step_cck(&mut bus)`.
 
 ---
 
 ## 6. Integration Test Suite Structure (`tests/test_singlestep.rs`)
 
-Integration tests reside in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs). Rather than scattering tests across dozens of individual files, tests use a unified dual-suite runner function `run_dual_test`:
-
-```rust
-/// Helper function to execute a test against both MAME and Real 68k (Tom Harte) suites
-fn run_dual_test(name: &str, limit: usize) {
-    let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", name);
-    let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", name);
-
-    // 1. Validate against MAME suite
-    let (mame_passed, mame_failed) = run_test_file(&mame_path, Some(limit))
-        .unwrap_or_else(|err| panic!("Failed MAME test '{}': {}", mame_path, err));
-    assert_eq!(mame_failed, 0, "MAME tests failed for {}: {}/{} failed", name, mame_failed, mame_passed + mame_failed);
-
-    // 2. Validate against Tom Harte (Real 68k) suite
-    let (harte_passed, harte_failed) = run_test_file(&harte_path, Some(limit))
-        .unwrap_or_else(|err| panic!("Failed Real 68k test '{}': {}", harte_path, err));
-    assert_eq!(harte_failed, 0, "Real 68k tests failed for {}: {}/{} failed", name, harte_failed, harte_passed + harte_failed);
-}
-```
+Integration tests reside in [`crates/test_runner/tests/test_singlestep.rs`](file:///d:/Programowanie/Amiga/crates/test_runner/tests/test_singlestep.rs). Rather than scattering tests across dozens of individual files, tests use the unified dual-suite helper `run_dual_test("<OPCODE>", limit)`, simultaneously running and asserting zero failures across:
+1. MAME test suite (`ref_src/SingleStepTests-m68000/v1/<OPCODE>.json`).
+2. Tom Harte real silicon test suite (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json`).
 
 Tests are grouped into cohesive categories within `test_singlestep.rs`:
 - **System & Control Flow:** `test_nop`, `test_rts`, `test_trap`, `test_bcc`, `test_jmp`, `test_jsr`

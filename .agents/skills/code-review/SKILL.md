@@ -55,7 +55,7 @@ Analyze all modified and added files using `git diff`:
 10. **Path Privacy**: Ensure no host paths (`C:\Users\`, `/home/`, personal disk paths) are present.
 
 ### Step 3: Living Documentation Audit
-1. **Design Documents**: Did the author update `Obsidian/Amiga/Design/`? Were speculative draft snippets or pre-implementation code sketches removed?
+1. **Design Documents**: Did the author update `Obsidian/Amiga/Design/`? Were speculative draft snippets, pre-implementation sketches, and duplicate code snippets of already-written code removed? (The codebase is the single source of truth; design docs must not duplicate implemented Rust code).
 2. **Roadmap**: If a step in `ROADMAP.md` is 100% complete, was it removed from the active list and added to the baseline summary?
 3. **Crate Graph**: Were crate dependencies in `General Architecture.md` updated if `Cargo.toml` was touched?
 
@@ -74,7 +74,7 @@ Provide the audit report using the following standard template:
 - [ ] **Anti-Hack & Spec Integrity:** Zero ad-hoc test workarounds; hardware specifications followed strictly.
 - [ ] **Rust File Size & Cohesion:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Technical documentation has no line limits.
 - [ ] **Inlining Strategy:** Cross-crate `#[inline]`, CCR `#[inline(always)]`, cold paths `#[inline(never)]`.
-- [ ] **Design Docs Pruning:** Living docs updated, speculative code pruned.
+- [ ] **Design Docs Pruning & Implemented Code Removal:** Living docs updated, speculative code pruned, and all code snippets for implemented features removed from `Obsidian/Amiga/Design/`.
 - [ ] **Roadmap Discipline:** Completed steps removed from active roadmap and summarized.
 - [ ] **Path Privacy:** Zero external host paths.
 - [ ] **Test Coverage:** All workspace tests pass 100% green (`cargo test`).
