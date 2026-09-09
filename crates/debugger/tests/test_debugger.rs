@@ -41,7 +41,7 @@ fn test_debugger_trace_buffer_and_breakpoints() {
     bus.write_word_debug(0x001002, 0x4E71);
     bus.write_word_debug(0x001004, 0x4E71);
 
-    cpu.reload_pc_and_prefetch(0x001000, &mut bus);
+    cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
 
     // Set breakpoint at $001004
     dbg.breakpoints.add_pc_breakpoint(0x001004);

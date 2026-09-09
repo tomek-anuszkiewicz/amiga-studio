@@ -237,8 +237,13 @@ impl Cpu {
         }
     }
 
-    /// Reloads PC and prefetches the next two instruction words (after branch or jump)
-    pub fn reload_pc_and_prefetch(&mut self, target_pc: u32, bus: &mut dyn AddressBus) {
+    /// Test & Debugger helper: Sets the Program Counter to `target_pc` and primes
+    /// the 2-word prefetch queue (`ir` and `prefetch[0]`) via non-intrusive debug reads.
+    ///
+    /// This bypasses the 68000 vector table cold reset sequence to allow immediate
+    /// execution in unit tests or synthetic debugger harnesses.
+    #[inline]
+    pub fn set_pc_and_prime_prefetch(&mut self, target_pc: u32, bus: &mut dyn AddressBus) {
         self.state.pc = target_pc;
         self.state.ir = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);

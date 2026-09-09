@@ -170,7 +170,7 @@ fn test_nop_and_branch() {
     // Target = base_pc + 2 + displacement = 0x1000 + 2 + 4 = 0x1006
     let clocks2 = cpu.step_instruction(&mut bus);
     assert_eq!(clocks2, 10);
-    assert_eq!(cpu.state.pc, 0x001006 + 4); // +4 because reload_pc_and_prefetch fetched 2 words
+    assert_eq!(cpu.state.pc, 0x001006 + 4); // +4 because target prefetch refill fetched 2 words into IR & prefetch[0]
 }
 
 #[test]
