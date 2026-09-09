@@ -165,4 +165,3 @@ fn test_cycle_counter_monotonic_accumulation() {
     assert_eq!(cpu.state.cycle_counter, 0);
     assert_eq!(cpu.cycle_counter(), 0);
 }
-

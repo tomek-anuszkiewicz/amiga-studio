@@ -170,7 +170,11 @@ pub static STEPS_MOVEM_PCIDX: [MicroStep; 8] = [
 // ============================================================================
 
 /// Compile-time opcode decoder for MOVEM
-pub const fn decode_movem_steps(is_reg_to_mem: bool, mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
+pub const fn decode_movem_steps(
+    is_reg_to_mem: bool,
+    mode: u8,
+    reg: u8,
+) -> Option<&'static [MicroStep]> {
     if is_reg_to_mem {
         match mode {
             2 => Some(&STEPS_MOVEM_AI),
@@ -231,10 +235,7 @@ fn movem_write_reg(state: &mut CpuState, bit_idx: u8, val: u32) {
 }
 
 /// Executes a single bus step of the MOVEM multi-register transfer state machine
-pub fn execute_movem_transfer(
-    cpu: &mut Cpu,
-    bus: &mut MemoryBus,
-) -> BusResult<()> {
+pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut MemoryBus) -> BusResult<()> {
     let ir = cpu.state.ir;
     let is_reg_to_mem = (ir & 0x0400) == 0;
     let is_long = (ir & 0x0040) != 0;
@@ -359,16 +360,25 @@ pub fn execute_movem_transfer(
                 let reg_val = movem_read_reg(&cpu.state, is_predec, bit_idx);
                 let (addr, data) = if is_predec {
                     if !is_long || sub_word == 0 {
-                        (cpu.state.micro.ea_addr.wrapping_sub(2), (reg_val & 0xFFFF) as u16)
+                        (
+                            cpu.state.micro.ea_addr.wrapping_sub(2),
+                            (reg_val & 0xFFFF) as u16,
+                        )
                     } else {
-                        (cpu.state.micro.ea_addr.wrapping_sub(4), (reg_val >> 16) as u16)
+                        (
+                            cpu.state.micro.ea_addr.wrapping_sub(4),
+                            (reg_val >> 16) as u16,
+                        )
                     }
                 } else if !is_long {
                     (cpu.state.micro.ea_addr, (reg_val & 0xFFFF) as u16)
                 } else if sub_word == 0 {
                     (cpu.state.micro.ea_addr, (reg_val >> 16) as u16)
                 } else {
-                    (cpu.state.micro.ea_addr.wrapping_add(2), (reg_val & 0xFFFF) as u16)
+                    (
+                        cpu.state.micro.ea_addr.wrapping_add(2),
+                        (reg_val & 0xFFFF) as u16,
+                    )
                 };
                 let addr_masked = addr & 0x00FF_FFFF;
 
@@ -390,12 +400,14 @@ pub fn execute_movem_transfer(
                             );
                             if is_predec {
                                 if !is_long {
-                                    cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_sub(2);
+                                    cpu.state.micro.ea_addr =
+                                        cpu.state.micro.ea_addr.wrapping_sub(2);
                                     bit_idx += 1;
                                 } else if sub_word == 0 {
                                     sub_word = 1;
                                 } else {
-                                    cpu.state.micro.ea_addr = cpu.state.micro.ea_addr.wrapping_sub(4);
+                                    cpu.state.micro.ea_addr =
+                                        cpu.state.micro.ea_addr.wrapping_sub(4);
                                     sub_word = 0;
                                     bit_idx += 1;
                                 }
@@ -443,5 +455,3 @@ pub fn execute_movem_transfer(
         }
     }
 }
-
-

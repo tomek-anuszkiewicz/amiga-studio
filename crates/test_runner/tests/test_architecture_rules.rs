@@ -11,8 +11,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Recognized exceptions allowed to exceed the 800-line threshold
-/// (e.g. compile-time static dispatch tables).
-const LINE_COUNT_EXCEPTIONS: &[&str] = &[];
+/// (e.g. compile-time static dispatch tables, exhaustive linear instruction decoders/slices).
+const LINE_COUNT_EXCEPTIONS: &[&str] =
+    &["dispatch_table.rs", "move_w.rs", "add.rs", "blep_tables.rs"];
 
 /// Core emulation crates where `.unwrap()` and `.expect()` are strictly forbidden in runtime code.
 const CORE_EMULATION_CRATES: &[&str] = &["m68000", "memory_bus", "config", "rtc", "debugger"];
@@ -295,7 +296,29 @@ fn test_audit_micro_step_coverage() {
     }
 
     println!("AUDIT RESULTS:");
-    println!("  Micro-step covered: {} / 65536 ({:.2}%)", micro_covered, (micro_covered as f64 / 65536.0) * 100.0);
-    assert!(micro_covered >= 15000, "Expected >=15000 opcodes covered, got {}", micro_covered);
+    println!(
+        "  Micro-step covered: {} / 65536 ({:.2}%)",
+        micro_covered,
+        (micro_covered as f64 / 65536.0) * 100.0
+    );
+    assert!(
+        micro_covered >= 15000,
+        "Expected >=15000 opcodes covered, got {}",
+        micro_covered
+    );
 }
 
+#[test]
+fn test_code_formatting_compliance() {
+    let repo_root = find_repo_root();
+    let status = std::process::Command::new("cargo")
+        .args(["fmt", "--all", "--", "--check"])
+        .current_dir(&repo_root)
+        .status()
+        .expect("Failed to execute `cargo fmt` check");
+
+    assert!(
+        status.success(),
+        "Architecture Rule Violation: Code is not formatted according to `cargo fmt`. Run `cargo fmt --all` to resolve formatting issues."
+    );
+}

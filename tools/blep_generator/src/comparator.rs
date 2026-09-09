@@ -61,7 +61,8 @@ impl ErrorMetrics {
 /// 3: A1200 LED filter ON
 /// 4: Vanilla (unfiltered)
 pub fn parse_winuae_sinctable<P: AsRef<Path>>(path: P) -> Result<Vec<Vec<i32>>, String> {
-    let content = fs::read_to_string(path).map_err(|e| format!("Failed to read sinctable.cpp: {e}"))?;
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read sinctable.cpp: {e}"))?;
 
     let mut tables = Vec::new();
     let mut in_table = false;
@@ -94,7 +95,10 @@ pub fn parse_winuae_sinctable<P: AsRef<Path>>(path: P) -> Result<Vec<Vec<i32>>, 
     }
 
     if tables.len() < 4 {
-        return Err(format!("Expected at least 4 tables, but found {}", tables.len()));
+        return Err(format!(
+            "Expected at least 4 tables, but found {}",
+            tables.len()
+        ));
     }
 
     Ok(tables)

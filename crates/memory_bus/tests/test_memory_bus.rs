@@ -138,4 +138,3 @@ fn test_bus_direct_read_write_and_byte_accesses() {
     bus.unlock_chip_ram();
     assert_eq!(bus.read_word(0x004000), BusResult::Ready(0xABCD));
 }
-

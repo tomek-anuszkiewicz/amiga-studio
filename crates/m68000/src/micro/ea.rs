@@ -198,7 +198,6 @@ pub fn ea_calc_move_dst_pi_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     }
 }
 
-
 /// Destination Address Register Indirect with Predecrement (Byte): -(An) -> An -= (2 if A7 else 1), ea_addr = An
 #[inline(always)]
 pub fn ea_calc_dst_pd_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
@@ -223,7 +222,6 @@ pub fn ea_calc_dst_pd_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     state.write_a(reg_dst as usize, an);
     state.micro.ea_addr = an;
 }
-
 
 /// Destination Address Register Indirect with Displacement: (d16, An) -> ea_addr = An + disp16
 #[inline(always)]
@@ -366,5 +364,3 @@ pub fn set_write_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.micro.ea_high;
     state.micro.destination >>= 16;
 }
-
-

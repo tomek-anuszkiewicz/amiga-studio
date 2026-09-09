@@ -5,8 +5,8 @@
 //! `(d16, PC)`, `(d8, PC, Xn)`.
 //! Execution time: 16 to 22 CPU clocks depending on addressing mode.
 
-use crate::micro::common;
 use crate::core::Cpu;
+use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
@@ -206,5 +206,3 @@ pub const fn decode_jsr_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]>
         _ => None,
     }
 }
-
-

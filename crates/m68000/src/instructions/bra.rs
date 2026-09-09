@@ -3,8 +3,8 @@
 //! Unconditional relative branch with 8-bit short or 16-bit word displacement.
 //! Execution time: 10 CPU clocks (2 internal idle clocks + 2 bus prefetch cycles).
 
-use crate::micro::common;
 use crate::core::Cpu;
+use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
@@ -56,5 +56,3 @@ pub const fn decode_bra_steps(d8: u8) -> &'static [MicroStep] {
         &STEPS_BRA_WORD
     }
 }
-
-

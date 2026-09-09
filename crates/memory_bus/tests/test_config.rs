@@ -1,5 +1,7 @@
-use memory_bus::{A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard};
 use memory_bus::MemoryBus;
+use memory_bus::{
+    A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
+};
 
 #[test]
 fn test_default_config_is_standard_1mb_pal() {
@@ -157,4 +159,3 @@ fn test_bank_handler_direct_method_pointer_dispatch() {
     // Verify through normal bus read
     assert_eq!(bus.read_byte_debug(0x000100), 0x42);
 }
-

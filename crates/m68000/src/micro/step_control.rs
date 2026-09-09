@@ -33,12 +33,9 @@ impl Cpu {
     pub fn step_bus_read_target_opcode_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr & 0x00FF_FFFF;
         let data = self.state.micro.irc;
-        self.state.micro.record_bus_transaction(
-            true,
-            addr,
-            BusAccessSize::Word,
-            data,
-        );
+        self.state
+            .micro
+            .record_bus_transaction(true, addr, BusAccessSize::Word, data);
         BusResult::Ready(())
     }
 
@@ -62,12 +59,9 @@ impl Cpu {
     pub fn step_prefetch_target_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2) & 0x00FF_FFFF;
         let target_prefetch = self.state.prefetch[0];
-        self.state.micro.record_bus_transaction(
-            true,
-            addr,
-            BusAccessSize::Word,
-            target_prefetch,
-        );
+        self.state
+            .micro
+            .record_bus_transaction(true, addr, BusAccessSize::Word, target_prefetch);
         self.state.micro.target_refill = true;
         BusResult::Ready(())
     }
@@ -100,12 +94,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 BusResult::Ready(())
             }
         }
@@ -118,12 +109,9 @@ impl Cpu {
         match bus.write_word(sp_low, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp_low,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp_low, BusAccessSize::Word, val);
                 BusResult::Ready(())
             }
         }
@@ -131,7 +119,10 @@ impl Cpu {
 
     /// CCK2: Legacy forwarding alias for retiring low word push
     #[inline(always)]
-    pub fn step_bus_push_stack_low_write_and_retire(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+    pub fn step_bus_push_stack_low_write_and_retire(
+        &mut self,
+        bus: &mut MemoryBus,
+    ) -> BusResult<()> {
         self.step_bus_push_stack_low_write(bus)
     }
 
@@ -160,12 +151,9 @@ impl Cpu {
         let sp = self.state.read_a(7);
         let data = ((self.state.micro.ea_high >> 16) & 0xFFFF) as u16;
         self.state.write_a(7, sp.wrapping_add(2));
-        self.state.micro.record_bus_transaction(
-            true,
-            sp & 0x00FF_FFFF,
-            BusAccessSize::Word,
-            data,
-        );
+        self.state
+            .micro
+            .record_bus_transaction(true, sp & 0x00FF_FFFF, BusAccessSize::Word, data);
         BusResult::Ready(())
     }
 
@@ -190,12 +178,9 @@ impl Cpu {
         let sp = self.state.read_a(7);
         let data = (self.state.micro.ea_addr & 0xFFFF) as u16;
         self.state.write_a(7, sp.wrapping_add(2));
-        self.state.micro.record_bus_transaction(
-            true,
-            sp & 0x00FF_FFFF,
-            BusAccessSize::Word,
-            data,
-        );
+        self.state
+            .micro
+            .record_bus_transaction(true, sp & 0x00FF_FFFF, BusAccessSize::Word, data);
         BusResult::Ready(())
     }
 
@@ -220,12 +205,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 BusResult::Ready(())
             }
         }
@@ -248,12 +230,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 BusResult::Ready(())
             }
         }
@@ -277,12 +256,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 self.state.write_a(7, sp_base.wrapping_sub(6));
                 BusResult::Ready(())
             }
@@ -309,12 +285,9 @@ impl Cpu {
     pub fn step_bus_read_vector_high_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr & 0x00FF_FFFF;
         let val = ((self.state.micro.ea_high >> 16) & 0xFFFF) as u16;
-        self.state.micro.record_bus_transaction(
-            true,
-            addr,
-            BusAccessSize::Word,
-            val,
-        );
+        self.state
+            .micro
+            .record_bus_transaction(true, addr, BusAccessSize::Word, val);
         BusResult::Ready(())
     }
 
@@ -338,15 +311,14 @@ impl Cpu {
     pub fn step_bus_read_vector_low_finish(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2) & 0x00FF_FFFF;
         let val = (self.state.micro.source & 0xFFFF) as u16;
-        self.state.micro.record_bus_transaction(
-            true,
-            addr,
-            BusAccessSize::Word,
-            val,
-        );
+        self.state
+            .micro
+            .record_bus_transaction(true, addr, BusAccessSize::Word, val);
         let target = (self.state.micro.ea_high | (val as u32)) & 0x00FF_FFFF;
         if (target & 1) != 0 {
-            if self.state.micro.current_steps.as_ptr() == crate::micro::common::STEPS_ADDRESS_ERROR.as_ptr() {
+            if self.state.micro.current_steps.as_ptr()
+                == crate::micro::common::STEPS_ADDRESS_ERROR.as_ptr()
+            {
                 self.state.halted = true;
                 return BusResult::Ready(());
             }
@@ -384,12 +356,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 BusResult::Ready(())
             }
         }
@@ -412,12 +381,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 BusResult::Ready(())
             }
         }
@@ -440,12 +406,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 BusResult::Ready(())
             }
         }
@@ -468,12 +431,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 BusResult::Ready(())
             }
         }
@@ -496,12 +456,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 BusResult::Ready(())
             }
         }
@@ -524,12 +481,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 BusResult::Ready(())
             }
         }
@@ -553,12 +507,9 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.micro.record_bus_transaction(
-                    false,
-                    sp,
-                    BusAccessSize::Word,
-                    val,
-                );
+                self.state
+                    .micro
+                    .record_bus_transaction(false, sp, BusAccessSize::Word, val);
                 self.state.write_a(7, sp_base.wrapping_sub(14));
                 BusResult::Ready(())
             }

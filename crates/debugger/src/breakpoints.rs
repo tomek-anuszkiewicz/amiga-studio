@@ -1,6 +1,5 @@
 //! Breakpoint and Watchpoint management
 
-
 /// Watchpoint access type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WatchAccess {

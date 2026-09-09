@@ -15,7 +15,6 @@ pub mod function_code {
     pub const CPU_SPACE: u8 = 7;
 }
 
-
 /// Bus access transfer size
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BusAccessSize {

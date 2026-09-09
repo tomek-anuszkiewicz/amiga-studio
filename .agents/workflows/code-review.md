@@ -9,14 +9,17 @@ Use this workflow to conduct an independent, rigorous audit of changes before co
 
 ---
 
-## 1. Automated Architecture Rule Verification
-Execute the automated architectural test suite:
+## 1. Automated Architecture & Formatting Verification
+Execute formatting check and the automated architectural test suite:
 ```powershell
+cargo fmt --all -- --check
 cargo test -p test_runner --test test_architecture_rules
 ```
-Ensure all 3 rules pass:
-- Rust source file size limit `<= 800` lines in `crates/*/src/` (excluding `dispatch_table.rs`). Documentation files have NO line limits.
+Ensure all rules pass:
+- Code is 100% formatted via standard `cargo fmt`.
+- Rust source file size limit `<= 800` lines in `crates/*/src/` (excluding recognized static tables/exceptions). Documentation files have NO line limits.
 - Zero `.unwrap()` / `.expect()` calls in core emulation crates.
+- Zero custom macros (`macro_rules!`) and zero const-generic handlers.
 - Zero hardcoded external user/host paths.
 
 ---

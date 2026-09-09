@@ -76,8 +76,8 @@ impl TvMode {
     #[inline]
     pub fn sampling_rate(self) -> f64 {
         match self {
-            TvMode::Pal => 7093790.0 / 2.0,   // ~3.546895 MHz
-            TvMode::Ntsc => 7159090.0 / 2.0,  // ~3.579545 MHz
+            TvMode::Pal => 7093790.0 / 2.0,  // ~3.546895 MHz
+            TvMode::Ntsc => 7159090.0 / 2.0, // ~3.579545 MHz
         }
     }
 }

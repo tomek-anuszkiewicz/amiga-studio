@@ -347,7 +347,10 @@ pub const fn build_preset_bank_map(preset: A500Preset) -> [BankHandler; 256] {
     map[0xBF] = CIA_HANDLER;
 
     // 4. Slow RAM: 512 KB occupies banks 0xC0..=0xC7 (8 banks of 64 KB)
-    if matches!(preset, A500Preset::Standard1Mb | A500Preset::ExpandedPowerUser) {
+    if matches!(
+        preset,
+        A500Preset::Standard1Mb | A500Preset::ExpandedPowerUser
+    ) {
         let mut b = 0xC0;
         while b <= 0xC7 {
             map[b] = SLOW_RAM_HANDLER;
@@ -356,7 +359,10 @@ pub const fn build_preset_bank_map(preset: A500Preset) -> [BankHandler; 256] {
     }
 
     // 5. RTC: bank 0xDC (at $DC0000..=$DC003F)
-    if matches!(preset, A500Preset::Standard1Mb | A500Preset::ExpandedPowerUser) {
+    if matches!(
+        preset,
+        A500Preset::Standard1Mb | A500Preset::ExpandedPowerUser
+    ) {
         map[0xDC] = RTC_HANDLER;
     }
 
@@ -380,7 +386,8 @@ pub static BANK_MAP_BARE: [BankHandler; 256] = build_preset_bank_map(A500Preset:
 pub static BANK_MAP_STANDARD: [BankHandler; 256] = build_preset_bank_map(A500Preset::Standard1Mb);
 
 /// Static compile-time bank dispatch table for Preset 3 (Expanded Power User: 1 MB + 4 MB Fast + RTC)
-pub static BANK_MAP_EXPANDED: [BankHandler; 256] = build_preset_bank_map(A500Preset::ExpandedPowerUser);
+pub static BANK_MAP_EXPANDED: [BankHandler; 256] =
+    build_preset_bank_map(A500Preset::ExpandedPowerUser);
 
 /// Returns a reference to the static compile-time bank dispatch table for the given preset
 #[inline(always)]

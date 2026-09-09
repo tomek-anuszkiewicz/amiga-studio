@@ -9,7 +9,9 @@ pub mod map;
 pub mod test_injection;
 
 pub use arbitration::{function_code, BusAccessSize, BusResult};
-pub use config::{A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard};
+pub use config::{
+    A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
+};
 pub use map::{
     build_bank_map, build_preset_bank_map, get_preset_bank_map, handler_for_bank, BankHandler,
     BankReadByteFn, BankWriteByteFn, BANK_MAP_BARE, BANK_MAP_EXPANDED, BANK_MAP_STANDARD,
@@ -69,7 +71,6 @@ pub struct MemoryBus {
 
     /// Kickstart ROM buffer (256 KB or 512 KB)
     pub kickstart_rom: Vec<u8>,
-
 
     /// Flag indicating whether Agnus/DMA currently blocks the Chip RAM bus
     pub chip_ram_blocked: bool,

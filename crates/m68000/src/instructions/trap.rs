@@ -52,4 +52,3 @@ pub static STEPS_TRAP: [MicroStep; 17] = [
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_RETIRE_2CLK,
 ];
-

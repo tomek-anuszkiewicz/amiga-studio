@@ -131,7 +131,6 @@ impl CpuState {
         self.read_a(reg) as u16
     }
 
-
     /// Reads full 32-bit value of address register An
     #[inline(always)]
     pub fn a_long(&self, reg: usize) -> u32 {
@@ -229,7 +228,6 @@ impl CpuState {
         }
     }
 
-
     /// Returns true if CPU is running in Supervisor mode
     #[inline]
     pub fn is_supervisor(&self) -> bool {
@@ -254,10 +252,7 @@ impl CpuState {
     /// Used by: CMP, CMPI, CMPA, CMPM, CHK.
     #[inline(always)]
     pub fn set_ccr_nzvc(&mut self, n: bool, z: bool, v: bool, c: bool) {
-        let flags = ((n as u16) << 3)
-            | ((z as u16) << 2)
-            | ((v as u16) << 1)
-            | (c as u16);
+        let flags = ((n as u16) << 3) | ((z as u16) << 2) | ((v as u16) << 1) | (c as u16);
         self.sr = (self.sr & !0x000F) | flags;
     }
 
@@ -268,7 +263,6 @@ impl CpuState {
         let flags = ((n as u16) << 3) | ((z as u16) << 2);
         self.sr = (self.sr & !0x000F) | flags;
     }
-
 
     /// Sets Zero (Z) flag branchlessly, strictly preserving X, N, V, C.
     /// Used by: BTST, BSET, BCLR, BCHG.

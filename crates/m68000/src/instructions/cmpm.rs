@@ -4,9 +4,9 @@
 //! Evaluates ((Ax) - (Ay)) and updates N, Z, V, and C flags.
 //! Neither memory location is modified. Extend (X) flag is unaffected.
 
+use crate::core::Cpu;
 use crate::micro::common;
 use crate::micro::ea;
-use crate::core::Cpu;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
@@ -71,33 +71,69 @@ pub fn alu_cmpm_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_CMPM_B: [MicroStep; 6] = [
-    MicroStep { step_fn: Cpu::step_bus_read_src_byte, alu_fn: Some(ea::ea_calc_src_pi_b), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_src_byte,
+        alu_fn: Some(ea::ea_calc_src_pi_b),
+        base_clocks: 2,
+    },
     common::READ_BYTE_FINISH,
-    MicroStep { step_fn: Cpu::step_bus_read_dst_byte, alu_fn: Some(ea::ea_calc_dst_pi_b), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_dst_byte,
+        alu_fn: Some(ea::ea_calc_dst_pi_b),
+        base_clocks: 2,
+    },
     common::READ_BYTE_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_cmpm_b), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_cmpm_b),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_CMPM_W: [MicroStep; 6] = [
-    MicroStep { step_fn: Cpu::step_bus_read_src_word, alu_fn: Some(ea::ea_calc_src_pi_w), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_src_word,
+        alu_fn: Some(ea::ea_calc_src_pi_w),
+        base_clocks: 2,
+    },
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_bus_read_dst_word, alu_fn: Some(ea::ea_calc_dst_pi_w), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_dst_word,
+        alu_fn: Some(ea::ea_calc_dst_pi_w),
+        base_clocks: 2,
+    },
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_cmpm_w), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_cmpm_w),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_CMPM_L: [MicroStep; 10] = [
-    MicroStep { step_fn: Cpu::step_bus_read_src_long_high, alu_fn: Some(ea::ea_calc_src_pi_l), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_src_long_high,
+        alu_fn: Some(ea::ea_calc_src_pi_l),
+        base_clocks: 2,
+    },
     common::READ_WORD_FINISH,
     common::READ_SRC_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_bus_read_dst_long_high, alu_fn: Some(ea::ea_calc_dst_pi_l), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_dst_long_high,
+        alu_fn: Some(ea::ea_calc_dst_pi_l),
+        base_clocks: 2,
+    },
     common::READ_WORD_FINISH,
     common::READ_DST_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_cmpm_l), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_cmpm_l),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
@@ -110,5 +146,3 @@ pub const fn decode_cmpm_steps(size: u8) -> Option<&'static [MicroStep]> {
         _ => None,
     }
 }
-
-

@@ -178,7 +178,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.source = (self.state.micro.source & 0x0000_FFFF) | ((data as u32) << 16);
+                self.state.micro.source =
+                    (self.state.micro.source & 0x0000_FFFF) | ((data as u32) << 16);
                 self.state.micro.read_to_dest = false;
                 BusResult::Ready(())
             }
@@ -196,7 +197,8 @@ impl Cpu {
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.micro.destination = (self.state.micro.destination & 0x0000_FFFF) | ((data as u32) << 16);
+                self.state.micro.destination =
+                    (self.state.micro.destination & 0x0000_FFFF) | ((data as u32) << 16);
                 self.state.micro.read_to_dest = true;
                 BusResult::Ready(())
             }
@@ -227,12 +229,9 @@ impl Cpu {
         } else {
             (self.state.micro.source & 0xFF) as u16
         };
-        self.state.micro.record_bus_transaction(
-            true,
-            addr,
-            BusAccessSize::Byte,
-            val,
-        );
+        self.state
+            .micro
+            .record_bus_transaction(true, addr, BusAccessSize::Byte, val);
         BusResult::Ready(())
     }
 

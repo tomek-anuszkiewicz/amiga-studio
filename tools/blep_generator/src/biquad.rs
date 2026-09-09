@@ -79,7 +79,9 @@ impl BiquadFilter {
     /// Processes a single input sample through the biquad filter.
     #[inline]
     pub fn filter_sample(&mut self, x0: f64) -> f64 {
-        let y0 = self.b0 * x0 + self.b1 * self.x1 + self.b2 * self.x2 - self.a1 * self.y1 - self.a2 * self.y2;
+        let y0 = self.b0 * x0 + self.b1 * self.x1 + self.b2 * self.x2
+            - self.a1 * self.y1
+            - self.a2 * self.y2;
         self.x2 = self.x1;
         self.x1 = x0;
         self.y2 = self.y1;

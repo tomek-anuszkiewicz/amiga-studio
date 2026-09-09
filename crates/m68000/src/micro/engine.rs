@@ -72,7 +72,6 @@ pub struct CpuMicroState {
     pub ssp_base: u32,
 }
 
-
 impl Default for CpuMicroState {
     fn default() -> Self {
         Self::new()

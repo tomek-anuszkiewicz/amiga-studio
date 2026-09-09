@@ -140,7 +140,9 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         let src_mode = ((ir >> 3) & 7) as u8;
         let src_reg = (ir & 7) as u8;
         if dst_mode == 1 {
-            if let Some(steps) = crate::instructions::movea::decode_movea_steps(true, src_mode, src_reg) {
+            if let Some(steps) =
+                crate::instructions::movea::decode_movea_steps(true, src_mode, src_reg)
+            {
                 table[op] = OpcodeDescriptor {
                     steps,
                     reg_src: src_reg,
@@ -210,12 +212,10 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
                         reg_dst: reg_d,
                     };
                 }
-            } else if let Some(steps) = crate::instructions::add::decode_add_steps(dir, size, mode, reg) {
-                let (reg_src, reg_dst) = if dir == 0 {
-                    (reg, reg_d)
-                } else {
-                    (reg_d, reg)
-                };
+            } else if let Some(steps) =
+                crate::instructions::add::decode_add_steps(dir, size, mode, reg)
+            {
+                let (reg_src, reg_dst) = if dir == 0 { (reg, reg_d) } else { (reg_d, reg) };
                 table[op] = OpcodeDescriptor {
                     steps,
                     reg_src,
@@ -399,7 +399,9 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
             let reg_dst = (ir & 7) as u8;
 
             if shift_type == 0 && dir == 1 {
-                if let Some(steps) = crate::instructions::asl::decode_asl_reg_steps(is_reg_count, size) {
+                if let Some(steps) =
+                    crate::instructions::asl::decode_asl_reg_steps(is_reg_count, size)
+                {
                     let reg_src = if is_reg_count {
                         raw_cnt
                     } else if raw_cnt == 0 {

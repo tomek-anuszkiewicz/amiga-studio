@@ -4,8 +4,8 @@
 //! Supports 8-bit short and 16-bit word displacements.
 //! Execution time: 18 CPU clocks (2 internal + 2 stack writes + 2 prefetch).
 
-use crate::micro::common;
 use crate::core::Cpu;
+use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
@@ -67,5 +67,3 @@ pub const fn decode_bsr_steps(d8: u8) -> &'static [MicroStep] {
         &STEPS_BSR_WORD
     }
 }
-
-

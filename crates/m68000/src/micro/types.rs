@@ -152,5 +152,3 @@ pub enum RecordedTransaction {
         duration: u32,
     },
 }
-
-

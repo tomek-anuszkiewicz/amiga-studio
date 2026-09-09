@@ -6,7 +6,9 @@ mod config;
 mod fft;
 mod generator;
 
-use comparator::{generate_comparison_svg, parse_winuae_sinctable, DatasetComparison, ErrorMetrics};
+use comparator::{
+    generate_comparison_svg, parse_winuae_sinctable, DatasetComparison, ErrorMetrics,
+};
 use config::{AmigaAudioFilterParams, LedFilter, TvMode};
 use generator::generate_blep;
 use std::fs;
@@ -52,10 +54,30 @@ fn write_rust_module<P: AsRef<Path>>(
         buf.push_str("];\n\n");
     }
 
-    append_table(&mut s, "BLEP_A500_FILTER_OFF", "Amiga 500 BLEP table with audio LED filter OFF.", a500_off);
-    append_table(&mut s, "BLEP_A500_FILTER_ON", "Amiga 500 BLEP table with audio LED filter ON.", a500_on);
-    append_table(&mut s, "BLEP_A1200_FILTER_OFF", "Amiga 1200 BLEP table with audio LED filter OFF.", a1200_off);
-    append_table(&mut s, "BLEP_A1200_FILTER_ON", "Amiga 1200 BLEP table with audio LED filter ON.", a1200_on);
+    append_table(
+        &mut s,
+        "BLEP_A500_FILTER_OFF",
+        "Amiga 500 BLEP table with audio LED filter OFF.",
+        a500_off,
+    );
+    append_table(
+        &mut s,
+        "BLEP_A500_FILTER_ON",
+        "Amiga 500 BLEP table with audio LED filter ON.",
+        a500_on,
+    );
+    append_table(
+        &mut s,
+        "BLEP_A1200_FILTER_OFF",
+        "Amiga 1200 BLEP table with audio LED filter OFF.",
+        a1200_off,
+    );
+    append_table(
+        &mut s,
+        "BLEP_A1200_FILTER_ON",
+        "Amiga 1200 BLEP table with audio LED filter ON.",
+        a1200_on,
+    );
 
     fs::write(path, s)
 }
@@ -99,18 +121,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 5. Rust source module for Paula core
     let blep_tables_rs_path = output_dir.join("blep_tables.rs");
-    write_rust_module(&blep_tables_rs_path, &a500_off, &a500_on, &a1200_off, &a1200_on)?;
+    write_rust_module(
+        &blep_tables_rs_path,
+        &a500_off,
+        &a500_on,
+        &a1200_off,
+        &a1200_on,
+    )?;
     println!("  ✓ Saved Rust module: {}", blep_tables_rs_path.display());
 
     println!("\n[2/4] Parsing WinUAE reference tables from ref_src/WinUAE-6030/sinctable.cpp...");
     let sinctable_path = Path::new("ref_src/WinUAE-6030/sinctable.cpp");
     if !sinctable_path.exists() {
-        eprintln!("Warning: WinUAE sinctable.cpp not found at: {}", sinctable_path.display());
+        eprintln!(
+            "Warning: WinUAE sinctable.cpp not found at: {}",
+            sinctable_path.display()
+        );
         return Ok(());
     }
 
     let winuae_tables = parse_winuae_sinctable(sinctable_path)?;
-    println!("  ✓ Successfully parsed {} reference tables (2048 entries each).", winuae_tables.len());
+    println!(
+        "  ✓ Successfully parsed {} reference tables (2048 entries each).",
+        winuae_tables.len()
+    );
 
     println!("\n[3/4] Computing accuracy metrics vs WinUAE ground truth...");
     let m_a500_off = ErrorMetrics::compute(&a500_off, &winuae_tables[0]);

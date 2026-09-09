@@ -210,10 +210,7 @@ pub fn run_single_test_detail(
                 continue;
             }
             // Note: MAME MOVE.l divergence in pushed SR on stack at SSP+9
-            if !is_harte
-                && addr == cpu.state.ssp.wrapping_add(9)
-                && file_path.contains("MOVE.l")
-            {
+            if !is_harte && addr == cpu.state.ssp.wrapping_add(9) && file_path.contains("MOVE.l") {
                 continue;
             }
             // Note: Documented divergence in Address Error stack frame IR (SSP+6..=SSP+7)

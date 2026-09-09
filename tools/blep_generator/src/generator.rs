@@ -150,7 +150,8 @@ pub fn generate_blep(
     let sampling_rate = tv_mode.sampling_rate();
 
     // 1. Bandlimited sinc impulse
-    let mut signal = create_bandlimited_impulse(sampling_rate, BLEP_TABLE_LENGTH, BLEP_CUTOFF_FREQUENCY_HZ);
+    let mut signal =
+        create_bandlimited_impulse(sampling_rate, BLEP_TABLE_LENGTH, BLEP_CUTOFF_FREQUENCY_HZ);
 
     // 2. Kaiser windowing
     let kaiser = kaiser_window(BLEP_TABLE_LENGTH, params.kaiser_window_beta);
@@ -166,14 +167,16 @@ pub fn generate_blep(
     if led_filter == LedFilter::On {
         let den_s2 = params.r332 * params.r333 * params.c333 * params.c332;
         let den_s1 = params.c333 * (params.r332 + params.r333);
-        let mut biquad = BiquadFilter::from_continuous_transfer_function(den_s2, den_s1, sampling_rate);
+        let mut biquad =
+            BiquadFilter::from_continuous_transfer_function(den_s2, den_s1, sampling_rate);
         biquad.filter_signal(&mut signal);
     }
 
     // 4b. 1st-order RC low-pass filter (fixed stage)
     let den_s2 = 0.0;
     let den_s1 = params.r331 * params.c331;
-    let mut lowpass_biquad = BiquadFilter::from_continuous_transfer_function(den_s2, den_s1, sampling_rate);
+    let mut lowpass_biquad =
+        BiquadFilter::from_continuous_transfer_function(den_s2, den_s1, sampling_rate);
     lowpass_biquad.filter_signal(&mut signal);
 
     // 5. Numerical step integration

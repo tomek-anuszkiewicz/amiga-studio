@@ -3,9 +3,9 @@
 //! Loads an effective address operand into an Address Register (An)
 //! with word sign-extension, leaving CCR completely untouched.
 
+use crate::core::Cpu;
 use crate::micro::common;
 use crate::micro::ea;
-use crate::core::Cpu;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
@@ -64,97 +64,185 @@ pub fn alu_movea_l_mem(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_MOVEA_W_DN: [MicroStep; 2] = [
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_dn), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_dn),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_AN: [MicroStep; 2] = [
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_an), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_an),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_AI: [MicroStep; 4] = [
-    MicroStep { step_fn: Cpu::step_bus_read_src_word, alu_fn: Some(ea::ea_calc_src_ai), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_src_word,
+        alu_fn: Some(ea::ea_calc_src_ai),
+        base_clocks: 2,
+    },
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_PI: [MicroStep; 4] = [
-    MicroStep { step_fn: Cpu::step_bus_read_src_word, alu_fn: Some(ea::ea_calc_src_pi_w), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_src_word,
+        alu_fn: Some(ea::ea_calc_src_pi_w),
+        base_clocks: 2,
+    },
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_PD: [MicroStep; 5] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_pd_w), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: Some(ea::ea_calc_src_pd_w),
+        base_clocks: 2,
+    },
     common::READ_SRC_WORD,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_D16: [MicroStep; 6] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_src_d16_an),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_IDX: [MicroStep; 7] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: Some(ea::ea_calc_src_idx_an),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_ABSW: [MicroStep; 6] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absw), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_absw),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_ABSL: [MicroStep; 8] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_absl_hi),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_absl_lo),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_PCD16: [MicroStep; 6] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_d16_pc),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_PCIDX: [MicroStep; 7] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: Some(ea::ea_calc_idx_pc),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_w_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_w_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_W_IMM: [MicroStep; 4] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(alu_movea_w_imm), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(alu_movea_w_imm),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
     common::PREFETCH_NEXT_READ,
     common::PREFETCH_NEXT_RETIRE,
@@ -165,119 +253,215 @@ pub static STEPS_MOVEA_W_IMM: [MicroStep; 4] = [
 // ============================================================================
 
 pub static STEPS_MOVEA_L_DN: [MicroStep; 2] = [
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_dn), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_dn),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_AN: [MicroStep; 2] = [
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_an), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_an),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_AI: [MicroStep; 6] = [
-    MicroStep { step_fn: Cpu::step_bus_read_src_long_high, alu_fn: Some(ea::ea_calc_src_ai), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_src_long_high,
+        alu_fn: Some(ea::ea_calc_src_ai),
+        base_clocks: 2,
+    },
     common::READ_WORD_FINISH,
     common::READ_SRC_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_PI: [MicroStep; 6] = [
-    MicroStep { step_fn: Cpu::step_bus_read_src_long_high, alu_fn: Some(ea::ea_calc_src_pi_l), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_src_long_high,
+        alu_fn: Some(ea::ea_calc_src_pi_l),
+        base_clocks: 2,
+    },
     common::READ_WORD_FINISH,
     common::READ_SRC_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_PD: [MicroStep; 7] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_pd_l), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: Some(ea::ea_calc_src_pd_l),
+        base_clocks: 2,
+    },
     common::READ_SRC_LONG_HIGH,
     common::READ_WORD_FINISH,
     common::READ_SRC_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_D16: [MicroStep; 8] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_src_d16_an), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_src_d16_an),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_LONG_HIGH,
     common::READ_WORD_FINISH,
     common::READ_SRC_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_IDX: [MicroStep; 9] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_idx_an), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: Some(ea::ea_calc_src_idx_an),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_SRC_LONG_HIGH,
     common::READ_WORD_FINISH,
     common::READ_SRC_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_ABSW: [MicroStep; 8] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absw), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_absw),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_LONG_HIGH,
     common::READ_WORD_FINISH,
     common::READ_SRC_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_ABSL: [MicroStep; 10] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absl_hi), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_absl_hi),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_absl_lo), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_absl_lo),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_LONG_HIGH,
     common::READ_WORD_FINISH,
     common::READ_SRC_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_PCD16: [MicroStep; 8] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_d16_pc), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_d16_pc),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_LONG_HIGH,
     common::READ_WORD_FINISH,
     common::READ_SRC_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_PCIDX: [MicroStep; 9] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_idx_pc), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: Some(ea::ea_calc_idx_pc),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_SRC_LONG_HIGH,
     common::READ_WORD_FINISH,
     common::READ_SRC_LONG_LOW,
     common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_MOVEA_L_IMM: [MicroStep; 6] = [
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_imm_l_hi), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_imm_l_hi),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
-    MicroStep { step_fn: Cpu::step_fetch_extension_read, alu_fn: Some(ea::ea_calc_imm_l_lo), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_fetch_extension_read,
+        alu_fn: Some(ea::ea_calc_imm_l_lo),
+        base_clocks: 2,
+    },
     common::FETCH_EXT_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_movea_l_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_movea_l_mem),
+        base_clocks: 2,
+    },
     common::PREFETCH_NEXT_RETIRE,
 ];
 

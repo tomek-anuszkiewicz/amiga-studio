@@ -177,7 +177,13 @@ impl RtcMsm6242b {
         } else {
             // 12-hour mode: Bit 2 = PM (1) / AM (0)
             let pm_bit = if hour >= 12 { 0x04 } else { 0x00 };
-            let h12 = if hour == 0 { 12 } else if hour > 12 { hour - 12 } else { hour };
+            let h12 = if hour == 0 {
+                12
+            } else if hour > 12 {
+                hour - 12
+            } else {
+                hour
+            };
             self.registers[0x4] = (h12 % 10) as u8;
             self.registers[0x5] = ((h12 / 10) as u8) | pm_bit;
         }
@@ -223,7 +229,11 @@ impl RtcMsm6242b {
         let month = (self.registers[0x9] * 10 + self.registers[0x8]).clamp(1, 12) as u32;
         let year_2d = (self.registers[0xB] * 10 + self.registers[0xA]) as i32;
         // Interpret year >= 78 as 1978..1999, else 2000..2077
-        let year = if year_2d >= 78 { 1900 + year_2d } else { 2000 + year_2d };
+        let year = if year_2d >= 78 {
+            1900 + year_2d
+        } else {
+            2000 + year_2d
+        };
 
         self.simulated_time = compose_timestamp(year, month, day, hour, min, sec);
     }

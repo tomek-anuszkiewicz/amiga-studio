@@ -43,10 +43,7 @@ fn test_archetype1_nop_4_clocks() {
     prime_prefetch(&mut cpu, &mut bus);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(
-        clocks, 4,
-        "NOP must take exactly 4 CPU clocks (2 CCKs)"
-    );
+    assert_eq!(clocks, 4, "NOP must take exactly 4 CPU clocks (2 CCKs)");
     assert_eq!(cpu.state.pc, 0x001006);
 }
 

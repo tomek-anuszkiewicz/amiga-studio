@@ -68,12 +68,22 @@ fn test_unaligned_address_error() {
     cpu.trigger_address_error(0x001001, true, false);
 
     let clocks = cpu.step_instruction(&mut bus);
-    assert_eq!(clocks, 50, "Address Error exception processing must take exactly 50 CPU clocks");
-    assert!(cpu.state.is_supervisor(), "CPU must switch to supervisor mode");
+    assert_eq!(
+        clocks, 50,
+        "Address Error exception processing must take exactly 50 CPU clocks"
+    );
+    assert!(
+        cpu.state.is_supervisor(),
+        "CPU must switch to supervisor mode"
+    );
     assert_eq!(cpu.state.sr & 0x8000, 0, "Trace bit must be cleared");
 
     let ssp = cpu.state.read_a(7);
-    assert_eq!(ssp, 0x004000 - 14, "SSP must be decremented by 14 bytes (7 words)");
+    assert_eq!(
+        ssp,
+        0x004000 - 14,
+        "SSP must be decremented by 14 bytes (7 words)"
+    );
 
     // Verify 7-word stack frame
     let info_word = bus.read_word_debug(ssp);
@@ -252,4 +262,3 @@ fn test_instruction_unaligned_read_address_error() {
     assert_eq!(cpu.state.prefetch[0], 0x4E71);
     assert_eq!(cpu.state.pc, 0x002004);
 }
-

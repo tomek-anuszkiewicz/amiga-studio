@@ -8,7 +8,10 @@ use std::f64::consts::PI;
 /// The length of `buffer` must be a power of two.
 pub fn fft_in_place(buffer: &mut [Complex64]) {
     let n = buffer.len();
-    assert!(n > 0 && n.is_power_of_two(), "FFT length must be a power of 2");
+    assert!(
+        n > 0 && n.is_power_of_two(),
+        "FFT length must be a power of 2"
+    );
 
     // 1. Bit-reversal permutation
     let mut j = 0;
@@ -52,7 +55,10 @@ pub fn fft_in_place(buffer: &mut [Complex64]) {
 /// Uses the property: $\text{IFFT}(x) = \frac{1}{N} (\text{FFT}(x^*))^*$.
 pub fn ifft_in_place(buffer: &mut [Complex64]) {
     let n = buffer.len();
-    assert!(n > 0 && n.is_power_of_two(), "IFFT length must be a power of 2");
+    assert!(
+        n > 0 && n.is_power_of_two(),
+        "IFFT length must be a power of 2"
+    );
 
     for sample in buffer.iter_mut() {
         *sample = sample.conj();
@@ -96,8 +102,18 @@ mod tests {
         let restored = ifft(&transformed);
 
         for (a, b) in original.iter().zip(restored.iter()) {
-            assert!((a.re - b.re).abs() < 1e-12, "Re mismatch: {} vs {}", a.re, b.re);
-            assert!((a.im - b.im).abs() < 1e-12, "Im mismatch: {} vs {}", a.im, b.im);
+            assert!(
+                (a.re - b.re).abs() < 1e-12,
+                "Re mismatch: {} vs {}",
+                a.re,
+                b.re
+            );
+            assert!(
+                (a.im - b.im).abs() < 1e-12,
+                "Im mismatch: {} vs {}",
+                a.im,
+                b.im
+            );
         }
     }
 

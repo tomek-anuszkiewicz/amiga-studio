@@ -3,8 +3,8 @@
 //! Unconditional program jump to an effective address using control addressing modes:
 //! `(An)`, `(d16, An)`, `(d8, An, Xn)`, `(xxx).w`, `(xxx).l`, `(d16, PC)`, `(d8, PC, Xn)`.
 
-use crate::micro::common;
 use crate::core::Cpu;
+use crate::micro::common;
 use crate::micro::types::MicroStep;
 
 /// JMP (An): 8 CPU clocks / 4 CCKs
@@ -121,7 +121,3 @@ pub const fn decode_jmp_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]>
         _ => None,
     }
 }
-
-
-
-

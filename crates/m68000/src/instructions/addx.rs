@@ -3,8 +3,8 @@
 //! Quirk note: In ADDX, the Z flag is cleared if the result is non-zero,
 //! but remains unchanged if the result is zero (preserving chained multi-precision zero status).
 
-use crate::micro::ea;
 use crate::core::Cpu;
+use crate::micro::ea;
 use crate::micro::types::{MicroStep, Size};
 use crate::state::CpuState;
 
@@ -96,7 +96,12 @@ pub fn alu_addx_w_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub fn latch_dst_and_calc_addx_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let res = execute_addx(state, state.micro.source, state.micro.destination, Size::Long);
+    let res = execute_addx(
+        state,
+        state.micro.source,
+        state.micro.destination,
+        Size::Long,
+    );
     state.micro.destination = res;
     state.micro.ea_addr = state.micro.ea_high.wrapping_add(2);
 }
@@ -106,59 +111,123 @@ pub fn latch_dst_and_calc_addx_l(state: &mut CpuState, _reg_src: u8, _reg_dst: u
 // ============================================================================
 
 pub static STEPS_ADDX_B_DN_DN: [MicroStep; 2] = [
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_addx_b_dn_dn), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_addx_b_dn_dn),
+        base_clocks: 2,
+    },
     crate::micro::common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_ADDX_W_DN_DN: [MicroStep; 2] = [
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_addx_w_dn_dn), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_addx_w_dn_dn),
+        base_clocks: 2,
+    },
     crate::micro::common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_ADDX_L_DN_DN: [MicroStep; 3] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: None, base_clocks: 4 },
-    MicroStep { step_fn: Cpu::step_prefetch_next_read, alu_fn: Some(alu_addx_l_dn_dn), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: None,
+        base_clocks: 4,
+    },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_next_read,
+        alu_fn: Some(alu_addx_l_dn_dn),
+        base_clocks: 2,
+    },
     crate::micro::common::PREFETCH_NEXT_RETIRE,
 ];
 
 pub static STEPS_ADDX_B_PD_PD: [MicroStep; 9] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_pd_b), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: Some(ea::ea_calc_src_pd_b),
+        base_clocks: 2,
+    },
     crate::micro::common::READ_SRC_BYTE,
-    MicroStep { step_fn: Cpu::step_bus_read_byte_finish, alu_fn: Some(ea::ea_calc_dst_pd_b), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_byte_finish,
+        alu_fn: Some(ea::ea_calc_dst_pd_b),
+        base_clocks: 2,
+    },
     crate::micro::common::READ_DST_BYTE,
     crate::micro::common::READ_BYTE_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_irc_read, alu_fn: Some(alu_addx_b_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_irc_read,
+        alu_fn: Some(alu_addx_b_mem),
+        base_clocks: 2,
+    },
     crate::micro::common::PREFETCH_IRC_FINISH,
     crate::micro::common::BUS_WRITE_IDLE,
     crate::micro::common::WRITE_DST_BYTE_RETIRE,
 ];
 
 pub static STEPS_ADDX_W_PD_PD: [MicroStep; 9] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_pd_w), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: Some(ea::ea_calc_src_pd_w),
+        base_clocks: 2,
+    },
     crate::micro::common::READ_SRC_WORD,
-    MicroStep { step_fn: Cpu::step_bus_read_word_finish, alu_fn: Some(ea::ea_calc_dst_pd_w), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_word_finish,
+        alu_fn: Some(ea::ea_calc_dst_pd_w),
+        base_clocks: 2,
+    },
     crate::micro::common::READ_DST_WORD,
     crate::micro::common::READ_WORD_FINISH,
-    MicroStep { step_fn: Cpu::step_prefetch_irc_read, alu_fn: Some(alu_addx_w_mem), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_irc_read,
+        alu_fn: Some(alu_addx_w_mem),
+        base_clocks: 2,
+    },
     crate::micro::common::PREFETCH_IRC_FINISH,
     crate::micro::common::BUS_WRITE_IDLE,
     crate::micro::common::WRITE_DST_WORD_RETIRE,
 ];
 
 pub static STEPS_ADDX_L_PD_PD: [MicroStep; 15] = [
-    MicroStep { step_fn: Cpu::step_alu, alu_fn: Some(ea::ea_calc_src_pd_l_split), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_alu,
+        alu_fn: Some(ea::ea_calc_src_pd_l_split),
+        base_clocks: 2,
+    },
     crate::micro::common::READ_SRC_WORD,
-    MicroStep { step_fn: Cpu::step_bus_read_word_finish, alu_fn: Some(ea::latch_src_lo_and_read_src_hi), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_word_finish,
+        alu_fn: Some(ea::latch_src_lo_and_read_src_hi),
+        base_clocks: 2,
+    },
     crate::micro::common::READ_SRC_SPLIT_HIGH,
-    MicroStep { step_fn: Cpu::step_bus_read_split_high_finish, alu_fn: Some(ea::calc_dst_pd_l), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_split_high_finish,
+        alu_fn: Some(ea::calc_dst_pd_l),
+        base_clocks: 2,
+    },
     crate::micro::common::READ_DST_WORD,
-    MicroStep { step_fn: Cpu::step_bus_read_word_finish, alu_fn: Some(ea::latch_dst_lo_and_read_dst_hi), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_word_finish,
+        alu_fn: Some(ea::latch_dst_lo_and_read_dst_hi),
+        base_clocks: 2,
+    },
     crate::micro::common::READ_DST_SPLIT_HIGH,
-    MicroStep { step_fn: Cpu::step_bus_read_split_high_finish, alu_fn: Some(latch_dst_and_calc_addx_l), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_bus_read_split_high_finish,
+        alu_fn: Some(latch_dst_and_calc_addx_l),
+        base_clocks: 2,
+    },
     crate::micro::common::BUS_WRITE_IDLE,
     crate::micro::common::WRITE_DST_WORD,
     crate::micro::common::PREFETCH_IRC_READ,
-    MicroStep { step_fn: Cpu::step_prefetch_irc_finish, alu_fn: Some(ea::set_write_hi), base_clocks: 2 },
+    MicroStep {
+        step_fn: Cpu::step_prefetch_irc_finish,
+        alu_fn: Some(ea::set_write_hi),
+        base_clocks: 2,
+    },
     crate::micro::common::BUS_WRITE_IDLE,
     crate::micro::common::WRITE_DST_WORD_RETIRE,
 ];
@@ -181,5 +250,3 @@ pub const fn decode_addx_steps(is_memory: bool, size: u8) -> Option<&'static [Mi
         }
     }
 }
-
-

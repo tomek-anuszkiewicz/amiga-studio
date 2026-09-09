@@ -3,8 +3,8 @@
 //! Evaluates the 14 conditional branches using 8-bit short or 16-bit word displacements.
 //! Execution time: 10 CPU clocks if taken; 8/12 CPU clocks if not taken.
 
-use crate::micro::common;
 use crate::core::Cpu;
+use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
@@ -106,5 +106,3 @@ pub const fn decode_bcc_steps(d8: u8) -> &'static [MicroStep] {
         &STEPS_BCC_WORD
     }
 }
-
-

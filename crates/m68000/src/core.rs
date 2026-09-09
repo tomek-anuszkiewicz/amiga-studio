@@ -50,7 +50,6 @@ impl Cpu {
         self.state.prefetch[1] = 0;
     }
 
-
     /// Advances the global cycle counter
     #[inline(always)]
     pub fn advance_clocks(&mut self, clocks: u32) {
@@ -68,7 +67,6 @@ impl Cpu {
     pub fn reset_cycle_counter(&mut self) {
         self.state.cycle_counter = 0;
     }
-
 
     /// CCK phase stepping primitive (each invocation steps exactly 1 CCK = 2 CPU clocks)
     pub fn step_cck(&mut self, bus: &mut MemoryBus) -> bool {
@@ -174,7 +172,9 @@ impl Cpu {
                 match bus_res {
                     BusResult::WaitState => return false,
                     BusResult::Ready(()) => {
-                        if (self.state.micro.micro_step as usize) >= self.state.micro.current_steps.len() {
+                        if (self.state.micro.micro_step as usize)
+                            >= self.state.micro.current_steps.len()
+                        {
                             self.retire_current_instruction();
                             return true;
                         }
@@ -236,7 +236,8 @@ impl Cpu {
             match bus_res {
                 BusResult::WaitState => return false,
                 BusResult::Ready(()) => {
-                    self.state.micro.clocks_remaining = self.state.micro.clocks_remaining.saturating_sub(2);
+                    self.state.micro.clocks_remaining =
+                        self.state.micro.clocks_remaining.saturating_sub(2);
 
                     if self.state.micro.clocks_remaining == 0
                         && self.state.micro.micro_step == prev_micro_step
@@ -244,7 +245,9 @@ impl Cpu {
                         self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
                     }
 
-                    if (self.state.micro.micro_step as usize) >= self.state.micro.current_steps.len() {
+                    if (self.state.micro.micro_step as usize)
+                        >= self.state.micro.current_steps.len()
+                    {
                         self.retire_current_instruction();
                         return true;
                     }
@@ -297,7 +300,6 @@ impl Cpu {
             }
         }
     }
-
 
     /// Reloads PC and prefetches the next two instruction words (after branch or jump)
     pub fn reload_pc_and_prefetch(&mut self, target_pc: u32, bus: &mut MemoryBus) {

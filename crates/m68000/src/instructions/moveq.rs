@@ -3,8 +3,8 @@
 //! Moves an 8-bit sign-extended immediate value into a data register.
 //! Execution time: 4 CPU clocks (2 CCKs / 1 prefetch cycle).
 
-use crate::micro::common;
 use crate::core::Cpu;
+use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 

@@ -20,12 +20,13 @@ This skill guides an agent (or subagent reviewer) through performing a strict po
 
 ## Review Procedure
 
-### Step 1: Automated Architecture Verification
-Run the automated architectural test suite in `test_runner`:
+### Step 1: Automated Architecture & Formatting Verification
+Verify formatting compliance and run the automated architectural test suite in `test_runner`:
 ```powershell
+cargo fmt --all -- --check
 cargo test -p test_runner --test test_architecture_rules
 ```
-If any test fails, review is immediately blocked until the violation is resolved.
+If formatting checks or any architecture tests fail, review is immediately blocked until the violation is resolved (format via `cargo fmt --all`).
 
 ### Step 2: Diff Inspection (`git diff`)
 Analyze all modified and added files using `git diff`:
@@ -63,6 +64,7 @@ Provide the audit report using the following standard template:
 
 ```markdown
 ### 🛡️ Code & Architecture Compliance Review:
+- [ ] **Code Formatting Compliance:** `cargo fmt --all -- --check` passed cleanly across workspace.
 - [ ] **Architecture Test Suite:** `cargo test -p test_runner --test test_architecture_rules` passed.
 - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
 - [ ] **Host CPU Performance & Sympathy:** Flattened dispatch (branch-minimization), zero heap allocations in hot path, endianness bypass on bitwise ops.
