@@ -267,7 +267,7 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 ### 3.1 Read Transaction Contention
 - **CCK1 (S0–S3):** The CPU asserts the target address and attempts reading via `bus.read_word(addr)` or `bus.read_byte(addr)`:
   - If `BusResult::WaitState` (Chip RAM access blocked by active Agnus DMA):
-    - **Action:** CPU stalls at CCK1 (accumulating wait state, `is_wait_state() == true`). Does NOT advance micro-step. Repeats CCK1 on next clock.
+    - **Action:** CPU stalls at CCK1. Does NOT advance micro-step or phase. Repeats CCK1 on next clock.
   - If `BusResult::Ready(data)`:
     - Data is stored directly into the target register (`source`, `destination`, `prefetch[0]`, or `irc`); CPU advances `phase` to `CckPhase::Cck2`.
 - **CCK2 (S4–S7):**
@@ -278,7 +278,7 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
   - CPU proceeds to CCK2 (`phase = CckPhase::Cck2`).
 - **CCK2 (S4–S7):** The memory bus attempts committing the write via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)` reading directly from `state.micro.destination`:
   - If `BusResult::WaitState` (Gary withholds `_DTACK` due to Chip RAM DMA contention):
-    - **Action:** CPU stalls at CCK2 (`is_wait_state() == true`), holding write pins asserted until Agnus frees the bus.
+    - **Action:** CPU stalls at CCK2, holding write pins asserted until Agnus frees the bus.
   - If `BusResult::Ready(())`:
     - Byte/word commits to memory, transaction is recorded, and `phase` resets to `CckPhase::Cck1`.
 
@@ -299,7 +299,6 @@ Instruction execution is driven via a cycle-exact micro-step state machine clock
   - `movem_mask`: 16-bit register transfer mask for `MOVEM`.
   - `clocks_remaining`: Remaining CPU clocks for the active micro-step countdown (0 when completed or between steps).
   - `micro_step`: Index of the currently executing micro-operation within the active opcode sequence.
-  - `current_cycle_wait_cycles`: Wait cycles accumulated while stalled by Agnus DMA contention.
   - `target_refill`: Indicates whether instruction retirement must perform a branch/jump target refill.
   - `prefetch_retired`: Indicates whether prefetch pipeline has already retired into IR during microcode execution.
 
@@ -307,7 +306,6 @@ Instruction execution is driven via a cycle-exact micro-step state machine clock
   - **`StepFn = fn(&mut Cpu, &mut MemoryBus) -> BusResult<()>`**: Micro-step handlers only report bus readiness (`BusResult::Ready(())` or `BusResult::WaitState`).
   - **`step_cck(&mut self, bus: &mut MemoryBus) -> bool`**: Executes a single CCK color clock cycle (~280 ns) and returns `true` when the instruction completes/retires, `false` otherwise.
   - **`step_instruction(&mut self, bus: &mut MemoryBus) -> u32`**: Steps through an entire instruction to retirement, returning the exact CPU clock cycles consumed.
-  - **`is_wait_state(&self) -> bool`**: Returns whether the CPU is currently stalled by DMA contention.
   - **State flags**: Halted and Stopped states are queried directly on `cpu.state.halted` and `cpu.state.stopped`.
 
 #### Specialized Direct Micro-Step Execution Handlers (`StepFn`)

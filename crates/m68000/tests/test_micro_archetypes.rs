@@ -119,13 +119,12 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     // Color Clock 1: instruction handler initiates bus read, but Gary withholds _DTACK at CCK1 -> WaitState
     let r1 = cpu.step_cck(&mut bus);
     assert!(!r1);
-    assert!(cpu.is_wait_state());
     assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck1);
 
     // Color Clock 2: still blocked -> WaitState
     let r2 = cpu.step_cck(&mut bus);
     assert!(!r2);
-    assert!(cpu.is_wait_state());
+    assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck1);
 
     // Agnus completes DMA transfer and frees the bus
     bus.unlock_chip_ram();
@@ -133,7 +132,6 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     // Color Clock 3: CCK1 succeeds and advances to CCK2
     let r3 = cpu.step_cck(&mut bus);
     assert!(!r3);
-    assert!(!cpu.is_wait_state());
     assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck2);
 
     // Color Clock 4: CCK2 completes transaction and latches data
@@ -195,13 +193,14 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 2: CCK2 write blocked by DMA -> WaitState
     let r2 = cpu.step_cck(&mut bus);
     assert!(!r2);
-    assert!(cpu.is_wait_state());
     assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck2);
+    assert_ne!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Color Clock 3: still blocked -> WaitState
     let r3 = cpu.step_cck(&mut bus);
     assert!(!r3);
-    assert!(cpu.is_wait_state());
+    assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck2);
+    assert_ne!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Agnus frees bus
     bus.unlock_chip_ram();

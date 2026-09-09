@@ -108,11 +108,11 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
    - All addresses are automatically masked to 24 bits (`addr & 0x00FF_FFFF`) and dispatched via the 256-entry bank dispatch table.
 3. **2-Phase CCK Execution Flow (CPU Driven):**
     - **Read Transaction (`step_read_word_at` / `step_read_prog_word_at` / `step_read_byte_at`):**
-      - **CCK1 ($S_0–S_3$):** CPU issues `bus.read_word(addr)` (or `read_byte`). If `BusResult::WaitState`, CPU increments wait cycles and stalls without advancing `phase`. When `BusResult::Ready(data)` is returned, data latches into `state.micro.last_read` and advances `phase` to `Cck2`.
+      - **CCK1 ($S_0–S_3$):** CPU issues `bus.read_word(addr)` (or `read_byte`). If `BusResult::WaitState`, CPU stalls without advancing `phase`. When `BusResult::Ready(data)` is returned, data latches into `state.micro.source` and advances `phase` to `Cck2`.
       - **CCK2 ($S_4–S_7$):** CPU does nothing on the physical bus (already released for Agnus DMA). Records bus transaction and resets `phase` to `Cck1`, completing the bus cycle and allowing the micro-step to advance.
     - **Write Transaction (`step_write_word_at` / `step_write_byte_at`):**
       - **CCK1 ($S_0–S_3$):** CPU drives address and data internally, advancing `phase` to `Cck2` without touching the physical bus.
-      - **CCK2 ($S_4–S_7$):** CPU issues `bus.write_word(addr, val)` (or `write_byte`). If `BusResult::WaitState` (Agnus DMA active, Gary withholds $\overline{\text{DTACK}}$), CPU stalls at CCK2 accumulating wait states (`is_wait_state() == true`). When `BusResult::Ready(())` is returned, data has committed to memory; CPU records transaction and `phase` resets to `Cck1`.
+      - **CCK2 ($S_4–S_7$):** CPU issues `bus.write_word(addr, val)` (or `write_byte`). If `BusResult::WaitState` (Agnus DMA active, Gary withholds $\overline{\text{DTACK}}$), CPU stalls at CCK2 holding write pins asserted. When `BusResult::Ready(())` is returned, data has committed to memory; CPU records transaction and `phase` resets to `Cck1`.
 
 ---
 

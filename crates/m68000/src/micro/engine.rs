@@ -37,9 +37,6 @@ pub struct CpuMicroState {
     /// Clocks remaining for the active micro-step (0 when completed or between steps)
     #[serde(default)]
     pub clocks_remaining: u16,
-    /// Wait cycles accumulated during the currently active bus cycle
-    #[serde(default)]
-    pub current_cycle_wait_cycles: u32,
 
     // --- Micro-Step State Machine Fields ---
     /// Decoded source operand buffer for ALU operations
@@ -97,7 +94,6 @@ impl CpuMicroState {
             read_to_dest: false,
             transaction_log: None,
             clocks_remaining: 0,
-            current_cycle_wait_cycles: 0,
             source: 0,
             destination: 0,
             ea_addr: 0,
@@ -122,7 +118,6 @@ impl CpuMicroState {
         self.movem_state = 0;
         self.read_to_dest = false;
         self.clocks_remaining = 0;
-        self.current_cycle_wait_cycles = 0;
         self.source = 0;
         self.destination = 0;
         self.ea_addr = 0;
@@ -145,7 +140,6 @@ impl CpuMicroState {
         self.micro_step = 0;
         self.phase = CckPhase::Cck1;
         self.clocks_remaining = 0;
-        self.current_cycle_wait_cycles = 0;
     }
 
     /// Enables or disables transaction recording
@@ -162,7 +156,10 @@ impl CpuMicroState {
     #[inline]
     pub fn record_internal_transaction(&mut self, duration: u32) {
         if let Some(ref mut log) = self.transaction_log {
-            log.push(RecordedTransaction::Internal { duration });
+            log.push(RecordedTransaction::Internal {
+                duration,
+                micro_step: self.micro_step,
+            });
         }
     }
 
@@ -180,17 +177,17 @@ impl CpuMicroState {
         lds: bool,
     ) {
         if let Some(ref mut log) = self.transaction_log {
-            let duration = 4u32.wrapping_add(self.current_cycle_wait_cycles.wrapping_mul(2));
             log.push(RecordedTransaction::Bus {
                 is_read,
                 is_tas,
-                duration,
+                duration: 4,
                 fc,
                 addr: addr & 0x00FF_FFFF,
                 size,
                 data,
                 uds,
                 lds,
+                micro_step: self.micro_step,
             });
         }
     }

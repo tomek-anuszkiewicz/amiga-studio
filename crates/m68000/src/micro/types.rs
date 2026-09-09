@@ -152,8 +152,12 @@ pub enum RecordedTransaction {
         data: u16,
         uds: bool,
         lds: bool,
+        #[serde(default)]
+        micro_step: u16,
     },
     Internal {
         duration: u32,
+        #[serde(default)]
+        micro_step: u16,
     },
 }

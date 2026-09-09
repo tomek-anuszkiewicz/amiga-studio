@@ -119,7 +119,7 @@ pub fn match_transactions(
     for i in 0..compare_count {
         match (&recorded[i], &expected[i]) {
             (
-                RecordedTransaction::Internal { duration: rec_dur },
+                RecordedTransaction::Internal { duration: rec_dur, .. },
                 ExpectedTransaction::Internal { duration: exp_dur },
             ) => {
                 if rec_dur != exp_dur {
@@ -140,6 +140,7 @@ pub fn match_transactions(
                     data: rec_data,
                     uds: rec_uds,
                     lds: rec_lds,
+                    ..
                 },
                 ExpectedTransaction::Bus {
                     is_read: exp_r,

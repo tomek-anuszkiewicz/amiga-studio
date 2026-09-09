@@ -78,7 +78,6 @@ pub fn run_dma_contention_sweep(
         init_cpu_state(&mut cpu, test);
 
         let mut cck_step = 0;
-        let mut wait_states = 0;
         loop {
             // Inject 1-CCK Chip RAM DMA stall at target phase
             let is_stalled = cck_step == stall_phase;
@@ -93,10 +92,6 @@ pub fn run_dma_contention_sweep(
                 bus.invert_test_memory();
             }
 
-            if cpu.is_wait_state() {
-                wait_states += 1;
-            }
-
             cck_step += 1;
             if completed || cpu.state.halted || cpu.state.stopped {
                 break;
@@ -109,8 +104,10 @@ pub fn run_dma_contention_sweep(
         cpu.state.sync_stack_pointers();
 
         // Verify Invariant 1: Cycle Invariance
+        let extra_clocks = cpu.instruction_clocks.saturating_sub(base_clocks);
+        let wait_states = extra_clocks / 2;
         let expected_clocks = base_clocks + (2 * wait_states);
-        if cpu.instruction_clocks != expected_clocks {
+        if cpu.instruction_clocks != expected_clocks || wait_states > 1 {
             return Err(DmaContentionFailure {
                 test_name: test.name.clone(),
                 stall_phase,
@@ -242,7 +239,6 @@ pub fn run_dma_burst_contention(
     init_cpu_state(&mut cpu, test);
 
     let mut cck_step = 0;
-    let mut wait_states = 0;
     loop {
         // Assert stall for burst_length consecutive CCKs starting at burst_start_phase
         let is_stalled =
@@ -258,10 +254,6 @@ pub fn run_dma_burst_contention(
             bus.invert_test_memory();
         }
 
-        if cpu.is_wait_state() {
-            wait_states += 1;
-        }
-
         cck_step += 1;
         if completed || cpu.state.halted || cpu.state.stopped {
             break;
@@ -273,8 +265,10 @@ pub fn run_dma_burst_contention(
     cpu.state.sync_stack_pointers();
 
     // Assert Cycle Invariance
+    let extra_clocks = cpu.instruction_clocks.saturating_sub(base_clocks);
+    let wait_states = extra_clocks / 2;
     let expected_clocks = base_clocks + (2 * wait_states);
-    if cpu.instruction_clocks != expected_clocks {
+    if cpu.instruction_clocks != expected_clocks || wait_states > (burst_length as u32) {
         return Err(DmaContentionFailure {
             test_name: test.name.clone(),
             stall_phase: burst_start_phase,

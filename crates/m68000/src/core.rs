@@ -55,11 +55,6 @@ impl Cpu {
         self.state.prefetch[1] = 0;
     }
 
-    /// Returns true if the active micro-step cycle encountered a wait state
-    #[inline]
-    pub fn is_wait_state(&self) -> bool {
-        self.state.micro.current_cycle_wait_cycles > 0
-    }
 
     /// Advances instruction clocks and the global cycle counter
     #[inline(always)]
@@ -80,14 +75,6 @@ impl Cpu {
         self.state.cycle_counter = 0;
     }
 
-    /// Handles a bus wait state stall at the memory access primitive level:
-    /// increments wait cycles and returns BusResult::WaitState.
-    #[inline(always)]
-    pub fn on_wait_state(&mut self) -> BusResult<()> {
-        self.state.micro.current_cycle_wait_cycles =
-            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-        BusResult::WaitState
-    }
 
     /// CCK phase stepping primitive (each invocation steps exactly 1 CCK = 2 CPU clocks)
     pub fn step_cck(&mut self, bus: &mut MemoryBus) -> bool {
@@ -150,7 +137,7 @@ impl Cpu {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => match bus.read_word(addr) {
-                BusResult::WaitState => self.on_wait_state(),
+                BusResult::WaitState => BusResult::WaitState,
                 BusResult::Ready(data) => {
                     self.state.micro.source = data as u32;
                     self.state.micro.phase = CckPhase::Cck2;
@@ -193,7 +180,7 @@ impl Cpu {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => match bus.read_byte(addr) {
-                BusResult::WaitState => self.on_wait_state(),
+                BusResult::WaitState => BusResult::WaitState,
                 BusResult::Ready(data) => {
                     self.state.micro.source = data as u32;
                     self.state.micro.phase = CckPhase::Cck2;
@@ -232,7 +219,7 @@ impl Cpu {
                 BusResult::Ready(())
             }
             CckPhase::Cck2 => match bus.write_word(addr, data) {
-                BusResult::WaitState => self.on_wait_state(),
+                BusResult::WaitState => BusResult::WaitState,
                 BusResult::Ready(()) => {
                     let fc = types::data_fc(&self.state);
                     self.state.micro.record_bus_transaction(
@@ -261,7 +248,7 @@ impl Cpu {
                 BusResult::Ready(())
             }
             CckPhase::Cck2 => match bus.write_byte(addr, data) {
-                BusResult::WaitState => self.on_wait_state(),
+                BusResult::WaitState => BusResult::WaitState,
                 BusResult::Ready(()) => {
                     let fc = types::data_fc(&self.state);
                     let (uds, lds) = if (addr & 1) == 0 {
@@ -340,7 +327,6 @@ impl Cpu {
                 match bus_res {
                     BusResult::WaitState => return false,
                     BusResult::Ready(()) => {
-                        self.state.micro.current_cycle_wait_cycles = 0;
                         if (self.state.micro.micro_step as usize) >= self.state.micro.current_steps.len() {
                             self.retire_current_instruction();
                             return true;
@@ -403,7 +389,6 @@ impl Cpu {
             match bus_res {
                 BusResult::WaitState => return false,
                 BusResult::Ready(()) => {
-                    self.state.micro.current_cycle_wait_cycles = 0;
                     self.state.micro.clocks_remaining = self.state.micro.clocks_remaining.saturating_sub(2);
 
                     if self.state.micro.clocks_remaining == 0 {

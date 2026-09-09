@@ -114,7 +114,6 @@ Embedded in `CpuState` to track sub-cycle progress across Color Clock phases wit
 - `micro_step`: Step index within the current instruction's micro-operation sequence.
 - `reg_src`, `reg_dst`: Pre-decoded register indices ($0..7$ for $D_n / A_n$).
 - `read_to_dest`: Indicates whether the active CCK1 read was targeted to `destination` (true) or `source` (false) for CCK2 logging.
-- `current_cycle_wait_cycles`: Wait cycles accumulated during bus stalls in the current cycle.
 
 ### 2.5 The 65,536 Static Dispatch Universe (`OPCODE_DESCRIPTOR_TABLE`)
 
@@ -547,7 +546,7 @@ flowchart TD
     InitCheck -- No --> ExecStep
     
     ExecStep --> BusRes{"BusResult?"}
-    BusRes -- WaitState --> Stall["current_cycle_wait_cycles += 1<br/>return false"]
+    BusRes -- WaitState --> Stall["CPU stalls (phase held)<br/>return false"]
     BusRes -- Ready --> Dec["clocks_remaining -= 2"]
     
     Dec --> DoneCheck{"clocks_remaining == 0?"}
@@ -571,8 +570,8 @@ The full CCK stepping engine is implemented in [`crates/m68000/src/micro/engine.
    - A fast internal loop executes zero-cycle micro-operations (`alu_fn`) when entering a step or when `base_clocks == 0` within the same host tick until encountering a bus cycle.
    - If a subsequent bus cycle stalls due to Chip RAM contention, the ALU calculation is **never repeated**.
 3. **Two-Phase External Bus Execution (`phase`):**
-   - **CCK1 (Phase 1):** Read actions issue `bus.read_word(addr)` / `bus.read_byte(addr)`. If `BusResult::WaitState`, the CPU accumulates a wait cycle and stalls (`is_wait_state() == true`, returns `false`) without advancing phase. If `BusResult::Ready(data)`, samples memory data into `last_read` / `prefetch` and advances `phase = CckPhase::Cck2`. For write actions, the CPU does not touch the bus (bus idle for DMA) and simply advances to CCK2.
-   - **CCK2 (Phase 2):** Write actions issue `bus.write_word(addr, val)` / `bus.write_byte(addr, val)`. If `BusResult::WaitState`, stalls with wait state (`is_wait_state() == true`, returns `false`). If `BusResult::Ready(())`, commits data, resets `phase = CckPhase::Cck1`, completing the 4-clock bus cycle.
+   - **CCK1 (Phase 1):** Read actions issue `bus.read_word(addr)` / `bus.read_byte(addr)`. If `BusResult::WaitState`, the CPU stalls without advancing phase (returns `false`). If `BusResult::Ready(data)`, samples memory data into `last_read` / `prefetch` and advances `phase = CckPhase::Cck2`. For write actions, the CPU does not touch the bus (bus idle for DMA) and simply advances to CCK2.
+   - **CCK2 (Phase 2):** Write actions issue `bus.write_word(addr, val)` / `bus.write_byte(addr, val)`. If `BusResult::WaitState`, stalls without committing (returns `false`). If `BusResult::Ready(())`, commits data, resets `phase = CckPhase::Cck1`, completing the 4-clock bus cycle.
 4. **Pipeline Advance & Instruction Retirement:**
    - On retirement, shifts `ir = prefetch[0]`, `prefetch[0] = scratch_prefetch` (or target prefetch), advances `pc += 2`, updates `current_steps`, and returns `true`. Multi-cycle instruction steps call `step_instruction(&mut self, bus) -> u32` to step to retirement and return total CPU clocks consumed.
 
