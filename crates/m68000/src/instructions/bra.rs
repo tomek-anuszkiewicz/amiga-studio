@@ -29,7 +29,7 @@ pub static STEPS_BRA_SHORT: [MicroStep; 5] = [
         base_clocks: 2,
     },
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];
@@ -42,7 +42,7 @@ pub static STEPS_BRA_WORD: [MicroStep; 5] = [
         base_clocks: 2,
     },
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];

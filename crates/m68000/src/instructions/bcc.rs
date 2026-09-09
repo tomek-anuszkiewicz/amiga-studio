@@ -15,7 +15,7 @@ pub static STEPS_BRANCH_TAKEN: [MicroStep; 5] = [
         base_clocks: 2,
     },
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];
@@ -33,7 +33,7 @@ pub static STEPS_BRANCH_NOT_TAKEN_SHORT: [MicroStep; 4] = [
         base_clocks: 2,
     },
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 /// Untaken word branch execution steps (12 CPU clocks / 6 CCKs)
@@ -49,7 +49,7 @@ pub static STEPS_BRANCH_NOT_TAKEN_WORD: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];

@@ -91,10 +91,10 @@ By decomposing 4-clock bus cycles into native 2-clock slices ($1\ \text{MicroSte
 
 | Category | Primitives (CCK1 / CCK2 Slices) | Hardware Operation & Bus Semantics |
 | :--- | :--- | :--- |
-| **Operand Reads (Data Space)** | `step_bus_read_src_word`, `step_bus_read_src_byte`, `step_bus_read_dst_word`, `step_bus_read_dst_byte`, `step_bus_read_src_long_high`, `step_bus_read_src_long_low`, `step_bus_read_dst_long_high`, `step_bus_read_dst_long_low` | **CCK1**: Reads from `ea_addr`. Stalls if Chip RAM blocked. Latches into `source`/`destination`.<br>**CCK2** (`READ_WORD_FINISH`, `READ_BYTE_FINISH`): Physical bus free for Agnus DMA (`step_fn: None`). |
+| **Operand Reads (Data Space)** | `step_bus_read_src_word`, `step_bus_read_src_byte`, `step_bus_read_dst_word`, `step_bus_read_dst_byte`, `step_bus_read_src_long_high`, `step_bus_read_src_long_low`, `step_bus_read_dst_long_high`, `step_bus_read_dst_long_low` | **CCK1**: Reads from `ea_addr`. Stalls if Chip RAM blocked. Latches into `source`/`destination`.<br>**CCK2** (`BUS_READ_IDLE`): Physical bus free for Agnus DMA (`step_fn: None`). |
 | **Operand Writes (Data Space)** | `BUS_WRITE_IDLE`, `step_bus_write_dst_word`, `step_bus_write_dst_byte`, `step_bus_write_dst_long_high`, `step_bus_write_dst_long_low` | **CCK1** (`BUS_WRITE_IDLE`): Internal setup; physical bus free for Agnus DMA (`step_fn: None`).<br>**CCK2**: Drives data from `destination` to memory. Stalls if wait states asserted. Retires if final step. |
 | **Stack Operations (Data Space)** | `step_bus_push_stack_high_idle`, `step_bus_push_stack_high_write`, `step_bus_push_stack_low_write`, `step_bus_pop_stack_high_read`, `step_bus_pop_stack_high_finish`, `step_bus_pop_stack_low_read`, `step_bus_pop_stack_low_finish` | Stack reads and pushes over `SP` ($A_7$). Validates address alignment, adjusts SP, and transfers high/low words across CCK1/CCK2 phases. |
-| **Prefetch & Refill (Program Space)** | `step_fetch_extension_read`, `step_fetch_extension_finish`, `step_prefetch_irc_read`, `step_prefetch_irc_finish`, `step_prefetch_next_read`, `PREFETCH_NEXT_RETIRE`, `step_bus_read_target_opcode_read`, `READ_TARGET_OPCODE_FINISH`, `step_prefetch_target_read`, `step_prefetch_target_finish` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline across 2-clock phases and manages standard or target retirement. |
+| **Prefetch & Refill (Program Space)** | `step_fetch_extension_read`, `step_fetch_extension_finish`, `step_prefetch_irc_read`, `step_prefetch_irc_finish`, `step_prefetch_next_read`, `BUS_READ_IDLE`, `step_bus_read_target_opcode_read`, `step_prefetch_target_read`, `step_prefetch_target_finish` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline across 2-clock phases and manages standard or target retirement. |
 | **Internal & Exceptions** | `step_write_word_at`, `step_write_byte_at`, `step_read_word_at`, `step_read_byte_at` | Instantaneous (0 CCK) internal operations, CCR updates, condition evaluation, and 2-phase CCK bus primitives for exception processing. Pure ALU steps utilize `step_fn: None`. |
 
 Handlers are organized cleanly across [`crates/m68000/src/micro/step_execution.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/step_execution.rs) and [`crates/m68000/src/micro/step_control.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/step_control.rs).
@@ -145,10 +145,11 @@ Composite array names follow the strict convention `STEPS_<MNEMONIC>_<SIZE>_<SRC
 
 #### Standardized Common Micro-Step Constants (`crates/m68000/src/micro/common.rs`)
 All instruction modules reuse shared atomic Color Clock micro-step primitives rather than duplicating local slice definitions:
+- **Bus Idle Primitives:** `BUS_WRITE_IDLE` (CCK1 write setup / bus idle), `BUS_READ_IDLE` (CCK2 read completion / bus idle), `ALU_IDLE` (internal processing 2-clock delay).
 - **Operand Writes:** `WRITE_DST_BYTE`, `WRITE_DST_BYTE_RETIRE`, `WRITE_DST_WORD`, `WRITE_DST_WORD_RETIRE`, `WRITE_DST_LONG_HIGH`, `WRITE_DST_LONG_LOW`, `WRITE_DST_LONG_LOW_RETIRE`.
-- **Operand Reads:** `READ_SRC_BYTE`, `READ_BYTE_FINISH`, `READ_SRC_WORD`, `READ_WORD_FINISH`, `READ_SRC_LONG_HIGH`, `READ_SRC_LONG_LOW`.
-- **Prefetch & Extension:** `FETCH_EXT_READ`, `FETCH_EXT_FINISH`, `PREFETCH_IRC_READ`, `PREFETCH_IRC_FINISH`, `PREFETCH_NEXT_READ`, `PREFETCH_NEXT_RETIRE`.
-- **Control Flow Refills:** `READ_TARGET_OPCODE_READ`, `READ_TARGET_OPCODE_FINISH`, `PREFETCH_TARGET_READ`, `PREFETCH_TARGET_FINISH`.
+- **Operand Reads:** `READ_SRC_BYTE`, `READ_SRC_WORD`, `READ_SRC_LONG_HIGH`, `READ_SRC_LONG_LOW`, `READ_DST_BYTE`, `READ_DST_WORD`, `READ_DST_LONG_HIGH`, `READ_DST_LONG_LOW`, `BUS_READ_IDLE` (shared CCK2 idle completion).
+- **Prefetch & Extension:** `FETCH_EXT_READ`, `FETCH_EXT_FINISH`, `PREFETCH_IRC_READ`, `PREFETCH_IRC_FINISH`, `PREFETCH_NEXT_READ`, `BUS_READ_IDLE` (prefetch next finish / retirement).
+- **Control Flow Refills:** `READ_TARGET_OPCODE_READ`, `BUS_READ_IDLE` (target opcode read finish), `PREFETCH_TARGET_READ`, `PREFETCH_TARGET_FINISH`.
 - **Stack Operations:** `PUSH_STACK_HIGH_IDLE`, `PUSH_STACK_HIGH_WRITE`, `PUSH_STACK_LOW_WRITE`, `PUSH_STACK_LOW_WRITE_RETIRE`, `POP_STACK_HIGH_READ`, `POP_STACK_HIGH_FINISH`, `POP_STACK_LOW_READ`, `POP_STACK_LOW_FINISH`.
 
 #### Canonical Layout for Instruction Modules
@@ -448,8 +449,8 @@ flowchart TD
 | :---: | :--- | :---: | :--- |
 | **0** | `step_alu`<br/>*(with `ea_calc_src_idx_an`)* | 2 (1 CCK) | AU decodes `prefetch[0]`: extracts `disp8 = +8`, `Xn = D1.W`, and sets `ea_addr = A0 + D1.W + 8`. Consumes 2 clocks (1 CCK) idle AU addition. |
 | **1-2** | `FETCH_EXT_READ`<br/>`FETCH_EXT_FINISH` | 4 (2 CCKs) | Reads extension word from `PC` into `prefetch[0]`, `PC += 2`. |
-| **3-4** | `READ_SRC_WORD`<br/>`READ_WORD_FINISH` | 4 (2 CCKs) | Reads 16-bit operand from `ea_addr` into `source`. |
-| **5-6** | `PREFETCH_NEXT_READ`<br/>`PREFETCH_NEXT_RETIRE` | 4 (2 CCKs) | Computes `D0 = D0 + source`, sets CCR flags, refills `IR` and `prefetch[0]`, and retires! |
+| **3-4** | `READ_SRC_WORD`<br/>`BUS_READ_IDLE` | 4 (2 CCKs) | Reads 16-bit operand from `ea_addr` into `source`. |
+| **5-6** | `PREFETCH_NEXT_READ`<br/>`BUS_READ_IDLE` | 4 (2 CCKs) | Computes `D0 = D0 + source`, sets CCR flags, refills `IR` and `prefetch[0]`, and retires! |
 
 **Total Duration**: $4\ (\text{FetchExtension}) + 2\ (\text{Internal Delay}) + 4\ (\text{BusReadWord}) + 0\ (\text{ALU}) + 4\ (\text{Prefetch}) = \mathbf{14\ \text{CPU clocks}}\ (7\ \text{CCKs})$!
 
@@ -543,14 +544,14 @@ On physical M68000 hardware, the internal ALU/bus microcode writes the 3-word fr
 7. `Step 7 (EXCEPTION_PUSH_PCHI_IDLE)`: CCK1 of writing return PC high word to `SSP - 4` (bus idle, alignment validation).
 8. `Step 8 (EXCEPTION_PUSH_PCHI_WRITE)`: CCK2 of writing return PC high word to `SSP - 4` and committing `SSP = SSP - 6`.
 9. `Step 9 (READ_VECTOR_HIGH_READ)`: CCK1 of reading vector high word from `ea_addr` into `ea_high`.
-10. `Step 10 (READ_VECTOR_HIGH_FINISH)`: CCK2 of reading vector high word (logs transaction).
+10. `Step 10 (BUS_READ_IDLE)`: CCK2 of reading vector high word (bus free for Agnus DMA).
 11. `Step 11 (READ_VECTOR_LOW_READ)`: CCK1 of reading vector low word from `ea_addr + 2` into `source`.
-12. `Step 12 (READ_VECTOR_LOW_FINISH)`: CCK2 of reading vector low word (logs transaction, verifies even target address alignment).
+12. `Step 12 (READ_VECTOR_LOW_FINISH)`: CCK2 of reading vector low word (verifies even target address alignment).
 13. `Step 13 (READ_TARGET_OPCODE_READ)`: CCK1 of reading target opcode into `irc`.
-14. `Step 14 (READ_TARGET_OPCODE_FINISH)`: CCK2 of reading target opcode (logs transaction with `prog_fc`).
-15. `Step 15 (ALU_INTERNAL_2CLK)`: 2 internal clocks before prefetch (records 2-clock internal transaction).
+14. `Step 14 (BUS_READ_IDLE)`: CCK2 of reading target opcode (bus free for Agnus DMA).
+15. `Step 15 (ALU_IDLE)`: 2 internal clocks before prefetch (internal ALU delay).
 16. `Step 16 (PREFETCH_TARGET_READ)`: CCK1 of reading target + 2 into `prefetch[0]`.
-17. `Step 17 (PREFETCH_TARGET_RETIRE_2CLK)`: CCK2 of reading target + 2 (logs transaction, sets `target_refill = true`, triggers clean instruction retirement).
+17. `Step 17 (PREFETCH_TARGET_FINISH)`: CCK2 of reading target + 2 (sets `target_refill = true`, triggers clean instruction retirement).
 
 - **Total Duration**:
   - `TRAP #n`: Exactly **34 CPU clocks (17 CCKs)** (3 stack writes + 2 vector reads + 2 refill reads + 6 internal clocks).
@@ -856,12 +857,12 @@ The table below catalogs representative micro-step sequences for each fundamenta
 | **14** | `AERR_PUSH_ADDR_HI_IDLE` | 2 (CCK1) | Validates SSP alignment and idles bus for Access Address high word write to `SSP - 12`. |
 | **15** | `AERR_PUSH_ADDR_HI_WRITE` | 2 (CCK2) | Writes `(fault_addr >> 16) & 0xFFFF` to `SSP - 12` and commits `SSP = ssp_base - 14`. |
 | **16** | `READ_VECTOR_HIGH_READ` | 2 (CCK1) | Vector fetch high word read from `$00000C` into `ea_high`. |
-| **17** | `READ_VECTOR_HIGH_FINISH` | 2 (CCK2) | Logs vector high word transaction. |
+| **17** | `BUS_READ_IDLE` | 2 (CCK2) | Vector high word read completion (bus free for Agnus DMA). |
 | **18** | `READ_VECTOR_LOW_READ` | 2 (CCK1) | Vector fetch low word read from `$00000E` into `source`. |
 | **19** | `READ_VECTOR_LOW_FINISH` | 2 (CCK2) | Checks target alignment (halts if double fault), sets `ea_addr = handler_address`. |
 | **20** | `READ_TARGET_OPCODE_READ` | 2 (CCK1) | **Refill 1:** Reads first instruction opcode of handler from `ea_addr`. |
-| **21** | `READ_TARGET_OPCODE_FINISH` | 2 (CCK2) | Latches handler opcode into `irc`. |
-| **22** | `ALU_INTERNAL_2CLK` | 2 (CCK1/2) | 2-clock internal hardware pipeline alignment delay. |
+| **21** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completion (bus free for Agnus DMA). |
+| **22** | `ALU_IDLE` | 2 (CCK1/2) | 2-clock internal hardware pipeline alignment delay. |
 | **23** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads second instruction word from `ea_addr + 2` into `prefetch[0]`. |
 | **24** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Arms `target_refill = true`, latches `IR = irc`, sets `PC = ea_addr + 4`, retires exception! |
 

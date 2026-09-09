@@ -14,8 +14,8 @@ use crate::state::CpuState;
 /// CCK1: Prefetch next instruction opcode from PC
 pub const PREFETCH_NEXT_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_next_read);
 
-/// CCK2: Prefetch next instruction opcode finish & standard retirement (idle CCK)
-pub const PREFETCH_NEXT_RETIRE: MicroStep = MicroStep::cck_idle();
+/// CCK2: Prefetch next instruction opcode finish & standard retirement (idle CCK alias)
+pub const PREFETCH_NEXT_RETIRE: MicroStep = BUS_READ_IDLE;
 
 /// CCK1: Instruction extension word read from PC
 pub const FETCH_EXT_READ: MicroStep = MicroStep::cck(Cpu::step_fetch_extension_read);
@@ -32,11 +32,14 @@ pub const PREFETCH_IRC_FINISH: MicroStep = MicroStep::cck(Cpu::step_prefetch_irc
 /// CCK1: Bus write idle step (internal address/pin setup, bus free for Agnus DMA)
 pub const BUS_WRITE_IDLE: MicroStep = MicroStep::cck_idle();
 
-/// CCK2: Finishes bus read word cycle (idle CCK)
-pub const READ_WORD_FINISH: MicroStep = MicroStep::cck_idle();
+/// CCK2: Bus read idle step (physical bus free for Agnus DMA after operand or opcode read initiation)
+pub const BUS_READ_IDLE: MicroStep = MicroStep::cck_idle();
 
-/// CCK2: Finishes bus read byte cycle (idle CCK)
-pub const READ_BYTE_FINISH: MicroStep = MicroStep::cck_idle();
+/// CCK2: Finishes bus read word cycle (idle CCK alias)
+pub const READ_WORD_FINISH: MicroStep = BUS_READ_IDLE;
+
+/// CCK2: Finishes bus read byte cycle (idle CCK alias)
+pub const READ_BYTE_FINISH: MicroStep = BUS_READ_IDLE;
 
 /// CCK1: Reads source word from memory into `source`
 pub const READ_SRC_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_read_src_word);
@@ -97,8 +100,8 @@ pub const WRITE_DST_LONG_LOW_RETIRE: MicroStep = WRITE_DST_LONG_LOW;
 pub const READ_TARGET_OPCODE_READ: MicroStep =
     MicroStep::cck(Cpu::step_bus_read_target_opcode_read);
 
-/// CCK2: Latches target opcode into `irc` (idle CCK)
-pub const READ_TARGET_OPCODE_FINISH: MicroStep = MicroStep::cck_idle();
+/// CCK2: Target opcode read idle step (bus free for Agnus DMA)
+pub const READ_TARGET_OPCODE_FINISH: MicroStep = BUS_READ_IDLE;
 
 /// CCK1: Reads second word of target pipeline from `ea_addr + 2`
 pub const PREFETCH_TARGET_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_target_read);
@@ -137,8 +140,8 @@ pub const POP_STACK_LOW_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_sta
 /// 2-clock internal ALU/idle cycle (1 CCK, no external bus activity)
 pub const ALU_IDLE: MicroStep = MicroStep::cck_idle();
 
-/// 2-clock internal processing cycle (1 CCK, no external bus activity)
-pub const ALU_INTERNAL_2CLK: MicroStep = MicroStep::cck_idle();
+/// 2-clock internal processing cycle alias (1 CCK, no external bus activity)
+pub const ALU_INTERNAL_2CLK: MicroStep = ALU_IDLE;
 
 // ============================================================================
 // 2-Clock Exception Processing Building Blocks
@@ -167,8 +170,8 @@ pub const EXCEPTION_PUSH_PCHI_WRITE: MicroStep =
 /// CCK1: Reads exception vector high word from ea_addr into ea_high
 pub const READ_VECTOR_HIGH_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_high_read);
 
-/// CCK2: Finishes exception vector high word read (idle CCK)
-pub const READ_VECTOR_HIGH_FINISH: MicroStep = MicroStep::cck_idle();
+/// CCK2: Vector high word read idle step (bus free for Agnus DMA)
+pub const READ_VECTOR_HIGH_FINISH: MicroStep = BUS_READ_IDLE;
 
 /// CCK1: Reads exception vector low word from ea_addr + 2 into source
 pub const READ_VECTOR_LOW_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_low_read);
@@ -271,12 +274,12 @@ pub static STEPS_ADDRESS_ERROR: [MicroStep; 25] = [
     AERR_PUSH_ADDR_HI_IDLE,
     AERR_PUSH_ADDR_HI_WRITE,
     READ_VECTOR_HIGH_READ,
-    READ_VECTOR_HIGH_FINISH,
+    BUS_READ_IDLE,
     READ_VECTOR_LOW_READ,
     READ_VECTOR_LOW_FINISH,
     READ_TARGET_OPCODE_READ,
-    READ_TARGET_OPCODE_FINISH,
-    ALU_INTERNAL_2CLK,
+    BUS_READ_IDLE,
+    ALU_IDLE,
     PREFETCH_TARGET_READ,
     PREFETCH_TARGET_FINISH,
 ];

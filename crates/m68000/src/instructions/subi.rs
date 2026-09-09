@@ -119,7 +119,7 @@ pub static STEPS_SUBI_B_DN: [MicroStep; 4] = [
     },
     common::FETCH_EXT_FINISH,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_SUBI_B_AI: [MicroStep; 8] = [
@@ -130,7 +130,7 @@ pub static STEPS_SUBI_B_AI: [MicroStep; 8] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
-    common::READ_BYTE_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_b_mem),
@@ -149,7 +149,7 @@ pub static STEPS_SUBI_B_PI: [MicroStep; 8] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
-    common::READ_BYTE_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_b_mem),
@@ -173,7 +173,7 @@ pub static STEPS_SUBI_B_PD: [MicroStep; 9] = [
         base_clocks: 2,
     },
     common::READ_DST_BYTE,
-    common::READ_BYTE_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_b_mem),
@@ -198,7 +198,7 @@ pub static STEPS_SUBI_B_D16: [MicroStep; 10] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
-    common::READ_BYTE_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_b_mem),
@@ -224,7 +224,7 @@ pub static STEPS_SUBI_B_IDX: [MicroStep; 11] = [
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
-    common::READ_BYTE_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_b_mem),
@@ -249,7 +249,7 @@ pub static STEPS_SUBI_B_ABSW: [MicroStep; 10] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
-    common::READ_BYTE_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_b_mem),
@@ -280,7 +280,7 @@ pub static STEPS_SUBI_B_ABSL: [MicroStep; 12] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
-    common::READ_BYTE_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_b_mem),
@@ -303,7 +303,7 @@ pub static STEPS_SUBI_W_DN: [MicroStep; 4] = [
     },
     common::FETCH_EXT_FINISH,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_SUBI_W_AI: [MicroStep; 8] = [
@@ -314,7 +314,7 @@ pub static STEPS_SUBI_W_AI: [MicroStep; 8] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_w_mem),
@@ -333,7 +333,7 @@ pub static STEPS_SUBI_W_PI: [MicroStep; 8] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_w_mem),
@@ -357,7 +357,7 @@ pub static STEPS_SUBI_W_PD: [MicroStep; 9] = [
         base_clocks: 2,
     },
     common::READ_DST_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_w_mem),
@@ -382,7 +382,7 @@ pub static STEPS_SUBI_W_D16: [MicroStep; 10] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_w_mem),
@@ -408,7 +408,7 @@ pub static STEPS_SUBI_W_IDX: [MicroStep; 11] = [
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_w_mem),
@@ -433,7 +433,7 @@ pub static STEPS_SUBI_W_ABSW: [MicroStep; 10] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_w_mem),
@@ -464,7 +464,7 @@ pub static STEPS_SUBI_W_ABSL: [MicroStep; 12] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_w_mem),
@@ -502,7 +502,7 @@ pub static STEPS_SUBI_L_DN: [MicroStep; 7] = [
         alu_fn: Some(alu_subi_l_imm_dn),
         base_clocks: 2,
     },
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_SUBI_L_AI: [MicroStep; 14] = [
@@ -519,9 +519,9 @@ pub static STEPS_SUBI_L_AI: [MicroStep; 14] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_LONG_HIGH,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_l_mem),
@@ -548,9 +548,9 @@ pub static STEPS_SUBI_L_PI: [MicroStep; 14] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_LONG_HIGH,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_l_mem),
@@ -582,9 +582,9 @@ pub static STEPS_SUBI_L_PD: [MicroStep; 15] = [
         base_clocks: 2,
     },
     common::READ_DST_LONG_HIGH,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_l_mem),
@@ -617,9 +617,9 @@ pub static STEPS_SUBI_L_D16: [MicroStep; 16] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_LONG_HIGH,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_l_mem),
@@ -653,9 +653,9 @@ pub static STEPS_SUBI_L_IDX: [MicroStep; 17] = [
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_DST_LONG_HIGH,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_l_mem),
@@ -688,9 +688,9 @@ pub static STEPS_SUBI_L_ABSW: [MicroStep; 16] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_LONG_HIGH,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_l_mem),
@@ -729,9 +729,9 @@ pub static STEPS_SUBI_L_ABSL: [MicroStep; 18] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_LONG_HIGH,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subi_l_mem),

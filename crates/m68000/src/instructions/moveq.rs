@@ -24,7 +24,7 @@ pub static STEPS_MOVEQ: [MicroStep; 2] = [
         alu_fn: Some(alu_moveq),
         base_clocks: 2,
     },
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 /// Compile-time opcode decoder for MOVEQ ($7000..=$7FFF with bit 8 == 0)

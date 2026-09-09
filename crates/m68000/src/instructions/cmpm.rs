@@ -76,19 +76,19 @@ pub static STEPS_CMPM_B: [MicroStep; 6] = [
         alu_fn: Some(ea::ea_calc_src_pi_b),
         base_clocks: 2,
     },
-    common::READ_BYTE_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_bus_read_dst_byte),
         alu_fn: Some(ea::ea_calc_dst_pi_b),
         base_clocks: 2,
     },
-    common::READ_BYTE_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpm_b),
         base_clocks: 2,
     },
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_CMPM_W: [MicroStep; 6] = [
@@ -97,19 +97,19 @@ pub static STEPS_CMPM_W: [MicroStep; 6] = [
         alu_fn: Some(ea::ea_calc_src_pi_w),
         base_clocks: 2,
     },
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_bus_read_dst_word),
         alu_fn: Some(ea::ea_calc_dst_pi_w),
         base_clocks: 2,
     },
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpm_w),
         base_clocks: 2,
     },
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_CMPM_L: [MicroStep; 10] = [
@@ -118,23 +118,23 @@ pub static STEPS_CMPM_L: [MicroStep; 10] = [
         alu_fn: Some(ea::ea_calc_src_pi_l),
         base_clocks: 2,
     },
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     common::READ_SRC_LONG_LOW,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_bus_read_dst_long_high),
         alu_fn: Some(ea::ea_calc_dst_pi_l),
         base_clocks: 2,
     },
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpm_l),
         base_clocks: 2,
     },
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 /// Decodes the micro-step sequence for CMPM based on size (0 = Byte, 1 = Word, 2 = Long)

@@ -47,7 +47,7 @@ pub static STEPS_MOVEM_AI: [MicroStep; 6] = [
     MicroStep::alu(ea::ea_calc_src_ai),
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVEM_PI: [MicroStep; 6] = [
@@ -56,7 +56,7 @@ pub static STEPS_MOVEM_PI: [MicroStep; 6] = [
     MicroStep::alu(ea::ea_calc_src_ai),
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVEM_PD: [MicroStep; 6] = [
@@ -65,7 +65,7 @@ pub static STEPS_MOVEM_PD: [MicroStep; 6] = [
     MicroStep::alu(ea::ea_calc_src_ai),
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVEM_D16_AN: [MicroStep; 7] = [
@@ -79,7 +79,7 @@ pub static STEPS_MOVEM_D16_AN: [MicroStep; 7] = [
     common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVEM_IDX_AN: [MicroStep; 8] = [
@@ -94,7 +94,7 @@ pub static STEPS_MOVEM_IDX_AN: [MicroStep; 8] = [
     common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVEM_ABSW: [MicroStep; 7] = [
@@ -108,7 +108,7 @@ pub static STEPS_MOVEM_ABSW: [MicroStep; 7] = [
     common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVEM_ABSL: [MicroStep; 9] = [
@@ -128,7 +128,7 @@ pub static STEPS_MOVEM_ABSL: [MicroStep; 9] = [
     common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVEM_D16_PC: [MicroStep; 7] = [
@@ -142,7 +142,7 @@ pub static STEPS_MOVEM_D16_PC: [MicroStep; 7] = [
     common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVEM_IDX_PC: [MicroStep; 8] = [
@@ -157,7 +157,7 @@ pub static STEPS_MOVEM_IDX_PC: [MicroStep; 8] = [
     common::FETCH_EXT_FINISH,
     MOVEM_TRANSFER,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 // ============================================================================

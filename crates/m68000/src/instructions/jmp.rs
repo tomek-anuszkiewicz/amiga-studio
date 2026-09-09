@@ -10,7 +10,7 @@ use crate::micro::types::MicroStep;
 pub static STEPS_JMP_AI: [MicroStep; 5] = [
     MicroStep::alu(crate::micro::ea::ea_calc_src_ai),
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];
@@ -23,7 +23,7 @@ pub static STEPS_JMP_D16_AN: [MicroStep; 5] = [
         base_clocks: 2,
     },
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];
@@ -36,7 +36,7 @@ pub static STEPS_JMP_IDX_AN: [MicroStep; 5] = [
         base_clocks: 6,
     },
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];
@@ -49,7 +49,7 @@ pub static STEPS_JMP_ABSW: [MicroStep; 5] = [
         base_clocks: 2,
     },
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];
@@ -61,7 +61,7 @@ pub static STEPS_JMP_ABSL: [MicroStep; 8] = [
     common::FETCH_EXT_FINISH,
     MicroStep::alu(crate::micro::ea::ea_calc_absl_lo),
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];
@@ -74,7 +74,7 @@ pub static STEPS_JMP_D16_PC: [MicroStep; 5] = [
         base_clocks: 2,
     },
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];
@@ -87,7 +87,7 @@ pub static STEPS_JMP_IDX_PC: [MicroStep; 5] = [
         base_clocks: 6,
     },
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];

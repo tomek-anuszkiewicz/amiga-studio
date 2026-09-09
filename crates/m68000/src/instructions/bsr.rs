@@ -36,7 +36,7 @@ pub static STEPS_BSR_SHORT: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];
@@ -53,7 +53,7 @@ pub static STEPS_BSR_WORD: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::PUSH_STACK_LOW_WRITE,
     common::READ_TARGET_OPCODE_READ,
-    common::READ_TARGET_OPCODE_FINISH,
+    common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
     common::PREFETCH_TARGET_FINISH,
 ];

@@ -104,7 +104,7 @@ pub static STEPS_SUB_W_DN_DN: [MicroStep; 2] = [
         alu_fn: Some(alu_sub_w_dn_dn),
         base_clocks: 2,
     },
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 ```
 
@@ -116,13 +116,13 @@ pub static STEPS_SUB_W_AI_DN: [MicroStep; 4] = [
         alu_fn: Some(ea::ea_calc_src_ai),
         base_clocks: 2,
     },
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_sub_w_mem_dn),
         base_clocks: 2,
     },
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 ```
 
@@ -135,7 +135,7 @@ pub static STEPS_SUB_W_DN_AI: [MicroStep; 6] = [
         alu_fn: Some(ea::ea_calc_dst_ai),
         base_clocks: 2,
     },
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_sub_w_dn_mem),
