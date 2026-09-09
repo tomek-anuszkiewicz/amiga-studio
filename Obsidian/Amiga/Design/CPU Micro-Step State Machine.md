@@ -108,6 +108,7 @@ Embedded in `CpuState` to track sub-cycle progress across Color Clock phases:
 - `destination`: Explicit 32-bit storage for ALU destination operand and write-back data.
 - `scratch_prefetch`: Latched prefetch word for pipeline refills and RMW sequences.
 - `internal_clocks`: Non-bus execution clocks countdown (DIVU/MULU/shifts/indexed EA).
+- `clocks_remaining`: Clocks remaining for the active micro-step countdown (-1 when uninitialized / between steps).
 - `current_steps`: Cached slice pointer to active opcode's `&'static [MicroStep]`.
 - `micro_step`: Step index within the current instruction's micro-operation sequence.
 - `reg_src`, `reg_dst`: Pre-decoded register indices ($0..7$ for $D_n / A_n$).

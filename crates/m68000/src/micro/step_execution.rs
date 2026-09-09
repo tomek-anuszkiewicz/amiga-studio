@@ -1,32 +1,26 @@
 //! Specialized Micro-Step Execution Handlers for M68000 CPU
 
 use crate::core::{Cpu, StepResult};
-use crate::micro::types::MicroStep;
 use memory_bus::{BusAccessSize, BusResult, CckPhase, MemoryBus};
 
 impl Cpu {
-    pub(crate) fn execute_alu_step(&mut self, step: MicroStep) -> Option<StepResult> {
-        let clocks = if self.state.micro.internal_clocks > 0 {
-            self.state.micro.internal_clocks
+    /// Micro-step handler for pure ALU execution and internal timing delays.
+    /// Manages countdown of `clocks_remaining`, consuming 2 clocks per CCK until 0.
+    /// Returns None for instantaneous 0-clock steps, allowing immediate loop progression.
+    pub fn step_alu(&mut self, _bus: &mut MemoryBus) -> Option<StepResult> {
+        if self.state.micro.clocks_remaining <= 0 {
+            self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+            self.state.micro.clocks_remaining = -1;
+            None
         } else {
-            step.base_clocks as u16
-        };
-        if clocks > 0 {
-            self.state.micro.internal_clocks = clocks.saturating_sub(2);
             self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-            if self.state.micro.internal_clocks == 0 {
+            self.state.micro.clocks_remaining -= 2;
+            if self.state.micro.clocks_remaining <= 0 {
                 self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                self.state.micro.clocks_remaining = -1;
             }
             Some(StepResult::StepCompleted)
-        } else {
-            self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-            None
         }
-    }
-
-    pub fn step_alu(&mut self, _bus: &mut MemoryBus) -> Option<StepResult> {
-        let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
-        self.execute_alu_step(step)
     }
 
     // ========================================================================

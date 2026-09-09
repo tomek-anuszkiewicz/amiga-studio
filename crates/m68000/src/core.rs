@@ -99,6 +99,7 @@ impl Cpu {
             self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
             if self.state.micro.internal_clocks == 0 {
                 self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                self.state.micro.clocks_remaining = -1;
             }
             return StepResult::StepCompleted;
         }
@@ -368,21 +369,43 @@ impl Cpu {
     pub fn execute_micro_step(&mut self, bus: &mut MemoryBus) -> StepResult {
         while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
             let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
-            let should_run_alu = if step.base_clocks == 4 {
-                self.state.micro.phase == CckPhase::Cck1
-                    && self.state.micro.current_cycle_wait_cycles == 0
-            } else {
-                self.state.micro.current_cycle_wait_cycles == 0
-            };
-            if should_run_alu {
+
+            // 1. If entering this micro-step for the first time, execute alu_fn and determine initial clocks
+            if self.state.micro.clocks_remaining < 0 {
+                let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
                 if let Some(alu) = step.alu_fn {
                     let reg_src = self.state.micro.reg_src;
                     let reg_dst = self.state.micro.reg_dst;
                     alu(&mut self.state, reg_src, reg_dst);
                 }
+
+                // If alu_fn redirected execution to a new step sequence (e.g. Bcc branch taken vs untaken),
+                // restart immediately at the new sequence
+                if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
+                    self.state.micro.clocks_remaining = -1;
+                    continue;
+                }
+
+                let clocks = if self.state.micro.internal_clocks > 0 {
+                    let c = self.state.micro.internal_clocks;
+                    self.state.micro.internal_clocks = 0;
+                    c as i16
+                } else {
+                    step.base_clocks as i16
+                };
+
+                self.state.micro.clocks_remaining = clocks;
             }
+
+            // 2. Execute step function
+            let prev_micro_step = self.state.micro.micro_step;
             if let Some(res) = (step.step_fn)(self, bus) {
+                if self.state.micro.micro_step != prev_micro_step {
+                    self.state.micro.clocks_remaining = -1;
+                }
                 return res;
+            } else {
+                continue;
             }
         }
         StepResult::InstructionCompleted
