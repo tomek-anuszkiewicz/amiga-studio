@@ -14,8 +14,8 @@ use crate::state::CpuState;
 /// CCK1: Prefetch next instruction opcode from PC
 pub const PREFETCH_NEXT_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_next_read);
 
-/// CCK2: Prefetch next instruction opcode finish & standard retirement
-pub const PREFETCH_NEXT_RETIRE: MicroStep = MicroStep::cck(Cpu::step_prefetch_next_and_retire);
+/// CCK2: Prefetch next instruction opcode finish & standard retirement (idle CCK)
+pub const PREFETCH_NEXT_RETIRE: MicroStep = MicroStep::cck_idle();
 
 /// CCK1: Instruction extension word read from PC
 pub const FETCH_EXT_READ: MicroStep = MicroStep::cck(Cpu::step_fetch_extension_read);
@@ -36,13 +36,13 @@ pub const PREFETCH_SCRATCH_READ: MicroStep = PREFETCH_IRC_READ;
 pub const PREFETCH_SCRATCH_FINISH: MicroStep = PREFETCH_IRC_FINISH;
 
 /// CCK1: Bus write idle step (internal address/pin setup, bus free for Agnus DMA)
-pub const BUS_WRITE_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_idle);
+pub const BUS_WRITE_IDLE: MicroStep = MicroStep::cck_idle();
 
-/// CCK2: Finishes bus read word cycle and records transaction
-pub const READ_WORD_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_read_word_finish);
+/// CCK2: Finishes bus read word cycle (idle CCK)
+pub const READ_WORD_FINISH: MicroStep = MicroStep::cck_idle();
 
-/// CCK2: Finishes bus read byte cycle and records transaction
-pub const READ_BYTE_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_read_byte_finish);
+/// CCK2: Finishes bus read byte cycle (idle CCK)
+pub const READ_BYTE_FINISH: MicroStep = MicroStep::cck_idle();
 
 /// CCK1: Reads source word from memory into `source`
 pub const READ_SRC_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_read_src_word);
@@ -82,8 +82,8 @@ pub const READ_SRC_SPLIT_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_src
 /// CCK1: Reads split high word of 32-bit destination operand into bits 16..31 of `destination`
 pub const READ_DST_SPLIT_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_split_high);
 
-/// CCK2: Finishes reading split high word and records transaction from bits 16..31
-pub const READ_SPLIT_HIGH_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_read_split_high_finish);
+/// CCK2: Finishes reading split high word (idle CCK)
+pub const READ_SPLIT_HIGH_FINISH: MicroStep = MicroStep::cck_idle();
 
 /// CCK2: Writes word from `destination` to memory (non-retiring)
 pub const WRITE_DST_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_word);
@@ -103,9 +103,8 @@ pub const WRITE_DST_LONG_LOW_RETIRE: MicroStep =
 pub const READ_TARGET_OPCODE_READ: MicroStep =
     MicroStep::cck(Cpu::step_bus_read_target_opcode_read);
 
-/// CCK2: Latches target opcode into `irc` and logs transaction
-pub const READ_TARGET_OPCODE_FINISH: MicroStep =
-    MicroStep::cck(Cpu::step_bus_read_target_opcode_finish);
+/// CCK2: Latches target opcode into `irc` (idle CCK)
+pub const READ_TARGET_OPCODE_FINISH: MicroStep = MicroStep::cck_idle();
 
 /// CCK1: Reads second word of target pipeline from `ea_addr + 2`
 pub const PREFETCH_TARGET_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_target_read);
@@ -144,10 +143,10 @@ pub const POP_STACK_LOW_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_sta
 // ============================================================================
 
 /// 2-clock internal ALU/idle cycle (1 CCK, no external bus activity)
-pub const ALU_IDLE: MicroStep = MicroStep::cck(Cpu::step_alu);
+pub const ALU_IDLE: MicroStep = MicroStep::cck_idle();
 
-/// 2-clock internal processing cycle (1 CCK), recording internal transaction if enabled
-pub const ALU_INTERNAL_2CLK: MicroStep = MicroStep::cck(Cpu::step_alu_internal_2clk);
+/// 2-clock internal processing cycle (1 CCK, no external bus activity)
+pub const ALU_INTERNAL_2CLK: MicroStep = MicroStep::cck_idle();
 
 // ============================================================================
 // 2-Clock Exception Processing Building Blocks
@@ -176,9 +175,8 @@ pub const EXCEPTION_PUSH_PCHI_WRITE: MicroStep =
 /// CCK1: Reads exception vector high word from ea_addr into ea_high
 pub const READ_VECTOR_HIGH_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_high_read);
 
-/// CCK2: Logs exception vector high word read transaction
-pub const READ_VECTOR_HIGH_FINISH: MicroStep =
-    MicroStep::cck(Cpu::step_bus_read_vector_high_finish);
+/// CCK2: Finishes exception vector high word read (idle CCK)
+pub const READ_VECTOR_HIGH_FINISH: MicroStep = MicroStep::cck_idle();
 
 /// CCK1: Reads exception vector low word from ea_addr + 2 into source
 pub const READ_VECTOR_LOW_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_low_read);
@@ -213,7 +211,7 @@ pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
 /// CCK1: Address Error initial ALU step (S=1, T=0, SSP check, vector setup)
 pub static ALU_AERR_INIT: MicroStep = MicroStep {
-    step_fn: Cpu::step_alu,
+    step_fn: None,
     alu_fn: Some(alu_aerr_init),
     base_clocks: 2,
 };

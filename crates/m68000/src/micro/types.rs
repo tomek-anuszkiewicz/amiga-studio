@@ -49,36 +49,48 @@ pub enum Size {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct MicroStep {
-    /// Function pointer executing the bus cycle or cycle action
-    pub step_fn: StepFn,
+    /// Optional function pointer executing the bus cycle (None for idle/finish/pure ALU steps)
+    pub step_fn: Option<StepFn>,
     /// Function pointer for ALU operations (None for pure bus steps)
     pub alu_fn: Option<AluFn>,
-    /// Base CPU clocks consumed (4 for bus cycles, 0 for instantaneous ALU)
+    /// Base CPU clocks consumed (4 for bus cycles, 2 for CCK, 0 for instantaneous ALU)
     pub base_clocks: u8,
 }
 
 impl PartialEq for MicroStep {
     fn eq(&self, other: &Self) -> bool {
-        self.step_fn as usize == other.step_fn as usize
-            && (match (self.alu_fn, other.alu_fn) {
-                (None, None) => true,
-                (Some(a), Some(b)) => a as usize == b as usize,
-                _ => false,
-            })
-            && self.base_clocks == other.base_clocks
+        (match (self.step_fn, other.step_fn) {
+            (None, None) => true,
+            (Some(a), Some(b)) => a as usize == b as usize,
+            _ => false,
+        }) && (match (self.alu_fn, other.alu_fn) {
+            (None, None) => true,
+            (Some(a), Some(b)) => a as usize == b as usize,
+            _ => false,
+        }) && self.base_clocks == other.base_clocks
     }
 }
 
 impl Eq for MicroStep {}
 
 impl MicroStep {
-    /// Creates an instantaneous ALU micro-step (0 base clocks)
+    /// Creates an instantaneous ALU micro-step (0 base clocks, no bus cycle)
     #[inline(always)]
     pub const fn alu(alu_fn: AluFn) -> Self {
         Self {
-            step_fn: Cpu::step_alu,
+            step_fn: None,
             alu_fn: Some(alu_fn),
             base_clocks: 0,
+        }
+    }
+
+    /// Creates a 2-clock ALU micro-step (1 CCK, no bus cycle)
+    #[inline(always)]
+    pub const fn alu_cck(alu_fn: AluFn) -> Self {
+        Self {
+            step_fn: None,
+            alu_fn: Some(alu_fn),
+            base_clocks: 2,
         }
     }
 
@@ -86,7 +98,7 @@ impl MicroStep {
     #[inline(always)]
     pub const fn bus(step_fn: StepFn, base_clocks: u8) -> Self {
         Self {
-            step_fn,
+            step_fn: Some(step_fn),
             alu_fn: None,
             base_clocks,
         }
@@ -96,9 +108,29 @@ impl MicroStep {
     #[inline(always)]
     pub const fn cck(step_fn: StepFn) -> Self {
         Self {
-            step_fn,
+            step_fn: Some(step_fn),
             alu_fn: None,
             base_clocks: 2,
+        }
+    }
+
+    /// Creates a 2-clock CCK idle micro-step (no bus cycle, no ALU action)
+    #[inline(always)]
+    pub const fn cck_idle() -> Self {
+        Self {
+            step_fn: None,
+            alu_fn: None,
+            base_clocks: 2,
+        }
+    }
+
+    /// Creates an idle micro-step for arbitrary clock count
+    #[inline(always)]
+    pub const fn idle(base_clocks: u8) -> Self {
+        Self {
+            step_fn: None,
+            alu_fn: None,
+            base_clocks,
         }
     }
 }

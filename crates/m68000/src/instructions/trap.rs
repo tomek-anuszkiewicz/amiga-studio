@@ -4,7 +4,6 @@
 //! Pushes return PC and SR to the supervisor stack and jumps through vector.
 //! Execution time: 34 CPU clocks (17 CCKs).
 
-use crate::core::Cpu;
 use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
@@ -26,7 +25,7 @@ pub fn alu_trap_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_TRAP_INIT: MicroStep = MicroStep {
-    step_fn: Cpu::step_alu,
+    step_fn: None,
     alu_fn: Some(alu_trap_init),
     base_clocks: 2,
 };

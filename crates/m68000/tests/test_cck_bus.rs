@@ -27,11 +27,6 @@ fn test_cck_unblocked_read_cycle() {
     let res1 = cpu.step_bus_read_src_word(&mut bus);
     assert_eq!(res1, BusResult::Ready(()));
     assert_eq!(cpu.state.micro.source as u16, 0x55AA);
-
-    // CCK2 step: completes bus read and records transaction
-    let res2 = cpu.step_bus_read_word_finish(&mut bus);
-    assert_eq!(res2, BusResult::Ready(()));
-    assert_eq!(cpu.state.micro.source as u16, 0x55AA);
 }
 
 #[test]
@@ -61,11 +56,6 @@ fn test_cck_read_contention_stall_at_cck1() {
     let res3 = cpu.step_bus_read_src_word(&mut bus);
     assert_eq!(res3, BusResult::Ready(()));
     assert_eq!(cpu.state.micro.source as u16, 0x1234);
-
-    // 4th step: CCK2 completes transaction
-    let res4 = cpu.step_bus_read_word_finish(&mut bus);
-    assert_eq!(res4, BusResult::Ready(()));
-    assert_eq!(cpu.state.micro.source as u16, 0x1234);
 }
 
 #[test]
@@ -77,11 +67,7 @@ fn test_cck_write_contention_stall_at_cck2() {
     cpu.state.micro.ea_addr = 0x003000;
     cpu.state.micro.destination = 0xABCD;
 
-    // CCK1: CPU outputs address/data onto bus (idle setup)
-    let res1 = cpu.step_bus_write_idle(&mut bus);
-    assert_eq!(res1, BusResult::Ready(()));
-
-    // Now Agnus DMA grabs Chip RAM before CCK2 commit
+    // Agnus DMA grabs Chip RAM before CCK2 commit
     bus.lock_chip_ram();
 
     // CCK2: Gary withholds _DTACK -> CPU stalls at CCK2
@@ -106,7 +92,7 @@ fn test_clocks_remaining_micro_stepping() {
 
     // 4 CPU clocks = 2 CCK steps
     static TEST_STEPS: [MicroStep; 1] = [MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: None,
         base_clocks: 4,
     }];

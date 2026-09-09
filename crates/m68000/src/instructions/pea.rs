@@ -11,7 +11,7 @@ use crate::micro::types::MicroStep;
 /// PEA (An): 12 CPU clocks / 6 CCKs (1 read, 2 writes)
 pub static STEPS_PEA_AI: [MicroStep; 7] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_pea_ai),
         base_clocks: 0,
     },
@@ -26,7 +26,7 @@ pub static STEPS_PEA_AI: [MicroStep; 7] = [
 /// PEA (d16, An): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
 pub static STEPS_PEA_D16_AN: [MicroStep; 8] = [
     MicroStep {
-        step_fn: Cpu::step_fetch_extension_read,
+        step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(crate::micro::ea::ea_calc_pea_d16_an),
         base_clocks: 2,
     },
@@ -42,7 +42,7 @@ pub static STEPS_PEA_D16_AN: [MicroStep; 8] = [
 /// PEA (d8, An, Xn): 20 CPU clocks / 10 CCKs (2 reads, 2 writes)
 pub static STEPS_PEA_IDX_AN: [MicroStep; 9] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_pea_idx_an),
         base_clocks: 4,
     },
@@ -59,7 +59,7 @@ pub static STEPS_PEA_IDX_AN: [MicroStep; 9] = [
 /// PEA (xxx).W: 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
 pub static STEPS_PEA_ABSW: [MicroStep; 8] = [
     MicroStep {
-        step_fn: Cpu::step_fetch_extension_read,
+        step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(crate::micro::ea::ea_calc_pea_absw),
         base_clocks: 2,
     },
@@ -75,13 +75,13 @@ pub static STEPS_PEA_ABSW: [MicroStep; 8] = [
 /// PEA (xxx).L: 20 CPU clocks / 10 CCKs (3 reads, 2 writes)
 pub static STEPS_PEA_ABSL: [MicroStep; 10] = [
     MicroStep {
-        step_fn: Cpu::step_fetch_extension_read,
+        step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Cpu::step_fetch_extension_read,
+        step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(crate::micro::ea::ea_calc_pea_absl_lo),
         base_clocks: 2,
     },
@@ -97,7 +97,7 @@ pub static STEPS_PEA_ABSL: [MicroStep; 10] = [
 /// PEA (d16, PC): 16 CPU clocks / 8 CCKs (2 reads, 2 writes)
 pub static STEPS_PEA_D16_PC: [MicroStep; 8] = [
     MicroStep {
-        step_fn: Cpu::step_fetch_extension_read,
+        step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(crate::micro::ea::ea_calc_pea_d16_pc),
         base_clocks: 2,
     },
@@ -113,7 +113,7 @@ pub static STEPS_PEA_D16_PC: [MicroStep; 8] = [
 /// PEA (d8, PC, Xn): 20 CPU clocks / 10 CCKs (2 reads, 2 writes)
 pub static STEPS_PEA_IDX_PC: [MicroStep; 9] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_pea_idx_pc),
         base_clocks: 4,
     },

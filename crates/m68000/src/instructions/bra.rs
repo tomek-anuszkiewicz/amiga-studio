@@ -3,7 +3,6 @@
 //! Unconditional relative branch with 8-bit short or 16-bit word displacement.
 //! Execution time: 10 CPU clocks (2 internal idle clocks + 2 bus prefetch cycles).
 
-use crate::core::Cpu;
 use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
@@ -25,7 +24,7 @@ pub fn alu_bra_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 /// BRA.S (8-bit short displacement, 10 CPU clocks / 5 CCKs)
 pub static STEPS_BRA_SHORT: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(alu_bra_short),
         base_clocks: 2,
     },
@@ -38,7 +37,7 @@ pub static STEPS_BRA_SHORT: [MicroStep; 5] = [
 /// BRA.W (16-bit word displacement, 10 CPU clocks / 5 CCKs)
 pub static STEPS_BRA_WORD: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(alu_bra_word),
         base_clocks: 2,
     },

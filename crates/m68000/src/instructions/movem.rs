@@ -25,7 +25,7 @@ pub fn alu_movem_fetch_mask(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 const FETCH_MASK_READ: MicroStep = MicroStep {
-    step_fn: Cpu::step_fetch_extension_read,
+    step_fn: Some(Cpu::step_fetch_extension_read),
     alu_fn: Some(alu_movem_fetch_mask),
     base_clocks: 2,
 };
@@ -35,7 +35,7 @@ const FETCH_EXT_READ: MicroStep = common::FETCH_EXT_READ;
 const FETCH_EXT_FINISH: MicroStep = common::FETCH_EXT_FINISH;
 
 const MOVEM_TRANSFER: MicroStep = MicroStep {
-    step_fn: crate::instructions::movem::execute_movem_transfer,
+    step_fn: Some(crate::instructions::movem::execute_movem_transfer),
     alu_fn: None,
     base_clocks: 0,
 };
@@ -77,7 +77,7 @@ pub static STEPS_MOVEM_D16: [MicroStep; 7] = [
     FETCH_MASK_READ,
     FETCH_MASK_FINISH,
     MicroStep {
-        step_fn: Cpu::step_fetch_extension_read,
+        step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
         base_clocks: 2,
     },
@@ -91,7 +91,7 @@ pub static STEPS_MOVEM_IDX: [MicroStep; 8] = [
     FETCH_MASK_READ,
     FETCH_MASK_FINISH,
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
         base_clocks: 2,
     },
@@ -106,7 +106,7 @@ pub static STEPS_MOVEM_ABSW: [MicroStep; 7] = [
     FETCH_MASK_READ,
     FETCH_MASK_FINISH,
     MicroStep {
-        step_fn: Cpu::step_fetch_extension_read,
+        step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
         base_clocks: 2,
     },
@@ -120,13 +120,13 @@ pub static STEPS_MOVEM_ABSL: [MicroStep; 9] = [
     FETCH_MASK_READ,
     FETCH_MASK_FINISH,
     MicroStep {
-        step_fn: Cpu::step_fetch_extension_read,
+        step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
         base_clocks: 2,
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Cpu::step_fetch_extension_read,
+        step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
@@ -140,7 +140,7 @@ pub static STEPS_MOVEM_PCD16: [MicroStep; 7] = [
     FETCH_MASK_READ,
     FETCH_MASK_FINISH,
     MicroStep {
-        step_fn: Cpu::step_fetch_extension_read,
+        step_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
         base_clocks: 2,
     },
@@ -154,7 +154,7 @@ pub static STEPS_MOVEM_PCIDX: [MicroStep; 8] = [
     FETCH_MASK_READ,
     FETCH_MASK_FINISH,
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
         base_clocks: 2,
     },

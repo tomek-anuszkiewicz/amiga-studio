@@ -4,14 +4,6 @@ use crate::core::Cpu;
 use memory_bus::{AddressBus, BusResult};
 
 impl Cpu {
-    /// No-op micro-step handler for pure ALU operations and timing delays.
-    /// Execution timing, clock countdown, and micro-step progression are
-    /// driven directly by the driver loop (`execute_micro_step`).
-    #[inline(always)]
-    pub fn step_alu(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        BusResult::Ready(())
-    }
-
     // ========================================================================
     // 2-Clock Micro-Step Handlers (1 CCK = 2 CPU Clocks)
     // ========================================================================
@@ -152,12 +144,6 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Finishes bus read word cycle and releases bus for Agnus DMA
-    #[inline(always)]
-    pub fn step_bus_read_word_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        BusResult::Ready(())
-    }
-
     /// CCK1: Reads high word of 32-bit split source operand (predecrement) into bits 16..31 of `source`
     pub fn step_bus_read_src_split_high(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr;
@@ -194,24 +180,6 @@ impl Cpu {
                 BusResult::Ready(())
             }
         }
-    }
-
-    /// CCK2: Finishes bus read split high word cycle
-    #[inline(always)]
-    pub fn step_bus_read_split_high_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        BusResult::Ready(())
-    }
-
-    /// CCK2: Finishes bus read byte cycle and releases bus for Agnus DMA
-    #[inline(always)]
-    pub fn step_bus_read_byte_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        BusResult::Ready(())
-    }
-
-    /// CCK1: Bus write setup (idle on bus, preparing address/pins, bus free for Agnus DMA)
-    #[inline(always)]
-    pub fn step_bus_write_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        BusResult::Ready(())
     }
 
     /// CCK2: Writes byte from `self.state.micro.destination` to memory
@@ -325,18 +293,6 @@ impl Cpu {
                 BusResult::Ready(())
             }
         }
-    }
-
-    /// CCK2: Prefetch next opcode finish and latches into irc
-    #[inline(always)]
-    pub fn step_prefetch_next_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        BusResult::Ready(())
-    }
-
-    /// CCK2: Legacy forwarding alias for retiring prefetch finish
-    #[inline(always)]
-    pub fn step_prefetch_next_and_retire(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        self.step_prefetch_next_finish(bus)
     }
 
     /// CCK1: Prefetch to IRC from PC directly into `self.state.micro.irc`

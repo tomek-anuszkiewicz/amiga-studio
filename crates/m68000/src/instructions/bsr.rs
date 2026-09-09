@@ -4,7 +4,6 @@
 //! Supports 8-bit short and 16-bit word displacements.
 //! Execution time: 18 CPU clocks (2 internal + 2 stack writes + 2 prefetch).
 
-use crate::core::Cpu;
 use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
@@ -28,7 +27,7 @@ pub fn alu_bsr_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 /// BSR.S (8-bit short displacement, 18 CPU clocks / 9 CCKs)
 pub static STEPS_BSR_SHORT: [MicroStep; 9] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(alu_bsr_short),
         base_clocks: 2,
     },
@@ -45,7 +44,7 @@ pub static STEPS_BSR_SHORT: [MicroStep; 9] = [
 /// BSR.W (16-bit word displacement, 18 CPU clocks / 9 CCKs)
 pub static STEPS_BSR_WORD: [MicroStep; 9] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(alu_bsr_word),
         base_clocks: 2,
     },

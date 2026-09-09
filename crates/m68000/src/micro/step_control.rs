@@ -29,15 +29,6 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Finishes target opcode read
-    #[inline(always)]
-    pub fn step_bus_read_target_opcode_finish(
-        &mut self,
-        _bus: &mut dyn AddressBus,
-    ) -> BusResult<()> {
-        BusResult::Ready(())
-    }
-
     /// CCK1: Reads second word of target pipeline directly into `self.state.prefetch[0]`
     pub fn step_prefetch_target_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
@@ -247,12 +238,6 @@ impl Cpu {
         }
     }
 
-    /// CCK2: Finishes exception vector high word read
-    #[inline(always)]
-    pub fn step_bus_read_vector_high_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        BusResult::Ready(())
-    }
-
     /// CCK1: Reads exception vector low word from `ea_addr + 2` into `source`
     pub fn step_bus_read_vector_low_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
@@ -284,11 +269,6 @@ impl Cpu {
             return BusResult::Ready(());
         }
         self.state.micro.ea_addr = target;
-        BusResult::Ready(())
-    }
-
-    /// 2-clock internal processing cycle (1 CCK idle bus phase)
-    pub fn step_alu_internal_2clk(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
         BusResult::Ready(())
     }
 

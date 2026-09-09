@@ -165,7 +165,10 @@ impl Cpu {
 
             // 1. Dynamic multi-cycle step (base_clocks == 0 without alu_fn, e.g. MOVEM transfer):
             if step.base_clocks == 0 && step.alu_fn.is_none() {
-                let bus_res = (step.step_fn)(self, bus);
+                let bus_res = match step.step_fn {
+                    Some(step_fn) => step_fn(self, bus),
+                    None => BusResult::Ready(()),
+                };
                 if self.state.micro.current_steps.is_empty() {
                     return true;
                 }
@@ -204,7 +207,10 @@ impl Cpu {
                 // If pure instantaneous ALU step (0 base clocks and alu_fn did not request multi-cycle duration):
                 if self.state.micro.clocks_remaining == 0 {
                     let prev_micro_step = self.state.micro.micro_step;
-                    let bus_res = (step.step_fn)(self, bus);
+                    let bus_res = match step.step_fn {
+                        Some(step_fn) => step_fn(self, bus),
+                        None => BusResult::Ready(()),
+                    };
                     if self.state.micro.current_steps.is_empty() {
                         return true;
                     }
@@ -221,7 +227,10 @@ impl Cpu {
             // 4. Clock-consuming step execution (each CCK consumes 2 clocks):
             let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
             let prev_micro_step = self.state.micro.micro_step;
-            let bus_res = (step.step_fn)(self, bus);
+            let bus_res = match step.step_fn {
+                Some(step_fn) => step_fn(self, bus),
+                None => BusResult::Ready(()),
+            };
             if self.state.micro.current_steps.is_empty() {
                 return true;
             }

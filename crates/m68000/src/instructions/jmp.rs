@@ -3,14 +3,13 @@
 //! Unconditional program jump to an effective address using control addressing modes:
 //! `(An)`, `(d16, An)`, `(d8, An, Xn)`, `(xxx).w`, `(xxx).l`, `(d16, PC)`, `(d8, PC, Xn)`.
 
-use crate::core::Cpu;
 use crate::micro::common;
 use crate::micro::types::MicroStep;
 
 /// JMP (An): 8 CPU clocks / 4 CCKs
 pub static STEPS_JMP_AI: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_src_ai),
         base_clocks: 0,
     },
@@ -23,7 +22,7 @@ pub static STEPS_JMP_AI: [MicroStep; 5] = [
 /// JMP (d16, An): 10 CPU clocks / 5 CCKs
 pub static STEPS_JMP_D16_AN: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_src_d16_an),
         base_clocks: 2,
     },
@@ -36,7 +35,7 @@ pub static STEPS_JMP_D16_AN: [MicroStep; 5] = [
 /// JMP (d8, An, Xn): 14 CPU clocks / 7 CCKs
 pub static STEPS_JMP_IDX_AN: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_src_idx_an_pure),
         base_clocks: 6,
     },
@@ -49,7 +48,7 @@ pub static STEPS_JMP_IDX_AN: [MicroStep; 5] = [
 /// JMP (xxx).W: 10 CPU clocks / 5 CCKs
 pub static STEPS_JMP_ABSW: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_absw),
         base_clocks: 2,
     },
@@ -62,14 +61,14 @@ pub static STEPS_JMP_ABSW: [MicroStep; 5] = [
 /// JMP (xxx).L: 12 CPU clocks / 6 CCKs
 pub static STEPS_JMP_ABSL: [MicroStep; 8] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
         base_clocks: 0,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_absl_lo),
         base_clocks: 0,
     },
@@ -82,7 +81,7 @@ pub static STEPS_JMP_ABSL: [MicroStep; 8] = [
 /// JMP (d16, PC): 10 CPU clocks / 5 CCKs
 pub static STEPS_JMP_D16_PC: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_d16_pc),
         base_clocks: 2,
     },
@@ -95,7 +94,7 @@ pub static STEPS_JMP_D16_PC: [MicroStep; 5] = [
 /// JMP (d8, PC, Xn): 14 CPU clocks / 7 CCKs
 pub static STEPS_JMP_IDX_PC: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Cpu::step_alu,
+        step_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_idx_pc_pure),
         base_clocks: 6,
     },
