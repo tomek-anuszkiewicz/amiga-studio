@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: Strict path privacy and workspace isolation; zero hardcoded host paths.
+---
+
 # Strict Path Privacy & Isolation Rule (Zero External Paths)
 
 - **Never use external paths**: Never write, hardcode, or commit paths outside the project workspace (such as private directories, personal drives, `D:\...`, `/home/...`, Google Drive, user folders) into any code, configuration, scripts, or documentation within the Amiga project.

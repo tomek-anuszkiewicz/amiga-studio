@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: Proactively advise the user to switch between Medium and High/Pro reasoning effort based on task complexity.
+---
+
 # Dynamic Model & Reasoning Effort Advisory Rule
 
 ## 1. Rule Mandate

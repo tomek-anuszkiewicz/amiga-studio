@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: Mandatory rule to transcribe spoken audio prompts in user voice input before responding.
+---
+
 # Audio Input Transcription & Spoken Prompt Confirmation Rule
 
 ## 1. Rule Mandate

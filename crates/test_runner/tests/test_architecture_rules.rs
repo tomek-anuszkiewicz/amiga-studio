@@ -1,11 +1,12 @@
 //! Automated Architecture & Engineering Rules Validation Tests
 //!
-//! Enforces guidelines from AGENTS.md:
+//! Enforces guidelines from AGENTS.md and .agents/rules/:
 //! 1. Rust source file size limit: <= 800 lines in crates/*/src/ (with recognized exceptions).
 //!    Documentation (.md) has no line count limits.
 //! 2. Zero runtime panics: no `.unwrap()` / `.expect()` in core emulation crates.
 //! 3. Strict path privacy: zero hardcoded user/host paths.
 //! 4. Strict macro prohibition: zero `macro_rules!` definitions in workspace crates.
+//! 5. Rule files size safety: AGENTS.md and .agents/rules/*.md <= 23,000 bytes (prevents silent prompt truncation).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -614,6 +615,64 @@ fn test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs() {
         "Architecture Rule Violation: Non-standard or anonymous idle micro-step usage found in `crates/m68000/src/instructions/`:\n\
         All micro-steps performing no active memory bus transfer must use standardized constants with `IDLE` in their name.\n\
         Violations:\n{}",
+        violations.join("\n")
+    );
+}
+
+/// Maximum allowable byte size for any rule file (`AGENTS.md`, `GEMINI.md`, or `.agents/rules/*.md`).
+/// Antigravity prompt injection silently truncates individual rule files exceeding ~24,000 bytes.
+/// A strict safety ceiling of 23,000 bytes guarantees zero risk of truncation across all agent sessions.
+const MAX_RULE_FILE_BYTES: u64 = 23_000;
+
+#[test]
+fn test_rule_files_size_limit_and_truncation_safety() {
+    let repo_root = find_repo_root();
+    let mut violations = Vec::new();
+
+    // 1. Check root AGENTS.md and GEMINI.md
+    for root_rule in &["AGENTS.md", "GEMINI.md"] {
+        let path = repo_root.join(root_rule);
+        if path.exists() {
+            if let Ok(meta) = fs::metadata(&path) {
+                if meta.len() > MAX_RULE_FILE_BYTES {
+                    violations.push(format!(
+                        "{} is {} bytes (exceeds safety ceiling of {} bytes; risk of silent prompt truncation at ~24 KB)",
+                        root_rule,
+                        meta.len(),
+                        MAX_RULE_FILE_BYTES
+                    ));
+                }
+            }
+        }
+    }
+
+    // 2. Check all markdown rule files in .agents/rules/
+    let rules_dir = repo_root.join(".agents").join("rules");
+    if rules_dir.is_dir() {
+        if let Ok(entries) = fs::read_dir(&rules_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("md") {
+                    if let Ok(meta) = fs::metadata(&path) {
+                        if meta.len() > MAX_RULE_FILE_BYTES {
+                            violations.push(format!(
+                                ".agents/rules/{} is {} bytes (exceeds safety ceiling of {} bytes; risk of silent prompt truncation at ~24 KB)",
+                                path.file_name().unwrap_or_default().to_string_lossy(),
+                                meta.len(),
+                                MAX_RULE_FILE_BYTES
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Rule file(s) exceed the 23,000 byte prompt injection safety threshold:\n{}\n\
+        Antigravity silently truncates rule files exceeding ~24,000 bytes with `<truncated N bytes>`. \
+        Keep AGENTS.md and individual .agents/rules/*.md files concise and modularized.",
         violations.join("\n")
     );
 }

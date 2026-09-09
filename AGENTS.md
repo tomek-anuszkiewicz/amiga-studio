@@ -5,49 +5,16 @@ All agentic pair-programming and automated modifications must adhere strictly to
 
 ---
 
-## 1. User Communication & Interaction Rules
+## 1. Operating & Behavioral Rules (`.agents/rules/`)
 
-1. **Audio Input Transcription & Spoken Prompt Confirmation**:
-   - Whenever the user submits instructions using a voice recording (an attached audio file):
-     - The agent **MUST ALWAYS start its response** by providing a clean, lightly reformatted textual transcription of the user's spoken words in their spoken language (e.g. Polish):
-       ```markdown
-       > 🎙️ **Transcribed User Voice Input:**
-       > _"[Exact spoken user transcription]"_
-
-       ---
-       ```
-     - Light editing for punctuation and flow is encouraged, but exact intent, questions, and technical terminology must be strictly preserved.
-     - Following the transcript echo, all responses, explanations, plans, and code must strictly be in **English** per the Language Policy.
-
-2. **Language Policy (Strict English Responses, Plans, Artifacts & Code)**:
-   - **Input Flexibility**: The user may submit text messages and spoken audio prompts in Polish or English.
-   - **Spoken Input Echo Exception**: The mandatory spoken input echo must transcribe the user's spoken words in their original spoken language (e.g., Polish) to ensure visibility and fidelity.
-   - **Strict English for All Agent Outputs**:
-     - **Conversational Responses**: The agent must **always respond in English**, regardless of whether the user speaks or writes in Polish.
-     - **Artifacts & Planning Documents**: All plans (`implementation_plan.md`, `walkthrough.md`), design specs, and architecture proposals must be authored strictly in English.
-     - **Code, Comments & Version Control**: All source code, identifiers, types, comments, docstrings, commit messages, and PR descriptions must strictly be in English.
-
-3. **Dynamic Model & Reasoning Effort Advisory**:
-   - The agent monitors active model and reasoning budget from session metadata, advising the user when switching between `Medium` and `High` (or Pro) is recommended:
-     - **Recommend `High` / `Pro`**: Complex cycle-exact architecture, prefetch/pipeline modeling, intricate `SingleStepTests` debugging (CCK timing, address error frames, tricky ALU/CCR), or multi-chip bus arbitration (Agnus/Copper/Blitter vs CPU).
-     - **Recommend `Medium`**: Repetitive opcode implementations via recipes, mechanical refactoring (splitting files >800 lines, inlining updates), running tests, or updating documentation.
-     - **Format**: Present as a prominent callout (`> 💡 **Model Recommendation:** ...`) immediately under the transcript echo or at the start of the response.
-
-4. **Strict Path Privacy & Workspace Isolation**:
-   - **Zero External Paths**: Never write, hardcode, or commit host paths pointing outside the workspace (personal folders, absolute disk paths) into code, configs, scripts, or docs.
-   - **Documentation Placeholders**: In docs and configuration templates, always use generic placeholders (e.g., `<PATH_TO_VAULT>`, `<PATH_TO_CACHE_DIR>`, `<repo_path>`).
-   - **User Consultation Required**: If an external path seems needed, **stop and ask the user how to solve it** (e.g. via `.env` variables or relative paths) rather than exposing external paths.
-
-5. **Specification Compliance & Divergence Escalation (Zero Silent Spec Violations)**:
-   - **Living Specification as Ground Truth**: Design specifications under [Obsidian/Amiga/Design](Obsidian/Amiga/Design) and guidelines in `AGENTS.md` define authoritative architectural truth.
-   - **Zero Unilateral Divergence**: Agents must **never silently implement code that contradicts or bypasses design specifications or rules** (e.g., returning `$00` instead of `$FF` on unmapped reads, altering bus contention timings, or diverging from hardware models to pass synthetic test vectors).
-   - **Mandatory Conflict Detection & Escalation**:
-     - Whenever requirements, external test harness expectations (such as SingleStepTests flat memory), or reference emulator quirks conflict with specifications:
-     - **STOP immediately and present the conflict to the USER before modifying code**, detailing:
-       1. What the current design specification / hardware rule requires.
-       2. What the conflicting test suite or scenario expects.
-       3. Proposed architectural alternatives (e.g. configurable parameters, separate test harnesses, formal spec amendments).
-   - **Explicit User Decision Required**: No code may deviate from documentation without an explicit, recorded decision by the user.
+Operational, communication, and interaction rules are modularized under `.agents/rules/` with `always_on` enforcement:
+- **Audio Voice Transcription** ([`audio-transcription.md`](.agents/rules/audio-transcription.md)): Mandatory spoken language transcript echo before responses.
+- **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Strict English for all agent responses, plans, artifacts, source code, and commit messages.
+- **Dynamic Model Advisory** ([`model-reasoning-advisory.md`](.agents/rules/model-reasoning-advisory.md)): Proactive advice on switching between `Medium` and `High`/`Pro` reasoning.
+- **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
+- **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user conflict escalation before code changes.
+- **Mechanical Sympathy & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros, zero const-generics, cache density, and zero runtime heap allocations in hot paths.
+- **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Architecture queries and AST relationships via graphify.
 
 ---
 
@@ -158,7 +125,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
     ```powershell
     cargo test -p test_runner --test test_architecture_rules
     ```
-    (enforcing formatting, file size <= 800 lines in `crates/*/src/`, flat instruction hierarchy with zero subdirectories, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, canonical idle micro-steps, path privacy, and inlining rules).
+    (enforcing formatting, file size <= 800 lines in `crates/*/src/`, rule file size <= 23 KB in `AGENTS.md` and `.agents/rules/*.md`, flat instruction hierarchy with zero subdirectories, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, canonical idle micro-steps, path privacy, and inlining rules).
 - **Mandatory Full SingleStepTests on M68000 Changes:**
   ```powershell
   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep

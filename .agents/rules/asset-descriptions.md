@@ -1,5 +1,5 @@
 ---
-trigger: when assets change, or on demand ("describe assets", "update image descriptions", "generate image descriptions")
+trigger: always_on
 description: Inspect diagrams and generate Git-tracked sidecar text descriptions (.txt) using Agent native multimodal vision, driven by RAG_CACHE_FILE hashes.
 ---
 

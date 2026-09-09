@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: Zero silent spec violations; mandatory escalation and user decision before any deviation.
+---
+
 # Specification Compliance & Divergence Escalation Rule (Zero Silent Spec Violations)
 
 Design specifications under `Obsidian/Amiga/Design/` and guidelines in `AGENTS.md` are the authoritative ground truth for this project.

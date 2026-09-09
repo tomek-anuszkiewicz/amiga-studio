@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: Strict English output policy for all agent responses, plans, artifacts, and code.
+---
+
 # Language Policy Rule: Strict English for Responses, Plans, Artifacts & Code
 
 ## 1. Core Mandate
