@@ -1,7 +1,7 @@
 //! Specialized Micro-Step Execution Handlers for M68000 CPU
 
 use crate::core::Cpu;
-use memory_bus::{BusAccessSize, BusResult, CckPhase, MemoryBus};
+use memory_bus::{BusAccessSize, BusResult, MemoryBus};
 
 impl Cpu {
     /// No-op micro-step handler for pure ALU operations and timing delays.
@@ -24,7 +24,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.source = data as u32;
                 self.state.micro.read_to_dest = false;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -43,7 +42,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.source = data as u32;
                 self.state.micro.read_to_dest = false;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -57,7 +55,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.destination = data as u32;
                 self.state.micro.read_to_dest = true;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -76,7 +73,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.destination = data as u32;
                 self.state.micro.read_to_dest = true;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -95,7 +91,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.source = (data as u32) << 16;
                 self.state.micro.read_to_dest = false;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -114,7 +109,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.source = (self.state.micro.source & 0xFFFF_0000) | (data as u32);
                 self.state.micro.read_to_dest = false;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -133,7 +127,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.destination = (data as u32) << 16;
                 self.state.micro.read_to_dest = true;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -153,7 +146,6 @@ impl Cpu {
                 self.state.micro.destination =
                     (self.state.micro.destination & 0xFFFF_0000) | (data as u32);
                 self.state.micro.read_to_dest = true;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -177,7 +169,6 @@ impl Cpu {
             true,
             true,
         );
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
@@ -194,7 +185,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.source = (self.state.micro.source & 0x0000_FFFF) | ((data as u32) << 16);
                 self.state.micro.read_to_dest = false;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -213,7 +203,6 @@ impl Cpu {
             BusResult::Ready(data) => {
                 self.state.micro.destination = (self.state.micro.destination & 0x0000_FFFF) | ((data as u32) << 16);
                 self.state.micro.read_to_dest = true;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -237,7 +226,6 @@ impl Cpu {
             true,
             true,
         );
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
@@ -261,13 +249,12 @@ impl Cpu {
             uds,
             lds,
         );
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
     /// CCK1: Bus write setup (idle on bus, preparing address/pins, bus free for Agnus DMA)
+    #[inline(always)]
     pub fn step_bus_write_idle(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -291,7 +278,6 @@ impl Cpu {
                     uds,
                     lds,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -326,7 +312,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -361,7 +346,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -390,7 +374,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -409,7 +392,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.prefetch[0] = data;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -430,7 +412,6 @@ impl Cpu {
             true,
         );
         self.state.pc = self.state.pc.wrapping_add(2);
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
@@ -441,7 +422,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.irc = data;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -461,7 +441,6 @@ impl Cpu {
             true,
             true,
         );
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
@@ -478,7 +457,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.irc = data;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -508,7 +486,6 @@ impl Cpu {
         self.state.prefetch[0] = self.state.micro.irc;
         self.state.pc = self.state.pc.wrapping_add(2);
         self.state.micro.prefetch_retired = true;
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 

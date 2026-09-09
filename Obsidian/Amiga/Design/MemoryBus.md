@@ -80,7 +80,6 @@ Maintain the following internal bus state:
 ### Types & Arbitration Primitives
 
 The bus timing and transfer types reside in [`crates/memory_bus/src/arbitration.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/arbitration.rs):
-- **`CckPhase` (`Cck1`, `Cck2`)**: Models the Color Clock sub-cycle phases of the 4-clock M68000 bus cycle (`Cck1` for address output and contention arbitration; `Cck2` for data commit and $\overline{\text{DTACK}}$ acknowledgement).
 - **`BusAccessSize` (`Byte`, `Word`)**: Bus transfer operand widths.
 - **Function Code Lines (`function_code::*`)**: FC0–FC2 qualifiers (`USER_DATA = 1`, `USER_PROGRAM = 2`, `SUPERVISOR_DATA = 5`, `SUPERVISOR_PROGRAM = 6`, `CPU_SPACE = 7`).
 

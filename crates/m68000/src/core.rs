@@ -2,7 +2,7 @@
 
 use crate::micro::types;
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, BusResult, CckPhase, MemoryBus};
+use memory_bus::{BusResult, MemoryBus};
 
 /// Motorola 68000 CPU Core
 #[derive(Debug, Clone)]
@@ -31,7 +31,6 @@ impl Cpu {
         self.state.sr = 0x2700;
         self.state.stopped = false;
         self.state.halted = false;
-        self.state.step = 0;
         self.state.micro.reset();
         self.instruction_clocks = 0;
         self.state.cycle_counter = 0;
@@ -127,152 +126,6 @@ impl Cpu {
         }
     }
 
-    /// Fundamental 2-phase Color Clock (CCK) read word primitive with specific Function Code
-    pub fn step_read_word_at_fc(
-        &mut self,
-        bus: &mut MemoryBus,
-        addr: u32,
-        function_code: u8,
-    ) -> BusResult<()> {
-        let addr = addr & 0x00FF_FFFF;
-        match self.state.micro.phase {
-            CckPhase::Cck1 => match bus.read_word(addr) {
-                BusResult::WaitState => BusResult::WaitState,
-                BusResult::Ready(data) => {
-                    self.state.micro.source = data as u32;
-                    self.state.micro.phase = CckPhase::Cck2;
-                    BusResult::Ready(())
-                }
-            },
-            CckPhase::Cck2 => {
-                self.state.micro.record_bus_transaction(
-                    true,
-                    false,
-                    function_code,
-                    addr,
-                    BusAccessSize::Word,
-                    self.state.micro.source as u16,
-                    true,
-                    true,
-                );
-                self.state.micro.phase = CckPhase::Cck1;
-                BusResult::Ready(())
-            }
-        }
-    }
-
-    /// Read word in data space (FC1 or FC5)
-    #[inline(always)]
-    pub fn step_read_word_at(&mut self, bus: &mut MemoryBus, addr: u32) -> BusResult<()> {
-        let fc = types::data_fc(&self.state);
-        self.step_read_word_at_fc(bus, addr, fc)
-    }
-
-    /// Read word in program space (FC2 or FC6)
-    #[inline(always)]
-    pub fn step_read_prog_word_at(&mut self, bus: &mut MemoryBus, addr: u32) -> BusResult<()> {
-        let fc = types::prog_fc(&self.state);
-        self.step_read_word_at_fc(bus, addr, fc)
-    }
-
-    /// Fundamental 2-phase Color Clock (CCK) read byte primitive
-    pub fn step_read_byte_at(&mut self, bus: &mut MemoryBus, addr: u32) -> BusResult<()> {
-        let addr = addr & 0x00FF_FFFF;
-        match self.state.micro.phase {
-            CckPhase::Cck1 => match bus.read_byte(addr) {
-                BusResult::WaitState => BusResult::WaitState,
-                BusResult::Ready(data) => {
-                    self.state.micro.source = data as u32;
-                    self.state.micro.phase = CckPhase::Cck2;
-                    BusResult::Ready(())
-                }
-            },
-            CckPhase::Cck2 => {
-                let fc = types::data_fc(&self.state);
-                let (uds, lds) = if (addr & 1) == 0 {
-                    (true, false)
-                } else {
-                    (false, true)
-                };
-                self.state.micro.record_bus_transaction(
-                    true,
-                    false,
-                    fc,
-                    addr,
-                    BusAccessSize::Byte,
-                    self.state.micro.source as u16,
-                    uds,
-                    lds,
-                );
-                self.state.micro.phase = CckPhase::Cck1;
-                BusResult::Ready(())
-            }
-        }
-    }
-
-    /// Fundamental 2-phase Color Clock (CCK) write word primitive
-    pub fn step_write_word_at(&mut self, bus: &mut MemoryBus, addr: u32, data: u16) -> BusResult<()> {
-        let addr = addr & 0x00FF_FFFF;
-        match self.state.micro.phase {
-            CckPhase::Cck1 => {
-                self.state.micro.phase = CckPhase::Cck2;
-                BusResult::Ready(())
-            }
-            CckPhase::Cck2 => match bus.write_word(addr, data) {
-                BusResult::WaitState => BusResult::WaitState,
-                BusResult::Ready(()) => {
-                    let fc = types::data_fc(&self.state);
-                    self.state.micro.record_bus_transaction(
-                        false,
-                        false,
-                        fc,
-                        addr,
-                        BusAccessSize::Word,
-                        data,
-                        true,
-                        true,
-                    );
-                    self.state.micro.phase = CckPhase::Cck1;
-                    BusResult::Ready(())
-                }
-            },
-        }
-    }
-
-    /// Fundamental 2-phase Color Clock (CCK) write byte primitive
-    pub fn step_write_byte_at(&mut self, bus: &mut MemoryBus, addr: u32, data: u8) -> BusResult<()> {
-        let addr = addr & 0x00FF_FFFF;
-        match self.state.micro.phase {
-            CckPhase::Cck1 => {
-                self.state.micro.phase = CckPhase::Cck2;
-                BusResult::Ready(())
-            }
-            CckPhase::Cck2 => match bus.write_byte(addr, data) {
-                BusResult::WaitState => BusResult::WaitState,
-                BusResult::Ready(()) => {
-                    let fc = types::data_fc(&self.state);
-                    let (uds, lds) = if (addr & 1) == 0 {
-                        (true, false)
-                    } else {
-                        (false, true)
-                    };
-                    self.state.micro.record_bus_transaction(
-                        false,
-                        false,
-                        fc,
-                        addr,
-                        BusAccessSize::Byte,
-                        data as u16,
-                        uds,
-                        lds,
-                    );
-                    self.state.micro.phase = CckPhase::Cck1;
-                    BusResult::Ready(())
-                }
-            },
-        }
-    }
-
     /// Triggers a cycle-exact Group 0 Address Error on unaligned word/long access (50 CPU clocks / 25 CCKs)
     #[inline(never)]
     pub fn trigger_address_error(
@@ -293,7 +146,6 @@ impl Cpu {
         self.state.micro.info_word = info_word;
         self.state.micro.current_steps = &crate::micro::common::STEPS_ADDRESS_ERROR;
         self.state.micro.micro_step = 0;
-        self.state.micro.phase = CckPhase::Cck1;
         self.state.micro.clocks_remaining = 0;
     }
 
@@ -391,10 +243,10 @@ impl Cpu {
                 BusResult::Ready(()) => {
                     self.state.micro.clocks_remaining = self.state.micro.clocks_remaining.saturating_sub(2);
 
-                    if self.state.micro.clocks_remaining == 0 {
-                        if self.state.micro.micro_step == prev_micro_step {
-                            self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-                        }
+                    if self.state.micro.clocks_remaining == 0
+                        && self.state.micro.micro_step == prev_micro_step
+                    {
+                        self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
                     }
 
                     if (self.state.micro.micro_step as usize) >= self.state.micro.current_steps.len() {

@@ -7,7 +7,7 @@
 
 use crate::core::Cpu;
 use crate::micro::types::{data_fc, prog_fc};
-use memory_bus::{BusAccessSize, BusResult, CckPhase, MemoryBus};
+use memory_bus::{BusAccessSize, BusResult, MemoryBus};
 
 impl Cpu {
     // ========================================================================
@@ -25,7 +25,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.irc = data;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -46,7 +45,6 @@ impl Cpu {
             true,
             true,
         );
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
@@ -61,7 +59,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.prefetch[0] = data;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -82,7 +79,6 @@ impl Cpu {
             true,
             true,
         );
-        self.state.micro.phase = CckPhase::Cck1;
         self.state.micro.target_refill = true;
         BusResult::Ready(())
     }
@@ -105,7 +101,6 @@ impl Cpu {
             self.trigger_address_error_step(sp, false, false, bus);
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -127,7 +122,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -151,7 +145,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -178,7 +171,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.ea_high = (data as u32) << 16;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -200,7 +192,6 @@ impl Cpu {
             true,
             true,
         );
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
@@ -215,7 +206,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.ea_addr = self.state.micro.ea_high | (data as u32);
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -237,7 +227,6 @@ impl Cpu {
             true,
             true,
         );
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
@@ -252,7 +241,6 @@ impl Cpu {
             self.trigger_address_error_step(sp, false, false, bus);
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -274,7 +262,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -287,7 +274,6 @@ impl Cpu {
             self.trigger_address_error_step(sp, false, false, bus);
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -309,7 +295,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -322,7 +307,6 @@ impl Cpu {
             self.trigger_address_error_step(sp, false, false, bus);
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -346,7 +330,6 @@ impl Cpu {
                     true,
                 );
                 self.state.write_a(7, sp_base.wrapping_sub(6));
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -363,7 +346,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.ea_high = (data as u32) << 16;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -384,7 +366,6 @@ impl Cpu {
             true,
             true,
         );
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
@@ -399,7 +380,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
                 self.state.micro.source = data as u32;
-                self.state.micro.phase = CckPhase::Cck2;
                 BusResult::Ready(())
             }
         }
@@ -430,11 +410,10 @@ impl Cpu {
             return BusResult::Ready(());
         }
         self.state.micro.ea_addr = target;
-        self.state.micro.phase = CckPhase::Cck1;
         BusResult::Ready(())
     }
 
-    /// CCK1/CCK2: 2-clock internal ALU/processing cycle, recording internal transaction if enabled
+    /// 2-clock internal processing cycle (1 CCK), recording internal transaction if enabled
     pub fn step_alu_internal_2clk(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         self.state.micro.record_internal_transaction(2);
         BusResult::Ready(())
@@ -451,7 +430,6 @@ impl Cpu {
             self.state.halted = true;
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -473,7 +451,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -486,7 +463,6 @@ impl Cpu {
             self.state.halted = true;
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -508,7 +484,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -521,7 +496,6 @@ impl Cpu {
             self.state.halted = true;
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -543,7 +517,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -556,7 +529,6 @@ impl Cpu {
             self.state.halted = true;
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -578,7 +550,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -591,7 +562,6 @@ impl Cpu {
             self.state.halted = true;
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -613,7 +583,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -626,7 +595,6 @@ impl Cpu {
             self.state.halted = true;
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -648,7 +616,6 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }
@@ -661,7 +628,6 @@ impl Cpu {
             self.state.halted = true;
             return BusResult::Ready(());
         }
-        self.state.micro.phase = CckPhase::Cck2;
         BusResult::Ready(())
     }
 
@@ -685,7 +651,6 @@ impl Cpu {
                     true,
                 );
                 self.state.write_a(7, sp_base.wrapping_sub(14));
-                self.state.micro.phase = CckPhase::Cck1;
                 BusResult::Ready(())
             }
         }

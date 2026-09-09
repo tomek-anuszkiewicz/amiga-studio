@@ -8,7 +8,7 @@ pub mod big_array;
 pub mod map;
 pub mod test_injection;
 
-pub use arbitration::{function_code, BusAccessSize, BusResult, CckPhase};
+pub use arbitration::{function_code, BusAccessSize, BusResult};
 pub use config::{A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard};
 pub use map::{
     build_bank_map, build_preset_bank_map, get_preset_bank_map, handler_for_bank, BankHandler,

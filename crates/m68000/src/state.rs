@@ -42,9 +42,6 @@ pub struct CpuState {
     /// Current Instruction Register (holds opcode being decoded/executed)
     pub ir: u16,
 
-    /// Sub-cycle execution phase / step index within current instruction (CCK1/CCK2)
-    pub step: u16,
-
     /// Sampled Interrupt Priority Level (0..7) driven from outside
     pub ipl: u8,
 
@@ -56,7 +53,7 @@ pub struct CpuState {
     pub stopped: bool,
     pub halted: bool,
 
-    /// Sub-cycle execution micro-state (Color Clock phase and in-flight bus cycle)
+    /// Sub-cycle execution micro-state (atomic micro-steps and in-flight bus cycles)
     #[serde(default)]
     pub micro: crate::micro::CpuMicroState,
 
@@ -76,7 +73,6 @@ impl Default for CpuState {
             sr: 0x2700, // Supervisor mode, Interrupt mask 7
             prefetch: [0; 2],
             ir: 0,
-            step: 0,
             ipl: 0,
             instruction_pc: 0,
             stopped: false,

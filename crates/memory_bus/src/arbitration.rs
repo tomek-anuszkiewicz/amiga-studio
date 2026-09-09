@@ -1,7 +1,7 @@
-//! Sub-cycle timing and Color Clock (CCK) phases
+//! Bus arbitration, function codes, access sizes, and bus transfer results
 //!
-//! Models the Amiga 2-phase Color Clock execution model (CCK1 and CCK2)
-//! corresponding to the 4-clock M68000 CPU bus cycle.
+//! Encapsulates transfer qualifiers (FC0-FC2), operand sizes (Byte, Word),
+//! and passive bus access result (`BusResult`) for Chip RAM DMA contention.
 
 use super::MemoryBus;
 use serde::{Deserialize, Serialize};
@@ -15,26 +15,6 @@ pub mod function_code {
     pub const CPU_SPACE: u8 = 7;
 }
 
-/// Color Clock (CCK) sub-cycle phase of the 4-clock M68000 bus cycle
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum CckPhase {
-    /// Color Clock Phase 1 (CPU S0–S3): Address output, _AS strobe, contention check
-    #[default]
-    Cck1,
-    /// Color Clock Phase 2 (CPU S4–S7): Data latch/write commit, _DTACK acknowledgement
-    Cck2,
-}
-
-impl CckPhase {
-    /// Advances to the alternating Color Clock phase
-    #[inline]
-    pub fn next(self) -> Self {
-        match self {
-            CckPhase::Cck1 => CckPhase::Cck2,
-            CckPhase::Cck2 => CckPhase::Cck1,
-        }
-    }
-}
 
 /// Bus access transfer size
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

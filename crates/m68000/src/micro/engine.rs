@@ -6,14 +6,12 @@
 use super::types::{
     default_empty_steps, MicroStep, OpcodeDescriptor, RecordedTransaction, EMPTY_STEPS,
 };
-use memory_bus::{BusAccessSize, CckPhase};
+use memory_bus::BusAccessSize;
 use serde::{Deserialize, Serialize};
 
 /// Sub-cycle execution micro-state of the M68000 CPU
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CpuMicroState {
-    /// Current Color Clock phase (CCK1 or CCK2)
-    pub phase: CckPhase,
     /// Instruction Register Capture prefetch latch (68000 IRC)
     #[serde(default)]
     pub irc: u16,
@@ -82,10 +80,9 @@ impl Default for CpuMicroState {
 }
 
 impl CpuMicroState {
-    /// Creates a new CPU micro-state initialized to CCK1 with no active transactions
+    /// Creates a new CPU micro-state with no active transactions
     pub fn new() -> Self {
         Self {
-            phase: CckPhase::Cck1,
             irc: 0,
             micro_step: 0,
             ea_high: 0,
@@ -110,7 +107,6 @@ impl CpuMicroState {
 
     /// Resets the micro-state machine to initial power-on / reset state
     pub fn reset(&mut self) {
-        self.phase = CckPhase::Cck1;
         self.irc = 0;
         self.micro_step = 0;
         self.ea_high = 0;
@@ -138,7 +134,6 @@ impl CpuMicroState {
         self.reg_src = desc.reg_src;
         self.reg_dst = desc.reg_dst;
         self.micro_step = 0;
-        self.phase = CckPhase::Cck1;
         self.clocks_remaining = 0;
     }
 

@@ -138,10 +138,10 @@ pub const POP_STACK_LOW_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_sta
 // 2-Clock Internal Execution Building Blocks
 // ============================================================================
 
-/// CCK1/CCK2: 2-clock internal ALU/idle cycle without bus activity
+/// 2-clock internal ALU/idle cycle (1 CCK, no external bus activity)
 pub const ALU_IDLE: MicroStep = MicroStep::cck(Cpu::step_alu);
 
-/// CCK1/CCK2: 2-clock internal processing cycle, recording internal transaction if enabled
+/// 2-clock internal processing cycle (1 CCK), recording internal transaction if enabled
 pub const ALU_INTERNAL_2CLK: MicroStep = MicroStep::cck(Cpu::step_alu_internal_2clk);
 
 // ============================================================================

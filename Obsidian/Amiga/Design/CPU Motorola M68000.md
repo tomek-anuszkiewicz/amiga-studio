@@ -267,20 +267,20 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 ### 3.1 Read Transaction Contention
 - **CCK1 (S0–S3):** The CPU asserts the target address and attempts reading via `bus.read_word(addr)` or `bus.read_byte(addr)`:
   - If `BusResult::WaitState` (Chip RAM access blocked by active Agnus DMA):
-    - **Action:** CPU stalls at CCK1. Does NOT advance micro-step or phase. Repeats CCK1 on next clock.
+    - **Action:** CPU stalls at CCK1. Does NOT advance micro-step. Repeats CCK1 read step on next clock.
   - If `BusResult::Ready(data)`:
-    - Data is stored directly into the target register (`source`, `destination`, `prefetch[0]`, or `irc`); CPU advances `phase` to `CckPhase::Cck2`.
+    - Data is stored directly into the target register (`source`, `destination`, `prefetch[0]`, or `irc`); CPU advances to the CCK2 finish step.
 - **CCK2 (S4–S7):**
-  - Physical bus is already idle/released for custom chip DMA. The transaction is recorded directly from the target register, completing the bus cycle and advancing to the next step (`phase = CckPhase::Cck1`).
+  - Physical bus is already idle/released for custom chip DMA. The transaction is recorded directly from the target register, completing the bus cycle and advancing to the next micro-step.
 
 ### 3.2 Write Transaction Contention
-- **CCK1 (S0–S3):** The CPU outputs the address internally and asserts `_AS`.
-  - CPU proceeds to CCK2 (`phase = CckPhase::Cck2`).
+- **CCK1 (S0–S3):** The CPU outputs the address internally and asserts `_AS` (`step_bus_write_idle`).
+  - CPU proceeds to CCK2 (`step_bus_write_dst_*`).
 - **CCK2 (S4–S7):** The memory bus attempts committing the write via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)` reading directly from `state.micro.destination`:
   - If `BusResult::WaitState` (Gary withholds `_DTACK` due to Chip RAM DMA contention):
-    - **Action:** CPU stalls at CCK2, holding write pins asserted until Agnus frees the bus.
+    - **Action:** CPU stalls at CCK2, holding write pins asserted until Agnus frees the bus without advancing `micro_step`.
   - If `BusResult::Ready(())`:
-    - Byte/word commits to memory, transaction is recorded, and `phase` resets to `CckPhase::Cck1`.
+    - Byte/word commits to memory, transaction is recorded, completing the 4-clock bus cycle and advancing to the next micro-step.
 
 ### 3.3 Micro-Step State Machine & Instruction Lifecycle
 
@@ -290,13 +290,13 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 Instruction execution is driven via a cycle-exact micro-step state machine clocked at Color Clock (CCK) granularity (2 CPU clocks per CCK, 4 clocks per bus cycle). The execution engine and micro-state tracking are implemented in [`crates/m68000/src/micro/engine.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/engine.rs) and [`crates/m68000/src/core.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/core.rs).
 
 - **Execution Micro-State (`CpuMicroState`):**
-  - `phase`: Color Clock sub-phase (`CckPhase::Cck1` or `CckPhase::Cck2`).
   - `source`: Explicit 32-bit storage for ALU source operand (incoming bus data is stored directly here on CCK1).
   - `destination`: Explicit 32-bit storage for ALU destination operand and write-back data (bus write cycles read directly from here).
   - `irc`: Instruction Register Capture — physical 68000 prefetch latch holding prefetched opcodes before retirement into IR.
   - `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
   - `ea_high`: High word of 32-bit absolute addresses (`(xxx).L`) or high address for split accesses.
   - `movem_mask`: 16-bit register transfer mask for `MOVEM`.
+  - `movem_state`: Multi-cycle transfer state for `MOVEM` (bit 0 tracks CCK1 vs CCK2 sub-phase).
   - `clocks_remaining`: Remaining CPU clocks for the active micro-step countdown (0 when completed or between steps).
   - `micro_step`: Index of the currently executing micro-operation within the active opcode sequence.
   - `target_refill`: Indicates whether instruction retirement must perform a branch/jump target refill.
