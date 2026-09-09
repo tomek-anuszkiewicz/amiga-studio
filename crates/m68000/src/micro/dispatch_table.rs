@@ -289,13 +289,23 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         let mode = ((ir >> 3) & 7) as u8;
         let reg = (ir & 7) as u8;
 
-        if size < 3 && dir == 1 && mode == 1 {
-            // CMPM (Ay)+, (Ax)+
-            if let Some(steps) = crate::instructions::cmpm::decode_cmpm_steps(size) {
+        if size < 3 && dir == 1 {
+            if mode == 1 {
+                // CMPM (Ay)+, (Ax)+
+                if let Some(steps) = crate::instructions::cmpm::decode_cmpm_steps(size) {
+                    table[op] = OpcodeDescriptor {
+                        steps,
+                        reg_src: reg,
+                        reg_dst: reg_d,
+                    };
+                }
+            } else if let Some(steps) = crate::instructions::eor::decode_eor_steps(size, mode, reg)
+            {
+                // EOR Dn, <ea>
                 table[op] = OpcodeDescriptor {
                     steps,
-                    reg_src: reg,
-                    reg_dst: reg_d,
+                    reg_src: reg_d,
+                    reg_dst: reg,
                 };
             }
         }
@@ -490,6 +500,109 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
                         reg_dst,
                     };
                 }
+            }
+        }
+        op += 1;
+    }
+
+    // Phase 6: AND opcodes ($C000..=$CFFF where size < 3)
+    let mut op = 0xC000usize;
+    while op <= 0xCFFF {
+        let ir = op as u16;
+        let reg_d = ((ir >> 9) & 7) as u8;
+        let dir = ((ir >> 8) & 1) as u8;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+
+        if size < 3 {
+            if let Some(steps) = crate::instructions::and::decode_and_steps(dir, size, mode, reg) {
+                let (reg_src, reg_dst) = if dir == 0 { (reg, reg_d) } else { (reg_d, reg) };
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src,
+                    reg_dst,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Phase 6: OR opcodes ($8000..=$8FFF where size < 3)
+    let mut op = 0x8000usize;
+    while op <= 0x8FFF {
+        let ir = op as u16;
+        let reg_d = ((ir >> 9) & 7) as u8;
+        let dir = ((ir >> 8) & 1) as u8;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+
+        if size < 3 {
+            if let Some(steps) = crate::instructions::or::decode_or_steps(dir, size, mode, reg) {
+                let (reg_src, reg_dst) = if dir == 0 { (reg, reg_d) } else { (reg_d, reg) };
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src,
+                    reg_dst,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Phase 6: ORI opcodes ($0000..=$00FF where size < 3)
+    let mut op = 0x0000usize;
+    while op <= 0x00FF {
+        let ir = op as u16;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+        if size < 3 {
+            if let Some(steps) = crate::instructions::ori::decode_ori_steps(size, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Phase 6: ANDI opcodes ($0200..=$02FF where size < 3)
+    let mut op = 0x0200usize;
+    while op <= 0x02FF {
+        let ir = op as u16;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+        if size < 3 {
+            if let Some(steps) = crate::instructions::andi::decode_andi_steps(size, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
+            }
+        }
+        op += 1;
+    }
+
+    // Phase 6: EORI opcodes ($0A00..=$0AFF where size < 3)
+    let mut op = 0x0A00usize;
+    while op <= 0x0AFF {
+        let ir = op as u16;
+        let size = ((ir >> 6) & 3) as u8;
+        let mode = ((ir >> 3) & 7) as u8;
+        let reg = (ir & 7) as u8;
+        if size < 3 {
+            if let Some(steps) = crate::instructions::eori::decode_eori_steps(size, mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
             }
         }
         op += 1;

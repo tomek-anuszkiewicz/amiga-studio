@@ -41,7 +41,7 @@ This document outlines the phased development plan, hardware milestones, verific
 ### Step 1: Reintroduction of Isomorphic Instructions & Complex Operations
 - **Phase A: Reintroduction of Isomorphic & Derived Instructions (from Archetype Blueprints):**
   - *Completed:* **Batch 1.1 (Isomorphic Arithmetic):** `SUB`, `SUBA`, `SUBI`, `SUBQ`, `SUBX` (derived from `ADD*` archetypes; 100% SingleStepTests & Cartesian DMA verified).
-  - *Batch 1.2 (Isomorphic Logic):* `AND`, `ANDI`, `OR`, `ORI`, `EOR`, `EORI` (derived from `NOT`/`ADD` bitwise ALU blueprints).
+  - *Completed:* **Batch 1.2 (Isomorphic Logic):** `AND`, `ANDI`, `OR`, `ORI`, `EOR`, `EORI` (derived from `NOT`/`ADD` bitwise ALU blueprints; 100% SingleStepTests & Cartesian DMA verified).
   - *Batch 1.3 (Comparisons & Tests):* `CMP`, `CMPA`, `CMPI`, `TST` (derived from `CMPM` and subtractive flags).
     - *Test Harness Update Note:* MAME and Tom Harte bundle `CMP` and `CMPM` into `CMP.<size>.json` without separate `CMPM.<size>.json` files. When implementing `CMP`/`CMPA`/`CMPI`, update the `load_mame_tests` guard in [`test_dma_cartesian.rs`](crates/test_runner/tests/test_dma_cartesian.rs) and add full `CMP` tests alongside the filtered `CMPM` tests in [`test_singlestep.rs`](crates/test_runner/tests/test_singlestep.rs) so the entire `CMP` vector file is tested.
   - *Batch 1.4 (Isomorphic Shifts & Rotates):* `ASR`, `LSL`, `LSR`, `ROL`, `ROR`, `ROXL`, `ROXR` (derived from `ASL` archetype).

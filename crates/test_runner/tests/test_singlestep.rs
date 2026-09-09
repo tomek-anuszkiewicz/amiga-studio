@@ -332,7 +332,7 @@ fn test_subx_l() {
 }
 
 // ============================================================================
-// Logic Operations (NOT Archetype)
+// Logic Operations (NOT, AND, OR, EOR Archetypes)
 // ============================================================================
 
 #[test]
@@ -348,6 +348,51 @@ fn test_not_w() {
 #[test]
 fn test_not_l() {
     run_dual_test("NOT.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_and_b() {
+    run_dual_test("AND.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_and_w() {
+    run_dual_test("AND.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_and_l() {
+    run_dual_test("AND.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_or_b() {
+    run_dual_test("OR.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_or_w() {
+    run_dual_test("OR.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_or_l() {
+    run_dual_test("OR.l", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_eor_b() {
+    run_dual_test("EOR.b", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_eor_w() {
+    run_dual_test("EOR.w", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_eor_l() {
+    run_dual_test("EOR.l", DEFAULT_SAMPLE_LIMIT);
 }
 
 // ============================================================================

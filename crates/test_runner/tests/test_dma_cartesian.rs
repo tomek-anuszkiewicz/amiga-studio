@@ -210,7 +210,10 @@ fn test_dma_cartesian_subx() {
 
 #[test]
 fn test_dma_cartesian_logic() {
-    run_cartesian_for_opcodes(&["NOT.b", "NOT.w", "NOT.l"]);
+    run_cartesian_for_opcodes(&[
+        "NOT.b", "NOT.w", "NOT.l", "AND.b", "AND.w", "AND.l", "OR.b", "OR.w", "OR.l", "EOR.b",
+        "EOR.w", "EOR.l",
+    ]);
 }
 
 // ============================================================================
