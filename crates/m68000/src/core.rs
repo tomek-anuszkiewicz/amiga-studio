@@ -222,16 +222,9 @@ impl Cpu {
         }
 
         let start_cycles = self.state.cycle_counter;
-        let mut loop_count = 0u32;
-        const MAX_INSTRUCTION_CCK_STEPS: u32 = 10_000;
         loop {
             let completed = self.step_cck(bus);
             if completed || self.state.halted || self.state.stopped {
-                return self.state.cycle_counter.wrapping_sub(start_cycles) as u32;
-            }
-            loop_count = loop_count.wrapping_add(1);
-            if loop_count >= MAX_INSTRUCTION_CCK_STEPS {
-                self.state.micro.reset();
                 return self.state.cycle_counter.wrapping_sub(start_cycles) as u32;
             }
         }
