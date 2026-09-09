@@ -272,6 +272,13 @@ impl CpuState {
         self.sr = (self.sr & !CCR_Z) | flag;
     }
 
+    /// Sets Overflow (V=1), clears Carry (C=0), and strictly preserves X, N, Z.
+    /// Used by: DIVU and DIVS on division overflow (68000 hardware behavior).
+    #[inline(always)]
+    pub fn set_ccr_v_clear_c(&mut self) {
+        self.sr = (self.sr & !0x0003) | 0x0002;
+    }
+
     // --- Condition Code Helpers ---
 
     #[inline(always)]

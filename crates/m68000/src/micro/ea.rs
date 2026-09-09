@@ -107,6 +107,11 @@ pub fn ea_calc_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.ea_addr = state.micro.ea_high | (state.prefetch[0] as u32);
 }
 
+/// Immediate Word: latch prefetch[0] into micro.source
+pub fn ea_calc_imm_w(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    state.micro.source = state.prefetch[0] as u32;
+}
+
 /// Immediate Long Cycle 1: High word -> latch in source
 pub fn ea_calc_imm_l_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let hi = (state.prefetch[0] as u32) << 16;

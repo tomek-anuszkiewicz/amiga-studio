@@ -253,3 +253,12 @@ fn test_dma_cartesian_cmp() {
 fn test_dma_cartesian_tst() {
     run_cartesian_for_opcodes(&["TST.b", "TST.w", "TST.l"]);
 }
+
+// ============================================================================
+// Multiplications & Divisions (MULU, MULS, DIVU, DIVS)
+// ============================================================================
+
+#[test]
+fn test_dma_cartesian_mul_div() {
+    run_cartesian_for_opcodes(&["MULU", "MULS", "DIVU", "DIVS"]);
+}

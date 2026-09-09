@@ -637,3 +637,27 @@ fn test_move_b() {
 fn test_move_l() {
     run_dual_test("MOVE.l", DEFAULT_SAMPLE_LIMIT);
 }
+
+// ============================================================================
+// Multiplications & Divisions (Batch 1.7: MULU, MULS, DIVU, DIVS)
+// ============================================================================
+
+#[test]
+fn test_mulu() {
+    run_dual_test("MULU", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_muls() {
+    run_dual_test("MULS", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_divu() {
+    run_dual_test("DIVU", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_divs() {
+    run_dual_test("DIVS", DEFAULT_SAMPLE_LIMIT);
+}

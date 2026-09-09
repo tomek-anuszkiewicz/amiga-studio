@@ -185,8 +185,18 @@ pub fn run_single_test_detail(
             && cpu.state.ssp != test.initial.ssp
             && (cpu.state.sr & 0xFFE0) == (test.final_state.sr & 0xFFE0)
             && file_path.contains("MOVE.l");
+        // Documented simulator divergence: on DIVU and DIVS overflow (V=1),
+        // the Motorola PRM defines N and Z as officially undefined.
+        // Real 68000 silicon (Tom Harte) preserves the prior N and Z flags,
+        // whereas MAME's microcode simulator hardcodes N=1, Z=0.
+        let is_mame_div_overflow_divergence = !is_harte
+            && (test.final_state.sr & 0x0002) != 0
+            && (cpu.state.sr & 0x0002) != 0
+            && ((cpu.state.sr ^ test.final_state.sr) & !0x000C) == 0
+            && (file_path.contains("DIVU") || file_path.contains("DIVS"));
 
-        if !is_mame_asr_divergence && !is_mame_move_l_divergence {
+        if !is_mame_asr_divergence && !is_mame_move_l_divergence && !is_mame_div_overflow_divergence
+        {
             let (summary, flags_diff) = format_ccr_diff(cpu.state.sr, test.final_state.sr);
             failure.diffs.push(StateDiff::StatusRegister {
                 actual: cpu.state.sr,

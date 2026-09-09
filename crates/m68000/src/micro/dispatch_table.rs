@@ -597,7 +597,7 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
         op += 1;
     }
 
-    // Phase 6: AND opcodes ($C000..=$CFFF where size < 3)
+    // Phase 6: AND ($C000..=$CFFF where size < 3), MULU (dir == 0, size == 3), MULS (dir == 1, size == 3)
     let mut op = 0xC000usize;
     while op <= 0xCFFF {
         let ir = op as u16;
@@ -616,11 +616,25 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
                     reg_dst,
                 };
             }
+        } else if dir == 0 {
+            if let Some(steps) = crate::instructions::mul::decode_mulu_steps(mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: reg,
+                    reg_dst: reg_d,
+                };
+            }
+        } else if let Some(steps) = crate::instructions::mul::decode_muls_steps(mode, reg) {
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: reg,
+                reg_dst: reg_d,
+            };
         }
         op += 1;
     }
 
-    // Phase 6: OR opcodes ($8000..=$8FFF where size < 3)
+    // Phase 6: OR ($8000..=$8FFF where size < 3), DIVU (dir == 0, size == 3), DIVS (dir == 1, size == 3)
     let mut op = 0x8000usize;
     while op <= 0x8FFF {
         let ir = op as u16;
@@ -639,6 +653,20 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
                     reg_dst,
                 };
             }
+        } else if dir == 0 {
+            if let Some(steps) = crate::instructions::div::decode_divu_steps(mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: reg,
+                    reg_dst: reg_d,
+                };
+            }
+        } else if let Some(steps) = crate::instructions::div::decode_divs_steps(mode, reg) {
+            table[op] = OpcodeDescriptor {
+                steps,
+                reg_src: reg,
+                reg_dst: reg_d,
+            };
         }
         op += 1;
     }
