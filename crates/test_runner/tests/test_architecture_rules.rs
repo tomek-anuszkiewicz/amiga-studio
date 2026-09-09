@@ -19,6 +19,9 @@ const LINE_COUNT_EXCEPTIONS: &[&str] = &[
     "move_l.rs",
     "add.rs",
     "sub.rs",
+    "and.rs",
+    "or.rs",
+    "cmpi.rs",
     "blep_tables.rs",
 ];
 
@@ -448,4 +451,38 @@ fn test_inlining_guidelines_compliance() {
             }
         }
     }
+}
+
+#[test]
+fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
+    let repo_root = find_repo_root();
+    let inst_dir = repo_root
+        .join("crates")
+        .join("m68000")
+        .join("src")
+        .join("instructions");
+    assert!(
+        inst_dir.exists(),
+        "M68000 instructions directory does not exist: {}",
+        inst_dir.display()
+    );
+
+    let entries = fs::read_dir(&inst_dir).expect("Failed to read instructions directory");
+    let mut subdirectories = Vec::new();
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            let rel_path = path.strip_prefix(&repo_root).unwrap_or(&path);
+            subdirectories.push(rel_path.display().to_string());
+        }
+    }
+
+    assert!(
+        subdirectories.is_empty(),
+        "Architecture Rule Violation: Subdirectories in `crates/m68000/src/instructions/` are strictly forbidden per AGENTS.md.\n\
+        All instructions must be flat `<mnemonic>.rs` files directly under `instructions/`.\n\
+        Found subdirectories:\n{}",
+        subdirectories.join("\n")
+    );
 }

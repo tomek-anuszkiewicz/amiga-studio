@@ -83,9 +83,13 @@ All agentic pair-programming and automated modifications must adhere strictly to
      - *300–600 lines*: Ideal sweet spot for cohesive units combining types, enums, and operational logic.
      - *600–800 lines*: Review trigger. Review for multiple responsibilities (SRP violation), independent sub-domains, or test code that should be separated into submodules.
      - *> 800 lines*: Split mandate. Rust source files exceeding 800 lines must be split into submodules unless they meet the criteria for a Recognized Exception.
+   - **Strict Flat Instruction Hierarchy (`crates/m68000/src/instructions/`)**:
+     - Every M68000 CPU instruction implementation must reside in a single flat Rust file directly under `crates/m68000/src/instructions/<mnemonic>.rs` (e.g. `add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`).
+     - **Zero Subdirectories in `instructions/`**: Creating subdirectories or multi-file submodules under `crates/m68000/src/instructions/` (such as `and/`, `cmpi/`, `or/`) to evade the 800-line limit is **strictly forbidden**.
+     - When an exhaustive instruction decoder or micro-step table exceeds 800 lines due to numerous addressing mode variations (e.g. `add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`), it qualifies as an authorized **Recognized Exception** under the rule below and must be registered in `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`. It must NEVER be split into subdirectories.
    - **Recognized Exceptions (Allowed to exceed 800 lines)**:
      - Compile-time static dispatch and lookup tables (e.g. `dispatch_table.rs` with 65,536-entry opcode decoding, BLEP sinc tables).
-     - Exhaustive linear instruction decoders or atomic hardware circuit state machines where splitting obscures sequential cycle timing.
+     - Exhaustive linear instruction decoders or atomic hardware circuit state machines where splitting obscures sequential cycle timing (e.g. `add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`, `move_b.rs`, `move_w.rs`, `move_l.rs`).
 
 8. **Method Inlining Strategy (`#[inline]`, `#[inline(always)]`, `#[inline(never)]`)**:
    - In Rust, `#[inline]` serves two functions: it is an aggressive inlining hint to LLVM, and crucially, it emits intermediate representation (MIR/LLVM IR) into crate metadata, enabling **cross-crate inlining** across workspace crates without requiring whole-program LTO.
@@ -131,7 +135,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
   ```powershell
   cargo test -p test_runner --test test_architecture_rules
   ```
-  (enforcing standard `cargo fmt` formatting compliance, Rust source file size <= 800 lines in `crates/*/src/`, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, path privacy, and inlining compliance [cold exception `#[inline(never)]`, leaf ALU and CCR `#[inline(always)]`]).
+  (enforcing standard `cargo fmt` formatting compliance, Rust source file size <= 800 lines in `crates/*/src/`, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, path privacy, and inlining compliance [cold exception `#[inline(never)]`, leaf ALU and CCR `#[inline(always)]`]).
 - **Mandatory Full SingleStepTests on M68000 Changes:** Whenever completing an implementation plan, milestone, or modifying any code inside `crates/m68000`, the agent **must execute the full, exhaustive SingleStepTests suite** without sampling limits:
   ```powershell
   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
@@ -142,7 +146,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
   cargo test -p test_runner --test test_dma_cartesian
   ```
   validating cycle invariance ($C = C_0 + 2 \times \text{wait\_states}$), Fast RAM immunity, and state invariance across the full $2^k \times 2^M$ permutation space.
-- **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, Rust source file size <= 800 lines, design doc & roadmap pruning, removal of implemented code snippets from design documentation, 100% green tests).
+- **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, Rust source file size <= 800 lines, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, design doc & roadmap pruning, removal of implemented code snippets from design documentation, 100% green tests).
 
 - **Sub-Agent Milestone Review Protocol (`/code-review`):** Before declaring a roadmap milestone complete, invoke an independent review subagent or follow the `/code-review` workflow to audit the diff with a clean context before user hand-off.
 - The design documents under `Obsidian/Amiga/Design/` are living, permanent specifications and must always reflect the exact architectural reality of the implementation.

@@ -18,6 +18,7 @@ cargo test -p test_runner --test test_architecture_rules
 Ensure all rules pass:
 - Code is 100% formatted via standard `cargo fmt`.
 - Rust source file size limit `<= 800` lines in `crates/*/src/` (excluding recognized static tables/exceptions). Documentation files have NO line limits.
+- Strict flat instruction hierarchy: zero subdirectories in `crates/m68000/src/instructions/` (all instructions are single flat `<mnemonic>.rs` files).
 - Zero `.unwrap()` / `.expect()` calls in core emulation crates.
 - Zero custom macros (`macro_rules!`) and zero const-generic handlers.
 - Zero hardcoded external user/host paths.
@@ -51,6 +52,7 @@ Audit the diff against the guidelines in `AGENTS.md`:
 
 ### D. Workspace & Architecture
 - [ ] Respects 3-tier re-export strategy (Tier 1: config, Tier 2: peers memory_bus/m68000, Tier 3: sub-components rtc/copper/blitter).
+- [ ] Strict flat instruction hierarchy: zero subdirectories in `crates/m68000/src/instructions/` (all instructions are single `<mnemonic>.rs` files).
 - [ ] Zero circular references between peer subsystems (`no Rc<RefCell>`).
 - [ ] **WASM Portability**: zero OS calls (`std::time::Instant`, `std::thread`, `std::fs`) in core emulation crates.
 - [ ] **Decoupled SaveState**: all subsystem state structs implement `serde::Serialize` and `Deserialize`.

@@ -154,35 +154,117 @@ The `ref_src/` directory houses 17 local reference implementations, testbenches,
 
 ## 5. Compiling & Running Tests
 
-### Standard Compilation & Checks
+The emulator features a multi-tiered test architecture: standard subsystem unit tests, automated architecture rule validation, dual-suite M68000 single-step instruction verification (MAME + Tom Harte hardware vectors), Cartesian DMA contention stress tests, and a dedicated diagnostic CLI.
+
+### 5.1 Standard Compilation & Subsystem Unit Tests
 ```powershell
-# Build emulator core
+# Build emulator core and tools
 cargo build
 
-# Typecheck for WebAssembly
+# Typecheck for WebAssembly (WASM target)
 cargo check --target wasm32-unknown-unknown
 
-# Run all standard unit tests
+# Run all standard workspace unit and integration tests
 cargo test
+
+# Run tests for specific subsystem crates
+cargo test -p m68000        # CPU core (addressing modes, micro-archetypes, CCK bus)
+cargo test -p memory_bus    # Memory bus mapping, Gary logic, and autoconfig
+cargo test -p rtc           # MSM6242B Real-Time Clock
+cargo test -p debugger      # Interactive disassembly and breakpoint engine
 ```
 
-### Running M68000 SingleStepTests
-Execute instruction test suites individually or by group:
+### 5.2 Automated Architecture Rules Compliance
+Enforces architectural rules and quality constraints defined in [AGENTS.md](AGENTS.md) (formatting, file size limits $\le 800$ lines, zero runtime panics/unwraps, path privacy, zero custom macros, and inlining rules):
 ```powershell
-# Run only NOP tests
-cargo test tests::cpu::test_nop
-
-# Run arithmetic suites
-cargo test tests::cpu::test_add_b
-cargo test tests::cpu::test_move_w
-
-# Run exception and trap tests
-cargo test tests::cpu::test_illegal_linea
-cargo test tests::cpu::test_trap
-
-# Run all CPU single step tests
-cargo test tests::cpu
+cargo test -p test_runner --test test_architecture_rules
 ```
+
+### 5.3 M68000 SingleStepTests (Dual-Suite Hardware Verification)
+Validates CPU instruction execution against two independent, complementary test suites:
+1. **MAME SingleStepTests:** [`ref_src/SingleStepTests-m68000/v1/`](ref_src/SingleStepTests-m68000/v1/) (127 suites, includes Line-A, Line-F, STOP).
+2. **Tom Harte SingleStepTests-680x0:** [`ref_src/SingleStepTests-680x0/68000/v1/`](ref_src/SingleStepTests-680x0/68000/v1/) (124 suites, ~1,000,000 test vectors, ground truth for `TAS` RMW cycles).
+
+> [!NOTE]
+> Ensure test JSON files are decoded before running (see [Section 3.2](#32-decode-singlesteptests-json-files)).
+
+#### Default Sample Run (Fast Smoke Test)
+By default, each instruction suite runs a sampled subset of 50 test cases (~5–6 seconds total):
+```powershell
+# Run sampled SingleStepTests across all implemented opcodes
+cargo test -p test_runner --test test_singlestep
+
+# Run tests for a specific instruction or group
+cargo test -p test_runner --test test_singlestep test_nop
+cargo test -p test_runner --test test_singlestep test_add_b
+cargo test -p test_runner --test test_singlestep test_move_w
+```
+
+#### Full Exhaustive Verification (`SINGLESTEP_FULL`)
+Setting `SINGLESTEP_FULL=1` (or `true`) disables sampling limits and executes **100% of all ~300,000 test vectors** across all 127 suites from both MAME and Tom Harte in parallel (typically completes in 12–15 seconds).
+
+- **PowerShell (Windows):**
+  ```powershell
+  # Full exhaustive run across all implemented opcodes (~300,000 vectors)
+  $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+
+  # Full exhaustive run for a single instruction suite
+  $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep -- test_add_b
+  ```
+
+- **Bash / Linux / macOS / WSL:**
+  ```bash
+  # Full exhaustive run across all implemented opcodes
+  SINGLESTEP_FULL=1 cargo test -p test_runner --test test_singlestep
+
+  # Full exhaustive run for a single instruction suite
+  SINGLESTEP_FULL=1 cargo test -p test_runner --test test_singlestep -- test_add_b
+  ```
+
+#### Custom Sample Limit (`SINGLESTEP_LIMIT`)
+To evaluate an arbitrary sample size (e.g. 200 or 500 test cases per suite):
+- **PowerShell:**
+  ```powershell
+  $env:SINGLESTEP_LIMIT = "500"; cargo test -p test_runner --test test_singlestep
+  ```
+- **Bash:**
+  ```bash
+  SINGLESTEP_LIMIT=500 cargo test -p test_runner --test test_singlestep
+  ```
+
+### 5.4 Cartesian DMA Contention Verification
+Validates cycle-exact M68000 micro-stepping and wait-state handling under Agnus DMA bus contention across the full combinatorial Cartesian product:
+- **Address Permutations ($2^k$):** Sweeps all role assignments of memory cells touched by the instruction (`ChipRam` vs `FastRam`).
+- **DMA Schedule Permutations ($2^M$):** Sweeps every bit pattern of stalled vs free CCK slots across the execution window.
+- **Asserted Invariants:**
+  1. *Cycle Invariance:* $C = C_0 + 2 \times \text{wait\_states}$
+  2. *Fast RAM Immunity:* $C = C_0$ without wait states when only Fast RAM is accessed.
+  3. *State Invariance:* CPU registers and RAM are 100% bit-identical to the uncontended golden run.
+
+```powershell
+# Run full Cartesian DMA contention test suite
+cargo test -p test_runner --test test_dma_cartesian
+
+# Run Cartesian tests for specific category
+cargo test -p test_runner --test test_dma_cartesian test_dma_cartesian_system_and_traps
+```
+
+### 5.5 CLI Test Diagnostics, Coverage & Regression Tracker
+The `test_runner` crate includes a standalone CLI tool for inspecting coverage matrices, viewing live failure diagnostics, and detecting regressions:
+
+```powershell
+# Display global pass/fail matrix and coverage summary across all opcodes
+cargo run -p test_runner -- --summary
+
+# Detect regressions and fixed tests compared to previous run (via .test_results/)
+cargo run -p test_runner -- --diff
+
+# Execute a single opcode suite directly with live diagnostic failure output
+cargo run -p test_runner -- --suite ADD.b
+```
+
+- 🔴 **Regressions:** Tests that previously passed but now fail are highlighted with `⚠️ [REGRESSION DETECTED]`.
+- 🟢 **Improvements:** Tests that previously failed but now pass are highlighted with `🎉 [PROGRESS / FIX]`.
 
 ---
 
