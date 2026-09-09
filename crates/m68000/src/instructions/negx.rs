@@ -400,11 +400,7 @@ pub static STEPS_NEGX_W_ABSL: [MicroStep; 10] = [
 // ============================================================================
 
 pub static STEPS_NEGX_L_DN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_negx_l_dn),

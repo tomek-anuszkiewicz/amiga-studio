@@ -53,6 +53,26 @@ Name ALU handlers and micro-step sequences consistently:
 - Step slice: `STEPS_<MNEMONIC>_<SIZE>_<SOURCE>_<DESTINATION>` (e.g. `STEPS_SUB_W_AI_DN`, `STEPS_SUB_B_DN_PI`)
 - Decoder function: `pub const fn decode_<mnemonic>_steps(...) -> Option<&'static [MicroStep]>`
 
+### 2.1 Mandatory Idle Micro-Step Taxonomy & Prohibition of Anonymous Idle Structs
+
+Every micro-step where the physical memory bus does not perform an active read/write transfer or assert address strobes must explicitly feature `IDLE` in its identifier:
+
+| Idle Category | Clocks | Canonical Constant | Usage Description |
+| :--- | :---: | :--- | :--- |
+| **Bus Read Idle** | 2 | `common::BUS_READ_IDLE` | CCK2 idle completion of operand reads, opcode prefetch, target opcode reads, and SR/CCR prefetch queue refills. |
+| **Bus Write Idle** | 2 | `common::BUS_WRITE_IDLE` | CCK1 write setup phase; address/data latched internally, external bus free for Agnus DMA. |
+| **Internal ALU Idle** | 2 | `common::ALU_IDLE` | 2-clock internal execution delay with zero external bus activity (e.g. `CMPA.W`, `Bcc`, `BSET`, `CLR.L`). |
+| **Internal Execution Idle (4-clock)** | 4 | `common::ALU_IDLE_4CLK` | 4-clock internal execution delay (e.g. 32-bit register arithmetic `ADD.L Dn, Dn`, `SUBA.L`). |
+| **Internal Exception Idle (8-clock)** | 8 | `common::ALU_IDLE_8CLK` | 8-clock internal exception processing delay (`CHK` trap, `DIV` divide-by-zero). |
+| **Reset Idle (128-clock)** | 128 | `common::ALU_IDLE_128CLK` | 128-clock external bus idle countdown for `RESET`. |
+| **Stack Push Setup Idle** | 2 | `common::PUSH_STACK_HIGH_IDLE`<br>`common::EXCEPTION_PUSH_*_IDLE`<br>`common::AERR_PUSH_*_IDLE` | CCK1 SP decrement and alignment check; bus idle for DMA prior to CCK2 write. |
+
+> [!IMPORTANT]
+> **Strict Prohibition of Anonymous Idle Structs & Deprecated Aliases**:
+> - Never author anonymous idle structs like `MicroStep { step_fn: None, alu_fn: None, base_clocks: ... }`. Always reuse canonical constants from `crate::micro::common::*`.
+> - Never use deprecated legacy aliases (`READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`, `REFILL_FIRST_FINISH`, `REFILL_SECOND_FINISH`, etc.). Always use `common::BUS_READ_IDLE` or `common::ALU_IDLE*`.
+> - Actively enforced by the automated test `test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs`.
+
 ---
 
 ## 3. Step-by-Step Implementation Pattern

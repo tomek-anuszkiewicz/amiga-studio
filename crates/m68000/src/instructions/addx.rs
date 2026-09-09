@@ -128,11 +128,7 @@ pub static STEPS_ADDX_W_DN_DN: [MicroStep; 2] = [
 ];
 
 pub static STEPS_ADDX_L_DN_DN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_l_dn_dn),

@@ -48,11 +48,7 @@ pub fn alu_nbcd_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_NBCD_DN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_nbcd_dn),

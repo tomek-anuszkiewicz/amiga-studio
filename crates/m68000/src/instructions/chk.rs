@@ -17,7 +17,7 @@
 
 use crate::core::Cpu;
 use crate::micro::common::{
-    ALU_IDLE, BUS_READ_IDLE, EXCEPTION_PUSH_PCHI_IDLE, EXCEPTION_PUSH_PCHI_WRITE,
+    ALU_IDLE, ALU_IDLE_8CLK, BUS_READ_IDLE, EXCEPTION_PUSH_PCHI_IDLE, EXCEPTION_PUSH_PCHI_WRITE,
     EXCEPTION_PUSH_PCLO_IDLE, EXCEPTION_PUSH_PCLO_WRITE, EXCEPTION_PUSH_SR_IDLE,
     EXCEPTION_PUSH_SR_WRITE, FETCH_EXT_FINISH, FETCH_EXT_READ, PREFETCH_IRC_FINISH,
     PREFETCH_IRC_READ, PREFETCH_TARGET_FINISH, PREFETCH_TARGET_READ, READ_SRC_WORD,
@@ -32,11 +32,7 @@ use crate::state::CpuState;
 // ============================================================================
 
 pub static STEPS_CHK_TRAP: [MicroStep; 16] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 8,
-    },
+    ALU_IDLE_8CLK,
     EXCEPTION_PUSH_PCLO_IDLE,
     EXCEPTION_PUSH_PCLO_WRITE,
     EXCEPTION_PUSH_SR_IDLE,

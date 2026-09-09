@@ -49,7 +49,7 @@ pub static ALU_TAS_MEM_2CLK: MicroStep = MicroStep {
 pub static STEPS_TAS_DN: [MicroStep; 3] = [
     ALU_TAS_DN,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_TAS_AI: [MicroStep; 7] = [
@@ -63,7 +63,7 @@ pub static STEPS_TAS_AI: [MicroStep; 7] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_TAS_PI: [MicroStep; 7] = [
@@ -77,7 +77,7 @@ pub static STEPS_TAS_PI: [MicroStep; 7] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_TAS_PD: [MicroStep; 8] = [
@@ -92,7 +92,7 @@ pub static STEPS_TAS_PD: [MicroStep; 8] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_TAS_D16: [MicroStep; 9] = [
@@ -108,7 +108,7 @@ pub static STEPS_TAS_D16: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_TAS_IDX: [MicroStep; 10] = [
@@ -125,7 +125,7 @@ pub static STEPS_TAS_IDX: [MicroStep; 10] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_TAS_AW: [MicroStep; 9] = [
@@ -141,7 +141,7 @@ pub static STEPS_TAS_AW: [MicroStep; 9] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_TAS_AL: [MicroStep; 11] = [
@@ -163,7 +163,7 @@ pub static STEPS_TAS_AL: [MicroStep; 11] = [
     common::BUS_WRITE_IDLE,
     common::WRITE_DST_BYTE,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 // ============================================================================

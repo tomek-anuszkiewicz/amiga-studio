@@ -30,7 +30,7 @@ pub static ALU_TRAPV_INIT: MicroStep = MicroStep {
 pub static STEPS_TRAPV: [MicroStep; 3] = [
     ALU_TRAPV_INIT,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub fn alu_trapv_exception_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {

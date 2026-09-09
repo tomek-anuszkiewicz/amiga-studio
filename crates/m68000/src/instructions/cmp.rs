@@ -452,11 +452,7 @@ pub static STEPS_CMP_W_IMM_DN: [MicroStep; 4] = [
 // ============================================================================
 
 pub static STEPS_CMP_L_DN_DN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmp_l_dn_dn),
@@ -466,11 +462,7 @@ pub static STEPS_CMP_L_DN_DN: [MicroStep; 3] = [
 ];
 
 pub static STEPS_CMP_L_AN_DN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmp_l_an_dn),

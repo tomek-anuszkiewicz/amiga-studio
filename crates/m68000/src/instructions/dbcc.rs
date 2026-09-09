@@ -14,11 +14,7 @@ use crate::state::CpuState;
 
 /// Taken branch execution steps (10 CPU clocks / 5 CCKs)
 pub static STEPS_DBCC_BRANCH_TAKEN: [MicroStep; 5] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
     common::READ_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
@@ -27,16 +23,8 @@ pub static STEPS_DBCC_BRANCH_TAKEN: [MicroStep; 5] = [
 
 /// Untaken branch / condition met execution steps (12 CPU clocks / 6 CCKs)
 pub static STEPS_DBCC_COND_TRUE: [MicroStep; 6] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
+    common::ALU_IDLE,
     common::READ_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,

@@ -53,6 +53,9 @@ Analyze all modified and added files using `git diff`:
 9. **Specification Integrity (Anti-Hack Rule)**:
    - Zero silent deviations from hardware specs or ad-hoc special-casing just to force synthetic tests green.
 10. **Path Privacy**: Ensure no host paths (`C:\Users\`, `/home/`, personal disk paths) are present.
+11. **Idle Micro-Step Naming & Common Primitives**:
+   - Ensure all micro-steps where the memory bus does not perform an active transfer or address strobe explicitly feature `IDLE` (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`).
+   - Strictly prohibit anonymous idle structs (`MicroStep { step_fn: None, alu_fn: None, ... }`) and legacy aliases (`READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`, `REFILL_FIRST_FINISH`, `REFILL_SECOND_FINISH`).
 
 ### Step 3: Living Documentation Audit
 1. **Design Documents**: Did the author update `Obsidian/Amiga/Design/`? Were speculative draft snippets, pre-implementation sketches, and duplicate code snippets of already-written code removed? (The codebase is the single source of truth; design docs must not duplicate implemented Rust code).

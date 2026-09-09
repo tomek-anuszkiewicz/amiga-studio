@@ -67,9 +67,9 @@ pub static STEPS_MOVE_TO_CCR_DN: [MicroStep; 6] = [
     ALU_LATCH_SRC_DN_WORD,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_CCR_AI: [MicroStep; 7] = [
@@ -78,12 +78,12 @@ pub static STEPS_MOVE_TO_CCR_AI: [MicroStep; 7] = [
         alu_fn: Some(ea::ea_calc_src_ai),
         base_clocks: 2,
     },
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_CCR_PI: [MicroStep; 7] = [
@@ -92,12 +92,12 @@ pub static STEPS_MOVE_TO_CCR_PI: [MicroStep; 7] = [
         alu_fn: Some(ea::ea_calc_src_pi_w),
         base_clocks: 2,
     },
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_CCR_PD: [MicroStep; 8] = [
@@ -107,12 +107,12 @@ pub static STEPS_MOVE_TO_CCR_PD: [MicroStep; 8] = [
         base_clocks: 2,
     },
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_CCR_D16: [MicroStep; 9] = [
@@ -123,12 +123,12 @@ pub static STEPS_MOVE_TO_CCR_D16: [MicroStep; 9] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_CCR_IDX: [MicroStep; 10] = [
@@ -140,12 +140,12 @@ pub static STEPS_MOVE_TO_CCR_IDX: [MicroStep; 10] = [
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_CCR_AW: [MicroStep; 9] = [
@@ -156,12 +156,12 @@ pub static STEPS_MOVE_TO_CCR_AW: [MicroStep; 9] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_CCR_AL: [MicroStep; 11] = [
@@ -178,12 +178,12 @@ pub static STEPS_MOVE_TO_CCR_AL: [MicroStep; 11] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_CCR_PC_D16: [MicroStep; 9] = [
@@ -194,12 +194,12 @@ pub static STEPS_MOVE_TO_CCR_PC_D16: [MicroStep; 9] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_CCR_PC_IDX: [MicroStep; 10] = [
@@ -211,12 +211,12 @@ pub static STEPS_MOVE_TO_CCR_PC_IDX: [MicroStep; 10] = [
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_CCR_IMM: [MicroStep; 7] = [
@@ -228,9 +228,9 @@ pub static STEPS_MOVE_TO_CCR_IMM: [MicroStep; 7] = [
     common::FETCH_EXT_FINISH,
     ALU_SET_CCR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 // ============================================================================
@@ -242,9 +242,9 @@ pub static STEPS_MOVE_TO_SR_DN: [MicroStep; 7] = [
     ALU_LATCH_SRC_DN_WORD,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_SR_AI: [MicroStep; 8] = [
@@ -254,12 +254,12 @@ pub static STEPS_MOVE_TO_SR_AI: [MicroStep; 8] = [
         alu_fn: Some(ea::ea_calc_src_ai),
         base_clocks: 2,
     },
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_SR_PI: [MicroStep; 8] = [
@@ -269,12 +269,12 @@ pub static STEPS_MOVE_TO_SR_PI: [MicroStep; 8] = [
         alu_fn: Some(ea::ea_calc_src_pi_w),
         base_clocks: 2,
     },
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_SR_PD: [MicroStep; 9] = [
@@ -285,12 +285,12 @@ pub static STEPS_MOVE_TO_SR_PD: [MicroStep; 9] = [
         base_clocks: 2,
     },
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_SR_D16: [MicroStep; 10] = [
@@ -302,12 +302,12 @@ pub static STEPS_MOVE_TO_SR_D16: [MicroStep; 10] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_SR_IDX: [MicroStep; 11] = [
@@ -320,12 +320,12 @@ pub static STEPS_MOVE_TO_SR_IDX: [MicroStep; 11] = [
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_SR_AW: [MicroStep; 10] = [
@@ -337,12 +337,12 @@ pub static STEPS_MOVE_TO_SR_AW: [MicroStep; 10] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_SR_AL: [MicroStep; 12] = [
@@ -360,12 +360,12 @@ pub static STEPS_MOVE_TO_SR_AL: [MicroStep; 12] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_SR_PC_D16: [MicroStep; 10] = [
@@ -377,12 +377,12 @@ pub static STEPS_MOVE_TO_SR_PC_D16: [MicroStep; 10] = [
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_SR_PC_IDX: [MicroStep; 11] = [
@@ -395,12 +395,12 @@ pub static STEPS_MOVE_TO_SR_PC_IDX: [MicroStep; 11] = [
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
-    common::READ_WORD_FINISH,
+    common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub static STEPS_MOVE_TO_SR_IMM: [MicroStep; 8] = [
@@ -413,9 +413,9 @@ pub static STEPS_MOVE_TO_SR_IMM: [MicroStep; 8] = [
     common::FETCH_EXT_FINISH,
     ALU_SET_SR_4CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 // ============================================================================
@@ -435,7 +435,7 @@ pub static ALU_MOVE_FROM_SR_DN: MicroStep = MicroStep {
 
 pub static STEPS_MOVE_FROM_SR_DN: [MicroStep; 3] = [
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
     ALU_MOVE_FROM_SR_DN,
 ];
 

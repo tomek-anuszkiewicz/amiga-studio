@@ -492,11 +492,7 @@ pub static STEPS_ADDI_L_DN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addi_l_imm_dn),

@@ -84,11 +84,7 @@ pub static STEPS_SUBQ_W_DN: [MicroStep; 2] = [
     common::BUS_READ_IDLE,
 ];
 pub static STEPS_SUBQ_L_DN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subq_l_imm_dn),
@@ -97,11 +93,7 @@ pub static STEPS_SUBQ_L_DN: [MicroStep; 3] = [
     common::BUS_READ_IDLE,
 ];
 pub static STEPS_SUBQ_W_AN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subq_w_imm_an),
@@ -110,11 +102,7 @@ pub static STEPS_SUBQ_W_AN: [MicroStep; 3] = [
     common::BUS_READ_IDLE,
 ];
 pub static STEPS_SUBQ_L_AN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_subq_l_imm_an),

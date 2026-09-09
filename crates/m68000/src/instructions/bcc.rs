@@ -9,11 +9,7 @@ use crate::state::CpuState;
 
 /// Taken branch execution steps (10 CPU clocks / 5 CCKs)
 pub static STEPS_BRANCH_TAKEN: [MicroStep; 5] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
     common::READ_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,
@@ -22,32 +18,16 @@ pub static STEPS_BRANCH_TAKEN: [MicroStep; 5] = [
 
 /// Untaken short branch execution steps (8 CPU clocks / 4 CCKs)
 pub static STEPS_BRANCH_NOT_TAKEN_SHORT: [MicroStep; 4] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
+    common::ALU_IDLE,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
 ];
 
 /// Untaken word branch execution steps (12 CPU clocks / 6 CCKs)
 pub static STEPS_BRANCH_NOT_TAKEN_WORD: [MicroStep; 6] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
+    common::ALU_IDLE,
     common::READ_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
     common::PREFETCH_TARGET_READ,

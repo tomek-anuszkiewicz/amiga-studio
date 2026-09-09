@@ -61,11 +61,7 @@ pub fn alu_suba_w_imm_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 // Word: <ea>, An
 pub static STEPS_SUBA_W_DN_AN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_suba_w_dn_an),
@@ -75,11 +71,7 @@ pub static STEPS_SUBA_W_DN_AN: [MicroStep; 3] = [
 ];
 
 pub static STEPS_SUBA_W_AN_AN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_suba_w_an_an),
@@ -256,11 +248,7 @@ pub static STEPS_SUBA_W_IMM_AN: [MicroStep; 4] = [
 
 // Long: <ea>, An
 pub static STEPS_SUBA_L_DN_AN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_suba_l_dn_an),
@@ -270,11 +258,7 @@ pub static STEPS_SUBA_L_DN_AN: [MicroStep; 3] = [
 ];
 
 pub static STEPS_SUBA_L_AN_AN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_suba_l_an_an),

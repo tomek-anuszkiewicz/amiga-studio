@@ -483,11 +483,7 @@ pub static STEPS_OR_W_IMM_DN: [MicroStep; 4] = [
 // ============================================================================
 
 pub static STEPS_OR_L_DN_DN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_or_l_dn_dn),

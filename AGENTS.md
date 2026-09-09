@@ -109,48 +109,57 @@ All agentic pair-programming and automated modifications must adhere strictly to
    - **Use `#[inline(never)]` on**:
      - Cold exception paths, address error dumps, illegal instruction traps, and diagnostic panic paths. Keeping cold recovery logic out-of-line ensures the hot instruction dispatch loop remains dense and contiguous in the host CPU's instruction cache.
 
-9. **Workspace Flat Layout & 3-Tier Re-Export (`pub use`) Strategy**:
-   - Keep crate directories in `crates/*` **strictly flat** (no nested crate folders). Express domain containment and API hierarchy through Rust `pub use` re-exports:
-     - **Tier 1 (Foundational Blueprint - `config`)**: Machine-wide presets/timings. Never re-exported by peer subsystems.
-     - **Tier 2 (Peer Subsystems - `memory_bus`, `m68000`, `agnus`, `denise`, `paula`, `cia`)**: Peers owned by the top-level machine (`A500`). Peers **never re-export other peers**.
-     - **Tier 3 (Contained Sub-Components - `rtc`, `copper`, `blitter`)**: Conceptually and physically owned by a specific subsystem. The parent peer **must** re-export them via namespaced modules and convenience shortcuts (`pub use rtc; pub use rtc::RtcMsm6242b;`).
-     - **Tier 0 (Top-Level Facade - `a500` machine)**: Owns all peers and acts as the unified gateway for host frontends (`web-wasm`, `desktop-gui`, `cli`).
-
----
-
-## 3. Knowledge Base & Reference Navigation
-
-- **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
-- **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and Guru Book reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via the `rag_search` tool (`amiga-rag`).
-- **RAG Tooling & Infrastructure**: The indexing pipeline, CLI indexer (`amiga_rag`), and FastMCP server reside in [`tools/rag`](tools/rag), backed by the local Qdrant vector database (`amiga` collection).
-- **Reference Emulator Source Code**: Verified reference implementations (MAME, Moira, Musashi, vAmiga, WinUAE) are located in [ref_src](ref_src).
-- **Single-Step Test Vectors**: Official test suite for the M68000 CPU is located in [ref_src/SingleStepTests-m68000/v1](ref_src/SingleStepTests-m68000/v1).
-
----
-
-## 4. Documentation Maintenance & Quality Assurance (Definition of Done)
-
-- **Mandatory Final Task:** Whenever an agent (or human developer) implements, refactors, or modifies a subsystem, you **must update the corresponding design document in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) if any architectural decision, timing model, data structure, or hardware quirk has changed or was clarified.**
-- **Roadmap Step Completion & Pruning:** Whenever an agent is 100% certain that a roadmap milestone or step in [ROADMAP.md](ROADMAP.md) has been fully implemented and verified (all tests pass 100% green), as part of that **same task/PR you must update [ROADMAP.md](ROADMAP.md)**: remove the detailed completed task from the active implementation list, update the concise completed baseline summary, and renumber/reorder remaining steps so that [ROADMAP.md](ROADMAP.md) always reflects the live, remaining plan.
-- **Design Document Pruning & Post-Implementation Cleanup (Eliminate Implemented Code Duplication):** Design specifications under [Obsidian/Amiga/Design](Obsidian/Amiga/Design) often contain tentative draft snippets, forward-looking proposals, or hypothetical code sketches written before implementation. Whenever completing a roadmap step or implementing a feature, you **must review and clean up the relevant design documents**: remove obsolete speculative code, prune superseded draft proposals, and ensure the document reflects the finalized, living architectural reality rather than pre-implementation conjectures. Crucially, **design documents must never duplicate code that has already been written**: once a struct, enum, function, or subsystem is implemented in `crates/`, all redundant Rust code snippets, mock implementations, and duplicate code blocks must be removed from the design documentation and replaced with concise architectural descriptions, tables, and direct markdown links to the living Rust source files. The codebase itself is the single source of truth for code.
-- **Crate Dependency Graph Maintenance:** Whenever crates or workspace dependencies in `Cargo.toml` (new crates, modified inter-crate dependencies, or key external dependencies) are added, altered, or removed, you **must update the Crate Dependency Mermaid Graph in [Obsidian/Amiga/Design/General Architecture.md](Obsidian/Amiga/Design/General%20Architecture.md#2-workspace-crate-architecture--dependencies)**.
-- **Mandatory Code Formatting (`cargo fmt --all`):** Whenever an agent (or human developer) implements, refactors, or modifies code, you **must run `cargo fmt --all`** across the workspace. All code changes must pass the formatting compliance check (`cargo fmt --all -- --check`), which is also automatically validated during architecture tests.
-- **Automated Architecture Test Execution:** All code changes must pass the automated architectural test suite in `crates/test_runner`:
-  ```powershell
-  cargo test -p test_runner --test test_architecture_rules
-  ```
-  (enforcing standard `cargo fmt` formatting compliance, Rust source file size <= 800 lines in `crates/*/src/`, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, path privacy, and inlining compliance [cold exception `#[inline(never)]`, leaf ALU and CCR `#[inline(always)]`]).
-- **Mandatory Full SingleStepTests on M68000 Changes:** Whenever completing an implementation plan, milestone, or modifying any code inside `crates/m68000`, the agent **must execute the full, exhaustive SingleStepTests suite** without sampling limits:
-  ```powershell
-  $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
-  ```
-  This validates all ~300,000 test cases across MAME and Tom Harte hardware vectors in parallel (typically completing in 12–15s). Tasks touching `crates/m68000` cannot be declared complete without running this full test pass.
-- **Mandatory Cartesian DMA Contention Verification on M68000 Changes:** In addition to SingleStepTests, all implemented opcodes must pass the exhaustive Cartesian DMA Contention test suite:
-  ```powershell
-  cargo test -p test_runner --test test_dma_cartesian
-  ```
-  validating cycle invariance ($C = C_0 + 2 \times \text{wait\_states}$), Fast RAM immunity, and state invariance across the full $2^k \times 2^M$ permutation space.
-- **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, Rust source file size <= 800 lines, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, design doc & roadmap pruning, removal of implemented code snippets from design documentation, 100% green tests).
+111: 
+112: 9. **Workspace Flat Layout & 3-Tier Re-Export (`pub use`) Strategy**:
+113:    - Keep crate directories in `crates/*` **strictly flat** (no nested crate folders). Express domain containment and API hierarchy through Rust `pub use` re-exports:
+114:      - **Tier 1 (Foundational Blueprint - `config`)**: Machine-wide presets/timings. Never re-exported by peer subsystems.
+115:      - **Tier 2 (Peer Subsystems - `memory_bus`, `m68000`, `agnus`, `denise`, `paula`, `cia`)**: Peers owned by the top-level machine (`A500`). Peers **never re-export other peers**.
+116:      - **Tier 3 (Contained Sub-Components - `rtc`, `copper`, `blitter`)**: Conceptually and physically owned by a specific subsystem. The parent peer **must** re-export them via namespaced modules and convenience shortcuts (`pub use rtc; pub use rtc::RtcMsm6242b;`).
+117:      - **Tier 0 (Top-Level Facade - `a500` machine)**: Owns all peers and acts as the unified gateway for host frontends (`web-wasm`, `desktop-gui`, `cli`).
+118: 
+119: 10. **Mandatory Idle Micro-Step Naming & Prohibition of Anonymous Idle Structs (`crates/m68000/src/instructions/`)**:
+120:     - **Canonical Idle Constants**: Any M68000 micro-step where the memory bus performs no transfer (or internal ALU idle cycles) **must** explicitly feature `IDLE` in its identifier:
+121:       - Bus idle phases: `common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE` (or stack/exception variants `PUSH_STACK_HIGH_IDLE`, `EXCEPTION_PUSH_*_IDLE`, `AERR_PUSH_*_IDLE`).
+122:       - Internal ALU idle cycles: `common::ALU_IDLE` (2-clk), `common::ALU_IDLE_4CLK` (4-clk), `common::ALU_IDLE_8CLK` (8-clk), `common::ALU_IDLE_128CLK` (128-clk).
+123:     - **Prohibition of Anonymous Idle Structs**: Inlining raw struct literals like `MicroStep { step_fn: None, alu_fn: None, base_clocks: N }` inside instruction arrays or handlers is **strictly forbidden**. Always reference the canonical constants in `common::`.
+124:     - **Prohibition of Obscuring Legacy Aliases**: Using misleading finish/retire aliases (such as `READ_WORD_FINISH` or `PREFETCH_NEXT_RETIRE`) that obscure bus inactivity is strictly prohibited. Micro-steps performing no bus operation must be unambiguously identified with `IDLE`.
+125:     - Automated architecture tests (`test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs`) actively enforce this across all instruction files.
+126: 
+127: ---
+128: 
+129: ## 3. Knowledge Base & Reference Navigation
+130: 
+131: - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
+132: - **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and Guru Book reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via the `rag_search` tool (`amiga-rag`).
+133: - **RAG Tooling & Infrastructure**: The indexing pipeline, CLI indexer (`amiga_rag`), and FastMCP server reside in [`tools/rag`](tools/rag), backed by the local Qdrant vector database (`amiga` collection).
+134: - **Reference Emulator Source Code**: Verified reference implementations (MAME, Moira, Musashi, vAmiga, WinUAE) are located in [ref_src](ref_src).
+135: - **Single-Step Test Vectors**: Official test suite for the M68000 CPU is located in [ref_src/SingleStepTests-m68000/v1](ref_src/SingleStepTests-m68000/v1).
+136: 
+137: ---
+138: 
+139: ## 4. Documentation Maintenance & Quality Assurance (Definition of Done)
+140: 
+141: - **Mandatory Final Task:** Whenever an agent (or human developer) implements, refactors, or modifies a subsystem, you **must update the corresponding design document in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) if any architectural decision, timing model, data structure, or hardware quirk has changed or was clarified.**
+142: - **Roadmap Step Completion & Pruning:** Whenever an agent is 100% certain that a roadmap milestone or step in [ROADMAP.md](ROADMAP.md) has been fully implemented and verified (all tests pass 100% green), as part of that **same task/PR you must update [ROADMAP.md](ROADMAP.md)**: remove the detailed completed task from the active implementation list, update the concise completed baseline summary, and renumber/reorder remaining steps so that [ROADMAP.md](ROADMAP.md) always reflects the live, remaining plan.
+143: - **Design Document Pruning & Post-Implementation Cleanup (Eliminate Implemented Code Duplication):** Design specifications under [Obsidian/Amiga/Design](Obsidian/Amiga/Design) often contain tentative draft snippets, forward-looking proposals, or hypothetical code sketches written before implementation. Whenever completing a roadmap step or implementing a feature, you **must review and clean up the relevant design documents**: remove obsolete speculative code, prune superseded draft proposals, and ensure the document reflects the finalized, living architectural reality rather than pre-implementation conjectures. Crucially, **design documents must never duplicate code that has already been written**: once a struct, enum, function, or subsystem is implemented in `crates/`, all redundant Rust code snippets, mock implementations, and duplicate code blocks must be removed from the design documentation and replaced with concise architectural descriptions, tables, and direct markdown links to the living Rust source files. The codebase itself is the single source of truth for code.
+144: - **Crate Dependency Graph Maintenance:** Whenever crates or workspace dependencies in `Cargo.toml` (new crates, modified inter-crate dependencies, or key external dependencies) are added, altered, or removed, you **must update the Crate Dependency Mermaid Graph in [Obsidian/Amiga/Design/General Architecture.md](Obsidian/Amiga/Design/General%20Architecture.md#2-workspace-crate-architecture--dependencies)**.
+145: - **Mandatory Code Formatting (`cargo fmt --all`):** Whenever an agent (or human developer) implements, refactors, or modifies code, you **must run `cargo fmt --all`** across the workspace. All code changes must pass the formatting compliance check (`cargo fmt --all -- --check`), which is also automatically validated during architecture tests.
+146: - **Automated Architecture Test Execution:** All code changes must pass the automated architectural test suite in `crates/test_runner`:
+147:   ```powershell
+148:   cargo test -p test_runner --test test_architecture_rules
+149:   ```
+150:   (enforcing standard `cargo fmt` formatting compliance, Rust source file size <= 800 lines in `crates/*/src/`, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, canonical idle micro-step naming, path privacy, and inlining compliance [cold exception `#[inline(never)]`, leaf ALU and CCR `#[inline(always)]`]).
+151: - **Mandatory Full SingleStepTests on M68000 Changes:** Whenever completing an implementation plan, milestone, or modifying any code inside `crates/m68000`, the agent **must execute the full, exhaustive SingleStepTests suite** without sampling limits:
+152:   ```powershell
+153:   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+154:   ```
+155:   This validates all ~300,000 test cases across MAME and Tom Harte hardware vectors in parallel (typically completing in 12–15s). Tasks touching `crates/m68000` cannot be declared complete without running this full test pass.
+156: - **Mandatory Cartesian DMA Contention Verification on M68000 Changes:** In addition to SingleStepTests, all implemented opcodes must pass the exhaustive Cartesian DMA Contention test suite:
+157:   ```powershell
+158:   cargo test -p test_runner --test test_dma_cartesian
+159:   ```
+160:   validating cycle invariance ($C = C_0 + 2 \times \text{wait\_states}$), Fast RAM immunity, and state invariance across the full $2^k \times 2^M$ permutation space.
+161: - **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, canonical idle micro-step naming, Rust source file size <= 800 lines, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, design doc & roadmap pruning, removal of implemented code snippets from design documentation, 100% green tests).
 
 - **Sub-Agent Milestone Review Protocol (`/code-review`):** Before declaring a roadmap milestone complete, invoke an independent review subagent or follow the `/code-review` workflow to audit the diff with a clean context before user hand-off.
 - The design documents under `Obsidian/Amiga/Design/` are living, permanent specifications and must always reflect the exact architectural reality of the implementation.

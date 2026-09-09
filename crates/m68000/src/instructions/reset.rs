@@ -32,5 +32,5 @@ pub static STEPS_RESET: [MicroStep; 4] = [
     ALU_RESET,
     common::ALU_IDLE_128CLK,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];

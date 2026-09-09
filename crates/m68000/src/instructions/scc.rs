@@ -39,11 +39,7 @@ pub static STEPS_SCC_DN_TRUE: [MicroStep; 3] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub fn alu_scc_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {

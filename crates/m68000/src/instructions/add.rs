@@ -491,11 +491,7 @@ pub static STEPS_ADD_W_IMM_DN: [MicroStep; 4] = [
 
 // Long: <ea>, Dn
 pub static STEPS_ADD_L_DN_DN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_dn_dn),
@@ -504,11 +500,7 @@ pub static STEPS_ADD_L_DN_DN: [MicroStep; 3] = [
     common::BUS_READ_IDLE,
 ];
 pub static STEPS_ADD_L_AN_DN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 4,
-    },
+    common::ALU_IDLE_4CLK,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_add_l_an_dn),

@@ -32,7 +32,7 @@ pub static ALU_MOVE_TO_USP: MicroStep = MicroStep {
 pub static STEPS_MOVE_TO_USP: [MicroStep; 3] = [
     ALU_MOVE_TO_USP,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];
 
 pub fn alu_move_from_usp(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
@@ -54,5 +54,5 @@ pub static ALU_MOVE_FROM_USP: MicroStep = MicroStep {
 pub static STEPS_MOVE_FROM_USP: [MicroStep; 3] = [
     ALU_MOVE_FROM_USP,
     common::PREFETCH_NEXT_READ,
-    common::PREFETCH_NEXT_RETIRE,
+    common::BUS_READ_IDLE,
 ];

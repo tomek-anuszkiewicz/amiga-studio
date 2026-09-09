@@ -87,16 +87,8 @@ pub fn latch_bit_imm_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_BSET_DYN_DN: [MicroStep; 4] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
+    common::ALU_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bset_l_dyn_dn),
@@ -244,16 +236,8 @@ pub static STEPS_BSET_STAT_DN: [MicroStep; 6] = [
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
+    common::ALU_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bset_l_imm_dn),

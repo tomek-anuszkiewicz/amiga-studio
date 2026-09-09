@@ -529,3 +529,88 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
         non_rs_files.join("\n")
     );
 }
+
+#[test]
+fn test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs() {
+    let repo_root = find_repo_root();
+    let inst_dir = repo_root
+        .join("crates")
+        .join("m68000")
+        .join("src")
+        .join("instructions");
+    let mut inst_files = Vec::new();
+    collect_rs_files(&inst_dir, &mut inst_files);
+
+    let forbidden_legacy_aliases = [
+        "READ_WORD_FINISH",
+        "READ_BYTE_FINISH",
+        "PREFETCH_NEXT_RETIRE",
+        "REFILL_FIRST_FINISH",
+        "REFILL_SECOND_FINISH",
+        "READ_TARGET_OPCODE_FINISH",
+        "READ_VECTOR_HIGH_FINISH",
+        "ALU_INTERNAL_2CLK",
+    ];
+
+    let mut violations = Vec::new();
+
+    for file in &inst_files {
+        let content = fs::read_to_string(file).expect("Failed to read instruction file");
+        let rel_path = file.strip_prefix(&repo_root).unwrap_or(file);
+        let lines: Vec<&str> = content.lines().collect();
+
+        // 1. Check for legacy non-idle finish/retire aliases
+        for (line_idx, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") {
+                continue;
+            }
+            for alias in &forbidden_legacy_aliases {
+                if trimmed.contains(alias) {
+                    violations.push(format!(
+                        "{}:{} -> Uses legacy alias `{}`. Use `common::BUS_READ_IDLE` or `common::ALU_IDLE` instead.",
+                        rel_path.display(),
+                        line_idx + 1,
+                        alias
+                    ));
+                }
+            }
+        }
+
+        // 2. Check for anonymous idle MicroStep structs (step_fn: None, alu_fn: None)
+        for (i, line) in lines.iter().enumerate() {
+            if line.contains("MicroStep {") {
+                let end_idx = std::cmp::min(i + 6, lines.len());
+                let block = lines[i..end_idx].join(" ");
+                if block.contains("step_fn: None") && block.contains("alu_fn: None") {
+                    let canonical_hint = if block.contains("base_clocks: 2") {
+                        "common::ALU_IDLE"
+                    } else if block.contains("base_clocks: 4") {
+                        "common::ALU_IDLE_4CLK"
+                    } else if block.contains("base_clocks: 8") {
+                        "common::ALU_IDLE_8CLK"
+                    } else if block.contains("base_clocks: 128") {
+                        "common::ALU_IDLE_128CLK"
+                    } else {
+                        "standardized idle constant from `common`"
+                    };
+
+                    violations.push(format!(
+                        "{}:{} -> Anonymous idle MicroStep struct found. Replace with `{}`.",
+                        rel_path.display(),
+                        i + 1,
+                        canonical_hint
+                    ));
+                }
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Non-standard or anonymous idle micro-step usage found in `crates/m68000/src/instructions/`:\n\
+        All micro-steps performing no active memory bus transfer must use standardized constants with `IDLE` in their name.\n\
+        Violations:\n{}",
+        violations.join("\n")
+    );
+}

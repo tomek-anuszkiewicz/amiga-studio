@@ -47,4 +47,5 @@ During `/code-review`, verify:
 - [ ] Is the hot path 100% allocation-free?
 - [ ] Is the code completely free of custom macros (`macro_rules!`)?
 - [ ] Are opcode handlers and execution paths free of const-generic functions (`<const N: ...>`) in favor of concrete specialized functions?
+- [ ] Are all bus and internal idle cycles explicitly named with IDLE (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`), with zero anonymous idle structs or legacy finish aliases?
 - [ ] Is the code clear, well-structured, self-documenting, and free of cryptic tricks?

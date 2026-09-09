@@ -51,9 +51,9 @@ pub static STEPS_ORI_TO_CCR: [MicroStep; 7] = [
     common::FETCH_EXT_FINISH,
     ALU_ORI_TO_CCR_8CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub fn alu_ori_to_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
@@ -76,9 +76,9 @@ pub static STEPS_ORI_TO_SR: [MicroStep; 8] = [
     common::FETCH_EXT_FINISH,
     ALU_ORI_TO_SR_8CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 // ============================================================================
@@ -105,9 +105,9 @@ pub static STEPS_ANDI_TO_CCR: [MicroStep; 7] = [
     common::FETCH_EXT_FINISH,
     ALU_ANDI_TO_CCR_8CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub fn alu_andi_to_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
@@ -130,9 +130,9 @@ pub static STEPS_ANDI_TO_SR: [MicroStep; 8] = [
     common::FETCH_EXT_FINISH,
     ALU_ANDI_TO_SR_8CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 // ============================================================================
@@ -159,9 +159,9 @@ pub static STEPS_EORI_TO_CCR: [MicroStep; 7] = [
     common::FETCH_EXT_FINISH,
     ALU_EORI_TO_CCR_8CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];
 
 pub fn alu_eori_to_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
@@ -184,7 +184,7 @@ pub static STEPS_EORI_TO_SR: [MicroStep; 8] = [
     common::FETCH_EXT_FINISH,
     ALU_EORI_TO_SR_8CLK,
     common::REFILL_FIRST_READ,
-    common::REFILL_FIRST_FINISH,
+    common::BUS_READ_IDLE,
     common::REFILL_SECOND_READ,
-    common::REFILL_SECOND_FINISH,
+    common::BUS_READ_IDLE,
 ];

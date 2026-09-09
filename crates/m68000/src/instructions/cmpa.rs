@@ -62,11 +62,7 @@ pub fn alu_cmpa_w_imm_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 // ============================================================================
 
 pub static STEPS_CMPA_W_DN_AN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpa_w_dn_an),
@@ -76,11 +72,7 @@ pub static STEPS_CMPA_W_DN_AN: [MicroStep; 3] = [
 ];
 
 pub static STEPS_CMPA_W_AN_AN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpa_w_an_an),
@@ -102,11 +94,7 @@ pub static STEPS_CMPA_W_AI_AN: [MicroStep; 5] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_W_PI_AN: [MicroStep; 5] = [
@@ -122,11 +110,7 @@ pub static STEPS_CMPA_W_PI_AN: [MicroStep; 5] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_W_PD_AN: [MicroStep; 5] = [
@@ -142,11 +126,7 @@ pub static STEPS_CMPA_W_PD_AN: [MicroStep; 5] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_W_D16_AN_AN: [MicroStep; 7] = [
@@ -164,11 +144,7 @@ pub static STEPS_CMPA_W_D16_AN_AN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_W_IDX_AN_AN: [MicroStep; 8] = [
@@ -187,11 +163,7 @@ pub static STEPS_CMPA_W_IDX_AN_AN: [MicroStep; 8] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_W_ABSW_AN: [MicroStep; 7] = [
@@ -209,11 +181,7 @@ pub static STEPS_CMPA_W_ABSW_AN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_W_ABSL_AN: [MicroStep; 9] = [
@@ -237,11 +205,7 @@ pub static STEPS_CMPA_W_ABSL_AN: [MicroStep; 9] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_W_D16_PC_AN: [MicroStep; 7] = [
@@ -259,11 +223,7 @@ pub static STEPS_CMPA_W_D16_PC_AN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_W_IDX_PC_AN: [MicroStep; 8] = [
@@ -282,11 +242,7 @@ pub static STEPS_CMPA_W_IDX_PC_AN: [MicroStep; 8] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_W_IMM_AN: [MicroStep; 5] = [
@@ -298,11 +254,7 @@ pub static STEPS_CMPA_W_IMM_AN: [MicroStep; 5] = [
     common::FETCH_EXT_FINISH,
     common::PREFETCH_NEXT_READ,
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 // ============================================================================
@@ -310,11 +262,7 @@ pub static STEPS_CMPA_W_IMM_AN: [MicroStep; 5] = [
 // ============================================================================
 
 pub static STEPS_CMPA_L_DN_AN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpa_l_dn_an),
@@ -324,11 +272,7 @@ pub static STEPS_CMPA_L_DN_AN: [MicroStep; 3] = [
 ];
 
 pub static STEPS_CMPA_L_AN_AN: [MicroStep; 3] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
     MicroStep {
         step_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpa_l_an_an),
@@ -352,11 +296,7 @@ pub static STEPS_CMPA_L_AI_AN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_L_PI_AN: [MicroStep; 7] = [
@@ -374,11 +314,7 @@ pub static STEPS_CMPA_L_PI_AN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_L_PD_AN: [MicroStep; 7] = [
@@ -396,11 +332,7 @@ pub static STEPS_CMPA_L_PD_AN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_L_D16_AN_AN: [MicroStep; 9] = [
@@ -420,11 +352,7 @@ pub static STEPS_CMPA_L_D16_AN_AN: [MicroStep; 9] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_L_IDX_AN_AN: [MicroStep; 10] = [
@@ -445,11 +373,7 @@ pub static STEPS_CMPA_L_IDX_AN_AN: [MicroStep; 10] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_L_ABSW_AN: [MicroStep; 9] = [
@@ -469,11 +393,7 @@ pub static STEPS_CMPA_L_ABSW_AN: [MicroStep; 9] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_L_ABSL_AN: [MicroStep; 11] = [
@@ -499,11 +419,7 @@ pub static STEPS_CMPA_L_ABSL_AN: [MicroStep; 11] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_L_D16_PC_AN: [MicroStep; 9] = [
@@ -523,11 +439,7 @@ pub static STEPS_CMPA_L_D16_PC_AN: [MicroStep; 9] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_L_IDX_PC_AN: [MicroStep; 10] = [
@@ -548,11 +460,7 @@ pub static STEPS_CMPA_L_IDX_PC_AN: [MicroStep; 10] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 pub static STEPS_CMPA_L_IMM_AN: [MicroStep; 7] = [
@@ -574,11 +482,7 @@ pub static STEPS_CMPA_L_IMM_AN: [MicroStep; 7] = [
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 2,
-    },
+    common::ALU_IDLE,
 ];
 
 // ============================================================================
