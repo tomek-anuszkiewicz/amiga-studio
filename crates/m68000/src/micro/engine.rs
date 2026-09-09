@@ -161,6 +161,14 @@ impl CpuMicroState {
         }
     }
 
+    /// Records an internal CPU operation in the transaction log without overriding microcode step clocks
+    #[inline]
+    pub fn record_internal_transaction(&mut self, duration: u32) {
+        if let Some(ref mut log) = self.transaction_log {
+            log.push(RecordedTransaction::Internal { duration });
+        }
+    }
+
     /// Helper to record a completed bus cycle into the transaction log
     #[inline]
     pub fn record_bus_transaction(

@@ -494,13 +494,40 @@ SP - 14 -->  [ Program Counter (PC) Low 16-bits ]
 #### Group 1 & Group 2 Exceptions: Interrupts (IPL 1–7), TRAPs, Illegal Instructions
 Push a standard **3-word (6-byte) stack frame**:
 ```
-SP - 2  -->  [ Status Register (SR) prior to exception ]
-SP - 4  -->  [ Program Counter (PC) High 16-bits ]
-SP - 6  -->  [ Program Counter (PC) Low 16-bits ]
+Final SSP + 0  (old SSP - 6)  -->  [ Status Register (SR) prior to exception ]
+Final SSP + 2  (old SSP - 4)  -->  [ Program Counter (PC) High 16-bits ]
+Final SSP + 4  (old SSP - 2)  -->  [ Program Counter (PC) Low 16-bits ]
 ```
+
+##### Physical Bus Write Sequence for 3-Word Frame (68000 Silicon Order):
+On physical M68000 hardware, the internal ALU/bus microcode writes the 3-word frame in the following cycle order:
+1. Write PC low word to `SSP - 2` (Supervisor Data, FC 5).
+2. Write old SR to `SSP - 6` (Supervisor Data, FC 5).
+3. Write PC high word to `SSP - 4` (Supervisor Data, FC 5) and commit updated `SSP = SSP - 6`.
+
+##### Modular 17-Step Microcode Pipeline for `TRAP #<vector>` (34 Clocks / 17 CCKs):
+1. `Step 1 (ALU_TRAP_INIT)`: CCK1 of initial 4-clock processing. Switches to supervisor ($S=1, T=0$), computes vector address `$000080 + \text{vec} \times 4$, latches return PC into `source`, old SR into `destination`, and records 4-clock internal transaction.
+2. `Step 2 (ALU_IDLE)`: CCK2 of initial internal clocks (bus idle for Agnus DMA).
+3. `Step 3 (EXCEPTION_PUSH_PCLO_IDLE)`: CCK1 of writing return PC low word to `SSP - 2` (bus idle, alignment validation).
+4. `Step 4 (EXCEPTION_PUSH_PCLO_WRITE)`: CCK2 of writing return PC low word to `SSP - 2`.
+5. `Step 5 (EXCEPTION_PUSH_SR_IDLE)`: CCK1 of writing old SR to `SSP - 6` (bus idle, alignment validation).
+6. `Step 6 (EXCEPTION_PUSH_SR_WRITE)`: CCK2 of writing old SR to `SSP - 6`.
+7. `Step 7 (EXCEPTION_PUSH_PCHI_IDLE)`: CCK1 of writing return PC high word to `SSP - 4` (bus idle, alignment validation).
+8. `Step 8 (EXCEPTION_PUSH_PCHI_WRITE)`: CCK2 of writing return PC high word to `SSP - 4` and committing `SSP = SSP - 6`.
+9. `Step 9 (READ_VECTOR_HIGH_READ)`: CCK1 of reading vector high word from `ea_addr` into `ea_high`.
+10. `Step 10 (READ_VECTOR_HIGH_FINISH)`: CCK2 of reading vector high word (logs transaction).
+11. `Step 11 (READ_VECTOR_LOW_READ)`: CCK1 of reading vector low word from `ea_addr + 2` into `source`.
+12. `Step 12 (READ_VECTOR_LOW_FINISH)`: CCK2 of reading vector low word (logs transaction, verifies even target address alignment).
+13. `Step 13 (READ_TARGET_OPCODE_READ)`: CCK1 of reading target opcode into `irc`.
+14. `Step 14 (READ_TARGET_OPCODE_FINISH)`: CCK2 of reading target opcode (logs transaction with `prog_fc`).
+15. `Step 15 (ALU_INTERNAL_2CLK)`: 2 internal clocks before prefetch (records 2-clock internal transaction).
+16. `Step 16 (PREFETCH_TARGET_READ)`: CCK1 of reading target + 2 into `prefetch[0]`.
+17. `Step 17 (PREFETCH_TARGET_RETIRE_2CLK)`: CCK2 of reading target + 2 (logs transaction, sets `target_refill = true`, triggers clean instruction retirement).
+
 - **Total Duration**:
-  - `TRAP #n`: Exactly **34 CPU clocks (17 CCKs)** (3 stack writes + 2 vector reads + 2 refill reads + 4 internal clocks).
+  - `TRAP #n`: Exactly **34 CPU clocks (17 CCKs)** (3 stack writes + 2 vector reads + 2 refill reads + 6 internal clocks).
   - Interrupt (Autovector): Exactly **44 CPU clocks (22 CCKs)** (includes 4-clock Interrupt Acknowledge `IACK` bus cycle with `FC = %111`).
+
 
 ---
 

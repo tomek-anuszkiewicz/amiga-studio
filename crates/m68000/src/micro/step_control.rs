@@ -38,7 +38,7 @@ impl Cpu {
         let fc = prog_fc(&self.state);
         self.state.micro.record_bus_transaction(
             true,
-            true,
+            false,
             fc,
             addr,
             BusAccessSize::Word,
@@ -74,7 +74,7 @@ impl Cpu {
         let fc = prog_fc(&self.state);
         self.state.micro.record_bus_transaction(
             true,
-            true,
+            false,
             fc,
             addr,
             BusAccessSize::Word,
@@ -238,6 +238,201 @@ impl Cpu {
             true,
         );
         self.state.micro.phase = CckPhase::Cck1;
+        BusResult::Ready(())
+    }
+
+    // ========================================================================
+    // Exception Processing Handlers (TRAP, Interrupts, Exceptions)
+    // ========================================================================
+
+    /// CCK1: Validates stack alignment and idles bus for return PC low word write to SP - 2
+    pub fn step_bus_write_trap_pclo_idle(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.read_a(7).wrapping_sub(2);
+        if (sp & 1) != 0 {
+            self.trigger_address_error_step(sp, false, false, bus);
+            return BusResult::Ready(());
+        }
+        self.state.micro.phase = CckPhase::Cck2;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Writes return PC low word to SP - 2
+    pub fn step_bus_write_trap_pclo_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.read_a(7).wrapping_sub(2) & 0x00FF_FFFF;
+        let val = (self.state.micro.source & 0xFFFF) as u16;
+        match bus.write_word(sp, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => {
+                let fc = data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    sp,
+                    BusAccessSize::Word,
+                    val,
+                    true,
+                    true,
+                );
+                self.state.micro.phase = CckPhase::Cck1;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Validates stack alignment and idles bus for old SR write to SP - 6
+    pub fn step_bus_write_trap_sr_idle(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.read_a(7).wrapping_sub(6);
+        if (sp & 1) != 0 {
+            self.trigger_address_error_step(sp, false, false, bus);
+            return BusResult::Ready(());
+        }
+        self.state.micro.phase = CckPhase::Cck2;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Writes old SR to SP - 6
+    pub fn step_bus_write_trap_sr_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.read_a(7).wrapping_sub(6) & 0x00FF_FFFF;
+        let val = (self.state.micro.destination & 0xFFFF) as u16;
+        match bus.write_word(sp, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => {
+                let fc = data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    sp,
+                    BusAccessSize::Word,
+                    val,
+                    true,
+                    true,
+                );
+                self.state.micro.phase = CckPhase::Cck1;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Validates stack alignment and idles bus for return PC high word write to SP - 4
+    pub fn step_bus_write_trap_pchi_idle(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp = self.state.read_a(7).wrapping_sub(4);
+        if (sp & 1) != 0 {
+            self.trigger_address_error_step(sp, false, false, bus);
+            return BusResult::Ready(());
+        }
+        self.state.micro.phase = CckPhase::Cck2;
+        BusResult::Ready(())
+    }
+
+    /// CCK2: Writes return PC high word to SP - 4 and commits updated SP = SP - 6
+    pub fn step_bus_write_trap_pchi_write(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let sp_base = self.state.read_a(7);
+        let sp = sp_base.wrapping_sub(4) & 0x00FF_FFFF;
+        let val = ((self.state.micro.source >> 16) & 0xFFFF) as u16;
+        match bus.write_word(sp, val) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(()) => {
+                let fc = data_fc(&self.state);
+                self.state.micro.record_bus_transaction(
+                    false,
+                    false,
+                    fc,
+                    sp,
+                    BusAccessSize::Word,
+                    val,
+                    true,
+                    true,
+                );
+                self.state.write_a(7, sp_base.wrapping_sub(6));
+                self.state.micro.phase = CckPhase::Cck1;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK1: Reads exception vector high word from `ea_addr` into `ea_high`
+    pub fn step_bus_read_vector_high_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let addr = self.state.micro.ea_addr;
+        if (addr & 1) != 0 {
+            self.trigger_address_error_step(addr, true, false, bus);
+            return BusResult::Ready(());
+        }
+        match bus.read_word(addr & 0x00FF_FFFF) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.ea_high = (data as u32) << 16;
+                self.state.micro.phase = CckPhase::Cck2;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK2: Logs exception vector high word read transaction
+    pub fn step_bus_read_vector_high_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+        let fc = data_fc(&self.state);
+        let addr = self.state.micro.ea_addr & 0x00FF_FFFF;
+        let val = ((self.state.micro.ea_high >> 16) & 0xFFFF) as u16;
+        self.state.micro.record_bus_transaction(
+            true,
+            false,
+            fc,
+            addr,
+            BusAccessSize::Word,
+            val,
+            true,
+            true,
+        );
+        self.state.micro.phase = CckPhase::Cck1;
+        BusResult::Ready(())
+    }
+
+    /// CCK1: Reads exception vector low word from `ea_addr + 2` into `source`
+    pub fn step_bus_read_vector_low_read(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let addr = self.state.micro.ea_addr.wrapping_add(2);
+        if (addr & 1) != 0 {
+            self.trigger_address_error_step(addr, true, false, bus);
+            return BusResult::Ready(());
+        }
+        match bus.read_word(addr & 0x00FF_FFFF) {
+            BusResult::WaitState => BusResult::WaitState,
+            BusResult::Ready(data) => {
+                self.state.micro.source = data as u32;
+                self.state.micro.phase = CckPhase::Cck2;
+                BusResult::Ready(())
+            }
+        }
+    }
+
+    /// CCK2: Logs exception vector low word read transaction, checks target alignment, and updates `ea_addr`
+    pub fn step_bus_read_vector_low_finish(&mut self, bus: &mut MemoryBus) -> BusResult<()> {
+        let fc = data_fc(&self.state);
+        let addr = self.state.micro.ea_addr.wrapping_add(2) & 0x00FF_FFFF;
+        let val = (self.state.micro.source & 0xFFFF) as u16;
+        self.state.micro.record_bus_transaction(
+            true,
+            false,
+            fc,
+            addr,
+            BusAccessSize::Word,
+            val,
+            true,
+            true,
+        );
+        let target = (self.state.micro.ea_high | (val as u32)) & 0x00FF_FFFF;
+        if (target & 1) != 0 {
+            self.trigger_address_error_step(target, true, true, bus);
+            return BusResult::Ready(());
+        }
+        self.state.micro.ea_addr = target;
+        self.state.micro.phase = CckPhase::Cck1;
+        BusResult::Ready(())
+    }
+
+    /// CCK1/CCK2: 2-clock internal ALU/processing cycle, recording internal transaction if enabled
+    pub fn step_alu_internal_2clk(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
+        self.state.micro.record_internal_transaction(2);
         BusResult::Ready(())
     }
 }

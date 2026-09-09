@@ -133,3 +133,48 @@ pub const POP_STACK_LOW_READ: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack
 /// CCK2: Stack pop low word finish: SP += 2, assemble ea_addr, log transaction
 pub const POP_STACK_LOW_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_low_finish);
 
+// ============================================================================
+// 2-Clock Internal Execution Building Blocks
+// ============================================================================
+
+/// CCK1/CCK2: 2-clock internal ALU/idle cycle without bus activity
+pub const ALU_IDLE: MicroStep = MicroStep::cck(Cpu::step_alu);
+
+/// CCK1/CCK2: 2-clock internal processing cycle, recording internal transaction if enabled
+pub const ALU_INTERNAL_2CLK: MicroStep = MicroStep::cck(Cpu::step_alu_internal_2clk);
+
+// ============================================================================
+// 2-Clock Exception Processing Building Blocks
+// ============================================================================
+
+/// CCK1: Exception stack push low word of return PC setup to SP - 2 (idle bus, address check)
+pub const EXCEPTION_PUSH_PCLO_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_trap_pclo_idle);
+
+/// CCK2: Exception stack push low word of return PC write to SP - 2
+pub const EXCEPTION_PUSH_PCLO_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_write_trap_pclo_write);
+
+/// CCK1: Exception stack push SR setup to SP - 6 (idle bus, address check)
+pub const EXCEPTION_PUSH_SR_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_trap_sr_idle);
+
+/// CCK2: Exception stack push SR write to SP - 6
+pub const EXCEPTION_PUSH_SR_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_write_trap_sr_write);
+
+/// CCK1: Exception stack push high word of return PC setup to SP - 4 (idle bus, address check)
+pub const EXCEPTION_PUSH_PCHI_IDLE: MicroStep = MicroStep::cck(Cpu::step_bus_write_trap_pchi_idle);
+
+/// CCK2: Exception stack push high word of return PC write to SP - 4 and commit SP = SP - 6
+pub const EXCEPTION_PUSH_PCHI_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_write_trap_pchi_write);
+
+/// CCK1: Reads exception vector high word from ea_addr into ea_high
+pub const READ_VECTOR_HIGH_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_high_read);
+
+/// CCK2: Logs exception vector high word read transaction
+pub const READ_VECTOR_HIGH_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_high_finish);
+
+/// CCK1: Reads exception vector low word from ea_addr + 2 into source
+pub const READ_VECTOR_LOW_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_low_read);
+
+/// CCK2: Logs exception vector low word read transaction, checks target alignment, and updates ea_addr
+pub const READ_VECTOR_LOW_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_low_finish);
+
+

@@ -424,6 +424,12 @@ impl Cpu {
         self.state.micro.record_internal_clocks(clocks);
     }
 
+    /// Records an internal CPU operation duration into the transaction log without scheduling clocks
+    #[inline]
+    pub fn record_internal_transaction(&mut self, duration: u32) {
+        self.state.micro.record_internal_transaction(duration);
+    }
+
     /// Executes exactly one full M68000 instruction via direct table dispatch
     pub fn step_instruction(&mut self, bus: &mut MemoryBus) -> u32 {
         if self.state.halted || self.state.stopped {

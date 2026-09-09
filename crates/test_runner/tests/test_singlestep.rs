@@ -91,7 +91,7 @@ fn test_rts() {
 
 #[test]
 fn test_trap() {
-    run_dual_test("TRAP", DEFAULT_SAMPLE_LIMIT);
+    run_dual_test_with_mode("TRAP", DEFAULT_SAMPLE_LIMIT, VerifyMode::Full);
 }
 
 #[test]
