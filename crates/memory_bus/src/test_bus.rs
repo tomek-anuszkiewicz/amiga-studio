@@ -1,8 +1,13 @@
 //! Synthetic Test Memory Bus for CPU SingleStepTests & Contention Verification
 //!
-//! Provides an isolated, sparse 24-bit memory space with configurable unmapped defaults,
+//! Provides an isolated memory space with configurable unmapped defaults,
 //! cycle-exact transaction recording, and DMA stall simulation without authentic
 //! Amiga custom chip or ROM overhead.
+//!
+//! Supports two backend storage models:
+//! - `TestMemoryStorage::Sparse`: `HashMap<u32, u8>` for flexible unmapped byte defaults.
+//! - `TestMemoryStorage::Flat`: 16 MB pre-allocated buffer with dirty-address tracking for
+//!   ultra-fast zero-allocation test loops ($O(1)$ memory access and $O(K)$ clean resets).
 
 use super::{
     arbitration::{BusAccessSize, BusResult},
@@ -21,11 +26,23 @@ pub enum MemoryType {
     FastRam,
 }
 
+/// 24-bit address space size (16 MB = 16,777,216 bytes)
+pub const FLAT_TEST_RAM_SIZE: usize = 16 * 1024 * 1024;
+
+/// Internal storage model for TestMemoryBus
+#[derive(Debug)]
+pub enum TestMemoryStorage {
+    /// Sparse hash map representation (useful for arbitrary unmapped byte defaults)
+    Sparse(HashMap<u32, u8>),
+    /// Flat 16 MB pre-allocated buffer with dirty-address tracking for O(1) accesses and O(K) reset
+    Flat { mem: Box<[u8]>, dirty: Vec<u32> },
+}
+
 /// Lightweight test memory bus for synthetic CPU test runners and verification harnesses
-#[derive(Debug, Clone, Default)]
+#[derive(Debug)]
 pub struct TestMemoryBus {
-    /// Sparse flat 24-bit test RAM mapping
-    pub test_memory: Option<HashMap<u32, u8>>,
+    /// Memory storage engine (Sparse or Flat)
+    pub storage: TestMemoryStorage,
     /// Optional cycle-exact transaction log for instruction verification
     pub transaction_log: Option<Vec<RecordedTransaction>>,
     /// Value returned when reading unpopulated memory (defaults to 0xFF, configurable to 0x00)
@@ -38,17 +55,58 @@ pub struct TestMemoryBus {
     pub stall_write_attempts: usize,
 }
 
+impl Default for TestMemoryBus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TestMemoryBus {
     /// Creates a new test memory bus with sparse 24-bit test RAM and default 0xFF unmapped byte
     pub fn new() -> Self {
         Self {
-            test_memory: Some(HashMap::with_capacity(64)),
+            storage: TestMemoryStorage::Sparse(HashMap::with_capacity(64)),
             transaction_log: None,
             unmapped_byte: 0xFF,
             chip_ram_blocked: false,
             address_classification: HashMap::new(),
             stall_write_attempts: 0,
         }
+    }
+
+    /// Creates a high-performance flat 16 MB test memory bus with 0x00 unmapped byte and dirty tracking
+    pub fn new_flat() -> Self {
+        Self {
+            storage: TestMemoryStorage::Flat {
+                mem: vec![0u8; FLAT_TEST_RAM_SIZE].into_boxed_slice(),
+                dirty: Vec::with_capacity(128),
+            },
+            transaction_log: None,
+            unmapped_byte: 0x00,
+            chip_ram_blocked: false,
+            address_classification: HashMap::new(),
+            stall_write_attempts: 0,
+        }
+    }
+
+    /// Clears memory and test state for the next test iteration (O(K) reset for Flat storage)
+    pub fn clear(&mut self) {
+        match &mut self.storage {
+            TestMemoryStorage::Flat { mem, dirty } => {
+                for addr in dirty.drain(..) {
+                    mem[(addr as usize) & 0x00FF_FFFF] = self.unmapped_byte;
+                }
+            }
+            TestMemoryStorage::Sparse(map) => {
+                map.clear();
+            }
+        }
+        if let Some(log) = &mut self.transaction_log {
+            log.clear();
+        }
+        self.address_classification.clear();
+        self.chip_ram_blocked = false;
+        self.stall_write_attempts = 0;
     }
 
     /// Enables or disables transaction recording
@@ -99,20 +157,39 @@ impl TestMemoryBus {
 
     /// Loads a sequence of [address, byte] tuples into physical test memory
     pub fn load_test_ram(&mut self, entries: &[[u32; 2]]) {
-        if let Some(test_mem) = &mut self.test_memory {
-            for entry in entries {
-                let addr = entry[0];
-                let val = (entry[1] & 0xFF) as u8;
-                test_mem.insert(addr, val);
+        match &mut self.storage {
+            TestMemoryStorage::Flat { mem, dirty } => {
+                for entry in entries {
+                    let addr = entry[0];
+                    let val = (entry[1] & 0xFF) as u8;
+                    let idx = (addr as usize) & 0x00FF_FFFF;
+                    mem[idx] = val;
+                    dirty.push(addr);
+                }
+            }
+            TestMemoryStorage::Sparse(map) => {
+                for entry in entries {
+                    let addr = entry[0];
+                    let val = (entry[1] & 0xFF) as u8;
+                    map.insert(addr, val);
+                }
             }
         }
     }
 
     /// Inverts all bytes in test memory (used by DMA contention tests to detect unauthorized bus writes)
     pub fn invert_test_memory(&mut self) {
-        if let Some(test_mem) = &mut self.test_memory {
-            for val in test_mem.values_mut() {
-                *val = !*val;
+        match &mut self.storage {
+            TestMemoryStorage::Flat { mem, dirty } => {
+                for &addr in dirty.iter() {
+                    let idx = (addr as usize) & 0x00FF_FFFF;
+                    mem[idx] = !mem[idx];
+                }
+            }
+            TestMemoryStorage::Sparse(map) => {
+                for val in map.values_mut() {
+                    *val = !*val;
+                }
             }
         }
         self.unmapped_byte = !self.unmapped_byte;
@@ -123,10 +200,20 @@ impl TestMemoryBus {
     /// while preserving uncontended Fast RAM contents intact.
     pub fn invert_chip_ram(&mut self) {
         let classifications = &self.address_classification;
-        if let Some(test_mem) = &mut self.test_memory {
-            for (&addr, val) in test_mem.iter_mut() {
-                if Self::is_chip_ram_target_internal(classifications, addr) {
-                    *val = !*val;
+        match &mut self.storage {
+            TestMemoryStorage::Flat { mem, dirty } => {
+                for &addr in dirty.iter() {
+                    if Self::is_chip_ram_target_internal(classifications, addr) {
+                        let idx = (addr as usize) & 0x00FF_FFFF;
+                        mem[idx] = !mem[idx];
+                    }
+                }
+            }
+            TestMemoryStorage::Sparse(map) => {
+                for (&addr, val) in map.iter_mut() {
+                    if Self::is_chip_ram_target_internal(classifications, addr) {
+                        *val = !*val;
+                    }
                 }
             }
         }
@@ -135,22 +222,26 @@ impl TestMemoryBus {
     /// Side-effect-free byte read for debugger inspection and test result assertions
     #[inline]
     pub fn read_byte_debug(&self, addr: u32) -> u8 {
-        match &self.test_memory {
-            Some(map) => *map.get(&addr).unwrap_or(&self.unmapped_byte),
-            None => self.unmapped_byte,
+        match &self.storage {
+            TestMemoryStorage::Flat { mem, .. } => mem[(addr as usize) & 0x00FF_FFFF],
+            TestMemoryStorage::Sparse(map) => *map.get(&addr).unwrap_or(&self.unmapped_byte),
         }
     }
 
     /// Side-effect-free word read for debugger inspection and test result assertions
     #[inline]
     pub fn read_word_debug(&self, addr: u32) -> u16 {
-        let (b0, b1) = match &self.test_memory {
-            Some(map) => (
+        let (b0, b1) = match &self.storage {
+            TestMemoryStorage::Flat { mem, .. } => {
+                let idx = (addr as usize) & 0x00FF_FFFF;
+                let idx_next = (addr.wrapping_add(1) as usize) & 0x00FF_FFFF;
+                (mem[idx], mem[idx_next])
+            }
+            TestMemoryStorage::Sparse(map) => (
                 *map.get(&addr).unwrap_or(&self.unmapped_byte),
                 *map.get(&(addr.wrapping_add(1)))
                     .unwrap_or(&self.unmapped_byte),
             ),
-            None => (self.unmapped_byte, self.unmapped_byte),
         };
         u16::from_be_bytes([b0, b1])
     }
@@ -158,8 +249,15 @@ impl TestMemoryBus {
     /// Side-effect-free byte write for test setup
     #[inline]
     pub fn write_byte_debug(&mut self, addr: u32, val: u8) {
-        if let Some(map) = &mut self.test_memory {
-            map.insert(addr, val);
+        match &mut self.storage {
+            TestMemoryStorage::Flat { mem, dirty } => {
+                let idx = (addr as usize) & 0x00FF_FFFF;
+                mem[idx] = val;
+                dirty.push(addr);
+            }
+            TestMemoryStorage::Sparse(map) => {
+                map.insert(addr, val);
+            }
         }
     }
 
@@ -167,9 +265,19 @@ impl TestMemoryBus {
     #[inline]
     pub fn write_word_debug(&mut self, addr: u32, val: u16) {
         let bytes = val.to_be_bytes();
-        if let Some(map) = &mut self.test_memory {
-            map.insert(addr, bytes[0]);
-            map.insert(addr.wrapping_add(1), bytes[1]);
+        match &mut self.storage {
+            TestMemoryStorage::Flat { mem, dirty } => {
+                let idx = (addr as usize) & 0x00FF_FFFF;
+                let idx_next = (addr.wrapping_add(1) as usize) & 0x00FF_FFFF;
+                mem[idx] = bytes[0];
+                mem[idx_next] = bytes[1];
+                dirty.push(addr);
+                dirty.push(addr.wrapping_add(1));
+            }
+            TestMemoryStorage::Sparse(map) => {
+                map.insert(addr, bytes[0]);
+                map.insert(addr.wrapping_add(1), bytes[1]);
+            }
         }
     }
 
@@ -211,9 +319,9 @@ impl AddressBus for TestMemoryBus {
         if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
             return BusResult::WaitState;
         }
-        let val = match &self.test_memory {
-            Some(map) => *map.get(&addr).unwrap_or(&self.unmapped_byte),
-            None => self.unmapped_byte,
+        let val = match &self.storage {
+            TestMemoryStorage::Flat { mem, .. } => mem[(addr as usize) & 0x00FF_FFFF],
+            TestMemoryStorage::Sparse(map) => *map.get(&addr).unwrap_or(&self.unmapped_byte),
         };
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {
@@ -231,13 +339,17 @@ impl AddressBus for TestMemoryBus {
         if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
             return BusResult::WaitState;
         }
-        let (b0, b1) = match &self.test_memory {
-            Some(map) => (
+        let (b0, b1) = match &self.storage {
+            TestMemoryStorage::Flat { mem, .. } => {
+                let idx = (addr as usize) & 0x00FF_FFFF;
+                let idx_next = (addr.wrapping_add(1) as usize) & 0x00FF_FFFF;
+                (mem[idx], mem[idx_next])
+            }
+            TestMemoryStorage::Sparse(map) => (
                 *map.get(&addr).unwrap_or(&self.unmapped_byte),
                 *map.get(&(addr.wrapping_add(1)))
                     .unwrap_or(&self.unmapped_byte),
             ),
-            None => (self.unmapped_byte, self.unmapped_byte),
         };
         let val = u16::from_be_bytes([b0, b1]);
         if let Some(ref mut log) = self.transaction_log {
@@ -257,8 +369,15 @@ impl AddressBus for TestMemoryBus {
             self.stall_write_attempts += 1;
             return BusResult::WaitState;
         }
-        if let Some(map) = &mut self.test_memory {
-            map.insert(addr, val);
+        match &mut self.storage {
+            TestMemoryStorage::Flat { mem, dirty } => {
+                let idx = (addr as usize) & 0x00FF_FFFF;
+                mem[idx] = val;
+                dirty.push(addr);
+            }
+            TestMemoryStorage::Sparse(map) => {
+                map.insert(addr, val);
+            }
         }
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {
@@ -278,9 +397,19 @@ impl AddressBus for TestMemoryBus {
             return BusResult::WaitState;
         }
         let bytes = val.to_be_bytes();
-        if let Some(map) = &mut self.test_memory {
-            map.insert(addr, bytes[0]);
-            map.insert(addr.wrapping_add(1), bytes[1]);
+        match &mut self.storage {
+            TestMemoryStorage::Flat { mem, dirty } => {
+                let idx = (addr as usize) & 0x00FF_FFFF;
+                let idx_next = (addr.wrapping_add(1) as usize) & 0x00FF_FFFF;
+                mem[idx] = bytes[0];
+                mem[idx_next] = bytes[1];
+                dirty.push(addr);
+                dirty.push(addr.wrapping_add(1));
+            }
+            TestMemoryStorage::Sparse(map) => {
+                map.insert(addr, bytes[0]);
+                map.insert(addr.wrapping_add(1), bytes[1]);
+            }
         }
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction {

@@ -44,6 +44,18 @@ pub fn run_single_test_detail(
     test_index: usize,
     mode: VerifyMode,
 ) -> Result<(), TestFailure> {
+    let mut bus = TestMemoryBus::new_flat();
+    run_single_test_detail_with_bus(test, &mut bus, file_path, test_index, mode)
+}
+
+/// Runs a single SingleStepTest reusing an existing TestMemoryBus instance for zero-allocation execution
+pub fn run_single_test_detail_with_bus(
+    test: &SingleStepTest,
+    bus: &mut TestMemoryBus,
+    file_path: &str,
+    test_index: usize,
+    mode: VerifyMode,
+) -> Result<(), TestFailure> {
     let is_harte = test.name.contains('[');
     // Tom Harte Real68k test vectors #1582 and #1760 in ASL.b.json contain corrupted upper bits in D2 (hardware capture glitch)
     if is_harte && file_path.contains("ASL.b") && (test_index == 1582 || test_index == 1760) {
@@ -52,7 +64,7 @@ pub fn run_single_test_detail(
 
     let mut failure = TestFailure::new(&test.name, file_path, test_index, test.length);
 
-    let mut bus = TestMemoryBus::new();
+    bus.clear();
     // SingleStepTests flat RAM harness: unpopulated addresses in test vectors default to 0x00
     bus.set_unmapped_byte(0x00);
     bus.load_test_ram(&test.initial.ram);
@@ -60,6 +72,8 @@ pub fn run_single_test_detail(
     let mut cpu = Cpu::new();
     if mode == VerifyMode::Full {
         bus.enable_transaction_recording(true);
+    } else {
+        bus.enable_transaction_recording(false);
     }
     cpu.state.set_d_regs([
         test.initial.d0,
@@ -99,7 +113,7 @@ pub fn run_single_test_detail(
     cpu.state.prefetch[1] = 0;
 
     // Execute instruction
-    let actual_clocks = cpu.step_instruction(&mut bus);
+    let actual_clocks = cpu.step_instruction(bus);
     cpu.state.sync_stack_pointers();
 
     // Verify Data Registers
@@ -392,9 +406,10 @@ pub fn run_test_file_with_mode(
     let mut failed = 0;
     let mut passed_names = Vec::with_capacity(count);
     let mut failure_summaries = Vec::new();
+    let mut bus = TestMemoryBus::new_flat();
 
     for (idx, test) in tests.iter().take(count).enumerate() {
-        match run_single_test_detail(test, path, idx, mode) {
+        match run_single_test_detail_with_bus(test, &mut bus, path, idx, mode) {
             Ok(()) => {
                 passed += 1;
                 passed_names.push(test.name.clone());
@@ -467,9 +482,10 @@ where
     let mut failed = 0;
     let mut passed_names = Vec::with_capacity(count);
     let mut failure_summaries = Vec::new();
+    let mut bus = TestMemoryBus::new_flat();
 
     for (idx, test) in filtered_tests.into_iter().take(count).enumerate() {
-        match run_single_test_detail(test, path, idx, mode) {
+        match run_single_test_detail_with_bus(test, &mut bus, path, idx, mode) {
             Ok(()) => {
                 passed += 1;
                 passed_names.push(test.name.clone());

@@ -65,15 +65,14 @@ impl<T> BusResult<T> {
 
 impl MemoryBus {
     /// Helper to identify whether an address targets Chip RAM or contention-affected Slow RAM
-    #[inline]
+    #[inline(always)]
     pub fn is_chip_ram_target(&self, addr: u32) -> bool {
         let addr = addr & 0x00FF_FFFF;
         if self.low_memory_overlay && addr < 0x080000 {
             // Overlay maps low memory to Kickstart ROM (ROM has zero contention)
             return false;
         }
-        // Chip RAM range: $000000-$07FFFF (or $000000-$0FFFFF for 1MB)
-        // Slow RAM range: $C00000-$C7FFFF (handled via Gary; subject to shared Agnus bus contention)
-        addr < (self.chip_ram.len() as u32) || (0xC00000..=0xC7FFFF).contains(&addr)
+        let bank_idx = (addr >> 16) as usize;
+        self.bank_map[bank_idx].is_contended
     }
 }

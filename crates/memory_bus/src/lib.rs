@@ -17,11 +17,12 @@ pub use config::{
 };
 pub use map::{
     build_bank_map, build_preset_bank_map, get_preset_bank_map, handler_for_bank, BankHandler,
-    BankReadByteFn, BankWriteByteFn, BANK_MAP_BARE, BANK_MAP_EXPANDED, BANK_MAP_STANDARD,
+    BankReadByteFn, BankReadWordFn, BankWriteByteFn, BankWriteWordFn, BANK_MAP_BARE,
+    BANK_MAP_EXPANDED, BANK_MAP_STANDARD,
 };
 pub use rtc;
 pub use rtc::RtcMsm6242b;
-pub use test_bus::{MemoryType, TestMemoryBus};
+pub use test_bus::{MemoryType, TestMemoryBus, TestMemoryStorage, FLAT_TEST_RAM_SIZE};
 
 use serde::{Deserialize, Serialize};
 

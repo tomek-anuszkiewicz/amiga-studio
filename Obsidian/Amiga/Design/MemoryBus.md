@@ -41,8 +41,9 @@
 
 To eliminate branch mispredictions and cascaded conditional checks in hot memory access loops, the 16 MB physical address space is divided into **256 banks of 64 KB each** ($256 \times 64\text{ KB} = 16\text{ MB}$).
 
-- **Direct Function Pointer Method Dispatch**: Mimicking the CPU's direct opcode table (`[OpcodeHandler; 65536]`), `bank_map` is a 256-entry array of `BankHandler` structs containing direct function pointers (`BankReadByteFn`, `BankWriteByteFn`) targeting specialized read/write handlers. Implementation resides in [`crates/memory_bus/src/map.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/map.rs).
-- **Zero Runtime Branches**: Memory accesses execute directly through table indexing `(self.bank_map[(addr >> 16) as usize].read_byte)(self, addr)`.
+- **Direct Function Pointer Method Dispatch**: Mimicking the CPU's direct opcode table (`[OpcodeHandler; 65536]`), `bank_map` is a 256-entry array of `BankHandler` structs containing direct function pointers (`BankReadByteFn`, `BankWriteByteFn`, `BankReadWordFn`, `BankWriteWordFn`) and a pre-classified contention flag (`is_contended: bool`) targeting specialized 8-bit and 16-bit read/write handlers. Implementation resides in [`crates/memory_bus/src/map.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/map.rs).
+- **Native 16-Bit Word Accesses**: In accordance with the 68000's physical 16-bit wide data bus, word transfers (instruction fetches, stack frames, 16-bit operands) execute directly via `read_word` and `write_word` function pointers, reading or writing aligned 16-bit words directly without decomposing into two separate 8-bit indirect function calls.
+- **Zero Runtime Branches**: Memory accesses execute directly through table indexing `(self.bank_map[(addr >> 16) as usize].read_byte)(self, addr)` or `read_word`. Contention checks query `self.bank_map[(addr >> 16) as usize].is_contended` in $O(1)$ without range arithmetic.
 - **Zero Runtime Setup (`static`/`const`)**: Precalculated as compile-time `static` arrays (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), eliminating all initialization loops or runtime reallocation overhead.
 - **Direct Dispatch**:
   - `$00..=$07`: `CHIP_RAM_HANDLER`
@@ -61,8 +62,11 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
   - Writes to unmapped space are silent no-ops and must never trigger host panics or out-of-bounds indexing.
 - **Decoupled Architecture (`TestMemoryBus` vs `MemoryBus`):**
   - Real emulation strictly uses `MemoryBus`, with unmapped open bus space defaulting to `$FF`. `MemoryBus` is completely free of test-harness branching or logging in its read/write bank dispatch.
-  - Synthetic CPU test vectors (such as `SingleStepTests` flat RAM) execute against `TestMemoryBus`, which encapsulates sparse test RAM, unmapped byte defaults (`0x00`), and automatic bus cycle transaction recording.
-  - Both buses implement the unified `AddressBus` trait (`crates/memory_bus/src/bus_trait.rs`).
+  - Synthetic CPU test vectors (`SingleStepTests`, Cartesian DMA contention sweeps) execute against `TestMemoryBus`, which encapsulates test RAM, configurable unmapped byte defaults (`0x00`), and automatic bus cycle transaction recording.
+  - **Dual Storage Engine Architecture**:
+    - `TestMemoryStorage::Sparse`: Powered by `std::collections::HashMap`, used by default in `TestMemoryBus::new()` for arbitrary unmapped defaults (`0xFF` open bus simulation).
+    - `TestMemoryStorage::Flat`: Powered by a pre-allocated 16 MB buffer (`Box<[u8]>`) and a dirty address tracking list (`Vec<u32>`), created via `TestMemoryBus::new_flat()`. Provides $O(1)$ array accesses and $O(K)$ resets (`bus.clear()`) between test cases, eliminating all dynamic heap allocations in inner test execution loops.
+  - Both buses implement the unified `AddressBus` trait ([`crates/memory_bus/src/bus_trait.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/bus_trait.rs)).
 
 ---
 

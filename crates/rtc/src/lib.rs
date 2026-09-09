@@ -73,9 +73,10 @@ impl RtcMsm6242b {
         const CCK_PER_SECOND: u64 = 3_546_895;
 
         self.cck_accumulator += cck_cycles;
-        while self.cck_accumulator >= CCK_PER_SECOND {
-            self.cck_accumulator -= CCK_PER_SECOND;
-            self.simulated_time = self.simulated_time.wrapping_add(1);
+        if self.cck_accumulator >= CCK_PER_SECOND {
+            let seconds = self.cck_accumulator / CCK_PER_SECOND;
+            self.cck_accumulator %= CCK_PER_SECOND;
+            self.simulated_time = self.simulated_time.wrapping_add(seconds as i64);
 
             // Only update readable register latches if HOLD is cleared
             if (self.control_d & 0x01) == 0 {

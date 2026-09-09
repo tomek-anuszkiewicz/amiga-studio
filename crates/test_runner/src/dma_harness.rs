@@ -56,7 +56,7 @@ pub struct PreFlight {
 
 /// Executes an uncontended golden run to determine base timings and unique memory contact cells
 pub fn run_preflight(test: &SingleStepTest) -> PreFlight {
-    let mut golden_bus = TestMemoryBus::new();
+    let mut golden_bus = TestMemoryBus::new_flat();
     golden_bus.set_unmapped_byte(0x00);
     golden_bus.load_test_ram(&test.initial.ram);
     golden_bus.enable_transaction_recording(true);
@@ -182,9 +182,10 @@ pub fn run_dma_full_cartesian_permutation(
         0
     };
 
+    let mut bus = TestMemoryBus::new_flat();
     for dma_mask in 0..num_dma_permutations {
         for addr_mask in 0..num_addr_permutations {
-            let mut bus = TestMemoryBus::new();
+            bus.clear();
             bus.set_unmapped_byte(0x00);
             bus.load_test_ram(&test.initial.ram);
 
