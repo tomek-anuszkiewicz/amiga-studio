@@ -4,23 +4,12 @@ use crate::core::{Cpu, StepResult};
 use memory_bus::{BusAccessSize, BusResult, CckPhase, MemoryBus};
 
 impl Cpu {
-    /// Micro-step handler for pure ALU execution and internal timing delays.
-    /// Manages countdown of `clocks_remaining`, consuming 2 clocks per CCK until 0.
-    /// Returns None for instantaneous 0-clock steps, allowing immediate loop progression.
+    /// No-op micro-step handler for pure ALU operations and timing delays.
+    /// Execution timing, clock countdown, and micro-step progression are
+    /// driven directly by the driver loop (`execute_micro_step`).
+    #[inline(always)]
     pub fn step_alu(&mut self, _bus: &mut MemoryBus) -> Option<StepResult> {
-        if self.state.micro.clocks_remaining <= 0 {
-            self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-            self.state.micro.clocks_remaining = -1;
-            None
-        } else {
-            self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-            self.state.micro.clocks_remaining -= 2;
-            if self.state.micro.clocks_remaining <= 0 {
-                self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-                self.state.micro.clocks_remaining = -1;
-            }
-            Some(StepResult::StepCompleted)
-        }
+        None
     }
 
     // ========================================================================

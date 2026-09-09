@@ -405,7 +405,27 @@ impl Cpu {
                 }
                 return res;
             } else {
-                continue;
+                // Internal ALU or timing step (step_fn returned None, e.g. step_alu):
+                // Driver loop controls cycle consumption and micro-step progression.
+                if self.state.micro.clocks_remaining <= 0 {
+                    // Instantaneous 0-clock step: advance immediately in the while loop
+                    if self.state.micro.micro_step == prev_micro_step {
+                        self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                    }
+                    self.state.micro.clocks_remaining = -1;
+                    continue;
+                } else {
+                    // Multi-clock delay step: consume 2 clocks per CCK and advance when done
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.clocks_remaining -= 2;
+                    if self.state.micro.clocks_remaining <= 0 {
+                        if self.state.micro.micro_step == prev_micro_step {
+                            self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                        }
+                        self.state.micro.clocks_remaining = -1;
+                    }
+                    return StepResult::StepCompleted;
+                }
             }
         }
         StepResult::InstructionCompleted
