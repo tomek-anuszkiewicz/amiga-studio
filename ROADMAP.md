@@ -67,11 +67,14 @@ This document outlines the phased development plan, hardware milestones, verific
 - **Automated Per-Opcode Micro-Benchmark Harness:**
   - Develop an exhaustive automated micro-benchmark harness (e.g. using `criterion` and dedicated throughput harnesses in `crates/test_runner`) measuring host execution time, nanoseconds per instruction, and throughput (MIPS) across all 65,536 dispatch entries and instruction variants.
   - Test diverse operand combinations: data register direct, address register indirect with displacement/indexing, and immediate/memory forms under both cached and unblocked bus scenarios.
-- **Bottleneck Profiling & Hot-Path Anomaly Detection:**
-  - Profile host CPU metrics (instruction cache density, L1i/L1d cache behavior, superscalar IPC, branch mispredictions) across instruction handlers.
+- **CPU Memory Footprint Audit & Host Cache Miss Profiling:**
+  - **Memory Footprint Audit (in Kilobytes):** Measure and document the exact memory footprint of the CPU emulator core:
+    - Host `.rodata` footprint: 65,536-entry static dispatch table (`sizeof(OpcodeDescriptor) * 65,536`), static `[MicroStep; N]` array slices, and decoding metadata.
+    - Host runtime state footprint: `Cpu`, `CpuState`, `CpuMicroState` sizes in bytes, auditing L1d cache line alignment and residency.
+  - **Host Cache Miss Profiling:** Measure host CPU performance counters (L1i instruction cache misses, L1d data cache misses, Last Level Cache / LLC misses, superscalar IPC, branch mispredictions) across opcode execution runs (via `perf stat`, cachegrind, or host PMU tooling).
   - Automatically rank handlers by host latency and flag operations exhibiting disproportionate execution overhead relative to emulated M68000 cycle counts.
-  - Isolate candidates ripe for performance tuning (e.g., redundant flag calculations, sub-optimal addressing resolution, intermediate masking, or branching in micro-step transitions).
-- **Targeted Mechanical Sympathy Optimization:**
+- **Footprint Compaction Assessment & Mechanical Sympathy Optimization:**
+  - **Footprint Reduction Feasibility:** Investigate whether compacting the CPU footprint (e.g., bit-packing `OpcodeDescriptor`, microcode array deduplication, index packing) yields measurable L1i/L1d miss reductions and throughput gains, or whether the current flat layout already maximizes host branch-predictor and cache throughput.
   - Refactor identified slow handlers using host CPU mechanical sympathy principles (direct specialized flattening, branchless bit operations, eliminated redundant register banking, and cross-crate MIR inlining).
   - Strictly enforce architectural constraints: zero custom macros (`macro_rules!`), zero const-generic function matrices, zero dynamic heap allocations, and zero compromise on code readability.
 - **Fidelity & Regression Validation Gate:**
@@ -82,10 +85,11 @@ This document outlines the phased development plan, hardware milestones, verific
   - Build a headless execution harness that directly injects compiled M68000 binary routines (raw machine code binaries, assembled routines) into emulated RAM without requiring Kickstart ROM or OS overhead.
   - Set initial execution context ($PC$, $SSP$, $SR$) and execute self-contained test programs to completion, designated stop addresses, or trap returns.
   - Validate multi-instruction correctness, register state, and memory side effects on concrete routines (e.g. arithmetic loops, block memory transfers, array sorting).
-- **Complex Workloads & Standard Synthetic Benchmarks:**
+- **Complex Workloads, Standard Synthetic Benchmarks & Real-World Cache Analysis:**
   - Load and execute established M68000 algorithmic benchmarks (e.g. Dhrystone, Sieve of Eratosthenes, math/ALU stress kernels) directly in the CPU core harness.
   - Assert functional correctness and numerical determinism across long-running execution sequences.
   - Measure baseline emulation throughput (effective MIPS, instruction throughput, host CPU cycle cost per emulated CCK).
+  - **Real-Workload Host Cache Miss & Footprint Impact:** Profile host L1i/L1d cache misses and branch mispredictions during continuous execution of real test programs. Determine the empirical performance impact of CPU core memory footprint on real-world workloads, validating whether memory reduction efforts yield meaningful speedups.
 - **Cross-Architecture & Mobile Performance Projections:**
   - Extrapolate measured desktop throughput (x86_64 / desktop ARM) to target mobile and constrained environments (e.g. mobile WebAssembly, ARM mobile devices).
   - Model CPU overhead margins to ensure headroom for sustained 50 Hz (PAL) / 60 Hz (NTSC) cycle-exact emulation once custom chipset DMA contention and rendering are integrated.
