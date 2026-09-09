@@ -187,16 +187,6 @@ pub fn ea_calc_move_dst_pi_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     }
 }
 
-/// MOVE Destination Address Register Indirect with Postincrement (Long):
-/// On 68000 silicon, post-increment on a pure WRITE operation is suppressed if an Address Error occurs.
-pub fn ea_calc_move_dst_pi_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let an = state.read_a(reg_dst as usize);
-    state.micro.ea_addr = an;
-    if (an & 1) == 0 {
-        state.write_a(reg_dst as usize, an.wrapping_add(4));
-    }
-}
-
 /// Destination Address Register Indirect with Predecrement (Byte): -(An) -> An -= (2 if A7 else 1), ea_addr = An
 pub fn ea_calc_dst_pd_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let dec = if reg_dst == 7 { 2 } else { 1 };
@@ -309,28 +299,6 @@ pub fn ea_calc_dual_pi_b(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     state.write_a(reg_dst as usize, a_d.wrapping_add(inc_d));
 }
 
-/// Postincrement Word: (Ay)+ -> addr1 = Ay, Ay += 2; (Ax)+ -> addr2 = Ax, Ax += 2
-pub fn ea_calc_dual_pi_w(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let a_s = state.read_a(reg_src as usize);
-    state.micro.addr1 = a_s;
-    state.write_a(reg_src as usize, a_s.wrapping_add(2));
-
-    let a_d = state.read_a(reg_dst as usize);
-    state.micro.addr2 = a_d;
-    state.write_a(reg_dst as usize, a_d.wrapping_add(2));
-}
-
-/// Postincrement Long: (Ay)+ -> addr1 = Ay, Ay += 4; (Ax)+ -> addr2 = Ax, Ax += 4
-pub fn ea_calc_dual_pi_l(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let a_s = state.read_a(reg_src as usize);
-    state.micro.addr1 = a_s;
-    state.write_a(reg_src as usize, a_s.wrapping_add(4));
-
-    let a_d = state.read_a(reg_dst as usize);
-    state.micro.addr2 = a_d;
-    state.write_a(reg_dst as usize, a_d.wrapping_add(4));
-}
-
 /// Predecrement Byte: -(Ay) -> Ay -= (2 if A7 else 1), addr1 = Ay; -(Ax) -> Ax -= (2 if A7 else 1), addr2 = Ax
 pub fn ea_calc_dual_pd_b(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let dec_s = if reg_src == 7 { 2 } else { 1 };
@@ -340,28 +308,6 @@ pub fn ea_calc_dual_pd_b(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 
     let dec_d = if reg_dst == 7 { 2 } else { 1 };
     let a_d = state.read_a(reg_dst as usize).wrapping_sub(dec_d);
-    state.write_a(reg_dst as usize, a_d);
-    state.micro.addr2 = a_d;
-}
-
-/// Predecrement Word: -(Ay) -> Ay -= 2, addr1 = Ay; -(Ax) -> Ax -= 2, addr2 = Ax
-pub fn ea_calc_dual_pd_w(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let a_s = state.read_a(reg_src as usize).wrapping_sub(2);
-    state.write_a(reg_src as usize, a_s);
-    state.micro.addr1 = a_s;
-
-    let a_d = state.read_a(reg_dst as usize).wrapping_sub(2);
-    state.write_a(reg_dst as usize, a_d);
-    state.micro.addr2 = a_d;
-}
-
-/// Predecrement Long: -(Ay) -> Ay -= 4, addr1 = Ay; -(Ax) -> Ax -= 4, addr2 = Ax
-pub fn ea_calc_dual_pd_l(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let a_s = state.read_a(reg_src as usize).wrapping_sub(4);
-    state.write_a(reg_src as usize, a_s);
-    state.micro.addr1 = a_s;
-
-    let a_d = state.read_a(reg_dst as usize).wrapping_sub(4);
     state.write_a(reg_dst as usize, a_d);
     state.micro.addr2 = a_d;
 }

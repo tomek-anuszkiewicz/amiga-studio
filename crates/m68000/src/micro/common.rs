@@ -14,10 +14,6 @@ use crate::state::CpuState;
 /// CCK1: Prefetch next instruction opcode from PC
 pub const PREFETCH_NEXT_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_next_read);
 
-/// CCK2: Prefetch next instruction opcode finish & standard retirement (deprecated alias, use `BUS_READ_IDLE`)
-#[deprecated(note = "Use BUS_READ_IDLE instead")]
-pub const PREFETCH_NEXT_RETIRE: MicroStep = BUS_READ_IDLE;
-
 /// CCK1: Instruction extension word read from PC
 pub const FETCH_EXT_READ: MicroStep = MicroStep::cck(Cpu::step_fetch_extension_read);
 
@@ -36,14 +32,6 @@ pub const BUS_WRITE_IDLE: MicroStep = MicroStep::cck_idle();
 /// CCK2: Bus read idle step (physical bus free for Agnus DMA after operand or opcode read initiation)
 pub const BUS_READ_IDLE: MicroStep = MicroStep::cck_idle();
 
-/// CCK2: Finishes bus read word cycle (deprecated alias, use `BUS_READ_IDLE`)
-#[deprecated(note = "Use BUS_READ_IDLE instead")]
-pub const READ_WORD_FINISH: MicroStep = BUS_READ_IDLE;
-
-/// CCK2: Finishes bus read byte cycle (deprecated alias, use `BUS_READ_IDLE`)
-#[deprecated(note = "Use BUS_READ_IDLE instead")]
-pub const READ_BYTE_FINISH: MicroStep = BUS_READ_IDLE;
-
 /// CCK1: Reads source word from memory into `source`
 pub const READ_SRC_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_read_src_word);
 
@@ -59,14 +47,8 @@ pub const READ_DST_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_read_dst_byte)
 /// CCK2: Writes word from `destination` to memory
 pub const WRITE_DST_WORD: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_word);
 
-/// CCK2: Writes word from `destination` to memory (deprecated alias, use `WRITE_DST_WORD`)
-pub const WRITE_DST_WORD_RETIRE: MicroStep = WRITE_DST_WORD;
-
 /// CCK2: Writes byte from `destination` to memory
 pub const WRITE_DST_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_byte);
-
-/// CCK2: Writes byte from `destination` to memory (deprecated alias, use `WRITE_DST_BYTE`)
-pub const WRITE_DST_BYTE_RETIRE: MicroStep = WRITE_DST_BYTE;
 
 /// CCK1: Reads source long high word from memory into `source`
 pub const READ_SRC_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_src_long_high);
@@ -91,9 +73,6 @@ pub const WRITE_DST_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_write_ds
 
 /// CCK2: Writes low word of 32-bit destination to memory + 2
 pub const WRITE_DST_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_long_low);
-
-/// CCK2: Writes low word of 32-bit destination to memory + 2 (deprecated alias, use `WRITE_DST_LONG_LOW`)
-pub const WRITE_DST_LONG_LOW_RETIRE: MicroStep = WRITE_DST_LONG_LOW;
 
 /// CCK2: Writes low word of 32-bit destination to memory at predecrement address (An - 2)
 pub const WRITE_DST_PD_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_write_dst_pd_long_low);
@@ -125,20 +104,6 @@ pub const READ_ADDR2_LONG_HIGH: MicroStep = MicroStep::cck(Cpu::step_bus_read_ad
 /// CCK1: Reads destination long low word from staged `addr2 + 2` into `destination`
 pub const READ_ADDR2_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr2_long_low);
 
-/// CCK1: Reads split low word of 32-bit source operand (predecrement) from `addr1 + 2` into `source`
-pub const READ_ADDR1_PD_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr1_pd_long_low);
-
-/// CCK1: Reads split high word of 32-bit source operand (predecrement) from `addr1` into `source`
-pub const READ_ADDR1_PD_LONG_HIGH: MicroStep =
-    MicroStep::cck(Cpu::step_bus_read_addr1_pd_long_high);
-
-/// CCK1: Reads split low word of 32-bit destination operand (predecrement) from `addr2 + 2` into `destination`
-pub const READ_ADDR2_PD_LONG_LOW: MicroStep = MicroStep::cck(Cpu::step_bus_read_addr2_pd_long_low);
-
-/// CCK1: Reads split high word of 32-bit destination operand (predecrement) from `addr2` into `destination`
-pub const READ_ADDR2_PD_LONG_HIGH: MicroStep =
-    MicroStep::cck(Cpu::step_bus_read_addr2_pd_long_high);
-
 /// CCK2: Writes byte from `destination` to staged `addr2`
 pub const WRITE_ADDR2_BYTE: MicroStep = MicroStep::cck(Cpu::step_bus_write_addr2_byte);
 
@@ -161,10 +126,6 @@ pub const WRITE_ADDR2_PD_LONG_HIGH: MicroStep =
 pub const READ_TARGET_OPCODE_READ: MicroStep =
     MicroStep::cck(Cpu::step_bus_read_target_opcode_read);
 
-/// CCK2: Target opcode read idle step (deprecated alias, use `BUS_READ_IDLE`)
-#[deprecated(note = "Use BUS_READ_IDLE instead")]
-pub const READ_TARGET_OPCODE_FINISH: MicroStep = BUS_READ_IDLE;
-
 /// CCK1: Reads second word of target pipeline from `ea_addr + 2`
 pub const PREFETCH_TARGET_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_target_read);
 
@@ -179,9 +140,6 @@ pub const PUSH_STACK_HIGH_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_push_s
 
 /// CCK2: Stack push low word write to SP + 2
 pub const PUSH_STACK_LOW_WRITE: MicroStep = MicroStep::cck(Cpu::step_bus_push_stack_low_write);
-
-/// CCK2: Stack push low word write to SP + 2 (deprecated alias, use `PUSH_STACK_LOW_WRITE`)
-pub const PUSH_STACK_LOW_WRITE_RETIRE: MicroStep = PUSH_STACK_LOW_WRITE;
 
 /// CCK1: Stack pop high word read from (SP)
 pub const POP_STACK_HIGH_READ: MicroStep = MicroStep::cck(Cpu::step_bus_pop_stack_high_read);
@@ -201,10 +159,6 @@ pub const POP_STACK_LOW_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_sta
 
 /// 2-clock internal ALU/idle cycle (1 CCK, no external bus activity)
 pub const ALU_IDLE: MicroStep = MicroStep::cck_idle();
-
-/// 2-clock internal processing cycle alias (deprecated alias, use `ALU_IDLE`)
-#[deprecated(note = "Use ALU_IDLE instead")]
-pub const ALU_INTERNAL_2CLK: MicroStep = ALU_IDLE;
 
 // ============================================================================
 // 2-Clock Exception Processing Building Blocks
@@ -232,10 +186,6 @@ pub const EXCEPTION_PUSH_PCHI_WRITE: MicroStep =
 
 /// CCK1: Reads exception vector high word from ea_addr into ea_high
 pub const READ_VECTOR_HIGH_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_high_read);
-
-/// CCK2: Vector high word read idle step (deprecated alias, use `BUS_READ_IDLE`)
-#[deprecated(note = "Use BUS_READ_IDLE instead")]
-pub const READ_VECTOR_HIGH_FINISH: MicroStep = BUS_READ_IDLE;
 
 /// CCK1: Reads exception vector low word from ea_addr + 2 into source
 pub const READ_VECTOR_LOW_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_vector_low_read);
@@ -380,16 +330,8 @@ pub const ALU_IDLE_128CLK: MicroStep = MicroStep {
 /// CCK1: Refills first word of prefetch queue from PC - 2 directly into `prefetch[0]`
 pub const REFILL_FIRST_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_refill_first);
 
-/// CCK2: Finishes first refill read cycle (deprecated alias, use `BUS_READ_IDLE`)
-#[deprecated(note = "Use BUS_READ_IDLE instead")]
-pub const REFILL_FIRST_FINISH: MicroStep = BUS_READ_IDLE;
-
 /// CCK1: Refills second word of prefetch queue from PC directly into `micro.irc`
 pub const REFILL_SECOND_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_refill_second);
-
-/// CCK2: Finishes second refill read cycle (deprecated alias, use `BUS_READ_IDLE`)
-#[deprecated(note = "Use BUS_READ_IDLE instead")]
-pub const REFILL_SECOND_FINISH: MicroStep = BUS_READ_IDLE;
 
 // ============================================================================
 // Stack Pop Status Register Building Blocks (RTE, RTR)
@@ -455,11 +397,7 @@ pub static STEPS_PRIVILEGE_VIOLATION: [MicroStep; 17] = [
 // ============================================================================
 
 pub static STEPS_DIV_ZERO: [MicroStep; 16] = [
-    MicroStep {
-        step_fn: None,
-        alu_fn: None,
-        base_clocks: 8,
-    },
+    ALU_IDLE_8CLK,
     EXCEPTION_PUSH_PCLO_IDLE,
     EXCEPTION_PUSH_PCLO_WRITE,
     EXCEPTION_PUSH_SR_IDLE,

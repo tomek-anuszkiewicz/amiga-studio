@@ -498,6 +498,9 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
         "link_unlk.rs",
         "bcd.rs",
         "privileged.rs",
+        "bits.rs",
+        "shifts.rs",
+        "system.rs",
     ];
     let mut forbidden_found = Vec::new();
     for file_name in &forbidden_legacy_files {
