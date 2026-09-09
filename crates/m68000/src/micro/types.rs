@@ -3,15 +3,15 @@
 //! Defines the atomic `MicroStep` descriptor, `StepFn` primitives,
 //! ALU function pointers (`AluFn`), size enums, and opcode descriptors.
 
-use crate::core::{Cpu, StepResult};
+use crate::core::Cpu;
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, MemoryBus};
+use memory_bus::{BusAccessSize, BusResult, MemoryBus};
 use serde::{Deserialize, Serialize};
 
 /// Atomic step execution function.
-/// Takes the full CPU and memory bus, returning `Some(StepResult)` when a bus cycle
-/// or clock-consuming operation finishes, or `None` if the micro-step is instantaneous.
-pub type StepFn = fn(cpu: &mut Cpu, bus: &mut MemoryBus) -> Option<StepResult>;
+/// Takes the full CPU and memory bus, returning `BusResult<()>` indicating whether
+/// the bus cycle completed (`Ready(())`) or stalled on wait states (`WaitState`).
+pub type StepFn = fn(cpu: &mut Cpu, bus: &mut MemoryBus) -> BusResult<()>;
 
 /// Pure internal ALU operation.
 /// Operates strictly on `CpuState` using pre-decoded register indices.

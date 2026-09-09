@@ -267,7 +267,7 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 ### 3.1 Read Transaction Contention
 - **CCK1 (S0–S3):** The CPU asserts the target address and attempts reading via `bus.read_word(addr)` or `bus.read_byte(addr)`:
   - If `BusResult::WaitState` (Chip RAM access blocked by active Agnus DMA):
-    - **Action:** CPU stalls at CCK1 (`StepResult::WaitState`). Does NOT advance micro-step. Repeats CCK1 on next clock.
+    - **Action:** CPU stalls at CCK1 (accumulating wait state, `is_wait_state() == true`). Does NOT advance micro-step. Repeats CCK1 on next clock.
   - If `BusResult::Ready(data)`:
     - Data is latched into `CpuMicroState.last_read`; CPU advances `phase` to `CckPhase::Cck2`.
 - **CCK2 (S4–S7):**
@@ -278,7 +278,7 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
   - CPU proceeds to CCK2 (`phase = CckPhase::Cck2`).
 - **CCK2 (S4–S7):** The memory bus attempts committing the write via `bus.write_word(addr, val)` or `bus.write_byte(addr, val)`:
   - If `BusResult::WaitState` (Gary withholds `_DTACK` due to Chip RAM DMA contention):
-    - **Action:** CPU stalls at CCK2 (`StepResult::WaitState`), holding write pins asserted until Agnus frees the bus.
+    - **Action:** CPU stalls at CCK2 (`is_wait_state() == true`), holding write pins asserted until Agnus frees the bus.
   - If `BusResult::Ready(())`:
     - Byte/word commits to memory, transaction is recorded, and `phase` resets to `CckPhase::Cck1`.
 
@@ -299,19 +299,21 @@ Instruction execution is driven via a cycle-exact micro-step state machine clock
   - `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
   - `scratch`: Intermediate temporary registers (e.g. `scratch[0]` holding the MOVEM transfer mask).
   - `current_cycle_wait_cycles`: Wait cycles accumulated while stalled by Agnus DMA contention.
+  - `target_refill`: Indicates whether instruction retirement must perform a branch/jump target refill.
+  - `prefetch_retired`: Indicates whether prefetch pipeline has already retired into IR during microcode execution.
 
-- **Micro-Step Execution Outcomes (`StepResult`):**
-  - **`StepCompleted`**: Micro-step completed within the current instruction.
-  - **`InstructionCompleted`**: Instruction has retired (completed writeback and prefetched next opcode).
-  - **`WaitState`**: CPU stalled due to bus wait-state (contention stall in Chip RAM).
-  - **`Stopped`**: CPU entered or remains in stopped state (`STOP` instruction).
-  - **`Halted`**: CPU entered halted state (double bus fault / fatal reset).
+- **Unified Control Model (Zero `StepResult` Overhead):**
+  - **`StepFn = fn(&mut Cpu, &mut MemoryBus) -> BusResult<()>`**: Micro-step handlers only report bus readiness (`BusResult::Ready(())` or `BusResult::WaitState`).
+  - **`step_cck(&mut self, bus: &mut MemoryBus) -> bool`**: Executes a single CCK color clock cycle (~280 ns) and returns `true` when the instruction completes/retires, `false` otherwise.
+  - **`step_instruction(&mut self, bus: &mut MemoryBus) -> u32`**: Steps through an entire instruction to retirement, returning the exact CPU clock cycles consumed.
+  - **`is_wait_state(&self) -> bool`**: Returns whether the CPU is currently stalled by DMA contention.
+  - **State flags**: Halted and Stopped states are queried directly on `cpu.state.halted` and `cpu.state.stopped`.
 
 #### Specialized Direct Micro-Step Execution Handlers (`StepFn`)
-To eliminate nested dynamic runtime size checks and dynamic branching (`match`) in the hot execution loop, micro-step operations are specialized directly into atomic function pointers (`StepFn = fn(&mut Cpu, &mut MemoryBus) -> Option<StepResult>`):
+To eliminate nested dynamic runtime size checks and dynamic branching (`match`) in the hot execution loop, micro-step operations are specialized directly into atomic function pointers (`StepFn = fn(&mut Cpu, &mut MemoryBus) -> BusResult<()>`):
 - **Operand Reads:** `Cpu::step_bus_read_byte`, `Cpu::step_bus_read_word`, `Cpu::step_bus_read_long_high`, `Cpu::step_bus_read_long_low`.
 - **Operand Writes:** `Cpu::step_bus_write_byte` (preserves unaddressed byte in 16-bit cell), `Cpu::step_bus_write_word`, `Cpu::step_bus_write_long_high`, `Cpu::step_bus_write_long_low`.
-- **Stack & Control Flow:** `Cpu::step_bus_pop_stack`, `Cpu::step_bus_push_stack_high`, `Cpu::step_bus_push_stack_low`, `Cpu::step_bus_read_target_opcode`, `Cpu::step_prefetch_target_and_retire`, `Cpu::step_branch_eval`.
+- **Stack & Control Flow:** `Cpu::step_bus_pop_stack`, `Cpu::step_bus_push_stack_high`, `Cpu::step_bus_push_stack_low`, `Cpu::step_bus_read_target_opcode`, `Cpu::step_prefetch_target_and_retire`.
 - **Multi-Register Block Transfers:** `crate::instructions::movem::execute_movem_transfer`.
 
 #### Pipeline & Dispatch Table Invariants

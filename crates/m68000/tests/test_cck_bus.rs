@@ -1,5 +1,5 @@
-use m68000::{Cpu, StepResult};
-use memory_bus::{CckPhase, MemoryBus};
+use m68000::Cpu;
+use memory_bus::{BusResult, CckPhase, MemoryBus};
 
 #[test]
 fn test_micro_state_initial_and_reset() {
@@ -25,12 +25,12 @@ fn test_cck_unblocked_read_cycle() {
 
     // CCK1 step
     let res1 = cpu.step_read_word_at(&mut bus, 0x002000);
-    assert_eq!(res1, StepResult::StepCompleted);
+    assert_eq!(res1, BusResult::Ready(()));
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck2);
 
     // CCK2 step
     let res2 = cpu.step_read_word_at(&mut bus, 0x002000);
-    assert_eq!(res2, StepResult::StepCompleted);
+    assert_eq!(res2, BusResult::Ready(()));
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
     assert_eq!(cpu.state.micro.last_read, 0x55AA);
 }
@@ -48,12 +48,12 @@ fn test_cck_read_contention_stall_at_cck1() {
 
     // 1st attempt: CCK1 blocked by DMA -> WaitState, CPU remains at CCK1
     let res1 = cpu.step_read_word_at(&mut bus, 0x002000);
-    assert_eq!(res1, StepResult::WaitState);
+    assert_eq!(res1, BusResult::WaitState);
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
 
     // 2nd attempt: still blocked -> WaitState
     let res2 = cpu.step_read_word_at(&mut bus, 0x002000);
-    assert_eq!(res2, StepResult::WaitState);
+    assert_eq!(res2, BusResult::WaitState);
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
 
     // Agnus frees bus
@@ -61,12 +61,12 @@ fn test_cck_read_contention_stall_at_cck1() {
 
     // 3rd attempt: CCK1 unblocked -> advances to CCK2
     let res3 = cpu.step_read_word_at(&mut bus, 0x002000);
-    assert_eq!(res3, StepResult::StepCompleted);
+    assert_eq!(res3, BusResult::Ready(()));
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck2);
 
     // 4th attempt: CCK2 completes transaction
     let res4 = cpu.step_read_word_at(&mut bus, 0x002000);
-    assert_eq!(res4, StepResult::StepCompleted);
+    assert_eq!(res4, BusResult::Ready(()));
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
     assert_eq!(cpu.state.micro.last_read, 0x1234);
 }
@@ -80,7 +80,7 @@ fn test_cck_write_contention_stall_at_cck2() {
 
     // CCK1: CPU outputs address/data onto bus (always succeeds for write)
     let res1 = cpu.step_write_word_at(&mut bus, 0x003000, 0xABCD);
-    assert_eq!(res1, StepResult::StepCompleted);
+    assert_eq!(res1, BusResult::Ready(()));
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck2);
 
     // Now Agnus DMA grabs Chip RAM before CCK2 commit
@@ -88,7 +88,7 @@ fn test_cck_write_contention_stall_at_cck2() {
 
     // CCK2: Gary withholds _DTACK -> CPU stalls at CCK2
     let res2 = cpu.step_write_word_at(&mut bus, 0x003000, 0xABCD);
-    assert_eq!(res2, StepResult::WaitState);
+    assert_eq!(res2, BusResult::WaitState);
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck2);
 
     // Bus freed
@@ -96,7 +96,7 @@ fn test_cck_write_contention_stall_at_cck2() {
 
     // CCK2 retry: write commits to memory
     let res3 = cpu.step_write_word_at(&mut bus, 0x003000, 0xABCD);
-    assert_eq!(res3, StepResult::StepCompleted);
+    assert_eq!(res3, BusResult::Ready(()));
     assert_eq!(cpu.state.micro.phase, CckPhase::Cck1);
 
     // Verify written data
@@ -111,10 +111,10 @@ fn test_internal_clocks_stepping() {
     cpu.state.micro.internal_clocks = 4; // 4 CPU clocks = 2 CCKs
 
     let res1 = cpu.step_cck(&mut bus);
-    assert_eq!(res1, StepResult::StepCompleted);
+    assert!(!res1);
     assert_eq!(cpu.state.micro.internal_clocks, 2);
 
     let res2 = cpu.step_cck(&mut bus);
-    assert_eq!(res2, StepResult::StepCompleted);
+    assert!(!res2);
     assert_eq!(cpu.state.micro.internal_clocks, 0);
 }

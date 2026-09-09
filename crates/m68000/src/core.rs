@@ -5,35 +5,6 @@ use crate::micro::types;
 use crate::state::CpuState;
 use memory_bus::{BusAccessSize, BusResult, CckPhase, MemoryBus};
 
-/// Execution result returned by CPU step operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StepResult {
-    /// Sub-cycle micro-step completed within the current instruction
-    StepCompleted,
-    /// Instruction completed execution, committed writeback, and prefetched next opcode
-    InstructionCompleted,
-    /// CPU stalled due to bus contention / wait state
-    WaitState,
-    /// CPU entered or is in stopped state (STOP instruction)
-    Stopped,
-    /// CPU entered halted state (double bus fault)
-    Halted,
-}
-
-impl StepResult {
-    /// Returns true if execution resulted in a wait state / bus stall
-    #[inline]
-    pub fn is_wait(&self) -> bool {
-        matches!(self, StepResult::WaitState)
-    }
-
-    /// Returns true if an instruction fully completed and retired
-    #[inline]
-    pub fn is_completed(&self) -> bool {
-        matches!(self, StepResult::InstructionCompleted)
-    }
-}
-
 /// Motorola 68000 CPU Core
 #[derive(Debug, Clone)]
 pub struct Cpu {
@@ -84,13 +55,16 @@ impl Cpu {
         self.state.prefetch[1] = 0;
     }
 
+    /// Returns true if the active micro-step cycle encountered a wait state
+    #[inline]
+    pub fn is_wait_state(&self) -> bool {
+        self.state.micro.current_cycle_wait_cycles > 0
+    }
+
     /// CCK phase stepping primitive
-    pub fn step_cck(&mut self, bus: &mut MemoryBus) -> StepResult {
-        if self.state.halted {
-            return StepResult::Halted;
-        }
-        if self.state.stopped {
-            return StepResult::Stopped;
+    pub fn step_cck(&mut self, bus: &mut MemoryBus) -> bool {
+        if self.state.halted || self.state.stopped {
+            return false;
         }
 
         // 1. If internal execution clocks remain (e.g. multi-cycle shift/div or TRAP):
@@ -101,7 +75,7 @@ impl Cpu {
                 self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
                 self.state.micro.clocks_remaining = -1;
             }
-            return StepResult::StepCompleted;
+            return false;
         }
 
         // 2. Check if current instruction uses static micro-steps:
@@ -118,45 +92,26 @@ impl Cpu {
 
         // Unimplemented / Illegal opcode:
         self.state.halted = true;
-        StepResult::Halted
+        false
     }
 
-    /// Retires an instruction sequentially using standard prefetch refill
+    /// Retires the active instruction sequentially or via branch target refill
     #[inline(always)]
-    pub(crate) fn retire_standard(&mut self, next_op: u16) -> StepResult {
-        self.state.ir = self.state.prefetch[0];
-        self.state.prefetch[0] = next_op;
-        self.state.pc = self.state.pc.wrapping_add(2);
+    pub(crate) fn retire_current_instruction(&mut self) {
+        if self.state.micro.target_refill {
+            let target = self.state.micro.ea_addr;
+            let target_prefetch = self.state.micro.last_read;
+            let new_ir = self.state.micro.scratch_prefetch;
+            self.state.ir = new_ir;
+            self.state.prefetch[0] = target_prefetch;
+            self.state.pc = target.wrapping_add(4);
+        } else if !self.state.micro.prefetch_retired {
+            self.state.ir = self.state.prefetch[0];
+            self.state.prefetch[0] = self.state.micro.scratch_prefetch;
+            self.state.pc = self.state.pc.wrapping_add(2);
+        }
         self.state.micro.reset();
         self.initiate_current_instruction();
-        StepResult::InstructionCompleted
-    }
-
-    /// Retires an instruction using scratch_prefetch (Class 0 RMW where prefetch precedes write)
-    #[inline(always)]
-    pub(crate) fn retire_scratch_prefetch(&mut self) -> StepResult {
-        self.state.ir = self.state.prefetch[0];
-        self.state.prefetch[0] = self.state.micro.scratch_prefetch;
-        self.state.pc = self.state.pc.wrapping_add(2);
-        self.state.micro.reset();
-        self.initiate_current_instruction();
-        StepResult::InstructionCompleted
-    }
-
-    /// Retires an instruction after branch/jump pipeline refill
-    #[inline(always)]
-    pub(crate) fn retire_target_refill(
-        &mut self,
-        target: u32,
-        target_prefetch: u16,
-        new_ir: u16,
-    ) -> StepResult {
-        self.state.ir = new_ir;
-        self.state.prefetch[0] = target_prefetch;
-        self.state.pc = target.wrapping_add(4);
-        self.state.micro.reset();
-        self.initiate_current_instruction();
-        StepResult::InstructionCompleted
     }
 
     /// Loads the active instruction's micro-step descriptor from the static table
@@ -174,21 +129,15 @@ impl Cpu {
         bus: &mut MemoryBus,
         addr: u32,
         function_code: u8,
-    ) -> StepResult {
+    ) -> BusResult<()> {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => match bus.read_word(addr) {
-                BusResult::WaitState => {
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                    self.state.micro.current_cycle_wait_cycles =
-                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                    StepResult::WaitState
-                }
+                BusResult::WaitState => BusResult::WaitState,
                 BusResult::Ready(data) => {
                     self.state.micro.last_read = data;
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                     self.state.micro.phase = CckPhase::Cck2;
-                    StepResult::StepCompleted
+                    BusResult::Ready(())
                 }
             },
             CckPhase::Cck2 => {
@@ -202,44 +151,36 @@ impl Cpu {
                     true,
                     true,
                 );
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                 self.state.micro.phase = CckPhase::Cck1;
-                self.state.micro.current_cycle_wait_cycles = 0;
-                StepResult::StepCompleted
+                BusResult::Ready(())
             }
         }
     }
 
     /// Read word in data space (FC1 or FC5)
     #[inline(always)]
-    pub fn step_read_word_at(&mut self, bus: &mut MemoryBus, addr: u32) -> StepResult {
+    pub fn step_read_word_at(&mut self, bus: &mut MemoryBus, addr: u32) -> BusResult<()> {
         let fc = types::data_fc(&self.state);
         self.step_read_word_at_fc(bus, addr, fc)
     }
 
     /// Read word in program space (FC2 or FC6)
     #[inline(always)]
-    pub fn step_read_prog_word_at(&mut self, bus: &mut MemoryBus, addr: u32) -> StepResult {
+    pub fn step_read_prog_word_at(&mut self, bus: &mut MemoryBus, addr: u32) -> BusResult<()> {
         let fc = types::prog_fc(&self.state);
         self.step_read_word_at_fc(bus, addr, fc)
     }
 
     /// Fundamental 2-phase Color Clock (CCK) read byte primitive
-    pub fn step_read_byte_at(&mut self, bus: &mut MemoryBus, addr: u32) -> StepResult {
+    pub fn step_read_byte_at(&mut self, bus: &mut MemoryBus, addr: u32) -> BusResult<()> {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => match bus.read_byte(addr) {
-                BusResult::WaitState => {
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                    self.state.micro.current_cycle_wait_cycles =
-                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                    StepResult::WaitState
-                }
+                BusResult::WaitState => BusResult::WaitState,
                 BusResult::Ready(data) => {
                     self.state.micro.last_read = data as u16;
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                     self.state.micro.phase = CckPhase::Cck2;
-                    StepResult::StepCompleted
+                    BusResult::Ready(())
                 }
             },
             CckPhase::Cck2 => {
@@ -259,30 +200,22 @@ impl Cpu {
                     uds,
                     lds,
                 );
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                 self.state.micro.phase = CckPhase::Cck1;
-                self.state.micro.current_cycle_wait_cycles = 0;
-                StepResult::StepCompleted
+                BusResult::Ready(())
             }
         }
     }
 
     /// Fundamental 2-phase Color Clock (CCK) write word primitive
-    pub fn step_write_word_at(&mut self, bus: &mut MemoryBus, addr: u32, data: u16) -> StepResult {
+    pub fn step_write_word_at(&mut self, bus: &mut MemoryBus, addr: u32, data: u16) -> BusResult<()> {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => {
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                 self.state.micro.phase = CckPhase::Cck2;
-                StepResult::StepCompleted
+                BusResult::Ready(())
             }
             CckPhase::Cck2 => match bus.write_word(addr, data) {
-                BusResult::WaitState => {
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                    self.state.micro.current_cycle_wait_cycles =
-                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                    StepResult::WaitState
-                }
+                BusResult::WaitState => BusResult::WaitState,
                 BusResult::Ready(()) => {
                     let fc = types::data_fc(&self.state);
                     self.state.micro.record_bus_transaction(
@@ -295,31 +228,23 @@ impl Cpu {
                         true,
                         true,
                     );
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                     self.state.micro.phase = CckPhase::Cck1;
-                    self.state.micro.current_cycle_wait_cycles = 0;
-                    StepResult::StepCompleted
+                    BusResult::Ready(())
                 }
             },
         }
     }
 
     /// Fundamental 2-phase Color Clock (CCK) write byte primitive
-    pub fn step_write_byte_at(&mut self, bus: &mut MemoryBus, addr: u32, data: u8) -> StepResult {
+    pub fn step_write_byte_at(&mut self, bus: &mut MemoryBus, addr: u32, data: u8) -> BusResult<()> {
         let addr = addr & 0x00FF_FFFF;
         match self.state.micro.phase {
             CckPhase::Cck1 => {
-                self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                 self.state.micro.phase = CckPhase::Cck2;
-                StepResult::StepCompleted
+                BusResult::Ready(())
             }
             CckPhase::Cck2 => match bus.write_byte(addr, data) {
-                BusResult::WaitState => {
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
-                    self.state.micro.current_cycle_wait_cycles =
-                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
-                    StepResult::WaitState
-                }
+                BusResult::WaitState => BusResult::WaitState,
                 BusResult::Ready(()) => {
                     let fc = types::data_fc(&self.state);
                     let (uds, lds) = if (addr & 1) == 0 {
@@ -337,10 +262,8 @@ impl Cpu {
                         uds,
                         lds,
                     );
-                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
                     self.state.micro.phase = CckPhase::Cck1;
-                    self.state.micro.current_cycle_wait_cycles = 0;
-                    StepResult::StepCompleted
+                    BusResult::Ready(())
                 }
             },
         }
@@ -354,7 +277,7 @@ impl Cpu {
         is_read: bool,
         is_program_space: bool,
         bus: &mut MemoryBus,
-    ) -> StepResult {
+    ) {
         let fc = if is_program_space {
             types::prog_fc(&self.state)
         } else {
@@ -362,11 +285,10 @@ impl Cpu {
         };
         self.instruction_clocks = self.instruction_clocks.wrapping_add(8);
         self.handle_address_error_fc(addr, is_read, fc, bus);
-        StepResult::InstructionCompleted
     }
 
     /// Executes the active instruction's micro-step sequence directly
-    pub fn execute_micro_step(&mut self, bus: &mut MemoryBus) -> StepResult {
+    pub fn execute_micro_step(&mut self, bus: &mut MemoryBus) -> bool {
         while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
             let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
 
@@ -397,38 +319,93 @@ impl Cpu {
                 self.state.micro.clocks_remaining = clocks;
             }
 
-            // 2. Execute step function
-            let prev_micro_step = self.state.micro.micro_step;
-            if let Some(res) = (step.step_fn)(self, bus) {
-                if self.state.micro.micro_step != prev_micro_step {
-                    self.state.micro.clocks_remaining = -1;
+            // 2. If instantaneous step (0 clocks, e.g. pure ALU setup):
+            if self.state.micro.clocks_remaining == 0 && step.alu_fn.is_some() {
+                let prev_micro_step = self.state.micro.micro_step;
+                let bus_res = (step.step_fn)(self, bus);
+                if self.state.micro.current_steps.is_empty() {
+                    return true;
                 }
-                return res;
-            } else {
-                // Internal ALU or timing step (step_fn returned None, e.g. step_alu):
-                // Driver loop controls cycle consumption and micro-step progression.
-                if self.state.micro.clocks_remaining <= 0 {
-                    // Instantaneous 0-clock step: advance immediately in the while loop
-                    if self.state.micro.micro_step == prev_micro_step {
-                        self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
-                    }
-                    self.state.micro.clocks_remaining = -1;
-                    continue;
-                } else {
-                    // Multi-clock delay step: consume 2 clocks per CCK and advance when done
+                if bus_res == BusResult::WaitState {
                     self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles =
+                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                    return false;
+                }
+                if self.state.micro.micro_step == prev_micro_step {
+                    self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
+                }
+                self.state.micro.clocks_remaining = -1;
+                continue;
+            }
+
+            // 3. Dynamic multi-cycle step (base_clocks == 0 without alu_fn, e.g. MOVEM transfer):
+            if step.base_clocks == 0 && step.alu_fn.is_none() {
+                let prev_micro_step = self.state.micro.micro_step;
+                let bus_res = (step.step_fn)(self, bus);
+                if self.state.micro.current_steps.is_empty() {
+                    return true;
+                }
+                match bus_res {
+                    BusResult::WaitState => {
+                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                        self.state.micro.current_cycle_wait_cycles =
+                            self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                        return false;
+                    }
+                    BusResult::Ready(()) => {
+                        self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                        self.state.micro.current_cycle_wait_cycles = 0;
+                        if self.state.micro.micro_step != prev_micro_step {
+                            self.state.micro.clocks_remaining = -1;
+                        }
+                        if (self.state.micro.micro_step as usize) >= self.state.micro.current_steps.len() {
+                            self.retire_current_instruction();
+                            return true;
+                        }
+                        return false;
+                    }
+                }
+            }
+
+            // 3. Clock-consuming step (each CCK consumes 2 clocks):
+            let prev_micro_step = self.state.micro.micro_step;
+            let bus_res = (step.step_fn)(self, bus);
+            if self.state.micro.current_steps.is_empty() {
+                return true;
+            }
+
+            match bus_res {
+                BusResult::WaitState => {
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles =
+                        self.state.micro.current_cycle_wait_cycles.wrapping_add(1);
+                    return false;
+                }
+                BusResult::Ready(()) => {
+                    self.instruction_clocks = self.instruction_clocks.wrapping_add(2);
+                    self.state.micro.current_cycle_wait_cycles = 0;
                     self.state.micro.clocks_remaining -= 2;
+
                     if self.state.micro.clocks_remaining <= 0 {
                         if self.state.micro.micro_step == prev_micro_step {
                             self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
                         }
                         self.state.micro.clocks_remaining = -1;
                     }
-                    return StepResult::StepCompleted;
+
+                    if (self.state.micro.micro_step as usize) >= self.state.micro.current_steps.len() {
+                        self.retire_current_instruction();
+                        return true;
+                    }
+
+                    return false;
                 }
             }
         }
-        StepResult::InstructionCompleted
+
+        self.retire_current_instruction();
+        true
     }
 
     /// Enables or disables transaction recording for cycle-exact test harnesses
@@ -450,26 +427,23 @@ impl Cpu {
     }
 
     /// Executes exactly one full M68000 instruction via direct table dispatch
-    pub fn step_instruction(&mut self, bus: &mut MemoryBus) -> StepResult {
-        if self.state.halted {
-            return StepResult::Halted;
-        }
-        if self.state.stopped {
-            return StepResult::Stopped;
+    pub fn step_instruction(&mut self, bus: &mut MemoryBus) -> u32 {
+        if self.state.halted || self.state.stopped {
+            return 0;
         }
 
         self.instruction_clocks = 0;
         let mut loop_count = 0u32;
         const MAX_INSTRUCTION_CCK_STEPS: u32 = 10_000;
         loop {
-            let res = self.step_cck(bus);
-            if res.is_completed() || res == StepResult::Halted || res == StepResult::Stopped {
-                return res;
+            let completed = self.step_cck(bus);
+            if completed || self.state.halted || self.state.stopped {
+                return self.instruction_clocks;
             }
             loop_count = loop_count.wrapping_add(1);
             if loop_count >= MAX_INSTRUCTION_CCK_STEPS {
                 self.state.micro.reset();
-                return StepResult::InstructionCompleted;
+                return self.instruction_clocks;
             }
         }
     }

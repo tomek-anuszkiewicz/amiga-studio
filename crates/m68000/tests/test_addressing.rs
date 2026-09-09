@@ -1,5 +1,5 @@
 use m68000::micro::ea;
-use m68000::{Cpu, CpuState, StepResult};
+use m68000::{Cpu, CpuState};
 use memory_bus::MemoryBus;
 
 #[test]
@@ -48,13 +48,12 @@ fn test_unaligned_address_error() {
     let mut bus = MemoryBus::new();
     bus.map_chip_ram_to_low_memory();
     let mut cpu = Cpu::new();
-    let res = cpu.trigger_address_error_step(
+    cpu.trigger_address_error_step(
         0x001001,
         true,
         false,
         &mut bus,
     );
-    assert_eq!(res, StepResult::InstructionCompleted);
 }
 
 #[test]
@@ -70,8 +69,8 @@ fn test_move_instruction() {
     cpu.state.prefetch[0] = 0x4E71; // NOP
     cpu.state.pc = 0x001004;
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 4);
     assert_eq!(cpu.state.d_word(1), 0x1234);
     assert!(!cpu.state.get_n());
     assert!(!cpu.state.get_z());
@@ -93,8 +92,8 @@ fn test_add_sub_ccr() {
     cpu.state.prefetch[0] = 0x4E71;
     cpu.state.pc = 0x001004;
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 8);
     assert_eq!(cpu.state.d_long(1), 15);
     assert!(!cpu.state.get_c());
     assert!(!cpu.state.get_z());
@@ -112,15 +111,15 @@ fn test_nop_and_branch() {
     // NOP (0x4E71)
     cpu.state.ir = 0x4E71;
     cpu.state.prefetch[0] = 0x6004; // BRA.S +4 at 0x1000
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks1 = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks1, 4);
     // After NOP retires, ir should be the prefetch (BRA.S 0x6004)
     assert_eq!(cpu.state.ir, 0x6004);
 
     // Execute BRA.S +4 (Opcode: 0x6004)
     // Target = base_pc + 2 + displacement = 0x1000 + 2 + 4 = 0x1006
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks2 = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks2, 10);
     assert_eq!(cpu.state.pc, 0x001006 + 4); // +4 because reload_pc_and_prefetch fetched 2 words
 }
 
@@ -135,8 +134,8 @@ fn test_logic_and_shifts() {
     // NOT.W D1 -> D1.W = 0x00FF (Opcode: 0x4641)
     cpu.state.ir = 0x4641;
     cpu.state.prefetch[0] = 0x4E71;
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks1 = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks1, 4);
     assert_eq!(cpu.state.d_word(1), 0x00FF);
     assert!(!cpu.state.get_n());
     assert!(!cpu.state.get_z());
@@ -146,8 +145,8 @@ fn test_logic_and_shifts() {
     cpu.state.set_d_long(1, 0x0000_0003);
     cpu.state.ir = 0xE541;
     cpu.state.prefetch[0] = 0x4E71;
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks2 = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks2, 10);
     assert_eq!(cpu.state.d_word(1), 0x000C);
 }
 
@@ -163,8 +162,8 @@ fn test_bit_manipulation() {
     // BSET D0, D1 -> bit 4 was 0 so Z=1, D1 becomes 0x0010 (Opcode: 0x01C1)
     cpu.state.ir = 0x01C1;
     cpu.state.prefetch[0] = 0x4E71;
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks1 = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks1, 8);
     assert!(cpu.state.get_z()); // bit 4 was 0, so Z=1
     assert_eq!(cpu.state.d_long(1), 0x0000_0010);
 
@@ -172,8 +171,8 @@ fn test_bit_manipulation() {
     cpu.state.micro.reset();
     cpu.state.ir = 0x01C1;
     cpu.state.prefetch[0] = 0x4E71;
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks2 = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks2, 8);
     assert!(!cpu.state.get_z()); // bit 4 was 1, so Z=0
     assert_eq!(cpu.state.d_long(1), 0x0000_0010);
 }

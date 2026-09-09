@@ -3,7 +3,7 @@
 use crate::breakpoints::BreakpointManager;
 use crate::disassembler::{disassemble, Disassembly};
 use crate::trace::TraceRingBuffer;
-use m68000::{Cpu, StepResult};
+use m68000::Cpu;
 use memory_bus::MemoryBus;
 
 /// Fine-grained execution stepping modes
@@ -35,8 +35,8 @@ impl Debugger {
         disassemble(addr, |a| bus.read_word_debug(a))
     }
 
-    /// Steps exactly one M68000 instruction, recording to trace history
-    pub fn step_instruction(&mut self, cpu: &mut Cpu, bus: &mut MemoryBus) -> StepResult {
+    /// Steps exactly one M68000 instruction, recording to trace history, and returns instruction clocks
+    pub fn step_instruction(&mut self, cpu: &mut Cpu, bus: &mut MemoryBus) -> u32 {
         let pc = cpu.state.pc.wrapping_sub(4); // Address of opcode currently in IR
         let (disasm, _) = self.disassemble_at(pc, bus);
 
@@ -49,28 +49,32 @@ impl Debugger {
             cpu.state.clone(),
         );
 
-        let res = cpu.step_instruction(bus);
-        self.current_cck = self.current_cck.wrapping_add(8); // Approximation: 8 CCK per instruction
-        res
+        let clocks = cpu.step_instruction(bus);
+        self.current_cck = self.current_cck.wrapping_add((clocks as u64) / 2);
+        clocks
     }
 
-    /// Free-runs execution until a breakpoint is hit, CPU halts, or max_instructions is reached
+    /// Free-runs execution until a breakpoint is hit, CPU halts/stops, or max_instructions is reached.
+    /// Returns the number of instructions executed.
     pub fn run_until_breakpoint(
         &mut self,
         cpu: &mut Cpu,
         bus: &mut MemoryBus,
         max_instructions: usize,
-    ) -> StepResult {
-        for _ in 0..max_instructions {
+    ) -> usize {
+        for steps in 0..max_instructions {
             let next_pc = cpu.state.pc.wrapping_sub(4);
             if self.breakpoints.check_pc(next_pc) {
-                return StepResult::StepCompleted;
+                return steps;
             }
-            let res = self.step_instruction(cpu, bus);
-            if res == StepResult::Halted || res == StepResult::Stopped {
-                return res;
+            if cpu.state.halted || cpu.state.stopped {
+                return steps;
+            }
+            self.step_instruction(cpu, bus);
+            if cpu.state.halted || cpu.state.stopped {
+                return steps + 1;
             }
         }
-        StepResult::StepCompleted
+        max_instructions
     }
 }

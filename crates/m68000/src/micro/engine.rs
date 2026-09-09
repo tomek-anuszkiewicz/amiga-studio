@@ -58,6 +58,12 @@ pub struct CpuMicroState {
     /// Cached pointer to the active opcode's slice of MicroSteps
     #[serde(skip, default = "default_empty_steps")]
     pub current_steps: &'static [MicroStep],
+    /// Indicates whether instruction retirement must perform a branch/jump target refill
+    #[serde(default)]
+    pub target_refill: bool,
+    /// Indicates whether prefetch pipeline has already retired into IR during microcode execution
+    #[serde(default)]
+    pub prefetch_retired: bool,
 }
 
 const fn default_clocks_remaining() -> i16 {
@@ -90,6 +96,8 @@ impl CpuMicroState {
             reg_src: 0,
             reg_dst: 0,
             current_steps: &EMPTY_STEPS,
+            target_refill: false,
+            prefetch_retired: false,
         }
     }
 
@@ -110,6 +118,8 @@ impl CpuMicroState {
         self.reg_src = 0;
         self.reg_dst = 0;
         self.current_steps = &EMPTY_STEPS;
+        self.target_refill = false;
+        self.prefetch_retired = false;
     }
 
     /// Initializes active micro-steps for a new instruction

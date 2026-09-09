@@ -10,7 +10,7 @@
 //!
 //! Also validates bus contention stalls (Agnus DMA locking Chip RAM during CCK1 for reads, CCK2 for writes).
 
-use m68000::{Cpu, StepResult};
+use m68000::Cpu;
 use memory_bus::MemoryBus;
 
 /// Helper to set up a test CPU and MemoryBus with mapped Chip RAM and initialized prefetch pipeline
@@ -42,8 +42,8 @@ fn test_archetype1_nop_4_clocks() {
     bus.write_word_debug(0x001004, 0x4E71);
     prime_prefetch(&mut cpu, &mut bus);
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 4);
     assert_eq!(
         cpu.instruction_clocks, 4,
         "NOP must take exactly 4 CPU clocks (2 CCKs)"
@@ -63,8 +63,8 @@ fn test_archetype1_move_reg_to_reg_4_clocks() {
     cpu.state.set_d_long(0, 0x1234_5678);
     cpu.state.set_d_long(1, 0x0000_0000);
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 4);
     assert_eq!(
         cpu.instruction_clocks, 4,
         "MOVE.w Dx, Dy must take exactly 4 CPU clocks (2 CCKs)"
@@ -91,8 +91,8 @@ fn test_archetype2_move_mem_read_8_clocks() {
     cpu.state.set_d_long(0, 0);
     prime_prefetch(&mut cpu, &mut bus);
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 8);
     assert_eq!(
         cpu.instruction_clocks, 8,
         "MOVE.w (Ax), Dy must take exactly 8 CPU clocks (4 CCKs)"
@@ -118,30 +118,33 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
 
     // Color Clock 1: instruction handler initiates bus read, but Gary withholds _DTACK at CCK1 -> WaitState
     let r1 = cpu.step_cck(&mut bus);
-    assert_eq!(r1, StepResult::WaitState);
+    assert!(!r1);
+    assert!(cpu.is_wait_state());
     assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck1);
 
     // Color Clock 2: still blocked -> WaitState
     let r2 = cpu.step_cck(&mut bus);
-    assert_eq!(r2, StepResult::WaitState);
+    assert!(!r2);
+    assert!(cpu.is_wait_state());
 
     // Agnus completes DMA transfer and frees the bus
     bus.unlock_chip_ram();
 
     // Color Clock 3: CCK1 succeeds and advances to CCK2
     let r3 = cpu.step_cck(&mut bus);
-    assert_eq!(r3, StepResult::StepCompleted);
+    assert!(!r3);
+    assert!(!cpu.is_wait_state());
     assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck2);
 
     // Color Clock 4: CCK2 completes transaction and latches data
     let r4 = cpu.step_cck(&mut bus);
-    assert_eq!(r4, StepResult::StepCompleted);
+    assert!(!r4);
 
     // Next Color Clocks: Prefetch next instruction word (CCK1 and CCK2)
     let r5 = cpu.step_cck(&mut bus);
-    assert_eq!(r5, StepResult::StepCompleted);
+    assert!(!r5);
     let r6 = cpu.step_cck(&mut bus);
-    assert_eq!(r6, StepResult::InstructionCompleted);
+    assert!(r6);
 
     // Total clocks = 8 base clocks + 2 * (2 wait states) = 12 clocks
     assert_eq!(cpu.instruction_clocks, 12);
@@ -160,8 +163,8 @@ fn test_archetype3_move_mem_write_8_clocks() {
     cpu.state.write_a(0, 0x003000);
     prime_prefetch(&mut cpu, &mut bus);
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 8);
     assert_eq!(
         cpu.instruction_clocks, 8,
         "MOVE.w Dx, (Ay) must take exactly 8 CPU clocks (4 CCKs)"
@@ -183,7 +186,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
 
     // Color Clock 1: Initiates write cycle, outputs address/data on bus, finishes CCK1
     let r1 = cpu.step_cck(&mut bus);
-    assert_eq!(r1, StepResult::StepCompleted);
+    assert!(!r1);
     assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck2);
 
     // Before CCK2 commit, Agnus DMA grabs Chip RAM
@@ -191,26 +194,28 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
 
     // Color Clock 2: CCK2 write blocked by DMA -> WaitState
     let r2 = cpu.step_cck(&mut bus);
-    assert_eq!(r2, StepResult::WaitState);
+    assert!(!r2);
+    assert!(cpu.is_wait_state());
     assert_eq!(cpu.state.micro.phase, memory_bus::CckPhase::Cck2);
 
     // Color Clock 3: still blocked -> WaitState
     let r3 = cpu.step_cck(&mut bus);
-    assert_eq!(r3, StepResult::WaitState);
+    assert!(!r3);
+    assert!(cpu.is_wait_state());
 
     // Agnus frees bus
     bus.unlock_chip_ram();
 
     // Color Clock 4: CCK2 succeeds, write commits to Chip RAM
     let r4 = cpu.step_cck(&mut bus);
-    assert_eq!(r4, StepResult::StepCompleted);
+    assert!(!r4);
     assert_eq!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Next Color Clocks: Prefetch next instruction word (CCK1 and CCK2)
     let r5 = cpu.step_cck(&mut bus);
-    assert_eq!(r5, StepResult::StepCompleted);
+    assert!(!r5);
     let r6 = cpu.step_cck(&mut bus);
-    assert_eq!(r6, StepResult::InstructionCompleted);
+    assert!(r6);
 
     assert_eq!(cpu.instruction_clocks, 12);
 }
@@ -228,8 +233,8 @@ fn test_archetype4_rmw_add_12_clocks() {
     cpu.state.write_a(0, 0x004000);
     prime_prefetch(&mut cpu, &mut bus);
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 12);
     assert_eq!(
         cpu.instruction_clocks, 12,
         "ADD.w Dx, (Ay) RMW must take exactly 12 CPU clocks (6 CCKs)"
@@ -249,8 +254,8 @@ fn test_archetype5_bcc_untaken_8_clocks() {
     cpu.state.sr &= !0x04;
     prime_prefetch(&mut cpu, &mut bus);
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 8);
     assert_eq!(
         cpu.instruction_clocks, 8,
         "Bcc.s untaken must take exactly 8 CPU clocks (4 CCKs)"
@@ -272,8 +277,8 @@ fn test_archetype5_bcc_taken_10_clocks() {
     bus.write_word_debug(0x001008, 0x4E71);
     prime_prefetch(&mut cpu, &mut bus);
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 10);
     assert_eq!(
         cpu.instruction_clocks, 10,
         "Bcc.s taken / BRA.s must take exactly 10 CPU clocks (5 CCKs)"
@@ -294,8 +299,8 @@ fn test_archetype6_pea_12_clocks() {
     cpu.state.write_a(7, 0x006000);
     prime_prefetch(&mut cpu, &mut bus);
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 12);
     assert_eq!(
         cpu.instruction_clocks, 12,
         "PEA (An) must take exactly 12 CPU clocks (6 CCKs)"
@@ -330,8 +335,8 @@ fn test_archetype6_jsr_16_clocks() {
     cpu.state.write_a(7, 0x006000);
     prime_prefetch(&mut cpu, &mut bus);
 
-    let res = cpu.step_instruction(&mut bus);
-    assert_eq!(res, StepResult::InstructionCompleted);
+    let clocks = cpu.step_instruction(&mut bus);
+    assert_eq!(clocks, 16);
     assert_eq!(
         cpu.instruction_clocks, 16,
         "JSR (An) must take exactly 16 CPU clocks (8 CCKs)"

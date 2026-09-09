@@ -49,7 +49,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - Inject parameterized DMA bus contention schedules into the CPU Color Clock phases (CCK1/CCK2):
     - Alternating cycle stalls (simulating display bitplane and Copper DMA).
     - Burst stalls (simulating Blitter nastiness blocking the CPU for $N$ consecutive CCK cycles).
-  - Verify bus arbitration invariants: CPU properly pauses instruction phase on `StepResult::WaitState` when memory access returns `BusResult::WaitState`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
+  - Verify bus arbitration invariants: CPU properly pauses instruction phase when memory access returns `BusResult::WaitState`, accumulates wait states, and matches final register/memory state with exact cycle count increases.
 - **Milestone Gate:** Linearized instructions maintain 100% state invariance and cycle invariance across Chip RAM, Fast RAM, Slow RAM, and under single-cycle and burst DMA contention.
 
 ### Step 2: Reintroduction of Isomorphic Instructions & Complex Operations
@@ -101,7 +101,7 @@ This document outlines the phased development plan, hardware milestones, verific
 - **Step 4.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
   - Implement the baseline Agnus horizontal scanline DMA slot schedule (CCK 0..3 DRAM refresh, CCK 4 disk, CCK 5..8 audio, CCK 12..27 sprites, bitplanes, and even/odd slots).
   - CPU and Blitter contention arbitration (`BLTPRI` Blitter Nasty mode).
-  - Direct bus lock exposure: drive bus lock methods (`lock_chip_ram` / `unlock_chip_ram`) so the CPU and all custom chips observe bus contention and stall with wait states (`StepResult::WaitState`), establishing correct bus contention physics even before individual channel internal DSP/rendering logic is fully completed.
+  - Direct bus lock exposure: drive bus lock methods (`lock_chip_ram` / `unlock_chip_ram`) so the CPU and all custom chips observe bus contention and stall with wait states (`BusResult::WaitState`), establishing correct bus contention physics even before individual channel internal DSP/rendering logic is fully completed.
 - **Step 4.5: Decomposed Subsystem Deep Implementations:**
   - *Agnus:* Copper coprocessor state machine (`MOVE`, `WAIT`, `SKIP`, `CDANG` danger mode), 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer, ascending/descending modes).
   - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (`blep_tables.rs`) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.

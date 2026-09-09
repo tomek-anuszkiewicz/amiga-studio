@@ -8,7 +8,7 @@
 
 use crate::diagnostic::StateDiff;
 use crate::schema::SingleStepTest;
-use m68000::{Cpu, StepResult};
+use m68000::Cpu;
 use memory_bus::MemoryBus;
 
 /// Failure diagnostic for DMA contention invariance violation
@@ -50,9 +50,9 @@ pub fn run_dma_contention_sweep(
 
     let mut base_cck_count = 0;
     loop {
-        let res = golden_cpu.step_cck(&mut golden_bus);
+        let completed = golden_cpu.step_cck(&mut golden_bus);
         base_cck_count += 1;
-        if res.is_completed() || res == StepResult::Halted || res == StepResult::Stopped {
+        if completed || golden_cpu.state.halted || golden_cpu.state.stopped {
             break;
         }
     }
@@ -87,18 +87,18 @@ pub fn run_dma_contention_sweep(
                 bus.invert_test_memory();
             }
 
-            let res = cpu.step_cck(&mut bus);
+            let completed = cpu.step_cck(&mut bus);
 
             if is_stalled {
                 bus.invert_test_memory();
             }
 
-            if res == StepResult::WaitState {
+            if cpu.is_wait_state() {
                 wait_states += 1;
             }
 
             cck_step += 1;
-            if res.is_completed() || res == StepResult::Halted || res == StepResult::Stopped {
+            if completed || cpu.state.halted || cpu.state.stopped {
                 break;
             }
             if cck_step > (base_cck_count * 4 + 100) {
@@ -218,9 +218,9 @@ pub fn run_dma_burst_contention(
 
     let mut base_cck_count = 0;
     loop {
-        let res = golden_cpu.step_cck(&mut golden_bus);
+        let completed = golden_cpu.step_cck(&mut golden_bus);
         base_cck_count += 1;
-        if res.is_completed() || res == StepResult::Halted || res == StepResult::Stopped {
+        if completed || golden_cpu.state.halted || golden_cpu.state.stopped {
             break;
         }
     }
@@ -252,18 +252,18 @@ pub fn run_dma_burst_contention(
             bus.invert_test_memory();
         }
 
-        let res = cpu.step_cck(&mut bus);
+        let completed = cpu.step_cck(&mut bus);
 
         if is_stalled {
             bus.invert_test_memory();
         }
 
-        if res == StepResult::WaitState {
+        if cpu.is_wait_state() {
             wait_states += 1;
         }
 
         cck_step += 1;
-        if res.is_completed() || res == StepResult::Halted || res == StepResult::Stopped {
+        if completed || cpu.state.halted || cpu.state.stopped {
             break;
         }
         if cck_step > (base_cck_count * 4 + burst_length * 2 + 100) {
