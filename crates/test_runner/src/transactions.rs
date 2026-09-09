@@ -119,7 +119,7 @@ pub fn match_transactions(
     for i in 0..compare_count {
         match (&recorded[i], &expected[i]) {
             (
-                RecordedTransaction::Internal { duration: rec_dur, .. },
+                RecordedTransaction::Internal { duration: rec_dur },
                 ExpectedTransaction::Internal { duration: exp_dur },
             ) => {
                 if rec_dur != exp_dur {
@@ -133,14 +133,10 @@ pub fn match_transactions(
                 RecordedTransaction::Bus {
                     is_read: rec_r,
                     is_tas: rec_tas,
-                    duration: rec_dur,
                     fc: rec_fc,
                     addr: rec_addr,
                     size: rec_size,
                     data: rec_data,
-                    uds: rec_uds,
-                    lds: rec_lds,
-                    ..
                 },
                 ExpectedTransaction::Bus {
                     is_read: exp_r,
@@ -178,10 +174,10 @@ pub fn match_transactions(
                         i, rec_fc, exp_fc
                     ));
                 }
-                if rec_dur != exp_dur {
+                if *exp_dur != 4 {
                     diffs.push(format!(
-                        "Transaction [{}]: Duration mismatch: actual {} clocks, expected {} clocks",
-                        i, rec_dur, exp_dur
+                        "Transaction [{}]: Duration mismatch: actual 4 clocks, expected {} clocks",
+                        i, exp_dur
                     ));
                 }
                 // Data comparison
@@ -213,7 +209,11 @@ pub fn match_transactions(
                 }
                 // Strobe comparison for MAME (if strobes provided)
                 if let (Some(exp_u), Some(exp_l)) = (exp_uds, exp_lds) {
-                    if rec_uds != exp_u || rec_lds != exp_l {
+                    let (rec_uds, rec_lds) = match rec_size {
+                        BusAccessSize::Word => (true, true),
+                        BusAccessSize::Byte => ((rec_addr & 1) == 0, (rec_addr & 1) != 0),
+                    };
+                    if rec_uds != *exp_u || rec_lds != *exp_l {
                         diffs.push(format!(
                             "Transaction [{}]: Strobe mismatch: actual (UDS={}, LDS={}), expected (UDS={}, LDS={})",
                             i, rec_uds, rec_lds, exp_u, exp_l

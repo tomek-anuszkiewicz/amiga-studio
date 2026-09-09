@@ -166,8 +166,6 @@ impl Cpu {
             self.state.micro.ea_addr,
             BusAccessSize::Word,
             val,
-            true,
-            true,
         );
         BusResult::Ready(())
     }
@@ -223,8 +221,6 @@ impl Cpu {
             self.state.micro.ea_addr,
             BusAccessSize::Word,
             val,
-            true,
-            true,
         );
         BusResult::Ready(())
     }
@@ -233,7 +229,6 @@ impl Cpu {
     pub fn step_bus_read_byte_finish(&mut self, _bus: &mut MemoryBus) -> BusResult<()> {
         let fc = crate::micro::types::data_fc(&self.state);
         let addr = self.state.micro.ea_addr;
-        let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
         let val = if self.state.micro.read_to_dest {
             (self.state.micro.destination & 0xFF) as u16
         } else {
@@ -246,8 +241,6 @@ impl Cpu {
             addr,
             BusAccessSize::Byte,
             val,
-            uds,
-            lds,
         );
         BusResult::Ready(())
     }
@@ -267,7 +260,6 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
                 let fc = crate::micro::types::data_fc(&self.state);
-                let (uds, lds) = if (addr & 1) == 0 { (true, false) } else { (false, true) };
                 self.state.micro.record_bus_transaction(
                     false,
                     false,
@@ -275,8 +267,6 @@ impl Cpu {
                     addr_masked,
                     BusAccessSize::Byte,
                     val as u16,
-                    uds,
-                    lds,
                 );
                 BusResult::Ready(())
             }
@@ -309,8 +299,6 @@ impl Cpu {
                     addr_masked,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -343,8 +331,6 @@ impl Cpu {
                     addr_masked,
                     memory_bus::BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -371,8 +357,6 @@ impl Cpu {
                     addr_masked,
                     memory_bus::BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -408,8 +392,6 @@ impl Cpu {
             addr,
             memory_bus::BusAccessSize::Word,
             self.state.prefetch[0],
-            true,
-            true,
         );
         self.state.pc = self.state.pc.wrapping_add(2);
         BusResult::Ready(())
@@ -438,8 +420,6 @@ impl Cpu {
             addr,
             memory_bus::BusAccessSize::Word,
             self.state.micro.irc,
-            true,
-            true,
         );
         BusResult::Ready(())
     }
@@ -479,8 +459,6 @@ impl Cpu {
             addr,
             memory_bus::BusAccessSize::Word,
             self.state.micro.irc,
-            true,
-            true,
         );
         self.state.ir = self.state.prefetch[0];
         self.state.prefetch[0] = self.state.micro.irc;

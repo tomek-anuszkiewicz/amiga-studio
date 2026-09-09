@@ -297,8 +297,6 @@ pub fn execute_movem_transfer(
                 addr,
                 BusAccessSize::Word,
                 cpu.state.micro.source as u16,
-                true,
-                true,
             );
             if is_postinc {
                 cpu.state.write_a(reg_ea, cpu.state.micro.ea_addr);
@@ -345,8 +343,6 @@ pub fn execute_movem_transfer(
                         addr,
                         BusAccessSize::Word,
                         cpu.state.micro.source as u16,
-                        true,
-                        true,
                     );
                     if !is_long {
                         let val = (cpu.state.micro.source as i16 as i32) as u32;
@@ -402,8 +398,6 @@ pub fn execute_movem_transfer(
                                 addr_masked,
                                 BusAccessSize::Word,
                                 data,
-                                true,
-                                true,
                             );
                             if is_predec {
                                 if !is_long {

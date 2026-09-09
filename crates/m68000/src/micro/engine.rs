@@ -151,10 +151,7 @@ impl CpuMicroState {
     #[inline]
     pub fn record_internal_transaction(&mut self, duration: u32) {
         if let Some(ref mut log) = self.transaction_log {
-            log.push(RecordedTransaction::Internal {
-                duration,
-                micro_step: self.micro_step,
-            });
+            log.push(RecordedTransaction::Internal { duration });
         }
     }
 
@@ -168,21 +165,15 @@ impl CpuMicroState {
         addr: u32,
         size: BusAccessSize,
         data: u16,
-        uds: bool,
-        lds: bool,
     ) {
         if let Some(ref mut log) = self.transaction_log {
             log.push(RecordedTransaction::Bus {
                 is_read,
                 is_tas,
-                duration: 4,
                 fc,
                 addr: addr & 0x00FF_FFFF,
                 size,
                 data,
-                uds,
-                lds,
-                micro_step: self.micro_step,
             });
         }
     }

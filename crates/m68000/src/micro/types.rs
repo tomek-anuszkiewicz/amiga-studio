@@ -145,19 +145,13 @@ pub enum RecordedTransaction {
     Bus {
         is_read: bool,
         is_tas: bool,
-        duration: u32,
         fc: u8,
         addr: u32,
         size: BusAccessSize,
         data: u16,
-        uds: bool,
-        lds: bool,
-        #[serde(default)]
-        micro_step: u16,
     },
     Internal {
         duration: u32,
-        #[serde(default)]
-        micro_step: u16,
     },
 }
+

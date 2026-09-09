@@ -42,8 +42,6 @@ impl Cpu {
             addr,
             BusAccessSize::Word,
             data,
-            true,
-            true,
         );
         BusResult::Ready(())
     }
@@ -76,8 +74,6 @@ impl Cpu {
             addr,
             BusAccessSize::Word,
             target_prefetch,
-            true,
-            true,
         );
         self.state.micro.target_refill = true;
         BusResult::Ready(())
@@ -119,8 +115,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -142,8 +136,6 @@ impl Cpu {
                     sp_low,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -189,8 +181,6 @@ impl Cpu {
             sp & 0x00FF_FFFF,
             BusAccessSize::Word,
             data,
-            true,
-            true,
         );
         BusResult::Ready(())
     }
@@ -224,8 +214,6 @@ impl Cpu {
             sp & 0x00FF_FFFF,
             BusAccessSize::Word,
             data,
-            true,
-            true,
         );
         BusResult::Ready(())
     }
@@ -259,8 +247,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -292,8 +278,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -326,8 +310,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 self.state.write_a(7, sp_base.wrapping_sub(6));
                 BusResult::Ready(())
@@ -363,8 +345,6 @@ impl Cpu {
             addr,
             BusAccessSize::Word,
             val,
-            true,
-            true,
         );
         BusResult::Ready(())
     }
@@ -397,8 +377,6 @@ impl Cpu {
             addr,
             BusAccessSize::Word,
             val,
-            true,
-            true,
         );
         let target = (self.state.micro.ea_high | (val as u32)) & 0x00FF_FFFF;
         if (target & 1) != 0 {
@@ -448,8 +426,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -481,8 +457,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -514,8 +488,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -547,8 +519,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -580,8 +550,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -613,8 +581,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 BusResult::Ready(())
             }
@@ -647,8 +613,6 @@ impl Cpu {
                     sp,
                     BusAccessSize::Word,
                     val,
-                    true,
-                    true,
                 );
                 self.state.write_a(7, sp_base.wrapping_sub(14));
                 BusResult::Ready(())
