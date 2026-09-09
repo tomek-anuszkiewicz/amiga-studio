@@ -56,6 +56,7 @@ impl RtcMsm6242b {
     }
 
     /// Sets the simulated RTC time to an explicit Unix timestamp (seconds since 1970-01-01)
+    #[inline]
     pub fn set_time(&mut self, timestamp: i64) {
         self.simulated_time = timestamp;
         self.sync_time_to_registers();

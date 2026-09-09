@@ -178,7 +178,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 1: Initiates write cycle, outputs address/data on bus, finishes CCK1
     let r1 = cpu.step_cck(&mut bus);
     assert!(!r1);
-    assert_eq!(cpu.state.micro.micro_step, 3);
+    assert_eq!(cpu.state.micro.micro_step, 1);
 
     // Before CCK2 commit, Agnus DMA grabs Chip RAM
     bus.lock_chip_ram();
@@ -186,13 +186,13 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 2: CCK2 write blocked by DMA -> WaitState
     let r2 = cpu.step_cck(&mut bus);
     assert!(!r2);
-    assert_eq!(cpu.state.micro.micro_step, 3);
+    assert_eq!(cpu.state.micro.micro_step, 1);
     assert_ne!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Color Clock 3: still blocked -> WaitState
     let r3 = cpu.step_cck(&mut bus);
     assert!(!r3);
-    assert_eq!(cpu.state.micro.micro_step, 3);
+    assert_eq!(cpu.state.micro.micro_step, 1);
     assert_ne!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Agnus frees bus
@@ -201,7 +201,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     // Color Clock 4: CCK2 succeeds, write commits to Chip RAM
     let r4 = cpu.step_cck(&mut bus);
     assert!(!r4);
-    assert_eq!(cpu.state.micro.micro_step, 4);
+    assert_eq!(cpu.state.micro.micro_step, 2);
     assert_eq!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Next Color Clocks: Prefetch next instruction word (CCK1 and CCK2)

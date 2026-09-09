@@ -39,11 +39,11 @@ Analyze all modified and added files using `git diff`:
    - Verify zero-allocations in hot execution paths (no `Vec`, `Box`, `format!`, dynamic boxed iterators).
    - Endianness Bypass: bitwise operations (`AND`, `OR`, `EOR`, `NOT`, `CLR`) and block copies avoid redundant byte swapping in hot loops.
    - **Readability, Macro & Const-Generic Prohibition**: Confirm code is clean, idiomatic Rust, self-documenting, strictly free of user-defined macros (`macro_rules!`), and free of const-generic handler functions (`<const N: ...>`). In the era of LLMs, code generation is cheap; macros and const-generic matrices break code navigation and add unnecessary cognitive complexity.
-6. **Inlining Rules**:
-   - Small accessors & cross-crate helpers: `#[inline]`.
-   - CCR condition code flags & bit calculations: `#[inline(always)]`.
-   - Cold exception handlers & diagnostic paths: `#[inline(never)]`.
-   - Large functions (>15–20 lines) and dispatch targets: no inlining.
+6. **Inlining Rules (Verified automatically by test_architecture_rules)**:
+   - Small accessors & cross-crate helpers (e.g. config getters, rtc setters): `#[inline]`.
+   - CCR condition code flags, register Dn/An accessors & leaf ALU calculations (`add_b`, `sub_w`, `and_l`): `#[inline(always)]`.
+   - Cold exception handlers & diagnostic paths (`trigger_address_error`, `trigger_chk_trap`, `trigger_divide_by_zero`): `#[inline(never)]`.
+   - Large functions (>15–20 lines) and indirect dispatch targets (`AluFn`, `StepFn`, bank handlers): strictly no inlining.
 7. **WASM Portability & Host Isolation**:
    - Core emulation crates (`m68000`, `memory_bus`, `config`, `rtc`) must contain zero OS-specific calls (`no std::time::Instant`, `no std::thread`, `no std::fs`).
    - All I/O operates on external decoupled byte buffers (`&[u8]`).

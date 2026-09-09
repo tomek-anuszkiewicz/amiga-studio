@@ -93,6 +93,23 @@ pub fn alu_sub_w_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
 }
 ```
 
+> [!NOTE]
+> `AluFn` callbacks (`pub fn alu_...`), `StepFn` handlers, and decoders (`pub const fn decode_...`) are stored in tables or invoked via function pointers. **Do NOT annotate them with `#[inline]`** (indirect dispatch targets cannot be inlined at call sites).
+
+### Step 3.2b: Cold Exception & Trap Triggers (`#[inline(never)]`)
+When an instruction can fault, trap, or trigger an exception (e.g. `DIVU`/`DIVS` divide-by-zero, `CHK` boundary trap, `TRAPV`, Address Error, or Privilege Violation):
+- All dedicated trap setup or trigger functions (e.g. `trigger_chk_trap`, `trigger_divide_by_zero`, `trigger_address_error`) **MUST be annotated with `#[inline(never)]`**.
+- This guarantees that LLVM keeps cold exception stack frame generation out of the CPU instruction cache (L1i), preserving density in the hot execution path.
+```rust
+#[inline(never)]
+pub fn trigger_chk_trap(state: &mut CpuState) {
+    let old_sr = state.sr;
+    state.set_supervisor(true);
+    state.sr &= !0x8000;
+    ...
+}
+```
+
 ### Step 3.3: Composing Micro-Step Slices using `common::*` and `ea::*`
 Combine specialized bus primitives and ALU callbacks into immutable static arrays:
 
@@ -371,12 +388,15 @@ Run Cartesian stress tests (validating cycle invariance $C = C_0 + 2 \times \tex
 cargo test -p test_runner --test test_dma_cartesian -- test_dma_cartesian_sub
 ```
 
-### Architecture & Formatting Gate
+### Architecture, Inlining & Formatting Gate
 Always verify before declaring complete:
 ```powershell
 cargo fmt --all -- --check
 cargo test -p test_runner --test test_architecture_rules
 ```
+> [!IMPORTANT]
+> The automated test `test_inlining_guidelines_compliance` automatically validates that all leaf ALU functions have `#[inline(always)]`, all cold exception/trap triggers have `#[inline(never)]`, and CCR mutators have `#[inline(always)]`. If an inlining attribute is missing or misconfigured, `test_architecture_rules` will fail immediately.
+
 When completing a milestone or batch, run the full, exhaustive SingleStepTests without limits:
 ```powershell
 $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep

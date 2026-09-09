@@ -131,7 +131,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
   ```powershell
   cargo test -p test_runner --test test_architecture_rules
   ```
-  (enforcing standard `cargo fmt` formatting compliance, Rust source file size <= 800 lines in `crates/*/src/`, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, and path privacy).
+  (enforcing standard `cargo fmt` formatting compliance, Rust source file size <= 800 lines in `crates/*/src/`, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, path privacy, and inlining compliance [cold exception `#[inline(never)]`, leaf ALU and CCR `#[inline(always)]`]).
 - **Mandatory Full SingleStepTests on M68000 Changes:** Whenever completing an implementation plan, milestone, or modifying any code inside `crates/m68000`, the agent **must execute the full, exhaustive SingleStepTests suite** without sampling limits:
   ```powershell
   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep

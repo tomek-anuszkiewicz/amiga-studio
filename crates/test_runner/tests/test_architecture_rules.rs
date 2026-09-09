@@ -329,3 +329,123 @@ fn test_code_formatting_compliance() {
         "Architecture Rule Violation: Code is not formatted according to `cargo fmt`. Run `cargo fmt --all` to resolve formatting issues."
     );
 }
+
+#[test]
+fn test_inlining_guidelines_compliance() {
+    let repo_root = find_repo_root();
+
+    // 1. Cold exception/trap trigger paths must have #[inline(never)]
+    let mut m68k_files = Vec::new();
+    collect_rs_files(&repo_root.join("crates/m68000/src"), &mut m68k_files);
+
+    for file in &m68k_files {
+        let content = fs::read_to_string(file).expect("Failed to read file");
+        let lines: Vec<&str> = content.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("pub fn trigger_") || trimmed.starts_with("fn trigger_") {
+                let prev_lines = if i >= 2 {
+                    &lines[i - 2..i]
+                } else {
+                    &lines[..i]
+                };
+                let has_inline_never = prev_lines.iter().any(|l| l.contains("#[inline(never)]"));
+                assert!(
+                    has_inline_never,
+                    "Inlining Guideline Violation: Cold exception trigger `{}` in {} must be annotated with #[inline(never)]",
+                    trimmed,
+                    file.strip_prefix(&repo_root).unwrap_or(file).display()
+                );
+            }
+        }
+    }
+
+    // 2. CCR bitwise setter methods in state.rs must have #[inline(always)]
+    let ccr_setters = [
+        "pub fn set_ccr_xnzvc",
+        "pub fn set_ccr_nzvc",
+        "pub fn set_ccr_nz_clear_vc",
+        "pub fn set_ccr_z_only",
+        "pub fn set_ccr_v_clear_c",
+    ];
+    let state_rs = repo_root.join("crates/m68000/src/state.rs");
+    let content = fs::read_to_string(&state_rs).expect("Failed to read state.rs");
+    let lines: Vec<&str> = content.lines().collect();
+    for setter in &ccr_setters {
+        let mut found = false;
+        for (i, line) in lines.iter().enumerate() {
+            if line.contains(setter) {
+                found = true;
+                let prev_lines = if i >= 2 {
+                    &lines[i - 2..i]
+                } else {
+                    &lines[..i]
+                };
+                let has_inline_always = prev_lines.iter().any(|l| l.contains("#[inline(always)]"));
+                assert!(
+                    has_inline_always,
+                    "Inlining Guideline Violation: CCR setter `{}` in state.rs must be annotated with #[inline(always)]",
+                    setter
+                );
+            }
+        }
+        assert!(found, "Could not find CCR setter `{}` in state.rs", setter);
+    }
+
+    // 3. Leaf ALU arithmetic and shift functions in instructions/ must have #[inline(always)]
+    let leaf_prefixes = [
+        "pub fn add_",
+        "pub fn sub_",
+        "pub fn and_",
+        "pub fn or_",
+        "pub fn eor_",
+        "pub fn cmp_",
+        "pub fn asr_",
+        "pub fn asl_",
+        "pub fn lsr_",
+        "pub fn lsl_",
+        "pub fn ror_",
+        "pub fn rol_",
+        "pub fn roxr_",
+        "pub fn roxl_",
+        "pub fn neg_",
+        "pub fn negx_",
+        "pub fn not_",
+        "pub fn tst_",
+        "pub fn abcd_",
+        "pub fn sbcd_",
+        "pub fn nbcd_",
+        "pub fn bchg_",
+        "pub fn bclr_",
+        "pub fn bset_",
+        "pub fn btst_",
+    ];
+    let inst_dir = repo_root.join("crates/m68000/src/instructions");
+    let mut inst_files = Vec::new();
+    collect_rs_files(&inst_dir, &mut inst_files);
+
+    for file in &inst_files {
+        let content = fs::read_to_string(file).expect("Failed to read file");
+        let lines: Vec<&str> = content.lines().collect();
+        for (i, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+            for prefix in &leaf_prefixes {
+                if trimmed.starts_with(prefix) {
+                    let prev_lines = if i >= 2 {
+                        &lines[i - 2..i]
+                    } else {
+                        &lines[..i]
+                    };
+                    let has_inline_always =
+                        prev_lines.iter().any(|l| l.contains("#[inline(always)]"));
+                    assert!(
+                        has_inline_always,
+                        "Inlining Guideline Violation: Leaf ALU function `{}` in {} must be annotated with #[inline(always)]",
+                        trimmed,
+                        file.strip_prefix(&repo_root).unwrap_or(file).display()
+                    );
+                }
+            }
+        }
+    }
+}

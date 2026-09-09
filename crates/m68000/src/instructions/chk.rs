@@ -54,6 +54,7 @@ pub static STEPS_CHK_TRAP: [MicroStep; 16] = [
     PREFETCH_TARGET_FINISH,
 ];
 
+#[inline(never)]
 pub fn trigger_chk_trap(state: &mut CpuState) {
     let old_sr = state.sr;
     state.set_supervisor(true);

@@ -52,6 +52,7 @@ pub static STEPS_DIV_ZERO: [MicroStep; 16] = [
     common::PREFETCH_TARGET_FINISH,
 ];
 
+#[inline(never)]
 pub fn trigger_divide_by_zero(state: &mut CpuState) {
     let old_sr = state.sr;
     let updated_sr = old_sr & !0x000F;
