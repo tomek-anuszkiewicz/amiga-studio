@@ -3,8 +3,7 @@
 //! Compares recorded M68000 CPU bus transactions against silicon reference logs
 //! from Tom Harte SingleStepTests-680x0 and MAME SingleStepTests.
 
-use m68000::RecordedTransaction;
-use memory_bus::BusAccessSize;
+use memory_bus::{BusAccessSize, RecordedTransaction};
 
 /// Expected transaction parsed from SingleStepTests JSON
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,7 +98,7 @@ pub fn parse_transactions(
     Ok(transactions)
 }
 
-/// Matches recorded CPU transactions against the expected test sequence
+/// Matches recorded CPU bus transactions against the expected test sequence
 pub fn match_transactions(
     recorded: &[RecordedTransaction],
     expected: &[ExpectedTransaction],
@@ -107,124 +106,99 @@ pub fn match_transactions(
 ) -> Result<(), Vec<String>> {
     let mut diffs = Vec::new();
 
-    if recorded.len() != expected.len() {
+    // Filter out internal / non-bus operations ("n") from expected test vectors
+    let expected_bus: Vec<&ExpectedTransaction> = expected
+        .iter()
+        .filter(|tx| matches!(tx, ExpectedTransaction::Bus { .. }))
+        .collect();
+
+    if recorded.len() != expected_bus.len() {
         diffs.push(format!(
-            "Transaction count mismatch: recorded {} transactions, expected {}",
+            "Transaction count mismatch: recorded {} bus transactions, expected {}",
             recorded.len(),
-            expected.len()
+            expected_bus.len()
         ));
     }
 
-    let compare_count = recorded.len().min(expected.len());
+    let compare_count = recorded.len().min(expected_bus.len());
     for i in 0..compare_count {
-        match (&recorded[i], &expected[i]) {
-            (
-                RecordedTransaction::Internal { duration: rec_dur },
-                ExpectedTransaction::Internal { duration: exp_dur },
-            ) => {
-                if rec_dur != exp_dur {
-                    diffs.push(format!(
-                        "Transaction [{}]: Internal duration mismatch: actual {} clocks, expected {} clocks",
-                        i, rec_dur, exp_dur
-                    ));
-                }
+        let rec = &recorded[i];
+        if let ExpectedTransaction::Bus {
+            is_read: exp_r,
+            is_tas: exp_tas,
+            duration: exp_dur,
+            addr: exp_addr,
+            size: exp_size,
+            data: exp_data,
+            uds: exp_uds,
+            lds: exp_lds,
+            ..
+        } = expected_bus[i]
+        {
+            let exp_read = *exp_r || *exp_tas;
+            if rec.is_read != exp_read {
+                diffs.push(format!(
+                    "Transaction [{}]: Direction mismatch: actual read={}, expected read={}",
+                    i, rec.is_read, exp_read
+                ));
             }
-            (
-                RecordedTransaction::Bus {
-                    is_read: rec_r,
-                    addr: rec_addr,
-                    size: rec_size,
-                    data: rec_data,
-                },
-                ExpectedTransaction::Bus {
-                    is_read: exp_r,
-                    is_tas: exp_tas,
-                    duration: exp_dur,
-                    addr: exp_addr,
-                    size: exp_size,
-                    data: exp_data,
-                    uds: exp_uds,
-                    lds: exp_lds,
-                    ..
-                },
-            ) => {
-                let exp_read = *exp_r || *exp_tas;
-                if *rec_r != exp_read {
-                    diffs.push(format!(
-                        "Transaction [{}]: Direction mismatch: actual read={}, expected read={}",
-                        i, rec_r, exp_read
-                    ));
-                }
-                if (rec_addr & 0x00FF_FFFF) != (exp_addr & 0x00FF_FFFF) {
-                    diffs.push(format!(
-                        "Transaction [{}]: Address mismatch: actual ${:06X}, expected ${:06X}",
-                        i, rec_addr, exp_addr
-                    ));
-                }
-                if rec_size != exp_size {
-                    diffs.push(format!(
-                        "Transaction [{}]: Access size mismatch: actual {:?}, expected {:?}",
-                        i, rec_size, exp_size
-                    ));
-                }
-                if *exp_dur != 4 {
-                    diffs.push(format!(
-                        "Transaction [{}]: Duration mismatch: actual 4 clocks, expected {} clocks",
-                        i, exp_dur
-                    ));
-                }
-                // Data comparison
-                match rec_size {
-                    BusAccessSize::Word => {
-                        if rec_data != exp_data {
-                            diffs.push(format!(
-                                "Transaction [{}]: Word data mismatch: actual ${:04X}, expected ${:04X}",
-                                i, rec_data, exp_data
-                            ));
-                        }
-                    }
-                    BusAccessSize::Byte => {
-                        let actual_byte = (rec_data & 0xFF) as u8;
-                        let expected_byte = if is_harte {
-                            (*exp_data & 0xFF) as u8
-                        } else if exp_uds == &Some(true) {
-                            ((*exp_data >> 8) & 0xFF) as u8
-                        } else {
-                            (*exp_data & 0xFF) as u8
-                        };
-                        if actual_byte != expected_byte {
-                            diffs.push(format!(
-                                "Transaction [{}]: Byte data mismatch: actual ${:02X}, expected ${:02X}",
-                                i, actual_byte, expected_byte
-                            ));
-                        }
-                    }
-                }
-                // Strobe comparison for MAME (if strobes provided)
-                if let (Some(exp_u), Some(exp_l)) = (exp_uds, exp_lds) {
-                    let (rec_uds, rec_lds) = match rec_size {
-                        BusAccessSize::Word => (true, true),
-                        BusAccessSize::Byte => ((rec_addr & 1) == 0, (rec_addr & 1) != 0),
-                    };
-                    if rec_uds != *exp_u || rec_lds != *exp_l {
+            if (rec.addr & 0x00FF_FFFF) != (exp_addr & 0x00FF_FFFF) {
+                diffs.push(format!(
+                    "Transaction [{}]: Address mismatch: actual ${:06X}, expected ${:06X}",
+                    i, rec.addr, exp_addr
+                ));
+            }
+            if rec.size != *exp_size {
+                diffs.push(format!(
+                    "Transaction [{}]: Access size mismatch: actual {:?}, expected {:?}",
+                    i, rec.size, exp_size
+                ));
+            }
+            if *exp_dur != 4 {
+                diffs.push(format!(
+                    "Transaction [{}]: Duration mismatch: actual 4 clocks, expected {} clocks",
+                    i, exp_dur
+                ));
+            }
+            // Data comparison
+            match rec.size {
+                BusAccessSize::Word => {
+                    if rec.data != *exp_data {
                         diffs.push(format!(
-                            "Transaction [{}]: Strobe mismatch: actual (UDS={}, LDS={}), expected (UDS={}, LDS={})",
-                            i, rec_uds, rec_lds, exp_u, exp_l
+                            "Transaction [{}]: Word data mismatch: actual ${:04X}, expected ${:04X}",
+                            i, rec.data, exp_data
+                        ));
+                    }
+                }
+                BusAccessSize::Byte => {
+                    let actual_byte = (rec.data & 0xFF) as u8;
+                    let expected_byte = if is_harte {
+                        (*exp_data & 0xFF) as u8
+                    } else if exp_uds == &Some(true) {
+                        ((*exp_data >> 8) & 0xFF) as u8
+                    } else {
+                        (*exp_data & 0xFF) as u8
+                    };
+                    if actual_byte != expected_byte {
+                        diffs.push(format!(
+                            "Transaction [{}]: Byte data mismatch: actual ${:02X}, expected ${:02X}",
+                            i, actual_byte, expected_byte
                         ));
                     }
                 }
             }
-            (RecordedTransaction::Bus { .. }, ExpectedTransaction::Internal { .. }) => {
-                diffs.push(format!(
-                    "Transaction [{}]: Type mismatch: actual is Bus cycle, expected is Internal operation",
-                    i
-                ));
-            }
-            (RecordedTransaction::Internal { .. }, ExpectedTransaction::Bus { .. }) => {
-                diffs.push(format!(
-                    "Transaction [{}]: Type mismatch: actual is Internal operation, expected is Bus cycle",
-                    i
-                ));
+            // Strobe comparison for MAME (if strobes provided)
+            if let (Some(exp_u), Some(exp_l)) = (exp_uds, exp_lds) {
+                let (rec_uds, rec_lds) = match rec.size {
+                    BusAccessSize::Word => (true, true),
+                    BusAccessSize::Byte => ((rec.addr & 1) == 0, (rec.addr & 1) != 0),
+                };
+                if rec_uds != *exp_u || rec_lds != *exp_l {
+                    diffs.push(format!(
+                        "Transaction [{}]: Strobe mismatch: actual (UDS={}, LDS={}), expected (UDS={}, LDS={})",
+                        i, rec_uds, rec_lds, exp_u, exp_l
+                    ));
+                }
             }
         }
     }

@@ -7,7 +7,7 @@ use crate::micro::common;
 use crate::micro::ea;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, BusResult, MemoryBus};
+use memory_bus::{AddressBus, BusResult};
 
 // ============================================================================
 // Pure ALU Callbacks: MOVEM
@@ -235,7 +235,7 @@ fn movem_write_reg(state: &mut CpuState, bit_idx: u8, val: u32) {
 }
 
 /// Executes a single bus step of the MOVEM multi-register transfer state machine
-pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut MemoryBus) -> BusResult<()> {
+pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()> {
     let ir = cpu.state.ir;
     let is_reg_to_mem = (ir & 0x0400) == 0;
     let is_long = (ir & 0x0040) != 0;
@@ -289,12 +289,6 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut MemoryBus) -> BusResult<(
                 }
             }
         } else {
-            cpu.state.micro.record_bus_transaction(
-                true,
-                addr,
-                BusAccessSize::Word,
-                cpu.state.micro.source as u16,
-            );
             if is_postinc {
                 cpu.state.write_a(reg_ea, cpu.state.micro.ea_addr);
             }
@@ -331,12 +325,6 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut MemoryBus) -> BusResult<(
                         }
                     }
                 } else {
-                    cpu.state.micro.record_bus_transaction(
-                        true,
-                        addr,
-                        BusAccessSize::Word,
-                        cpu.state.micro.source as u16,
-                    );
                     if !is_long {
                         let val = (cpu.state.micro.source as i16 as i32) as u32;
                         movem_write_reg(&mut cpu.state, bit_idx, val);
@@ -392,12 +380,6 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut MemoryBus) -> BusResult<(
                     match bus.write_word(addr_masked, data) {
                         BusResult::WaitState => BusResult::WaitState,
                         BusResult::Ready(()) => {
-                            cpu.state.micro.record_bus_transaction(
-                                false,
-                                addr_masked,
-                                BusAccessSize::Word,
-                                data,
-                            );
                             if is_predec {
                                 if !is_long {
                                     cpu.state.micro.ea_addr =

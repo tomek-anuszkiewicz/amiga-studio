@@ -5,13 +5,13 @@
 
 use crate::core::Cpu;
 use crate::state::CpuState;
-use memory_bus::{BusAccessSize, BusResult, MemoryBus};
+use memory_bus::{AddressBus, BusResult};
 use serde::{Deserialize, Serialize};
 
 /// Atomic step execution function.
 /// Takes the full CPU and memory bus, returning `BusResult<()>` indicating whether
 /// the bus cycle completed (`Ready(())`) or stalled on wait states (`WaitState`).
-pub type StepFn = fn(cpu: &mut Cpu, bus: &mut MemoryBus) -> BusResult<()>;
+pub type StepFn = fn(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()>;
 
 /// Pure internal ALU operation.
 /// Operates strictly on `CpuState` using pre-decoded register indices.
@@ -137,18 +137,4 @@ pub static EMPTY_STEPS: [MicroStep; 0] = [];
 /// Default function for serde deserialization
 pub fn default_empty_steps() -> &'static [MicroStep] {
     &EMPTY_STEPS
-}
-
-/// A recorded bus or internal transaction captured for cycle-exact verification
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RecordedTransaction {
-    Bus {
-        is_read: bool,
-        addr: u32,
-        size: BusAccessSize,
-        data: u16,
-    },
-    Internal {
-        duration: u32,
-    },
 }

@@ -9,7 +9,7 @@ use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
-/// Initial setup for TRAP exception: saves old SR, switches to supervisor, records 4 internal clocks
+/// Initial setup for TRAP exception: saves old SR, switches to supervisor
 pub fn alu_trap_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let opcode = state.ir;
     let vec = (opcode & 0x000F) as u32;
@@ -23,7 +23,6 @@ pub fn alu_trap_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.source = return_pc;
     state.micro.destination = old_sr as u32;
     state.micro.ea_addr = vector_addr;
-    state.micro.record_internal_transaction(4);
 }
 
 pub static ALU_TRAP_INIT: MicroStep = MicroStep {

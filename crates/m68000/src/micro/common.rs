@@ -209,8 +209,6 @@ pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.micro.source = state.instruction_pc;
     state.micro.destination = old_sr as u32;
     state.micro.ea_addr = VECTOR_ADDRESS_ERROR;
-
-    state.micro.record_internal_transaction(4);
 }
 
 /// CCK1: Address Error initial ALU step (S=1, T=0, SSP check, vector setup)

@@ -5,10 +5,13 @@
 
 pub mod arbitration;
 pub mod big_array;
+pub mod bus_trait;
 pub mod map;
+pub mod test_bus;
 pub mod test_injection;
 
 pub use arbitration::{function_code, BusAccessSize, BusResult};
+pub use bus_trait::{AddressBus, RecordedTransaction};
 pub use config::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
 };
@@ -18,6 +21,7 @@ pub use map::{
 };
 pub use rtc;
 pub use rtc::RtcMsm6242b;
+pub use test_bus::TestMemoryBus;
 
 use serde::{Deserialize, Serialize};
 
@@ -91,13 +95,8 @@ pub struct MemoryBus {
     /// Real-Time Clock (OKI MSM6242B) at $DC0000..$DC003F
     pub rtc: rtc::RtcMsm6242b,
 
-    /// Sparse test memory for CPU SingleStepTests and synthetic test runner execution
-    #[serde(skip)]
-    pub test_memory: Option<std::collections::HashMap<u32, u8>>,
-
-    /// Default byte value returned when reading unpopulated test memory or unmapped open bus space.
+    /// Default byte value returned when reading unpopulated memory or unmapped open bus space.
     /// In real Amiga hardware execution, this is 0xFF (floating open bus with pull-up resistors).
-    /// In SingleStepTests flat RAM harness, this can be configured to 0x00.
     #[serde(default = "default_unmapped_byte")]
     pub unmapped_byte: u8,
 }
@@ -117,36 +116,6 @@ impl MemoryBus {
     /// Creates a standard A500 MemoryBus using the default configuration (Standard 1 MB + RTC, PAL)
     pub fn new() -> Self {
         Self::from_config(A500Config::default())
-    }
-
-    /// Creates a lightweight test memory bus with sparse 24-bit test RAM for CPU SingleStepTests
-    pub fn new_test() -> Self {
-        let config = A500Config::default();
-        let bank_map = [map::OPEN_BUS_HANDLER; 256];
-        let rtc = rtc::RtcMsm6242b::new(config.rtc());
-        Self {
-            config,
-            bank_map,
-            chip_ram: Vec::new(),
-            slow_ram: None,
-            fast_ram: None,
-            kickstart_rom: Vec::new(),
-            chip_ram_blocked: false,
-            low_memory_overlay: false,
-            cia_a_registers: [0xFF; 16],
-            cia_b_registers: [0xFF; 16],
-            custom_registers: [0xFFFF; 256],
-            rtc,
-            test_memory: Some(std::collections::HashMap::with_capacity(32)),
-            unmapped_byte: 0xFF,
-        }
-    }
-
-    /// Enables sparse flat test memory on an existing bus
-    pub fn enable_flat_test_memory(&mut self) {
-        if self.test_memory.is_none() {
-            self.test_memory = Some(std::collections::HashMap::with_capacity(32));
-        }
     }
 
     /// Returns the byte value returned when reading unpopulated test memory or unmapped open bus
@@ -190,7 +159,6 @@ impl MemoryBus {
             cia_b_registers: [0xFF; 16],
             custom_registers: [0xFFFF; 256],
             rtc,
-            test_memory: None,
             unmapped_byte: 0xFF,
         };
         bus.map_kickstart_to_low_memory();
@@ -344,5 +312,32 @@ impl MemoryBus {
     pub fn reset_warm(&mut self) {
         self.chip_ram_blocked = false;
         self.map_kickstart_to_low_memory();
+    }
+}
+
+impl AddressBus for MemoryBus {
+    #[inline(always)]
+    fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
+        MemoryBus::read_byte(self, addr)
+    }
+
+    #[inline(always)]
+    fn read_word(&mut self, addr: u32) -> BusResult<u16> {
+        MemoryBus::read_word(self, addr)
+    }
+
+    #[inline(always)]
+    fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
+        MemoryBus::write_byte(self, addr, val)
+    }
+
+    #[inline(always)]
+    fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
+        MemoryBus::write_word(self, addr, val)
+    }
+
+    #[inline(always)]
+    fn read_word_debug(&self, addr: u32) -> u16 {
+        MemoryBus::read_word_debug(self, addr)
     }
 }

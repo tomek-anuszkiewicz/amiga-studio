@@ -255,7 +255,7 @@ flowchart TD
 
 ## 5. Rust Test Harness Implementation (`crates/test_runner`)
 
-The test harness is implemented in the dedicated workspace crate [`crates/test_runner`](../../../crates/test_runner). It executes test vectors directly against `m68000::Cpu` and a lightweight test bus (`MemoryBus::new_test()`):
+The test harness is implemented in the dedicated workspace crate [`crates/test_runner`](../../../crates/test_runner). It executes test vectors directly against `m68000::Cpu` and a dedicated test bus (`TestMemoryBus::new()`):
 
 ### 5.1 Module Structure
 - **[`schema.rs`](../../../crates/test_runner/src/schema.rs):** Strict deserialization of `SingleStepTest` and `CpuTestState` using `#[serde(deny_unknown_fields)]`.
@@ -270,7 +270,7 @@ The test harness is implemented in the dedicated workspace crate [`crates/test_r
 
 ### 5.2 CPU State Setup & Execution Flow
 ```rust
-let mut bus = MemoryBus::new_test();
+let mut bus = TestMemoryBus::new();
 bus.load_test_ram(&test.initial.ram);
 
 let mut cpu = Cpu::new();

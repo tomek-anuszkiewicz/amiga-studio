@@ -63,8 +63,6 @@ fn test_unaligned_address_error() {
     cpu.state.write_a(7, 0x003000);
     cpu.state.instruction_pc = 0x001000;
     cpu.state.ir = 0x3010; // MOVE.W (A0), D0
-
-    cpu.enable_transaction_recording(true);
     cpu.trigger_address_error(0x001001, true, false);
 
     let clocks = cpu.step_instruction(&mut bus);

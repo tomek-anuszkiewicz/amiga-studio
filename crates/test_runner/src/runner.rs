@@ -3,7 +3,7 @@ use crate::reporter::{record_suite_result, SuiteResult, TestFailureSummary};
 use crate::schema::SingleStepTest;
 use flate2::read::GzDecoder;
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use memory_bus::TestMemoryBus;
 use std::fs::File;
 use std::io::{BufReader, Read};
 
@@ -40,14 +40,14 @@ pub fn run_single_test_detail(
 
     let mut failure = TestFailure::new(&test.name, file_path, test_index, test.length);
 
-    let mut bus = MemoryBus::new_test();
+    let mut bus = TestMemoryBus::new();
     // SingleStepTests flat RAM harness: unpopulated addresses in test vectors default to 0x00
     bus.set_unmapped_byte(0x00);
     bus.load_test_ram(&test.initial.ram);
 
     let mut cpu = Cpu::new();
     if mode == VerifyMode::Full {
-        cpu.enable_transaction_recording(true);
+        bus.enable_transaction_recording(true);
     }
     cpu.state.set_d_regs([
         test.initial.d0,
@@ -253,7 +253,7 @@ pub fn run_single_test_detail(
     if mode == VerifyMode::Full {
         match crate::transactions::parse_transactions(&test.transactions) {
             Ok(expected_txs) => {
-                let recorded = cpu.recorded_transactions().unwrap_or(&[]);
+                let recorded = bus.recorded_transactions().unwrap_or(&[]);
                 if let Err(tx_diffs) =
                     crate::transactions::match_transactions(recorded, &expected_txs, is_harte)
                 {

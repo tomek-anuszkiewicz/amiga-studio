@@ -52,17 +52,17 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
   - `$DC`: `RTC_HANDLER` (OKI MSM6242B, active in `Standard1Mb` & `ExpandedPowerUser`)
   - `$DF`: `CUSTOM_CHIPS_HANDLER` (Agnus, Denise, Paula)
   - `$F8..=$FF`: `KICKSTART_ROM_HANDLER`
-### 2.2 Unmapped Open Bus Physics ($FF / $FFFF) & Test Memory Override
+### 2.2 Unmapped Open Bus Physics ($FF / $FFFF) & Decoupled Test Architecture
 
 - **Amiga Physical Open Bus:**
   On physical Amiga 500 hardware, unpopulated memory address space, disconnected expansions, unmapped chip areas, or CIA lane gaps float high due to internal/external pull-up resistors.
   - A byte read from an unmapped address must return **`$FF`** (`0xFF`).
   - A word read from an unmapped address must return **`$FFFF`** (`0xFFFF`).
   - Writes to unmapped space are silent no-ops and must never trigger host panics or out-of-bounds indexing.
-- **Configurable `unmapped_byte` Field:**
-  - Real emulation strictly defaults to `unmapped_byte = 0xFF` across all constructors (`MemoryBus::new()`, `from_config()`, `new_test()`).
-  - Synthetic CPU test vectors (such as `SingleStepTests`) expect a flat RAM model where unpopulated memory addresses default to `$00`.
-  - The default unmapped value is dynamically configurable via `bus.set_unmapped_byte(val)`. In `test_runner/src/runner.rs`, SingleStepTests explicitly set `bus.set_unmapped_byte(0x00)` so unpopulated test locations read 0, while real emulator execution and production testing always use `$FF`.
+- **Decoupled Architecture (`TestMemoryBus` vs `MemoryBus`):**
+  - Real emulation strictly uses `MemoryBus`, with unmapped open bus space defaulting to `$FF`. `MemoryBus` is completely free of test-harness branching or logging in its read/write bank dispatch.
+  - Synthetic CPU test vectors (such as `SingleStepTests` flat RAM) execute against `TestMemoryBus`, which encapsulates sparse test RAM, unmapped byte defaults (`0x00`), and automatic bus cycle transaction recording.
+  - Both buses implement the unified `AddressBus` trait (`crates/memory_bus/src/bus_trait.rs`).
 
 ---
 

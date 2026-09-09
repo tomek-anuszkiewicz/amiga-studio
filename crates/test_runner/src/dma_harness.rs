@@ -9,7 +9,7 @@
 use crate::diagnostic::StateDiff;
 use crate::schema::SingleStepTest;
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use memory_bus::TestMemoryBus;
 
 /// Failure diagnostic for DMA contention invariance violation
 #[derive(Debug, Clone)]
@@ -41,7 +41,7 @@ pub fn run_dma_contention_sweep(
     max_phases: usize,
 ) -> Result<(), DmaContentionFailure> {
     // 1. Establish golden baseline without contention
-    let mut golden_bus = MemoryBus::new_test();
+    let mut golden_bus = TestMemoryBus::new();
     golden_bus.set_unmapped_byte(0x00);
     golden_bus.load_test_ram(&test.initial.ram);
 
@@ -70,7 +70,7 @@ pub fn run_dma_contention_sweep(
     // 2. Sweep single-cycle DMA stalls across all phases: 0..base_cck_count
     let sweep_limit = base_cck_count.min(max_phases);
     for stall_phase in 0..sweep_limit {
-        let mut bus = MemoryBus::new_test();
+        let mut bus = TestMemoryBus::new();
         bus.set_unmapped_byte(0x00);
         bus.load_test_ram(&test.initial.ram);
 
@@ -207,7 +207,7 @@ pub fn run_dma_burst_contention(
     burst_length: usize,
 ) -> Result<(), DmaContentionFailure> {
     // 1. Establish golden baseline without contention
-    let mut golden_bus = MemoryBus::new_test();
+    let mut golden_bus = TestMemoryBus::new();
     golden_bus.set_unmapped_byte(0x00);
     golden_bus.load_test_ram(&test.initial.ram);
 
@@ -232,7 +232,7 @@ pub fn run_dma_burst_contention(
     }
 
     // 2. Inject burst stall
-    let mut bus = MemoryBus::new_test();
+    let mut bus = TestMemoryBus::new();
     bus.set_unmapped_byte(0x00);
     bus.load_test_ram(&test.initial.ram);
 

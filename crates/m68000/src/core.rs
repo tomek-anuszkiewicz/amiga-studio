@@ -2,7 +2,7 @@
 
 use crate::micro::types;
 use crate::state::CpuState;
-use memory_bus::{BusResult, MemoryBus};
+use memory_bus::{AddressBus, BusResult};
 
 /// Motorola 68000 CPU Core
 #[derive(Debug, Clone)]
@@ -24,7 +24,7 @@ impl Cpu {
     }
 
     /// Reset CPU according to Cold/Warm reset specification
-    pub fn reset(&mut self, bus: &mut MemoryBus) {
+    pub fn reset(&mut self, bus: &mut dyn AddressBus) {
         self.state.sr = 0x2700;
         self.state.stopped = false;
         self.state.halted = false;
@@ -69,7 +69,7 @@ impl Cpu {
     }
 
     /// CCK phase stepping primitive (each invocation steps exactly 1 CCK = 2 CPU clocks)
-    pub fn step_cck(&mut self, bus: &mut MemoryBus) -> bool {
+    pub fn step_cck(&mut self, bus: &mut dyn AddressBus) -> bool {
         if self.state.halted || self.state.stopped {
             return false;
         }
@@ -149,13 +149,13 @@ impl Cpu {
         addr: u32,
         is_read: bool,
         is_program_space: bool,
-        _bus: &mut MemoryBus,
+        _bus: &mut dyn AddressBus,
     ) {
         self.trigger_address_error(addr, is_read, is_program_space);
     }
 
     /// Executes the active instruction's micro-step sequence directly
-    pub fn execute_micro_step(&mut self, bus: &mut MemoryBus) -> bool {
+    pub fn execute_micro_step(&mut self, bus: &mut dyn AddressBus) -> bool {
         if self.state.halted || self.state.stopped {
             return true;
         }
@@ -261,26 +261,8 @@ impl Cpu {
         true
     }
 
-    /// Enables or disables transaction recording for cycle-exact test harnesses
-    #[inline]
-    pub fn enable_transaction_recording(&mut self, enabled: bool) {
-        self.state.micro.enable_transaction_recording(enabled);
-    }
-
-    /// Test & verification harness helper: returns recorded bus transactions if recording is enabled
-    #[inline]
-    pub fn recorded_transactions(&self) -> Option<&[crate::micro::RecordedTransaction]> {
-        self.state.micro.transaction_log.as_deref()
-    }
-
-    /// Records an internal CPU operation duration into the transaction log without scheduling clocks
-    #[inline]
-    pub fn record_internal_transaction(&mut self, duration: u32) {
-        self.state.micro.record_internal_transaction(duration);
-    }
-
     /// Executes exactly one full M68000 instruction via direct table dispatch
-    pub fn step_instruction(&mut self, bus: &mut MemoryBus) -> u32 {
+    pub fn step_instruction(&mut self, bus: &mut dyn AddressBus) -> u32 {
         if self.state.halted || self.state.stopped {
             return 0;
         }
@@ -302,7 +284,7 @@ impl Cpu {
     }
 
     /// Reloads PC and prefetches the next two instruction words (after branch or jump)
-    pub fn reload_pc_and_prefetch(&mut self, target_pc: u32, bus: &mut MemoryBus) {
+    pub fn reload_pc_and_prefetch(&mut self, target_pc: u32, bus: &mut dyn AddressBus) {
         self.state.pc = target_pc;
         self.state.ir = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);

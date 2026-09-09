@@ -3,10 +3,7 @@
 //! Models cycle-exact 2-phase Color Clock execution (CCK1 and CCK2) per 4-clock
 //! CPU bus cycle, driving atomic MicroSteps directly from pre-compiled slices.
 
-use super::types::{
-    default_empty_steps, MicroStep, OpcodeDescriptor, RecordedTransaction, EMPTY_STEPS,
-};
-use memory_bus::BusAccessSize;
+use super::types::{default_empty_steps, MicroStep, OpcodeDescriptor, EMPTY_STEPS};
 use serde::{Deserialize, Serialize};
 
 /// Sub-cycle execution micro-state of the M68000 CPU
@@ -29,9 +26,6 @@ pub struct CpuMicroState {
     /// Tracks whether the last memory read targeted destination vs source (for shared CCK2 loggers)
     #[serde(default)]
     pub read_to_dest: bool,
-    /// Optional transaction log for cycle-exact verification (disabled by default)
-    #[serde(skip)]
-    pub transaction_log: Option<Vec<RecordedTransaction>>,
     /// Clocks remaining for the active micro-step (0 when completed or between steps)
     #[serde(default)]
     pub clocks_remaining: u16,
@@ -79,7 +73,7 @@ impl Default for CpuMicroState {
 }
 
 impl CpuMicroState {
-    /// Creates a new CPU micro-state with no active transactions
+    /// Creates a new CPU micro-state
     pub fn new() -> Self {
         Self {
             irc: 0,
@@ -88,7 +82,6 @@ impl CpuMicroState {
             movem_mask: 0,
             movem_state: 0,
             read_to_dest: false,
-            transaction_log: None,
             clocks_remaining: 0,
             source: 0,
             destination: 0,
@@ -134,42 +127,5 @@ impl CpuMicroState {
         self.reg_dst = desc.reg_dst;
         self.micro_step = 0;
         self.clocks_remaining = 0;
-    }
-
-    /// Enables or disables transaction recording
-    #[inline]
-    pub fn enable_transaction_recording(&mut self, enabled: bool) {
-        if enabled {
-            self.transaction_log = Some(Vec::new());
-        } else {
-            self.transaction_log = None;
-        }
-    }
-
-    /// Records an internal CPU operation in the transaction log without overriding microcode step clocks
-    #[inline]
-    pub fn record_internal_transaction(&mut self, duration: u32) {
-        if let Some(ref mut log) = self.transaction_log {
-            log.push(RecordedTransaction::Internal { duration });
-        }
-    }
-
-    /// Helper to record a completed bus cycle into the transaction log
-    #[inline]
-    pub fn record_bus_transaction(
-        &mut self,
-        is_read: bool,
-        addr: u32,
-        size: BusAccessSize,
-        data: u16,
-    ) {
-        if let Some(ref mut log) = self.transaction_log {
-            log.push(RecordedTransaction::Bus {
-                is_read,
-                addr: addr & 0x00FF_FFFF,
-                size,
-                data,
-            });
-        }
     }
 }

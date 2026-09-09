@@ -1,4 +1,4 @@
-use memory_bus::{BusResult, MemoryBus};
+use memory_bus::{BusResult, MemoryBus, TestMemoryBus};
 
 #[test]
 fn test_boot_overlay_and_cia_control() {
@@ -95,8 +95,8 @@ fn test_configurable_unmapped_byte_default_ff_and_test_mode() {
     assert_eq!(real_bus.read_byte_debug(0x180000), 0xAA);
     assert_eq!(real_bus.read_word_debug(0x180000), 0xAAAA);
 
-    // 2. Test harness mode: MemoryBus::new_test() defaults to 0xFF, configurable to 0x00 for flat test RAM
-    let mut test_bus = MemoryBus::new_test();
+    // 2. Test harness mode: TestMemoryBus::new() defaults to 0xFF, configurable to 0x00 for flat test RAM
+    let mut test_bus = TestMemoryBus::new();
     assert_eq!(test_bus.unmapped_byte(), 0xFF);
     test_bus.load_test_ram(&[[0x1000, 0x42]]);
     assert_eq!(test_bus.read_byte_debug(0x1000), 0x42);
