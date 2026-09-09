@@ -48,8 +48,8 @@ This document outlines the phased development plan, hardware milestones, verific
   - *Completed:* **Batch 1.6 (Remaining Move Sizes):** `MOVE.B`, `MOVE.L` (derived from `MOVE.W` archetype; 100% SingleStepTests & Cartesian DMA verified).
   - *Completed:* **Batch 1.7 (Multiplication & Division):** `MULU`, `MULS`, `DIVU`, `DIVS` (data-dependent cycle timing, divide-by-zero vector 5 trap; 100% SingleStepTests & Cartesian DMA verified).
   - *Completed:* **Batch 1.8 (BCD & Math Extensions):** `ABCD`, `SBCD`, `NBCD`, `NEG`, `NEGX`, `CLR`, `EXT` (100% SingleStepTests & Cartesian DMA verified).
+  - *Completed:* **Batch 1.9 (Looping & Conditional Setting):** `DBcc`, `Scc` (100% SingleStepTests & Cartesian DMA verified).
 - **Phase B: Implementation of Remaining Complex & Multi-Cycle Instructions:**
-  - *Batch 1.9 (Looping & Conditional Setting):* `DBcc`, `Scc`.
   - *Batch 1.10 (Stack & Frame Control):* `LINK`, `UNLK`, `LEA`, `EXG`, `SWAP`, `CHK`.
   - *Batch 1.11 (Privileged & Atomic Hardware Ops):* `MOVE to/from SR`, `MOVE USP`, `STOP`, `RESET`, `TAS` (indivisible RMW bus cycle with Amiga write-drop quirk).
 - **Dual-Tier Verification Gate for Every Instruction Batch:**

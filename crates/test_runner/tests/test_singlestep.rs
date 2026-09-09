@@ -735,3 +735,17 @@ fn test_sbcd() {
 fn test_nbcd() {
     run_dual_test("NBCD", DEFAULT_SAMPLE_LIMIT);
 }
+
+// ============================================================================
+// Looping & Conditional Setting (Batch 1.9: DBcc, Scc)
+// ============================================================================
+
+#[test]
+fn test_dbcc() {
+    run_dual_test("DBcc", DEFAULT_SAMPLE_LIMIT);
+}
+
+#[test]
+fn test_scc() {
+    run_dual_test("Scc", DEFAULT_SAMPLE_LIMIT);
+}

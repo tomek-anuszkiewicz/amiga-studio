@@ -409,6 +409,21 @@ pub const fn build_opcode_descriptor_table() -> [OpcodeDescriptor; 65536] {
                     };
                 }
             }
+        } else {
+            // Batch 1.9: size == 3: DBcc (mode == 1) and Scc (mode != 1)
+            if mode == 1 {
+                table[op] = OpcodeDescriptor {
+                    steps: &crate::instructions::dbcc::STEPS_DBCC,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
+            } else if let Some(steps) = crate::instructions::scc::decode_scc_steps(mode, reg) {
+                table[op] = OpcodeDescriptor {
+                    steps,
+                    reg_src: 0,
+                    reg_dst: reg,
+                };
+            }
         }
         op += 1;
     }

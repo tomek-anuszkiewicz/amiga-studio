@@ -274,3 +274,12 @@ fn test_dma_cartesian_bcd_math() {
         "EXT.w", "EXT.l", "ABCD", "SBCD", "NBCD",
     ]);
 }
+
+// ============================================================================
+// Looping & Conditional Setting (Batch 1.9: DBcc, Scc)
+// ============================================================================
+
+#[test]
+fn test_dma_cartesian_looping_and_scc() {
+    run_cartesian_for_opcodes(&["DBcc", "Scc"]);
+}
