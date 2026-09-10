@@ -277,3 +277,54 @@ This repository is configured for autonomous pair-programming with AI agents:
 3. **AST & Code Knowledge Graph:** Use `graphify` (`graphify query`, `graphify explain`) to inspect code relationships, types, and architectural hierarchies.
 4. **Instruction Implementation:** Activate the `add-m68k-instruction` skill for a step-by-step checklist (decoding, CCK micro-steps, CCR flag updates, prefetch pipeline, and test harness integration).
 5. **Test Failure Diagnosis:** Activate the `m68k-singlestep-test` skill to diagnose CCR mismatches ($X, N, Z, V, C$), prefetch queue offsets, and Address Error stack frames.
+
+---
+
+## 7. Git Worktree Workflow (Parallel Branch Development)
+
+For isolated branch development, parallel testing, or running concurrent agent sessions without switching branches, use **Git Worktrees**:
+
+### 7.1 Creating a Worktree
+```powershell
+# Create branch and checkout into sibling directory
+git worktree add ..\Amiga-<branch-name> -b <branch-name>
+
+# Copy required untracked configuration (.env, .test_results)
+$target = "..\Amiga-<branch-name>"
+@('.env', '.test_results') | ForEach-Object { if (Test-Path $_) { Copy-Item -Recurse -Force $_ "$target\$_" } }
+```
+
+### 7.2 Working & Testing
+```powershell
+cd ..\Amiga-<branch-name>
+cargo test -p test_runner --test test_architecture_rules
+git commit -am "feat(subsystem): description"
+```
+
+### 7.3 Syncing Latest Master Changes into Worktree
+Because the worktree shares the local `.git` repository, any commits to `master` can be immediately merged or rebased without pushing/fetching:
+```powershell
+cd ..\Amiga-<branch-name>
+
+# Option A: Merge master into feature branch
+git merge master
+
+# Option B: Rebase feature branch on top of master
+git rebase master
+```
+
+### 7.4 Reintegrating & Cleaning Up
+```powershell
+# In primary repository:
+cd ..\Amiga
+git checkout master
+git merge <branch-name>
+
+# Teardown worktree and remove branch:
+git worktree remove ..\Amiga-<branch-name>
+git branch -d <branch-name>
+```
+
+> [!TIP]
+> For complete details on `.gitignore` analysis, RAG indexing constraints, and Obsidian vault handling in worktrees, see [Git Worktree Workflow](Obsidian/Amiga/Design/Git%20Worktree%20Workflow.md).
+
