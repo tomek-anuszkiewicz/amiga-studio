@@ -78,22 +78,39 @@ Translates host input devices into Amiga hardware register events:
 
 ---
 
-## 5. Debugger UI Panels
+## 5. Developer GUI & Debugger Integration
 
-When developer mode is enabled, the GUI displays interactive debugger tool windows powered by [Debugger.md](Debugger.md):
+The GUI incorporates an integrated developer studio and debugger. 
+- **Direct State Pull:** Panels poll emulator state directly (`&CpuState`, `&mut MemoryBus`, `&mut Debugger`) on render. Zero async messages, zero callback overhead.
+- **Synchronous Stepping:** Execution steps immediately record execution snapshots into a temporal history ring buffer for time-travel debugging.
+- **Detailed Layout & Operational Specification:**
+  - For the complete panel-by-panel operational specification, user interactions, memory editor/search, microcode inspector, temporal scrubber, hotkey matrix, and 1:1 file hierarchy, see **[GUI Specification.md](GUI%20Specification.md)**.
 
-1. **CPU Register Window:**
-   - Live display of Data ($D_0-D_7$) and Address ($A_0-A_7$) registers, $PC$, $SR$, and CCR condition flags ($X, N, Z, V, C$).
-   - Quick toggle for Supervisor and Trace flags.
-2. **Disassembly View:**
-   - Scrollable instruction stream centered around the current $PC$.
-   - Interactive breakpoint toggling on double-click.
-   - Stepping toolbar: **Step CCK**, **Step Instruction**, **Step Scanline**, **Step Frame**, and **Resume**.
-3. **Memory Hex Viewer:**
-   - 24-bit address navigator with byte/word views and ASCII decoding.
-   - Live memory search and watchpoint setup.
-4. **Copper & DMA Visualizer:**
-   - Disassembled live Copper lists (`COP1` and `COP2`) with execution cursor.
-   - DMA slot logic analyzer: visual horizontal scanline graph indicating which master (CPU, Copper, Blitter, Bitplanes, Audio) occupied the bus.
-5. **Custom Chip Inspector:**
-   - Tabbed register tables for Agnus, Denise, Paula, and CIAs with human-readable bitfield breakdowns.
+---
+
+## 6. High-DPI, Display Scaling & Browser Zoom Adaptation
+
+The application seamlessly adapts to host display scaling across both native desktop and web browser environments:
+
+- **Desktop (Native DPI Scaling):**
+  - `eframe` automatically detects the operating system scale factor (e.g. 100%, 125%, 150%, 200% Windows display scaling) via window surface queries and sets `egui::Context::set_pixels_per_point`.
+  - All typography, panels, buttons, and metrics scale proportionally and remain sharp on 4K/retina displays.
+  - In-app zoom shortcuts (`Ctrl +` / `Ctrl -` / `Ctrl 0`) dynamically alter `ctx.set_zoom_factor()` without window distortion.
+- **WebAssembly (Browser Zoom Adaptation):**
+  - In WebAssembly, `eframe::WebRunner` automatically tracks `window.devicePixelRatio`.
+  - When a user zooms in or out via browser controls (`Ctrl +` / `Ctrl -` or browser accessibility settings), the canvas automatically resizes its internal buffer and adapts font rendering.
+- **Amiga Pixel Viewport Scaling:**
+  - The retro Amiga display area ($320 \times 256$) maintains strict 4:3 aspect ratio framing within its panel, utilizing crisp integer prescaling (1x, 2x, 3x) or sharp bilinear filtering so pixel art remains authentic regardless of window or zoom scale.
+
+---
+
+## 7. Appearance & Theme Management (System Dark / Light Mode)
+
+The UI adapts to host OS and browser appearance preferences:
+
+- **Auto Detection:**
+  - On desktop, `eframe` queries the OS theme (`eframe::Theme::Dark` or `eframe::Theme::Light`).
+  - In WebAssembly, the runner binds to `window.matchMedia('(prefers-color-scheme: dark)')`.
+- **User Theme Control:**
+  - The top menu bar provides a theme switcher: `System (Auto)`, `Dark Theme` (default, sleek low-eyestrain developer palette), `Light Theme`, and an optional `Classic Amiga Workbench` palette.
+  - Theme switching immediately swaps `egui::Visuals` without restarting or losing emulator state.

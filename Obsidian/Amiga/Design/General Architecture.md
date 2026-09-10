@@ -115,7 +115,8 @@ graph TD
 - [SaveState.md](SaveState.md): State serialization model.
 - [Configuration.md](Configuration.md): Machine configuration, RAM sizes, chipset models, and ROM injection.
 - [Debugger.md](Debugger.md): Headless debugger backend, stepping, breakpoints, and disassembler.
-- [GUI.md](GUI.md): Frontend architecture, video viewport, audio sink, and developer UI panels.
+- [GUI.md](GUI.md): Frontend architecture, video viewport, audio sink, DPI/theme adaptation, and decoupled interfaces.
+- [GUI Specification.md](GUI%20Specification.md): Concrete layout and operational specification for developer GUI, panels, memory editor, and 1:1 file hierarchy.
 - [Joystick.md](Joystick.md): Game port digital/analog joysticks, 4-player parallel adapter, and host gamepad mapping.
 - [Mouse.md](Mouse.md): Port 1 quadrature counters (`JOY0DAT`), buttons, pointer locking, and touchscreen mapping.
 - [Keyboard.md](Keyboard.md): Microcontroller serial protocol, scancode matrix, `Ctrl-Amiga-Amiga` reset, and host layout-independent key mapping.
