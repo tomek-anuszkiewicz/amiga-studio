@@ -618,7 +618,7 @@ The full CCK stepping engine is implemented in [`crates/m68000/src/micro/engine.
    - **CCK1 (Phase 1):** Read steps (`step_bus_read_*`) issue `bus.read_word(addr)` / `bus.read_byte(addr)`. If `BusResult::WaitState`, the CPU stalls without advancing `micro_step` (returns `false`). If `BusResult::Ready(data)`, samples memory data into `source` / `destination` / `prefetch` / `irc` and advances to CCK2 (`micro_step += 1`). For write actions, `step_bus_write_idle` does not touch the bus (bus idle for DMA) and simply advances to CCK2 (`micro_step += 1`).
    - **CCK2 (Phase 2):** Write steps (`step_bus_write_dst_*`) issue `bus.write_word(addr, val)` / `bus.write_byte(addr, val)`. If `BusResult::WaitState`, stalls without committing (returns `false`). If `BusResult::Ready(())`, commits data, records transaction, and advances `micro_step += 1`, completing the 4-clock bus cycle. Read finish steps (`step_bus_read_*_finish`) log the transaction, release the bus for Agnus DMA, and advance `micro_step += 1`.
 4. **Pipeline Advance & Instruction Retirement:**
-   - On retirement, shifts `ir = prefetch[0]`, `prefetch[0] = scratch_prefetch` (or target prefetch), advances `pc += 2`, updates `current_steps`, and returns `true`. Multi-cycle instruction steps call `step_instruction(&mut self, bus) -> u32` to step to retirement and return total CPU clocks consumed.
+   - On retirement, shifts `ir = prefetch[0]`, `prefetch[0] = scratch_prefetch` (or target prefetch), advances `pc += 2`, updates `instruction_pc = pc - 4`, updates `current_steps`, and returns `true`. Multi-cycle instruction steps call `step_instruction(&mut self, bus) -> u32` (or `step_opcode`) to loop over `step_cck_internal` to retirement and return total CPU clocks consumed.
 
 ---
 

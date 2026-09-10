@@ -304,8 +304,9 @@ Instruction execution is driven via a cycle-exact micro-step state machine clock
 
 - **Unified Control Model (Zero `StepResult` Overhead):**
   - **`StepFn = fn(&mut Cpu, &mut MemoryBus) -> BusResult<()>`**: Micro-step handlers only report bus readiness (`BusResult::Ready(())` or `BusResult::WaitState`).
-  - **`step_cck(&mut self, bus: &mut MemoryBus) -> bool`**: Executes a single CCK color clock cycle (~280 ns) and returns `true` when the instruction completes/retires, `false` otherwise.
-  - **`step_instruction(&mut self, bus: &mut MemoryBus) -> u32`**: Steps through an entire instruction to retirement, returning the exact CPU clock cycles consumed.
+  - **`step_cck(&mut self, bus: &mut MemoryBus) -> bool`**: Executes a single CCK color clock cycle (~280 ns) and returns `true` when the instruction completes/retires, `false` otherwise. Performs boundary validation and initiates uninitialized instructions.
+  - **`step_cck_internal(&mut self, bus: &mut MemoryBus) -> bool`**: Internal hot-loop primitive executing micro-steps directly without redundant boundary checks.
+  - **`step_instruction(&mut self, bus: &mut MemoryBus) -> u32` / `step_opcode`**: Steps through an entire instruction/opcode to retirement, returning the exact CPU clock cycles consumed.
   - **State flags**: Halted and Stopped states are queried directly on `cpu.state.halted` and `cpu.state.stopped`.
 
 #### Specialized Direct Micro-Step Execution Handlers (`StepFn`)

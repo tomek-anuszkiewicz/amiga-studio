@@ -68,16 +68,10 @@ impl Cpu {
         self.state.cycle_counter = 0;
     }
 
-    /// CCK phase stepping primitive (each invocation steps exactly 1 CCK = 2 CPU clocks)
-    pub fn step_cck(&mut self, bus: &mut dyn AddressBus) -> bool {
-        if self.state.halted || self.state.stopped {
-            return false;
-        }
-
-        // Every active CCK phase step advances global and instruction clocks by 2 CPU clocks (1 CCK)
-        self.advance_clocks(2);
-
-        // 1. Check if current instruction uses static micro-steps:
+    /// Ensures active instruction micro-steps are initialized before execution begins.
+    /// Returns `true` if valid steps are ready, or `false` if unmapped/empty (halting the CPU).
+    #[inline(always)]
+    fn ensure_instruction_ready(&mut self) -> bool {
         if self.state.micro.micro_step == 0 && self.state.micro.current_steps.is_empty() {
             self.state.instruction_pc = self.state.pc.wrapping_sub(4);
             self.initiate_current_instruction();
@@ -88,7 +82,32 @@ impl Cpu {
             return false;
         }
 
-        // 2. Execute via cycle-exact Micro-Step State Machine:
+        true
+    }
+
+    /// CCK phase stepping primitive (each invocation steps exactly 1 CCK = 2 CPU clocks).
+    /// Performs instruction boundary validation and initiates the active instruction if uninitialized.
+    #[inline]
+    pub fn step_cck(&mut self, bus: &mut dyn AddressBus) -> bool {
+        if self.state.halted || self.state.stopped {
+            return false;
+        }
+
+        if !self.ensure_instruction_ready() {
+            return false;
+        }
+
+        self.step_cck_internal(bus)
+    }
+
+    /// Internal cycle-exact Color Clock stepping primitive (1 CCK = 2 CPU clocks).
+    /// Executes the active micro-step without repeating instruction-boundary setup.
+    #[inline(always)]
+    fn step_cck_internal(&mut self, bus: &mut dyn AddressBus) -> bool {
+        // Every active CCK phase step advances global and instruction clocks by 2 CPU clocks (1 CCK)
+        self.advance_clocks(2);
+
+        // Execute via cycle-exact Micro-Step State Machine:
         while (self.state.micro.micro_step as usize) < self.state.micro.current_steps.len() {
             let step = self.state.micro.current_steps[self.state.micro.micro_step as usize];
 
@@ -179,6 +198,7 @@ impl Cpu {
             self.state.prefetch[0] = self.state.micro.irc;
             self.state.pc = self.state.pc.wrapping_add(2);
         }
+        self.state.instruction_pc = self.state.pc.wrapping_sub(4);
         self.state.micro.reset();
         self.initiate_current_instruction();
     }
@@ -221,9 +241,13 @@ impl Cpu {
             return 0;
         }
 
+        if !self.ensure_instruction_ready() {
+            return 0;
+        }
+
         let start_cycles = self.state.cycle_counter;
         loop {
-            let completed = self.step_cck(bus);
+            let completed = self.step_cck_internal(bus);
             if completed || self.state.halted || self.state.stopped {
                 return self.state.cycle_counter.wrapping_sub(start_cycles) as u32;
             }
