@@ -41,7 +41,7 @@
 
 To eliminate branch mispredictions and cascaded conditional checks in hot memory access loops, the 16 MB physical address space is divided into **256 banks of 64 KB each** ($256 \times 64\text{ KB} = 16\text{ MB}$).
 
-- **Direct Function Pointer Method Dispatch**: Mimicking the CPU's direct opcode table (`[OpcodeHandler; 65536]`), `bank_map` is a 256-entry array of `BankHandler` structs containing direct function pointers (`BankReadByteFn`, `BankWriteByteFn`, `BankReadWordFn`, `BankWriteWordFn`) and a pre-classified contention flag (`is_contended: bool`) targeting specialized 8-bit and 16-bit read/write handlers. Implementation resides in [`crates/memory_bus/src/map.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/map.rs).
+- **Direct Function Pointer Method Dispatch**: Mimicking the CPU's direct opcode table (`[OpcodeHandler; 65536]`), `bank_map` is a 256-entry array of `BankHandler` structs containing direct function pointers (`BankReadByteFn`, `BankWriteByteFn`, `BankReadWordFn`, `BankWriteWordFn`) and a pre-classified contention flag (`is_contended: bool`) targeting specialized 8-bit and 16-bit read/write handlers. Implementation resides in [`crates/memory_bus/src/map.rs`](../../../crates/memory_bus/src/map.rs).
 - **Native 16-Bit Word Accesses**: In accordance with the 68000's physical 16-bit wide data bus, word transfers (instruction fetches, stack frames, 16-bit operands) execute directly via `read_word` and `write_word` function pointers, reading or writing aligned 16-bit words directly without decomposing into two separate 8-bit indirect function calls.
 - **Zero Runtime Branches**: Memory accesses execute directly through table indexing `(self.bank_map[(addr >> 16) as usize].read_byte)(self, addr)` or `read_word`. Contention checks query `self.bank_map[(addr >> 16) as usize].is_contended` in $O(1)$ without range arithmetic.
 - **Zero Runtime Setup (`static`/`const`)**: Precalculated as compile-time `static` arrays (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), eliminating all initialization loops or runtime reallocation overhead.
@@ -66,7 +66,7 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
   - **Dual Storage Engine Architecture**:
     - `TestMemoryStorage::Sparse`: Powered by `std::collections::HashMap`, used by default in `TestMemoryBus::new()` for arbitrary unmapped defaults (`0xFF` open bus simulation).
     - `TestMemoryStorage::Flat`: Powered by a pre-allocated 16 MB buffer (`Box<[u8]>`) and a dirty address tracking list (`Vec<u32>`), created via `TestMemoryBus::new_flat()`. Provides $O(1)$ array accesses and $O(K)$ resets (`bus.clear()`) between test cases, eliminating all dynamic heap allocations in inner test execution loops.
-  - Both buses implement the unified `AddressBus` trait ([`crates/memory_bus/src/bus_trait.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/bus_trait.rs)).
+  - Both buses implement the unified `AddressBus` trait ([`crates/memory_bus/src/bus_trait.rs`](../../../crates/memory_bus/src/bus_trait.rs)).
 
 ---
 
@@ -83,14 +83,14 @@ Maintain the following internal bus state:
 
 ### Types & Arbitration Primitives
 
-The bus timing and transfer types reside in [`crates/memory_bus/src/arbitration.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/arbitration.rs):
+The bus timing and transfer types reside in [`crates/memory_bus/src/arbitration.rs`](../../../crates/memory_bus/src/arbitration.rs):
 - **`BusAccessSize` (`Byte`, `Word`)**: Bus transfer operand widths.
 - **Function Code Lines (`function_code::*`)**: FC0–FC2 qualifiers (`USER_DATA = 1`, `USER_PROGRAM = 2`, `SUPERVISOR_DATA = 5`, `SUPERVISOR_PROGRAM = 6`, `CPU_SPACE = 7`).
 
 ### Direct Passive Bus API & Contention Arbitration
 The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU micro-engine, Copper, Blitter) execute single-cycle or multi-phase bus transactions directly against memory. Contention arbitration is encapsulated within the bus access methods, returning a dedicated `BusResult<T>`:
 
-1. **`BusResult<T>` Return Semantics (Defined in [`crates/memory_bus/src/arbitration.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/arbitration.rs)):**
+1. **`BusResult<T>` Return Semantics (Defined in [`crates/memory_bus/src/arbitration.rs`](../../../crates/memory_bus/src/arbitration.rs)):**
    - **`BusResult::Ready(T)`**: Bus access completed successfully with requested data (or `()` for write transfers).
    - **`BusResult::WaitState`**: Bus access stalled due to Agnus DMA cycle stealing / Chip RAM contention.
 2. **Direct Memory Access Methods:**
@@ -185,7 +185,7 @@ To support headless unit testing, SingleStepTests, and debugger inspection witho
 
 ## 5. Memory Bus Reset Semantics
 
-The memory bus reset behavior is implemented in [`crates/memory_bus/src/lib.rs`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/lib.rs):
+The memory bus reset behavior is implemented in [`crates/memory_bus/src/lib.rs`](../../../crates/memory_bus/src/lib.rs):
 
 - **Cold / Hard Reset (`reset_cold`)**:
   - Wipes all physical RAM (Chip RAM, Slow RAM, Fast RAM) to zero.

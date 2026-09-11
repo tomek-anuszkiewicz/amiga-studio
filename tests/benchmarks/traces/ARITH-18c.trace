@@ -1,0 +1,107 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [ARITH-18c] DIVU #0, D0 (Vector 5)
+Category: Arithmetic | Mode: Immediate | Expected Amiga CCK: 42
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0x12345678   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x00000000   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000014   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[002] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000014 -> 0x00000013, PC: 0x000506
+[003] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[004] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[005] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[006] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000013 -> 0x00000012, PC: 0x000506
+[007] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[008] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[009] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[010] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000012 -> 0x00000011, PC: 0x000506
+[011] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[012] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[013] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[014] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000011 -> 0x00000010, PC: 0x000506
+[015] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[016] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[017] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[018] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000010 -> 0x0000000F, PC: 0x000506
+[019] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[020] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[021] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[022] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x0000000F -> 0x0000000E, PC: 0x000506
+[023] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[024] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[025] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[026] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x0000000E -> 0x0000000D, PC: 0x000506
+[027] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[028] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[029] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[030] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x0000000D -> 0x0000000C, PC: 0x000506
+[031] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[032] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[033] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[034] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x0000000C -> 0x0000000B, PC: 0x000506
+[035] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[036] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[037] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[038] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x0000000B -> 0x0000000A, PC: 0x000506
+[039] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[040] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[041] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[042] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x0000000A -> 0x00000009, PC: 0x000506
+[043] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[044] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[045] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[046] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000009 -> 0x00000008, PC: 0x000506
+[047] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[048] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[049] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[050] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000008 -> 0x00000007, PC: 0x000506
+[051] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[052] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[053] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[054] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000007 -> 0x00000006, PC: 0x000506
+[055] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[056] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[057] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[058] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000006 -> 0x00000005, PC: 0x000506
+[059] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[060] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[061] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[062] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000005 -> 0x00000004, PC: 0x000506
+[063] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[064] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[065] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[066] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000004 -> 0x00000003, PC: 0x000506
+[067] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[068] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[069] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[070] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000003 -> 0x00000002, PC: 0x000506
+[071] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[072] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[073] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[074] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000002 -> 0x00000001, PC: 0x000506
+[075] 00000502: 6702             BEQ      $000506 |  8 CCK | ΔRegs: PC: 0x000508
+[076] 00000504: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001004
+[077] 00001000: 80C1             DIVU.W   D1, D0 | 38 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000504 | Mem: StackPush[0x07EFFA] <= 0x2700
+[078] 00000500: 5347             SUBQ.W   #1, D7 |  4 CCK | ΔRegs: D7: 0x00000001 -> 0x00000000, SR: 0x2700 -> 0x2704, PC: 0x000506
+[079] 00000502: 6702             BEQ      $000506 | 10 CCK | ΔRegs: PC: 0x00050A
+[080] 00000506: 5C8F             ADDQ.L   #6, A7 |  8 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x00050C
+[081] 00000508: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   81
+  Total Guest Cycles:     1402 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0x12345678   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x00000000   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2704 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

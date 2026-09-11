@@ -6,4 +6,8 @@ Obsidian/Amiga/.obsidian/plugins/remember-cursor-position/cursor-positions.json
 .env
 __pycache__/
 target/
-.test_results/
+
+tests/benchmarks/quick/
+tests/benchmarks/standard/
+tests/benchmarks/thorough/
+tests/singlestep/

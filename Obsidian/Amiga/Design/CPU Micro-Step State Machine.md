@@ -68,13 +68,13 @@ Derived and isomorphic instructions (`SUB*` [completed in Batch 1.1], `AND*`, `O
 ---
 ## 2. Data Structures & Type Definitions
 
-The microcode data structures and static lookup tables are implemented in [`crates/m68000/src/micro/`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/).
+The microcode data structures and static lookup tables are implemented in [`crates/m68000/src/micro/`](../../../crates/m68000/src/micro/).
 
 ### 2.1 The `AluFn` Function Pointer (Pure Internal CPU Operation)
 
 Because all memory operands are already latched into `CpuState` (`prefetch[0]`, `last_read`, or `d[]/a[]`) before the ALU step runs, `AluFn` does **not** take `MemoryBus`. ALU handlers execute purely internally, operating directly on `CpuState` with pre-decoded register indices:
 - Signature: `fn(state: &mut CpuState, reg_src: u8, reg_dst: u8)`
-- Implementation: [`crates/m68000/src/micro/engine.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/engine.rs) and [`crates/m68000/src/micro/alu.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/alu.rs).
+- Implementation: [`crates/m68000/src/micro/engine.rs`](../../../crates/m68000/src/micro/engine.rs) and [`crates/m68000/src/micro/alu.rs`](../../../crates/m68000/src/micro/alu.rs).
 
 ### 2.2 The `MicroStep` Descriptor (Stateless & Cache-Dense)
 
@@ -97,7 +97,7 @@ By decomposing 4-clock bus cycles into native 2-clock slices ($1\ \text{MicroSte
 | **Prefetch & Refill (Program Space)** | `step_fetch_extension_read`, `step_fetch_extension_finish`, `step_prefetch_irc_read`, `step_prefetch_irc_finish`, `step_prefetch_next_read`, `BUS_READ_IDLE`, `step_bus_read_target_opcode_read`, `step_prefetch_target_read`, `step_prefetch_target_finish` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline across 2-clock phases and manages standard or target retirement. |
 | **Internal & Exceptions** | `step_write_word_at`, `step_write_byte_at`, `step_read_word_at`, `step_read_byte_at` | Instantaneous (0 CCK) internal operations, CCR updates, condition evaluation, and 2-phase CCK bus primitives for exception processing. Pure ALU steps utilize `step_fn: None`. |
 
-Handlers are organized cleanly across [`crates/m68000/src/micro/step_execution.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/step_execution.rs) and [`crates/m68000/src/micro/step_control.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/step_control.rs).
+Handlers are organized cleanly across [`crates/m68000/src/micro/step_execution.rs`](../../../crates/m68000/src/micro/step_execution.rs) and [`crates/m68000/src/micro/step_control.rs`](../../../crates/m68000/src/micro/step_control.rs).
 
 ### 2.4 CPU Micro-State Storage (`CpuMicroState`)
 
@@ -119,7 +119,7 @@ Embedded in `CpuState` to track sub-cycle progress across Color Clock phases wit
 
 ### 2.5 The 65,536 Static Dispatch Universe (`OPCODE_DESCRIPTOR_TABLE`)
 
-- Embedded in host `.rodata` via [`crates/m68000/src/micro/table.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/table.rs).
+- Embedded in host `.rodata` via [`crates/m68000/src/micro/table.rs`](../../../crates/m68000/src/micro/table.rs).
 - Exactly 65,536 `OpcodeDescriptor` entries mapping every 16-bit opcode word directly to its pre-compiled `&'static [MicroStep]` sequence and pre-decoded register indices (`reg_src`, `reg_dst`).
 - Requires **zero dynamic heap allocations** (`0` bytes allocated at runtime).
 
@@ -175,7 +175,7 @@ Passing `reg_src` and `reg_dst` into `AluFn` collapses code duplication across a
 2. **Memory Destinations:** When targeting memory (e.g. `ORI.B #$42, (A0)`), the ALU reads `state.micro.destination`, evaluates condition codes, and stores the result directly back into `state.micro.destination` for the subsequent write bus cycle.
 3. **Effective Address Arithmetic:** Because `Alu` micro-steps consume 0 CCKs, effective address calculations (such as `(d16, An)` or `(d8, An, Xn)`) use the identical `AluFn` mechanism to compute and store addresses in `state.micro.ea_addr`.
 
-All specialized ALU handlers reside in [`crates/m68000/src/micro/alu.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/alu.rs).
+All specialized ALU handlers reside in [`crates/m68000/src/micro/alu.rs`](../../../crates/m68000/src/micro/alu.rs).
 
 ---
 
@@ -205,7 +205,7 @@ On the Amiga 500, the 4-clock M68000 bus cycle maps to **two Color Clock phases 
 Byte strobes ($\overline{\text{UDS}}$ / $\overline{\text{LDS}}$) are derived natively by `bus.read_byte(addr)` / `bus.write_byte(addr, val)` from `addr & 1`. **The CPU core eliminates all manual strobe calculations, `BusCycle` allocations, and intermediate latch buffering.**
 
 #### Execution Dispatch Implementation
-The 2-phase Color Clock stepping logic is implemented via dedicated, single-purpose helper functions (`step_bus_read_byte`, `step_bus_read_word`, `step_bus_write_byte`, `step_bus_write_word`, etc.) in [`crates/m68000/src/micro/engine.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/engine.rs). Each helper executes the exact CCK1/CCK2 protocol with zero branch cascading and zero heap allocation.
+The 2-phase Color Clock stepping logic is implemented via dedicated, single-purpose helper functions (`step_bus_read_byte`, `step_bus_read_word`, `step_bus_write_byte`, `step_bus_write_word`, etc.) in [`crates/m68000/src/micro/engine.rs`](../../../crates/m68000/src/micro/engine.rs). Each helper executes the exact CCK1/CCK2 protocol with zero branch cascading and zero heap allocation.
 
 ### 4.2 Byte Strobe Activation & Byte Preservation
 
@@ -605,7 +605,7 @@ flowchart TD
 
 ### 6.1 Concrete Implementation: The High-Throughput `step_cck()` Dispatcher
 
-The full CCK stepping engine is implemented in [`crates/m68000/src/micro/engine.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/micro/engine.rs) and driven via [`crates/m68000/src/core.rs`](file:///d:/Programowanie/Amiga/crates/m68000/src/core.rs):
+The full CCK stepping engine is implemented in [`crates/m68000/src/micro/engine.rs`](../../../crates/m68000/src/micro/engine.rs) and driven via [`crates/m68000/src/core.rs`](../../../crates/m68000/src/core.rs):
 
 1. **Uniform Micro-Step Timing via `clocks_remaining: u16`:**
    - On each CCK tick, `step_cck` advances global clocks by 2 (`self.advance_clocks(2)`).

@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [ARITH-18] DIVU D1, D0
+Category: Arithmetic | Mode: DataRegDirect | Expected Amiga CCK: 140
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0x00050000   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x000000A5   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 80C1             DIVU.W   D1, D0 | 126 CCK | ΔRegs: D0: 0x00050000 -> 0x009B07C1, PC: 0x001006
+[002] 00001002: 80C1             DIVU.W   D1, D0 | 124 CCK | ΔRegs: D0: 0x009B07C1 -> 0x0019F088, SR: 0x2700 -> 0x2708, PC: 0x001008
+[003] 00001004: 80C1             DIVU.W   D1, D0 | 122 CCK | ΔRegs: D0: 0x0019F088 -> 0x0092283E, SR: 0x2708 -> 0x2700, PC: 0x00100A
+[004] 00001006: 80C1             DIVU.W   D1, D0 | 122 CCK | ΔRegs: D0: 0x0092283E -> 0x008FE2C3, SR: 0x2700 -> 0x2708, PC: 0x00100C
+[005] 00001008: 80C1             DIVU.W   D1, D0 | 114 CCK | ΔRegs: D0: 0x008FE2C3 -> 0x0072DF3D, PC: 0x00100E
+[006] 0000100A: 80C1             DIVU.W   D1, D0 | 122 CCK | ΔRegs: D0: 0x0072DF3D -> 0x0080B239, PC: 0x001010
+[007] 0000100C: 80C1             DIVU.W   D1, D0 | 118 CCK | ΔRegs: D0: 0x0080B239 -> 0x005DC7AC, PC: 0x001012
+[008] 0000100E: 80C1             DIVU.W   D1, D0 | 128 CCK | ΔRegs: D0: 0x005DC7AC -> 0x002C9180, PC: 0x001014
+[009] 00001010: 80C1             DIVU.W   D1, D0 | 124 CCK | ΔRegs: D0: 0x002C9180 -> 0x00024526, SR: 0x2708 -> 0x2700, PC: 0x001016
+[010] 00001012: 80C1             DIVU.W   D1, D0 | 128 CCK | ΔRegs: D0: 0x00024526 -> 0x006D0385, PC: 0x001018
+[011] 00001014: 80C1             DIVU.W   D1, D0 | 124 CCK | ΔRegs: D0: 0x006D0385 -> 0x009BA922, SR: 0x2700 -> 0x2708, PC: 0x00101A
+[012] 00001016: 80C1             DIVU.W   D1, D0 | 122 CCK | ΔRegs: D0: 0x009BA922 -> 0x0058F182, PC: 0x00101C
+[013] 00001018: 80C1             DIVU.W   D1, D0 | 116 CCK | ΔRegs: D0: 0x0058F182 -> 0x002789FF, PC: 0x00101E
+[014] 0000101A: 80C1             DIVU.W   D1, D0 | 120 CCK | ΔRegs: D0: 0x002789FF -> 0x00473D58, SR: 0x2708 -> 0x2700, PC: 0x001020
+[015] 0000101C: 80C1             DIVU.W   D1, D0 | 120 CCK | ΔRegs: D0: 0x00473D58 -> 0x00556E87, PC: 0x001022
+[016] 0000101E: 80C1             DIVU.W   D1, D0 | 126 CCK | ΔRegs: D0: 0x00556E87 -> 0x004B848C, SR: 0x2700 -> 0x2708, PC: 0x001024
+[017] 00001020: 80C1             DIVU.W   D1, D0 | 120 CCK | ΔRegs: D0: 0x004B848C -> 0x007A752A, SR: 0x2708 -> 0x2700, PC: 0x001026
+[018] 00001022: 80C1             DIVU.W   D1, D0 | 110 CCK | ΔRegs: D0: 0x007A752A -> 0x0074BDFE, SR: 0x2700 -> 0x2708, PC: 0x001028
+[019] 00001024: 80C1             DIVU.W   D1, D0 | 124 CCK | ΔRegs: D0: 0x0074BDFE -> 0x005EB520, PC: 0x00102A
+[020] 00001026: 80C1             DIVU.W   D1, D0 | 122 CCK | ΔRegs: D0: 0x005EB520 -> 0x007092F0, PC: 0x00102C
+[021] 00001028: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     2444 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0x007092F0   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x000000A5   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2708 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

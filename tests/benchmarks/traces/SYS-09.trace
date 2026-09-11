@@ -1,0 +1,67 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [SYS-09] TRAP #0
+Category: System | Mode: Immediate | Expected Amiga CCK: 34
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[002] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001006
+[003] 00001002: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[004] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001008
+[005] 00001004: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[006] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x00100A
+[007] 00001006: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[008] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x00100C
+[009] 00001008: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[010] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x00100E
+[011] 0000100A: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[012] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001010
+[013] 0000100C: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[014] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001012
+[015] 0000100E: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[016] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001014
+[017] 00001010: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[018] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001016
+[019] 00001012: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[020] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001018
+[021] 00001014: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[022] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x00101A
+[023] 00001016: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[024] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x00101C
+[025] 00001018: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[026] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x00101E
+[027] 0000101A: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[028] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001020
+[029] 0000101C: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[030] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001022
+[031] 0000101E: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[032] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001024
+[033] 00001020: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[034] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001026
+[035] 00001022: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[036] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x001028
+[037] 00001024: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[038] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x00102A
+[039] 00001026: 4E40             TRAP     #0 | 34 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFA, PC: 0x000524 | Mem: StackPush[0x07EFFA] <= 0x2700
+[040] 00000520: 4E73             RTE | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x00102C
+[041] 00001028: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   41
+  Total Guest Cycles:     1092 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

@@ -67,24 +67,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - High-DPI and browser zoom level adaptation (`devicePixelRatio`).
   - System and browser dark/light mode auto-detection and theme switcher.
 
-### Step 2: Comprehensive Opcode Benchmarking & Performance Profiling
-- **Automated Per-Opcode Micro-Benchmark Harness:**
-  - Develop an exhaustive automated micro-benchmark harness (e.g. using `criterion` and dedicated throughput harnesses in `crates/test_runner`) measuring host execution time, nanoseconds per instruction, and throughput (MIPS) across all 65,536 dispatch entries and instruction variants.
-  - Test diverse operand combinations: data register direct, address register indirect with displacement/indexing, and immediate/memory forms under both cached and unblocked bus scenarios.
-- **CPU Memory Footprint Audit & Host Cache Miss Profiling:**
-  - **Memory Footprint Audit (in Kilobytes):** Measure and document the exact memory footprint of the CPU emulator core:
-    - Host `.rodata` footprint: 65,536-entry static dispatch table (`sizeof(OpcodeDescriptor) * 65,536`), static `[MicroStep; N]` array slices, and decoding metadata.
-    - Host runtime state footprint: `Cpu`, `CpuState`, `CpuMicroState` sizes in bytes, auditing L1d cache line alignment and residency.
-  - **Host Cache Miss Profiling:** Measure host CPU performance counters (L1i instruction cache misses, L1d data cache misses, Last Level Cache / LLC misses, superscalar IPC, branch mispredictions) across opcode execution runs (via `perf stat`, cachegrind, or host PMU tooling).
-  - Automatically rank handlers by host latency and flag operations exhibiting disproportionate execution overhead relative to emulated M68000 cycle counts.
-- **Footprint Compaction Assessment & Mechanical Sympathy Optimization:**
-  - **Footprint Reduction Feasibility:** Investigate whether compacting the CPU footprint (e.g., bit-packing `OpcodeDescriptor`, microcode array deduplication, index packing) yields measurable L1i/L1d miss reductions and throughput gains, or whether the current flat layout already maximizes host branch-predictor and cache throughput.
-  - Refactor identified slow handlers using host CPU mechanical sympathy principles (direct specialized flattening, branchless bit operations, eliminated redundant register banking, and cross-crate MIR inlining).
-  - Strictly enforce architectural constraints: zero custom macros (`macro_rules!`), zero const-generic function matrices, zero dynamic heap allocations, and zero compromise on code readability.
-- **Fidelity & Regression Validation Gate:**
-  - Ensure every optimized handler retains 100% cycle-exact Color Clock fidelity and passes the full exhaustive SingleStepTests suite (`$env:SINGLESTEP_FULL = "1"`) with zero regressions.
-
-### Step 3: Standalone CPU Program Execution, Synthetic Workloads & Performance Projection
+### Step 2: Standalone CPU Program Execution, Synthetic Workloads & Performance Projection
 - **Direct Memory Program Injection & Execution (Leveraging Developer GUI & Harness):**
   - Inject compiled M68000 binary routines (raw machine code binaries, assembled routines) into emulated RAM without requiring Kickstart ROM or OS overhead.
   - Set initial execution context ($PC$, $SSP$, $SR$) and execute self-contained test programs to completion, designated stop addresses, or trap returns.
@@ -97,6 +80,20 @@ This document outlines the phased development plan, hardware milestones, verific
 - **Cross-Architecture & Mobile Performance Projections:**
   - Extrapolate measured desktop throughput (x86_64 / desktop ARM) to target mobile and constrained environments (e.g. mobile WebAssembly, ARM mobile devices).
   - Model CPU overhead margins to ensure headroom for sustained 50 Hz (PAL) / 60 Hz (NTSC) cycle-exact emulation once custom chipset DMA contention and rendering are integrated.
+
+### Step 3: CPU Core Memory Footprint Audit, Cache Profiling & Mechanical Sympathy Optimization
+- **CPU Memory Footprint Audit & Host Cache Miss Profiling:**
+  - **Memory Footprint Audit (in Kilobytes):** Measure and document the exact memory footprint of the CPU emulator core:
+    - Host `.rodata` footprint: 65,536-entry static dispatch table (`sizeof(OpcodeDescriptor) * 65,536`), static `[MicroStep; N]` array slices, and decoding metadata.
+    - Host runtime state footprint: `Cpu`, `CpuState`, `CpuMicroState` sizes in bytes, auditing L1d cache line alignment and residency.
+  - **Host Cache Miss Profiling:** Measure host CPU performance counters (L1i instruction cache misses, L1d data cache misses, Last Level Cache / LLC misses, superscalar IPC, branch mispredictions) across opcode execution runs (via `perf stat`, cachegrind, or host PMU tooling).
+  - Automatically rank handlers by host latency and flag operations exhibiting disproportionate execution overhead relative to emulated M68000 cycle counts.
+- **Footprint Compaction Assessment & Mechanical Sympathy Optimization:**
+  - **Footprint Reduction Feasibility:** Investigate whether compacting the CPU footprint (e.g., bit-packing `OpcodeDescriptor`, microcode array deduplication, index packing) yields measurable L1i/L1d miss reductions and throughput gains, or whether the current flat layout already maximizes host branch-predictor and cache throughput.
+  - Refactor identified slow handlers using host CPU mechanical sympathy principles (direct specialized flattening, branchless bit operations, eliminated redundant register banking, and cross-crate MIR inlining).
+  - Strictly enforce architectural constraints: zero custom macros (`macro_rules!`), zero const-generic function matrices, zero dynamic heap allocations, and zero compromise on code readability.
+- **Fidelity & Regression Validation Gate:**
+  - Ensure every optimized handler retains 100% cycle-exact Color Clock fidelity and passes the full exhaustive SingleStepTests suite (`$env:SINGLESTEP_FULL = "1"`) with zero regressions.
 
 ### Step 4: Custom Chipsets (Agnus, Denise, Paula, CIAs)
 - **Step 4.1: Minimal Machine Main Loop (`A500::step_cck`) & Subsystem Orchestration:**

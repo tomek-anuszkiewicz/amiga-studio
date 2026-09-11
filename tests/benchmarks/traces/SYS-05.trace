@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [SYS-05] ORI.W #$0000, CCR
+Category: System | Mode: Immediate | Expected Amiga CCK: 20
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001008
+[002] 00001004: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x00100C
+[003] 00001008: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001010
+[004] 0000100C: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001014
+[005] 00001010: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001018
+[006] 00001014: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x00101C
+[007] 00001018: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001020
+[008] 0000101C: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001024
+[009] 00001020: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001028
+[010] 00001024: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x00102C
+[011] 00001028: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001030
+[012] 0000102C: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001034
+[013] 00001030: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001038
+[014] 00001034: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x00103C
+[015] 00001038: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001040
+[016] 0000103C: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001044
+[017] 00001040: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001048
+[018] 00001044: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x00104C
+[019] 00001048: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001050
+[020] 0000104C: 003C 0000        ORI.B    #$00, CCR | 20 CCK | ΔRegs: PC: 0x001054
+[021] 00001050: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     412 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

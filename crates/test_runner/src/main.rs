@@ -10,10 +10,16 @@ fn print_usage() {
     println!("M68000 SingleStepTest Runner & Diagnostic Tool");
     println!("Usage: cargo run -p test_runner -- [COMMAND]\n");
     println!("Commands:");
-    println!("  --summary     Print global pass/fail coverage table across all tested opcodes");
-    println!("  --diff        Compare latest test runs against previous runs to detect regressions/fixes");
-    println!("  --suite <OP>  Execute and report diagnostics for a specific opcode (e.g. ADD.b)");
-    println!("  --help        Print this help message");
+    println!("  bench [OPTIONS]  Execute M68000 instruction benchmarking suite");
+    println!("                   Options: --quick, --standard, --thorough");
+    println!("                            --filter <TAG>, --unroll <K>, --passes <N>");
+    println!("                            --out-dir <PATH>, --no-pin, --dump-traces");
+    println!("  --summary        Print global pass/fail coverage table across all tested opcodes");
+    println!("  --diff           Compare latest test runs against previous runs to detect regressions/fixes");
+    println!(
+        "  --suite <OP>     Execute and report diagnostics for a specific opcode (e.g. ADD.b)"
+    );
+    println!("  --help           Print this help message");
 }
 
 fn print_summary(results_dir: &Path) {
@@ -179,6 +185,97 @@ fn run_specific_suite(opcode: &str) {
     }
 }
 
+fn run_benchmarks_cli(args: &[String]) {
+    use std::path::PathBuf;
+    use test_runner::benchmark::{
+        dump_benchmark_traces, filter_specs, run_benchmark_suite, BenchmarkConfig, BenchmarkProfile,
+    };
+
+    let mut config = BenchmarkConfig::default();
+    let mut dump_traces = false;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--quick" => {
+                config.profile = BenchmarkProfile::Quick;
+                config.passes = BenchmarkProfile::Quick.default_passes();
+                config.iterations = BenchmarkProfile::Quick.default_iterations();
+            }
+            "--standard" => {
+                config.profile = BenchmarkProfile::Standard;
+                config.passes = BenchmarkProfile::Standard.default_passes();
+                config.iterations = BenchmarkProfile::Standard.default_iterations();
+            }
+            "--thorough" => {
+                config.profile = BenchmarkProfile::Thorough;
+                config.passes = BenchmarkProfile::Thorough.default_passes();
+                config.iterations = BenchmarkProfile::Thorough.default_iterations();
+            }
+            "--filter" => {
+                if i + 1 < args.len() {
+                    config.filter = Some(args[i + 1].clone());
+                    i += 1;
+                }
+            }
+            "--unroll" => {
+                if i + 1 < args.len() {
+                    if let Ok(k) = args[i + 1].parse::<usize>() {
+                        config.unroll_k = k;
+                    }
+                    i += 1;
+                }
+            }
+            "--passes" => {
+                if i + 1 < args.len() {
+                    if let Ok(p) = args[i + 1].parse::<usize>() {
+                        config.passes = p;
+                    }
+                    i += 1;
+                }
+            }
+            "--out-dir" => {
+                if i + 1 < args.len() {
+                    config.out_dir = PathBuf::from(&args[i + 1]);
+                    i += 1;
+                }
+            }
+            "--no-pin" => {
+                config.pin_core = false;
+            }
+            "--dump-traces" => {
+                dump_traces = true;
+            }
+            other => {
+                eprintln!("Unknown benchmark flag: {}", other);
+            }
+        }
+        i += 1;
+    }
+
+    if dump_traces {
+        let pattern = config.filter.as_deref().unwrap_or("*");
+        let specs = filter_specs(pattern);
+        let unroll = config.unroll_k.min(20);
+        match dump_benchmark_traces(&specs, &config.out_dir, unroll) {
+            Ok(n) => {
+                println!(
+                    "[*] Successfully generated {} execution audit traces in: {}/traces/",
+                    n,
+                    config.out_dir.display()
+                );
+            }
+            Err(e) => {
+                eprintln!("Error dumping traces: {}", e);
+            }
+        }
+    }
+
+    if let Err(e) = run_benchmark_suite(&config) {
+        eprintln!("Benchmark failed: {}", e);
+        std::process::exit(1);
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let results_dir = resolve_results_dir();
@@ -189,6 +286,7 @@ fn main() {
     }
 
     match args[1].as_str() {
+        "bench" => run_benchmarks_cli(&args[2..]),
         "--summary" => print_summary(&results_dir),
         "--diff" => print_diff(&results_dir),
         "--suite" => {

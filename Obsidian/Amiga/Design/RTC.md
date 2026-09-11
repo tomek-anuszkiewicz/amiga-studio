@@ -138,7 +138,7 @@ To support both interactive real-time emulation and headless benchmark/warp exec
 
 ## 6. Save State Architecture (`RtcState`)
 
-Per [SaveState.md](SaveState.md), RTC state is serialized as an independent, decoupled snapshot defined in [`RtcState`](file:///d:/Programowanie/Amiga/crates/rtc/src/state.rs):
+Per [SaveState.md](SaveState.md), RTC state is serialized as an independent, decoupled snapshot defined in [`RtcState`](../../../crates/rtc/src/state.rs):
 - **`model` (`RtcModel`)**: Active RTC hardware configuration (`None` or `Msm6242b`).
 - **`registers` (`[u8; 16]`)**: 16 4-bit register latches (`$0..$F`) holding BCD digits.
 - **`control_d` (`u8`)**: Latched value of Control Register D (Hold, Busy, IRQ, 30s adjustment).

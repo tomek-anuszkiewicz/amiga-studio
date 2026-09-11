@@ -56,6 +56,12 @@ Analyze all modified and added files using `git diff`:
 11. **Idle Micro-Step Naming & Common Primitives**:
    - Ensure all micro-steps where the memory bus does not perform an active transfer or address strobe explicitly feature `IDLE` (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`).
    - Strictly prohibit anonymous idle structs (`MicroStep { step_fn: None, alu_fn: None, ... }`) and legacy aliases (`READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`, `REFILL_FIRST_FINISH`, `REFILL_SECOND_FINISH`).
+12. **Comprehensive Unit Test Coverage**:
+   - Verify that every newly created or modified Rust source file containing testable domain logic, state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests (`tests/<module_name>.rs` or inline `#[cfg(test)] mod tests`).
+   - Modules must not be declared complete without tests covering happy paths, boundary conditions, zero/empty states, and failure modes.
+13. **Language Policy & English Purity**:
+   - Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, or inline comments (per `language-policy.md`).
+   - Quoting Polish prompt phrases or metaphors in comments—even parenthetically or in quotation marks—is strictly prohibited; all concepts must be translated into idiomatic English before writing to code.
 
 ### Step 3: Living Documentation & Defect Retrospection Audit
 1. **Defect Retrospection (if bug fix / refactor)**: Did the author perform root-cause analysis ("Why did this happen?")? Are dedicated regression tests in place covering edge cases? Were systemic safeguards (architectural rules, lints, or DoD criteria) added to ensure this class of defect never recurs?
@@ -70,18 +76,21 @@ Provide the audit report using the following standard template:
 ### 🛡️ Code & Architecture Compliance Review:
 - [ ] **Code Formatting Compliance:** `cargo fmt --all -- --check` passed cleanly across workspace.
 - [ ] **Architecture Test Suite:** `cargo test -p test_runner --test test_architecture_rules` passed.
+- [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests (`tests/<module>.rs` or inline `#[cfg(test)] mod tests`).
 - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
 - [ ] **Host CPU Performance & Sympathy:** Flattened dispatch (branch-minimization), zero heap allocations in hot path, endianness bypass on bitwise ops.
 - [ ] **Readability, Zero Macros & No Const-Generic Handlers:** Clean idiomatic Rust, zero cryptic hacks, zero custom macros (`macro_rules!`), and concrete handlers without const generics.
 - [ ] **WASM Core Purity:** Zero OS calls (`Instant`, `thread`, `fs`) in core emulation crates.
 - [ ] **Decoupled SaveState:** Subsystem state derives `Serialize`/`Deserialize`, zero circular references (`Rc<RefCell>`).
 - [ ] **Anti-Hack & Spec Integrity:** Zero ad-hoc test workarounds; hardware specifications followed strictly.
+- [ ] **Anti-Tamper & Golden Hash Invariance:** Zero blind updates to golden master hashes (`GOLDEN_*_HASH`), reference cycle counts, or test fixtures to silence failing tests.
 - [ ] **Rust File Size, Cohesion & Flat Instructions:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Zero subdirectories in `crates/m68000/src/instructions/` (strict flat instruction hierarchy, 1:1 mnemonic files, zero umbrella files). Technical documentation has no line limits.
 - [ ] **Inlining Strategy:** Cross-crate `#[inline]`, CCR `#[inline(always)]`, cold paths `#[inline(never)]`.
 - [ ] **Defect Retrospection & Prevention:** Root cause analyzed, regression tests added, systemic safeguards/docs updated (if bug fix).
 - [ ] **Design Docs Pruning & Implemented Code Removal:** Living docs updated, speculative code pruned, and all code snippets for implemented features removed from `Obsidian/Amiga/Design/`.
 - [ ] **Roadmap Discipline:** Completed steps removed from active roadmap and summarized.
 - [ ] **Path Privacy:** Zero external host paths.
+- [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
 - [ ] **Test Coverage:** All workspace tests pass 100% green (`cargo test`).
 
 **Verdict:** [APPROVED | CHANGES REQUESTED]

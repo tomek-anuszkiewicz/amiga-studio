@@ -29,3 +29,11 @@ All Rust code across the Amiga 500 emulator workspace must strictly adhere to th
 - Keep Rust source files under **800 lines** in `crates/*/src/` (unless covered by registered exceptions in `LINE_COUNT_EXCEPTIONS`).
 - Maintain a flat instruction hierarchy directly under `crates/m68000/src/instructions/<mnemonic>.rs` with zero subdirectories.
 - Workspace layout under `crates/*` must remain strictly flat (3-tier re-export strategy).
+
+---
+
+## 5. Comprehensive Unit Test Coverage
+- **Mandatory Unit Tests for Testable Logic:** Every newly created or modified Rust source file containing testable domain logic, algorithmic transformations, state machines, hardware models, statistical calculations, builders, or parsers must have corresponding unit tests.
+- **Placement & Structure:** Unit tests should be implemented either inline as `#[cfg(test)] mod tests { ... }` or in dedicated test targets under `tests/<module_name>.rs` (matching the module name directly).
+- **Pragmatic Scope:** Pure struct declarations or thin forwarders without branching or business logic may rely on parent integration tests. However, any module implementing algorithms, parsing, state mutations, filtering, statistics, or hardware circuits must have dedicated unit tests verifying happy paths, boundary conditions, zero/empty states, and failure modes.
+

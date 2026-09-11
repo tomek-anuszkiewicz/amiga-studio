@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [ARITH-06] ADDA.W D0, A0
+Category: Arithmetic | Mode: DataRegDirect | Expected Amiga CCK: 8
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x00006000 -> 0x000070E6, PC: 0x001006
+[002] 00001002: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x000070E6 -> 0x000081CC, PC: 0x001008
+[003] 00001004: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x000081CC -> 0x000092B2, PC: 0x00100A
+[004] 00001006: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x000092B2 -> 0x0000A398, PC: 0x00100C
+[005] 00001008: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x0000A398 -> 0x0000B47E, PC: 0x00100E
+[006] 0000100A: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x0000B47E -> 0x0000C564, PC: 0x001010
+[007] 0000100C: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x0000C564 -> 0x0000D64A, PC: 0x001012
+[008] 0000100E: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x0000D64A -> 0x0000E730, PC: 0x001014
+[009] 00001010: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x0000E730 -> 0x0000F816, PC: 0x001016
+[010] 00001012: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x0000F816 -> 0x000108FC, PC: 0x001018
+[011] 00001014: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x000108FC -> 0x000119E2, PC: 0x00101A
+[012] 00001016: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x000119E2 -> 0x00012AC8, PC: 0x00101C
+[013] 00001018: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x00012AC8 -> 0x00013BAE, PC: 0x00101E
+[014] 0000101A: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x00013BAE -> 0x00014C94, PC: 0x001020
+[015] 0000101C: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x00014C94 -> 0x00015D7A, PC: 0x001022
+[016] 0000101E: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x00015D7A -> 0x00016E60, PC: 0x001024
+[017] 00001020: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x00016E60 -> 0x00017F46, PC: 0x001026
+[018] 00001022: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x00017F46 -> 0x0001902C, PC: 0x001028
+[019] 00001024: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x0001902C -> 0x0001A112, PC: 0x00102A
+[020] 00001026: D0C0             ADDA.W   D0, A0 |  8 CCK | ΔRegs: A0: 0x0001A112 -> 0x0001B1F8, PC: 0x00102C
+[021] 00001028: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     172 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x0001B1F8   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

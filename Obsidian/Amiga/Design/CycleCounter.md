@@ -100,7 +100,7 @@ To prevent tight coupling and synchronization bugs, responsibilities are cleanly
 
 ## 4. Rust Engine Architecture & Public API
 
-The `CycleCounter` is an ultra-lean, copyable, zero-allocation struct whose sole responsibility is counting master Color Clocks. Implementation resides in [`crates/cycle_counter/src/lib.rs`](file:///d:/Programowanie/Amiga/crates/cycle_counter/src/lib.rs):
+The `CycleCounter` is an ultra-lean, copyable, zero-allocation struct whose sole responsibility is counting master Color Clocks. Implementation resides in [`crates/cycle_counter/src/lib.rs`](../../../crates/cycle_counter/src/lib.rs):
 
 - **State Representation (`CycleCounter`):**
   - Holds a single private 64-bit monotonically increasing counter (`total_cck: u64`). At ~3.55 MHz, a 64-bit integer runs for over 164,000 years without overflowing.

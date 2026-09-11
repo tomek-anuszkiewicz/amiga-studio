@@ -18,11 +18,11 @@ This document provides formal architectural solutions for every instruction fami
 
 ### 1.1 Pseudo-Random Number Generator (PRNG) for Operands
 To prevent host processors from detecting trivial patterns or executing shortcut optimizations, operand values throughout all benchmark programs are generated using a **deterministic pseudo-random number generator (PRNG)**:
-- **Zero Host Cryptographic Requirement:** The PRNG does not need to be cryptographically secure; a fast, lightweight 64-bit generator (such as `XorShift64`) is ideal.
-- **Memory Buffers:** Memory arrays in Chip RAM (`$000400-$003FFF`) are filled with pseudo-random bytes, ensuring varied bit distributions across all memory read/write instructions.
+- **Zero Host Cryptographic Requirement:** The PRNG does not need to be cryptographically secure; a fast, lightweight 64-bit generator ([`XorShift64`](../../../crates/test_runner/src/benchmark/prng.rs) with deterministic seed [`BENCH_PRNG_SEED`](../../../crates/test_runner/src/benchmark/prng.rs)) is used.
+- **Memory Buffers:** Memory arrays in Chip RAM (`$000400-$000FFF` and buffers `$006000-$007FFF`) are filled with pseudo-random bytes, ensuring varied bit distributions across all memory read/write instructions.
 - **Register Preambles:** Initial values loaded into Data and Address registers ($D_0 \dots D_7, A_0 \dots A_6$) during the preamble are seeded from the PRNG.
-- **Immediate Operand Stream:** When generating 700 unrolled immediate instructions (e.g. `ADDI.W #xxx, D0`, `MOVE.L #xxx, D0`, `CMPI.B #xxx, D0`), the immediate values `#xxx` are emitted directly from the PRNG stream rather than repeating a static constant.
-- **Domain Clamping:** Where hardware requires valid constraints (e.g. non-zero divisors for `DIVU`, valid decimal digits for `ABCD`, non-stack alignment values for address registers), the PRNG output is clamped or masked to remain strictly valid while preserving maximum pseudo-random entropy.
+- **Immediate Operand Stream:** When generating unrolled immediate instructions (e.g. `ADDI.W #xxx, D0`, `MOVE.L #xxx, D0`, `CMPI.B #xxx, D0`), the immediate values `#xxx` are emitted directly from the PRNG stream rather than repeating a static constant.
+- **Domain Clamping:** Where hardware requires valid constraints (e.g. non-zero divisors for `DIVU`, valid decimal digits for `ABCD` via `next_bcd_byte()`, aligned address values), the PRNG output is clamped or masked to remain strictly valid while preserving maximum pseudo-random entropy. See [`crates/test_runner/src/benchmark/prng.rs`](../../../crates/test_runner/src/benchmark/prng.rs).
 
 
 ---
@@ -46,14 +46,14 @@ flowchart LR
 - **Characteristics:** Completely non-saturating; preserves register diversity and prevents host CPU register renaming shortcuts.
 
 ### 2.2 Memory Indirect & Post-Increment / Pre-Decrement
-- **Strategy:** Cyclic Chip RAM buffer allocated at `$002000-$003000` (4 KB).
-- **Post-Increment (`(A0)+`):** Initialize $A_0 = \$002000$. After 700 word reads ($1{,}400\text{ bytes}$), $A_0 = \$002578$. The loop footer re-arms $A_0 = \$002000$ before the next iteration.
-- **Pre-Decrement (`-(A0)`):** Initialize $A_0 = \$002578$. After 700 word writes, $A_0$ decrements back to $\$002000$.
+- **Strategy:** Dedicated Chip RAM buffers allocated at [`BENCH_RAM_BUFFER_A0 = $006000`](../../../crates/test_runner/src/benchmark/builder.rs) (source buffer) and [`BENCH_RAM_BUFFER_A1 = $007000`](../../../crates/test_runner/src/benchmark/builder.rs) (destination buffer), each 4 KB.
+- **Post-Increment (`(A0)+`):** Initialize $A_0 = \$006000$. After 700 word reads ($1{,}400\text{ bytes}$), $A_0 = \$006578$. The program preambles and execution harness re-arm pointers cleanly before subsequent iterations.
+- **Pre-Decrement (`-(A0)`):** Initialize $A_0 = \$006578$. After 700 word writes, $A_0$ decrements back to $\$006000$.
 
 ### 2.3 Stack Pushes (`PEA`, `MOVE.L Dn, -(SP)`)
-- **Strategy:** Initialize $SP$ near the top of Chip RAM ($SP = \$07F000$).
+- **Strategy:** Initialize $SP$ near the top of Chip RAM ([`BENCH_STACK_TOP = $07F000`](../../../crates/test_runner/src/benchmark/builder.rs)).
 - **Capacity:** Pushing 700 longwords ($2{,}800\text{ bytes}$) moves $SP$ downward to $\$07E510$, remaining completely safe within free memory.
-- **Footer Reset:** The loop footer executes `LEA $07F000, SP` to restore the stack pointer for the next outer pass.
+- **Footer Reset:** The execution loop re-arms stack and register state cleanly from [`BenchmarkProgram::inject_into`](../../../crates/test_runner/src/benchmark/builder.rs#L38).
 
 ### 2.4 Stack Frames (`LINK` and `UNLK`)
 - **Strategy:** Paired interleaved execution:
@@ -269,33 +269,34 @@ Subroutine returns are among the most challenging instructions to micro-benchmar
 sequenceDiagram
     autonumber
     participant SP as Stack Pointer (A7)
-    participant RAM as Chip RAM ($002000..$002800)
+    participant RAM as Chip RAM ($008000..$008578)
     participant CPU as M68000 Core
 
-    Note over SP,RAM: Pre-population: SP holds P1, P2, P3... P700
-    CPU->>RAM: Execute RTS at P0
-    RAM-->>CPU: Pop P1 from stack ($002004)
+    Note over SP,RAM: Pre-population: SP holds P1, P2, P3... PK, followed by Exit Sentinel ($004FFE)
+    CPU->>RAM: Execute JMP $008000 at Entry ($001000)
+    CPU->>RAM: Execute RTS at P0 ($008000)
+    RAM-->>CPU: Pop P1 from stack ($008002)
     CPU->>RAM: Jump to P1; Execute RTS at P1
-    RAM-->>CPU: Pop P2 from stack ($002008)
+    RAM-->>CPU: Pop P2 from stack ($008004)
     CPU->>RAM: Jump to P2; Execute RTS at P2
-    RAM-->>CPU: Pop P3 from stack ($00200C)
-    Note over CPU,RAM: Continuous chain of 700 RTS with 0 setup ops!
+    RAM-->>CPU: Pop P3 from stack ($008006)
+    Note over CPU,RAM: Continuous chain of K unrolled RTS ending with exit sentinel ($004FFE)!
 ```
 
 #### Execution Steps:
-1. **Layout in Memory:** Emit 700 consecutive `RTS` opcode words ($\$4E75$) at addresses $P_0, P_1, P_2, \dots, P_{699}$ in Chip RAM:
-   - $P_0 = \$002000$: `RTS`
-   - $P_1 = \$002002$: `RTS`
-   - $P_2 = \$002004$: `RTS`
+1. **Layout in Memory:** Emit $K$ consecutive `RTS` opcode words (`$4E75`) at base address [`rts_base = $008000`](../../../crates/test_runner/src/benchmark/builder.rs) in Chip RAM:
+   - $P_0 = \$008000$: `RTS`
+   - $P_1 = \$008002$: `RTS`
+   - $P_2 = \$008004$: `RTS`
    - $\dots$
-   - $P_{699} = \$002576$: `RTS`
-2. **Stack Pre-Population:** Before starting the inner loop, push the return addresses $P_{699}, P_{698}, \dots, P_1$ onto the stack in descending order.
-3. **Execution:** Set $PC = P_0$.
+   - $P_{K-1} = \$008000 + 2 \times (K-1)$: `RTS`
+2. **Stack Pre-Population:** Before starting execution, push return addresses $P_1 \dots P_{K-1}$, followed by [`BENCH_EXIT_PC = $004FFE`](../../../crates/test_runner/src/benchmark/builder.rs) onto the stack in reverse order.
+3. **Execution:** Entry point executes `JMP $008000`.
    - Instruction 0 at $P_0$ pops $P_1$ and branches to $P_1$.
    - Instruction 1 at $P_1$ pops $P_2$ and branches to $P_2$.
    - $\dots$
-   - Instruction 699 at $P_{699}$ pops the exit address.
-4. **Purity:** **700 consecutive `RTS` instructions execute back-to-back with zero intermediate setup instructions**, providing a 100% pure measurement of return microcode latency.
+   - Final instruction at $P_{K-1}$ pops [`BENCH_EXIT_PC = $004FFE`](../../../crates/test_runner/src/benchmark/builder.rs) and stops cleanly at `STOP #$2700`.
+4. **Purity:** $K$ consecutive `RTS` instructions execute back-to-back with zero intermediate setup instructions, providing a 100% pure measurement of return microcode latency. Implementation: [`build_cascading_rts`](../../../crates/test_runner/src/benchmark/builder.rs#L262).
 
 ### 8.2 Subroutine Return with CCR (`RTR`)
 - Uses identical cascading layout as `RTS`, but each stack entry is a 6-byte frame: 2-byte CCR followed by 4-byte return address ($PC$).

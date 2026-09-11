@@ -1,0 +1,57 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [FLOW-04] BSR.S sub
+Category: ControlFlow | Mode: PcDisplacement | Expected Amiga CCK: 18
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 6102             BSR      $001004 | 18 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFC, PC: 0x001008 | Mem: StackPush[0x07EFFC] <= 0x0000
+[002] 00001004: 4E75             RTS | 16 CCK | ΔRegs: A7: 0x0007EFFC -> 0x0007F000, PC: 0x001006
+[003] 00001002: 6004             BRA      $001008 | 10 CCK | ΔRegs: PC: 0x00100C
+[004] 00001008: 6102             BSR      $00100C | 18 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFC, PC: 0x001010 | Mem: StackPush[0x07EFFC] <= 0x0000
+[005] 0000100C: 4E75             RTS | 16 CCK | ΔRegs: A7: 0x0007EFFC -> 0x0007F000, PC: 0x00100E
+[006] 0000100A: 6004             BRA      $001010 | 10 CCK | ΔRegs: PC: 0x001014
+[007] 00001010: 6102             BSR      $001014 | 18 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFC, PC: 0x001018 | Mem: StackPush[0x07EFFC] <= 0x0000
+[008] 00001014: 4E75             RTS | 16 CCK | ΔRegs: A7: 0x0007EFFC -> 0x0007F000, PC: 0x001016
+[009] 00001012: 6004             BRA      $001018 | 10 CCK | ΔRegs: PC: 0x00101C
+[010] 00001018: 6102             BSR      $00101C | 18 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFC, PC: 0x001020 | Mem: StackPush[0x07EFFC] <= 0x0000
+[011] 0000101C: 4E75             RTS | 16 CCK | ΔRegs: A7: 0x0007EFFC -> 0x0007F000, PC: 0x00101E
+[012] 0000101A: 6004             BRA      $001020 | 10 CCK | ΔRegs: PC: 0x001024
+[013] 00001020: 6102             BSR      $001024 | 18 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFC, PC: 0x001028 | Mem: StackPush[0x07EFFC] <= 0x0000
+[014] 00001024: 4E75             RTS | 16 CCK | ΔRegs: A7: 0x0007EFFC -> 0x0007F000, PC: 0x001026
+[015] 00001022: 6004             BRA      $001028 | 10 CCK | ΔRegs: PC: 0x00102C
+[016] 00001028: 6102             BSR      $00102C | 18 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFC, PC: 0x001030 | Mem: StackPush[0x07EFFC] <= 0x0000
+[017] 0000102C: 4E75             RTS | 16 CCK | ΔRegs: A7: 0x0007EFFC -> 0x0007F000, PC: 0x00102E
+[018] 0000102A: 6004             BRA      $001030 | 10 CCK | ΔRegs: PC: 0x001034
+[019] 00001030: 6102             BSR      $001034 | 18 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFC, PC: 0x001038 | Mem: StackPush[0x07EFFC] <= 0x0000
+[020] 00001034: 4E75             RTS | 16 CCK | ΔRegs: A7: 0x0007EFFC -> 0x0007F000, PC: 0x001036
+[021] 00001032: 6004             BRA      $001038 | 10 CCK | ΔRegs: PC: 0x00103C
+[022] 00001038: 6102             BSR      $00103C | 18 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFC, PC: 0x001040 | Mem: StackPush[0x07EFFC] <= 0x0000
+[023] 0000103C: 4E75             RTS | 16 CCK | ΔRegs: A7: 0x0007EFFC -> 0x0007F000, PC: 0x00103E
+[024] 0000103A: 6004             BRA      $001040 | 10 CCK | ΔRegs: PC: 0x001044
+[025] 00001040: 6102             BSR      $001044 | 18 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFC, PC: 0x001048 | Mem: StackPush[0x07EFFC] <= 0x0000
+[026] 00001044: 4E75             RTS | 16 CCK | ΔRegs: A7: 0x0007EFFC -> 0x0007F000, PC: 0x001046
+[027] 00001042: 6004             BRA      $001048 | 10 CCK | ΔRegs: PC: 0x00104C
+[028] 00001048: 6102             BSR      $00104C | 18 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFFC, PC: 0x001050 | Mem: StackPush[0x07EFFC] <= 0x0000
+[029] 0000104C: 4E75             RTS | 16 CCK | ΔRegs: A7: 0x0007EFFC -> 0x0007F000, PC: 0x00104E
+[030] 0000104A: 6004             BRA      $001050 | 10 CCK | ΔRegs: PC: 0x001054
+[031] 00001050: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   31
+  Total Guest Cycles:     452 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

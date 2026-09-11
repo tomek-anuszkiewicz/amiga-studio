@@ -1,3 +1,4 @@
+pub mod benchmark;
 pub mod diagnostic;
 pub mod dma_harness;
 pub mod reporter;

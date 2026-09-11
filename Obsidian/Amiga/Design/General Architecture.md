@@ -86,7 +86,7 @@ graph TD
 | **`memory_bus`** | [`crates/memory_bus`](../../../crates/memory_bus) | 24-bit physical address space, 256-entry 64KB bank table (`addr >> 16`), 2-phase CCK arbitration, open bus emulation. | `config`, `rtc` |
 | **`m68000`** | [`crates/m68000`](../../../crates/m68000) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | `memory_bus` |
 | **`debugger`** | [`crates/debugger`](../../../crates/debugger) | Headless inspection and debugging subsystem, register/memory inspectors, disassembly, breakpoint triggers. | `m68000`, `memory_bus` |
-| **`test_runner`** | [`crates/test_runner`](../../../crates/test_runner) | Automated validation against MAME (`.json`) and Tom Harte (`.json`) SingleStepTests suites. | `m68000`, `memory_bus`, `debugger` |
+| **`test_runner`** | [`crates/test_runner`](../../../crates/test_runner) | Automated validation against MAME and Tom Harte SingleStepTests, cycle-exact instruction benchmarking engine, execution trace audit logger (`--dump-traces`), and Cartesian DMA contention suite. | `m68000`, `memory_bus`, `debugger` |
 
 ---
 
@@ -105,6 +105,9 @@ graph TD
 - [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md): Register architecture, condition codes, exception vectors, and instruction set.
 - [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md): Cycle-exact micro-operations, bus strobes, pipeline refills, and micro-step traces.
 - [CPU SingleStepTests.md](CPU%20SingleStepTests.md): Verification suite against MAME and Tom Harte hardware vectors.
+- [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md): Cycle-exact benchmarking engine, memory map, execution trace dumping (`--dump-traces`), and timing anomaly detection.
+- [CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md): Comprehensive test case catalog across all instructions, addressing modes, and operand permutations.
+- [CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md): Loop construction patterns, PRNG data synthesis, and cycle timing strategies.
 - [Main loop A500.md](Main%20loop%20A500.md): Machine stepping, reset sequence, and interrupt arbitration.
 - [MemoryBus.md](MemoryBus.md): 2-phase CCK arbitration, address decoding, and DMA contention.
 - [Agnus.md](Agnus.md): Master beam counters, DMA arbiter, Copper, and 4-channel Blitter.

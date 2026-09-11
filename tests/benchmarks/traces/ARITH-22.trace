@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [ARITH-22] CLR.W D0
+Category: Arithmetic | Mode: DataRegDirect | Expected Amiga CCK: 4
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 4240             CLR.W    D0 |  4 CCK | ΔRegs: D0: 0xEC7710E6 -> 0xEC770000, SR: 0x2700 -> 0x2704, PC: 0x001006
+[002] 00001002: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001008
+[003] 00001004: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x00100A
+[004] 00001006: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x00100C
+[005] 00001008: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x00100E
+[006] 0000100A: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001010
+[007] 0000100C: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001012
+[008] 0000100E: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001014
+[009] 00001010: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001016
+[010] 00001012: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001018
+[011] 00001014: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x00101A
+[012] 00001016: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x00101C
+[013] 00001018: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x00101E
+[014] 0000101A: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001020
+[015] 0000101C: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001022
+[016] 0000101E: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001024
+[017] 00001020: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001026
+[018] 00001022: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x001028
+[019] 00001024: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x00102A
+[020] 00001026: 4240             CLR.W    D0 |  4 CCK | ΔRegs: PC: 0x00102C
+[021] 00001028: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     92 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0xEC770000   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2704 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

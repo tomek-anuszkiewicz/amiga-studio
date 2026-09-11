@@ -161,7 +161,7 @@ While CPU state schemas are identical, the two suites format their bus transacti
 
 ## 3. Rust Deserialization Data Structures
 
-To enforce strict validation, all structs defined in [`crates/test_runner/src/schema.rs`](file:///d:/Programowanie/Amiga/crates/test_runner/src/schema.rs) use `#[serde(deny_unknown_fields)]`:
+To enforce strict validation, all structs defined in [`crates/test_runner/src/schema.rs`](../../../crates/test_runner/src/schema.rs) use `#[serde(deny_unknown_fields)]`:
 - **`SingleStepTest`**: Encapsulates test `name`, `initial: CpuTestState`, `final_state: CpuTestState`, `transactions: Vec<serde_json::Value>`, and expected execution `length: u32`.
 - **`CpuTestState`**: Deserializes registers `d0..d7`, `a0..a6`, `usp`, `ssp`, `sr`, `pc`, `prefetch: [u32; 2]`, and initial/final `ram: Vec<[u32; 2]>` (`[address, byte]`).
 
@@ -233,11 +233,12 @@ The test harness is implemented in the dedicated workspace crate [`crates/test_r
 - **[`transactions.rs`](../../../crates/test_runner/src/transactions.rs):** Deserializes and parses transaction logs across Tom Harte and MAME formats, matching recorded bus transactions (read/write/TAS direction, 24-bit address, size, bus value, FC lines, strobe signals) against silicon logs.
 - **[`dma_harness.rs`](../../../crates/test_runner/src/dma_harness.rs):** Synthetic Agnus DMA bus contention runner sweeping single-cycle (`run_dma_contention_sweep`) and multi-cycle burst (`run_dma_burst_contention`) stalls across instruction execution phases, validating State Invariance and Cycle Invariance ($C = C_0 + 2 \times \text{wait\_cycles}$).
 - **[`diagnostic.rs`](../../../crates/test_runner/src/diagnostic.rs):** Human-readable failure reporting, full CCR flag decomposition ($T, S, I, X, N, Z, V, C$), clock/CCK cycle metrics, and transaction diff formatting.
-- **[`reporter.rs`](../../../crates/test_runner/src/reporter.rs):** Persistent results recording in `.test_results/`, differential regression detection, and global summary generation.
+- **[`reporter.rs`](../../../crates/test_runner/src/reporter.rs):** Persistent results recording in `tests/singlestep/`, differential regression detection, and global summary generation.
+- **[`benchmark/`](../../../crates/test_runner/src/benchmark/):** Automated per-opcode instruction micro-benchmarking engine, programmatic unrolled block synthesis ($K = 700$), single-pass step tracing (`tracer.rs`), P-core affinity pinning, and anomaly classifier (see [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)).
 
 ### 5.2 CPU State Setup & Execution Flow
-Implemented directly in [`crates/test_runner/src/runner.rs`](file:///d:/Programowanie/Amiga/crates/test_runner/src/runner.rs):
-- Instantiates a clean [`TestMemoryBus`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/test_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
+Implemented directly in [`crates/test_runner/src/runner.rs`](../../../crates/test_runner/src/runner.rs):
+- Instantiates a clean [`TestMemoryBus`](../../../crates/memory_bus/src/test_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
 - Primes CPU registers $D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, and Program Counter (accounting for Tom Harte's $+4$ prefetch offset).
 - Primes prefetch queue registers `ir` and `prefetch[0]`.
 - Drives instruction stepping via `cpu.step_instruction(&mut bus)` or CCK-by-CCK via `cpu.step_cck(&mut bus)`.
@@ -246,7 +247,7 @@ Implemented directly in [`crates/test_runner/src/runner.rs`](file:///d:/Programo
 
 ## 6. Integration Test Suite Structure (`tests/test_singlestep.rs`)
 
-Integration tests reside in [`crates/test_runner/tests/test_singlestep.rs`](file:///d:/Programowanie/Amiga/crates/test_runner/tests/test_singlestep.rs). Rather than scattering tests across dozens of individual files, tests use the unified dual-suite helper `run_dual_test("<OPCODE>", limit)`, simultaneously running and asserting zero failures across:
+Integration tests reside in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs). Rather than scattering tests across dozens of individual files, tests use the unified dual-suite helper `run_dual_test("<OPCODE>", limit)`, simultaneously running and asserting zero failures across:
 1. MAME test suite (`ref_src/SingleStepTests-m68000/v1/<OPCODE>.json`).
 2. Tom Harte real silicon test suite (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json`).
 
@@ -264,13 +265,25 @@ Tests are grouped into cohesive categories within `test_singlestep.rs`:
 Tests are executed via standard Cargo commands or through the dedicated `test_runner` CLI:
 
 ```powershell
-# Run all single-step integration tests
-cargo test -p test_runner
+# Run all single-step integration tests with default fast sample limit (50 vectors per suite)
+cargo test -p test_runner --test test_singlestep
+
+# Run exhaustive full validation across all ~300,000 vectors in parallel
+$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+
+# Run tests with a custom vector limit per suite
+$env:SINGLESTEP_LIMIT = "500"; cargo test -p test_runner --test test_singlestep
 
 # Run all tests for a specific opcode across both suites
 cargo test -p test_runner -- test_add_b
 cargo test -p test_runner -- test_move_w
 cargo test -p test_runner -- test_nop
+
+# Run Cartesian DMA contention permutation test suite
+cargo test -p test_runner --test test_dma_cartesian
+
+# Run automated architectural compliance suite
+cargo test -p test_runner --test test_architecture_rules
 
 # Check for regressions or improvements against previous test run
 cargo run -p test_runner -- --diff
@@ -362,14 +375,14 @@ Whenever a test case fails, the runner produces a formatted diagnostic report co
 - **Decomposed CCR Analysis:** Status Register decoded into human-readable flags ($T, S, I, X, N, Z, V, C$) indicating specifically which flags are unexpectedly SET or CLEARED.
 - **Register & Memory Diffs:** Detailed expected vs actual values with decimal offsets for registers ($D_0-D_7, A_0-A_7, PC$) and RAM byte addresses.
 
-### 10.2 Differential Regression Tracker (`.test_results/`)
-Test outcomes are persisted across runs in the `.test_results/` workspace directory:
-- `.test_results/latest/<suite>.json`: Full test results and failing test names from the most recent run.
-- `.test_results/previous/<suite>.json`: Prior run snapshot rotated upon execution.
-- `.test_results/summary.json`: Aggregated repository coverage matrix with pass rates and active failure cases.
+### 10.2 Differential Regression Tracker (`tests/singlestep/`)
+Test outcomes are persisted across runs in the `tests/singlestep/` workspace directory:
+- `tests/singlestep/latest/<suite>.json`: Full test results and failing test names from the most recent run.
+- `tests/singlestep/previous/<suite>.json`: Prior run snapshot rotated upon execution.
+- `tests/singlestep/summary.json`: Aggregated repository coverage matrix with pass rates and active failure cases.
 
 #### Regression & Improvement Detection:
-- 🔴 **Regressions:** Tests that previously passed in `.test_results/previous/` but failed in the current run are immediately flagged with `⚠️ [REGRESSION DETECTED]` in the terminal.
+- 🔴 **Regressions:** Tests that previously passed in `tests/singlestep/previous/` but failed in the current run are immediately flagged with `⚠️ [REGRESSION DETECTED]` in the terminal.
 - 🟢 **Improvements:** Tests that previously failed but now pass are flagged with `🎉 [PROGRESS / FIX]`.
 
 ### 10.3 CLI Inspection Tool

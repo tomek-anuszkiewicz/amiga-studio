@@ -256,7 +256,7 @@ The `test_runner` crate includes a standalone CLI tool for inspecting coverage m
 # Display global pass/fail matrix and coverage summary across all opcodes
 cargo run -p test_runner -- --summary
 
-# Detect regressions and fixed tests compared to previous run (via .test_results/)
+# Detect regressions and fixed tests compared to previous run (via tests/singlestep/)
 cargo run -p test_runner -- --diff
 
 # Execute a single opcode suite directly with live diagnostic failure output
@@ -289,9 +289,9 @@ For isolated branch development, parallel testing, or running concurrent agent s
 # Create branch and checkout into sibling directory
 git worktree add ..\Amiga-<branch-name> -b <branch-name>
 
-# Copy required untracked configuration (.env, .test_results)
+# Copy required untracked configuration (.env)
 $target = "..\Amiga-<branch-name>"
-@('.env', '.test_results') | ForEach-Object { if (Test-Path $_) { Copy-Item -Recurse -Force $_ "$target\$_" } }
+@('.env') | ForEach-Object { if (Test-Path $_) { Copy-Item -Recurse -Force $_ "$target\$_" } }
 ```
 
 ### 7.2 Working & Testing

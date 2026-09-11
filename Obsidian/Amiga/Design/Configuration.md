@@ -34,15 +34,14 @@ graph TD
 * **Single Mutation Vector**: Configuration can only be modified atomically via `apply_preset(preset)`.
 * **RTC Model**: Held internally as an explicit `RtcModel` enum.
 
-The master configuration is encapsulated in [`A500Config`](file:///d:/Programowanie/Amiga/crates/config/src/lib.rs), which strictly enforces immutability and single-point mutation:
-- **Encapsulated Types (Defined in [`crates/config/src/types.rs`](file:///d:/Programowanie/Amiga/crates/config/src/types.rs)):**
+The master configuration is encapsulated in [`A500Config`](../../../crates/config/src/lib.rs), which strictly enforces immutability and single-point mutation:
+- **Encapsulated Types (Defined directly in [`crates/config/src/lib.rs`](../../../crates/config/src/lib.rs)):**
   - **`A500Preset`**: Canonical hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`).
   - **`VideoStandard`**: Display timing standard (`Pal` at ~50 Hz / 3.546895 MHz CCK, `Ntsc` at ~60 Hz / 3.579545 MHz CCK).
   - **`ChipRamSize`**: Chip RAM sizing (`Kb512`).
   - **`SlowRamSize`**: Trapdoor pseudo-fast RAM (`None`, `Kb512` at `$C00000`).
   - **`FastRamSize`**: Auto-config expansion RAM (`None`, `Mb4` at `$200000`).
   - **`RtcModel`**: Real-time clock hardware (`None` [floating open bus `$FF`], `Msm6242b` [OKI MSM6242B at `$DC0000`]).
-  - **`AgnusModel`**, **`DeniseModel`**, **`GamePortDevice`**, **`FloppyConfig`**: Subsystem models and peripheral options.
 - **Constructors & Mutation**:
   - Constructors: `A500Config::bare_512k(video)`, `standard_1mb(video)`, `expanded_power_user(video)`, or `from_preset(preset, video)`.
   - Mutation Vector: Atomic preset application via `config.apply_preset(preset)`. All fields are accessed externally via read-only getters (`active_preset()`, `chip_ram()`, `slow_ram()`, `fast_ram()`, `rtc()`, `video_standard()`).

@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [ARITH-02] ADD.W D1, D0
+Category: Arithmetic | Mode: DataRegDirect | Expected Amiga CCK: 4
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC7710E6 -> 0xEC77182D, PC: 0x001006
+[002] 00001002: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC77182D -> 0xEC771F74, PC: 0x001008
+[003] 00001004: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC771F74 -> 0xEC7726BB, PC: 0x00100A
+[004] 00001006: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC7726BB -> 0xEC772E02, PC: 0x00100C
+[005] 00001008: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC772E02 -> 0xEC773549, PC: 0x00100E
+[006] 0000100A: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC773549 -> 0xEC773C90, PC: 0x001010
+[007] 0000100C: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC773C90 -> 0xEC7743D7, PC: 0x001012
+[008] 0000100E: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC7743D7 -> 0xEC774B1E, PC: 0x001014
+[009] 00001010: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC774B1E -> 0xEC775265, PC: 0x001016
+[010] 00001012: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC775265 -> 0xEC7759AC, PC: 0x001018
+[011] 00001014: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC7759AC -> 0xEC7760F3, PC: 0x00101A
+[012] 00001016: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC7760F3 -> 0xEC77683A, PC: 0x00101C
+[013] 00001018: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC77683A -> 0xEC776F81, PC: 0x00101E
+[014] 0000101A: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC776F81 -> 0xEC7776C8, PC: 0x001020
+[015] 0000101C: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC7776C8 -> 0xEC777E0F, PC: 0x001022
+[016] 0000101E: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC777E0F -> 0xEC778556, SR: 0x2700 -> 0x270A, PC: 0x001024
+[017] 00001020: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC778556 -> 0xEC778C9D, SR: 0x270A -> 0x2708, PC: 0x001026
+[018] 00001022: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC778C9D -> 0xEC7793E4, PC: 0x001028
+[019] 00001024: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC7793E4 -> 0xEC779B2B, PC: 0x00102A
+[020] 00001026: D041             ADD.W    D1, D0 |  4 CCK | ΔRegs: D0: 0xEC779B2B -> 0xEC77A272, PC: 0x00102C
+[021] 00001028: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     92 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0xEC77A272   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2708 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

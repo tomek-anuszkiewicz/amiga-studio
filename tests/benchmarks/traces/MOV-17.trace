@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [MOV-17] MOVEM.W (SP)+, D0-D3
+Category: DataMovement | Mode: PostIncrement | Expected Amiga CCK: 28
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: D0: 0xEC7710E6 -> 0x00000000, D1: 0x0EF90747 -> 0x00000000, D2: 0x155FC489 -> 0x00000000, D3: 0x06957940 -> 0x00000000, A7: 0x0007F000 -> 0x0007F010, PC: 0x001008
+[002] 00001004: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F010 -> 0x0007F020, PC: 0x00100C
+[003] 00001008: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F020 -> 0x0007F030, PC: 0x001010
+[004] 0000100C: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F030 -> 0x0007F040, PC: 0x001014
+[005] 00001010: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F040 -> 0x0007F050, PC: 0x001018
+[006] 00001014: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F050 -> 0x0007F060, PC: 0x00101C
+[007] 00001018: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F060 -> 0x0007F070, PC: 0x001020
+[008] 0000101C: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F070 -> 0x0007F080, PC: 0x001024
+[009] 00001020: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F080 -> 0x0007F090, PC: 0x001028
+[010] 00001024: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F090 -> 0x0007F0A0, PC: 0x00102C
+[011] 00001028: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F0A0 -> 0x0007F0B0, PC: 0x001030
+[012] 0000102C: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F0B0 -> 0x0007F0C0, PC: 0x001034
+[013] 00001030: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F0C0 -> 0x0007F0D0, PC: 0x001038
+[014] 00001034: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F0D0 -> 0x0007F0E0, PC: 0x00103C
+[015] 00001038: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F0E0 -> 0x0007F0F0, PC: 0x001040
+[016] 0000103C: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F0F0 -> 0x0007F100, PC: 0x001044
+[017] 00001040: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F100 -> 0x0007F110, PC: 0x001048
+[018] 00001044: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F110 -> 0x0007F120, PC: 0x00104C
+[019] 00001048: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F120 -> 0x0007F130, PC: 0x001050
+[020] 0000104C: 4CDF             DATA.W   $4CDF | 44 CCK | ΔRegs: A7: 0x0007F130 -> 0x0007F140, PC: 0x001054
+[021] 00001050: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     892 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0x00000000   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x00000000   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x00000000   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x00000000   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F140
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F140
+================================================================================

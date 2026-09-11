@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > This document defines the engineering standards, idioms, and best practices for writing Rust code across the Amiga 500 emulator workspace.
-> For host CPU hardware mechanical sympathy, see [performance-and-readability.md](file:///d:/Programowanie/Amiga/.agents/rules/performance-and-readability.md).
+> For host CPU hardware mechanical sympathy, see [performance-and-readability.md](../../../.agents/rules/performance-and-readability.md).
 
 ---
 

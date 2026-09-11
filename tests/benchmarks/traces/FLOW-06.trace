@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [FLOW-06] RTR
+Category: ControlFlow | Mode: Implied | Expected Amiga CCK: 20
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007EF88
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007EF88
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 4EF9 0000 8000   JMP      ($00008000).L | 12 CCK | ΔRegs: PC: 0x008004
+[002] 00008000: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EF88 -> 0x0007EF8E, PC: 0x008006
+[003] 00008002: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EF8E -> 0x0007EF94, PC: 0x008008
+[004] 00008004: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EF94 -> 0x0007EF9A, PC: 0x00800A
+[005] 00008006: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EF9A -> 0x0007EFA0, PC: 0x00800C
+[006] 00008008: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFA0 -> 0x0007EFA6, PC: 0x00800E
+[007] 0000800A: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFA6 -> 0x0007EFAC, PC: 0x008010
+[008] 0000800C: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFAC -> 0x0007EFB2, PC: 0x008012
+[009] 0000800E: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFB2 -> 0x0007EFB8, PC: 0x008014
+[010] 00008010: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFB8 -> 0x0007EFBE, PC: 0x008016
+[011] 00008012: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFBE -> 0x0007EFC4, PC: 0x008018
+[012] 00008014: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFC4 -> 0x0007EFCA, PC: 0x00801A
+[013] 00008016: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFCA -> 0x0007EFD0, PC: 0x00801C
+[014] 00008018: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFD0 -> 0x0007EFD6, PC: 0x00801E
+[015] 0000801A: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFD6 -> 0x0007EFDC, PC: 0x008020
+[016] 0000801C: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFDC -> 0x0007EFE2, PC: 0x008022
+[017] 0000801E: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFE2 -> 0x0007EFE8, PC: 0x008024
+[018] 00008020: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFE8 -> 0x0007EFEE, PC: 0x008026
+[019] 00008022: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFEE -> 0x0007EFF4, PC: 0x008028
+[020] 00008024: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFF4 -> 0x0007EFFA, PC: 0x00802A
+[021] 00008026: 4E77             RTR | 20 CCK | ΔRegs: A7: 0x0007EFFA -> 0x0007F000, PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     412 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

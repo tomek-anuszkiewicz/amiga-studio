@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [ARITH-19b] DIVS D1, D0 (Overflow)
+Category: Arithmetic | Mode: DataRegDirect | Expected Amiga CCK: 10
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xFFFF0000   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x00000002   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 81C1             DIVS.W   D1, D0 | 154 CCK | ΔRegs: D0: 0xFFFF0000 -> 0x00008000, SR: 0x2700 -> 0x2708, PC: 0x001006
+[002] 00001002: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00008000 -> 0x00004000, SR: 0x2708 -> 0x2700, PC: 0x001008
+[003] 00001004: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00004000 -> 0x00002000, PC: 0x00100A
+[004] 00001006: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00002000 -> 0x00001000, PC: 0x00100C
+[005] 00001008: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00001000 -> 0x00000800, PC: 0x00100E
+[006] 0000100A: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00000800 -> 0x00000400, PC: 0x001010
+[007] 0000100C: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00000400 -> 0x00000200, PC: 0x001012
+[008] 0000100E: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00000200 -> 0x00000100, PC: 0x001014
+[009] 00001010: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00000100 -> 0x00000080, PC: 0x001016
+[010] 00001012: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00000080 -> 0x00000040, PC: 0x001018
+[011] 00001014: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00000040 -> 0x00000020, PC: 0x00101A
+[012] 00001016: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00000020 -> 0x00000010, PC: 0x00101C
+[013] 00001018: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00000010 -> 0x00000008, PC: 0x00101E
+[014] 0000101A: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00000008 -> 0x00000004, PC: 0x001020
+[015] 0000101C: 81C1             DIVS.W   D1, D0 | 148 CCK | ΔRegs: D0: 0x00000004 -> 0x00000002, PC: 0x001022
+[016] 0000101E: 81C1             DIVS.W   D1, D0 | 150 CCK | ΔRegs: D0: 0x00000002 -> 0x00000001, PC: 0x001024
+[017] 00001020: 81C1             DIVS.W   D1, D0 | 150 CCK | ΔRegs: D0: 0x00000001 -> 0x00010000, SR: 0x2700 -> 0x2704, PC: 0x001026
+[018] 00001022: 81C1             DIVS.W   D1, D0 | 16 CCK | ΔRegs: SR: 0x2704 -> 0x2706, PC: 0x001028
+[019] 00001024: 81C1             DIVS.W   D1, D0 | 16 CCK | ΔRegs: PC: 0x00102A
+[020] 00001026: 81C1             DIVS.W   D1, D0 | 16 CCK | ΔRegs: PC: 0x00102C
+[021] 00001028: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     2586 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0x00010000   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x00000002   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2706 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

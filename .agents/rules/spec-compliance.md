@@ -27,3 +27,12 @@ Whenever an implementation requirement, external test harness expectation (e.g. 
 No code may deviate from existing documentation without an explicit, recorded decision by the user. Either:
 - The design documentation is officially modified with user approval, OR
 - The code strictly adheres to the specification.
+
+## 4. Golden Test Vector & Hash Invariance (Anti-Tamper Rule)
+- **Zero Blind Hash Updates**: Golden master hashes, checksums, and cycle reference vectors (e.g. `GOLDEN_CATALOG_STRUCTURE_HASH`, `GOLDEN_CSV_HASH_*` in benchmark tests) represent verified architectural ground truth.
+- **Prohibited Behavior**: Modifying golden constants in test files to make a failing test pass without root-cause investigation is strictly prohibited.
+- **Escalation Protocol**: If an instruction's cycle timing or catalog definition legitimately changes due to an approved hardware model correction:
+  1. Document the exact hardware justification (referencing PRM/Amiga Hardware Manual).
+  2. Escalate the proposed timing change to the user.
+  3. Only update golden constants after explicit user approval.
+

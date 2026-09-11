@@ -4,5 +4,10 @@
   "editor.formatOnSave": true,
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "search.exclude": {
+    "/graphify-out": true,
+    "**/.git": true,
+    "**/target": true
   }
 }

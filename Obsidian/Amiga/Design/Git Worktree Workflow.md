@@ -28,7 +28,7 @@ Copy necessary untracked configuration and baseline data from the primary reposi
 
 ```powershell
 $target = "..\Amiga-<branch-name>"
-@('.env', '.test_results') | ForEach-Object { if (Test-Path $_) { Copy-Item -Recurse -Force $_ "$target\$_" } }
+@('.env') | ForEach-Object { if (Test-Path $_) { Copy-Item -Recurse -Force $_ "$target\$_" } }
 ```
 
 ### Step 3: Work & Test in Worktree
@@ -135,7 +135,7 @@ Review of repository ignored paths and whether to replicate them in worktrees:
 | Path | Category | Action for Worktree | Rationale |
 | :--- | :--- | :--- | :--- |
 | `.env` | Environment Config | **Copy Mandatory** | Contains `RAG_CACHE_FILE` and optional API keys. Required for Python tools and RAG integration. |
-| `.test_results/` | Regression Baselines | **Copy Recommended** | Stores baseline test metrics (`test_results.json`). Copying allows `cargo run -p test_runner -- --diff` to compare against master immediately. |
+| `tests/singlestep/` & `tests/benchmarks/` | Test & Benchmark Results | **Tracked in Git** | Automatically checked out by Git in worktrees. Allows immediate regression diffing and baseline comparisons. |
 | `target/` | Cargo Build Artifacts | **Do NOT Copy** | Keep separate. Isolated `target/` avoids compiler file locks between parallel workspaces. |
 | `graphify-out/cache/` | AST Parser Cache | **Do NOT Copy** | Re-generated on demand by `graphify`. Code graph metadata (`graph.json`, `wiki/`) is tracked in Git. |
 | `Obsidian/Amiga/.obsidian/` | Editor State | **Do NOT Copy** | Local workspace state and cursor positions. |

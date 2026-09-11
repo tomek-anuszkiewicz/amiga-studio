@@ -16,7 +16,7 @@ Operational, communication, and interaction rules are modularized under `.agents
 - **Mechanical Sympathy & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros, zero const-generics, cache density, and zero runtime heap allocations in hot paths.
 - **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing, and multi-agent workflows.
 - **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Architecture queries and AST relationships via graphify.
-- **Rust Best Practices** ([`rust-best-practices.md`](.agents/rules/rust-best-practices.md)): Safe borrowing, zero unwraps in runtime, wrapping math, and no macros/const generics.
+- **Rust Best Practices** ([`rust-best-practices.md`](.agents/rules/rust-best-practices.md)): Safe borrowing, zero unwraps in runtime, wrapping math, no macros/const generics, and mandatory unit tests for all testable logic.
 - **egui & Frontend Best Practices** ([`egui-best-practices.md`](.agents/rules/egui-best-practices.md)): Synchronous state pull, 1:1 layout mapping, bounded time-slicing, and WASM/DPI adaptation.
 
 ---
@@ -85,7 +85,7 @@ Operational, communication, and interaction rules are modularized under `.agents
      - **Recognized Exceptions**:
        - Coupled SR/CCR operations: `move_sr_ccr.rs` (`MOVE from/to SR/CCR`) and `logic_sr_ccr.rs` (`ANDI/EORI/ORI to CCR/SR`).
        - Size-based decompositions for high-cardinality operations: `move_b.rs`, `move_w.rs`, `move_l.rs`.
-       - Files registered in `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`: static dispatch tables (`dispatch_table.rs`) and exhaustive linear decoders (`add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`, `move_b.rs`, `move_w.rs`, `move_l.rs`). Never split into subdirectories.
+       - Files registered in `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`: static dispatch tables (`dispatch_table.rs`), disassembler (`disassembler.rs`), and exhaustive linear decoders (`add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`, `move_b.rs`, `move_w.rs`, `move_l.rs`). Never split into subdirectories.
 
 7. **Method Inlining Strategy (`#[inline]`, `#[inline(always)]`, `#[inline(never)]`)**:
    - `#[inline]` emits intermediate representation into crate metadata, enabling **cross-crate inlining** across workspace crates without requiring whole-program LTO.
@@ -147,7 +147,9 @@ Operational, communication, and interaction rules are modularized under `.agents
      - Evaluate automated enforcement in `test_architecture_rules.rs`.
      - Update design documents in `Obsidian/Amiga/Design/` or rules in `AGENTS.md`.
      - Add explicit checkpoints to Definition of Done and `/code-review`.
-- **Mandatory Post-Flight Compliance Checklist:** Conclude every implementation task with a Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, canonical idle micro-step naming, Rust source file size <= 800 lines, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, defect retrospection & regression coverage, design doc & roadmap pruning, removal of implemented code snippets from design docs, 100% green tests).
+- **Mandatory Comprehensive Unit Test Coverage for Testable Logic:** Every newly created or modified Rust source file containing testable domain logic, state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders must have dedicated unit tests (either inline `#[cfg(test)] mod tests { ... }` or in dedicated test targets under `tests/<module_name>.rs`). A module must never be declared complete without tests covering happy paths, boundary conditions, zero/empty states, and failure modes.
+- **Mandatory Post-Flight Compliance Checklist:** Conclude every implementation task with a Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros, zero const-generic handlers, canonical idle micro-step naming, Rust source file size <= 800 lines, flat instruction hierarchy with zero subdirectories in `crates/m68000/src/instructions/`, strict English in all source code and comments, defect retrospection & regression coverage, comprehensive unit test coverage for all testable logic, design doc & roadmap pruning, removal of implemented code snippets from design docs, 100% green tests).
+- **Prohibition of Blind Golden Hash Modifications**: Modifying golden test hashes, cycle totals, or benchmark reference constants (e.g. `GOLDEN_CATALOG_STRUCTURE_HASH`, `GOLDEN_CSV_HASH_*` in `test_benchmark_csv.rs`, or single-step test fixtures) to silence a failing test is strictly forbidden. A hash divergence signifies catalog, instruction encoding, or cycle timing regression. When a test fails, perform root-cause analysis on the implementation. Golden hash modifications require formal hardware justification and explicit user escalation per `spec-compliance.md`.
 - **Sub-Agent Milestone Review Protocol (`/code-review`):** Before declaring a roadmap milestone complete, invoke an independent review subagent or follow the `/code-review` workflow to audit the diff with a clean context before user hand-off.
 
 ---

@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [MOV-16] MOVEM.W D0-D3, -(SP)
+Category: DataMovement | Mode: PreDecrement | Expected Amiga CCK: 24
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007F000 -> 0x0007EFF8, PC: 0x001008 | Mem: StackPush[0x07EFF8] <= 0x6800
+[002] 00001004: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFF8 -> 0x0007EFF0, PC: 0x00100C | Mem: StackPush[0x07EFF0] <= 0x6800
+[003] 00001008: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFF0 -> 0x0007EFE8, PC: 0x001010 | Mem: StackPush[0x07EFE8] <= 0x6800
+[004] 0000100C: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFE8 -> 0x0007EFE0, PC: 0x001014 | Mem: StackPush[0x07EFE0] <= 0x6800
+[005] 00001010: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFE0 -> 0x0007EFD8, PC: 0x001018 | Mem: StackPush[0x07EFD8] <= 0x6800
+[006] 00001014: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFD8 -> 0x0007EFD0, PC: 0x00101C | Mem: StackPush[0x07EFD0] <= 0x6800
+[007] 00001018: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFD0 -> 0x0007EFC8, PC: 0x001020 | Mem: StackPush[0x07EFC8] <= 0x6800
+[008] 0000101C: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFC8 -> 0x0007EFC0, PC: 0x001024 | Mem: StackPush[0x07EFC0] <= 0x6800
+[009] 00001020: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFC0 -> 0x0007EFB8, PC: 0x001028 | Mem: StackPush[0x07EFB8] <= 0x6800
+[010] 00001024: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFB8 -> 0x0007EFB0, PC: 0x00102C | Mem: StackPush[0x07EFB0] <= 0x6800
+[011] 00001028: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFB0 -> 0x0007EFA8, PC: 0x001030 | Mem: StackPush[0x07EFA8] <= 0x6800
+[012] 0000102C: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFA8 -> 0x0007EFA0, PC: 0x001034 | Mem: StackPush[0x07EFA0] <= 0x6800
+[013] 00001030: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EFA0 -> 0x0007EF98, PC: 0x001038 | Mem: StackPush[0x07EF98] <= 0x6800
+[014] 00001034: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EF98 -> 0x0007EF90, PC: 0x00103C | Mem: StackPush[0x07EF90] <= 0x6800
+[015] 00001038: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EF90 -> 0x0007EF88, PC: 0x001040 | Mem: StackPush[0x07EF88] <= 0x6800
+[016] 0000103C: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EF88 -> 0x0007EF80, PC: 0x001044 | Mem: StackPush[0x07EF80] <= 0x6800
+[017] 00001040: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EF80 -> 0x0007EF78, PC: 0x001048 | Mem: StackPush[0x07EF78] <= 0x6800
+[018] 00001044: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EF78 -> 0x0007EF70, PC: 0x00104C | Mem: StackPush[0x07EF70] <= 0x6800
+[019] 00001048: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EF70 -> 0x0007EF68, PC: 0x001050 | Mem: StackPush[0x07EF68] <= 0x6800
+[020] 0000104C: 48A7             DATA.W   $48A7 | 26 CCK | ΔRegs: A7: 0x0007EF68 -> 0x0007EF60, PC: 0x001054 | Mem: StackPush[0x07EF60] <= 0x6800
+[021] 00001050: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     532 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007EF60
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007EF60
+================================================================================

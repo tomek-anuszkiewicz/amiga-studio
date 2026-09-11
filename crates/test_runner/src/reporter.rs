@@ -135,12 +135,12 @@ pub struct GlobalTestSummary {
     pub suites: BTreeMap<String, SuiteStats>,
 }
 
-/// Resolves the `.test_results` root directory path
+/// Resolves the SingleStep test results root directory path (`tests/singlestep`)
 pub fn resolve_results_dir() -> PathBuf {
     // Check if running from sub-crate or workspace root
     let candidates = [
-        PathBuf::from(".test_results"),
-        PathBuf::from("../../.test_results"),
+        PathBuf::from("tests/singlestep"),
+        PathBuf::from("../../tests/singlestep"),
     ];
 
     for candidate in &candidates {
@@ -150,11 +150,11 @@ pub fn resolve_results_dir() -> PathBuf {
     }
 
     if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        let p = Path::new(&manifest_dir).join("../../.test_results");
+        let p = Path::new(&manifest_dir).join("../../tests/singlestep");
         return p;
     }
 
-    PathBuf::from(".test_results")
+    PathBuf::from("tests/singlestep")
 }
 
 /// Sanitizes suite names for filesystem filenames
@@ -237,7 +237,7 @@ pub fn record_suite_result(result: &SuiteResult) {
     update_global_summary(&base_dir);
 }
 
-/// Aggregates all suite results in `.test_results/latest` into a unified `summary.json`
+/// Aggregates all suite results in `tests/singlestep/latest` into a unified `summary.json`
 pub fn update_global_summary(base_dir: &Path) {
     let latest_dir = base_dir.join("latest");
     if !latest_dir.exists() {

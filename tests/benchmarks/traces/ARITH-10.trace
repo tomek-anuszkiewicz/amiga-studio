@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [ARITH-10] ADDX.W -(A1), -(A0)
+Category: Arithmetic | Mode: PreDecrement | Expected Amiga CCK: 18
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00006000 -> 0x00005FFE, A1: 0x00007000 -> 0x00006FFE, SR: 0x2700 -> 0x2708, PC: 0x001006 | Mem: Mem[0x007000] <= 0x4837
+[002] 00001002: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FFE -> 0x00005FFC, A1: 0x00006FFE -> 0x00006FFC, SR: 0x2708 -> 0x2700, PC: 0x001008
+[003] 00001004: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FFC -> 0x00005FFA, A1: 0x00006FFC -> 0x00006FFA, SR: 0x2700 -> 0x2708, PC: 0x00100A
+[004] 00001006: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FFA -> 0x00005FF8, A1: 0x00006FFA -> 0x00006FF8, SR: 0x2708 -> 0x2700, PC: 0x00100C
+[005] 00001008: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FF8 -> 0x00005FF6, A1: 0x00006FF8 -> 0x00006FF6, SR: 0x2700 -> 0x2708, PC: 0x00100E
+[006] 0000100A: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FF6 -> 0x00005FF4, A1: 0x00006FF6 -> 0x00006FF4, SR: 0x2708 -> 0x2700, PC: 0x001010
+[007] 0000100C: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FF4 -> 0x00005FF2, A1: 0x00006FF4 -> 0x00006FF2, SR: 0x2700 -> 0x2708, PC: 0x001012
+[008] 0000100E: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FF2 -> 0x00005FF0, A1: 0x00006FF2 -> 0x00006FF0, SR: 0x2708 -> 0x2700, PC: 0x001014
+[009] 00001010: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FF0 -> 0x00005FEE, A1: 0x00006FF0 -> 0x00006FEE, PC: 0x001016
+[010] 00001012: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FEE -> 0x00005FEC, A1: 0x00006FEE -> 0x00006FEC, SR: 0x2700 -> 0x2708, PC: 0x001018
+[011] 00001014: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FEC -> 0x00005FEA, A1: 0x00006FEC -> 0x00006FEA, PC: 0x00101A
+[012] 00001016: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FEA -> 0x00005FE8, A1: 0x00006FEA -> 0x00006FE8, SR: 0x2708 -> 0x2700, PC: 0x00101C
+[013] 00001018: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FE8 -> 0x00005FE6, A1: 0x00006FE8 -> 0x00006FE6, SR: 0x2700 -> 0x2708, PC: 0x00101E
+[014] 0000101A: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FE6 -> 0x00005FE4, A1: 0x00006FE6 -> 0x00006FE4, SR: 0x2708 -> 0x2700, PC: 0x001020
+[015] 0000101C: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FE4 -> 0x00005FE2, A1: 0x00006FE4 -> 0x00006FE2, SR: 0x2700 -> 0x2708, PC: 0x001022
+[016] 0000101E: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FE2 -> 0x00005FE0, A1: 0x00006FE2 -> 0x00006FE0, PC: 0x001024
+[017] 00001020: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FE0 -> 0x00005FDE, A1: 0x00006FE0 -> 0x00006FDE, SR: 0x2708 -> 0x2700, PC: 0x001026
+[018] 00001022: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FDE -> 0x00005FDC, A1: 0x00006FDE -> 0x00006FDC, SR: 0x2700 -> 0x2708, PC: 0x001028
+[019] 00001024: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FDC -> 0x00005FDA, A1: 0x00006FDC -> 0x00006FDA, SR: 0x2708 -> 0x2700, PC: 0x00102A
+[020] 00001026: D149             ADDX.W   -(A1), -(A0) | 18 CCK | ΔRegs: A0: 0x00005FDA -> 0x00005FD8, A1: 0x00006FDA -> 0x00006FD8, PC: 0x00102C
+[021] 00001028: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     372 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00005FD8   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00006FD8   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

@@ -9,6 +9,6 @@ pub mod stepping;
 pub mod trace;
 
 pub use breakpoints::{BreakpointManager, WatchAccess};
-pub use disassembler::{disassemble, Disassembly};
+pub use disassembler::{disassemble, format_ea, Disassembly};
 pub use stepping::{Debugger, StepMode};
 pub use trace::{TraceEntry, TraceRingBuffer};

@@ -1,4 +1,6 @@
 //! Built-in zero-dependency Motorola 68000 opcode disassembler
+//!
+//! Provides single-instruction disassembly with side-effect-free memory reading.
 
 /// Disassembled instruction representation
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,6 +32,249 @@ impl Disassembly {
             )
         }
     }
+}
+
+/// Formats an Effective Address (EA) specified by mode and reg
+pub fn format_ea(mode: u8, reg: u8, mut read_ext: impl FnMut() -> u16) -> String {
+    match mode {
+        0 => format!("D{}", reg),
+        1 => format!("A{}", reg),
+        2 => format!("(A{})", reg),
+        3 => format!("(A{})+", reg),
+        4 => format!("-(A{})", reg),
+        5 => {
+            let d16 = read_ext() as i16;
+            format!("(${:04X}, A{})", d16, reg)
+        }
+        6 => {
+            let ext = read_ext();
+            let idx_name = if (ext & 0x8000) != 0 { 'A' } else { 'D' };
+            let idx_num = (ext >> 12) & 0x07;
+            let sz = if (ext & 0x0800) != 0 { ".L" } else { ".W" };
+            let d8 = (ext & 0xFF) as i8;
+            format!("(${:02X}, A{}, {}{}{})", d8, reg, idx_name, idx_num, sz)
+        }
+        7 => match reg {
+            0 => {
+                let w = read_ext();
+                format!("(${:04X}).W", w)
+            }
+            1 => {
+                let hi = read_ext() as u32;
+                let lo = read_ext() as u32;
+                format!("(${:08X}).L", (hi << 16) | lo)
+            }
+            2 => {
+                let d16 = read_ext() as i16;
+                format!("(${:04X}, PC)", d16)
+            }
+            3 => {
+                let ext = read_ext();
+                let idx_name = if (ext & 0x8000) != 0 { 'A' } else { 'D' };
+                let idx_num = (ext >> 12) & 0x07;
+                let sz = if (ext & 0x0800) != 0 { ".L" } else { ".W" };
+                let d8 = (ext & 0xFF) as i8;
+                format!("(${:02X}, PC, {}{}{})", d8, idx_name, idx_num, sz)
+            }
+            4 => {
+                let val = read_ext();
+                format!("#${:04X}", val)
+            }
+            _ => format!("UNKNOWN_EA(7, {})", reg),
+        },
+        _ => format!("UNKNOWN_EA({}, {})", mode, reg),
+    }
+}
+
+/// Attempts to decode ALU instructions for op groups 8 (OR/DIV), 9 (SUB), B (CMP/EOR), C (AND/MUL), D (ADD).
+/// Returns `(mnemonic, operands)` if matched.
+pub fn decode_alu_group<F>(op: u16, mut next_word: F) -> Option<(&'static str, String)>
+where
+    F: FnMut() -> u16,
+{
+    let op_group = (op >> 12) & 0x0F;
+    let reg_d = ((op >> 9) & 0x07) as u8;
+    let opmode = ((op >> 6) & 0x07) as u8;
+    let ea_mode = ((op >> 3) & 0x07) as u8;
+    let ea_reg = (op & 0x07) as u8;
+
+    // Group B: CMP / CMPA / EOR / CMPM
+    if op_group == 0xB {
+        match opmode {
+            3 => {
+                let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+                return Some(("CMPA.W", format!("{}, A{}", ea_str, reg_d)));
+            }
+            7 => {
+                let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+                return Some(("CMPA.L", format!("{}, A{}", ea_str, reg_d)));
+            }
+            4 | 5 | 6 => {
+                let (mnem_eor, mnem_cmpm) = match opmode {
+                    4 => ("EOR.B", "CMPM.B"),
+                    5 => ("EOR.W", "CMPM.W"),
+                    _ => ("EOR.L", "CMPM.L"),
+                };
+                if ea_mode == 1 {
+                    return Some((mnem_cmpm, format!("(A{})+, (A{})+", ea_reg, reg_d)));
+                } else {
+                    let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+                    return Some((mnem_eor, format!("D{}, {}", reg_d, ea_str)));
+                }
+            }
+            0 | 1 | 2 => {
+                let mnem = match opmode {
+                    0 => "CMP.B",
+                    1 => "CMP.W",
+                    _ => "CMP.L",
+                };
+                let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+                return Some((mnem, format!("{}, D{}", ea_str, reg_d)));
+            }
+            _ => {}
+        }
+    }
+
+    // Group 8: OR / DIVU / DIVS / SBCD
+    if op_group == 0x8 {
+        if opmode == 3 {
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return Some(("DIVU.W", format!("{}, D{}", ea_str, reg_d)));
+        }
+        if opmode == 7 {
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return Some(("DIVS.W", format!("{}, D{}", ea_str, reg_d)));
+        }
+        if opmode == 4 {
+            if ea_mode == 0 {
+                return Some(("SBCD", format!("D{}, D{}", ea_reg, reg_d)));
+            } else if ea_mode == 1 {
+                return Some(("SBCD", format!("-(A{}), -(A{})", ea_reg, reg_d)));
+            }
+        }
+    }
+
+    // Group C: AND / MULU / MULS / ABCD / EXG
+    if op_group == 0xC {
+        if opmode == 3 {
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return Some(("MULU.W", format!("{}, D{}", ea_str, reg_d)));
+        }
+        if opmode == 7 {
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return Some(("MULS.W", format!("{}, D{}", ea_str, reg_d)));
+        }
+        if opmode == 4 {
+            if ea_mode == 0 {
+                return Some(("ABCD", format!("D{}, D{}", ea_reg, reg_d)));
+            } else if ea_mode == 1 {
+                return Some(("ABCD", format!("-(A{}), -(A{})", ea_reg, reg_d)));
+            }
+        }
+        if opmode == 5 && ea_mode == 0 {
+            return Some(("EXG", format!("D{}, D{}", reg_d, ea_reg)));
+        }
+        if opmode == 5 && ea_mode == 1 {
+            return Some(("EXG", format!("A{}, A{}", reg_d, ea_reg)));
+        }
+        if opmode == 6 && ea_mode == 1 {
+            return Some(("EXG", format!("D{}, A{}", reg_d, ea_reg)));
+        }
+    }
+
+    // Group D / 9: ADD / SUB / ADDA / SUBA / ADDX / SUBX
+    if op_group == 0xD || op_group == 0x9 {
+        let is_sub = op_group == 0x9;
+        if opmode == 3 {
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            let mnem = if is_sub { "SUBA.W" } else { "ADDA.W" };
+            return Some((mnem, format!("{}, A{}", ea_str, reg_d)));
+        }
+        if opmode == 7 {
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            let mnem = if is_sub { "SUBA.L" } else { "ADDA.L" };
+            return Some((mnem, format!("{}, A{}", ea_str, reg_d)));
+        }
+        if opmode == 4 || opmode == 5 || opmode == 6 {
+            if ea_mode == 0 || ea_mode == 1 {
+                let sz_str = match opmode {
+                    4 => ".B",
+                    5 => ".W",
+                    _ => ".L",
+                };
+                let mnem = match (is_sub, sz_str) {
+                    (false, ".B") => "ADDX.B",
+                    (false, ".W") => "ADDX.W",
+                    (false, ".L") => "ADDX.L",
+                    (true, ".B") => "SUBX.B",
+                    (true, ".W") => "SUBX.W",
+                    _ => "SUBX.L",
+                };
+                let ops = if ea_mode == 0 {
+                    format!("D{}, D{}", ea_reg, reg_d)
+                } else {
+                    format!("-(A{}), -(A{})", ea_reg, reg_d)
+                };
+                return Some((mnem, ops));
+            }
+        }
+    }
+
+    // Standard ADD / SUB / AND / OR (<ea>, Dn or Dn, <ea>)
+    if op_group == 0xD || op_group == 0x9 || op_group == 0xC || op_group == 0x8 {
+        let base_mnem = match op_group {
+            0xD => "ADD",
+            0x9 => "SUB",
+            0xC => "AND",
+            0x8 => "OR",
+            _ => unreachable!(),
+        };
+
+        let (sz_str, ea_is_source) = match opmode {
+            0 => (".B", true),
+            1 => (".W", true),
+            2 => (".L", true),
+            4 => (".B", false),
+            5 => (".W", false),
+            6 => (".L", false),
+            _ => (".W", true),
+        };
+
+        let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+        let ops = if ea_is_source {
+            format!("{}, D{}", ea_str, reg_d)
+        } else {
+            format!("D{}, {}", reg_d, ea_str)
+        };
+
+        let full_mnem = match base_mnem {
+            "ADD" => match sz_str {
+                ".B" => "ADD.B",
+                ".W" => "ADD.W",
+                _ => "ADD.L",
+            },
+            "SUB" => match sz_str {
+                ".B" => "SUB.B",
+                ".W" => "SUB.W",
+                _ => "SUB.L",
+            },
+            "AND" => match sz_str {
+                ".B" => "AND.B",
+                ".W" => "AND.W",
+                _ => "AND.L",
+            },
+            "OR" => match sz_str {
+                ".B" => "OR.B",
+                ".W" => "OR.W",
+                _ => "OR.L",
+            },
+            _ => "OP",
+        };
+
+        return Some((full_mnem, ops));
+    }
+
+    None
 }
 
 /// Disassembles one instruction starting at `pc` using a side-effect-free word reader function
@@ -134,7 +379,7 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
         );
     }
 
-    // 4. JMP / JSR
+    // 4. JMP / JSR / Miscellaneous 4Exx
     if (op & 0xFFC0) == 0x4EC0 || (op & 0xFFC0) == 0x4E80 {
         let is_jsr = (op & 0xFFC0) == 0x4E80;
         let mnem = if is_jsr { "JSR" } else { "JMP" };
@@ -148,6 +393,120 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
                 word_count,
                 mnemonic: mnem,
                 operands: ea_str,
+            },
+            offset,
+        );
+    }
+    if op == 0x4E70 {
+        return (
+            Disassembly {
+                pc,
+                words,
+                word_count,
+                mnemonic: "RESET",
+                operands: String::new(),
+            },
+            offset,
+        );
+    }
+    if op == 0x4E72 {
+        let imm = next_word();
+        return (
+            Disassembly {
+                pc,
+                words,
+                word_count,
+                mnemonic: "STOP",
+                operands: format!("#${:04X}", imm),
+            },
+            offset,
+        );
+    }
+    if op == 0x4E73 {
+        return (
+            Disassembly {
+                pc,
+                words,
+                word_count,
+                mnemonic: "RTE",
+                operands: String::new(),
+            },
+            offset,
+        );
+    }
+    if op == 0x4E76 {
+        return (
+            Disassembly {
+                pc,
+                words,
+                word_count,
+                mnemonic: "TRAPV",
+                operands: String::new(),
+            },
+            offset,
+        );
+    }
+    if op == 0x4E77 {
+        return (
+            Disassembly {
+                pc,
+                words,
+                word_count,
+                mnemonic: "RTR",
+                operands: String::new(),
+            },
+            offset,
+        );
+    }
+    if (op & 0xFFF8) == 0x4E50 {
+        let reg = (op & 0x07) as u8;
+        let disp = next_word() as i16;
+        return (
+            Disassembly {
+                pc,
+                words,
+                word_count,
+                mnemonic: "LINK",
+                operands: format!("A{}, #{}", reg, disp),
+            },
+            offset,
+        );
+    }
+    if (op & 0xFFF8) == 0x4E58 {
+        let reg = (op & 0x07) as u8;
+        return (
+            Disassembly {
+                pc,
+                words,
+                word_count,
+                mnemonic: "UNLK",
+                operands: format!("A{}", reg),
+            },
+            offset,
+        );
+    }
+    if (op & 0xFFF8) == 0x4E60 {
+        let reg = (op & 0x07) as u8;
+        return (
+            Disassembly {
+                pc,
+                words,
+                word_count,
+                mnemonic: "MOVE",
+                operands: format!("USP, A{}", reg),
+            },
+            offset,
+        );
+    }
+    if (op & 0xFFF8) == 0x4E68 {
+        let reg = (op & 0x07) as u8;
+        return (
+            Disassembly {
+                pc,
+                words,
+                word_count,
+                mnemonic: "MOVE",
+                operands: format!("A{}, USP", reg),
             },
             offset,
         );
@@ -194,64 +553,506 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
         }
     }
 
-    // 6. ADD / SUB / AND / OR
     let op_group = (op >> 12) & 0x0F;
-    if op_group == 0xD || op_group == 0x9 || op_group == 0xC || op_group == 0x8 {
-        let base_mnem = match op_group {
-            0xD => "ADD",
-            0x9 => "SUB",
-            0xC => "AND",
-            0x8 => "OR",
-            _ => unreachable!(),
+
+    // 6. Group 0: Immediate ALU & Bit Manipulation
+    if op_group == 0 {
+        let is_dynamic_bit = (op & 0x0100) != 0;
+        let is_static_bit = (op & 0x0F00) == 0x0800;
+        if is_dynamic_bit || is_static_bit {
+            let opmode = (op >> 6) & 0x03;
+            let mnem = match opmode {
+                0 => "BTST",
+                1 => "BCHG",
+                2 => "BCLR",
+                3 => "BSET",
+                _ => unreachable!(),
+            };
+            let ea_mode = ((op >> 3) & 0x07) as u8;
+            let ea_reg = (op & 0x07) as u8;
+            let (src_str, ea_str) = if is_dynamic_bit {
+                let reg_d = ((op >> 9) & 0x07) as u8;
+                (
+                    format!("D{}", reg_d),
+                    format_ea(ea_mode, ea_reg, &mut next_word),
+                )
+            } else {
+                let bit_num = next_word() & 0xFF;
+                (
+                    format!("#{}", bit_num),
+                    format_ea(ea_mode, ea_reg, &mut next_word),
+                )
+            };
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: mnem,
+                    operands: format!("{}, {}", src_str, ea_str),
+                },
+                offset,
+            );
+        }
+
+        // Immediate arithmetic / logic (ORI, ANDI, SUBI, ADDI, EORI, CMPI)
+        let imm_type = (op >> 9) & 0x07;
+        let base_mnem = match imm_type {
+            0 => "ORI",
+            1 => "ANDI",
+            2 => "SUBI",
+            3 => "ADDI",
+            5 => "EORI",
+            6 => "CMPI",
+            _ => "",
         };
-        let reg_d = ((op >> 9) & 0x07) as u8;
-        let opmode = ((op >> 6) & 0x07) as u8;
+        if !base_mnem.is_empty() {
+            let sz_bits = (op >> 6) & 0x03;
+            let ea_mode = ((op >> 3) & 0x07) as u8;
+            let ea_reg = (op & 0x07) as u8;
+            if ea_mode == 7 && ea_reg == 4 {
+                if sz_bits == 0 {
+                    let imm = next_word() & 0xFF;
+                    let mnem = match base_mnem {
+                        "ORI" => "ORI.B",
+                        "ANDI" => "ANDI.B",
+                        "EORI" => "EORI.B",
+                        _ => base_mnem,
+                    };
+                    return (
+                        Disassembly {
+                            pc,
+                            words,
+                            word_count,
+                            mnemonic: mnem,
+                            operands: format!("#${:02X}, CCR", imm),
+                        },
+                        offset,
+                    );
+                } else if sz_bits == 1 {
+                    let imm = next_word();
+                    let mnem = match base_mnem {
+                        "ORI" => "ORI.W",
+                        "ANDI" => "ANDI.W",
+                        "EORI" => "EORI.W",
+                        _ => base_mnem,
+                    };
+                    return (
+                        Disassembly {
+                            pc,
+                            words,
+                            word_count,
+                            mnemonic: mnem,
+                            operands: format!("#${:04X}, SR", imm),
+                        },
+                        offset,
+                    );
+                }
+            }
+            let (sz_str, imm_str) = match sz_bits {
+                0 => (".B", format!("#${:02X}", next_word() & 0xFF)),
+                1 => (".W", format!("#${:04X}", next_word())),
+                2 => {
+                    let hi = next_word() as u32;
+                    let lo = next_word() as u32;
+                    (".L", format!("#${:08X}", (hi << 16) | lo))
+                }
+                _ => (".W", format!("#${:04X}", next_word())),
+            };
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            let full_mnem = match (base_mnem, sz_str) {
+                ("ORI", ".B") => "ORI.B",
+                ("ORI", ".W") => "ORI.W",
+                ("ORI", ".L") => "ORI.L",
+                ("ANDI", ".B") => "ANDI.B",
+                ("ANDI", ".W") => "ANDI.W",
+                ("ANDI", ".L") => "ANDI.L",
+                ("SUBI", ".B") => "SUBI.B",
+                ("SUBI", ".W") => "SUBI.W",
+                ("SUBI", ".L") => "SUBI.L",
+                ("ADDI", ".B") => "ADDI.B",
+                ("ADDI", ".W") => "ADDI.W",
+                ("ADDI", ".L") => "ADDI.L",
+                ("EORI", ".B") => "EORI.B",
+                ("EORI", ".W") => "EORI.W",
+                ("EORI", ".L") => "EORI.L",
+                ("CMPI", ".B") => "CMPI.B",
+                ("CMPI", ".W") => "CMPI.W",
+                ("CMPI", ".L") => "CMPI.L",
+                _ => "OP",
+            };
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: full_mnem,
+                    operands: format!("{}, {}", imm_str, ea_str),
+                },
+                offset,
+            );
+        }
+    }
+
+    // 7. Group 4: Miscellaneous (CLR, NEG, NEGX, NOT, EXT, SWAP, TST, TAS, LEA, CHK)
+    if op_group == 4 {
+        if (op & 0xFFF8) == 0x4840 {
+            let reg = (op & 0x07) as u8;
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: "SWAP",
+                    operands: format!("D{}", reg),
+                },
+                offset,
+            );
+        }
+        if (op & 0xFFF8) == 0x4880 {
+            let reg = (op & 0x07) as u8;
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: "EXT.W",
+                    operands: format!("D{}", reg),
+                },
+                offset,
+            );
+        }
+        if (op & 0xFFF8) == 0x48C0 {
+            let reg = (op & 0x07) as u8;
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: "EXT.L",
+                    operands: format!("D{}", reg),
+                },
+                offset,
+            );
+        }
+        if (op & 0xFFC0) == 0x4AC0 {
+            let ea_mode = ((op >> 3) & 0x07) as u8;
+            let ea_reg = (op & 0x07) as u8;
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: "TAS",
+                    operands: ea_str,
+                },
+                offset,
+            );
+        }
+        if (op & 0xFFC0) == 0x40C0 {
+            let ea_mode = ((op >> 3) & 0x07) as u8;
+            let ea_reg = (op & 0x07) as u8;
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: "MOVE.W",
+                    operands: format!("SR, {}", ea_str),
+                },
+                offset,
+            );
+        }
+        if (op & 0xFFC0) == 0x44C0 {
+            let ea_mode = ((op >> 3) & 0x07) as u8;
+            let ea_reg = (op & 0x07) as u8;
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: "MOVE.W",
+                    operands: format!("{}, CCR", ea_str),
+                },
+                offset,
+            );
+        }
+        if (op & 0xFFC0) == 0x46C0 {
+            let ea_mode = ((op >> 3) & 0x07) as u8;
+            let ea_reg = (op & 0x07) as u8;
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: "MOVE.W",
+                    operands: format!("{}, SR", ea_str),
+                },
+                offset,
+            );
+        }
+        if (op & 0x01C0) == 0x01C0 {
+            let reg = ((op >> 9) & 0x07) as u8;
+            let ea_mode = ((op >> 3) & 0x07) as u8;
+            let ea_reg = (op & 0x07) as u8;
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: "LEA",
+                    operands: format!("{}, A{}", ea_str, reg),
+                },
+                offset,
+            );
+        }
+        if (op & 0x01C0) == 0x0180 {
+            let reg = ((op >> 9) & 0x07) as u8;
+            let ea_mode = ((op >> 3) & 0x07) as u8;
+            let ea_reg = (op & 0x07) as u8;
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: "CHK.W",
+                    operands: format!("{}, D{}", ea_str, reg),
+                },
+                offset,
+            );
+        }
+        let kind = (op >> 8) & 0x0F;
+        let base_mnem = match kind {
+            0 => "NEGX",
+            2 => "CLR",
+            4 => "NEG",
+            6 => "NOT",
+            10 => "TST",
+            _ => "",
+        };
+        if !base_mnem.is_empty() {
+            let sz_bits = (op >> 6) & 0x03;
+            let sz_str = match sz_bits {
+                0 => ".B",
+                1 => ".W",
+                2 => ".L",
+                _ => ".W",
+            };
+            let ea_mode = ((op >> 3) & 0x07) as u8;
+            let ea_reg = (op & 0x07) as u8;
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            let full_mnem = match (base_mnem, sz_str) {
+                ("NEGX", ".B") => "NEGX.B",
+                ("NEGX", ".W") => "NEGX.W",
+                ("NEGX", ".L") => "NEGX.L",
+                ("CLR", ".B") => "CLR.B",
+                ("CLR", ".W") => "CLR.W",
+                ("CLR", ".L") => "CLR.L",
+                ("NEG", ".B") => "NEG.B",
+                ("NEG", ".W") => "NEG.W",
+                ("NEG", ".L") => "NEG.L",
+                ("NOT", ".B") => "NOT.B",
+                ("NOT", ".W") => "NOT.W",
+                ("NOT", ".L") => "NOT.L",
+                ("TST", ".B") => "TST.B",
+                ("TST", ".W") => "TST.W",
+                ("TST", ".L") => "TST.L",
+                _ => "OP",
+            };
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: full_mnem,
+                    operands: ea_str,
+                },
+                offset,
+            );
+        }
+    }
+
+    // 8. Group 5: ADDQ / SUBQ / Scc / DBcc
+    if op_group == 5 {
+        let data = ((op >> 9) & 0x07) as u8;
+        let val = if data == 0 { 8 } else { data };
+        let is_sub = (op & 0x0100) != 0;
+        let sz_bits = (op >> 6) & 0x03;
         let ea_mode = ((op >> 3) & 0x07) as u8;
         let ea_reg = (op & 0x07) as u8;
-
-        let (sz_str, ea_is_source) = match opmode {
-            0 => (".B", true),
-            1 => (".W", true),
-            2 => (".L", true),
-            4 => (".B", false),
-            5 => (".W", false),
-            6 => (".L", false),
-            _ => (".W", true),
-        };
-
-        let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
-        let ops = if ea_is_source {
-            format!("{}, D{}", ea_str, reg_d)
+        if sz_bits == 3 {
+            if ea_mode == 1 {
+                let cond = ((op >> 8) & 0x0F) as u8;
+                let disp = next_word() as i16;
+                let target = (pc.wrapping_add(2)).wrapping_add(disp as u32) & 0x00FF_FFFF;
+                let mnem = if cond == 1 { "DBF" } else { "DBcc" };
+                return (
+                    Disassembly {
+                        pc,
+                        words,
+                        word_count,
+                        mnemonic: mnem,
+                        operands: format!("D{}, ${:06X}", ea_reg, target),
+                    },
+                    offset,
+                );
+            }
         } else {
-            format!("D{}, {}", reg_d, ea_str)
-        };
+            let mnem = match (is_sub, sz_bits) {
+                (false, 0) => "ADDQ.B",
+                (false, 1) => "ADDQ.W",
+                (false, 2) => "ADDQ.L",
+                (true, 0) => "SUBQ.B",
+                (true, 1) => "SUBQ.W",
+                (true, 2) => "SUBQ.L",
+                _ => "ADDQ",
+            };
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: mnem,
+                    operands: format!("#{}, {}", val, ea_str),
+                },
+                offset,
+            );
+        }
+    }
 
-        let full_mnem = match (base_mnem, sz_str) {
-            ("ADD", ".B") => "ADD.B",
-            ("ADD", ".W") => "ADD.W",
-            ("ADD", ".L") => "ADD.L",
-            ("SUB", ".B") => "SUB.B",
-            ("SUB", ".W") => "SUB.W",
-            ("SUB", ".L") => "SUB.L",
-            ("AND", ".B") => "AND.B",
-            ("AND", ".W") => "AND.W",
-            ("AND", ".L") => "AND.L",
-            ("OR", ".B") => "OR.B",
-            ("OR", ".W") => "OR.W",
-            ("OR", ".L") => "OR.L",
-            _ => "OP",
-        };
-
+    // 9. Group 7: MOVEQ
+    if op_group == 7 && (op & 0x0100) == 0 {
+        let reg = ((op >> 9) & 0x07) as u8;
+        let imm = (op & 0xFF) as i8;
         return (
             Disassembly {
                 pc,
                 words,
                 word_count,
-                mnemonic: full_mnem,
+                mnemonic: "MOVEQ",
+                operands: format!("#{}, D{}", imm, reg),
+            },
+            offset,
+        );
+    }
+
+    // 10. ALU & Comparison Groups (8, 9, B, C, D)
+    if let Some((mnem, ops)) = decode_alu_group(op, &mut next_word) {
+        return (
+            Disassembly {
+                pc,
+                words,
+                word_count,
+                mnemonic: mnem,
                 operands: ops,
             },
             offset,
         );
+    }
+
+    // 11. Group E: Shifts & Rotates
+    if op_group == 0xE {
+        let is_mem_shift = (op & 0x00C0) == 0x00C0;
+        let shift_type = (op >> 9) & 0x03;
+        let is_left = (op & 0x0100) != 0;
+        let base_name = match (shift_type, is_left) {
+            (0, false) => "ASR",
+            (0, true) => "ASL",
+            (1, false) => "LSR",
+            (1, true) => "LSL",
+            (2, false) => "ROXR",
+            (2, true) => "ROXL",
+            (3, false) => "ROR",
+            (3, true) => "ROL",
+            _ => unreachable!(),
+        };
+        if is_mem_shift {
+            let ea_mode = ((op >> 3) & 0x07) as u8;
+            let ea_reg = (op & 0x07) as u8;
+            let ea_str = format_ea(ea_mode, ea_reg, &mut next_word);
+            let mnem = match base_name {
+                "ASR" => "ASR.W",
+                "ASL" => "ASL.W",
+                "LSR" => "LSR.W",
+                "LSL" => "LSL.W",
+                "ROXR" => "ROXR.W",
+                "ROXL" => "ROXL.W",
+                "ROR" => "ROR.W",
+                "ROL" => "ROL.W",
+                _ => "SHIFT",
+            };
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: mnem,
+                    operands: ea_str,
+                },
+                offset,
+            );
+        } else {
+            let sz_bits = (op >> 6) & 0x03;
+            let sz_str = match sz_bits {
+                0 => ".B",
+                1 => ".W",
+                2 => ".L",
+                _ => ".W",
+            };
+            let reg_d = (op & 0x07) as u8;
+            let is_reg_count = (op & 0x0020) != 0;
+            let count_or_reg = ((op >> 9) & 0x07) as u8;
+            let count_str = if is_reg_count {
+                format!("D{}", count_or_reg)
+            } else {
+                let imm = if count_or_reg == 0 { 8 } else { count_or_reg };
+                format!("#{}", imm)
+            };
+            let mnem = match (base_name, sz_str) {
+                ("ASL", ".B") => "ASL.B",
+                ("ASL", ".W") => "ASL.W",
+                ("ASL", ".L") => "ASL.L",
+                ("ASR", ".B") => "ASR.B",
+                ("ASR", ".W") => "ASR.W",
+                ("ASR", ".L") => "ASR.L",
+                ("LSL", ".B") => "LSL.B",
+                ("LSL", ".W") => "LSL.W",
+                ("LSL", ".L") => "LSL.L",
+                ("LSR", ".B") => "LSR.B",
+                ("LSR", ".W") => "LSR.W",
+                ("LSR", ".L") => "LSR.L",
+                ("ROL", ".B") => "ROL.B",
+                ("ROL", ".W") => "ROL.W",
+                ("ROL", ".L") => "ROL.L",
+                ("ROR", ".B") => "ROR.B",
+                ("ROR", ".W") => "ROR.W",
+                ("ROR", ".L") => "ROR.L",
+                ("ROXL", ".B") => "ROXL.B",
+                ("ROXL", ".W") => "ROXL.W",
+                ("ROXL", ".L") => "ROXL.L",
+                ("ROXR", ".B") => "ROXR.B",
+                ("ROXR", ".W") => "ROXR.W",
+                ("ROXR", ".L") => "ROXR.L",
+                _ => "SHIFT",
+            };
+            return (
+                Disassembly {
+                    pc,
+                    words,
+                    word_count,
+                    mnemonic: mnem,
+                    operands: format!("{}, D{}", count_str, reg_d),
+                },
+                offset,
+            );
+        }
     }
 
     // Default raw instruction word
@@ -265,55 +1066,4 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
         },
         2,
     )
-}
-
-fn format_ea(mode: u8, reg: u8, mut read_ext: impl FnMut() -> u16) -> String {
-    match mode {
-        0 => format!("D{}", reg),
-        1 => format!("A{}", reg),
-        2 => format!("(A{})", reg),
-        3 => format!("(A{})+", reg),
-        4 => format!("-(A{})", reg),
-        5 => {
-            let d16 = read_ext() as i16;
-            format!("(${:04X}, A{})", d16, reg)
-        }
-        6 => {
-            let ext = read_ext();
-            let idx_name = if (ext & 0x8000) != 0 { 'A' } else { 'D' };
-            let idx_num = (ext >> 12) & 0x07;
-            let sz = if (ext & 0x0800) != 0 { ".L" } else { ".W" };
-            let d8 = (ext & 0xFF) as i8;
-            format!("(${:02X}, A{}, {}{}{})", d8, reg, idx_name, idx_num, sz)
-        }
-        7 => match reg {
-            0 => {
-                let w = read_ext();
-                format!("(${:04X}).W", w)
-            }
-            1 => {
-                let hi = read_ext() as u32;
-                let lo = read_ext() as u32;
-                format!("(${:08X}).L", (hi << 16) | lo)
-            }
-            2 => {
-                let d16 = read_ext() as i16;
-                format!("(${:04X}, PC)", d16)
-            }
-            3 => {
-                let ext = read_ext();
-                let idx_name = if (ext & 0x8000) != 0 { 'A' } else { 'D' };
-                let idx_num = (ext >> 12) & 0x07;
-                let sz = if (ext & 0x0800) != 0 { ".L" } else { ".W" };
-                let d8 = (ext & 0xFF) as i8;
-                format!("(${:02X}, PC, {}{}{})", d8, idx_name, idx_num, sz)
-            }
-            4 => {
-                let val = read_ext();
-                format!("#${:04X}", val)
-            }
-            _ => format!("UNKNOWN_EA(7, {})", reg),
-        },
-        _ => format!("UNKNOWN_EA({}, {})", mode, reg),
-    }
 }

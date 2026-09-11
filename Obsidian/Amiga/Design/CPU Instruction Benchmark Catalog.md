@@ -136,7 +136,7 @@ Every instruction family exercises all addressing modes permitted by the M68000 
 | **LOGIC-11** | `BSET` | `.L` | Dynamic Bit Set Reg | `BSET D1, D0` | `01C0` | 8 | `bit_mod` |
 | **LOGIC-12** | `BCLR` | `.L` | Dynamic Bit Clear Reg | `BCLR D1, D0` | `0180` | 10 | `bit_mod` |
 | **LOGIC-13** | `BCHG` | `.L` | Dynamic Bit Change Reg | `BCHG D1, D0` | `0140` | 8 | `bit_mod` |
-| **LOGIC-14** | `TAS` | `.B` | Test & Set Memory (RMW)| `TAS (A0)+` | `4AC8` | 14 | `bit_rmw` |
+| **LOGIC-14** | `TAS` | `.B` | Test & Set Memory (RMW)| `TAS (A0)+` | `4AD8` | 14 | `bit_rmw` |
 
 ---
 
@@ -188,14 +188,14 @@ Every instruction family exercises all addressing modes permitted by the M68000 
 
 | ID | Mnemonic | Size | Addressing Mode | Representative Syntax | Opcode Hex | Amiga CCK | Category Tag |
 | :---: | :--- | :---: | :--- | :--- | :--- | :---: | :--- |
-| **FLOW-01** | `BRA` | `.S` | Short Relative Branch | `BRA.S +2` | `6000` | 10 | `flow_branch` |
-| **FLOW-02** | `Bcc` | `.S` | Branch Taken (BEQ) | `BEQ.S +2` | `6700` | 10 | `flow_branch` |
-| **FLOW-03** | `Bcc` | `.S` | Branch Not Taken (BEQ)| `BEQ.S +2` | `6700` | 8 | `flow_branch` |
-| **FLOW-04** | `BSR` | `.S` | Subroutine Branch | `BSR.S sub` | `6104` | 18 | `flow_call` |
+| **FLOW-01** | `BRA` | `.S` | Short Relative Branch | `BRA.S +2` | `6002` | 10 | `flow_branch` |
+| **FLOW-02** | `Bcc` | `.S` | Branch Taken (BEQ) | `BEQ.S +2` | `6702` | 10 | `flow_branch` |
+| **FLOW-03** | `Bcc` | `.S` | Branch Not Taken (BEQ)| `BEQ.S +2` | `6702` | 8 | `flow_branch` |
+| **FLOW-04** | `BSR` | `.S` | Subroutine Branch | `BSR.S sub` | `6102` | 18 | `flow_call` |
 | **FLOW-05** | `RTS` | — | Cascading Stack Return | `RTS` | `4E75` | 16 | `flow_return` |
 | **FLOW-06** | `RTR` | — | Cascading Return with CCR| `RTR` | `4E77` | 20 | `flow_return` |
-| **FLOW-07** | `DBcc` | `.W` | Decrement & Loop Taken| `DBF D7, target` | `51CF FFFC` | 10 | `flow_loop` |
-| **FLOW-08** | `DBcc` | `.W` | Loop Terminal Fallthrough| `DBF D7, target` | `51CF 0004` | 14 | `flow_loop` |
+| **FLOW-07** | `DBcc` | `.W` | Decrement & Loop Taken| `DBF D7, target` | `51CF 0002` | 10 | `flow_loop` |
+| **FLOW-08** | `DBcc` | `.W` | Loop Terminal Fallthrough| `DBF D7, exit` | `51CF 0002` | 14 | `flow_loop` |
 
 ---
 
@@ -216,9 +216,9 @@ Every instruction family exercises all addressing modes permitted by the M68000 
 
 ---
 
-## 3. Benchmark Catalog Execution Filtering
+## 3. Benchmark Catalog Execution Filtering & Trace Dumps
 
-The programmatic runner exposes `--filter <TAG>` / `BENCH_FILTER=<TAG>` to isolate specific subsets during profiling:
+The programmatic runner exposes `--filter <TAG>` / `BENCH_FILTER=<TAG>` to isolate specific subsets during profiling, and `--dump-traces` to produce single-pass audit files:
 
 ```powershell
 # Run only data register moves and memory moves:
@@ -229,4 +229,17 @@ cargo bench -p test_runner --bench bench_instructions -- --filter "arith_mul|ari
 
 # Run only subroutine returns and branching:
 cargo bench -p test_runner --bench bench_instructions -- --filter "flow_"
+
+# Dump single-pass execution traces for LLM / human audit verification:
+cargo run -p test_runner --release -- bench --dump-traces --filter "arith_|move_"
 ```
+
+### 3.1 Living Rust Implementation References
+
+The catalog definitions and execution tools in this document are implemented directly in:
+- Catalog Core & Filters: [`crates/test_runner/src/benchmark/catalog.rs`](../../../crates/test_runner/src/benchmark/catalog.rs)
+- Categories 0–3 Specifications: [`crates/test_runner/src/benchmark/catalog_data_a.rs`](../../../crates/test_runner/src/benchmark/catalog_data_a.rs)
+- Categories 4–8 Specifications: [`crates/test_runner/src/benchmark/catalog_data_b.rs`](../../../crates/test_runner/src/benchmark/catalog_data_b.rs)
+- Programmatic Synthesis Engine: [`crates/test_runner/src/benchmark/builder.rs`](../../../crates/test_runner/src/benchmark/builder.rs)
+- Single-Pass Execution Tracer: [`crates/test_runner/src/benchmark/tracer.rs`](../../../crates/test_runner/src/benchmark/tracer.rs)
+- State-Delta Verification Tests: [`crates/test_runner/tests/test_benchmark_trace.rs`](../../../crates/test_runner/tests/test_benchmark_trace.rs)

@@ -1,0 +1,47 @@
+================================================================================
+M68000 BENCHMARK EXECUTION AUDIT TRACE: [FLOW-08] DBF D7, exit (Fallthrough)
+Category: ControlFlow | Mode: Displacement | Expected Amiga CCK: 14
+Unroll Factor: K = 20 | Entry PC: 0x001000 | Exit Sentinel: 0x004FFE
+--------------------------------------------------------------------------------
+INITIAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x00000000   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2700 [S=true, IPL=7]   SSP (A7): 0x0007F000
+--------------------------------------------------------------------------------
+STEP-BY-STEP EXECUTION LOG:
+[001] 00001000: 7E00             MOVEQ    #0, D7 |  4 CCK | ΔRegs: SR: 0x2700 -> 0x2704, PC: 0x001006
+[002] 00001002: 51CF 0002        DBF      D7, $001006 | 12 CCK | ΔRegs: D7: 0x00000000 -> 0x0000FFFF, PC: 0x00100A
+[003] 00001006: 7E00             MOVEQ    #0, D7 |  4 CCK | ΔRegs: D7: 0x0000FFFF -> 0x00000000, PC: 0x00100C
+[004] 00001008: 51CF 0002        DBF      D7, $00100C | 12 CCK | ΔRegs: D7: 0x00000000 -> 0x0000FFFF, PC: 0x001010
+[005] 0000100C: 7E00             MOVEQ    #0, D7 |  4 CCK | ΔRegs: D7: 0x0000FFFF -> 0x00000000, PC: 0x001012
+[006] 0000100E: 51CF 0002        DBF      D7, $001012 | 12 CCK | ΔRegs: D7: 0x00000000 -> 0x0000FFFF, PC: 0x001016
+[007] 00001012: 7E00             MOVEQ    #0, D7 |  4 CCK | ΔRegs: D7: 0x0000FFFF -> 0x00000000, PC: 0x001018
+[008] 00001014: 51CF 0002        DBF      D7, $001018 | 12 CCK | ΔRegs: D7: 0x00000000 -> 0x0000FFFF, PC: 0x00101C
+[009] 00001018: 7E00             MOVEQ    #0, D7 |  4 CCK | ΔRegs: D7: 0x0000FFFF -> 0x00000000, PC: 0x00101E
+[010] 0000101A: 51CF 0002        DBF      D7, $00101E | 12 CCK | ΔRegs: D7: 0x00000000 -> 0x0000FFFF, PC: 0x001022
+[011] 0000101E: 7E00             MOVEQ    #0, D7 |  4 CCK | ΔRegs: D7: 0x0000FFFF -> 0x00000000, PC: 0x001024
+[012] 00001020: 51CF 0002        DBF      D7, $001024 | 12 CCK | ΔRegs: D7: 0x00000000 -> 0x0000FFFF, PC: 0x001028
+[013] 00001024: 7E00             MOVEQ    #0, D7 |  4 CCK | ΔRegs: D7: 0x0000FFFF -> 0x00000000, PC: 0x00102A
+[014] 00001026: 51CF 0002        DBF      D7, $00102A | 12 CCK | ΔRegs: D7: 0x00000000 -> 0x0000FFFF, PC: 0x00102E
+[015] 0000102A: 7E00             MOVEQ    #0, D7 |  4 CCK | ΔRegs: D7: 0x0000FFFF -> 0x00000000, PC: 0x001030
+[016] 0000102C: 51CF 0002        DBF      D7, $001030 | 12 CCK | ΔRegs: D7: 0x00000000 -> 0x0000FFFF, PC: 0x001034
+[017] 00001030: 7E00             MOVEQ    #0, D7 |  4 CCK | ΔRegs: D7: 0x0000FFFF -> 0x00000000, PC: 0x001036
+[018] 00001032: 51CF 0002        DBF      D7, $001036 | 12 CCK | ΔRegs: D7: 0x00000000 -> 0x0000FFFF, PC: 0x00103A
+[019] 00001036: 7E00             MOVEQ    #0, D7 |  4 CCK | ΔRegs: D7: 0x0000FFFF -> 0x00000000, PC: 0x00103C
+[020] 00001038: 51CF 0002        DBF      D7, $00103C | 12 CCK | ΔRegs: D7: 0x00000000 -> 0x0000FFFF, PC: 0x001040
+[021] 0000103C: 4EF9 0000 4FFE   JMP      ($00004FFE).L | 12 CCK | ΔRegs: PC: 0x005002
+--------------------------------------------------------------------------------
+EXECUTION SUMMARY & VERIFICATION:
+  Total Steps Executed:   21
+  Total Guest Cycles:     172 CCK
+  Terminated Cleanly:     YES (Final PC: 0x004FFE)
+  Timed Out / Infinite:   NO
+FINAL CPU REGISTERS:
+  D0: 0xEC7710E6   D4: 0xA38A03B2   A0: 0x00006000   A4: 0x00006800
+  D1: 0x0EF90747   D5: 0x6251BB35   A1: 0x00007000   A5: 0x00006A00
+  D2: 0x155FC489   D6: 0xAF9B7503   A2: 0x00006400   A6: 0x00006800
+  D3: 0x06957940   D7: 0x0000FFFF   A3: 0x00006600   A7: 0x0007F000
+  SR: 0x2704 [S=true, IPL=7]   SSP (A7): 0x0007F000
+================================================================================

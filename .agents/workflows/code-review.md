@@ -61,8 +61,12 @@ Audit the diff against the guidelines in `AGENTS.md`:
 ### E. Specification Compliance & Anti-Hack Rule
 - [ ] Zero silent deviations from hardware specifications.
 - [ ] Zero ad-hoc test-specific hacks to pass synthetic vectors without user escalation.
+- [ ] **Anti-Tamper & Golden Hash Invariance**: Zero blind updates to golden master hashes (`GOLDEN_*_HASH`), reference cycle counts, or test fixtures to silence failing tests.
 
-### F. Documentation & Roadmap
+### F. Language Policy & English Purity
+- [ ] **Strict English Purity in Diff**: Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, and inline comments (per `language-policy.md`). All terms from Polish user prompts must be fully translated into idiomatic English before coding. Quoting Polish prompt phrases in code comments (even in quotation marks) is strictly prohibited.
+
+### G. Documentation & Roadmap
 - [ ] Corresponding design doc under `Obsidian/Amiga/Design/` updated.
 - [ ] Design document pruned of pre-implementation speculative code, draft sketches, and duplicate code snippets of already-written code (the codebase is the single source of truth; design docs must not duplicate implemented code).
 - [ ] Completed roadmap steps pruned from `ROADMAP.md` and summarized in the baseline section.
@@ -72,6 +76,11 @@ Audit the diff against the guidelines in `AGENTS.md`:
 - [ ] Root cause identified and documented ("Why did this happen?").
 - [ ] Dedicated regression test(s) added covering the exact failure mode and adjacent edge cases.
 - [ ] Institutional prevention evaluated: architectural rule, lint, design doc, or DoD checklist updated to ensure this class of defect never recurs.
+
+### H. Comprehensive Unit Test Coverage
+- [ ] **Every New / Modified File with Testable Logic Has Dedicated Unit Tests:** Verify that any file containing state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests (`tests/<module_name>.rs` or inline `#[cfg(test)] mod tests`).
+- [ ] **Edge Cases & Boundary Coverage:** Tests verify happy paths, zero/empty states, boundary conditions, and invalid inputs.
+- [ ] **No Flaky Tests:** Tests execute deterministically without sleeps, wall-clock timing races, or host CPU load dependencies.
 
 ---
 
@@ -94,4 +103,12 @@ Verify that all 77 suites run across all ~300,000 test cases with 100% green pas
 Deliver a structured audit report:
 - **Verdict**: `APPROVED` or `CHANGES REQUESTED`
 - **Checklist Summary**: Checked items from the Definition of Done.
+  - [ ] **Code Formatting & Architecture Tests:** `cargo fmt` and `test_architecture_rules` 100% clean.
+  - [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests (`tests/<module>.rs` or inline).
+  - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
+  - [ ] **Host CPU Mechanical Sympathy:** Flattened dispatch, zero allocations in hot paths, inlining compliance.
+  - [ ] **Readability, No Macros & No Const Generics:** Explicit code, zero `macro_rules!`, zero const-generic handlers.
+  - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
+  - [ ] **Living Docs & Roadmap:** Pruned obsolete code, removed implemented code snippets, updated roadmap.
 - **Action Items**: Concrete file and line references if any rule is violated.
+

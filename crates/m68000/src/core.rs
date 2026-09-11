@@ -261,6 +261,7 @@ impl Cpu {
     /// execution in unit tests or synthetic debugger harnesses.
     #[inline]
     pub fn set_pc_and_prime_prefetch(&mut self, target_pc: u32, bus: &mut dyn AddressBus) {
+        self.state.instruction_pc = target_pc;
         self.state.pc = target_pc;
         self.state.ir = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);

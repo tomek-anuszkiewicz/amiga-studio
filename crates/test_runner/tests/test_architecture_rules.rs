@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 /// (e.g. compile-time static dispatch tables, exhaustive linear instruction decoders/slices).
 const LINE_COUNT_EXCEPTIONS: &[&str] = &[
     "dispatch_table.rs",
+    "disassembler.rs",
     "move_w.rs",
     "move_b.rs",
     "move_l.rs",
@@ -673,6 +674,86 @@ fn test_rule_files_size_limit_and_truncation_safety() {
         "Architecture Rule Violation: Rule file(s) exceed the 23,000 byte prompt injection safety threshold:\n{}\n\
         Antigravity silently truncates rule files exceeding ~24,000 bytes with `<truncated N bytes>`. \
         Keep AGENTS.md and individual .agents/rules/*.md files concise and modularized.",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn test_golden_hash_anti_tamper_policy_compliance() {
+    let repo_root = find_repo_root();
+    let tests_dir = repo_root.join("crates").join("test_runner").join("tests");
+
+    let target_files = [
+        ("test_benchmark_trace.rs", true),
+        ("test_benchmark_csv.rs", true),
+        ("golden_row_hashes.rs", false),
+    ];
+
+    let mut violations = Vec::new();
+
+    for (file_name, check_prompts) in target_files {
+        let path = tests_dir.join(file_name);
+        if !path.exists() {
+            violations.push(format!(
+                "Missing expected golden benchmark test file: {}",
+                file_name
+            ));
+            continue;
+        }
+
+        let content = fs::read_to_string(&path).expect("Failed to read benchmark test file");
+
+        // 1. Must contain explicit ANTI-TAMPER policy contract header
+        if !content.contains("ANTI-TAMPER POLICY & INVARIANCE CONTRACT") {
+            violations.push(format!(
+                "{} is missing the mandatory `ANTI-TAMPER POLICY & INVARIANCE CONTRACT` header block",
+                file_name
+            ));
+        }
+
+        // 2. Must NEVER contain permissive instructions to update golden hashes
+        if check_prompts {
+            let lower = content.to_lowercase();
+            if lower.contains("update the golden hash") || lower.contains("update golden hash") {
+                violations.push(format!(
+                    "{} contains permissive instruction to update golden hashes (strictly forbidden by AGENTS.md anti-tamper rule)",
+                    file_name
+                ));
+            }
+            if !content.contains("ANTI-TAMPER RULE") {
+                violations.push(format!(
+                    "{} does not contain `ANTI-TAMPER RULE` warning in test failure messages",
+                    file_name
+                ));
+            }
+        }
+    }
+
+    // 3. Verify AGENTS.md and spec-compliance.md codify the anti-tamper rule
+    let agents_md = fs::read_to_string(repo_root.join("AGENTS.md")).unwrap_or_default();
+    if !agents_md.contains("Prohibition of Blind Golden Hash Modifications") {
+        violations.push(
+            "AGENTS.md is missing `Prohibition of Blind Golden Hash Modifications`".to_string(),
+        );
+    }
+
+    let spec_md = fs::read_to_string(
+        repo_root
+            .join(".agents")
+            .join("rules")
+            .join("spec-compliance.md"),
+    )
+    .unwrap_or_default();
+    if !spec_md.contains("Golden Test Vector & Hash Invariance (Anti-Tamper Rule)") {
+        violations.push(
+            "spec-compliance.md is missing `Golden Test Vector & Hash Invariance (Anti-Tamper Rule)`"
+                .to_string(),
+        );
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Golden benchmark anti-tamper policy failed:\n{}",
         violations.join("\n")
     );
 }
