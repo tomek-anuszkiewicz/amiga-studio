@@ -7,7 +7,7 @@ subsystem: "memory_bus"
 status: "active"
 created: 2026-08-31
 updated: 2026-09-12
-related: ["[Agnus.md](Agnus.md)", "[CycleCounter.md](CycleCounter.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[RTC.md](RTC.md)"]
+related: ["[Agnus.md](Agnus.md)", "[CycleCounter.md](CycleCounter.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)"]
 ---
 
 # Amiga 500 MemoryBus Architecture & Hardware Quirks
@@ -140,11 +140,22 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
   - Odd address (`addr & 1 == 1`): Overwrites lower byte (`D7-D0`), preserving upper byte.
 - **Read:** Return register value; disconnected or write-only register bits return `1`s (`0xFF`).
 
-### 8520 CIA Registers (`$BFE001` / `$BFD000`)
-- Native 8-bit devices accessed via byte lanes:
-  - **CIA-A:** Odd byte addresses (`$BFE001`, `$BFE101`, ..., `$BFEF01`).
-  - **CIA-B:** Even byte addresses (`$BFD000`, `$BFD100`, ..., `$BFDE00`).
-- Direct byte reads and writes are native.
+### 8520 CIA Registers & Partial Address Decoding ($BFE001 / $BFD000)
+- **Native 8-Bit Devices & Byte Lane Mapping:**
+  - **CIA-A:** Odd byte addresses (`$BFE001`, `$BFE101`, ..., `$BFEF01`) mapped via `_LDS`.
+  - **CIA-B:** Even byte addresses (`$BFD000`, `$BFD100`, ..., `$BFDE00`) mapped via `_UDS`.
+- **Physical Motherboard Wiring & Address Line Connections:**
+  - The MOS 8520 CIA has only 4 register address select pins (`RS0`, `RS1`, `RS2`, `RS3`) to address its 16 internal 8-bit registers.
+  - On the Amiga 500 motherboard schematics, `RS0..RS3` connect directly to M68000 address lines **`A8, A9, A10, A11`**.
+  - Address lines **`A1..A7` are completely unconnected** to the CIAs.
+  - Gary performs coarse address decoding and generates the active-low Chip Select (`_CS`):
+    - **CIA-A (`_CS` asserted when `A12 = 0`):** Enabled on odd byte addresses.
+    - **CIA-B (`_CS` asserted when `A13 = 0`):** Enabled on even byte addresses.
+- **Hardware Register Aliasing:**
+  - Because `A1..A7` (and `A14..A15`) are ignored by the hardware, each internal CIA register repeats every 2 bytes across a 256-byte boundary, and the entire 16-register block mirrors continuously across the `$BF0000-$BFFFFF` range.
+- **Custom Chip Address Decoding Comparison:**
+  - Custom chips (Agnus, Denise, Paula) connect only to address lines **`A1..A8`** (selecting the 256 words / 512 bytes from `$000` to `$1FE`).
+  - Gary asserts `_CUSTOM` when `A23..A16 = $DF`. Address lines **`A9..A15` are ignored**, producing the 128-fold mirror of the 512-byte register block across `$DFF000-$DFFFFE`.
 - **16-bit Word Read:** Read 8-bit register from addressed CIA on its active byte lane, and set the unmapped byte lane to **`0xFF`**.
 
 ### TAS (Test-And-Set) Read-Modify-Write Hardware Bug
@@ -161,6 +172,10 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
   - **Bit 0 written as `0`:** Invokes `map_kickstart_to_low_memory()`, re-engaging Kickstart ROM over low Chip RAM.
   - **Bit 0 written as `1`:** Invokes `map_chip_ram_to_low_memory()`, exposing physical Chip RAM at `$000000-$07FFFF`.
 - Methods use explicit routing semantics without "OVL" or "overlay" in their names (`map_kickstart_to_low_memory()` and `map_chip_ram_to_low_memory()`).
+- **CPU vs Custom Chipset Asymmetry (The Overlay Invariant):**
+  - Gary's boot overlay routing applies strictly to the **M68000 CPU** bus interface: Gary intercepts CPU bus cycles targeting `$000000-$07FFFF` while `_OVL = 0` and routes them to Kickstart ROM space (`$F80000-$FFFFFF`). This allows the CPU to fetch the initial supervisor stack pointer ($SSP$ at `$000000`) and program counter ($PC$ at `$000004`) from ROM on reset.
+  - **Custom Chipset Invariance**: Agnus features its own dedicated DRAM address bus (`DRA0..DRA8`) directly wired to the Chip RAM chips. **Agnus DMA memory cycles do not pass through Gary's `_OVL` multiplexer**.
+  - **The Ground Truth:** Even while the boot overlay is active (`_OVL = 0`), any DMA access initiated by the custom chipset (Copper, Blitter, Bitplanes, Sprites, Audio, Disk) to address `$000000` **always accesses physical Chip RAM, never Kickstart ROM**. Only the CPU experiences the Kickstart overlay.
 - **Dynamic 64 KB Bank Swapping & Precalculated Contention:**
   - Toggling overlay dynamically swaps banks `0x00..=0x07` in `self.bank_map`:
     - **Overlay Active (`_OVL = 0`):** Populates `bank_map[0x00..=0x07]` directly with `KICKSTART_ROM_HANDLER` (`MemoryBank::KickstartRom`, `is_contended = false`). Because Kickstart ROM address decoding masks with `rom_len - 1`, address lines `A18..A0` match whether accessed at `$000000` or `$F80000`, requiring zero address translation or separate overlay handlers.
@@ -181,10 +196,21 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
 - **Emulator Implementation:**
   - `write_kickstart_rom`: Implemented as a direct no-op (`fn write_kickstart_rom(_bus: &mut MemoryBus, _addr: u32, _val: u8) {}`). Discards writes to ROM at both `$F80000` and `$000000` (during boot overlay) without altering underlying Chip RAM or ROM.
 
-### Slow RAM ($C00000-$C7FFFF) Gary / Agnus Bus Contention Quirk
-- Although Slow RAM is physically located on the trapdoor expansion, Gary routes its bus control through Agnus arbitration lines.
-- Consequently, whenever Agnus DMA blocks Chip RAM (`chip_ram_blocked == true`), accesses to Slow RAM are **also blocked and stall the CPU**.
+### Slow RAM ($C00000-$C7FFFF) Gary Contention & OCS Agnus Invisibility
+- **Gary Address Decoding:** The 512 KB expansion memory (e.g. trapdoor A501) at `$C00000-$C7FFFF` is decoded by **Gary** (asserting `_RAMEN` / `_EXRAM`).
+- **Shared Bus Contention:** Slow RAM physically resides on the shared, multiplexed Chip RAM bus. When the 68000 accesses `$C00000`, Gary coordinates with Agnus and **withholds `_DTACK` whenever Agnus DMA is active**. Thus, CPU accesses to Slow RAM suffer the **exact same wait-state penalties as Chip RAM**.
+- **OCS Agnus Invisibility:** The OCS Fat Agnus (MOS 8370/8371) contains only **19 DRAM address lines (`DRA0..DRA8` multiplexed = $2^{19} = 512\,\text{KB}$)**. Agnus physically cannot generate addresses outside `$000000-$07FFFF`. Therefore, custom chip DMA (Copper, Blitter, Bitplanes, Audio, Disk) **cannot see or access Slow RAM**.
+- **The "Slow RAM" Trade-Off:** It has the speed disadvantages of Chip RAM (bus contention stalls), but none of the privileges (no chipset DMA visibility). Only the 68000 CPU can use it for program code and variables. *(On ECS Agnus 8372A with A500 Rev 6A motherboard jumper JP2 reconfigured, this physical RAM is remapped to `$080000-$0FFFFF`, promoting it to true 1 MB Chip RAM).*
 - **Precalculated Contention:** The `is_contended` flag is precalculated in the 256-entry bank dispatch table: `SLOW_RAM_HANDLER` has `is_contended = true`, `CHIP_RAM_HANDLER` has `is_contended = true`, and `KICKSTART_ROM_HANDLER` has `is_contended = false`. Thus, bus arbitration queries `bank.is_contended` in $O(1)$ without runtime range checks.
+
+### Paula & Custom Chip DMA Bus Signaling (DMAL & RGA Bus)
+- **Agnus as Master DMA Scheduler:** Paula contains no autonomous DMA bus master or address generation circuits. Agnus acts as the master DMA address generator and bus arbiter for the entire system.
+- **Dedicated Time Slots:** On every horizontal scanline, Agnus allocates fixed memory cycles: `CCK 4` (Floppy Disk DMA) and `CCK 5..8` (Audio Channels 0, 1, 2, 3).
+- **Physical Signalling Pins:**
+  - **`DMAL` (DMA Line — Paula pin 12):** Agnus asserts `DMAL` to notify Paula that the current bus cycle is dedicated to a Paula DMA transfer.
+  - **`RGA(8:1)` (Register Address Bus — Paula pins 19..26):** Agnus drives the target custom register offset on the internal Register Address bus:
+    - When `RGA` corresponds to `AUD0DAT`..`AUD3DAT` (`$0AA`, `$0BA`, `$0CA`, `$0DA`), Paula latches the 16-bit word from the shared data bus (`DRD15..DRD0`) into the respective audio channel holding latch.
+    - When `RGA` corresponds to `DSKDAT` (`$026`), Paula transfers a 16-bit word between the floppy MFM serializer/deserializer and the data bus.
 
 ### DMA Arbitration Methods
 Expose methods to simulate Agnus cycle stealing:
