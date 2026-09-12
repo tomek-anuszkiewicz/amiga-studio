@@ -2115,3 +2115,22 @@ Every future modification or implementation task must append an entry following 
   - Eliminates repetitive stdout re-transmission on subsequent prompt turns while preserving full diagnostic traces on failure.
 - **Verification & Test Results**:
   - `python tools/pre_flight.py`: All 4 gates passed in 1.78s with 0 errors.
+
+---
+
+### [2026-09-12 23:05 CEST] — RAG CLI Fast Search & Mandatory Knowledge Retrieval Precedence Standard
+- **Affected Subsystems**:
+  - `tools/rag_search.py`: Implemented standalone CLI semantic search client for the local Qdrant RAG database, supporting `--source` filters (`amiga`, `obsidian`, `all`), `--limit`, and snippet preview in 1.2s.
+  - `.agents/rules/amiga-rag.md`: Codified Mandatory Knowledge Retrieval Precedence, prohibiting raw file crawling of reference manuals under `Obsidian/Amiga/Reference/` before running `python tools/rag_search.py`.
+  - `.agents/rules/graphify.md`: Codified Mandatory Code Navigation Precedence, requiring `graphify query <symbol>` before inspecting source code and strictly limiting `view_file` to targeted slices ($\le 50$ lines).
+  - `AGENTS.md`: Updated Section 1 and Section 5 with pointers to Knowledge Retrieval Precedence rules while preserving the $\le 14,000$ bytes size limit (13,939 bytes).
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed the system pathology where the agent repeatedly ignored existing pre-indexed knowledge solutions (`Graphify` AST graph and local `RAG` Qdrant database), burning context tokens on brute-force `view_file` calls.
+  - Formulated the Strict Knowledge Retrieval Precedence Standard:
+    1. **Source Code**: Query AST via `graphify query` first; never open entire multi-hundred-line files for symbol discovery.
+    2. **Hardware Documentation**: Query local Qdrant RAG via `python tools/rag_search.py` first; never open multi-thousand-line hardware reference manuals directly without prior RAG coordinates.
+- **Architectural Rationale & Trade-Offs**:
+  - *Context Budget & Precision:* Local vector embeddings and AST graphs provide micro-targeted context in milliseconds, eliminating token exhaustion from whole-file re-reading and preventing hallucinated hardware specifications.
+- **Verification & Test Results**:
+  - `python tools/rag_search.py "DMACON BLTPRI" --limit 1`: Verified exact timing and register specs returned in 1.2s (score 0.749).
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed in 1.75s (formatting, attractors, `AGENTS.md` 13,939 bytes $\le 14,000$, architecture rules 15/15 passed).
