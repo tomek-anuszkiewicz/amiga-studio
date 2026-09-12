@@ -2277,3 +2277,22 @@ Every future modification or implementation task must append an entry following 
   - Pure register buffers without action dispatch force peripheral devices to continuously poll raw register bits, introducing wasted cycles or brittle multi-chip synchronization. Defining a propagation-aware action dispatch pipeline ensures hardware events fire deterministically on the exact Color Clock cycle while maintaining strict borrow splitting and zero circular references across crates.
 - **Verification & Test Results**:
   - `python tools/pre_flight.py` passed with 100% compliance across formatting, attractor discipline (312 files), AGENTS.md ceiling (13,354 bytes), and all 15 architecture rules tests.
+
+---
+
+### [2026-09-13 00:10 CEST] — Roadmap Milestone Addition: Machine-Wide Save State Serialization & Restoration (Step 2.4)
+- **Affected Subsystems**:
+  - `ROADMAP.md` (inserted Step 2.4: Machine-Wide Save State Serialization & Restoration, renumbered subsequent steps 2.5–2.8)
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated and inserted **Step 2.4: Machine-Wide Save State Serialization & Restoration (Machine Core & Developer Studio Integration)** directly following Step 2.3 in `ROADMAP.md`.
+  - Defined explicit scope for:
+    1. *Comprehensive State Schema (`A500State`):* Decoupled snapshot structs (`serde::Serialize`, `serde::Deserialize`) across all machine subsystems: CPU (`CpuState`, `CpuMicroState`), MemoryBus (physical RAM buffers, dynamic boot overlay state, bank descriptors), Agnus (`AgnusState`: beam counters, Copper PC, Blitter channels, DMA mask), Denise (`DeniseState`: bitplanes, sprites, color palette), Paula (`PaulaState`: 4 audio channels, periods, volumes, MFM floppy track stream), and dual CIAs (`CiaState`: timers A/B, TOD, ICR latches).
+    2. *Zero-Allocation Machine Snapshot API:* Public methods on `A500Machine` (`save_state() -> A500State` and `load_state(&state) -> Result<(), SaveStateError>`) maintaining zero allocations in the active stepping loop.
+    3. *Self-Contained & Referenced ROM Modes:* Optional embedded Kickstart ROM slices or CRC32/SHA-256 checksum validation with strict hardware configuration guards.
+    4. *Deterministic Round-Trip Verification:* Automated CI tests (`test_save_state_roundtrip` in `crates/test_runner`) asserting cycle and state invariance across save/restore cycles.
+    5. *Developer Studio GUI Integration:* Direct integration into `crates/gui` via dedicated `State` menu bar, `F6` quick-save / `F9` quick-load shortcuts, native file dialogs (`rfd`), and instantaneous visual dock/viewport state synchronization.
+  - Renumbered subsequent steps: Reset Sequencing to Step 2.5, DMA Arbiter to Step 2.6, Decomposed Subsystems to Step 2.7, Audio/Shaders to Step 2.8.
+- **Architectural Rationale & Trade-Offs**:
+  - Implementing full save state serialization and restoration immediately alongside register propagation and before deep subsystem logic ensures state serialization is designed into every chip from day one, rather than retrofitted as an afterthought. It also empowers the Developer Studio debugger and automated test harnesses to take checkpoints, debug tricky edge cases, and perform deterministic state replays.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py` passed with 100% compliance across formatting, attractor discipline, AGENTS.md ceiling, and all architecture rules tests.

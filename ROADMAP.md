@@ -78,22 +78,32 @@ This document outlines the phased development plan, hardware milestones, verific
     - `INTENA` / `INTREQ`: Interrupt master and channel enables routed to the central machine loop IPL arbiter.
     - `BPLCON0` / `BPLCON1`: Bitplane count and scroll delay actions dispatched to Denise and Agnus DMA allocation.
     - `COPJMP1` / `COPJMP2`: Strobe address triggers dispatched to Copper program counter reload.
-- **Step 2.4: Machine-Wide Reset Sequencing (reset_cold & reset_warm):**
+- **Step 2.4: Machine-Wide Save State Serialization & Restoration (Machine Core & Developer Studio Integration):**
+  - **Comprehensive State Schema (`A500State`):** Implement decoupled, serde-compatible state snapshot structs (`serde::Serialize`, `serde::Deserialize`) across all machine subsystems: CPU (`CpuState`, `CpuMicroState`), MemoryBus (physical RAM buffers, dynamic boot overlay state, bank descriptors), Agnus (`AgnusState`: beam counters, Copper program counter, Blitter registers/channels, DMA mask), Denise (`DeniseState`: bitplanes, sprites, color palette), Paula (`PaulaState`: 4 audio channels, periods, volumes, MFM floppy track stream), and dual CIAs (`CiaState`: timers A/B, TOD, ICR latches).
+  - **Zero-Allocation Machine Snapshot API:** Expose public snapshot methods on `A500Machine`: `save_state() -> A500State` and `load_state(&state) -> Result<(), SaveStateError>` with zero dynamic allocations in the regular execution loop.
+  - **Self-Contained & Referenced ROM Modes:** Support optional embedded Kickstart ROM byte slices or checksum guards (CRC32/SHA-256) with strict hardware profile compatibility verification (preventing crashes on mismatched RAM configurations).
+  - **Deterministic Round-Trip CI Invariants (`test_save_state_roundtrip`):** Author comprehensive automated tests in `crates/test_runner` verifying that taking a state snapshot at cycle $T$, continuing execution, restoring at $T$, and re-stepping $N$ cycles yields bit-for-bit identical register states, memory buffers, and cycle counters.
+  - **Developer Studio GUI Integration:** Wire snapshot triggers directly into the Developer Studio GUI (`crates/gui`):
+    - Dedicated `State` menu bar items (`Save State to File...`, `Load State from File...`, quick slots 1–5).
+    - Global keyboard shortcuts (`F6` quick-save, `F9` quick-load).
+    - In-memory quick-slot ring and native OS file dialogs via `rfd`.
+    - Instantaneous visual state restoration: live sync of register dock deltas, memory hex views, and CRT screen buffers upon loading state.
+- **Step 2.5: Machine-Wide Reset Sequencing (reset_cold & reset_warm):**
   - Physical _RESET line propagation across all chips.
   - Boot overlay engagement (map_kickstart_to_low_memory in MemoryBus).
   - *Cold Reset:* Zero physical RAM buffers ($00), reset chip registers to power-on defaults (DMACON = $0000, INTENA/INTREQ = $0000, CIA latches cleared), initialize CPU SR = $2700, load initial SSP/PC from $000000/$000004 (Kickstart ROM), prime prefetch queue (IR, IRC).
   - *Warm Reset:* Preserve RAM contents intact (ensuring Kickstart memory checksum and resident module discovery pass), re-engage _OVL, assert chip reset lines, reload initial vectors.
   - Hardware keyboard reset line: wire Ctrl-Amiga-Amiga reset trigger line to main machine reset flow.
-- **Step 2.5: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
+- **Step 2.6: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
   - Implement the baseline Agnus horizontal scanline DMA slot schedule (CCK 0..3 DRAM refresh, CCK 4 disk, CCK 5..8 audio, CCK 12..27 sprites, bitplanes, and even/odd slots).
   - CPU and Blitter contention arbitration (BLTPRI Blitter Nasty mode).
   - Direct bus lock exposure: drive bus lock methods (lock_chip_ram / unlock_chip_ram) so the CPU and all custom chips observe bus contention and stall with wait states (BusResult::WaitState), establishing correct bus contention physics even before individual channel internal DSP/rendering logic is fully completed.
-- **Step 2.6: Decomposed Subsystem Deep Implementations:**
+- **Step 2.7: Decomposed Subsystem Deep Implementations:**
   - *Agnus:* Copper coprocessor state machine (MOVE, WAIT, SKIP, CDANG danger mode), 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer, ascending/descending modes).
   - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (blep_tables.rs) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.
   - *Denise:* Video pixel serializer, bitplanes (1–6), 8 hardware sprites, 32-color palette (RGB444), dual playfield, collision detection registers (CLXDAT, CLXCON).
   - *CIAs (Dual MOS 8520):* Timers A & B, TOD clock, serial shift register (SDR), parallel/control ports, E-clock synchronization.
-- **Step 2.7: Host Audio, CRT Shaders & Copper/DMA Logic Analyzer:**
+- **Step 2.8: Host Audio, CRT Shaders & Copper/DMA Logic Analyzer:**
   - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio).
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
   - Copper list visualizer with live beam position cursor and DMA slot logic analyzer timeline.
