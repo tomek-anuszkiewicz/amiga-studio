@@ -329,6 +329,7 @@ As the repository expanded to dozens of crates and hundreds of files, the human 
   8. *Golden Master Anti-Tamper Rule:* Modifying golden test hashes or benchmark constants to silence a failing test is strictly forbidden. Any divergence signifies an architectural regression requiring root-cause analysis.
   9. *Path Privacy:* Zero hardcoded external paths (`D:\...`, `/home/...`).
   10. *Mandatory Merge Commits (`git-merge-commits.md`):* Merges between worktrees and branches must produce clean merge commits with explicit conflict resolution records rather than fast-forward rebases.
+  11. *Mandatory Engineering Diary Maintenance (`DIARY.md`):* Recording all changes, rationale, and evolutionary context in `DIARY.md` (Section 10) because Git commits are often squashed, batched, or combined.
 
 ---
 
@@ -346,3 +347,40 @@ This serves a larger, ambitious vision:
 - The operational recipe, ingestion pipeline, and instructions to prepare this clean-room experiment are detailed in **[BOOTSTRAP.md](BOOTSTRAP.md)**.
 
 This diary stands as the living record of how those foundations were built.
+
+---
+
+## 10. Living Chronological Engineering Log & Evolutionary Change History
+
+This section maintains a continuous, granular chronological record of all engineering changes, subsystem modifications, refactorings, and bug fixes across the repository.
+
+Because Git commits are frequently batched, squashed, or merged into higher-level commits during multi-stage worktree development, standard commit messages often do not preserve the full evolutionary context, granular mechanics, or subtle trade-offs considered along the way. This log serves as the authoritative, human-readable chronicle of what was actually built, modified, and verified in each development session.
+
+### Mandatory Entry Schema:
+Every future modification or implementation task must append an entry following this structure:
+- **Timestamp & Context**: Date / local time and the active branch / task / PR.
+- **Affected Subsystems**: Specific crates, modules, tools, or configuration affected.
+- **What Was Changed (The Concrete Reality)**: Detailed technical description of changes, data structures, algorithms, or mechanics implemented.
+- **Architectural Rationale & Trade-Offs**: Why this solution was chosen, what alternatives were rejected, and why.
+- **Verification & Invariants**: Test suites executed, assertions checked, and proof of correctness.
+
+---
+
+### [2026-09-12 10:15 CEST] — Codification of Mandatory Engineering Diary Maintenance Rule
+- **Affected Subsystems**:
+  - `AGENTS.md` (Section 1 Operating Rules & Section 4 Definition of Done)
+  - `.agents/rules/docs-maintenance.md` (Engineering Diary Maintenance mandate)
+  - `.agents/workflows/code-review.md` (Documentation & Diary Review checklist)
+  - `.agents/skills/code-review/SKILL.md` (Step 3 & Step 4 Living Docs & Diary audit)
+  - `DIARY.md` (Section 8 rules expansion & Section 10 genesis)
+- **What Was Changed (The Concrete Reality)**:
+  - Formally codified a repository-wide engineering mandate: every code modification, refactoring, bug fix, or milestone implementation must append a narrative entry to `DIARY.md` (Section 10).
+  - Integrated this requirement into the automated Definition of Done checklist in `AGENTS.md`, `docs-maintenance.md`, `code-review` workflow, and `code-review` skill.
+  - Initialized Section 10 in `DIARY.md` with an explicit entry schema and this inaugural entry.
+- **Architectural Rationale & Trade-Offs**:
+  - *The "Squashed Commit" Information Loss:* During active emulator development, commits are frequently batched or squashed when merging worktrees (e.g. `feat/benchmarks`, `feat/gui` into `master`). While git commit messages summarize high-level features, the granular problem-solving narrative, rejected prototypes, and subtle edge-case discoveries risk being lost.
+  - *Self-Documenting Evolution:* Keeping `DIARY.md` synchronized in lockstep with the code guarantees that the engineering journey remains completely transparent, human-readable, and aligned with the long-term clean-room re-generation experiment ([BOOTSTRAP.md](BOOTSTRAP.md)).
+- **Verification & Invariants**:
+  - Executed `cargo test -p test_runner --test test_architecture_rules` verifying that `AGENTS.md` (22,348 bytes) and `.agents/rules/docs-maintenance.md` (4,524 bytes) remain strictly under the 23,000-byte prompt-injection safety ceiling (`test_rule_files_size_limit_and_truncation_safety`).
+  - Ran `cargo fmt --all -- --check` across the entire workspace.
+
