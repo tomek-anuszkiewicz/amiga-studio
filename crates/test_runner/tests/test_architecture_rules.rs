@@ -15,7 +15,6 @@ use std::path::{Path, PathBuf};
 /// (e.g. compile-time static dispatch tables, exhaustive linear instruction decoders/slices).
 const LINE_COUNT_EXCEPTIONS: &[&str] = &[
     "dispatch_table.rs",
-    "disassembler.rs",
     "move_w.rs",
     "move_b.rs",
     "move_l.rs",
@@ -28,7 +27,14 @@ const LINE_COUNT_EXCEPTIONS: &[&str] = &[
 ];
 
 /// Core emulation crates where `.unwrap()` and `.expect()` are strictly forbidden in runtime code.
-const CORE_EMULATION_CRATES: &[&str] = &["m68000", "memory_bus", "config", "rtc", "debugger"];
+const CORE_EMULATION_CRATES: &[&str] = &[
+    "m68000",
+    "memory_bus",
+    "config",
+    "rtc",
+    "disassembler",
+    "debugger",
+];
 
 fn find_repo_root() -> PathBuf {
     // Current test binary runs in target/debug/deps, CWD is repo root

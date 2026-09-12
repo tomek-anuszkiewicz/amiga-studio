@@ -60,19 +60,23 @@ The debugger maintains a collection of traps evaluated during execution (defined
   - Branch targets calculated as relative offsets (`$001004: BNE $001040`).
 - Returns formatted strings: `00FC0004: 4E71            NOP`.
 
-#### 4.1.1 Standalone Disassembler API (Zero-Dependency)
-The disassembler is built-in and decoupled from any specific machine or bus struct, operating via [`disassemble`](../../../crates/debugger/src/disassembler.rs):
+#### 4.1.1 Standalone Disassembler Crate (`crates/disassembler`)
+The disassembler is extracted into its own dedicated zero-dependency workspace crate ([`crates/disassembler`](../../../crates/disassembler/)), completely decoupled from CPU or memory bus implementations:
 - Operates against a side-effect-free word reader closure `Fn(u32) -> u16`.
-- Returns a [`Disassembly`](../../../crates/debugger/src/disassembler.rs) struct containing `pc`, raw instruction words (`words: [u16; 5]`, `word_count`), mnemonic (`&'static str`), and formatted operands (`String`), alongside total consumed instruction stream bytes.
-- Highly cohesive, modular architecture respecting source file size limits:
-  - [`disassembler.rs`](../../../crates/debugger/src/disassembler.rs): Core instruction decoding, control flow (`RTS`, `RTE`, `STOP`, `TRAP`, `LINK`, `UNLK`), branches (`Bcc`, `DBcc`, `Scc`), `MOVE`/`MOVEA`/`MOVEQ`, `MOVEM`, single-operand ops (`CLR`, `NEG`, `NOT`, `TST`, `SWAP`, `EXT`, `LEA`, `PEA`), and smart stream alignment via `find_aligned_disassembly_start`.
-  - [`disassembler_alu.rs`](../../../crates/debugger/src/disassembler_alu.rs): Arithmetic, logic, comparisons (`ADD`, `SUB`, `AND`, `OR`, `EOR`, `CMP`, `CMPA`, `CMPM`), immediate ops (`ORI`, `ANDI`, `SUBI`, `ADDI`, `EORI`, `CMPI`), bit operations (`BTST`, `BSET`, `BCLR`, `BCHG`), multiply/divide (`MULU`, `MULS`, `DIVU`, `DIVS`), and shifts/rotates (`ASL/ASR`, `LSL/LSR`, `ROL/ROR`, `ROXL/ROXR`).
-  - [`ea_format.rs`](../../../crates/debugger/src/ea_format.rs): Dedicated formatting helpers for effective addresses (`format_ea`), immediate values (`format_immediate`), condition codes (`bcc_condition_name`, `dbcc_condition_name`, `scc_condition_name`), and MOVEM register masks (`format_movem_reg_list`).
+- Returns a [`Disassembly`](../../../crates/disassembler/src/types.rs) struct containing `pc`, raw instruction words (`words: [u16; 5]`, `word_count`), mnemonic (`&'static str`), and formatted operands (`String`), alongside total consumed instruction stream bytes.
+- Highly cohesive, modular architecture strictly respecting source file size limits (< 400 lines per module):
+  - [`lib.rs`](../../../crates/disassembler/src/lib.rs): Crate facade, module declarations, and main [`disassemble`](../../../crates/disassembler/src/lib.rs) coordinator function.
+  - [`types.rs`](../../../crates/disassembler/src/types.rs): [`Disassembly`](../../../crates/disassembler/src/types.rs) representation and string line formatting (`format_line`).
+  - [`ea.rs`](../../../crates/disassembler/src/ea.rs): Dedicated formatting helpers for effective addresses (`format_ea`), immediate values (`format_immediate`), condition codes (`bcc_condition_name`, `dbcc_condition_name`, `scc_condition_name`), and MOVEM register masks (`format_movem_reg_list`).
+  - [`alu.rs`](../../../crates/disassembler/src/alu.rs): Arithmetic, logic, comparisons (`ADD`, `SUB`, `AND`, `OR`, `EOR`, `CMP`, `CMPA`, `CMPM`), immediate ops (`ORI`, `ANDI`, `SUBI`, `ADDI`, `EORI`, `CMPI`), bit operations (`BTST`, `BSET`, `BCLR`, `BCHG`), multiply/divide (`MULU`, `MULS`, `DIVU`, `DIVS`), and shifts/rotates (`ASL/ASR`, `LSL/LSR`, `ROL/ROR`, `ROXL/ROXR`).
+  - [`branch.rs`](../../../crates/disassembler/src/branch.rs): Inherent control flow (`NOP`, `RESET`, `RTS`, `RTE`, `RTR`, `STOP`, `TRAPV`, `ILLEGAL`), `TRAP #vector`, `LINK`/`UNLK`, `JMP`/`JSR`, branches (`Bcc`), `DBcc`/`DBRA`, and `Scc`.
+  - [`data.rs`](../../../crates/disassembler/src/data.rs): Data movement (`MOVE`/`MOVEA`/`MOVEQ`), `MOVEM`, `MOVE` to/from `SR`/`CCR`/`USP`, `LEA`, `CHK`, `PEA`, `SWAP`, `EXT`, unary ops (`CLR`, `NEG`, `NEGX`, `NOT`, `TST`), and quick math (`ADDQ`/`SUBQ`).
+  - [`align.rs`](../../../crates/disassembler/src/align.rs): Smart CISC stream alignment engine via `find_aligned_disassembly_start`.
 
 #### 4.1.2 CISC Stream Alignment & Code Guessing (`find_aligned_disassembly_start`)
 In variable-length M68000 CISC architectures (instructions ranging from 2 to 10 bytes), naive backward stepping (e.g. subtracting an arbitrary byte offset) easily falls inside extension words or uninitialized zero padding, producing phantom instructions (e.g. `$0000` $\to$ `ORI.B #$00, D0`).
 
-The [`find_aligned_disassembly_start`](../../../crates/debugger/src/disassembler.rs) algorithm addresses this:
+The [`find_aligned_disassembly_start`](../../../crates/disassembler/src/align.rs) algorithm addresses this:
 1. **Hardware History Prioritization:** Checks execution history (`temporal` and `trace`) for recent instruction boundaries that cleanly sweep forward to `target_pc`.
 2. **Backward Sweep Heuristic:** Evaluates candidate starting addresses backwards in 2-byte steps, verifying that disassembling forward lands exactly on `target_pc`.
 3. **Overlapping Boundary Pruning:** Detects and eliminates candidates that fall inside multi-word instruction spans of preceding valid candidates.

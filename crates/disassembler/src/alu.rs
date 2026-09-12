@@ -1,6 +1,6 @@
 //! ALU, Compare, Bitwise, Immediate, Multiply/Divide and Shift/Rotate disassembler module
 
-use crate::ea_format::*;
+use crate::ea::*;
 
 /// Attempts to disassemble arithmetic, logic, compare, bit, multiply/divide, and shift/rotate instructions.
 ///
@@ -9,7 +9,7 @@ pub fn try_disassemble_alu(
     op: u16,
     mut next_word: impl FnMut() -> u16,
 ) -> Option<(&'static str, String)> {
-    // 17. Immediate operations ($0000..$0FFF: ORI, ANDI, SUBI, ADDI, EORI, CMPI, BitOps)
+    // 1. Immediate operations ($0000..$0FFF: ORI, ANDI, SUBI, ADDI, EORI, CMPI, BitOps)
     if (op & 0xF000) == 0x0000 {
         // Bit operations with immediate bit number ($0800..$08FF)
         if (op & 0xFF00) == 0x0800 {
@@ -117,7 +117,7 @@ pub fn try_disassemble_alu(
         }
     }
 
-    // 18. Compare, EOR, CMPA, CMPM ($B000..$BFFF)
+    // 2. Compare, EOR, CMPA, CMPM ($B000..$BFFF)
     if (op & 0xF000) == 0xB000 {
         let reg_d = ((op >> 9) & 7) as u8;
         let opmode = ((op >> 6) & 7) as u8;
@@ -167,7 +167,7 @@ pub fn try_disassemble_alu(
         }
     }
 
-    // 19. Multiply, Divide & EXG ($C000..$CFFF, $8000..$8FFF)
+    // 3. Multiply, Divide & EXG ($C000..$CFFF, $8000..$8FFF)
     if (op & 0xF000) == 0xC000 || (op & 0xF000) == 0x8000 {
         let is_c = (op & 0xF000) == 0xC000;
         let reg = ((op >> 9) & 7) as u8;
@@ -204,7 +204,7 @@ pub fn try_disassemble_alu(
         }
     }
 
-    // 20. ADD, ADDA, ADDX, SUB, SUBA, SUBX, AND, OR
+    // 4. ADD, ADDA, ADDX, SUB, SUBA, SUBX, AND, OR
     let op_group = (op >> 12) & 0x0F;
     if op_group == 0xD || op_group == 0x9 || op_group == 0xC || op_group == 0x8 {
         let base_name = match op_group {
@@ -300,7 +300,7 @@ pub fn try_disassemble_alu(
         return Some((full_mnem, ops));
     }
 
-    // 21. Shifts & Rotates ($E000..$EFFF)
+    // 5. Shifts & Rotates ($E000..$EFFF)
     if (op & 0xF000) == 0xE000 {
         // Memory shifts: op & 0xF8C0 == 0xE0C0
         if (op & 0xF8C0) == 0xE0C0 {

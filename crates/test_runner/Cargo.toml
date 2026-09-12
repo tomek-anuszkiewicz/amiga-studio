@@ -7,6 +7,7 @@ license.workspace = true
 [dependencies]
 m68000 = { workspace = true }
 memory_bus = { workspace = true }
+disassembler = { workspace = true }
 debugger = { workspace = true }
 serde = { workspace = true, features = ["derive", "std"] }
 serde_json = { workspace = true, features = ["std"] }

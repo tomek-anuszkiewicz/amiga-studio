@@ -1,0 +1,10 @@
+[package]
+name = "disassembler"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Zero-dependency Motorola 68000 opcode disassembler and CISC stream alignment engine"
+
+[dependencies]
+# Pure zero-dependency crate

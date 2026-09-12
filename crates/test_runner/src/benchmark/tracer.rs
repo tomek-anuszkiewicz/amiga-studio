@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::Path;
 
-use debugger::disassemble;
+use disassembler::disassemble;
 use m68000::Cpu;
 use memory_bus::MemoryBus;
 

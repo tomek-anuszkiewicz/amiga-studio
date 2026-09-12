@@ -1,4 +1,4 @@
-﻿# Amiga 500 General System Architecture
+# Amiga 500 General System Architecture
 
 > [!NOTE]
 > Project-wide engineering constraints, Rust coding guidelines, and WASM requirements are defined in [AGENTS.md](../../../AGENTS.md).
@@ -45,6 +45,7 @@ graph TD
         RTC["rtc<br/><code>crates/rtc</code>"]:::core
         MEM["memory_bus<br/><code>crates/memory_bus</code>"]:::core
         CPU["m68000<br/><code>crates/m68000</code>"]:::core
+        DIS["disassembler<br/><code>crates/disassembler</code>"]:::tool
         DBG["debugger<br/><code>crates/debugger</code>"]:::tool
         TR["test_runner<br/><code>crates/test_runner</code>"]:::tool
         GUI["gui<br/><code>crates/gui</code>"]:::tool
@@ -65,8 +66,10 @@ graph TD
     CPU -->|depends on| MEM
     DBG -->|depends on| CPU
     DBG -->|depends on| MEM
+    DBG -->|depends on| DIS
     TR -->|depends on| CPU
     TR -->|depends on| MEM
+    TR -->|depends on| DIS
     TR -->|depends on| DBG
     GUI -->|depends on| CPU
     GUI -->|depends on| MEM

@@ -306,12 +306,12 @@ One of the most consequential architectural decisions made during GUI developmen
 - Tests programmatically simulate keyboard shortcuts (`F5` run/pause, `F8` microcode toggle, `F10` step over, `F11` step into, `F12` screen mode), mouse clicks, drag-and-drop resizing, text box edits, and Enter/Escape commits directly in Rust code.
 - Over 25 headless integration tests assert dock widths, focus transitions, memory mutations, and view mode switches in milliseconds, with zero rendering jitter and zero flakiness.
 
-### The Debugger Engine (`crates/debugger`)
+### The Debugger Engine (`crates/debugger`) & Standalone Disassembler (`crates/disassembler`)
 The backend driving the Developer Studio was modularized to strictly adhere to the 800-line single-responsibility guideline:
 - **Temporal Reverse Debugger (`temporal.rs`):** A fixed-capacity, zero-allocation ring buffer records CPU and memory bus states on every instruction. Users can scrub backwards through execution history, replaying cycles in reverse to isolate the exact instruction that corrupted a register.
 - **In-Memory Mini-Assembler (`assembler.rs`):** A lightweight 650-line M68000 assembler built directly into the debugger, allowing developers to type assembly instructions directly into the GUI to patch guest memory live during execution.
 - **Conditional Breakpoint Evaluator (`breakpoints.rs`):** Evaluates complex address boundaries, memory access watchpoints (read/write), and register conditional expressions (`D0 == $0000`, `A7 < $00070000`).
-- **Disassembler Modularization (`disassembler.rs`, `disassembler_alu.rs`, `ea_format.rs`):** Sliced a former 1,300-line monolithic disassembler into cohesive units with stream alignment, guaranteeing exact formatting parity across debug logs, GUI panels, and trace audit files.
+- **Standalone Disassembler Engine (`crates/disassembler`):** Completely decoupled and extracted from `crates/debugger` into its own standalone, zero-dependency crate. The disassembler is structured into clean, flat submodules (`types.rs`, `ea.rs`, `alu.rs`, `branch.rs`, `data.rs`, `align.rs`, `lib.rs`), with every file under 380 lines. This permanently eliminated the historical 800-line exception for `disassembler.rs` from architecture tests while providing instruction decoding and heuristic stream alignment across debugger, tracer, and GUI modules.
 
 ---
 
@@ -383,4 +383,37 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Invariants**:
   - Executed `cargo test -p test_runner --test test_architecture_rules` verifying that `AGENTS.md` (22,348 bytes) and `.agents/rules/docs-maintenance.md` (4,524 bytes) remain strictly under the 23,000-byte prompt-injection safety ceiling (`test_rule_files_size_limit_and_truncation_safety`).
   - Ran `cargo fmt --all -- --check` across the entire workspace.
+
+---
+
+### [2026-09-12 10:25 CEST] — Extraction of Standalone Disassembler Crate & Elimination of 800-Line Architecture Exception
+- **Affected Subsystems**:
+  - `Cargo.toml`, `Cargo.lock` (added `crates/disassembler` workspace member and dependency)
+  - `crates/disassembler/` (new standalone zero-dependency crate with flat layout: `lib.rs`, `types.rs`, `ea.rs`, `alu.rs`, `branch.rs`, `data.rs`, `align.rs`)
+  - `crates/debugger/` (removed internal `disassembler.rs`, `disassembler_alu.rs`, `ea_format.rs`; re-exported `disassembler` crate for full backward compatibility)
+  - `crates/test_runner/` (updated `tracer.rs` to import `disassembler`; removed `disassembler.rs` from `LINE_COUNT_EXCEPTIONS`; added `disassembler` to `CORE_EMULATION_CRATES`)
+  - `AGENTS.md`, `.agents/rules/unit-testing-policy.md`, `Obsidian/Amiga/Design/Debugger.md`, `Obsidian/Amiga/Design/General Architecture.md` (updated crate taxonomy, rules, and design documents)
+- **What Was Changed (The Concrete Reality)**:
+  - Extracted the M68000 disassembler out of `crates/debugger` into an independent, zero-dependency workspace crate (`crates/disassembler`).
+  - Decomposed the disassembler into a strictly flat hierarchy of cohesive modules, each under 380 lines of code:
+    - `types.rs` (35 lines): `Disassembly` representation and `format_line()` with fixed-column spacing (`$%08X:  %-24s %s`).
+    - `ea.rs` (210 lines): Addressing mode decoding, 16/32-bit immediate formatting, MOVEM register mask formatting, and branch condition code naming.
+    - `alu.rs` (380 lines): Arithmetic, logic, comparisons, immediate operations, bit manipulations, shifts/rotates, and multiply/divide formatting.
+    - `branch.rs` (75 lines): Control flow formatting (`Bcc`, `DBcc`, `Scc`, `BSR`, `JMP`, `JSR`, `TRAP`, `LINK`, `UNLK`, `STOP`, `RTS`, `RTE`, `RTR`, `RESET`).
+    - `data.rs` (165 lines): Data movement (`MOVE`, `MOVEA`, `MOVEQ`, `MOVEM`, `MOVE to/from SR/CCR/USP`, `LEA`, `PEA`, `CLR`, `NEG`, `NOT`, `TST`, `ADDQ`, `SUBQ`, `EXT`, `SWAP`).
+    - `align.rs` (145 lines): Heuristic backward stream alignment (`find_aligned_disassembly_start`) enabling smooth scrolling in memory and disassembly GUI views.
+    - `lib.rs` (75 lines): Clean crate root facade coordinating instruction classification, extension word reads, and top-level re-exports.
+  - Sliced and migrated integration tests to `crates/disassembler/tests/test_disassembler.rs` (10 tests covering arithmetic, logic, data movement, control flow, loops, shifts, stack, and stream alignment).
+  - Maintained complete backward compatibility in `crates/debugger` by re-exporting all disassembler types and preserving module aliases (`ea_format`, `disassembler`).
+  - Removed `"disassembler.rs"` from `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs` and added `"disassembler"` to `CORE_EMULATION_CRATES` (enforcing zero runtime unwraps/panics).
+- **Architectural Rationale & Trade-Offs**:
+  - *Decoupling from the Debugger:* The disassembler is an algorithmic text formatter that has zero dependency on debugger state (breakpoints, temporal trace buffers, session controllers) or CPU execution logic. Downstream tools like benchmark tracers or CLI utilities that only need instruction disassembly no longer pull in the heavier debugger crate.
+  - *Elimination of Architecture Rule Exception:* Previously, `disassembler.rs` was grandfathered into `LINE_COUNT_EXCEPTIONS` as an exception to the 800-line limit. Refactoring it into domain-specific submodules brought every single file under 400 lines (healthy baseline), permanently removing the exception and improving maintainability.
+  - *Zero Runtime Allocations & Safe Error Handling:* Maintained zero runtime unwraps and safe handling of truncated instruction streams (gracefully formatting partial or invalid words as `DATA.W $%04X`).
+- **Verification & Invariants**:
+  - `cargo test -p disassembler`: 10/10 tests passed.
+  - `cargo test -p debugger`: 35/35 tests passed.
+  - `cargo test -p gui --test test_interactions`: 25/25 headless integration tests passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: 12/12 passed (formatting, file sizes, zero unwraps in `disassembler`, zero custom macros, path privacy, rule file size limits).
+  - `cargo fmt --all -- --check`: passed cleanly.
 

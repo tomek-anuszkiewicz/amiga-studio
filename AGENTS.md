@@ -88,7 +88,7 @@ Operational, communication, and interaction rules are modularized under `.agents
      - **Recognized Exceptions**:
        - Coupled SR/CCR operations: `move_sr_ccr.rs` (`MOVE from/to SR/CCR`) and `logic_sr_ccr.rs` (`ANDI/EORI/ORI to CCR/SR`).
        - Size-based decompositions for high-cardinality operations: `move_b.rs`, `move_w.rs`, `move_l.rs`.
-       - Files registered in `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`: static dispatch tables (`dispatch_table.rs`), disassembler (`disassembler.rs`), and exhaustive linear decoders (`add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`, `move_b.rs`, `move_w.rs`, `move_l.rs`). Never split into subdirectories.
+       - Files registered in `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`: static dispatch tables (`dispatch_table.rs`), and exhaustive linear decoders (`add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`, `move_b.rs`, `move_w.rs`, `move_l.rs`). Never split into subdirectories.
 
 7. **Method Inlining Strategy (`#[inline]`, `#[inline(always)]`, `#[inline(never)]`)**:
    - `#[inline]` emits intermediate representation into crate metadata, enabling **cross-crate inlining** across workspace crates without requiring whole-program LTO.
@@ -100,7 +100,7 @@ Operational, communication, and interaction rules are modularized under `.agents
 8. **Workspace Flat Layout & 3-Tier Re-Export (`pub use`) Strategy**:
    - Keep crate directories in `crates/*` **strictly flat** (no nested crate folders).
      - **Tier 1 (Foundational Blueprint - `config`)**: Machine-wide presets/timings. Never re-exported by peer subsystems.
-     - **Tier 2 (Peer Subsystems - `memory_bus`, `m68000`, `agnus`, `denise`, `paula`, `cia`)**: Peers owned by `A500`. Peers **never re-export other peers**.
+     - **Tier 2 (Peer Subsystems & Development Engines - `memory_bus`, `m68000`, `disassembler`, `debugger`, `agnus`, `denise`, `paula`, `cia`)**: Peers owned by `A500` or Developer Studio. Peers **never re-export other peers** (with the exception of `debugger` re-exporting `disassembler` as a convenience facade).
      - **Tier 3 (Contained Sub-Components - `rtc`, `copper`, `blitter`)**: Conceptually owned by a specific subsystem. Parent peer **must** re-export them (`pub use rtc; pub use rtc::RtcMsm6242b;`).
      - **Tier 0 (Top-Level Facade - `a500` machine)**: Owns all peers and acts as the unified gateway for host frontends (`web-wasm`, `desktop-gui`, `cli`).
 

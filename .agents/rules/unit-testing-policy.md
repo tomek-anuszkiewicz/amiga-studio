@@ -13,13 +13,13 @@ To guarantee emulator fidelity, zero regressions, and complete opcode support, t
 
 Every non-UI functional module, utility class, parser, decoder, evaluator, data structure, and hardware state machine **must have comprehensive unit test coverage**:
 
-1. **Disassemblers & Parsers (`crates/debugger/src/disassembler.rs`, `assembler.rs`):**
+1. **Disassemblers & Parsers (`crates/disassembler/src/lib.rs`, `crates/debugger/src/assembler.rs`):**
    - **Exhaustive Opcode Coverage:** Must test every supported M68000 instruction mnemonic, addressing mode, and condition code variant.
    - **Zero Unintended Fallbacks:** Unit tests must assert that valid instructions never fall back to `DATA.W` or unformatted raw bytes.
    - **Roundtrip Validation:** Where applicable, assemble -> disassemble roundtrip tests must verify consistency between assembler and disassembler.
    - **Syntax & Error Handling:** Assemblers and parsers must test invalid syntax, range bounds, odd addresses, and error reporting.
 
-2. **Core Subsystems & Utilities (`debugger`, `rtc`, `memory_bus`, `config`):**
+2. **Core Subsystems & Utilities (`disassembler`, `debugger`, `rtc`, `memory_bus`, `config`):**
    - **Breakpoint & Watchpoint Evaluators:** Test address matching, register conditions (`==`, `!=`, `<`, `>`, `<=`, `>=`), and compound expressions.
    - **Trace Buffers & History:** Test circular buffer wrapping, cursor seeking, boundary clamping, and zero-allocation ring buffers.
    - **Binary Loaders:** Test RAM injection, overlay toggling, prefetch priming, and entry point setup.

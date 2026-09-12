@@ -1,4 +1,4 @@
-use debugger::disassemble;
+use disassembler::disassemble;
 
 #[test]
 fn test_disassemble_inherent_and_control() {
@@ -492,7 +492,7 @@ fn test_disassemble_fallback_raw_data() {
 
 #[test]
 fn test_find_aligned_disassembly_start_fibonacci() {
-    use debugger::find_aligned_disassembly_start;
+    use disassembler::find_aligned_disassembly_start;
 
     // Memory layout:
     // $0FFE: 0000 (padding before entry)
