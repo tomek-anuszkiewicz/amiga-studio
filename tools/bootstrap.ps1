@@ -227,53 +227,20 @@ if ($Doc -or $All) {
         Write-Host "Probing local Qdrant vector database on http://localhost:6333..." -ForegroundColor DarkGray
         $QdrantAvailable = Test-NetConnection -ComputerName 127.0.0.1 -Port 6333 -InformationLevel Quiet -WarningAction SilentlyContinue
 
-        # If not responding, check if Docker is installed and can start an existing container
-        if (-not $QdrantAvailable) {
-            $DockerCmd = Get-Command docker -ErrorAction SilentlyContinue
-            if ($DockerCmd) {
-                $ExistingContainer = docker ps -a --filter "name=amiga-qdrant" --format "{{.Names}}"
-                if ($ExistingContainer -eq "amiga-qdrant") {
-                    Write-Host "Detected stopped 'amiga-qdrant' container. Attempting to start..." -ForegroundColor Cyan
-                    docker start amiga-qdrant | Out-Null
-                    Start-Sleep -Seconds 2
-                    $QdrantAvailable = Test-NetConnection -ComputerName 127.0.0.1 -Port 6333 -InformationLevel Quiet -WarningAction SilentlyContinue
-                }
-            }
-        }
-
         if (-not $QdrantAvailable) {
             Write-Host ""
             Write-Warning "Qdrant vector database is not reachable on http://localhost:6333."
             Write-Host ""
-            Write-Host "What is Qdrant?" -ForegroundColor Cyan
-            Write-Host "  Qdrant is an open-source vector search engine. In this repository, it powers the"
-            Write-Host "  local AI RAG knowledge base, storing embeddings of Commodore Hardware Reference"
-            Write-Host "  Manuals, M68000 PRMs, and design notes for semantic search by AI agents."
+            Write-Host "Qdrant powers the optional AI agent RAG knowledge base (-Doc)." -ForegroundColor Cyan
+            Write-Host "To install and run Qdrant, see the official quickstart guide:"
+            Write-Host "  https://qdrant.tech/documentation/quick-start/" -ForegroundColor White
             Write-Host ""
-            Write-Host "How to start Qdrant:" -ForegroundColor Cyan
-
-            $DockerCmd = Get-Command docker -ErrorAction SilentlyContinue
-            if ($DockerCmd) {
-                $ExistingContainer = docker ps -a --filter "name=amiga-qdrant" --format "{{.Names}}"
-                if ($ExistingContainer -eq "amiga-qdrant") {
-                    Write-Host "  Start existing Docker container:" -ForegroundColor Yellow
-                    Write-Host "    docker start amiga-qdrant" -ForegroundColor White
-                } else {
-                    Write-Host "  Option A (Docker - Recommended):" -ForegroundColor Yellow
-                    Write-Host "    docker run -d --name amiga-qdrant -p 6333:6333 -p 6334:6334 -v qdrant_storage:/qdrant/storage:z qdrant/qdrant:latest" -ForegroundColor White
-                }
-            } else {
-                Write-Host "  Option A (Docker):" -ForegroundColor Yellow
-                Write-Host "    docker run -d --name amiga-qdrant -p 6333:6333 -p 6334:6334 -v qdrant_storage:/qdrant/storage:z qdrant/qdrant:latest" -ForegroundColor White
-            }
-
-            Write-Host ""
-            Write-Host "  Option B (Standalone Binary - No Docker):" -ForegroundColor Yellow
-            Write-Host "    1. Download the prebuilt binary from: https://github.com/qdrant/qdrant/releases" -ForegroundColor White
-            Write-Host "    2. Extract and launch: .\qdrant.exe" -ForegroundColor White
+            Write-Host "Quickstart options (must expose port 6333):" -ForegroundColor Yellow
+            Write-Host "  Docker:     docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant" -ForegroundColor White
+            Write-Host "  Standalone: https://github.com/qdrant/qdrant/releases" -ForegroundColor White
             Write-Host ""
             Write-Host "NOTE: Qdrant is ONLY needed for AI agent RAG knowledge retrieval (-Doc)." -ForegroundColor DarkGray
-            Write-Host "      You can build and play the emulator without Qdrant: cargo run -p gui" -ForegroundColor DarkGray
+            Write-Host "      You can build, test, and play the emulator without Qdrant: cargo run -p gui" -ForegroundColor DarkGray
             Write-Host ""
         } else {
             Write-Host "[OK] Qdrant vector database is active on http://localhost:6333." -ForegroundColor Green

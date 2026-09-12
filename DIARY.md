@@ -1336,3 +1336,20 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.55s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:32 CEST] — Simplified Qdrant Guidance in bootstrap.ps1 (Non-Prescriptive Developer Ergonomics)
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1`: Removed invasive Docker container detection, auto-start attempts, and prescriptive container naming.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated `docker ps -a --filter "name=amiga-qdrant"` checks and implicit `docker start amiga-qdrant` attempts.
+  - Replaced over-prescriptive Docker setup instructions with a direct reference to the official Qdrant quickstart documentation (`https://qdrant.tech/documentation/quick-start/`).
+  - Simplified the failure guidance when port 6333 is unreachable to lean, non-prescriptive examples (`docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant` or standalone binary releases).
+- **Architectural Rationale & Trade-Offs**:
+  - *Developer Autonomy & Non-Invasive Scripts:* Developers who run RAG vector databases know how to manage their local environment, container engines, and volume mounts. A bootstrap script should test whether the required network endpoint is reachable; it should not execute commands behind the developer's back, dictate container naming, or attempt to manage Docker daemons. Pointing developers to official documentation respects their autonomy and avoids brittle assumptions.
+- **Verification & Test Results**:
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1 -Doc`: Verified clean probe and documentation indexing against active Qdrant instance.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.54s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
