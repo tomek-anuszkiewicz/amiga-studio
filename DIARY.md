@@ -2134,3 +2134,24 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/rag_search.py "DMACON BLTPRI" --limit 1`: Verified exact timing and register specs returned in 1.2s (score 0.749).
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed in 1.75s (formatting, attractors, `AGENTS.md` 13,939 bytes $\le 14,000$, architecture rules 15/15 passed).
+---
+
+### [2026-09-12 23:07 CEST] — Deterministic Hard Skills: tools/log_diary.py & tools/scaffold_crate.py
+- **Affected Subsystems**:
+  - `tools/log_diary.py`
+  - `tools/scaffold_crate.py`
+  - `.agents/skills/amiga-scaffold-crate`
+  - `.agents/rules/diary-maintenance.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Implemented tools/log_diary.py to deterministically append timestamped entries to DIARY.md Section 10 without reading 90+ KB into LLM context.
+  - Implemented tools/scaffold_crate.py to deterministically generate 3-tier workspace crates with decoupled state, external test suites, and root Cargo.toml registration in 0.2s.
+  - Created amiga-scaffold-crate skill in .agents/skills/amiga-scaffold-crate/.
+  - Updated .agents/rules/diary-maintenance.md to document tools/log_diary.py.
+- **Architectural Rationale & Trade-Offs**:
+  - Addresses empirical log profiling findings where reading large markdown files and manual crate scaffolding burned over 100
+  - 000 context tokens. Deterministic Python tools replace slow
+  - token-heavy LLM inference with sub-second CLI commands.
+- **Verification & Test Results**:
+  - tools/log_diary.py dry-run and live append verified
+  - tools/scaffold_crate.py dry-run verified for Tier 1, 2, and 3
+  - pre-flight quality gates 100% passed.
