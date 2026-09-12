@@ -70,13 +70,17 @@ Interfaces must look sharp and properly proportioned across monitors and browser
 
 ---
 
-## 6. Theme & Visual Styling
+## 6. Theme, Semantic Design Tokens & Visual Styling
 
-- **Unified Palette:** Follow a curated, low-eyestrain developer dark theme by default, with automatic fallback to host OS preference ([`theme.rs`](../../../crates/gui/src/theme.rs)).
+- **Centralized Design Tokens (`ColorTokens`):**
+  - All panels, surfaces, text, diffs, and condition code badges use the immutable `ColorTokens` struct ([`tokens.rs`](../../../crates/gui/src/theme/tokens.rs)).
+  - Supported palettes: **Retro Studio Pro Dark** (default), **Clean Light**, and **Classic Amiga Workbench 1.3** ([`theme.rs`](../../../crates/gui/src/theme.rs)).
+  - Exact token color definitions and RGB/HEX matrix are specified in [GUI Specification.md](GUI%20Specification.md#5-semantic-design-tokens--theme-palettes-colortokens).
 - **Visual Feedback & State Diffing:**
-  - When stepping through code, highlight mutated registers and memory cells with a distinct accent color (cyan) that fades back to baseline text ([`registers.rs`](../../../crates/gui/src/layout/left_dock/registers.rs)).
-  - Active condition code flags (CCR) render as glowing LED badges (green = 1, dark gray = 0) with clickable toggle states directly mutating `state.sr`.
-  - Breakpoints render as distinct colored markers (red dot `●`) in the disassembly margin ([`disassembly.rs`](../../../crates/gui/src/layout/left_dock/disassembly.rs)).
+  - When stepping through code, mutated registers and memory cells are highlighted using `tokens.accent_diff` (`#67E8F9`) with subtle background pill `tokens.accent_diff_bg` ([`registers.rs`](../../../crates/gui/src/layout/left_dock/registers.rs)).
+  - Active instruction pointer (PC) is highlighted with `tokens.accent_pc` (`#38BDF8`) and soft luminous fill `tokens.accent_pc_bg` ([`disassembly.rs`](../../../crates/gui/src/layout/left_dock/disassembly.rs)).
+  - Condition Code Register (CCR) flags render as high-contrast LED badges (`tokens.ccr_active_bg` emerald `#059669` vs `tokens.ccr_inactive_bg` dark slate `#2A3241`) with clickable toggle states directly mutating `state.sr`.
+  - Breakpoints render as distinct colored markers (red dot `●`) in the disassembly margin.
 
 ---
 

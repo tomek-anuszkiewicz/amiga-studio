@@ -164,7 +164,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
   - Displays each register in hexadecimal (`$00000000`) and signed decimal via public accessor `state.d_regs()`.
   - **Interactive Inline Editing:** Clicking any register value switches to an inline text box with immediate focus. Pressing Enter or clicking outside commits; Escape cancels.
   - **Educational Tooltips:** Rich `.on_hover_ui` detailing bitwidths, byte/word/long access rules, and signed interpretation.
-  - **Diff Highlighting:** If a register value changed in the last execution step, it renders with a glowing pill background in cyan (`#00E5FF`).
+  - **Diff Highlighting:** If a register value changed in the last execution step, it renders with a glowing pill background in electric cyan (`#67E8F9` text with `#083344` pill background per `ColorTokens`).
 - **Address Registers ($A_0 - A_7$):**
   - Displays $A_0 - A_6$ and the active stack pointer $A_7$ (`USP` vs `SSP`). Word alignment rules explained in contextual tooltips.
 - **Program Counter ($PC$) Normalization & Prefetch:**
@@ -172,7 +172,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
   - Prefetch reload on manual PC change via `cpu.set_pc_and_prime_prefetch(new_pc, bus)`.
 - **Status Register ($SR$) & CCR LED Badges:**
   - Supervisor mode badge (`[SUPERVISOR]` vs `[USER]`), IPL mask (0-7).
-  - Interactive LED badges for $X, N, Z, V, C$ with rich tooltips detailing M68000 condition codes. Clicking toggles bits in `cpu.state.sr`.
+  - Interactive high-contrast LED badges for $X, N, Z, V, C$ (emerald `#059669` fill with white text for active; dark slate `#2A3241` fill with `#E2E8F0` text for inactive per `ColorTokens`). Clicking toggles bits in `cpu.state.sr`.
 
 ### 3.5 Left Dock: Microcode State Inspector ([`layout/left_dock/microcode.rs`](../../../crates/gui/src/layout/left_dock/microcode.rs))
 - **Collapsible Card:** Header `▼ Microcode Inspector` toggleable locally or globally via `F8`.
@@ -230,7 +230,39 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
 
 ---
 
-## 4. Reference Documentation & Upstream Ground Truth
+## 5. Semantic Design Tokens & Theme Palettes (`ColorTokens`)
+
+To guarantee that the visual presentation can be reconstructed from specifications alone with 100% fidelity, all UI surfaces, typography, accents, and condition badges are governed by centralized immutable design tokens implemented in [`crates/gui/src/theme/tokens.rs`](../../../crates/gui/src/theme/tokens.rs).
+
+### 5.1 Palette Matrix & Exact Color Definitions
+
+| Semantic Token | Rust Identifier | Dark (Default) | Light | Classic Workbench 1.3 | Description / UI Usage |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Canvas Background** | `canvas_bg` | `#0E1117` `(14, 17, 23)` | `#F5F7FA` `(245, 247, 250)` | `#003C7D` `(0, 60, 125)` | Root background behind docked panels |
+| **Panel Background** | `panel_bg` | `#161B22` `(22, 27, 34)` | `#EEF2F6` `(238, 242, 246)` | `#0055AA` `(0, 85, 170)` | Side docks, menu bars, and inner container fill |
+| **Card Background** | `card_bg` | `#1E2430` `(30, 36, 48)` | `#E4E9F0` `(228, 233, 240)` | `#00468C` `(0, 70, 140)` | Sub-cards, grouped headers, and edit backgrounds |
+| **Subtle Border** | `border_subtle` | `#2E3646` `(46, 54, 70)` | `#CBD5E1` `(203, 213, 225)` | `#006ED7` `(0, 110, 215)` | Inactive cell borders, separators, and card strokes |
+| **Active Border** | `border_active` | `#38BDF8` `(56, 189, 248)` | `#0284C7` `(2, 132, 199)` | `#FF8800` `(255, 136, 0)` | Focused inputs and active component outlines |
+| **Primary Text** | `text_primary` | `#E2E8F0` `(226, 232, 240)` | `#0F172A` `(15, 23, 42)` | `#FFFFFF` `(255, 255, 255)` | High-emphasis headings, values, and titles |
+| **Secondary Text** | `text_secondary` | `#94A3B8` `(148, 163, 184)` | `#475569` `(71, 85, 105)` | `#DCEBFF` `(220, 235, 255)` | Medium-emphasis labels and column captions |
+| **Muted Text** | `text_muted` | `#64748B` `(100, 116, 139)` | `#94A3B8` `(148, 163, 184)` | `#78AAE6` `(120, 170, 230)` | De-emphasized offsets, comments, and empty slots |
+| **Monospace Text** | `text_monospace` | `#F1F5F9` `(241, 245, 249)` | `#0F172A` `(15, 23, 42)` | `#FFFFFF` `(255, 255, 255)` | Code disassembly, hex cells, and register dumps |
+| **PC Accent** | `accent_pc` | `#38BDF8` `(56, 189, 248)` | `#0284C7` `(2, 132, 199)` | `#FFAA00` `(255, 170, 0)` | Execution pointer cursor and active instruction border |
+| **PC Highlight Fill** | `accent_pc_bg` | `rgba(12, 74, 110, 0.55)` | `rgba(186, 230, 253, 0.63)` | `rgba(255, 136, 0, 0.47)` | Subtle luminous background behind active PC row |
+| **Diff Accent** | `accent_diff` | `#67E8F9` `(103, 232, 249)` | `#0891B2` `(8, 145, 178)` | `#FFC832` `(255, 200, 50)` | Mutated register and memory diff foreground |
+| **Diff Fill** | `accent_diff_bg` | `rgba(8, 51, 68, 0.47)` | `rgba(207, 250, 254, 0.63)` | `rgba(255, 170, 0, 0.35)` | Diff highlight background pill |
+| **Success Accent** | `accent_success` | `#34D399` `(52, 211, 153)` | `#10B981` `(16, 185, 129)` | `#50DC64` `(80, 220, 100)` | Running status, active breakpoints, healthy metrics |
+| **Warning Accent** | `accent_warning` | `#FBBF24` `(251, 191, 36)` | `#D97706` `(217, 119, 6)` | `#FF8800` `(255, 136, 0)` | Paused status, IPL 7 interrupts, high memory usage |
+| **Error Accent** | `accent_error` | `#F87171` `(248, 113, 113)` | `#E11D48` `(225, 29, 72)` | `#FF5050` `(255, 80, 80)` | Halted status, bus error vector, unaligned address |
+| **Address Blue** | `address_blue` | `#818CF8` `(129, 140, 248)` | `#4F46E5` `(79, 70, 229)` | `#8CC8FF` `(140, 200, 255)` | 24-bit memory addresses and hex column indices |
+| **CCR Active Fill** | `ccr_active_bg` | `#059669` `(5, 150, 105)` | `#10B981` `(16, 185, 129)` | `#FF8800` `(255, 136, 0)` | Active condition flag badge background |
+| **CCR Active Text** | `ccr_active_text` | `#FFFFFF` `(255, 255, 255)` | `#FFFFFF` `(255, 255, 255)` | `#000000` `(0, 0, 0)` | Active condition flag letter text |
+| **CCR Inactive Fill** | `ccr_inactive_bg` | `#2A3241` `(42, 50, 65)` | `#CBD5E1` `(203, 213, 225)` | `#003264` `(0, 50, 100)` | Inactive condition flag badge background |
+| **CCR Inactive Text** | `ccr_inactive_text` | `#E2E8F0` `(226, 232, 240)` | `#334155` `(51, 65, 85)` | `#FFFFFF` `(255, 255, 255)` | Inactive condition flag letter text |
+
+---
+
+## 6. Reference Documentation & Upstream Ground Truth
 
 - [GUI Frontend Architecture & Overview](GUI.md): High-level frontend architecture, CRT shaders, aspect ratios, and input mapping.
 - [egui Guidelines & Frontend Best Practices](egui%20Guidelines.md): Immediate-mode UI patterns, layout invariants, and headless testing rules.
@@ -239,4 +271,5 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
 - [Temporal Debugger Ring Buffer](../../../crates/debugger/src/temporal.rs): High-capacity zero-allocation execution history ring buffer.
 - [GUI Crate Implementation](../../../crates/gui/src/lib.rs): Living Rust implementation of eframe app, views, docks, and modals.
 - [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
+
 
