@@ -1256,3 +1256,18 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:18 CEST] — Simplified Expanded A500 RAM Description in README.md
+- **Affected Subsystems**:
+  - `README.md`: Refined supported hardware configurations list.
+- **What Was Changed (The Concrete Reality)**:
+  - Simplified the description of the expanded A500 preset in `README.md` line 13:
+    - Replaced `"Optional Auto-Config Fast RAM ($200000..$9FFFFF) with non-contended zero wait-state execution"` with plain, concise `"4 MB Fast RAM"`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Accuracy and Conciseness:* In the active codebase (`crates/config/src/lib.rs`), the `ExpandedPowerUser` preset provisions `FastRamSize::Mb4` (4 MB Fast RAM at `$200000..$5FFFFF`). Quoting the full 8 MB Auto-Config address range and bus mechanics on the landing page was overly verbose. Expressing it simply as "4 MB Fast RAM" aligns directly with the preset and keeps the quickstart summary clean.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.55s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

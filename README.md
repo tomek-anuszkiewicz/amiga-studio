@@ -10,7 +10,7 @@ Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`) without 
 
 - **Basic A500:** 512 KB Chip RAM (early OCS revision 5 motherboard).
 - **Classic A500:** 512 KB Chip RAM + 512 KB Trapdoor Slow RAM at `$C00000` (the standard European 1 MB gaming configuration).
-- **Expanded A500:** Optional Auto-Config Fast RAM ($200000..$9FFFFF) with non-contended zero wait-state execution.
+- **Expanded A500:** 4 MB Fast RAM.
 - **Target Platforms:** Native desktop executable (Windows, Linux, macOS) and WebAssembly for direct browser play.
 
 ---
