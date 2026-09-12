@@ -1,7 +1,6 @@
 ---
 name: prune-dead-code
-description: >-
-  Use this skill when completing major roadmap milestones to identify and safely eliminate dead code, unused functions, obsolete constants, superseded scaffolding, and unreferenced crate exports across the workspace.
+description: Scan and eliminate obsolete constants, unused functions, and superseded scaffolding across workspace crates.
 ---
 
 # Recipe: Dead Code Elimination & Scaffolding Pruning
@@ -52,3 +51,36 @@ cargo test -p test_runner --test test_architecture_rules
 cargo fmt --all -- --check
 ```
 Ensure all workspace tests pass with 100% green status.
+
+---
+
+## 4. Execution Mode: Subagent Delegation
+
+- **Execution Host:** **Isolated Subagent** (child context sandbox).
+- **Model Tier:** `Gemini Flash Low`
+- **Context Savings:** Isolates workspace-wide grep searches, unused code warning scans, and dead symbol checks from the main conversation.
+- **Subagent Task Template:**
+  - `TaskName`: "Pruning Dead Code: <subsystem_or_crate>"
+  - `TaskSummary`: "Scans workspace for obsolete constants, unreferenced functions, and superseded scaffolding."
+  - `Prompt`:
+    ```markdown
+    Scan and prune dead code across `<WORKSPACE_OR_CRATE>`.
+    Follow .agents/skills/prune-dead-code/SKILL.md:
+    1. Scan compiler dead-code warnings: `cargo check --workspace`.
+    2. Search for unused `pub(crate)` functions and unreferenced constants.
+    3. Remove confirmed dead symbols.
+    4. Run `cargo test --workspace` and `cargo fmt --all -- --check`.
+    5. Return strictly the Dead Code Pruning Report below.
+    ```
+- **Return Contract (Mandatory Structured Output):**
+  The subagent must conclude with this exact markdown block:
+  ```markdown
+  ### ✂️ Dead Code Pruning Report
+  - **Scope Scanned:** `<scope>`
+  - **Pruning Status:** [PRUNED | CLEAN (NO DEAD CODE)]
+  - **Pruned Symbols & Locations:**
+    | Dead Symbol | File Path | Line Range | Verified Zero Callers |
+    | :--- | :--- | :--- | :--- |
+    | `fn old_helper` | `crates/.../lib.rs` | L45-L60 | Confirmed via grep |
+  - **Verification:** `cargo test --workspace` (PASS).
+  ```

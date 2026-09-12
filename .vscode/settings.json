@@ -9,5 +9,12 @@
     "/graphify-out": true,
     "**/.git": true,
     "**/target": true
+  },
+  "workbench.editorAssociations": {
+    "**/.agents/rules/**/*.md": "default",
+    "**/.agents/workflows/**/*.md": "default",
+    "**/_agents/rules/**/*.md": "default",
+    "**/_agents/workflows/**/*.md": "default",
+    "**/.gemini/**/global_workflows/*.md": "default"
   }
 }

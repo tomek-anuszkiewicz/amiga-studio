@@ -43,3 +43,9 @@ Whenever crates or dependencies in `Cargo.toml` (new crates, added/removed inter
 ## 5. Knowledge Graph & Linking Compliance
 
 All modifications to design specifications must adhere strictly to the YAML frontmatter properties, dual-layer linking, and inverted pyramid structure codified in [`.agents/rules/vault-linking-and-graph-integrity.md`](vault-linking-and-graph-integrity.md).
+
+---
+
+## 6. Execution Skill: `sync-design-docs`
+
+- Follow the operational procedure in [`sync-design-docs`](../skills/sync-design-docs/SKILL.md) to inspect git diffs, update affected living specifications, prune speculative draft snippets, update Mermaid dependency graphs, and verify linking integrity.

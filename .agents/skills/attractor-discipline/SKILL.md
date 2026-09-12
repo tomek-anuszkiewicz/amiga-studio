@@ -1,7 +1,6 @@
 ---
 name: attractor-discipline
-description: >-
-  Audit, detect, and automatically clean synthetic linguistic attractors, high-register academic jargon, theatrical testing vocabulary, and heading slogans across documentation, rules, skills, and code per .agents/rules/attractor-discipline.md.
+description: Audit and clean synthetic linguistic attractors, high-register academic jargon, and leaked buzzwords from documentation and code.
 ---
 
 # Recipe: Linguistic Attractor & Vocabulary Discipline Audit

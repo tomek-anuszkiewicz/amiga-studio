@@ -89,3 +89,9 @@ Never commit to any branch (especially `master`) without running the repository 
    ```
 4. **Subsystem Test Suites:**
    - Execute relevant unit/integration tests for the modified crates before committing.
+
+---
+
+## 6. Execution Workflow: `/code-review`
+
+Before creating milestone commits or integrating substantial features, run the independent `/code-review` workflow ([`.agents/workflows/code-review.md`](../workflows/code-review.md)) to comprehensively audit git diffs against architectural rules, file size limits, inlining annotations, and documentation integrity.

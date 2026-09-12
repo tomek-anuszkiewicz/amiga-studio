@@ -1,7 +1,6 @@
 ---
 name: index-amiga-rag
-description: >-
-  Use this skill to perform incremental vector re-indexing of the local Qdrant knowledge base (amiga collection), triggered whenever reference manuals, chip documentation, or hardware assets under Obsidian/Amiga/Reference/ are modified or added.
+description: Incremental vector re-indexing of Amiga hardware manuals and Obsidian design notes into local Qdrant database.
 ---
 
 # Recipe: Incremental Amiga RAG Indexing & Asset Ingestion

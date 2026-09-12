@@ -69,3 +69,9 @@ The emulator frontend serves not only as an execution viewer, but as an **intera
 ### B. Structured Contextual Layouts (`.on_hover_ui`)
 - For multi-field or complex hardware structures (such as the Status Register, condition code flags, or custom chip registers), use structured `.on_hover_ui` layouts featuring bold headings, monospace bit diagrams, and concise bullet points rather than truncated single-line strings.
 - **Zero Heap Allocation in Tooltip Generators:** Tooltip text and layouts must use static string slices (`&'static str`) or pre-formatted stack buffers to maintain zero dynamic heap allocations during draw passes.
+
+---
+
+## 7. Execution Skill: `egui-vision-debugger`
+
+For visual layout audits, responsive resizing tests (1024x600, 800x600), splitter hover verification, and offscreen screenshot diagnostics, follow the operational recipe in [`egui-vision-debugger`](../skills/egui-vision-debugger/SKILL.md).

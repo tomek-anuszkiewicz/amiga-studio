@@ -58,3 +58,20 @@ This rule governs how the agent executes tests, validation suites, and long-runn
      - **Session A (Hardware Research / RAG)**: Queries Amiga hardware reference manuals (`amiga_rag`) and inspects circuit diagrams.
      - **Session B (Core Implementation)**: Authors instruction micro-steps and specialized handlers in `crates/m68000/`.
      - **Session C (Verification & QA)**: Runs exhaustive test runners and monitors test outputs.
+
+---
+
+## 4. The Subagent Delegation & Return Contract Standard
+
+To eliminate main conversation token exhaustion while guaranteeing zero context amnesia:
+1. **Isolated Subagent Execution**:
+   - Heavy tasks (rendering offscreen PNGs, analyzing multi-MB test vectors, scanning 28 markdown specs, batch PDF transcription) must execute in isolated child subagents.
+2. **Model Tier Assignment**:
+   - **`Gemini Pro High`**: Reserved strictly for adversarial compliance reviews ([`code-review`](../skills/code-review/SKILL.md)) and cycle-exact microcode trace diagnosis ([`m68k-singlestep-test`](../skills/m68k-singlestep-test/SKILL.md)).
+   - **`Gemini Flash High (Vision)`**: Perceptual layout inspection and self-healing ([`egui-vision-debugger`](../skills/egui-vision-debugger/SKILL.md)) and manual transcription ([`pdf-to-markdown`](../skills/pdf-to-markdown/SKILL.md)).
+   - **`Gemini Flash Medium / Low`**: Fast text transformations, code scaffolding, git merges, and spec synchronizations.
+   - **Main Agent**: Direct 1-shot perceptions ([`capture-gui-screenshot`](../skills/capture-gui-screenshot/SKILL.md)) and core pair-programming.
+3. **Mandatory Return Contract**:
+   - Every subagent must conclude its task by returning a strictly structured Return Contract (tables of symbol relocations, failing cycle coordinates, decision logs, or final image paths).
+4. **The Multimodal Handshake**:
+   - Subagents performing visual tasks must return the file path of the final verified image. The parent Main Agent immediately calls `view_file` on that path and embeds it in chat artifacts, ensuring both user and agent retain visual ground truth.

@@ -1,7 +1,6 @@
 ---
 name: code-review
-description: >-
-  Conduct an independent, uncompromising code, architecture, and specification compliance review for the Amiga 500 emulator. Audits git diffs, file sizes, inlining, zero-panics, endianness, design doc pruning, roadmap status, and runs automated architecture tests.
+description: Independent adversarial code, architecture, and specification compliance audit against constitutional rules.
 ---
 
 # Code & Specification Compliance Reviewer
@@ -80,7 +79,7 @@ Provide the audit report using the following standard template:
 ### 🛡️ Code & Architecture Compliance Review:
 - [ ] **Code Formatting Compliance:** `cargo fmt --all -- --check` passed cleanly across workspace.
 - [ ] **Architecture Test Suite:** `cargo test -p test_runner --test test_architecture_rules` passed.
-- [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests (`tests/<module>.rs` or inline `#[cfg(test)] mod tests`).
+- [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests in `crates/*/tests/` (zero inline tests in `src/`).
 - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
 - [ ] **Host CPU Performance & Sympathy:** Flattened dispatch (branch-minimization), zero heap allocations in hot path, endianness bypass on bitwise ops.
 - [ ] **Readability, Zero Macros & No Const-Generic Handlers:** Clean idiomatic Rust, zero cryptic hacks, zero custom macros (`macro_rules!`), and concrete handlers without const generics.
@@ -100,3 +99,30 @@ Provide the audit report using the following standard template:
 **Verdict:** [APPROVED | CHANGES REQUESTED]
 **Observations / Required Actions:** (if any)
 ```
+
+---
+
+## 4. Execution Mode: Subagent Delegation
+
+- **Execution Host:** **Isolated Subagent** (child context sandbox).
+- **Model Tier:** `Gemini Pro High` (Adversarial, rigorous, bias-free compliance auditing).
+- **Context Savings:** Isolates lengthy git diff inspections, deep AST checks, and line-by-line verification from the main conversation.
+- **Subagent Task Template:**
+  - `TaskName`: "Adversarial Code & Architecture Review"
+  - `TaskSummary`: "Performs independent, strict compliance audit of git diff against constitutional rules and tests."
+  - `Prompt`:
+    ```markdown
+    Conduct an adversarial code and architecture audit of the recent changes.
+    Follow .agents/skills/code-review/SKILL.md:
+    1. Check git diff against all 18 constitutional gates.
+    2. Ensure zero inline tests in `crates/*/src/` (tests must be in dedicated `crates/*/tests/`).
+    3. Run `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`.
+    4. Run `cargo test -p test_runner --test test_architecture_rules`.
+    5. Check file size limits (<= 800 lines) and AGENTS.md ceiling (<= 14,000 bytes).
+    6. Return strictly the formal Code Review Audit Report below.
+    ```
+- **Return Contract (Mandatory Structured Output):**
+  The subagent must conclude with the standard `### 🛡️ Code & Architecture Compliance Review` report containing:
+  - All 18 checkboxes verified `[x]`.
+  - Concrete file/line markdown links for any flagged observations.
+  - Final Verdict: `APPROVED` or `CHANGES REQUESTED`.

@@ -1,7 +1,6 @@
 ---
 name: compact-diary
-description: >-
-  Use this skill when completing major roadmap milestones in ROADMAP.md to compact and synthesize older chronological entries in DIARY.md into concise, high-level architectural digests without losing evolutionary rationale, key decisions, or verified test results.
+description: Compact and synthesize older chronological entries in DIARY.md into concise high-level architectural digests.
 ---
 
 # Recipe: Compacting DIARY.md Upon Major Milestone Completion

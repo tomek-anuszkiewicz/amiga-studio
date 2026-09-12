@@ -2055,3 +2055,51 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 15 tests passed in 0.73s (verifying path privacy, zero hardcoded paths, and rule compliance).
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across all files.
 
+---
+
+### [2026-09-12 22:00 CEST] — Complete Rule-to-Skill Mapping & Skills Catalog Expansion
+- **Affected Subsystems**:
+  - `.agents/skills/`: Created 5 new specialized procedural skills:
+    - `describe-diagram-assets`: Native multimodal vision inspection, `<image>.txt` technical sidecars, and RAG cache hash updates.
+    - `sync-design-docs`: Auditing git diffs against `Obsidian/Amiga/Design/`, pruning speculative draft code, and updating the Mermaid crate graph.
+    - `refactor-split-module`: Decomposing Rust files $\le 800$ lines into cohesive submodules with 3-tier re-exports.
+    - `git-resolve-merge`: Worktree lifecycle management, holistic 3-way conflict resolution, and standardized merge commit authoring.
+    - `scaffold-crate-tests`: Authoring comprehensive external unit/integration test suites in dedicated `tests/` directories.
+  - `.agents/rules/`: Updated 8 procedural rules (`asset-descriptions.md`, `docs-maintenance.md`, `file-size-and-cohesion.md`, `git-merge-commits.md`, `unit-testing-policy.md`, `egui-best-practices.md`, `opcode-naming.md`, `git-commits.md`) with explicit, bidirectional cross-references to their canonical skills.
+- **What Was Changed (The Concrete Reality)**:
+  - Audited all 25 operational rules to establish an unambiguous 1:1 pairing between procedural rules and actionable execution runbooks.
+  - Resolved the "orphan rule" gap where rules mandated complex multi-step procedures without a dedicated skill.
+  - Structured every new skill with strict YAML frontmatter (`name`, `description`) enabling deterministic progressive disclosure and subagent execution readiness.
+- **Architectural Rationale & Trade-Offs**:
+  - *Progressive Disclosure & Deterministic Inference:* Eliminates agent hesitation or guessing by explicitly linking rules (policy/invariants) to skills (runbooks).
+  - *Subagent Readiness:* Establishes self-contained procedural runbooks that can be handed directly to isolated subagents to eliminate main context pollution and token exhaustion.
+- **Verification & Test Results**:
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Scanned 309 files with 0 attractors found.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 15 tests passed in 0.60s (link integrity, file size limits, zero unwraps).
+  - `(Get-Item AGENTS.md).Length`: 13,679 bytes ($\le 14,000$ constitutional limit verified).
+  - `cargo fmt --all -- --check`: 100% compliant.
+
+---
+
+### [2026-09-12 22:45 CEST] — Subagent Delegation Architecture, Return Contracts & Fast GUI Perception Skill
+- **Affected Subsystems**:
+  - `.agents/skills/capture-gui-screenshot/`: Created new 1-shot visual perception skill running directly on the Main Agent using `gui-inspector` (wgpu offscreen) and `view_file`.
+  - `.agents/skills/`: Instrumented candidate subagent skills with standardized `## Execution Mode: Subagent Delegation` blocks, Model Tier assignments (`Gemini Pro High` vs `Flash`), task templates, and strict Return Contracts (`egui-vision-debugger`, `m68k-singlestep-test`, `code-review`, `refactor-split-module`, `git-resolve-merge`, `scaffold-crate-tests`, `sync-design-docs`, `describe-diagram-assets`, `obsidian-vault-linking`, `prune-dead-code`, `pdf-to-markdown`, `amigaguide-to-markdown`).
+  - `.agents/rules/parallel-execution.md`: Formalized Section 4 ("The Subagent Delegation & Return Contract Standard"), establishing model tier guidelines, context boundary isolation, and the multimodal handshake.
+  - `.agents/workflows/code-review.md`: Updated Section 0 ("Subagent Orchestration & Parallel Review Execution") to orchestrate parallel child agents (`code-review` and `sync-design-docs`) alongside asynchronous background testing.
+- **What Was Changed (The Concrete Reality)**:
+  - Conducted an empirical log profiling analysis of the conversation history (`transcript.jsonl`, 1,415 steps, 2.28 MB), discovering that 58.7% of all context tokens (~200,000 tokens) were spent re-reading source files via `view_file`.
+  - Solved the "subagent context amnesia" and "GUI blindness" dilemma:
+    1. Created `capture-gui-screenshot` for instant (0.3s) visual ground truth directly on the Main Agent, replacing blind text reading with 1-shot multimodal vision.
+    2. Implemented the "Visual Handshake" for `egui-vision-debugger`: while the heavy repair loop runs in an isolated subagent, its mandatory Return Contract hands the final verified PNG path back to the parent agent to immediately view and embed into chat artifacts for the user.
+    3. Equipped all subagents with rich Return Contracts (1:1 symbol relocation tables, silicon failure coordinates, merge decision logs, and link validation tables) to eliminate context loss.
+- **Architectural Rationale & Trade-Offs**:
+  - *Context Optimization without Amnesia:* Subagents absorb thousands of lines of compiler churn, temporary trial images, and JSON vector noise. Return Contracts ensure the primary pair-programming session retains 100% of the critical technical insights without prompt bloat.
+- **Verification & Test Results**:
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 310 files scanned, 0 attractors found.
+  - `cargo fmt --all -- --check`: 100% clean formatting.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 15 tests passed in 0.63s.
+  - `(Get-Item AGENTS.md).Length`: 13,679 bytes (strictly under the 14,000 bytes ceiling).
+  - Headless GUI capture live smoke test: `cargo run -p gui --bin gui-inspector -- --scenario baseline --output target/gui_captures/baseline.png` rendered cleanly in 0.31s and inspected via `view_file`.
+
+

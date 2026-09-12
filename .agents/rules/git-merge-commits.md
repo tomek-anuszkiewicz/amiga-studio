@@ -78,3 +78,9 @@ Once the merge commit is safely recorded on `master` and verified:
    ```powershell
    git branch -d <source-branch>
    ```
+
+---
+
+## 5. Execution Skill: `git-resolve-merge`
+
+Follow the operational runbook in [`git-resolve-merge`](../skills/git-resolve-merge/SKILL.md) for step-by-step branch reintegration, isolated worktree lifecycles, holistic conflict resolution without feature loss, and verification gates.

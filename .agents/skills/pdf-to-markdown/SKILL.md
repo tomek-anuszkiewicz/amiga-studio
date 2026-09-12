@@ -1,7 +1,6 @@
 ---
 name: pdf-to-markdown
-description: >-
-  Use this skill when converting technical PDF manuals, books, or documentation into clean, modern Markdown files (.md) optimized for Obsidian and GitHub. Covers PDF bookmark parsing, high-res page rendering, LLM vision transcription, crop asset extraction with safety padding, asset deduplication, SVG vectorization, split table stitching, running header/footer stripping, Obsidian callouts for notes/warnings/errors, Prev/TOC/Next navigation bars, and visual QA double-checks.
+description: Convert technical reference PDF manuals into modular Obsidian Markdown with extracted figures and link validation.
 ---
 
 # Recipe: Converting Technical PDF Manuals to Markdown
@@ -224,3 +223,41 @@ python .agents/skills/amigaguide-to-markdown/scripts/validate_links.py \
 ```
 
 Target: **100% PASS (0 broken files, 0 broken anchors, 0 warnings)**.
+
+---
+
+## Execution Mode: Subagent Delegation
+
+- **Execution Host:** **Isolated Subagent** (child context sandbox).
+- **Model Tier:** `Gemini Flash (Multimodal Vision)`
+- **Context Savings:** Absorbs 50,000+ multimodal vision tokens, 200 DPI raster page PNGs, figure bounding box coordinates, and multi-step chapter stitching from the main conversation.
+- **Subagent Task Template:**
+  - `TaskName`: "PDF Conversion: <manual_name>"
+  - `TaskSummary`: "Executes 7-phase multimodal PDF transcription into Obsidian markdown with figure crops and link validation."
+  - `Prompt`:
+    ```markdown
+    Convert reference manual PDF: <PDF_PATH> into Obsidian Markdown under `Obsidian/Amiga/Reference/<MANUAL_NAME>/`.
+    Follow .agents/skills/pdf-to-markdown/SKILL.md:
+    1. Phase 1: Render 200 DPI pages with `pdf_to_pages.py`.
+    2. Phase 2: Page-by-page LLM vision transcription (`page_XXX.png` -> `page_XXX.md`). Enclose all hex in backticks (`$HEX`).
+    3. Phase 3: Extract figure crops with `extract_crops.py`.
+    4. Phase 4: Vectorize bounding boxes with `png_to_svg_helper.py`.
+    5. Phase 5: Merge chapters and stitch tables with `merge_chapters.py`.
+    6. Phase 6: Run visual QA audits with `verify_page_vision.py`.
+    7. Phase 7: Validate links with `validate_links.py`.
+    8. Return strictly the PDF Conversion Report below.
+    ```
+- **Return Contract (Mandatory Structured Output):**
+  The subagent must conclude with this exact markdown block:
+  ```markdown
+  ### 📄 PDF Reference Manual Conversion Report
+  - **Manual Name:** `<manual_name>`
+  - **Destination Path:** [`Obsidian/Amiga/Reference/<manual_name>/`](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Reference/<manual_name>/)
+  - **Pages Converted:** `<total_pages>` pages across `<total_chapters>` chapters
+  - **Assets Extracted:** `<num_png>` cropped PNG figures, `<num_svg>` vectorized SVGs
+  - **Page Confidence & Anomaly Table:**
+    | Chapter / Page | Quality / Complexity | Notes / Handled Elements |
+    | :--- | :--- | :--- |
+    | Chapter 4 / Page 82 | Complex Waveform | Transcribed split timing table, cropped Fig 4-3 |
+  - **Link Integrity:** `validate_links.py` 100% PASS (0 broken files, 0 broken anchors).
+  ```

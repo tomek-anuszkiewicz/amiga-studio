@@ -1,7 +1,6 @@
 ---
 name: add-m68k-instruction
-description: >-
-  Use this skill when implementing a new Motorola 68000 CPU instruction or addressing mode in the emulator. Provides a step-by-step recipe covering flat linear opcode execution, specialized compile-time addressing modes, inlined CCR calculations, CCK cycle phases, prefetch management, and SingleStepTest validation.
+description: Implement or refactor Motorola 68000 CPU opcodes following the 2-phase Color Clock micro-step execution archetype.
 ---
 
 # Recipe: Implementing an M68000 CPU Instruction (Microcode Archetype Pattern)

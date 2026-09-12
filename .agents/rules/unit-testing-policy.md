@@ -67,3 +67,9 @@ Before declaring any feature, bug fix, or opcode implementation complete:
 - [ ] Do all unit tests run fast (< 1s total) and deterministic with zero race conditions?
 - [ ] Are GUI changes verified with headless integration tests in `crates/gui/tests/test_interactions.rs`?
 - [ ] Do all workspace test suites pass (`cargo test --workspace` / target-directed tests)?
+
+---
+
+## 5. Execution Skills for Testing
+- **Crate Unit & Integration Test Scaffolding:** Follow [`scaffold-crate-tests`](../skills/scaffold-crate-tests/SKILL.md) to author comprehensive external test suites under `crates/<crate>/tests/test_<crate>.rs`.
+- **CPU Silicon Cycle Verification:** Follow [`m68k-singlestep-test`](../skills/m68k-singlestep-test/SKILL.md) when validating instructions against Tom Harte physical silicon vectors (`SingleStepTests-680x0`).

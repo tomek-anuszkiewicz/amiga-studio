@@ -124,3 +124,9 @@ To prevent naming divergence across thousands of generated handlers, only the fo
 - **ALU Size (Bits 7–6)**: `00` = Byte (`.B`); `01` = Word (`.W`); `10` = Long (`.L`).
 - **Address Register Destination (`ADDA`, `SUBA`, `CMPA`)**: Bits 8–6 = `011` (Word sign-extended); `111` (Long).
 - **MOVE Size (Bits 13–12)**: `01` = Byte; `11` = Word; `10` = Long.
+
+---
+
+## 5. Execution Skill: `add-m68k-instruction`
+
+When implementing a new opcode, addressing mode, or instruction family, follow the step-by-step recipe in [`add-m68k-instruction`](../skills/add-m68k-instruction/SKILL.md) for flat linear opcode dispatch, inlined CCR calculations, CCK cycle phase modeling, prefetch advancement, and SingleStepTest silicon verification.

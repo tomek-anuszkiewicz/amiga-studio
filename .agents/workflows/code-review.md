@@ -9,6 +9,24 @@ Use this workflow to conduct an independent, rigorous audit of changes before co
 
 ---
 
+## 0. Subagent Orchestration & Parallel Review Execution
+
+To prevent confirmation bias and eliminate main conversation context bloat during audits:
+1. **Launch Adversarial Code Review Subagent** (`Gemini Pro High`):
+   - Invokes [`code-review`](../skills/code-review/SKILL.md) in an isolated child subagent.
+   - Inspects `git diff` against all 18 constitutional gates without pair-programming bias.
+   - Returns structured `### 🛡️ Code & Architecture Compliance Review` report.
+2. **Launch Documentation Sync Subagent** (`Gemini Flash Medium`):
+   - Invokes [`sync-design-docs`](../skills/sync-design-docs/SKILL.md) in a child subagent.
+   - Audits Obsidian design specs and Mermaid crate graphs against `git diff`.
+   - Returns structured `### 📚 Design Documentation Sync Report`.
+3. **Launch Asynchronous Test Gate**:
+   - Runs `cargo test -p test_runner --test test_architecture_rules` as a non-blocking background task.
+4. **Main Agent Executive Synthesis**:
+   - Consolidates the subagent reports and background test outputs into the single review verdict.
+
+---
+
 ## 1. Automated Architecture & Formatting Verification
 Execute formatting check and the automated architectural test suite:
 ```powershell
@@ -79,7 +97,7 @@ Audit the diff against the guidelines in `AGENTS.md`:
 - [ ] Institutional prevention evaluated: architectural rule, lint, design doc, or DoD checklist updated to ensure this class of defect never recurs.
 
 ### H. Comprehensive Unit Test Coverage
-- [ ] **Every New / Modified File with Testable Logic Has Dedicated Unit Tests:** Verify that any file containing state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests (`tests/<module_name>.rs` or inline `#[cfg(test)] mod tests`).
+- [ ] **Every New / Modified File with Testable Logic Has Dedicated Unit Tests:** Verify that any file containing state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests in `crates/*/tests/` (zero inline tests in `src/`).
 - [ ] **Edge Cases & Boundary Coverage:** Tests verify happy paths, zero/empty states, boundary conditions, and invalid inputs.
 - [ ] **No Flaky Tests:** Tests execute deterministically without sleeps, wall-clock timing races, or host CPU load dependencies.
 
@@ -105,11 +123,10 @@ Deliver a structured audit report:
 - **Verdict**: `APPROVED` or `CHANGES REQUESTED`
 - **Checklist Summary**: Checked items from the Definition of Done.
   - [ ] **Code Formatting & Architecture Tests:** `cargo fmt` and `test_architecture_rules` 100% clean.
-  - [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests (`tests/<module>.rs` or inline).
+  - [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests in `crates/*/tests/` (zero inline tests in `src/`).
   - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
   - [ ] **Host Hardware Efficiency:** Flattened dispatch, zero allocations in hot paths, inlining compliance.
   - [ ] **Readability, No Macros & No Const Generics:** Explicit code, zero `macro_rules!`, zero const-generic handlers.
   - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
   - [ ] **Living Docs, Diary & Roadmap:** Pruned obsolete code, removed implemented code snippets, updated `DIARY.md` changelog, updated roadmap.
 - **Action Items**: Concrete file and line references if any rule is violated.
-

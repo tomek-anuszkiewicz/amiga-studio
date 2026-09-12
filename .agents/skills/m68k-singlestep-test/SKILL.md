@@ -1,7 +1,6 @@
 ---
 name: m68k-singlestep-test
-description: >-
-  Use this skill when running, validating, or debugging M68000 CPU instructions against the cycle-exact SingleStepTests suite in ref_src/SingleStepTests-680x0/68000/v1/ (Tom Harte physical silicon vectors). Covers running test cases, interpreting test JSON schemas, diagnosing register, CCR, and prefetch mismatches, and handling address errors.
+description: Run and diagnose M68000 instructions against cycle-exact Tom Harte physical silicon SingleStepTests test vectors.
 ---
 
 # M68000 SingleStepTests Verification & Debugging Runbook
@@ -156,3 +155,38 @@ Differences detected:
 ```
 - **Cycle / CCK:** Shows the expected execution duration in master clock cycles and Amiga CCK cycles ($1\ \text{CCK} = 2\ \text{clocks}$, $1\ \text{bus cycle} = 4\ \text{clocks} = 2\ \text{CCK}$).
 - **Decomposed CCR flags:** Shows exactly which flag ($X, N, Z, V, C$) diverged and whether it was unexpectedly SET or CLEARED.
+
+---
+
+## 7. Execution Mode: Subagent Delegation
+
+- **Execution Host:** **Isolated Subagent** (child context sandbox).
+- **Model Tier:** `Gemini Pro High` (Deep micro-architecture analysis & silicon vector trace diagnosis).
+- **Context Savings:** Absorbs hundreds of megabytes of raw Tom Harte test vectors, JSON schemas, and cycle-by-cycle trace dumps without polluting the main conversation.
+- **Subagent Task Template:**
+  - `TaskName`: "Diagnosing Silicon Vector: <opcode_or_suite>"
+  - `TaskSummary`: "Validates M68000 micro-steps against Tom Harte silicon test vectors and isolates cycle or CCR discrepancies."
+  - `Prompt`:
+    ```markdown
+    Execute single-step validation for suite: <SUITE_NAME>.
+    Follow .agents/skills/m68k-singlestep-test/SKILL.md:
+    1. Run `cargo test -p test_runner --test test_singlestep -- <suite_filter>`.
+    2. If failure occurs, inspect the JSON vector in `ref_src/SingleStepTests-680x0/68000/v1/`.
+    3. Trace micro-step progression in `crates/m68000/src/instructions/`.
+    4. Diagnose root cause (CCR formula, bus idle timing, or prefetch order).
+    5. Return strictly the Silicon Discrepancy Vector report below.
+    ```
+- **Return Contract (Mandatory Structured Output):**
+  The subagent must conclude with this exact markdown block:
+  ```markdown
+  ### 🔬 M68k SingleStep Diagnostic Vector
+  - **Suite Evaluated:** `<suite_name>`
+  - **Outcome:** [ALL PASS | FAILURE ISOLATED]
+  - **Failing Vector Number:** `#<index>` (e.g. `#49`)
+  - **Opcode Hex & Disassembly:** `$<code>` (`<mnemonic>`)
+  - **Cycle Mismatch:** Cycle `<cycle_num>` (Expected `<expected_bus_activity>`, Actual `<actual_bus_activity>`)
+  - **State Discrepancy:**
+    - **CCR Diff:** `<flag>`: expected `<val>`, got `<val>`
+    - **Register Diff:** `<reg>`: expected `$HEX`, got `$HEX`
+  - **Root Cause & Code Location:** [`<file>.rs:L<line>`](file:///d:/Programowanie/Amiga/crates/m68000/src/instructions/<file>.rs#L<line>) — `<concise_explanation>`
+  ```

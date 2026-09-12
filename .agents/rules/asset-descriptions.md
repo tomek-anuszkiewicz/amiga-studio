@@ -20,6 +20,9 @@ These sidecar files allow the local RAG indexer (`amiga_rag`) to incorporate ric
   2. Its content hash has changed (`hash_mismatch`).
   3. Its `<image_path>.txt` sidecar file is missing on disk.
 
+### Execution Skill
+- Follow the standardized operational recipe in [`describe-diagram-assets`](../skills/describe-diagram-assets/SKILL.md) to inspect unindexed diagrams, generate `<image_path>.txt` sidecars, and synchronize the RAG cache.
+
 ### Generation Workflow (Agent Native Multimodal Vision)
 When requested by the user or when assets are modified:
 1. Identify unindexed images using `AssetsManager.get_unindexed_images()`.

@@ -1,7 +1,6 @@
 ---
 name: amigaguide-to-markdown
-description: >-
-  Use this skill when converting Commodore AmigaGuide hypertext documents (.guide) into clean, modern Markdown files (.md) optimized for Obsidian and GitHub. Covers node parsing, multi-chapter splitting, tag translation, paragraph unwrapping, content cleanup (headers/footers/boilerplate/index/partial TOC removal), non-text content conversion hierarchy (Markdown tables, ASCII art, HTML tables, text blocks), Obsidian callouts for notes/warnings/errors, bidirectional navigation links (begin/end), Obsidian TD() heading anchor resolution, and automated link validation.
+description: Convert Commodore AmigaGuide (.guide) hypertext documents into modular Obsidian Markdown with link validation.
 ---
 
 # Recipe: Converting AmigaGuide Documents to Markdown
@@ -326,3 +325,34 @@ The validator:
 - Verifies all bidirectional navigation links (`Prev | TOC | Next`).
 - Flags broken links, mismatched anchors, and improper same-document file references.
 - Target: **100% PASS (0 failures, 0 broken anchors)**.
+
+---
+
+## 8. Execution Mode: Subagent Delegation
+
+- **Execution Host:** **Isolated Subagent** (child context sandbox).
+- **Model Tier:** `Gemini Flash Low / Off` (Pure text processing, zero multimodal vision needed).
+- **Context Savings:** Absorbs large raw Latin-1 `.guide` files, node AST parsing logs, and link traversal tables from the main conversation.
+- **Subagent Task Template:**
+  - `TaskName`: "AmigaGuide Conversion: <document_name>"
+  - `TaskSummary`: "Converts Latin-1 AmigaGuide hypertext files into modular Obsidian markdown with bidirectional navigation and link validation."
+  - `Prompt`:
+    ```markdown
+    Convert AmigaGuide file `<GUIDE_PATH>` into Obsidian markdown under `Obsidian/Amiga/Reference/<DOC_NAME>/`.
+    Follow .agents/skills/amigaguide-to-markdown/SKILL.md:
+    1. Parse with `convert_guide.py --mode <split|single>`.
+    2. Convert any referenced IFF ILBM images with `iff_to_png.py`.
+    3. Validate links with `validate_links.py`.
+    4. Return strictly the AmigaGuide Conversion Report below.
+    ```
+- **Return Contract (Mandatory Structured Output):**
+  The subagent must conclude with this exact markdown block:
+  ```markdown
+  ### 📖 AmigaGuide Conversion Report
+  - **Document Name:** `<doc_name>`
+  - **Destination Path:** [`Obsidian/Amiga/Reference/<doc_name>/`](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Reference/<doc_name>/)
+  - **Conversion Mode:** [`split` | `single`]
+  - **Nodes / Chapters Processed:** `<total_nodes>` nodes $\to$ `<total_files>` markdown files
+  - **Graphics Converted:** `<num_png>` PNGs in `assets/`
+  - **Link Validation Result:** `validate_links.py` 100% PASS (0 broken files, 0 broken anchors).
+  ```

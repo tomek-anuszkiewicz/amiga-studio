@@ -52,3 +52,9 @@ The instruction directory is governed by a **strict flat hierarchy rule**:
    - `move_sr_ccr.rs` and `logic_sr_ccr.rs`: Grouping status/condition register operations isolates privilege checks, SR masking, and CCR extraction without causing `ori.rs`, `andi.rs`, `eori.rs` (~789 lines each) or `move_w.rs` (~1,800 lines) to violate line limits.
    - `move_b.rs`, `move_w.rs`, `move_l.rs`: Size-based slices for general `MOVE`.
    - `bcc.rs`, `dbcc.rs`, `scc.rs`: Condition code instruction families.
+
+---
+
+## 7. Execution Skill: `refactor-split-module`
+
+When refactoring files approaching or exceeding 800 lines into submodules, follow the systematic recipe in [`refactor-split-module`](../skills/refactor-split-module/SKILL.md) to extract cohesive units, wire 3-tier re-exports, preserve zero allocation and safe borrowing invariants, and pass automated architecture limits.
