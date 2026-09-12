@@ -1455,3 +1455,21 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.56s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:55 CEST] — Refined docs/architecture.md (Cycle-Exact Rationale, Interleaving & Propagation)
+- **Affected Subsystems**:
+  - `docs/architecture.md`: Sharpened core principles overview and technical links.
+- **What Was Changed (The Concrete Reality)**:
+  - Articulated the primary justification for the **cycle-exact, phase-accurate model**: eliminating the complex heuristics, out-of-order execution workarounds, race conditions, and synchronization hacks inherent to frame-based or instruction-slice emulators.
+  - Added concise description of **interleaved Chip RAM access** (even CCKs for custom chipset DMA, odd CCKs for 68000 CPU) allowing both to run at full speed concurrently without mutual stalling until contention (Blitter Nasty, maximum bitplane DMA) forces wait states.
+  - Clarified **physical signal and register propagation** (read is NOW, writes propagate across discrete clock phases / CCKs; interrupt priority line synchronization).
+  - Preserved the authoritative **Systems Invariants** section intact (Big-Endian invariance, zero host panics, zero heap allocations in hot paths, decoupled ownership).
+  - Linked directly to deep circuit specifications under `Obsidian/Amiga/Design/`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Separation of Overview from Component Specs:* High-level architecture docs should explain *why* the emulator is built this way (cycle-exact lockstep, bus contention physics, systems invariants) while delegating exhaustive register tables and component-level state machines to dedicated design specifications.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.54s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
