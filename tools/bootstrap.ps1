@@ -3,21 +3,21 @@
     Repository bootstrap runner for the Amiga 500 emulator.
 
 .DESCRIPTION
-    Provisions external knowledge bases and test assets:
-    -Doc  : Indexes Commodore reference manuals and Obsidian design notes into local RAG vector database.
+    Provisions external test assets and knowledge bases:
     -Test : Verifies and provisions physical silicon SingleStepTests test vectors and regression media.
-    -All  : Executes both documentation and test suite bootstrapping.
+    -Doc  : Indexes Commodore reference manuals and Obsidian design notes into local RAG vector database.
+    -All  : Executes both test suite and documentation bootstrapping (tests first, RAG last).
 
 .EXAMPLE
-    .\tools\bootstrap.ps1 -Doc
     .\tools\bootstrap.ps1 -Test
+    .\tools\bootstrap.ps1 -Doc
     .\tools\bootstrap.ps1 -All
 #>
 
 [CmdletBinding()]
 param(
-    [switch]$Doc,
     [switch]$Test,
+    [switch]$Doc,
     [switch]$All
 )
 
@@ -32,9 +32,9 @@ function Show-Usage {
     Write-Host "      A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'."
     Write-Host ""
     Write-Host "Usage:"
-    Write-Host "  .\tools\bootstrap.ps1 -Doc   : Provision AI knowledge & RAG (for asking questions / design work)"
     Write-Host "  .\tools\bootstrap.ps1 -Test  : Provision hardware test vectors (for running single-step tests)"
-    Write-Host "  .\tools\bootstrap.ps1 -All   : Provision both documentation and test suites"
+    Write-Host "  .\tools\bootstrap.ps1 -Doc   : Provision AI knowledge & RAG (for asking questions / design work)"
+    Write-Host "  .\tools\bootstrap.ps1 -All   : Provision both test suites and documentation (tests first, RAG last)"
     Write-Host ""
 }
 
@@ -43,91 +43,17 @@ if (-not $Doc -and -not $Test -and -not $All) {
     exit 0
 }
 
-# -----------------------------------------------------------------------------
-# Tier 1: Knowledge & Documentation Bootstrap (-Doc / -All)
-# -----------------------------------------------------------------------------
-if ($Doc -or $All) {
-    Write-Host ""
-    Write-Host "[1/2] Bootstrapping Documentation & AI Knowledge Base..." -ForegroundColor Green
-    Write-Host "--------------------------------------------------------" -ForegroundColor DarkGray
-    
-    $AmigaRagScript = Join-Path $RepoRoot "tools\rag\bin\amiga_rag.ps1"
-    $ObsidianPath = Join-Path $RepoRoot "Obsidian\Amiga"
-
-    if (-not (Test-Path $AmigaRagScript)) {
-        Write-Error "amiga_rag runner not found at: $AmigaRagScript"
-    } else {
-        Write-Host "Probing local Qdrant vector database on http://localhost:6333..." -ForegroundColor DarkGray
-        $QdrantAvailable = Test-NetConnection -ComputerName 127.0.0.1 -Port 6333 -InformationLevel Quiet -WarningAction SilentlyContinue
-
-        # If not responding, check if Docker is installed and can start an existing container
-        if (-not $QdrantAvailable) {
-            $DockerCmd = Get-Command docker -ErrorAction SilentlyContinue
-            if ($DockerCmd) {
-                $ExistingContainer = docker ps -a --filter "name=amiga-qdrant" --format "{{.Names}}"
-                if ($ExistingContainer -eq "amiga-qdrant") {
-                    Write-Host "Detected stopped 'amiga-qdrant' container. Attempting to start..." -ForegroundColor Cyan
-                    docker start amiga-qdrant | Out-Null
-                    Start-Sleep -Seconds 2
-                    $QdrantAvailable = Test-NetConnection -ComputerName 127.0.0.1 -Port 6333 -InformationLevel Quiet -WarningAction SilentlyContinue
-                }
-            }
-        }
-
-        if (-not $QdrantAvailable) {
-            Write-Host ""
-            Write-Warning "Qdrant vector database is not reachable on http://localhost:6333."
-            Write-Host ""
-            Write-Host "What is Qdrant?" -ForegroundColor Cyan
-            Write-Host "  Qdrant is an open-source vector search engine. In this repository, it powers the"
-            Write-Host "  local AI RAG knowledge base, storing embeddings of Commodore Hardware Reference"
-            Write-Host "  Manuals, M68000 PRMs, and design notes for semantic search by AI agents."
-            Write-Host ""
-            Write-Host "How to start Qdrant:" -ForegroundColor Cyan
-
-            $DockerCmd = Get-Command docker -ErrorAction SilentlyContinue
-            if ($DockerCmd) {
-                $ExistingContainer = docker ps -a --filter "name=amiga-qdrant" --format "{{.Names}}"
-                if ($ExistingContainer -eq "amiga-qdrant") {
-                    Write-Host "  Start existing Docker container:" -ForegroundColor Yellow
-                    Write-Host "    docker start amiga-qdrant" -ForegroundColor White
-                } else {
-                    Write-Host "  Option A (Docker - Recommended):" -ForegroundColor Yellow
-                    Write-Host "    docker run -d --name amiga-qdrant -p 6333:6333 -p 6334:6334 -v qdrant_storage:/qdrant/storage:z qdrant/qdrant:latest" -ForegroundColor White
-                }
-            } else {
-                Write-Host "  Option A (Docker):" -ForegroundColor Yellow
-                Write-Host "    docker run -d --name amiga-qdrant -p 6333:6333 -p 6334:6334 -v qdrant_storage:/qdrant/storage:z qdrant/qdrant:latest" -ForegroundColor White
-            }
-
-            Write-Host ""
-            Write-Host "  Option B (Standalone Binary - No Docker):" -ForegroundColor Yellow
-            Write-Host "    1. Download the prebuilt binary from: https://github.com/qdrant/qdrant/releases" -ForegroundColor White
-            Write-Host "    2. Extract and launch: .\qdrant.exe" -ForegroundColor White
-            Write-Host ""
-            Write-Host "NOTE: Qdrant is ONLY needed for AI agent RAG knowledge retrieval (-Doc)." -ForegroundColor DarkGray
-            Write-Host "      You can build and play the emulator without Qdrant: cargo run -p gui" -ForegroundColor DarkGray
-            Write-Host ""
-        } else {
-            Write-Host "[OK] Qdrant vector database is active on http://localhost:6333." -ForegroundColor Green
-            Write-Host "Indexing Obsidian technical documentation into local collection ('amiga')..." -ForegroundColor Cyan
-            & $AmigaRagScript $ObsidianPath --source amiga
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "Documentation bootstrap completed successfully." -ForegroundColor Green
-            } else {
-                Write-Warning "Documentation indexing exited with code $LASTEXITCODE."
-            }
-        }
-    }
-}
+$CurrentStep = 1
+$TotalSteps = if ($All) { 2 } else { 1 }
 
 # -----------------------------------------------------------------------------
-# Tier 2: Verification & Test Suite Bootstrap (-Test / -All)
+# Tier 1: Verification & Test Suite Bootstrap (-Test / -All)
 # -----------------------------------------------------------------------------
 if ($Test -or $All) {
     Write-Host ""
-    Write-Host "[2/2] Bootstrapping Verification & Hardware Test Suites..." -ForegroundColor Green
+    Write-Host "[$CurrentStep/$TotalSteps] Bootstrapping Verification & Hardware Test Suites..." -ForegroundColor Green
     Write-Host "---------------------------------------------------------" -ForegroundColor DarkGray
+    $CurrentStep++
 
     $SingleStepBaseDir = Join-Path $RepoRoot "ref_src\SingleStepTests-680x0"
     $SingleStepDir = Join-Path $SingleStepBaseDir "68000\v1"
@@ -239,5 +165,85 @@ if ($Test -or $All) {
     }
 }
 
+# -----------------------------------------------------------------------------
+# Tier 2: Knowledge & Documentation Bootstrap (-Doc / -All)
+# -----------------------------------------------------------------------------
+if ($Doc -or $All) {
+    Write-Host ""
+    Write-Host "[$CurrentStep/$TotalSteps] Bootstrapping Documentation & AI Knowledge Base..." -ForegroundColor Green
+    Write-Host "--------------------------------------------------------" -ForegroundColor DarkGray
+    $CurrentStep++
+    
+    $AmigaRagScript = Join-Path $RepoRoot "tools\rag\bin\amiga_rag.ps1"
+    $ObsidianPath = Join-Path $RepoRoot "Obsidian\Amiga"
+
+    if (-not (Test-Path $AmigaRagScript)) {
+        Write-Error "amiga_rag runner not found at: $AmigaRagScript"
+    } else {
+        Write-Host "Probing local Qdrant vector database on http://localhost:6333..." -ForegroundColor DarkGray
+        $QdrantAvailable = Test-NetConnection -ComputerName 127.0.0.1 -Port 6333 -InformationLevel Quiet -WarningAction SilentlyContinue
+
+        # If not responding, check if Docker is installed and can start an existing container
+        if (-not $QdrantAvailable) {
+            $DockerCmd = Get-Command docker -ErrorAction SilentlyContinue
+            if ($DockerCmd) {
+                $ExistingContainer = docker ps -a --filter "name=amiga-qdrant" --format "{{.Names}}"
+                if ($ExistingContainer -eq "amiga-qdrant") {
+                    Write-Host "Detected stopped 'amiga-qdrant' container. Attempting to start..." -ForegroundColor Cyan
+                    docker start amiga-qdrant | Out-Null
+                    Start-Sleep -Seconds 2
+                    $QdrantAvailable = Test-NetConnection -ComputerName 127.0.0.1 -Port 6333 -InformationLevel Quiet -WarningAction SilentlyContinue
+                }
+            }
+        }
+
+        if (-not $QdrantAvailable) {
+            Write-Host ""
+            Write-Warning "Qdrant vector database is not reachable on http://localhost:6333."
+            Write-Host ""
+            Write-Host "What is Qdrant?" -ForegroundColor Cyan
+            Write-Host "  Qdrant is an open-source vector search engine. In this repository, it powers the"
+            Write-Host "  local AI RAG knowledge base, storing embeddings of Commodore Hardware Reference"
+            Write-Host "  Manuals, M68000 PRMs, and design notes for semantic search by AI agents."
+            Write-Host ""
+            Write-Host "How to start Qdrant:" -ForegroundColor Cyan
+
+            $DockerCmd = Get-Command docker -ErrorAction SilentlyContinue
+            if ($DockerCmd) {
+                $ExistingContainer = docker ps -a --filter "name=amiga-qdrant" --format "{{.Names}}"
+                if ($ExistingContainer -eq "amiga-qdrant") {
+                    Write-Host "  Start existing Docker container:" -ForegroundColor Yellow
+                    Write-Host "    docker start amiga-qdrant" -ForegroundColor White
+                } else {
+                    Write-Host "  Option A (Docker - Recommended):" -ForegroundColor Yellow
+                    Write-Host "    docker run -d --name amiga-qdrant -p 6333:6333 -p 6334:6334 -v qdrant_storage:/qdrant/storage:z qdrant/qdrant:latest" -ForegroundColor White
+                }
+            } else {
+                Write-Host "  Option A (Docker):" -ForegroundColor Yellow
+                Write-Host "    docker run -d --name amiga-qdrant -p 6333:6333 -p 6334:6334 -v qdrant_storage:/qdrant/storage:z qdrant/qdrant:latest" -ForegroundColor White
+            }
+
+            Write-Host ""
+            Write-Host "  Option B (Standalone Binary - No Docker):" -ForegroundColor Yellow
+            Write-Host "    1. Download the prebuilt binary from: https://github.com/qdrant/qdrant/releases" -ForegroundColor White
+            Write-Host "    2. Extract and launch: .\qdrant.exe" -ForegroundColor White
+            Write-Host ""
+            Write-Host "NOTE: Qdrant is ONLY needed for AI agent RAG knowledge retrieval (-Doc)." -ForegroundColor DarkGray
+            Write-Host "      You can build and play the emulator without Qdrant: cargo run -p gui" -ForegroundColor DarkGray
+            Write-Host ""
+        } else {
+            Write-Host "[OK] Qdrant vector database is active on http://localhost:6333." -ForegroundColor Green
+            Write-Host "Indexing Obsidian technical documentation into local collection ('amiga')..." -ForegroundColor Cyan
+            & $AmigaRagScript $ObsidianPath --source amiga
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Documentation bootstrap completed successfully." -ForegroundColor Green
+            } else {
+                Write-Warning "Documentation indexing exited with code $LASTEXITCODE."
+            }
+        }
+    }
+}
+
 Write-Host ""
 Write-Host "Bootstrap procedure finished." -ForegroundColor Cyan
+

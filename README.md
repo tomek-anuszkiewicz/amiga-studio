@@ -87,18 +87,18 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
-| **Knowledge & AI Docs** | `-Doc` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, Guru book, and design specs |
 | **Verification Testbed** | `-Test` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
-| **Full Setup** | `-All` | Complete initial development setup | Provisions both documentation knowledge bases and verification test vectors |
+| **Knowledge & AI Docs** | `-Doc` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, Guru book, and design specs |
+| **Full Setup** | `-All` | Complete initial development setup | Provisions both verification test vectors and documentation knowledge bases (tests first, RAG last) |
 
 ```powershell
-# Documentation & AI pair-programming setup:
-.\tools\bootstrap.ps1 -Doc
-
 # Hardware test vectors verification setup:
 .\tools\bootstrap.ps1 -Test
 
-# Complete setup:
+# Documentation & AI pair-programming setup:
+.\tools\bootstrap.ps1 -Doc
+
+# Complete setup (tests first, RAG last):
 .\tools\bootstrap.ps1 -All
 ```
 

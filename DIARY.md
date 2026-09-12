@@ -1193,3 +1193,24 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:11 CEST] — Bootstrapper Reordering: Test Vectors & Verification First, RAG Ingestion Last
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1`: Inverted tier execution order so Tier 1 executes test suite provisioning and verification (`-Test`), while Tier 2 executes documentation and RAG vector ingestion (`-Doc`). Added dynamic step numbering (`[$CurrentStep/$TotalSteps]`).
+  - `README.md`: Aligned bootstrap reference table and CLI examples to present `-Test` first and `-Doc` second.
+- **What Was Changed (The Concrete Reality)**:
+  - Reorganized execution logic in `tools/bootstrap.ps1`:
+    1. *Verification First:* Hardware test suite extraction, `.gz` streaming decompression, reference emulator verification (`vAmiga-4.5`, `vAmigaTS`), and `test_nop` smoke execution now run first (`Tier 1`).
+    2. *RAG Ingestion Last:* Documentation knowledge base connectivity checks and `amiga_rag.ps1` indexing now run last (`Tier 2`).
+    3. *Dynamic Progress Counter:* Implemented `$CurrentStep = 1; $TotalSteps = if ($All) { 2 } else { 1 }` so standalone runs display `[1/1]` while combined `-All` runs display `[1/2]` and `[2/2]`.
+    4. *CLI Help & Documentation:* Updated `Show-Usage`, parameter comments, and `README.md` to consistently guide developers on the new order.
+- **Architectural Rationale & Trade-Offs**:
+  - *Immediate Feedback vs Heavy Ingestion:* Test suite verification and decompression complete in ~1 second, immediately confirming that local testbeds and reference emulators are fully operational. RAG vector ingestion across hundreds of documentation chunks requires several minutes of compute. Running the fast, critical testbed verification first ensures that running `-All` gives immediate confidence before entering the long-running vectorization stage.
+- **Verification & Test Results**:
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1`: Verified updated `Show-Usage` menu.
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1 -Test`: Verified dynamic `[1/1]` header and clean smoke test execution.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.61s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
