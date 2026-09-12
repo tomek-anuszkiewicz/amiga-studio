@@ -1135,3 +1135,24 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
+
+### [2026-09-12 15:58 CEST] — Enhanced Bootstrapper Qdrant Port Probing & Plain-Language Diagnostics
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1`: Upgraded Tier 1 (`-Doc` / `-All`) bootstrap workflow with active pre-flight connectivity verification.
+- **What Was Changed (The Concrete Reality)**:
+  - Replaced blind execution of `amiga_rag.ps1` with active TCP port probing on `http://localhost:6333` using `Test-NetConnection -InformationLevel Quiet -WarningAction SilentlyContinue`.
+  - Added smart auto-recovery: if port 6333 is closed but Docker is present and an existing `amiga-qdrant` container exists (stopped), the script attempts to start it automatically (`docker start amiga-qdrant`), re-checking port connectivity before giving up.
+  - Formulated clear, comprehensive diagnostic instructions ("kawa na ławę") if Qdrant remains unreachable:
+    - Explains what Qdrant is (open-source vector search engine hosting embeddings for Commodore Hardware Reference Manuals, M68000 PRMs, and architecture notes).
+    - Details exact startup options: 1-line Docker command (`docker run -d --name amiga-qdrant -p 6333:6333 -p 6334:6334 -v qdrant_storage:/qdrant/storage:z qdrant/qdrant:latest`) and standalone executable download instructions from GitHub releases.
+    - Emphasizes that Qdrant is strictly optional and not required to compile or play the emulator (`cargo run -p gui`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Preventing Silent Connection Crashes:* Rather than allowing Python to crash with a raw stack trace when Qdrant is absent, probing the port upfront gives users instant, self-explanatory instructions on how to provision the database.
+- **Verification & Test Results**:
+  - Verified port probing returns `$true` when Qdrant is active and `$false` on closed ports without warning noise.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+
