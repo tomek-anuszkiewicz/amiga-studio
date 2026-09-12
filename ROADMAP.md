@@ -158,9 +158,10 @@ To guarantee that autonomous AI agents can reconstruct and verify emulator subsy
   - Validate SHA-256 incremental hashing cache, chunking fidelity, multi-threaded fast embeddings, and offline sidecar vision descriptions (`<image>.txt`).
   - Ensure zero regressions or stalls during fresh database initialization and incremental reindexing.
 
-- **Documentation Conversion Skills Audit & AmigaGuide Evaluation:**
-  - Audit and refine agent documentation skills (e.g. `pdf-to-markdown`) against primary hardware manuals (Commodore HRM, Motorola M68000 PRMs) to ensure structured, accurate Markdown extraction.
-  - Evaluate whether a dedicated `amigaguide-to-markdown` skill is genuinely necessary or whether standard conversion tools and LLM comprehension suffice for AmigaGuide hypertexts.
+- **Documentation Conversion Skills Audit & AmigaGuide Evaluation (Completed):**
+  - Audited skill inventory in `.agents/skills/`: retained and documented 10 active core skills across 3 functional domains in `docs/ai_agents.md`.
+  - Confirmed `pdf-to-markdown` as the authoritative primary manual extraction pipeline for Commodore/Motorola hardware documentation.
+  - Safely pruned obsolete `amigaguide-to-markdown` skill (zero `.guide` files in repository; standard conversion and LLM comprehension suffice).
 
 - **Iterative Design Documentation Calibration Loop (`Obsidian/Amiga/Design/`):**
   - Establish a closed-loop calibration process for design specifications:

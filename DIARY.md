@@ -1505,3 +1505,26 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.56s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 17:08 CEST] — Audited Agent Skills Inventory, Pruned AmigaGuide Skill & Updated docs/ai_agents.md
+- **Affected Subsystems**:
+  - `.agents/skills/amigaguide-to-markdown/`: Pruned obsolete skill directory.
+  - `docs/ai_agents.md`: Updated Section 2.A with trusted data boundary / prompt injection threat model note; categorized and documented the 10 active skills in Section 3 across three functional domains.
+  - `ROADMAP.md`: Marked Documentation Conversion Skills Audit & AmigaGuide Evaluation as completed under Section 3.5.
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned `.agents/skills/amigaguide-to-markdown/` (329-line skill plus scripts and reference notes): verified that 0 `.guide` files exist in the repository, as all technical hardware manuals in `Obsidian/Amiga/Reference/` originate from PDFs.
+  - Added a trusted data boundary and provenance note in `docs/ai_agents.md` Section 2.A explaining the prompt injection threat model: RAG and Graphify operate strictly on a trusted local boundary, while guest 68000 CPU emulation and LLM prompt contexts are completely decoupled.
+  - Reorganized `docs/ai_agents.md` Section 3 from an incomplete 4-item list into a comprehensive roster of 10 active skills organized into three domains:
+    1. *CPU & Hardware Emulation:* `add-m68k-instruction`, `m68k-singlestep-test`.
+    2. *Quality Assurance & Code Hygiene:* `code-review`, `attractor-discipline`, `prune-dead-code`.
+    3. *Architecture, Knowledge & Documentation:* `obsidian-vault-linking`, `compact-diary`, `pdf-to-markdown`, `index-amiga-rag`, `graphify`.
+  - Updated `ROADMAP.md` Section 3.5 to mark the skills audit and AmigaGuide evaluation milestone as completed.
+- **Architectural Rationale & Trade-Offs**:
+  - *Context Budget & Tooling Hygiene:* Pruning unreferenced skills eliminates dead prompt instructions and file clutter. Grouping the active skills into cohesive engineering domains gives agents and developers an immediate, intuitive mental model of the specialized recipes available in the repository.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.57s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
