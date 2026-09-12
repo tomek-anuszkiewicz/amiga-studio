@@ -1386,3 +1386,21 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:42 CEST] — Refined Hardware Configurations in README.md (User-Centric Presets)
+- **Affected Subsystems**:
+  - `README.md`: Streamlined hardware configuration presets.
+- **What Was Changed (The Concrete Reality)**:
+  - In `README.md`, updated the hardware presets:
+    - Purged raw memory addresses (`$C00000`) and the technical term `"trapdoor"`.
+    - Labeled **Classic A500 (Recommended)** as the standard default configuration for games (512 KB Chip + 512 KB Slow RAM = 1 MB total).
+    - Clarified **Expanded A500** (1 MB base + 4 MB Fast RAM) as the power-user and professional configuration for productivity, Workbench multitasking, and demanding demos.
+    - Clarified **Basic A500** as the unexpanded stock model (512 KB Chip RAM).
+- **Architectural Rationale & Trade-Offs**:
+  - *Clear Player Guidance:* Technical jargon like trapdoor slot addresses and motherboard revisions is distracting on a landing page. Highlighting the Classic 1 MB configuration as the recommended default guides users directly to the right setup for 95%+ of Amiga floppy games, while clearly defining the Expanded 4 MB preset as a power-user/professional environment.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

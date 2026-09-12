@@ -8,9 +8,9 @@ Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`) without 
 
 ## Hardware Configurations Supported
 
-- **Basic A500:** 512 KB Chip RAM (early OCS revision 5 motherboard).
-- **Classic A500:** 512 KB Chip RAM + 512 KB Trapdoor Slow RAM at `$C00000` (the standard European 1 MB gaming configuration).
-- **Expanded A500:** 4 MB Fast RAM.
+- **Basic A500:** 512 KB Chip RAM (early stock model without memory expansion).
+- **Classic A500 (Recommended):** 512 KB Chip RAM + 512 KB Slow RAM (1 MB total) — the default standard configuration for the vast majority of Amiga games.
+- **Expanded A500:** 1 MB base RAM + 4 MB Fast RAM — power-user and professional configuration for productivity, Workbench multitasking, and demanding demos.
 - **Target Platforms:** Native desktop executable (Windows, Linux, macOS) and WebAssembly for direct browser play.
 
 ---
