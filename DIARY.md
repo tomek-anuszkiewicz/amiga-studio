@@ -510,4 +510,38 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 12 architectural checks passed.
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
+
+### [2026-09-12 11:35 CEST] — Vault-Wide Dual-Layer Linking Standard & Automated Architecture Integrity CI
+- **Affected Subsystems**:
+  - `.agents/rules/vault-linking-and-graph-integrity.md` (new mandatory rule codifying Dual-Layer Linking Standard, Inverted Pyramid hierarchy, and zero broken links policy)
+  - `.agents/rules/docs-maintenance.md` (updated with the Obsidian Vault Linking & Graph Integrity Contract)
+  - `AGENTS.md` (updated Section 1 and Section 4 with rule registry and Definition of Done; tightened phrasing to 22,505 bytes, strictly below the 23,000-byte ceiling)
+  - `Obsidian/Amiga/Design/*.md` (all 28 architecture specifications comprehensively upgraded with Dual-Layer links; 548 total links verified with 0 broken links)
+  - `crates/test_runner/tests/test_architecture_rules.rs` (implemented `test_obsidian_design_docs_links_integrity()`, validating all 28 design docs and >=300 links with zero broken paths)
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated and adopted the **Dual-Layer Linking Standard** and **Inverted Pyramid Model** adapted from external knowledge systems while strictly excluding non-applicable rules (`one-way-privacy-membrane.md` and `language-agnostic-architecture.md`):
+    - **Layer 1 (Contextual Cross-Links):** Embedded in metadata headers and in-text prose linking related design documents and parent specifications.
+    - **Layer 2 (Structural Ground Truth):** A standardized bottom reference section (`## Reference Documentation & Upstream Ground Truth`) in every design doc linking directly to:
+      1. Upstream official hardware documentation under `Obsidian/Amiga/Reference/` (Motorola 68000 User's Manual, Amiga Hardware Reference Manual, Amiga Guru Book).
+      2. Verified reference emulator implementations under `ref_src/` (MAME, Moira, Musashi, vAmiga, WinUAE).
+      3. Living Rust implementation source files under `crates/*/src/` and automated test suites.
+  - Systematically audited and refactored all 28 design documents across 4 logical groups:
+    - *Group 1 (Custom Chipset & Peripherals):* `Agnus.md`, `Denise.md`, `Paula.md`, `CIA.md`, `Floppy.md`, `Keyboard.md`, `Mouse.md`, `Joystick.md`, `RTC.md`.
+    - *Group 2 (System Architecture, Bus & Coordination):* `General Architecture.md`, `MemoryBus.md`, `CycleCounter.md`, `Main loop A500.md`, `Configuration.md`, `SaveState.md`.
+    - *Group 3 (CPU Micro-Architecture & Verification):* `CPU Motorola M68000.md`, `CPU Micro-Step State Machine.md`, `CPU SingleStepTests.md`, `CPU Instruction Benchmarking.md`, `CPU Instruction Benchmark Catalog.md`, `CPU Instruction Benchmark Strategies.md`, `CPU Benchmark Analysis Guide.md`.
+    - *Group 4 (Developer Tools, GUI & Workflows):* `Debugger.md`, `GUI.md`, `GUI Specification.md`, `Git Worktree Workflow.md`, `Rust Guidelines.md`, `egui Guidelines.md`.
+  - Solved the markdown URL parenthesis truncation issue by percent-encoding parentheses in reference document paths (`%28Address%20Order%29.md`), preventing markdown parsers and regexes from truncating targets at the first closing parenthesis.
+  - Fixed legacy references across specs (e.g. `loader.rs` in `crates/gui` updated to `crates/debugger/src/loader.rs`, `table.rs` updated to `dispatch_table.rs`, `alu.rs` updated to `crates/m68000/src/instructions/`).
+  - Added automated architectural test `test_obsidian_design_docs_links_integrity()` to `test_architecture_rules.rs`, which parses all markdown links across `Obsidian/Amiga/Design/*.md`, performs URL decoding, and asserts zero broken links on every `cargo test`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of the Bottom-Heavy Accumulation Trap:* Design documents frequently suffered from historical drift where superseded proposals and broken paths accumulated unchecked. The Dual-Layer standard guarantees that every document forms an explicit bridge between high-level architectural rationale, upstream hardware ground truth, and living Rust code.
+  - *Automated CI Enforcement:* Manual link audits inevitably decay as code is refactored. Integrating markdown link validation into `test_architecture_rules.rs` turns documentation integrity into a hard build invariant.
+- **Verification & Invariants**:
+  - Python full-vault scan: 28 documents, 548 total links, **0 broken links**.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.62s.
+  - `cargo test -p m68000 -p memory_bus -p config -p rtc -p disassembler -p debugger -p gui`: All unit and integration tests green.
+  - `cargo fmt --all -- --check`: Formatting 100% compliant.
+
+
 

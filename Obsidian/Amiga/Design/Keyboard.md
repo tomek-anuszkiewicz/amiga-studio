@@ -237,8 +237,8 @@ impl A500 {
 
 ---
 
-## 7. Reference Documentation
+## 7. Reference Documentation & Upstream Ground Truth
 
-- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md)
-- [Amiga Hardware Reference Manual: Appendix H (Keyboard)](../Reference/Hardware%20Reference%20Manual/16%20-%20Appendix%20H%20-%20Keyboard.md)
-- [vAmiga Keyboard Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Peripherals/Keyboard/Keyboard.h)
+- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): CIA-A SDR register handshake, KDAT/KCLK serial protocol timing, and keyboard interrupt generation.
+- [Amiga Hardware Reference Manual: Appendix H (Keyboard)](../Reference/Hardware%20Reference%20Manual/16%20-%20Appendix%20H%20-%20Keyboard.md): Microcontroller matrix scanning, standard US/international key tables, and raw scancode values.
+- [vAmiga Keyboard Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Peripherals/Keyboard/Keyboard.h): Reference C++ keyboard controller, scancode FIFO queue, and reset latching.

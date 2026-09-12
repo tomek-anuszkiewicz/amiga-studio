@@ -763,3 +763,110 @@ fn test_golden_hash_anti_tamper_policy_compliance() {
         violations.join("\n")
     );
 }
+
+fn url_decode_path(s: &str) -> String {
+    let mut result = Vec::new();
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(hex_str) = std::str::from_utf8(&bytes[i + 1..=i + 2]) {
+                if let Ok(b) = u8::from_str_radix(hex_str, 16) {
+                    result.push(b);
+                    i += 3;
+                    continue;
+                }
+            }
+        }
+        result.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&result).into_owned()
+}
+
+/// Enforces vault linking integrity across all design documents in Obsidian/Amiga/Design/.
+/// Verifies zero broken links and active dual-layer linking standard.
+#[test]
+fn test_obsidian_design_docs_links_integrity() {
+    let repo_root = find_repo_root();
+    let design_dir = repo_root.join("Obsidian").join("Amiga").join("Design");
+    assert!(
+        design_dir.is_dir(),
+        "Obsidian design directory does not exist: {}",
+        design_dir.display()
+    );
+
+    let entries =
+        fs::read_dir(&design_dir).expect("Failed to read Obsidian/Amiga/Design directory");
+    let mut md_files = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|ext| ext.to_str()) == Some("md") {
+            md_files.push(path);
+        }
+    }
+    md_files.sort();
+
+    assert!(
+        md_files.len() >= 25,
+        "Expected at least 25 design documents, found {}",
+        md_files.len()
+    );
+
+    let mut violations = Vec::new();
+    let mut total_links = 0;
+
+    for file in &md_files {
+        let file_name = file.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let content = fs::read_to_string(file).expect("Failed to read markdown file");
+
+        let mut rem = content.as_str();
+        while let Some(start_idx) = rem.find("](") {
+            let after = &rem[start_idx + 2..];
+            if let Some(end_idx) = after.find(')') {
+                let link = after[..end_idx].trim();
+                rem = &after[end_idx + 1..];
+
+                if link.starts_with("http://")
+                    || link.starts_with("https://")
+                    || link.starts_with("mailto:")
+                {
+                    continue;
+                }
+
+                let path_part = link.split('#').next().unwrap_or("").trim();
+                if path_part.is_empty() {
+                    continue;
+                }
+
+                total_links += 1;
+                let decoded = url_decode_path(path_part);
+                let target = design_dir.join(&decoded);
+
+                if !target.exists() {
+                    violations.push(format!(
+                        "[{}] Broken link `{}` -> `{}`",
+                        file_name,
+                        link,
+                        target.display()
+                    ));
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    assert!(
+        total_links >= 300,
+        "Expected at least 300 links across design docs, found {}",
+        total_links
+    );
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Broken markdown links detected in Obsidian/Amiga/Design/ ({} broken links):\n{}",
+        violations.len(),
+        violations.join("\n")
+    );
+}

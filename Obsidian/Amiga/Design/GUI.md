@@ -1,5 +1,13 @@
 # Amiga 500 GUI & Frontend Architecture
 
+- **Parent Specification:** [General Architecture.md](General%20Architecture.md)
+- **Detailed Layout Specification:** [GUI Specification.md](GUI%20Specification.md)
+- **Debugger Engine Companion:** [Debugger.md](Debugger.md)
+- **Peripheral Specifications:** [Keyboard.md](Keyboard.md) | [Mouse.md](Mouse.md) | [Joystick.md](Joystick.md)
+- **Frontend Guidelines:** [egui Guidelines.md](egui%20Guidelines.md) | [Rust Guidelines.md](Rust%20Guidelines.md)
+- **Module Location:** `crates/gui/`
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+
 > [!NOTE]
 > The GUI is an external consumer of the emulator core. The core exposes pure frame buffers (`&[u32]`), audio sample ring buffers (`&[i16]`), and input event queues. The core has zero direct dependencies on UI frameworks or windowing APIs.
 
@@ -154,3 +162,14 @@ The UI adapts to host OS and browser appearance preferences:
 - **User Theme Control:**
   - The top menu bar provides a theme switcher: `System (Auto)`, `Dark Theme` (default, sleek low-eyestrain developer palette), `Light Theme`, and an optional `Classic Amiga Workbench` palette.
   - Theme switching immediately swaps `egui::Visuals` without restarting or losing emulator state.
+
+---
+
+## 8. Reference Documentation & Upstream Ground Truth
+
+- [GUI Detailed Layout & Panel Specification](GUI%20Specification.md): Pixel-perfect dock geometries, keyboard shortcuts, and component structures.
+- [egui Guidelines & Frontend Best Practices](egui%20Guidelines.md): Immediate-mode UI patterns, bounded execution, and headless testing rules.
+- [Debugger Architecture & Inspection Engine](Debugger.md): Breakpoint traps, stepping controls, and disassembler facade.
+- [GUI Crate Implementation](../../../crates/gui/src/lib.rs): Living Rust implementation of eframe app, views, docks, and modals.
+- [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
+- [vAmiga Desktop Reference](../../../ref_src/vAmiga-4.5/): Reference emulator GUI layout and presentation architecture.

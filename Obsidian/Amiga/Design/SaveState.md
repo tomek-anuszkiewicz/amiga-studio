@@ -3,7 +3,7 @@
 > [!NOTE]
 > System ownership principles and decoupling constraints are defined in [AGENTS.md](../../../AGENTS.md) and [General Architecture.md](General%20Architecture.md).
 > Master clock synchronization is detailed in [CycleCounter.md](CycleCounter.md).
-> Memory layout and low-memory overlay rules are specified in [MemoryBus.md](MemoryBus.md).
+> Memory layout and low-memory overlay rules are specified in [MemoryBus.md](MemoryBus.md). Machine state serialization is driven by [Main loop A500.md](Main%20loop%20A500.md). Subsystem state schemas are defined in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md), [Agnus.md](Agnus.md), [Denise.md](Denise.md), [Paula.md](Paula.md), [CIA.md](CIA.md), and [RTC.md](RTC.md).
 
 ---
 
@@ -489,3 +489,11 @@ flowchart TD
     VERIFY_ROM --> RESTORE
     RESTORE --> ARBITRATE["5. Re-evaluate Interrupt Arbitration (IPL)\nand Memory Bus Wait States"]
 ```
+
+---
+
+## 5. Reference Documentation & Upstream Ground Truth
+
+- [vAmiga Snapshot Component Implementation](../../../ref_src/vAmiga-4.5/Core/Media/Snapshot.cpp): Snapshot serializer for Amiga hardware state, block headers, and uncompressed RAM payloads.
+- [WinUAE Statefile Architecture Reference](../../../ref_src/WinUAE-6030/savestate.cpp): Chunk-based save state format (`USS`), register packing, and retro-compatibility tags.
+- [CPU State Snapshot Implementation Source](../../../crates/m68000/src/state.rs): Living Rust `CpuState` data structures implementing Serde serialization and deserialization.

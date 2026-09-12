@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [CycleCounter.md](CycleCounter.md).
-> Detailed game port pinouts and host input bindings are documented in [Joystick.md](Joystick.md) and [Mouse.md](Mouse.md).
+> Detailed game port pinouts and host input bindings are documented in [Joystick.md](Joystick.md) and [Mouse.md](Mouse.md). Raster beam tracking is driven by [Agnus.md](Agnus.md), and display output feeds the frontend in [GUI.md](GUI.md) and [GUI Specification.md](GUI%20Specification.md).
 
 ---
 
@@ -161,3 +161,13 @@ Denise houses the directional and quadrature counters for Game Port 1 and Game P
 - **`COLOR00`–`COLOR31`:** Default to **`$0000`** (black).
 - **`CLXDAT` (`$DFF00E`):** Reset to **`$0000`**.
 - **Sprites:** Halted; position and image data registers reset to `$0000`.
+
+---
+
+## 9. Reference Documentation & Upstream Ground Truth
+
+- [Amiga Hardware Reference Manual: Chapter 3 (Playfield Hardware)](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Authoritative guide for dual-playfield scrolling, bitplane priority multiplexing, color palette selection, HAM6, and EHB video modes.
+- [Amiga Hardware Reference Manual: Chapter 4 (Sprite Hardware)](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md): Hardware specification for 8 DMA sprite channels, sprite pairing (15-color mode), and hardware collision detection (`CLXDAT`).
+- [Amiga Hardware Reference Manual: Appendix B (Register Summary)](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Bitfield layouts and access modes for all Denise custom chip registers (`$DFF0E0`–`$DFF1BE`).
+- [vAmiga Denise Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/Denise/Denise.cpp): Reference C++ pixel pipeline, bitplane serializer, and palette DAC conversion.
+- [WinUAE Video Drawing Reference](../../../ref_src/WinUAE-6030/drawing.cpp): Reference rendering implementation for scanline bitplane compositing, sprite rendering, and collision evaluation.

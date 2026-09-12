@@ -1,5 +1,9 @@
 # Git Worktree Workflow & Subsystem Integration
 
+- **Parent Specification:** [General Architecture.md](General%20Architecture.md)
+- **Rules & Policies:** [git-merge-commits.md](../../../.agents/rules/git-merge-commits.md) | [Rust Guidelines.md](Rust%20Guidelines.md)
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+
 This document outlines the standard operational procedure for working with **Git Worktrees** in this repository. Git worktrees enable simultaneous work on multiple branches in isolated working directories without switching branches or interrupting long-running tests in the primary workspace.
 
 ---
@@ -99,7 +103,7 @@ git merge --ff-only <branch-name>
 ```
 
 #### Scenario B: Divergent Work or Merge Conflicts (Mandatory Merge Commit)
-Per the repository rule ([`git-merge-commits.md`](../../.agents/rules/git-merge-commits.md)), if `master` has diverged or merge conflicts occur:
+Per the repository rule ([`git-merge-commits.md`](../../../.agents/rules/git-merge-commits.md)), if `master` has diverged or merge conflicts occur:
 1. **Never squash or rebase away the merge point:** An explicit merge commit must be created to preserve the branch history and document the conflict resolution audit trail.
 2. **Perform standard merge:**
    ```powershell
@@ -181,4 +185,14 @@ Review of repository ignored paths and whether to replicate them in worktrees:
   - In the SCM Repositories list, right-click any worktree to select **"Open in New Window"** to operate multiple development branches simultaneously in parallel IDE instances.
   - You can also add worktrees to your current workspace via **File $\to$ Add Folder to Workspace...** for multi-root editing.
 - **Command Palette:** Run `Git: Open Repository...` or `Git: Check out to...` (`Ctrl+Shift+P`) to quickly focus or switch between worktree branches without manual terminal navigation.
+
+---
+
+## 5. Reference Documentation & Upstream Ground Truth
+
+- [Git Merge Commits & Worktrees Rule](../../../.agents/rules/git-merge-commits.md): Worktree lifecycle, branch isolation, and mandatory merge commit policies.
+- [Specification Compliance Rule](../../../.agents/rules/spec-compliance.md): Ground truth adherence and divergence escalation protocols.
+- [General Architecture Specification](General%20Architecture.md): Machine topology, bus interfaces, and subsystem ownership.
+- [Rust Guidelines & Systems Architecture](Rust%20Guidelines.md): File size thresholds, inlining rules, and mechanical sympathy.
+
 

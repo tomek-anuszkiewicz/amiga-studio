@@ -2,6 +2,7 @@
 
 > [!NOTE]
 > Ownership architecture and module decoupling principles are defined in [AGENTS.md](../../../AGENTS.md) and [General Architecture.md](General%20Architecture.md).
+> Master clock timing is specified in [CycleCounter.md](CycleCounter.md), physical bus arbitration in [MemoryBus.md](MemoryBus.md), and CPU execution in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Custom chips are detailed in [Agnus.md](Agnus.md), [Denise.md](Denise.md), and [Paula.md](Paula.md).
 
 ---
 
@@ -136,3 +137,12 @@ On each CCK step, Agnus evaluates the horizontal scanline slot schedule ($227.5$
 - **Video Frame Retrieval:** Returns current frame buffer slice (`&[u32]` ARGB, $720 \times 576$ max PAL).
 - **Audio Sample Retrieval:** Decouples stereo audio ring buffers (`&[i16]`).
 - **Save State:** Serializes complete machine state via [SaveState.md](SaveState.md).
+
+---
+
+## 8. Reference Documentation & Upstream Ground Truth
+
+- [Amiga Hardware Reference Manual: Chapter 7 (System Control Hardware)](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): System reset sequences, bus arbitration lines, and interrupt prioritization.
+- [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard layout, master system clocks, bus timing, and chip interconnections.
+- [vAmiga System Coordinator Reference](../../../ref_src/vAmiga-4.5/Core/Components/Amiga.cpp): Master execution loop, sub-frame step scheduling, and decoupled host buffer flushes.
+- [WinUAE Custom Chip Coordination Reference](../../../ref_src/WinUAE-6030/custom.cpp): Master CCK loop dispatching DMA slots, Copper events, and CPU synchronization.

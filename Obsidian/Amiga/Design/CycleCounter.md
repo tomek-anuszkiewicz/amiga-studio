@@ -100,7 +100,7 @@ To prevent tight coupling and synchronization bugs, responsibilities are cleanly
 
 ## 4. Rust Engine Architecture & Public API
 
-The `CycleCounter` is an ultra-lean, copyable, zero-allocation struct whose sole responsibility is counting master Color Clocks. Implementation resides in [`crates/cycle_counter/src/lib.rs`](../../../crates/cycle_counter/src/lib.rs):
+The `CycleCounter` is an ultra-lean, copyable, zero-allocation struct whose sole responsibility is counting master Color Clocks. Timing constants are defined in [`crates/config/src/lib.rs`](../../../crates/config/src/lib.rs), and runtime stepping is driven by the machine loop in [Main loop A500.md](Main%20loop%20A500.md):
 
 - **State Representation (`CycleCounter`):**
   - Holds a single private 64-bit monotonically increasing counter (`total_cck: u64`). At ~3.55 MHz, a 64-bit integer runs for over 164,000 years without overflowing.
@@ -114,3 +114,11 @@ The `CycleCounter` is an ultra-lean, copyable, zero-allocation struct whose sole
 - **Timing Constants:**
   - `PAL_CCK_PER_FRAME`: 70,937 CCKs per video frame.
   - `NTSC_CCK_PER_FRAME`: 59,605 CCKs per video frame.
+
+---
+
+## 5. Reference Documentation & Upstream Ground Truth
+
+- [A500/A2000 Technical Reference Manual: System Block Diagrams](../Reference/A500%20A2000%20Technical%20Reference%20Manual/02%20-%20Section%202%20System%20Block%20Diagrams.md): Master crystal oscillator (28.37516 MHz PAL / 28.63636 MHz NTSC) and clock divider network.
+- [Amiga Hardware Reference Manual: Chapter 7 (System Control Hardware)](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): System timing relationships, horizontal line CCK counts, and vertical refresh frequencies.
+- [Hardware Timing & Preset Specifications Source](../../../crates/config/src/lib.rs): Master clock presets, PAL/NTSC CCK constants, and video mode frequencies.

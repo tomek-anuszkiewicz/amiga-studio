@@ -1,5 +1,11 @@
 # Amiga 500 Developer GUI & Debugger Layout Specification
 
+- **Parent Specification:** [GUI.md](GUI.md) | [General Architecture.md](General%20Architecture.md)
+- **Debugger Engine Companion:** [Debugger.md](Debugger.md)
+- **Frontend Guidelines:** [egui Guidelines.md](egui%20Guidelines.md) | [Rust Guidelines.md](Rust%20Guidelines.md)
+- **Module Location:** `crates/gui/`
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+
 > [!NOTE]
 > Living architectural specification for the Amiga 500 Developer GUI & Interactive Debugger Studio implemented under [`crates/gui`](../../../crates/gui).
 > For high-level frontend architecture, CRT shaders, and audio sinks, see [GUI.md](GUI.md).
@@ -39,7 +45,7 @@ The physical arrangement on screen strictly maps 1:1 to the Rust source code hie
 - [`crates/gui/src/main.rs`](../../../crates/gui/src/main.rs): Desktop native entrypoint (`eframe::run_native`) with 1600x840 default viewport (optimized for 16:9 displays at 100-125% DPI scaling).
 - [`crates/gui/src/app.rs`](../../../crates/gui/src/app.rs): Central `EmulatorApp` orchestrator, 4-column dock orchestration, bounded time-slicing execution, and event loop.
 - [`crates/gui/src/theme.rs`](../../../crates/gui/src/theme.rs): Dark, Light, and Classic Amiga Workbench color palettes.
-- [`crates/gui/src/loader.rs`](../../../crates/gui/src/loader.rs): Raw binary injection, boot overlay disengagement, and prefetch priming.
+- [`crates/debugger/src/loader.rs`](../../../crates/debugger/src/loader.rs): Raw binary injection, boot overlay disengagement, and prefetch priming.
 - [`crates/debugger/src/temporal.rs`](../../../crates/debugger/src/temporal.rs): High-capacity (250,000-frame, >=1.0s PAL) circular time-travel execution history ring buffer.
 - [`crates/gui/src/layout/top_menu_bar.rs`](../../../crates/gui/src/layout/top_menu_bar.rs): [TOP] File loading, cold/warm reset, run/pause, step controls, telemetry, theme, and zoom.
 - [`crates/gui/src/layout/main_viewport/amiga_screen.rs`](../../../crates/gui/src/layout/main_viewport/amiga_screen.rs): [CENTER] 4:3 aspect-locked CRT monitor canvas ($320 \times 256$) with retro bezel.
@@ -65,7 +71,7 @@ The GUI and the emulator core interact through a strictly **synchronous, pull-ba
 4. **Synchronous Mutation on Interaction:**
    - When stepping (`F10`), `debugger.step_instruction(&mut cpu, &mut bus)` executes immediately, appends to `temporal`, advances `bus.step_cck(clocks / 2)` to synchronize RTC/timers, and redraws immediately.
    - When editing memory, `bus.write_byte_debug(addr, val)` updates the physical RAM buffer instantly.
-   - When loading binary code, [`loader::inject_binary`](../../../crates/gui/src/loader.rs) disengages Kickstart low-memory boot overlay (`bus.map_chip_ram_to_low_memory()`), initializes SP to top of 512 KB Chip RAM ($080000) if unset, and primes prefetch with `cpu.set_pc_and_prime_prefetch(target_pc, bus)`.
+   - When loading binary code, [`loader::inject_binary`](../../../crates/debugger/src/loader.rs) disengages Kickstart low-memory boot overlay (`bus.map_chip_ram_to_low_memory()`), initializes SP to top of 512 KB Chip RAM ($080000) if unset, and primes prefetch with `cpu.set_pc_and_prime_prefetch(target_pc, bus)`.
 
 ---
 
@@ -193,3 +199,16 @@ The GUI and the emulator core interact through a strictly **synchronous, pull-ba
 - Fixed 1024-entry execution trace table backed by `debugger::TraceRingBuffer`.
 - Chronological table showing Cycle (CCK), PC, Opcode, Disassembly, and Register state.
 - Clicking any historical entry synchronizes the temporal debugger to that moment.
+
+---
+
+## 4. Reference Documentation & Upstream Ground Truth
+
+- [GUI Frontend Architecture & Overview](GUI.md): High-level frontend architecture, CRT shaders, aspect ratios, and input mapping.
+- [egui Guidelines & Frontend Best Practices](egui%20Guidelines.md): Immediate-mode UI patterns, layout invariants, and headless testing rules.
+- [Debugger Architecture & Inspection Engine](Debugger.md): Breakpoint traps, stepping controls, and disassembler facade.
+- [Binary Injection & Loader Implementation](../../../crates/debugger/src/loader.rs): Kickstart overlay disengagement, RAM injection, and prefetch priming.
+- [Temporal Debugger Ring Buffer](../../../crates/debugger/src/temporal.rs): High-capacity zero-allocation execution history ring buffer.
+- [GUI Crate Implementation](../../../crates/gui/src/lib.rs): Living Rust implementation of eframe app, views, docks, and modals.
+- [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
+

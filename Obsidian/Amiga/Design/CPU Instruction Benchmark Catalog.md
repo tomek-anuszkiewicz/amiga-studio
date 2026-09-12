@@ -1,5 +1,10 @@
 # M68000 Instruction Benchmark Catalog
 
+- **Parent Specification:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)
+- **Execution Architecture:** [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)
+- **Companion Specifications:** [CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md) | [CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+
 > [!NOTE]
 > This document defines the exhaustive catalog of representative instruction variants, sizes, and addressing modes evaluated by the M68000 benchmarking subsystem.
 > It serves both as architectural documentation and as the formal data specification for the programmatic `BenchmarkProgramBuilder`.
@@ -234,12 +239,20 @@ cargo bench -p test_runner --bench bench_instructions -- --filter "flow_"
 cargo run -p test_runner --release -- bench --dump-traces --filter "arith_|move_"
 ```
 
-### 3.1 Living Rust Implementation References
+---
 
-The catalog definitions and execution tools in this document are implemented directly in:
-- Catalog Core & Filters: [`crates/test_runner/src/benchmark/catalog.rs`](../../../crates/test_runner/src/benchmark/catalog.rs)
-- Categories 0–3 Specifications: [`crates/test_runner/src/benchmark/catalog_data_a.rs`](../../../crates/test_runner/src/benchmark/catalog_data_a.rs)
-- Categories 4–8 Specifications: [`crates/test_runner/src/benchmark/catalog_data_b.rs`](../../../crates/test_runner/src/benchmark/catalog_data_b.rs)
-- Programmatic Synthesis Engine: [`crates/test_runner/src/benchmark/builder.rs`](../../../crates/test_runner/src/benchmark/builder.rs)
-- Single-Pass Execution Tracer: [`crates/test_runner/src/benchmark/tracer.rs`](../../../crates/test_runner/src/benchmark/tracer.rs)
-- State-Delta Verification Tests: [`crates/test_runner/tests/test_benchmark_trace.rs`](../../../crates/test_runner/tests/test_benchmark_trace.rs)
+## 4. Reference Documentation & Upstream Ground Truth
+
+- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Standard instruction timings and bus operation counts.
+- [CPU Instruction Benchmarking Architecture](CPU%20Instruction%20Benchmarking.md): Benchmark harness execution hierarchy and anomaly detection formulas.
+- [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md): Strategy matrix for cascading stacks and data generators.
+- [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md): Operational guide for interpreting host performance metrics and anomalies.
+- [CPU Motorola M68000 Architecture](CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
+- [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
+- [Benchmark Catalog Core Implementation](../../../crates/test_runner/src/benchmark/catalog.rs): Living Rust catalog definitions and filter parsers.
+- [Benchmark Catalog Part A](../../../crates/test_runner/src/benchmark/catalog_data_a.rs): Categories 0–3 specifications.
+- [Benchmark Catalog Part B](../../../crates/test_runner/src/benchmark/catalog_data_b.rs): Categories 4–8 specifications.
+- [Benchmark Program Builder](../../../crates/test_runner/src/benchmark/builder.rs): Programmatic instruction sequence synthesis.
+- [Benchmark Single-Pass Tracer](../../../crates/test_runner/src/benchmark/tracer.rs): Trace execution and state-delta recording.
+- [Benchmark State-Delta Verification Suite](../../../crates/test_runner/tests/test_benchmark_trace.rs): Regression tests for trace generation.
+

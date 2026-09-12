@@ -2,8 +2,8 @@
 
 > [!NOTE]
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [CycleCounter.md](CycleCounter.md).
-> Save state structures for the CIAs are specified in [SaveState.md](SaveState.md).
-> Detailed keyboard serial protocol and handshake timings are documented in [Keyboard.md](Keyboard.md).
+> Save state structures for the CIAs are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt delivery are governed by [Main loop A500.md](Main%20loop%20A500.md) and [Paula.md](Paula.md).
+> Detailed keyboard serial protocol and handshake timings are documented in [Keyboard.md](Keyboard.md). Floppy drive control lines (step, motor, side) are coordinated with [Floppy.md](Floppy.md).
 
 ---
 
@@ -182,3 +182,12 @@ Each CIA contains 5 internal interrupt sources:
 - **`ICR`:** Reset to **`$00`** (all CIA interrupt sources masked, requests cleared).
 - **`SDR`:** Cleared to **`$00`**.
 - **`TOD`:** Halted until initialized.
+
+---
+
+## 10. Reference Documentation & Upstream Ground Truth
+
+- [Amiga Hardware Reference Manual: Appendix F (Complex Interface Adapters)](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md): Definitive hardware reference for MOS 8520 internal registers, timer modes, TOD counter, and serial data register (SDR).
+- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): CIA-A and CIA-B port assignments, parallel interface lines, floppy control lines, and RS-232 serial handshaking.
+- [vAmiga CIA Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/CIA/CIA.cpp): Reference C++ state machine for 5-CCK E-Clock timing division, ICR set/clear masks, and TOD 50/60 Hz latching.
+- [WinUAE CIA Emulation Reference](../../../ref_src/WinUAE-6030/cia.cpp): Reference implementation of timer underflows, SDR handshakes, and Paula interrupt line assertions.

@@ -3,6 +3,7 @@
 > [!NOTE]
 > All ROM binaries, disk images, and memory configurations are injected into the core externally as raw byte slices (`&[u8]`), preserving WASM portability and system independence (see [AGENTS.md](../../../AGENTS.md)).
 > Implementation resides in the dedicated foundational crate [`crates/config`](../../../crates/config).
+> Physical memory layout is applied in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Main loop A500.md](Main%20loop%20A500.md).
 
 ---
 
@@ -81,3 +82,11 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 - **Megachip / ECS 2MB:** 2 MB Chip RAM (`ChipRamSize::Mb2`), Agnus 8372B.
 - **A1200 (AGA):** 68EC020 CPU (32-bit), 2 MB Chip RAM, Alice (AGA Agnus), Lisa (AGA Denise), 24-bit color palette.
 - **Extended Peripherals:** 4-Player Parallel Port Joystick adapter, analog proportional joysticks.
+
+---
+
+## 6. Reference Documentation & Upstream Ground Truth
+
+- [Amiga Hardware Reference Manual: Appendix D (System Memory Map)](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md): Memory map boundaries for 512 KB Chip, 512 KB Slow, and 8 MB Auto-Config address spaces.
+- [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard revision differences, jumper configurations (JP2 512K/1MB Agnus, JP1 50/60Hz tick), and expansion bus options.
+- [Configuration Subsystem Implementation Source](../../../crates/config/src/lib.rs): Rust implementation of `A500Config`, hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`), and video standards.

@@ -1,11 +1,11 @@
 # Architecture Specification: M68000 Cycle-Exact Micro-Step State Machine
 
-- **Parent Specification:** [[CPU Motorola M68000.md]]
+- **Parent Specification:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)
 - **Module Location:** `crates/m68000/`
 - **Execution Model:** Cycle-exact micro-operations mapped to Color Clock phases (**CCK1** and **CCK2**).
-- **Bus Interface:** Interacts with memory strictly via [[MemoryBus.md]], handling `BusResult::WaitState` and executing direct 2-phase CCK read/write transactions (`step_read_word_at`, `step_write_word_at`).
+- **Bus Interface:** Interacts with memory strictly via [MemoryBus.md](MemoryBus.md), handling `BusResult::WaitState` and executing direct 2-phase CCK read/write transactions (`step_read_word_at`, `step_write_word_at`).
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md) (zero custom macros, zero const-generic handlers, wrapping arithmetic, Big-Endian decoding, zero panics).
-- **Test Validation:** Verified via [[CPU SingleStepTests.md]] and skill `m68k-singlestep-test`.
+- **Test Validation:** Verified via [CPU SingleStepTests.md](CPU%20SingleStepTests.md) and skill `m68k-singlestep-test`.
 
 ---
 
@@ -74,7 +74,7 @@ The microcode data structures and static lookup tables are implemented in [`crat
 
 Because all memory operands are already latched into `CpuState` (`prefetch[0]`, `last_read`, or `d[]/a[]`) before the ALU step runs, `AluFn` does **not** take `MemoryBus`. ALU handlers execute purely internally, operating directly on `CpuState` with pre-decoded register indices:
 - Signature: `fn(state: &mut CpuState, reg_src: u8, reg_dst: u8)`
-- Implementation: [`crates/m68000/src/micro/engine.rs`](../../../crates/m68000/src/micro/engine.rs) and [`crates/m68000/src/micro/alu.rs`](../../../crates/m68000/src/micro/alu.rs).
+- Implementation: [`crates/m68000/src/micro/engine.rs`](../../../crates/m68000/src/micro/engine.rs) and [`crates/m68000/src/micro/types.rs`](../../../crates/m68000/src/micro/types.rs).
 
 ### 2.2 The `MicroStep` Descriptor (Stateless & Cache-Dense)
 
@@ -119,7 +119,7 @@ Embedded in `CpuState` to track sub-cycle progress across Color Clock phases wit
 
 ### 2.5 The 65,536 Static Dispatch Universe (`OPCODE_DESCRIPTOR_TABLE`)
 
-- Embedded in host `.rodata` via [`crates/m68000/src/micro/table.rs`](../../../crates/m68000/src/micro/table.rs).
+- Embedded in host `.rodata` via [`crates/m68000/src/micro/dispatch_table.rs`](../../../crates/m68000/src/micro/dispatch_table.rs).
 - Exactly 65,536 `OpcodeDescriptor` entries mapping every 16-bit opcode word directly to its pre-compiled `&'static [MicroStep]` sequence and pre-decoded register indices (`reg_src`, `reg_dst`).
 - Requires **zero dynamic heap allocations** (`0` bytes allocated at runtime).
 
@@ -175,7 +175,7 @@ Passing `reg_src` and `reg_dst` into `AluFn` collapses code duplication across a
 2. **Memory Destinations:** When targeting memory (e.g. `ORI.B #$42, (A0)`), the ALU reads `state.micro.destination`, evaluates condition codes, and stores the result directly back into `state.micro.destination` for the subsequent write bus cycle.
 3. **Effective Address Arithmetic:** Because `Alu` micro-steps consume 0 CCKs, effective address calculations (such as `(d16, An)` or `(d8, An, Xn)`) use the identical `AluFn` mechanism to compute and store addresses in `state.micro.ea_addr`.
 
-All specialized ALU handlers reside in [`crates/m68000/src/micro/alu.rs`](../../../crates/m68000/src/micro/alu.rs).
+All specialized ALU and instruction handlers reside directly under [`crates/m68000/src/instructions/`](../../../crates/m68000/src/instructions/).
 
 ---
 
@@ -893,3 +893,16 @@ The table below catalogs representative micro-step sequences for each fundamenta
 | **Exact-Moment Data Sampling** | Read data sampled at S6 (CCK2); writes committed at S6 (CCK2), accurately modeling Gary/Agnus bus handshakes. |
 | **Self-Modifying Code (SMC)** | Zero invalidation overhead; live fetches from prefetch queue dynamically index the static table. |
 | **Code Architecture & Standards** | Zero user-defined macros (`macro_rules!` forbidden); zero const-generic functions; wrapping arithmetic; strictly $\le 800$ lines per Rust file. |
+
+---
+
+## 9. Reference Documentation & Upstream Ground Truth
+
+- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Cycle counts, read/write bus cycle decompositions, and effective address timing.
+- [68000 User's Manual: Section 6 (Exception Processing, Stack Frames & Reset)](../Reference/68000%20User's%20Manual/06%20-%20Section%206%20-%20Exception%20Processing,%20Stack%20Frames%20%26%20Reset.md): Diagnostic 7-word Address Error / Bus Error stack frame layout and SSW encoding.
+- [Instruction Prefetch on the Motorola 68000 Processor](../Reference/Instruction%20Prefetch%20on%20the%20Motorola%2068000%20Processor.md): 2-word prefetch refill sequencing and pipeline capture timing.
+- [Moira M68000 Reference Implementation](../../../ref_src/Moira-3.0/): Cycle-exact micro-stepping reference core.
+- [Musashi M68000 Reference Implementation](../../../ref_src/Musashi/m68kcpu.c): Reference C execution loop and opcode handlers.
+- [M68000 Micro-Step Engine Implementation](../../../crates/m68000/src/micro/engine.rs): Living Rust micro-step state machine, phase advancement, and atomic bus helpers.
+- [M68000 Dispatch Table Implementation](../../../crates/m68000/src/micro/dispatch_table.rs): 65,536-entry static opcode descriptor universe.
+

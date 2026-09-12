@@ -1,5 +1,11 @@
 # Amiga 500 Debugger Architecture & Inspection Engine
 
+- **Parent Specification:** [General Architecture.md](General%20Architecture.md)
+- **GUI Companion:** [GUI.md](GUI.md) | [GUI Specification.md](GUI%20Specification.md)
+- **CPU Specifications:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)
+- **Module Location:** `crates/debugger/` & `crates/disassembler/`
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+
 > [!NOTE]
 > The Debugger is a pure backend module decoupled from any rendering or GUI framework. It provides headless inspection primitives, disassemblers, breakpoints, and stepping controls.
 
@@ -113,3 +119,16 @@ The debugger maintains an in-memory ring buffer (e.g. 1024 entries) of [`TraceEn
 - CPU register state snapshot (`registers: CpuState`).
 
 Zero-allocation access for UI virtual scrolling is provided via `trace.get(chronological_idx)`, returning `Option<&TraceEntry>`. When a crash, illegal instruction, or unhandled exception occurs, this ring buffer provides an instant post-mortem trace of the instructions leading up to the fault.
+
+---
+
+## 6. Reference Documentation & Upstream Ground Truth
+
+- [68000 User's Manual: Section 2 (Introduction & Programmer's Model)](../Reference/68000%20User's%20Manual/02%20-%20Section%202%20-%20Introduction%20%26%20Programmer's%20Model.md): Register structures, status register bits, and user/supervisor modes.
+- [68000 User's Manual: Section 6 (Exception Processing, Stack Frames & Reset)](../Reference/68000%20User's%20Manual/06%20-%20Section%206%20-%20Exception%20Processing,%20Stack%20Frames%20%26%20Reset.md): Vector traps, exception stacking frames, and interrupt priority levels.
+- [Amiga Hardware Reference Manual: Chapter 1 (Introduction)](../Reference/Hardware%20Reference%20Manual/01%20-%20Chapter%201%20-%20Introduction.md): Chip registers, DMA channel assignments, and interrupt mechanisms.
+- [Debugger Engine Implementation](../../../crates/debugger/src/lib.rs): Living Rust implementation of breakpoints, trace ring buffers, and mini-assembler.
+- [Disassembler Crate Implementation](../../../crates/disassembler/src/lib.rs): Living Rust disassembler and stream alignment engine.
+- [General Architecture Specification](General%20Architecture.md): Machine topology, bus interfaces, and subsystem ownership.
+- [GUI Design Specification](GUI%20Specification.md): Developer Studio integration, dock panels, and keyboard shortcuts.
+

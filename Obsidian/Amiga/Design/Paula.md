@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [CycleCounter.md](CycleCounter.md).
-> Save state structures for Paula are specified in [SaveState.md](SaveState.md).
+> Save state structures for Paula are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt priority arbitration (IPL 1–6) are coordinated with [Main loop A500.md](Main%20loop%20A500.md) and [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Disk controller interaction is detailed in [Floppy.md](Floppy.md), and DMA channel arbitration is handled by [Agnus.md](Agnus.md).
 
 ---
 
@@ -172,3 +172,14 @@ Both `INTENA` (`$DFF09A`) and `INTREQ` (`$DFF09C`) use bit 15 as an atomic contr
 - **`AUD0VOL`–`AUD3VOL`:** Reset to **`0`** (audio immediately muted).
 - **Audio DMA:** Halted.
 - **Floppy DMA:** Halted; `DSKLEN` set to `$0000`.
+
+---
+
+## 9. Reference Documentation & Upstream Ground Truth
+
+- [Amiga Hardware Reference Manual: Chapter 5 (Audio Hardware)](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md): Authoritative specification for 4-channel DMA audio, period clock dividers, volume control, and channel modulation.
+- [Amiga Hardware Reference Manual: Chapter 7 (System Control Hardware)](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): Interrupt multiplexing logic, priority level encoding (IPL 1–6), `INTENA`, and `INTREQ` control bits.
+- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): UART serial communication registers (`SERDAT`, `SERPER`) and floppy disk read/write timing.
+- [Amiga Hardware Reference Manual: Appendix B (Register Summary)](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Bitfield layouts and access modes for all Paula custom chip registers (`$DFF008`–`$DFF032`, `$DFF09A`–`$DFF0DE`).
+- [vAmiga Paula Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/Paula/Paula.cpp): Reference C++ coordinator for sound generation, interrupt routing, and UART framing.
+- [WinUAE Audio Emulation Reference](../../../ref_src/WinUAE-6030/audio.cpp): Reference implementation of 8-bit DAC output, DMA sample fetches, volume scaling, and period interpolation.

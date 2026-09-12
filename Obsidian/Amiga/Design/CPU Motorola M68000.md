@@ -180,7 +180,7 @@ $$\text{bswap}(A \ \& \ B) = \text{bswap}(A) \ \& \ \text{bswap}(B)$$
 ### 2.3 M68000 Opcode Bitfield Decoding & Instruction Topology
 
 > [!NOTE]
-> For emulator codebase function naming conventions, consult the operational rule in [opcode-naming.md](../../.agents/rules/opcode-naming.md).
+> For emulator codebase function naming conventions, consult the operational rule in [opcode-naming.md](../../../.agents/rules/opcode-naming.md).
 
 The 16-bit M68000 opcode word is partitioned into five canonical bitfields:
 
@@ -620,4 +620,16 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
   - **RTS (Return from Subroutine):** 16 clocks (8 CCKs). Reads return PC from stack ($A_7$, $A_7+2$), advances $A_7 \leftarrow A_7 + 4$, checks alignment, and refills pipeline from target address.
   - **TRAP (Trap Exception Processing):** 34 clocks (17 CCKs). Pushes return PC and SR to supervisor stack ($SSP$), switches to supervisor mode ($S=1, T=0$), fetches exception vector from `$000080 + \text{vec} \times 4$, and initiates double prefetch refill.
   - **Address Error (Vector 3) & 32-bit Target Fidelity:** Target addresses and stack values retain full 32-bit register width without artificial 24-bit truncation (`& 0x00FF_FFFF`), ensuring cycle-exact diagnostic and stack frame fidelity matching Tom Harte silicon test vectors.
+
+---
+
+## 8. Reference Documentation & Upstream Ground Truth
+
+- [68000 User's Manual: Section 2 (Introduction & Programmer's Model)](../Reference/68000%20User's%20Manual/02%20-%20Section%202%20-%20Introduction%20%26%20Programmer's%20Model.md): Data/address register architecture, status register bitfields, and supervisor vs. user stack pointers.
+- [68000 User's Manual: Section 6 (Exception Processing & Stack Frames)](../Reference/68000%20User's%20Manual/06%20-%20Section%206%20-%20Exception%20Processing,%20Stack%20Frames%20%26%20Reset.md): Exception vectors (0–255), 7-word Address Error / Bus Error stack frame layouts, and interrupt processing.
+- [68000 User's Manual: Section 8 (16-Bit Instruction Timing Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Standard clock cycle tables, effective address calculation times, and bus read/write operation counts.
+- [Instruction Prefetch on the Motorola 68000 Processor](../Reference/Instruction%20Prefetch%20on%20the%20Motorola%2068000%20Processor.md): Hardware prefetch queue behavior (`IRC`/`IRD`), extension word capture timing, and branch target refills.
+- [Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis](../Reference/Motorola%2068000%20DIVU%20%26%20DIVS%20Cycle-Accurate%20Timing%20Analysis.md): Microcode division loop mechanics, quotient bit evaluations, and hardware execution cycle formulas.
+- [Musashi M68000 Reference Implementation](../../../ref_src/Musashi/m68kcpu.c): Reference C emulation of opcode execution, CCR condition code flag evaluation, and exception trapping.
+- [M68000 Crate Source Implementation](../../../crates/m68000/src/lib.rs): Living Rust implementation of the cycle-exact CPU core, micro-step dispatch, and instruction handlers.
 

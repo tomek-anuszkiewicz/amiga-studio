@@ -1,5 +1,10 @@
 # CPU Benchmark Analysis Guide & Empirical Evaluation
 
+- **Parent Specification:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)
+- **Execution Architecture:** [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)
+- **Companion Specifications:** [CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md) | [CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+
 This document establishes the official analytical methodology for interpreting M68000 instruction benchmarking datasets (`tests/benchmarks/**/*.csv` and `.json`), detailing the mathematical metrics, hardware-to-host correlation models, and empirical findings from the 108-instruction `--thorough` baseline.
 
 ---
@@ -142,7 +147,7 @@ Analyzing high-cycle system and multicycle operations to determine whether large
 
 ## 4. How to Run the Automated Analysis Tool
 
-To analyze any benchmark CSV report and generate markdown analysis tables:
+To analyze any benchmark CSV report and generate markdown analysis tables using [`tools/benchmarks/analyze_benchmarks.py`](../../../tools/benchmarks/analyze_benchmarks.py):
 
 ```powershell
 # Analyze the thorough benchmark run:
@@ -195,7 +200,7 @@ Benchmark CSV Table (14 Columns)
 
 To confirm that a benchmark run on disk is 100% valid and regression-free:
 
-1. **Deterministic Invariant Hash Verification (`test_benchmark_csv.rs`):**
+1. **Deterministic Invariant Hash Verification ([`test_benchmark_csv.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs)):**
    Run the automated invariant verification test:
    ```powershell
    cargo test -p test_runner --test test_benchmark_csv
@@ -208,14 +213,14 @@ To confirm that a benchmark run on disk is 100% valid and regression-free:
      - Standard (columns 1..=7, `total_guest_instructions = 6997200`): `0x9FE3956BC57151D1`
      - Thorough (columns 1..=7, `total_guest_instructions = 149992500`): `0xDB747B4AC9321D39`
 
-2. **CSV vs. JSON 1:1 Parity & Schema Verification (`test_benchmark_json.rs`):**
+2. **CSV vs. JSON 1:1 Parity & Schema Verification ([`test_benchmark_json.rs`](../../../crates/test_runner/tests/test_benchmark_json.rs)):**
    ```powershell
    cargo test -p test_runner --test test_benchmark_json
    ```
    - The test `test_benchmark_csv_matches_json_for_sample_case` parses both `m68k_benchmark.csv` and `m68k_benchmark.json` across test profiles and asserts that row columns match JSON object fields identically for metadata, cycle counts, operation counts, and formatted floating-point telemetry strings.
    - The test `test_benchmark_json_schema_and_completeness` validates schema version 1, host environment metadata, and full 108-spec completeness.
 
-3. **Single-Pass Step Trace Audit (`test_benchmark_trace.rs`):**
+3. **Single-Pass Step Trace Audit ([`test_benchmark_trace.rs`](../../../crates/test_runner/tests/test_benchmark_trace.rs)):**
    ```powershell
    cargo test -p test_runner --test test_benchmark_trace
    ```
@@ -225,3 +230,19 @@ To confirm that a benchmark run on disk is 100% valid and regression-free:
    - Confirm that pass jitter is low (`host_jitter_pct < 3.0%`).
    - Confirm that 16-bit register ALU operations (`ADD.W`, `SUB.W`, `AND.W`, `OR.W`) cluster within $\pm 5\%$ of each other.
    - Confirm that memory addressing modes scale monotonically ($\Delta T_{\text{mode}} > 0$).
+
+---
+
+## 7. Reference Documentation & Upstream Ground Truth
+
+- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Standard instruction timings and bus operation counts.
+- [CPU Instruction Benchmarking Architecture](CPU%20Instruction%20Benchmarking.md): Benchmark harness execution hierarchy and anomaly detection formulas.
+- [CPU Instruction Benchmark Catalog](CPU%20Instruction%20Benchmark%20Catalog.md): Comprehensive catalog of 108 benchmarked instruction variants.
+- [CPU Instruction Benchmark Strategies](CPU%20Instruction%20Benchmark%20Strategies.md): Strategy matrix for cascading stacks and data generators.
+- [CPU Motorola M68000 Architecture](CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
+- [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
+- [Benchmark Analysis Python CLI](../../../tools/benchmarks/analyze_benchmarks.py): Telemetry parser and markdown analysis generator.
+- [Benchmark CSV Validation Suite](../../../crates/test_runner/tests/test_benchmark_csv.rs): Golden hash regression test for benchmark data consistency.
+- [Benchmark JSON Validation Suite](../../../crates/test_runner/tests/test_benchmark_json.rs): JSON telemetry schema and CSV-to-JSON cross-format parity tests.
+- [Benchmark Single-Pass Trace Suite](../../../crates/test_runner/tests/test_benchmark_trace.rs): Deterministic execution trace validation.
+

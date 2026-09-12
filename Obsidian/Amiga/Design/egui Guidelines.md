@@ -1,5 +1,11 @@
 # Amiga 500 egui & Frontend Best Practices
 
+- **Parent Specification:** [GUI.md](GUI.md)
+- **Detailed Layout Specification:** [GUI Specification.md](GUI%20Specification.md)
+- **Rules & Policies:** [egui-best-practices.md](../../../.agents/rules/egui-best-practices.md) | [Rust Guidelines.md](Rust%20Guidelines.md)
+- **Module Location:** `crates/gui/`
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+
 > [!NOTE]
 > This document details the architectural principles, design patterns, and engineering best practices for building native desktop and WebAssembly user interfaces with `egui` and `eframe` in the Amiga 500 emulator project.
 
@@ -68,3 +74,14 @@ Because `egui` draws every widget on every frame:
 - **Avoid Heap Allocations in Render Loops:** Do not allocate new `Vec`s or perform heavy `format!` concatenations inside inner loops.
 - **Reusable Format Buffers & Slices:** Use stack-local variables or pre-formatted static labels where possible.
 - **Lazy/Virtual Scrolling:** In large views (e.g. 512 KB memory hex grid in [`memory_hex.rs`](../../../crates/gui/src/layout/right_dock/memory_hex.rs) or 1024-entry trace history in [`trace_log.rs`](../../../crates/gui/src/layout/right_dock/trace_log.rs)), use `egui::ScrollArea::show_rows` to render only the rows currently visible on screen alongside zero-allocation entry indexing (`trace.get(idx)`).
+
+---
+
+## 8. Reference Documentation & Upstream Ground Truth
+
+- [egui Best Practices Rule](../../../.agents/rules/egui-best-practices.md): Mandatory immediate-mode UI rules and headless testing policies.
+- [GUI Frontend Architecture & Overview](GUI.md): Display scaling, CRT shaders, and audio ring buffers.
+- [GUI Detailed Layout & Panel Specification](GUI%20Specification.md): Panel layouts, geometries, and interactive editor specs.
+- [GUI Crate Implementation](../../../crates/gui/src/lib.rs): Living Rust implementation of eframe app, views, docks, and modals.
+- [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
+

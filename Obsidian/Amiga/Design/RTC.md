@@ -138,20 +138,20 @@ To support both interactive real-time emulation and headless benchmark/warp exec
 
 ## 6. Save State Architecture (`RtcState`)
 
-Per [SaveState.md](SaveState.md), RTC state is serialized as an independent, decoupled snapshot defined in [`RtcState`](../../../crates/rtc/src/state.rs):
+Per [SaveState.md](SaveState.md), RTC state is serialized as an independent, decoupled snapshot defined in [`RtcMsm6242b`](../../../crates/rtc/src/lib.rs):
 - **`model` (`RtcModel`)**: Active RTC hardware configuration (`None` or `Msm6242b`).
 - **`registers` (`[u8; 16]`)**: 16 4-bit register latches (`$0..$F`) holding BCD digits.
 - **`control_d` (`u8`)**: Latched value of Control Register D (Hold, Busy, IRQ, 30s adjustment).
 - **`control_e` (`u8`)**: Latched value of Control Register E (Mask, Intr/Std, period t0/t1).
 - **`control_f` (`u8`)**: Latched value of Control Register F (Reset, Stop, 24/12 hour, Test).
-- **`time_diff` (`i64`)**: Offset in seconds relative to host epoch.
-- **`last_measure_cck` (`u64`)**: Master clock cycle timestamp of last time latching.
+- **`simulated_time` (`i64`)**: Current simulated time in seconds since Unix epoch.
+- **`cck_accumulator` (`u64`)**: Master clock cycle accumulator tracking fractional seconds.
 
 ---
 
-## 7. Reference Material & Upstream Ground Truth
+## 7. Reference Documentation & Upstream Ground Truth
 
-- [A500/A2000 Technical Reference Manual: Section 7.1 Clock Calendar Registers](../../Reference/A500%20A2000%20Technical%20Reference%20Manual/13%20-%20Section%207.1%20Clock%20calendar%20registers.md)
-- [Amiga Guru Book: Chapter 9 (Low-Level Architecture)](../../Reference/Amiga%20Guru%20Book/09%20-%20Chapter%209%20-%20Low-Level%20Hard-%20and%20Software%20Architecture.md)
-- [WinUAE MSM6242B Emulation Reference](../../../ref_src/WinUAE-6030/rtc.cpp)
-- [vAmiga RTC Core Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Components/RTC/RTC.cpp)
+- [A500/A2000 Technical Reference Manual: Section 7.1 Clock Calendar Registers](../Reference/A500%20A2000%20Technical%20Reference%20Manual/13%20-%20Section%207.1%20Clock%20calendar%20registers.md): Official OKI MSM6242B register memory map, Gary address decoding at `$DC0000..$DC003F`, and nibble packing rules.
+- [Amiga Guru Book: Chapter 9 (Low-Level Architecture)](../Reference/Amiga%20Guru%20Book/09%20-%20Chapter%209%20-%20Low-Level%20Hard-%20and%20Software%20Architecture.md): Low-level software access protocols, `setclock` utility detection loops, and hardware battery backup circuitry.
+- [WinUAE MSM6242B Emulation Reference](../../../ref_src/WinUAE-6030/rtc.cpp): Reference implementation of real-time clock host time mapping, 24/12 hour conversion, and 30-second rounding.
+- [vAmiga RTC Core Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Components/RTC/RTC.cpp): Reference C++ state machine for BCD counter increments, leap-year calculation, and test register latches.

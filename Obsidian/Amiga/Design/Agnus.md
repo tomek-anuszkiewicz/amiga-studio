@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [CycleCounter.md](CycleCounter.md).
-> Save state structures for Agnus are specified in [SaveState.md](SaveState.md).
+> Save state structures for Agnus are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt delivery are governed by [Main loop A500.md](Main%20loop%20A500.md). Video synchronization is coordinated with [Denise.md](Denise.md) and DMA audio/disk cycles with [Paula.md](Paula.md).
 
 ---
 
@@ -308,3 +308,14 @@ flowchart TD
 - **`COPCON` (`$DFF02E`):** Reset to **`$0000`** (`CDANG = 0`, Copper danger registers protected).
 - **Copper State:** Halted until re-enabled by CPU via `DMACON` and triggered via `COPJMP1`.
 - **Blitter State:** Idle (`BLTDONE` asserted, busy flag cleared).
+
+---
+
+## 9. Reference Documentation & Upstream Ground Truth
+
+- [Amiga Hardware Reference Manual: Chapter 2 (Coprocessor Hardware)](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md): Authoritative specification for Copper instruction formats (`MOVE`, `WAIT`, `SKIP`), bus timing, and danger register protection (`COPCON`).
+- [Amiga Hardware Reference Manual: Chapter 6 (Blitter Hardware)](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md): Circuit principles for 4-channel DMA Blitter, 256 minterm truth table generator (`BLTCON0`), shifters, and Bresenham line drawing.
+- [Amiga Hardware Reference Manual: Appendix B (Register Summary)](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Complete memory-mapped address order table and bitfield masks for all Agnus registers (`$DFF000`–`$DFF07E`).
+- [vAmiga Copper Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/Copper/Copper.cpp): Cycle-exact state machine model for Copper instruction decode, comparator logic, and DMA slot fetches.
+- [vAmiga Blitter Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/Blitter/Blitter.cpp): Reference pipeline implementation for multi-channel DMA blits, shift logic, and mask application.
+- [WinUAE Blitter Emulation Reference](../../../ref_src/WinUAE-6030/blitter.cpp): Reference C++ implementation for minterm evaluation, pointer modulo advance, descending blits, and line drawer error accumulators.

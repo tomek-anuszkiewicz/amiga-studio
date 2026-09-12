@@ -2,6 +2,7 @@
 
 > [!NOTE]
 > Global endianness rules, wrapping arithmetic, and WASM constraints are defined in [AGENTS.md](../../../AGENTS.md).
+> Color Clock timing is defined in [CycleCounter.md](CycleCounter.md). DMA contention and cycle stealing are coordinated with [Agnus.md](Agnus.md). Machine stepping and reset cycles are driven by [Main loop A500.md](Main%20loop%20A500.md), and CPU bus transactions are executed in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md).
 
 ---
 
@@ -181,7 +182,7 @@ Expose methods to simulate Agnus cycle stealing:
 
 ### Test Memory & Direct State Injection for Test Runners
 To support headless unit testing, SingleStepTests, and debugger inspection without side effects:
-- `load_test_ram(&mut self, entries: &[[u32; 2]])`: Injects initial `[address, byte]` vectors directly into physical memory arrays (bypassing bus wait states and latches).
+- `load_test_ram(&mut self, entries: &[\[u32; 2\]])`: Injects initial `[address, byte]` vectors directly into physical memory arrays (bypassing bus wait states and latches).
 - `read_byte_debug(&self, addr: u32) -> u8`: Side-effect-free byte read for debugger inspection and test result assertions.
 - `read_word_debug(&self, addr: u32) -> u16`: Side-effect-free word read for disassemblers and test result assertions.
 
@@ -199,3 +200,12 @@ The memory bus reset behavior is implemented in [`crates/memory_bus/src/lib.rs`]
   - Preserves all RAM contents intact, allowing Kickstart resident modules and Exec ColdCapture/CoolCapture vectors to survive reboot.
   - Clears bus contention locks (`chip_ram_blocked = false`).
   - Re-engages the low-memory boot overlay (`_OVL`).
+
+---
+
+## 6. Reference Documentation & Upstream Ground Truth
+
+- [Amiga Hardware Reference Manual: Appendix D (System Memory Map)](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md): Standard memory map allocations, chip register blocks, CIA odd/even byte mirrors, and expansion ranges.
+- [68000 User's Manual: Section 5 (16-Bit Bus Operations)](../Reference/68000%20User's%20Manual/05%20-%20Section%205%20-%2016-Bit%20Bus%20Operations%20%28Read,%20Write,%20RMW%29.md): Bus cycle state transitions ($S_0$ through $S_7$), `/AS`, `/UDS`, `/LDS`, and `/DTACK` handshake protocols.
+- [A500/A2000 Technical Reference Manual: System Block Diagrams](../Reference/A500%20A2000%20Technical%20Reference%20Manual/02%20-%20Section%202%20System%20Block%20Diagrams.md): Gary custom gate array architecture, address decoding, and system bus buffers.
+- [MemoryBus Subsystem Implementation Source](../../../crates/memory_bus/src/lib.rs): Living Rust implementation of 24-bit physical addressing, 256-entry bank table dispatch, open bus float pull-up, and test RAM injection.

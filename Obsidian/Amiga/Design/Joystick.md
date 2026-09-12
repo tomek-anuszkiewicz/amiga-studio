@@ -201,8 +201,8 @@ impl A500 {
 
 ---
 
-## 7. Reference Documentation
+## 7. Reference Documentation & Upstream Ground Truth
 
-- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md)
-- [Amiga Hardware Reference Manual: Appendix E (Interfaces)](../Reference/Hardware%20Reference%20Manual/13%20-%20Appendix%20E%20-%20Interfaces.md)
-- [vAmiga Joystick Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Peripherals/Joystick/Joystick.h)
+- [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): Game port directional switch decoding, XOR directional encodings, and fire button lines.
+- [Amiga Hardware Reference Manual: Appendix E (Interfaces)](../Reference/Hardware%20Reference%20Manual/13%20-%20Appendix%20E%20-%20Interfaces.md): Controller port DB9 pinouts, parallel 4-player joystick adapter schematics, and POTGO lines.
+- [vAmiga Joystick Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Peripherals/Joystick/Joystick.h): Reference C++ joystick model, digital switch latching, and autofire support.

@@ -1,6 +1,10 @@
 
 # M68000 SingleStepTests Suite Specification
 
+- **Parent Specification:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)
+- **Module Location:** `crates/test_runner/`
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+
 > [!NOTE]
 > Operational test running, command shortcuts, and debugging checklists are documented in the [m68k-singlestep-test](../../../.agents/skills/m68k-singlestep-test/SKILL.md) skill.
 > Step-by-step instruction implementation is guided by [add-m68k-instruction](../../../.agents/skills/add-m68k-instruction/SKILL.md).
@@ -36,8 +40,8 @@ To ensure robust, ground-truth verification and eliminate single-source simulati
 ### 1.2 Opcode Packaging Quirk: CMP and CMPM
 In both the MAME and Tom Harte suites, there are **no separate `CMPM.b.json`, `CMPM.w.json`, or `CMPM.l.json` files**. Instead, all `CMPM (Ay)+, (Ax)+` test cases are bundled together inside `CMP.b.json`, `CMP.w.json`, and `CMP.l.json` alongside standard `CMP <ea>, Dn`.
 
-- The test runner provides [`is_cmpm_postinc_opcode`](crates/test_runner/src/runner.rs) (`(op & 0xF138) == 0xB108`) to isolate `CMPM` cases when specific post-increment testing is required.
-- **Batch 1.3 Complete:** Standard `CMP`, `CMPA`, and `CMPI` are fully implemented and verified. Both isolated `CMPM` tests and exhaustive full-suite `CMP.<size>.json` integration tests run in [`crates/test_runner/tests/test_singlestep.rs`](crates/test_runner/tests/test_singlestep.rs) and [`crates/test_runner/tests/test_dma_cartesian.rs`](crates/test_runner/tests/test_dma_cartesian.rs).
+- The test runner provides [`is_cmpm_postinc_opcode`](../../../crates/test_runner/src/runner.rs) (`(op & 0xF138) == 0xB108`) to isolate `CMPM` cases when specific post-increment testing is required.
+- **Batch 1.3 Complete:** Standard `CMP`, `CMPA`, and `CMPI` are fully implemented and verified. Both isolated `CMPM` tests and exhaustive full-suite `CMP.<size>.json` integration tests run in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs) and [`crates/test_runner/tests/test_dma_cartesian.rs`](../../../crates/test_runner/tests/test_dma_cartesian.rs).
 
 ---
 
@@ -396,4 +400,18 @@ cargo run -p test_runner -- --summary
 
 # Run a specific opcode suite directly
 cargo run -p test_runner -- --suite ADD.b
-```
+```
+
+---
+
+## 11. Reference Documentation & Upstream Ground Truth
+
+- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Standard instruction timings and bus operation counts.
+- [MAME SingleStepTests Suite](../../../ref_src/SingleStepTests-m68000/v1): Official upstream cycle-exact test suite.
+- [Tom Harte SingleStepTests-680x0 Suite](../../../ref_src/SingleStepTests-680x0/68000/v1): Comprehensive randomized test vectors for 68000 CPU.
+- [CPU Motorola M68000 Design Specification](CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
+- [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
+- [SingleStep Test Runner Implementation](../../../crates/test_runner/src/runner.rs): Test loading, memory bus fixture, and assertion logic.
+- [SingleStep Integration Test Suite](../../../crates/test_runner/tests/test_singlestep.rs): Automated dual-suite regression tests.
+- [DMA Cartesian Contention Test Suite](../../../crates/test_runner/tests/test_dma_cartesian.rs): Cycle invariance verification across DMA wait-state permutations.
+

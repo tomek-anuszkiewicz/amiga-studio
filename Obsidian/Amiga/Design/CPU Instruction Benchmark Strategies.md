@@ -1,5 +1,10 @@
 # M68000 Instruction Benchmark Strategies
 
+- **Parent Specification:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)
+- **Execution Architecture:** [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)
+- **Companion Specifications:** [CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md) | [CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+
 > [!NOTE]
 > This document details the test harness setup, state invariance strategies, cascading stacks, and memory models for each of the 8 M68000 instruction families.
 > For the overall execution architecture and anomaly detection formulas, see [CPU Instruction Benchmarking](CPU%20Instruction%20Benchmarking.md).
@@ -422,3 +427,17 @@ Software traps and conditional trap instructions push the Program Counter pointi
       JMP    benchmark_exit
   ```
 
+---
+
+## 11. Reference Documentation & Upstream Ground Truth
+
+- [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Standard instruction timings and bus operation counts.
+- [68000 User's Manual: Section 6 (Exception Processing, Stack Frames & Reset)](../Reference/68000%20User's%20Manual/06%20-%20Section%206%20-%20Exception%20Processing,%20Stack%20Frames%20%26%20Reset.md): Exception vector assignments and stack frame mechanics.
+- [CPU Instruction Benchmarking Architecture](CPU%20Instruction%20Benchmarking.md): Benchmark harness execution hierarchy and anomaly detection formulas.
+- [CPU Instruction Benchmark Catalog](CPU%20Instruction%20Benchmark%20Catalog.md): Comprehensive catalog of 108 benchmarked instruction variants.
+- [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md): Operational guide for interpreting host performance metrics and anomalies.
+- [CPU Motorola M68000 Architecture](CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
+- [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.
+- [PRNG Stream Generator](../../../crates/test_runner/src/benchmark/prng.rs): Deterministic pseudo-random number generator for benchmark operands.
+- [Benchmark Program Builder](../../../crates/test_runner/src/benchmark/builder.rs): Programmatic unrolled loop generation and stack management.
+- [Benchmark Harness Implementation](../../../crates/test_runner/src/benchmark/): Living Rust benchmark harness, runners, and profiler models.

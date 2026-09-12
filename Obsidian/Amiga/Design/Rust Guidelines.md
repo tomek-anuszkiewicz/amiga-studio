@@ -1,5 +1,10 @@
 # Amiga 500 Rust Engineering Guidelines & Best Practices
 
+- **Parent Specification:** [General Architecture.md](General%20Architecture.md)
+- **Frontend Guidelines:** [egui Guidelines.md](egui%20Guidelines.md)
+- **Rules & Policies:** [performance-and-readability.md](../../../.agents/rules/performance-and-readability.md) | [rust-best-practices.md](../../../.agents/rules/rust-best-practices.md) | [unit-testing-policy.md](../../../.agents/rules/unit-testing-policy.md)
+- **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
+
 > [!NOTE]
 > This document defines the engineering standards, idioms, and best practices for writing Rust code across the Amiga 500 emulator workspace.
 > For host CPU hardware mechanical sympathy, see [performance-and-readability.md](../../../.agents/rules/performance-and-readability.md).
@@ -87,3 +92,15 @@ Every implementation or bugfix must satisfy:
 1. **Targeted Unit Tests:** Verification of edge cases, register side effects, and boundary conditions.
 2. **Automated Architecture Compliance:** Zero-macro, no-unwrap, file size, and inlining rules verified by `cargo test -p test_runner --test test_architecture_rules`.
 3. **Format & Lints:** Code formatted with `cargo fmt --all` and validated with `cargo check --all-targets`.
+
+---
+
+## 6. Reference Documentation & Upstream Ground Truth
+
+- [Rust Systems Rules & Guidelines (AGENTS.md)](../../../AGENTS.md): Complete repository guidelines, memory model, and Definition of Done.
+- [Performance & Mechanical Sympathy Rule](../../../.agents/rules/performance-and-readability.md): L1i cache density, zero macros, and flat dispatch.
+- [Rust Best Practices Rule](../../../.agents/rules/rust-best-practices.md): Safe borrowing, wrapping math, and inlining policies.
+- [Unit Testing Policy](../../../.agents/rules/unit-testing-policy.md): Unit and integration testing mandates.
+- [General Architecture Specification](General%20Architecture.md): Machine topology, bus interfaces, and crate layout.
+- [Architecture Verification Test Suite](../../../crates/test_runner/tests/test_architecture_rules.rs): Automated enforcement of systems and architecture rules.
+
