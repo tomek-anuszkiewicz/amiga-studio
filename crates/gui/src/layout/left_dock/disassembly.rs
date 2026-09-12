@@ -115,15 +115,18 @@ pub fn render_disassembly(
                                 let mut cancel = false;
 
                                 if let Some(edit) = active_edit.as_mut() {
-                                    let _edit_resp = ui.add(
+                                    let edit_resp = ui.add(
                                         egui::TextEdit::singleline(&mut edit.text)
                                             .desired_width(180.0)
                                             .font(egui::TextStyle::Monospace),
                                     );
+                                    edit_resp.request_focus();
                                     if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                                         commit = true;
                                     }
-                                    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                                    if ui.input(|i| i.key_pressed(egui::Key::Escape))
+                                        || edit_resp.clicked_elsewhere()
+                                    {
                                         cancel = true;
                                     }
 

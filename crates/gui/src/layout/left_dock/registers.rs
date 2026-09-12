@@ -17,6 +17,19 @@ pub enum EditRegister {
     SSP,
 }
 
+const D_LABELS: [&str; 8] = ["D0:", "D1:", "D2:", "D3:", "D4:", "D5:", "D6:", "D7:"];
+const D_TOOLTIPS: [&str; 8] = [
+    "Data register D0 (32-bit general data/scratch register)",
+    "Data register D1 (32-bit general data/scratch register)",
+    "Data register D2 (32-bit general data/scratch register)",
+    "Data register D3 (32-bit general data/scratch register)",
+    "Data register D4 (32-bit general data/scratch register)",
+    "Data register D5 (32-bit general data/scratch register)",
+    "Data register D6 (32-bit general data/scratch register)",
+    "Data register D7 (32-bit general data/scratch register)",
+];
+const A_LABELS: [&str; 8] = ["A0:", "A1:", "A2:", "A3:", "A4:", "A5:", "A6:", "A7:"];
+
 pub fn render_registers(
     ui: &mut Ui,
     cpu: &mut Cpu,
@@ -57,15 +70,14 @@ pub fn render_registers(
             .show(ui, |ui| {
                 egui::Grid::new("d_regs_grid")
                     .num_columns(6)
-                    .spacing([8.0, 3.0])
+                    .spacing([10.0, 4.0])
                     .show(ui, |ui| {
                         for i in 0..8 {
                             let val = state.d_regs()[i];
                             let changed = prev_state.map_or(false, |p| p.d_regs()[i] != val);
                             let col = diff_color(changed);
 
-                            ui.monospace(format!("D{}:", i))
-                                .on_hover_text(format!("Data register D{} (32-bit)", i));
+                            ui.monospace(D_LABELS[i]).on_hover_text(D_TOOLTIPS[i]);
 
                             // Inline editing or interactive display
                             let is_editing = match active_reg_edit {
@@ -79,15 +91,26 @@ pub fn render_registers(
                                         ui.input(|i| i.key_pressed(egui::Key::Enter));
                                     let esc_pressed =
                                         ui.input(|i| i.key_pressed(egui::Key::Escape));
-                                    let resp = ui.add(
-                                        egui::TextEdit::singleline(buf)
-                                            .desired_width(75.0)
-                                            .font(egui::TextStyle::Monospace),
-                                    );
+                                    let resp = ui
+                                        .push_id("edit_d", |ui| {
+                                            let r = ui.add(
+                                                egui::TextEdit::singleline(buf)
+                                                    .desired_width(75.0)
+                                                    .font(egui::TextStyle::Monospace),
+                                            );
+                                            r.request_focus();
+                                            r
+                                        })
+                                        .inner;
 
-                                    if esc_pressed || resp.clicked_elsewhere() {
+                                    if esc_pressed {
+                                        resp.surrender_focus();
                                         *active_reg_edit = None;
-                                    } else if enter_pressed || resp.lost_focus() {
+                                    } else if enter_pressed
+                                        || resp.lost_focus()
+                                        || resp.clicked_elsewhere()
+                                    {
+                                        resp.surrender_focus();
                                         let clean = buf.trim().trim_start_matches('$');
                                         if let Ok(new_val) = u32::from_str_radix(clean, 16) {
                                             state.set_d_long(i, new_val);
@@ -105,7 +128,9 @@ pub fn render_registers(
                                     .sense(egui::Sense::click()),
                                 );
                                 draw_diff_pill(ui, label_resp.rect, changed);
-                                if label_resp.clicked() {
+                                if label_resp.clicked()
+                                    && !ui.input(|i| i.key_pressed(egui::Key::Enter))
+                                {
                                     *active_reg_edit =
                                         Some((EditRegister::D(i), format!("{:08X}", val)));
                                 }
@@ -134,7 +159,7 @@ pub fn render_registers(
             .show(ui, |ui| {
                 egui::Grid::new("a_regs_grid")
                     .num_columns(6)
-                    .spacing([8.0, 3.0])
+                    .spacing([10.0, 4.0])
                     .show(ui, |ui| {
                         for i in 0..8 {
                             let val = state.a_regs()[i];
@@ -152,7 +177,7 @@ pub fn render_registers(
                                 "Address register (32-bit)"
                             };
 
-                            ui.monospace(format!("A{}:", i)).on_hover_text(tooltip);
+                            ui.monospace(A_LABELS[i]).on_hover_text(tooltip);
 
                             // Inline editing or interactive display
                             let is_editing = match active_reg_edit {
@@ -166,15 +191,26 @@ pub fn render_registers(
                                         ui.input(|i| i.key_pressed(egui::Key::Enter));
                                     let esc_pressed =
                                         ui.input(|i| i.key_pressed(egui::Key::Escape));
-                                    let resp = ui.add(
-                                        egui::TextEdit::singleline(buf)
-                                            .desired_width(75.0)
-                                            .font(egui::TextStyle::Monospace),
-                                    );
+                                    let resp = ui
+                                        .push_id("edit_a", |ui| {
+                                            let r = ui.add(
+                                                egui::TextEdit::singleline(buf)
+                                                    .desired_width(75.0)
+                                                    .font(egui::TextStyle::Monospace),
+                                            );
+                                            r.request_focus();
+                                            r
+                                        })
+                                        .inner;
 
-                                    if esc_pressed || resp.clicked_elsewhere() {
+                                    if esc_pressed {
+                                        resp.surrender_focus();
                                         *active_reg_edit = None;
-                                    } else if enter_pressed || resp.lost_focus() {
+                                    } else if enter_pressed
+                                        || resp.lost_focus()
+                                        || resp.clicked_elsewhere()
+                                    {
+                                        resp.surrender_focus();
                                         let clean = buf.trim().trim_start_matches('$');
                                         if let Ok(new_val) = u32::from_str_radix(clean, 16) {
                                             state.set_a_long(i, new_val);
@@ -192,7 +228,9 @@ pub fn render_registers(
                                     .sense(egui::Sense::click()),
                                 );
                                 draw_diff_pill(ui, label_resp.rect, changed);
-                                if label_resp.clicked() {
+                                if label_resp.clicked()
+                                    && !ui.input(|i| i.key_pressed(egui::Key::Enter))
+                                {
                                     *active_reg_edit =
                                         Some((EditRegister::A(i), format!("{:08X}", val)));
                                 }
@@ -213,10 +251,10 @@ pub fn render_registers(
 
                 // Inactive stack pointer & active status
                 let is_supervisor = (state.sr & 0x2000) != 0;
-                let (active_name, alt_label, alt_val, alt_id) = if is_supervisor {
-                    ("SSP", "Inactive USP:", state.usp, EditRegister::USP)
+                let (alt_label, alt_val, alt_id) = if is_supervisor {
+                    ("Inactive USP:", state.usp, EditRegister::USP)
                 } else {
-                    ("USP", "Inactive SSP:", state.ssp, EditRegister::SSP)
+                    ("Inactive SSP:", state.ssp, EditRegister::SSP)
                 };
                 let alt_changed = prev_state.map_or(false, |p| {
                     if is_supervisor {
@@ -229,9 +267,17 @@ pub fn render_registers(
                 ui.horizontal(|ui| {
                     ui.colored_label(
                         Color32::from_rgb(0, 220, 255),
-                        format!("A7 = {active_name}"),
+                        if is_supervisor {
+                            "A7 = SSP"
+                        } else {
+                            "A7 = USP"
+                        },
                     )
-                    .on_hover_text(format!("A7 is currently bound to {active_name}"));
+                    .on_hover_text(if is_supervisor {
+                        "A7 is currently bound to SSP (Supervisor Stack Pointer)"
+                    } else {
+                        "A7 is currently bound to USP (User Stack Pointer)"
+                    });
                     ui.label(RichText::new("|").color(Color32::from_rgb(80, 90, 105)));
                     ui.monospace(alt_label).on_hover_text(
                         "Inactive stack pointer for the alternate CPU privilege state",
@@ -245,15 +291,24 @@ pub fn render_registers(
                         if let Some((_, buf)) = active_reg_edit {
                             let enter_pressed = ui.input(|i| i.key_pressed(egui::Key::Enter));
                             let esc_pressed = ui.input(|i| i.key_pressed(egui::Key::Escape));
-                            let resp = ui.add(
-                                egui::TextEdit::singleline(buf)
-                                    .desired_width(75.0)
-                                    .font(egui::TextStyle::Monospace),
-                            );
+                            let resp = ui
+                                .push_id("edit_sp", |ui| {
+                                    let r = ui.add(
+                                        egui::TextEdit::singleline(buf)
+                                            .desired_width(75.0)
+                                            .font(egui::TextStyle::Monospace),
+                                    );
+                                    r.request_focus();
+                                    r
+                                })
+                                .inner;
 
-                            if esc_pressed || resp.clicked_elsewhere() {
+                            if esc_pressed {
+                                resp.surrender_focus();
                                 *active_reg_edit = None;
-                            } else if enter_pressed || resp.lost_focus() {
+                            } else if enter_pressed || resp.lost_focus() || resp.clicked_elsewhere()
+                            {
+                                resp.surrender_focus();
                                 let clean = buf.trim().trim_start_matches('$');
                                 if let Ok(new_val) = u32::from_str_radix(clean, 16) {
                                     if is_supervisor {
@@ -275,7 +330,7 @@ pub fn render_registers(
                             .sense(egui::Sense::click()),
                         );
                         draw_diff_pill(ui, resp.rect, alt_changed);
-                        if resp.clicked() {
+                        if resp.clicked() && !ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                             *active_reg_edit = Some((alt_id, format!("{:08X}", alt_val)));
                         }
                     }
@@ -315,15 +370,24 @@ pub fn render_registers(
                         if let Some((_, buf)) = active_reg_edit {
                             let enter_pressed = ui.input(|i| i.key_pressed(egui::Key::Enter));
                             let esc_pressed = ui.input(|i| i.key_pressed(egui::Key::Escape));
-                            let resp = ui.add(
-                                egui::TextEdit::singleline(buf)
-                                    .desired_width(70.0)
-                                    .font(egui::TextStyle::Monospace),
-                            );
+                            let resp = ui.push_id("edit_pc", |ui| {
+                                let r = ui.add(
+                                    egui::TextEdit::singleline(buf)
+                                        .desired_width(70.0)
+                                        .font(egui::TextStyle::Monospace),
+                                );
+                                r.request_focus();
+                                r
+                            }).inner;
 
-                            if esc_pressed || resp.clicked_elsewhere() {
+                            if esc_pressed {
+                                resp.surrender_focus();
                                 *active_reg_edit = None;
-                            } else if enter_pressed || resp.lost_focus() {
+                            } else if enter_pressed
+                                || resp.lost_focus()
+                                || resp.clicked_elsewhere()
+                            {
+                                resp.surrender_focus();
                                 let clean = buf.trim().trim_start_matches('$');
                                 if let Ok(new_pc) = u32::from_str_radix(clean, 16) {
                                     pc_to_set = Some(new_pc & 0x00FF_FFFF);
@@ -341,7 +405,9 @@ pub fn render_registers(
                             .sense(egui::Sense::click()),
                         );
                         draw_diff_pill(ui, pc_resp.rect, pc_changed);
-                        if pc_resp.clicked() {
+                        if pc_resp.clicked()
+                            && !ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        {
                             *active_reg_edit =
                                 Some((EditRegister::PC, format!("{:08X}", instruction_pc)));
                         }
@@ -366,15 +432,24 @@ pub fn render_registers(
                         if let Some((_, buf)) = active_reg_edit {
                             let enter_pressed = ui.input(|i| i.key_pressed(egui::Key::Enter));
                             let esc_pressed = ui.input(|i| i.key_pressed(egui::Key::Escape));
-                            let resp = ui.add(
-                                egui::TextEdit::singleline(buf)
-                                    .desired_width(45.0)
-                                    .font(egui::TextStyle::Monospace),
-                            );
+                            let resp = ui.push_id("edit_sr", |ui| {
+                                let r = ui.add(
+                                    egui::TextEdit::singleline(buf)
+                                        .desired_width(45.0)
+                                        .font(egui::TextStyle::Monospace),
+                                );
+                                r.request_focus();
+                                r
+                            }).inner;
 
-                            if esc_pressed || resp.clicked_elsewhere() {
+                            if esc_pressed {
+                                resp.surrender_focus();
                                 *active_reg_edit = None;
-                            } else if enter_pressed || resp.lost_focus() {
+                            } else if enter_pressed
+                                || resp.lost_focus()
+                                || resp.clicked_elsewhere()
+                            {
+                                resp.surrender_focus();
                                 let clean = buf.trim().trim_start_matches('$');
                                 if let Ok(new_sr) = u16::from_str_radix(clean, 16) {
                                     state.sr = new_sr;
@@ -392,7 +467,9 @@ pub fn render_registers(
                             .sense(egui::Sense::click()),
                         );
                         draw_diff_pill(ui, sr_resp.rect, sr_changed);
-                        if sr_resp.clicked() {
+                        if sr_resp.clicked()
+                            && !ui.input(|i| i.key_pressed(egui::Key::Enter))
+                        {
                             *active_reg_edit =
                                 Some((EditRegister::SR, format!("{:04X}", state.sr)));
                         }

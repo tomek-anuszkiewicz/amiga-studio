@@ -1546,4 +1546,61 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
+
+### [2026-09-12 17:18 CEST] — Vision-Driven GUI Inspector, egui-vision-debugger Skill & 3-Column Layout Refactoring
+- **Affected Subsystems**:
+  - `crates/gui/Cargo.toml`: Added `egui_kittest` (with `wgpu` and `snapshot` features) and `image` (PNG support) strictly under `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]`.
+  - `crates/gui/src/bin/gui_inspector.rs`: Created standalone offscreen frame capture binary supporting `--scenario` presets (`baseline`, `hover_splitter`, `hover_scrollbar`, `edit_register`, `edit_disasm`, `small_window`), arbitrary `--width`/`--height`, AccessKit bounds metadata dumping, and solid alpha compositing.
+  - `.agents/skills/egui-vision-debugger/SKILL.md`: Authored dedicated agent skill defining CLI invocation, native multimodal inspection heuristics via `view_file`, and an autonomous self-healing iteration loop.
+  - `crates/gui/src/app.rs`: Re-architected Developer Mode into a cohesive 3-column system: Column 1 (Left Dock: Registers + Microcode), Column 2 (Central Viewport: Amiga CRT Screen + Temporal Bar + scrollable Disassembly Stream), Column 3 (Right Dock: Memory Hex + Search + Breakpoints + Trace Log). Eliminated redundant `disasm_dock` side panel and removed pointer-hover scroll suppression hacks.
+  - `crates/gui/src/layout/left_dock/registers.rs`: Wrapped inline TextEdit widgets in dedicated `ui.push_id` scopes to prevent ID collision with display Labels; implemented explicit `resp.surrender_focus()` on Escape cancellation and commit; guarded static Label clicks against keyboard Enter activation; widened register grid horizontal spacing from 6.0 to 10.0 points.
+  - `crates/gui/src/layout/left_dock/disassembly.rs`: Enforced explicit focus request and clean Escape cancellation vs Enter commit.
+  - `crates/gui/src/layout/main_viewport/amiga_screen.rs`: Painted a solid dark background fill (`Color32::from_rgb(12, 14, 18)`) over allocated screen rect to eliminate transparent voids; restricted "Press F12" overlay text strictly to standalone ScreenOnly mode.
+  - `crates/gui/src/layout/right_dock/memory_hex.rs`: Constrained horizontal scroll containment with `.max_width(table_width)` so vertical address scrollbar remains fixed, visible, and responsive at the right dock margin across all window widths.
+  - `crates/gui/tests/test_interactions.rs`: Added comprehensive automated headless integration tests covering register edit focus/cancel/commit lifecycle, disassembly patch lifecycle, and multi-resolution (1280x720 and 1024x600) 3-column layout bounds invariance.
+  - `docs/ai_agents.md`: Registered `egui-vision-debugger` under Section 3.B (Quality Assurance & Code Hygiene).
+  - `ROADMAP.md`: Updated Section 3.3 to record the vision-driven GUI inspection harness and 3-column layout refactor.
+- **What Was Changed (The Concrete Reality)**:
+  - Built the offscreen capture harness `gui-inspector` using `egui_kittest` + `wgpu`.
+  - Used Agent Multimodal Vision (`view_file`) on rendered PNG frames to inspect the actual visual layout. Discovered that the central Amiga CRT screen had collapsed to < 10px width because two consecutive `SidePanel::right` instances (`right_dock` + `disasm_dock`) and the left dock consumed the entire window.
+  - Diagnosed that adjacent right side panels placed resize splitters on the exact same x-coordinate, causing splitter contention and scrollbar hover flutter.
+  - Consolidated panels into a canonical 3-column layout: Left Dock (330-350px), Central Viewport (CRT screen + Temporal bar + Disassembly stream), and Right Dock (390-540px).
+  - Identified and fixed an immediate-mode focus lifecycle issue: inside an `egui::Grid`, when a cell switched from `TextEdit` back to `Label`, they shared the same Grid ID. Because `resp.request_focus()` had been called, egui remembered that cell ID as focused. On subsequent frames where Enter was pressed, egui simulated a click on the focused Label, inadvertently re-opening inline edit mode. Fixed by isolating TextEdit with `ui.push_id`, calling `resp.surrender_focus()` upon completion, and guarding Label clicks against keyboard Enter events.
+- **Architectural Rationale & Trade-Offs**:
+  - *Autonomous Visual Self-Healing:* Decoupling visual frame rendering from OS windowing allows the agent to visually inspect UI states in headless CI environments without human screenshots.
+  - *Zero WASM Contamination:* Isolating offscreen rendering dependencies under `cfg(not(target_arch = "wasm32"))` guarantees zero impact on WebAssembly builds (`wasm32-unknown-unknown`).
+  - *Single Splitter per Panel Margin:* Restricting the application to exactly one left panel and one right panel guarantees that splitter grab handles never overlap or fight for pointer capture.
+- **Verification & Test Results**:
+  - `cargo test -p gui --test test_interactions`: All 28 integration tests passed in 0.13s.
+  - `cargo test -p gui --test test_gui`: All 7 tests passed in 0.03s.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.58s.
+  - Visual verification: Captured and visually reviewed `baseline_v3.png`, `small_v3.png`, and `edit_v3.png` via `view_file`.
+---
+
+### [2026-09-12 17:35 CEST] — Formalized Self-Documenting UI Standard, Expanded gui-inspector Scenarios & Headless Hover Verification
+- **Affected Subsystems**:
+  - `AGENTS.md`: Updated Section 1 index pointer for `egui-best-practices.md` to reference universal in-app documentation while maintaining 13,587 bytes (under 14,000-byte limit).
+  - `.agents/rules/egui-best-practices.md`: Added Section 6: Self-Documenting UI & In-App Contextual Documentation Standard (100% hover coverage, zero external lookup mandate, structured `.on_hover_ui` layouts, zero-allocation static string invariant).
+  - `Obsidian/Amiga/Design/egui Guidelines.md`: Added Section 8: Self-Documenting UI & Comprehensive In-App Documentation (lazy evaluation invariance, static string slices, structured hover cards).
+  - `Obsidian/Amiga/Design/GUI Specification.md`: Added Section 3: Universal In-App Documentation Standard (Zero External Lookup).
+  - `Obsidian/Amiga/Design/GUI.md`: Updated Section 5 to include the Self-Documenting In-App Hardware Encyclopedia design pillar.
+  - `crates/gui/src/bin/gui_inspector.rs`: Added new inspection presets (`hover_register`, `hover_ccr`, `hover_memory`, `game_mode`, `workbench_theme`), and configured `ctx.style_mut(|s| s.interaction.tooltip_delay = 0.0)` for immediate tooltip rendering in headless offscreen captures.
+  - `.agents/skills/egui-vision-debugger/SKILL.md`: Added CLI examples for hover scenarios and visual inspection heuristics for tooltip verification (card formatting, readability, viewport clipping).
+  - `crates/gui/src/layout/left_dock/registers.rs`: Converted dynamic `format!` register labels and tooltips to `const` static string tables (`D_LABELS`, `D_TOOLTIPS`, `A_LABELS`), enforcing zero heap allocation in the render loop.
+  - `crates/gui/tests/test_interactions.rs`: Added automated integration test `test_hover_documentation_tooltips_render_without_panics` testing hover over registers, CCR, status flags, and memory panels with `tooltip_delay = 0.0`.
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the "Zero-External-Lookup Principle": every inspectable hardware element (M68000 registers, status flags, CCR bits, custom chip registers, memory regions, timeline widgets) must provide rich, contextual in-app documentation on hover via `.on_hover_ui` or `.on_hover_text`.
+  - Upgraded `gui-inspector` to simulate hover interactions and instantly render tooltips by overriding egui's default 0.5s tooltip delay (`tooltip_delay = 0.0`).
+  - Added new headless scenarios to `gui-inspector`: `--scenario hover_register`, `--scenario hover_ccr`, `--scenario hover_memory`, `--scenario game_mode`, `--scenario workbench_theme`.
+  - Optimized `registers.rs` hot path to eliminate per-frame string formatting for D0-D7 and A0-A7 labels and hover descriptions, replacing them with static slices (`&'static str`).
+  - Added test `test_hover_documentation_tooltips_render_without_panics` to ensure hover cards render cleanly across all coordinates without panics.
+- **Architectural Rationale & Trade-Offs**:
+  - *Developer Flow & Ergonomics:* Programmers and demoscene developers debugging 68000 assembly or Agnus/Denise DMA timings should never need to context-switch away to search 500-page PDF manuals. Contextual explanations of bit functions, flags, and memory boundaries directly at the pointer eliminate cognitive friction.
+  - *Lazy Evaluation & Zero Allocation:* While tooltips must be exhaustive, building them must not degrade emulation performance. By strictly utilizing `&'static str` for basic labels and lazy closures (`.on_hover_ui`) for formatted cards, tooltips allocate zero heap memory and execute zero work on frames where the user is not actively hovering over them.
+- **Verification & Test Results**:
+  - `cargo test -p gui --test test_interactions`: All 29 integration tests passed in 0.15s.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 architecture tests passed in 0.57s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 266 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
 

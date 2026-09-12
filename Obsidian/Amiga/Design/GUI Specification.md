@@ -87,7 +87,23 @@ The GUI and the emulator core interact through a strictly **synchronous, pull-ba
 
 ---
 
-## 3. Panel-by-Panel Specification
+## 3. Universal In-App Documentation Standard (Zero External Lookup)
+
+The Developer Studio is designed as a **self-contained Amiga hardware encyclopedia**. Every interactive and inspectable UI element must provide rich contextual documentation upon hover, removing any need to switch to external PDF reference manuals (Amiga Hardware Reference Manual, Motorola 68000 PRM, Guru Book):
+
+1. **Hover Universality:** 100% of labels, registers, flags, memory cells, and controls must implement `.on_hover_ui` or `.on_hover_text`.
+2. **Context Depth:**
+   - **Registers ($D_0-D_7, A_0-A_7$):** Monospace bit layouts, signed/unsigned decimal conversions, word/long access semantics, and supervisor privilege restrictions.
+   - **Execution Status & CCR:** Complete mathematical truth tables for $X, N, Z, V, C$ and full bitfield breakdown of the Status Register (Trace mode, Supervisor mode, and IPL interrupt mask).
+   - **Microcode & Bus Phases:** Physical circuit definitions for $CCK1$ (address drive) and $CCK2$ (data latch / ALU step), staging register identities (`addr1`, `addr2`), and Chip RAM wait state causes.
+   - **Disassembly & Addressing Modes:** Mnemonic descriptions, cycle costs, effective address formulas (e.g. `d16(An, Xi)`), and branch targets.
+   - **Memory Map & Regions:** Physical boundary identifications (Chip RAM, Slow RAM, Fast RAM, CIA spaces, Custom Chip register space `$DFF000..=$DFFFFF`, Kickstart ROM).
+   - **Temporal History & Timeline:** Step deltas, millisecond offsets, and exact keyboard shortcut references.
+3. **Zero Heap Allocation:** Tooltips use compile-time static strings (`&'static str`) or stack formatting, lazily evaluated only when hovered.
+
+---
+
+## 4. Panel-by-Panel Specification
 
 ### 3.1 Top Menu Bar ([`layout/top_menu_bar.rs`](../../../crates/gui/src/layout/top_menu_bar.rs))
 - **File Actions:**

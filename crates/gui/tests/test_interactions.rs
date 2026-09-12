@@ -1052,3 +1052,208 @@ fn test_disassembly_active_line_highlight_and_column_alignment() {
         "Frame render at $1006 must render valid shapes"
     );
 }
+
+#[test]
+fn test_register_inline_edit_focus_cancel_and_commit() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+
+    // 1. Test Escape cancellation: D3 should remain 0
+    assert_eq!(app.session.cpu.state.d_long(3), 0);
+    app.active_reg_edit = Some((EditRegister::D(3), "DEADBEEF".to_string()));
+
+    let input_esc = RawInput {
+        events: vec![Event::Key {
+            key: Key::Escape,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::NONE,
+        }],
+        ..Default::default()
+    };
+    let _ = ctx.run(input_esc, |ctx| app.update_ui(ctx));
+    assert_eq!(app.active_reg_edit, None);
+    assert_eq!(app.session.cpu.state.d_long(3), 0);
+
+    // 2. Test Enter commit: A2 should be updated to $00040000
+    app.active_reg_edit = Some((EditRegister::A(2), "00040000".to_string()));
+    let input_enter = RawInput {
+        events: vec![Event::Key {
+            key: Key::Enter,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::NONE,
+        }],
+        ..Default::default()
+    };
+    let _ = ctx.run(input_enter, |ctx| app.update_ui(ctx));
+    assert_eq!(app.active_reg_edit, None);
+    assert_eq!(app.session.cpu.state.a_long(2), 0x00040000);
+
+    // 3. Test Invalid hex entry: should dismiss gracefully without modifying D1 or crashing
+    assert_eq!(app.session.cpu.state.d_long(1), 0);
+    app.active_reg_edit = Some((EditRegister::D(1), "ZZZZZZZZ".to_string()));
+    let input_enter_invalid = RawInput {
+        events: vec![Event::Key {
+            key: Key::Enter,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::NONE,
+        }],
+        ..Default::default()
+    };
+    let _ = ctx.run(input_enter_invalid, |ctx| app.update_ui(ctx));
+    assert_eq!(app.active_reg_edit, None);
+    assert_eq!(app.session.cpu.state.d_long(1), 0);
+}
+
+#[test]
+fn test_disassembly_inline_patch_focus_cancel_and_commit() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+
+    // Inject NOP ($4E71) at $001000
+    let code = [0x4E, 0x71, 0x4E, 0x75];
+    app.session.load_binary(0x001000, &code, true);
+    assert_eq!(app.session.bus.read_word_debug(0x001000), 0x4E71);
+
+    // 1. Open patch edit buffer, then press Escape to cancel
+    app.active_disasm_edit = Some(DisasmEditState {
+        addr: 0x001000,
+        text: "MOVE.W D0, D1".to_string(),
+        error: None,
+    });
+    let input_esc = RawInput {
+        events: vec![Event::Key {
+            key: Key::Escape,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::NONE,
+        }],
+        ..Default::default()
+    };
+    let _ = ctx.run(input_esc, |ctx| app.update_ui(ctx));
+    assert!(app.active_disasm_edit.is_none());
+    assert_eq!(app.session.bus.read_word_debug(0x001000), 0x4E71);
+
+    // 2. Open patch edit buffer and press Enter to commit valid patch
+    app.active_disasm_edit = Some(DisasmEditState {
+        addr: 0x001000,
+        text: "MOVE.W D0, D1".to_string(),
+        error: None,
+    });
+    let input_enter = RawInput {
+        events: vec![Event::Key {
+            key: Key::Enter,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::NONE,
+        }],
+        ..Default::default()
+    };
+    let _ = ctx.run(input_enter, |ctx| app.update_ui(ctx));
+    assert!(app.active_disasm_edit.is_none());
+    assert_eq!(app.session.bus.read_word_debug(0x001000), 0x3200);
+}
+
+#[test]
+fn test_three_column_layout_stability_and_bounds_invariance() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+
+    // Prime with code and CPU registers
+    let code = [0x4E, 0x71, 0x30, 0x3C, 0x12, 0x34, 0x4E, 0x75];
+    app.session.load_binary(0x001000, &code, true);
+    app.session.step_instruction();
+
+    // 1. Standard HD resolution (1280x720)
+    let screen_rect_hd = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280.0, 720.0));
+    let raw_input_hd = RawInput {
+        screen_rect: Some(screen_rect_hd),
+        ..Default::default()
+    };
+    let output_hd = ctx.run(raw_input_hd, |ctx| app.update_ui(ctx));
+    assert!(!output_hd.shapes.is_empty());
+    for shape in &output_hd.shapes {
+        assert!(
+            shape.clip_rect.max.x <= 1280.0,
+            "HD shape exceeded horizontal boundary: {:?}",
+            shape.clip_rect
+        );
+    }
+
+    // 2. Compact small-window resolution (1024x600)
+    let screen_rect_compact =
+        egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1024.0, 600.0));
+    let raw_input_compact = RawInput {
+        screen_rect: Some(screen_rect_compact),
+        ..Default::default()
+    };
+    let output_compact = ctx.run(raw_input_compact, |ctx| app.update_ui(ctx));
+    assert!(!output_compact.shapes.is_empty());
+    for shape in &output_compact.shapes {
+        assert!(
+            shape.clip_rect.max.x <= 1024.0,
+            "Compact shape exceeded horizontal boundary: {:?}",
+            shape.clip_rect
+        );
+    }
+
+    // 3. Toggle microcode in compact mode: layout must remain stable without panic
+    app.show_microcode = !app.show_microcode;
+    let output_toggle = ctx.run(
+        RawInput {
+            screen_rect: Some(screen_rect_compact),
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+    assert!(!output_toggle.shapes.is_empty());
+}
+
+#[test]
+fn test_hover_documentation_tooltips_render_without_panics() {
+    let ctx = egui::Context::default();
+    ctx.style_mut(|s| s.interaction.tooltip_delay = 0.0);
+
+    let mut app = EmulatorApp::default();
+    let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280.0, 720.0));
+
+    // Prime the initial frame
+    let prime_input = RawInput {
+        screen_rect: Some(screen_rect),
+        ..Default::default()
+    };
+    let _ = ctx.run(prime_input, |ctx| app.update_ui(ctx));
+
+    // Hover coordinates across key inspectable UI elements
+    let hover_positions = [
+        egui::pos2(30.0, 80.0),   // Left dock: Data Registers
+        egui::pos2(30.0, 180.0),  // Left dock: Address Registers
+        egui::pos2(30.0, 350.0),  // Left dock: Execution Status & PC
+        egui::pos2(30.0, 390.0),  // Left dock: Status Register (SR)
+        egui::pos2(200.0, 390.0), // Left dock: Condition Code Register (CCR) flags
+        egui::pos2(200.0, 420.0), // Left dock: Prefetch IR & IRC
+        egui::pos2(900.0, 150.0), // Right dock: Memory Hex Dump & Region Map
+        egui::pos2(600.0, 300.0), // Center: Disassembly / Video view
+    ];
+
+    for pos in hover_positions {
+        let hover_input = RawInput {
+            screen_rect: Some(screen_rect),
+            events: vec![Event::PointerMoved(pos)],
+            ..Default::default()
+        };
+        let output = ctx.run(hover_input, |ctx| app.update_ui(ctx));
+        assert!(
+            !output.shapes.is_empty(),
+            "Hovering at {:?} must produce rendered shapes without panic",
+            pos
+        );
+    }
+}

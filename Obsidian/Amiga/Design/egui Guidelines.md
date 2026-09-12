@@ -89,11 +89,52 @@ Because `egui` draws every widget on every frame:
 
 ---
 
-## 8. Reference Documentation & Upstream Ground Truth
+## 8. Self-Documenting UI & Comprehensive In-App Documentation
+
+The emulator frontend embodies the **Zero-External-Lookup Principle**: the application serves as a self-contained, interactive hardware encyclopedia and execution studio. A developer, reverse engineer, or retro enthusiast exploring the system should never need to leave the emulator to consult external Commodore Hardware Reference Manuals (HRM), Motorola 68000 PRMs, or Guru Book specs to understand what a bit, signal, register, or addressing mode means.
+
+### 8.1 Universal Hover Documentation Coverage
+Every inspectable or interactive element across all docks, panels, and modal dialogs must provide contextual documentation:
+1. **CPU Registers ($D_0-D_7, A_0-A_7, PC, SR, USP, SSP$):**
+   - Bit widths, valid addressing modes, byte/word/long access rules, and signed decimal representations.
+   - Supervisor state restrictions and active stack pointer binding ($A_7 = \text{USP}$ in User mode vs $A_7 = \text{SSP}$ in Supervisor mode).
+   - Program Counter normalization ($PC - 4$ instruction display vs hardware prefetch bus register).
+2. **Condition Code Register ($CCR$) & System Byte ($SR$):**
+   - Individual bit breakdowns for $X, N, Z, V, C$ with explicit mathematical setting/clearing criteria (e.g. $V = (Sm \land Dm \land \overline{Rm}) \lor (\overline{Sm} \land \overline{Dm} \land Rm)$) and their impact on conditional branching.
+   - Complete System Byte breakdown: Trace mode $T$, Supervisor state $S$, and Interrupt Priority Level mask $I_0-I_2$.
+3. **Microcode Engine & Bus Timing:**
+   - Color Clock phase roles: $CCK1$ (address driving and bus arbitration) vs $CCK2$ (data latching, ALU step execution, and condition evaluation).
+   - Staging registers: concrete roles of `addr1` ($X_1$) and `addr2` ($X_2$) in dual-memory operations.
+   - DMA contention: visual explanation of bus lock states and Chip RAM wait states when blocked by Agnus or Denise.
+4. **Memory Map & Addresses:**
+   - Memory region identities (Chip RAM, Slow/Pseudo-Fast RAM, Auto-Config Fast RAM, CIA spaces, Custom Chip register space `$DFF000..=$DFFFFF`, Kickstart ROM).
+   - Watchpoint triggers and access rules (Read, Write, Any).
+5. **Timeline & Execution Controls:**
+   - Explicit stepping granularity (Instruction vs CCK vs 1 PAL video frame).
+   - Exact keyboard shortcuts and temporal rewind deltas.
+
+### 8.2 Immediate-Mode Tooltip Implementation Patterns
+`egui` evaluates UI commands on every frame. To ensure high performance while delivering rich documentation:
+- **Lazy Evaluation Invariance:** `egui` executes `.on_hover_ui` closures **only when the pointer actively hovers over the widget's bounding rect**. Rich layout code, tables, and typography inside hover closures execute with zero overhead during ordinary running frames.
+- **Static String Slices (`&'static str`):** Hardware specifications, bitfield definitions, and reference notes should use compile-time static strings to guarantee zero heap allocations.
+- **Structured Layouts in `.on_hover_ui`:** Use bold headings (`ui.heading`), monospace tables (`egui::Grid`), and bullet points for complex structures:
+  ```rust
+  response.on_hover_ui(|ui| {
+      ui.heading("Status Register (SR)");
+      ui.label("16-bit register combining System Byte and CCR:");
+      ui.monospace(" • Bit 13 [S]: Supervisor Mode (1=Supervisor, 0=User)");
+      ui.monospace(" • Bits 8-10 [IPL]: Interrupt Priority Level Mask (0-7)");
+  });
+  ```
+
+---
+
+## 9. Reference Documentation & Upstream Ground Truth
 
 - [egui Best Practices Rule](../../../.agents/rules/egui-best-practices.md): Mandatory immediate-mode UI rules and headless testing policies.
 - [GUI Frontend Architecture & Overview](GUI.md): Display scaling, CRT shaders, and audio ring buffers.
 - [GUI Detailed Layout & Panel Specification](GUI%20Specification.md): Panel layouts, geometries, and interactive editor specs.
 - [GUI Crate Implementation](../../../crates/gui/src/lib.rs): Living Rust implementation of eframe app, views, docks, and modals.
 - [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
+
 

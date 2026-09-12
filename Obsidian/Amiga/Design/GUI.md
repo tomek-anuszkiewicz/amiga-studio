@@ -143,6 +143,7 @@ The GUI incorporates an integrated developer studio and debugger implemented in 
   - **Memory:** Inline hex byte editing with auto-focus and Tab navigation. Rendered cleanly as monospace text on natural theme panel background (zero pill/grid Moiré artifacts). Modified bytes highlighted in crisp cyan text, zeros muted, and watched bytes distinctly framed with flat coral borders.
   - **Disassembly In-Place Editing:** Edit instruction via assembly mnemonics (`NOP`, `MOVE.W D0, D1`) or raw hex (`4E71`). **Byte size invariance is strictly enforced**: if the replacement differs in byte count from the original, the change is aborted with an error banner.
 - **Direct State Pull & Bounded Slicing:** Panels poll emulator state directly on render. Free-running execution uses bounded time-slicing (`MAX_INSTRUCTIONS_PER_FRAME = 5000`).
+- **Self-Documenting In-App Hardware Encyclopedia (Zero-External-Lookup Principle):** 100% of registers, status bits, custom chip registers, memory ranges, and timeline controls provide comprehensive, self-contained documentation via `.on_hover_ui` and `.on_hover_text`. Users and developers can read complete hardware specifications, bitfield definitions, and privilege rules directly in the application without consulting external manuals.
 - **Detailed Layout & Operational Specification:**
   - For the complete panel-by-panel operational specification, see **[GUI Specification.md](GUI%20Specification.md)**.
 

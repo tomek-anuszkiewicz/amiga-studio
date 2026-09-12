@@ -137,6 +137,14 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
 - Implement headless runners that load each test ADF, execute until test completion, and verify screen buffers against reference PNG frame renders.
 
 ### 3.3 Visual & Audio Multimodal Validation
+- **Vision-Driven Headless GUI Inspector (`gui-inspector`) & Autonomous Self-Healing (`egui-vision-debugger`):**
+  - Built headless offscreen capture harness (`crates/gui/src/bin/gui_inspector.rs`) utilizing `egui_kittest` + `wgpu` strictly isolated under `cfg(not(target_arch = "wasm32"))`.
+  - Authored specialized agent skill (`.agents/skills/egui-vision-debugger/`) for automated scenario execution, visual layout audits via `view_file`, and self-healing iterations.
+  - Formalized the **Self-Documenting UI Standard ("Zero-External-Lookup Principle")** across `egui-best-practices.md` and Obsidian design specifications: every inspectable register, flag, and memory region provides contextual documentation on hover (`.on_hover_ui`/`.on_hover_text`) using zero-allocation static string slices (`&'static str`).
+  - Added dedicated hover inspection presets (`hover_register`, `hover_ccr`, `hover_memory`, `game_mode`, `workbench_theme`) with `tooltip_delay = 0.0` for immediate headless capture.
+  - Refactored Developer Studio into a clean 3-column architecture (Left Dock: Registers/Microcode, Center Viewport: CRT/Temporal/Disassembly, Right Dock: Memory Hex/Search/Breakpoints/Trace Log), resolving panel splitter contention, scrollbar jitter, and window squishing down to 1024x600.
+  - Corrected immediate-mode focus lifecycles and keyboard Enter activation across register and disassembly inline editors.
+  - Guarded by 29 automated headless integration tests in `crates/gui/tests/test_interactions.rs`.
 - **Screenshot Frame Dumps:**
   - Export rendered video frames at specific VBlank intervals.
   - Use visual comparison (pixel diffs or multimodal LLM inspection) to verify Copper color gradients, sprite multiplexing, and raster splits against WinUAE/vAmiga output.

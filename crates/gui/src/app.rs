@@ -223,13 +223,20 @@ impl EmulatorApp {
                 render_amiga_screen(ui, false);
             });
         } else {
-            // Mode B: Full Developer Studio GUI
+            // Mode B: Full Developer Studio GUI (3-Column Architecture)
             render_top_menu_bar(self, ctx);
 
-            // Left Dock (Execution & CPU Registers + Microcode)
+            let screen_rect = ctx.screen_rect();
+            let total_w = screen_rect.width();
+            let compact = total_w < 1250.0;
+
+            let left_default = if compact { 330.0 } else { 350.0 };
+            let right_default = if compact { 390.0 } else { 540.0 };
+
+            // Column 1: Left Dock (Execution & CPU Registers + Microcode)
             egui::SidePanel::left("left_dock")
                 .resizable(true)
-                .default_width(320.0)
+                .default_width(left_default)
                 .width_range(280.0..=450.0)
                 .show(ctx, |ui| {
                     egui::ScrollArea::vertical()
@@ -257,21 +264,15 @@ impl EmulatorApp {
                         });
                 });
 
-            // Right Dock (Memory, Search, Breakpoints & Trace Log)
+            // Column 3: Right Dock (Memory, Search, Breakpoints & Trace Log)
             egui::SidePanel::right("right_dock")
                 .resizable(true)
-                .default_width(520.0)
-                .width_range(480.0..=700.0)
+                .default_width(right_default)
+                .width_range(360.0..=650.0)
                 .show(ctx, |ui| {
-                    let mem_hex_rect =
-                        ui.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("mem_hex_rect")));
-                    let is_hovering_mem_hex =
-                        mem_hex_rect.map_or(false, |r| ui.rect_contains_pointer(r));
-
                     egui::ScrollArea::vertical()
                         .id_salt("right_dock_scroll")
                         .auto_shrink([false, false])
-                        .enable_scrolling(!is_hovering_mem_hex)
                         .scroll_bar_visibility(
                             egui::scroll_area::ScrollBarVisibility::AlwaysVisible,
                         )
@@ -306,28 +307,10 @@ impl EmulatorApp {
                         });
                 });
 
-            // Disassembly Dock (Column 3: Dedicated full-height panel adjacent to Memory)
-            egui::SidePanel::right("disasm_dock")
-                .resizable(true)
-                .default_width(350.0)
-                .width_range(280.0..=500.0)
-                .show(ctx, |ui| {
-                    render_disassembly(
-                        ui,
-                        &mut self.session.cpu,
-                        &mut self.session.bus,
-                        &mut self.session.debugger,
-                        &mut self.session.temporal,
-                        &mut self.goto_addr_str,
-                        &mut self.active_disasm_edit,
-                    );
-                });
-
-            // Main Viewport (Center: Screen + Temporal Bar)
+            // Column 2: Central Viewport (Amiga CRT Screen + Temporal Bar + Disassembly Stream)
             egui::CentralPanel::default().show(ctx, |ui| {
                 let total_h = ui.available_height();
-                let temporal_h = 58.0;
-                let screen_h = (total_h - temporal_h - 10.0).max(100.0);
+                let screen_h = (total_h * 0.38).clamp(130.0, 260.0);
 
                 ui.allocate_ui_with_layout(
                     egui::vec2(ui.available_width(), screen_h),
@@ -339,6 +322,22 @@ impl EmulatorApp {
 
                 ui.separator();
                 render_temporal_bar(self, ui);
+                ui.separator();
+
+                egui::ScrollArea::both()
+                    .id_salt("center_disasm_scroll")
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        render_disassembly(
+                            ui,
+                            &mut self.session.cpu,
+                            &mut self.session.bus,
+                            &mut self.session.debugger,
+                            &mut self.session.temporal,
+                            &mut self.goto_addr_str,
+                            &mut self.active_disasm_edit,
+                        );
+                    });
             });
         }
 

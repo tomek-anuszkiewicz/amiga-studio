@@ -163,244 +163,279 @@ pub fn render_memory_hex(
     let grid_height = (NUM_ROWS as f32) * row_height;
 
     let mut next_edit_target: Option<u32> = None;
+    const SCROLLBAR_WIDTH: f32 = 10.0;
+    let table_width = (ui.available_width() - SCROLLBAR_WIDTH - 8.0).max(100.0);
 
     ui.horizontal(|ui| {
-        // Grid Table Column
-        ui.vertical(|ui| {
-            for row in 0..NUM_ROWS {
-                let row_addr = base_addr.wrapping_add((row * ROW_BYTES) as u32) & 0x00FF_FFFF;
+        egui::ScrollArea::horizontal()
+            .id_salt("hex_grid_hscroll")
+            .max_width(table_width)
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                // Grid Table Column
+                ui.vertical(|ui| {
+                    for row in 0..NUM_ROWS {
+                        let row_addr =
+                            base_addr.wrapping_add((row * ROW_BYTES) as u32) & 0x00FF_FFFF;
 
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 2.0;
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 2.0;
 
-                    // Address header
-                    ui.monospace(
-                        RichText::new(format!("{:06X}:", row_addr))
-                            .color(Color32::from_rgb(130, 180, 230)),
-                    );
-                    ui.add_space(2.0);
-
-                    // 16 Hex Bytes (each allocated with exact size so active editing can NEVER shift columns)
-                    for col in 0..ROW_BYTES {
-                        let byte_addr = row_addr.wrapping_add(col as u32) & 0x00FF_FFFF;
-                        let byte_val = bus.read_byte_debug(byte_addr);
-                        let active_wp = breakpoints.find_watchpoint_at(byte_addr).cloned();
-
-                        // Calculate diff status from prev_memory
-                        let is_changed = match prev_memory {
-                            Some((prev_bytes, prev_base)) if prev_base == *base_addr => {
-                                let offset = (row * ROW_BYTES) + col;
-                                offset < 256 && byte_val != prev_bytes[offset]
-                            }
-                            _ => false,
-                        };
-
-                        let (cell_rect, cell_response) = ui.allocate_exact_size(
-                            egui::vec2(CELL_WIDTH, row_height),
-                            egui::Sense::click(),
-                        );
-
-                        // If user is actively editing this byte
-                        if edit_buffer.0 == byte_addr && !edit_buffer.1.is_empty() {
-                            ui.allocate_new_ui(egui::UiBuilder::new().max_rect(cell_rect), |ui| {
-                                let edit_res = ui.add(
-                                    egui::TextEdit::singleline(&mut edit_buffer.1)
-                                        .margin(egui::Margin::ZERO)
-                                        .desired_width(CELL_WIDTH)
-                                        .font(egui::FontId::monospace(13.0)),
-                                );
-                                edit_res.request_focus();
-
-                                if ui.input(|i| i.key_pressed(egui::Key::Escape))
-                                    || edit_res.clicked_elsewhere()
-                                {
-                                    edit_buffer.1.clear();
-                                } else if edit_res.lost_focus()
-                                    || ui.input(|i| {
-                                        i.key_pressed(egui::Key::Tab)
-                                            || i.key_pressed(egui::Key::Enter)
-                                    })
-                                {
-                                    let clean = edit_buffer.1.trim();
-                                    if let Ok(val) = u8::from_str_radix(clean, 16) {
-                                        bus.write_byte_debug(byte_addr, val);
-                                        if ui.input(|i| {
-                                            i.key_pressed(egui::Key::Tab)
-                                                || i.key_pressed(egui::Key::Enter)
-                                        }) {
-                                            next_edit_target =
-                                                Some(byte_addr.wrapping_add(1) & 0x00FF_FFFF);
-                                        }
-                                    }
-                                    edit_buffer.1.clear();
-                                }
-                            });
-                        } else {
-                            let text_color = if active_wp.is_some() {
-                                Color32::from_rgb(255, 110, 100) // Crisp coral for watched bytes
-                            } else if is_changed {
-                                Color32::from_rgb(0, 240, 255) // Vivid cyan for modified bytes
-                            } else if byte_val == 0 {
-                                Color32::from_rgb(105, 110, 120) // Muted gray for zeros
-                            } else {
-                                Color32::from_rgb(215, 220, 230) // Clean normal light gray
-                            };
-
-                            if active_wp.is_some() {
-                                // Crisp flat watchpoint indicator (0.0 corner radius, zero overlap)
-                                ui.painter().rect_filled(
-                                    cell_rect,
-                                    0.0,
-                                    Color32::from_rgba_unmultiplied(220, 50, 40, 60),
-                                );
-                                ui.painter().rect_stroke(
-                                    cell_rect,
-                                    0.0,
-                                    egui::Stroke::new(1.0_f32, Color32::from_rgb(255, 80, 80)),
-                                    egui::StrokeKind::Inside,
-                                );
-                            } else if cell_response.hovered() {
-                                ui.painter().rect_filled(
-                                    cell_rect,
-                                    0.0,
-                                    Color32::from_rgba_unmultiplied(255, 255, 255, 15),
-                                );
-                            }
-
-                            ui.painter().text(
-                                cell_rect.center(),
-                                egui::Align2::CENTER_CENTER,
-                                format!("{:02X}", byte_val),
-                                egui::FontId::monospace(13.0),
-                                text_color,
+                            // Address header
+                            ui.monospace(
+                                RichText::new(format!("{:06X}:", row_addr))
+                                    .color(Color32::from_rgb(130, 180, 230)),
                             );
+                            ui.add_space(2.0);
 
-                            // Tooltip for watchpoint or address
-                            if let Some(ref wp) = active_wp {
-                                cell_response.clone().on_hover_ui(|ui| {
-                                    ui.heading("🎯 Active Memory Watchpoint");
-                                    ui.label(format!("Address: ${:06X}", byte_addr));
-                                    ui.label(format!(
-                                        "Watch Range: ${:06X} .. ${:06X}",
-                                        wp.start, wp.end
-                                    ));
-                                    ui.label(format!("Access Mode: {:?}", wp.access));
-                                    ui.label(
+                            // 16 Hex Bytes (each allocated with exact size so active editing can NEVER shift columns)
+                            for col in 0..ROW_BYTES {
+                                let byte_addr = row_addr.wrapping_add(col as u32) & 0x00FF_FFFF;
+                                let byte_val = bus.read_byte_debug(byte_addr);
+                                let active_wp = breakpoints.find_watchpoint_at(byte_addr).cloned();
+
+                                // Calculate diff status from prev_memory
+                                let is_changed = match prev_memory {
+                                    Some((prev_bytes, prev_base)) if prev_base == *base_addr => {
+                                        let offset = (row * ROW_BYTES) + col;
+                                        offset < 256 && byte_val != prev_bytes[offset]
+                                    }
+                                    _ => false,
+                                };
+
+                                let (cell_rect, cell_response) = ui.allocate_exact_size(
+                                    egui::vec2(CELL_WIDTH, row_height),
+                                    egui::Sense::click(),
+                                );
+
+                                // If user is actively editing this byte
+                                if edit_buffer.0 == byte_addr && !edit_buffer.1.is_empty() {
+                                    ui.allocate_new_ui(
+                                        egui::UiBuilder::new().max_rect(cell_rect),
+                                        |ui| {
+                                            let edit_res = ui.add(
+                                                egui::TextEdit::singleline(&mut edit_buffer.1)
+                                                    .margin(egui::Margin::ZERO)
+                                                    .desired_width(CELL_WIDTH)
+                                                    .font(egui::FontId::monospace(13.0)),
+                                            );
+                                            edit_res.request_focus();
+
+                                            if ui.input(|i| i.key_pressed(egui::Key::Escape))
+                                                || edit_res.clicked_elsewhere()
+                                            {
+                                                edit_buffer.1.clear();
+                                            } else if edit_res.lost_focus()
+                                                || ui.input(|i| {
+                                                    i.key_pressed(egui::Key::Tab)
+                                                        || i.key_pressed(egui::Key::Enter)
+                                                })
+                                            {
+                                                let clean = edit_buffer.1.trim();
+                                                if let Ok(val) = u8::from_str_radix(clean, 16) {
+                                                    bus.write_byte_debug(byte_addr, val);
+                                                    if ui.input(|i| {
+                                                        i.key_pressed(egui::Key::Tab)
+                                                            || i.key_pressed(egui::Key::Enter)
+                                                    }) {
+                                                        next_edit_target = Some(
+                                                            byte_addr.wrapping_add(1) & 0x00FF_FFFF,
+                                                        );
+                                                    }
+                                                }
+                                                edit_buffer.1.clear();
+                                            }
+                                        },
+                                    );
+                                } else {
+                                    let text_color = if active_wp.is_some() {
+                                        Color32::from_rgb(255, 110, 100) // Crisp coral for watched bytes
+                                    } else if is_changed {
+                                        Color32::from_rgb(0, 240, 255) // Vivid cyan for modified bytes
+                                    } else if byte_val == 0 {
+                                        Color32::from_rgb(105, 110, 120) // Muted gray for zeros
+                                    } else {
+                                        Color32::from_rgb(215, 220, 230) // Clean normal light gray
+                                    };
+
+                                    if active_wp.is_some() {
+                                        // Crisp flat watchpoint indicator (0.0 corner radius, zero overlap)
+                                        ui.painter().rect_filled(
+                                            cell_rect,
+                                            0.0,
+                                            Color32::from_rgba_unmultiplied(220, 50, 40, 60),
+                                        );
+                                        ui.painter().rect_stroke(
+                                            cell_rect,
+                                            0.0,
+                                            egui::Stroke::new(
+                                                1.0_f32,
+                                                Color32::from_rgb(255, 80, 80),
+                                            ),
+                                            egui::StrokeKind::Inside,
+                                        );
+                                    } else if cell_response.hovered() {
+                                        ui.painter().rect_filled(
+                                            cell_rect,
+                                            0.0,
+                                            Color32::from_rgba_unmultiplied(255, 255, 255, 15),
+                                        );
+                                    }
+
+                                    ui.painter().text(
+                                        cell_rect.center(),
+                                        egui::Align2::CENTER_CENTER,
+                                        format!("{:02X}", byte_val),
+                                        egui::FontId::monospace(13.0),
+                                        text_color,
+                                    );
+
+                                    // Tooltip for watchpoint or address
+                                    if let Some(ref wp) = active_wp {
+                                        cell_response.clone().on_hover_ui(|ui| {
+                                            ui.heading("🎯 Active Memory Watchpoint");
+                                            ui.label(format!("Address: ${:06X}", byte_addr));
+                                            ui.label(format!(
+                                                "Watch Range: ${:06X} .. ${:06X}",
+                                                wp.start, wp.end
+                                            ));
+                                            ui.label(format!("Access Mode: {:?}", wp.access));
+                                            ui.label(
                                         "Shortcuts: Alt+Click to toggle, Right-click for options",
                                     );
-                                });
-                            }
+                                        });
+                                    }
 
-                            // Context menu on right click
-                            cell_response.clone().context_menu(|ui| {
-                                ui.label(
-                                    RichText::new(format!("Address: ${:06X}", byte_addr))
-                                        .monospace()
-                                        .strong(),
-                                );
-                                ui.separator();
-                                if ui.button("🛑 Toggle Watchpoint Write (1 Byte)").clicked() {
-                                    breakpoints
-                                        .toggle_byte_watchpoint(byte_addr, WatchAccess::Write);
-                                    ui.close_menu();
-                                }
-                                if ui.button("👁 Set Watchpoint Read (1 Byte)").clicked() {
-                                    breakpoints.add_watchpoint(
-                                        byte_addr,
-                                        byte_addr,
-                                        WatchAccess::Read,
-                                    );
-                                    ui.close_menu();
-                                }
-                                if ui.button("⚡ Set Watchpoint Any Access (1 Byte)").clicked() {
-                                    breakpoints.add_watchpoint(
-                                        byte_addr,
-                                        byte_addr,
-                                        WatchAccess::Any,
-                                    );
-                                    ui.close_menu();
-                                }
-                                ui.separator();
-                                if ui.button("Set Word Watchpoint (2 Bytes, Write)").clicked() {
-                                    breakpoints.add_watchpoint(
-                                        byte_addr,
-                                        byte_addr.wrapping_add(1) & 0x00FF_FFFF,
-                                        WatchAccess::Write,
-                                    );
-                                    ui.close_menu();
-                                }
-                                if ui.button("Set Long Watchpoint (4 Bytes, Write)").clicked() {
-                                    breakpoints.add_watchpoint(
-                                        byte_addr,
-                                        byte_addr.wrapping_add(3) & 0x00FF_FFFF,
-                                        WatchAccess::Write,
-                                    );
-                                    ui.close_menu();
-                                }
-                                if active_wp.is_some() {
-                                    ui.separator();
-                                    if ui.button("🗑 Remove Watchpoint").clicked() {
-                                        breakpoints.remove_watchpoints_at(byte_addr);
-                                        ui.close_menu();
+                                    // Context menu on right click
+                                    cell_response.clone().context_menu(|ui| {
+                                        ui.label(
+                                            RichText::new(format!("Address: ${:06X}", byte_addr))
+                                                .monospace()
+                                                .strong(),
+                                        );
+                                        ui.separator();
+                                        if ui
+                                            .button("🛑 Toggle Watchpoint Write (1 Byte)")
+                                            .clicked()
+                                        {
+                                            breakpoints.toggle_byte_watchpoint(
+                                                byte_addr,
+                                                WatchAccess::Write,
+                                            );
+                                            ui.close_menu();
+                                        }
+                                        if ui.button("👁 Set Watchpoint Read (1 Byte)").clicked()
+                                        {
+                                            breakpoints.add_watchpoint(
+                                                byte_addr,
+                                                byte_addr,
+                                                WatchAccess::Read,
+                                            );
+                                            ui.close_menu();
+                                        }
+                                        if ui
+                                            .button("⚡ Set Watchpoint Any Access (1 Byte)")
+                                            .clicked()
+                                        {
+                                            breakpoints.add_watchpoint(
+                                                byte_addr,
+                                                byte_addr,
+                                                WatchAccess::Any,
+                                            );
+                                            ui.close_menu();
+                                        }
+                                        ui.separator();
+                                        if ui
+                                            .button("Set Word Watchpoint (2 Bytes, Write)")
+                                            .clicked()
+                                        {
+                                            breakpoints.add_watchpoint(
+                                                byte_addr,
+                                                byte_addr.wrapping_add(1) & 0x00FF_FFFF,
+                                                WatchAccess::Write,
+                                            );
+                                            ui.close_menu();
+                                        }
+                                        if ui
+                                            .button("Set Long Watchpoint (4 Bytes, Write)")
+                                            .clicked()
+                                        {
+                                            breakpoints.add_watchpoint(
+                                                byte_addr,
+                                                byte_addr.wrapping_add(3) & 0x00FF_FFFF,
+                                                WatchAccess::Write,
+                                            );
+                                            ui.close_menu();
+                                        }
+                                        if active_wp.is_some() {
+                                            ui.separator();
+                                            if ui.button("🗑 Remove Watchpoint").clicked() {
+                                                breakpoints.remove_watchpoints_at(byte_addr);
+                                                ui.close_menu();
+                                            }
+                                        }
+                                    });
+
+                                    if cell_response.clicked() {
+                                        if ui.input(|i| i.modifiers.alt) {
+                                            breakpoints.toggle_byte_watchpoint(
+                                                byte_addr,
+                                                WatchAccess::Write,
+                                            );
+                                        } else {
+                                            edit_buffer.0 = byte_addr;
+                                            edit_buffer.1 = format!("{:02X}", byte_val);
+                                        }
                                     }
                                 }
-                            });
 
-                            if cell_response.clicked() {
-                                if ui.input(|i| i.modifiers.alt) {
-                                    breakpoints
-                                        .toggle_byte_watchpoint(byte_addr, WatchAccess::Write);
-                                } else {
-                                    edit_buffer.0 = byte_addr;
-                                    edit_buffer.1 = format!("{:02X}", byte_val);
+                                if col == 7 {
+                                    ui.add_space(5.0); // Space between 8-byte halves
                                 }
                             }
-                        }
 
-                        if col == 7 {
-                            ui.add_space(5.0); // Space between 8-byte halves
-                        }
-                    }
+                            ui.add_space(3.0);
+                            ui.monospace(
+                                RichText::new("|").color(Color32::from_rgb(100, 110, 130)),
+                            );
+                            ui.add_space(3.0);
 
-                    ui.add_space(3.0);
-                    ui.monospace(RichText::new("|").color(Color32::from_rgb(100, 110, 130)));
-                    ui.add_space(3.0);
-
-                    // ASCII representation with watchpoint highlights
-                    let mut job = egui::text::LayoutJob::default();
-                    for col in 0..ROW_BYTES {
-                        let byte_addr = row_addr.wrapping_add(col as u32) & 0x00FF_FFFF;
-                        let byte_val = bus.read_byte_debug(byte_addr);
-                        let is_wp = breakpoints.find_watchpoint_at(byte_addr).is_some();
-                        let ch = if byte_val.is_ascii_graphic() || byte_val == b' ' {
-                            byte_val as char
-                        } else {
-                            '.'
-                        };
-                        let ch_color = if is_wp {
-                            Color32::from_rgb(255, 100, 100)
-                        } else {
-                            Color32::from_rgb(170, 180, 195)
-                        };
-                        job.append(
-                            &ch.to_string(),
-                            0.0,
-                            egui::TextFormat {
-                                font_id: egui::FontId::monospace(13.0),
-                                color: ch_color,
-                                background: if is_wp {
-                                    Color32::from_rgba_unmultiplied(220, 50, 40, 80)
+                            // ASCII representation with watchpoint highlights
+                            let mut job = egui::text::LayoutJob::default();
+                            for col in 0..ROW_BYTES {
+                                let byte_addr = row_addr.wrapping_add(col as u32) & 0x00FF_FFFF;
+                                let byte_val = bus.read_byte_debug(byte_addr);
+                                let is_wp = breakpoints.find_watchpoint_at(byte_addr).is_some();
+                                let ch = if byte_val.is_ascii_graphic() || byte_val == b' ' {
+                                    byte_val as char
                                 } else {
-                                    Color32::TRANSPARENT
-                                },
-                                ..Default::default()
-                            },
-                        );
+                                    '.'
+                                };
+                                let ch_color = if is_wp {
+                                    Color32::from_rgb(255, 100, 100)
+                                } else {
+                                    Color32::from_rgb(170, 180, 195)
+                                };
+                                job.append(
+                                    &ch.to_string(),
+                                    0.0,
+                                    egui::TextFormat {
+                                        font_id: egui::FontId::monospace(13.0),
+                                        color: ch_color,
+                                        background: if is_wp {
+                                            Color32::from_rgba_unmultiplied(220, 50, 40, 80)
+                                        } else {
+                                            Color32::TRANSPARENT
+                                        },
+                                        ..Default::default()
+                                    },
+                                );
+                            }
+                            ui.label(job);
+                        });
                     }
-                    ui.label(job);
                 });
-            }
-        });
+            });
 
         // Vertical scrollbar alongside table
         ui.add_space(4.0);

@@ -24,6 +24,7 @@ pub fn render_amiga_screen(ui: &mut egui::Ui, show_floating_debug_btn: bool) -> 
     let offset_y = (available.y - screen_h) * 0.5;
 
     let (response, painter) = ui.allocate_painter(available, egui::Sense::hover());
+    painter.rect_filled(response.rect, 0.0, ui.visuals().panel_fill);
     let origin = response.rect.min + vec2(offset_x, offset_y);
     let screen_rect = Rect::from_min_size(origin, vec2(screen_w, screen_h));
 
@@ -52,28 +53,30 @@ pub fn render_amiga_screen(ui: &mut egui::Ui, show_floating_debug_btn: bool) -> 
     let subtext_color = Color32::from_rgb(120, 130, 150);
 
     painter.text(
-        pos2(center.x, center.y - 18.0),
+        pos2(center.x, center.y - 14.0),
         egui::Align2::CENTER_CENTER,
         "Commodore Amiga 500",
-        egui::FontId::proportional(20.0),
+        egui::FontId::proportional(18.0),
         text_color,
     );
 
     painter.text(
-        pos2(center.x, center.y + 8.0),
+        pos2(center.x, center.y + 10.0),
         egui::Align2::CENTER_CENTER,
         "PAL — 50 Hz (320 × 256)",
         egui::FontId::monospace(12.0),
         subtext_color,
     );
 
-    painter.text(
-        pos2(center.x, center.y + 28.0),
-        egui::Align2::CENTER_CENTER,
-        "Press F12 for Developer Studio / Debugger",
-        egui::FontId::monospace(11.0),
-        Color32::from_rgb(100, 180, 220),
-    );
+    if show_floating_debug_btn {
+        painter.text(
+            pos2(center.x, center.y + 30.0),
+            egui::Align2::CENTER_CENTER,
+            "Press F12 for Developer Studio",
+            egui::FontId::monospace(11.0),
+            Color32::from_rgb(100, 180, 220),
+        );
+    }
 
     let mut debug_clicked = false;
     if show_floating_debug_btn {
