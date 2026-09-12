@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import hashlib
+import fnmatch
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -133,6 +134,9 @@ class KnowledgeIndexer:
         directory: Path,
         source_name: str,
         force: bool = False,
+        exclude: Optional[List[str]] = None,
+        include_dirs: Optional[List[str]] = None,
+        include_root_notes: bool = True,
         progress_cb=None,
         plan_cb=None
     ) -> Dict[str, Any]:
@@ -142,12 +146,61 @@ class KnowledgeIndexer:
         source_name = source_name.strip().lower()
         source_cache = self.cache.setdefault("sources", {}).setdefault(source_name, {})
 
-        # Discover all markdown files, ignoring hidden and temporary folders
-        ignored_parts = {".git", ".antigravity", ".venv", "venv", "__pycache__", "node_modules", ".system_generated"}
-        md_files = [
-            p for p in dir_path.rglob("*.md")
-            if not any(part in ignored_parts for part in p.parts)
-        ]
+        # Discover optional .ragignore in directory
+        ragignore_path = dir_path / ".ragignore"
+        ragignore_patterns: List[str] = []
+        if ragignore_path.is_file():
+            try:
+                with open(ragignore_path, "r", encoding="utf-8", errors="replace") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            ragignore_patterns.append(line)
+            except Exception as e:
+                print(f"[Warning] Failed to read .ragignore: {e}")
+
+        # Standard system / workspace / obsidian folders to ignore
+        base_ignored = {
+            ".git", ".antigravity", ".venv", "venv", "__pycache__",
+            "node_modules", ".system_generated", ".obsidian", ".smart-env", ".trash"
+        }
+        all_exclude_patterns = list(set(exclude or []) | set(ragignore_patterns))
+
+        def is_ignored(p: Path) -> bool:
+            for part in p.parts:
+                part_lower = part.lower()
+                if part_lower in base_ignored:
+                    return True
+                # Privacy membrane: unconditionally ignore any folder/file named _private or containing private
+                if part_lower == "_private" or "private" in part_lower:
+                    return True
+                for excl in all_exclude_patterns:
+                    excl_lower = excl.lower()
+                    if excl_lower == part_lower or fnmatch.fnmatch(part_lower, excl_lower) or excl_lower in part_lower:
+                        return True
+            return False
+
+        # Filter files by include_dirs and include_root_notes
+        md_files = []
+        for p in dir_path.rglob("*.md"):
+            if is_ignored(p):
+                continue
+            rel_p = p.relative_to(dir_path)
+            if include_dirs:
+                if len(rel_p.parts) == 1:
+                    # Root-level note
+                    if not include_root_notes:
+                        continue
+                else:
+                    top_dir = rel_p.parts[0]
+                    matched = any(
+                        top_dir.lower() == inc.lower() or fnmatch.fnmatch(top_dir.lower(), inc.lower())
+                        for inc in include_dirs
+                    )
+                    if not matched:
+                        continue
+            md_files.append(p)
+
         active_paths = {str(p.resolve()) for p in md_files}
 
         stats = {
@@ -160,10 +213,16 @@ class KnowledgeIndexer:
             "images_analyzed": 0
         }
 
-        # 1. Clean up files deleted on disk from Qdrant and cache
+        # 1. Clean up files deleted on disk from Qdrant and cache (only prune under dir_path)
         cached_paths = list(source_cache.keys())
         for old_path in cached_paths:
-            if old_path not in active_paths:
+            old_p = Path(old_path)
+            try:
+                is_under_dir = old_p.is_relative_to(dir_path)
+            except (ValueError, AttributeError):
+                is_under_dir = str(old_p).startswith(str(dir_path))
+
+            if is_under_dir and old_path not in active_paths:
                 self.delete_file_points(old_path)
                 del source_cache[old_path]
                 stats["deleted"] += 1

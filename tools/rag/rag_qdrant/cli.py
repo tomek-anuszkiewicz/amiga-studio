@@ -44,6 +44,9 @@ HELP_TEXT = """
 
 [bold yellow]OPTIONS:[/bold yellow]
   [green]-s, --source NAME[/green]      [bold red][REQUIRED][/bold red] Tag for the indexed source (e.g. 'amiga', 'obsidian').
+  [green]-e, --exclude PATTERNS[/green] Directory or file patterns to exclude (e.g. '_Private', 'private').
+  [green]--include-dirs DIRS[/green]    Only include specified subdirectories (e.g. '01*' '02*').
+  [green]--no-root-notes[/green]        Do not index root-level markdown notes.
   [green]-l, --list-sources[/green]     Display a table of all indexed sources with file & vector counts.
   [green]--status[/green]               Check Qdrant database connectivity and total collection size.
   [green]--reindex[/green]              Force re-indexing of all files (ignores SHA256 cache).
@@ -51,7 +54,8 @@ HELP_TEXT = """
 
 [bold yellow]EXAMPLES:[/bold yellow]
   amiga_rag . --source amiga
-  amiga_rag <PATH_TO_VAULT> --source obsidian
+  amiga_rag <PATH_TO_VAULT> --source obsidian --exclude "_Private" "private"
+  amiga_rag <PATH_TO_VAULT> --source obsidian --include-dirs "01*" "02*"
   amiga_rag --list-sources
   amiga_rag --status
 """
@@ -67,6 +71,9 @@ ARGUMENTS:
 
 OPTIONS:
   -s, --source NAME      [REQUIRED] Tag for the indexed source (e.g. 'amiga', 'obsidian').
+  -e, --exclude PATTERNS Directory or file patterns to exclude (e.g. '_Private', 'private').
+  --include-dirs DIRS    Only include specified subdirectories (e.g. '01*' '02*').
+  --no-root-notes        Do not index root-level markdown notes.
   -l, --list-sources     Display a table of all indexed sources with file & vector counts.
   --status               Check Qdrant database connectivity and total collection size.
   --reindex              Force re-indexing of all files (ignores SHA256 cache).
@@ -74,7 +81,8 @@ OPTIONS:
 
 EXAMPLES:
   amiga_rag . --source amiga
-  amiga_rag <PATH_TO_VAULT> --source obsidian
+  amiga_rag <PATH_TO_VAULT> --source obsidian --exclude "_Private" "private"
+  amiga_rag <PATH_TO_VAULT> --source obsidian --include-dirs "01*" "02*"
   amiga_rag --list-sources
   amiga_rag --status
 """
@@ -190,6 +198,9 @@ def main():
     parser.add_argument("-l", "--list-sources", action="store_true", help="List all indexed sources")
     parser.add_argument("--status", action="store_true", help="Show database connection and status")
     parser.add_argument("--reindex", action="store_true", help="Force re-index ignoring hash cache")
+    parser.add_argument("-e", "--exclude", nargs="*", default=[], help="Directory or file patterns to exclude (e.g. '_Private', 'private')")
+    parser.add_argument("--include-dirs", nargs="*", default=None, help="Only include specified subdirectories (e.g. '01*' '02*')")
+    parser.add_argument("--no-root-notes", action="store_true", help="Do not index root-level markdown notes")
     parser.add_argument("-h", "--help", action="store_true", help="Show help")
 
     try:
@@ -259,6 +270,12 @@ def main():
         console.print(f"[bold cyan]─── RAG Indexing Configuration ──────────────────────────[/bold cyan]")
         console.print(f"  • Target Directory:       [bold]{target_dir}[/bold]")
         console.print(f"  • Source Tag:             [bold green]{source_name}[/bold green]")
+        if args.include_dirs:
+            console.print(f"  • Included Subdirs:       [bold green]{', '.join(args.include_dirs)}[/bold green]")
+        if args.exclude:
+            console.print(f"  • Excluded Patterns:      [bold red]{', '.join(args.exclude)}[/bold red]")
+        if args.no_root_notes:
+            console.print(f"  • Root Notes:             [yellow]Skipped (--no-root-notes)[/yellow]")
         console.print(f"  • Qdrant URL:             {QDRANT_URL}")
         console.print(f"  • Qdrant Collection:      [bold]{COLLECTION_NAME}[/bold]")
         console.print(f"  • Hash Cache File:        [bold magenta]{CACHE_FILE}[/bold magenta]")
@@ -325,6 +342,9 @@ def main():
                 directory=target_dir,
                 source_name=source_name,
                 force=args.reindex,
+                exclude=args.exclude,
+                include_dirs=args.include_dirs,
+                include_root_notes=not args.no_root_notes,
                 progress_cb=progress_callback,
                 plan_cb=plan_callback
             )

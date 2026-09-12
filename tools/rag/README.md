@@ -62,6 +62,16 @@ You can invoke the indexer using the helper PowerShell script:
 .\tools\rag\bin\amiga_rag.ps1 . --source amiga --reindex
 ```
 
+### Privacy & Ignored Files (`.ragignore`)
+
+The indexer automatically respects `.ragignore` files placed in the target directory (e.g. `<PATH_TO_VAULT>/.ragignore`), excluding private directories (`_Private/`, `*private*`) and system folders (`.obsidian`, `.smart-env`, `.agents`, `.antigravity`, `.git`).
+
+Options for fine-grained ingestion control:
+- `-e, --exclude PATTERNS`: Substring or glob patterns to exclude from scanning.
+- `--include-dirs DIRS`: Whitelist specific top-level subdirectories (e.g. `01* 02*`).
+- `--no-root-notes`: Skip standalone markdown files at the root of the indexed folder.
+```
+
 ---
 
 ## 4. Antigravity FastMCP Server Integration
