@@ -2205,3 +2205,20 @@ Every future modification or implementation task must append an entry following 
   - 354 bytes <= 14
   - 000 limit)
   - and all 15 architecture tests in 1.75s
+---
+
+### [2026-09-12 23:41 CEST] — Relocation of Git Worktree Workflow to docs/worktrees.md
+- **Affected Subsystems**:
+  - `documentation`
+  - `workflow`
+  - `tooling`
+- **What Was Changed (The Concrete Reality)**:
+  - Moved Obsidian/Amiga/Design/Git Worktree Workflow.md to docs/worktrees.md
+  - updated relative links to rules and architecture
+  - indexed docs/worktrees.md in README.md under Repository Architecture & Verification Guides
+- **Architectural Rationale & Trade-Offs**:
+  - Preserves Obsidian/Amiga/Design/ as an exclusive repository for emulator hardware and software architecture specifications
+  - moving developer workflow and DevOps guides to top-level docs/ alongside testing and AI agent guides.
+- **Verification & Test Results**:
+  - cargo test -p test_runner --test test_architecture_rules passed (all 15 tests, including vault link integrity with 28 design docs)
+  - python tools/pre_flight.py passed with 100% compliance across formatting, attractor discipline, and size limits.
