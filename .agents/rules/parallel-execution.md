@@ -75,3 +75,17 @@ To eliminate main conversation token exhaustion while guaranteeing zero context 
    - Every subagent must conclude its task by returning a strictly structured Return Contract (tables of symbol relocations, failing cycle coordinates, decision logs, or final image paths).
 4. **The Multimodal Handshake**:
    - Subagents performing visual tasks must return the file path of the final verified image. The parent Main Agent immediately calls `view_file` on that path and embeds it in chat artifacts, ensuring both user and agent retain visual ground truth.
+
+---
+
+## 5. Output Compression & Log Vomit Suppression Standard
+
+Terminal outputs from commands (`run_command`) are permanently stored in conversation history and re-transmitted on every subsequent turn. To prevent context saturation:
+1. **Silent on Success, Loud on Failure**:
+   - Commands should suppress passing lines and status noise when exit code is 0.
+   - Diagnostic outputs (stack traces, failure lines, diffs) must be surfaced strictly when an error occurs.
+2. **Cargo Quiet Flags**:
+   - Always run compiler checks with `--quiet`: `cargo check --quiet`.
+   - In test suites, pass `--quiet` to the test harness: `cargo test -p <crate> -- --quiet`. This suppresses hundreds of passing `test ... ok` lines and prints strictly the concise summary line.
+3. **Unified Pre-Flight Quality Gate**:
+   - Use `python tools/pre_flight.py` (or `--quick`) to run `cargo fmt`, attractor linting, `AGENTS.md` byte ceiling checks, and architecture rules in a single 1.8s pass. On success, it outputs a clean 4-line summary (~50 tokens), saving thousands of tokens per turn.
