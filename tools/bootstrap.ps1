@@ -129,10 +129,74 @@ if ($Test -or $All) {
     Write-Host "[2/2] Bootstrapping Verification & Hardware Test Suites..." -ForegroundColor Green
     Write-Host "---------------------------------------------------------" -ForegroundColor DarkGray
 
-    $SingleStepDir = Join-Path $RepoRoot "ref_src\SingleStepTests-680x0\68000\v1"
+    $SingleStepBaseDir = Join-Path $RepoRoot "ref_src\SingleStepTests-680x0"
+    $SingleStepDir = Join-Path $SingleStepBaseDir "68000\v1"
+
+    # 1. Expand any SingleStep .zip archives if present
+    if (Test-Path $SingleStepBaseDir) {
+        $ZipFiles = Get-ChildItem -Path $SingleStepBaseDir -Filter "*.zip" -Recurse -ErrorAction SilentlyContinue
+        foreach ($Zip in $ZipFiles) {
+            Write-Host "Expanding SingleStep archive: $($Zip.Name)..." -ForegroundColor Cyan
+            Expand-Archive -Path $Zip.FullName -DestinationPath $Zip.DirectoryName -Force
+        }
+
+        # 2. Decompress any .json.gz / .gz files into .json test suites
+        $GzFiles = Get-ChildItem -Path $SingleStepBaseDir -Filter "*.gz" -Recurse -ErrorAction SilentlyContinue
+        if ($GzFiles.Count -gt 0) {
+            $DecompressedCount = 0
+            foreach ($Gz in $GzFiles) {
+                $TargetJsonName = if ($Gz.Name -like "*.json.gz") {
+                    $Gz.Name.Substring(0, $Gz.Name.Length - 3)
+                } elseif ($Gz.Name -like "*.gz") {
+                    [System.IO.Path]::GetFileNameWithoutExtension($Gz.Name) + ".json"
+                } else {
+                    $Gz.Name + ".json"
+                }
+
+                $TargetJsonPath = Join-Path $Gz.DirectoryName $TargetJsonName
+                if (-not (Test-Path $TargetJsonPath) -or (Get-Item $TargetJsonPath).Length -eq 0) {
+                    $inStream = [System.IO.File]::OpenRead($Gz.FullName)
+                    $outStream = [System.IO.File]::Create($TargetJsonPath)
+                    $gzStream = [System.IO.Compression.GZipStream]::new($inStream, [System.IO.Compression.CompressionMode]::Decompress)
+                    try {
+                        $gzStream.CopyTo($outStream)
+                        $DecompressedCount++
+                    } finally {
+                        $gzStream.Dispose()
+                        $outStream.Dispose()
+                        $inStream.Dispose()
+                    }
+                }
+            }
+            if ($DecompressedCount -gt 0) {
+                Write-Host "Decompressed $DecompressedCount SingleStep test suite(s) from .gz archives." -ForegroundColor Green
+            }
+        }
+
+        # 3. If files exist in 68000/ but not 68000/v1/, migrate them to canonical v1/ directory
+        $Parent68kDir = Join-Path $SingleStepBaseDir "68000"
+        if (Test-Path $Parent68kDir) {
+            if (-not (Test-Path $SingleStepDir)) {
+                New-Item -ItemType Directory -Path $SingleStepDir -Force | Out-Null
+            }
+            $Root68kJsons = Get-ChildItem -Path $Parent68kDir -Filter "*.json" -File -ErrorAction SilentlyContinue
+            if ($Root68kJsons.Count -gt 0 -and (Get-ChildItem -Path $SingleStepDir -Filter "*.json" -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0) {
+                Write-Host "Relocating $($Root68kJsons.Count) test suites into canonical v1 directory ($SingleStepDir)..." -ForegroundColor Cyan
+                foreach ($F in $Root68kJsons) {
+                    Move-Item -Path $F.FullName -Destination $SingleStepDir -Force
+                }
+            }
+        }
+    }
+
     if (Test-Path $SingleStepDir) {
         $JsonCount = (Get-ChildItem -Path $SingleStepDir -Filter "*.json" -ErrorAction SilentlyContinue | Measure-Object).Count
-        Write-Host "[OK] SingleStepTests-680x0 found: $JsonCount test suites in $SingleStepDir." -ForegroundColor Green
+        if ($JsonCount -gt 0) {
+            Write-Host "[OK] SingleStepTests-680x0 found: $JsonCount test suites in $SingleStepDir." -ForegroundColor Green
+        } else {
+            Write-Warning "SingleStepTests directory exists ($SingleStepDir) but contains zero .json test suites."
+            Write-Host "Check if test archives (.gz / .zip) were properly unpacked." -ForegroundColor Yellow
+        }
     } else {
         Write-Warning "SingleStepTests directory not found: $SingleStepDir"
         Write-Host "To populate SingleStep hardware vectors, clone or download https://github.com/SingleStepTests/680x0 into ref_src/SingleStepTests-680x0." -ForegroundColor Yellow

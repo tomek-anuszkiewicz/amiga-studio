@@ -40,6 +40,9 @@ To evaluate an arbitrary sample size (e.g. 200 or 500 test cases per opcode):
 $env:SINGLESTEP_LIMIT = "500"; cargo test -p test_runner --test test_singlestep
 ```
 
+#### D. Automated Archive Decompression (`tools/bootstrap.ps1 -Test`)
+Running `.\tools\bootstrap.ps1 -Test` automatically scans for compressed archives (`*.json.gz`, `*.gz`, or `.zip`) under `ref_src/SingleStepTests-680x0/` and decompresses them into native `.json` files in `68000/v1/` using native .NET decompression (idempotent, zero external dependencies).
+
 ---
 
 ## 2. Cartesian DMA Contention Verification

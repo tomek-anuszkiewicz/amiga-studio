@@ -1170,5 +1170,26 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
 
-
+### [2026-09-12 16:08 CEST] — Native .NET Decompression of SingleStepTests Archives (.gz / .zip) in Bootstrapper
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1`: Added recursive archive extraction (`.zip`) and streaming decompression (`*.json.gz`, `*.gz`) for `SingleStepTests-680x0` in Tier 2 (`-Test` / `-All`).
+  - `README.md`: Updated Tier 2 provisioning summary in the bootstrapping table.
+  - `docs/testing.md`: Documented the automated archive decompression workflow under SingleStepTests verification options.
+- **What Was Changed (The Concrete Reality)**:
+  - Implemented automatic archive discovery and native decompression in `tools/bootstrap.ps1`:
+    1. *ZIP Extraction:* Recursively identifies any `.zip` archives within `ref_src\SingleStepTests-680x0` and extracts them in-place via `Expand-Archive -Force`.
+    2. *Streaming GZip Decompression:* Recursively identifies all `*.json.gz` or `*.gz` files under `ref_src\SingleStepTests-680x0`. Decompresses each file to its corresponding `.json` file using native .NET `System.IO.Compression.GZipStream` without requiring external binaries (`gzip`, `7z`, or Python packages).
+    3. *Idempotency:* Checks whether the target `.json` file already exists with non-zero length; if present, skips decompression instantly (0 ms overhead on warm runs).
+    4. *Directory Normalization:* Automatically checks if `.json` files are situated in `68000/` rather than the canonical `68000/v1/` subfolder expected by `test_singlestep.rs`, creating `v1/` and migrating the suites if needed.
+    5. *Status Reporting:* Emits clear console progress displaying the number of decompressed suites and active test suite count.
+- **Architectural Rationale & Trade-Offs**:
+  - *Developer Onboarding & Storage Footprint:* Upstream SingleStepTests contain ~124 per-instruction files expanding to ~1.1 GB of uncompressed JSON. Clones or release downloads often bundle them in compressed format (`.gz` / `.zip`, ~50–80 MB). Requiring developers to manually decompress 124 separate GZ files creates unnecessary friction.
+  - *Zero External Dependencies:* Implementing the decompression stream with .NET's built-in `GZipStream` ensures 100% platform portability across Windows PowerShell 5.1 and PowerShell 7+ on any developer machine without requiring third-party tools.
+- **Verification & Test Results**:
+  - Verified full round-trip decompression by injecting a compressed `.json.gz` payload into `ref_src\SingleStepTests-680x0\68000\v1\`, executing `.\tools\bootstrap.ps1 -Test`, verifying extraction into valid `.json`, and safely cleaning up.
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1 -Test`: Passed smoke check `test_nop` and verified 124 suites.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
