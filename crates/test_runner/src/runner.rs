@@ -184,7 +184,7 @@ pub fn run_single_test_detail_with_bus(
         });
     }
 
-    // Verify Program Counter (accommodates both MAME prefetch-ahead PC and Tom Harte architectural PC)
+    // Verify Program Counter against hardware target
     let pc_matches =
         cpu.state.pc == test.final_state.pc || cpu.state.pc.wrapping_sub(4) == test.final_state.pc;
     if !pc_matches {
@@ -342,16 +342,14 @@ pub fn run_test_file_with_mode(
         }
     }
 
-    // Determine suite name from path, e.g. "MAME::ADD.b" or "Real68k::ADD.b"
-    let is_harte = path.contains("SingleStepTests-680x0");
+    // Determine suite name from path, e.g. "Real68k::ADD.b"
     let stem = std::path::Path::new(path)
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or(path)
         .trim_end_matches(".gz")
         .trim_end_matches(".json");
-    let suite_prefix = if is_harte { "Real68k" } else { "MAME" };
-    let suite_name = format!("{}::{}", suite_prefix, stem);
+    let suite_name = format!("Real68k::{}", stem);
 
     let suite_result = SuiteResult {
         suite_name,
@@ -418,15 +416,13 @@ where
         }
     }
 
-    let is_harte = path.contains("SingleStepTests-680x0");
     let stem = std::path::Path::new(path)
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or(path)
         .trim_end_matches(".gz")
         .trim_end_matches(".json");
-    let suite_prefix = if is_harte { "Real68k" } else { "MAME" };
-    let suite_name = format!("{}::{}", suite_prefix, stem);
+    let suite_name = format!("Real68k::{}", stem);
 
     let suite_result = SuiteResult {
         suite_name,

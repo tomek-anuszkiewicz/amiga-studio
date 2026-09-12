@@ -169,14 +169,7 @@ fn print_diff(results_dir: &Path) {
 }
 
 fn run_specific_suite(opcode: &str) {
-    let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", opcode);
     let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", opcode);
-
-    println!("Running MAME suite for '{}'...", opcode);
-    match test_runner::runner::run_test_file(&mame_path, Some(50)) {
-        Ok((p, f)) => println!("MAME {}: {} passed, {} failed", opcode, p, f),
-        Err(e) => eprintln!("Failed MAME test: {}", e),
-    }
 
     println!("Running Real 68k (Tom Harte) suite for '{}'...", opcode);
     match test_runner::runner::run_test_file(&harte_path, Some(50)) {

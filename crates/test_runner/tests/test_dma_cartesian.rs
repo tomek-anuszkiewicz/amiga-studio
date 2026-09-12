@@ -77,7 +77,7 @@ fn sample_tests_percentage(
 
 fn load_hardware_tests(opcode_name: &str, percentage: f64) -> Vec<SingleStepTest> {
     let repo_root = find_repo_root();
-    // NOTE (ROADMAP Batch 1.3): MAME & Tom Harte do not have dedicated `CMPM.<size>.json` files;
+    // NOTE (ROADMAP Batch 1.3): Tom Harte single-step tests do not have dedicated `CMPM.<size>.json` files;
     // `CMPM` vectors are bundled inside `CMP.<size>.json` alongside standard `CMP <ea>, Dn`.
     // Currently, only CMPM is implemented, so we filter by `is_cmpm_postinc_opcode`.
     // When Batch 1.3 (`CMP`, `CMPA`, `CMPI`) is implemented, alter or remove this guard so the full `CMP` family is tested.

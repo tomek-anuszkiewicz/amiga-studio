@@ -111,8 +111,8 @@ The test harness automatically tracks test outcomes, diffs, and regressions acro
 When running tests via `cargo test -p test_runner`, the test runner automatically compares the current run against the previous run:
 - 🔴 **Regressions**: Tests that previously passed but failed after your changes:
   ```text
-  ⚠️  [REGRESSION DETECTED] Suite 'MAME::ADD.b': 1 test(s) that previously PASSED now FAILED!
-     🔴 Broken: "001 ADD.b D1, (d8, A4, Xn) d334"
+  ⚠️  [REGRESSION DETECTED] Suite 'Real68k::ADD.b': 1 test(s) that previously PASSED now FAILED!
+     🔴 Broken: "001 [ADD.b D1, (d8, A4, Xn)] d334"
   ```
 - 🟢 **Improvements**: Tests that were broken and are now passing:
   ```text

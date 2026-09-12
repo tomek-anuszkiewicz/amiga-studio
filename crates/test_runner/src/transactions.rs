@@ -1,7 +1,7 @@
 //! SingleStepTests bus transaction deserialization and cycle-exact validation
 //!
 //! Compares recorded M68000 CPU bus transactions against silicon reference logs
-//! from Tom Harte SingleStepTests-680x0 and MAME SingleStepTests.
+//! from Tom Harte SingleStepTests-680x0 physical hardware captures.
 
 use memory_bus::{BusAccessSize, RecordedTransaction};
 
@@ -185,7 +185,7 @@ pub fn match_transactions(
                     }
                 }
             }
-            // Strobe comparison for MAME (if strobes provided)
+            // Strobe comparison (if strobes provided)
             if let (Some(exp_u), Some(exp_l)) = (exp_uds, exp_lds) {
                 let (rec_uds, rec_lds) = match rec.size {
                     BusAccessSize::Word => (true, true),

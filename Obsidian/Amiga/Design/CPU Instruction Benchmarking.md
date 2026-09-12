@@ -601,7 +601,7 @@ cargo run -p test_runner [FLAGS] -- [COMMAND] [OPTIONS]
 | :--- | :---: | :--- |
 | **`--summary`** | None | Reads `target/debug/results/summary.json` and prints the global pass/fail coverage matrix across all tested M68000 opcodes. |
 | **`--diff`** | None | Compares current test execution results against previous runs to detect regressions (tests that previously passed but now fail) and fixes. |
-| **`--suite`** | `<OP>` | Directly runs MAME and Tom Harte hardware test vectors for a single opcode (e.g. `--suite ADD.b`, `--suite MOVE.w`), outputting full cycle-by-cycle diagnostics on failure. |
+| **`--suite`** | `<OP>` | Directly runs Tom Harte physical silicon test vectors for a single opcode (e.g. `--suite ADD.b`, `--suite MOVE.w`), outputting full cycle-by-cycle diagnostics on failure. |
 | **`--help`** | None | Prints command-line usage instructions. |
 
 #### 8.4.4 Practical CLI Execution Examples

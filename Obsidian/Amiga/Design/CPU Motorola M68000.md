@@ -506,16 +506,15 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
 - **Function Code Selection on Address Error:**
   - If the unaligned word/long access was triggered by a **PC-relative addressing mode** (`(d16, PC)` or `(d8, PC, Xn)`), the CPU asserts **Program Space** ($FC = 2$ in User mode, $FC = 6$ in Supervisor mode).
   - For standard data memory operands, the CPU asserts **Data Space** ($FC = 1$ in User mode, $FC = 5$ in Supervisor mode).
-- **Postincrement `(An)+` AGU Read vs. Write Silicon Nuance:**
-  - **READ from `(An)+`:** The Address Generation Unit (AGU) increments $A_n$ as the read bus cycle begins; if the read address is unaligned, $A_n$ has already been incremented on real silicon (Tom Harte test vectors), whereas MAME's microcode interpreter aborts without updating $A_n$.
-  - **WRITE to `(An)+`:** The processor checks alignment before postincrementing; if unaligned, $A_n$ is **never** incremented (both MAME and Tom Harte expect $A_n$ unincremented).
+- **Postincrement `(An)+` AGU Read vs. Write Silicon Behavior:**
+  - **READ from `(An)+`:** The Address Generation Unit (AGU) increments $A_n$ as the read bus cycle begins. On real 68000 silicon (Tom Harte test vectors), if the read address is unaligned, $A_n$ has already been committed and incremented prior to triggering the Address Error trap.
+  - **WRITE to `(An)+`:** The processor checks alignment before postincrementing; if unaligned, $A_n$ is **never** incremented.
 
 ### 7.7 ASR (Arithmetic Shift Right) Count > Width Silicon Exhaustion
 
 - When the shift count exceeds the operand width ($count \ge 8$ for Byte, $\ge 16$ for Word, $\ge 32$ for Long):
   - **Real MC68000 Silicon (verified by Tom Harte test suite):** The shift register exhausts its internal latch pipeline, forcing both **$C = 0$** and **$X = 0$**, even when shifting negative numbers filled with replicated sign bits (`1`).
-  - **MAME Simulator Divergence:** MAME's C++ microcode simulator continues to shift replicated sign bits into $X$ and $C$, incorrectly setting $X = 1$ and $C = 1$ on negative operands when $count > width$.
-  - *Emulator Resolution:* The core implements real silicon behavior ($C=0, X=0$), and the test harness accommodates MAME's divergence.
+  - *Emulator Resolution:* The core strictly implements real silicon behavior ($C=0, X=0$).
 
 ### 7.8 MOVE to Predecrement `-(An)` Prefetch Inversion & Bus Ordering
 
@@ -529,13 +528,12 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
     - The write bus cycles occur before instruction prefetch completion; the opcode itself is pushed as the faulting $IR$.
     - **Bus Write Ordering:** The 32-bit transfer is executed decrementing low word first to $A_n - 2$, then high word to $A_n - 4$.
     - If $A_n$ is odd, the initial write cycle faults immediately at $A_n - 2$.
-    - On real silicon (Tom Harte), $A_n$ remains decremented by 2 ($A_n - 2$). MAME aborts without committing the internal AGU bus latch to $A_n$.
+    - On real silicon (Tom Harte), $A_n$ remains decremented by 2 ($A_n - 2$).
 
-### 7.9 MOVE.l 32-Bit Memory-to-Memory CCR Evaluation vs MAME Simulator
+### 7.9 MOVE.l 32-Bit Memory-to-Memory CCR Evaluation
 
 - In 32-bit `MOVE.l <ea>, (An)` transfers:
   - **Real MC68000 Silicon:** Condition codes reflect the full 32-bit transfer ($N = \text{bit } 31$, $Z = \text{value } == 0$).
-  - **MAME Microcode Interpreter Quirk:** MAME's microcode simulator (`mmrl1`) evaluates the lower 16-bit word (`m_dbin`) and calls `sr_nzvc()` during the *first* write bus cycle, and only updates $N$ and $Z$ with the upper 16-bit word during the *second* write bus cycle. If the first write bus cycle faults with an Address Error, MAME leaves CCR reflecting the lower 16-bit word rather than the full 32-bit value.
   - *Emulator Resolution:* The core strictly implements the full 32-bit condition code evaluation matching real silicon.
 
 ### 7.10 Branch & Control Flow Odd Target Address Error (FC 2 / 6)

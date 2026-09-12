@@ -1,6 +1,6 @@
 ---
 title: "M68000 SingleStepTests Suite Specification"
-aliases: ["SingleStepTests", "Tom Harte Tests", "MAME Tests"]
+aliases: ["SingleStepTests", "Tom Harte Tests"]
 tags: ["amiga", "design", "m68000", "singlestep", "verification"]
 category: "Design"
 subsystem: "m68000"
@@ -21,34 +21,28 @@ related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-St
 > Step-by-step instruction implementation is guided by [add-m68k-instruction](../../../.agents/skills/add-m68k-instruction/SKILL.md).
 
 This document defines the complete specification and Rust data structures for running the **SingleStepTests** test suites against the M68000 CPU emulator. It specifies validation against:
-1. The **Tom Harte SingleStepTests-680x0 suite** in [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) (124 `.json` files, ~1,000,000 tests captured directly from physical 68000 silicon pins).
+- The **Tom Harte SingleStepTests-680x0 suite** in [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) (124 `.json` files, ~1,000,000 tests captured directly from physical 68000 silicon pins).
 
 ---
 
-## 1. Dual Test Suite Overview
+## 1. Physical Hardware Silicon Test Suite Overview
 
-To ensure robust, ground-truth verification and eliminate single-source simulation artifacts, the M68000 CPU emulator was developed and validated against single-step test suites:
+To ensure robust, ground-truth verification, the M68000 CPU emulator is validated directly against physical hardware captures:
 
-| Feature | Suite 1: MAME SingleStepTests (Historical) | Suite 2: Tom Harte SingleStepTests (Hardware) |
-| :--- | :--- | :--- |
-| **Path** | Upstream MAME JSON Suite (historical) | [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) |
-| **File Format** | Plain `.json` (and `.json.bin`) | Plain `.json` |
-| **Suite Count** | **127 test files** | **124 test files** |
-| **Test Scale** | ~1,000–5,000 tests per file | ~8,000+ tests per file (~1,000,000 total) |
-| **Origin** | MAME cycle-exact microcoded core | Tom Harte's CLK processor test generator |
-| **Unique Strengths** | Fast uncompressed loading; includes `ILLEGAL_LINEA`, `ILLEGAL_LINEF`, `STOP` | Massive randomized test coverage; independently verified |
-| **`TAS` Indivisible RMW** | ⚠️ Caveat: does not model 5-cycle RMW timing | ✅ Fully modeled via explicit `"t"` bus transactions |
-| **`TRAPV` $S$-bit** | ⚠️ Caveat: Known quirk with S-bit handling | ✅ Standard behavior |
-| **Mode Coverage** | Supervisor & User mode | 99% Supervisor mode, 1% User mode |
+| Feature | Tom Harte SingleStepTests (Hardware) |
+| :--- | :--- |
+| **Path** | [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) |
+| **File Format** | Plain `.json` |
+| **Suite Count** | **124 test files** |
+| **Test Scale** | ~8,000+ tests per file (~1,000,000 total) |
+| **Origin** | Tom Harte's CLK processor test generator captured on physical 68000 silicon pins |
+| **Unique Strengths** | Massive randomized test coverage; independently verified against real hardware |
+| **`TAS` Indivisible RMW** | ✅ Fully modeled via explicit `"t"` bus transactions |
+| **`TRAPV` $S$-bit** | ✅ Standard 68000 behavior |
+| **Mode Coverage** | 99% Supervisor mode, 1% User mode |
 
-### 1.1 Why Dual-Suite Testing?
-1. **Triangulation of Simulator Quirks:** When an instruction test fails, comparing against both MAME and Tom Harte tests immediately clarifies whether the issue is a genuine core bug or a quirk of MAME's microcode generator (such as `TAS` and `TRAPV`).
-2. **Exhaustive Address & Mode Variation:** Tom Harte's suite generates over 1 million test vectors, checking edge cases in word-aligned vs unaligned memory pointers and register boundary combinations.
-3. **Comprehensive Coverage:** MAME provides specialized exception vector suites (`ILLEGAL_LINEA`, `ILLEGAL_LINEF`, `STOP`) that are not present in Tom Harte's 125-opcode collection.
-
-
-### 1.2 Opcode Packaging Quirk: CMP and CMPM
-In both the MAME and Tom Harte suites, there are **no separate `CMPM.b.json`, `CMPM.w.json`, or `CMPM.l.json` files**. Instead, all `CMPM (Ay)+, (Ax)+` test cases are bundled together inside `CMP.b.json`, `CMP.w.json`, and `CMP.l.json` alongside standard `CMP <ea>, Dn`.
+### 1.1 Opcode Packaging Quirk: CMP and CMPM
+In the test suite, there are **no separate `CMPM.b.json`, `CMPM.w.json`, or `CMPM.l.json` files**. Instead, all `CMPM (Ay)+, (Ax)+` test cases are bundled together inside `CMP.b.json`, `CMP.w.json`, and `CMP.l.json` alongside standard `CMP <ea>, Dn`.
 
 - The test runner provides [`is_cmpm_postinc_opcode`](../../../crates/test_runner/src/runner.rs) (`(op & 0xF138) == 0xB108`) to isolate `CMPM` cases when specific post-increment testing is required.
 - **Batch 1.3 Complete:** Standard `CMP`, `CMPA`, and `CMPI` are fully implemented and verified. Both isolated `CMPM` tests and exhaustive full-suite `CMP.<size>.json` integration tests run in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs) and [`crates/test_runner/tests/test_dma_cartesian.rs`](../../../crates/test_runner/tests/test_dma_cartesian.rs).
@@ -145,11 +139,10 @@ Each `.json` file contains a JSON array of individual test cases: `[ { ... }, { 
 - `prefetch`: Two 16-bit words (`[u32; 2]`) in the CPU prefetch queue (`pf0`, `pf1`)
 - `ram`: Array of `[address, byte_value]` pairs (`Vec<[u32; 2]>`)
 
-### 2.3 Transaction Formats (MAME vs Tom Harte)
+### 2.3 Bus Transaction Format (`ref_src/SingleStepTests-680x0/`)
 
-While CPU state schemas are identical, the two suites format their bus transactions array slightly differently:
+The physical hardware test suite logs bus activity as a structured transaction array:
 
-#### Tom Harte Transaction Format (`ref_src/SingleStepTests-680x0/`):
 - **Bus Cycle:** `[type, duration, fc, addr, size, data]`
   - `type`: `"r"` (read), `"w"` (write), or `"t"` (**TAS indivisible read-modify-write cycle**).
   - `duration`: Transaction length in clock cycles (typically 4 cycles).
@@ -158,13 +151,7 @@ While CPU state schemas are identical, the two suites format their bus transacti
   - `size`: `".b"` (byte) or `".w"` (word).
   - `data`: Value on the data bus (0–255 for byte, 0–65535 for word). For `"t"`, records final byte written.
 - **Internal / Idle Cycle:** `["n", duration]`
-  - CPU internal operations without external bus activity.
-
-#### MAME Transaction Format (`ref_src/SingleStepTests-m68000/`):
-- **Bus Cycle:** `[type, start_cycle, fc, addr, size, data, uds, lds]`
-  - `type`: `"r"`, `"w"`, `"re"` (read address error), `"we"` (write address error).
-  - `uds`, `lds`: Upper and lower data strobe line states (`1` or `0`).
-- **Internal / Idle Cycle:** `["n", duration]`
+  - CPU internal execution phases without external bus activity.
 
 ### 2.4 Strict Schema Validation Rules
 - **Optional Fields:** **None**. Every single field in the test schema is **mandatory**. If any expected field is missing from a test object or state object, deserialization must immediately fail with a descriptive error.
@@ -242,9 +229,9 @@ The test harness is implemented in the dedicated workspace crate [`crates/test_r
 - **[`schema.rs`](../../../crates/test_runner/src/schema.rs):** Strict deserialization of `SingleStepTest` and `CpuTestState` using `#[serde(deny_unknown_fields)]`.
 - **[`runner.rs`](../../../crates/test_runner/src/runner.rs):** Test execution loop, CPU prefetch priming, state comparison, cycle count validation, and RAM byte validation:
   - `run_single_test_detail(test, file_path, index, mode) -> Result<(), TestFailure>`: Executes a single test case with configurable `VerifyMode` (`StateOnly`, `StateAndCycles`, `Full`).
-  - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Reads plain `.json` test suites (MAME or Tom Harte), running up to `limit` test cases in `StateOnly` mode.
+  - `run_test_file(path, limit) -> Result<(usize, usize), Box<dyn Error>>`: Reads plain `.json` test suites, running up to `limit` test cases in `StateOnly` mode.
   - `run_test_file_with_mode(path, limit, mode)`: Configurable execution mode enabling cycle-exact and bus transaction verification.
-- **[`transactions.rs`](../../../crates/test_runner/src/transactions.rs):** Deserializes and parses transaction logs across Tom Harte and MAME formats, matching recorded bus transactions (read/write/TAS direction, 24-bit address, size, bus value, FC lines, strobe signals) against silicon logs.
+- **[`transactions.rs`](../../../crates/test_runner/src/transactions.rs):** Deserializes and parses Tom Harte transaction logs, matching recorded bus transactions (read/write/TAS direction, 24-bit address, size, bus value, FC lines) against physical silicon logs.
 - **[`dma_harness.rs`](../../../crates/test_runner/src/dma_harness.rs):** Synthetic Agnus DMA bus contention runner sweeping single-cycle (`run_dma_contention_sweep`) and multi-cycle burst (`run_dma_burst_contention`) stalls across instruction execution phases, validating State Invariance and Cycle Invariance ($C = C_0 + 2 \times \text{wait\_cycles}$).
 - **[`diagnostic.rs`](../../../crates/test_runner/src/diagnostic.rs):** Human-readable failure reporting, full CCR flag decomposition ($T, S, I, X, N, Z, V, C$), clock/CCK cycle metrics, and transaction diff formatting.
 - **[`reporter.rs`](../../../crates/test_runner/src/reporter.rs):** Persistent results recording in `tests/singlestep/`, differential regression detection, and global summary generation.
@@ -261,9 +248,8 @@ Implemented directly in [`crates/test_runner/src/runner.rs`](../../../crates/tes
 
 ## 6. Integration Test Suite Structure (`tests/test_singlestep.rs`)
 
-Integration tests reside in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs). Rather than scattering tests across dozens of individual files, tests use the unified dual-suite helper `run_dual_test("<OPCODE>", limit)`, simultaneously running and asserting zero failures across:
-1. MAME test suite (`ref_src/SingleStepTests-m68000/v1/<OPCODE>.json`).
-2. Tom Harte real silicon test suite (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json`).
+Integration tests reside in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs). Rather than scattering tests across dozens of individual files, tests use the hardware test helper `run_test("<OPCODE>", limit)`, running and asserting zero failures against:
+- **Tom Harte real silicon test suite** (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json`).
 
 Tests are grouped into cohesive categories within `test_singlestep.rs`:
 - **System & Control Flow:** `test_nop`, `test_rts`, `test_trap`, `test_bcc`, `test_jmp`, `test_jsr`
@@ -334,34 +320,26 @@ During stalled CCK cycles, the test bus temporarily inverts contested Chip RAM c
 
 ---
 
-## 9. Dual-Suite Cross-Validation & Discrepancy Resolution
+## 9. Physical Hardware Silicon Verification & Discrepancy Diagnosis
 
-Having access to both the MAME and Tom Harte test suites provides an invaluable verification tool for cycle-exact M68000 emulation:
+Validating against physical 68000 silicon captures guarantees cycle-exact behavior across all edge cases:
 
-### 9.1 Comparative Matrix
-| Operation / Quirk | MAME SingleStepTests (`ref_src/SingleStepTests-m68000/v1/`) | Tom Harte SingleStepTests (`ref_src/SingleStepTests-680x0/68000/v1/`) | Recommended Ground Truth |
-| :--- | :--- | :--- | :--- |
-| **Standard Instructions** (ADD, MOVE, etc.) | Cycle-exact; verified across 125 operations | Cycle-exact; verified across 125 operations (~8,000 cases each) | **Both must pass** |
-| **`TAS` Instruction** | ⚠️ Flawed: Does not simulate 5-cycle indivisible read-modify-write timing | ✅ Accurate: Models indivisible RMW via `"t"` transaction | **Tom Harte Suite** |
-| **`TRAPV` Exception** | ⚠️ Flawed: S-bit state quirk in MAME test generator | ✅ Standard 68000 behavior | **Tom Harte Suite** |
-| **`ILLEGAL_LINEA` / `LINEF`** | ✅ Included (Vector 10 & Vector 11 tests) | Not included in basic opcode list | **MAME Suite** |
-| **`STOP` Instruction** | ✅ Included (Supervisor privileged stop) | Not included in basic opcode list | **MAME Suite** |
-| **User vs Supervisor Stack** | Both modes tested | 99% Supervisor mode, 1% User mode | **Both** |
-| **`(An)+` Address Error AGU** | ⚠️ Aborts without advancing $A_n$ on address error | ✅ Real Silicon: $A_n$ advances in AGU prior to bus error trap | **Tom Harte Suite** |
-| **Address Error Stack Frame PC** | Pushes $PC$ based on internal simulator microcode stage | Pushes target - 4 on jumps / hardware prefetch PC on faults | **Both (accommodated in runner)** |
-| **PC-Relative Function Codes** | Uses Program Space (FC 2 / 6) on PC-relative operand faults | Uses Data Space (FC 1 / 5) on certain operand evaluations | **Handled in runner status word check** |
-| **`LINK A7` Pushed SP** | ⚠️ Simulator artifact: pushes un-decremented $SP$ | ✅ Real Silicon: $SP$ decrements before write latch, pushing $SP-4$ | **Tom Harte Suite** |
-| **`CHK` No-Trap $N$ Flag** | ⚠️ Simulator artifact: forces $N=0$ | ✅ Real Silicon: preserves prior $N$ flag ($N$ is officially undefined in PRM) | **Tom Harte Suite** |
+### 9.1 Key Hardware Invariants Verified by Tom Harte Vectors
+| Subsystem / Operation | Physical Silicon Hardware Behavior |
+| :--- | :--- |
+| **Standard ALU Operations** | Cycle-exact execution across 124 opcodes (~8,000 cases each). |
+| **`TAS` Indivisible RMW** | Verified via explicit `"t"` bus transactions with uninterrupted bus ownership. |
+| **`ASR` Shift Count > Width** | Shift register exhaustion forces both $C = 0$ and $X = 0$ when $count \ge width$. |
+| **`(An)+` Address Error AGU** | $A_n$ increments in AGU as read begins; unaligned read commits incremented $A_n$ before exception trap. |
+| **`-(An)` MOVE.l Write Ordering** | Low word decrements to $A_n - 2$ then high word to $A_n - 4$; unaligned write leaves $A_n - 2$. |
+| **`LINK A7` Pushed SP** | $SP$ decrements before write latch, correctly pushing $SP - 4$. |
+| **`CHK` Flag Preservation** | Prior $N$ flag is preserved when no exception occurs ($N$ undefined in PRM). |
 
-
-### 9.2 Triangulation Protocol
-When diagnosing a test mismatch:
-1. **Fails in MAME, Passes in Tom Harte:**
-   - Check if the instruction is `TAS`, `TRAPV`, or touches a known MAME microcode generator quirk. If Tom Harte passes and verified against Moira 3.0 or vAmiga 4.5, the core is behaving accurately.
-2. **Fails in Tom Harte, Passes in MAME:**
-   - Tom Harte generates vastly more random address combinations (~8,000 per opcode). A failure here typically reveals an unaligned address boundary edge case or unhandled condition code combination that MAME's smaller sample missed.
-3. **Fails in Both:**
-   - Definite implementation bug in decoding, effective address calculation, CCK phase alignment, or CCR flag updates.
+### 9.2 Failure Diagnosis Protocol
+When diagnosing a single-step test failure:
+1. **Register State Mismatch:** Inspect the reported diff (e.g. `diff == 1` or sign-extension). Verify whether ALU calculation, prefetch queue, or pre/post-increment commitment order is at fault.
+2. **Condition Code Register (CCR):** Use the detailed CCR flags decomposition ($X, N, Z, V, C$) to pinpoint exact flag logic.
+3. **Cycle Timing Mismatch:** Cross-reference micro-step durations against [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md).
 
 ### 9.3 Automated Single-Step Integration Test Matrix
 The integration test suite in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs) executes hardware cross-validation on every `cargo test` run. Each opcode test invokes `run_test("<OPCODE>", limit)`, validating vectors against:

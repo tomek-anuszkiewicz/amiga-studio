@@ -1107,3 +1107,31 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.54s (verifying zero broken markdown links in `README.md` and `docs/`).
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 268 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 15:52 CEST] — Complete Purge of MAME Simulator Quirks & Dual-Suite References from Documentation, Runner & Skills
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/CPU SingleStepTests.md`: Streamlined the entire specification to focus 100% on Tom Harte physical silicon vectors (`SingleStepTests-680x0`). Removed the obsolete "Dual Test Suite Overview" and MAME transaction format sections; updated Section 9 to detail physical hardware invariants (`TAS` indivisible RMW, `ASR` sign exhaustion, Address Error AGU commit) and failure diagnosis protocols.
+  - `Obsidian/Amiga/Design/CPU Motorola M68000.md`: Removed all historical MAME simulator divergence notes from sections 7.6 through 7.9. Documented pure physical silicon MC68000 behavior for postincrement AGU commitment on unaligned access, shift count > width pipeline exhaustion ($C=0, X=0$), and 32-bit `MOVE.l` condition code evaluation.
+  - `Obsidian/Amiga/Design/General Architecture.md`: Updated table entries and links to reference Tom Harte physical silicon vectors exclusively.
+  - `Obsidian/Amiga/Design/CPU Instruction Benchmarking.md`: Updated `--suite` CLI documentation to target Tom Harte vectors.
+  - `Obsidian/Amiga/Design/CPU Micro-Step State Machine.md`: Replaced MAME reference in Address Error stacking order with Motorola PRM Figure B-9 and physical captures.
+  - `crates/test_runner/src/main.rs`: Removed dead `mame_path` execution branch in `run_specific_suite`, executing purely against Tom Harte hardware captures without file-not-found errors.
+  - `crates/test_runner/src/runner.rs`: Cleaned up program counter verification comments and standardized suite names directly to `Real68k::<stem>`.
+  - `crates/test_runner/src/schema.rs`, `crates/test_runner/src/transactions.rs`, `crates/test_runner/tests/test_dma_cartesian.rs`: Cleaned up header doc comments and inline notes.
+  - `.agents/skills/add-m68k-instruction/SKILL.md`: Updated Tier 1 verification gate example from `run_dual_test` to `run_test`.
+  - `.agents/skills/m68k-singlestep-test/SKILL.md`: Updated regression detection sample alert to `Real68k::ADD.b`.
+- **What Was Changed (The Concrete Reality)**:
+  - Following the earlier deletion of the MAME test suite from `ref_src/` and removal of `!is_harte` tolerance branches in `runner.rs`, conducted a full repository-wide audit for all lingering references to MAME and simulator divergences.
+  - Every active design document, skill, test script, and runner file was brought into 100% alignment with our hardware ground-truth policy.
+- **Architectural Rationale & Trade-Offs**:
+  - *Unified Single-Source Ground Truth:* Retaining simulator divergence documentation and dual-suite tooling after decommissioning the flawed simulator core created cognitive friction and confusion. Emulation behavior is now anchored entirely in physical Motorola 68000 silicon pin captures.
+- **Verification & Test Results**:
+  - `cargo run -p test_runner -- --suite ADD.b`: Executed cleanly against Tom Harte vectors with 50/50 tests passed in 0.12s.
+  - `cargo test -p test_runner --test test_singlestep test_nop`: Passed in 1.28s.
+  - `cargo test -p test_runner --test test_singlestep test_add_b`: Passed in 0.40s.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s (0 broken links across all 28 Obsidian documents).
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+

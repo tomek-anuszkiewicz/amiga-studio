@@ -439,11 +439,11 @@ Per `AGENTS.md` Rule 7, no Rust source file under `crates/*/src/` may exceed 800
 Every implemented or reintroduced instruction must pass the mandatory dual-tier gate:
 
 ### Tier 1 — SingleStepTest Vector Verification
-Add dual-suite tests (MAME + Tom Harte) in `crates/test_runner/tests/test_singlestep.rs`:
+Add hardware test case in `crates/test_runner/tests/test_singlestep.rs`:
 ```rust
 #[test]
 fn test_sub_w() {
-    run_dual_test("SUB.w", DEFAULT_SAMPLE_LIMIT);
+    run_test("SUB.w", DEFAULT_SAMPLE_LIMIT);
 }
 ```
 Run targeted tests:

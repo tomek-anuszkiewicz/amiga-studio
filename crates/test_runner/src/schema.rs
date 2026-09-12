@@ -1,4 +1,4 @@
-//! Serde schema definitions for SingleStepTests (MAME and Tom Harte)
+//! Serde schema definitions for SingleStepTests (Tom Harte physical silicon vectors)
 
 use serde::Deserialize;
 

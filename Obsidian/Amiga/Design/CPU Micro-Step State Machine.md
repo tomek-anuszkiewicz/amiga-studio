@@ -851,7 +851,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 
 #### Archetype: Misaligned Word Access (Total Duration: Exactly 50 CPU clocks / 25 CCKs)
 - **Total Duration**: Exactly 50 CPU clocks (25 CCKs).
-- **Physical Silicon Stacking Order**: Interleaved hardware write sequence matching Motorola M68000 PRM Figure B-9 and MAME `state_address_error_df`.
+- **Physical Silicon Stacking Order**: Interleaved hardware write sequence matching Motorola M68000 PRM Figure B-9 and physical silicon captures.
 - **Double Bus Fault**: If $SSP$ is odd during exception setup or stack writes, or if the low vector address is odd, the processor halts immediately (`self.state.halted = true`).
 - **Prefetch**: Vector fetch + two-word pipeline refill from exception handler.
 
