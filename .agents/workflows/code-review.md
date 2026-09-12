@@ -66,13 +66,14 @@ Audit the diff against the guidelines in `AGENTS.md`:
 ### F. Language Policy & English Purity
 - [ ] **Strict English Purity in Diff**: Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, and inline comments (per `language-policy.md`). All terms from Polish user prompts must be fully translated into idiomatic English before coding. Quoting Polish prompt phrases in code comments (even in quotation marks) is strictly prohibited.
 
-### G. Documentation & Roadmap
+### G. Documentation, Diary & Roadmap
 - [ ] Corresponding design doc under `Obsidian/Amiga/Design/` updated.
 - [ ] Design document pruned of pre-implementation speculative code, draft sketches, and duplicate code snippets of already-written code (the codebase is the single source of truth; design docs must not duplicate implemented code).
 - [ ] Completed roadmap steps pruned from `ROADMAP.md` and summarized in the baseline section.
+- [ ] **Engineering Diary Updated (`DIARY.md`)**: Detailed entry added to `DIARY.md` (Section 10) recording what was actually changed, why, and architectural decisions (preserving granular history beyond squashed/merged git commits).
 - [ ] Crate dependency Mermaid graph updated in `General Architecture.md` if `Cargo.toml` dependencies changed.
 
-### G. Defect Retrospection & Institutional Prevention (If Bug Fix / Refactor)
+### H. Defect Retrospection & Institutional Prevention (If Bug Fix / Refactor)
 - [ ] Root cause identified and documented ("Why did this happen?").
 - [ ] Dedicated regression test(s) added covering the exact failure mode and adjacent edge cases.
 - [ ] Institutional prevention evaluated: architectural rule, lint, design doc, or DoD checklist updated to ensure this class of defect never recurs.
@@ -109,6 +110,6 @@ Deliver a structured audit report:
   - [ ] **Host CPU Mechanical Sympathy:** Flattened dispatch, zero allocations in hot paths, inlining compliance.
   - [ ] **Readability, No Macros & No Const Generics:** Explicit code, zero `macro_rules!`, zero const-generic handlers.
   - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
-  - [ ] **Living Docs & Roadmap:** Pruned obsolete code, removed implemented code snippets, updated roadmap.
+  - [ ] **Living Docs, Diary & Roadmap:** Pruned obsolete code, removed implemented code snippets, updated `DIARY.md` changelog, updated roadmap.
 - **Action Items**: Concrete file and line references if any rule is violated.
 
