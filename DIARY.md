@@ -1528,3 +1528,22 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
+
+### [2026-09-12 17:12 CEST] — Restored amigaguide-to-markdown Skill & Documented 11 Skills in docs/ai_agents.md
+- **Affected Subsystems**:
+  - `.agents/skills/amigaguide-to-markdown/`: Restored full skill directory from Git history.
+  - `docs/ai_agents.md`: Added `amigaguide-to-markdown` to Section 3.C (Architecture, Knowledge & Documentation).
+  - `ROADMAP.md`: Updated Section 3.5 to reflect all 11 skills retained and documented.
+- **What Was Changed (The Concrete Reality)**:
+  - Restored `.agents/skills/amigaguide-to-markdown/` (workflow recipe `SKILL.md`, reference specs, and Python conversion scripts `convert_guide.py`, `iff_to_png.py`, `validate_links.py`) from Git history (`HEAD~1`).
+  - Added `amigaguide-to-markdown` to [Section 3.C of `docs/ai_agents.md`](docs/ai_agents.md), bringing the documented inventory of specialized agent skills to 11 across all 3 domains.
+  - Updated `ROADMAP.md` Section 3.5 to record that all 11 skills are retained and active.
+- **Architectural Rationale & Trade-Offs**:
+  - *Retaining Conversion Capabilities for Amiga Hypertexts:* While primary reference manuals are in PDF format, retaining the specialized AmigaGuide parser and scripts preserves native support for historical `.guide` document sets and IFF image conversion if community hypertexts are imported in the future.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.53s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+

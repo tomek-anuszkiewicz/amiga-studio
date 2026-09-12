@@ -159,9 +159,8 @@ To guarantee that autonomous AI agents can reconstruct and verify emulator subsy
   - Ensure zero regressions or stalls during fresh database initialization and incremental reindexing.
 
 - **Documentation Conversion Skills Audit & AmigaGuide Evaluation (Completed):**
-  - Audited skill inventory in `.agents/skills/`: retained and documented 10 active core skills across 3 functional domains in `docs/ai_agents.md`.
-  - Confirmed `pdf-to-markdown` as the authoritative primary manual extraction pipeline for Commodore/Motorola hardware documentation.
-  - Safely pruned obsolete `amigaguide-to-markdown` skill (zero `.guide` files in repository; standard conversion and LLM comprehension suffice).
+  - Audited skill inventory in `.agents/skills/`: retained and documented all 11 active core skills across 3 functional domains in `docs/ai_agents.md`.
+  - Confirmed `pdf-to-markdown` as the primary manual extraction pipeline and retained `amigaguide-to-markdown` for Commodore hypertext documentation.
 
 - **Iterative Design Documentation Calibration Loop (`Obsidian/Amiga/Design/`):**
   - Establish a closed-loop calibration process for design specifications:
