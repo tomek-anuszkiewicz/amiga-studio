@@ -2102,4 +2102,16 @@ Every future modification or implementation task must append an entry following 
   - `(Get-Item AGENTS.md).Length`: 13,679 bytes (strictly under the 14,000 bytes ceiling).
   - Headless GUI capture live smoke test: `cargo run -p gui --bin gui-inspector -- --scenario baseline --output target/gui_captures/baseline.png` rendered cleanly in 0.31s and inspected via `view_file`.
 
+---
 
+### [2026-09-12 22:53 CEST] — Output Compression & Pre-Flight Gate Checker Implementation
+- **Affected Subsystems**:
+  - `tools/pre_flight.py`: Implemented consolidated pre-flight quality gate script executing formatting, attractor linting, `AGENTS.md` byte ceiling checks, and architecture rules in 1.78 seconds with a zero-noise 4-line summary on success.
+  - `.agents/rules/parallel-execution.md`: Added Section 5 ("Output Compression & Log Vomit Suppression Standard"), establishing "Silent on Success, Loud on Failure", mandatory `--quiet` compiler and test flags, and unified pre-flight runner usage.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed terminal output context bloat ("log vomit") where verbose cargo test outputs dumped hundreds of passing test lines into the persistent transcript.
+  - Combined 4 sequential gate checks into a single script that consumes ~50 tokens instead of 1,500+ tokens on every verification cycle.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates repetitive stdout re-transmission on subsequent prompt turns while preserving full diagnostic traces on failure.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: All 4 gates passed in 1.78s with 0 errors.
