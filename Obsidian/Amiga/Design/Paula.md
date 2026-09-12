@@ -1,3 +1,15 @@
+---
+title: "Paula (MOS 8364) Architecture & Hardware Specification"
+aliases: ["Paula", "MOS 8364", "Audio", "UART", "Floppy Controller"]
+tags: ["amiga", "design", "paula", "audio", "uart", "floppy"]
+category: "Design"
+subsystem: "paula"
+status: "active"
+created: 2026-09-06
+updated: 2026-09-12
+related: ["[Floppy.md](Floppy.md)", "[MemoryBus.md](MemoryBus.md)", "[CycleCounter.md](CycleCounter.md)", "[CIA.md](CIA.md)", "[SaveState.md](SaveState.md)"]
+---
+
 # Paula (MOS 8364) Architecture & Hardware Specification
 
 > [!NOTE]

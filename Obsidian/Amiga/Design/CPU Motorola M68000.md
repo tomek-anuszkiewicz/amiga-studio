@@ -1,3 +1,15 @@
+---
+title: "Motorola 68000 CPU Design Specification"
+aliases: ["M68000", "68000 CPU", "MC68000", "CPU Specification"]
+tags: ["amiga", "design", "m68000", "cpu", "registers"]
+category: "Design"
+subsystem: "m68000"
+status: "active"
+created: 2026-08-31
+updated: 2026-09-12
+related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[CycleCounter.md](CycleCounter.md)"]
+---
+
 # Motorola 68000 CPU Design Specification
 
 - **Module Location:** `m68000/`
@@ -632,4 +644,4 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
 - [Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis](../Reference/Motorola%2068000%20DIVU%20%26%20DIVS%20Cycle-Accurate%20Timing%20Analysis.md): Microcode division loop mechanics, quotient bit evaluations, and hardware execution cycle formulas.
 - [Musashi M68000 Reference Implementation](../../../ref_src/Musashi/m68kcpu.c): Reference C emulation of opcode execution, CCR condition code flag evaluation, and exception trapping.
 - [M68000 Crate Source Implementation](../../../crates/m68000/src/lib.rs): Living Rust implementation of the cycle-exact CPU core, micro-step dispatch, and instruction handlers.
-
+

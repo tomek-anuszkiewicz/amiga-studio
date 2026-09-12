@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 Master CycleCounter & Hardware Clock Hierarchy"
+aliases: ["CycleCounter", "Clock Hierarchy", "Color Clock", "CCK"]
+tags: ["amiga", "design", "timing", "clock", "cck"]
+category: "Design"
+subsystem: "cycle_counter"
+status: "active"
+created: 2026-08-31
+updated: 2026-09-12
+related: ["[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[CIA.md](CIA.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+---
+
 # Amiga 500 Master CycleCounter & Hardware Clock Hierarchy
 
 > [!NOTE]

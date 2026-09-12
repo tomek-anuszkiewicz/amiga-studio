@@ -1,3 +1,15 @@
+---
+title: "Agnus (MOS 8370 / 8371 / 8372A) Architecture & Hardware Specification"
+aliases: ["Agnus", "MOS 8370", "MOS 8371", "MOS 8372A", "Copper", "Blitter"]
+tags: ["amiga", "design", "agnus", "copper", "blitter", "dma"]
+category: "Design"
+subsystem: "agnus"
+status: "active"
+created: 2026-09-06
+updated: 2026-09-12
+related: ["[MemoryBus.md](MemoryBus.md)", "[CycleCounter.md](CycleCounter.md)", "[SaveState.md](SaveState.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Denise.md](Denise.md)"]
+---
+
 # Agnus (MOS 8370 / 8371 / 8372A) Architecture & Hardware Specification
 
 > [!NOTE]

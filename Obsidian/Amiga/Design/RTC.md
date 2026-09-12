@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 Real-Time Clock (RTC) Specification"
+aliases: ["RTC", "MSM6242B", "Ricoh RP5C01A", "Real-Time Clock"]
+tags: ["amiga", "design", "rtc", "msm6242b", "clock"]
+category: "Design"
+subsystem: "rtc"
+status: "active"
+created: 2026-09-06
+updated: 2026-09-12
+related: ["[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[CycleCounter.md](CycleCounter.md)", "[SaveState.md](SaveState.md)"]
+---
+
 # Amiga 500 Real-Time Clock (RTC) Specification
 
 > [!NOTE]

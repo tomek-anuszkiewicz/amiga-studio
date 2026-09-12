@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 Floppy Disk Subsystem Architecture"
+aliases: ["Floppy", "Disk Controller", "Paula Floppy", "ADF"]
+tags: ["amiga", "design", "floppy", "paula", "cia", "disk"]
+category: "Design"
+subsystem: "paula"
+status: "active"
+created: 2026-09-06
+updated: 2026-09-12
+related: ["[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[MemoryBus.md](MemoryBus.md)", "[CycleCounter.md](CycleCounter.md)", "[Agnus.md](Agnus.md)"]
+---
+
 # Amiga 500 Floppy Disk Subsystem Architecture
 
 > [!NOTE]

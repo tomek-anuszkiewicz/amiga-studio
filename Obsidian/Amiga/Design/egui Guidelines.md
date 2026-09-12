@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 egui & Frontend Best Practices"
+aliases: ["egui Guidelines", "Frontend Guidelines", "egui Best Practices"]
+tags: ["amiga", "design", "gui", "egui", "frontend"]
+category: "Design"
+subsystem: "gui"
+status: "active"
+created: 2026-09-10
+updated: 2026-09-12
+related: ["[GUI Specification.md](GUI%20Specification.md)", "[GUI.md](GUI.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
+---
+
 # Amiga 500 egui & Frontend Best Practices
 
 - **Parent Specification:** [GUI.md](GUI.md)

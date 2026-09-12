@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 Developer GUI & Debugger Layout Specification"
+aliases: ["Developer GUI Layout", "Debugger Layout", "GUI Docking"]
+tags: ["amiga", "design", "gui", "layout", "egui", "docking"]
+category: "Design"
+subsystem: "gui"
+status: "active"
+created: 2026-09-10
+updated: 2026-09-12
+related: ["[GUI.md](GUI.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](General%20Architecture.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
+---
+
 # Amiga 500 Developer GUI & Debugger Layout Specification
 
 - **Parent Specification:** [GUI.md](GUI.md) | [General Architecture.md](General%20Architecture.md)

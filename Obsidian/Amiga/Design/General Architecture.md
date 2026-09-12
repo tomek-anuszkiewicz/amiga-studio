@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 General System Architecture"
+aliases: ["A500 Architecture", "General Architecture", "System Topology"]
+tags: ["amiga", "design", "architecture", "crates", "topology"]
+category: "Design"
+subsystem: "general"
+status: "active"
+created: 2026-08-31
+updated: 2026-09-12
+related: ["[Main loop A500.md](Main%20loop%20A500.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)"]
+---
+
 # Amiga 500 General System Architecture
 
 > [!NOTE]

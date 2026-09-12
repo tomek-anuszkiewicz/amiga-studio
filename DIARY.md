@@ -727,14 +727,74 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.54s.
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
 
+### [2026-09-12 12:44 CEST] — Obsidian Properties (YAML Frontmatter) Rollout Across All 28 Design Documents
+- **Affected Subsystems**:
+  - All 28 notes in `Obsidian/Amiga/Design/*.md` (`Agnus.md`, `CIA.md`, `CPU Benchmark Analysis Guide.md`, `CPU Instruction Benchmark Catalog.md`, `CPU Instruction Benchmark Strategies.md`, `CPU Instruction Benchmarking.md`, `CPU Micro-Step State Machine.md`, `CPU Motorola M68000.md`, `CPU SingleStepTests.md`, `Configuration.md`, `CycleCounter.md`, `Debugger.md`, `Denise.md`, `Floppy.md`, `GUI Specification.md`, `GUI.md`, `General Architecture.md`, `Git Worktree Workflow.md`, `Joystick.md`, `Keyboard.md`, `Main loop A500.md`, `MemoryBus.md`, `Mouse.md`, `Paula.md`, `RTC.md`, `Rust Guidelines.md`, `SaveState.md`, `egui Guidelines.md`).
+- **What Was Changed (The Concrete Reality)**:
+  - Systematically evaluated and generated active **Obsidian Properties** blocks (YAML frontmatter bounded by `---` lines at Line 1) across all 28 design specifications in `Obsidian/Amiga/Design/`.
+  - Implemented the full schema per `.agents/rules/vault-linking-and-graph-integrity.md`:
+    - `title`: Canonical full document or subsystem name.
+    - `aliases`: Recognized chip codes (e.g. `MOS 8370`, `MOS 8520`), abbreviations, and alternate titles.
+    - `tags`: Subsystem classification tags (`["amiga", "design", "<subsystem>"]`).
+    - `category`: Strictly `"Design"`.
+    - `subsystem`: Concrete architectural subsystem mapping (`agnus`, `denise`, `paula`, `m68000`, `memory_bus`, `cia`, `gui`, `debugger`, `config`, `cycle_counter`, `rtc`, `general`).
+    - `status`: Set to `"active"`.
+    - `created`: Accurate historical creation dates derived from Git commit history (August–September 2026).
+    - `updated`: Set to current evaluation date `2026-09-12`.
+    - `related`: High-signal relative markdown links to sibling design specifications.
+- **Architectural Rationale & Trade-Offs**:
+  - *Obsidian Knowledge Graph Integrity:* YAML frontmatter at line 1 allows Obsidian, graph view, search filters, and external indexing tools to index metadata, aliases, and reciprocal relations without polluting prose.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed, including `test_obsidian_design_docs_links_integrity` verifying 0 broken links across all newly linked `related` properties.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
 
+### [2026-09-12 12:47 CEST] — Pre-Task Conceptual Retrieval Rule (`source = "obsidian"`)
+- **Affected Subsystems**:
+  - `.agents/rules/amiga-rag.md` (added dedicated section: `Mandatory Pre-Task Conceptual Retrieval (source = "obsidian")`)
+  - `AGENTS.md` (line 19: updated summary to reflect pre-task conceptual retrieval mandate)
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated and enforced a mandatory operating rule for task inception and planning:
+    - Whenever starting a new feature, refactoring, architectural plan, or non-trivial task (before writing code):
+      - Query the local RAG knowledge base targeting the user's architectural knowledge vault:
+        `rag_search(query="<task-topic-or-architecture-concept>", sources=["obsidian"])` (and `sources=["amiga"]` when hardware specifics are required).
+      - Evaluate retrieved context snippets for relevant architectural principles, operator heuristics, systems design guidance, or ergonomics.
+      - Weave applicable insights directly into the reasoning, implementation plan (`implementation_plan.md`), or design approach.
+- **Architectural Rationale & Trade-Offs**:
+  - *Contextual Alignment & Mental Model Synchronization:* The user's Obsidian knowledge vault contains distilled architectural wisdom, ergonomics preferences, and design principles. By mandating a semantic search against `source = "obsidian"` at the inception of each task, the agent automatically aligns with the user's established engineering philosophy before proposing plans or authoring code.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.55s.
+  - All rule files and `AGENTS.md` (22,921 B) strictly $\le 23,000$ bytes.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
 
-
-
-
-
-
-
+### [2026-09-12 12:52 CEST] — AGENTS.md Deduplication & Constitutional Size Ceiling Guardrail
+- **Affected Subsystems**:
+  - `AGENTS.md`: Pruned redundant sections (Sections 3.5–3.10 and verbose Definition of Done prose) duplicating `.agents/rules/*.md`.
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Added dedicated `MAX_AGENTS_MD_BYTES = 14_000` ceiling to `test_rule_files_size_limit_and_truncation_safety`.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated extensive duplicated code blocks and guidelines in `AGENTS.md` that were already modularized across:
+    - `.agents/rules/performance-and-readability.md` (mechanical sympathy, flat execution, zero macros, zero const generics, dual staging registers).
+    - `.agents/rules/file-size-and-cohesion.md` (file size $\le 800$ lines, 1:1 opcode files).
+    - `.agents/rules/method-inlining.md` (inlining strategy).
+    - `.agents/rules/workspace-structure-and-reexports.md` (flat crates, 3-tier re-exports).
+    - `.agents/rules/opcode-naming.md` (canonical `IDLE` micro-steps).
+    - `.agents/rules/docs-maintenance.md` & `.agents/rules/spec-compliance.md` (Definition of Done verbose prose).
+  - Preserved `AGENTS.md` as the high-level architectural constitution and indexing hub:
+    - Section 1: Complete, 1-line index of all 20 `.agents/rules/*.md` files.
+    - Section 2: Core machine principles (portability, CCK1/CCK2 clock model, decoupled ownership, circuit simulation).
+    - Section 3: Machine-level systems invariants (endianness, zero panics on guest code, wrapping math, zero heap allocation in hot loop).
+    - Section 4: Lean Definition of Done checklist pointing to rules and workflows.
+    - Section 5: Knowledge base and reference navigation.
+  - Dropped `AGENTS.md` file size from 22,921 bytes down to 12,578 bytes (~45% token footprint reduction).
+  - Tightened automated architecture test `test_rule_files_size_limit_and_truncation_safety` with `MAX_AGENTS_MD_BYTES = 14_000`, ensuring any accidental copy-pasting of rule chapters fails CI immediately.
+- **Architectural Rationale & Trade-Offs**:
+  - *Context Budget Optimization & Truncation Safety:* `AGENTS.md` is injected into every agent prompt. Redundant copies of modularized rules waste context window budget and pushed the file dangerously close to the 23,000-byte silent prompt truncation cliff. Constitutional indexing keeps prompts lean, focused, and well within limits.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.60s.
+  - `AGENTS.md` size confirmed on disk: 12,578 bytes (within $\le 14,000$ byte threshold).
+  - `cargo fmt --all -- --check`: 100% compliant.

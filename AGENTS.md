@@ -14,12 +14,17 @@ Operational, communication, and interaction rules are modularized under `.agents
 - **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
 - **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user conflict escalation before code changes.
 - **Mechanical Sympathy & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros, zero const-generics, contiguous execution, and zero runtime heap allocations in hot paths.
+- **Source File Size & Cohesion** ([`file-size-and-cohesion.md`](.agents/rules/file-size-and-cohesion.md)): File size $\le 800$ lines in `crates/*/src/` (with recognized exceptions), single responsibility, and flat instructions hierarchy.
+- **Opcode Naming & Micro-Steps** ([`opcode-naming.md`](.agents/rules/opcode-naming.md)): Canonical `IDLE` micro-steps, 1:1 opcode files, and dual staging registers (`addr1`/`addr2`).
+- **Method Inlining Strategy** ([`method-inlining.md`](.agents/rules/method-inlining.md)): Targeted `#[inline]`, `#[inline(always)]`, and `#[inline(never)]` annotations.
+- **Workspace Architecture & Re-Exports** ([`workspace-structure-and-reexports.md`](.agents/rules/workspace-structure-and-reexports.md)): Strictly flat crate layout and 3-tier re-export hierarchy.
 - **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing, and multi-agent workflows.
 - **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Architecture queries and AST relationships; scoped incremental updates for `crates/` and `ref_src/`.
-- **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Qdrant vector retrieval; automated reindexing on `Obsidian/Amiga/Reference/` modifications.
-- **Rust Best Practices** ([`rust-best-practices.md`](.agents/rules/rust-best-practices.md)): Safe borrowing, zero unwraps in runtime, wrapping math, no macros/const generics, and mandatory unit tests for all testable logic.
+- **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Pre-task conceptual retrieval (`source = "obsidian"`), vector search, and reference reindexing.
+- **Asset Descriptions & Sidecars** ([`asset-descriptions.md`](.agents/rules/asset-descriptions.md)): Git-tracked `<image_path>.txt` technical sidecars for circuit and timing schematics.
+- **Rust Best Practices** ([`rust-best-practices.md`](.agents/rules/rust-best-practices.md)): Safe borrowing, zero unwraps in runtime, wrapping math, and mandatory unit tests.
 - **egui & Frontend Best Practices** ([`egui-best-practices.md`](.agents/rules/egui-best-practices.md)): Synchronous state pull, 1:1 layout mapping, bounded time-slicing, and WASM/DPI adaptation.
-- **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for all functional/utility classes; headless integration tests for GUI.
+- **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for functional/utility logic; headless integration tests for GUI.
 - **Git Merge Commits & Worktrees** ([`git-merge-commits.md`](.agents/rules/git-merge-commits.md)): Mandatory merge commits on conflict resolution; worktree lifecycle and cleanup.
 - **Documentation & Diary Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Living design docs, roadmap pruning, chronological log in `DIARY.md`, milestone diary compaction and dead code pruning.
 - **Vault Linking & Graph Integrity** ([`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md)): Line 1 YAML properties evaluation, dual-layer linking, and zero broken links across `Obsidian/Amiga/Design/`.
@@ -49,7 +54,7 @@ Operational, communication, and interaction rules are modularized under `.agents
 
 ---
 
-## 3. Rust Systems & Emulator Coding Guidelines
+## 3. Rust Systems & Machine Invariants
 
 1. **Guest vs Host Endianness**:
    - Motorola 68000 is **strictly Big-Endian**; modern host machines are Little-Endian.
@@ -69,95 +74,37 @@ Operational, communication, and interaction rules are modularized under `.agents
    - Hot execution paths (`step()`, `step_cck()`, memory accesses, interrupt polling) must perform **zero dynamic heap allocations** (`Vec::new`, `Box::new`, `format!`, `String`). Use fixed arrays, bitflags, or in-place state.
    - Core crate constraints: No `std::time::Instant::now()` (panics in WASM without shims), no `std::thread`, no `std::fs` (load ROMs/disks as `&[u8]` byte slices).
 
-5. **Host CPU Mechanical Sympathy: Branch Prediction, Contiguous Execution & Zero Readability Compromise**:
-   - **Deep Pipelines & Flat Execution**: Eliminate cascaded runtime branches (`match opcode`, `match ea_mode`, `if size == Size::Byte`) in the hot loop. The core favors **direct, flattened code flows** (e.g. 65,536-entry static dispatch table `[fn; 65536]`, specialized opcode handlers) where size, addressing mode, and registers are statically baked in. Code may be expansive and unrolled if it eliminates dynamic branching in the hot path.
-   - **Lean Hot Path & Out-of-Line Exceptions**: Keep hot instruction dispatch compact and linear. Mark heavy, rarely taken exception handling (Address Error 7-word frame synthesis, illegal instruction traps, bus fault diagnostics) with `#[inline(never)]` so cold error recovery stays out of the primary execution path.
-   - **Readability Without Compromise**: High performance must never be an excuse for unreadable code or cryptic tricks. Code must remain clean, modular, self-documenting, and idiomatic Rust.
-   - **Strict Prohibition of User-Defined Macros (`macro_rules!` is Forbidden)**: Custom macros (`macro_rules!`) are strictly forbidden across the codebase. Macros break IDE code navigation, obscure call sites, produce opaque compiler errors, and add cognitive complexity. Repetitive code, static dispatch tables, and handlers must be written as explicit, self-documenting Rust functions, direct calls, or compile-time `const fn` arrays.
-   - **Prohibition of Const-Generic Functions with Constant Parameters**: Using generic functions where generic parameters are constants (`fn op_foo<const S: usize, const M: usize>(...)`) is forbidden for instruction handlers, decoding logic, and core execution paths. Const generics obscure concrete execution paths, fragment IDE navigation, and complicate debugging. Handlers and execution logic must be authored as explicit, concrete, specialized Rust functions or direct flattened control flows.
-
-6. **Module Cohesion & Rust Source File Size Guidelines (`.rs` Files Only)**:
-   - **Strict Scope: Rust Source Code Files Only (`.rs`)**: The 800-line threshold applies strictly to Rust source code files in `crates/*/src/`. Technical documentation and reference manuals under `Obsidian/` and docs directories have **no line count limits**.
-   - **Cohesion over Arbitrary Fragmentation**: Group closely related structs, enums, and handlers in the same file when they cover the same architectural aspect (e.g. `MemoryBank`, `BankHandler`, and bank functions in `map.rs`).
-   - **Rust Source Size Thresholds**:
-     - *< 300 lines*: Healthy baseline for single-aspect modules and state structures.
-     - *300–600 lines*: Ideal sweet spot for cohesive units combining types, enums, and operational logic.
-     - *600–800 lines*: Review trigger. Review for multiple responsibilities (SRP violation) or separable test code.
-     - *> 800 lines*: Split mandate. Rust source files exceeding 800 lines must be split into submodules unless they meet the criteria for a Recognized Exception.
-   - **Strict Flat Instruction Hierarchy & 1:1 Mnemonic Mapping (`crates/m68000/src/instructions/`)**:
-     - **1:1 Mnemonic-to-File Principle**: Every distinct M68000 CPU instruction mnemonic must reside in its own dedicated flat Rust file directly under `crates/m68000/src/instructions/<mnemonic>.rs` (e.g. `mulu.rs`, `muls.rs`, `divu.rs`, `divs.rs`, `link.rs`, `unlk.rs`, `abcd.rs`, `sbcd.rs`, `nbcd.rs`, `trapv.rs`, `rtr.rs`, `rte.rs`, `stop.rs`, `reset.rs`, `move_usp.rs`, `add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`).
-     - **Prohibition of Umbrella Files & Subdirectories**: Grouping disparate instruction mnemonics into umbrella files (e.g. `mul.rs`, `div.rs`, `bcd.rs`) is strictly forbidden. Creating subdirectories under `crates/m68000/src/instructions/` (such as `and/`, `cmpi/`) is **strictly forbidden** (directory must remain strictly flat).
-     - **Recognized Exceptions**:
-       - Coupled SR/CCR operations: `move_sr_ccr.rs` (`MOVE from/to SR/CCR`) and `logic_sr_ccr.rs` (`ANDI/EORI/ORI to CCR/SR`).
-       - Size-based decompositions for high-cardinality operations: `move_b.rs`, `move_w.rs`, `move_l.rs`.
-       - Files registered in `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`: static dispatch tables (`dispatch_table.rs`), and exhaustive linear decoders (`add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`, `move_b.rs`, `move_w.rs`, `move_l.rs`). Never split into subdirectories.
-
-7. **Method Inlining Strategy (`#[inline]`, `#[inline(always)]`, `#[inline(never)]`)**:
-   - `#[inline]` emits intermediate representation into crate metadata, enabling **cross-crate inlining** across workspace crates without requiring whole-program LTO.
-   - **Use `#[inline]` on**: Public getters, setters, single-expression accessors called across crates (`chip_ram()`, `is_chip_ram_locked()`), lightweight forwarding wrappers (`step_cck`), and endian conversion helpers.
-   - **Use `#[inline(always)]` on**: Ultra-hot arithmetic/logic and CCR condition code flag calculations ($X, N, Z, V, C$) executed multiple times per CCK cycle.
-   - **Avoid `#[inline]` on**: Functions with > 15–20 lines of complex control flow and indirect dispatch table targets (e.g. `BankHandler.read_byte` function pointers, 65,536-entry opcode handlers).
-   - **Use `#[inline(never)]` on**: Cold exception paths, address error dumps, illegal instruction traps, and diagnostic panic paths to keep the hot dispatch loop compact and linear.
-
-8. **Workspace Flat Layout & 3-Tier Re-Export (`pub use`) Strategy**:
-   - Keep crate directories in `crates/*` **strictly flat** (no nested crate folders).
-     - **Tier 1 (Foundational Blueprint - `config`)**: Machine-wide presets/timings. Never re-exported by peer subsystems.
-     - **Tier 2 (Peer Subsystems & Development Engines - `memory_bus`, `m68000`, `disassembler`, `debugger`, `agnus`, `denise`, `paula`, `cia`)**: Peers owned by `A500` or Developer Studio. Peers **never re-export other peers** (with the exception of `debugger` re-exporting `disassembler` as a convenience facade).
-     - **Tier 3 (Contained Sub-Components - `rtc`, `copper`, `blitter`)**: Conceptually owned by a specific subsystem. Parent peer **must** re-export them (`pub use rtc; pub use rtc::RtcMsm6242b;`).
-     - **Tier 0 (Top-Level Facade - `a500` machine)**: Owns all peers and acts as the unified gateway for host frontends (`web-wasm`, `desktop-gui`, `cli`).
-
-9. **Mandatory Idle Micro-Step Naming & Prohibition of Anonymous Idle Structs (`crates/m68000/src/instructions/`)**:
-   - **Canonical Idle Constants**: Any M68000 micro-step where the memory bus performs no transfer (or internal ALU idle cycles) **must** explicitly feature `IDLE` in its identifier:
-     - Bus idle phases: `common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE` (or stack/exception variants `PUSH_STACK_HIGH_IDLE`, `EXCEPTION_PUSH_*_IDLE`, `AERR_PUSH_*_IDLE`).
-     - Internal ALU idle cycles: `common::ALU_IDLE` (2-clk), `common::ALU_IDLE_4CLK` (4-clk), `common::ALU_IDLE_8CLK` (8-clk), `common::ALU_IDLE_128CLK` (128-clk).
-   - **Prohibition of Anonymous Idle Structs & Legacy Aliases**: Inlining raw struct literals like `MicroStep { bus_fn: None, alu_fn: None, base_clocks: N }` inside instruction arrays or handlers is **strictly forbidden** (use canonical constants in `common::`). Misleading finish/retire aliases (e.g. `READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`) are strictly prohibited.
-
-10. **Dual Staging Architecture (`addr1`, `addr2`) & Split Address Error Invariance (`crates/m68000/`)**:
-    - **Dual Staging Registers**: For dual-memory instructions (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`), stage effective addresses in `state.micro.addr1` ($X_1$, source) and `state.micro.addr2` ($X_2$, destination).
-    - **Byte Operations Upfront Calculation**: For byte operations (`CMPM.b`, `ABCD`, `SBCD`, `ADDX.b`, `SUBX.b`), precalculate both `addr1` and `addr2` upfront (`ea_calc_dual_pi_b` / `ea_calc_dual_pd_b`). Byte transfers never fault on alignment.
-    - **Word/Long Split Calculation & Address Error Invariance**: For word and long operations (`CMPM.w/l`, `ADDX.w/l`, `SUBX.w/l`), source address calculation must occur in Step 0, while destination address calculation must be deferred and fused into the **CCK2 idle phase of the source read**. If the source address is unaligned (odd), the CPU immediately triggers Vector 3 Address Error with the destination register ($Ax$, USP/SSP) completely untouched.
-    - **Direct Staged Writes**: Memory writes must use dedicated `WRITE_ADDR2_*` blocks (`WRITE_ADDR2_BYTE`, `WRITE_ADDR2_WORD`, `WRITE_ADDR2_PD_LONG_LOW`, `WRITE_ADDR2_PD_LONG_HIGH`). Staging temporary pointers in `scratch[0..2]`, shifting `destination >>= 16`, or using pointer-swapping helpers is strictly forbidden.
-    - **Fused CCK Operations**: Always fuse ALU/EA calculations onto natural 2-clock Color Clock phases (`MicroStep.alu_fn`) rather than introducing separate zero-clock micro-steps.
+5. **Subsystem Architecture & Implementation Guidelines**:
+   Detailed operational and architectural guidelines are modularized under `.agents/rules/` to avoid redundancy:
+   - **Mechanical Sympathy & Prohibited Patterns:** Flat execution, zero `macro_rules!`, zero const-generic instruction handlers, and out-of-line cold exceptions $\rightarrow$ [`performance-and-readability.md`](.agents/rules/performance-and-readability.md).
+   - **File Size & Cohesion:** Strict $\le 800$-line threshold for `.rs` files and 1:1 opcode-to-file mapping under `crates/m68000/src/instructions/` with zero subdirectories $\rightarrow$ [`file-size-and-cohesion.md`](.agents/rules/file-size-and-cohesion.md).
+   - **Method Inlining:** Targeted rules for `#[inline]`, `#[inline(always)]`, and `#[inline(never)]` $\rightarrow$ [`method-inlining.md`](.agents/rules/method-inlining.md).
+   - **Workspace Structure:** Flat crates directory and 3-tier re-export hierarchy $\rightarrow$ [`workspace-structure-and-reexports.md`](.agents/rules/workspace-structure-and-reexports.md).
+   - **Opcode Micro-Steps & Dual Staging:** Mandatory `IDLE` micro-step naming and dual staging registers (`addr1`, `addr2`) with split address error invariance $\rightarrow$ [`opcode-naming.md`](.agents/rules/opcode-naming.md) and [`performance-and-readability.md`](.agents/rules/performance-and-readability.md).
 
 ---
 
-## 4. Documentation Maintenance & Quality Assurance (Definition of Done)
+## 4. Quality Assurance & Definition of Done
 
-- **Mandatory Final Task:** Whenever an agent implements, refactors, or modifies a subsystem, **update the corresponding design document in [Obsidian/Amiga/Design](Obsidian/Amiga/Design)** if any architectural decision, timing model, data structure, or hardware quirk has changed or was clarified.
-- **Obsidian Vault & Design Doc Link Integrity:** Maintain the Dual-Layer Linking Standard (inline contextual links + bottom structural references) and zero broken links in `Obsidian/Amiga/Design/` per `vault-linking-and-graph-integrity.md`.
-- **Mandatory Engineering Diary Maintenance (`DIARY.md`):** Whenever an agent implements, refactors, fixes, or modifies any code or subsystem: record what was actually changed, the technical rationale, and evolutionary context in `DIARY.md` (Section 10). Because git commits are often merged, squashed, or batched, commit messages alone do not capture the granular narrative of changes. `DIARY.md` serves as the living chronological history of all actual modifications and engineering decisions.
-- **Roadmap Step Completion & Pruning:** When a roadmap milestone or step in [ROADMAP.md](ROADMAP.md) is 100% verified (all tests green), **update [ROADMAP.md](ROADMAP.md) as part of that same task/PR**: remove the completed task from the active list, update the completed baseline summary, and renumber/reorder remaining steps.
-- **Design Document Pruning & Code Duplication Removal:** Review and clean up relevant design documents when completing features: remove obsolete speculative code, prune superseded draft proposals, and ensure documents reflect living reality. **Design documents must never duplicate code that has already been written**: replace duplicate Rust code blocks with concise architectural descriptions, tables, and direct markdown links to living Rust source files.
-- **Crate Dependency Graph Maintenance:** When workspace dependencies in `Cargo.toml` change, update the Crate Dependency Mermaid Graph in [Obsidian/Amiga/Design/General Architecture.md](Obsidian/Amiga/Design/General%20Architecture.md#2-workspace-crate-architecture--dependencies).
-- **Mandatory Formatting & Automated Architecture Tests:**
-  - Run `cargo fmt --all` across workspace. All changes must pass `cargo fmt --all -- --check`.
-  - Pass the automated architectural test suite:
-    ```powershell
-    cargo test -p test_runner --test test_architecture_rules
-    ```
-    (enforcing formatting, file size <= 800 lines in `crates/*/src/`, rule file size <= 23 KB in `AGENTS.md` and `.agents/rules/*.md`, flat instruction hierarchy with zero subdirectories, zero runtime panics/unwraps, zero custom macros, zero const-generic handlers, canonical idle micro-steps, path privacy, and inlining rules).
-- **Mandatory Full SingleStepTests on M68000 Changes:**
+- **Mandatory Formatting:** `cargo fmt --all -- --check`.
+- **Automated Architecture Tests:** Pass `cargo test -p test_runner --test test_architecture_rules` (validates file sizes, zero runtime panics, zero custom macros, zero const generics, canonical IDLE steps, path privacy, inlining, and link integrity).
+- **Single-Step CPU Validation:** On any changes to `crates/m68000`:
   ```powershell
   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
   ```
-  Validates all ~300,000 test cases across MAME and Tom Harte hardware vectors in parallel. Tasks touching `crates/m68000` cannot be declared complete without this pass.
-- **Mandatory Cartesian DMA Contention Verification on M68000 Changes:**
+  Validates all ~300,000 test cases across MAME and Tom Harte hardware vectors in parallel.
+- **Cartesian DMA Contention:** On CPU or bus changes:
   ```powershell
   cargo test -p test_runner --test test_dma_cartesian
   ```
   Validates cycle invariance ($C = C_0 + 2 \times \text{wait\_states}$), Fast RAM immunity, and state invariance across $2^k \times 2^M$ permutation space.
-- **Mandatory Defect Retrospection & Institutional Prevention (Blameless Root-Cause Analysis)**:
-  Whenever fixing a bug, regression, or oversight:
-  1. **Root-Cause Retrospection ("Why did this happen?")**: Perform structured self-retrospection on why the bug or oversight occurred.
-  2. **Institutionalization ("How do we ensure this never repeats?")**:
-     - Write dedicated regression, unit, and integration tests.
-     - Evaluate automated enforcement in `test_architecture_rules.rs`.
-     - Update design documents in `Obsidian/Amiga/Design/` or rules in `AGENTS.md`.
-     - Add explicit checkpoints to Definition of Done and `/code-review`.
-- **Mandatory Comprehensive Unit Test Coverage for Testable Logic:** Every new or modified Rust source file containing testable domain logic, hardware models, ALU operations, parsers, or state machines must have unit tests (inline or under `tests/<name>.rs`) covering happy paths, boundary conditions, zero states, and failure modes.
-- **Mandatory Post-Flight Compliance Checklist:** Conclude every task with a Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros/const generics, canonical IDLE steps, file size <= 800 lines, flat instruction hierarchy, strict English, regression tests, unit test coverage, Obsidian properties evaluated on edit, dual-layer linking, scoped graphify/RAG indexing, milestone gates [diary compaction & dead code pruning], design doc & roadmap pruning, `DIARY.md` entry, 100% green tests).
-- **Prohibition of Blind Golden Hash Modifications**: Modifying golden test hashes, cycle totals, or benchmark reference constants (e.g. `GOLDEN_CATALOG_STRUCTURE_HASH`, `GOLDEN_CSV_HASH_*` in `test_benchmark_csv.rs`, or single-step test fixtures) to silence a failing test is strictly forbidden. A hash divergence signifies catalog, instruction encoding, or cycle timing regression. When a test fails, perform root-cause analysis on the implementation. Golden hash modifications require formal hardware justification and explicit user escalation per `spec-compliance.md`.
-- **Sub-Agent Milestone Review Protocol (`/code-review`):** Before declaring a roadmap milestone complete, invoke an independent review subagent or follow the `/code-review` workflow to audit the diff with a clean context before user hand-off.
+- **Unit Testing Policy:** Mandatory unit test coverage for functional/utility logic and headless integration tests for GUI per [`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md).
+- **Obsidian Design Docs:** Update corresponding design documents in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md) and evaluate Line 1 YAML properties per [`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md).
+- **Engineering Diary:** Log actual changes, technical rationale, and test results in [DIARY.md](DIARY.md) (Section 10) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md).
+- **Roadmap Maintenance:** Mark completed tasks and prune active list in [ROADMAP.md](ROADMAP.md) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md).
+- **Milestone Gates:** Run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) and [`prune-dead-code`](.agents/skills/prune-dead-code/SKILL.md) upon major roadmap milestone completion.
+- **Prohibition of Blind Golden Hash Modifications**: Modifying golden test hashes, cycle totals, or benchmark reference constants to silence a failing test is strictly forbidden per [`spec-compliance.md`](.agents/rules/spec-compliance.md). Perform root-cause analysis on regressions.
+- **Milestone Review:** Run [`/code-review`](.agents/workflows/code-review.md) before declaring roadmap milestones complete.
 
 ---
 

@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 Debugger Architecture & Inspection Engine"
+aliases: ["Debugger", "Disassembler", "Inspection Engine"]
+tags: ["amiga", "design", "debugger", "disassembler", "tracing"]
+category: "Design"
+subsystem: "debugger"
+status: "active"
+created: 2026-09-05
+updated: 2026-09-12
+related: ["[General Architecture.md](General%20Architecture.md)", "[GUI.md](GUI.md)", "[GUI Specification.md](GUI%20Specification.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
+---
+
 # Amiga 500 Debugger Architecture & Inspection Engine
 
 - **Parent Specification:** [General Architecture.md](General%20Architecture.md)

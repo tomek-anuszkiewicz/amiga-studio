@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 Main Machine Loop & Subsystem Coordination"
+aliases: ["A500 Machine Loop", "Main Machine Loop", "A500 Step"]
+tags: ["amiga", "design", "machine-loop", "coordination", "step_cck"]
+category: "Design"
+subsystem: "general"
+status: "active"
+created: 2026-08-31
+updated: 2026-09-12
+related: ["[General Architecture.md](General%20Architecture.md)", "[CycleCounter.md](CycleCounter.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Agnus.md](Agnus.md)"]
+---
+
 # Amiga 500 Main Machine Loop & Subsystem Coordination
 
 > [!NOTE]

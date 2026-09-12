@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 GUI & Frontend Architecture"
+aliases: ["Frontend Architecture", "Developer Studio GUI", "Eframe Frontend"]
+tags: ["amiga", "design", "gui", "egui", "eframe"]
+category: "Design"
+subsystem: "gui"
+status: "active"
+created: 2026-09-05
+updated: 2026-09-12
+related: ["[GUI Specification.md](GUI%20Specification.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](General%20Architecture.md)"]
+---
+
 # Amiga 500 GUI & Frontend Architecture
 
 - **Parent Specification:** [General Architecture.md](General%20Architecture.md)

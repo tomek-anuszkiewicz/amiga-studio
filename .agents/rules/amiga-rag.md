@@ -3,15 +3,27 @@
 You have access to a local knowledge base via the tools `rag_search`, `rag_list_sources`, and `rag_status`.
 
 Knowledge Sources Configuration:
-- The Qdrant database hosts the unified `amiga` collection containing two knowledge sources:
-  - `amiga`: Official technical documentation, Commodore hardware reference manuals, and chip specifications.
-  - `obsidian`: General knowledge and personal research notes.
-- For this project, ALWAYS search across both sources: `sources=["amiga", "obsidian"]`.
+- The Qdrant database hosts the unified `amiga` collection containing two distinct knowledge sources:
+  - `amiga`: Official Amiga technical documentation, Commodore hardware reference manuals, and chip specifications.
+  - `obsidian`: General architecture guidelines, systems design philosophy, operator mental models, and personal research notes.
+
+Mandatory Pre-Task Conceptual Retrieval (`source = "obsidian"`):
+- **Task Inception & Planning Rule**: Whenever starting a new feature, refactoring, architectural decision, or non-trivial task (during the research, planning, or design deliberation phase before writing code):
+  1. **Query Obsidian Architecture Knowledge**:
+     - Actively query the local RAG knowledge base targeting the user's architectural knowledge vault:
+       - Via MCP tool: `rag_search(query="<task-topic-or-architecture-concept>", sources=["obsidian"])`
+       - Or via CLI: `python tools/rag/rag_qdrant/cli.py search "<query>" --source obsidian`
+     - For tasks involving hardware chipsets, query both or combine queries (`sources=["amiga", "obsidian"]`).
+  2. **Context Integration**:
+     - Evaluate the retrieved context snippets for relevant architectural principles, operator heuristics, systems design guidance, or ergonomics.
+     - Weave applicable insights directly into the reasoning, implementation plan (`implementation_plan.md`), or design approach.
+  3. **Graceful Fallback**:
+     - If the local RAG service is temporarily offline or yields no matching records for a specific query, proceed cleanly based on repository specifications without inventing citations.
 
 Division of Responsibility between RAG and Graphify:
 - **Use Graphify** (`graphify query`, `graphify path`, `graphify explain`): For questions about code structure, AST, relationships between source files in this repository, call hierarchies, and architecture.
-- **Use RAG** (`rag_search`): For domain knowledge, hardware specifications (OCS/ECS/AGA), register definitions, AmigaOS libraries (Exec, Graphics, Intuition), data formats, and your personal Obsidian research notes.
-- **Use Both**: When implementing or debugging a feature — first consult RAG to understand the hardware/library specs, then consult Graphify to locate and navigate the corresponding code in this repository.
+- **Use RAG** (`rag_search`): For domain knowledge, hardware specifications (OCS/ECS/AGA), register definitions, AmigaOS libraries (Exec, Graphics, Intuition), data formats, and personal Obsidian research notes.
+- **Use Both**: When implementing or debugging a feature — first consult RAG to understand the hardware/library specs and design principles, then consult Graphify to locate and navigate the corresponding code in this repository.
 - If search results include diagram or image file paths, reference them or use `view_file` when helpful.
 - When the user asks about the RAG database state, call `rag_status` or `rag_list_sources`.
 

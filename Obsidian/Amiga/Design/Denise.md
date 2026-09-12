@@ -1,3 +1,15 @@
+---
+title: "Denise (MOS 8362 / 8373) Architecture & Hardware Specification"
+aliases: ["Denise", "MOS 8362", "MOS 8373", "Video", "Bitplanes"]
+tags: ["amiga", "design", "denise", "video", "display"]
+category: "Design"
+subsystem: "denise"
+status: "active"
+created: 2026-09-06
+updated: 2026-09-12
+related: ["[Agnus.md](Agnus.md)", "[MemoryBus.md](MemoryBus.md)", "[CycleCounter.md](CycleCounter.md)", "[Joystick.md](Joystick.md)", "[Mouse.md](Mouse.md)"]
+---
+
 # Denise (MOS 8362 / 8373) Architecture & Hardware Specification
 
 > [!NOTE]

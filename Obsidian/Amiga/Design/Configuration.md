@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 Configuration Specification (A500Config)"
+aliases: ["A500Config", "Configuration", "Machine Configuration"]
+tags: ["amiga", "design", "config", "presets"]
+category: "Design"
+subsystem: "config"
+status: "active"
+created: 2026-09-05
+updated: 2026-09-12
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+---
+
 # Amiga 500 Configuration Specification (`A500Config`)
 
 > [!NOTE]

@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 Save State Architecture & Serialization Specification"
+aliases: ["SaveState", "State Serialization", "Snapshots"]
+tags: ["amiga", "design", "savestate", "serialization", "snapshots"]
+category: "Design"
+subsystem: "general"
+status: "active"
+created: 2026-08-31
+updated: 2026-09-12
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CycleCounter.md](CycleCounter.md)", "[Agnus.md](Agnus.md)"]
+---
+
 # Amiga 500 Save State Architecture & Serialization Specification
 
 > [!NOTE]

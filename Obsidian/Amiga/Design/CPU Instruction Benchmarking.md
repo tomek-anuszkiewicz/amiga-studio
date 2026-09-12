@@ -1,3 +1,15 @@
+---
+title: "M68000 Instruction Benchmarking Architecture & Anomaly Detection"
+aliases: ["CPU Instruction Benchmarking", "Instruction Benchmarking Architecture"]
+tags: ["amiga", "design", "m68000", "benchmark", "telemetry"]
+category: "Design"
+subsystem: "m68000"
+status: "active"
+created: 2026-09-10
+updated: 2026-09-12
+related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
+---
+
 # M68000 Instruction Benchmarking Architecture & Anomaly Detection
 
 - **Parent Specification:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)

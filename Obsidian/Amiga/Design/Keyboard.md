@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 Keyboard Subsystem & Input Architecture"
+aliases: ["Keyboard", "Amiga Keyboard Protocol", "CIA-A SP"]
+tags: ["amiga", "design", "keyboard", "input", "cia"]
+category: "Design"
+subsystem: "cia"
+status: "active"
+created: 2026-09-02
+updated: 2026-09-12
+related: ["[CIA.md](CIA.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[GUI.md](GUI.md)", "[General Architecture.md](General%20Architecture.md)"]
+---
+
 # Amiga 500 Keyboard Subsystem & Input Architecture
 
 This document specifies the keyboard microcontroller hardware, serial transmission protocol, scancode matrix, warm reset mechanics (`Ctrl-Amiga-Amiga`), and cross-platform host keyboard abstraction for the Amiga 500 emulator.

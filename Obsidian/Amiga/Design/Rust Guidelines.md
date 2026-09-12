@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 Rust Engineering Guidelines & Best Practices"
+aliases: ["Rust Guidelines", "Engineering Guidelines", "Rust Best Practices"]
+tags: ["amiga", "design", "rust", "guidelines", "standards"]
+category: "Design"
+subsystem: "general"
+status: "active"
+created: 2026-09-10
+updated: 2026-09-12
+related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)"]
+---
+
 # Amiga 500 Rust Engineering Guidelines & Best Practices
 
 - **Parent Specification:** [General Architecture.md](General%20Architecture.md)

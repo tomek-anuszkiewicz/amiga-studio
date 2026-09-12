@@ -1,3 +1,15 @@
+---
+title: "Git Worktree Workflow & Subsystem Integration"
+aliases: ["Git Worktree Workflow", "Worktree Strategy"]
+tags: ["amiga", "design", "git", "workflow"]
+category: "Design"
+subsystem: "general"
+status: "active"
+created: 2026-09-10
+updated: 2026-09-12
+related: ["[General Architecture.md](General%20Architecture.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
+---
+
 # Git Worktree Workflow & Subsystem Integration
 
 - **Parent Specification:** [General Architecture.md](General%20Architecture.md)

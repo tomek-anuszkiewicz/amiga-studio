@@ -1,3 +1,15 @@
+---
+title: "Amiga 500 MemoryBus Architecture & Hardware Quirks"
+aliases: ["MemoryBus", "Gary", "Address Map", "Bus Arbitration"]
+tags: ["amiga", "design", "memory_bus", "chip_ram", "gary"]
+category: "Design"
+subsystem: "memory_bus"
+status: "active"
+created: 2026-08-31
+updated: 2026-09-12
+related: ["[Agnus.md](Agnus.md)", "[CycleCounter.md](CycleCounter.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[RTC.md](RTC.md)"]
+---
+
 # Amiga 500 MemoryBus Architecture & Hardware Quirks
 
 > [!NOTE]

@@ -1,3 +1,14 @@
+---
+title: "M68000 SingleStepTests Suite Specification"
+aliases: ["SingleStepTests", "Tom Harte Tests", "MAME Tests"]
+tags: ["amiga", "design", "m68000", "singlestep", "verification"]
+category: "Design"
+subsystem: "m68000"
+status: "active"
+created: 2026-08-31
+updated: 2026-09-12
+related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)"]
+---
 
 # M68000 SingleStepTests Suite Specification
 
@@ -414,4 +425,4 @@ cargo run -p test_runner -- --suite ADD.b
 - [SingleStep Test Runner Implementation](../../../crates/test_runner/src/runner.rs): Test loading, memory bus fixture, and assertion logic.
 - [SingleStep Integration Test Suite](../../../crates/test_runner/tests/test_singlestep.rs): Automated dual-suite regression tests.
 - [DMA Cartesian Contention Test Suite](../../../crates/test_runner/tests/test_dma_cartesian.rs): Cycle invariance verification across DMA wait-state permutations.
-
+
