@@ -1214,3 +1214,28 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.61s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:14 CEST] — Added Code Knowledge Graph (Graphify AST) Provisioning Tier to Bootstrapper
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1`: Added `-Graph` switch, Tier 2 Graphify code AST extraction (`graphify update .`), dynamic 3-tier step counter (`$Test`, `$Graph`, `$Doc`), and missing CLI diagnostic guidance.
+  - `README.md`: Documented the Code Knowledge Graph tier in the bootstrapping table and quickstart examples.
+- **What Was Changed (The Concrete Reality)**:
+  - Integrated Graphify code knowledge graph generation into `tools/bootstrap.ps1` as a first-class AI knowledge component alongside Qdrant documentation RAG.
+  - Formulated a clear 3-tier execution sequence when running `-All`:
+    1. *Tier 1: Verification & Hardware Test Suites (`-Test`):* Hardware test vectors, `.gz` stream decompression, reference emulators (`vAmiga-4.5`, `vAmigaTS`), and `test_nop` smoke execution (~1s).
+    2. *Tier 2: Code Knowledge Graph (`-Graph`):* Fast AST-level symbol extraction and call hierarchy analysis into `graphify-out/` without LLM calls (~4s on incremental, ~30s on full re-index).
+    3. *Tier 3: Documentation & AI Knowledge Base (`-Doc`):* Local vector database ingestion of Commodore HRM, M68000 PRMs, and Obsidian design specs into Qdrant (`amiga_rag.ps1`).
+  - Added dynamic multi-switch progress calculation (`$TotalSteps = ($Test ? 1 : 0) + ($Graph ? 1 : 0) + ($Doc ? 1 : 0)`), ensuring arbitrary combinations (`-Test -Graph`, `-Graph -Doc`, `-All`) display exact sequential step counts (`[1/2]`, `[2/2]`, `[1/3]`).
+  - Added helpful diagnostic explanations and installation guidance (`pip install graphify`) if `graphify` is absent from PATH.
+- **Architectural Rationale & Trade-Offs**:
+  - *Dual-Engine AI Knowledge Base:* As codified in `.agents/rules/amiga-rag.md`, AI agent pair-programming relies on two complementary knowledge systems: RAG provides natural language hardware domain specifications, while Graphify provides structural code intelligence (functions, types, call graphs, AST relationships). Incorporating Graphify into the bootstrapper ensures both knowledge engines can be provisioned with a single command.
+  - *Ascending Complexity Pipeline:* Organizing `-All` into Tests (~1s) $\rightarrow$ Graphify AST (~15s) $\rightarrow$ Documentation RAG (heaviest) ensures that fast, deterministic steps execute first and give immediate feedback before entering multi-minute vectorization.
+- **Verification & Test Results**:
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1`: Verified updated 4-switch usage help.
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1 -Graph`: Verified standalone execution and incremental AST extraction in 4s.
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1 -Test -Graph`: Verified dynamic `[1/2]` and `[2/2]` step sequence.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.55s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

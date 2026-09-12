@@ -3,13 +3,15 @@
     Repository bootstrap runner for the Amiga 500 emulator.
 
 .DESCRIPTION
-    Provisions external test assets and knowledge bases:
-    -Test : Verifies and provisions physical silicon SingleStepTests test vectors and regression media.
-    -Doc  : Indexes Commodore reference manuals and Obsidian design notes into local RAG vector database.
-    -All  : Executes both test suite and documentation bootstrapping (tests first, RAG last).
+    Provisions external test assets and AI knowledge bases:
+    -Test  : Verifies and provisions physical silicon SingleStepTests test vectors and regression media.
+    -Graph : Generates and updates AST-level code knowledge graph (graphify-out/) for structural queries.
+    -Doc   : Indexes Commodore reference manuals and Obsidian design notes into local RAG vector database.
+    -All   : Executes test suites, Graphify AST, and RAG documentation bootstrapping (tests -> Graphify -> RAG).
 
 .EXAMPLE
     .\tools\bootstrap.ps1 -Test
+    .\tools\bootstrap.ps1 -Graph
     .\tools\bootstrap.ps1 -Doc
     .\tools\bootstrap.ps1 -All
 #>
@@ -17,6 +19,7 @@
 [CmdletBinding()]
 param(
     [switch]$Test,
+    [switch]$Graph,
     [switch]$Doc,
     [switch]$All
 )
@@ -32,19 +35,23 @@ function Show-Usage {
     Write-Host "      A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'."
     Write-Host ""
     Write-Host "Usage:"
-    Write-Host "  .\tools\bootstrap.ps1 -Test  : Provision hardware test vectors (for running single-step tests)"
-    Write-Host "  .\tools\bootstrap.ps1 -Doc   : Provision AI knowledge & RAG (for asking questions / design work)"
-    Write-Host "  .\tools\bootstrap.ps1 -All   : Provision both test suites and documentation (tests first, RAG last)"
+    Write-Host "  .\tools\bootstrap.ps1 -Test  : Provision hardware test vectors (SingleStepTests, vAmiga, AmigaTestKit)"
+    Write-Host "  .\tools\bootstrap.ps1 -Graph : Provision code knowledge graph (Graphify AST extraction)"
+    Write-Host "  .\tools\bootstrap.ps1 -Doc   : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian notes)"
+    Write-Host "  .\tools\bootstrap.ps1 -All   : Provision all components (tests -> Graphify AST -> RAG docs)"
     Write-Host ""
 }
 
-if (-not $Doc -and -not $Test -and -not $All) {
+if (-not $Doc -and -not $Test -and -not $Graph -and -not $All) {
     Show-Usage
     exit 0
 }
 
+$TotalSteps = 0
+if ($Test -or $All) { $TotalSteps++ }
+if ($Graph -or $All) { $TotalSteps++ }
+if ($Doc -or $All) { $TotalSteps++ }
 $CurrentStep = 1
-$TotalSteps = if ($All) { 2 } else { 1 }
 
 # -----------------------------------------------------------------------------
 # Tier 1: Verification & Test Suite Bootstrap (-Test / -All)
@@ -166,7 +173,41 @@ if ($Test -or $All) {
 }
 
 # -----------------------------------------------------------------------------
-# Tier 2: Knowledge & Documentation Bootstrap (-Doc / -All)
+# Tier 2: Code Knowledge Graph Bootstrap (-Graph / -All)
+# -----------------------------------------------------------------------------
+if ($Graph -or $All) {
+    Write-Host ""
+    Write-Host "[$CurrentStep/$TotalSteps] Bootstrapping Code Knowledge Graph (Graphify AST)..." -ForegroundColor Green
+    Write-Host "-----------------------------------------------------------------" -ForegroundColor DarkGray
+    $CurrentStep++
+
+    $GraphifyCmd = Get-Command graphify -ErrorAction SilentlyContinue
+    if (-not $GraphifyCmd) {
+        Write-Warning "graphify CLI is not found on PATH."
+        Write-Host ""
+        Write-Host "What is Graphify?" -ForegroundColor Cyan
+        Write-Host "  Graphify generates an AST-level code knowledge graph. It maps modules, functions, structs,"
+        Write-Host "  and dependencies across the codebase for semantic code queries and architectural navigation."
+        Write-Host ""
+        Write-Host "How to install Graphify:" -ForegroundColor Cyan
+        Write-Host "  pip install graphify" -ForegroundColor White
+        Write-Host "  or see: https://github.com/graphify/graphify" -ForegroundColor White
+        Write-Host ""
+        Write-Host "NOTE: Graphify is optional and only used for AI code structure navigation." -ForegroundColor DarkGray
+        Write-Host ""
+    } else {
+        Write-Host "Updating code AST knowledge graph in graphify-out/ (graphify update .)..." -ForegroundColor Cyan
+        graphify update .
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Code knowledge graph updated successfully in graphify-out/." -ForegroundColor Green
+        } else {
+            Write-Warning "Graphify update exited with code $LASTEXITCODE."
+        }
+    }
+}
+
+# -----------------------------------------------------------------------------
+# Tier 3: Knowledge & Documentation Bootstrap (-Doc / -All)
 # -----------------------------------------------------------------------------
 if ($Doc -or $All) {
     Write-Host ""
