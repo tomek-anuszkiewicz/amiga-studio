@@ -34,7 +34,7 @@ pub fn alu_swap(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 pub static STEPS_SWAP: [MicroStep; 2] = [
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_swap),
         base_clocks: 2,
     },

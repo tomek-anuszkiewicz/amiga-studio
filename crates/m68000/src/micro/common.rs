@@ -220,7 +220,7 @@ pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
 /// CCK1: Address Error initial ALU step (S=1, T=0, SSP check, vector setup)
 pub static ALU_AERR_INIT: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_aerr_init),
     base_clocks: 2,
 };
@@ -304,21 +304,21 @@ pub static STEPS_ADDRESS_ERROR: [MicroStep; 25] = [
 
 /// 4-clock internal idle sequence (2 CCKs)
 pub const ALU_IDLE_4CLK: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: None,
     base_clocks: 4,
 };
 
 /// 8-clock internal idle sequence (4 CCKs)
 pub const ALU_IDLE_8CLK: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: None,
     base_clocks: 8,
 };
 
 /// 128-clock internal idle sequence for RESET instruction (64 CCKs)
 pub const ALU_IDLE_128CLK: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: None,
     base_clocks: 128,
 };
@@ -366,7 +366,7 @@ pub fn alu_privilege_violation_init(state: &mut CpuState, _reg_src: u8, _reg_dst
 }
 
 pub static ALU_PRIVILEGE_VIOLATION_INIT: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_privilege_violation_init),
     base_clocks: 2,
 };

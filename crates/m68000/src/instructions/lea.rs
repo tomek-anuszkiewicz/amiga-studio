@@ -37,7 +37,7 @@ pub fn alu_lea_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 /// LEA (An): 4 CPU clocks / 2 CCKs
 pub static STEPS_LEA_AI: [MicroStep; 2] = [
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_ai),
         base_clocks: 2,
     },
@@ -47,13 +47,13 @@ pub static STEPS_LEA_AI: [MicroStep; 2] = [
 /// LEA (d16, An): 8 CPU clocks / 4 CCKs
 pub static STEPS_LEA_D16_AN: [MicroStep; 4] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_pea_d16_an),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
         base_clocks: 2,
     },
@@ -63,14 +63,14 @@ pub static STEPS_LEA_D16_AN: [MicroStep; 4] = [
 /// LEA (d8, An, Xn): 12 CPU clocks / 6 CCKs
 pub static STEPS_LEA_IDX_AN: [MicroStep; 5] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_pea_idx_an),
         base_clocks: 4,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
         base_clocks: 2,
     },
@@ -80,13 +80,13 @@ pub static STEPS_LEA_IDX_AN: [MicroStep; 5] = [
 /// LEA (xxx).W: 8 CPU clocks / 4 CCKs
 pub static STEPS_LEA_ABSW: [MicroStep; 4] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_pea_absw),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
         base_clocks: 2,
     },
@@ -96,19 +96,19 @@ pub static STEPS_LEA_ABSW: [MicroStep; 4] = [
 /// LEA (xxx).L: 12 CPU clocks / 6 CCKs
 pub static STEPS_LEA_ABSL: [MicroStep; 6] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_pea_absl_lo),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
         base_clocks: 2,
     },
@@ -118,13 +118,13 @@ pub static STEPS_LEA_ABSL: [MicroStep; 6] = [
 /// LEA (d16, PC): 8 CPU clocks / 4 CCKs
 pub static STEPS_LEA_D16_PC: [MicroStep; 4] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_pea_d16_pc),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
         base_clocks: 2,
     },
@@ -134,14 +134,14 @@ pub static STEPS_LEA_D16_PC: [MicroStep; 4] = [
 /// LEA (d8, PC, Xn): 12 CPU clocks / 6 CCKs
 pub static STEPS_LEA_IDX_PC: [MicroStep; 5] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_pea_idx_pc),
         base_clocks: 4,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
         base_clocks: 2,
     },

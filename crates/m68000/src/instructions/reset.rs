@@ -23,7 +23,7 @@ pub fn alu_reset(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_RESET: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_reset),
     base_clocks: 0,
 };

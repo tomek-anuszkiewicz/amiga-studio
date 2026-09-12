@@ -23,7 +23,7 @@ The M68000 core models execution via the **Cycle-Exact Micro-Step State Machine*
 2. **Stateless `MicroStep` Descriptor**:
    ```rust
    pub struct MicroStep {
-       pub step_fn: Option<StepFn>,   // Bus transfer / CCK action (None if idle or pure ALU)
+       pub bus_fn: Option<BusFn>,   // Bus transfer / CCK action (None if idle or pure ALU)
        pub alu_fn: Option<AluFn>,     // Pure internal ALU operation (None if pure bus cycle)
        pub base_clocks: u8,           // Base clocks (typically 2 for CCK, 4 for internal 4-clock delays)
    }
@@ -69,7 +69,7 @@ Every micro-step where the physical memory bus does not perform an active read/w
 
 > [!IMPORTANT]
 > **Strict Prohibition of Anonymous Idle Structs & Deprecated Aliases**:
-> - Never author anonymous idle structs like `MicroStep { step_fn: None, alu_fn: None, base_clocks: ... }`. Always reuse canonical constants from `crate::micro::common::*`.
+> - Never author anonymous idle structs like `MicroStep { bus_fn: None, alu_fn: None, base_clocks: ... }`. Always reuse canonical constants from `crate::micro::common::*`.
 > - Never use deprecated legacy aliases (`READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`, `REFILL_FIRST_FINISH`, `REFILL_SECOND_FINISH`, etc.). Always use `common::BUS_READ_IDLE` or `common::ALU_IDLE*`.
 > - Actively enforced by the automated test `test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs`.
 
@@ -136,7 +136,7 @@ Combine specialized bus primitives and ALU callbacks into immutable static array
 ```rust
 pub static STEPS_SUB_W_DN_DN: [MicroStep; 2] = [
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_sub_w_dn_dn),
         base_clocks: 2,
     },
@@ -148,13 +148,13 @@ pub static STEPS_SUB_W_DN_DN: [MicroStep; 2] = [
 ```rust
 pub static STEPS_SUB_W_AI_DN: [MicroStep; 4] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_src_word),
+        bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_ai),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_sub_w_mem_dn),
         base_clocks: 2,
     },
@@ -167,7 +167,7 @@ Fused ALU callback pattern: source extraction, CCR evaluation, and destination E
 ```rust
 pub static STEPS_MOVE_W_DN_AI: [MicroStep; 4] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_move_w_dn_dst_ai),
         base_clocks: 2,
     },
@@ -182,13 +182,13 @@ Notice the M68000 RMW pipeline: read operand $\to$ prefetch next opcode to `irc`
 ```rust
 pub static STEPS_SUB_W_DN_AI: [MicroStep; 6] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_dst_word),
+        bus_fn: Some(Cpu::step_bus_read_dst_word),
         alu_fn: Some(ea::ea_calc_dst_ai),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_sub_w_dn_mem),
         base_clocks: 2,
     },
@@ -207,7 +207,7 @@ For dual-memory instructions operating on two memory addresses (source $Ay$ and 
 ```rust
 pub static STEPS_ABCD_PD_PD: [MicroStep; 9] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dual_pd_b),
         base_clocks: 2,
     },
@@ -216,7 +216,7 @@ pub static STEPS_ABCD_PD_PD: [MicroStep; 9] = [
     common::READ_ADDR2_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_abcd_mem),
         base_clocks: 2,
     },
@@ -232,20 +232,20 @@ pub static STEPS_ABCD_PD_PD: [MicroStep; 9] = [
 ```rust
 pub static STEPS_ADDX_W_PD_PD: [MicroStep; 9] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
         base_clocks: 2,
     },
     common::READ_ADDR1_WORD,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_w), // Fused in CCK2 of src read: only runs if src was aligned!
         base_clocks: 2,
     },
     common::READ_ADDR2_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_w_mem),
         base_clocks: 2,
     },
@@ -261,15 +261,15 @@ pub static STEPS_ADDX_W_PD_PD: [MicroStep; 9] = [
 - **Strict Prohibition:** Never juggle temporary pointers in `scratch[0..2]`, never shift `destination >>= 16`, and never use helper functions that mutate write pointers (`set_write_hi`). Direct writes eliminate all scratch register overhead.
 ```rust
 pub static STEPS_ADDX_L_PD_PD: [MicroStep; 15] = [
-    MicroStep { step_fn: None, alu_fn: Some(ea::ea_calc_src_pd_l_split), base_clocks: 2 },
+    MicroStep { bus_fn: None, alu_fn: Some(ea::ea_calc_src_pd_l_split), base_clocks: 2 },
     common::READ_SRC_WORD,
-    MicroStep { step_fn: None, alu_fn: Some(ea::latch_src_lo_and_read_src_hi), base_clocks: 2 },
+    MicroStep { bus_fn: None, alu_fn: Some(ea::latch_src_lo_and_read_src_hi), base_clocks: 2 },
     common::READ_SRC_SPLIT_HIGH,
-    MicroStep { step_fn: None, alu_fn: Some(ea::ea_calc_dst_pd_l_split), base_clocks: 2 },
+    MicroStep { bus_fn: None, alu_fn: Some(ea::ea_calc_dst_pd_l_split), base_clocks: 2 },
     common::READ_DST_WORD,
-    MicroStep { step_fn: None, alu_fn: Some(ea::latch_dst_lo_and_read_dst_hi), base_clocks: 2 },
+    MicroStep { bus_fn: None, alu_fn: Some(ea::latch_dst_lo_and_read_dst_hi), base_clocks: 2 },
     common::READ_DST_SPLIT_HIGH,
-    MicroStep { step_fn: None, alu_fn: Some(alu_addx_l_mem), base_clocks: 2 },
+    MicroStep { bus_fn: None, alu_fn: Some(alu_addx_l_mem), base_clocks: 2 },
     common::BUS_WRITE_IDLE,
     common::WRITE_ADDR2_PD_LONG_LOW,  // Writes low word to addr2 + 2
     common::PREFETCH_IRC_READ,

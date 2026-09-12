@@ -144,8 +144,8 @@ impl Cpu {
             let prev_steps_ptr = self.state.micro.current_steps.as_ptr();
             let prev_micro_step = self.state.micro.micro_step;
 
-            let bus_res = match step.step_fn {
-                Some(step_fn) => step_fn(self, bus),
+            let bus_res = match step.bus_fn {
+                Some(bus_fn) => bus_fn(self, bus),
                 None => BusResult::Ready(()),
             };
             if self.state.micro.current_steps.is_empty() {

@@ -55,7 +55,7 @@ Analyze all modified and added files using `git diff`:
 10. **Path Privacy**: Ensure no host paths (`C:\Users\`, `/home/`, personal disk paths) are present.
 11. **Idle Micro-Step Naming & Common Primitives**:
    - Ensure all micro-steps where the memory bus does not perform an active transfer or address strobe explicitly feature `IDLE` (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`).
-   - Strictly prohibit anonymous idle structs (`MicroStep { step_fn: None, alu_fn: None, ... }`) and legacy aliases (`READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`, `REFILL_FIRST_FINISH`, `REFILL_SECOND_FINISH`).
+   - Strictly prohibit anonymous idle structs (`MicroStep { bus_fn: None, alu_fn: None, ... }`) and legacy aliases (`READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`, `REFILL_FIRST_FINISH`, `REFILL_SECOND_FINISH`).
 12. **Comprehensive Unit Test Coverage**:
    - Verify that every newly created or modified Rust source file containing testable domain logic, state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests (`tests/<module_name>.rs` or inline `#[cfg(test)] mod tests`).
    - Modules must not be declared complete without tests covering happy paths, boundary conditions, zero/empty states, and failure modes.

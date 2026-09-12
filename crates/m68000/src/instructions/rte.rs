@@ -23,7 +23,7 @@ pub fn alu_rte_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_RTE_INIT: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_rte_init),
     base_clocks: 0,
 };

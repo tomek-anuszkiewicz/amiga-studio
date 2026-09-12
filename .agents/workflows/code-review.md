@@ -53,7 +53,7 @@ Audit the diff against the guidelines in `AGENTS.md`:
 ### D. Workspace & Architecture
 - [ ] Respects 3-tier re-export strategy (Tier 1: config, Tier 2: peers memory_bus/m68000, Tier 3: sub-components rtc/copper/blitter).
 - [ ] Strict flat instruction hierarchy: zero subdirectories in `crates/m68000/src/instructions/` (all instructions are single `<mnemonic>.rs` files, e.g. `mulu.rs`/`muls.rs`, `divu.rs`/`divs.rs`, `link.rs`/`unlk.rs`, `abcd.rs`/`sbcd.rs`/`nbcd.rs`, `trapv.rs`/`rtr.rs`/`rte.rs`/`stop.rs`/`reset.rs`/`move_usp.rs`; zero umbrella files).
-- [ ] **Idle Micro-Step Naming & Common Primitives**: all bus and internal idle phases explicitly feature IDLE (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`); zero anonymous idle structs (`MicroStep { step_fn: None, alu_fn: None, ... }`) or legacy aliases.
+- [ ] **Idle Micro-Step Naming & Common Primitives**: all bus and internal idle phases explicitly feature IDLE (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`); zero anonymous idle structs (`MicroStep { bus_fn: None, alu_fn: None, ... }`) or legacy aliases.
 - [ ] Zero circular references between peer subsystems (`no Rc<RefCell>`).
 - [ ] **WASM Portability**: zero OS calls (`std::time::Instant`, `std::thread`, `std::fs`) in core emulation crates.
 - [ ] **Decoupled SaveState**: all subsystem state structs implement `serde::Serialize` and `Deserialize`.

@@ -11,7 +11,10 @@ use serde::{Deserialize, Serialize};
 /// Atomic step execution function.
 /// Takes the full CPU and memory bus, returning `BusResult<()>` indicating whether
 /// the bus cycle completed (`Ready(())`) or stalled on wait states (`WaitState`).
-pub type StepFn = fn(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()>;
+pub type BusFn = fn(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()>;
+
+/// Backward-compatible alias for `BusFn`.
+pub type StepFn = BusFn;
 
 /// Pure internal ALU operation.
 /// Operates strictly on `CpuState` using pre-decoded register indices.
@@ -50,7 +53,7 @@ pub enum Size {
 #[derive(Debug, Clone, Copy)]
 pub struct MicroStep {
     /// Optional function pointer executing the bus cycle (None for idle/finish/pure ALU steps)
-    pub step_fn: Option<StepFn>,
+    pub bus_fn: Option<BusFn>,
     /// Function pointer for ALU operations (None for pure bus steps)
     pub alu_fn: Option<AluFn>,
     /// Base CPU clocks consumed (4 for bus cycles, 2 for CCK, 0 for instantaneous ALU)
@@ -59,7 +62,7 @@ pub struct MicroStep {
 
 impl PartialEq for MicroStep {
     fn eq(&self, other: &Self) -> bool {
-        (match (self.step_fn, other.step_fn) {
+        (match (self.bus_fn, other.bus_fn) {
             (None, None) => true,
             (Some(a), Some(b)) => a as usize == b as usize,
             _ => false,
@@ -78,7 +81,7 @@ impl MicroStep {
     #[inline(always)]
     pub const fn alu(alu_fn: AluFn) -> Self {
         Self {
-            step_fn: None,
+            bus_fn: None,
             alu_fn: Some(alu_fn),
             base_clocks: 0,
         }
@@ -86,9 +89,9 @@ impl MicroStep {
 
     /// Creates a 2-clock Color Clock (CCK) micro-step (1 CCK = 2 CPU clocks)
     #[inline(always)]
-    pub const fn cck(step_fn: StepFn) -> Self {
+    pub const fn cck(bus_fn: BusFn) -> Self {
         Self {
-            step_fn: Some(step_fn),
+            bus_fn: Some(bus_fn),
             alu_fn: None,
             base_clocks: 2,
         }
@@ -98,7 +101,7 @@ impl MicroStep {
     #[inline(always)]
     pub const fn cck_idle() -> Self {
         Self {
-            step_fn: None,
+            bus_fn: None,
             alu_fn: None,
             base_clocks: 2,
         }

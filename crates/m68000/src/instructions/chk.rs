@@ -107,7 +107,7 @@ pub fn latch_imm_chk(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 /// CHK Dn, Dm: 10 CPU clocks / 5 CCKs (or 38 clocks if trap)
 pub static STEPS_CHK_DN: [MicroStep; 3] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_dn),
         base_clocks: 6,
     },
@@ -118,13 +118,13 @@ pub static STEPS_CHK_DN: [MicroStep; 3] = [
 /// CHK (An), Dn: 14 CPU clocks / 7 CCKs (or 42 clocks if trap)
 pub static STEPS_CHK_AI: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_src_word),
+        bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_ai),
         base_clocks: 2,
     },
     BUS_READ_IDLE,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_mem),
         base_clocks: 6,
     },
@@ -135,13 +135,13 @@ pub static STEPS_CHK_AI: [MicroStep; 5] = [
 /// CHK (An)+, Dn: 14 CPU clocks / 7 CCKs (or 42 clocks if trap)
 pub static STEPS_CHK_PI: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_src_word),
+        bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
         base_clocks: 2,
     },
     BUS_READ_IDLE,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_mem),
         base_clocks: 6,
     },
@@ -152,14 +152,14 @@ pub static STEPS_CHK_PI: [MicroStep; 5] = [
 /// CHK -(An), Dn: 16 CPU clocks / 8 CCKs (or 44 clocks if trap)
 pub static STEPS_CHK_PD: [MicroStep; 6] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
         base_clocks: 2,
     },
     READ_SRC_WORD,
     BUS_READ_IDLE,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_mem),
         base_clocks: 6,
     },
@@ -170,7 +170,7 @@ pub static STEPS_CHK_PD: [MicroStep; 6] = [
 /// CHK (d16, An), Dn: 18 CPU clocks / 9 CCKs (or 46 clocks if trap)
 pub static STEPS_CHK_D16_AN: [MicroStep; 7] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
         base_clocks: 2,
     },
@@ -178,7 +178,7 @@ pub static STEPS_CHK_D16_AN: [MicroStep; 7] = [
     READ_SRC_WORD,
     BUS_READ_IDLE,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_mem),
         base_clocks: 6,
     },
@@ -189,7 +189,7 @@ pub static STEPS_CHK_D16_AN: [MicroStep; 7] = [
 /// CHK (d8, An, Xn), Dn: 22 CPU clocks / 11 CCKs (or 50 clocks if trap)
 pub static STEPS_CHK_IDX_AN: [MicroStep; 8] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
         base_clocks: 4,
     },
@@ -198,7 +198,7 @@ pub static STEPS_CHK_IDX_AN: [MicroStep; 8] = [
     READ_SRC_WORD,
     BUS_READ_IDLE,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_mem),
         base_clocks: 6,
     },
@@ -209,7 +209,7 @@ pub static STEPS_CHK_IDX_AN: [MicroStep; 8] = [
 /// CHK (xxx).W, Dn: 18 CPU clocks / 9 CCKs (or 46 clocks if trap)
 pub static STEPS_CHK_ABSW: [MicroStep; 7] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
         base_clocks: 2,
     },
@@ -217,7 +217,7 @@ pub static STEPS_CHK_ABSW: [MicroStep; 7] = [
     READ_SRC_WORD,
     BUS_READ_IDLE,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_mem),
         base_clocks: 6,
     },
@@ -228,13 +228,13 @@ pub static STEPS_CHK_ABSW: [MicroStep; 7] = [
 /// CHK (xxx).L, Dn: 22 CPU clocks / 11 CCKs (or 50 clocks if trap)
 pub static STEPS_CHK_ABSL: [MicroStep; 9] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
         base_clocks: 2,
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
@@ -242,7 +242,7 @@ pub static STEPS_CHK_ABSL: [MicroStep; 9] = [
     READ_SRC_WORD,
     BUS_READ_IDLE,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_mem),
         base_clocks: 6,
     },
@@ -253,7 +253,7 @@ pub static STEPS_CHK_ABSL: [MicroStep; 9] = [
 /// CHK (d16, PC), Dn: 18 CPU clocks / 9 CCKs (or 46 clocks if trap)
 pub static STEPS_CHK_D16_PC: [MicroStep; 7] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
         base_clocks: 2,
     },
@@ -261,7 +261,7 @@ pub static STEPS_CHK_D16_PC: [MicroStep; 7] = [
     READ_SRC_WORD,
     BUS_READ_IDLE,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_mem),
         base_clocks: 6,
     },
@@ -272,7 +272,7 @@ pub static STEPS_CHK_D16_PC: [MicroStep; 7] = [
 /// CHK (d8, PC, Xn), Dn: 22 CPU clocks / 11 CCKs (or 50 clocks if trap)
 pub static STEPS_CHK_IDX_PC: [MicroStep; 8] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
         base_clocks: 4,
     },
@@ -281,7 +281,7 @@ pub static STEPS_CHK_IDX_PC: [MicroStep; 8] = [
     READ_SRC_WORD,
     BUS_READ_IDLE,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_mem),
         base_clocks: 6,
     },
@@ -292,13 +292,13 @@ pub static STEPS_CHK_IDX_PC: [MicroStep; 8] = [
 /// CHK #<data>, Dn: 14 CPU clocks / 7 CCKs (or 42 clocks if trap)
 pub static STEPS_CHK_IMM: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_imm_chk),
         base_clocks: 2,
     },
     FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_chk_mem),
         base_clocks: 6,
     },

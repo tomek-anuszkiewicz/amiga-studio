@@ -25,7 +25,7 @@ pub fn alu_trap_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_TRAP_INIT: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_trap_init),
     base_clocks: 2,
 };

@@ -29,7 +29,7 @@ pub fn alu_stop(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_STOP: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_stop),
     base_clocks: 0,
 };

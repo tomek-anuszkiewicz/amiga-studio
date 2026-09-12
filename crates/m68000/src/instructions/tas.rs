@@ -25,7 +25,7 @@ pub fn alu_tas_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub static ALU_TAS_DN: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_tas_dn),
     base_clocks: 0,
 };
@@ -37,7 +37,7 @@ pub fn alu_tas_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_TAS_MEM_2CLK: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_tas_mem),
     base_clocks: 2,
 };
@@ -54,7 +54,7 @@ pub static STEPS_TAS_DN: [MicroStep; 3] = [
 
 pub static STEPS_TAS_AI: [MicroStep; 7] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_src_byte),
+        bus_fn: Some(Cpu::step_bus_read_src_byte),
         alu_fn: Some(ea::ea_calc_src_ai),
         base_clocks: 2,
     },
@@ -68,7 +68,7 @@ pub static STEPS_TAS_AI: [MicroStep; 7] = [
 
 pub static STEPS_TAS_PI: [MicroStep; 7] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_src_byte),
+        bus_fn: Some(Cpu::step_bus_read_src_byte),
         alu_fn: Some(ea::ea_calc_src_pi_b),
         base_clocks: 2,
     },
@@ -82,7 +82,7 @@ pub static STEPS_TAS_PI: [MicroStep; 7] = [
 
 pub static STEPS_TAS_PD: [MicroStep; 8] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_b),
         base_clocks: 2,
     },
@@ -97,7 +97,7 @@ pub static STEPS_TAS_PD: [MicroStep; 8] = [
 
 pub static STEPS_TAS_D16: [MicroStep; 9] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
         base_clocks: 2,
     },
@@ -113,7 +113,7 @@ pub static STEPS_TAS_D16: [MicroStep; 9] = [
 
 pub static STEPS_TAS_IDX: [MicroStep; 10] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
         base_clocks: 2,
     },
@@ -130,7 +130,7 @@ pub static STEPS_TAS_IDX: [MicroStep; 10] = [
 
 pub static STEPS_TAS_AW: [MicroStep; 9] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
         base_clocks: 2,
     },
@@ -146,13 +146,13 @@ pub static STEPS_TAS_AW: [MicroStep; 9] = [
 
 pub static STEPS_TAS_AL: [MicroStep; 11] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },

@@ -41,7 +41,7 @@ pub fn alu_ext_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 pub static STEPS_EXT_W: [MicroStep; 2] = [
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_ext_w),
         base_clocks: 2,
     },
@@ -50,7 +50,7 @@ pub static STEPS_EXT_W: [MicroStep; 2] = [
 
 pub static STEPS_EXT_L: [MicroStep; 2] = [
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_ext_l),
         base_clocks: 2,
     },

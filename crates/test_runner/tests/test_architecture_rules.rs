@@ -582,12 +582,12 @@ fn test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs() {
             }
         }
 
-        // 2. Check for anonymous idle MicroStep structs (step_fn: None, alu_fn: None)
+        // 2. Check for anonymous idle MicroStep structs (bus_fn: None, alu_fn: None)
         for (i, line) in lines.iter().enumerate() {
             if line.contains("MicroStep {") {
                 let end_idx = std::cmp::min(i + 6, lines.len());
                 let block = lines[i..end_idx].join(" ");
-                if block.contains("step_fn: None") && block.contains("alu_fn: None") {
+                if block.contains("bus_fn: None") && block.contains("alu_fn: None") {
                     let canonical_hint = if block.contains("base_clocks: 2") {
                         "common::ALU_IDLE"
                     } else if block.contains("base_clocks: 4") {

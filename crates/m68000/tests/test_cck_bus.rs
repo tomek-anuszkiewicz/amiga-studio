@@ -92,7 +92,7 @@ fn test_clocks_remaining_micro_stepping() {
 
     // 4 CPU clocks = 2 CCK steps
     static TEST_STEPS: [MicroStep; 1] = [MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: None,
         base_clocks: 4,
     }];

@@ -22,7 +22,7 @@ pub fn alu_bra_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 /// BRA.S (8-bit short displacement, 10 CPU clocks / 5 CCKs)
 pub static STEPS_BRA_SHORT: [MicroStep; 5] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_bra_short),
         base_clocks: 2,
     },
@@ -35,7 +35,7 @@ pub static STEPS_BRA_SHORT: [MicroStep; 5] = [
 /// BRA.W (16-bit word displacement, 10 CPU clocks / 5 CCKs)
 pub static STEPS_BRA_WORD: [MicroStep; 5] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_bra_word),
         base_clocks: 2,
     },

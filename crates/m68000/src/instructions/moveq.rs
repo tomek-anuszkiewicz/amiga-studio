@@ -19,7 +19,7 @@ pub fn alu_moveq(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 /// MOVEQ #<data>, Dn (4 CPU clocks / 2 CCKs)
 pub static STEPS_MOVEQ: [MicroStep; 2] = [
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_moveq),
         base_clocks: 2,
     },

@@ -40,14 +40,14 @@ pub fn alu_unlk_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 pub static STEPS_UNLK: [MicroStep; 5] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_src_long_high),
+        bus_fn: Some(Cpu::step_bus_read_src_long_high),
         alu_fn: Some(alu_unlk_setup),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
     common::READ_SRC_LONG_LOW,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_unlk_finish),
         base_clocks: 2,
     },

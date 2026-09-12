@@ -23,7 +23,7 @@ The architecture mirrors the physical two-level microcode design of the Motorola
 2. **Zero Runtime Heap Allocation**:
    The entire micro-step table is static `const` data embedded in the host binary (`.rodata`). It requires **0 bytes of dynamic heap allocation** (`Vec`, `Box`, `malloc`) during runtime.
 3. **Specialized Atomic Micro-Step Handlers (Zero-Branch Direct Dispatch)**:
-   Transfer size (Byte vs. Word vs. 32-bit Long decomposition) is **specialized directly into atomic `StepFn` function pointers** (`Cpu::step_bus_read_byte`, `Cpu::step_bus_read_word`, `Cpu::step_bus_write_byte`, `Cpu::step_bus_write_word`, `Cpu::step_bus_write_long_high`, `Cpu::step_bus_write_long_low`). This eliminates nested `match size` branches and dynamic `match step.action` switches in the hot CCK execution loop, honoring host CPU mechanical sympathy.
+   Transfer size (Byte vs. Word vs. 32-bit Long decomposition) is **specialized directly into atomic `BusFn` function pointers** (`Cpu::step_bus_read_byte`, `Cpu::step_bus_read_word`, `Cpu::step_bus_write_byte`, `Cpu::step_bus_write_word`, `Cpu::step_bus_write_long_high`, `Cpu::step_bus_write_long_low`). This eliminates nested `match size` branches and dynamic `match step.action` switches in the hot CCK execution loop, honoring host CPU mechanical sympathy.
 4. **Pre-Allocated CPU-Level Prefetch Array**:
    `prefetch: [u16; 2]` and `ir: u16` are fixed fields inside `CpuState` (modeling hardware registers `IRC`, `IR`, and `IRD`). Zero dynamic queues.
 5. **Parametric, Bus-Free ALU Function Pointers (`AluFn`)**:
@@ -79,23 +79,23 @@ Because all memory operands are already latched into `CpuState` (`prefetch[0]`, 
 ### 2.2 The `MicroStep` Descriptor (Stateless & Cache-Dense)
 
 Each micro-step is an immutable, cache-dense `Copy` struct in `.rodata`:
-- `step_fn`: Optional direct atomic execution function pointer (`Option<StepFn>`, where `StepFn = fn(&mut Cpu, &mut dyn AddressBus) -> BusResult<()>`). When `None`, the CPU loop directly executes `BusResult::Ready(())` with zero function pointer call overhead or BTB branch misprediction penalty.
+- `bus_fn`: Optional direct atomic execution function pointer (`Option<BusFn>`, where `BusFn = fn(&mut Cpu, &mut dyn AddressBus) -> BusResult<()>`). When `None`, the CPU loop directly executes `BusResult::Ready(())` with zero function pointer call overhead or BTB branch misprediction penalty.
 - `alu_fn`: Optional function pointer to pure internal ALU logic (`Option<AluFn>`).
 - `base_clocks`: Base CPU clocks consumed (2 for 1 CCK micro-steps, 0 for instantaneous ALU / branch evaluation).
 
 Pre-decoded register indices (`reg_src`, `reg_dst`) are held once per opcode in `OpcodeDescriptor` and cached into `state.micro.reg_src` / `reg_dst`.
 
-### 2.3 Specialized 2-Clock Atomic Micro-Step Handlers (`StepFn`)
+### 2.3 Specialized 2-Clock Atomic Micro-Step Handlers (`BusFn`)
 
 By decomposing 4-clock bus cycles into native 2-clock slices ($1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$), the execution core eliminates runtime size checks (`match size`) and dynamic action matching:
 
 | Category | Primitives (CCK1 / CCK2 Slices) | Hardware Operation & Bus Semantics |
 | :--- | :--- | :--- |
-| **Operand Reads (Data Space)** | `step_bus_read_src_word`, `step_bus_read_src_byte`, `step_bus_read_dst_word`, `step_bus_read_dst_byte`, `step_bus_read_src_long_high`, `step_bus_read_src_long_low`, `step_bus_read_dst_long_high`, `step_bus_read_dst_long_low` | **CCK1**: Reads from `ea_addr`. Stalls if Chip RAM blocked. Latches into `source`/`destination`.<br>**CCK2** (`BUS_READ_IDLE`): Physical bus free for Agnus DMA (`step_fn: None`). |
-| **Operand Writes (Data Space)** | `BUS_WRITE_IDLE`, `step_bus_write_dst_word`, `step_bus_write_dst_byte`, `step_bus_write_dst_long_high`, `step_bus_write_dst_long_low` | **CCK1** (`BUS_WRITE_IDLE`): Internal setup; physical bus free for Agnus DMA (`step_fn: None`).<br>**CCK2**: Drives data from `destination` to memory. Stalls if wait states asserted. Retires if final step. |
+| **Operand Reads (Data Space)** | `step_bus_read_src_word`, `step_bus_read_src_byte`, `step_bus_read_dst_word`, `step_bus_read_dst_byte`, `step_bus_read_src_long_high`, `step_bus_read_src_long_low`, `step_bus_read_dst_long_high`, `step_bus_read_dst_long_low` | **CCK1**: Reads from `ea_addr`. Stalls if Chip RAM blocked. Latches into `source`/`destination`.<br>**CCK2** (`BUS_READ_IDLE`): Physical bus free for Agnus DMA (`bus_fn: None`). |
+| **Operand Writes (Data Space)** | `BUS_WRITE_IDLE`, `step_bus_write_dst_word`, `step_bus_write_dst_byte`, `step_bus_write_dst_long_high`, `step_bus_write_dst_long_low` | **CCK1** (`BUS_WRITE_IDLE`): Internal setup; physical bus free for Agnus DMA (`bus_fn: None`).<br>**CCK2**: Drives data from `destination` to memory. Stalls if wait states asserted. Retires if final step. |
 | **Stack Operations (Data Space)** | `step_bus_push_stack_high_idle`, `step_bus_push_stack_high_write`, `step_bus_push_stack_low_write`, `step_bus_pop_stack_high_read`, `step_bus_pop_stack_high_finish`, `step_bus_pop_stack_low_read`, `step_bus_pop_stack_low_finish` | Stack reads and pushes over `SP` ($A_7$). Validates address alignment, adjusts SP, and transfers high/low words across CCK1/CCK2 phases. |
 | **Prefetch & Refill (Program Space)** | `step_fetch_extension_read`, `step_fetch_extension_finish`, `step_prefetch_irc_read`, `step_prefetch_irc_finish`, `step_prefetch_next_read`, `BUS_READ_IDLE`, `step_bus_read_target_opcode_read`, `step_prefetch_target_read`, `step_prefetch_target_finish` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline across 2-clock phases and manages standard or target retirement. |
-| **Internal & Exceptions** | `step_write_word_at`, `step_write_byte_at`, `step_read_word_at`, `step_read_byte_at` | Instantaneous (0 CCK) internal operations, CCR updates, condition evaluation, and 2-phase CCK bus primitives for exception processing. Pure ALU steps utilize `step_fn: None`. |
+| **Internal & Exceptions** | `step_write_word_at`, `step_write_byte_at`, `step_read_word_at`, `step_read_byte_at` | Instantaneous (0 CCK) internal operations, CCR updates, condition evaluation, and 2-phase CCK bus primitives for exception processing. Pure ALU steps utilize `bus_fn: None`. |
 
 Handlers are organized cleanly across [`crates/m68000/src/micro/step_execution.rs`](../../../crates/m68000/src/micro/step_execution.rs) and [`crates/m68000/src/micro/step_control.rs`](../../../crates/m68000/src/micro/step_control.rs).
 
@@ -162,7 +162,7 @@ To guarantee zero cognitive friction and seamless codebase navigation across all
 2. **Imports:** Imports from `crate::micro::common::*`, `crate::core::*`, `crate::micro::ea`.
 3. **Leaf ALU Functions:** Direct arithmetic/logic helpers (`#[inline(always)] fn add_w(...)`, `sub_b(...)`) called directly by ALU callbacks to execute branchless wrapping math and CCR flag updates.
 4. **Micro-Step ALU Callbacks (`AluFn`):** Functor callbacks (`fn alu_...`) stored as function pointers in `MicroStep.alu_fn`, dispatched dynamically via the micro-step engine.
-5. **Specialized Micro-Step Handlers (`StepFn`):** Instruction-specific bus/execution handlers (if any required).
+5. **Specialized Micro-Step Handlers (`BusFn`):** Instruction-specific bus/execution handlers (if any required).
 6. **Static Micro-Step Arrays:** `pub static STEPS_...: [MicroStep; N] = [...]`, ordered strictly by canonical addressing mode progression (`DN`, `AN`, `AI`, `PI`, `PD`, `D16_AN`, `IDX_AN`, `ABSW`, `ABSL`, `D16_PC`, `IDX_PC`, `IMM`). Internal ALU logic and effective address calculations are fused directly onto 2-clock micro-step primitives (`alu_fn`), eliminating zero-clock dispatch overhead.
 7. **Opcode Decoder:** Fast compile-time function `pub const fn decode_..._steps(...) -> Option<&'static [MicroStep]>`.
 
@@ -587,7 +587,7 @@ flowchart TD
     CheckSeq --> InitCheck{"clocks_remaining == 0?"}
     InitCheck -- Yes --> Init["clocks_remaining = base_clocks<br/>Execute alu_fn (if any)"] --> InstCheck{"clocks_remaining == 0?"}
     InstCheck -- Yes (Instant ALU) --> InstExec["micro_step += 1<br/>continue to next step"] --> CheckSeq
-    InstCheck -- No --> ExecStep["Execute step_fn(self, bus)"]
+    InstCheck -- No --> ExecStep["Execute bus_fn(self, bus)"]
     InitCheck -- No --> ExecStep
     
     ExecStep --> BusRes{"BusResult?"}
@@ -881,7 +881,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 | **Host Mechanical Sympathy** | Static dispatch array; flat contiguous micro-steps; zero dynamic branching in inner loops; host L1d cache residency. |
 | **Cached Slice Pointer Dispatch** | Active step slice pointer `state.micro.current_steps` cached upon opcode prefetch; eliminates 64K table lookups during instruction execution. |
 | **Zero Runtime Allocations** | Complete microcode ROM is `const` in `.rodata`; zero heap allocation during emulation loops. |
-| **Zero Cascaded Size Branches** | Transfer size specialized directly into `StepFn` handlers (`step_bus_read_byte`, `step_bus_read_word`, `step_bus_write_byte`, `step_bus_write_word`, `step_bus_write_long_high`, `step_bus_write_long_low`). |
+| **Zero Cascaded Size Branches** | Transfer size specialized directly into `BusFn` handlers (`step_bus_read_byte`, `step_bus_read_word`, `step_bus_write_byte`, `step_bus_write_word`, `step_bus_write_long_high`, `step_bus_write_long_low`). |
 | **Dynamic Multi-Register Transfer** | `MOVEM` dynamic register counts (0 to 16) executed cleanly via `execute_movem_transfer` sub-loop with zero heap allocation. |
 | **Byte Write Strobe Fidelity** | Strict $\overline{\text{UDS}}$ / $\overline{\text{LDS}}$ parity driving: even writes preserve low byte, odd writes preserve high byte. Zero Address Error on odd byte. |
 | **Control Flow & Refill Fidelity** | Exact two-word Program Space pipeline refill (`step_bus_read_target_opcode` + `step_prefetch_target_and_retire`) on JMP, JSR, RTS, and taken Bcc. |

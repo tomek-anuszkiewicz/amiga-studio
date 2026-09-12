@@ -22,7 +22,7 @@ pub fn alu_trapv_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_TRAPV_INIT: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_trapv_init),
     base_clocks: 0,
 };
@@ -45,7 +45,7 @@ pub fn alu_trapv_exception_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8
 }
 
 pub static ALU_TRAPV_EXCEPTION_INIT: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_trapv_exception_init),
     base_clocks: 2,
 };

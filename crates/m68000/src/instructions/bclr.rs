@@ -91,7 +91,7 @@ pub static STEPS_BCLR_DYN_DN: [MicroStep; 5] = [
     common::ALU_IDLE,
     common::ALU_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_l_dyn_dn),
         base_clocks: 2,
     },
@@ -100,13 +100,13 @@ pub static STEPS_BCLR_DYN_DN: [MicroStep; 5] = [
 
 pub static STEPS_BCLR_DYN_AI: [MicroStep; 6] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_dst_byte),
+        bus_fn: Some(Cpu::step_bus_read_dst_byte),
         alu_fn: Some(ea::ea_calc_dst_ai),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_dyn_mem),
         base_clocks: 2,
     },
@@ -117,13 +117,13 @@ pub static STEPS_BCLR_DYN_AI: [MicroStep; 6] = [
 
 pub static STEPS_BCLR_DYN_PI: [MicroStep; 6] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_dst_byte),
+        bus_fn: Some(Cpu::step_bus_read_dst_byte),
         alu_fn: Some(ea::ea_calc_dst_pi_b),
         base_clocks: 2,
     },
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_dyn_mem),
         base_clocks: 2,
     },
@@ -134,14 +134,14 @@ pub static STEPS_BCLR_DYN_PI: [MicroStep; 6] = [
 
 pub static STEPS_BCLR_DYN_PD: [MicroStep; 7] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_b),
         base_clocks: 2,
     },
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_dyn_mem),
         base_clocks: 2,
     },
@@ -152,7 +152,7 @@ pub static STEPS_BCLR_DYN_PD: [MicroStep; 7] = [
 
 pub static STEPS_BCLR_DYN_D16_AN: [MicroStep; 8] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
         base_clocks: 2,
     },
@@ -160,7 +160,7 @@ pub static STEPS_BCLR_DYN_D16_AN: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_dyn_mem),
         base_clocks: 2,
     },
@@ -171,7 +171,7 @@ pub static STEPS_BCLR_DYN_D16_AN: [MicroStep; 8] = [
 
 pub static STEPS_BCLR_DYN_IDX_AN: [MicroStep; 9] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
         base_clocks: 2,
     },
@@ -180,7 +180,7 @@ pub static STEPS_BCLR_DYN_IDX_AN: [MicroStep; 9] = [
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_dyn_mem),
         base_clocks: 2,
     },
@@ -191,7 +191,7 @@ pub static STEPS_BCLR_DYN_IDX_AN: [MicroStep; 9] = [
 
 pub static STEPS_BCLR_DYN_ABSW: [MicroStep; 8] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
         base_clocks: 2,
     },
@@ -199,7 +199,7 @@ pub static STEPS_BCLR_DYN_ABSW: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_dyn_mem),
         base_clocks: 2,
     },
@@ -210,13 +210,13 @@ pub static STEPS_BCLR_DYN_ABSW: [MicroStep; 8] = [
 
 pub static STEPS_BCLR_DYN_ABSL: [MicroStep; 10] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
@@ -224,7 +224,7 @@ pub static STEPS_BCLR_DYN_ABSL: [MicroStep; 10] = [
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_dyn_mem),
         base_clocks: 2,
     },
@@ -239,7 +239,7 @@ pub static STEPS_BCLR_DYN_ABSL: [MicroStep; 10] = [
 
 pub static STEPS_BCLR_STAT_DN: [MicroStep; 7] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm),
         base_clocks: 2,
     },
@@ -248,7 +248,7 @@ pub static STEPS_BCLR_STAT_DN: [MicroStep; 7] = [
     common::ALU_IDLE,
     common::ALU_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_l_imm_dn),
         base_clocks: 2,
     },
@@ -257,7 +257,7 @@ pub static STEPS_BCLR_STAT_DN: [MicroStep; 7] = [
 
 pub static STEPS_BCLR_STAT_AI: [MicroStep; 8] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm_calc_ai),
         base_clocks: 2,
     },
@@ -265,7 +265,7 @@ pub static STEPS_BCLR_STAT_AI: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_imm_mem),
         base_clocks: 2,
     },
@@ -276,7 +276,7 @@ pub static STEPS_BCLR_STAT_AI: [MicroStep; 8] = [
 
 pub static STEPS_BCLR_STAT_PI: [MicroStep; 8] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm_calc_pi),
         base_clocks: 2,
     },
@@ -284,7 +284,7 @@ pub static STEPS_BCLR_STAT_PI: [MicroStep; 8] = [
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_imm_mem),
         base_clocks: 2,
     },
@@ -295,20 +295,20 @@ pub static STEPS_BCLR_STAT_PI: [MicroStep; 8] = [
 
 pub static STEPS_BCLR_STAT_PD: [MicroStep; 9] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_b),
         base_clocks: 2,
     },
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_imm_mem),
         base_clocks: 2,
     },
@@ -319,13 +319,13 @@ pub static STEPS_BCLR_STAT_PD: [MicroStep; 9] = [
 
 pub static STEPS_BCLR_STAT_D16_AN: [MicroStep; 10] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
         base_clocks: 2,
     },
@@ -333,7 +333,7 @@ pub static STEPS_BCLR_STAT_D16_AN: [MicroStep; 10] = [
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_imm_mem),
         base_clocks: 2,
     },
@@ -344,13 +344,13 @@ pub static STEPS_BCLR_STAT_D16_AN: [MicroStep; 10] = [
 
 pub static STEPS_BCLR_STAT_IDX_AN: [MicroStep; 11] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
         base_clocks: 2,
     },
@@ -359,7 +359,7 @@ pub static STEPS_BCLR_STAT_IDX_AN: [MicroStep; 11] = [
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_imm_mem),
         base_clocks: 2,
     },
@@ -370,13 +370,13 @@ pub static STEPS_BCLR_STAT_IDX_AN: [MicroStep; 11] = [
 
 pub static STEPS_BCLR_STAT_ABSW: [MicroStep; 10] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
         base_clocks: 2,
     },
@@ -384,7 +384,7 @@ pub static STEPS_BCLR_STAT_ABSW: [MicroStep; 10] = [
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_imm_mem),
         base_clocks: 2,
     },
@@ -395,19 +395,19 @@ pub static STEPS_BCLR_STAT_ABSW: [MicroStep; 10] = [
 
 pub static STEPS_BCLR_STAT_ABSL: [MicroStep; 12] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(latch_bit_imm),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
@@ -415,7 +415,7 @@ pub static STEPS_BCLR_STAT_ABSL: [MicroStep; 12] = [
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_bclr_b_imm_mem),
         base_clocks: 2,
     },

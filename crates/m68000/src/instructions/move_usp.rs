@@ -24,7 +24,7 @@ pub fn alu_move_to_usp(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_MOVE_TO_USP: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_move_to_usp),
     base_clocks: 0,
 };
@@ -46,7 +46,7 @@ pub fn alu_move_from_usp(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub static ALU_MOVE_FROM_USP: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_move_from_usp),
     base_clocks: 0,
 };

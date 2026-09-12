@@ -10,7 +10,7 @@ use crate::micro::types::MicroStep;
 /// JMP (An): 8 CPU clocks / 4 CCKs
 pub static STEPS_JMP_AI: [MicroStep; 4] = [
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_target_opcode_read),
+        bus_fn: Some(Cpu::step_bus_read_target_opcode_read),
         alu_fn: Some(crate::micro::ea::ea_calc_src_ai),
         base_clocks: 2,
     },
@@ -22,7 +22,7 @@ pub static STEPS_JMP_AI: [MicroStep; 4] = [
 /// JMP (d16, An): 10 CPU clocks / 5 CCKs
 pub static STEPS_JMP_D16_AN: [MicroStep; 5] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_src_d16_an),
         base_clocks: 2,
     },
@@ -35,7 +35,7 @@ pub static STEPS_JMP_D16_AN: [MicroStep; 5] = [
 /// JMP (d8, An, Xn): 14 CPU clocks / 7 CCKs
 pub static STEPS_JMP_IDX_AN: [MicroStep; 5] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_src_idx_an),
         base_clocks: 6,
     },
@@ -48,7 +48,7 @@ pub static STEPS_JMP_IDX_AN: [MicroStep; 5] = [
 /// JMP (xxx).W: 10 CPU clocks / 5 CCKs
 pub static STEPS_JMP_ABSW: [MicroStep; 5] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_absw),
         base_clocks: 2,
     },
@@ -61,13 +61,13 @@ pub static STEPS_JMP_ABSW: [MicroStep; 5] = [
 /// JMP (xxx).L: 12 CPU clocks / 6 CCKs
 pub static STEPS_JMP_ABSL: [MicroStep; 6] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
         base_clocks: 2,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
-        step_fn: Some(Cpu::step_bus_read_target_opcode_read),
+        bus_fn: Some(Cpu::step_bus_read_target_opcode_read),
         alu_fn: Some(crate::micro::ea::ea_calc_absl_lo),
         base_clocks: 2,
     },
@@ -79,7 +79,7 @@ pub static STEPS_JMP_ABSL: [MicroStep; 6] = [
 /// JMP (d16, PC): 10 CPU clocks / 5 CCKs
 pub static STEPS_JMP_D16_PC: [MicroStep; 5] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_d16_pc),
         base_clocks: 2,
     },
@@ -92,7 +92,7 @@ pub static STEPS_JMP_D16_PC: [MicroStep; 5] = [
 /// JMP (d8, PC, Xn): 14 CPU clocks / 7 CCKs
 pub static STEPS_JMP_IDX_PC: [MicroStep; 5] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(crate::micro::ea::ea_calc_idx_pc),
         base_clocks: 6,
     },

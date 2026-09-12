@@ -22,7 +22,7 @@ pub fn alu_check_privilege(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_CHECK_PRIVILEGE: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_check_privilege),
     base_clocks: 0,
 };
@@ -37,14 +37,14 @@ pub fn alu_ori_to_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_ORI_TO_CCR_8CLK: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_ori_to_ccr),
     base_clocks: 8,
 };
 
 pub static STEPS_ORI_TO_CCR: [MicroStep; 7] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
         base_clocks: 2,
     },
@@ -61,7 +61,7 @@ pub fn alu_ori_to_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_ORI_TO_SR_8CLK: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_ori_to_sr),
     base_clocks: 8,
 };
@@ -69,7 +69,7 @@ pub static ALU_ORI_TO_SR_8CLK: MicroStep = MicroStep {
 pub static STEPS_ORI_TO_SR: [MicroStep; 8] = [
     ALU_CHECK_PRIVILEGE,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
         base_clocks: 2,
     },
@@ -91,14 +91,14 @@ pub fn alu_andi_to_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_ANDI_TO_CCR_8CLK: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_andi_to_ccr),
     base_clocks: 8,
 };
 
 pub static STEPS_ANDI_TO_CCR: [MicroStep; 7] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
         base_clocks: 2,
     },
@@ -115,7 +115,7 @@ pub fn alu_andi_to_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_ANDI_TO_SR_8CLK: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_andi_to_sr),
     base_clocks: 8,
 };
@@ -123,7 +123,7 @@ pub static ALU_ANDI_TO_SR_8CLK: MicroStep = MicroStep {
 pub static STEPS_ANDI_TO_SR: [MicroStep; 8] = [
     ALU_CHECK_PRIVILEGE,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
         base_clocks: 2,
     },
@@ -145,14 +145,14 @@ pub fn alu_eori_to_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_EORI_TO_CCR_8CLK: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_eori_to_ccr),
     base_clocks: 8,
 };
 
 pub static STEPS_EORI_TO_CCR: [MicroStep; 7] = [
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
         base_clocks: 2,
     },
@@ -169,7 +169,7 @@ pub fn alu_eori_to_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub static ALU_EORI_TO_SR_8CLK: MicroStep = MicroStep {
-    step_fn: None,
+    bus_fn: None,
     alu_fn: Some(alu_eori_to_sr),
     base_clocks: 8,
 };
@@ -177,7 +177,7 @@ pub static ALU_EORI_TO_SR_8CLK: MicroStep = MicroStep {
 pub static STEPS_EORI_TO_SR: [MicroStep; 8] = [
     ALU_CHECK_PRIVILEGE,
     MicroStep {
-        step_fn: Some(Cpu::step_fetch_extension_read),
+        bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
         base_clocks: 2,
     },

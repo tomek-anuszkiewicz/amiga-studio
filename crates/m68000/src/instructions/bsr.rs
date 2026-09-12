@@ -25,7 +25,7 @@ pub fn alu_bsr_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 /// BSR.S (8-bit short displacement, 18 CPU clocks / 9 CCKs)
 pub static STEPS_BSR_SHORT: [MicroStep; 9] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_bsr_short),
         base_clocks: 2,
     },
@@ -42,7 +42,7 @@ pub static STEPS_BSR_SHORT: [MicroStep; 9] = [
 /// BSR.W (16-bit word displacement, 18 CPU clocks / 9 CCKs)
 pub static STEPS_BSR_WORD: [MicroStep; 9] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_bsr_word),
         base_clocks: 2,
     },

@@ -110,7 +110,7 @@ pub fn alu_addx_l_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
 pub static STEPS_ADDX_B_DN_DN: [MicroStep; 2] = [
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_b_dn_dn),
         base_clocks: 2,
     },
@@ -119,7 +119,7 @@ pub static STEPS_ADDX_B_DN_DN: [MicroStep; 2] = [
 
 pub static STEPS_ADDX_W_DN_DN: [MicroStep; 2] = [
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_w_dn_dn),
         base_clocks: 2,
     },
@@ -129,7 +129,7 @@ pub static STEPS_ADDX_W_DN_DN: [MicroStep; 2] = [
 pub static STEPS_ADDX_L_DN_DN: [MicroStep; 3] = [
     common::ALU_IDLE_4CLK,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_l_dn_dn),
         base_clocks: 2,
     },
@@ -138,7 +138,7 @@ pub static STEPS_ADDX_L_DN_DN: [MicroStep; 3] = [
 
 pub static STEPS_ADDX_B_PD_PD: [MicroStep; 9] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dual_pd_b),
         base_clocks: 2,
     },
@@ -147,7 +147,7 @@ pub static STEPS_ADDX_B_PD_PD: [MicroStep; 9] = [
     common::READ_ADDR2_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_b_mem),
         base_clocks: 2,
     },
@@ -158,20 +158,20 @@ pub static STEPS_ADDX_B_PD_PD: [MicroStep; 9] = [
 
 pub static STEPS_ADDX_W_PD_PD: [MicroStep; 9] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
         base_clocks: 2,
     },
     common::READ_ADDR1_WORD,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_w),
         base_clocks: 2,
     },
     common::READ_ADDR2_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
-        step_fn: Some(Cpu::step_prefetch_next_read),
+        bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_w_mem),
         base_clocks: 2,
     },
@@ -182,31 +182,31 @@ pub static STEPS_ADDX_W_PD_PD: [MicroStep; 9] = [
 
 pub static STEPS_ADDX_L_PD_PD: [MicroStep; 15] = [
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_l_split),
         base_clocks: 2,
     },
     common::READ_SRC_WORD,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::latch_src_lo_and_read_src_hi),
         base_clocks: 2,
     },
     common::READ_SRC_SPLIT_HIGH,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_l_split),
         base_clocks: 2,
     },
     common::READ_DST_WORD,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(ea::latch_dst_lo_and_read_dst_hi),
         base_clocks: 2,
     },
     common::READ_DST_SPLIT_HIGH,
     MicroStep {
-        step_fn: None,
+        bus_fn: None,
         alu_fn: Some(alu_addx_l_mem),
         base_clocks: 2,
     },
