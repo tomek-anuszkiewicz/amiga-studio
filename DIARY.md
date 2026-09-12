@@ -1473,3 +1473,19 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.54s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:58 CEST] — Documented Graphify Subtree Scope & Invalidation Rules in docs/ai_agents.md
+- **Affected Subsystems**:
+  - `docs/ai_agents.md`: Expanded Section 2.B to document AST index scope and scoped re-indexing rules.
+- **What Was Changed (The Concrete Reality)**:
+  - Documented what is indexed by Graphify across the repository: active workspace emulator crates (`crates/`) vs clean-room reference sources (`ref_src/vAmiga`).
+  - Formalized the scoped subtree re-indexing rule codified in `.agents/rules/graphify.md`: localized edits to crates trigger `graphify update crates/`, while changes to reference code trigger `graphify update ref_src/`, preventing wasteful full-repository re-crawls.
+  - Linked `.agents/rules/graphify.md` both in Section 1 (rules index) and in Section 2.B.
+- **Architectural Rationale & Trade-Offs**:
+  - *Scraping Efficiency & Subtree Isolation:* Full AST crawls across thousands of files introduce noticeable latency. Explicitly documenting that `crates/` and `ref_src/` form two independent subtrees governed by scoped update rules ensures both human developers and autonomous agents maintain fast, localized knowledge graph updates.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.54s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
