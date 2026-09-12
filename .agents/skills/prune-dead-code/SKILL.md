@@ -44,7 +44,7 @@ Audit domain-specific constants and internal methods that may be unreferenced ou
 - Avoid introducing speculative replacements.
 - If a method was deprecated, eliminate it completely rather than leaving dead stub wrappers.
 
-### Step 5: Regression & Invariant Verification
+### Step 5: Regression & Correctness Verification
 Validate that no necessary symbols were inadvertently removed:
 ```powershell
 cargo test --workspace

@@ -150,7 +150,7 @@ Operational, communication, and interaction rules are modularized under `.agents
   Whenever fixing a bug, regression, or oversight:
   1. **Root-Cause Retrospection ("Why did this happen?")**: Perform structured self-retrospection on why the bug or oversight occurred.
   2. **Institutionalization ("How do we ensure this never repeats?")**:
-     - Write dedicated regression and invariant tests.
+     - Write dedicated regression, unit, and integration tests.
      - Evaluate automated enforcement in `test_architecture_rules.rs`.
      - Update design documents in `Obsidian/Amiga/Design/` or rules in `AGENTS.md`.
      - Add explicit checkpoints to Definition of Done and `/code-review`.

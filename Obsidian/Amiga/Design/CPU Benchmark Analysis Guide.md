@@ -45,7 +45,7 @@ $$T(\text{Op}, \text{Mode}) = T_{\text{base}}(\text{Op}) + \Delta T_{\text{mode}
 
 $$\Delta T_{\text{mode}} = T(\text{Op}, \text{Mode}) - T(\text{Op}, \text{DataRegDirect})$$
 
-- **The Invariance Invariant:** In a mechanically sympathetic emulator, $\Delta T_{\text{mode}}$ must remain consistent across distinct operation families (`MOVE.W`, `ADD.W`, `SUB.W`, `CMP.W`). Divergence indicates non-inlined bus handlers or conditional branching inside memory access paths.
+- **Addressing Mode Consistency:** In a mechanically sympathetic emulator, $\Delta T_{\text{mode}}$ must remain consistent across distinct operation families (`MOVE.W`, `ADD.W`, `SUB.W`, `CMP.W`). Divergence indicates non-inlined bus handlers or conditional branching inside memory access paths.
 
 ### 2.3 Linear Correlation Model ($R^2$)
 To evaluate whether the emulator's execution duration scales proportionally with Amiga hardware cycle counts:

@@ -34,7 +34,7 @@ Unlike backend systems, GUI components under `crates/gui` must not rely on fragi
 1. **Simulated Context & Event Queues:**
    - Execute full-frame passes using headless `egui::Context::run(RawInput { ... }, |ctx| app.update_ui(ctx))`.
    - Simulate realistic user events: key presses (`F5`, `F8`, `F10`, `F11`, `F12`), text input, Enter/Escape commits, drag-and-drop.
-2. **Layout & Invariant Assertions:**
+2. **Layout & State Assertions:**
    - Verify view mode switching (`ViewMode::Developer` vs `ViewMode::ScreenOnly`).
    - Verify layout stability, dock widths, scroll regions, and zero-jitter editing.
    - Verify focus acquisition on active edit and clean dismissal on Escape or outside clicks.

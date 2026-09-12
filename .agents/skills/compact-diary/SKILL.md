@@ -1,7 +1,7 @@
 ---
 name: compact-diary
 description: >-
-  Use this skill when completing major roadmap milestones in ROADMAP.md to compact and synthesize older chronological entries in DIARY.md into concise, high-level architectural digests without losing evolutionary rationale, key decisions, or verified invariants.
+  Use this skill when completing major roadmap milestones in ROADMAP.md to compact and synthesize older chronological entries in DIARY.md into concise, high-level architectural digests without losing evolutionary rationale, key decisions, or verified test results.
 ---
 
 # Recipe: Compacting DIARY.md Upon Major Milestone Completion
@@ -54,7 +54,7 @@ Compacting `DIARY.md` is an intelligent, selective synthesis — **not an arbitr
      - **Architectural Breakthroughs:** High-level summary of core mechanics established (e.g. 2-clock micro-step slicing, Cartesian DMA contention engine, static dispatch table).
      - **Key Decisions & Non-Obvious Trade-Offs:** Consolidate decisions explaining *why* the code is written the way it is.
      - **Agent Collaboration & Root-Cause Lessons:** Major bugs caught and institutional prevention mechanisms established.
-     - **Verified Invariants:** Record final verification gates (e.g. 100% SingleStepTests pass, 0 broken links in Obsidian).
+     - **Verification Gates:** Record final verification gates (e.g. 100% SingleStepTests pass, 0 broken links in Obsidian).
 
 ---
 

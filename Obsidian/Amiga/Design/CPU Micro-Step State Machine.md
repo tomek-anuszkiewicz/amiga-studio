@@ -157,7 +157,7 @@ All instruction modules reuse shared atomic Color Clock micro-step primitives ra
 - **Exception Push Setup:** `EXCEPTION_PUSH_PCLO_IDLE`, `EXCEPTION_PUSH_SR_IDLE`, `EXCEPTION_PUSH_PCHI_IDLE`, `AERR_PUSH_*_IDLE` (CCK1 exception push setup / bus idle).
 
 #### Canonical Layout for Instruction Modules
-To guarantee zero cognitive friction and seamless codebase navigation across all instruction files, every module adheres to the standard 6-section sequence:
+To maintain structural consistency and clean codebase navigation across all instruction files, every module adheres to the standard sequence:
 1. **Module Doc Comment:** High-level summary of mnemonic, addressing modes, and timing.
 2. **Imports:** Imports from `crate::micro::common::*`, `crate::core::*`, `crate::micro::ea`.
 3. **Leaf ALU Functions:** Direct arithmetic/logic helpers (`#[inline(always)] fn add_w(...)`, `sub_b(...)`) called directly by ALU callbacks to execute branchless wrapping math and CCR flag updates.

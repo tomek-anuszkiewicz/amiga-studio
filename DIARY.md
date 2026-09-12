@@ -16,7 +16,7 @@ Before a single line of Rust code was written, the human spent the final week of
 - **Analog Low-Pass Audio Simulation (LTspice):** The human modeled Paula's analog audio reconstruction circuit in LTspice (`0b2777fa`), extracting the exact resistor (ohms) and capacitor (farads) values from original Commodore schematics (`c448cd14`). This captured both the fixed 2-pole Sallen-Key low-pass filter and the switchable "LED filter" controlled by CIA-A port A bit 1.
 - **Band-Limited Step (BLEP) Table Generation:** In a dedicated C# prototype (`9057f4a8`, `7783f1e2`), the human derived and verified the continuous-time impulse response and step response tables needed for alias-free audio interpolation, parameterizing them directly against physical component physics rather than arbitrary digital filters.
 - **Reference Emulator Ingestion:** To prevent speculative design, five verified open-source reference emulators were imported into `ref_src/` for cross-validation: MAME, Moira, Musashi, vAmiga, and WinUAE.
-- **Decoded Single-Step Vectors:** Over 1 million cycle-exact hardware captures from MAME and Tom Harte hardware tests were imported and structured (`a31518dc`), providing an unforgiving, cycle-by-cycle testing oracle before any CPU code was drafted.
+- **Decoded Single-Step Vectors:** Over 1 million cycle-exact hardware captures from MAME and Tom Harte hardware tests were imported and structured (`a31518dc`), providing an unforgiving, cycle-by-cycle test verification reference before any CPU code was drafted.
 
 ### The RAG Knowledge Base & Reference Documentation Sprint (September 1–4, 2026)
 Between September 1 and September 4, a massive documentation ingestion sprint took place across dozens of commits (`e82a4efc` through `e782dcf9`):
@@ -698,10 +698,35 @@ Every future modification or implementation task must append an entry following 
   - Clarified and preserved legitimate hardware profiling specifications in `ROADMAP.md` (Step 2 PMU counter benchmarks: `L1-icache-load-misses`, `L1-dcache-load-misses`, LLC misses) and `Obsidian/Amiga/Design/CPU Instruction Benchmarking.md` (testing 700-instruction unrolled loops against CPU Loop Stream Detectors and single P-core pinned benchmarking).
 - **Architectural Rationale & Trade-Offs**:
   - *Preventing Model Semantic Drifting:* LLMs develop strong attractor basins around specific technical jargon. Once "L1i cache density" was cited in early benchmarking discussions, subsequent model turns parroted the term into completely inappropriate contexts (e.g. justifying deleting unused Rust structs to "keep L1 instruction cache compact"). Purging this pseudo-justification restores clear, precise, and hardware-accurate engineering language across repository guidelines.
-- **Verification & Invariants**:
+- **Verification & Test Results**:
   - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.53s.
   - `AGENTS.md` and all rule files verified strictly <= 23,000 bytes (`AGENTS.md` is 22,908 bytes).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 12:37 CEST] — Audit & Elimination of Additional Semantic Attractors (Invariants, Oracles, Friction, Epistemic)
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/CPU Benchmark Analysis Guide.md` (line 48: eradicated the tautological attractor `"The Invariance Invariant"` $\rightarrow$ `"Addressing Mode Consistency"`)
+  - `Obsidian/Amiga/Design/CPU Micro-Step State Machine.md` (line 160: purged `"zero cognitive friction"` in favor of clean consistency)
+  - `DIARY.md` (line 19: replaced theatrical `"testing oracle"` with concrete `"test verification reference"`)
+  - `.agents/skills/index-amiga-rag/SKILL.md` (line 48: replaced `"Incremental Skip Invariant"` with `"Content-Hash Skip Mechanism"`)
+  - `.agents/skills/prune-dead-code/SKILL.md` (line 47: replaced `"Invariant Verification"` with `"Correctness Verification"`)
+  - `.agents/skills/compact-diary/SKILL.md` (lines 4, 57: replaced `"verified invariants"` / `"Verified Invariants"` with `"verified test results"` / `"Verification Gates"`)
+  - `.agents/rules/docs-maintenance.md` (lines 12, 24: replaced `"Verification & Invariants"` boilerplate with `"Verification & Test Results"`)
+  - `.agents/rules/unit-testing-policy.md` (line 37: replaced `"Layout & Invariant Assertions"` with `"Layout & State Assertions"`)
+  - `.agents/rules/egui-best-practices.md` (lines 41, 44, 45: pruned inflated invariant references in favor of layout state and geometry stability)
+  - `AGENTS.md` (line 153: replaced `"invariant tests"` with `"unit, and integration tests"`)
+- **What Was Audited & Clarified (The Concrete Reality)**:
+  - Conducted a comprehensive audit of 4 prevalent AI semantic attractor categories:
+    1. *Invariants as a universal answer to everything:* Stripped ornamental usage of "invariant" from section headers, file-caching skips, and UI tests, strictly confining "invariance" to genuine mathematical transformations (DMA formula $C = C_0 + 2 \times \text{wait\_states}$, address error register immutability, FNV-1a hash column determinism).
+    2. *Harness + Oracles:* Replaced theatrical "oracle" terminology in documentation with direct, literal testing references. Confirmed "harness" is used strictly in concrete technical contexts (Cargo `harness = false`, `dma_harness.rs`, hardware wire harness).
+    3. *Zero friction warnings / claims:* Eradicated "zero cognitive friction" phrasing; verified zero instances of "zero friction trap".
+    4. *Epistemic philosophical jargon:* Verified zero occurrences of "epistemic" across the entire repository.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.54s.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
 
 
 

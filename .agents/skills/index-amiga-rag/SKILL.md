@@ -45,7 +45,7 @@ Or directly target the reference vault:
 ```powershell
 python tools/rag/rag_qdrant/indexer.py "Obsidian/Amiga/Reference" --source amiga
 ```
-- **Incremental Skip Invariant:** Unchanged markdown files and images matching cached hashes are skipped instantly. Only new or modified chunks are re-embedded and upserted.
+- **Content-Hash Skip Mechanism:** Unchanged markdown files and images matching cached hashes are skipped instantly. Only new or modified chunks are re-embedded and upserted.
 
 ### Step 3: Verify Status & Collection Health
 Verify that the collection is healthy and vector counts reflect the updates:

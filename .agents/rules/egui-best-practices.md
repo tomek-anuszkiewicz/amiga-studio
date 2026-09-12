@@ -38,10 +38,10 @@ Structure all files under `crates/desktop_gui/src/layout/` to strictly mirror wh
 
 ---
 
-## 5. Mandatory Automated Integration Testing & Invariants (`crates/gui/tests/`)
+## 5. Mandatory Automated Integration Testing (`crates/gui/tests/`)
 - **Simulated Headless Input Passes:** Every user interaction, keyboard shortcut, drag-and-drop, inline editing lifecycle, modal dialog, and time-travel navigation must be accompanied by automated integration tests using `egui::Context::default()` and `ctx.run(RawInput, |ctx| { app.update_ui(ctx); })`.
 - **Zero Graphical Regressions Mandate:** Whenever a graphical bug, misalignment, or interaction defect is reported or fixed:
-  1. Analyze whether the defect or its invariant can be asserted headlessly.
-  2. Implement an automated integration test in `crates/gui/tests/test_interactions.rs` or `test_gui.rs` verifying the expected behavior (e.g. text edit focus acquisition, click-outside dismissal, Escape cancellation, grid slot geometry invariance).
+  1. Analyze whether the defect or expected layout state can be asserted headlessly.
+  2. Implement an automated integration test in `crates/gui/tests/test_interactions.rs` or `test_gui.rs` verifying the expected behavior (e.g. text edit focus acquisition, click-outside dismissal, Escape cancellation, grid slot geometry stability).
   3. No interactive UI bugfix is complete without passing automated integration tests.
 
