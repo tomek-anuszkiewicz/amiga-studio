@@ -103,22 +103,29 @@ pub fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool) {
                     .spacing([6.0, 2.0])
                     .show(ui, |ui| {
                         ui.monospace("addr1 (X1):")
-                            .on_hover_text("Staged source effective address (Dual Staging Architecture)");
-                        ui.monospace(format!("${:08X}", state.micro.addr1));
+                            .on_hover_text("Staged source address");
+                        ui.monospace(format!("${:08X}", state.micro.addr1))
+                            .on_hover_text("Staged source address");
                         ui.monospace("addr2 (X2):")
-                            .on_hover_text("Staged destination effective address (Dual Staging Architecture)");
-                        ui.monospace(format!("${:08X}", state.micro.addr2));
+                            .on_hover_text("Staged destination address");
+                        ui.monospace(format!("${:08X}", state.micro.addr2))
+                            .on_hover_text("Staged destination address");
                         ui.end_row();
 
-                        ui.monospace("source:");
-                        ui.monospace(format!("${:08X}", state.micro.source));
-                        ui.monospace("destination:");
-                        ui.monospace(format!("${:08X}", state.micro.destination));
+                        ui.monospace("source:")
+                            .on_hover_text("Source operand value");
+                        ui.monospace(format!("${:08X}", state.micro.source))
+                            .on_hover_text("Source operand value");
+                        ui.monospace("destination:")
+                            .on_hover_text("Destination operand value");
+                        ui.monospace(format!("${:08X}", state.micro.destination))
+                            .on_hover_text("Destination operand value");
                         ui.end_row();
 
                         ui.monospace("ea_addr:")
-                            .on_hover_text("Effective address calculation intermediate latch");
-                        ui.monospace(format!("${:08X}", state.micro.ea_addr));
+                            .on_hover_text("Effective address");
+                        ui.monospace(format!("${:08X}", state.micro.ea_addr))
+                            .on_hover_text("Effective address");
                         ui.monospace("Chip RAM:")
                             .on_hover_text("Chip RAM DMA arbitration: Agnus/Denise bus locking status");
                         if bus_blocked {

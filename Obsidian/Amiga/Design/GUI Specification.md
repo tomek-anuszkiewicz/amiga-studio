@@ -187,7 +187,9 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
 
 ### 3.6 Column 3: Disassembly View ([`layout/left_dock/disassembly.rs`](../../../crates/gui/src/layout/left_dock/disassembly.rs))
 - **Live Disassembly Table & Infinite Scroll:**
-  - Continuous memory browsing: Mouse-wheel scrolling up or down freely streams disassembly across 24-bit memory space without snapping back to PC, maintaining valid 16-bit instruction alignment.
+  - Full-height layout without nested `ScrollArea` wrappers: calculates visible rows directly from available height (`(ui.available_height() / 19.0).floor() as usize`).
+  - Continuous memory browsing: Mouse-wheel scrolling up or down freely streams disassembly across 24-bit memory space without snapping back to PC, maintaining valid 16-bit instruction alignment. Supports Ctrl (10x) and Shift (5x) acceleration and consumes scroll deltas to prevent parent container fighting.
+  - Interactive 24-bit vertical scrollbar (8px width) on right edge for instantaneous navigation across full 16 MB 68000 address space.
   - Active PC Synchronization: Executing any step (`F10`, `Shift+F10`, `F11`), running (`F5`), or clicking top bar execution buttons automatically resets the view override (`disassembly_view_addr = None`), re-centering on current $PC$.
   - Single-row scoped execution pointer highlight rect in electric cyan (`accent_pc`).
   - Breakpoint margin: Vector-painted resolution-independent circular breakpoint indicators (`circle_filled` / `circle_stroke`), eliminating OS missing-glyph boxes. Clicking toggles PC breakpoint.
@@ -207,6 +209,7 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
 ### 3.7 Right Dock: Memory Hex Editor ([`layout/right_dock/memory_hex.rs`](../../../crates/gui/src/layout/right_dock/memory_hex.rs))
 - **16-Byte Row Hex + ASCII Grid:**
   - 510px default dock width with uniform 19px fixed-width cell slot allocations (`allocate_ui_with_layout`).
+  - **Dynamic Fill & Automatic Bottom-Docking:** Memory Hex Editor dynamically docks to the top and automatically expands to fill 100% of all available vertical height above bottom-docked tool panels via natural bottom-up layout (`Layout::bottom_up`), displaying 35–48 rows on Full HD displays ($000000..=$000220+) with in-place memory scrolling.
   - Zero margin on byte input editor ensures typing never causes horizontal jitter or shifts adjacent columns.
   - 14px comfortable right margin on row end prevents right-edge border collision on ASCII column.
 - **Cell Selection vs Inline Editing:**
@@ -220,25 +223,28 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
   - `Home` / `End` jump to column 0 / 15 of the current row.
   - `PageUp` / `PageDown` navigate by visible page capacity (or 1 KB with Ctrl held).
   - Navigating past the top or bottom visible row automatically scrolls `base_addr`.
-- **Draggable Vertical Splitters & Adaptive Pane Heights:**
-  - **Right Dock Splitter:** Draggable divider with `ResizeVertical` cursor and 2px hover stroke separates the upper Memory Hex View from lower tool panels (Breakpoints, Search, Trace Log). Height is stored in `memory_pane_height` (default 320px, clamped 120px..=700px).
-  - **Center-Right Pane Splitter (Full HD Mode):** Draggable vertical divider separates the top Amiga CRT Screen/temporal bar from the lower Trace Log panel, stored in `crt_pane_height` (default 460px, clamped 200px..=800px).
-  - Both pane heights are persisted across application restarts via `UserPreferences` in `eframe::Storage`.
+- **Permanent Fixed Margins & Persistent Layout Configuration:**
+  - **Uniform 8px Divider & Window Boundaries:** Every panel frame enforces exact symmetric spacing (`Margin { left: 8, right: 4 }` for Left Dock, `Margin { left: 4, right: 4 }` for Central Panel, and `Margin { left: 4, right: 8 }` for Right Dock, creating an exact 8px spacing across all panel dividers and outer window edges).
+  - **Flush Disassembly Stream:** Disassembly rows and 24-bit scrollbar stretch flush right up to the vertical splitter line with zero dead padding.
+  - **Symmetric Right Dock Alignment:** Bottom tools (`Memory Search` and `Breakpoints & Watchpoints`) align flush with Memory Hex Editor with zero lopsided indentations (`ui.spacing_mut().indent = 0.0`).
+  - **Column 2 / Column 3 Vertical Splitter (Full HD Mode):** 100% full-height vertical divider (`ui.max_rect().y_range()`) with `ResizeHorizontal` cursor between Disassembly and CRT Screen / Trace column, stored in `disasm_pane_width` (default 460px, clamped 280px..=total_w - 380px).
+  - **CRT Screen / Trace Log Horizontal Splitter (Full HD Mode):** Draggable horizontal divider with `ResizeVertical` cursor separating top CRT screen/temporal bar from lower Trace Log panel, stored in `crt_pane_height` (default 380px, clamped 200px..=total_h - 100px).
+  - **Zero Horizontal Splitter in Right Dock:** The manual draggable splitter has been removed in favor of automatic bottom-docking and reactive top hex editor expansion.
+  - Active dimensions are persisted across application restarts via `UserPreferences` in `eframe::Storage`.
 
 ### 3.8 Right Dock: Memory Search ([`layout/right_dock/memory_search.rs`](../../../crates/gui/src/layout/right_dock/memory_search.rs))
-- Pattern searching across memory:
+- Pattern searching across memory with full-width stretching (`ui.set_width(ui.available_width())`):
   - Hex mode: e.g. `4E 71 32 00`.
   - ASCII mode: e.g. `DOS\0`, `Kickstart`.
+  - Stretched singleline text input with right-aligned `[🔍 Find Next]` button eliminating any right-side gap.
   - Jump-to-match buttons (`Prev Match`, `Next Match`) that synchronize the Hex Editor view.
 
 ### 3.9 Right Dock: Breakpoints & Watchpoints Manager ([`layout/right_dock/breakpoints_panel.rs`](../../../crates/gui/src/layout/right_dock/breakpoints_panel.rs))
-- **PC Breakpoints:**
-  - Active breakpoint list with enable checkboxes, address formatting, and delete buttons.
+- Full-width card containers (`ui.set_width(ui.available_width())`) docked at the bottom of Right Dock:
+  - **PC Breakpoints:** Active breakpoint list with enable checkboxes, address formatting, and right-aligned delete `[✕]` buttons.
   - Attached register conditions: e.g. `[IF D0 == $2A]`, `[IF PC == $1004]`.
   - Inline creator to specify PC address, register, operator (`==, !=, <, >, <=, >=`), and value.
-- **Memory Watchpoints:**
-  - Address range monitor: e.g. `$002000..=$0020FF`.
-  - Access type: `Read`, `Write`, `Any`.
+  - **Memory Watchpoints:** Address range monitor with access badges (`READ`, `WRITE`, `ANY`) and right-aligned delete `[✕]` buttons.
   - Enable checkboxes and remove buttons.
 
 ### 3.10 Right Dock: Trace History Log ([`layout/right_dock/trace_log.rs`](../../../crates/gui/src/layout/right_dock/trace_log.rs))

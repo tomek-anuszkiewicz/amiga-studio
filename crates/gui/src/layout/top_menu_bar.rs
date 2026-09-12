@@ -32,15 +32,6 @@ pub fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     }
                 });
 
-                ui.menu_button("View", |ui| {
-                    if ui
-                        .checkbox(&mut app.show_microcode, "Show Microcode Inspector (F8)")
-                        .clicked()
-                    {
-                        ui.close_menu();
-                    }
-                });
-
                 ui.separator();
 
                 // --- 2. Execution Controls ---

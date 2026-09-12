@@ -37,6 +37,10 @@ impl DebuggerSession {
     /// Initializes a new DebuggerSession with reset CPU and default temporal capacity
     pub fn new() -> Self {
         let mut bus = MemoryBus::new();
+        // If no Kickstart ROM is loaded, disengage low-memory boot overlay so physical Chip RAM maps to $000000
+        if !bus.is_kickstart_loaded() {
+            bus.map_chip_ram_to_low_memory();
+        }
         let mut cpu = Cpu::new();
         cpu.reset(&mut bus);
 
@@ -198,6 +202,9 @@ impl DebuggerSession {
     pub fn reset_cold(&mut self) {
         self.is_running = false;
         self.bus.reset_cold();
+        if !self.bus.is_kickstart_loaded() {
+            self.bus.map_chip_ram_to_low_memory();
+        }
         self.cpu.reset(&mut self.bus);
         self.temporal.clear();
         self.debugger.trace.clear();
@@ -210,6 +217,9 @@ impl DebuggerSession {
     pub fn reset_warm(&mut self) {
         self.is_running = false;
         self.bus.reset_warm();
+        if !self.bus.is_kickstart_loaded() {
+            self.bus.map_chip_ram_to_low_memory();
+        }
         self.cpu.reset(&mut self.bus);
         self.prev_cpu_state = None;
     }

@@ -43,6 +43,17 @@ impl Cpu {
         self.state.pc = ((pc_hi as u32) << 16) | (pc_lo as u32);
         self.state.instruction_pc = self.state.pc;
 
+        // If reset vector points to unpopulated open bus ($FFFFFFFF) or is an unaligned odd address,
+        // normalize PC to $000000. Default SSP to top of 512KB Chip RAM ($080000) if zero/unmapped.
+        if self.state.pc == 0xFFFF_FFFF || (self.state.pc & 1) != 0 {
+            self.state.pc = 0x000000;
+            self.state.instruction_pc = 0x000000;
+        }
+        if self.state.ssp == 0xFFFF_FFFF || self.state.ssp == 0 || (self.state.ssp & 1) != 0 {
+            self.state.ssp = 0x080000;
+            self.state.set_a_long(7, self.state.ssp);
+        }
+
         // Prime prefetch pipeline
         self.state.ir = bus.read_word_debug(self.state.pc);
         self.state.pc = self.state.pc.wrapping_add(2);

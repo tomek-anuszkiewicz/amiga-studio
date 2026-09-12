@@ -116,7 +116,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         scenario, width, height
     );
 
-    let app = create_primed_app();
+    let app = if scenario == "clean_startup" {
+        EmulatorApp::default()
+    } else {
+        create_primed_app()
+    };
 
     // Prepare harness with wgpu offscreen renderer
     let mut harness = Harness::builder()
@@ -135,7 +139,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Apply scenario-specific interactions
     match scenario.as_str() {
-        "baseline" => {
+        "baseline" | "clean_startup" => {
             // Settle layout with another step
             harness.step();
         }

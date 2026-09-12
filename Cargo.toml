@@ -11,6 +11,7 @@ members = [
     "crates/test_runner",
     "tools/blep_generator",
 ]
+default-members = ["crates/gui"]
 
 [workspace.package]
 version = "0.1.0"

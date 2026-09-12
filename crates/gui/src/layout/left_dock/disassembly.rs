@@ -44,7 +44,7 @@ pub fn render_disassembly(
         let response = ui.add(
             egui::TextEdit::singleline(goto_addr_str)
                 .desired_width(70.0)
-                .hint_text("001000"),
+                .hint_text("000000"),
         );
         if (response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)))
             || ui.button("Jump").clicked()
@@ -97,30 +97,55 @@ pub fn render_disassembly(
 
     // Mouse wheel infinite stream browsing
     if is_hovered {
+        let mut scrolled = false;
         for event in ui.input(|i| i.events.clone()) {
-            if let egui::Event::MouseWheel { delta, .. } = event {
+            if let egui::Event::MouseWheel {
+                delta, modifiers, ..
+            } = event
+            {
                 let clicks = (-delta.y.round()) as i32;
-                let steps = clicks.unsigned_abs() as usize;
+                let multiplier = if modifiers.ctrl || modifiers.command {
+                    10
+                } else if modifiers.shift {
+                    5
+                } else {
+                    1
+                };
+                let steps = (clicks.unsigned_abs() as usize) * multiplier;
                 if clicks > 0 {
                     let mut curr = view_addr.unwrap_or(default_start);
-                    for _ in 0..steps.min(10) {
+                    for _ in 0..steps.min(50) {
                         let (_, len) = disassemble(curr, |a| bus.read_word_debug(a));
                         curr = curr.wrapping_add(len.max(2)) & 0x00FF_FFFF;
                     }
                     *view_addr = Some(curr);
+                    scrolled = true;
                 } else if clicks < 0 {
                     let mut curr = view_addr.unwrap_or(default_start);
-                    for _ in 0..steps.min(10) {
-                        curr = find_aligned_disassembly_start(
+                    for _ in 0..steps.min(50) {
+                        let prev = find_aligned_disassembly_start(
                             curr,
                             1,
                             |a| bus.read_word_debug(a),
                             &known_boundaries,
                         );
+                        if prev >= curr {
+                            curr = curr.wrapping_sub(2) & 0x00FF_FFFE;
+                        } else {
+                            curr = prev;
+                        }
                     }
                     *view_addr = Some(curr);
+                    scrolled = true;
                 }
             }
+        }
+
+        if scrolled {
+            ui.input_mut(|i| {
+                i.smooth_scroll_delta = egui::Vec2::ZERO;
+                i.raw_scroll_delta = egui::Vec2::ZERO;
+            });
         }
 
         // Keyboard navigation across instruction rows
@@ -136,7 +161,12 @@ pub fn render_disassembly(
                         |a| bus.read_word_debug(a),
                         &known_boundaries,
                     );
-                    *selected_addr = Some(prev);
+                    let next_sel = if prev >= sel {
+                        sel.wrapping_sub(2) & 0x00FF_FFFE
+                    } else {
+                        prev
+                    };
+                    *selected_addr = Some(next_sel);
                 } else if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     let (disasm, _) = disassemble(sel, |a| bus.read_word_debug(a));
                     let initial_text = if disasm.operands.is_empty() {
@@ -156,15 +186,29 @@ pub fn render_disassembly(
         }
     }
 
-    let anchor_addr = view_addr.unwrap_or(default_start);
+    let anchor_addr = view_addr.unwrap_or(default_start) & 0x00FF_FFFF;
     let mut cur_addr = anchor_addr;
 
-    egui::ScrollArea::vertical()
-        .id_salt("disassembly_scroll")
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            let row_count = ((ui.available_height() / 19.0).max(35.0) as usize).min(100);
-            for _ in 0..row_count {
+    let total_avail_h = ui.available_height();
+    const BOTTOM_MARGIN: f32 = 10.0;
+    const ROW_HEIGHT: f32 = 21.5;
+    let usable_h = (total_avail_h - BOTTOM_MARGIN).max(ROW_HEIGHT * 4.0);
+    let row_count = ((usable_h / ROW_HEIGHT).floor() as usize).max(4);
+
+    const SCROLLBAR_WIDTH: f32 = 8.0;
+    const SPACING_X: f32 = 2.0;
+    let list_width = (ui.available_width() - SCROLLBAR_WIDTH - SPACING_X).max(80.0);
+
+    ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+        ui.spacing_mut().item_spacing.x = SPACING_X;
+        ui.allocate_ui_with_layout(
+            egui::vec2(list_width, usable_h),
+            egui::Layout::top_down(egui::Align::Min),
+            |ui| {
+                ui.spacing_mut().item_spacing.y = 1.0;
+                ui.set_min_width(list_width);
+                ui.set_width(list_width);
+                for _ in 0..row_count {
                 let (disasm, byte_len) = disassemble(cur_addr, |a| bus.read_word_debug(a));
                 let is_current = cur_addr == current_pc;
                 let is_selected = *selected_addr == Some(cur_addr);
@@ -425,9 +469,16 @@ pub fn render_disassembly(
                     }
                 });
 
-                cur_addr = cur_addr.wrapping_add(byte_len.max(2));
-            }
-        });
+                    cur_addr = (cur_addr.wrapping_add(byte_len.max(2))) & 0x00FF_FFFF;
+                }
+            },
+        );
+
+        // 24-bit vertical scrollbar on the right edge
+        render_disasm_scrollbar(ui, view_addr, default_start, usable_h, tokens);
+    });
+
+    ui.add_space(BOTTOM_MARGIN);
 
     let end_pos = ui.cursor().min;
     let total_rect = egui::Rect::from_min_max(
@@ -435,4 +486,78 @@ pub fn render_disassembly(
         egui::pos2(ui.max_rect().max.x, end_pos.y.max(start_pos.y + 100.0)),
     );
     ui.data_mut(|d| d.insert_temp(disasm_rect_id, total_rect));
+}
+
+/// Interactive vertical scrollbar mapping 24-bit Amiga address space ($000000..=$00FFFFFE)
+fn render_disasm_scrollbar(
+    ui: &mut Ui,
+    view_addr: &mut Option<u32>,
+    current_addr: u32,
+    track_height: f32,
+    tokens: &ColorTokens,
+) {
+    const MAX_ADDR: f32 = 0x00FF_FFFE as f32;
+    const SCROLLBAR_WIDTH: f32 = 8.0;
+
+    let (track_rect, track_response) = ui.allocate_exact_size(
+        egui::vec2(SCROLLBAR_WIDTH, track_height),
+        egui::Sense::click_and_drag(),
+    );
+
+    let active_addr = view_addr.unwrap_or(current_addr);
+    let thumb_height = 24.0_f32.max(track_height * 0.08);
+    let fraction = (active_addr as f32 / MAX_ADDR).clamp(0.0, 1.0);
+    let travel = (track_rect.height() - thumb_height).max(1.0);
+    let thumb_top = track_rect.top() + fraction * travel;
+    let thumb_rect = egui::Rect::from_min_size(
+        egui::pos2(track_rect.left() + 1.0, thumb_top),
+        egui::vec2(track_rect.width() - 2.0, thumb_height),
+    );
+
+    // Track background
+    ui.painter().rect_filled(
+        track_rect,
+        2.0,
+        egui::Color32::from_rgba_unmultiplied(20, 24, 34, 180),
+    );
+    ui.painter().rect_stroke(
+        track_rect,
+        2.0,
+        egui::Stroke::new(1.0_f32, tokens.border_subtle),
+        egui::StrokeKind::Inside,
+    );
+
+    // Handle drag
+    if track_response.dragged() {
+        if let Some(ptr) = ui.input(|i| i.pointer.latest_pos()) {
+            let rel_y = (ptr.y - track_rect.top() - thumb_height / 2.0).clamp(0.0, travel);
+            let frac = rel_y / travel;
+            *view_addr = Some(((frac * MAX_ADDR) as u32) & 0x00FF_FFFE);
+        }
+    } else if track_response.clicked() {
+        if let Some(click_pos) = track_response.interact_pointer_pos() {
+            if click_pos.y < thumb_rect.top() {
+                let curr = view_addr.unwrap_or(current_addr);
+                *view_addr = Some(curr.wrapping_sub(256) & 0x00FF_FFFE);
+            } else if click_pos.y > thumb_rect.bottom() {
+                let curr = view_addr.unwrap_or(current_addr);
+                *view_addr = Some(curr.wrapping_add(256) & 0x00FF_FFFE);
+            }
+        }
+    }
+
+    let thumb_color = if track_response.dragged() {
+        tokens.border_active
+    } else if track_response.hovered() {
+        tokens.text_secondary
+    } else {
+        tokens.border_subtle
+    };
+
+    ui.painter().rect_filled(thumb_rect, 2.0, thumb_color);
+
+    track_response.on_hover_text(format!(
+        "Disassembly: ${:06X}\nDrag to scroll across 24-bit memory space",
+        active_addr
+    ));
 }

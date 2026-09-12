@@ -352,8 +352,16 @@ fn test_startup_clean_memory() {
     assert_eq!(app.session.instructions_executed, 0);
     assert!(!app.session.is_running);
     assert!(!app.session.temporal.is_recording());
-    // Verify memory starts clean unmapped open bus ($FFFF) without auto-loaded programs
-    for addr in [0x001000, 0x001002, 0x002000, 0x070000] {
+    // Verify startup PC counter points to $000000 (0th cell) with valid SSP ($080000) and primed prefetch
+    assert_eq!(app.session.cpu.state.instruction_pc, 0x000000);
+    assert_eq!(app.session.cpu.state.pc, 0x000004);
+    assert_eq!(app.session.cpu.state.a_regs()[7], 0x080000);
+    assert_eq!(app.session.cpu.state.ssp, 0x080000);
+    assert_eq!(app.session.cpu.state.ir, 0x0000);
+    assert_eq!(app.goto_addr_str, "000000");
+
+    // Verify memory starts clean zeroed Chip RAM without auto-loaded programs
+    for addr in [0x000000, 0x001000, 0x001002, 0x002000, 0x070000] {
         let val = app.session.bus.read_word_debug(addr);
         assert!(
             val == 0xFFFF || val == 0x0000,
@@ -816,19 +824,19 @@ fn test_memory_hex_vertical_scrollbar_interaction() {
         |ctx| app.update_ui(ctx),
     );
 
-    // 2. Click near bottom of the vertical scrollbar track (~1265, 350)
+    // 2. Click near bottom of the vertical scrollbar track (~1279, 300)
     let click_scrollbar_input = RawInput {
         screen_rect: Some(screen_rect),
         events: vec![
-            Event::PointerMoved(egui::pos2(1265.0, 350.0)),
+            Event::PointerMoved(egui::pos2(1279.0, 300.0)),
             Event::PointerButton {
-                pos: egui::pos2(1265.0, 350.0),
+                pos: egui::pos2(1279.0, 300.0),
                 button: egui::PointerButton::Primary,
                 pressed: true,
                 modifiers: Modifiers::NONE,
             },
             Event::PointerButton {
-                pos: egui::pos2(1265.0, 350.0),
+                pos: egui::pos2(1279.0, 300.0),
                 button: egui::PointerButton::Primary,
                 pressed: false,
                 modifiers: Modifiers::NONE,
@@ -1428,4 +1436,194 @@ fn test_disassembly_infinite_scroll_and_pc_snap() {
         app.disassembly_view_addr, None,
         "Stepping must reset disassembly_view_addr to None to track PC"
     );
+}
+
+#[test]
+fn test_fhd_vertical_splitter_drag_and_disassembly_resizing() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+    let initial_width = app.disasm_pane_width;
+    assert_eq!(initial_width, 460.0);
+
+    let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1920.0, 1080.0));
+
+    // 1. Prime frames so layout and dock sizes settle
+    for _ in 0..2 {
+        let _ = ctx.run(
+            RawInput {
+                screen_rect: Some(screen_rect),
+                ..Default::default()
+            },
+            |ctx| app.update_ui(ctx),
+        );
+    }
+
+    // 2. Splitter settled between Disassembly and CRT at X ~ 922.0 (459 + 460 + 3).
+    // Press mouse on vertical splitter
+    let _ = ctx.run(
+        RawInput {
+            screen_rect: Some(screen_rect),
+            events: vec![
+                Event::PointerMoved(egui::pos2(922.0, 400.0)),
+                Event::PointerButton {
+                    pos: egui::pos2(922.0, 400.0),
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Modifiers::NONE,
+                },
+            ],
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+
+    // 3. Drag mouse to 1000.0 while still held
+    let _ = ctx.run(
+        RawInput {
+            screen_rect: Some(screen_rect),
+            events: vec![Event::PointerMoved(egui::pos2(1000.0, 400.0))],
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+
+    assert!(
+        app.disasm_pane_width > initial_width,
+        "Dragging vertical splitter right must increase disasm_pane_width (was {}, now {})",
+        initial_width,
+        app.disasm_pane_width
+    );
+}
+
+#[test]
+fn test_disassembly_vertical_scrollbar_interaction() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+    assert_eq!(app.disassembly_view_addr, None);
+
+    let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1920.0, 1080.0));
+
+    // 1. Prime frames so layout settles
+    for _ in 0..2 {
+        let _ = ctx.run(
+            RawInput {
+                screen_rect: Some(screen_rect),
+                ..Default::default()
+            },
+            |ctx| app.update_ui(ctx),
+        );
+    }
+
+    // 2. Drag the Disassembly 24-bit vertical scrollbar (X ~ 915, Y ~ 300 -> 500)
+    let _ = ctx.run(
+        RawInput {
+            screen_rect: Some(screen_rect),
+            events: vec![
+                Event::PointerMoved(egui::pos2(915.0, 300.0)),
+                Event::PointerButton {
+                    pos: egui::pos2(915.0, 300.0),
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Modifiers::NONE,
+                },
+            ],
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+
+    let _ = ctx.run(
+        RawInput {
+            screen_rect: Some(screen_rect),
+            events: vec![Event::PointerMoved(egui::pos2(915.0, 500.0))],
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+
+    // Dragging scrollbar must set disassembly_view_addr to an address
+    assert!(
+        app.disassembly_view_addr.is_some(),
+        "Dragging disassembly scrollbar must activate view_addr browsing"
+    );
+}
+
+#[test]
+fn test_disassembly_mouse_wheel_scroll_up_in_blank_memory() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+    let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1920.0, 1080.0));
+
+    // Set view_addr in blank memory (unmapped $FFFF)
+    app.disassembly_view_addr = Some(0x000080);
+
+    // Warm up frame
+    let _ = ctx.run(
+        RawInput {
+            screen_rect: Some(screen_rect),
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+
+    let initial_view = app.disassembly_view_addr.unwrap();
+    assert_eq!(initial_view, 0x000080);
+
+    // Send MouseWheel event scrolling UP (positive delta_y) over disassembly area
+    let _ = ctx.run(
+        RawInput {
+            screen_rect: Some(screen_rect),
+            events: vec![
+                Event::PointerMoved(egui::pos2(600.0, 300.0)),
+                Event::MouseWheel {
+                    unit: egui::MouseWheelUnit::Line,
+                    delta: egui::vec2(0.0, 2.0),
+                    modifiers: Modifiers::NONE,
+                },
+            ],
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+
+    let new_addr = app.disassembly_view_addr.unwrap_or(0);
+    assert!(
+        new_addr < 0x000080,
+        "Mouse wheel scroll UP in unmapped memory must decrement address (was 0x80, now {:#06X})",
+        new_addr
+    );
+}
+
+#[test]
+fn test_right_dock_bottom_docking_and_fill() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+    let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1920.0, 1080.0));
+
+    // Warm up frames to allow reactive height feedback to measure bottom tools
+    for _ in 0..4 {
+        let _ = ctx.run(
+            RawInput {
+                screen_rect: Some(screen_rect),
+                ..Default::default()
+            },
+            |ctx| app.update_ui(ctx),
+        );
+    }
+
+    // Bottom tools must have non-zero measured height docked at bottom
+    assert!(
+        app.right_dock_bottom_height >= 50.0,
+        "Bottom tools must have a positive measured docked height (measured: {})",
+        app.right_dock_bottom_height
+    );
+
+    // Verify tools measured height is persisted in temporary UI memory
+    let tools_h_id = egui::Id::new("right_dock_tools_measured_h");
+    let measured: Option<f32> = ctx.data(|d| d.get_temp(tools_h_id));
+    assert!(
+        measured.is_some(),
+        "Tools height must be stored in temp memory for reactive vertical fill"
+    );
+    assert_eq!(measured.unwrap(), app.right_dock_bottom_height);
 }

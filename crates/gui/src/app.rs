@@ -56,12 +56,16 @@ pub enum ViewMode {
     ScreenOnly,
 }
 
-fn default_memory_pane_height() -> f32 {
-    380.0
+fn default_disasm_pane_width() -> f32 {
+    460.0
 }
 
 fn default_crt_pane_height() -> f32 {
     380.0
+}
+
+fn default_right_dock_bottom_height() -> f32 {
+    260.0
 }
 
 /// Persistent high-level user preferences saved across desktop sessions
@@ -71,10 +75,12 @@ pub struct UserPreferences {
     pub view_mode: ViewMode,
     pub show_microcode: bool,
     pub temporal_capacity: usize,
-    #[serde(default = "default_memory_pane_height")]
-    pub memory_pane_height: f32,
+    #[serde(default = "default_disasm_pane_width")]
+    pub disasm_pane_width: f32,
     #[serde(default = "default_crt_pane_height")]
     pub crt_pane_height: f32,
+    #[serde(default = "default_right_dock_bottom_height")]
+    pub right_dock_bottom_height: f32,
 }
 
 impl Default for UserPreferences {
@@ -84,8 +90,9 @@ impl Default for UserPreferences {
             view_mode: ViewMode::Developer,
             show_microcode: true,
             temporal_capacity: DEFAULT_TEMPORAL_CAPACITY,
-            memory_pane_height: default_memory_pane_height(),
+            disasm_pane_width: default_disasm_pane_width(),
             crt_pane_height: default_crt_pane_height(),
+            right_dock_bottom_height: default_right_dock_bottom_height(),
         }
     }
 }
@@ -103,9 +110,10 @@ pub struct EmulatorApp {
     pub active_reg_edit: Option<(EditRegister, String)>,
     pub active_disasm_edit: Option<DisasmEditState>,
 
-    // Resizable Splitter Heights
-    pub memory_pane_height: f32,
+    // Resizable Splitter Sizes
+    pub disasm_pane_width: f32,
     pub crt_pane_height: f32,
+    pub right_dock_bottom_height: f32,
 
     // Selection & Stream Navigation
     pub memory_selected_addr: Option<u32>,
@@ -146,8 +154,9 @@ impl Default for EmulatorApp {
             view_mode,
             active_reg_edit: None,
             active_disasm_edit: None,
-            memory_pane_height: default_memory_pane_height(),
+            disasm_pane_width: default_disasm_pane_width(),
             crt_pane_height: default_crt_pane_height(),
+            right_dock_bottom_height: default_right_dock_bottom_height(),
             memory_selected_addr: None,
             disassembly_view_addr: None,
             disassembly_selected_addr: None,
@@ -155,7 +164,7 @@ impl Default for EmulatorApp {
             hex_base_addr: 0x000000,
             hex_edit_buffer: (0, String::new()),
             memory_search_state: MemorySearchState::default(),
-            goto_addr_str: "001000".to_string(),
+            goto_addr_str: "000000".to_string(),
             target_cck_input: String::new(),
             temporal_capacity_selection: DEFAULT_TEMPORAL_CAPACITY,
             breakpoint_form: BreakpointFormState::default(),
@@ -187,8 +196,9 @@ impl EmulatorApp {
             view_mode: self.view_mode,
             show_microcode: self.show_microcode,
             temporal_capacity: self.temporal_capacity_selection,
-            memory_pane_height: self.memory_pane_height,
+            disasm_pane_width: self.disasm_pane_width,
             crt_pane_height: self.crt_pane_height,
+            right_dock_bottom_height: self.right_dock_bottom_height,
         }
     }
 
@@ -198,8 +208,9 @@ impl EmulatorApp {
         self.view_mode = prefs.view_mode;
         self.show_microcode = prefs.show_microcode;
         self.temporal_capacity_selection = prefs.temporal_capacity;
-        self.memory_pane_height = prefs.memory_pane_height;
+        self.disasm_pane_width = prefs.disasm_pane_width;
         self.crt_pane_height = prefs.crt_pane_height;
+        self.right_dock_bottom_height = prefs.right_dock_bottom_height;
         self.session.temporal.set_capacity(prefs.temporal_capacity);
     }
 
@@ -364,6 +375,14 @@ impl EmulatorApp {
                 .resizable(true)
                 .default_width(left_default)
                 .width_range(left_min..=480.0)
+                .frame(
+                    egui::Frame::side_top_panel(&ctx.style()).inner_margin(egui::Margin {
+                        left: 8,
+                        right: 4,
+                        top: 6,
+                        bottom: 6,
+                    }),
+                )
                 .show(ctx, |ui| {
                     egui::ScrollArea::vertical()
                         .id_salt("left_dock_scroll")
@@ -400,110 +419,125 @@ impl EmulatorApp {
                         });
                 });
 
-            // Column 3: Right Dock (Memory Hex + Tools with Draggable Splitter)
+            // Column 3: Right Dock (Memory Hex + Tools)
             egui::SidePanel::right("right_dock")
                 .resizable(true)
                 .default_width(right_default)
                 .width_range(right_min..=680.0)
+                .frame(
+                    egui::Frame::side_top_panel(&ctx.style()).inner_margin(egui::Margin {
+                        left: 4,
+                        right: 8,
+                        top: 6,
+                        bottom: 6,
+                    }),
+                )
                 .show(ctx, |ui| {
-                    let total_dock_h = ui.available_height();
-                    let top_h = self
-                        .memory_pane_height
-                        .clamp(180.0, (total_dock_h - 120.0).max(200.0));
+                    ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
+                        // 1. Bottom Zone: Tool Panels docked to bottom (rendered first in bottom_up)
+                        let bottom_h = self.right_dock_bottom_height.clamp(50.0, 420.0);
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), bottom_h),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                egui::ScrollArea::vertical()
+                                    .id_salt("right_dock_tools_scroll")
+                                    .auto_shrink([false, false])
+                                    .scroll_bar_visibility(
+                                        egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
+                                    )
+                                    .show(ui, |ui| {
+                                        let tools_resp = ui.vertical(|ui| {
+                                            render_memory_search(
+                                                ui,
+                                                &self.session.bus,
+                                                &mut self.hex_base_addr,
+                                                &mut self.memory_search_state,
+                                            );
+                                            ui.add_space(6.0);
+                                            render_breakpoints_panel(
+                                                &mut self.session.debugger.breakpoints,
+                                                &mut self.breakpoint_form,
+                                                ui,
+                                            );
+                                            if layout_tier != LayoutTier::FullHdWide {
+                                                ui.add_space(6.0);
+                                                render_trace_log(self, ui);
+                                            }
+                                        });
+                                        let measured_h = tools_resp.response.rect.height();
+                                        if measured_h > 30.0 {
+                                            self.right_dock_bottom_height = measured_h + 8.0;
+                                            let tools_h_id =
+                                                egui::Id::new("right_dock_tools_measured_h");
+                                            ui.data_mut(|d| {
+                                                d.insert_temp(
+                                                    tools_h_id,
+                                                    self.right_dock_bottom_height,
+                                                )
+                                            });
+                                        }
+                                    });
+                            },
+                        );
 
-                    // Top Zone: Memory Hex Editor (Direct scroll, no outer scroll interception)
-                    ui.allocate_ui_with_layout(
-                        egui::vec2(ui.available_width(), top_h),
-                        egui::Layout::top_down(egui::Align::Min),
-                        |ui| {
-                            render_memory_hex(
-                                ui,
-                                &mut self.session.bus,
-                                &mut self.session.debugger.breakpoints,
-                                &mut self.hex_base_addr,
-                                &mut self.memory_selected_addr,
-                                &mut self.hex_edit_buffer,
-                                if self.session.prev_cpu_state.is_some() {
-                                    Some((&self.session.prev_hex_bytes, self.session.prev_hex_base))
-                                } else {
-                                    None
-                                },
-                                &tokens,
-                            );
-                        },
-                    );
+                        ui.add_space(4.0);
 
-                    // Draggable Vertical Splitter
-                    let splitter_resp = ui.allocate_response(
-                        egui::vec2(ui.available_width(), 6.0),
-                        egui::Sense::click_and_drag(),
-                    );
-                    let splitter_hovered = splitter_resp.hovered() || splitter_resp.dragged();
-                    let splitter_color = if splitter_hovered {
-                        tokens.border_active
-                    } else {
-                        tokens.border_subtle
-                    };
-                    ui.painter().hline(
-                        splitter_resp.rect.x_range(),
-                        splitter_resp.rect.center().y,
-                        egui::Stroke::new(
-                            if splitter_hovered { 2.0_f32 } else { 1.0_f32 },
-                            splitter_color,
-                        ),
-                    );
-                    if splitter_resp.hovered() || splitter_resp.dragged() {
-                        ctx.set_cursor_icon(egui::CursorIcon::ResizeVertical);
-                    }
-                    if splitter_resp.dragged() {
-                        self.memory_pane_height = (self.memory_pane_height
-                            + splitter_resp.drag_delta().y)
-                            .clamp(180.0, (total_dock_h - 120.0).max(200.0));
-                    }
-
-                    // Bottom Zone: Tool Panels with inner margin to prevent clipping
-                    egui::ScrollArea::vertical()
-                        .id_salt("right_dock_tools_scroll")
-                        .auto_shrink([false, false])
-                        .scroll_bar_visibility(
-                            egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
-                        )
-                        .show(ui, |ui| {
-                            egui::Frame::NONE
-                                .inner_margin(egui::Margin::symmetric(8, 4))
-                                .show(ui, |ui| {
-                                    render_memory_search(
-                                        ui,
-                                        &self.session.bus,
-                                        &mut self.hex_base_addr,
-                                        &mut self.memory_search_state,
-                                    );
-                                    ui.add_space(6.0);
-                                    render_breakpoints_panel(
-                                        &mut self.session.debugger.breakpoints,
-                                        &mut self.breakpoint_form,
-                                        ui,
-                                    );
-                                    if layout_tier != LayoutTier::FullHdWide {
-                                        ui.add_space(6.0);
-                                        render_trace_log(self, ui);
-                                    }
-                                });
-                        });
+                        // 2. Top Zone: Memory Hex Editor (takes all remaining vertical space)
+                        let remaining_h = ui.available_height();
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), remaining_h),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                render_memory_hex(
+                                    ui,
+                                    &mut self.session.bus,
+                                    &mut self.session.debugger.breakpoints,
+                                    &mut self.hex_base_addr,
+                                    &mut self.memory_selected_addr,
+                                    &mut self.hex_edit_buffer,
+                                    if self.session.prev_cpu_state.is_some() {
+                                        Some((
+                                            &self.session.prev_hex_bytes,
+                                            self.session.prev_hex_base,
+                                        ))
+                                    } else {
+                                        None
+                                    },
+                                    &tokens,
+                                );
+                            },
+                        );
+                    });
                 });
 
             // Column 2: Central Viewport
-            egui::CentralPanel::default().show(ctx, |ui| {
-                match layout_tier {
-                    LayoutTier::FullHdWide => {
-                        // 4-Pane Studio Workbench Layout (Split Central Area)
-                        ui.columns(2, |columns| {
-                            // Sub-column 0: Dedicated Full-height Disassembly Stream
-                            columns[0].vertical(|ui| {
-                                egui::ScrollArea::both()
-                                    .id_salt("fhd_disasm_scroll")
-                                    .auto_shrink([false, false])
-                                    .show(ui, |ui| {
+            egui::CentralPanel::default()
+                .frame(
+                    egui::Frame::central_panel(&ctx.style()).inner_margin(egui::Margin {
+                        left: 4,
+                        right: 4,
+                        top: 6,
+                        bottom: 6,
+                    }),
+                )
+                .show(ctx, |ui| {
+                    match layout_tier {
+                        LayoutTier::FullHdWide => {
+                            // 4-Pane Studio Workbench Layout (Split Central Area)
+                            let total_w = ui.available_width();
+                            let total_h = ui.available_height();
+                            let min_disasm_w = 280.0_f32;
+                            let max_disasm_w = (total_w - 380.0).max(min_disasm_w);
+                            let disasm_w = self.disasm_pane_width.clamp(min_disasm_w, max_disasm_w);
+
+                            ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                                ui.spacing_mut().item_spacing.x = 0.0;
+                                // Sub-column 0: Dedicated Full-height Disassembly Stream
+                                ui.allocate_ui_with_layout(
+                                    egui::vec2(disasm_w, total_h),
+                                    egui::Layout::top_down(egui::Align::Min),
+                                    |ui| {
                                         render_disassembly(
                                             ui,
                                             &mut self.session.cpu,
@@ -516,109 +550,142 @@ impl EmulatorApp {
                                             &mut self.active_disasm_edit,
                                             &tokens,
                                         );
-                                    });
-                            });
-
-                            // Sub-column 1: Prominent 4:3 Amiga CRT Screen + Temporal Bar (top) + Trace Log (bottom) with draggable splitter
-                            columns[1].vertical(|ui| {
-                                let total_col_h = ui.available_height();
-                                let top_h = self
-                                    .crt_pane_height
-                                    .clamp(200.0, (total_col_h - 100.0).max(220.0));
-
-                                ui.allocate_ui_with_layout(
-                                    egui::vec2(ui.available_width(), top_h),
-                                    egui::Layout::top_down(egui::Align::Center),
-                                    |ui| {
-                                        let avail_w = ui.available_width();
-                                        let avail_h = (ui.available_height() - 48.0).max(120.0);
-                                        let screen_w =
-                                            avail_w.min(avail_h * 4.0 / 3.0).min(640.0).max(240.0);
-                                        let screen_h = (screen_w * 3.0 / 4.0).min(avail_h);
-
-                                        ui.allocate_ui_with_layout(
-                                            egui::vec2(avail_w, screen_h),
-                                            egui::Layout::top_down(egui::Align::Center),
-                                            |ui| {
-                                                render_amiga_screen(ui, false);
-                                            },
-                                        );
-
-                                        ui.separator();
-                                        render_temporal_bar(self, ui);
                                     },
                                 );
 
-                                // Draggable Splitter between CRT Screen/Temporal Bar and Trace Log
-                                let crt_splitter = ui.allocate_response(
-                                    egui::vec2(ui.available_width(), 6.0),
+                                // Draggable Vertical Splitter between Disassembly and CRT/Trace
+                                let splitter_resp = ui.allocate_response(
+                                    egui::vec2(6.0, total_h),
                                     egui::Sense::click_and_drag(),
                                 );
-                                let crt_hovered = crt_splitter.hovered() || crt_splitter.dragged();
-                                let crt_split_color = if crt_hovered {
+                                let splitter_hovered =
+                                    splitter_resp.hovered() || splitter_resp.dragged();
+                                let splitter_color = if splitter_hovered {
                                     tokens.border_active
                                 } else {
                                     tokens.border_subtle
                                 };
-                                ui.painter().hline(
-                                    crt_splitter.rect.x_range(),
-                                    crt_splitter.rect.center().y,
+                                ui.painter().vline(
+                                    splitter_resp.rect.center().x,
+                                    ui.max_rect().y_range(),
                                     egui::Stroke::new(
-                                        if crt_hovered { 2.0_f32 } else { 1.0_f32 },
-                                        crt_split_color,
+                                        if splitter_hovered { 2.0_f32 } else { 1.0_f32 },
+                                        splitter_color,
                                     ),
                                 );
-                                if crt_splitter.hovered() || crt_splitter.dragged() {
-                                    ctx.set_cursor_icon(egui::CursorIcon::ResizeVertical);
+                                if splitter_resp.hovered() || splitter_resp.dragged() {
+                                    ctx.set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
                                 }
-                                if crt_splitter.dragged() {
-                                    self.crt_pane_height = (self.crt_pane_height
-                                        + crt_splitter.drag_delta().y)
-                                        .clamp(200.0, (total_col_h - 100.0).max(220.0));
+                                if splitter_resp.dragged() {
+                                    self.disasm_pane_width = (self.disasm_pane_width
+                                        + splitter_resp.drag_delta().x)
+                                        .clamp(min_disasm_w, max_disasm_w);
                                 }
 
-                                ui.add_space(2.0);
-                                render_trace_log(self, ui);
-                            });
-                        });
-                    }
-                    LayoutTier::StandardDesktop | LayoutTier::Compact => {
-                        // Stacked Adaptive 3-Column Layout
-                        let total_h = ui.available_height();
-                        let screen_h = (total_h * 0.38).clamp(130.0, 260.0);
+                                // Sub-column 1: Prominent 4:3 Amiga CRT Screen + Temporal Bar (top) + Trace Log (bottom)
+                                let remaining_w = ui.available_width();
+                                ui.allocate_ui_with_layout(
+                                    egui::vec2(remaining_w, total_h),
+                                    egui::Layout::top_down(egui::Align::Min),
+                                    |ui| {
+                                        let total_col_h = ui.available_height();
+                                        let top_h = self
+                                            .crt_pane_height
+                                            .clamp(200.0, (total_col_h - 100.0).max(220.0));
 
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(ui.available_width(), screen_h),
-                            egui::Layout::top_down(egui::Align::Center),
-                            |ui| {
-                                render_amiga_screen(ui, false);
-                            },
-                        );
+                                        ui.allocate_ui_with_layout(
+                                            egui::vec2(ui.available_width(), top_h),
+                                            egui::Layout::top_down(egui::Align::Center),
+                                            |ui| {
+                                                let avail_w = ui.available_width();
+                                                let avail_h =
+                                                    (ui.available_height() - 48.0).max(120.0);
+                                                let screen_w = avail_w
+                                                    .min(avail_h * 4.0 / 3.0)
+                                                    .min(640.0)
+                                                    .max(240.0);
+                                                let screen_h = (screen_w * 3.0 / 4.0).min(avail_h);
 
-                        ui.separator();
-                        render_temporal_bar(self, ui);
-                        ui.separator();
+                                                ui.allocate_ui_with_layout(
+                                                    egui::vec2(avail_w, screen_h),
+                                                    egui::Layout::top_down(egui::Align::Center),
+                                                    |ui| {
+                                                        render_amiga_screen(ui, false);
+                                                    },
+                                                );
 
-                        egui::ScrollArea::both()
-                            .id_salt("center_disasm_scroll")
-                            .auto_shrink([false, false])
-                            .show(ui, |ui| {
-                                render_disassembly(
-                                    ui,
-                                    &mut self.session.cpu,
-                                    &mut self.session.bus,
-                                    &mut self.session.debugger,
-                                    &mut self.session.temporal,
-                                    &mut self.goto_addr_str,
-                                    &mut self.disassembly_view_addr,
-                                    &mut self.disassembly_selected_addr,
-                                    &mut self.active_disasm_edit,
-                                    &tokens,
+                                                ui.separator();
+                                                render_temporal_bar(self, ui);
+                                            },
+                                        );
+
+                                        // Draggable Splitter between CRT Screen/Temporal Bar and Trace Log
+                                        let crt_splitter = ui.allocate_response(
+                                            egui::vec2(ui.available_width(), 6.0),
+                                            egui::Sense::click_and_drag(),
+                                        );
+                                        let crt_hovered =
+                                            crt_splitter.hovered() || crt_splitter.dragged();
+                                        let crt_split_color = if crt_hovered {
+                                            tokens.border_active
+                                        } else {
+                                            tokens.border_subtle
+                                        };
+                                        ui.painter().hline(
+                                            crt_splitter.rect.x_range(),
+                                            crt_splitter.rect.center().y,
+                                            egui::Stroke::new(
+                                                if crt_hovered { 2.0_f32 } else { 1.0_f32 },
+                                                crt_split_color,
+                                            ),
+                                        );
+                                        if crt_splitter.hovered() || crt_splitter.dragged() {
+                                            ctx.set_cursor_icon(egui::CursorIcon::ResizeVertical);
+                                        }
+                                        if crt_splitter.dragged() {
+                                            self.crt_pane_height = (self.crt_pane_height
+                                                + crt_splitter.drag_delta().y)
+                                                .clamp(200.0, (total_col_h - 100.0).max(220.0));
+                                        }
+
+                                        ui.add_space(2.0);
+                                        render_trace_log(self, ui);
+                                    },
                                 );
                             });
+                        }
+                        LayoutTier::StandardDesktop | LayoutTier::Compact => {
+                            // Stacked Adaptive 3-Column Layout
+                            let total_h = ui.available_height();
+                            let screen_h = (total_h * 0.38).clamp(130.0, 260.0);
+
+                            ui.allocate_ui_with_layout(
+                                egui::vec2(ui.available_width(), screen_h),
+                                egui::Layout::top_down(egui::Align::Center),
+                                |ui| {
+                                    render_amiga_screen(ui, false);
+                                },
+                            );
+
+                            ui.separator();
+                            render_temporal_bar(self, ui);
+                            ui.separator();
+
+                            render_disassembly(
+                                ui,
+                                &mut self.session.cpu,
+                                &mut self.session.bus,
+                                &mut self.session.debugger,
+                                &mut self.session.temporal,
+                                &mut self.goto_addr_str,
+                                &mut self.disassembly_view_addr,
+                                &mut self.disassembly_selected_addr,
+                                &mut self.active_disasm_edit,
+                                &tokens,
+                            );
+                        }
                     }
-                }
-            });
+                });
         }
 
         // --- Modal Dialog: Load Binary into Memory ---

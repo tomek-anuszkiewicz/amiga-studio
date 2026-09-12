@@ -40,13 +40,16 @@ pub fn render_breakpoints_panel(
     form: &mut BreakpointFormState,
     ui: &mut Ui,
 ) {
+    ui.spacing_mut().indent = 0.0;
     egui::CollapsingHeader::new(RichText::new("🎯 Breakpoints & Watchpoints").strong())
         .default_open(true)
         .show(ui, |ui| {
+            ui.set_width(ui.available_width());
             ui.add_space(4.0);
 
             // --- Section 1: PC Execution Breakpoints ---
             ui.group(|ui| {
+                ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
                     ui.label(
                         RichText::new("PC Breakpoints")
@@ -86,12 +89,20 @@ pub fn render_breakpoints_panel(
                                 );
                             }
 
-                            if ui
-                                .button(RichText::new("✕").color(Color32::from_rgb(220, 80, 80)))
-                                .clicked()
-                            {
-                                to_remove = Some(idx);
-                            }
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui
+                                        .button(
+                                            RichText::new("✕")
+                                                .color(Color32::from_rgb(220, 80, 80)),
+                                        )
+                                        .clicked()
+                                    {
+                                        to_remove = Some(idx);
+                                    }
+                                },
+                            );
                         });
                     }
                     if let Some(idx) = to_remove {
@@ -195,6 +206,7 @@ pub fn render_breakpoints_panel(
 
             // --- Section 2: Memory Watchpoints ---
             ui.group(|ui| {
+                ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
                     ui.label(
                         RichText::new("Memory Watchpoints")
@@ -226,12 +238,20 @@ pub fn render_breakpoints_panel(
                             };
                             ui.colored_label(access_color, format!("[{}]", access_label));
 
-                            if ui
-                                .button(RichText::new("✕").color(Color32::from_rgb(220, 80, 80)))
-                                .clicked()
-                            {
-                                wp_to_remove = Some(idx);
-                            }
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui
+                                        .button(
+                                            RichText::new("✕")
+                                                .color(Color32::from_rgb(220, 80, 80)),
+                                        )
+                                        .clicked()
+                                    {
+                                        wp_to_remove = Some(idx);
+                                    }
+                                },
+                            );
                         });
                     }
                     if let Some(idx) = wp_to_remove {

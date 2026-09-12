@@ -219,6 +219,12 @@ impl MemoryBus {
         self.low_memory_overlay
     }
 
+    /// Queries whether a valid Kickstart ROM is currently loaded into memory (i.e. not unpopulated open bus)
+    #[inline]
+    pub fn is_kickstart_loaded(&self) -> bool {
+        !self.kickstart_rom.is_empty() && !self.kickstart_rom.iter().all(|&b| b == 0xFF)
+    }
+
     /// Locks Chip RAM bus (Agnus/DMA cycle stealing active)
     #[inline]
     pub fn lock_chip_ram(&mut self) {

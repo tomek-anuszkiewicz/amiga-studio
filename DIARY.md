@@ -1694,3 +1694,158 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 269 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
   - Multimodal Vision Verification: Rendered and visually inspected `fhd_splitters_verified.png` and `fhd_edit_disasm_verified.png` via `gui-inspector` and `view_file`, confirming pixel-perfect splitters, unclipped card borders, and clean inline editing.
+
+---
+
+### [2026-09-12 19:20 CEST] — Vertical Column Splitter, Clean Right Dock & Full-Height Infinite Disassembly
+- **Affected Subsystems**:
+  - `crates/gui/src/layout/left_dock/disassembly.rs`: Removed nested `egui::ScrollArea::vertical("disassembly_scroll")`; implemented full-height calculation with `row_count = ((total_avail_h / row_height).floor() as usize).max(4)`; added mouse-wheel acceleration (Ctrl = 10x, Shift = 5x) and event delta consumption; implemented interactive 24-bit vertical scrollbar (`render_disasm_scrollbar`) mapping `$000000..=$00FFFFFE` on the right edge with drag support and hover tooltip.
+  - `crates/gui/src/app.rs`: Replaced `memory_pane_height` with `disasm_pane_width: f32` (default 460px) in `UserPreferences` and `EmulatorApp`; removed the horizontal draggable splitter in Right Dock, giving Memory Hex a fixed comfortable height of 390px (exactly 16 rows = 256 bytes = 1 full hex page) followed by a clean separator and scrollable tools below; implemented an inline draggable vertical column splitter between Column 2 (Disassembly) and Column 3 (CRT Screen & Trace Log) with `ResizeHorizontal` cursor and hover stroke in Full HD mode; removed `fhd_disasm_scroll` and `center_disasm_scroll` outer wrappers.
+  - `crates/gui/tests/test_interactions.rs`: Added automated integration tests `test_fhd_vertical_splitter_drag_and_disassembly_resizing` and `test_disassembly_vertical_scrollbar_interaction`.
+  - `crates/gui/tests/test_persistence.rs`: Updated persistence test suite to verify `disasm_pane_width` persistence across sessions via `eframe::Storage`.
+  - `Obsidian/Amiga/Design/GUI Specification.md`: Updated Sections 3.6 and 3.7 to reflect the vertical column splitter, clean right dock layout, and true infinite disassembly scrollbar.
+  - `ROADMAP.md`: Updated Section 3.3 with completed vertical column splitter and full-height infinite disassembly.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user feedback directly:
+    1. **Removed Right Dock Splitter:** Eliminated the horizontal draggable divider between Memory Hex and Memory Search; Memory Hex displays a stable, comfortable 16 rows (one full 256-byte page), cleanly separated from lower scrollable tool panels.
+    2. **Full-Height Infinite Disassembly:** Eliminated all outer and inner `ScrollArea` containers around Disassembly; the view takes the full available column height and computes visible rows dynamically, allowing mouse-wheel streaming across 24-bit memory space without scroll container fighting.
+    3. **Vertical Column Splitter (Full HD):** Added an inline draggable vertical divider between Disassembly (Column 2) and the CRT Screen / Trace Log (Column 3) in Full HD mode, allowing users to freely adjust the horizontal balance between machine code listing and CRT display.
+- **Architectural Rationale & Trade-Offs**:
+  - *Eliminating Triple Scroll Interception:* Disassembly was previously nested within an outer `ScrollArea` in `app.rs` and an inner `ScrollArea` in `disassembly.rs`. In egui, nested scroll areas intercept mouse-wheel deltas and force `ui.available_height()` to `f32::INFINITY`, causing row calculation to fall back to arbitrary clamps. Removing all scroll wrappers and calculating rows directly from bounded column geometry provides instantaneous, glitch-free continuous streaming.
+  - *Fixed Hex Page vs Draggable Splitter in Right Dock:* The Memory Hex editor displays 16 bytes per row; 16 rows equal exactly 256 bytes (0x100), the fundamental memory page unit in 68000 systems. A fixed 390px height guarantees this complete page is always visible without fiddly manual splitter adjustments, freeing the remaining dock height for tools.
+- **Verification & Test Results**:
+  - `cargo test -p gui`: All 43 tests passed (7 unit, 33 interaction, 3 persistence).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.58s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 269 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - Multimodal Vision Verification: Captured and visually verified `fhd_v4_splitters.png` (1920x1080) and `desktop_v4.png` (1280x720) via `gui-inspector` and `view_file`.
+
+---
+
+### [2026-09-12 19:40 CEST] — Right Dock Bottom-Docking, Dynamic Memory Hex Expansion, 100% Full-Height Splitter & Disassembly Backward Scroll
+- **Affected Subsystems**:
+  - `crates/gui/src/layout/left_dock/disassembly.rs`: Fixed mouse-wheel scroll up and keyboard `ArrowUp` across unmapped or raw memory by adding automatic fallback (`curr.wrapping_sub(2) & 0x00FF_FFFE`) when `find_aligned_disassembly_start` returns the same address; adjusted column layout to `Layout::left_to_right(Align::Min)` and enforced `ui.set_width(list_width)` so the instruction list spans the column width and the 24-bit vertical scrollbar is top-aligned, spans full pane height, and sits flush against the column edge; styled the scrollbar track with a subtle dark fill and border.
+  - `crates/gui/src/layout/right_dock/memory_search.rs`: Stretched text input to `(ui.available_width() - 95.0)` and right-aligned the `[🔍 Find Next]` button, eliminating the empty gap on the right dock edge.
+  - `crates/gui/src/layout/right_dock/breakpoints_panel.rs`: Set card group widths to `ui.available_width()` and right-aligned delete `[✕]` buttons using `Layout::right_to_left(Align::Center)`, eliminating empty gaps across breakpoint and watchpoint sections.
+  - `crates/gui/src/app.rs`: Implemented bottom-docking for Right Dock tools (Memory Search, Breakpoints & Watchpoints, and Trace Log in < FHD) with a draggable horizontal splitter (`right_dock_bottom_height`); expanded the Memory Hex Editor at the top to dynamically fill all remaining vertical space (`total_h - bottom_h - 6.0`), displaying 30–40 rows on Full HD displays with in-place memory scrolling; changed Full HD CentralPanel columns layout to `Layout::left_to_right(Align::Min)` and drew vertical splitter over `ui.max_rect().y_range()` so it spans 100% full height from the menu bar to window bottom.
+  - `crates/gui/tests/test_interactions.rs`: Updated scrollbar drag coordinate to match the right-aligned column edge; added `test_disassembly_mouse_wheel_scroll_up_in_blank_memory` and `test_right_dock_splitter_resizing`.
+  - `crates/gui/tests/test_persistence.rs`: Added `right_dock_bottom_height` roundtrip assertions in `test_user_preferences_roundtrip_via_storage`.
+  - `Obsidian/Amiga/Design/GUI Specification.md`: Updated Sections 3.7, 3.8, and 3.9 with bottom-docking, dynamic hex fill, and full-height splitters.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed all 4 points from user review:
+    1. **Eliminated Right-Side Gap in Right Dock:** Stretched Memory Search input and Breakpoints/Watchpoints card groups across the entire available dock width, with action buttons flush at the right border.
+    2. **Bottom-Docked Tools & Dynamic Memory Hex Fill:** Pinned the tool panels to the bottom of the Right Dock. Memory Hex Editor now dynamically expands to take all remaining vertical height, showing up to 37 rows on Full HD screens with in-place memory scrolling while bottom tools remain anchored.
+    3. **100% Full-Height Vertical Splitter:** Corrected layout alignment from `Align::Center` to `Align::Min` and rendered the column divider line across `ui.max_rect().y_range()`, ensuring it spans from the top menu bar all the way to the window bottom.
+    4. **Disassembly Scroll-Up & Flush Scrollbar:** Guaranteed backward mouse-wheel and keyboard navigation across unmapped or raw memory, and top-aligned the 24-bit scrollbar so it runs full height flush against the column edge.
+- **Architectural Rationale & Trade-Offs**:
+  - *Dynamic Fill vs Fixed Height:* Sizing Memory Hex dynamically to `total_h - bottom_tools_h` utilizes available display real estate on large screens without compromising tool accessibility, giving developers immediate visibility into 512+ bytes of RAM.
+  - *Unconditional Step-Back Fallback in Disassembly:* While `find_aligned_disassembly_start` optimizes CISC instruction boundary detection when valid opcodes exist, unmapped memory (`$FFFF`) yields zero or negative heuristics scores. Adding a fallback to step back by 2 bytes ensures interactive scrolling never stalls in any address range.
+- **Verification & Test Results**:
+  - `cargo test -p gui`: All 45 tests passed (7 unit, 35 interaction, 3 persistence).
+  - `cargo test -p disassembler`: All 10 tests passed including boundary alignment tests.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.57s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 269 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - Multimodal Vision Verification: Rendered `fhd_v5.png` via `gui-inspector` and inspected with native vision via `view_file`, confirming 100% full-height column splitter, full-height flush disassembly scrollbar, stretched right dock tools, and dynamic 37-row memory hex editor.
+
+---
+
+### [2026-09-12 19:42 CEST] — Removed Previous and Next Buttons from Memory Hex Navigation
+- **Affected Subsystems**:
+  - `crates/gui/src/layout/right_dock/memory_hex.rs`: Removed the `[▲ Prev]` and `[▼ Next]` navigation buttons next to the address input box in the Memory Hex Editor header.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated the redundant Previous and Next buttons. Memory navigation is driven via direct address input (`Address: [ 000000 ]`), keyboard shortcuts (`PageUp` / `PageDown`, `ArrowUp` / `ArrowDown`), mouse-wheel infinite scrolling, and the vertical scrollbar, aligning ergonomics with the Disassembly view.
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean Header Ergonomics:* The Disassembly view operates without Previous/Next buttons; developers naturally navigate memory spaces using keyboard shortcuts (`PageUp`/`PageDown`) and mouse wheel. Removing the redundant buttons declutters the hex header and leaves a clean, minimalist address input.
+- **Verification & Test Results**:
+  - `cargo test -p gui`: All 45 tests passed (7 unit, 35 interaction, 3 persistence).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.60s.
+  - Multimodal Vision Verification: Rendered `fhd_v6.png` via `gui-inspector` and verified clean address header layout with zero clutter.
+
+---
+
+### [2026-09-12 19:55 CEST] — Normalized Startup PC and Disassembly Stream to $000000 on Clean Session Initialization
+- **Affected Subsystems**:
+  - `crates/memory_bus/src/lib.rs`: Added `is_kickstart_loaded(&self) -> bool` to query whether a non-dummy Kickstart ROM is present.
+  - `crates/m68000/src/core.rs`: Updated `Cpu::reset()` to normalize unmapped open-bus (`$FFFFFFFF`) or unaligned odd PC vectors to `$000000`, and default zero/open-bus SSP to `$080000` (top of 512KB Chip RAM).
+  - `crates/debugger/src/session.rs`: Updated `DebuggerSession::new()`, `reset_cold()`, and `reset_warm()` to disengage low-memory boot overlay (`map_chip_ram_to_low_memory()`) when Kickstart ROM is unpopulated, mapping physical Chip RAM at `$000000`.
+  - `crates/gui/src/app.rs`: Set initial `goto_addr_str` to `"000000"` in `EmulatorApp::default()`.
+  - `crates/gui/src/layout/left_dock/disassembly.rs`: Updated `Goto:` hint text to `"000000"`.
+  - `crates/gui/src/bin/gui_inspector.rs`: Added `--scenario clean_startup` support for unprimed default application testing.
+  - `crates/gui/tests/test_interactions.rs`: Extended `test_startup_clean_memory` to verify clean initial PC (`$000000`), prefetch (`$000004`), SSP (`$080000`), IR (`$0000`), and zeroed Chip RAM.
+- **What Was Changed (The Concrete Reality)**:
+  - Previously, launching `amiga-studio` without pre-loading a binary or Kickstart ROM left the low-memory boot overlay engaged over unprogrammed dummy ROM (`$FFFFFFFF`). On CPU reset, the vector fetch read `$FFFFFFFF` as the PC, wrapping around to `$00FFFFFE` and causing Disassembly to begin at `$00FFFFFE: FFFF  DATA.W $FFFF`.
+  - Disengaged the low-memory overlay upon session creation/reset whenever Kickstart ROM is unpopulated, exposing physical Chip RAM at `$000000`.
+  - Hardened `Cpu::reset()` to guard against open-bus or unaligned odd vector reads, normalizing the initial PC to `$000000` and priming the prefetch pipeline from physical Chip RAM (`$00000000: 0000  ORI.B #$00, D0`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean Developer Studio Startup Experience:* While real Amiga hardware mirrors Kickstart ROM at `$000000` on boot, a hardware unit without Kickstart ROM installed reads floating open bus `$FFFFFFFF` and immediately crashes with a double bus fault. In development and debugger contexts where no ROM has been supplied, developers expect the environment to open with a clean zeroth memory cell (`$000000`) in accessible Chip RAM rather than displaying confusing wrapped addresses.
+- **Verification & Test Results**:
+  - `cargo test -p memory_bus`: All 22 tests passed.
+  - `cargo test -p m68000`: All 42 tests passed.
+  - `cargo test -p debugger`: All 34 tests passed.
+  - `cargo test -p gui`: All 45 tests passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.68s.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - Multimodal Vision Verification: Rendered `clean_startup_fhd.png` via `gui-inspector` and inspected with native multimodal vision, confirming PC displays `$00000000`, SSP is `$00080000`, IR/IRC are `$0000`, and Disassembly stream starts cleanly at `$00000000: 0000  ORI.B #$00, D0` with active PC radio button on row 0.
+
+---
+
+### [2026-09-12 20:15 CEST] — Removed Right Dock Horizontal Splitter, Docked Bottom Tools, and Established Permanent Fixed Margins Across All Columns
+- **Affected Subsystems**:
+  - `crates/gui/src/app.rs`: Removed draggable horizontal splitter (`right_splitter`) from Right Dock; adopted natural `Layout::bottom_up` layout for bottom tools docking and top hex editor vertical fill; enforced permanent symmetric margin frames across `SidePanel::left` (`8px / 4px`), `CentralPanel` (`4px / 4px`), and `SidePanel::right` (`4px / 8px`); set zero item spacing in CentralPanel horizontal split.
+  - `crates/gui/src/layout/left_dock/disassembly.rs`: Removed `- 6.0` dead padding from `list_width` and set `item_spacing.x = 2.0`, pulling disassembly rows and 24-bit vertical scrollbar flush against the vertical splitter line.
+  - `crates/gui/src/layout/right_dock/memory_hex.rs`: Set row `item_spacing.y = 1.0` and normalized row height rendering to 18px matching calculation; eliminated height overflow.
+  - `crates/gui/src/layout/right_dock/memory_search.rs`: Set `ui.spacing_mut().indent = 0.0` inside `render_memory_search` to align tool inputs flush with dock headers and eliminate 18px CollapsingHeader indentation.
+  - `crates/gui/src/layout/right_dock/breakpoints_panel.rs`: Set `ui.spacing_mut().indent = 0.0` inside `render_breakpoints_panel` to eliminate lopsided left margin and align cards flush with the panel.
+  - `crates/gui/tests/test_interactions.rs`: Replaced obsolete `test_right_dock_splitter_resizing` with `test_right_dock_bottom_docking_and_fill`; calibrated exact X hit coordinates for vertical splitter and disassembly scrollbar to match verified permanent margins.
+  - `Obsidian/Amiga/Design/GUI Specification.md`: Updated Section 3.7 to document removal of right dock splitter, permanent fixed margins, flush disassembly stream, and dynamic vertical fill.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated the manual draggable horizontal splitter between Memory Hex Editor and bottom tools (`Memory Search`, `Breakpoints & Watchpoints`).
+  - Switched the Right Dock layout to `Layout::bottom_up`: bottom tools dock cleanly to the bottom of the container taking their natural height, while `Memory Hex Editor` docks to the top and automatically expands to fill 100% of all available vertical space above them (35 rows in Full HD 1080p, 8 rows in 720p).
+  - Fixed permanent, mathematically symmetric margins across all four columns: Left Dock (`left: 8px, right: 4px`), Central Panel (`left: 4px, right: 4px`), Right Dock (`left: 4px, right: 8px`). The gap across every vertical divider is now exactly 8px (4px + 4px), and the outer window boundaries are exactly 8px.
+  - Removed artificial padding gaps: Disassembly stream now stretches flush right up to the vertical splitter, and bottom tools align symmetrically with Memory Hex Editor with zero lopsided indents.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of Layout Jitter & Redundant Controls:* Draggable splitters are appropriate for primary structural columns, but within a dedicated secondary tool dock, having a manual horizontal splitter added visual noise and friction. Using egui's natural `bottom_up` layout docks tools automatically and expands memory inspection cells to occupy all free real estate.
+  - *Predictable Margin Discipline:* Ad-hoc default frame paddings combined with nested `inner_margin` and `CollapsingHeader` indents previously created unbalanced margins (34px left vs 8px right). Enforcing explicit, permanent panel frames ensures zero horizontal shifting or layout drift regardless of resolution.
+- **Verification & Test Results**:
+  - `cargo test -p gui`: All 45 tests passed (7 unit, 35 interaction, 3 persistence).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.57s.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - Multimodal Vision Verification: Captured and inspected `margins_docking_verified.png` (1920x1080) and `small_docking_verified.png` (1280x720) via `gui-inspector`. Confirmed zero horizontal splitter in Right Dock, memory cells expanding dynamically down to `000220:`, bottom tools docking cleanly at the bottom, symmetric margins on `Memory Search` and `Breakpoints`, and flush Disassembly alignment against the vertical splitter.
+
+---
+
+### [2026-09-12 20:25 CEST] — Added Comfortable Disassembly Bottom Margin, True Row Height Calculation, and 24-Bit Address Space Masking
+- **Affected Subsystems**:
+  - `crates/gui/src/layout/left_dock/disassembly.rs`: Introduced `BOTTOM_MARGIN` (10px) and accurate `ROW_HEIGHT` (21.5px); set `item_spacing.y = 1.0` in the row loop; allocated `usable_h` for rows and scrollbar track; added trailing bottom margin space; masked disassembly address increment and anchor address with `& 0x00FF_FFFF`.
+- **What Was Changed (The Concrete Reality)**:
+  - *Bottom Margin & Usable Height:* Subtracted `BOTTOM_MARGIN` (10px) from `total_avail_h` to derive `usable_h = (total_avail_h - BOTTOM_MARGIN).max(ROW_HEIGHT * 4.0)`.
+  - *Row Height & Spacing Calibration:* Replaced arbitrary `row_height = 19.0` with `ROW_HEIGHT = 21.5` and set `ui.spacing_mut().item_spacing.y = 1.0`. With monospace line-height (~17.5px) and `Margin::symmetric(3, 1)` (2px vertical), each row step takes ~20.5px. Using `(usable_h / 21.5).floor()` guarantees `row_count * 20.5 <= usable_h`, strictly preventing any vertical overflow.
+  - *Scrollbar & Trailing Padding Alignment:* Sized the 24-bit vertical scrollbar track to `usable_h` and appended `ui.add_space(BOTTOM_MARGIN)`. Together with `CentralPanel`'s `bottom: 6px` inner margin, the disassembly pane maintains a clean, comfortable ~16px breathing room above the bottom window border.
+  - *24-Bit Address Space Wrapping:* Added `& 0x00FF_FFFF` masking to `anchor_addr` and the loop's `cur_addr.wrapping_add(...)`, preventing multi-word address increments near top of memory from overflowing into high-order bits (e.g. `$01000044`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Visual Clarity & No Clipped Controls:* When a dynamic container overestimates available row capacity, egui places elements beyond the visual viewport, slicing text in half along the window border. Enforcing accurate row sizing and dedicated bottom padding guarantees that every instruction row and scrollbar handle is fully readable and visually isolated from external window framing.
+- **Verification & Test Results**:
+  - `cargo test -p gui`: All 45 tests passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.55s.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - Multimodal Vision Verification: Rendered and inspected `disasm_margin_fhd_v2.png` (1920x1080) and `disasm_margin_720p_v2.png` (1280x720) via `gui-inspector`. Confirmed the bottom row of Disassembly has clear, comfortable breathing room above the screen edge, zero text slicing/clipping, and scrollbar track alignment.
+
+---
+
+### [2026-09-12 20:30 CEST] — Cleaned Microcode Inspector Tooltips and Removed Redundant View Top Menu
+- **Affected Subsystems**:
+  - `crates/gui/src/layout/left_dock/microcode.rs`: Simplified staging register tooltips: `addr1` changed to "Staged source address", `addr2` changed to "Staged destination address" (removing synthetic "(Dual Staging Architecture)" suffix); added missing tooltips for `source` ("Source operand value") and `destination` ("Destination operand value"); simplified `ea_addr` from "Effective address calculation intermediate latch" to plain "Effective address".
+  - `crates/gui/src/layout/top_menu_bar.rs`: Removed the top-level `View` menu button; Microcode Inspector is already collapsible via its natural `CollapsingHeader` in Left Dock and toggleable via `F8`.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated high-register jargon ("intermediate latch", "Dual Staging Architecture") from UI hover tooltips across the Microcode Inspector.
+  - Added dedicated hover tooltips for the `source` and `destination` operand rows so every cell in the staging grid provides clear, consistent documentation.
+  - Removed the redundant `View` menu button from the top navigation bar, keeping the bar lean and focused.
+- **Architectural Rationale & Trade-Offs**:
+  - *Plain Language & Attractor Discipline:* UI tooltips should describe what data is shown in simple, clear terms without echoing internal architectural jargon.
+  - *Minimal Menu Clutter:* A menu button containing only a single checkbox that duplicates an existing header toggle creates visual noise.
+- **Verification & Test Results**:
+  - `cargo test -p gui`: All 45 tests passed (7 unit, 35 interaction, 3 persistence).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.68s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 269 files.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

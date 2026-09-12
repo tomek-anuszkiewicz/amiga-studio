@@ -25,9 +25,11 @@ pub fn render_memory_search(
     base_addr: &mut u32,
     state: &mut MemorySearchState,
 ) {
+    ui.spacing_mut().indent = 0.0;
     egui::CollapsingHeader::new(RichText::new("🔍 Memory Search").strong())
         .default_open(true)
         .show(ui, |ui| {
+            ui.set_width(ui.available_width());
             ui.horizontal(|ui| {
                 ui.selectable_value(
                     &mut state.mode,
@@ -46,13 +48,19 @@ pub fn render_memory_search(
                     SearchMode::HexSequence => "e.g. 4E 71 32 00",
                     SearchMode::AsciiString => "e.g. DOS or AMIGA",
                 };
+                let btn_width = 95.0;
+                let text_width =
+                    (ui.available_width() - btn_width - ui.spacing().item_spacing.x).max(80.0);
                 ui.add(
                     egui::TextEdit::singleline(&mut state.query)
                         .hint_text(hint)
-                        .desired_width(160.0),
+                        .desired_width(text_width),
                 );
 
-                if ui.button("🔍 Find Next").clicked() {
+                if ui
+                    .add_sized([btn_width, 20.0], egui::Button::new("🔍 Find Next"))
+                    .clicked()
+                {
                     find_next(bus, base_addr, state);
                 }
             });

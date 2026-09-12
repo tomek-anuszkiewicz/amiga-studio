@@ -219,13 +219,6 @@ pub fn render_memory_hex(
                 *base_addr = addr & 0x00FF_FFF0;
             }
         }
-
-        if ui.button("▲ Prev").clicked() {
-            *base_addr = base_addr.wrapping_sub(256) & 0x00FF_FFF0;
-        }
-        if ui.button("▼ Next").clicked() {
-            *base_addr = base_addr.wrapping_add(256) & 0x00FF_FFF0;
-        }
     });
 
     ui.separator();
@@ -249,6 +242,7 @@ pub fn render_memory_hex(
             .show(ui, |ui| {
                 // Grid Table Column
                 ui.vertical(|ui| {
+                    ui.spacing_mut().item_spacing.y = 1.0;
                     for row in 0..num_rows {
                         let row_addr =
                             base_addr.wrapping_add((row * ROW_BYTES) as u32) & 0x00FF_FFFF;
