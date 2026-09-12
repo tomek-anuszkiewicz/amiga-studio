@@ -1018,4 +1018,24 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed.
   - `python scripts/lint_attractors.py`: Clean pass across 263 files.
 
+---
+
+### [2026-09-12 15:18 CEST] — Packaging of Attractor Discipline Skill & Linter Relocation
+- **Affected Subsystems**:
+  - `.agents/skills/attractor-discipline/`: Created dedicated agent skill (`SKILL.md`) and packaged linter script under `scripts/lint_attractors.py`.
+  - `scripts/lint_attractors.py`: Converted into a clean forwarding trampoline to ensure complete backward compatibility with existing workflows and commands.
+  - `.agents/rules/attractor-discipline.md`: Updated Section 5 to reference the packaged skill and linter location.
+  - `.agents/skills/code-review/SKILL.md`: Added linguistic attractor and vocabulary discipline audit to Step 2 and the final review checklist.
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated `.agents/skills/attractor-discipline/SKILL.md` documenting validation commands, automated `--fix` cleaning workflows, targeted path scanning, and whitelisting.
+  - Relocated full linter implementation into `.agents/skills/attractor-discipline/scripts/lint_attractors.py` with enhanced repository root discovery (`ROADMAP.md` parent traversal).
+  - Maintained `scripts/lint_attractors.py` as a lightweight trampoline using standard library `runpy.run_path`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Separation of Policy and Tooling:* Aligning with repository customization principles, declarative constraints live in rules (`.agents/rules/`), while actionable execution scripts and runbooks belong within structured skills (`.agents/skills/`). The root trampoline prevents any breakage in established habit or CI scripts.
+- **Verification & Test Results**:
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `python scripts/lint_attractors.py`: Trampoline executed successfully with exit code 0.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed (0.55s).
+
+
 

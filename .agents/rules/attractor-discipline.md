@@ -54,5 +54,5 @@ When researching via `rag_search` or reading existing project notes:
 ## 5. Automated Verification & CI Enforcement
 
 This rule is enforced by two automated layers:
-1. **Autonomous Python Linter:** `python scripts/lint_attractors.py` (scans all `.md` and `.rs` files).
+1. **Autonomous Python Linter:** Packaged in [`attractor-discipline`](../skills/attractor-discipline/SKILL.md) skill at `.agents/skills/attractor-discipline/scripts/lint_attractors.py` (accessible via root wrapper `python scripts/lint_attractors.py`). Scans all `.md` and `.rs` files and supports `--fix`.
 2. **Automated Architecture Test:** `test_zero_synthetic_attractors` in `crates/test_runner/tests/test_architecture_rules.rs` (runs on every `cargo test` and pre-commit check).

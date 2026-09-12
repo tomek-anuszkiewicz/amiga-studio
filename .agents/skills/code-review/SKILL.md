@@ -62,6 +62,8 @@ Analyze all modified and added files using `git diff`:
 13. **Language Policy & English Purity**:
    - Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, or inline comments (per `language-policy.md`).
    - Quoting Polish prompt phrases or metaphors in comments—even parenthetically or in quotation marks—is strictly prohibited; all concepts must be translated into idiomatic English before writing to code.
+14. **Linguistic Attractor & Vocabulary Discipline**:
+   - Run the attractor linter (`python .agents/skills/attractor-discipline/scripts/lint_attractors.py` or [`attractor-discipline`](../attractor-discipline/SKILL.md)) to confirm zero synthetic academic jargon, theatrical testing phrasing, or heading slogans.
 
 ### Step 3: Living Documentation & Defect Retrospection Audit
 1. **Defect Retrospection (if bug fix / refactor)**: Did the author perform root-cause analysis ("Why did this happen?")? Are dedicated regression tests in place covering edge cases? Were systemic safeguards (architectural rules, lints, or DoD criteria) added to ensure this class of defect never recurs?
@@ -92,6 +94,7 @@ Provide the audit report using the following standard template:
 - [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, roadmap updated, and `DIARY.md` chronological changelog updated.
 - [ ] **Path Privacy:** Zero external host paths.
 - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
+- [ ] **Attractor & Vocabulary Discipline:** `python scripts/lint_attractors.py` passed cleanly (zero quarantined terms).
 - [ ] **Test Coverage:** All workspace tests pass 100% green (`cargo test`).
 
 **Verdict:** [APPROVED | CHANGES REQUESTED]
