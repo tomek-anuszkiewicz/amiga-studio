@@ -909,5 +909,32 @@ Every future modification or implementation task must append an entry following 
   - `AGENTS.md` size confirmed on disk: 13,501 bytes (strictly within $\le 14,000$ byte threshold).
   - `cargo fmt --all -- --check`: 100% compliant.
 
+---
+
+### [2026-09-12 14:26 CEST] — Repository Sanitization, Git History Normalization & 99.8% Packfile Reduction
+- **Affected Subsystems**:
+  - `.gitignore`: Decoupled heavy and external assets (`ref_src/`, `Obsidian/Amiga/Reference/`, `schematics/`, `archive/`, `graphify-out/`, `tools/winguide/`, `tools/AmigaTestKit-*/`, `adfs/`, `progs/`).
+  - Git Object Database (`.git`): Rewrote history using `git-filter-repo` in an isolated scratch sandbox, stripping all historical blobs from past commits while preserving 100% of files on local disk.
+  - Commit History: Normalized 29 generic, auto-generated, or low-signal commit messages into clean Conventional Commits; pruned 146 empty commits via `--prune-empty=always`; retained original author names, emails, and commit timestamps.
+  - `ROADMAP.md`: Marked Milestone 5 (Repository Sanitization & Public Release Preparation) completed across all sub-tasks.
+- **What Was Changed (The Concrete Reality)**:
+  - Audited all 358 historical commits across the repository, identifying ~11.2 GB of uncompressed historical bloat from external reference emulators (`ref_src/`), bulky manual scans (`docs-org/`, `docs-todo/`), schematics, and generated AST graphs.
+  - Established the core safety invariant: all files currently on the local workstation remain 100% intact on disk (23,177 files in `ref_src`, 409 reference files, 162 schematics, 117 archive files).
+  - Updated `.gitignore` to ignore external reference directories and committed as a prep commit on `master`.
+  - Executed memory-stream filtering via `git-filter-repo` in `scratch/amiga_clean`, purging all bulky paths across the entire commit graph.
+  - Pruned stale worktree metadata (`.git/worktrees/Amiga-gui`), transient IDE diff refs (`refs/codex/...`), and rebuilt the Git commit graph cache (`git commit-graph write --reachable`).
+  - Successfully reduced the active repository `.git` packfile database from **2,841.74 MB (~2.84 GB) down to 4.43 MB** (a **99.8% size reduction**).
+- **Architectural Rationale & Trade-Offs**:
+  - *Public Release Cleanliness vs. Local Development Continuity:* A public cycle-exact emulator repository cannot redistribute gigabytes of third-party GPL emulators, scanned corporate service manuals, or IDE state files. Decoupling them via `.gitignore` allows the public repository to remain pristine and lightweight (~4.4 MB packfile), while local CPU test runners (`test_singlestep.rs`, `test_dma_cartesian.rs`) and RAG indexing scripts continue accessing the existing files locally on disk with zero friction.
+- **Verification & Test Results**:
+  - `git count-objects -vH`: `size-pack: 4.43 MiB`, `in-pack: 4008`, zero loose objects, zero garbage.
+  - `git fsck --full`: 100% clean verification, 0 errors, 0 dangling references.
+  - `git status`: Clean working tree on `master`.
+  - Local asset persistence: Confirmed all 23,177 files in `ref_src/`, 409 files in `Obsidian/Amiga/Reference/`, 162 in `schematics/`, 117 in `archive/` intact on disk.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passing (0.54s).
+  - `cargo test -p test_runner --test test_singlestep -- nop`: Passed.
+  - `python scripts/lint_attractors.py`: Clean pass across 263 files (exit code 0).
+
+
 
 
