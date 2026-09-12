@@ -2,6 +2,7 @@
 //!
 //! Live D0-D7, A0-A7, PC, SR, CCR condition code LED toggles, interactive editing, and diff highlighting.
 
+use crate::theme::ColorTokens;
 use egui::{Color32, RichText, Ui};
 use m68000::{Cpu, CpuState};
 use memory_bus::MemoryBus;
@@ -32,6 +33,7 @@ const A_LABELS: [&str; 8] = ["A0:", "A1:", "A2:", "A3:", "A4:", "A5:", "A6:", "A
 
 pub fn render_registers(
     ui: &mut Ui,
+    tokens: &ColorTokens,
     cpu: &mut Cpu,
     bus: &mut MemoryBus,
     prev_state: Option<&CpuState>,
@@ -45,20 +47,17 @@ pub fn render_registers(
     // Helper to pick text color based on whether value mutated since previous step
     let diff_color = |changed: bool| -> Color32 {
         if changed {
-            Color32::from_rgb(0, 240, 255) // Vivid cyan highlight
+            tokens.accent_diff
         } else {
-            Color32::from_rgb(220, 225, 235)
+            tokens.text_primary
         }
     };
 
     // Helper to draw pill highlight background if value mutated
     let draw_diff_pill = |ui: &mut Ui, rect: egui::Rect, changed: bool| {
         if changed {
-            ui.painter().rect_filled(
-                rect.expand(2.0),
-                3.0,
-                Color32::from_rgba_unmultiplied(0, 180, 255, 55),
-            );
+            ui.painter()
+                .rect_filled(rect.expand(2.0), 3.0, tokens.accent_diff_bg);
         }
     };
 
@@ -136,11 +135,9 @@ pub fn render_registers(
                                 }
                             }
 
-                            let dec_str = format!("{:>8}", val as i32);
+                            let dec_str = format!("{:>11}", val as i32);
                             ui.add(egui::Label::new(
-                                RichText::new(dec_str)
-                                    .monospace()
-                                    .color(Color32::from_rgb(130, 140, 155)),
+                                RichText::new(dec_str).monospace().color(tokens.text_muted),
                             ));
 
                             if i % 2 == 1 {
@@ -236,11 +233,9 @@ pub fn render_registers(
                                 }
                             }
 
-                            let dec_str = format!("{:>8}", val as i32);
+                            let dec_str = format!("{:>11}", val as i32);
                             ui.add(egui::Label::new(
-                                RichText::new(dec_str)
-                                    .monospace()
-                                    .color(Color32::from_rgb(130, 140, 155)),
+                                RichText::new(dec_str).monospace().color(tokens.text_muted),
                             ));
 
                             if i % 2 == 1 {
@@ -266,7 +261,7 @@ pub fn render_registers(
 
                 ui.horizontal(|ui| {
                     ui.colored_label(
-                        Color32::from_rgb(0, 220, 255),
+                        tokens.accent_pc,
                         if is_supervisor {
                             "A7 = SSP"
                         } else {
@@ -278,7 +273,7 @@ pub fn render_registers(
                     } else {
                         "A7 is currently bound to USP (User Stack Pointer)"
                     });
-                    ui.label(RichText::new("|").color(Color32::from_rgb(80, 90, 105)));
+                    ui.label(RichText::new("|").color(tokens.border_subtle));
                     ui.monospace(alt_label).on_hover_text(
                         "Inactive stack pointer for the alternate CPU privilege state",
                     );
@@ -483,9 +478,9 @@ pub fn render_registers(
                     "User [U]"
                 };
                 let mode_color = if is_supervisor {
-                    Color32::from_rgb(255, 180, 50)
+                    tokens.accent_warning
                 } else {
-                    Color32::from_rgb(100, 200, 255)
+                    tokens.accent_pc
                 };
                 ui.colored_label(mode_color, mode_str);
 
@@ -514,23 +509,24 @@ pub fn render_registers(
                             prev_state.map_or(false, |p| ((p.sr ^ state.sr) & mask) != 0);
 
                         let bg_color = if is_set {
-                            Color32::from_rgb(34, 180, 80) // Bright Green
+                            tokens.ccr_active_bg
                         } else {
-                            Color32::from_rgb(50, 55, 65) // Dark Gray
+                            tokens.ccr_inactive_bg
                         };
                         let text_color = if is_set {
-                            Color32::BLACK
+                            tokens.ccr_active_text
                         } else {
-                            Color32::from_rgb(140, 145, 155)
+                            tokens.ccr_inactive_text
                         };
 
-                        let mut btn = egui::Button::new(RichText::new(name).color(text_color))
-                            .fill(bg_color)
-                            .min_size(egui::vec2(16.0, 18.0));
+                        let mut btn =
+                            egui::Button::new(RichText::new(name).color(text_color).strong())
+                                .fill(bg_color)
+                                .min_size(egui::vec2(18.0, 18.0));
 
                         if flag_changed {
                             btn = btn
-                                .stroke(egui::Stroke::new(1.5_f32, Color32::from_rgb(0, 240, 255)));
+                                .stroke(egui::Stroke::new(1.5_f32, tokens.accent_diff));
                         }
 
                         if ui.add(btn).on_hover_text(desc).clicked() {

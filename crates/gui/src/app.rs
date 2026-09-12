@@ -6,6 +6,7 @@
 use std::path::PathBuf;
 
 use crate::layout::left_dock::disassembly::{render_disassembly, DisasmEditState};
+use crate::layout::left_dock::engine_status::render_engine_status;
 use crate::layout::left_dock::microcode::render_microcode;
 use crate::layout::left_dock::registers::{render_registers, EditRegister};
 use crate::layout::main_viewport::amiga_screen::render_amiga_screen;
@@ -18,6 +19,29 @@ use crate::layout::top_menu_bar::render_top_menu_bar;
 use crate::theme::AppTheme;
 use debugger::temporal::DEFAULT_TEMPORAL_CAPACITY;
 use debugger::DebuggerSession;
+
+/// Responsive layout tier based on viewport width
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayoutTier {
+    /// Full HD and Ultrawide ($W \ge 1680\text{px}$): 4-pane Studio Workbench layout
+    FullHdWide,
+    /// Standard desktop ($1200\text{px} \le W < 1680\text{px}$): adaptive 3-column layout
+    StandardDesktop,
+    /// Compact / Small displays ($W < 1200\text{px}$): dense 3-column layout with scrollbars
+    Compact,
+}
+
+impl LayoutTier {
+    pub fn from_width(width: f32) -> Self {
+        if width >= 1680.0 {
+            LayoutTier::FullHdWide
+        } else if width >= 1200.0 {
+            LayoutTier::StandardDesktop
+        } else {
+            LayoutTier::Compact
+        }
+    }
+}
 
 /// Maximum instructions executed per GUI frame during free-running emulation
 pub const MAX_INSTRUCTIONS_PER_FRAME: usize = 5000;
@@ -223,21 +247,40 @@ impl EmulatorApp {
                 render_amiga_screen(ui, false);
             });
         } else {
-            // Mode B: Full Developer Studio GUI (3-Column Architecture)
+            // Mode B: Full Developer Studio GUI (Responsive Multi-Tier Architecture)
+            let tokens = self.theme.tokens();
             render_top_menu_bar(self, ctx);
 
             let screen_rect = ctx.screen_rect();
             let total_w = screen_rect.width();
-            let compact = total_w < 1250.0;
+            let layout_tier = LayoutTier::from_width(total_w);
 
-            let left_default = if compact { 330.0 } else { 350.0 };
-            let right_default = if compact { 390.0 } else { 540.0 };
+            let left_default = match layout_tier {
+                LayoutTier::FullHdWide => 360.0,
+                LayoutTier::StandardDesktop => 340.0,
+                LayoutTier::Compact => 290.0,
+            };
+            let left_min = if layout_tier == LayoutTier::Compact {
+                260.0
+            } else {
+                280.0
+            };
+            let right_default = match layout_tier {
+                LayoutTier::FullHdWide => 540.0,
+                LayoutTier::StandardDesktop => 480.0,
+                LayoutTier::Compact => 350.0,
+            };
+            let right_min = if layout_tier == LayoutTier::Compact {
+                330.0
+            } else {
+                360.0
+            };
 
-            // Column 1: Left Dock (Execution & CPU Registers + Microcode)
+            // Column 1: Left Dock (Execution, CPU Registers, Engine Status & Microcode)
             egui::SidePanel::left("left_dock")
                 .resizable(true)
                 .default_width(left_default)
-                .width_range(280.0..=450.0)
+                .width_range(left_min..=480.0)
                 .show(ctx, |ui| {
                     egui::ScrollArea::vertical()
                         .id_salt("left_dock_scroll")
@@ -248,10 +291,20 @@ impl EmulatorApp {
                         .show(ui, |ui| {
                             render_registers(
                                 ui,
+                                &tokens,
                                 &mut self.session.cpu,
                                 &mut self.session.bus,
                                 self.session.prev_cpu_state.as_ref(),
                                 &mut self.active_reg_edit,
+                            );
+                            ui.add_space(3.0);
+                            render_engine_status(
+                                ui,
+                                &tokens,
+                                self.session.bus.is_chip_ram_locked(),
+                                self.session.instructions_executed,
+                                self.session.cpu.state.cycle_counter as u64 / 2,
+                                self.session.cpu.state.sr,
                             );
                             if self.show_microcode {
                                 ui.add_space(3.0);
@@ -268,7 +321,7 @@ impl EmulatorApp {
             egui::SidePanel::right("right_dock")
                 .resizable(true)
                 .default_width(right_default)
-                .width_range(360.0..=650.0)
+                .width_range(right_min..=680.0)
                 .show(ctx, |ui| {
                     egui::ScrollArea::vertical()
                         .id_salt("right_dock_scroll")
@@ -288,6 +341,7 @@ impl EmulatorApp {
                                 } else {
                                     None
                                 },
+                                &tokens,
                             );
                             ui.separator();
                             render_memory_search(
@@ -302,42 +356,93 @@ impl EmulatorApp {
                                 &mut self.breakpoint_form,
                                 ui,
                             );
-                            ui.separator();
-                            render_trace_log(self, ui);
+                            if layout_tier != LayoutTier::FullHdWide {
+                                ui.separator();
+                                render_trace_log(self, ui);
+                            }
                         });
                 });
 
-            // Column 2: Central Viewport (Amiga CRT Screen + Temporal Bar + Disassembly Stream)
+            // Column 2: Central Viewport
             egui::CentralPanel::default().show(ctx, |ui| {
-                let total_h = ui.available_height();
-                let screen_h = (total_h * 0.38).clamp(130.0, 260.0);
+                match layout_tier {
+                    LayoutTier::FullHdWide => {
+                        // 4-Pane Studio Workbench Layout (Split Central Area)
+                        ui.columns(2, |columns| {
+                            // Sub-column 0: Dedicated Full-height Disassembly Stream
+                            columns[0].vertical(|ui| {
+                                egui::ScrollArea::both()
+                                    .id_salt("fhd_disasm_scroll")
+                                    .auto_shrink([false, false])
+                                    .show(ui, |ui| {
+                                        render_disassembly(
+                                            ui,
+                                            &mut self.session.cpu,
+                                            &mut self.session.bus,
+                                            &mut self.session.debugger,
+                                            &mut self.session.temporal,
+                                            &mut self.goto_addr_str,
+                                            &mut self.active_disasm_edit,
+                                            &tokens,
+                                        );
+                                    });
+                            });
 
-                ui.allocate_ui_with_layout(
-                    egui::vec2(ui.available_width(), screen_h),
-                    egui::Layout::top_down(egui::Align::Center),
-                    |ui| {
-                        render_amiga_screen(ui, false);
-                    },
-                );
+                            // Sub-column 1: Prominent 4:3 Amiga CRT Screen + Temporal Bar + Trace Log
+                            columns[1].vertical(|ui| {
+                                let avail_w = ui.available_width();
+                                let crt_w = avail_w.min(560.0).max(320.0);
+                                let crt_h = (crt_w * 3.0 / 4.0).clamp(240.0, 420.0);
 
-                ui.separator();
-                render_temporal_bar(self, ui);
-                ui.separator();
+                                ui.allocate_ui_with_layout(
+                                    egui::vec2(avail_w, crt_h),
+                                    egui::Layout::top_down(egui::Align::Center),
+                                    |ui| {
+                                        render_amiga_screen(ui, false);
+                                    },
+                                );
 
-                egui::ScrollArea::both()
-                    .id_salt("center_disasm_scroll")
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| {
-                        render_disassembly(
-                            ui,
-                            &mut self.session.cpu,
-                            &mut self.session.bus,
-                            &mut self.session.debugger,
-                            &mut self.session.temporal,
-                            &mut self.goto_addr_str,
-                            &mut self.active_disasm_edit,
+                                ui.separator();
+                                render_temporal_bar(self, ui);
+                                ui.separator();
+                                render_trace_log(self, ui);
+                            });
+                        });
+                    }
+                    LayoutTier::StandardDesktop | LayoutTier::Compact => {
+                        // Stacked Adaptive 3-Column Layout
+                        let total_h = ui.available_height();
+                        let screen_h = (total_h * 0.38).clamp(130.0, 260.0);
+
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), screen_h),
+                            egui::Layout::top_down(egui::Align::Center),
+                            |ui| {
+                                render_amiga_screen(ui, false);
+                            },
                         );
-                    });
+
+                        ui.separator();
+                        render_temporal_bar(self, ui);
+                        ui.separator();
+
+                        egui::ScrollArea::both()
+                            .id_salt("center_disasm_scroll")
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                render_disassembly(
+                                    ui,
+                                    &mut self.session.cpu,
+                                    &mut self.session.bus,
+                                    &mut self.session.debugger,
+                                    &mut self.session.temporal,
+                                    &mut self.goto_addr_str,
+                                    &mut self.active_disasm_edit,
+                                    &tokens,
+                                );
+                            });
+                    }
+                }
             });
         }
 

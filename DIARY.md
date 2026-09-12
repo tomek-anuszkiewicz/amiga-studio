@@ -1604,3 +1604,33 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 266 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
+
+### [2026-09-12 18:05 CEST] — Full HD ($1920 \times 1080$) Standardization, Responsive Multi-Tier Layout & Semantic Design Tokens
+- **Affected Subsystems**:
+  - `crates/gui/src/theme/tokens.rs`: Created centralized `ColorTokens` struct providing semantic design tokens across surfaces, typography, semantic accents, and condition code badges for `DARK`, `LIGHT`, and `CLASSIC_WORKBENCH` themes.
+  - `crates/gui/src/theme.rs`: Added `tokens(&self) -> &ColorTokens` getter on `AppTheme` and updated `apply(&self, ctx)` to wire token colors into `egui::Visuals`.
+  - `crates/gui/src/layout/left_dock/engine_status.rs`: Created new diagnostics component `render_engine_status` displaying real-time Chip RAM bus arbitration, master Color Clock counter, retired instruction count, interrupt priority mask (IPL), and privilege mode.
+  - `crates/gui/src/layout/left_dock/mod.rs`: Exported `engine_status` submodule.
+  - `crates/gui/src/layout/left_dock/registers.rs`: Updated signature to accept `&ColorTokens`; stabilized column layout by formatting 32-bit signed integers with fixed-width `{:>11}` to eliminate dynamic column shifting; redesigned CCR flags with high-contrast slate badges (`#2A3241` fill with `#E2E8F0` text for inactive, `#059669` emerald for active).
+  - `crates/gui/src/layout/left_dock/disassembly.rs`: Updated signature to accept `&ColorTokens`; styled active PC line with soft sky blue frame and legible contrast.
+  - `crates/gui/src/layout/main_viewport/temporal_bar.rs`: Restructured into a responsive 2-row layout using `ui.horizontal_wrapped` (Row 1: Transport controls + capacity dropdown; Row 2: Timeline slider + Jump CCK) to prevent button clipping on narrow viewports.
+  - `crates/gui/src/layout/right_dock/memory_hex.rs`: Made row count dynamic based on available viewport height (`clamp(16.0, 36.0)`), rendering up to 36 rows (576 bytes) on Full HD screens; wired `ColorTokens` into address headers, cell diffs, watchpoints, and scrollbar.
+  - `crates/gui/src/layout/right_dock/trace_log.rs`: Wired `ColorTokens` into row highlight frames and text.
+  - `crates/gui/src/app.rs`: Introduced `LayoutTier` (`FullHdWide`, `StandardDesktop`, `Compact`) based on `ctx.screen_rect().width()`. Standardized Full HD ($1920 \times 1080$) as the primary Developer Studio baseline, rendering a 4-pane Studio Workbench (Left Dock: Registers + Engine Status + Microcode; Center-Left: Full-Height Disassembly; Center-Right: Prominent 4:3 Amiga CRT Screen + Temporal Bar + Dedicated Execution Trace Log; Right Dock: Expanded Memory Hex Editor + Search + Breakpoints). Enforced graceful adaptive 3-column layout with vertical scrollbars for smaller resolutions.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user feedback regarding layout empty spaces ("czarne dziury") and color scheme readability.
+  - Established Full HD ($1920 \times 1080$) as the primary baseline, while keeping smaller desktop and compact viewports fully functional through responsive layout tiers and scrollbars.
+  - Eliminated the large empty void below the left dock by creating the Emulation Engine Status card, providing instant visibility into Chip RAM bus arbitration and master Color Clock cycles.
+  - Eliminated the wide black margins around the Amiga CRT screen at Full HD by splitting the central panel into two dedicated columns: a full-height, continuous Disassembly stream on the left, and a prominent 4:3 Amiga CRT monitor with dedicated Execution Trace Log on the right.
+  - Replaced glaring neon cyan (`#00F0FF`) and illegible low-contrast text with a cohesive semantic design system (`ColorTokens`), featuring soft sky blue (`#38BDF8`), electric cyan diffs (`#67E8F9`), and high-contrast dark slate badges for inactive CCR flags.
+- **Architectural Rationale & Trade-Offs**:
+  - *Full HD Baseline with Responsive Grace:* Modern software engineering workstations run at $\ge 1080\text{p}$. Designing strictly for low resolutions leaves massive empty voids on modern displays, while ignoring low resolutions breaks usability on laptops. Responsive multi-tier layout architecture (`LayoutTier`) guarantees an optimal, balanced workbench across all screen sizes without code duplication.
+  - *Semantic Color Tokens:* Centralizing UI colors into an immutable, copyable token struct prevents ad-hoc color hacking and ensures WCAG-compliant contrast ratios across all panels.
+  - *Fixed-Width Monospace Invariance:* 32-bit signed integers vary from 1 char (`0`) to 11 chars (`-2147483648`). Using fixed-width `{:>11}` formatting guarantees that register and decimal columns remain invariant under execution.
+- **Verification & Test Results**:
+  - `cargo test -p gui`: All 36 tests passed (7 unit + 29 headless interaction tests).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.57s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 268 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - Multimodal Vision Inspection: Rendered and visually inspected `fhd_verified.png` ($1920 \times 1080$), `baseline_verified.png` ($1280 \times 720$), and `small_verified.png` ($1024 \times 600$) via `gui-inspector` and `view_file`, confirming zero voids, balanced columns, and legible contrast.

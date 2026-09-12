@@ -137,12 +137,19 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
 - Implement headless runners that load each test ADF, execute until test completion, and verify screen buffers against reference PNG frame renders.
 
 ### 3.3 Visual & Audio Multimodal Validation
+- **Full HD ($1920 \times 1080$) Standardization & Responsive Multi-Tier Studio Workbench (`LayoutTier`):**
+  - Standardized Full HD ($1920 \times 1080$) as the primary Developer Studio baseline, eliminating empty panel voids and black margins around the CRT display.
+  - Implemented responsive multi-tier layout architecture (`LayoutTier::FullHdWide`, `LayoutTier::StandardDesktop`, `LayoutTier::Compact`):
+    - **Full HD Wide ($\ge 1680\text{px}$):** 4-pane Studio Workbench featuring full-height Disassembly stream, prominent 4:3 Amiga CRT monitor ($512 \times 384$), dedicated Execution Trace Log, new Emulation Engine Status card, and expanded Memory Hex editor (up to 36 rows = 576 bytes).
+    - **Standard Desktop & Compact ($< 1680\text{px}$):** Adaptive 3-column layout with vertical scrollbars and wrapped transport controls, ensuring usability down to $1024 \times 600$.
+  - Introduced centralized semantic design tokens (`ColorTokens` in `crates/gui/src/theme/tokens.rs`), replacing harsh neon cyan with soft sky blue (`#38BDF8`), electric cyan diffs (`#67E8F9`), and high-contrast dark slate condition code badges.
+  - Stabilized register layout with fixed-width `{:>11}` decimals, eliminating column jitter across signed 32-bit values.
+  - Guarded by 36 automated tests in `crates/gui` and verified visually across $1920 \times 1080$, $1280 \times 720$, and $1024 \times 600$ via `gui-inspector`.
 - **Vision-Driven Headless GUI Inspector (`gui-inspector`) & Autonomous Self-Healing (`egui-vision-debugger`):**
   - Built headless offscreen capture harness (`crates/gui/src/bin/gui_inspector.rs`) utilizing `egui_kittest` + `wgpu` strictly isolated under `cfg(not(target_arch = "wasm32"))`.
   - Authored specialized agent skill (`.agents/skills/egui-vision-debugger/`) for automated scenario execution, visual layout audits via `view_file`, and self-healing iterations.
   - Formalized the **Self-Documenting UI Standard ("Zero-External-Lookup Principle")** across `egui-best-practices.md` and Obsidian design specifications: every inspectable register, flag, and memory region provides contextual documentation on hover (`.on_hover_ui`/`.on_hover_text`) using zero-allocation static string slices (`&'static str`).
   - Added dedicated hover inspection presets (`hover_register`, `hover_ccr`, `hover_memory`, `game_mode`, `workbench_theme`) with `tooltip_delay = 0.0` for immediate headless capture.
-  - Refactored Developer Studio into a clean 3-column architecture (Left Dock: Registers/Microcode, Center Viewport: CRT/Temporal/Disassembly, Right Dock: Memory Hex/Search/Breakpoints/Trace Log), resolving panel splitter contention, scrollbar jitter, and window squishing down to 1024x600.
   - Corrected immediate-mode focus lifecycles and keyboard Enter activation across register and disassembly inline editors.
   - Guarded by 29 automated headless integration tests in `crates/gui/tests/test_interactions.rs`.
 - **Screenshot Frame Dumps:**

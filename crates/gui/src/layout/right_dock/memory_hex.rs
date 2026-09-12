@@ -4,6 +4,7 @@
 //! infinite mouse wheel scrolling, keyboard navigation, vertical interactive scrollbar,
 //! inline interactive editing, and step diff highlighting.
 
+use crate::theme::ColorTokens;
 use debugger::{BreakpointManager, WatchAccess};
 use egui::{Color32, RichText, Ui};
 use memory_bus::MemoryBus;
@@ -15,6 +16,7 @@ pub fn render_memory_hex(
     base_addr: &mut u32,
     edit_buffer: &mut (u32, String),
     prev_memory: Option<(&[u8; 256], u32)>,
+    tokens: &ColorTokens,
 ) {
     let start_pos = ui.cursor().min;
     let mem_hex_rect_id = egui::Id::new("mem_hex_rect");
@@ -157,10 +159,12 @@ pub fn render_memory_hex(
 
     // 2. 16-byte Hex + ASCII Grid with Infinite Scroll & Vertical Scrollbar
     const ROW_BYTES: usize = 16;
-    const NUM_ROWS: usize = 16; // 256 bytes visible at once
     let row_height = 18.0;
     const CELL_WIDTH: f32 = 18.5;
-    let grid_height = (NUM_ROWS as f32) * row_height;
+    let num_rows = ((ui.available_height() - 220.0) / row_height)
+        .floor()
+        .clamp(16.0, 36.0) as usize;
+    let grid_height = (num_rows as f32) * row_height;
 
     let mut next_edit_target: Option<u32> = None;
     const SCROLLBAR_WIDTH: f32 = 10.0;
@@ -174,7 +178,7 @@ pub fn render_memory_hex(
             .show(ui, |ui| {
                 // Grid Table Column
                 ui.vertical(|ui| {
-                    for row in 0..NUM_ROWS {
+                    for row in 0..num_rows {
                         let row_addr =
                             base_addr.wrapping_add((row * ROW_BYTES) as u32) & 0x00FF_FFFF;
 
@@ -184,7 +188,7 @@ pub fn render_memory_hex(
                             // Address header
                             ui.monospace(
                                 RichText::new(format!("{:06X}:", row_addr))
-                                    .color(Color32::from_rgb(130, 180, 230)),
+                                    .color(tokens.address_blue),
                             );
                             ui.add_space(2.0);
 
@@ -198,7 +202,7 @@ pub fn render_memory_hex(
                                 let is_changed = match prev_memory {
                                     Some((prev_bytes, prev_base)) if prev_base == *base_addr => {
                                         let offset = (row * ROW_BYTES) + col;
-                                        offset < 256 && byte_val != prev_bytes[offset]
+                                        offset < prev_bytes.len() && byte_val != prev_bytes[offset]
                                     }
                                     _ => false,
                                 };
@@ -249,13 +253,13 @@ pub fn render_memory_hex(
                                     );
                                 } else {
                                     let text_color = if active_wp.is_some() {
-                                        Color32::from_rgb(255, 110, 100) // Crisp coral for watched bytes
+                                        tokens.accent_error // Watched bytes
                                     } else if is_changed {
-                                        Color32::from_rgb(0, 240, 255) // Vivid cyan for modified bytes
+                                        tokens.accent_diff // Eye-friendly diff cyan
                                     } else if byte_val == 0 {
-                                        Color32::from_rgb(105, 110, 120) // Muted gray for zeros
+                                        tokens.text_muted // Muted slate gray for zeros
                                     } else {
-                                        Color32::from_rgb(215, 220, 230) // Clean normal light gray
+                                        tokens.text_primary // Clean primary text
                                     };
 
                                     if active_wp.is_some() {
@@ -263,15 +267,17 @@ pub fn render_memory_hex(
                                         ui.painter().rect_filled(
                                             cell_rect,
                                             0.0,
-                                            Color32::from_rgba_unmultiplied(220, 50, 40, 60),
+                                            Color32::from_rgba_unmultiplied(
+                                                tokens.accent_error.r(),
+                                                tokens.accent_error.g(),
+                                                tokens.accent_error.b(),
+                                                60,
+                                            ),
                                         );
                                         ui.painter().rect_stroke(
                                             cell_rect,
                                             0.0,
-                                            egui::Stroke::new(
-                                                1.0_f32,
-                                                Color32::from_rgb(255, 80, 80),
-                                            ),
+                                            egui::Stroke::new(1.0_f32, tokens.accent_error),
                                             egui::StrokeKind::Inside,
                                         );
                                     } else if cell_response.hovered() {
@@ -395,9 +401,7 @@ pub fn render_memory_hex(
                             }
 
                             ui.add_space(3.0);
-                            ui.monospace(
-                                RichText::new("|").color(Color32::from_rgb(100, 110, 130)),
-                            );
+                            ui.monospace(RichText::new("|").color(tokens.border_subtle));
                             ui.add_space(3.0);
 
                             // ASCII representation with watchpoint highlights
@@ -412,9 +416,9 @@ pub fn render_memory_hex(
                                     '.'
                                 };
                                 let ch_color = if is_wp {
-                                    Color32::from_rgb(255, 100, 100)
+                                    tokens.accent_error
                                 } else {
-                                    Color32::from_rgb(170, 180, 195)
+                                    tokens.text_secondary
                                 };
                                 job.append(
                                     &ch.to_string(),
@@ -423,7 +427,12 @@ pub fn render_memory_hex(
                                         font_id: egui::FontId::monospace(13.0),
                                         color: ch_color,
                                         background: if is_wp {
-                                            Color32::from_rgba_unmultiplied(220, 50, 40, 80)
+                                            Color32::from_rgba_unmultiplied(
+                                                tokens.accent_error.r(),
+                                                tokens.accent_error.g(),
+                                                tokens.accent_error.b(),
+                                                80,
+                                            )
                                         } else {
                                             Color32::TRANSPARENT
                                         },
@@ -439,7 +448,7 @@ pub fn render_memory_hex(
 
         // Vertical scrollbar alongside table
         ui.add_space(4.0);
-        render_vertical_scrollbar(ui, base_addr, grid_height);
+        render_vertical_scrollbar(ui, base_addr, grid_height, tokens);
     });
 
     if let Some(target_addr) = next_edit_target {
@@ -457,7 +466,12 @@ pub fn render_memory_hex(
 }
 
 /// Interactive vertical scrollbar mapping 24-bit Amiga address space ($000000..=$00FFFFF0)
-fn render_vertical_scrollbar(ui: &mut Ui, base_addr: &mut u32, track_height: f32) {
+fn render_vertical_scrollbar(
+    ui: &mut Ui,
+    base_addr: &mut u32,
+    track_height: f32,
+    tokens: &ColorTokens,
+) {
     const MAX_ADDR: f32 = 0x00FF_FFF0 as f32;
     const SCROLLBAR_WIDTH: f32 = 10.0;
 
@@ -476,8 +490,7 @@ fn render_vertical_scrollbar(ui: &mut Ui, base_addr: &mut u32, track_height: f32
     );
 
     // Track background
-    ui.painter()
-        .rect_filled(track_rect, 2.0, Color32::from_rgb(22, 25, 32));
+    ui.painter().rect_filled(track_rect, 2.0, tokens.card_bg);
 
     // Handle drag
     if track_response.dragged() {
@@ -498,11 +511,11 @@ fn render_vertical_scrollbar(ui: &mut Ui, base_addr: &mut u32, track_height: f32
 
     // Thumb styling
     let thumb_color = if track_response.dragged() {
-        Color32::from_rgb(0, 200, 255) // Cyan active drag
+        tokens.border_active // Active drag
     } else if track_response.hovered() {
-        Color32::from_rgb(110, 120, 140)
+        tokens.text_secondary
     } else {
-        Color32::from_rgb(60, 65, 78)
+        tokens.border_subtle
     };
 
     ui.painter().rect_filled(thumb_rect, 2.0, thumb_color);

@@ -36,6 +36,7 @@ pub fn render_trace_log(app: &mut EmulatorApp, ui: &mut Ui) {
 
             let row_height = 18.0;
             let mut clicked_idx = None;
+            let tokens = app.theme.tokens();
 
             egui::ScrollArea::both()
                 .id_salt("trace_log_scroll")
@@ -46,7 +47,7 @@ pub fn render_trace_log(app: &mut EmulatorApp, ui: &mut Ui) {
                         if let Some(entry) = app.session.debugger.trace.get(idx) {
                             let is_active = app.session.temporal.scrub_cursor == Some(idx);
                             let row_bg = if is_active {
-                                Color32::from_rgb(40, 70, 100)
+                                tokens.accent_pc_bg
                             } else {
                                 Color32::TRANSPARENT
                             };
@@ -63,9 +64,9 @@ pub fn render_trace_log(app: &mut EmulatorApp, ui: &mut Ui) {
                                 let label = ui.add(
                                     egui::Label::new(RichText::new(line_text).monospace().color(
                                         if is_active {
-                                            Color32::from_rgb(0, 255, 200)
+                                            tokens.accent_pc
                                         } else {
-                                            Color32::from_rgb(210, 215, 225)
+                                            tokens.text_primary
                                         },
                                     ))
                                     .sense(egui::Sense::click()),

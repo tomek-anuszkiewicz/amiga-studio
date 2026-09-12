@@ -3,8 +3,9 @@
 //! M68000 instruction disassembly stream, execution cursor tracking, breakpoints,
 //! and in-place instruction editing with byte size invariance enforcement.
 
+use crate::theme::ColorTokens;
 use debugger::{assemble_instruction, disassemble, find_aligned_disassembly_start, Debugger};
-use egui::{Color32, RichText, Ui};
+use egui::{RichText, Ui};
 use m68000::Cpu;
 use memory_bus::MemoryBus;
 
@@ -24,6 +25,7 @@ pub fn render_disassembly(
     temporal: &mut debugger::temporal::TemporalHistory,
     goto_addr_str: &mut String,
     active_edit: &mut Option<DisasmEditState>,
+    tokens: &ColorTokens,
 ) {
     ui.heading("Disassembly");
 
@@ -91,8 +93,8 @@ pub fn render_disassembly(
 
                 let row_frame = if is_current {
                     egui::Frame::NONE
-                        .fill(Color32::from_rgba_unmultiplied(0, 110, 210, 55))
-                        .stroke(egui::Stroke::new(1.0_f32, Color32::from_rgb(0, 190, 255)))
+                        .fill(tokens.accent_pc_bg)
+                        .stroke(egui::Stroke::new(1.0_f32, tokens.accent_pc))
                         .corner_radius(3.0)
                         .inner_margin(egui::Margin::symmetric(3, 1))
                 } else {
@@ -108,7 +110,7 @@ pub fn render_disassembly(
                             ui.horizontal(|ui| {
                                 ui.monospace(
                                     RichText::new(format!("{:06X}:", cur_addr))
-                                        .color(Color32::from_rgb(0, 240, 255)),
+                                        .color(tokens.accent_pc),
                                 );
 
                                 let mut commit = false;
@@ -178,7 +180,7 @@ pub fn render_disassembly(
                             // Display validation error if present
                             if let Some(edit) = active_edit.as_ref() {
                                 if let Some(err) = &edit.error {
-                                    ui.colored_label(Color32::from_rgb(255, 80, 80), format!("❌ {}", err));
+                                    ui.colored_label(tokens.accent_error, format!("❌ {}", err));
                                 }
                             }
                         });
@@ -187,11 +189,11 @@ pub fn render_disassembly(
                         ui.horizontal(|ui| {
                             // Breakpoint toggle dot
                             let bp_color = if is_bp {
-                                Color32::from_rgb(255, 60, 60)
+                                tokens.accent_error
                             } else if is_current {
-                                Color32::from_rgb(110, 160, 210)
+                                tokens.accent_pc
                             } else {
-                                Color32::from_rgb(80, 85, 95)
+                                tokens.text_muted
                             };
                             let bp_btn = ui.selectable_label(is_bp, RichText::new("●").color(bp_color));
                             if bp_btn.clicked() {
@@ -204,9 +206,9 @@ pub fn render_disassembly(
 
                             // Address & Disassembly text (guaranteed uniform column offset on every row)
                             let line_text = if is_current {
-                                RichText::new(disasm.format_line()).monospace().strong().color(Color32::WHITE)
+                                RichText::new(disasm.format_line()).monospace().strong().color(tokens.text_primary)
                             } else {
-                                RichText::new(disasm.format_line()).monospace().color(Color32::from_rgb(200, 205, 215))
+                                RichText::new(disasm.format_line()).monospace().color(tokens.text_secondary)
                             };
                             let line_label = ui
                                 .add(egui::Label::new(line_text).sense(egui::Sense::click()))
@@ -234,7 +236,7 @@ pub fn render_disassembly(
                                     .button(
                                         RichText::new("⏪")
                                             .size(11.0)
-                                            .color(Color32::from_rgb(0, 220, 255)),
+                                            .color(tokens.accent_diff),
                                     )
                                     .on_hover_text(format!(
                                         "Rewind to historical execution ({} passes recorded)",
@@ -284,7 +286,7 @@ pub fn render_disassembly(
                                     ui.label(
                                         RichText::new("⏪ Rewind to Historical Pass:")
                                             .small()
-                                            .color(Color32::from_rgb(0, 220, 255)),
+                                            .color(tokens.accent_diff),
                                     );
                                     for (pass_num, (hist_idx, cck)) in historical_passes.iter().enumerate() {
                                         let item_label = format!("Pass #{} (CCK: {})", pass_num + 1, cck);
