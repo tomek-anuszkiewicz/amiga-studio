@@ -141,11 +141,28 @@ if ($Test -or $All) {
     $AdfTestKit = Join-Path $RepoRoot "tools\AmigaTestKit\AmigaTestKit.adf"
     if (Test-Path $AdfTestKit) {
         Write-Host "[OK] AmigaTestKit ADF diagnostic disk found at: tools\AmigaTestKit\AmigaTestKit.adf" -ForegroundColor Green
+    } else {
+        Write-Warning "AmigaTestKit diagnostic disk not found: $AdfTestKit"
+        Write-Host "Download AmigaTestKit ADF from https://github.com/keirf/amiga-stuff into tools/AmigaTestKit/." -ForegroundColor Yellow
+    }
+
+    $VAmigaDir = Join-Path $RepoRoot "ref_src\vAmiga-4.5"
+    if (-not (Test-Path $VAmigaDir)) {
+        $VAmigaDir = Join-Path $RepoRoot "ref_src\vAmiga"
+    }
+    if (Test-Path $VAmigaDir) {
+        Write-Host "[OK] vAmiga C++ reference emulator found at: ref_src\$((Get-Item $VAmigaDir).Name)" -ForegroundColor Green
+    } else {
+        Write-Warning "vAmiga C++ reference emulator not found in ref_src/."
+        Write-Host "To populate the clean-room C++ reference emulator, clone https://github.com/dirkwhoffmann/vAmiga into ref_src/vAmiga-4.5." -ForegroundColor Yellow
     }
 
     $VAmigaTsDir = Join-Path $RepoRoot "ref_src\vAmigaTS"
     if (Test-Path $VAmigaTsDir) {
         Write-Host "[OK] vAmigaTS test suite found at: ref_src\vAmigaTS" -ForegroundColor Green
+    } else {
+        Write-Warning "vAmigaTS regression test suite not found: $VAmigaTsDir"
+        Write-Host "To populate the custom chipset regression test suite, clone https://github.com/dirkwhoffmann/vAmigaTS into ref_src/vAmigaTS." -ForegroundColor Yellow
     }
 
     Write-Host ""

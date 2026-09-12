@@ -1155,4 +1155,20 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
+
+### [2026-09-12 16:05 CEST] — Added vAmiga Reference Emulator Verification to Bootstrapper
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1`: Added verification and fallback acquisition guidance for the clean-room C++ reference emulator (`ref_src/vAmiga-4.5` / `ref_src/vAmiga`) in Tier 2 (`-Test` / `-All`).
+- **What Was Changed (The Concrete Reality)**:
+  - Added existence check for `ref_src\vAmiga-4.5` (falling back to `ref_src\vAmiga`).
+  - Added warning banner and direct GitHub clone URL (`https://github.com/dirkwhoffmann/vAmiga`) if absent.
+  - Added corresponding warnings and download instructions for `AmigaTestKit.adf` and `vAmigaTS`.
+- **Verification & Test Results**:
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1 -Test`: Successfully detected `vAmiga-4.5`, `SingleStepTests-680x0`, `AmigaTestKit.adf`, and `vAmigaTS`, executing the smoke check with 0 failures.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.96s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+
 
