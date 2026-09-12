@@ -1404,3 +1404,21 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:45 CEST] — Added Bootstrapping & Knowledge Pipeline Milestone to ROADMAP.md
+- **Affected Subsystems**:
+  - `ROADMAP.md`: Added Section 3.5 defining the active milestone for repository bootstrapping and knowledge pipeline refinement.
+- **What Was Changed (The Concrete Reality)**:
+  - Integrated Section 3.5 into `ROADMAP.md`:
+    1. *Verification of Document Bootstrapping (`tools/bootstrap.ps1 -Doc` / Qdrant RAG):* End-to-end testing of document ingestion, incremental SHA-256 hash cache, fast embeddings, and offline sidecar vision.
+    2. *Documentation Conversion Skills Audit & AmigaGuide Evaluation:* Hardening skills (e.g. `pdf-to-markdown`) against primary manuals and evaluating whether an `amigaguide-to-markdown` skill is genuinely necessary.
+    3. *Iterative Design Documentation Calibration Loop (`Obsidian/Amiga/Design/`):* Establishing a closed feedback loop: indexing specs into RAG $\rightarrow$ semantic testing $\rightarrow$ identifying gaps $\rightarrow$ refining markdown files $\rightarrow$ re-indexing.
+    4. *End-to-End Hardening of `tools/bootstrap.ps1`:* Thorough testing across all flag combinations (`-Test`, `-Graph`, `-Doc`, `-All`) and clean-slate execution environments.
+- **Architectural Rationale & Trade-Offs**:
+  - *Closing the Autonomous Agent Loop:* Autonomous AI agent generation requires high-fidelity knowledge retrieval and reliable onboarding tooling. Documenting this milestone formally in `ROADMAP.md` bridges the operational tasks with the strategic clean-room regeneration vision defined in `BOOTSTRAP.md`.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.56s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

@@ -131,6 +131,31 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
   - Query register state, disassembly, and execution trace history ring buffers.
   - Enable autonomous debugging agents to diagnose CPU hangs or crash dumps.
 
+### 3.5 Autonomous Bootstrapping, Documentation Ingestion & Knowledge Pipeline Refinement (Active)
+
+To guarantee that autonomous AI agents can reconstruct and verify emulator subsystems cleanly, the repository bootstrapping and knowledge ingestion pipeline must undergo end-to-end verification and calibration:
+
+- **Verification of Document Bootstrapping (`tools/bootstrap.ps1 -Doc` / Qdrant RAG):**
+  - Verify end-to-end documentation ingestion against the local Qdrant vector database (`http://localhost:6333`).
+  - Validate SHA-256 incremental hashing cache, chunking fidelity, multi-threaded fast embeddings, and offline sidecar vision descriptions (`<image>.txt`).
+  - Ensure zero regressions or stalls during fresh database initialization and incremental reindexing.
+
+- **Documentation Conversion Skills Audit & AmigaGuide Evaluation:**
+  - Audit and refine agent documentation skills (e.g. `pdf-to-markdown`) against primary hardware manuals (Commodore HRM, Motorola M68000 PRMs) to ensure structured, accurate Markdown extraction.
+  - Evaluate whether a dedicated `amigaguide-to-markdown` skill is genuinely necessary or whether standard conversion tools and LLM comprehension suffice for AmigaGuide hypertexts.
+
+- **Iterative Design Documentation Calibration Loop (`Obsidian/Amiga/Design/`):**
+  - Establish a closed-loop calibration process for design specifications:
+    1. Bootstrap design specifications into the RAG vector collection (`amiga`).
+    2. Test semantic retrieval queries against core architectural concepts (e.g. CCK phases, bus contention, wait states, delayed register mutations).
+    3. Inspect retrieved chunks, identifying gaps, ambiguity, or missing circuit invariants.
+    4. Refine and calibrate the design Markdown files per [`.agents/rules/vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md) (inverted pyramid structure, dual-layer linking).
+    5. Re-bootstrap into RAG and verify improved agent comprehension and code generation accuracy.
+
+- **End-to-End Hardening of `tools/bootstrap.ps1`:**
+  - Exhaustively test the complete PowerShell bootstrapper across all flag configurations (`-Test`, `-Graph`, `-Doc`, `-All`).
+  - Verify clean-room resilience on fresh environments: archive decompression (`.gz`/`.zip`), directory creation, missing dependency warnings, and non-zero exit code reporting.
+
 ---
 
 ## 4. Post-Phase 1 Extensions: Reverse Engineering & Extraction
