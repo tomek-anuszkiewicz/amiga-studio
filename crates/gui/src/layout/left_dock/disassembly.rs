@@ -24,9 +24,16 @@ pub fn render_disassembly(
     debugger: &mut Debugger,
     temporal: &mut debugger::temporal::TemporalHistory,
     goto_addr_str: &mut String,
+    view_addr: &mut Option<u32>,
+    selected_addr: &mut Option<u32>,
     active_edit: &mut Option<DisasmEditState>,
     tokens: &ColorTokens,
 ) {
+    let start_pos = ui.cursor().min;
+    let disasm_rect_id = egui::Id::new("disasm_view_rect");
+    let prev_rect: Option<egui::Rect> = ui.data(|d| d.get_temp(disasm_rect_id));
+    let is_hovered = prev_rect.map_or(false, |r| ui.rect_contains_pointer(r));
+
     ui.heading("Disassembly");
 
     let current_pc = cpu.state.instruction_pc & 0x00FF_FFFF;
@@ -44,12 +51,21 @@ pub fn render_disassembly(
         {
             let clean = goto_addr_str.trim().trim_start_matches('$');
             if let Ok(addr) = u32::from_str_radix(clean, 16) {
-                cpu.set_pc_and_prime_prefetch(addr & 0x00FF_FFFF, bus);
+                let target = addr & 0x00FF_FFFF;
+                cpu.set_pc_and_prime_prefetch(target, bus);
+                *view_addr = None;
+                *selected_addr = Some(target);
             }
         }
 
         if ui.button("Current PC").clicked() {
             *goto_addr_str = format!("{:06X}", current_pc);
+            *view_addr = None;
+            *selected_addr = Some(current_pc);
+        }
+
+        if view_addr.is_some() && ui.button("Track PC").clicked() {
+            *view_addr = None;
         }
     });
 
@@ -72,13 +88,76 @@ pub fn render_disassembly(
         }
     }
 
-    let start_addr = find_aligned_disassembly_start(
+    let default_start = find_aligned_disassembly_start(
         current_pc,
         3,
         |a| bus.read_word_debug(a),
         &known_boundaries,
     );
-    let mut cur_addr = start_addr;
+
+    // Mouse wheel infinite stream browsing
+    if is_hovered {
+        for event in ui.input(|i| i.events.clone()) {
+            if let egui::Event::MouseWheel { delta, .. } = event {
+                let clicks = (-delta.y.round()) as i32;
+                let steps = clicks.unsigned_abs() as usize;
+                if clicks > 0 {
+                    let mut curr = view_addr.unwrap_or(default_start);
+                    for _ in 0..steps.min(10) {
+                        let (_, len) = disassemble(curr, |a| bus.read_word_debug(a));
+                        curr = curr.wrapping_add(len.max(2)) & 0x00FF_FFFF;
+                    }
+                    *view_addr = Some(curr);
+                } else if clicks < 0 {
+                    let mut curr = view_addr.unwrap_or(default_start);
+                    for _ in 0..steps.min(10) {
+                        curr = find_aligned_disassembly_start(
+                            curr,
+                            1,
+                            |a| bus.read_word_debug(a),
+                            &known_boundaries,
+                        );
+                    }
+                    *view_addr = Some(curr);
+                }
+            }
+        }
+
+        // Keyboard navigation across instruction rows
+        if active_edit.is_none() {
+            if let Some(sel) = *selected_addr {
+                if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
+                    let (_, len) = disassemble(sel, |a| bus.read_word_debug(a));
+                    *selected_addr = Some(sel.wrapping_add(len.max(2)) & 0x00FF_FFFF);
+                } else if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
+                    let prev = find_aligned_disassembly_start(
+                        sel,
+                        1,
+                        |a| bus.read_word_debug(a),
+                        &known_boundaries,
+                    );
+                    *selected_addr = Some(prev);
+                } else if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    let (disasm, _) = disassemble(sel, |a| bus.read_word_debug(a));
+                    let initial_text = if disasm.operands.is_empty() {
+                        disasm.mnemonic.to_string()
+                    } else {
+                        format!("{} {}", disasm.mnemonic, disasm.operands)
+                    };
+                    *active_edit = Some(DisasmEditState {
+                        addr: sel,
+                        text: initial_text,
+                        error: None,
+                    });
+                } else if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    *selected_addr = None;
+                }
+            }
+        }
+    }
+
+    let anchor_addr = view_addr.unwrap_or(default_start);
+    let mut cur_addr = anchor_addr;
 
     egui::ScrollArea::vertical()
         .id_salt("disassembly_scroll")
@@ -88,13 +167,31 @@ pub fn render_disassembly(
             for _ in 0..row_count {
                 let (disasm, byte_len) = disassemble(cur_addr, |a| bus.read_word_debug(a));
                 let is_current = cur_addr == current_pc;
+                let is_selected = *selected_addr == Some(cur_addr);
                 let is_bp = debugger.breakpoints.check_pc(cur_addr);
                 let orig_len = disasm.word_count * 2;
 
-                let row_frame = if is_current {
+                let row_frame = if is_current && is_selected {
+                    egui::Frame::NONE
+                        .fill(tokens.accent_pc_bg)
+                        .stroke(egui::Stroke::new(1.5_f32, tokens.border_active))
+                        .corner_radius(3.0)
+                        .inner_margin(egui::Margin::symmetric(3, 1))
+                } else if is_current {
                     egui::Frame::NONE
                         .fill(tokens.accent_pc_bg)
                         .stroke(egui::Stroke::new(1.0_f32, tokens.accent_pc))
+                        .corner_radius(3.0)
+                        .inner_margin(egui::Margin::symmetric(3, 1))
+                } else if is_selected {
+                    egui::Frame::NONE
+                        .fill(egui::Color32::from_rgba_unmultiplied(
+                            tokens.border_active.r(),
+                            tokens.border_active.g(),
+                            tokens.border_active.b(),
+                            35,
+                        ))
+                        .stroke(egui::Stroke::new(1.0_f32, tokens.border_active))
                         .corner_radius(3.0)
                         .inner_margin(egui::Margin::symmetric(3, 1))
                 } else {
@@ -105,7 +202,7 @@ pub fn render_disassembly(
 
                 row_frame.show(ui, |ui| {
                     if is_editing_this {
-                        // Inline instruction edit mode
+                        // In-place inline instruction edit mode
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.monospace(
@@ -132,10 +229,10 @@ pub fn render_disassembly(
                                         cancel = true;
                                     }
 
-                                    if ui.button("✓ Save").clicked() {
+                                    if ui.button(RichText::new("Save").strong()).clicked() {
                                         commit = true;
                                     }
-                                    if ui.button("✕ Cancel").clicked() {
+                                    if ui.button("Cancel").clicked() {
                                         cancel = true;
                                     }
                                 }
@@ -180,23 +277,41 @@ pub fn render_disassembly(
                             // Display validation error if present
                             if let Some(edit) = active_edit.as_ref() {
                                 if let Some(err) = &edit.error {
-                                    ui.colored_label(tokens.accent_error, format!("❌ {}", err));
+                                    ui.colored_label(tokens.accent_error, format!("Error: {}", err));
                                 }
                             }
                         });
                     } else {
                         // Standard display mode
                         ui.horizontal(|ui| {
-                            // Breakpoint toggle dot
-                            let bp_color = if is_bp {
-                                tokens.accent_error
+                            // Vector painted breakpoint toggle indicator (crisp circle, zero font glyph fallback)
+                            let (bp_rect, bp_resp) = ui.allocate_exact_size(
+                                egui::vec2(12.0, 16.0),
+                                egui::Sense::click(),
+                            );
+                            let bp_center = bp_rect.center();
+                            if is_bp {
+                                ui.painter().circle_filled(bp_center, 4.5, tokens.accent_error);
+                            } else if bp_resp.hovered() {
+                                ui.painter().circle_stroke(
+                                    bp_center,
+                                    4.0,
+                                    egui::Stroke::new(1.2_f32, tokens.accent_pc),
+                                );
                             } else if is_current {
-                                tokens.accent_pc
+                                ui.painter().circle_filled(
+                                    bp_center,
+                                    2.5,
+                                    tokens.accent_pc,
+                                );
                             } else {
-                                tokens.text_muted
-                            };
-                            let bp_btn = ui.selectable_label(is_bp, RichText::new("●").color(bp_color));
-                            if bp_btn.clicked() {
+                                ui.painter().circle_stroke(
+                                    bp_center,
+                                    3.0,
+                                    egui::Stroke::new(1.0_f32, tokens.text_muted),
+                                );
+                            }
+                            if bp_resp.clicked() {
                                 if is_bp {
                                     debugger.breakpoints.remove_pc_breakpoint(cur_addr);
                                 } else {
@@ -204,7 +319,7 @@ pub fn render_disassembly(
                                 }
                             }
 
-                            // Address & Disassembly text (guaranteed uniform column offset on every row)
+                            // Address & Disassembly text
                             let line_text = if is_current {
                                 RichText::new(disasm.format_line()).monospace().strong().color(tokens.text_primary)
                             } else {
@@ -213,10 +328,15 @@ pub fn render_disassembly(
                             let line_label = ui
                                 .add(egui::Label::new(line_text).sense(egui::Sense::click()))
                                 .on_hover_text(
-                                    "Double-click to edit instruction in-place | Right-click for options",
+                                    "Single-click to select | Double-click to edit | Right-click for options",
                                 );
 
+                            if line_label.clicked() {
+                                *selected_addr = Some(cur_addr);
+                            }
+
                             if line_label.double_clicked() {
+                                *selected_addr = Some(cur_addr);
                                 let initial_text = if disasm.operands.is_empty() {
                                     disasm.mnemonic.to_string()
                                 } else {
@@ -229,7 +349,7 @@ pub fn render_disassembly(
                                 });
                             }
 
-                            // Quick Loop Rewind button (rendered AFTER disassembly text so columns stay aligned)
+                            // Quick Loop Rewind button
                             let historical_passes = temporal.find_matches_by_pc(cur_addr, 10);
                             if !historical_passes.is_empty() {
                                 if ui
@@ -256,6 +376,8 @@ pub fn render_disassembly(
                             line_label.context_menu(|ui| {
                                 if ui.button("📍 Set PC here").clicked() {
                                     cpu.set_pc_and_prime_prefetch(cur_addr, bus);
+                                    *view_addr = None;
+                                    *selected_addr = Some(cur_addr);
                                     ui.close_menu();
                                 }
                                 let bp_label = if is_bp { "● Remove Breakpoint" } else { "● Set Breakpoint" };
@@ -299,11 +421,6 @@ pub fn render_disassembly(
                                     }
                                 }
                             });
-
-                            // Double-click to jump PC to this address
-                            if line_label.double_clicked() {
-                                cpu.set_pc_and_prime_prefetch(cur_addr, bus);
-                            }
                         });
                     }
                 });
@@ -311,4 +428,11 @@ pub fn render_disassembly(
                 cur_addr = cur_addr.wrapping_add(byte_len.max(2));
             }
         });
+
+    let end_pos = ui.cursor().min;
+    let total_rect = egui::Rect::from_min_max(
+        start_pos,
+        egui::pos2(ui.max_rect().max.x, end_pos.y.max(start_pos.y + 100.0)),
+    );
+    ui.data_mut(|d| d.insert_temp(disasm_rect_id, total_rect));
 }

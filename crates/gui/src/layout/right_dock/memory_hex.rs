@@ -14,14 +14,23 @@ pub fn render_memory_hex(
     bus: &mut MemoryBus,
     breakpoints: &mut BreakpointManager,
     base_addr: &mut u32,
+    selected_addr: &mut Option<u32>,
     edit_buffer: &mut (u32, String),
     prev_memory: Option<(&[u8; 256], u32)>,
     tokens: &ColorTokens,
 ) {
+    const ROW_BYTES: usize = 16;
+    let row_height = 18.0;
     let start_pos = ui.cursor().min;
     let mem_hex_rect_id = egui::Id::new("mem_hex_rect");
     let prev_rect: Option<egui::Rect> = ui.data(|d| d.get_temp(mem_hex_rect_id));
     let is_hovered = prev_rect.map_or(false, |r| ui.rect_contains_pointer(r));
+
+    // Calculate approximate visible rows for keyboard navigation bounds
+    let nav_num_rows = ((ui.available_height() - 90.0) / row_height)
+        .floor()
+        .clamp(6.0, 48.0) as usize;
+    let nav_visible_bytes = (nav_num_rows * ROW_BYTES) as u32;
 
     // 0. Mouse Wheel Infinite Scroll & Keyboard Navigation Handling
     if is_hovered {
@@ -94,20 +103,84 @@ pub fn render_memory_hex(
         // Keyboard navigation when hovered and not actively typing in a cell
         if edit_buffer.1.is_empty() {
             let ctrl = ui.input(|i| i.modifiers.ctrl || i.modifiers.command);
-            if ui.input(|i| i.key_pressed(egui::Key::PageDown)) {
-                let step = if ctrl { 1024 } else { 256 };
-                *base_addr = base_addr.wrapping_add(step) & 0x00FF_FFF0;
-            } else if ui.input(|i| i.key_pressed(egui::Key::PageUp)) {
-                let step = if ctrl { 1024 } else { 256 };
-                *base_addr = base_addr.wrapping_sub(step) & 0x00FF_FFF0;
-            } else if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
-                *base_addr = base_addr.wrapping_add(16) & 0x00FF_FFF0;
-            } else if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
-                *base_addr = base_addr.wrapping_sub(16) & 0x00FF_FFF0;
-            } else if ui.input(|i| i.key_pressed(egui::Key::Home)) {
-                *base_addr = 0x000000;
-            } else if ui.input(|i| i.key_pressed(egui::Key::End)) {
-                *base_addr = 0x07FF00;
+
+            if let Some(sel) = *selected_addr {
+                let visible_end = base_addr.wrapping_add(nav_visible_bytes) & 0x00FF_FFFF;
+
+                if ui.input(|i| i.key_pressed(egui::Key::ArrowLeft)) {
+                    let new_sel = sel.wrapping_sub(1) & 0x00FF_FFFF;
+                    *selected_addr = Some(new_sel);
+                    if new_sel < *base_addr || new_sel >= visible_end {
+                        *base_addr = new_sel & 0x00FF_FFF0;
+                    }
+                } else if ui.input(|i| i.key_pressed(egui::Key::ArrowRight)) {
+                    let new_sel = sel.wrapping_add(1) & 0x00FF_FFFF;
+                    *selected_addr = Some(new_sel);
+                    if new_sel >= visible_end || new_sel < *base_addr {
+                        *base_addr = new_sel.wrapping_sub(nav_visible_bytes.saturating_sub(16))
+                            & 0x00FF_FFF0;
+                    }
+                } else if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
+                    let new_sel = sel.wrapping_sub(16) & 0x00FF_FFFF;
+                    *selected_addr = Some(new_sel);
+                    if new_sel < *base_addr || new_sel >= visible_end {
+                        *base_addr = new_sel & 0x00FF_FFF0;
+                    }
+                } else if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
+                    let new_sel = sel.wrapping_add(16) & 0x00FF_FFFF;
+                    *selected_addr = Some(new_sel);
+                    if new_sel >= visible_end || new_sel < *base_addr {
+                        *base_addr = base_addr.wrapping_add(16) & 0x00FF_FFF0;
+                    }
+                } else if ui.input(|i| i.key_pressed(egui::Key::Home)) {
+                    let new_sel = sel & !0x0F;
+                    *selected_addr = Some(new_sel);
+                } else if ui.input(|i| i.key_pressed(egui::Key::End)) {
+                    let new_sel = (sel & !0x0F) | 0x0F;
+                    *selected_addr = Some(new_sel);
+                } else if ui.input(|i| i.key_pressed(egui::Key::PageUp)) {
+                    let step = if ctrl {
+                        1024
+                    } else {
+                        nav_visible_bytes.max(256)
+                    };
+                    let new_sel = sel.wrapping_sub(step) & 0x00FF_FFFF;
+                    *selected_addr = Some(new_sel);
+                    *base_addr = base_addr.wrapping_sub(step) & 0x00FF_FFF0;
+                } else if ui.input(|i| i.key_pressed(egui::Key::PageDown)) {
+                    let step = if ctrl {
+                        1024
+                    } else {
+                        nav_visible_bytes.max(256)
+                    };
+                    let new_sel = sel.wrapping_add(step) & 0x00FF_FFFF;
+                    *selected_addr = Some(new_sel);
+                    *base_addr = base_addr.wrapping_add(step) & 0x00FF_FFF0;
+                } else if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    let val = bus.read_byte_debug(sel);
+                    edit_buffer.0 = sel;
+                    edit_buffer.1 = format!("{:02X}", val);
+                    let just_started_id = egui::Id::new("hex_just_started_edit");
+                    ui.data_mut(|d| d.insert_temp(just_started_id, true));
+                } else if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    *selected_addr = None;
+                }
+            } else {
+                if ui.input(|i| i.key_pressed(egui::Key::PageDown)) {
+                    let step = if ctrl { 1024 } else { 256 };
+                    *base_addr = base_addr.wrapping_add(step) & 0x00FF_FFF0;
+                } else if ui.input(|i| i.key_pressed(egui::Key::PageUp)) {
+                    let step = if ctrl { 1024 } else { 256 };
+                    *base_addr = base_addr.wrapping_sub(step) & 0x00FF_FFF0;
+                } else if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
+                    *base_addr = base_addr.wrapping_add(16) & 0x00FF_FFF0;
+                } else if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
+                    *base_addr = base_addr.wrapping_sub(16) & 0x00FF_FFF0;
+                } else if ui.input(|i| i.key_pressed(egui::Key::Home)) {
+                    *base_addr = 0x000000;
+                } else if ui.input(|i| i.key_pressed(egui::Key::End)) {
+                    *base_addr = 0x07FF00;
+                }
             }
         }
     }
@@ -158,12 +231,10 @@ pub fn render_memory_hex(
     ui.separator();
 
     // 2. 16-byte Hex + ASCII Grid with Infinite Scroll & Vertical Scrollbar
-    const ROW_BYTES: usize = 16;
-    let row_height = 18.0;
     const CELL_WIDTH: f32 = 18.5;
-    let num_rows = ((ui.available_height() - 220.0) / row_height)
+    let num_rows = ((ui.available_height() - 8.0) / row_height)
         .floor()
-        .clamp(16.0, 36.0) as usize;
+        .clamp(4.0, 48.0) as usize;
     let grid_height = (num_rows as f32) * row_height;
 
     let mut next_edit_target: Option<u32> = None;
@@ -197,6 +268,7 @@ pub fn render_memory_hex(
                                 let byte_addr = row_addr.wrapping_add(col as u32) & 0x00FF_FFFF;
                                 let byte_val = bus.read_byte_debug(byte_addr);
                                 let active_wp = breakpoints.find_watchpoint_at(byte_addr).cloned();
+                                let is_selected = *selected_addr == Some(byte_addr);
 
                                 // Calculate diff status from prev_memory
                                 let is_changed = match prev_memory {
@@ -225,15 +297,22 @@ pub fn render_memory_hex(
                                             );
                                             edit_res.request_focus();
 
+                                            let just_started_id =
+                                                egui::Id::new("hex_just_started_edit");
+                                            let just_started: bool = ui
+                                                .data(|d| d.get_temp(just_started_id))
+                                                .unwrap_or(false);
+
                                             if ui.input(|i| i.key_pressed(egui::Key::Escape))
                                                 || edit_res.clicked_elsewhere()
                                             {
                                                 edit_buffer.1.clear();
-                                            } else if edit_res.lost_focus()
-                                                || ui.input(|i| {
-                                                    i.key_pressed(egui::Key::Tab)
-                                                        || i.key_pressed(egui::Key::Enter)
-                                                })
+                                            } else if !just_started
+                                                && (edit_res.lost_focus()
+                                                    || ui.input(|i| {
+                                                        i.key_pressed(egui::Key::Tab)
+                                                            || i.key_pressed(egui::Key::Enter)
+                                                    }))
                                             {
                                                 let clean = edit_buffer.1.trim();
                                                 if let Ok(val) = u8::from_str_radix(clean, 16) {
@@ -278,6 +357,23 @@ pub fn render_memory_hex(
                                             cell_rect,
                                             0.0,
                                             egui::Stroke::new(1.0_f32, tokens.accent_error),
+                                            egui::StrokeKind::Inside,
+                                        );
+                                    } else if is_selected {
+                                        ui.painter().rect_filled(
+                                            cell_rect,
+                                            0.0,
+                                            Color32::from_rgba_unmultiplied(
+                                                tokens.border_active.r(),
+                                                tokens.border_active.g(),
+                                                tokens.border_active.b(),
+                                                45,
+                                            ),
+                                        );
+                                        ui.painter().rect_stroke(
+                                            cell_rect,
+                                            0.0,
+                                            egui::Stroke::new(1.5_f32, tokens.border_active),
                                             egui::StrokeKind::Inside,
                                         );
                                     } else if cell_response.hovered() {
@@ -389,9 +485,14 @@ pub fn render_memory_hex(
                                                 WatchAccess::Write,
                                             );
                                         } else {
-                                            edit_buffer.0 = byte_addr;
-                                            edit_buffer.1 = format!("{:02X}", byte_val);
+                                            *selected_addr = Some(byte_addr);
+                                            edit_buffer.1.clear();
                                         }
+                                    }
+                                    if cell_response.double_clicked() {
+                                        *selected_addr = Some(byte_addr);
+                                        edit_buffer.0 = byte_addr;
+                                        edit_buffer.1 = format!("{:02X}", byte_val);
                                     }
                                 }
 
@@ -404,12 +505,13 @@ pub fn render_memory_hex(
                             ui.monospace(RichText::new("|").color(tokens.border_subtle));
                             ui.add_space(3.0);
 
-                            // ASCII representation with watchpoint highlights
+                            // ASCII representation with watchpoint and selection highlights
                             let mut job = egui::text::LayoutJob::default();
                             for col in 0..ROW_BYTES {
                                 let byte_addr = row_addr.wrapping_add(col as u32) & 0x00FF_FFFF;
                                 let byte_val = bus.read_byte_debug(byte_addr);
                                 let is_wp = breakpoints.find_watchpoint_at(byte_addr).is_some();
+                                let is_selected = *selected_addr == Some(byte_addr);
                                 let ch = if byte_val.is_ascii_graphic() || byte_val == b' ' {
                                     byte_val as char
                                 } else {
@@ -417,6 +519,8 @@ pub fn render_memory_hex(
                                 };
                                 let ch_color = if is_wp {
                                     tokens.accent_error
+                                } else if is_selected {
+                                    tokens.border_active
                                 } else {
                                     tokens.text_secondary
                                 };
@@ -432,6 +536,13 @@ pub fn render_memory_hex(
                                                 tokens.accent_error.g(),
                                                 tokens.accent_error.b(),
                                                 80,
+                                            )
+                                        } else if is_selected {
+                                            Color32::from_rgba_unmultiplied(
+                                                tokens.border_active.r(),
+                                                tokens.border_active.g(),
+                                                tokens.border_active.b(),
+                                                60,
                                             )
                                         } else {
                                             Color32::TRANSPARENT
@@ -452,6 +563,7 @@ pub fn render_memory_hex(
     });
 
     if let Some(target_addr) = next_edit_target {
+        *selected_addr = Some(target_addr);
         edit_buffer.0 = target_addr;
         let val = bus.read_byte_debug(target_addr);
         edit_buffer.1 = format!("{:02X}", val);

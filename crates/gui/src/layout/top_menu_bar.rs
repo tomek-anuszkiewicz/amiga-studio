@@ -55,18 +55,22 @@ pub fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     egui::Color32::from_rgb(34, 139, 34)
                 });
                 if ui.add(run_button).clicked() {
+                    app.disassembly_view_addr = None;
                     app.session.toggle_run();
                 }
 
                 if ui.button("⏭ Step Inst (F10)").clicked() {
+                    app.disassembly_view_addr = None;
                     app.session.step_instruction();
                 }
 
                 if ui.button("⏯ Step CCK (F11)").clicked() {
+                    app.disassembly_view_addr = None;
                     app.session.step_cck();
                 }
 
                 if ui.button("⏮ Rewind (Shift+F10)").clicked() {
+                    app.disassembly_view_addr = None;
                     app.session.step_backward();
                 }
 

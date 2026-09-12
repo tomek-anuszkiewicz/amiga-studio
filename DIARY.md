@@ -1659,3 +1659,38 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 architecture rules passed in 0.55s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 269 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 19:00 CEST] — Interactive Developer Ergonomics: Infinite Disassembly Scroll, Draggable Splitters & Memory Hex Selection
+- **Affected Subsystems**:
+  - `crates/gui/src/layout/left_dock/disassembly.rs`: Implemented mouse-wheel continuous infinite stream scrolling via `view_addr: &mut Option<u32>` and row selection via `selected_addr: &mut Option<u32>`; replaced Unicode symbols with clean styled text buttons (`Save`, `Cancel`); added resolution-independent vector-painted circular breakpoint indicator (`painter().circle_filled` and `circle_stroke`).
+  - `crates/gui/src/layout/right_dock/memory_hex.rs`: Implemented decoupled cell selection (`selected_addr`) vs inline editing with border outline and tinted fill; added row-wrapping keyboard navigation (`ArrowLeft` col 0 to col 15 of previous row, `ArrowRight` col 15 to col 0 of next row, `ArrowUp`/`ArrowDown`, `Home`/`End`, `PageUp`/`PageDown`); dynamic row count based on pane height; fixed same-frame Enter activation via `egui::Id::new("hex_just_started_edit")`.
+  - `crates/gui/src/layout/right_dock/breakpoints_panel.rs`: Removed forced full-width group constraints to prevent border clipping against scrollbars; updated helper text.
+  - `crates/gui/src/app.rs`: Added `memory_pane_height: f32` and `crt_pane_height: f32` to `UserPreferences` and `EmulatorApp`; implemented draggable vertical splitters with `ResizeVertical` cursor and 2px hover strokes in Right Dock and Center-Right (Full HD) panes; wired step shortcuts (`F5`, `F10`, `Shift+F10`, `F11`) to reset `disassembly_view_addr = None` for automatic PC synchronization.
+  - `crates/gui/src/layout/top_menu_bar.rs`: Stepping and running actions re-center disassembly by resetting `disassembly_view_addr = None`.
+  - `crates/gui/tests/test_interactions.rs`: Added headless integration tests `test_memory_hex_cell_selection_and_row_wrapping_navigation` and `test_disassembly_infinite_scroll_and_pc_snap`.
+  - `crates/gui/tests/test_persistence.rs`: Verified persistence roundtrip for `memory_pane_height` and `crt_pane_height`.
+  - `Obsidian/Amiga/Design/GUI Specification.md`: Updated Sections 3.6 and 3.7 to document continuous disassembly streaming, memory cell selection, row wrapping, and draggable splitters.
+  - `ROADMAP.md`: Recorded milestone in Section 3.3.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed all 9 ergonomic directives requested for the developer studio:
+    1. **Disassembly Infinite Scroll:** Mouse wheel scrolls backward and forward through memory without snapping back to PC. Executing steps or running resets view override, centering on current $PC$.
+    2. **Right Dock Vertical Splitter:** Draggable divider allows resizing the top Memory Hex View independently from bottom tool panels.
+    3. **Double Scroll & Reachable Hex Scrollbar:** Eliminated outer dock scroll area around the hex editor; the hex editor now directly receives scroll wheel events and positions its native scrollbar flush at the panel edge.
+    4. **Memory Hex Selection vs Inline Editing:** Single-click selects a byte; double-click or Enter begins editing; arrow keys wrap across row boundaries; boundary overflows auto-scroll `base_addr`.
+    5. **Panel Margins & Border Clipping:** Removed forced group widths so cards have symmetric padding and borders are never clipped against the right edge.
+    6. **Center-Right Pane Splitter (Full HD):** Draggable divider allows custom height balance between CRT display/temporal bar and the Execution Trace Log.
+    7. **Disassembly Row Highlighting:** Single-click selects instruction row with an accent outline and subtle tint; double-click opens inline assembler editor.
+    8. **Clean Text Buttons:** Eliminated OS emoji fallback font glyphs by replacing Unicode check/cross with styled text buttons (`Save`, `Cancel`).
+    9. **In-Place Assembly Editor & Vector Breakpoint:** Rendered inline matching row height with zero column shift, and vector-painted circular breakpoint indicator.
+- **Architectural Rationale & Trade-Offs**:
+  - *Decoupled View Offset vs Execution Anchor:* Coupling view position strictly to PC prevents free memory exploration. By introducing an explicit `view_addr: Option<u32>` override, the user can browse memory freely while preserving instant re-centering whenever the CPU steps.
+  - *Vector Graphics over Unicode Fallbacks:* System fonts across host platforms (Windows monospace, Linux fontconfig, WASM canvas) render Unicode geometric symbols (`●`, `✓`, `✕`) inconsistently or as missing-glyph boxes `▯`. Directly painting geometric primitives with egui's `Painter` guarantees crisp, resolution-independent rendering everywhere.
+  - *Scoped Scroll Areas:* Nesting a custom-scrolled widget inside an egui `ScrollArea` causes event interception and coordinate offsets. Giving the hex editor its own dedicated, splitter-bounded space eliminates double-scroll conflicts entirely.
+- **Verification & Test Results**:
+  - `cargo test -p gui`: All 41 tests passed (7 unit, 31 interaction, 3 persistence).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.60s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 269 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - Multimodal Vision Verification: Rendered and visually inspected `fhd_splitters_verified.png` and `fhd_edit_disasm_verified.png` via `gui-inspector` and `view_file`, confirming pixel-perfect splitters, unclipped card borders, and clean inline editing.

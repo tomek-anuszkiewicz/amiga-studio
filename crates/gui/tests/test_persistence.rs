@@ -43,6 +43,8 @@ fn test_user_preferences_roundtrip_via_storage() {
     app.view_mode = ViewMode::ScreenOnly;
     app.show_microcode = false;
     app.temporal_capacity_selection = 50_000;
+    app.memory_pane_height = 450.0;
+    app.crt_pane_height = 520.0;
     app.session.temporal.set_capacity(50_000);
 
     // Also run some guest code to alter CPU/RAM state
@@ -69,6 +71,8 @@ fn test_user_preferences_roundtrip_via_storage() {
     assert_eq!(prefs.view_mode, ViewMode::ScreenOnly);
     assert_eq!(prefs.show_microcode, false);
     assert_eq!(prefs.temporal_capacity, 50_000);
+    assert_eq!(prefs.memory_pane_height, 450.0);
+    assert_eq!(prefs.crt_pane_height, 520.0);
 
     let mut new_app = EmulatorApp::default();
     new_app.apply_preferences(&prefs);
@@ -78,6 +82,8 @@ fn test_user_preferences_roundtrip_via_storage() {
     assert_eq!(new_app.view_mode, ViewMode::ScreenOnly);
     assert_eq!(new_app.show_microcode, false);
     assert_eq!(new_app.temporal_capacity_selection, 50_000);
+    assert_eq!(new_app.memory_pane_height, 450.0);
+    assert_eq!(new_app.crt_pane_height, 520.0);
 
     // 5. Assert Guest Emulation State is CLEAN & TRANSIENT (never persisted)
     let fresh_app = EmulatorApp::default();

@@ -47,7 +47,6 @@ pub fn render_breakpoints_panel(
 
             // --- Section 1: PC Execution Breakpoints ---
             ui.group(|ui| {
-                ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
                     ui.label(
                         RichText::new("PC Breakpoints")
@@ -61,7 +60,7 @@ pub fn render_breakpoints_panel(
                 if bpm.pc_breakpoints.is_empty() {
                     ui.label(
                         RichText::new(
-                            "No PC breakpoints set. Click '●' in Disassembly or add below.",
+                            "No PC breakpoints set. Click circle in Disassembly or add below.",
                         )
                         .italics()
                         .color(Color32::from_rgb(140, 145, 160)),
@@ -196,7 +195,6 @@ pub fn render_breakpoints_panel(
 
             // --- Section 2: Memory Watchpoints ---
             ui.group(|ui| {
-                ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
                     ui.label(
                         RichText::new("Memory Watchpoints")

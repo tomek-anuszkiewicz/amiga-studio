@@ -159,6 +159,13 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
   - Added dedicated hover inspection presets (`hover_register`, `hover_ccr`, `hover_memory`, `game_mode`, `workbench_theme`) with `tooltip_delay = 0.0` for immediate headless capture.
   - Corrected immediate-mode focus lifecycles and keyboard Enter activation across register and disassembly inline editors.
   - Guarded by 29 automated headless integration tests in `crates/gui/tests/test_interactions.rs`.
+- **Interactive Developer Ergonomics, Draggable Splitters & Continuous Memory Browsing (Completed):**
+  - **Disassembly Infinite Scroll:** Continuous memory browsing where mouse-wheel scrolling streams instructions forward or backward across 24-bit memory space without snapping back to PC; stepping (`F10`, `Shift+F10`, `F11`) or running (`F5`) automatically re-centers view on current $PC$.
+  - **Right Dock Draggable Splitter:** Draggable vertical divider (`ResizeVertical` cursor and 2px hover stroke) between upper Memory Hex View and lower tool panels (Breakpoints, Search, Trace Log), persisted in `memory_pane_height`.
+  - **Center-Right Pane Splitter (Full HD Mode):** Draggable vertical divider between top Amiga CRT display/temporal bar and bottom Execution Trace Log, persisted in `crt_pane_height`.
+  - **Memory Hex Selection & Row-Wrapping Keyboard Navigation:** Single-click selects cell without opening input field; double-click or `Enter` enters inline editing; arrow keys navigate across cells with row wrapping (`ArrowLeft` col 0 to col 15 of previous row, `ArrowRight` col 15 to col 0 of next row) and auto-scrolling `base_addr` on boundary overflow; `Escape` deselects cleanly.
+  - **Panel Margins & Font Robustness:** Eliminated nested scroll area conflicts and border clipping on right dock; vector-painted resolution-independent circular breakpoint indicators (`circle_filled` / `circle_stroke`) replacing font missing-glyph boxes; styled text buttons (`Save`, `Cancel`) for in-place instruction editing.
+  - Guarded by 41 automated headless integration and unit tests across `crates/gui/tests/`.
 - **Screenshot Frame Dumps:**
   - Export rendered video frames at specific VBlank intervals.
   - Use visual comparison (pixel diffs or multimodal LLM inspection) to verify Copper color gradients, sprite multiplexing, and raster splits against WinUAE/vAmiga output.

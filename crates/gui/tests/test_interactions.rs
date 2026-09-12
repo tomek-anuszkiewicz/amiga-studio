@@ -1257,3 +1257,175 @@ fn test_hover_documentation_tooltips_render_without_panics() {
         );
     }
 }
+
+#[test]
+fn test_memory_hex_cell_selection_and_row_wrapping_navigation() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+    app.hex_base_addr = 0x001000;
+    app.memory_selected_addr = Some(0x00100F); // Column 15 of row 0
+
+    let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280.0, 720.0));
+
+    // Prime hover over hex editor area
+    let _ = ctx.run(
+        RawInput {
+            screen_rect: Some(screen_rect),
+            events: vec![Event::PointerMoved(egui::pos2(900.0, 150.0))],
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+
+    // 1. Press ArrowRight at col 15 -> wraps to col 0 of next row ($001010)
+    let right_input = RawInput {
+        screen_rect: Some(screen_rect),
+        events: vec![
+            Event::PointerMoved(egui::pos2(900.0, 150.0)),
+            Event::Key {
+                key: Key::ArrowRight,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: Modifiers::NONE,
+            },
+        ],
+        ..Default::default()
+    };
+    let _ = ctx.run(right_input, |ctx| app.update_ui(ctx));
+    assert_eq!(app.memory_selected_addr, Some(0x001010));
+
+    // 2. Press ArrowLeft at col 0 -> wraps back to col 15 of previous row ($00100F)
+    let left_input = RawInput {
+        screen_rect: Some(screen_rect),
+        events: vec![
+            Event::PointerMoved(egui::pos2(900.0, 150.0)),
+            Event::Key {
+                key: Key::ArrowLeft,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: Modifiers::NONE,
+            },
+        ],
+        ..Default::default()
+    };
+    let _ = ctx.run(left_input, |ctx| app.update_ui(ctx));
+    assert_eq!(app.memory_selected_addr, Some(0x00100F));
+
+    // 3. Press Enter while cell is selected -> enters inline edit mode
+    let enter_input = RawInput {
+        screen_rect: Some(screen_rect),
+        events: vec![
+            Event::PointerMoved(egui::pos2(900.0, 150.0)),
+            Event::Key {
+                key: Key::Enter,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: Modifiers::NONE,
+            },
+        ],
+        ..Default::default()
+    };
+    let _ = ctx.run(enter_input, |ctx| app.update_ui(ctx));
+    assert_eq!(app.hex_edit_buffer.0, 0x00100F);
+    assert!(!app.hex_edit_buffer.1.is_empty());
+
+    // 4. Press Escape -> dismisses inline edit
+    let esc_input = RawInput {
+        screen_rect: Some(screen_rect),
+        events: vec![
+            Event::PointerMoved(egui::pos2(900.0, 150.0)),
+            Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: Modifiers::NONE,
+            },
+        ],
+        ..Default::default()
+    };
+    let _ = ctx.run(esc_input, |ctx| app.update_ui(ctx));
+    assert!(app.hex_edit_buffer.1.is_empty());
+
+    // 5. Press Escape again -> clears cell selection
+    let esc_input2 = RawInput {
+        screen_rect: Some(screen_rect),
+        events: vec![
+            Event::PointerMoved(egui::pos2(900.0, 150.0)),
+            Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: Modifiers::NONE,
+            },
+        ],
+        ..Default::default()
+    };
+    let _ = ctx.run(esc_input2, |ctx| app.update_ui(ctx));
+    assert_eq!(app.memory_selected_addr, None);
+}
+
+#[test]
+fn test_disassembly_infinite_scroll_and_pc_snap() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+    let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1920.0, 1080.0));
+
+    // Load instructions: NOP, NOP, NOP, BRA *-0
+    let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x71, 0x60, 0xFE];
+    app.session.load_binary(0x001000, &code, true);
+
+    // Initial state: disassembly_view_addr is None (following current PC)
+    assert_eq!(app.disassembly_view_addr, None);
+
+    // 1. Prime hover over disassembly pane (Full HD Left Column of Central Viewport)
+    let _ = ctx.run(
+        RawInput {
+            screen_rect: Some(screen_rect),
+            events: vec![Event::PointerMoved(egui::pos2(500.0, 300.0))],
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+
+    // 2. Mouse wheel scroll down -> disassembly_view_addr advances forward
+    let wheel_down = RawInput {
+        screen_rect: Some(screen_rect),
+        events: vec![
+            Event::PointerMoved(egui::pos2(500.0, 300.0)),
+            Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Line,
+                delta: egui::vec2(0.0, -2.0),
+                modifiers: Modifiers::NONE,
+            },
+        ],
+        ..Default::default()
+    };
+    let _ = ctx.run(wheel_down, |ctx| app.update_ui(ctx));
+    assert!(
+        app.disassembly_view_addr.is_some(),
+        "Mouse wheel down must set disassembly_view_addr"
+    );
+
+    // 3. Step instruction (F10) -> disassembly_view_addr immediately snaps back to None (auto-tracking PC)
+    let step_input = RawInput {
+        screen_rect: Some(screen_rect),
+        events: vec![Event::Key {
+            key: Key::F10,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::NONE,
+        }],
+        ..Default::default()
+    };
+    let _ = ctx.run(step_input, |ctx| app.update_ui(ctx));
+    assert_eq!(
+        app.disassembly_view_addr, None,
+        "Stepping must reset disassembly_view_addr to None to track PC"
+    );
+}

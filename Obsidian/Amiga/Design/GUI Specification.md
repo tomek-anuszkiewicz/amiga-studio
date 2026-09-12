@@ -186,10 +186,14 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
   - Chip RAM DMA arbitration: indicates whether bus is free or blocked by Agnus/Denise DMA with wait states.
 
 ### 3.6 Column 3: Disassembly View ([`layout/left_dock/disassembly.rs`](../../../crates/gui/src/layout/left_dock/disassembly.rs))
-- **Live Disassembly Table:**
-  - Centered on active $PC$ using headless `debugger::disassemble` (with full decoding of `LEA`, `CLR`, `DBRA`, `TST`, `NOT`, `NEG`).
-  - Single-row scoped execution pointer highlight rect (no multi-row blue background spill).
-  - Breakpoint margin (`●`): Clicking toggles PC breakpoint.
+- **Live Disassembly Table & Infinite Scroll:**
+  - Continuous memory browsing: Mouse-wheel scrolling up or down freely streams disassembly across 24-bit memory space without snapping back to PC, maintaining valid 16-bit instruction alignment.
+  - Active PC Synchronization: Executing any step (`F10`, `Shift+F10`, `F11`), running (`F5`), or clicking top bar execution buttons automatically resets the view override (`disassembly_view_addr = None`), re-centering on current $PC$.
+  - Single-row scoped execution pointer highlight rect in electric cyan (`accent_pc`).
+  - Breakpoint margin: Vector-painted resolution-independent circular breakpoint indicators (`circle_filled` / `circle_stroke`), eliminating OS missing-glyph boxes. Clicking toggles PC breakpoint.
+- **Row Selection & Interaction:**
+  - Single-clicking any row selects the instruction, applying an accent border outline and tinted fill (`selected_addr`).
+  - Double-clicking opens the in-place inline assembler editor with clean styled text buttons (`Save`, `Cancel`).
 - **Time-Travel Navigation & Loop Rewind:**
   - **Right-Click Context Menu:**
     - `📍 Set PC here`
@@ -198,14 +202,28 @@ The Developer Studio is designed as a **self-contained Amiga hardware encycloped
     - `⏪ Rewind to Pass #N (CCK: X)` for each historical execution pass detected by `find_matches_by_pc`.
   - **Quick Rewind Button (`⏪`):** Appears next to instructions with execution history; clicking immediately scrubs temporal history to the most recent pass.
 - **In-Place Instruction Editing with Byte Size Invariance:**
-  - Double-clicking on any instruction row (or selecting "✏ Edit Instruction" from the right-click context menu) opens the inline editor. Rejects writes if replacement size differs from original, preserving memory alignment.
+  - Inline editor matches row height with zero column shift. Rejects writes if replacement size differs from original, preserving memory alignment.
 
 ### 3.7 Right Dock: Memory Hex Editor ([`layout/right_dock/memory_hex.rs`](../../../crates/gui/src/layout/right_dock/memory_hex.rs))
 - **16-Byte Row Hex + ASCII Grid:**
   - 510px default dock width with uniform 19px fixed-width cell slot allocations (`allocate_ui_with_layout`).
   - Zero margin on byte input editor ensures typing never causes horizontal jitter or shifts adjacent columns.
   - 14px comfortable right margin on row end prevents right-edge border collision on ASCII column.
-  - Tab/Enter advances to next byte; Escape or clicking outside commits/dismisses cleanly.
+- **Cell Selection vs Inline Editing:**
+  - Single-clicking any hex cell or ASCII glyph selects that exact byte address (`selected_addr = Some(addr)`) with an accent border and tinted fill without opening the text input box.
+  - Double-clicking or pressing `Enter` on a selected cell activates inline hex editing with direct auto-focus.
+  - Pressing `Escape` or clicking outside dismisses editing or clears selection cleanly.
+- **Row-Wrapping Keyboard Navigation:**
+  - `ArrowLeft` wraps from column 0 to column 15 of the preceding row.
+  - `ArrowRight` wraps from column 15 to column 0 of the succeeding row.
+  - `ArrowUp` / `ArrowDown` step backward/forward by 16 bytes.
+  - `Home` / `End` jump to column 0 / 15 of the current row.
+  - `PageUp` / `PageDown` navigate by visible page capacity (or 1 KB with Ctrl held).
+  - Navigating past the top or bottom visible row automatically scrolls `base_addr`.
+- **Draggable Vertical Splitters & Adaptive Pane Heights:**
+  - **Right Dock Splitter:** Draggable divider with `ResizeVertical` cursor and 2px hover stroke separates the upper Memory Hex View from lower tool panels (Breakpoints, Search, Trace Log). Height is stored in `memory_pane_height` (default 320px, clamped 120px..=700px).
+  - **Center-Right Pane Splitter (Full HD Mode):** Draggable vertical divider separates the top Amiga CRT Screen/temporal bar from the lower Trace Log panel, stored in `crt_pane_height` (default 460px, clamped 200px..=800px).
+  - Both pane heights are persisted across application restarts via `UserPreferences` in `eframe::Storage`.
 
 ### 3.8 Right Dock: Memory Search ([`layout/right_dock/memory_search.rs`](../../../crates/gui/src/layout/right_dock/memory_search.rs))
 - Pattern searching across memory:
