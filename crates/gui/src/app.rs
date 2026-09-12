@@ -5,6 +5,8 @@
 
 use std::path::PathBuf;
 
+use serde::{Deserialize, Serialize};
+
 use crate::layout::left_dock::disassembly::{render_disassembly, DisasmEditState};
 use crate::layout::left_dock::engine_status::render_engine_status;
 use crate::layout::left_dock::microcode::render_microcode;
@@ -47,10 +49,31 @@ impl LayoutTier {
 pub const MAX_INSTRUCTIONS_PER_FRAME: usize = 5000;
 
 /// App display mode: Developer Studio vs Clean Standalone Game Mode
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ViewMode {
+    #[default]
     Developer,
     ScreenOnly,
+}
+
+/// Persistent high-level user preferences saved across desktop sessions
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UserPreferences {
+    pub theme: AppTheme,
+    pub view_mode: ViewMode,
+    pub show_microcode: bool,
+    pub temporal_capacity: usize,
+}
+
+impl Default for UserPreferences {
+    fn default() -> Self {
+        Self {
+            theme: AppTheme::Dark,
+            view_mode: ViewMode::Developer,
+            show_microcode: true,
+            temporal_capacity: DEFAULT_TEMPORAL_CAPACITY,
+        }
+    }
 }
 
 /// Central Amiga 500 Emulator GUI Application (View Layer)
@@ -119,9 +142,33 @@ impl Default for EmulatorApp {
 impl EmulatorApp {
     /// Initializes a new EmulatorApp instance with headless session
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let app = Self::default();
+        let mut app = Self::default();
+        if let Some(storage) = cc.storage {
+            if let Some(prefs) = eframe::get_value::<UserPreferences>(storage, eframe::APP_KEY) {
+                app.apply_preferences(&prefs);
+            }
+        }
         app.theme.apply(&cc.egui_ctx);
         app
+    }
+
+    /// Exports current persistent user preferences
+    pub fn preferences(&self) -> UserPreferences {
+        UserPreferences {
+            theme: self.theme,
+            view_mode: self.view_mode,
+            show_microcode: self.show_microcode,
+            temporal_capacity: self.temporal_capacity_selection,
+        }
+    }
+
+    /// Applies loaded user preferences to active app state
+    pub fn apply_preferences(&mut self, prefs: &UserPreferences) {
+        self.theme = prefs.theme;
+        self.view_mode = prefs.view_mode;
+        self.show_microcode = prefs.show_microcode;
+        self.temporal_capacity_selection = prefs.temporal_capacity;
+        self.session.temporal.set_capacity(prefs.temporal_capacity);
     }
 
     /// Opens the native file chooser dialog for binary injection
@@ -501,5 +548,13 @@ impl EmulatorApp {
 impl eframe::App for EmulatorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.update_ui(ctx);
+    }
+
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, &self.preferences());
+    }
+
+    fn persist_egui_memory(&self) -> bool {
+        true
     }
 }

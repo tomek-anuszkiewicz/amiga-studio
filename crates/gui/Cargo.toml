@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+default-run = "amiga-studio"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -17,7 +18,7 @@ name = "gui-inspector"
 path = "src/bin/gui_inspector.rs"
 
 [dependencies]
-eframe = { version = "0.31", default-features = true }
+eframe = { version = "0.31", default-features = true, features = ["persistence"] }
 egui = { version = "0.31", default-features = true }
 config = { path = "../config" }
 rtc = { path = "../rtc" }

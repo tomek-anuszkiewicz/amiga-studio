@@ -145,6 +145,13 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
   - Introduced centralized semantic design tokens (`ColorTokens` in `crates/gui/src/theme/tokens.rs`), replacing harsh neon cyan with soft sky blue (`#38BDF8`), electric cyan diffs (`#67E8F9`), and high-contrast dark slate condition code badges.
   - Stabilized register layout with fixed-width `{:>11}` decimals, eliminating column jitter across signed 32-bit values.
   - Guarded by 36 automated tests in `crates/gui` and verified visually across $1920 \times 1080$, $1280 \times 720$, and $1024 \times 600$ via `gui-inspector`.
+- **Native `eframe::Storage` Persistence & UI Settings Retention:**
+  - Integrated native `eframe::Storage` persistence (`persistence` feature with RON serialization) across desktop and WebAssembly (`localStorage`).
+  - Automatically preserves window geometry (position and size), panel splitter widths (`SidePanel` Left Dock and Right Dock), and all `CollapsingHeader` states (open vs closed) via `egui::Memory`.
+  - Serializes high-level user preferences (`UserPreferences`: active theme, Developer Studio vs ScreenOnly mode, microcode inspector visibility, and temporal history ring buffer capacity) across sessions under `eframe::APP_KEY`.
+  - Enforced strict machine state transience: guest execution state (`DebuggerSession`, CPU registers, RAM contents, execution counter) is never saved to disk and always starts clean on app launch.
+  - Added `default-run = "amiga-studio"` to `crates/gui/Cargo.toml`, enabling single-command launch via `cargo run -p gui`.
+  - Guarded by 3 automated integration tests in `crates/gui/tests/test_persistence.rs`.
 - **Vision-Driven Headless GUI Inspector (`gui-inspector`) & Autonomous Self-Healing (`egui-vision-debugger`):**
   - Built headless offscreen capture harness (`crates/gui/src/bin/gui_inspector.rs`) utilizing `egui_kittest` + `wgpu` strictly isolated under `cfg(not(target_arch = "wasm32"))`.
   - Authored specialized agent skill (`.agents/skills/egui-vision-debugger/`) for automated scenario execution, visual layout audits via `view_file`, and self-healing iterations.

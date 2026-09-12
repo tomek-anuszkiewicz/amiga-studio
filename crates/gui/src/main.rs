@@ -41,6 +41,7 @@ fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Amiga 500 Developer Studio")
+            .with_app_id("amiga-studio")
             .with_inner_size([1600.0, 840.0])
             .with_min_inner_size([1024.0, 600.0]),
         ..Default::default()

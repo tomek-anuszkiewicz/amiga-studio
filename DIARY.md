@@ -1634,3 +1634,28 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 268 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
   - Multimodal Vision Inspection: Rendered and visually inspected `fhd_verified.png` ($1920 \times 1080$), `baseline_verified.png` ($1280 \times 720$), and `small_verified.png` ($1024 \times 600$) via `gui-inspector` and `view_file`, confirming zero voids, balanced columns, and legible contrast.
+
+---
+
+### [2026-09-12 18:20 CEST] — Native eframe::Storage Persistence, Default-Run Manifest & Transient Emulation Invariance
+- **Affected Subsystems**:
+  - `crates/gui/Cargo.toml`: Added `default-run = "amiga-studio"` to `[package]` to enable single-command `cargo run -p gui` launches; added `features = ["persistence"]` to `eframe` dependency.
+  - `crates/gui/src/app.rs`: Derived `Serialize, Deserialize, Default` on `ViewMode`; introduced `UserPreferences` struct (`theme`, `view_mode`, `show_microcode`, `temporal_capacity`); implemented `EmulatorApp::preferences()` and `apply_preferences()`; integrated preference loading in `EmulatorApp::new(cc)` via `eframe::get_value`; implemented `eframe::App::save()` and `persist_egui_memory(&self) -> bool { true }`.
+  - `crates/gui/src/main.rs`: Configured `.with_app_id("amiga-studio")` on `ViewportBuilder` for persistent storage directory resolution.
+  - `crates/gui/src/lib.rs`: Re-exported `UserPreferences`.
+  - `crates/gui/tests/test_persistence.rs`: Created comprehensive headless test suite verifying `UserPreferences` storage roundtrip, empty storage defaults, and strictly transient guest machine state (CPU registers, RAM, instruction counter).
+- **What Was Changed (The Concrete Reality)**:
+  - Enabled native `eframe::Storage` persistence (Option A), allowing the Developer Studio to remember user preferences across sessions.
+  - Splitter positions (Left Dock, Right Dock) and `CollapsingHeader` open/closed states are automatically preserved via `egui::Memory` serialization.
+  - High-level user preferences (active theme, Developer Studio vs ScreenOnly view mode, microcode inspector visibility, and temporal history ring buffer capacity) are serialized to disk under `eframe::APP_KEY` (`%APPDATA%/amiga-studio/app.ron` on Windows, `~/.config/amiga-studio/app.ron` on Linux, `localStorage` on WebAssembly).
+  - Enforced strict machine state transience: guest execution state (`DebuggerSession`, CPU registers, RAM contents, execution counter) is never saved to disk and always starts clean on app launch.
+  - Configured `default-run = "amiga-studio"` in `crates/gui/Cargo.toml`, fixing `cargo run -p gui` so it launches the studio directly without requiring `--bin amiga-studio`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Idiomatic Storage vs Ad-Hoc Files:* Using `eframe::Storage` leverages egui's battle-tested RON-based persistence infrastructure. It seamlessly handles platform differences (Desktop config directories vs WebAssembly localStorage) and coordinates `egui::Memory` (window size/pos, panel widths, folding state) with app-level preferences in a single unified mechanism.
+  - *Guest Execution Transience:* Emulation state must never silently persist to disk. Starting an emulator with stale registers or corrupted RAM leads to irreproducible debugging sessions. Keeping guest machine state 100% transient ensures predictable, deterministic launches every time.
+- **Verification & Test Results**:
+  - `cargo test -p gui --test test_persistence`: 3 persistence tests passed cleanly.
+  - `cargo test -p gui`: All 39 tests passed (7 unit, 29 interaction, 3 persistence).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 architecture rules passed in 0.55s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 269 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

@@ -8,7 +8,7 @@ pub mod app;
 pub mod layout;
 pub mod theme;
 
-pub use app::{EmulatorApp, ViewMode};
+pub use app::{EmulatorApp, UserPreferences, ViewMode};
 pub use debugger::DebuggerSession;
 pub use layout::left_dock::disassembly::DisasmEditState;
 pub use layout::left_dock::registers::EditRegister;
