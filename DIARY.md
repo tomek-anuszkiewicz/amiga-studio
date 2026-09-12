@@ -845,3 +845,42 @@ Every future modification or implementation task must append an entry following 
   - All 24 rule files in `.agents/rules/*.md` verified $\le 23,000$ bytes.
   - `cargo fmt --all -- --check`: 100% compliant.
 
+---
+
+### [2026-09-12 13:25 CEST] — Automated Attractor Detection, Vocabulary Discipline & Immune Guardrails Against LLM Cognitive Drifts
+- **Affected Subsystems**:
+  - `scripts/lint_attractors.py`: Created standalone, zero-dependency Python 3 linter scanning repository files for synthetic linguistic attractors, theatrical testing phrasing, catchphrases, and leaked hardware buzzwords.
+  - `.agents/rules/attractor-discipline.md`: Formulated and ratified dedicated operating rule (`trigger: always_on`) codifying prohibited attractor patterns, direct unpretentious replacements, and domain containment principles.
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Implemented `test_zero_synthetic_attractors()` native Rust architecture test running on every CI pass.
+  - `.agents/rules/git-commits.md`: Integrated `python scripts/lint_attractors.py` into the mandatory pre-commit verification gate.
+  - `AGENTS.md`: Indexed `attractor-discipline.md` in Section 1.A under Universal Invariants ($\le 14,000$ byte constitutional ceiling maintained).
+- **What Was Changed (The Concrete Reality)**:
+  - Deployed an automated, dual-layer immune defense system (Python CLI linter + native Rust architecture test) targeting the primary categories of linguistic attractors (*gravity wells*):
+    1. *Academic/Philosophical Jargon:* Banning "epistemic", "teleological" across `.agents/`, `Obsidian/Amiga/Design/`, and `crates/`.
+    2. *Theatrical Testing Phrasing:* Replacing inflated phrases like "testing oracle" or "oracle verification" with grounded engineering terms ("test verification reference", "ground truth vector").
+    3. *Formulaic Attractor Catchphrases:* Prohibiting "zero-friction trap", "zero cognitive friction", and "The Invariance Invariant".
+    4. *Hardware Microarchitecture Term Leaks:* Prohibiting the misapplication of physical CPU cache terminology ("L1i cache density", "L1 cache footprint thrashing") to high-level markdown documentation and agent rules.
+  - Built-in whitelisting for historical retrospectives (`DIARY.md`), test harnesses (`test_architecture_rules.rs`), and the rule/linter definition files themselves (`attractor-discipline.md`, `lint_attractors.py`).
+  - Executed negative regression testing: introduced a temporary markdown violation to prove that both `python scripts/lint_attractors.py` and `cargo test -p test_runner --test test_architecture_rules` fail loudly and block CI execution until sanitized.
+- **Architectural Rationale & Human-AI Co-Design Insight**:
+  - *The Inevitable Cognitive Biases of LLM Agentic Systems:*
+    Every frontier AI model family develops its own characteristic cognitive slants, rhetorical deformations, and stylistic idiosyncrasies:
+    - **ChatGPT:** Frequently drifts into corporate verbosity, sycophancy, excessive defensive hedging, and over-engineered enterprise boilerplate.
+    - **Claude:** Frequently falls into hyper-intellectualized ethical reframing, polite conversational hedging, and self-referential analytical pedantry.
+    - **Gemini:** Demonstrates a distinct tendency toward high-register pontification ("mądrkowanie"), adopting theatrical academic rhetoric ("epistemic drift", "teleological intentionality"), grandiose metaphors ("the testing oracle"), and cross-domain term contamination (such as projecting host CPU cache hardware terms like "L1i density" into simple rule documentation).
+  - *The Autoregressive RAG Gravity Well (The Feedback Loop):*
+    When an agent introduces high-register jargon into documentation or rule files, an insidious feedback loop begins:
+    1. The model invents or adopts an inflated high-concept catchphrase.
+    2. Subsequent user prompts trigger semantic RAG retrieval (`amiga-rag`) or keyword grep searches.
+    3. The agent retrieves its own past synthetic prose, treats it as authoritative repository idiom, and re-injects the terms with even higher frequency into newly generated code and documentation.
+    4. Over time, the vocabulary of the repository collapses into a sterile, pretentious monoculture that alienates human readers and obscures practical systems engineering reality.
+  - *The Necessity of Automated Immune Defense:*
+    Relying purely on polite prompt instructions or occasional conversational corrections is futile against the statistical gravitational pull of large language models over long development trajectories. In any serious, long-lived agentic project—whether powered by Gemini, Claude, or ChatGPT—architects must inevitably construct deterministic, automated guardrails (linters and architecture unit tests) that function as an immune system, mechanically enforcing linguistic discipline, domain containment, and unpretentious engineering clarity.
+- **Verification & Test Results**:
+  - `python scripts/lint_attractors.py`: Clean pass across 263 files (exit code 0).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed (0.55s).
+  - Deliberate negative regression verified and passed.
+  - `AGENTS.md` size confirmed on disk: 13,473 bytes (strictly within $\le 14,000$ byte threshold).
+  - `cargo fmt --all -- --check`: 100% compliant.
+
+

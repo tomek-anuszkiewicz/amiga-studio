@@ -889,3 +889,123 @@ fn test_obsidian_design_docs_links_integrity() {
         violations.join("\n")
     );
 }
+
+/// Automated Attractor & Vocabulary Discipline Test.
+/// Scans markdown files across Obsidian/Amiga/Design/, .agents/rules/, and .agents/skills/
+/// to permanently prevent regressions of synthetic linguistic attractors and leaked hardware buzzwords:
+/// 1. "epistemic"
+/// 2. "teleological"
+/// 3. "zero-friction trap" / "zero cognitive friction"
+/// 4. "testing oracle" / "oracle verification"
+/// 5. "The Invariance Invariant"
+/// 6. "L1 cache footprint" / "L1i density" in documentation.
+#[test]
+fn test_zero_synthetic_attractors() {
+    let repo_root = find_repo_root();
+    let mut files_to_check = Vec::new();
+
+    let scan_dirs = [
+        repo_root.join(".agents"),
+        repo_root.join("Obsidian").join("Amiga").join("Design"),
+    ];
+
+    fn collect_md(dir: &Path, out: &mut Vec<PathBuf>) {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    collect_md(&path, out);
+                } else if path.extension().and_then(|ext| ext.to_str()) == Some("md") {
+                    out.push(path);
+                }
+            }
+        }
+    }
+
+    for dir in &scan_dirs {
+        if dir.exists() {
+            collect_md(dir, &mut files_to_check);
+        }
+    }
+
+    let forbidden_patterns: &[(&str, &str)] = &[
+        (
+            "epistemic",
+            "Academic jargon attractor ('epistemic'). Use grounded software terminology.",
+        ),
+        (
+            "teleological",
+            "Academic jargon attractor ('teleological'). Use 'purpose-driven' or 'design intent'.",
+        ),
+        (
+            "zero-friction trap",
+            "Catchphrase attractor ('zero-friction trap').",
+        ),
+        (
+            "zero friction trap",
+            "Catchphrase attractor ('zero friction trap').",
+        ),
+        (
+            "zero cognitive friction",
+            "Catchphrase attractor ('zero cognitive friction').",
+        ),
+        (
+            "testing oracle",
+            "Theatrical testing phrasing ('testing oracle'). Use 'test verification reference'.",
+        ),
+        (
+            "oracle verification",
+            "Theatrical testing phrasing ('oracle verification'). Use 'test verification'.",
+        ),
+        (
+            "The Invariance Invariant",
+            "Inflated catchphrase ('The Invariance Invariant').",
+        ),
+        (
+            "L1i density",
+            "Misplaced hardware jargon in documentation ('L1i density').",
+        ),
+        (
+            "L1 cache footprint",
+            "Misplaced hardware jargon in documentation ('L1 cache footprint').",
+        ),
+        (
+            "L1i cache thrashing",
+            "Misplaced hardware jargon in documentation ('L1i cache thrashing').",
+        ),
+    ];
+
+    let mut violations = Vec::new();
+
+    for file in files_to_check {
+        let file_name = file.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if file_name == "attractor-discipline.md" || file_name == "DIARY.md" {
+            continue;
+        }
+
+        let content = fs::read_to_string(&file).expect("Failed to read markdown file");
+        let rel_path = file.strip_prefix(&repo_root).unwrap_or(&file);
+
+        for (line_idx, line) in content.lines().enumerate() {
+            let lower_line = line.to_lowercase();
+            for &(pattern, reason) in forbidden_patterns {
+                if lower_line.contains(&pattern.to_lowercase()) {
+                    violations.push(format!(
+                        "{}:{} -> Found `{}`: {}",
+                        rel_path.display(),
+                        line_idx + 1,
+                        pattern,
+                        reason
+                    ));
+                }
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Synthetic linguistic attractor(s) detected:\n{}\n\
+        Replace attractors with grounded, unpretentious engineering terminology per .agents/rules/attractor-discipline.md.",
+        violations.join("\n")
+    );
+}

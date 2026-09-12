@@ -75,13 +75,17 @@ All commit messages must be written in **strict English** per [`.agents/rules/la
 
 Never commit to any branch (especially `master`) without running the repository quality gate:
 
-1. **Code Formatting:**
+1. **Attractor & Vocabulary Discipline:**
+   ```powershell
+   python scripts/lint_attractors.py
+   ```
+2. **Code Formatting:**
    ```powershell
    cargo fmt --all -- --check
    ```
-2. **Automated Architecture Tests:**
+3. **Automated Architecture Tests:**
    ```powershell
    cargo test -p test_runner --test test_architecture_rules
    ```
-3. **Subsystem Test Suites:**
+4. **Subsystem Test Suites:**
    - Execute relevant unit/integration tests for the modified crates before committing.
