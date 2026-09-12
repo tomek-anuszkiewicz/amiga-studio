@@ -1,6 +1,6 @@
 ---
-trigger: always_on
-description: Mandatory dual-layer linking standard, inverted pyramid information hierarchy, and zero broken links across Obsidian design documentation
+trigger: model_decision
+description: Mandatory dual-layer linking standard, inverted pyramid information hierarchy, and zero broken links across Obsidian design documentation.
 ---
 
 # Obsidian Vault Linking, Information Hierarchy & Graph Integrity Rule

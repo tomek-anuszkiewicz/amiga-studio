@@ -7,28 +7,35 @@ All agentic pair-programming and automated modifications must adhere strictly to
 
 ## 1. Operating & Behavioral Rules (`.agents/rules/`)
 
-Operational, communication, and interaction rules are modularized under `.agents/rules/` with `always_on` enforcement:
+Operational rules are modularized under `.agents/rules/` with single-responsibility scoping across two tiers:
+
+### A. Universal Invariants (`trigger: always_on`)
 - **Audio Voice Transcription** ([`audio-transcription.md`](.agents/rules/audio-transcription.md)): Mandatory spoken language transcript echo before responses.
 - **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Strict English for all agent responses, plans, artifacts, source code, and commit messages.
 - **Dynamic Model Advisory** ([`model-reasoning-advisory.md`](.agents/rules/model-reasoning-advisory.md)): Proactive advice on switching between `Medium` and `High`/`Pro` reasoning.
 - **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
 - **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user conflict escalation before code changes.
 - **Mechanical Sympathy & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros, zero const-generics, contiguous execution, and zero runtime heap allocations in hot paths.
+- **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Pre-task conceptual retrieval (`source = "obsidian"`), vector search, and reference reindexing.
+- **AGENTS.md Size & Limits** ([`agents-md-limits.md`](.agents/rules/agents-md-limits.md)): Strict constitutional size ceiling ($\le 14,000$ bytes) and non-redundancy policy.
+
+### B. Domain-Specific Rules (`trigger: model_decision`)
+- **Design Docs Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Synchronizing `Obsidian/Amiga/Design/` specs with code and pruning draft proposals.
+- **Engineering Diary** ([`diary-maintenance.md`](.agents/rules/diary-maintenance.md)): Mandatory chronological narrative logging in `DIARY.md` (Section 10).
+- **Roadmap Maintenance** ([`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md)): Pruning completed tasks, updating baselines, and milestone gates in `ROADMAP.md`.
+- **Vault Linking & Graph Integrity** ([`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md)): Line 1 YAML properties evaluation, dual-layer linking, and zero broken links across `Obsidian/Amiga/Design/`.
 - **Source File Size & Cohesion** ([`file-size-and-cohesion.md`](.agents/rules/file-size-and-cohesion.md)): File size $\le 800$ lines in `crates/*/src/` (with recognized exceptions), single responsibility, and flat instructions hierarchy.
 - **Opcode Naming & Micro-Steps** ([`opcode-naming.md`](.agents/rules/opcode-naming.md)): Canonical `IDLE` micro-steps, 1:1 opcode files, and dual staging registers (`addr1`/`addr2`).
 - **Method Inlining Strategy** ([`method-inlining.md`](.agents/rules/method-inlining.md)): Targeted `#[inline]`, `#[inline(always)]`, and `#[inline(never)]` annotations.
 - **Workspace Architecture & Re-Exports** ([`workspace-structure-and-reexports.md`](.agents/rules/workspace-structure-and-reexports.md)): Strictly flat crate layout and 3-tier re-export hierarchy.
-- **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing, and multi-agent workflows.
-- **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Architecture queries and AST relationships; scoped incremental updates for `crates/` and `ref_src/`.
-- **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Pre-task conceptual retrieval (`source = "obsidian"`), vector search, and reference reindexing.
-- **Asset Descriptions & Sidecars** ([`asset-descriptions.md`](.agents/rules/asset-descriptions.md)): Git-tracked `<image_path>.txt` technical sidecars for circuit and timing schematics.
-- **Rust Best Practices** ([`rust-best-practices.md`](.agents/rules/rust-best-practices.md)): Safe borrowing, zero unwraps in runtime, wrapping math, and mandatory unit tests.
-- **egui & Frontend Best Practices** ([`egui-best-practices.md`](.agents/rules/egui-best-practices.md)): Synchronous state pull, 1:1 layout mapping, bounded time-slicing, and WASM/DPI adaptation.
+- **Rust Best Practices** ([`rust-best-practices.md`](.agents/rules/rust-best-practices.md)): Safe borrowing, zero unwraps in runtime, wrapping math, and unit tests.
 - **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for functional/utility logic; headless integration tests for GUI.
+- **egui & Frontend Best Practices** ([`egui-best-practices.md`](.agents/rules/egui-best-practices.md)): Synchronous state pull, 1:1 layout mapping, bounded time-slicing, and WASM/DPI adaptation.
 - **Git Commits & Atomic History** ([`git-commits.md`](.agents/rules/git-commits.md)): Context reconstruction, atomic commit decomposition, Conventional Commits, and pre-commit test gates.
 - **Git Merge Commits & Worktrees** ([`git-merge-commits.md`](.agents/rules/git-merge-commits.md)): Mandatory merge commits on conflict resolution; worktree lifecycle and cleanup.
-- **Documentation & Diary Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Living design docs, roadmap pruning, chronological log in `DIARY.md`, milestone diary compaction and dead code pruning.
-- **Vault Linking & Graph Integrity** ([`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md)): Line 1 YAML properties evaluation, dual-layer linking, and zero broken links across `Obsidian/Amiga/Design/`.
+- **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Architecture queries and AST relationships; scoped incremental updates for `crates/` and `ref_src/`.
+- **Asset Descriptions & Sidecars** ([`asset-descriptions.md`](.agents/rules/asset-descriptions.md)): Git-tracked `<image_path>.txt` technical sidecars for circuit and timing schematics.
+- **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing, and multi-agent workflows.
 
 ---
 

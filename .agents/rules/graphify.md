@@ -1,6 +1,6 @@
 ---
-trigger: always_on
-description: Consult the graphify knowledge graph at graphify-out/ for codebase and architecture questions.
+trigger: model_decision
+description: Consult the graphify knowledge graph at graphify-out/ for codebase and architecture questions; execute scoped updates.
 ---
 
 ## graphify

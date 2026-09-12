@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: Immediate-mode frontend guidelines for egui, direct state pulling, and headless integration testing in crates/gui.
+---
+
 # egui & Immediate-Mode Frontend Best Practices
 
 All user interface code in the Amiga 500 emulator (`crates/desktop_gui`) must strictly adhere to these immediate-mode guidelines.

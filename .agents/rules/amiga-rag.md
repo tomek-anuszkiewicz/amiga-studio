@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: Amiga RAG knowledge base tools and mandatory pre-task conceptual retrieval (source = "obsidian").
+---
+
 ## Amiga RAG Knowledge Base (Amiga Docs + Obsidian)
 
 You have access to a local knowledge base via the tools `rag_search`, `rag_list_sources`, and `rag_status`.

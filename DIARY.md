@@ -819,3 +819,29 @@ Every future modification or implementation task must append an entry following 
   - `AGENTS.md` size: 12,767 bytes (strictly $\le 14,000$).
   - `.agents/rules/git-commits.md` size: 4,041 bytes (strictly $\le 23,000$).
   - `cargo fmt --all -- --check`: 100% compliant.
+
+---
+
+### [2026-09-12 13:10 CEST] — Rules Decomposition into Single-Responsibility Units & Trigger Architecture
+- **Affected Subsystems**:
+  - `.agents/rules/agents-md-limits.md`: Created dedicated rule for AGENTS.md constitutional role, non-redundancy, and size ceiling (`trigger: always_on`).
+  - `.agents/rules/diary-maintenance.md`: Created dedicated rule for DIARY.md Section 10 living engineering narrative logging (`trigger: model_decision`).
+  - `.agents/rules/roadmap-maintenance.md`: Created dedicated rule for ROADMAP.md active list pruning, baseline updating, and milestone gates (`trigger: model_decision`).
+  - `.agents/rules/docs-maintenance.md`: Refactored to focus strictly on single responsibility: synchronizing Obsidian design documentation with code and pruning draft proposals (`trigger: model_decision`).
+  - `.agents/rules/*.md`: Standardized YAML frontmatter across all 24 rule files with explicit triggers:
+    - 8 Universal Invariants: `trigger: always_on` (`language-policy.md`, `no-external-paths.md`, `audio-transcription.md`, `model-reasoning-advisory.md`, `spec-compliance.md`, `performance-and-readability.md`, `amiga-rag.md`, `agents-md-limits.md`).
+    - 16 Domain-Specific Rules: `trigger: model_decision` with concise `description:` metadata.
+  - `AGENTS.md`: Updated Section 1 to index all 24 rules categorized into Universal Invariants vs Domain-Specific Rules.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated composite "hodgepodges" ("zbitki") where `docs-maintenance.md` had accumulated 8 disparate mandates (Obsidian linking, CI test running, formatting, AGENTS.md limits, DIARY logging, ROADMAP pruning).
+  - Decomposed these into clean, cohesive, single-responsibility rule files.
+  - Configured progressive disclosure via `trigger: model_decision` for all domain-specific rules, ensuring that only the 8 true constitutional invariants are injected unconditionally into every prompt turn.
+  - Maintained `AGENTS.md` at 13,321 bytes (strictly $\le 14,000$ B limit).
+- **Architectural Rationale & Trade-Offs**:
+  - *Context Window Optimization & Instruction Dilution Prevention:* Injecting 20+ rules unconditionally on every turn burns ~60 KB of prompt context and causes cognitive diffusion, distracting the model from core task logic. Shifting domain-specific rules to `model_decision` cuts baseline prompt injection by ~70% while keeping every rule readily available via progressive disclosure.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.56s.
+  - `AGENTS.md` size: 13,321 bytes (strictly $\le 14,000$).
+  - All 24 rule files in `.agents/rules/*.md` verified $\le 23,000$ bytes.
+  - `cargo fmt --all -- --check`: 100% compliant.
+

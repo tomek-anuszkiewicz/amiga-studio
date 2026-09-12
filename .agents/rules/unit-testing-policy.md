@@ -1,6 +1,6 @@
 ---
-trigger: always_on
-description: Mandatory comprehensive unit test coverage for all functional and utility classes; headless integration tests for GUI.
+trigger: model_decision
+description: Mandatory comprehensive unit test coverage for functional and utility classes; headless integration tests for GUI.
 ---
 
 # Comprehensive Unit Testing Policy (Functional & Utility Classes)

@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: Workspace flat crate layout in crates/* and 3-tier re-export (pub use) hierarchy.
+---
+
 # Workspace Flat Layout & 3-Tier Re-Export (`pub use`) Strategy
 
 ## 1. Core Principle: Flat on Disk, Hierarchical in Code

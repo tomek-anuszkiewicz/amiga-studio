@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: Rust systems programming best practices, safe borrowing, zero unwraps, wrapping math, and unit tests.
+---
+
 # Rust Engineering Best Practices & Systems Guidelines
 
 All Rust code across the Amiga 500 emulator workspace must strictly adhere to these engineering guidelines.

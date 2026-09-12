@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+trigger: model_decision
 description: Inspect diagrams and generate Git-tracked sidecar text descriptions (.txt) using Agent native multimodal vision, driven by RAG_CACHE_FILE hashes.
 ---
 

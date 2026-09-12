@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: Parallel execution, targeted sub-suite testing, and asynchronous background task management.
+---
+
 # Parallel Execution & Asynchronous Task Optimization Rule
 
 This rule governs how the agent executes tests, validation suites, and long-running operations to maximize execution velocity, eliminate unnecessary blocking latency, and leverage background parallelism.

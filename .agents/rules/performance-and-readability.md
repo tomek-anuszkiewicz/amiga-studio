@@ -1,5 +1,6 @@
 ---
 trigger: always_on
+description: High-performance systems programming, host mechanical sympathy, zero runtime heap allocations, and zero user-defined macros/const-generics.
 ---
 
 # High Performance & Host CPU Mechanical Sympathy (with Zero Readability Compromise)

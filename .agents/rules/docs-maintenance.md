@@ -1,32 +1,45 @@
-# Documentation Maintenance Rule
+---
+trigger: model_decision
+description: Maintaining and synchronizing technical design documentation under Obsidian/Amiga/Design/ with active emulator code and architecture.
+---
+
+# Design Documentation Maintenance & Code Synchronization Rule
+
+This rule governs the continuous synchronization, cleanup, and maintenance of technical design documentation under [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design/).
+
+---
+
+## 1. Living Design Synchronization
 
 Whenever implementing, refactoring, or modifying any subsystem in this repository:
+- You **must update the corresponding design document in [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design/)** whenever any architectural decision, timing model, data structure, register bitfield, or hardware quirk has changed or was clarified.
+- The design specifications in `Obsidian/Amiga/Design/` are living, permanent specifications and must always stay synchronized with the active code.
 
-- **Mandatory Final Step (Definition of Done):** You must update the corresponding design document in [Obsidian/Amiga/Design](../../Obsidian/Amiga/Design) whenever any architectural decision, timing model, data structure, or hardware quirk has changed or was clarified.
-- **Roadmap Step Completion & Pruning:** Whenever an agent is 100% certain that a roadmap milestone or step in [ROADMAP.md](../../ROADMAP.md) has been fully implemented and verified (all tests pass 100% green), as part of that **same task you must update [ROADMAP.md](../../ROADMAP.md)**: remove the detailed completed task from the active implementation list, update the concise completed baseline summary, and renumber/reorder remaining steps so that [ROADMAP.md](../../ROADMAP.md) always reflects the live, remaining plan.
-- **Design Document Pruning & Post-Implementation Cleanup:** Design specifications in [Obsidian/Amiga/Design](../../Obsidian/Amiga/Design) often contain tentative draft snippets, forward-looking proposals, or hypothetical code sketches written before implementation. Whenever completing a roadmap step or implementing a feature, you **must review and clean up the relevant design documents**: remove obsolete speculative code, prune superseded draft proposals, and ensure the document reflects the finalized, living architectural reality rather than pre-implementation conjectures.
-- **Crate Dependency Graph Maintenance:** Whenever crates or dependencies in `Cargo.toml` (new crates, added/removed inter-crate dependencies, or key external dependencies) are modified, you **must update the Crate Dependency Mermaid Graph in [Obsidian/Amiga/Design/General Architecture.md](../../Obsidian/Amiga/Design/General%20Architecture.md#2-workspace-crate-architecture--dependencies)**.
-- **Mandatory Engineering Diary Maintenance (`DIARY.md`):** Whenever an agent implements, refactors, fixes, or modifies any code or subsystem in this repository: you **must append a detailed narrative entry to [DIARY.md](../../DIARY.md) under Section 10 (Living Chronological Engineering Log)**.
-  - **What Was Changed (The Concrete Reality):** Specific code modifications, data structures, algorithms, or mechanics introduced or refactored.
-  - **Why It Was Done & Architectural Rationale:** The problem statement, edge cases discovered, user directives, and trade-offs behind the solution.
-  - **Verification & Test Results:** Specific test suites executed and verified.
-  - *Rationale:* Git commits in this project are frequently squashed, batched, or merged into higher-level commits. Relying solely on commit messages causes granular design evolution and technical decisions to be lost. `DIARY.md` serves as the permanent, living chronological chronicle and narrative history of what was actually built.
-- **No Line Limits on Technical Documentation:** Design specifications and reference manuals in [Obsidian/Amiga/Design](../../Obsidian/Amiga/Design) have **no line count limits**. They should be as long, exhaustive, and detailed as necessary to serve as complete, living single-source-of-truth specifications. Never artificially split, truncate, or omit architectural details from markdown documentation.
-- **Mandatory Code Formatting (`cargo fmt --all`):** Whenever modifying or adding code, you **must run `cargo fmt --all`** across the workspace and verify that `cargo fmt --all -- --check` passes cleanly.
-- **Automated Architecture Test Execution:** All code changes must pass the automated architectural test suite in `crates/test_runner`: `cargo test -p test_runner --test test_architecture_rules` (validating formatting compliance, Rust source code limits per `file-size-and-cohesion.md`, zero runtime panics, zero custom macros, zero const-generic handlers, and path privacy).
-- **Mandatory Post-Flight Compliance Checklist:** Every implementation task must conclude with an explicit Definition of Done checklist verifying compliance with systems rules (including design docs and `DIARY.md` updates).
-- **Sub-Agent Milestone Review Protocol (`/code-review`):** Before declaring a roadmap milestone complete, invoke an independent review subagent or run `/code-review` to audit the diff with a clean context.
-- **Obsidian Vault Linking & Graph Integrity Contract:** All markdown documentation in [Obsidian/Amiga/Design](../../Obsidian/Amiga/Design) must adhere strictly to [`.agents/rules/vault-linking-and-graph-integrity.md`](vault-linking-and-graph-integrity.md):
-  - **Mandatory Dual-Layer Linking:** Every design document must maintain Layer 1 (in-text contextual links to related subsystems, rules, and Rust source files) and Layer 2 (a structured referential section at the bottom, `## Reference Documentation & Upstream Ground Truth`, linking to official hardware manuals, reference emulators, and crate sources with 1-sentence analytical descriptions).
-  - **Zero Broken Links Policy:** All relative links must have mathematically verified path depths (`../Reference/` for reference manuals, `../../../crates/` for crates, `../../../ref_src/` for reference emulators) and resolve strictly to valid files on disk. Verified via `cargo test -p test_runner --test test_architecture_rules`.
-  - **Inverted Pyramid Information Hierarchy:** Documents must lead with scope, block diagrams, and core specifications in the top 20–50 lines. Avoid the "bottom-heavy accumulation trap": integrate new insights into their proper architectural sections rather than appending them as trailing afterthoughts.
-- **Major Roadmap Milestone Completion Gate (Compacting & Pruning):** Whenever an agent completes a major milestone in [ROADMAP.md](../../ROADMAP.md):
-  - **Diary Compaction (`compact-diary`):** Invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) to synthesize older completed milestone entries in [DIARY.md](../../DIARY.md) into high-level architectural digests, preserving evolutionary rationale and key decisions while keeping recent entries granular.
-  - **Dead Code Pruning (`prune-dead-code`):** Invoke the `prune-dead-code` skill ([`.agents/skills/prune-dead-code/`](../skills/prune-dead-code/SKILL.md)) to audit and eliminate unreferenced functions, obsolete constants, unused imports, and superseded scaffolding across workspace crates.
-- **Strict Non-Redundancy in `AGENTS.md` (Constitutional Indexing Only):**
-  - **Zero Content Duplication:** `AGENTS.md` is the foundational architectural constitution and index for the emulator. It must **never duplicate** verbose operational rules, full skill procedures, or extensive checklists that are already modularized under `.agents/rules/*.md`.
-  - Maintain only concise, 1-line pointers to rule files in Section 1 and high-level checklist bullets in Section 4.
-  - This preserves context token efficiency and strictly guarantees `AGENTS.md` remains below the 23,000-byte ceiling.
-- The design specifications in `Obsidian/Amiga/Design/` and the engineering narrative in `DIARY.md` are living, permanent references and must always stay synchronized with the active code.
+---
 
+## 2. Post-Implementation Cleanup & Code Duplication Removal
 
+Design specifications often contain tentative draft snippets, forward-looking proposals, or hypothetical code sketches written prior to implementation:
+- Whenever completing a roadmap step or implementing a feature, you **must review and clean up the relevant design documents**:
+  1. Remove obsolete speculative code and draft proposals.
+  2. Ensure the document reflects the finalized, living architectural reality.
+  3. **Design documents must never duplicate code that has already been written**: replace duplicate Rust code blocks with concise architectural descriptions, tables, and direct markdown links to living Rust source files.
+
+---
+
+## 3. No Line Limits on Technical Documentation
+
+Design specifications and reference manuals in [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design/) have **no line count limits**. They should be as long, exhaustive, and detailed as necessary to serve as complete, living single-source-of-truth specifications. Never artificially split, truncate, or omit architectural details from markdown documentation.
+
+---
+
+## 4. Crate Dependency Graph Maintenance
+
+Whenever crates or dependencies in `Cargo.toml` (new crates, added/removed inter-crate dependencies, or key external dependencies) are modified:
+- You **must update the Crate Dependency Mermaid Graph in [`Obsidian/Amiga/Design/General Architecture.md`](../../Obsidian/Amiga/Design/General%20Architecture.md#2-workspace-crate-architecture--dependencies)**.
+
+---
+
+## 5. Knowledge Graph & Linking Compliance
+
+All modifications to design specifications must adhere strictly to the YAML frontmatter properties, dual-layer linking, and inverted pyramid structure codified in [`.agents/rules/vault-linking-and-graph-integrity.md`](vault-linking-and-graph-integrity.md).

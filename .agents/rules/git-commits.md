@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: Git commit operations, context reconstruction from DIARY.md, atomic commit decomposition, and Conventional Commits standards.
+---
+
 # Git Commits & Atomic History Protocol
 
 This rule governs standard Git commit creation, atomic commit decomposition, context reconstruction, and commit message standards across the repository.

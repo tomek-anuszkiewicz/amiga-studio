@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: Git branch merging, conflict resolution with mandatory merge commits, and Git worktree lifecycle management.
+---
+
 # Git Branch Merging, Worktrees & Conflict Resolution Protocol
 
 This rule governs Git branch reintegration, Git worktree lifecycles, and conflict resolution standards across the repository.
