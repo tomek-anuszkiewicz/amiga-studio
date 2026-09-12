@@ -143,15 +143,18 @@ if ($Test -or $All) {
         Write-Host "Download AmigaTestKit ADF from https://github.com/keirf/amiga-stuff into tools/AmigaTestKit/." -ForegroundColor Yellow
     }
 
-    $VAmigaDir = Join-Path $RepoRoot "ref_src\vAmiga-4.5"
+    $VAmigaDir = Join-Path $RepoRoot "ref_src\vAmiga"
     if (-not (Test-Path $VAmigaDir)) {
-        $VAmigaDir = Join-Path $RepoRoot "ref_src\vAmiga"
+        $ExistingVAmiga = Get-ChildItem -Path (Join-Path $RepoRoot "ref_src") -Directory -Filter "vAmiga*" -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne "vAmigaTS" } | Select-Object -First 1
+        if ($ExistingVAmiga) {
+            $VAmigaDir = $ExistingVAmiga.FullName
+        }
     }
     if (Test-Path $VAmigaDir) {
         Write-Host "[OK] vAmiga C++ reference emulator found at: ref_src\$((Get-Item $VAmigaDir).Name)" -ForegroundColor Green
     } else {
         Write-Warning "vAmiga C++ reference emulator not found in ref_src/."
-        Write-Host "To populate the clean-room C++ reference emulator, clone https://github.com/dirkwhoffmann/vAmiga into ref_src/vAmiga-4.5." -ForegroundColor Yellow
+        Write-Host "To populate the clean-room C++ reference emulator, clone https://github.com/dirkwhoffmann/vAmiga into ref_src/vAmiga." -ForegroundColor Yellow
     }
 
     $VAmigaTsDir = Join-Path $RepoRoot "ref_src\vAmigaTS"

@@ -109,13 +109,13 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
 
 ### 3.1 Differential Testing Against Reference Emulators
 - **Cross-Emulator Execution Harness:**
-  - Run target test cases, test ROMs, or problematic games in verified reference emulators ([vAmiga](ref_src/vAmiga-4.5) and [WinUAE](ref_src/WinUAE-6030)).
+  - Run target test cases, test ROMs, or problematic games in verified reference emulators ([vAmiga](ref_src/vAmiga) and [WinUAE](ref_src/WinUAE)).
   - Step emulation to a designated frame number or instruction milestone.
   - Dump execution traces, CPU registers, DMA channel allocations, and memory state.
   - Run the same binary on our emulator core and compare state dumps to detect cycle deviations instantly.
 
 ### 3.2 Automated vAmigaTS Test Suite Extraction
-- Unpack and catalog the test disks in ef_src/vAmigaTS/.
+- Unpack and catalog the test disks in ref_src/vAmigaTS/.
 - Implement headless runners that load each test ADF, execute until test completion, and verify screen buffers against reference PNG frame renders.
 
 ### 3.3 Visual & Audio Multimodal Validation

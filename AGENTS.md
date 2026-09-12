@@ -122,5 +122,5 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
 - **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and Guru Book reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via `rag_search` tool (`amiga-rag`).
 - **RAG Tooling & Infrastructure**: Pipeline, CLI indexer (`amiga_rag`), and FastMCP server reside in [`tools/rag`](tools/rag), backed by local Qdrant vector database (`amiga` collection).
-- **Reference Emulator Source Code**: Clean-room reference implementation (vAmiga 4.5) and test suite (vAmigaTS) reside in [ref_src](ref_src).
+- **Reference Emulator Source Code**: Clean-room reference implementation (vAmiga) and test suite (vAmigaTS) reside in [ref_src](ref_src).
 - **Single-Step Test Vectors**: Official physical silicon test vectors for M68000 CPU are in [ref_src/SingleStepTests-680x0/68000/v1](ref_src/SingleStepTests-680x0/68000/v1).

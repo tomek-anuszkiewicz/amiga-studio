@@ -33,7 +33,7 @@ This document defines the strategic recipe and minimal instructional framework r
 ## 4. Reference Code Clean-Room Wipe & Regeneration Experiment
 - [x] Clean-room wipe of reference emulator sources (`ref_src/`), keeping strictly:
   - SingleStepTests-680x0 (Tom Harte physical silicon M68000 test vectors).
-  - vAmiga-4.5 (Clean C++ reference).
+  - vAmiga (Clean C++ reference).
   - vAmigaTS (Amiga hardware test suite disks).
   - Purged all MAME simulator divergence workarounds from `test_runner`.
 - [ ] Restrict the agent from looking at reference emulator sources, requiring it to learn and verify against the test suites.

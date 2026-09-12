@@ -1317,3 +1317,22 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.56s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:25 CEST] — Standardized Version-Agnostic vAmiga Reference Path
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1`: Switched primary path and clone instruction to version-agnostic `ref_src/vAmiga` with graceful legacy fallback.
+  - `AGENTS.md`, `ROADMAP.md`, `BOOTSTRAP.md`: Removed version suffixes (`4.5`, `-4.5`) when referencing clean-room vAmiga C++ emulator sources.
+- **What Was Changed (The Concrete Reality)**:
+  - In `tools/bootstrap.ps1`, redefined `$VAmigaDir = Join-Path $RepoRoot "ref_src\vAmiga"`.
+  - Added fallback directory detection searching for any existing `ref_src\vAmiga*` directory (excluding `vAmigaTS`) so existing checkouts (`vAmiga-4.5`) continue to be recognized without requiring re-cloning.
+  - Updated clone recommendation to `clone https://github.com/dirkwhoffmann/vAmiga into ref_src/vAmiga.`.
+  - Normalized references across architectural documentation (`AGENTS.md`, `ROADMAP.md`, `BOOTSTRAP.md`) to refer to plain `vAmiga` instead of `vAmiga-4.5`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Version-Agnostic Reference Path:* Specific version tags are fleeting; hardcoding `vAmiga-4.5` in paths and setup scripts causes unnecessary friction whenever upstream vAmiga updates or when users clone latest master. Standardizing on `ref_src/vAmiga` while tolerating existing version-tagged directories provides long-term stability and clean project ergonomics.
+- **Verification & Test Results**:
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1 -Test`: Successfully resolved existing `ref_src\vAmiga-4.5` and passed `test_nop` smoke check.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.55s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
