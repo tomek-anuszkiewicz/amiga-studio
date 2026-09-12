@@ -43,88 +43,84 @@ This document outlines the phased development plan, hardware milestones, verific
 ---
 ## 2. Core Implementation Strategy (Remaining Milestones)
 
-### Step 1: Standalone CPU Program Execution, Synthetic Workloads & Performance Projection (Active)
-- **Continuous Testing & Polish of Developer GUI (Debugger View):**
-  - Actively test, harden, and refine the Developer Studio GUI (Debugger View) alongside core execution workloads.
+### Step 1: Developer Studio GUI & Diagnostic Tooling Hardening (Ongoing Companion Track)
+- **Continuous Testing & Polish of Developer Studio (Debugger View):**
+  - Actively test, harden, and refine the Developer Studio GUI (Debugger View) alongside core hardware emulation workloads.
   - Continuously test all interactive panels under live emulation: Disassembly infinite stream browsing and in-place instruction patching, Memory Hex selection and row-wrapping keyboard navigation, register/CCR editing, Microcode Inspector step progression, and breakpoint/watchpoint triggers.
-  - Verify layout stability, symmetric margin geometry, scrollbar ergonomics, and responsive display tiers across diverse window sizes and display resolutions.
+  - Verify layout stability, symmetric margin geometry, scrollbar ergonomics, and responsive display tiers (`LayoutTier::FullHdWide`, `LayoutTier::StandardDesktop`, `LayoutTier::Compact`) across diverse window sizes and display resolutions.
   - Test and refine upcoming Save State management (`State` menu, in-memory quick slots 1–5, `F6`/`F9` shortcuts, native file dialogs, and State Manager modal dialog).
-- **Direct Memory Program Injection & Execution (Leveraging Developer GUI & Harness):**
-  - Inject compiled M68000 binary routines (raw machine code binaries, assembled routines) into emulated RAM without requiring Kickstart ROM or OS overhead.
-  - Set initial execution context ($, $, $) and execute self-contained test programs to completion, designated stop addresses, or trap returns.
-  - Validate multi-instruction correctness, register state, and memory side effects on concrete routines (e.g. arithmetic loops, block memory transfers, array sorting).
-- **Complex Workloads, Standard Synthetic Benchmarks & Real-World Cache Analysis:**
-  - Load and execute established M68000 algorithmic benchmarks (e.g. Dhrystone, Sieve of Eratosthenes, math/ALU stress kernels) directly in the CPU core harness.
-  - Assert functional correctness and numerical determinism across long-running execution sequences.
-  - Measure baseline emulation throughput (effective MIPS, instruction throughput, host CPU cycle cost per emulated CCK).
-  - **Real-Workload Host Cache Miss & Footprint Impact:** Profile host L1i/L1d cache misses and branch mispredictions during continuous execution of real test programs. Determine the empirical performance impact of CPU core memory footprint on real-world workloads, validating whether memory reduction efforts yield meaningful speedups.
-- **Cross-Architecture & Mobile Performance Projections:**
-  - Extrapolate measured desktop throughput (x86_64 / desktop ARM) to target mobile and constrained environments (e.g. mobile WebAssembly, ARM mobile devices).
-  - Model CPU overhead margins to ensure headroom for sustained 50 Hz (PAL) / 60 Hz (NTSC) cycle-exact emulation once custom chipset DMA contention and rendering are integrated.
 
-### Step 2: CPU Core Memory Footprint Audit, Cache Profiling & Host Pipeline Optimization
-- **CPU Memory Footprint Audit & Host Cache Miss Profiling:**
-  - **Memory Footprint Audit (in Kilobytes):** Measure and document the exact memory footprint of the CPU emulator core:
-    - Host .rodata footprint: 65,536-entry static dispatch table (sizeof(OpcodeDescriptor) * 65,536), static [MicroStep; N] array slices, and decoding metadata.
-    - Host runtime state footprint: Cpu, CpuState, CpuMicroState sizes in bytes, auditing memory layout, alignment, and cache-line compactness.
-  - **Host Cache Miss Profiling:** Measure host CPU performance counters (L1i instruction cache misses, L1d data cache misses, Last Level Cache / LLC misses, superscalar IPC, branch mispredictions) across opcode execution runs (via perf stat, cachegrind, or host PMU tooling).
-  - Automatically rank handlers by host latency and flag operations exhibiting disproportionate execution overhead relative to emulated M68000 cycle counts.
-- **Footprint Compaction Assessment & Host Pipeline Optimization:**
-  - **Footprint Reduction Feasibility:** Investigate whether compacting the CPU footprint (e.g., bit-packing OpcodeDescriptor, microcode array deduplication, index packing) yields measurable L1i/L1d miss reductions and throughput gains, or whether the current flat layout already maximizes host branch-predictor and cache throughput.
-  - Refactor identified slow handlers using host hardware efficiency principles (direct specialized flattening, branchless bit operations, eliminated redundant register banking, and cross-crate MIR inlining).
-  - Strictly enforce architectural constraints: zero custom macros (macro_rules!), zero const-generic function matrices, zero dynamic heap allocations, and zero compromise on code readability.
-- **Fidelity & Regression Validation Gate:**
-  - Ensure every optimized handler retains 100% cycle-exact Color Clock fidelity and passes the full exhaustive SingleStepTests suite ($env:SINGLESTEP_FULL = "1") with zero regressions.
-
-### Step 3: Custom Chipsets (Agnus, Denise, Paula, CIAs)
-- **Step 3.1: Minimal Machine Main Loop (A500::step_cck) & Subsystem Orchestration (Completed Baseline Scaffold):**
+### Step 2: Custom Chipsets & Machine Integration (Agnus, Denise, Paula, CIAs — Active Focus)
+- **Step 2.1: Minimal Machine Main Loop (A500::step_cck) & Subsystem Orchestration (Completed Baseline Scaffold):**
   - Scaffolded all 17 specialized hardware crates across the Cargo workspace in a flat, decoupled structure: `copper`, `blitter`, `dma`, `agnus`, `sprites`, `frame_builder`, `mouse`, `joystick`, `denise`, `audio`, `floppy`, `serial_port`, `paula`, `keyboard`, `parallel_port`, `cia`, and `machine_loop`.
   - Created top-level machine struct (`A500Machine`) owning all primary chips, coprocessors, and peripheral devices as flat fields with monotonic `u64` Color Clock (`cck`) counter and zero circular references.
   - Sibling crates maintain zero dependencies on each other; cycle execution uses parameter-based passing for clean borrow splitting.
   - Implemented multi-level stepping interfaces: `step_cck(cck: u64)`, `step_instruction()`, `step_cycles(n)`, `step_frame()`.
   - Central interrupt priority arbitration pipeline: samples Paula (Levels 1, 3, 4, 5), CIA-A (Level 2), and CIA-B (Level 6), calculates highest unmasked level, and drives `cpu.state.ipl`.
   - 100% verified: clean `cargo check --workspace`, 24 unit tests across new crates, architecture test validation, and `test_dma_cartesian` pass.
-- **Step 3.2: Machine-Wide Reset Sequencing (reset_cold & reset_warm):**
+- **Step 2.2: Machine-Wide Reset Sequencing (reset_cold & reset_warm) [Active Focus]:**
   - Physical _RESET line propagation across all chips.
   - Boot overlay engagement (map_kickstart_to_low_memory in MemoryBus).
   - *Cold Reset:* Zero physical RAM buffers ($00), reset chip registers to power-on defaults (DMACON = $0000, INTENA/INTREQ = $0000, CIA latches cleared), initialize CPU SR = $2700, load initial SSP/PC from $000000/$000004 (Kickstart ROM), prime prefetch queue (IR, IRC).
   - *Warm Reset:* Preserve RAM contents intact (ensuring Kickstart memory checksum and resident module discovery pass), re-engage _OVL, assert chip reset lines, reload initial vectors.
   - Hardware keyboard reset line: wire Ctrl-Amiga-Amiga reset trigger line to main machine reset flow.
-- **Step 3.3: Delayed Signal & Register Mutation Propagation Pipeline:**
+- **Step 2.3: Delayed Signal & Register Mutation Propagation Pipeline:**
   - *Physical Circuit Simulation:* Register reads return the currently latched active state **immediately** ("Read is NOW"). Register writes, strobes, and register mutations (e.g. DMACON, BPLCON0, COLORxx, INTENA, COPJMP1, BLTSIZE, CIA timer latches) do not take instantaneous cross-chip effect; they are staged and propagate after $K$ Color Clock phases / CCK cycles before altering the active execution path.
   - *Zero-Allocation Hot Path Design:* Model staged mutations using fixed-size inline pipeline latches / ring buffers (e.g. [Option<DelayedWrite>; 4] or fixed-capacity shift latches) embedded directly within chip structs. Zero dynamic heap allocation (Vec, Box) during CCK stepping.
   - *Save State Persistence:* The delayed mutation pipeline, staged values, and remaining cycle countdowns are fully serializable in save states (AgnusState, DeniseState, etc.), guaranteeing deterministic round-trip snapshot capture and rewind/restore even mid-propagation.
-- **Step 3.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
+- **Step 2.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
   - Implement the baseline Agnus horizontal scanline DMA slot schedule (CCK 0..3 DRAM refresh, CCK 4 disk, CCK 5..8 audio, CCK 12..27 sprites, bitplanes, and even/odd slots).
   - CPU and Blitter contention arbitration (BLTPRI Blitter Nasty mode).
   - Direct bus lock exposure: drive bus lock methods (lock_chip_ram / unlock_chip_ram) so the CPU and all custom chips observe bus contention and stall with wait states (BusResult::WaitState), establishing correct bus contention physics even before individual channel internal DSP/rendering logic is fully completed.
-- **Step 3.5: Decomposed Subsystem Deep Implementations:**
+- **Step 2.5: Decomposed Subsystem Deep Implementations:**
   - *Agnus:* Copper coprocessor state machine (MOVE, WAIT, SKIP, CDANG danger mode), 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer, ascending/descending modes).
   - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (blep_tables.rs) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.
   - *Denise:* Video pixel serializer, bitplanes (1–6), 8 hardware sprites, 32-color palette (RGB444), dual playfield, collision detection registers (CLXDAT, CLXCON).
   - *CIAs (Dual MOS 8520):* Timers A & B, TOD clock, serial shift register (SDR), parallel/control ports, E-clock synchronization.
-- **Step 3.6: Host Audio, CRT Shaders & Copper/DMA Logic Analyzer:**
+- **Step 2.6: Host Audio, CRT Shaders & Copper/DMA Logic Analyzer:**
   - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio).
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
   - Copper list visualizer with live beam position cursor and DMA slot logic analyzer timeline.
 
-### Step 4: Dedicated Player GUI & Frontend Experience
-- **Step 4.1: Hardware Configuration & Kickstart ROM Selector:**
+### Step 3: Dedicated Player GUI & Frontend Experience
+- **Step 3.1: Hardware Configuration & Kickstart ROM Selector:**
   - Amiga hardware profile selector (Basic A500 512 KB, Classic A500 1 MB [Recommended], Expanded A500 4 MB).
   - Explicit notification and confirmation modal informing the user that changing hardware parameters requires a cold machine reset.
   - Kickstart ROM manager: file picker for Kickstart ROM images (1.2, 1.3, custom ROMs) with automatic checksum validation (CRC32/SHA-256).
-- **Step 4.2: Multi-Drive Floppy Disk Manager (`DF0:` – `DF3:`):**
+- **Step 3.2: Multi-Drive Floppy Disk Manager (`DF0:` – `DF3:`):**
   - Drive slot manager displaying primary internal drive `DF0:` and optional external drives (`DF1:`–`DF3:`).
   - Individual drive enable/active toggle checkboxes to mount or disconnect external floppy drives on the fly.
   - ADF file picker per drive with quick insert, eject, and write-protect latch controls.
   - Visual drive activity indicators and floppy motor/stepping audio feedback.
-- **Step 4.3: Visual Save State Manager (Screenshots, Timestamps & Custom Labels):**
+- **Step 3.3: Visual Save State Manager (Screenshots, Timestamps & Custom Labels):**
   - Interactive save/load state overlay and slot manager.
   - Visual snapshot cards containing:
     - **Automatic Screen Capture:** Embedded thumbnail screenshot of the active Amiga display captured at the exact moment of saving.
     - **Timestamp:** Formatted creation date and time.
     - **Custom Label:** Optional user-defined state name / description for memorable checkpoints and game phases.
     - **Configuration Integrity Guard:** Verifies matching hardware profiles (RAM sizes, chipset mode) before restoring state to prevent emulator panics or guest crashes.
+
+### Step 4: Real-World Amiga Workloads, Host Cache Profiling & Pipeline Optimization (Post-Boot)
+- **End-to-End Bootable ADF Integration Testing (`cargo test -p test_runner --test test_boot_adf`):**
+  - Load and execute established Amiga benchmarks and diagnostic suites directly from floppy disk images (e.g. `AmigaTestKit.adf`, `SysInfo.adf`, Dhrystone) on the authentic Kickstart / Amiga chipset stack.
+  - Leverage existing address guards, breakpoint traps, and instruction bounds for parameterized termination.
+  - Assert functional correctness, numerical determinism, and hardware register states across long-running real-world execution sequences.
+  - Measure baseline emulation throughput (effective MIPS, instruction throughput, host CPU cycle cost per emulated CCK).
+- **Real-Workload Host Cache Miss & Footprint Impact:**
+  - Profile host L1i/L1d cache misses, Last Level Cache (LLC) misses, and branch mispredictions during continuous execution of genuine Amiga software across the 65,536-entry static dispatch table.
+  - Determine the empirical performance impact of CPU core memory footprint on real-world, non-repetitive workloads.
+- **CPU Core Memory Footprint Audit & Compaction Assessment:**
+  - **Memory Footprint Audit (in Kilobytes):** Measure and document the exact memory footprint of the CPU emulator core:
+    - Host .rodata footprint: 65,536-entry static dispatch table (sizeof(OpcodeDescriptor) * 65,536), static [MicroStep; N] array slices, and decoding metadata.
+    - Host runtime state footprint: Cpu, CpuState, CpuMicroState sizes in bytes, auditing memory layout, alignment, and cache-line compactness.
+  - **Footprint Compaction Assessment:** Investigate whether compacting the CPU footprint (e.g., bit-packing OpcodeDescriptor, microcode array deduplication, index packing) yields measurable L1i/L1d miss reductions and throughput gains, or whether the current flat layout already maximizes host branch-predictor and cache throughput.
+  - Refactor identified slow handlers using host hardware efficiency principles (direct specialized flattening, branchless bit operations, eliminated redundant register banking, and cross-crate MIR inlining).
+  - Strictly enforce architectural constraints: zero custom macros (macro_rules!), zero const-generic function matrices, zero dynamic heap allocations, and zero compromise on code readability.
+- **Cross-Architecture & Mobile Performance Projections:**
+  - Extrapolate measured desktop throughput (x86_64 / desktop ARM) to target mobile and constrained environments (e.g. mobile WebAssembly, ARM mobile devices).
+  - Model CPU overhead margins to ensure headroom for sustained 50 Hz (PAL) / 60 Hz (NTSC) cycle-exact emulation once custom chipset DMA contention and rendering are integrated.
+- **Fidelity & Regression Validation Gate:**
+  - Ensure every optimized handler retains 100% cycle-exact Color Clock fidelity and passes the full exhaustive SingleStepTests suite ($env:SINGLESTEP_FULL = "1") with zero regressions.
 
 ---
 

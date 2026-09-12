@@ -2222,3 +2222,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - cargo test -p test_runner --test test_architecture_rules passed (all 15 tests, including vault link integrity with 28 design docs)
   - python tools/pre_flight.py passed with 100% compliance across formatting, attractor discipline, and size limits.
+
+---
+
+### [2026-09-12 23:53 CEST] — Roadmap Re-alignment: Custom Chipset Active Focus & Post-Boot Benchmark Consolidation
+- **Affected Subsystems**:
+  - `ROADMAP.md` (restructured Section 2: Core Implementation Strategy)
+- **What Was Changed (The Concrete Reality)**:
+  - Extracted Developer Studio GUI testing and polish into an upfront, ongoing companion track: `Step 1: Developer Studio GUI & Diagnostic Tooling Hardening (Ongoing Companion Track)`.
+  - Promoted Custom Chipsets & Machine Integration to the primary active milestone at the top of Section 2: `Step 2: Custom Chipsets & Machine Integration (Agnus, Denise, Paula, CIAs — Active Focus)`, with `Step 2.2: Machine-Wide Reset Sequencing (reset_cold & reset_warm)` as the immediate active focus.
+  - Re-indexed Player GUI & Multi-Drive Floppy Manager to `Step 3`.
+  - Merged CPU standalone benchmarks, memory footprint audit, host cache miss profiling, and host pipeline optimizations into a consolidated post-boot verification milestone: `Step 4: Real-World Amiga Workloads, Host Cache Profiling & Pipeline Optimization (Post-Boot)`.
+  - Scoped end-to-end bootable floppy (`.adf`) testing (`cargo test -p test_runner --test test_boot_adf`) with real software (AmigaTestKit, SysInfo, Dhrystone) as the primary vehicle for long-running CPU throughput and host hardware cache miss analysis once Kickstart and Paula/CIA floppy DMA are online.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates artificial intermediate semi-hosting shims (e.g. custom `TRAP #15` handlers or non-standard UART mailboxes) that would be made redundant once authentic floppy DMA and AmigaOS Exec boot sequences are implemented.
+  - Aligns development priority directly with getting the Amiga custom chipsets, reset flow, and floppy controller operational to run authentic software.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py` passed with 100% compliance across formatting, attractor discipline (312 files), AGENTS.md ceiling (13,354 bytes), and all 15 architecture rules tests.
