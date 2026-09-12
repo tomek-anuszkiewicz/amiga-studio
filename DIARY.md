@@ -543,5 +543,173 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p m68000 -p memory_bus -p config -p rtc -p disassembler -p debugger -p gui`: All unit and integration tests green.
   - `cargo fmt --all -- --check`: Formatting 100% compliant.
 
+---
+
+### [2026-09-12 11:46 CEST] — Roadmap Milestone: Repository Sanitization & Public Release Preparation
+- **Affected Subsystems**:
+  - `ROADMAP.md` (added Section 5: "Repository Sanitization & Public Release Preparation")
+- **What Was Changed (The Concrete Reality)**:
+  - Added milestone Section 5 outlining the pre-release strategy for open-source publication:
+    - *Section 5.1 (Historical Commit Message Normalization):* Systematic audit and rewriting of historical commit messages across the entire Git history to replace casual or auto-generated messages (e.g. IDE "Generate" commits) with standardized, descriptive messages aligned with `DIARY.md`.
+    - *Section 5.2 (Deep Git History Scrubbing & Asset Purge):* Comprehensive Git history rewrite preserving all commit dates, author/committer timestamps, and branch/merge topologies, while completely purging large binaries, copyrighted reference materials, and proprietary blobs:
+      - Purging reference emulator sources (`ref_src/` — vAmiga, WinUAE, MAME, Musashi, Moira, single-step tests).
+      - Purging third-party books, hardware reference manuals, and copyrighted documentation PDFs (`Obsidian/Amiga/Reference/`).
+      - Purging hardware schematics and board scan archives (`schematics/`).
+      - Purging third-party tools and standalone executables (`AmigaTestKit`, `WinGuide.exe`).
+      - Purging generated knowledge graph outputs and vector caches (`graphify-out/`).
+      - Conducting repository footprint and licensing audit prior to remote publication.
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean Open-Source Release:* Reference emulators, scans, third-party diagnostic executables, and proprietary books are vital during development for cycle-exact differential validation, but must not be distributed in the final public repository.
+  - *History Metadata Invariance:* Scrubbing file contents from commits while preserving timestamps and topology ensures the evolutionary narrative of the emulator's development remains accurate without retaining multi-gigabyte or copyright-encumbered binary blobs.
+- **Verification & Invariants**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 11:47 CEST] — Autonomous Clean-Room Pipeline: Documentation Skill Calibration Loop in BOOTSTRAP.md
+- **Affected Subsystems**:
+  - `BOOTSTRAP.md` (updated Section 2: "Prompt & Skill System Refinement")
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the iterative documentation conversion skill refinement loop into Section 2 of `BOOTSTRAP.md`:
+    - Designated primary hardware PDFs (Commodore *Amiga Hardware Reference Manual* and Motorola *M68000 User's Manual / Programmer's Reference Manual*) as the ground-truth benchmark suite for the `.agents/skills/pdf-to-markdown/` skill.
+    - Defined an iterative execution and calibration cycle: repeatedly running the skill against these PDFs and tuning prompt instructions, table split merging, figure extraction, and layout heuristics until agent-generated documentation achieves structural and technical parity with our curated reference documentation (`Obsidian/Amiga/Reference/`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean-Room Re-generation Pre-requisite:* For an autonomous agent to re-create the emulator without human intervention or copyrighted repository bloating, it requires a battle-tested skill that reliably transforms raw technical PDFs into clean, high-fidelity Markdown notes indistinguishable from human-curated specifications.
+- **Verification & Invariants**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 11:48 CEST] — Clean-Room Pipeline: Closed-Loop Design Documentation vs. Generated Code Parity
+- **Affected Subsystems**:
+  - `BOOTSTRAP.md` (updated Section 4: "Reference Code Clean-Room Wipe & Regeneration Experiment")
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated and added the **Iterative Closed-Loop Calibration (Design Documentation vs. Generated Code Parity)** methodology to Section 4 of `BOOTSTRAP.md`:
+    - Discarded the naive assumption of a one-shot "wipe-and-pray" code generation attempt.
+    - Established an iterative feedback loop where an agent generates modules and subsystems strictly from curated design documentation (`Obsidian/Amiga/Design/`).
+    - Benchmarked generated code against proven test suites (SingleStepTests, DMA contention, architecture rules) and numerical/cycle baselines (`m68k_benchmark_baseline.csv`, `golden_row_hashes.rs`).
+    - Defined continuous documentation refinement: sharpening state invariants, cycle phase models, and edge cases until the design documentation reliably yields code 100% equivalent to our proven implementation.
+- **Architectural Rationale & Trade-Offs**:
+  - *Disciplined Scientific Approach:* Autonomous software regeneration cannot rely on stochastic luck. By treating documentation as a formal specification compiler target and validating generated code against cryptographic golden baselines, we systematically eliminate specification ambiguities before conducting the final code wipe.
+- **Verification & Invariants**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 11:49 CEST] — Clean-Room Pipeline: BLEP Synthesis & Analog Audio Filter Generator Experiment
+- **Affected Subsystems**:
+  - `BOOTSTRAP.md` (updated Section 1 and Section 4: added "Pilot Subsystem Testbed: BLEP Synthesis & Analog Audio Filter Generator Experiment")
+- **What Was Changed (The Concrete Reality)**:
+  - Added a concrete subsystem pilot testbed to `BOOTSTRAP.md` Section 4 for validating the documentation-to-code generation loop:
+    - Target: Physical Amiga 500 audio output circuitry (op-amp amplifier stages, passive RC and active Sallen-Key low-pass filter networks, dynamic CIA-A LED filter switching, and raw component values for resistors and capacitors).
+    - Protocol: Supply mathematical requirements for band-limited step (BLEP) anti-aliasing audio synthesis without providing precomputed lookup tables or reference DSP source code.
+    - Calibration Loop: Instruct the agent to independently author the BLEP synthesis script, derive filter transfer functions, and generate the complete Paula audio DSP/filter pipeline.
+    - Iteratively refine the design documentation until the synthesized BLEP tables and audio filter implementation match our verified ground truth (`blep_tables.rs` and Paula audio engine) bit-for-bit.
+- **Architectural Rationale & Trade-Offs**:
+  - *Hard Subsystem Testbed:* The Paula audio engine combines continuous-time analog circuit modeling (op-amps, Sallen-Key filter equations) with discrete digital DSP (BLEP residual convolution). It serves as an ideal stress test for proving whether design documentation alone is sufficient for an autonomous agent to reproduce mathematically complex emulator subsystems.
+- **Verification & Invariants**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 11:51 CEST] — Roadmap Refinement: Commit History Squashing & Privacy Hygiene Audit
+- **Affected Subsystems**:
+  - `ROADMAP.md` (updated Section 5: "Repository Sanitization & Public Release Preparation")
+- **What Was Changed (The Concrete Reality)**:
+  - Enhanced Section 5 of `ROADMAP.md` with two core release hygiene mandates:
+    - *Historical Content Hygiene & Privacy Audit:* Added an explicit mandate in Section 5.2 to thoroughly audit past Git commit snapshots and file trees for accidental disclosures: private host paths, credentials, unintended temporary debug dumps, scratch experiments, or sensitive personal data.
+    - *Commit History Reordering & Selective Squashing:* Added a mandate in Section 5.1 to analyze the commit graph for fragmented, disjointed, or trial-and-error commits (e.g. micro-fixups, typo adjustments, multi-commit implementation fragments) and reorder/squash them into clean, atomic milestones.
+- **Architectural Rationale & Trade-Offs**:
+  - *Professional Open-Source Presentation:* An open-source release should present a clean, coherent architectural narrative rather than exposing messy intermediate trial-and-error commits or accidental debug dumps. Selective squashing consolidates related changes while preserving milestone-level historical fidelity and author timestamps.
+- **Verification & Invariants**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 12:03 CEST] — Automated Operating System: Rules, Skills & Definition of Done Overhaul
+- **Affected Subsystems**:
+  - `.agents/rules/docs-maintenance.md` (added major milestone gates for diary compaction and dead code pruning, non-redundant constitution rule)
+  - `.agents/rules/amiga-rag.md` (automated incremental reindexing on `Obsidian/Amiga/Reference/` changes, path privacy fix)
+  - `.agents/rules/graphify.md` (scoped incremental reindexing for `crates/` and `ref_src/`, prohibited full-workspace crawls)
+  - `.agents/rules/vault-linking-and-graph-integrity.md` (mandatory Obsidian Properties YAML frontmatter at line 1 evaluated on every edit, renumbered sections)
+  - `AGENTS.md` (updated Section 1 rule index with `amiga-rag` and scoped graphify, updated Section 4 Definition of Done, strictly verified size <= 23 KB)
+  - `.agents/skills/compact-diary/SKILL.md` (new skill: milestone-driven diary compaction and synthesis)
+  - `.agents/skills/prune-dead-code/SKILL.md` (new skill: systematic dead code and scaffolding elimination)
+  - `.agents/skills/obsidian-vault-linking/SKILL.md` (new skill: operationalizing Obsidian Properties and Dual-Layer Linking Standard)
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the complete automated matrix of rules, triggers, and skills:
+    1. *Major Milestone Gate:* On completing major roadmap steps, trigger `compact-diary` to synthesize older historical entries into milestone digests while keeping recent work granular, and trigger `prune-dead-code` to purge unreferenced symbols.
+    2. *Incremental RAG Trigger:* Changes in `Obsidian/Amiga/Reference/` automatically trigger incremental vector reindexing in Qdrant via `amiga_rag`.
+    3. *Scoped Graphify Subtree Isolation:* Mandated that graphify updates during development must strictly be scoped to `crates/` (`graphify update crates/`) or `ref_src/` (`graphify update ref_src/`), eliminating unconstrained full-workspace scans.
+    4. *Mandatory Obsidian Properties:* Standardized YAML frontmatter (`title`, `aliases`, `tags`, `category`, `subsystem`, `status`, `created`, `updated`, `related`) at line 1 for all notes in `Obsidian/Amiga/Design/`, with continuous evaluation on every document edit.
+    5. *Constitutional Non-Redundancy:* Explicitly codified that `AGENTS.md` must not duplicate detailed rules or full DoD workflows already modularized under `.agents/rules/`, guaranteeing `AGENTS.md` remains a concise index strictly under the 23,000-byte truncation safety ceiling.
+- **Architectural Rationale & Trade-Offs**:
+  - *Autonomous Predictability:* High-reliability agentic pair programming requires deterministic rules with explicit triggers rather than vague suggestions. By decoupling high-level constitutional constraints (`AGENTS.md`) from modular operational rules (`.agents/rules/`) and procedural runbooks (`.agents/skills/`), the agent operates within optimal context window token bounds while consistently triggering the right automation.
+- **Verification & Invariants**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.53s.
+  - All rule files and `AGENTS.md` validated strictly <= 23,000 bytes.
+  - Zero external hardcoded paths verified across all rules and codebase.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 12:12 CEST] — Skills Expansion: Diary Compaction Philosophy & RAG Ingestion Skill
+- **Affected Subsystems**:
+  - `.agents/skills/compact-diary/SKILL.md` (codified core guiding philosophy: high-signal architectural & collaboration lessons over low-level code details)
+  - `.agents/skills/index-amiga-rag/SKILL.md` (new skill: incremental Qdrant vector database ingestion triggered by `Obsidian/Amiga/Reference/` modifications)
+  - `.agents/skills/graphify/SKILL.md` (documented scoped subtree re-indexing policy for `crates/` and `ref_src/`)
+  - `.agents/skills/prune-dead-code/SKILL.md` (refined goal statement, removing unnecessary L1 cache mention in favor of cognitive clutter elimination)
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated the exact philosophical contract for diary compaction:
+    - *Omission of Low-Level Noise:* Eliminate line-by-line diffs, variable renames, and mechanical changes already recorded in Git.
+    - *Architectural Dilemmas & Breakthroughs:* Preserve structural design trade-offs, circuit race conditions, and cycle-exact timing models.
+    - *Agent Collaboration Records:* Document hard problems solved with the agent, traps encountered, and institutional safeguards devised.
+    - *Future Insights:* Record non-obvious hardware quirks and lessons that cannot be deduced from source code alone.
+  - Implemented the `index-amiga-rag` skill operationalizing automated incremental reindexing of `Obsidian/Amiga/Reference/` via `amiga_rag.ps1` / `indexer.py`.
+  - Added scoped subtree reindexing documentation to `graphify` skill.
+  - Removed artificial L1 cache references from `prune-dead-code/SKILL.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Signal-to-Noise Maximization:* The engineering diary serves as institutional memory. By capturing high-signal decisions and agent-collaboration patterns while discarding low-level diff clutter, the diary remains a permanently readable and actionable knowledge base across long-running project phases.
+
+- **Verification & Invariants**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 12:24 CEST] — Eradication of Artificial L1/L1i Cache Semantic Attractor
+- **Affected Subsystems**:
+  - `AGENTS.md` (lines 16, 72-74, 100: purged rhetorical "L1i cache density" phrases in favor of lean, compact, and contiguous execution paths)
+  - `.agents/rules/performance-and-readability.md` (eliminated pseudo-intellectual L1i/L1d intro; focused on branch predictability, flat execution, and compact instruction paths)
+  - `.agents/rules/method-inlining.md` (removed 32 KB L1i thrashing claims; grounded in compiler cross-crate MIR inlining and code bloat prevention)
+  - `.agents/workflows/code-review.md` (pruned L1i checklist attractor)
+  - `.agents/skills/add-m68k-instruction/SKILL.md` (pruned L1i cache phrasing)
+  - `.agents/skills/compact-diary/SKILL.md` (replaced L1 cache dynamics example with branch predictor dynamics)
+  - `Obsidian/Amiga/Design/Rust Guidelines.md` (lines 73, 101: replaced L1i cache references with compact and out-of-line execution paths)
+  - `Obsidian/Amiga/Design/CPU Micro-Step State Machine.md` (line 881: replaced "host L1d cache residency" with "compact contiguous runtime state layout")
+  - `ROADMAP.md` (line 64: simplified state footprint audit to focus on memory layout, alignment, and cache-line compactness)
+- **What Was Changed (The Concrete Reality)**:
+  - Systematically audited and eradicated the artificial "L1 cache attractor"—a repetitive, hallucinatory buzzword pattern that previous LLM iterations injected as an all-purpose justification across unrelated rules (e.g. dead code pruning, method inlining, code review checklists).
+  - Clarified and preserved legitimate hardware profiling specifications in `ROADMAP.md` (Step 2 PMU counter benchmarks: `L1-icache-load-misses`, `L1-dcache-load-misses`, LLC misses) and `Obsidian/Amiga/Design/CPU Instruction Benchmarking.md` (testing 700-instruction unrolled loops against CPU Loop Stream Detectors and single P-core pinned benchmarking).
+- **Architectural Rationale & Trade-Offs**:
+  - *Preventing Model Semantic Drifting:* LLMs develop strong attractor basins around specific technical jargon. Once "L1i cache density" was cited in early benchmarking discussions, subsequent model turns parroted the term into completely inappropriate contexts (e.g. justifying deleting unused Rust structs to "keep L1 instruction cache compact"). Purging this pseudo-justification restores clear, precise, and hardware-accurate engineering language across repository guidelines.
+- **Verification & Invariants**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.53s.
+  - `AGENTS.md` and all rule files verified strictly <= 23,000 bytes (`AGENTS.md` is 22,908 bytes).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+
+
+
+
+
+
+
+
 
 

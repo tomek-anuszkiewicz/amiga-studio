@@ -117,8 +117,8 @@ pub fn alu_sub_w_dn_mem(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
 
 ### Step 3.2b: Cold Exception & Trap Triggers (`#[inline(never)]`)
 When an instruction can fault, trap, or trigger an exception (e.g. `DIVU`/`DIVS` divide-by-zero, `CHK` boundary trap, `TRAPV`, Address Error, or Privilege Violation):
-- All dedicated trap setup or trigger functions (e.g. `trigger_chk_trap`, `trigger_divide_by_zero`, `trigger_address_error`) **MUST be annotated with `#[inline(never)]`**.
-- This guarantees that LLVM keeps cold exception stack frame generation out of the CPU instruction cache (L1i), preserving density in the hot execution path.
+- This guarantees that LLVM keeps cold exception stack frame generation out-of-line, keeping the primary execution path compact and linear.
+
 ```rust
 #[inline(never)]
 pub fn trigger_chk_trap(state: &mut CpuState) {

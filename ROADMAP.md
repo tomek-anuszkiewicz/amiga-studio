@@ -1,4 +1,4 @@
-﻿# Amiga 500 Emulator: Development Roadmap & Strategy
+# Amiga 500 Emulator: Development Roadmap & Strategy
 
 This document outlines the phased development plan, hardware milestones, verification methodologies, and AI agent testing strategies for the Amiga 500 emulator project.
 
@@ -61,7 +61,7 @@ This document outlines the phased development plan, hardware milestones, verific
 - **CPU Memory Footprint Audit & Host Cache Miss Profiling:**
   - **Memory Footprint Audit (in Kilobytes):** Measure and document the exact memory footprint of the CPU emulator core:
     - Host .rodata footprint: 65,536-entry static dispatch table (sizeof(OpcodeDescriptor) * 65,536), static [MicroStep; N] array slices, and decoding metadata.
-    - Host runtime state footprint: Cpu, CpuState, CpuMicroState sizes in bytes, auditing L1d cache line alignment and residency.
+    - Host runtime state footprint: Cpu, CpuState, CpuMicroState sizes in bytes, auditing memory layout, alignment, and cache-line compactness.
   - **Host Cache Miss Profiling:** Measure host CPU performance counters (L1i instruction cache misses, L1d data cache misses, Last Level Cache / LLC misses, superscalar IPC, branch mispredictions) across opcode execution runs (via perf stat, cachegrind, or host PMU tooling).
   - Automatically rank handlers by host latency and flag operations exhibiting disproportionate execution overhead relative to emulated M68000 cycle counts.
 - **Footprint Compaction Assessment & Mechanical Sympathy Optimization:**
@@ -139,3 +139,32 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
 - Extract graphics (bitplanes, sprites, palettes) and audio samples directly from memory buffers.
 - Annotate assets, memory addresses, and game phases using LLM assistance.
 - Map active assets to the visual 24-bit memory map.
+
+---
+
+## 5. Repository Sanitization & Public Release Preparation
+
+To prepare the repository for open-source publication and public release, the codebase and Git history must undergo a thorough sanitization and scrubbing pass. This process eliminates bulky external assets, copyright-encumbered materials, accidental historical leaks, and commit noise while consolidating fragmented work into a clean, professional, and logical development history.
+
+### 5.1 Historical Commit Message Normalization & Atomic Squashing
+- **Rewrite & Standardize Commit Messages:**
+  - Audit all historical commits across the repository to replace auto-generated, low-signal, or casual commit messages (such as messages produced by IDE "Generate" buttons).
+  - Standardize messages into clean, professional, descriptive entries following conventional commit guidelines, closely aligned with the narrative in `DIARY.md`.
+- **Commit History Reordering & Selective Squashing:**
+  - Audit the commit history for fragmented, disjointed, or trial-and-error commits (e.g. minor fixups, typo fixes, multi-commit implementation fragments of a single cohesive task).
+  - Reorder commits logically where appropriate and squash related commits into atomic, cohesive units so each historical commit represents a distinct, well-defined architectural milestone rather than intermediate noise.
+
+### 5.2 Deep Git History Scrubbing, Privacy Audit & Asset Purge
+- **Historical Content Hygiene & Privacy Audit:**
+  - Thoroughly inspect all past commits and tree snapshots for accidental leaks, sensitive personal information, private absolute paths, temporary debugging dumps, or unintended scratch files.
+- **Preserve Commit Metadata & Branch Topology:**
+  - Execute a comprehensive history rewrite (e.g. using `git-filter-repo` or specialized filter-branch tooling) ensuring commit author dates, committer timestamps, and overall branch topology remain intact.
+- **Purge Bulky, Copyrighted & Third-Party Assets from All Commits:**
+  - **Reference Emulator Sources (`ref_src/`):** Completely purge all reference implementations (vAmiga, WinUAE, MAME, Musashi, Moira, Tom Harte single-step test vectors).
+  - **Books & Reference Documents:** Remove all third-party technical reference books, scans, and copyrighted PDFs (e.g. materials under `Obsidian/Amiga/Reference/`).
+  - **Hardware Schematics (`schematics/`):** Purge all hardware schematic scans, circuit diagrams, and motherboard layout PDFs/images.
+  - **Third-Party Tools & Standalone Executables:** Purge third-party diagnostic and emulation tools (e.g. `AmigaTestKit` disk images/binaries, `WinGuide.exe`, and auxiliary testing executables).
+  - **Generated Knowledge Graphs & Analysis Artifacts:** Purge `graphify-out/` and local AST/vector database caches.
+  - **Repository Footprint Audit:** Identify and remove any remaining proprietary blobs, non-redistributable assets, or unnecessary large files prior to pushing to a public remote.
+
+

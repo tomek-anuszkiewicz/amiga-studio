@@ -13,15 +13,16 @@ Operational, communication, and interaction rules are modularized under `.agents
 - **Dynamic Model Advisory** ([`model-reasoning-advisory.md`](.agents/rules/model-reasoning-advisory.md)): Proactive advice on switching between `Medium` and `High`/`Pro` reasoning.
 - **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
 - **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user conflict escalation before code changes.
-- **Mechanical Sympathy & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros, zero const-generics, cache density, and zero runtime heap allocations in hot paths.
+- **Mechanical Sympathy & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros, zero const-generics, contiguous execution, and zero runtime heap allocations in hot paths.
 - **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing, and multi-agent workflows.
-- **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Architecture queries and AST relationships via graphify.
+- **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Architecture queries and AST relationships; scoped incremental updates for `crates/` and `ref_src/`.
+- **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Qdrant vector retrieval; automated reindexing on `Obsidian/Amiga/Reference/` modifications.
 - **Rust Best Practices** ([`rust-best-practices.md`](.agents/rules/rust-best-practices.md)): Safe borrowing, zero unwraps in runtime, wrapping math, no macros/const generics, and mandatory unit tests for all testable logic.
 - **egui & Frontend Best Practices** ([`egui-best-practices.md`](.agents/rules/egui-best-practices.md)): Synchronous state pull, 1:1 layout mapping, bounded time-slicing, and WASM/DPI adaptation.
 - **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for all functional/utility classes; headless integration tests for GUI.
 - **Git Merge Commits & Worktrees** ([`git-merge-commits.md`](.agents/rules/git-merge-commits.md)): Mandatory merge commits on conflict resolution; worktree lifecycle and cleanup.
-- **Documentation & Diary Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Living design docs, roadmap pruning, and mandatory chronological change log in `DIARY.md`.
-- **Vault Linking & Graph Integrity** ([`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md)): Dual-layer linking (inline contextual + bottom references), inverted pyramid hierarchy, and zero broken links across `Obsidian/Amiga/Design/`.
+- **Documentation & Diary Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Living design docs, roadmap pruning, chronological log in `DIARY.md`, milestone diary compaction and dead code pruning.
+- **Vault Linking & Graph Integrity** ([`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md)): Line 1 YAML properties evaluation, dual-layer linking, and zero broken links across `Obsidian/Amiga/Design/`.
 
 ---
 
@@ -68,9 +69,9 @@ Operational, communication, and interaction rules are modularized under `.agents
    - Hot execution paths (`step()`, `step_cck()`, memory accesses, interrupt polling) must perform **zero dynamic heap allocations** (`Vec::new`, `Box::new`, `format!`, `String`). Use fixed arrays, bitflags, or in-place state.
    - Core crate constraints: No `std::time::Instant::now()` (panics in WASM without shims), no `std::thread`, no `std::fs` (load ROMs/disks as `&[u8]` byte slices).
 
-5. **Host CPU Mechanical Sympathy: Branch Prediction, Cache Density & Zero Readability Compromise**:
+5. **Host CPU Mechanical Sympathy: Branch Prediction, Contiguous Execution & Zero Readability Compromise**:
    - **Deep Pipelines & Flat Execution**: Eliminate cascaded runtime branches (`match opcode`, `match ea_mode`, `if size == Size::Byte`) in the hot loop. The core favors **direct, flattened code flows** (e.g. 65,536-entry static dispatch table `[fn; 65536]`, specialized opcode handlers) where size, addressing mode, and registers are statically baked in. Code may be expansive and unrolled if it eliminates dynamic branching in the hot path.
-   - **L1i Cache Density**: Keep hot instruction dispatch compact. Mark heavy, rarely taken exception handling (Address Error 7-word frame synthesis, illegal instruction traps, bus fault diagnostics) with `#[inline(never)]` so cold error recovery never pollutes hot L1i cache lines.
+   - **Lean Hot Path & Out-of-Line Exceptions**: Keep hot instruction dispatch compact and linear. Mark heavy, rarely taken exception handling (Address Error 7-word frame synthesis, illegal instruction traps, bus fault diagnostics) with `#[inline(never)]` so cold error recovery stays out of the primary execution path.
    - **Readability Without Compromise**: High performance must never be an excuse for unreadable code or cryptic tricks. Code must remain clean, modular, self-documenting, and idiomatic Rust.
    - **Strict Prohibition of User-Defined Macros (`macro_rules!` is Forbidden)**: Custom macros (`macro_rules!`) are strictly forbidden across the codebase. Macros break IDE code navigation, obscure call sites, produce opaque compiler errors, and add cognitive complexity. Repetitive code, static dispatch tables, and handlers must be written as explicit, self-documenting Rust functions, direct calls, or compile-time `const fn` arrays.
    - **Prohibition of Const-Generic Functions with Constant Parameters**: Using generic functions where generic parameters are constants (`fn op_foo<const S: usize, const M: usize>(...)`) is forbidden for instruction handlers, decoding logic, and core execution paths. Const generics obscure concrete execution paths, fragment IDE navigation, and complicate debugging. Handlers and execution logic must be authored as explicit, concrete, specialized Rust functions or direct flattened control flows.
@@ -96,7 +97,7 @@ Operational, communication, and interaction rules are modularized under `.agents
    - **Use `#[inline]` on**: Public getters, setters, single-expression accessors called across crates (`chip_ram()`, `is_chip_ram_locked()`), lightweight forwarding wrappers (`step_cck`), and endian conversion helpers.
    - **Use `#[inline(always)]` on**: Ultra-hot arithmetic/logic and CCR condition code flag calculations ($X, N, Z, V, C$) executed multiple times per CCK cycle.
    - **Avoid `#[inline]` on**: Functions with > 15–20 lines of complex control flow and indirect dispatch table targets (e.g. `BankHandler.read_byte` function pointers, 65,536-entry opcode handlers).
-   - **Use `#[inline(never)]` on**: Cold exception paths, address error dumps, illegal instruction traps, and diagnostic panic paths to keep the hot dispatch loop contiguous in L1i cache.
+   - **Use `#[inline(never)]` on**: Cold exception paths, address error dumps, illegal instruction traps, and diagnostic panic paths to keep the hot dispatch loop compact and linear.
 
 8. **Workspace Flat Layout & 3-Tier Re-Export (`pub use`) Strategy**:
    - Keep crate directories in `crates/*` **strictly flat** (no nested crate folders).
@@ -154,7 +155,7 @@ Operational, communication, and interaction rules are modularized under `.agents
      - Update design documents in `Obsidian/Amiga/Design/` or rules in `AGENTS.md`.
      - Add explicit checkpoints to Definition of Done and `/code-review`.
 - **Mandatory Comprehensive Unit Test Coverage for Testable Logic:** Every new or modified Rust source file containing testable domain logic, hardware models, ALU operations, parsers, or state machines must have unit tests (inline or under `tests/<name>.rs`) covering happy paths, boundary conditions, zero states, and failure modes.
-- **Mandatory Post-Flight Compliance Checklist:** Conclude every task with a Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros/const generics, canonical IDLE steps, file size <= 800 lines, flat instruction hierarchy, strict English, regression tests, unit test coverage, design doc & roadmap pruning, `DIARY.md` entry, 100% green tests).
+- **Mandatory Post-Flight Compliance Checklist:** Conclude every task with a Definition of Done checklist verifying compliance with systems rules (zero panics, wrapping math, inlining, zero custom macros/const generics, canonical IDLE steps, file size <= 800 lines, flat instruction hierarchy, strict English, regression tests, unit test coverage, Obsidian properties evaluated on edit, dual-layer linking, scoped graphify/RAG indexing, milestone gates [diary compaction & dead code pruning], design doc & roadmap pruning, `DIARY.md` entry, 100% green tests).
 - **Prohibition of Blind Golden Hash Modifications**: Modifying golden test hashes, cycle totals, or benchmark reference constants (e.g. `GOLDEN_CATALOG_STRUCTURE_HASH`, `GOLDEN_CSV_HASH_*` in `test_benchmark_csv.rs`, or single-step test fixtures) to silence a failing test is strictly forbidden. A hash divergence signifies catalog, instruction encoding, or cycle timing regression. When a test fails, perform root-cause analysis on the implementation. Golden hash modifications require formal hardware justification and explicit user escalation per `spec-compliance.md`.
 - **Sub-Agent Milestone Review Protocol (`/code-review`):** Before declaring a roadmap milestone complete, invoke an independent review subagent or follow the `/code-review` workflow to audit the diff with a clean context before user hand-off.
 

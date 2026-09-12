@@ -70,7 +70,7 @@
 ### 3.3 Strategic Inlining
 - **`#[inline(always)]`:** Reserved exclusively for ultra-hot ALU calculations and CCR flag formulas ($X, N, Z, V, C$) called multiple times per clock.
 - **`#[inline]`:** Applied to small public accessors, single-expression getters/setters called across crate boundaries, and endian conversion helpers so LLVM can optimize across crates without whole-program LTO.
-- **`#[inline(never)]`:** Mandatory on cold exception paths (Address Error vector 3 frames, illegal instruction traps, bus error dumps) to keep the primary opcode dispatch loop compact in host L1i cache.
+- **`#[inline(never)]`:** Mandatory on cold exception paths (Address Error vector 3 frames, illegal instruction traps, bus error dumps) to keep the primary opcode dispatch loop compact and out-of-line.
 - **No inlining** on large handlers (> 15–20 lines of control flow).
 
 ---
@@ -98,7 +98,7 @@ Every implementation or bugfix must satisfy:
 ## 6. Reference Documentation & Upstream Ground Truth
 
 - [Rust Systems Rules & Guidelines (AGENTS.md)](../../../AGENTS.md): Complete repository guidelines, memory model, and Definition of Done.
-- [Performance & Mechanical Sympathy Rule](../../../.agents/rules/performance-and-readability.md): L1i cache density, zero macros, and flat dispatch.
+- [Performance & Mechanical Sympathy Rule](../../../.agents/rules/performance-and-readability.md): Lean execution paths, zero macros, and flat dispatch.
 - [Rust Best Practices Rule](../../../.agents/rules/rust-best-practices.md): Safe borrowing, wrapping math, and inlining policies.
 - [Unit Testing Policy](../../../.agents/rules/unit-testing-policy.md): Unit and integration testing mandates.
 - [General Architecture Specification](General%20Architecture.md): Machine topology, bus interfaces, and crate layout.

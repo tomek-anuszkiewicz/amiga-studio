@@ -8,11 +8,38 @@ description: Mandatory dual-layer linking standard, inverted pyramid information
 This rule governs all design specifications, hardware reference links, architectural guidelines, and markdown documentation located under `Obsidian/Amiga/Design/`.
 Whenever creating, modifying, updating, or refactoring documentation in this vault, the agent must actively and systematically maintain the knowledge graph structure, dual-layer linking, and information hierarchy.
 
+## 1. Mandatory Obsidian Properties (YAML Frontmatter at Line 1)
+
+Every markdown document in `Obsidian/Amiga/` (especially under `Obsidian/Amiga/Design/`) must begin with an active **Obsidian Properties** block (YAML frontmatter bounded by `---` lines at line 1).
+
+### Standard Properties Schema
+```yaml
+---
+title: "Document / Subsystem Title"
+aliases: ["Alternate Title", "Chip Code", "Mnemonic"]
+tags: ["amiga", "design", "subsystem-name"]
+category: "Design" # "Design" | "Reference"
+subsystem: "agnus" # "agnus" | "denise" | "paula" | "m68000" | "memory_bus" | "cia" | "gui" | "debugger"
+status: "active" # "active" | "completed" | "draft"
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+related: ["[SiblingDoc.md](SiblingDoc.md)"]
+---
+```
+
+### Continuous Evaluation & Maintenance Contract
+- **Evaluate on Every Edit:** Whenever an agent creates, refactors, or modifies any document in the vault, it **must inspect, evaluate, and update its properties block**:
+  - Bump `updated` to the current date (`YYYY-MM-DD`).
+  - Verify and update `status` if the subsystem or milestone transitioned (e.g. `draft` $\rightarrow$ `active` $\rightarrow$ `completed`).
+  - Refresh `related` links and `tags` if new subsystem couplings or hardware dependencies were introduced.
+- **Line 1 Placement:** The properties block must strictly reside at the very top of the file (Line 1 `---`) so Obsidian natively indexes it as note properties.
+
 ---
 
-## 1. Mandatory Dual-Layer Linking Standard
+## 2. Mandatory Dual-Layer Linking Standard
 
 Every design document in `Obsidian/Amiga/Design/` must maintain two distinct, complementary layers of connectivity:
+
 
 1. **Layer 1: Contextual Inline Navigational Links:**
    - Embedded directly into body paragraphs, data flow explanations, and register breakdowns at the precise moments concepts, components, or micro-steps are introduced or referenced.
@@ -30,7 +57,7 @@ Every design document in `Obsidian/Amiga/Design/` must maintain two distinct, co
 
 ---
 
-## 2. Inverted Pyramid Information Hierarchy & Structure
+## 3. Inverted Pyramid Information Hierarchy & Structure
 
 To ensure maximum signal and top-down cognitive clarity, all design specifications must adhere to the **Inverted Pyramid model**:
 
@@ -49,7 +76,7 @@ To ensure maximum signal and top-down cognitive clarity, all design specificatio
 
 ---
 
-## 3. Strict Relative Path Depth & Zero Broken Links Policy
+## 4. Strict Relative Path Depth & Zero Broken Links Policy
 
 All links in `Obsidian/Amiga/Design/` must adhere to mathematically verified relative path depths:
 
@@ -69,8 +96,9 @@ All links in `Obsidian/Amiga/Design/` must adhere to mathematically verified rel
 
 ---
 
-## 4. Hub-and-Spoke Topology & Canonical Authorities
+## 5. Hub-and-Spoke Topology & Canonical Authorities
 
 - **Central Canonical Hub:** [`General Architecture.md`](General%20Architecture.md) serves as the top-level index for the entire emulator architecture. It must catalog and contextually link downward to all subsystem design documents.
 - **Lateral Subsystem Connectivity:** Subsystems that interact on the physical bus or via DMA (e.g. Agnus $\leftrightarrow$ MemoryBus, Paula $\leftrightarrow$ Floppy, CIA-A $\leftrightarrow$ Keyboard) must maintain reciprocal cross-links.
 - **Small-World Graph Density:** Maintain high-signal semantic links (typically 6–15 high-signal links per document). Avoid superficial link sprawl.
+

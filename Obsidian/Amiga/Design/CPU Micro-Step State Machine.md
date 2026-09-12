@@ -878,7 +878,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 
 | Requirement | Specification Implementation |
 | :--- | :--- |
-| **Host Mechanical Sympathy** | Static dispatch array; flat contiguous micro-steps; zero dynamic branching in inner loops; host L1d cache residency. |
+| **Host Mechanical Sympathy** | Static dispatch array; flat contiguous micro-steps; zero dynamic branching in inner loops; compact contiguous runtime state layout. |
 | **Cached Slice Pointer Dispatch** | Active step slice pointer `state.micro.current_steps` cached upon opcode prefetch; eliminates 64K table lookups during instruction execution. |
 | **Zero Runtime Allocations** | Complete microcode ROM is `const` in `.rodata`; zero heap allocation during emulation loops. |
 | **Zero Cascaded Size Branches** | Transfer size specialized directly into `BusFn` handlers (`step_bus_read_byte`, `step_bus_read_word`, `step_bus_write_byte`, `step_bus_write_word`, `step_bus_write_long_high`, `step_bus_write_long_low`). |

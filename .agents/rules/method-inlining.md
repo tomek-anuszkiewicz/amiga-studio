@@ -3,7 +3,7 @@
 ## 1. Core Mechanics in Rust
 - `#[inline]` is a strong hint to LLVM, but its primary role in a multi-crate workspace is enabling **cross-crate inlining** (exporting MIR/LLVM IR into crate metadata without requiring whole-program LTO).
 - `#[inline(always)]` mandates inlining at the LLVM level to eliminate call/return prologue and epilogue overhead.
-- `#[inline(never)]` forces the compiler to keep the function out-of-line to preserve host CPU instruction-cache (L1i) density.
+- `#[inline(never)]` forces the compiler to keep the function out-of-line, ensuring cold error recovery does not inflate hot execution paths.
 
 ## 2. Inlining Decision Matrix
 
@@ -15,6 +15,7 @@
 | **`#[inline(never)]`** | • Cold exception paths and traps<br/>• Panic / unreachable / diagnostic dumps | Vector 3 Address Error stack frame creation<br/>Illegal instruction reporter |
 
 ## 3. Anti-Patterns to Avoid
-1. **Do not put `#[inline]` on large functions**: It bloats the compiled binary and thrashes the host CPU's L1 Instruction Cache (L1i, typically 32 KB).
+1. **Do not put `#[inline]` on large functions**: It bloats the compiled binary, degrades compiler optimization heuristics, and increases code size needlessly.
 2. **Do not put `#[inline]` on function-pointer targets**: If a function is called indirectly through `[BankHandler; 256]` or `[OpcodeHandler; 65536]`, the compiler cannot inline it through the pointer at the call site anyway.
 3. **Do not omit `#[inline]` on public accessors across workspace crates**: Without `#[inline]`, callers in downstream crates cannot inline small accessor methods unless costly cross-crate LTO is enabled in `Cargo.toml`.
+

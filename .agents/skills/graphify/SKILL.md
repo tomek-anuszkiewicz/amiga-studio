@@ -42,9 +42,17 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 /graphify explain "SwinTransformer"                   # plain-language explanation of a node
 ```
 
+## Scoped Subtree Re-indexing (Amiga 500 Emulator Policy)
+
+Per project rule [`.agents/rules/graphify.md`](../../rules/graphify.md), graphify updates during development must **always remain strictly scoped** to the touched subtree to avoid unnecessary AST recalculation and token bloat:
+- **When code in `crates/` changes:** Run `graphify update crates/`
+- **When code in `ref_src/` changes:** Run `graphify update ref_src/`
+- **Full Workspace Crawls Prohibited:** Never execute `graphify update .` automatically during localized code modifications. Whole-repo re-extraction is reserved solely for explicit user requests.
+
 ## What graphify is for
 
 Drop any folder of code, docs, papers, images, or video into graphify and get a queryable knowledge graph. Persistent across sessions, honest audit trail (EXTRACTED/INFERRED/AMBIGUOUS), community detection surfaces cross-document connections you wouldn't think to ask about.
+
 
 ## What You Must Do When Invoked
 

@@ -25,10 +25,15 @@ Tooling, Reindexing & Infrastructure:
 
 
 Execution & Reindexing Workflows:
+- **Automated Trigger (Changes in `Obsidian/Amiga/Reference/`):** Whenever reference manuals, hardware documentation, or architecture guides under `Obsidian/Amiga/Reference/` are added, edited, or reorganized, execute incremental reindexing to update the Qdrant vector database:
+  ```powershell
+  .\tools\rag\bin\amiga_rag.ps1 . --source amiga
+  ```
 - **Interactive Progress (Recommended)**: Because the agent runs in a headless background daemon and cannot pop GUI windows or inject keystrokes into the user's IDE terminal tab, when the user wants to observe real-time progress, provide the exact terminal command for the user to run directly in their IDE terminal:
   ```powershell
-  .\tools\rag\bin\amiga_rag.ps1 "d:\Programowanie\Amiga\Obsidian\Amiga" --source amiga
+  .\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga" --source amiga
   ```
 - **Agent Background Run**: When the user requests the agent to run indexing in the background, run via `run_command` without blocking, directing logs to the task log file.
+
 
 

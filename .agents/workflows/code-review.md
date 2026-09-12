@@ -47,8 +47,8 @@ Audit the diff against the guidelines in `AGENTS.md`:
 ### C. Inlining Strategy
 - [ ] `#[inline]` on public accessors, single-expression helpers, forwarding wrappers, and cross-crate conversions.
 - [ ] `#[inline(always)]` strictly reserved for ultra-hot CCR condition code flags and inner arithmetic.
-- [ ] No `#[inline]` on functions > 15–20 lines of complex control flow or dispatch function pointers.
-- [ ] `#[inline(never)]` on cold exception/trap vectors and error dumps (keeping L1i cache dense).
+- [ ] `#[inline(never)]` on cold exception/trap vectors, address error dumps, and panic paths.
+
 
 ### D. Workspace & Architecture
 - [ ] Respects 3-tier re-export strategy (Tier 1: config, Tier 2: peers memory_bus/m68000, Tier 3: sub-components rtc/copper/blitter).

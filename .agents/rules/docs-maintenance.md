@@ -20,5 +20,13 @@ Whenever implementing, refactoring, or modifying any subsystem in this repositor
   - **Mandatory Dual-Layer Linking:** Every design document must maintain Layer 1 (in-text contextual links to related subsystems, rules, and Rust source files) and Layer 2 (a structured referential section at the bottom, `## Reference Documentation & Upstream Ground Truth`, linking to official hardware manuals, reference emulators, and crate sources with 1-sentence analytical descriptions).
   - **Zero Broken Links Policy:** All relative links must have mathematically verified path depths (`../Reference/` for reference manuals, `../../../crates/` for crates, `../../../ref_src/` for reference emulators) and resolve strictly to valid files on disk. Verified via `cargo test -p test_runner --test test_architecture_rules`.
   - **Inverted Pyramid Information Hierarchy:** Documents must lead with scope, block diagrams, and core specifications in the top 20–50 lines. Avoid the "bottom-heavy accumulation trap": integrate new insights into their proper architectural sections rather than appending them as trailing afterthoughts.
+- **Major Roadmap Milestone Completion Gate (Compacting & Pruning):** Whenever an agent completes a major milestone in [ROADMAP.md](../../ROADMAP.md):
+  - **Diary Compaction (`compact-diary`):** Invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) to synthesize older completed milestone entries in [DIARY.md](../../DIARY.md) into high-level architectural digests, preserving evolutionary rationale and invariants while keeping recent entries granular.
+  - **Dead Code Pruning (`prune-dead-code`):** Invoke the `prune-dead-code` skill ([`.agents/skills/prune-dead-code/`](../skills/prune-dead-code/SKILL.md)) to audit and eliminate unreferenced functions, obsolete constants, unused imports, and superseded scaffolding across workspace crates.
+- **Strict Non-Redundancy in `AGENTS.md` (Constitutional Indexing Only):**
+  - **Zero Content Duplication:** `AGENTS.md` is the foundational architectural constitution and index for the emulator. It must **never duplicate** verbose operational rules, full skill procedures, or extensive checklists that are already modularized under `.agents/rules/*.md`.
+  - Maintain only concise, 1-line pointers to rule files in Section 1 and high-level checklist bullets in Section 4.
+  - This preserves context token efficiency and strictly guarantees `AGENTS.md` remains below the 23,000-byte ceiling.
 - The design specifications in `Obsidian/Amiga/Design/` and the engineering narrative in `DIARY.md` are living, permanent references and must always stay synchronized with the active code.
+
 

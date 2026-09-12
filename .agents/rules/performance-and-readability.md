@@ -5,10 +5,10 @@ trigger: always_on
 # High Performance & Host CPU Mechanical Sympathy (with Zero Readability Compromise)
 
 ## 1. The Host Hardware Reality (Mechanical Sympathy)
-Modern host CPUs (x86_64, aarch64) are deeply pipelined (14–20+ execution stages) superscalar architectures:
-- **Branch Misprediction Penalty:** A single mispredicted branch (`if/else`, dynamic `match`) flushes the pipeline and wastes 15–20 CPU cycles.
-- **Instruction Cache (L1i):** Typically 32 KB to 64 KB. Keeping the hot instruction loop compact and cache-dense is essential for sustained 60 FPS / cycle-exact emulation.
-- **Data Cache (L1d):** Sequential, contiguous memory and flat arrays outperform pointer-chasing and scattered dynamic allocations.
+Modern host CPUs (x86_64, aarch64) are deeply pipelined superscalar architectures:
+- **Branch Predictability:** Avoid unpredictable runtime branches in hot paths. Cascaded dynamic conditionals flush execution pipelines.
+- **Contiguous Memory & Locality:** Sequential, flat array structures and compact data layouts outperform pointer chasing and scattered dynamic allocations.
+- **Compact Hot Path:** Keep the primary instruction execution loop clean and linear, moving cold error paths out-of-line.
 
 ---
 
@@ -18,11 +18,12 @@ Modern host CPUs (x86_64, aarch64) are deeply pipelined (14–20+ execution stag
 - Avoid nested dynamic conditionals in hot paths (e.g. `match opcode { ... match size { ... match ea_mode { ... } } }`).
 - **Code may be expansive ("rozległy"):** Favor specialized code generation or dedicated direct handlers (e.g., the 65,536-entry static dispatch table) where addressing mode, register, and operation size are baked in at compile time, eliminating runtime branch evaluation.
 
-### B. Intelligent Inlining & Cache-Dense Hot Paths
+### B. Intelligent Inlining & Lean Hot Paths
 - **`#[inline(always)]`**: Reserved for ultra-hot arithmetic/logic and CCR flag calculations ($X, N, Z, V, C$) executed on every single clock cycle.
 - **`#[inline]`**: For lightweight public getters, forwarding wrappers, and cross-crate helpers so LLVM can optimize across crate boundaries.
-- **`#[inline(never)]`**: Mandatory on cold exception paths (Address Error vector 3, Illegal instruction traps, bus fault dumps). Keeping complex recovery logic out-of-line keeps the hot dispatch loop contiguous and resident in L1i cache.
+- **`#[inline(never)]`**: Mandatory on cold exception paths (Address Error vector 3, Illegal instruction traps, bus fault dumps). Keeping complex recovery logic out-of-line keeps the hot dispatch path linear and prevents code bloat.
 - **No Inlining on Large Handlers**: Functions with > 15–20 lines of control flow or targets of indirect function pointers must not be forced inline.
+
 
 ### C. Zero Allocation in Emulation Loop
 - Strictly zero dynamic heap allocations (`Vec::new`, `Box::new`, `format!`, `String`) inside `step()`, `step_cck()`, memory access, or interrupt polling.
