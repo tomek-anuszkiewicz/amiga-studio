@@ -24,7 +24,6 @@ This skill provides operational procedures and automated tooling to enforce [`.a
   - Zero third-party dependencies (Python 3 standard library: `os`, `re`, `sys`, `pathlib`).
   - Scans Markdown (`.md`) and Rust (`.rs`) source files across `.agents/`, `Obsidian/Amiga/Design/`, and `crates/`.
   - Supports targeted file/folder scans, dry runs, and automated in-place fixes (`--fix`).
-- **Root Forwarder:** [`scripts/lint_attractors.py`](../../../scripts/lint_attractors.py) (convenience forwarder for global CLI workflows).
 - **Automated Architecture Test:** `test_zero_synthetic_attractors` in `crates/test_runner/tests/test_architecture_rules.rs` (enforces zero violations in `cargo test`).
 
 ---
@@ -35,10 +34,6 @@ This skill provides operational procedures and automated tooling to enforce [`.a
 Run the linter in validation mode:
 ```powershell
 python .agents/skills/attractor-discipline/scripts/lint_attractors.py
-```
-Or via the root wrapper:
-```powershell
-python scripts/lint_attractors.py
 ```
 - **Exit Code 0:** All scanned files are clean.
 - **Exit Code 1:** Attractor violations detected with line numbers, offending matched text, and grounded replacement suggestions.

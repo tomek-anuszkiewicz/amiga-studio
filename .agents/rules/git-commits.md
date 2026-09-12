@@ -77,7 +77,7 @@ Never commit to any branch (especially `master`) without running the repository 
 
 1. **Attractor & Vocabulary Discipline:**
    ```powershell
-   python scripts/lint_attractors.py
+   python .agents/skills/attractor-discipline/scripts/lint_attractors.py
    ```
 2. **Code Formatting:**
    ```powershell

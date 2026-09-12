@@ -94,7 +94,7 @@ Provide the audit report using the following standard template:
 - [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, roadmap updated, and `DIARY.md` chronological changelog updated.
 - [ ] **Path Privacy:** Zero external host paths.
 - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
-- [ ] **Attractor & Vocabulary Discipline:** `python scripts/lint_attractors.py` passed cleanly (zero quarantined terms).
+- [ ] **Attractor & Vocabulary Discipline:** `python .agents/skills/attractor-discipline/scripts/lint_attractors.py` passed cleanly (zero quarantined terms).
 - [ ] **Test Coverage:** All workspace tests pass 100% green (`cargo test`).
 
 **Verdict:** [APPROVED | CHANGES REQUESTED]

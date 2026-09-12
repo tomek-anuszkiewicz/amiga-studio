@@ -64,55 +64,56 @@ The goal of this repository is to build a modern, system-agnostic, cycle-exact A
 
 ---
 
-## 3. Post-Clone Setup & Prerequisites
+## 3. Compiling & Running the Emulator
 
-Follow these one-time preparation steps after cloning the repository:
+A freshly cloned repository is **100% self-contained for compilation and execution**: zero external downloads or bootstrapping steps are required to build and launch the emulator core or GUI.
 
-### 3.1 Rust Toolchain
-Ensure Rust stable is installed with the WASM target:
+### 3.1 Prerequisites
+Ensure the Rust stable toolchain is installed with the WebAssembly compilation target:
 ```powershell
+# Add WebAssembly target for browser builds
 rustup target add wasm32-unknown-unknown
 ```
 
-### 3.2 AI Code Intelligence & Tooling
-To drive autonomous agents and semantic navigation across this codebase:
+*(Optional)* For syntax-aware code pattern matching:
 ```powershell
-# Install AST-Grep for syntax-aware pattern searches
 winget install ast-grep
-
-# Update shell if using uv / Python tooling
-uv tool update-shell
 ```
 
----
-
-## 4. Running the Emulator & Developer Studio
-
-The emulator features a unified frontend supporting both desktop native execution and WebAssembly browser play, with dual execution modes (Full Developer GUI vs Clean Game Mode).
-
-### 4.1 Quick Start (Desktop Native)
+### 3.2 Compiling from Source
 ```powershell
-# Run the Developer Studio (default on desktop)
+# Build entire emulator workspace (debug profile)
+cargo build
+
+# Build optimized native release binary for the GUI
+cargo build --release -p gui
+
+# Typecheck core and GUI for WebAssembly
+cargo check --target wasm32-unknown-unknown
+```
+
+### 3.3 Running the Emulator
+The emulator features a unified frontend supporting both desktop native execution and WebAssembly browser play, with dual execution modes:
+
+```powershell
+# 1. Developer Studio (desktop default: live CPU registers, memory hex grid, time-travel scrubber)
 cargo run -p gui
 
-# Run directly in Clean Standalone Game Mode (hides all docks)
+# 2. Clean Standalone Game Mode (hides all docks, raw 50 Hz PAL video output)
 cargo run -p gui -- --game
 
-# Load a compiled binary machine code file at startup (e.g. at $001000)
+# 3. Load arbitrary machine code binary at startup (e.g. at $001000)
 cargo run -p gui -- --load path/to/program.bin --addr 001000
-```
 
-### 4.2 WebAssembly (Browser Canvas)
-```powershell
-# Serve in browser via Trunk (defaults to Clean Game Mode)
+# 4. WebAssembly (Browser Canvas via Trunk)
 trunk serve crates/gui/index.html --open
 ```
 
-### 4.3 Environment Variables
+#### Environment Variables
 - `AMIGA_DEV_GUI=1`: Forces Developer Studio mode at startup.
 - `AMIGA_DEV_GUI=0`: Forces Clean Standalone Game mode at startup.
 
-### 4.4 Global Keybindings & Controls
+### 3.4 Global Keybindings & Controls
 | Shortcut | Action | Description |
 |---|---|---|
 | **`F12`** | **Toggle GUI / Game Mode** | Switches between Developer GUI and Clean Screen. In game mode, pauses emulation immediately to inspect state. |
@@ -125,7 +126,7 @@ trunk serve crates/gui/index.html --open
 | **`Ctrl + R`** | **Reset Cold** | Restores hardware state and resets CPU vectors from memory. |
 | **Drag & Drop** | **Quick File Injection** | Drag any `.bin`, `.rom`, or executable directly onto the window. |
 
-### 4.5 Interactive Debugging, Temporal Navigation & Breakpoints
+### 3.5 Interactive Debugging, Temporal Navigation & Breakpoints
 - **Temporal Time-Travel Debugging (>=1.0s PAL Execution):**
   - High-capacity circular ring buffer (default 250,000 frames) recording cycle-exact CPU states with zero heap allocations in hot paths.
   - Multi-granularity navigation: `[⏮ First]`, `[◀◀ Frame]` (~70,824 CCK PAL video frame), `[-10]`, `[◀ -1]`, `[+1 ▶]`, `[+10]`, `[Frame ▶▶]`, and `[Live Head ⏭]`.
@@ -139,6 +140,52 @@ trunk serve crates/gui/index.html --open
 - **CPU Registers & Diff Highlights:** Click any register value ($D_0-D_7, A_0-A_7, PC, SR, USP, SSP$) to edit its hex value. Editing $PC$ automatically primes prefetch. Changed registers and flags glow in cyan.
 - **Memory Hex Grid:** Click any byte to edit inline. Tab/Enter advances to the next byte, Esc cancels. Mutated bytes glow in amber/cyan.
 - **Disassembly In-Place Editing:** Click the pencil icon (`✏`) to edit the instruction using standard assembly (e.g. `NOP`, `MOVE.W D0, D1`) or raw hex (`4E71`). **Byte size invariance is strictly enforced**: if the replacement instruction differs in size from the original instruction, the change is rejected with an error banner.
+
+---
+
+## 4. Bootstrapping the Environment (`-Doc` vs `-Test`)
+
+> [!NOTE]
+> **Is bootstrapping mandatory?**
+> - **NO** if you only want to build and run the emulator (`cargo run -p gui`) or run core subsystem unit tests (`cargo test -p m68000`, `cargo test -p memory_bus`).
+> - **YES** if you want to either:
+>   1. Interact with AI agents, query hardware reference manuals, and develop design specifications (**Knowledge & Documentation Bootstrap**).
+>   2. Compile and run the cycle-exact silicon test suite (`crates/test_runner`) or custom chipset regression disks (**Verification & Test Suite Bootstrap**).
+
+The repository provides a dedicated runner script (`tools/bootstrap.ps1`) supporting selective switches:
+
+| Bootstrap Mode | Switch | Primary Purpose | What It Provisions | When Required |
+| :--- | :--- | :--- | :--- | :--- |
+| **Knowledge & AI Documentation** | `-Doc` | AI agent pair-programming, technical Q&A, hardware register research | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, Guru book (`Obsidian/Amiga/Reference/`), and design notes (`Obsidian/Amiga/Design/`) | When authoring new features, investigating custom chip circuit details, or querying design specs via local RAG |
+| **Verification & Hardware Test Suites** | `-Test` | Exhaustive instruction validation & DMA contention tests | Verifies/prepares Tom Harte physical silicon test vectors in `ref_src/SingleStepTests-680x0/68000/v1/` (124 JSON suites, ~1,000,000 vectors) and regression test disks (`tools/AmigaTestKit`, `ref_src/vAmigaTS`) | When compiling `test_runner`, running `cargo test -p test_runner --test test_singlestep`, or executing Cartesian DMA contention stress tests |
+| **Complete Environment** | `-All` | Complete developer & testbed preparation | Executes both Documentation and Hardware Test Suite bootstrapping | Initial developer setup or full CI environment initialization |
+
+### 4.1 Tier 1: Knowledge & Documentation Bootstrap (`-Doc`)
+Run this tier when you want to pair-program with AI agents or execute semantic search over Commodore hardware reference documentation:
+```powershell
+# Provision local vector database and index technical documentation:
+.\tools\bootstrap.ps1 -Doc
+```
+*Direct CLI alternative:*
+```powershell
+.\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga" --source amiga
+```
+
+### 4.2 Tier 2: Verification & Hardware Test Suite Bootstrap (`-Test`)
+Run this tier before running the exhaustive single-step M68000 test suite or DMA contention testbench:
+```powershell
+# Verify presence of physical silicon test vectors and run a smoke check:
+.\tools\bootstrap.ps1 -Test
+```
+- **Physical Test Vectors:** Validates the presence of `ref_src/SingleStepTests-680x0/68000/v1/*.json`. If missing, clone or extract from [SingleStepTests/680x0](https://github.com/SingleStepTests/680x0).
+- **System Regression Media:** Verifies `tools/AmigaTestKit/AmigaTestKit.adf` and `ref_src/vAmigaTS/`.
+- **Smoke Validation:** Automatically runs `cargo test -p test_runner --test test_singlestep test_nop` to confirm test harness operational readiness.
+
+### 4.3 Full Bootstrap (`-All`)
+To bootstrap both documentation knowledge bases and verification test vectors in one step:
+```powershell
+.\tools\bootstrap.ps1 -All
+```
 
 ---
 

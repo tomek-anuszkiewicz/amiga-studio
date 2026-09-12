@@ -1060,7 +1060,29 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_dma_cartesian`: All 19 tests passed in 37.49s (0 failures).
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.53s.
   - `cargo fmt --all -- --check`: Passed cleanly.
-  - `python scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+
+---
+
+### [2026-09-12 15:45 CEST] — Compiling, Running & Two-Tier Bootstrapping Architecture
+- **Affected Subsystems**:
+  - `README.md`: Added Section 3 ("Compiling & Running the Emulator") and Section 4 ("Bootstrapping the Environment (-Doc vs -Test)"). Clarified that a fresh clone compiles and runs the GUI out of the box without any external downloads or bootstrapping.
+  - `tools/bootstrap.ps1`: Implemented repository bootstrapper supporting `-Doc` (AI documentation & local RAG vector indexing) and `-Test` (Tom Harte physical silicon single-step vectors & test media validation).
+  - `scripts/`: Deleted `scripts/lint_attractors.py` and removed root `scripts/` directory, centralizing the linter cleanly inside `.agents/skills/attractor-discipline/scripts/lint_attractors.py`.
+  - `.agents/rules/` & `.agents/skills/`: Updated `attractor-discipline.md`, `git-commits.md`, `attractor-discipline/SKILL.md`, and `code-review/SKILL.md` to point directly to the packaged skill script.
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated a clear two-tier bootstrapping architecture addressing the user's workflow requirements:
+    1. *Knowledge & AI Documentation Bootstrap (`-Doc`):* Provisions Qdrant and indexes `Obsidian/Amiga/` (Commodore manuals and design notes) into local vector search for AI agent interaction and technical research.
+    2. *Verification & Hardware Test Suite Bootstrap (`-Test`):* Verifies and provisions Tom Harte `SingleStepTests-680x0` hardware test vectors and system test disks (`vAmigaTS`, `AmigaTestKit`) for compiling and running test suites.
+  - Provided complete compilation instructions (`cargo build`, `cargo build --release -p gui`, `cargo check --target wasm32-unknown-unknown`) and desktop/WASM runtime commands (`cargo run -p gui`, `--game`, `--load`, `trunk serve`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Separation of Runtime vs Research/Test Dependencies:* A developer or user should never be forced to download ~1 GB of test vectors or run vector databases just to build and enjoy the emulator. Decoupling the workflow into self-contained compilation, optional RAG documentation indexing (`-Doc`), and optional exhaustive test vector provisioning (`-Test`) maintains a lightweight developer experience.
+- **Verification & Test Results**:
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1 -Test`: Passed cleanly, verifying 124 hardware test suites and executing smoke test (`test_nop`).
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1`: Usage menu verified.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.53s.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
 
 
