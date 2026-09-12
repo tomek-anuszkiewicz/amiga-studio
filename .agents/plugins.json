@@ -1,0 +1,14 @@
+{
+  "entries": [
+    {
+      "path": "~/.gemini/config/plugins",
+      "exclude": [
+        "science",
+        "modern-web-guidance-plugin",
+        "gemini-api",
+        "google-antigravity-sdk"
+      ]
+    }
+  ]
+}
+

@@ -2038,3 +2038,20 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 15 tests passed in 0.81s (including `test_zero_inline_tests_in_crates_src`).
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 304 files scanned, 0 attractors found.
   - `cargo fmt --all -- --check`: 100% compliant.
+
+---
+
+### [2026-09-12 21:40 CEST] — Agent Customization Filtering: Exclusion of Non-Emulator Plugins & Skills
+- **Affected Subsystems**:
+  - `.agents/plugins.json`: Configured workspace plugin declarations with `entries` scanning `~/.gemini/config/plugins` and excluding irrelevant external plugins (`science`, `modern-web-guidance-plugin`, `gemini-api`, `google-antigravity-sdk`).
+  - `.agents/skills.json`: Configured workspace skill declarations restricting discovery strictly to project skills under `.agents/skills`.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed context token budget saturation caused by 35+ biological, chemical, and generic web guidance skills installed in the global user configuration root (`~/.gemini/config/plugins`).
+  - The previous influx of external skills had triggered Antigravity's context limit pruning, which dropped essential emulator skills (`amigaguide-to-markdown` and `pdf-to-markdown`).
+  - Formulated `.agents/plugins.json` and `.agents/skills.json` using Antigravity's JSON configuration schema to cleanly restrict agent skills strictly to Amiga 500 emulator engineering (Rust, egui, WebAssembly).
+- **Architectural Rationale & Trade-Offs**:
+  - *Context Optimization & Relevance:* Eliminating 35+ irrelevant bioinformatics and web tools frees prompt tokens and restores all project-specific skills into the active agent context.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 15 tests passed in 0.73s (verifying path privacy, zero hardcoded paths, and rule compliance).
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across all files.
+
