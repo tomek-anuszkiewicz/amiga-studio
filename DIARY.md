@@ -1439,3 +1439,19 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.57s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:51 CEST] — Removed docs/worktrees.md (Generic Git Knowledge Cleanup)
+- **Affected Subsystems**:
+  - `docs/worktrees.md`: Deleted redundant documentation file.
+  - `README.md`: Removed link to `docs/worktrees.md` from the documentation index.
+- **What Was Changed (The Concrete Reality)**:
+  - Removed `docs/worktrees.md` via `git rm`.
+  - Updated `README.md` Section 3 to remove the reference to `docs/worktrees.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Eliminating Redundant Generic Guides:* Generic Git tooling (`git worktree add`, `git worktree remove`) and multi-agent coordination are general software engineering concepts, not Amiga emulator-specific architectural documentation. Pruning generic guides keeps the repository's `docs/` folder focused strictly on emulator architecture, verification, and hardware design.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.56s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

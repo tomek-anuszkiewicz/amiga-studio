@@ -104,7 +104,6 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 - [**Developer Studio & Time-Travel Debugger**](docs/debugger.md): Developer controls, time-travel rewind ring buffer, live register inspection, memory hex grid editing, disassembly patching, and breakpoints.
 - [**Test Suite & Verification Framework**](docs/testing.md): Physical hardware single-step test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), and CLI regression diagnostics.
 - [**AI Agent Engineering & Pair-Programming Guide**](docs/ai_agents.md): Autonomous AI agent pairing guidelines, rules adherence, RAG knowledge base, Graphify AST, and specialized skills.
-- [**Parallel Development with Git Worktrees**](docs/worktrees.md): Multi-branch parallel workflows and isolated build contexts.
 
 ### Subsystem Design Specifications (`Obsidian/Amiga/Design/`)
 
