@@ -35,3 +35,13 @@ Structure all files under `crates/desktop_gui/src/layout/` to strictly mirror wh
 ## 4. Render Loop Performance
 - **Zero Allocations in Render Loops:** Avoid allocating `Vec`s or formatting strings in inner loops of tables and grids. Use stack buffers or pre-formatted labels.
 - **Virtual Scrolling:** For large memory views (512 KB) and trace logs, always use `egui::ScrollArea::show_rows` to only compute and render rows currently visible in the viewport.
+
+---
+
+## 5. Mandatory Automated Integration Testing & Invariants (`crates/gui/tests/`)
+- **Simulated Headless Input Passes:** Every user interaction, keyboard shortcut, drag-and-drop, inline editing lifecycle, modal dialog, and time-travel navigation must be accompanied by automated integration tests using `egui::Context::default()` and `ctx.run(RawInput, |ctx| { app.update_ui(ctx); })`.
+- **Zero Graphical Regressions Mandate:** Whenever a graphical bug, misalignment, or interaction defect is reported or fixed:
+  1. Analyze whether the defect or its invariant can be asserted headlessly.
+  2. Implement an automated integration test in `crates/gui/tests/test_interactions.rs` or `test_gui.rs` verifying the expected behavior (e.g. text edit focus acquisition, click-outside dismissal, Escape cancellation, grid slot geometry invariance).
+  3. No interactive UI bugfix is complete without passing automated integration tests.
+

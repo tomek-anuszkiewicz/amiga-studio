@@ -41,6 +41,7 @@ impl Cpu {
         let pc_hi = bus.read_word_debug(0x000004);
         let pc_lo = bus.read_word_debug(0x000006);
         self.state.pc = ((pc_hi as u32) << 16) | (pc_lo as u32);
+        self.state.instruction_pc = self.state.pc;
 
         // Prime prefetch pipeline
         self.state.ir = bus.read_word_debug(self.state.pc);
@@ -73,7 +74,9 @@ impl Cpu {
     #[inline(always)]
     fn ensure_instruction_ready(&mut self) -> bool {
         if self.state.micro.micro_step == 0 && self.state.micro.current_steps.is_empty() {
-            self.state.instruction_pc = self.state.pc.wrapping_sub(4);
+            if self.state.instruction_pc == 0 {
+                self.state.instruction_pc = self.state.pc.wrapping_sub(4);
+            }
             self.initiate_current_instruction();
         }
 
@@ -261,10 +264,13 @@ impl Cpu {
     /// execution in unit tests or synthetic debugger harnesses.
     #[inline]
     pub fn set_pc_and_prime_prefetch(&mut self, target_pc: u32, bus: &mut dyn AddressBus) {
+        self.state.instruction_pc = target_pc;
         self.state.pc = target_pc;
         self.state.ir = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);
         self.state.prefetch[0] = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);
+        self.state.micro.reset();
+        self.initiate_current_instruction();
     }
 }

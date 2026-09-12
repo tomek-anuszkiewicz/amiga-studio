@@ -119,7 +119,63 @@ uv tool update-shell
 
 ---
 
-## 4. Local Reference Repositories & Tooling Catalog
+## 4. Running the Emulator & Developer Studio
+
+The emulator features a unified frontend supporting both desktop native execution and WebAssembly browser play, with dual execution modes (Full Developer GUI vs Clean Game Mode).
+
+### 4.1 Quick Start (Desktop Native)
+```powershell
+# Run the Developer Studio (default on desktop)
+cargo run -p gui
+
+# Run directly in Clean Standalone Game Mode (hides all docks)
+cargo run -p gui -- --game
+
+# Load a compiled binary machine code file at startup (e.g. at $001000)
+cargo run -p gui -- --load path/to/program.bin --addr 001000
+```
+
+### 4.2 WebAssembly (Browser Canvas)
+```powershell
+# Serve in browser via Trunk (defaults to Clean Game Mode)
+trunk serve crates/gui/index.html --open
+```
+
+### 4.3 Environment Variables
+- `AMIGA_DEV_GUI=1`: Forces Developer Studio mode at startup.
+- `AMIGA_DEV_GUI=0`: Forces Clean Standalone Game mode at startup.
+
+### 4.4 Global Keybindings & Controls
+| Shortcut | Action | Description |
+|---|---|---|
+| **`F12`** | **Toggle GUI / Game Mode** | Switches between Developer GUI and Clean Screen. In game mode, pauses emulation immediately to inspect state. |
+| **`F5` / `Space`** | **Run / Pause** | Toggles continuous free-running emulation. |
+| **`F10`** | **Step Instruction** | Executes exactly 1 M68000 instruction, recording trace & history. |
+| **`Shift + F10`** | **Step Backward (Rewind)** | Restores previous execution snapshot from the high-capacity temporal buffer. |
+| **`F11`** | **Step CCK** | Steps 1 Color Clock phase (2 CPU clocks, CCK1 / CCK2). |
+| **`Alt + T`** | **Toggle Temporal Recording** | Dynamically activates or pauses temporal execution history recording. |
+| **`Ctrl + O`** | **Load Binary** | Opens file dialog to inject compiled machine code at any arbitrary RAM address. |
+| **`Ctrl + R`** | **Reset Cold** | Restores hardware state and resets CPU vectors from memory. |
+| **Drag & Drop** | **Quick File Injection** | Drag any `.bin`, `.rom`, or executable directly onto the window. |
+
+### 4.5 Interactive Debugging, Temporal Navigation & Breakpoints
+- **Temporal Time-Travel Debugging (>=1.0s PAL Execution):**
+  - High-capacity circular ring buffer (default 250,000 frames) recording cycle-exact CPU states with zero heap allocations in hot paths.
+  - Multi-granularity navigation: `[⏮ First]`, `[◀◀ Frame]` (~70,824 CCK PAL video frame), `[-10]`, `[◀ -1]`, `[+1 ▶]`, `[+10]`, `[Frame ▶▶]`, and `[Live Head ⏭]`.
+  - Scrubber slider with real-time millisecond offsets (e.g. `-245.3 ms`) and relative CCK deltas.
+  - Direct target cycle jumping: enter any CCK cycle number (`[ Jump to CCK: #_______ ] [ Go ]`) to scrub directly to that hardware moment.
+  - Buffer capacity presets: `25k (~0.1s)`, `50k (~0.2s)`, `100k (~0.4s)`, `250k (~1.0s)`, `500k (~2.0s)` dynamically resizable on the fly.
+- **Breakpoints & Watchpoints Manager:**
+  - Full interactive panel in Right Dock to inspect, toggle, add, and delete PC execution breakpoints.
+  - Register-based conditional rules (e.g. `PC == $001004 IF D0 == $2A`).
+  - Memory range watchpoints monitoring `Read`, `Write`, or `Any` access across arbitrary address blocks.
+- **CPU Registers & Diff Highlights:** Click any register value ($D_0-D_7, A_0-A_7, PC, SR, USP, SSP$) to edit its hex value. Editing $PC$ automatically primes prefetch. Changed registers and flags glow in cyan.
+- **Memory Hex Grid:** Click any byte to edit inline. Tab/Enter advances to the next byte, Esc cancels. Mutated bytes glow in amber/cyan.
+- **Disassembly In-Place Editing:** Click the pencil icon (`✏`) to edit the instruction using standard assembly (e.g. `NOP`, `MOVE.W D0, D1`) or raw hex (`4E71`). **Byte size invariance is strictly enforced**: if the replacement instruction differs in size from the original instruction, the change is rejected with an error banner.
+
+---
+
+## 5. Local Reference Repositories & Tooling Catalog
 
 The `ref_src/` directory houses 17 local reference implementations, testbenches, and hardware descriptions:
 
@@ -141,22 +197,22 @@ The `ref_src/` directory houses 17 local reference implementations, testbenches,
 - **[amiga-stuff-testkit](ref_src/amiga-stuff-testkit-v1.21)** — [GitHub](https://github.com/keirf/amiga-test-kit): Keir Fraser's Amiga Test Kit (ADF boot disk) for testing CIA timers, floppy PLL decoding, memory autoconfig, and chipset interrupts.
 - **[vAmigaTS](ref_src/vAmigaTS)** — [GitHub](https://github.com/dirkwhoffmann/vAmigaTS): Automated regression test suite consisting of ADF test disks and reference video renders for Copper lists, Blitter fills, and raster effects.
 
-### 4.4 Reference System Emulators
+### 5.4 Reference System Emulators
 - **[WinUAE](ref_src/WinUAE-6030)** — [GitHub](https://github.com/tonioni/WinUAE): Most comprehensive cycle-exact Amiga emulator by Toni Wilen. Ultimate reference for edge cases (floppy MFM sync, CIA TOD timers, Gary/Agnus bus contention).
 - **[vAmiga](ref_src/vAmiga-4.5)** — [GitHub](https://github.com/dirkwhoffmann/vAmiga): Clean, object-oriented C++ A500/A1000/A2000 emulator by Dirk W. Hoffmann. Reference for decoupling Agnus, Denise, and Paula across a unified CCK grid.
 - **[ScriptedAmigaEmulator](ref_src/ScriptedAmigaEmulator)** — [GitHub](https://github.com/naTmeg/ScriptedAmigaEmulator): High-level JavaScript Amiga emulator by Rupert Hausberger.
 - **[MAME](ref_src/mame-mame0289)** — [GitHub](https://github.com/mamedev/mame): Reference implementations for shared peripheral chips (MOS 8520 CIA, M68000 CPU).
 
-### 4.5 Visual Post-Processing
+### 5.5 Visual Post-Processing
 - **[RetroVisor.app](ref_src/RetroVisor.app)** — [GitHub](https://github.com/dirkwhoffmann/RetroVisor): CRT shader pipeline reference (scanlines, phosphor bloom, curvature, shadow mask) by Dirk W. Hoffmann.
 
 ---
 
-## 5. Compiling & Running Tests
+## 6. Compiling & Running Tests
 
 The emulator features a multi-tiered test architecture: standard subsystem unit tests, automated architecture rule validation, dual-suite M68000 single-step instruction verification (MAME + Tom Harte hardware vectors), Cartesian DMA contention stress tests, and a dedicated diagnostic CLI.
 
-### 5.1 Standard Compilation & Subsystem Unit Tests
+### 6.1 Standard Compilation & Subsystem Unit Tests
 ```powershell
 # Build emulator core and tools
 cargo build
@@ -174,13 +230,13 @@ cargo test -p rtc           # MSM6242B Real-Time Clock
 cargo test -p debugger      # Interactive disassembly and breakpoint engine
 ```
 
-### 5.2 Automated Architecture Rules Compliance
+### 6.2 Automated Architecture Rules Compliance
 Enforces architectural rules and quality constraints defined in [AGENTS.md](AGENTS.md) (formatting, file size limits $\le 800$ lines, zero runtime panics/unwraps, path privacy, zero custom macros, and inlining rules):
 ```powershell
 cargo test -p test_runner --test test_architecture_rules
 ```
 
-### 5.3 M68000 SingleStepTests (Dual-Suite Hardware Verification)
+### 6.3 M68000 SingleStepTests (Dual-Suite Hardware Verification)
 Validates CPU instruction execution against two independent, complementary test suites:
 1. **MAME SingleStepTests:** [`ref_src/SingleStepTests-m68000/v1/`](ref_src/SingleStepTests-m68000/v1/) (127 suites, includes Line-A, Line-F, STOP).
 2. **Tom Harte SingleStepTests-680x0:** [`ref_src/SingleStepTests-680x0/68000/v1/`](ref_src/SingleStepTests-680x0/68000/v1/) (124 suites, ~1,000,000 test vectors, ground truth for `TAS` RMW cycles).
@@ -232,7 +288,7 @@ To evaluate an arbitrary sample size (e.g. 200 or 500 test cases per suite):
   SINGLESTEP_LIMIT=500 cargo test -p test_runner --test test_singlestep
   ```
 
-### 5.4 Cartesian DMA Contention Verification
+### 6.4 Cartesian DMA Contention Verification
 Validates cycle-exact M68000 micro-stepping and wait-state handling under Agnus DMA bus contention across the full combinatorial Cartesian product:
 - **Address Permutations ($2^k$):** Sweeps all role assignments of memory cells touched by the instruction (`ChipRam` vs `FastRam`).
 - **DMA Schedule Permutations ($2^M$):** Sweeps every bit pattern of stalled vs free CCK slots across the execution window.
@@ -249,7 +305,7 @@ cargo test -p test_runner --test test_dma_cartesian
 cargo test -p test_runner --test test_dma_cartesian test_dma_cartesian_system_and_traps
 ```
 
-### 5.5 CLI Test Diagnostics, Coverage & Regression Tracker
+### 6.5 CLI Test Diagnostics, Coverage & Regression Tracker
 The `test_runner` crate includes a standalone CLI tool for inspecting coverage matrices, viewing live failure diagnostics, and detecting regressions:
 
 ```powershell
@@ -268,7 +324,7 @@ cargo run -p test_runner -- --suite ADD.b
 
 ---
 
-## 6. Driving Future Development with AI Agents
+## 7. Driving Future Development with AI Agents
 
 This repository is configured for autonomous pair-programming with AI agents:
 
@@ -280,11 +336,11 @@ This repository is configured for autonomous pair-programming with AI agents:
 
 ---
 
-## 7. Git Worktree Workflow (Parallel Branch Development)
+## 8. Git Worktree Workflow (Parallel Branch Development)
 
 For isolated branch development, parallel testing, or running concurrent agent sessions without switching branches, use **Git Worktrees**:
 
-### 7.1 Creating a Worktree
+### 8.1 Creating a Worktree
 ```powershell
 # Create branch and checkout into sibling directory
 git worktree add ..\Amiga-<branch-name> -b <branch-name>

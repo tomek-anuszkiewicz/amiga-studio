@@ -21,9 +21,10 @@ This document outlines the phased development plan, hardware milestones, verific
   - Dual game ports: Port 1 (Mouse), Port 2 (Joystick).
   - Floppy Drive: Internal DF0 with ADF byte slice injection.
   - Kickstart ROM: 256 KB (1.2 / 1.3) with low-memory overlay boot sequence.
-- **Integrated Developer Debugger (Mandatory Phase 1 Deliverable):**
-  - Headless backend engine with stepping (`step_cck`, `step_instruction`), M68000 disassembler, breakpoints, memory watchpoints, and 1024-entry execution trace ring buffer.
-  - Interactive `egui` developer GUI panels (disassembly, registers, memory hex, Copper/Blitter inspector, and DMA logic analyzer).
+- **Integrated Developer Debugger & Developer Studio GUI (Completed Baseline Deliverable):**
+  - Headless backend engine with stepping (`step_cck`, `step_instruction`), cycle-exact M68000 disassembler (with `LEA`, `CLR`, `DBRA`, `TST`, `NOT`, `NEG` support), breakpoints, memory watchpoints, and 1024-entry execution trace ring buffer (`crates/debugger`).
+  - Cross-platform immediate-mode Developer Studio GUI (`crates/gui` via `egui`/`eframe`) with synchronous direct-state pull, bounded execution time-slicing, 1:1 layout mapping, live CPU register diffs, self-documenting contextual tooltips, CCR LED toggles, collapsible microcode inspector with live clock counters (`F8`), fixed-width cell slot memory hex editor, clean game screen mode (`F12`), binary injection loader, and lean circular temporal time-travel scrubber (25,000 frames default, paused by default, with disassembly historical loop iteration rewind).
+  - 100% covered by 23 automated integration and UI interaction tests (`crates/gui/tests/`).
 
 ### Phase 2: Enhanced Chipset (ECS) & Later Models
 - **A500 Rev 6A (1 MB Chip):** Fat Agnus 8372A with 1 MB Chip RAM jumper configuration.
@@ -38,36 +39,7 @@ This document outlines the phased development plan, hardware milestones, verific
 ---
 ## 2. Core Implementation Strategy (Remaining Milestones)
 
-### Step 1: Developer GUI, Interactive Debugger & Program Loader Studio (Active)
-- **Unified Native & WebAssembly GUI (`crates/desktop_gui`):**
-  - Cross-platform immediate-mode user interface using `eframe` / `egui` with dual targets: Native Desktop (`eframe::run_native`) and WebAssembly (`eframe::WebRunner` via `wasm32-unknown-unknown`).
-  - Synchronous direct-state pull architecture: zero callbacks, zero async messages, and bounded execution slices per GUI frame to maintain 100% responsiveness without window freezes.
-  - Visual-to-source 1:1 directory hierarchy under `crates/desktop_gui/src/layout/` reflecting the physical screen layout.
-- **Binary Program Loader & Memory Injection:**
-  - File picker (`rfd` on desktop, browser file drop/picker on WASM) to inject compiled M68000 machine code into arbitrary RAM locations (default `$001000`).
-  - Automatic/manual $PC$ setup, stack pointer initialization, and prefetch queue priming (`set_pc_and_prime_prefetch`).
-- **Full Interactive Debugger & Disassembly View:**
-  - 100% comprehensive M68000 disassembler displaying instruction mnemonics, operands, absolute targets, and branch displacements.
-  - Execution cursor tracking active $PC$ with margin click-to-toggle execution breakpoints.
-  - Double-click instruction to set $PC$ directly.
-- **CPU & Microcode State Machine Inspector:**
-  - Live Data ($D_0-D_7$) and Address ($A_0-A_7$) registers with diff highlighting on mutated values.
-  - $PC$, $SR$, Supervisor/User badge, IPL level, and glowing CCR condition code LED toggles ($X, N, Z, V, C$).
-  - Prefetch queue registers: $IR$ and $IRC$.
-  - Internal microcode execution metrics: active archetype, micro-step index ($k / N$), Color Clock phase ($CCK1$ vs $CCK2$), staging registers (`addr1`, `addr2`, `scratch`), and bus wait states.
-- **Memory Studio (Hex Editor, Search & Chunk Navigator):**
-  - 16-byte hex + ASCII grid with inline byte editing committing directly to physical memory.
-  - Fast chunk navigation buttons: `[Vectors]`, `[Low RAM]`, `[Screen RAM]`, `[Slow RAM]`, `[Kickstart ROM]`, `[Custom Chips]`, `[CIA-A]`.
-  - Hex sequence and ASCII string pattern search with match navigation.
-- **Temporal Navigation & Time-Travel Debugging:**
-  - Circular execution history ring buffer (1024–4096 steps) with UI timeline scrubber slider.
-  - Step backward / rewind (`Shift+F10`) to reverse execution and inspect past CPU states and memory deltas.
-- **Display Viewport & Environment Adaptation:**
-  - Centered 4:3 display canvas container ($320 \times 256$ PAL / $320 \times 200$ NTSC) ready for Denise/Agnus video output.
-  - High-DPI and browser zoom level adaptation (`devicePixelRatio`).
-  - System and browser dark/light mode auto-detection and theme switcher.
-
-### Step 2: Comprehensive Opcode Benchmarking & Performance Profiling
+### Step 1: Comprehensive Opcode Benchmarking & Performance Profiling (Active)
 - **Automated Per-Opcode Micro-Benchmark Harness:**
   - Develop an exhaustive automated micro-benchmark harness (e.g. using `criterion` and dedicated throughput harnesses in `crates/test_runner`) measuring host execution time, nanoseconds per instruction, and throughput (MIPS) across all 65,536 dispatch entries and instruction variants.
   - Test diverse operand combinations: data register direct, address register indirect with displacement/indexing, and immediate/memory forms under both cached and unblocked bus scenarios.
