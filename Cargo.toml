@@ -2,6 +2,23 @@
 resolver = "2"
 members = [
     "crates/config",
+    "crates/copper",
+    "crates/blitter",
+    "crates/dma",
+    "crates/agnus",
+    "crates/sprites",
+    "crates/frame_builder",
+    "crates/mouse",
+    "crates/joystick",
+    "crates/denise",
+    "crates/audio",
+    "crates/floppy",
+    "crates/serial_port",
+    "crates/paula",
+    "crates/keyboard",
+    "crates/parallel_port",
+    "crates/cia",
+    "crates/machine_loop",
     "crates/rtc",
     "crates/memory_bus",
     "crates/m68000",
@@ -25,6 +42,23 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 bitflags = "2.4"
 flate2 = "1.0"
 config = { path = "crates/config" }
+copper = { path = "crates/copper" }
+blitter = { path = "crates/blitter" }
+dma = { path = "crates/dma" }
+agnus = { path = "crates/agnus" }
+sprites = { path = "crates/sprites" }
+frame_builder = { path = "crates/frame_builder" }
+mouse = { path = "crates/mouse" }
+joystick = { path = "crates/joystick" }
+denise = { path = "crates/denise" }
+audio = { path = "crates/audio" }
+floppy = { path = "crates/floppy" }
+serial_port = { path = "crates/serial_port" }
+paula = { path = "crates/paula" }
+keyboard = { path = "crates/keyboard" }
+parallel_port = { path = "crates/parallel_port" }
+cia = { path = "crates/cia" }
+machine_loop = { path = "crates/machine_loop" }
 rtc = { path = "crates/rtc" }
 memory_bus = { path = "crates/memory_bus" }
 m68000 = { path = "crates/m68000" }

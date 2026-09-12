@@ -175,7 +175,7 @@ fn test_simulated_register_inline_editing() {
     });
 
     // Value should be committed to D0 and edit mode closed
-    assert_eq!(app.session.cpu.state.d_long(0), 0x12345678);
+    assert_eq!(app.session.machine.cpu.state.d_long(0), 0x12345678);
     assert_eq!(app.active_reg_edit, None);
 
     // 2. Edit Status Register SR -> value $2700
@@ -193,7 +193,7 @@ fn test_simulated_register_inline_editing() {
     let _ = ctx.run(input_enter_sr, |ctx| {
         app.update_ui(ctx);
     });
-    assert_eq!(app.session.cpu.state.sr, 0x2700);
+    assert_eq!(app.session.machine.cpu.state.sr, 0x2700);
     assert_eq!(app.active_reg_edit, None);
 }
 
@@ -207,7 +207,10 @@ fn test_simulated_disassembly_inline_patching() {
     app.session.load_binary(0x001000, &code, true);
 
     // Initial instruction at $1000 is NOP
-    assert_eq!(app.session.bus.read_word_debug(0x001000), 0x4E71);
+    assert_eq!(
+        app.session.machine.memory_bus.read_word_debug(0x001000),
+        0x4E71
+    );
 
     // 1. Open inline edit buffer to patch with MOVE.W D0, D1 ($3200, 2 bytes)
     app.active_disasm_edit = Some(DisasmEditState {
@@ -232,7 +235,10 @@ fn test_simulated_disassembly_inline_patching() {
     });
 
     // Instruction in RAM must now be $3200 and edit mode closed
-    assert_eq!(app.session.bus.read_word_debug(0x001000), 0x3200);
+    assert_eq!(
+        app.session.machine.memory_bus.read_word_debug(0x001000),
+        0x3200
+    );
     assert!(app.active_disasm_edit.is_none());
 
     // 2. Size mismatch test: trying to replace 2-byte instruction with 8-byte instruction
@@ -265,7 +271,10 @@ fn test_simulated_disassembly_inline_patching() {
         .as_ref()
         .unwrap()
         .contains("Byte size mismatch"));
-    assert_eq!(app.session.bus.read_word_debug(0x001000), 0x3200);
+    assert_eq!(
+        app.session.machine.memory_bus.read_word_debug(0x001000),
+        0x3200
+    );
 }
 
 #[test]
@@ -289,7 +298,7 @@ fn test_simulated_breakpoint_form_and_trigger() {
 
     // Execution should have stopped precisely at breakpoint $001002
     assert_eq!(app.session.instructions_executed, 1);
-    assert_eq!(app.session.cpu.state.pc.wrapping_sub(4), 0x001002);
+    assert_eq!(app.session.machine.cpu.state.pc.wrapping_sub(4), 0x001002);
 }
 
 #[test]
@@ -353,16 +362,16 @@ fn test_startup_clean_memory() {
     assert!(!app.session.is_running);
     assert!(!app.session.temporal.is_recording());
     // Verify startup PC counter points to $000000 (0th cell) with valid SSP ($080000) and primed prefetch
-    assert_eq!(app.session.cpu.state.instruction_pc, 0x000000);
-    assert_eq!(app.session.cpu.state.pc, 0x000004);
-    assert_eq!(app.session.cpu.state.a_regs()[7], 0x080000);
-    assert_eq!(app.session.cpu.state.ssp, 0x080000);
-    assert_eq!(app.session.cpu.state.ir, 0x0000);
+    assert_eq!(app.session.machine.cpu.state.instruction_pc, 0x000000);
+    assert_eq!(app.session.machine.cpu.state.pc, 0x000004);
+    assert_eq!(app.session.machine.cpu.state.a_regs()[7], 0x080000);
+    assert_eq!(app.session.machine.cpu.state.ssp, 0x080000);
+    assert_eq!(app.session.machine.cpu.state.ir, 0x0000);
     assert_eq!(app.goto_addr_str, "000000");
 
     // Verify memory starts clean zeroed Chip RAM without auto-loaded programs
     for addr in [0x000000, 0x001000, 0x001002, 0x002000, 0x070000] {
-        let val = app.session.bus.read_word_debug(addr);
+        let val = app.session.machine.memory_bus.read_word_debug(addr);
         assert!(
             val == 0xFFFF || val == 0x0000,
             "Expected clean/unmapped memory, got ${:04X}",
@@ -375,19 +384,19 @@ fn test_startup_clean_memory() {
 fn test_ccr_led_badges_interactive_toggle() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
-    app.session.cpu.state.sr = 0x2700; // All CCR flags (0x1F) are 0
+    app.session.machine.cpu.state.sr = 0x2700; // All CCR flags (0x1F) are 0
 
     let _ = ctx.run(RawInput::default(), |ctx| {
         app.update_ui(ctx);
     });
 
     // Toggle Z flag (bit 2, mask 0x04)
-    app.session.cpu.state.sr ^= 0x04;
-    assert_eq!(app.session.cpu.state.sr & 0x04, 0x04);
+    app.session.machine.cpu.state.sr ^= 0x04;
+    assert_eq!(app.session.machine.cpu.state.sr & 0x04, 0x04);
 
     // Toggle X flag (bit 4, mask 0x10)
-    app.session.cpu.state.sr ^= 0x10;
-    assert_eq!(app.session.cpu.state.sr & 0x10, 0x10);
+    app.session.machine.cpu.state.sr ^= 0x10;
+    assert_eq!(app.session.machine.cpu.state.sr & 0x10, 0x10);
 }
 
 #[test]
@@ -419,7 +428,7 @@ fn test_register_edit_focus_and_dismissal_lifecycle() {
         app.update_ui(ctx);
     });
     assert!(app.active_reg_edit.is_none());
-    assert_ne!(app.session.cpu.state.d_long(0), 0xDEADBEEF);
+    assert_ne!(app.session.machine.cpu.state.d_long(0), 0xDEADBEEF);
 }
 
 #[test]
@@ -429,10 +438,10 @@ fn test_pc_instruction_address_normalization() {
     app.session.load_binary(0x001000, &code, true);
 
     // Hardware prefetch advances PC bus register to $001004
-    assert_eq!(app.session.cpu.state.pc, 0x001004);
+    assert_eq!(app.session.machine.cpu.state.pc, 0x001004);
 
     // Displayed/active instruction address is normalized to state.pc - 4 = $001000
-    let instruction_pc = app.session.cpu.state.pc.wrapping_sub(4) & 0x00FF_FFFF;
+    let instruction_pc = app.session.machine.cpu.state.pc.wrapping_sub(4) & 0x00FF_FFFF;
     assert_eq!(instruction_pc, 0x001000);
 }
 
@@ -449,17 +458,23 @@ fn test_disassembly_instruction_decoding_fibonacci() {
     ];
     app.session.load_binary(0x001000, &code, true);
 
-    let (dis0, len0) = debugger::disassemble(0x001000, |a| app.session.bus.read_word_debug(a));
+    let (dis0, len0) = debugger::disassemble(0x001000, |a| {
+        app.session.machine.memory_bus.read_word_debug(a)
+    });
     assert_eq!(dis0.mnemonic, "LEA");
     assert!(dis0.operands.contains("($00002000).L, A0"));
     assert_eq!(len0, 6);
 
-    let (dis1, len1) = debugger::disassemble(0x001006, |a| app.session.bus.read_word_debug(a));
+    let (dis1, len1) = debugger::disassemble(0x001006, |a| {
+        app.session.machine.memory_bus.read_word_debug(a)
+    });
     assert_eq!(dis1.mnemonic, "CLR.W");
     assert_eq!(dis1.operands, "D0");
     assert_eq!(len1, 2);
 
-    let (dis5, len5) = debugger::disassemble(0x001010, |a| app.session.bus.read_word_debug(a));
+    let (dis5, len5) = debugger::disassemble(0x001010, |a| {
+        app.session.machine.memory_bus.read_word_debug(a)
+    });
     assert_eq!(dis5.mnemonic, "DBRA");
     assert!(dis5.operands.contains("D3"));
     assert_eq!(len5, 4);
@@ -559,7 +574,7 @@ fn test_microcode_toggle_and_clock_metrics() {
 
     // Before stepping, ensure instruction is initiated or step 1 CCK
     app.session.step_cck();
-    let state = &app.session.cpu.state;
+    let state = &app.session.machine.cpu.state;
     // MOVE.W has 2 steps of 2 clocks each; after 1 CCK, step 0 has completed and step 1 is active
     assert!(state.micro.micro_step <= state.micro.current_steps.len() as u16);
     assert!(!state.micro.current_steps.is_empty());
@@ -934,7 +949,7 @@ fn test_disassembly_stepping_multi_word_invariance() {
     app.session.load_binary(0x001000, &fibonacci_code, true);
 
     // 1. Initial instruction PC must be exactly $001000
-    assert_eq!(app.session.cpu.state.instruction_pc, 0x001000);
+    assert_eq!(app.session.machine.cpu.state.instruction_pc, 0x001000);
 
     // Render frame 1
     let _ = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
@@ -954,7 +969,7 @@ fn test_disassembly_stepping_multi_word_invariance() {
 
     // Instruction PC must STILL be $001000 even though hardware prefetch PC advanced!
     assert_eq!(
-        app.session.cpu.state.instruction_pc, 0x001000,
+        app.session.machine.cpu.state.instruction_pc, 0x001000,
         "Mid-instruction CCK step must preserve active instruction_pc"
     );
 
@@ -973,7 +988,7 @@ fn test_disassembly_stepping_multi_word_invariance() {
 
     // Instruction PC must transition to $001006 (CLR.W D0)
     assert_eq!(
-        app.session.cpu.state.instruction_pc, 0x001006,
+        app.session.machine.cpu.state.instruction_pc, 0x001006,
         "Retiring LEA must advance instruction_pc to $001006 (CLR.W)"
     );
 
@@ -992,7 +1007,7 @@ fn test_disassembly_stepping_multi_word_invariance() {
         |ctx| app.update_ui(ctx),
     );
     assert_eq!(
-        app.session.cpu.state.instruction_pc, 0x001008,
+        app.session.machine.cpu.state.instruction_pc, 0x001008,
         "Retiring CLR.W must advance instruction_pc to $001008 (MOVE.W)"
     );
 }
@@ -1052,7 +1067,7 @@ fn test_disassembly_active_line_highlight_and_column_alignment() {
         },
         |ctx| app.update_ui(ctx),
     );
-    assert_eq!(app.session.cpu.state.instruction_pc, 0x001006);
+    assert_eq!(app.session.machine.cpu.state.instruction_pc, 0x001006);
 
     let output_step1 = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
     assert!(
@@ -1067,7 +1082,7 @@ fn test_register_inline_edit_focus_cancel_and_commit() {
     let mut app = EmulatorApp::default();
 
     // 1. Test Escape cancellation: D3 should remain 0
-    assert_eq!(app.session.cpu.state.d_long(3), 0);
+    assert_eq!(app.session.machine.cpu.state.d_long(3), 0);
     app.active_reg_edit = Some((EditRegister::D(3), "DEADBEEF".to_string()));
 
     let input_esc = RawInput {
@@ -1082,7 +1097,7 @@ fn test_register_inline_edit_focus_cancel_and_commit() {
     };
     let _ = ctx.run(input_esc, |ctx| app.update_ui(ctx));
     assert_eq!(app.active_reg_edit, None);
-    assert_eq!(app.session.cpu.state.d_long(3), 0);
+    assert_eq!(app.session.machine.cpu.state.d_long(3), 0);
 
     // 2. Test Enter commit: A2 should be updated to $00040000
     app.active_reg_edit = Some((EditRegister::A(2), "00040000".to_string()));
@@ -1098,10 +1113,10 @@ fn test_register_inline_edit_focus_cancel_and_commit() {
     };
     let _ = ctx.run(input_enter, |ctx| app.update_ui(ctx));
     assert_eq!(app.active_reg_edit, None);
-    assert_eq!(app.session.cpu.state.a_long(2), 0x00040000);
+    assert_eq!(app.session.machine.cpu.state.a_long(2), 0x00040000);
 
     // 3. Test Invalid hex entry: should dismiss gracefully without modifying D1 or crashing
-    assert_eq!(app.session.cpu.state.d_long(1), 0);
+    assert_eq!(app.session.machine.cpu.state.d_long(1), 0);
     app.active_reg_edit = Some((EditRegister::D(1), "ZZZZZZZZ".to_string()));
     let input_enter_invalid = RawInput {
         events: vec![Event::Key {
@@ -1115,7 +1130,7 @@ fn test_register_inline_edit_focus_cancel_and_commit() {
     };
     let _ = ctx.run(input_enter_invalid, |ctx| app.update_ui(ctx));
     assert_eq!(app.active_reg_edit, None);
-    assert_eq!(app.session.cpu.state.d_long(1), 0);
+    assert_eq!(app.session.machine.cpu.state.d_long(1), 0);
 }
 
 #[test]
@@ -1126,7 +1141,10 @@ fn test_disassembly_inline_patch_focus_cancel_and_commit() {
     // Inject NOP ($4E71) at $001000
     let code = [0x4E, 0x71, 0x4E, 0x75];
     app.session.load_binary(0x001000, &code, true);
-    assert_eq!(app.session.bus.read_word_debug(0x001000), 0x4E71);
+    assert_eq!(
+        app.session.machine.memory_bus.read_word_debug(0x001000),
+        0x4E71
+    );
 
     // 1. Open patch edit buffer, then press Escape to cancel
     app.active_disasm_edit = Some(DisasmEditState {
@@ -1146,7 +1164,10 @@ fn test_disassembly_inline_patch_focus_cancel_and_commit() {
     };
     let _ = ctx.run(input_esc, |ctx| app.update_ui(ctx));
     assert!(app.active_disasm_edit.is_none());
-    assert_eq!(app.session.bus.read_word_debug(0x001000), 0x4E71);
+    assert_eq!(
+        app.session.machine.memory_bus.read_word_debug(0x001000),
+        0x4E71
+    );
 
     // 2. Open patch edit buffer and press Enter to commit valid patch
     app.active_disasm_edit = Some(DisasmEditState {
@@ -1166,7 +1187,10 @@ fn test_disassembly_inline_patch_focus_cancel_and_commit() {
     };
     let _ = ctx.run(input_enter, |ctx| app.update_ui(ctx));
     assert!(app.active_disasm_edit.is_none());
-    assert_eq!(app.session.bus.read_word_debug(0x001000), 0x3200);
+    assert_eq!(
+        app.session.machine.memory_bus.read_word_debug(0x001000),
+        0x3200
+    );
 }
 
 #[test]

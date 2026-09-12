@@ -1,0 +1,28 @@
+use cia::{Cia, CiaId};
+
+#[test]
+fn test_cia_timer_and_icr() {
+    let mut cia = Cia::new(CiaId::A);
+    cia.reset();
+
+    // Enable Timer A interrupt in ICR: $80 | 0x01 = $81
+    cia.write_register(0xD, 0x81);
+    assert_eq!(cia.icr_mask, 0x01);
+
+    // Configure Timer A latch = 2, start timer in continuous mode (CRA = $01)
+    cia.write_register(0x4, 2);
+    cia.write_register(0x5, 0);
+    cia.write_register(0xE, 0x01);
+
+    assert!(!cia.irq_pending());
+
+    // Step 15 CCKs (3 E-Clocks: 2 -> 1 -> 0 -> underflow)
+    for _ in 0..15 {
+        cia.step_cck();
+    }
+
+    assert!(cia.irq_pending());
+    // Read ICR clears request
+    assert_eq!(cia.read_register(0xD) & 0x81, 0x81);
+    assert!(!cia.irq_pending());
+}

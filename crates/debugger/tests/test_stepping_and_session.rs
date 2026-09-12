@@ -90,17 +90,19 @@ fn test_lea_step_instruction() {
 
     println!(
         "Initial: pc={:06X}, instruction_pc={:06X}, ir={:04X}",
-        session.cpu.state.pc, session.cpu.state.instruction_pc, session.cpu.state.ir
+        session.machine.cpu.state.pc,
+        session.machine.cpu.state.instruction_pc,
+        session.machine.cpu.state.ir
     );
     for i in 0..8 {
         session.step_cck();
         println!(
             "After CCK {}: pc={:06X}, instruction_pc={:06X}, micro_step={}, pc-4={:06X}",
             i,
-            session.cpu.state.pc,
-            session.cpu.state.instruction_pc,
-            session.cpu.state.micro.micro_step,
-            session.cpu.state.pc.wrapping_sub(4) & 0x00FF_FFFF
+            session.machine.cpu.state.pc,
+            session.machine.cpu.state.instruction_pc,
+            session.machine.cpu.state.micro.micro_step,
+            session.machine.cpu.state.pc.wrapping_sub(4) & 0x00FF_FFFF
         );
     }
 }
@@ -116,8 +118,8 @@ fn test_lea_step_instruction_call() {
     session.step_instruction();
     println!(
         "After step_instruction: pc={:06X}, instruction_pc={:06X}, a0={:08X}",
-        session.cpu.state.pc,
-        session.cpu.state.instruction_pc,
-        session.cpu.state.a_regs()[0]
+        session.machine.cpu.state.pc,
+        session.machine.cpu.state.instruction_pc,
+        session.machine.cpu.state.a_regs()[0]
     );
 }

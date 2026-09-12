@@ -131,6 +131,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "agnus"
+version = "0.1.0"
+dependencies = [
+ "config",
+ "serde",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -464,6 +472,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "audio"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -508,6 +523,13 @@ dependencies = [
 [[package]]
 name = "blep_generator"
 version = "0.1.0"
+
+[[package]]
+name = "blitter"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "block"
@@ -678,6 +700,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "cia"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "clipboard-win"
 version = "5.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -740,6 +769,13 @@ checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
 dependencies = [
  "cfg-if",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "copper"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -851,11 +887,21 @@ checksum = "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
 name = "debugger"
 version = "0.1.0"
 dependencies = [
+ "config",
  "disassembler",
  "m68000",
+ "machine_loop",
  "memory_bus",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "denise"
+version = "0.1.0"
+dependencies = [
+ "config",
+ "serde",
 ]
 
 [[package]]
@@ -921,6 +967,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab8ecd87370524b461f8557c119c405552c396ed91fc0a8eec68679eab26f94a"
 dependencies = [
  "libloading",
+]
+
+[[package]]
+name = "dma"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -1249,6 +1302,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "floppy"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "foldhash"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1288,6 +1348,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "frame_builder"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -1858,6 +1925,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "joystick"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1866,6 +1940,13 @@ dependencies = [
  "cfg-if",
  "futures-util",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "keyboard"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -1980,6 +2061,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "machine_loop"
+version = "0.1.0"
+dependencies = [
+ "agnus",
+ "audio",
+ "blitter",
+ "cia",
+ "config",
+ "copper",
+ "denise",
+ "dma",
+ "floppy",
+ "frame_builder",
+ "joystick",
+ "keyboard",
+ "m68000",
+ "memory_bus",
+ "mouse",
+ "parallel_port",
+ "paula",
+ "serde",
+ "serial_port",
+ "sprites",
+]
+
+[[package]]
 name = "malloc_buf"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2055,6 +2162,13 @@ checksum = "b63fbc4a50860e98e7b2aa7804ded1db5cbc3aff9193adaff57a6931bf7c4b4c"
 dependencies = [
  "adler2",
  "simd-adler32",
+]
+
+[[package]]
+name = "mouse"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -2504,6 +2618,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "parallel_port"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2537,6 +2658,13 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "paula"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "percent-encoding"
@@ -3042,6 +3170,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "serial_port"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "sha1"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3190,6 +3325,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eda41003dc44290527a59b13432d4a0379379fa074b70174882adfbdfd917844"
 dependencies = [
  "bitflags 2.13.1",
+]
+
+[[package]]
+name = "sprites"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

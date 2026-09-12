@@ -34,6 +34,29 @@ pub enum RtcModel {
     Msm6242b,
 }
 
+/// Agnus chip revision model
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AgnusModel {
+    /// OCS PAL Agnus (MOS 8371, 512 KB Chip RAM, 312 lines)
+    OcsPal8371,
+    /// OCS NTSC Agnus (MOS 8370, 512 KB Chip RAM, 262 lines)
+    OcsNtsc8370,
+}
+
+/// Denise chip revision model
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DeniseModel {
+    /// OCS Denise (MOS 8362)
+    Ocs8362,
+}
+
+/// Paula chip revision model
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PaulaModel {
+    /// Standard Paula (MOS 8364)
+    Ocs8364,
+}
+
 /// Chip RAM size
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChipRamSize {
@@ -71,6 +94,9 @@ pub struct A500Config {
     slow_ram: SlowRamSize,
     fast_ram: FastRamSize,
     rtc: RtcModel,
+    agnus_model: AgnusModel,
+    denise_model: DeniseModel,
+    paula_model: PaulaModel,
 }
 
 impl Default for A500Config {
@@ -83,6 +109,10 @@ impl Default for A500Config {
 impl A500Config {
     /// Creates a configuration from a preset and video standard
     pub fn from_preset(preset: A500Preset, video: VideoStandard) -> Self {
+        let agnus_model = match video {
+            VideoStandard::Pal => AgnusModel::OcsPal8371,
+            VideoStandard::Ntsc => AgnusModel::OcsNtsc8370,
+        };
         let mut config = Self {
             preset,
             video_standard: video,
@@ -90,6 +120,9 @@ impl A500Config {
             slow_ram: SlowRamSize::None,
             fast_ram: FastRamSize::None,
             rtc: RtcModel::None,
+            agnus_model,
+            denise_model: DeniseModel::Ocs8362,
+            paula_model: PaulaModel::Ocs8364,
         };
         config.apply_preset(preset);
         config
@@ -171,5 +204,23 @@ impl A500Config {
     #[inline]
     pub fn rtc(&self) -> RtcModel {
         self.rtc
+    }
+
+    /// Returns the Agnus chip revision model
+    #[inline]
+    pub fn agnus_model(&self) -> AgnusModel {
+        self.agnus_model
+    }
+
+    /// Returns the Denise chip revision model
+    #[inline]
+    pub fn denise_model(&self) -> DeniseModel {
+        self.denise_model
+    }
+
+    /// Returns the Paula chip revision model
+    #[inline]
+    pub fn paula_model(&self) -> PaulaModel {
+        self.paula_model
     }
 }

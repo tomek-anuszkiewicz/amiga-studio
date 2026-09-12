@@ -34,6 +34,23 @@ const CORE_EMULATION_CRATES: &[&str] = &[
     "rtc",
     "disassembler",
     "debugger",
+    "copper",
+    "blitter",
+    "dma",
+    "agnus",
+    "sprites",
+    "frame_builder",
+    "mouse",
+    "joystick",
+    "denise",
+    "audio",
+    "floppy",
+    "serial_port",
+    "paula",
+    "keyboard",
+    "parallel_port",
+    "cia",
+    "machine_loop",
 ];
 
 fn find_repo_root() -> PathBuf {

@@ -394,8 +394,8 @@ impl EmulatorApp {
                             render_registers(
                                 ui,
                                 &tokens,
-                                &mut self.session.cpu,
-                                &mut self.session.bus,
+                                &mut self.session.machine.cpu,
+                                &mut self.session.machine.memory_bus,
                                 self.session.prev_cpu_state.as_ref(),
                                 &mut self.active_reg_edit,
                             );
@@ -403,17 +403,17 @@ impl EmulatorApp {
                             render_engine_status(
                                 ui,
                                 &tokens,
-                                self.session.bus.is_chip_ram_locked(),
+                                self.session.machine.memory_bus.is_chip_ram_locked(),
                                 self.session.instructions_executed,
-                                self.session.cpu.state.cycle_counter as u64 / 2,
-                                self.session.cpu.state.sr,
+                                self.session.machine.cpu.state.cycle_counter as u64 / 2,
+                                self.session.machine.cpu.state.sr,
                             );
                             if self.show_microcode {
                                 ui.add_space(3.0);
                                 render_microcode(
                                     ui,
-                                    &self.session.cpu.state,
-                                    self.session.bus.is_chip_ram_locked(),
+                                    &self.session.machine.cpu.state,
+                                    self.session.machine.memory_bus.is_chip_ram_locked(),
                                 );
                             }
                         });
@@ -450,7 +450,7 @@ impl EmulatorApp {
                                         let tools_resp = ui.vertical(|ui| {
                                             render_memory_search(
                                                 ui,
-                                                &self.session.bus,
+                                                &self.session.machine.memory_bus,
                                                 &mut self.hex_base_addr,
                                                 &mut self.memory_search_state,
                                             );
@@ -491,7 +491,7 @@ impl EmulatorApp {
                             |ui| {
                                 render_memory_hex(
                                     ui,
-                                    &mut self.session.bus,
+                                    &mut self.session.machine.memory_bus,
                                     &mut self.session.debugger.breakpoints,
                                     &mut self.hex_base_addr,
                                     &mut self.memory_selected_addr,
@@ -540,8 +540,8 @@ impl EmulatorApp {
                                     |ui| {
                                         render_disassembly(
                                             ui,
-                                            &mut self.session.cpu,
-                                            &mut self.session.bus,
+                                            &mut self.session.machine.cpu,
+                                            &mut self.session.machine.memory_bus,
                                             &mut self.session.debugger,
                                             &mut self.session.temporal,
                                             &mut self.goto_addr_str,
@@ -673,8 +673,8 @@ impl EmulatorApp {
 
                             render_disassembly(
                                 ui,
-                                &mut self.session.cpu,
-                                &mut self.session.bus,
+                                &mut self.session.machine.cpu,
+                                &mut self.session.machine.memory_bus,
                                 &mut self.session.debugger,
                                 &mut self.session.temporal,
                                 &mut self.goto_addr_str,

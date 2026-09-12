@@ -1,0 +1,224 @@
+//! MOS 8520 Complex Interface Adapter (CIA-A & CIA-B) Emulation
+//!
+//! Reusable 8520 chip core with 16-bit decrementing Timers A & B,
+//! bidirectional 8-bit Ports A & B, 24-bit TOD clock, SDR, and ICR.
+
+use serde::{Deserialize, Serialize};
+
+/// Number of Color Clocks per Motorola E-Clock tick
+pub const CCK_PER_ECLOCK: u8 = 5;
+
+/// CIA chip identity (CIA-A or CIA-B)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CiaId {
+    /// CIA-A (connected to IRQ level 2, keyboard, game port fire, OVL)
+    A,
+    /// CIA-B (connected to IRQ level 6, parallel port, floppy control)
+    B,
+}
+
+impl Default for CiaId {
+    fn default() -> Self {
+        CiaId::A
+    }
+}
+
+/// MOS 8520 CIA chip state
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct Cia {
+    /// CIA chip identifier
+    pub id: CiaId,
+    /// Port A Data Register (PRA)
+    pub pra: u8,
+    /// Port B Data Register (PRB)
+    pub prb: u8,
+    /// Data Direction Register A (DDRA: 1 = output, 0 = input)
+    pub ddra: u8,
+    /// Data Direction Register B (DDRB: 1 = output, 0 = input)
+    pub ddrb: u8,
+    /// Timer A reload latch (16-bit)
+    pub ta_latch: u16,
+    /// Timer A current down-counter (16-bit)
+    pub ta_counter: u16,
+    /// Control Register A (CRA)
+    pub cra: u8,
+    /// Timer B reload latch (16-bit)
+    pub tb_latch: u16,
+    /// Timer B current down-counter (16-bit)
+    pub tb_counter: u16,
+    /// Control Register B (CRB)
+    pub crb: u8,
+    /// 24-bit Time-of-Day counter
+    pub tod: u32,
+    /// 24-bit Time-of-Day alarm register
+    pub tod_alarm: u32,
+    /// Serial Data Register (shift register)
+    pub sdr: u8,
+    /// Interrupt Control Register data/requests (read: cleared on read)
+    pub icr_data: u8,
+    /// Interrupt Control Register mask/enables (write)
+    pub icr_mask: u8,
+    /// Internal Color Clock divider phase to E-Clock (0..4)
+    pub eclock_phase: u8,
+}
+
+impl Cia {
+    /// Creates a new CIA instance for the given identifier
+    pub fn new(id: CiaId) -> Self {
+        Self {
+            id,
+            ta_latch: 0xFFFF,
+            ta_counter: 0xFFFF,
+            tb_latch: 0xFFFF,
+            tb_counter: 0xFFFF,
+            ..Default::default()
+        }
+    }
+
+    /// Resets all CIA registers to power-on defaults
+    pub fn reset(&mut self) {
+        self.pra = 0;
+        self.prb = 0;
+        self.ddra = 0;
+        self.ddrb = 0;
+        self.ta_latch = 0xFFFF;
+        self.ta_counter = 0xFFFF;
+        self.cra = 0;
+        self.tb_latch = 0xFFFF;
+        self.tb_counter = 0xFFFF;
+        self.crb = 0;
+        self.tod = 0;
+        self.tod_alarm = 0;
+        self.sdr = 0;
+        self.icr_data = 0;
+        self.icr_mask = 0;
+        self.eclock_phase = 0;
+    }
+
+    /// Advances CIA internal timers and E-Clock prescaler by 1 Color Clock
+    pub fn step_cck(&mut self) {
+        self.eclock_phase = self.eclock_phase.wrapping_add(1);
+        if self.eclock_phase >= CCK_PER_ECLOCK {
+            self.eclock_phase = 0;
+            self.step_eclock();
+        }
+    }
+
+    /// Ticks CIA timers on each E-Clock pulse (every 5 CCKs)
+    fn step_eclock(&mut self) {
+        // Timer A down-count (if CRA bit 0 is set)
+        if (self.cra & 0x01) != 0 {
+            if self.ta_counter == 0 {
+                self.ta_counter = self.ta_latch;
+                self.trigger_icr(0x01); // Bit 0: Timer A underflow
+                                        // One-shot mode: CRA bit 3
+                if (self.cra & 0x08) != 0 {
+                    self.cra &= !0x01; // Stop timer
+                }
+            } else {
+                self.ta_counter = self.ta_counter.wrapping_sub(1);
+            }
+        }
+
+        // Timer B down-count (if CRB bit 0 is set)
+        if (self.crb & 0x01) != 0 {
+            if self.tb_counter == 0 {
+                self.tb_counter = self.tb_latch;
+                self.trigger_icr(0x02); // Bit 1: Timer B underflow
+                if (self.crb & 0x08) != 0 {
+                    self.crb &= !0x01;
+                }
+            } else {
+                self.tb_counter = self.tb_counter.wrapping_sub(1);
+            }
+        }
+    }
+
+    /// Sets ICR request bit and updates master IRQ flag
+    fn trigger_icr(&mut self, bit: u8) {
+        self.icr_data |= bit & 0x1F;
+        if (self.icr_data & self.icr_mask & 0x1F) != 0 {
+            self.icr_data |= 0x80; // Master interrupt pending bit
+        }
+    }
+
+    /// Returns true if an unmasked interrupt request is currently pending
+    #[inline]
+    pub fn irq_pending(&self) -> bool {
+        (self.icr_data & 0x80) != 0
+    }
+
+    /// Reads CIA register ($0..$F) with clear-on-read for ICR
+    pub fn read_register(&mut self, reg: u8) -> u8 {
+        match reg & 0x0F {
+            0x0 => self.pra,
+            0x1 => self.prb,
+            0x2 => self.ddra,
+            0x3 => self.ddrb,
+            0x4 => (self.ta_counter & 0xFF) as u8,
+            0x5 => (self.ta_counter >> 8) as u8,
+            0x6 => (self.tb_counter & 0xFF) as u8,
+            0x7 => (self.tb_counter >> 8) as u8,
+            0x8 => (self.tod & 0xFF) as u8,
+            0x9 => ((self.tod >> 8) & 0xFF) as u8,
+            0xA => ((self.tod >> 16) & 0xFF) as u8,
+            0xC => self.sdr,
+            0xD => {
+                let val = self.icr_data;
+                self.icr_data = 0; // Clear on read
+                val
+            }
+            0xE => self.cra,
+            0xF => self.crb,
+            _ => 0xFF,
+        }
+    }
+
+    /// Writes CIA register ($0..$F)
+    pub fn write_register(&mut self, reg: u8, val: u8) {
+        match reg & 0x0F {
+            0x0 => self.pra = val,
+            0x1 => self.prb = val,
+            0x2 => self.ddra = val,
+            0x3 => self.ddrb = val,
+            0x4 => self.ta_latch = (self.ta_latch & 0xFF00) | (val as u16),
+            0x5 => {
+                self.ta_latch = (self.ta_latch & 0x00FF) | ((val as u16) << 8);
+                // Writing high byte reloads counter if timer stopped
+                if (self.cra & 0x01) == 0 {
+                    self.ta_counter = self.ta_latch;
+                }
+            }
+            0x6 => self.tb_latch = (self.tb_latch & 0xFF00) | (val as u16),
+            0x7 => {
+                self.tb_latch = (self.tb_latch & 0x00FF) | ((val as u16) << 8);
+                if (self.crb & 0x01) == 0 {
+                    self.tb_counter = self.tb_latch;
+                }
+            }
+            0xC => self.sdr = val,
+            0xD => {
+                // SET/CLR bit 7 logic for ICR mask
+                if (val & 0x80) != 0 {
+                    self.icr_mask |= val & 0x1F;
+                } else {
+                    self.icr_mask &= !(val & 0x1F);
+                }
+            }
+            0xE => {
+                self.cra = val;
+                // Force load: bit 4
+                if (val & 0x10) != 0 {
+                    self.ta_counter = self.ta_latch;
+                }
+            }
+            0xF => {
+                self.crb = val;
+                if (val & 0x10) != 0 {
+                    self.tb_counter = self.tb_latch;
+                }
+            }
+            _ => {}
+        }
+    }
+}

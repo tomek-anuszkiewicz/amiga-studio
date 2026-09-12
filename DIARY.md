@@ -1849,3 +1849,176 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.68s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 269 files.
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 20:38 CEST] — Added Continuous GUI Testing & Polish Reminder to ROADMAP.md
+- **Affected Subsystems**:
+  - `ROADMAP.md`: Updated Section 2, Step 1 with an explicit operational track for continuous testing, hardening, and polish of the Developer Studio GUI (Debugger View).
+- **What Was Changed (The Concrete Reality)**:
+  - Added a dedicated active milestone point to Step 1:
+    - Ongoing testing and refinement of all debugger panels (Disassembly stream, Memory Hex, registers/CCR, Microcode Inspector, breakpoints/watchpoints).
+    - Validation of layout stability, margin geometry, and responsive display tiers across resolutions.
+    - Testing and integration of upcoming Save State management (`State` menu, quick slots 1–5, `F6`/`F9`, and State Manager modal).
+- **Architectural Rationale & Trade-Offs**:
+  - *Front-and-Center Developer Ergonomics:* While low-level CPU execution and algorithmic benchmarks are actively executed, maintaining an ongoing validation track ensures UI edge cases (such as bottom clipping, layout jitter, and address wrapping) are caught early under live emulation conditions.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.54s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 269 files.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 20:55 CEST] — Amiga 500 Custom Chip, Peripherals & Machine Loop Crate Scaffold
+- **Affected Subsystems**:
+  - `Cargo.toml`: Added 15 new workspace crate members and path dependencies.
+  - `crates/config/src/lib.rs`: Added `AgnusModel`, `DeniseModel`, and `PaulaModel` enums and getters.
+  - `crates/cycle_counter/`: Standalone 64-bit Color Clock counter (`CycleCounter`).
+  - `crates/copper/`: Agnus Copper coprocessor (`Copper`).
+  - `crates/blitter/`: Agnus 4-channel DMA Blitter (`Blitter`).
+  - `crates/dma/`: Agnus DMA slot scheduler and bus arbiter (`DmaScheduler`).
+  - `crates/agnus/`: Agnus coordinator (`Agnus`) re-exporting `copper`, `blitter`, `dma`.
+  - `crates/sprites/`: Denise 8 hardware sprite engines (`Sprites`, `SpriteChannel`).
+  - `crates/frame_builder/`: Denise raster scanline compositor and frame buffer (`FrameBuilder`).
+  - `crates/mouse/`: Amiga 2/3-button quadrature mouse (`Mouse`, `joy_dat`).
+  - `crates/joystick/`: Atari 9-pin standard digital joystick (`Joystick`, directional XOR).
+  - `crates/game_ports/`: Dual controller ports (`GamePorts`) re-exporting `mouse` and `joystick`.
+  - `crates/denise/`: Denise video processor (`Denise`) re-exporting `sprites`, `frame_builder`, `game_ports`.
+  - `crates/audio/`: Paula 4-channel 8-bit DMA audio engine (`Audio`, `AudioChannel`).
+  - `crates/floppy/`: 3.5" DD floppy drive mechanics and Paula MFM controller (`FloppyDrive`, `FloppyController`).
+  - `crates/serial_port/`: Paula RS-232 UART transceiver (`SerialPort`).
+  - `crates/paula/`: Paula coordinator (`Paula`) re-exporting `audio`, `floppy`, `serial_port`.
+  - `crates/keyboard/`: MOS 6500/1 keyboard microcontroller (`Keyboard`) with Ctrl-Amiga-Amiga reset.
+  - `crates/parallel_port/`: Centronics 8-bit parallel printer port (`ParallelPort`).
+  - `crates/cia/`: MOS 8520 Complex Interface Adapter (`Cia`) re-exporting `keyboard`, `parallel_port`.
+  - `crates/machine_loop/`: Tier 0 top-level machine facade (`A500Machine`) orchestrating CPU, memory bus, cycle counter, custom chips, and CIAs with lockstep CCK stepping and interrupt priority arbitration.
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Registered all new crates in `CORE_EMULATION_CRATES` (enforcing zero runtime unwraps/panics).
+  - `Obsidian/Amiga/Design/General Architecture.md`: Updated workspace crates taxonomy table.
+- **What Was Changed (The Concrete Reality)**:
+  - Constructed the entire hardware crate scaffolding across the workspace, strictly adhering to the 3-tier re-export taxonomy from `.agents/rules/workspace-structure-and-reexports.md`.
+  - All crates reside flat under `crates/*` on disk while their logical ownership is cleanly represented in Rust via `pub use`:
+    - `agnus` owns and re-exports `copper`, `blitter`, and `dma`.
+    - `denise` owns and re-exports `sprites`, `frame_builder`, and `game_ports`.
+    - `game_ports` owns and re-exports `mouse` and `joystick`.
+    - `paula` owns and re-exports `audio`, `floppy`, and `serial_port`.
+    - `cia` owns and re-exports `keyboard` and `parallel_port`.
+    - `machine_loop` orchestrates all peer subsystems (`memory_bus`, `m68000`, `cycle_counter`, `agnus`, `denise`, `paula`, `cia_a`, `cia_b`) with single CCK stepping and IPL 1–6 arbitration.
+  - Implemented unit tests in every new crate asserting reset states, register decoding, and operational behaviors.
+- **Architectural Rationale & Trade-Offs**:
+  - *Single Responsibility & Subsystem Decoupling:* Rather than creating monolithic "god structs" for Agnus, Denise, and Paula, each physical sub-circuit (e.g. Copper, Blitter, DMA scheduler, Sprites, Mouse, UART) is isolated into a cohesive, zero-allocation Rust crate.
+  - *Zero Runtime Allocations & WASM Portability:* All subsystem states use fixed-size arrays, native scalar types, and wrapping arithmetic, ensuring compatibility with native desktop and WebAssembly targets.
+- **Verification & Test Results**:
+  - `cargo check --workspace`: Passed cleanly across all 19 workspace crates.
+  - `cargo test -p cycle_counter -p copper -p blitter -p dma -p sprites -p frame_builder -p mouse -p joystick -p game_ports -p agnus -p denise -p audio -p floppy -p serial_port -p paula -p keyboard -p parallel_port -p cia -p machine_loop`: All 24 unit tests passed.
+  - `cargo test -p test_runner --test test_dma_cartesian`: All 19 tests passed (full $2^k \times 2^M$ DMA contention space invariant verified).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 architecture rules passed (zero runtime unwraps, zero custom macros, file sizes <= 800 lines, link integrity).
+---
+
+### [2026-09-12 21:05 CEST] — Flattening Custom Chip & Peripheral Hierarchy into A500Machine with Zero Sibling Dependencies
+- **Affected Subsystems**:
+  - `Cargo.toml`: Removed `cycle_counter` and `game_ports` from workspace members and dependencies.
+  - `crates/cycle_counter/`: Deleted obsolete crate in favor of direct `pub cck: u64` field in `A500Machine`.
+  - `crates/game_ports/`: Deleted wrapper crate in favor of direct `pub mouse: Mouse` and `pub joystick: Joystick` fields.
+  - `crates/agnus/`: Eliminated dependencies on `copper`, `blitter`, and `dma`. Agnus is now a pure, flat chip coordinator (`hpos`, `vpos`, `lof`, Agnus registers).
+  - `crates/denise/`: Eliminated dependencies on `sprites`, `frame_builder`, and `game_ports`. Denise is now a pure, flat chip coordinator (`bplcon0`..`bplcon3`, palette, `clxdat`, `potgo`).
+  - `crates/paula/`: Eliminated dependencies on `audio`, `floppy`, and `serial_port`. Paula is now a pure, flat chip coordinator (`intena`, `intreq`).
+  - `crates/cia/`: Eliminated dependencies on `keyboard` and `parallel_port`. CIA is now a pure MOS 8520 chip core with `CiaId::A` / `CiaId::B`.
+  - `crates/machine_loop/`: `A500Machine` constructor directly constructs all 18 chips, coprocessors, and peripheral devices. All components reside as direct, flat fields. In `step_cck`, required handles are passed directly as method parameters (`step_cck(&mut self.memory_bus)`), leveraging Rust disjoint field borrowing without circular references or inter-crate coupling.
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Synchronized `CORE_EMULATION_CRATES`.
+  - `Obsidian/Amiga/Design/General Architecture.md`: Updated crate taxonomy table to reflect the flat, zero-dependency peer layout.
+- **What Was Changed (The Concrete Reality)**:
+  - Flattened the entire hardware emulation topology: rather than nesting coprocessors inside Agnus, Denise, Paula, and CIA, `A500Machine` directly owns `cpu`, `memory_bus`, `cck: u64`, `agnus`, `denise`, `paula`, `cia_a`, `cia_b`, `copper`, `blitter`, `dma`, `sprites`, `frame_builder`, `audio`, `floppy`, `serial_port`, `keyboard`, `mouse`, `joystick`, and `parallel_port`.
+  - Replaced the standalone `cycle_counter` crate with a native `pub cck: u64` counter.
+  - All sibling chip and device crates now have zero dependencies on each other (depending only on `serde` and `config`).
+  - Cycle coordination occurs via explicit parameter passing in method calls, enabling clean borrow splitting.
+- **Architectural Rationale & Trade-Offs**:
+  - *Borrow Checker Freedom & Disjoint Splitting:* In Rust, nested ownership (`self.agnus.copper.step(&mut self.agnus.dma, &mut self.memory_bus)`) causes borrow checker collisions when one sub-component needs another sub-component from the same parent. By flattening all components directly onto `A500Machine`, Rust's native disjoint field borrowing allows `self.copper.step(&mut self.memory_bus, &self.dma)` without any runtime borrowing overhead, `Rc`, or `RefCell`.
+  - *Zero Inter-Crate Coupling:* Every chip and peripheral crate compiles completely independently in parallel, improving compiler throughput and enforcing single-responsibility boundaries.
+- **Verification & Test Results**:
+  - `cargo check --workspace`: Passed cleanly across all 17 hardware crates.
+  - Unit tests across all chips and devices (24 tests): 100% passed.
+  - `cargo test -p test_runner --test test_dma_cartesian`: All 19 tests passed in 39.35s (cycle and state invariance preserved).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed (zero unwraps, zero custom macros, file sizes <= 800 lines, link integrity verified).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 21:12 CEST] — Integration of A500Machine into DebuggerSession & GUI Controller
+- **Affected Subsystems**:
+  - `crates/debugger/Cargo.toml`: Added dependencies on `config` and `machine_loop`.
+  - `crates/machine_loop/src/lib.rs`: Added `Clone` derive to `A500Machine`.
+  - `crates/debugger/src/session.rs`: Refactored `DebuggerSession` to own `pub machine: A500Machine` instead of isolated `Cpu` and `MemoryBus`.
+  - `crates/debugger/tests/`: Updated all test suites (`test_debugger.rs`, `test_stepping_and_session.rs`, `test_instruction_trace.rs`, `test_sample_binaries.rs`) to navigate via `session.machine.cpu` and `session.machine.memory_bus`.
+  - `crates/gui/src/`: Updated `app.rs`, `layout/top_menu_bar.rs`, and `bin/gui_inspector.rs` to reference `self.session.machine.cpu` and `self.session.machine.memory_bus`.
+  - `crates/gui/tests/`: Updated `test_interactions.rs` and `test_persistence.rs` to access CPU and memory bus through `session.machine`.
+  - `Obsidian/Amiga/Design/Debugger.md`: Updated architecture section and Mermaid diagrams to reflect `DebuggerSession` ownership of `A500Machine`.
+- **What Was Changed (The Concrete Reality)**:
+  - Refactored `DebuggerSession` so that `A500Machine` serves as the single unified owner and source of truth for the entire Amiga 500 machine state during interactive debugging and headless execution.
+  - Replaced isolated `Cpu` and `MemoryBus` fields on `DebuggerSession` with `pub machine: A500Machine`.
+  - Retained clean constructors: `DebuggerSession::new()` and `DebuggerSession::from_config(config: A500Config)`.
+  - Wired `step_cck()` on `DebuggerSession` to execute `self.machine.step_cck()`, advancing the CPU, beam counters (Agnus), copper lists, blitter operations, and timers (CIAs) in lockstep Color Clock synchronization.
+  - Avoided blanket `DerefMut` targeting `A500Machine` to preserve Rust disjoint field borrowing across GUI panels (e.g. borrowing `&mut app.session.machine.cpu` alongside `&mut app.session.machine.memory_bus` and `app.session.prev_cpu_state.as_ref()`).
+  - Added direct accessor methods `bus(&self)` and `bus_mut(&mut self)`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Full Machine Debugging:* Previously, `DebuggerSession` only advanced an isolated CPU and MemoryBus, leaving custom chips, coprocessors, and timers unclocked. By embedding `A500Machine`, every single CCK step advances the entire emulated hardware, enabling accurate inspection of beam positions, Copper state, and CIA timers during interactive debugging.
+  - *Disjoint Borrow Checking:* Direct field access (`session.machine.cpu`, `session.machine.memory_bus`) allows the Rust compiler to independently borrow CPU and MemoryBus fields simultaneously across separate egui dock panels without triggering borrow checker conflicts (`E0499`/`E0502`).
+- **Verification & Test Results**:
+  - `cargo check --workspace`: Clean build across all crates.
+  - `cargo test -p debugger`: All 39 unit and integration tests passed.
+  - `cargo test -p gui`: All 45 integration and interaction tests passed.
+  - `cargo test -p machine_loop -p memory_bus -p config`: All tests passed.
+  - `cargo test -p test_runner --test test_dma_cartesian`: All 19 tests passed in 43.39s (DMA cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ verified).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed (zero unwraps, zero custom macros, file sizes <= 800 lines, link integrity verified).
+  - `cargo fmt --all -- --check`: 100% compliant.
+
+---
+
+### [2026-09-12 21:14 CEST] — Amiga 500 Hardware Reset Specification Audit & Implementation Verification
+- **Affected Subsystems**:
+  - `ROADMAP.md`: Fixed truncated register reset values and spelling in Step 3.2 (`DMACON = $0000`, `INTENA/INTREQ = $0000`, `SR = $2700`, `delay_cck = K`).
+  - `crates/machine_loop/src/lib.rs`: Fixed `reset_warm()` to reset master `cck` counter to 0; ensured `reset_cold()` and `reset_warm()` respect Kickstart presence when mapping low memory; added comprehensive `test_machine_cold_and_warm_reset()` unit test.
+  - `crates/debugger/src/session.rs`: Streamlined `from_config()` relying on `A500Machine::new(config)` CPU and overlay initialization.
+  - `Obsidian/Amiga/Design/Main loop A500.md`: Thoroughly expanded Section 4 with physical reset line timings (555 timer, keyboard reset line), M68000 40-clock reset sequence, complete subsystem register defaults table, double bus fault handling, and distinction between external system reset and the CPU `RESET` opcode ($4E70).
+- **What Was Changed (The Concrete Reality)**:
+  - Conducted an in-depth hardware engineering audit of the entire Amiga 500 reset sequence against the official Commodore Amiga Hardware Reference Manual, 68000 User's Manual, and Gary gate array specification.
+  - Identified and corrected truncation errors in `ROADMAP.md` where register power-on defaults had been dropped.
+  - Resolved an edge case in `A500Machine` where `reset_warm()` did not reset the monotonic Color Clock counter (`self.cck = 0`), and where headless/test runs without a Kickstart ROM loaded were masked by the Kickstart ROM handler.
+  - Formulated a comprehensive hardware specification covering physical bus timings, Gary `_OVL` routing, cold vs warm Kickstart Exec checksum detection, and the critical distinction between external reset and the M68000 `RESET` instruction.
+- **Verification & Test Results**:
+  - `cargo test -p machine_loop`: All 3 unit tests passed (including `test_machine_cold_and_warm_reset` asserting RAM wiping, clock resetting, and register defaults).
+  - `cargo test -p debugger`: All 39 tests passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.59s.
+  - `cargo fmt --all -- --check`: 100% compliant.
+
+---
+
+### [2026-09-12 21:18 CEST] — Removal of ECS Chip Revision Variants (Ecs8372A & Ecs8373)
+- **Affected Subsystems**:
+  - `crates/config/src/lib.rs`: Removed `AgnusModel::Ecs8372A` and `DeniseModel::Ecs8373` variants, focusing configuration strictly on baseline OCS models (`OcsPal8371`, `OcsNtsc8370`, `Ocs8362`).
+  - `crates/agnus/src/lib.rs`: Removed `AgnusModel::Ecs8372A` branch in `vposr()` and updated chip ID unit test to test PAL vs NTSC IDs.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated speculative ECS chip variants from the baseline Amiga 500 configuration model.
+  - Aligned `AgnusModel` strictly with OCS PAL (MOS 8371) and OCS NTSC (MOS 8370).
+  - Aligned `DeniseModel` strictly with OCS Denise (MOS 8362).
+- **Verification & Test Results**:
+  - `cargo test -p config -p agnus`: All unit tests passed.
+  - `cargo check --workspace`: Clean build.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.60s.
+  - `cargo fmt --all -- --check`: 100% compliant.
+### [2026-09-12 21:26 CEST] — Workspace-Wide Test Modularization: Extracting Inline Tests to Dedicated Crates Test Suites
+- **Affected Subsystems**:
+  - `crates/*/src/lib.rs`: Removed all inline `#[cfg(test)] mod tests { ... }` blocks across all 17 newly created hardware crates (`agnus`, `audio`, `blitter`, `cia`, `copper`, `denise`, `dma`, `floppy`, `frame_builder`, `joystick`, `keyboard`, `machine_loop`, `mouse`, `parallel_port`, `paula`, `serial_port`, `sprites`).
+  - `crates/*/tests/test_*.rs`: Created 18 dedicated integration test files under `tests/` (`crates/<crate>/tests/test_<crate>.rs` for all 17 hardware crates plus `crates/config/tests/test_config.rs`).
+  - `crates/agnus/src/lib.rs` & `crates/denise/src/lib.rs`: Re-exported `pub use config::AgnusModel;` and `pub use config::DeniseModel;` respectively per the 3-tier workspace re-export hierarchy.
+- **What Was Changed (The Concrete Reality)**:
+  - Scanned the entire workspace repository for embedded `#[cfg(test)] mod tests { ... }` blocks and identified 17 crates whose test fixtures were residing inside `src/lib.rs`.
+  - Extracted each test suite into its own dedicated test crate under `crates/<crate>/tests/test_<crate>.rs`, testing the public interfaces of each component from a decoupled consumer perspective.
+  - Added direct unit test coverage for `config` in `crates/config/tests/test_config.rs` validating default, bare 512k, and expanded power user presets.
+  - Ensured zero `#[cfg(test)]` or `mod tests` remain anywhere inside `crates/*/src/`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Pure Production Code in `src/`:* Keeping `src/` modules strictly dedicated to production emulator logic eliminates clutter, keeps production source files compact and readable, and ensures compiler dead code / unwrap audits in CI inspect only genuine runtime paths.
+  - *Decoupled Testing of Public Interfaces:* External tests residing in `tests/` compile as separate test crates and interact with modules solely through their public API, verifying proper encapsulation and ergonomics for downstream consumers (`machine_loop`, `debugger`, `gui`).
+- **Verification & Test Results**:
+  - `cargo test --workspace --exclude test_runner`: All test suites across all 18 crates compiled cleanly and passed with 0 errors.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 automated architecture tests passed in 0.59s (zero unwraps, zero custom macros, file sizes <= 800 lines, link integrity verified).
+  - `cargo fmt --all -- --check`: 100% compliant.

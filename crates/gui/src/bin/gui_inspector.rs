@@ -40,10 +40,10 @@ fn create_primed_app() -> EmulatorApp {
     app.session.load_binary(0x001000, &code, true);
 
     // Seed realistic register and debugger state
-    app.session.cpu.state.set_d_long(0, 0xCAFE_BABE);
-    app.session.cpu.state.set_d_long(1, 0x0000_1000);
-    app.session.cpu.state.set_a_long(0, 0x0000_2000);
-    app.session.cpu.state.sr = 0x2700;
+    app.session.machine.cpu.state.set_d_long(0, 0xCAFE_BABE);
+    app.session.machine.cpu.state.set_d_long(1, 0x0000_1000);
+    app.session.machine.cpu.state.set_a_long(0, 0x0000_2000);
+    app.session.machine.cpu.state.sr = 0x2700;
 
     // Step one instruction so trace log has entries and PC moves to $1002
     app.session.step_instruction();

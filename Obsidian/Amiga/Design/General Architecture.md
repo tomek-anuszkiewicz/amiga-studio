@@ -105,13 +105,31 @@ graph TD
 
 | Crate | Path | Responsibility | Workspace Dependencies |
 | :--- | :--- | :--- | :--- |
-| **config** | [crates/config](../../../crates/config) | Encapsulated, read-only hardware presets (Bare512k, Standard1Mb, ExpandedPowerUser), RtcModel, video timings. | *None* |
-| **rtc** | [crates/rtc](../../../crates/rtc) | OKI MSM6242B Real-Time Clock & Calendar emulation, BCD latches, standalone civil calendar arithmetic, and CCK cycle stepping. | config |
+| **config** | [crates/config](../../../crates/config) | Encapsulated, read-only hardware presets (Bare512k, Standard1Mb, ExpandedPowerUser), chip models, RtcModel, video timings. | *None* |
+| **copper** | [crates/copper](../../../crates/copper) | Agnus Copper coprocessor (MOVE, WAIT, SKIP, CDANG danger mode). | serde |
+| **blitter** | [crates/blitter](../../../crates/blitter) | Agnus 4-channel DMA Blitter, minterm ALU, barrel shifters, and line drawer. | serde |
+| **dma** | [crates/dma](../../../crates/dma) | Agnus DMA slot scheduler (227.5 CCK horizontal schedule), channel gating (`DMACON`), and Chip RAM contention. | serde |
+| **agnus** | [crates/agnus](../../../crates/agnus) | Agnus (MOS 8370/8371/8372A) chip coordinator and beam counters (`VHPOSR`, `VPOSR`). | config, serde |
+| **sprites** | [crates/sprites](../../../crates/sprites) | Denise 8 hardware sprite engines, coordinate comparators, attached pairs, multiplexing. | serde |
+| **frame_builder** | [crates/frame_builder](../../../crates/frame_builder) | Denise raster scanline compositor, display window clipping, and 32-bit ARGB frame buffer generation. | serde |
+| **mouse** | [crates/mouse](../../../crates/mouse) | Amiga 2/3-button quadrature mouse and `JOY0DAT` encoding. | serde |
+| **joystick** | [crates/joystick](../../../crates/joystick) | Digital Atari 9-pin standard joystick and `JOYxDAT` direction switch XOR encoding. | serde |
+| **denise** | [crates/denise](../../../crates/denise) | Denise (MOS 8362/8373) video processor, bitplanes, palette (`COLOR00`–`COLOR31`), and collision registers. | config, serde |
+| **audio** | [crates/audio](../../../crates/audio) | Paula 4-channel 8-bit DMA audio engine, volume scaling (0..64), and stereo panning. | serde |
+| **floppy** | [crates/floppy](../../../crates/floppy) | 3.5" DD floppy drive mechanics (80 cylinders, 2 heads) and Paula MFM DMA controller. | serde |
+| **serial_port** | [crates/serial_port](../../../crates/serial_port) | Paula RS-232 UART transceiver (`SERDAT`, `SERPER`) and CIA-B handshakes. | serde |
+| **paula** | [crates/paula](../../../crates/paula) | Paula (MOS 8364) chip coordinator and central interrupt multiplexer (`INTENA`/`INTREQ`). | serde |
+| **keyboard** | [crates/keyboard](../../../crates/keyboard) | MOS 6500/1 keyboard microcontroller, scancode matrix, serial stream, and Ctrl-Amiga-Amiga reset. | serde |
+| **parallel_port** | [crates/parallel_port](../../../crates/parallel_port) | Centronics 8-bit bidirectional parallel printer port and CIA-B handshakes. | serde |
+| **cia** | [crates/cia](../../../crates/cia) | MOS 8520 Complex Interface Adapter (Timers A & B, Ports A & B, TOD, SDR, ICR). | serde |
+| **rtc** | [crates/rtc](../../../crates/rtc) | OKI MSM6242B Real-Time Clock & Calendar emulation, BCD latches, civil calendar arithmetic. | config, serde |
 | **memory_bus** | [crates/memory_bus](../../../crates/memory_bus) | 24-bit physical address space, 256-entry 64KB bank table (`addr >> 16`), 2-phase CCK arbitration, open bus emulation. | config, rtc |
 | **m68000** | [crates/m68000](../../../crates/m68000) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | memory_bus |
-| **debugger** | [crates/debugger](../../../crates/debugger) | Headless inspection and debugging subsystem, disassembler, mini-assembler, temporal time-travel engine, breakpoints, and watchpoints. | m68000, memory_bus |
-| **test_runner** | [crates/test_runner](../../../crates/test_runner) | Automated validation against Tom Harte SingleStepTests physical silicon vectors, cycle-exact instruction benchmarking engine, execution trace audit logger (--dump-traces), and Cartesian DMA contention suite. | m68000, memory_bus, debugger |
-| **gui** | [crates/gui](../../../crates/gui) | Immediate-mode Developer Studio & Standalone GUI (egui/eframe for Desktop + WASM), live CPU/memory inspection, temporal time-travel scrubber, and breakpoints manager. | m68000, memory_bus, debugger, config, rtc |
+| **machine_loop** | [crates/machine_loop](../../../crates/machine_loop) | Tier 0 top-level machine facade owning CPU, memory bus, monotonic `u64` CCK counter, custom chips, coprocessors, and devices in a flat structure with parameter-based cycle stepping. | agnus, audio, blitter, cia, config, copper, denise, dma, floppy, frame_builder, joystick, keyboard, m68000, memory_bus, mouse, parallel_port, paula, serial_port, sprites, serde |
+| **disassembler** | [crates/disassembler](../../../crates/disassembler) | Cycle-exact M68000 instruction disassembler. | *None* |
+| **debugger** | [crates/debugger](../../../crates/debugger) | Headless inspection and debugging subsystem, temporal time-travel engine, breakpoints, and watchpoints. | m68000, memory_bus, disassembler |
+| **test_runner** | [crates/test_runner](../../../crates/test_runner) | Automated validation against Tom Harte SingleStepTests, cycle-exact benchmarking, and Cartesian DMA contention suite. | m68000, memory_bus, debugger, disassembler |
+| **gui** | [crates/gui](../../../crates/gui) | Immediate-mode Developer Studio & Standalone GUI (egui/eframe), live CPU/memory inspection, temporal time-travel scrubber. | m68000, memory_bus, debugger, config, rtc |
 
 ---
 

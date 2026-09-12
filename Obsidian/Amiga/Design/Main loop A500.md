@@ -71,34 +71,87 @@ flowchart TD
 
 ---
 
-## 4. Reset Flows: Cold vs. Warm Reset
+## 4. Reset Flows: Cold vs. Warm Reset & Physical Circuit Mechanics
 
-On real Amiga hardware, **all resets start CPU execution from address `$000000` via the Kickstart low-memory overlay (`_OVL`)**:
+On real Amiga hardware, **all resets start CPU execution from address `$000000` via the Gary low-memory boot overlay (`_OVL`)**:
 
-### 4.1 Cold / Hard Reset (`reset_cold`)
-1. **MemoryBus:** Call `memory_bus.reset_cold()`. Zeroes all physical Chip RAM and Fast RAM buffers (`$00`) and engages low-memory overlay (`map_kickstart_to_low_memory()`).
-2. **Specialized Chips:** Apply chip reset defaults:
-   - Agnus: `DMACON = $0000` (DMA disabled), Copper halted.
-   - Paula: `INTENA = $0000`, `INTREQ = $0000`, audio volumes set to `0`.
-   - CIAs: `DDRA/B = $00`, `ICR = $00`, timers stopped.
-3. **CPU:** Apply CPU reset:
-   - `SR` set to `$2700` ($S=1, T=0, I=7$).
-   - Read 32-bit initial `SSP` from `$000000` (routed to Kickstart ROM).
-   - Read 32-bit initial `PC` from `$000004` (routed to Kickstart ROM).
+### 4.1 Physical Reset Lines & Timing
+1. **Physical Reset Circuitry:**
+   - **Power-On Reset:** A 555 timer circuit on the Amiga motherboard asserts the bidirectional open-collector `_RESET` and `_HALT` lines LOW simultaneously for ~500 ms upon system power-up.
+   - **Keyboard Reset (`Ctrl-Amiga-Amiga`):** The MOS 6500/1 keyboard microcontroller transmits warning code `$78` to CIA-A over the serial link, allowing AmigaOS up to 10 seconds to park floppy drive heads and flush disk cache buffers. After an ACK handshake or timeout (~500 ms), the keyboard pulls the motherboard `_RESET` line LOW for $\ge 500$ ms.
+   - **M68000 Reset Exception Timing:**
+     - After `_RESET` and `_HALT` are released HIGH, the M68000 enters its internal 40-clock reset sequence (10 bus cycles = 20 Color Clocks / CCK phases).
+     - Bus cycles 1–2 (4 CCK): Fetch initial 32-bit `SSP` from `$000000-$000003`.
+     - Bus cycles 3–4 (4 CCK): Fetch initial 32-bit `PC` from `$000004-$000007`.
+     - Bus cycles 5–6 (4 CCK): Prefetch first instruction word at `PC` into `IR`; increment `PC += 2`.
+     - Bus cycles 7–8 (4 CCK): Prefetch second instruction word at `PC` into `IRC` (`prefetch[0]`); increment `PC += 2`.
+     - Cycles 9–10: Internal dispatch and microcode initialization.
+     - *Double Bus Fault:* If a bus error or address error (odd vector) occurs during the reset vector fetch, the CPU enters the **HALTED** state and permanently tri-states its bus until an external hardware reset occurs.
+
+2. **M68000 `RESET` Instruction (`$4E70`) Distinction:**
+   - The assembly instruction `RESET` is a privileged instruction ($S=1$).
+   - When executed, the M68000 drives its external `_RESET` pin LOW for 124 clock cycles (62 CCKs) while `_HALT` remains HIGH.
+   - **The CPU does NOT reset its own internal state, registers, or PC!** It continues execution with the subsequent instruction.
+   - External devices (custom chips, CIAs, expansion boards) and Gary are reset, re-engaging `_OVL`. Software executing `RESET` must ensure its execution is already running out of Kickstart ROM space (`$F80000-$FFFFFF`) before triggering `RESET`.
+
+---
+
+### 4.2 Subsystem Reset Defaults Table
+
+| Subsystem / Chip | Register / State | Power-On / Hardware Reset Value | Circuit Effect |
+| :--- | :--- | :--- | :--- |
+| **Gary / Bus** | `_OVL` (Boot Overlay) | **Active (`0`)** | Intercepts CPU accesses to `$000000-$07FFFF` and routes to Kickstart ROM space (`$F80000-$FFFFFF`). Chip DMA is unaffected. |
+| **CPU (M68000)** | `SR` | **`$2700`** | Supervisor mode ($S=1$), Trace disabled ($T=0$), Interrupt mask set to Level 7 ($I_2,I_1,I_0 = 111$). |
+| **CPU (M68000)** | `SSP` / `PC` | **Vectors from `$000000` / `$000004`** | Fetched from Kickstart ROM via Gary `_OVL`. |
+| **CPU (M68000)** | `D0..D7`, `A0..A6` | **Undefined (Cold) / Unaltered (Warm)** | Flip-flops retain state on warm reset; random on cold silicon. |
+| **Agnus (8370/8371)** | `DMACON` | **`$0000`** | All 7 DMA channels disabled, master DMA disabled, Blitter Nasty disabled. |
+| **Agnus** | `hpos` / `vpos` / `lof` | **`0` / `0` / `false`** | Raster beam synchronized to scanline 0, horizontal CCK 0, short frame. |
+| **Copper** | `COP1LC` / `COP2LC` | **`0` / `0`** | Copper halted (`is_running = false`, `is_waiting = false`, `cdang = false`). |
+| **Blitter** | Busy flag | **`false`** | Blitter idle, channels released. |
+| **Denise (8362)** | `BPLCON0`..`BPLCON3` | **`$0000`** | Display output disabled, 0 bitplanes active, sprites disabled. |
+| **Denise** | `CLXDAT` | **`$0000`** | Collision latches cleared. |
+| **Paula (8364)** | `INTENA` / `INTREQ` | **`$0000` / `$0000`** | Master and all 14 interrupt channels disabled; all requests cleared. |
+| **Paula** | `AUD0VOL`..`AUD3VOL` | **`0`** | Audio output immediately muted. |
+| **Paula** | Floppy & UART | **Motor OFF, UART idle** | Drive motor disabled, write gate off, serial dividers reset. |
+| **CIA-A & CIA-B** | `DDRA` / `DDRB` | **`$00`** | All port pins configured as high-impedance inputs. |
+| **CIA-A** | `PRA` bit 0 (`_OVL`) | **Input (`0`)** | Keeps Gary boot overlay active until software configures `DDRA` bit 0 = 1 and `PRA` bit 0 = 1. |
+| **CIA-A & CIA-B** | `CRA` / `CRB` | **`$00`** | All timers stopped (continuous mode, E-clock source). Latches reset to `$FFFF`. |
+| **CIA-A & CIA-B** | `ICR` | **`$00`** | All interrupt masks cleared; pending flags cleared. |
+| **Machine Loop** | `cck` | **`0`** | Master Color Clock counter reset to 0. |
+
+---
+
+### 4.3 Cold / Hard Reset (`reset_cold`)
+1. **MemoryBus:** Call `memory_bus.reset_cold()`. Zeroes all physical Chip RAM, Slow RAM, and Fast RAM buffers (`$00`) and engages low-memory overlay (`map_kickstart_to_low_memory()`).
+   - *Headless / Test Invariant:* If no Kickstart ROM is loaded (synthetic test mode), disengages overlay so test RAM at `$000000` remains visible.
+2. **Master CCK Counter:** Set `self.cck = 0`.
+3. **Specialized Chips:** Apply chip reset defaults from the table above (disable DMA, mask interrupts, halt Copper/Blitter, mute audio, clear CIA latches).
+4. **CPU:** Apply M68000 reset:
+   - `SR` set to `$2700`.
+   - Read initial `SSP` from `$000000` (routed to Kickstart ROM).
+   - Read initial `PC` from `$000004` (routed to Kickstart ROM).
    - Prime prefetch queue (`IR` and `IRC`).
-4. **Execution:** CPU executes Kickstart entry point. Since RAM was zeroed, memory checksum checks fail, and Kickstart runs full cold initialization.
+5. **Execution & Kickstart Detection:**
+   - CPU begins executing at Kickstart entry point.
+   - Because RAM was zeroed, memory checksum validation fails.
+   - Kickstart executes full cold system initialization: diagnostic colors (Red/Green/Blue tests), memory auto-sizing, chip initialization, and prompts for boot diskette (insert floppy screen or Early Startup).
 
-### 4.2 Warm Reset (`reset_warm`)
-1. **MemoryBus:** Call `memory_bus.reset_warm()`. Leaves RAM contents completely intact and re-engages low-memory overlay (`map_kickstart_to_low_memory()`).
-2. **Specialized Chips:** Apply chip reset lines (disable DMA, mask interrupts, mute audio, reset CIA port latches), keeping register states and memory undisturbed.
-3. **CPU:**
+---
+
+### 4.4 Warm Reset (`reset_warm`)
+1. **MemoryBus:** Call `memory_bus.reset_warm()`. **Leaves RAM contents completely intact!** Re-engages low-memory overlay (`map_kickstart_to_low_memory()`).
+   - *Headless / Test Invariant:* If no Kickstart ROM is loaded, disengages overlay so test RAM at `$000000` remains visible.
+2. **Master CCK Counter:** Set `self.cck = 0`.
+3. **Specialized Chips:** Apply chip reset defaults (disable DMA, mask interrupts, mute audio, reset CIA port latches), leaving physical RAM undisturbed.
+4. **CPU:**
    - Re-initialize `SR = $2700`.
    - Reload initial `SSP` from `$000000` and initial `PC` from `$000004`.
-   - Prime prefetch queue.
-4. **Kickstart Detection:**
-   - The CPU starts execution at the Kickstart ROM entry point.
-   - Kickstart code scans RAM for magic resident signatures (`KickTagPtr`, checksum, ExecBase pointers).
-   - Because RAM was preserved, the checksum succeeds, and Kickstart executes a warm reboot (preserving resident modules, alert state, and fast-booting).
+   - Prime prefetch queue (`IR` and `IRC`).
+5. **Kickstart Detection & Fast Reboot:**
+   - CPU begins executing at Kickstart entry point.
+   - Kickstart scans RAM for magic resident signatures (`KickTagPtr`, ExecBase pointers, `ColdCapture`/`CoolCapture` vectors, and memory checksums).
+   - Because RAM was preserved, the memory checksum succeeds.
+   - Kickstart recognizes a **warm reboot**: it preserves resident libraries, device drivers, and surviving RAD: recoverable RAM-disks, bypasses prolonged memory sizing, and reboots rapidly.
 
 ---
 

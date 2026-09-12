@@ -44,6 +44,11 @@ This document outlines the phased development plan, hardware milestones, verific
 ## 2. Core Implementation Strategy (Remaining Milestones)
 
 ### Step 1: Standalone CPU Program Execution, Synthetic Workloads & Performance Projection (Active)
+- **Continuous Testing & Polish of Developer GUI (Debugger View):**
+  - Actively test, harden, and refine the Developer Studio GUI (Debugger View) alongside core execution workloads.
+  - Continuously test all interactive panels under live emulation: Disassembly infinite stream browsing and in-place instruction patching, Memory Hex selection and row-wrapping keyboard navigation, register/CCR editing, Microcode Inspector step progression, and breakpoint/watchpoint triggers.
+  - Verify layout stability, symmetric margin geometry, scrollbar ergonomics, and responsive display tiers across diverse window sizes and display resolutions.
+  - Test and refine upcoming Save State management (`State` menu, in-memory quick slots 1–5, `F6`/`F9` shortcuts, native file dialogs, and State Manager modal dialog).
 - **Direct Memory Program Injection & Execution (Leveraging Developer GUI & Harness):**
   - Inject compiled M68000 binary routines (raw machine code binaries, assembled routines) into emulated RAM without requiring Kickstart ROM or OS overhead.
   - Set initial execution context ($, $, $) and execute self-contained test programs to completion, designated stop addresses, or trap returns.
@@ -72,19 +77,21 @@ This document outlines the phased development plan, hardware milestones, verific
   - Ensure every optimized handler retains 100% cycle-exact Color Clock fidelity and passes the full exhaustive SingleStepTests suite ($env:SINGLESTEP_FULL = "1") with zero regressions.
 
 ### Step 3: Custom Chipsets (Agnus, Denise, Paula, CIAs)
-- **Step 3.1: Minimal Machine Main Loop (A500::step_cck) & Subsystem Orchestration:**
-  - Create the top-level machine struct (A500) owning all primary subsystems without circular references: cpu, memory_bus, cycle_counter, gnus, denise, paula, cia_a, cia_b.
-  - Multi-level stepping interfaces: step_cck(cck: u64), step_instruction(), step_cycles(n), step_frame().
-  - Strict lockstep Color Clock stepping: clock beam counters, advance DMA slots, clock CIAs, drive CPU CCK1/CCK2 bus phases against MemoryBus.
-  - Central interrupt priority arbitration pipeline: sample Paula (Levels 1, 3, 4, 5), CIA-A (Level 2), and CIA-B (Level 6), calculate highest unmasked level, and drive cpu.set_ipl().
-- **Step 3.2: Machine-Wide Reset Sequencing (eset_cold & eset_warm):**
+- **Step 3.1: Minimal Machine Main Loop (A500::step_cck) & Subsystem Orchestration (Completed Baseline Scaffold):**
+  - Scaffolded all 17 specialized hardware crates across the Cargo workspace in a flat, decoupled structure: `copper`, `blitter`, `dma`, `agnus`, `sprites`, `frame_builder`, `mouse`, `joystick`, `denise`, `audio`, `floppy`, `serial_port`, `paula`, `keyboard`, `parallel_port`, `cia`, and `machine_loop`.
+  - Created top-level machine struct (`A500Machine`) owning all primary chips, coprocessors, and peripheral devices as flat fields with monotonic `u64` Color Clock (`cck`) counter and zero circular references.
+  - Sibling crates maintain zero dependencies on each other; cycle execution uses parameter-based passing for clean borrow splitting.
+  - Implemented multi-level stepping interfaces: `step_cck(cck: u64)`, `step_instruction()`, `step_cycles(n)`, `step_frame()`.
+  - Central interrupt priority arbitration pipeline: samples Paula (Levels 1, 3, 4, 5), CIA-A (Level 2), and CIA-B (Level 6), calculates highest unmasked level, and drives `cpu.state.ipl`.
+  - 100% verified: clean `cargo check --workspace`, 24 unit tests across new crates, architecture test validation, and `test_dma_cartesian` pass.
+- **Step 3.2: Machine-Wide Reset Sequencing (reset_cold & reset_warm):**
   - Physical _RESET line propagation across all chips.
   - Boot overlay engagement (map_kickstart_to_low_memory in MemoryBus).
-  - *Cold Reset:* Zero physical RAM buffers ($00), reset chip registers to power-on defaults (DMACON = , INTENA/INTREQ = , CIA latches cleared), initialize CPU SR = , load initial SSP/PC from $000000/$000004 (Kickstart ROM), prime prefetch queue (IR, IRC).
+  - *Cold Reset:* Zero physical RAM buffers ($00), reset chip registers to power-on defaults (DMACON = $0000, INTENA/INTREQ = $0000, CIA latches cleared), initialize CPU SR = $2700, load initial SSP/PC from $000000/$000004 (Kickstart ROM), prime prefetch queue (IR, IRC).
   - *Warm Reset:* Preserve RAM contents intact (ensuring Kickstart memory checksum and resident module discovery pass), re-engage _OVL, assert chip reset lines, reload initial vectors.
   - Hardware keyboard reset line: wire Ctrl-Amiga-Amiga reset trigger line to main machine reset flow.
 - **Step 3.3: Delayed Signal & Register Mutation Propagation Pipeline:**
-  - *Physical Circuit Simulation:* Register reads return the currently latched active state **immediately** ("Read is NOW"). Register writes, strobes, and register mutations (e.g. DMACON, BPLCON0, COLORxx, INTENA, COPJMP1, BLTSIZE, CIA timer latches) do not take instantaneous cross-chip effect; they are staged and propagate after $ Color Clock phases / CCK cycles before altering the active execution path.
+  - *Physical Circuit Simulation:* Register reads return the currently latched active state **immediately** ("Read is NOW"). Register writes, strobes, and register mutations (e.g. DMACON, BPLCON0, COLORxx, INTENA, COPJMP1, BLTSIZE, CIA timer latches) do not take instantaneous cross-chip effect; they are staged and propagate after $K$ Color Clock phases / CCK cycles before altering the active execution path.
   - *Zero-Allocation Hot Path Design:* Model staged mutations using fixed-size inline pipeline latches / ring buffers (e.g. [Option<DelayedWrite>; 4] or fixed-capacity shift latches) embedded directly within chip structs. Zero dynamic heap allocation (Vec, Box) during CCK stepping.
   - *Save State Persistence:* The delayed mutation pipeline, staged values, and remaining cycle countdowns are fully serializable in save states (AgnusState, DeniseState, etc.), guaranteeing deterministic round-trip snapshot capture and rewind/restore even mid-propagation.
 - **Step 3.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**

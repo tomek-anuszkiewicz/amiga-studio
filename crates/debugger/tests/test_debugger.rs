@@ -215,8 +215,8 @@ fn test_debugger_session_controller() {
     let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75]; // NOP, NOP, RTS
     session.load_binary(0x001000, &code, true);
 
-    assert_eq!(session.cpu.state.pc, 0x001004); // Prefetch primed to 0x1004
-    assert_eq!(session.cpu.state.ir, 0x4E71);
+    assert_eq!(session.machine.cpu.state.pc, 0x001004); // Prefetch primed to 0x1004
+    assert_eq!(session.machine.cpu.state.ir, 0x4E71);
 
     // Step 1 instruction
     session.step_instruction();

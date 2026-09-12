@@ -23,7 +23,12 @@ fn test_and_trace_all_sample_binaries() {
         |session| {
             let mut results = Vec::new();
             for i in 0..16 {
-                results.push(session.bus.read_word_debug(0x002000 + (i * 2)));
+                results.push(
+                    session
+                        .machine
+                        .memory_bus
+                        .read_word_debug(0x002000 + (i * 2)),
+                );
             }
             println!("   [Memory Table $002000..$00201F] 16 Fibonacci Numbers:");
             println!("   {:?}", results);
@@ -44,7 +49,12 @@ fn test_and_trace_all_sample_binaries() {
         |session| {
             let mut results = Vec::new();
             for i in 0..8 {
-                results.push(session.bus.read_word_debug(0x002000 + (i * 2)));
+                results.push(
+                    session
+                        .machine
+                        .memory_bus
+                        .read_word_debug(0x002000 + (i * 2)),
+                );
             }
             println!("   [Memory Table $002000..$00200F] Sorted Array:");
             println!("   {:04X?}", results);
@@ -63,13 +73,13 @@ fn test_and_trace_all_sample_binaries() {
         0x001056, // halt breakpoint
         5000,
         |session| {
-            let count = session.cpu.state.d_long(7);
+            let count = session.machine.cpu.state.d_long(7);
             println!("   [Result] Prime count in D7: {}", count);
             assert_eq!(count, 18);
 
             let mut primes = Vec::new();
             for i in 0..18 {
-                primes.push(session.bus.read_byte_debug(0x002100 + i));
+                primes.push(session.machine.memory_bus.read_byte_debug(0x002100 + i));
             }
             println!("   [Memory Table $002100..$002111] 18 Primes under 64:");
             println!("   {:?}", primes);
@@ -88,7 +98,7 @@ fn test_and_trace_all_sample_binaries() {
         0x00103E, // halt breakpoint
         2000,
         |session| {
-            let is_pal = session.cpu.state.d_long(0);
+            let is_pal = session.machine.cpu.state.d_long(0);
             println!(
                 "   [Result] Palindrome check result in D0: {} (1=true)",
                 is_pal
@@ -97,7 +107,7 @@ fn test_and_trace_all_sample_binaries() {
 
             let mut rev_chars = Vec::new();
             for i in 0..16 {
-                rev_chars.push(session.bus.read_byte_debug(0x002040 + i));
+                rev_chars.push(session.machine.memory_bus.read_byte_debug(0x002040 + i));
             }
             let rev_str = String::from_utf8_lossy(&rev_chars);
             println!("   [Memory String at $002040]: \"{}\"", rev_str);
@@ -116,8 +126,8 @@ fn test_and_trace_all_sample_binaries() {
             let mut facts = Vec::new();
             for i in 0..8 {
                 let addr = 0x002000 + (i * 4);
-                let hi = session.bus.read_word_debug(addr) as u32;
-                let lo = session.bus.read_word_debug(addr + 2) as u32;
+                let hi = session.machine.memory_bus.read_word_debug(addr) as u32;
+                let lo = session.machine.memory_bus.read_word_debug(addr + 2) as u32;
                 facts.push((hi << 16) | lo);
             }
             println!("   [Memory Table $002000..$00201F] Factorials 1! .. 8!:");
@@ -162,7 +172,7 @@ fn trace_program<F>(
     println!("{:-<92}", "");
 
     while step_count < max_steps {
-        let pc = session.cpu.state.pc.wrapping_sub(4);
+        let pc = session.machine.cpu.state.pc.wrapping_sub(4);
         if pc == halt_addr {
             println!(
                 "   --> HALT reached at ${:06X} after {} instructions.",
@@ -171,7 +181,7 @@ fn trace_program<F>(
             break;
         }
 
-        let (disasm, _) = disassemble(pc, |addr| session.bus.read_word_debug(addr));
+        let (disasm, _) = disassemble(pc, |addr| session.machine.memory_bus.read_word_debug(addr));
         let mnem = if disasm.operands.is_empty() {
             disasm.mnemonic.to_string()
         } else {
@@ -182,14 +192,14 @@ fn trace_program<F>(
         if printed_instructions < 15 || step_count >= max_steps - 5 {
             let d_str = format!(
                 "D0:{:04X} D1:{:04X} D2:{:04X}",
-                session.cpu.state.d_word(0),
-                session.cpu.state.d_word(1),
-                session.cpu.state.d_word(2),
+                session.machine.cpu.state.d_word(0),
+                session.machine.cpu.state.d_word(1),
+                session.machine.cpu.state.d_word(2),
             );
             let a_str = format!(
                 "A0:{:06X} A1:{:06X}",
-                session.cpu.state.read_a(0),
-                session.cpu.state.read_a(1),
+                session.machine.cpu.state.read_a(0),
+                session.machine.cpu.state.read_a(1),
             );
             println!(
                 "#{:<5} ${:06X}   {:<30} {:<24} {:<20}",

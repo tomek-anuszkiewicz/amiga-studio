@@ -7,12 +7,12 @@ subsystem: "debugger"
 status: "active"
 created: 2026-09-05
 updated: 2026-09-12
-related: ["[General Architecture.md](General%20Architecture.md)", "[GUI.md](GUI.md)", "[GUI Specification.md](GUI%20Specification.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
+related: ["[General Architecture.md](General%20Architecture.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[GUI.md](GUI.md)", "[GUI Specification.md](GUI%20Specification.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
 ---
 
 # Amiga 500 Debugger Architecture & Inspection Engine
 
-- **Parent Specification:** [General Architecture.md](General%20Architecture.md)
+- **Parent Specification:** [General Architecture.md](General%20Architecture.md) | [Main loop A500.md](Main%20loop%20A500.md)
 - **GUI Companion:** [GUI.md](GUI.md) | [GUI Specification.md](GUI%20Specification.md)
 - **CPU Specifications:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)
 - **Module Location:** `crates/debugger/` & `crates/disassembler/`
@@ -25,14 +25,18 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[GUI.md](GUI.
 
 ## 1. Scope & Decoupled Architecture
 
-The debugger module wraps or instruments the `A500` machine without adding overhead to the hot emulation loop when disabled:
+The debugger module wraps or instruments the `A500Machine` top-level chassis without adding overhead to the hot emulation loop when disabled:
 
 ```mermaid
 graph TD
-    UI["Frontend / GUI / CLI"] <--> DEBUGGER["Debugger Backend Engine"]
-    DEBUGGER <--> MACHINE["A500 Core (CPU, MemoryBus, Chips)"]
+    UI["Frontend / GUI / CLI"] <--> SESSION["DebuggerSession"]
+    SESSION <--> MACHINE["A500Machine (CPU, MemoryBus, Custom Chips, CIAs)"]
+    SESSION <--> DEBUGGER["Debugger Stepping Engine & Trace"]
+    SESSION <--> TEMPORAL["Temporal History Ring Buffer"]
 ```
 
+- **Unified Machine Ownership:** `DebuggerSession` owns `pub machine: A500Machine` as the single source of truth for the CPU, memory bus, and all custom chips and peripherals.
+- **Synchronized Chip Stepping:** Advancing execution via `step_cck()` steps `machine.step_cck()`, ensuring beam counters (Agnus), copper lists, blitter operations, and timers (CIAs) step in lockstep Color Clock synchronization with the CPU during debugging.
 - **Zero Intrusion when Inactive:** When no breakpoints or watchpoints are set, the execution loop runs with zero branching overhead.
 - **Side-Effect Free Inspection:** Reading memory, registers, or hardware state via the debugger must **never** trigger bus latches, reset clear-on-read registers (like `INTREQR`), or alter CPU prefetch queues.
 

@@ -68,9 +68,9 @@ pub fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 ui.separator();
 
                 // --- 3. Machine Status Badge ---
-                let (status_text, bg_color) = if app.session.cpu.state.halted {
+                let (status_text, bg_color) = if app.session.machine.cpu.state.halted {
                     ("HALTED", egui::Color32::from_rgb(180, 40, 40))
-                } else if app.session.cpu.state.stopped {
+                } else if app.session.machine.cpu.state.stopped {
                     ("STOPPED", egui::Color32::from_rgb(40, 90, 180))
                 } else if app.session.is_running {
                     ("RUNNING", egui::Color32::from_rgb(40, 160, 60))

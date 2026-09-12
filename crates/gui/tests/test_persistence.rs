@@ -50,7 +50,7 @@ fn test_user_preferences_roundtrip_via_storage() {
 
     // Also run some guest code to alter CPU/RAM state
     app.session.load_binary(0x001000, &[0x4E, 0x71], true);
-    app.session.cpu.state.set_d_long(0, 0x12345678);
+    app.session.machine.cpu.state.set_d_long(0, 0x12345678);
     app.session.instructions_executed = 42;
 
     // 2. Persist state via eframe::App::save
@@ -91,8 +91,8 @@ fn test_user_preferences_roundtrip_via_storage() {
     // 5. Assert Guest Emulation State is CLEAN & TRANSIENT (never persisted)
     let fresh_app = EmulatorApp::default();
     assert_eq!(
-        new_app.session.cpu.state.d_long(0),
-        fresh_app.session.cpu.state.d_long(0),
+        new_app.session.machine.cpu.state.d_long(0),
+        fresh_app.session.machine.cpu.state.d_long(0),
         "Guest registers must not be persisted"
     );
     assert_eq!(
@@ -100,11 +100,11 @@ fn test_user_preferences_roundtrip_via_storage() {
         "Instruction count must start at 0"
     );
     assert_eq!(
-        new_app.session.cpu.state.pc, fresh_app.session.cpu.state.pc,
+        new_app.session.machine.cpu.state.pc, fresh_app.session.machine.cpu.state.pc,
         "PC must remain fresh default on restart"
     );
     assert_ne!(
-        new_app.session.cpu.state.pc, 0x001000,
+        new_app.session.machine.cpu.state.pc, 0x001000,
         "Loaded binary PC must not be persisted"
     );
 }

@@ -1,0 +1,9 @@
+[package]
+name = "agnus"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+config = { workspace = true }
+serde = { workspace = true, features = ["derive"] }

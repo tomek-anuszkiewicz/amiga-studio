@@ -1,20 +1,25 @@
 //! Headless Execution Session & Machine Controller
 //!
-//! Owns the CPU, MemoryBus, Debugger, and Temporal History, providing a unified,
+//! Owns the A500Machine, Debugger, and Temporal History, providing a unified,
 //! headless execution controller decoupled from GUI frameworks.
+
+use config::A500Config;
+use machine_loop::A500Machine;
+use memory_bus::MemoryBus;
 
 use crate::loader::inject_binary;
 use crate::stepping::Debugger;
 use crate::temporal::{TemporalHistory, DEFAULT_TEMPORAL_CAPACITY, PAL_FRAME_CCK};
-use m68000::{Cpu, CpuState};
-use memory_bus::MemoryBus;
+use m68000::CpuState;
 
 /// Complete headless execution session and machine controller
 #[derive(Debug, Clone)]
 pub struct DebuggerSession {
-    pub cpu: Cpu,
-    pub bus: MemoryBus,
+    /// The full Amiga 500 machine orchestrating CPU, memory bus, and chips
+    pub machine: A500Machine,
+    /// Interactive debugger stepping and trace engine
     pub debugger: Debugger,
+    /// Circular historical state buffer for time-travel debugging
     pub temporal: TemporalHistory,
 
     // Execution state
@@ -34,22 +39,15 @@ impl Default for DebuggerSession {
 }
 
 impl DebuggerSession {
-    /// Initializes a new DebuggerSession with reset CPU and default temporal capacity
-    pub fn new() -> Self {
-        let mut bus = MemoryBus::new();
-        // If no Kickstart ROM is loaded, disengage low-memory boot overlay so physical Chip RAM maps to $000000
-        if !bus.is_kickstart_loaded() {
-            bus.map_chip_ram_to_low_memory();
-        }
-        let mut cpu = Cpu::new();
-        cpu.reset(&mut bus);
+    /// Initializes a new DebuggerSession from an explicit A500Config
+    pub fn from_config(config: A500Config) -> Self {
+        let machine = A500Machine::new(config);
 
         let mut temporal = TemporalHistory::new(DEFAULT_TEMPORAL_CAPACITY);
         temporal.set_recording(false); // Lean opt-in: recording starts paused by default
 
         Self {
-            cpu,
-            bus,
+            machine,
             debugger: Debugger::new(),
             temporal,
             is_running: false,
@@ -60,11 +58,28 @@ impl DebuggerSession {
         }
     }
 
+    /// Initializes a new DebuggerSession with default A500 configuration
+    pub fn new() -> Self {
+        Self::from_config(A500Config::default())
+    }
+
+    /// Direct reference to the machine's memory bus
+    #[inline]
+    pub fn bus(&self) -> &MemoryBus {
+        &self.machine.memory_bus
+    }
+
+    /// Direct mutable reference to the machine's memory bus
+    #[inline]
+    pub fn bus_mut(&mut self) -> &mut MemoryBus {
+        &mut self.machine.memory_bus
+    }
+
     /// Captures a 256-byte snapshot of memory around `base_addr` for diff highlighting
     pub fn capture_memory_snapshot(&mut self, base_addr: u32) {
         for i in 0..256 {
             let addr = base_addr.wrapping_add(i as u32) & 0x00FF_FFFF;
-            self.prev_hex_bytes[i] = self.bus.read_byte_debug(addr);
+            self.prev_hex_bytes[i] = self.machine.memory_bus.read_byte_debug(addr);
         }
         self.prev_hex_base = base_addr;
     }
@@ -72,32 +87,53 @@ impl DebuggerSession {
     /// Steps exactly 1 M68000 instruction, recording trace and temporal history
     pub fn step_instruction(&mut self) {
         self.capture_memory_snapshot(self.prev_hex_base);
-        self.prev_cpu_state = Some(self.cpu.state.clone());
+        self.prev_cpu_state = Some(self.machine.cpu.state.clone());
 
-        let pc = self.cpu.state.instruction_pc;
+        let pc = self.machine.cpu.state.instruction_pc;
         self.temporal.record(
             self.debugger.current_cck,
             pc,
-            self.cpu.state.ir,
-            self.cpu.state.clone(),
+            self.machine.cpu.state.ir,
+            self.machine.cpu.state.clone(),
         );
 
-        let clocks = self.debugger.step_instruction(&mut self.cpu, &mut self.bus);
+        let clocks = self
+            .debugger
+            .step_instruction(&mut self.machine.cpu, &mut self.machine.memory_bus);
         self.instructions_executed = self.instructions_executed.saturating_add(1);
 
-        // Update MemoryBus RTC / timers
-        self.bus.step_cck((clocks as u64) / 2);
+        // Advance machine subsystems by elapsed Color Clocks
+        let ccks = (clocks as u64) / 2;
+        self.machine.cck = self.machine.cck.wrapping_add(ccks);
+        for _ in 0..ccks {
+            self.machine.agnus.step_cck();
+            self.machine.copper.step_cck();
+            self.machine.blitter.step_cck();
+            self.machine.dma.step_cck();
+            self.machine.denise.step_cck();
+            self.machine.audio.step_cck();
+            self.machine.floppy.step_cck();
+            self.machine.serial_port.step_cck();
+            self.machine.paula.step_cck();
+            self.machine.cia_a.step_cck();
+            self.machine.cia_b.step_cck();
+        }
+        self.machine.memory_bus.step_cck(ccks);
+        let ipl = self.machine.resolve_ipl();
+        self.machine.cpu.state.ipl = ipl;
     }
 
-    /// Steps exactly 1 Color Clock phase (2 CPU clocks)
+    /// Steps exactly 1 Color Clock phase (~280 ns) across the entire machine
     pub fn step_cck(&mut self) {
         self.capture_memory_snapshot(self.prev_hex_base);
-        self.prev_cpu_state = Some(self.cpu.state.clone());
-        let completed = self.cpu.step_cck(&mut self.bus);
-        self.debugger.current_cck = self.debugger.current_cck.wrapping_add(1);
-        self.bus.step_cck(1);
+        self.prev_cpu_state = Some(self.machine.cpu.state.clone());
 
-        if completed {
+        let prev_micro = self.machine.cpu.state.micro.micro_step;
+        self.machine.step_cck();
+        self.debugger.current_cck = self.machine.cck;
+
+        // If CPU finished an instruction (transitioned to micro_step == 0)
+        if prev_micro != 0 && self.machine.cpu.state.micro.micro_step == 0 {
             self.instructions_executed = self.instructions_executed.saturating_add(1);
         }
     }
@@ -110,18 +146,19 @@ impl DebuggerSession {
 
         if self.prev_cpu_state.is_none() {
             self.capture_memory_snapshot(self.prev_hex_base);
-            self.prev_cpu_state = Some(self.cpu.state.clone());
+            self.prev_cpu_state = Some(self.machine.cpu.state.clone());
         }
 
         let steps = self.debugger.run_until_breakpoint_with_temporal(
-            &mut self.cpu,
-            &mut self.bus,
+            &mut self.machine.cpu,
+            &mut self.machine.memory_bus,
             &mut self.temporal,
             max_instructions,
         );
         self.instructions_executed = self.instructions_executed.saturating_add(steps as u64);
+        self.machine.cck = self.debugger.current_cck;
 
-        if self.cpu.state.halted || self.cpu.state.stopped {
+        if self.machine.cpu.state.halted || self.machine.cpu.state.stopped {
             self.is_running = false;
         }
 
@@ -180,7 +217,7 @@ impl DebuggerSession {
     /// Scrubs to a historical snapshot in the ring buffer
     pub fn scrub_to_frame(&mut self, index: usize) {
         if let Some(frame) = self.temporal.get_chronological(index) {
-            self.cpu.state = frame.state.clone();
+            self.machine.cpu.state = frame.state.clone();
             self.temporal.scrub_cursor = Some(index);
         }
     }
@@ -201,11 +238,10 @@ impl DebuggerSession {
     /// Cold-resets the A500 machine
     pub fn reset_cold(&mut self) {
         self.is_running = false;
-        self.bus.reset_cold();
-        if !self.bus.is_kickstart_loaded() {
-            self.bus.map_chip_ram_to_low_memory();
+        self.machine.reset_cold();
+        if !self.machine.memory_bus.is_kickstart_loaded() {
+            self.machine.memory_bus.map_chip_ram_to_low_memory();
         }
-        self.cpu.reset(&mut self.bus);
         self.temporal.clear();
         self.debugger.trace.clear();
         self.debugger.current_cck = 0;
@@ -216,16 +252,21 @@ impl DebuggerSession {
     /// Warm-resets the A500 machine
     pub fn reset_warm(&mut self) {
         self.is_running = false;
-        self.bus.reset_warm();
-        if !self.bus.is_kickstart_loaded() {
-            self.bus.map_chip_ram_to_low_memory();
+        self.machine.reset_warm();
+        if !self.machine.memory_bus.is_kickstart_loaded() {
+            self.machine.memory_bus.map_chip_ram_to_low_memory();
         }
-        self.cpu.reset(&mut self.bus);
         self.prev_cpu_state = None;
     }
 
     /// Loads binary data into memory and optionally sets PC & primes prefetch
     pub fn load_binary(&mut self, target_addr: u32, data: &[u8], auto_prime: bool) -> usize {
-        inject_binary(&mut self.cpu, &mut self.bus, target_addr, data, auto_prime)
+        inject_binary(
+            &mut self.machine.cpu,
+            &mut self.machine.memory_bus,
+            target_addr,
+            data,
+            auto_prime,
+        )
     }
 }
