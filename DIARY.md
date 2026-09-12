@@ -59,6 +59,14 @@ To achieve mechanical sympathy with Rust's ownership model and the host CPU's in
 
 Data flows in one clear, predictable direction with zero circular handles and zero runtime heap allocations in hot paths.
 
+### Host Hardware Reality: Mechanical Sympathy Over Micro-Optimizations
+Taking into account the immense speed of modern host processors (3.5–5.0+ GHz), expansive L1/L2/L3 caches, and abundant system RAM, the human established a core architectural premise: **traditional, complex micro-optimizations are completely unnecessary**.
+
+Rather than cluttering the code with premature optimizations, bit-twiddling hacks, or obscure abstractions, the design focuses entirely on **mechanical sympathy** with the host CPU:
+- **Maximizing Cache Locality & Linear Execution:** Modern superscalar CPUs are extraordinarily capable of executing code at staggering speeds as long as execution is reasonably linear and predictable.
+- **Eliminating Branch Mispredictions:** Deep host CPU instruction pipelines (14–20+ stages) suffer severe penalties (15–20 CPU cycles) on mispredicted branches. If we avoid cascaded dynamic branches in the hot emulation loop (e.g. eliminating runtime `match opcode`, `match ea_mode`, and `match size` checks in favor of a direct 65,536-entry static dispatch table and concrete, specialized functions), the host branch predictor has near-zero ambiguity.
+- **Natural Blazing Speed:** When code is flat, linear, and cache-dense, the host processor executes it almost effortlessly at peak throughput. This guiding principle shaped the M68000 CPU core and directly dictates how custom chips (Agnus, Denise, Paula) are designed: minimal code branching, linear data flows, and zero dynamic heap allocations in hot paths.
+
 ---
 
 ## 3. The 6-Stage Evolution of the M68000 CPU Core
