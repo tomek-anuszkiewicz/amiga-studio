@@ -7,7 +7,7 @@ This document outlines the phased development plan, hardware milestones, verific
 ## 1. Hardware Roadmap & Milestones
 
 ### Phase 1: Baseline Amiga 500 (Rev 5 / Rev 6a OCS) — Immediate Focus
-- **CPU:** Motorola 68000 cycle-exact core based on the **Microcode Archetype Baseline** (Native 2-clock micro-step slices: \ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$, 100% complete opcode coverage with 45,565 active valid opcodes out of 65,536 across Batches 1.1–1.11; 100% SingleStepTests pass across all 127 test suites [~300,000 vectors across MAME and Tom Harte hardware captures]; 100% Cartesian DMA contention verification asserting cycle and state invariance across the full ^k \times 2^M$ permutation space).
+- **CPU:** Motorola 68000 cycle-exact core based on the **Microcode Archetype Baseline** (Native 2-clock micro-step slices: $1\ \text{MicroStep} = 1\ \text{Color Clock / CCK} = 2\ \text{CPU clocks}$, 100% complete opcode coverage with 45,565 active valid opcodes out of 65,536 across Batches 1.1–1.11; 100% SingleStepTests pass across all test suites against physical silicon hardware captures [Tom Harte SingleStepTests-680x0]; 100% Cartesian DMA contention verification asserting cycle and state invariance across the full $2^k \times 2^M$ permutation space).
 - **Memory Configuration:**
   - 512 KB Chip RAM ($000000-).
   - Optional 512 KB Trapdoor Slow RAM ($C00000-).

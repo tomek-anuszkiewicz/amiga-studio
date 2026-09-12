@@ -75,7 +75,7 @@ fn sample_tests_percentage(
     tests
 }
 
-fn load_mame_tests(opcode_name: &str, percentage: f64) -> Vec<SingleStepTest> {
+fn load_hardware_tests(opcode_name: &str, percentage: f64) -> Vec<SingleStepTest> {
     let repo_root = find_repo_root();
     // NOTE (ROADMAP Batch 1.3): MAME & Tom Harte do not have dedicated `CMPM.<size>.json` files;
     // `CMPM` vectors are bundled inside `CMP.<size>.json` alongside standard `CMP <ea>, Dn`.
@@ -83,7 +83,7 @@ fn load_mame_tests(opcode_name: &str, percentage: f64) -> Vec<SingleStepTest> {
     // When Batch 1.3 (`CMP`, `CMPA`, `CMPI`) is implemented, alter or remove this guard so the full `CMP` family is tested.
     if let Some(suffix) = opcode_name.strip_prefix("CMPM.") {
         let target_file = repo_root
-            .join("ref_src/SingleStepTests-m68000/v1")
+            .join("ref_src/SingleStepTests-680x0/68000/v1")
             .join(format!("CMP.{}.json", suffix));
         let content = fs::read_to_string(&target_file)
             .unwrap_or_else(|_| panic!("Failed to read {}", target_file.display()));
@@ -97,7 +97,7 @@ fn load_mame_tests(opcode_name: &str, percentage: f64) -> Vec<SingleStepTest> {
         return sample_tests_percentage(filtered, percentage, opcode_name);
     }
     let target_file = repo_root
-        .join("ref_src/SingleStepTests-m68000/v1")
+        .join("ref_src/SingleStepTests-680x0/68000/v1")
         .join(format!("{}.json", opcode_name));
 
     if target_file.exists() {
@@ -116,7 +116,7 @@ fn run_cartesian_for_opcodes(opcodes: &[&str]) {
     let mut total_tests = 0;
 
     for &opcode in opcodes {
-        let tests = load_mame_tests(opcode, CARTESIAN_PERCENTAGE);
+        let tests = load_hardware_tests(opcode, CARTESIAN_PERCENTAGE);
         total_tests += tests.len();
         for test in &tests {
             let stats = run_dma_full_cartesian_permutation(test, DEFAULT_MAX_DMA_CYCLES)

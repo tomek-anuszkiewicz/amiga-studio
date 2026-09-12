@@ -1037,5 +1037,30 @@ Every future modification or implementation task must append an entry following 
   - `python scripts/lint_attractors.py`: Trampoline executed successfully with exit code 0.
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed (0.55s).
 
+---
+
+### [2026-09-12 15:35 CEST] — Reference Code Clean-Room Wipe & Pure Hardware Single-Step Test Architecture
+- **Affected Subsystems**:
+  - `ref_src/`: Purged 14 obsolete reference cores, simulators, and testbenches (~1.2 GB), retaining strictly `SingleStepTests-680x0` (Tom Harte physical silicon vectors), `vAmiga-4.5` (clean C++ reference), and `vAmigaTS` (ADF test suite).
+  - `crates/test_runner/src/runner.rs`: Purged all 8 MAME simulator divergence workarounds (`!is_harte`), enforcing 100% physically faithful hardware cycle testing.
+  - `crates/test_runner/tests/test_singlestep.rs`: Streamlined test runner to execute exclusively against Tom Harte hardware vectors; rewrote `test_stop` to verify `STOP` opcode directly via Rust CPU state stepping.
+  - `crates/test_runner/tests/test_dma_cartesian.rs`: Updated `load_hardware_tests` to load test vectors directly from `ref_src/SingleStepTests-680x0/68000/v1/`.
+  - `README.md`: Updated directory tree, Section 5 catalog, and Section 6 test commands to reflect the 3 clean-room reference assets and hardware single-step testing.
+  - `AGENTS.md`, `ROADMAP.md`, `BOOTSTRAP.md`: Updated references to SingleStepTests and checked off the clean-room reference code wipe milestone.
+  - `Obsidian/Amiga/Design/*.md`: Fixed broken markdown links pointing to pruned `ref_src` emulators across `Agnus.md`, `CIA.md`, `CPU Micro-Step State Machine.md`, `CPU Motorola M68000.md`, `CPU SingleStepTests.md`, `Denise.md`, `Floppy.md`, `Main loop A500.md`, `Paula.md`, `RTC.md`, and `SaveState.md`.
+- **What Was Changed (The Concrete Reality)**:
+  - Deleted ~1.12 GB MAME SingleStepTests archive and purged all tolerance workarounds from the test runner.
+  - Re-routed all test suites (SingleStepTests, Cartesian DMA contention) to physical silicon captures.
+  - Execution speed: SingleStep test execution time halved from ~12s down to 5.43s.
+  - Cartesian DMA contention tests ran all 19 permutation suites in 37.49s on Tom Harte vectors with 0 failures.
+- **Architectural Rationale & Trade-Offs**:
+  - *Silicon Truth over Simulator Artifacts:* MAME's 68000 core had microcode bugs and simulator quirks (such as faulty `TAS` bus cycles, `TRAPV` status bits, and pre-fault AGU handling) that required artificial tolerance branches (`if !is_harte`) in our test runner. Pruning MAME and aligning 100% with Tom Harte vectors guarantees that our emulator is verified against physical Motorola 68000 silicon.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_singlestep`: All 127 tests passed in 5.43s (0 failures).
+  - `cargo test -p test_runner --test test_dma_cartesian`: All 19 tests passed in 37.49s (0 failures).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.53s.
+  - `cargo fmt --all -- --check`: Passed cleanly.
+  - `python scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+
 
 

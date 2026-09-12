@@ -101,7 +101,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
   ```powershell
   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
   ```
-  Validates all ~300,000 test cases across MAME and Tom Harte hardware vectors in parallel.
+  Validates all instruction test suites against Tom Harte physical silicon vectors in parallel.
 - **Cartesian DMA Contention:** On CPU or bus changes:
   ```powershell
   cargo test -p test_runner --test test_dma_cartesian
@@ -122,5 +122,5 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
 - **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and Guru Book reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via `rag_search` tool (`amiga-rag`).
 - **RAG Tooling & Infrastructure**: Pipeline, CLI indexer (`amiga_rag`), and FastMCP server reside in [`tools/rag`](tools/rag), backed by local Qdrant vector database (`amiga` collection).
-- **Reference Emulator Source Code**: Verified reference implementations (MAME, Moira, Musashi, vAmiga, WinUAE) are in [ref_src](ref_src).
-- **Single-Step Test Vectors**: Official test suite for M68000 CPU is in [ref_src/SingleStepTests-m68000/v1](ref_src/SingleStepTests-m68000/v1).
+- **Reference Emulator Source Code**: Clean-room reference implementation (vAmiga 4.5) and test suite (vAmigaTS) reside in [ref_src](ref_src).
+- **Single-Step Test Vectors**: Official physical silicon test vectors for M68000 CPU are in [ref_src/SingleStepTests-680x0/68000/v1](ref_src/SingleStepTests-680x0/68000/v1).

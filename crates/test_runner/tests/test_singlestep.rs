@@ -23,92 +23,47 @@ fn resolve_limit(explicit: usize) -> Option<usize> {
     Some(explicit)
 }
 
-/// Helper function to execute a test against both MAME and Real 68k (Tom Harte) suites
-fn run_dual_test(name: &str, limit: usize) {
-    run_dual_test_with_mode(name, limit, VerifyMode::StateOnly);
+/// Helper function to execute a test against Real 68k (Tom Harte) hardware test suite
+fn run_test(name: &str, limit: usize) {
+    run_test_with_mode(name, limit, VerifyMode::StateOnly);
 }
 
-/// Helper function to execute a test against both suites with specified verification mode
-fn run_dual_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
+/// Helper function to execute a test against Tom Harte hardware suite with specified verification mode
+fn run_test_with_mode(name: &str, limit: usize, mode: VerifyMode) {
     let effective = resolve_limit(limit);
-    let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", name);
     let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", name);
 
-    // 1. MAME SingleStepTests suite
-    let mame_res = run_test_file_with_mode(&mame_path, effective, mode)
-        .unwrap_or_else(|err| panic!("Failed to open/parse MAME test '{}': {}", mame_path, err));
-    let (mame_passed, mame_failed) = mame_res;
-    assert!(
-        mame_passed > 0,
-        "No MAME tests passed for {} (total executed: {})",
-        name,
-        mame_passed + mame_failed
-    );
-    assert_eq!(
-        mame_failed,
-        0,
-        "MAME tests failed for {}: {}/{} failed",
-        name,
-        mame_failed,
-        mame_passed + mame_failed
-    );
-
-    // 2. Real 68k (Tom Harte) SingleStepTests-680x0 suite
     let harte_res = run_test_file_with_mode(&harte_path, effective, mode).unwrap_or_else(|err| {
         panic!(
             "Failed to open/parse Real 68k test '{}': {}",
             harte_path, err
         )
     });
-    let (harte_passed, harte_failed) = harte_res;
+    let (passed, failed) = harte_res;
     assert!(
-        harte_passed > 0,
+        passed > 0,
         "No Real 68k tests passed for {} (total executed: {})",
         name,
-        harte_passed + harte_failed
+        passed + failed
     );
     assert_eq!(
-        harte_failed,
+        failed,
         0,
         "Real 68k (Tom Harte) tests failed for {}: {}/{} failed",
         name,
-        harte_failed,
-        harte_passed + harte_failed
+        failed,
+        passed + failed
     );
 }
 
-/// Helper function to execute a filtered test against both suites
-fn run_dual_test_filtered<F>(name: &str, limit: usize, filter: F)
+/// Helper function to execute a filtered test against Tom Harte hardware suite
+fn run_test_filtered<F>(name: &str, limit: usize, filter: F)
 where
     F: Fn(&SingleStepTest) -> bool + Copy,
 {
     let effective = resolve_limit(limit);
-    let mame_path = format!("ref_src/SingleStepTests-m68000/v1/{}.json", name);
     let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", name);
 
-    // 1. MAME SingleStepTests suite
-    let mame_res =
-        run_test_file_filtered_with_mode(&mame_path, effective, VerifyMode::StateOnly, filter)
-            .unwrap_or_else(|err| {
-                panic!("Failed to open/parse MAME test '{}': {}", mame_path, err)
-            });
-    let (mame_passed, mame_failed) = mame_res;
-    assert!(
-        mame_passed > 0,
-        "No MAME tests passed for {} (total executed: {})",
-        name,
-        mame_passed + mame_failed
-    );
-    assert_eq!(
-        mame_failed,
-        0,
-        "MAME tests failed for {}: {}/{} failed",
-        name,
-        mame_failed,
-        mame_passed + mame_failed
-    );
-
-    // 2. Real 68k (Tom Harte) SingleStepTests-680x0 suite
     let harte_res =
         run_test_file_filtered_with_mode(&harte_path, effective, VerifyMode::StateOnly, filter)
             .unwrap_or_else(|err| {
@@ -117,22 +72,27 @@ where
                     harte_path, err
                 )
             });
-    let (harte_passed, harte_failed) = harte_res;
+    let (passed, failed) = harte_res;
     assert!(
-        harte_passed > 0,
+        passed > 0,
         "No Real 68k tests passed for {} (total executed: {})",
         name,
-        harte_passed + harte_failed
+        passed + failed
     );
     assert_eq!(
-        harte_failed,
+        failed,
         0,
         "Real 68k (Tom Harte) tests failed for {}: {}/{} failed",
         name,
-        harte_failed,
-        harte_passed + harte_failed
+        failed,
+        passed + failed
     );
 }
+
+// Aliases for compatibility
+use run_test as run_dual_test;
+use run_test_filtered as run_dual_test_filtered;
+use run_test_with_mode as run_dual_test_with_mode;
 
 // ============================================================================
 // System, Control Flow & Exceptions (Microcode Archetypes)
@@ -815,12 +775,20 @@ fn test_move_from_usp() {
 
 #[test]
 fn test_stop() {
-    let effective = resolve_limit(DEFAULT_SAMPLE_LIMIT);
-    let mame_path = "ref_src/SingleStepTests-m68000/v1/STOP.json";
-    let (passed, failed) = run_test_file_with_mode(mame_path, effective, VerifyMode::StateOnly)
-        .expect("Failed to run STOP test");
-    assert!(passed > 0);
-    assert_eq!(failed, 0);
+    use m68000::Cpu;
+    use memory_bus::MemoryBus;
+
+    let mut cpu = Cpu::new();
+    let mut bus = MemoryBus::new();
+    cpu.state.set_supervisor(true);
+    cpu.state.set_sr(0x2700);
+    cpu.state.ir = 0x4E72; // STOP #$2000
+    cpu.state.prefetch[0] = 0x2000;
+    cpu.state.prefetch[1] = 0x4E71;
+
+    cpu.step_instruction(&mut bus);
+    assert!(cpu.state.stopped);
+    assert_eq!(cpu.state.sr, 0x2000);
 }
 
 #[test]

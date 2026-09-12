@@ -507,5 +507,4 @@ flowchart TD
 ## 5. Reference Documentation & Upstream Ground Truth
 
 - [vAmiga Snapshot Component Implementation](../../../ref_src/vAmiga-4.5/Core/Media/Snapshot.cpp): Snapshot serializer for Amiga hardware state, block headers, and uncompressed RAM payloads.
-- [WinUAE Statefile Architecture Reference](../../../ref_src/WinUAE-6030/savestate.cpp): Chunk-based save state format (`USS`), register packing, and retro-compatibility tags.
 - [CPU State Snapshot Implementation Source](../../../crates/m68000/src/state.rs): Living Rust `CpuState` data structures implementing Serde serialization and deserialization.

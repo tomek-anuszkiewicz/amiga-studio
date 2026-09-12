@@ -1,22 +1,19 @@
 ---
 name: m68k-singlestep-test
 description: >-
-  Use this skill when running, validating, or debugging M68000 CPU instructions against the cycle-exact SingleStepTests suites in ref_src/SingleStepTests-m68000/v1/ (MAME) and ref_src/SingleStepTests-680x0/68000/v1/ (Tom Harte). Covers running test cases, interpreting test JSON schemas, diagnosing register, CCR, and prefetch mismatches, and handling address errors.
+  Use this skill when running, validating, or debugging M68000 CPU instructions against the cycle-exact SingleStepTests suite in ref_src/SingleStepTests-680x0/68000/v1/ (Tom Harte physical silicon vectors). Covers running test cases, interpreting test JSON schemas, diagnosing register, CCR, and prefetch mismatches, and handling address errors.
 ---
 
 # M68000 SingleStepTests Verification & Debugging Runbook
 
-This skill guides the validation and debugging of the M68000 CPU implementation against the two complementary single-step test suites:
-1. **MAME SingleStepTests:** `ref_src/SingleStepTests-m68000/v1/*.json` (127 files, includes Line-A, Line-F, STOP).
-2. **Tom Harte SingleStepTests-680x0:** `ref_src/SingleStepTests-680x0/68000/v1/*.json` (124 JSON files, ~1,000,000 tests, ground-truth for `TAS` RMW).
+This skill guides the validation and debugging of the M68000 CPU implementation against the physical silicon single-step test suite:
+- **Tom Harte SingleStepTests-680x0:** `ref_src/SingleStepTests-680x0/68000/v1/*.json` (124 JSON files, ~1,000,000 tests captured from real 68000 silicon pins).
 
 ---
 
 ## 1. Test Suite Locations & Structure
 
-- **Paths:**
-  - MAME suite: `ref_src/SingleStepTests-m68000/v1/<INSTRUCTION>.<size>.json`
-  - Tom Harte suite: `ref_src/SingleStepTests-680x0/68000/v1/<INSTRUCTION>.<size>.json`
+- **Path:** `ref_src/SingleStepTests-680x0/68000/v1/<INSTRUCTION>.<size>.json`
 - **Specification Document:** Complete architecture, comparative matrix, and Rust data structures are in [CPU SingleStepTests.md](../../../Obsidian/Amiga/Design/CPU%20SingleStepTests.md).
 
 ---
@@ -144,7 +141,7 @@ When a test case fails, the runner outputs a structured diagnostic block:
 ```text
 ================================================================================
 ❌ TEST FAILURE: "049 ADD.b 6, (A2) 5c12"
-   Location: ref_src/SingleStepTests-m68000/v1/ADD.b.json [Test #49]
+   Location: ref_src/SingleStepTests-680x0/68000/v1/ADD.b.json [Test #49]
    Cycle:    12 clock cycles (approx. 6 CCK cycles)
 --------------------------------------------------------------------------------
 Differences detected:

@@ -45,14 +45,10 @@ The goal of this repository is to build a modern, system-agnostic, cycle-exact A
 │       │   ├── Paula.md
 │       │   └── SaveState.md
 │       └── Reference/       <- Official Commodore HRM, PRMs, Guru book (indexed by RAG)
-├── ref_src/                 <- Local reference cores, emulators, HDL, and test suites
-│   ├── SingleStepTests-m68000/
-│   ├── Moira-3.0/
-│   ├── Musashi/
-│   ├── WinUAE-6030/
-│   ├── vAmiga-4.5/
-│   ├── fx68k/
-│   └── ...
+├── ref_src/                 <- Clean-room reference emulator and physical test suites
+│   ├── SingleStepTests-680x0/ <- Physical hardware M68000 cycle test vectors (Tom Harte)
+│   ├── vAmiga-4.5/          <- Clean cycle-exact C++ reference emulator (Dirk W. Hoffmann)
+│   └── vAmigaTS/            <- Amiga custom chipset regression ADF test disks
 ├── tools/                   <- Developer tools, offline table generators, and AI tooling
 │   ├── blep_generator/      <- Band-Limited Step (BLEP) table generator for Paula audio
 │   └── rag/                 <- Local RAG ingestion pipeline, CLI indexer (amiga_rag), and FastMCP server
@@ -78,32 +74,7 @@ Ensure Rust stable is installed with the WASM target:
 rustup target add wasm32-unknown-unknown
 ```
 
-### 3.2 Decode SingleStepTests JSON Files
-The 127 M68000 test files in `ref_src/SingleStepTests-m68000` are stored as compressed binary dumps. Convert them to `.json`:
-```powershell
-cd ref_src/SingleStepTests-m68000
-python decode.py
-cd ../..
-```
-
-### 3.3 Musashi Source Generation (Optional Reference)
-To compile or generate sources for the Musashi reference core:
-```powershell
-docker run --rm -v "${PWD}/ref_src/Musashi:/src" -w /src gcc:latest sh -c "gcc -o m68kmake m68kmake.c && ./m68kmake"
-```
-
-### 3.4 Trim MAME Repository (Optional Reference)
-If using MAME's 68000 microcode implementation as a reference, you can prune unused subdirectories to save disk space:
-```powershell
-cd ref_src/mame-mame0289
-Move-Item -Path "src\devices\cpu\m68000" -Destination "m68000_temp"
-Get-ChildItem -Exclude "m68000_temp" | Remove-Item -Recurse -Force
-New-Item -ItemType Directory -Path "src\devices\cpu" -Force | Out-Null
-Move-Item -Path "m68000_temp" -Destination "src\devices\cpu\m68000"
-cd ../..
-```
-
-### 3.5 AI Code Intelligence & Tooling
+### 3.2 AI Code Intelligence & Tooling
 To drive autonomous agents and semantic navigation across this codebase:
 ```powershell
 # Install AST-Grep for syntax-aware pattern searches
@@ -173,36 +144,18 @@ trunk serve crates/gui/index.html --open
 
 ## 5. Local Reference Repositories & Tooling Catalog
 
-The `ref_src/` directory houses 17 local reference implementations, testbenches, and hardware descriptions:
+Clean-room reference code and verification suites in `ref_src/`:
 
-### 5.1 Motorola 68000 CPU Cores
-- **[Moira 3.0](ref_src/Moira-3.0)** (`C++`) — [GitHub](https://github.com/dirkwhoffmann/Moira): Cycle-exact, micro-operation based MC68000 core by Dirk W. Hoffmann. Primary behavioral standard for bus cycle phases ($S_0-S_7$), instruction prefetch, and CCK clock synchronization.
-- **[Musashi](ref_src/Musashi)** (`C`) — [GitHub](https://github.com/kstenerud/Musashi): Industry-standard portable 680x0 emulator core by Karl Stenerud. Reference for complete opcode decoding, CCR flags, and exception frames.
-- **[m68k-rs](ref_src/m68k-rs-m68k-v0.11.6)** (`Rust`) — [GitHub](https://github.com/benletchford/m68k-rs): Pure Rust M68000–M68060 core featuring clean bus abstraction (`AddressBus`).
-- **[EASy68K](ref_src/EASy68K-master)** — [GitHub](https://github.com/EASy68K/EASy68K) / [Web](http://www.easy68k.com): 68000 assembly editor, assembler, and simulator toolchain for authoring bare-metal test routines.
+### 5.1 Physical Hardware CPU Verification
+- **[SingleStepTests-680x0](ref_src/SingleStepTests-680x0)** — [GitHub](https://github.com/SingleStepTests/680x0): Tom Harte's single-step processor test vectors captured from physical Motorola 68000 silicon pins. Provides cycle-exact bus cycles, `TAS` indivisible RMW operations, undefined CCR flag behaviors, and AGU pre-fault commitment verification.
 
-### 5.2 Hardware & FPGA Descriptions (HDL)
-- **[fx68k](ref_src/fx68k)** (`Verilog`) — [GitHub](https://github.com/ijor/fx68k): Cycle-exact, microcode-level 68000 hardware description by Jorge Cwik (ijor). Ground-truth reference for silicon-level microcode, prefetch refills, and bus wait states.
-- **[TG68K.C](ref_src/TG68K.C)** (`VHDL`) — [GitHub](https://github.com/TobiFlex/TG68K.C): Synthesizable 68000 FPGA core by Tobias Gubener.
-- **[deniser](ref_src/deniser-1.0.0)** (`VHDL`) — [GitHub](https://github.com/endofexclusive/deniser): Drop-in FPGA replacement for the Amiga Denise video chip detailing planar-to-chunky conversion, sprite multiplexing, and HAM/EHB modes.
-- **[Minimig-AGA_MiSTer](ref_src/Minimig-AGA_MiSTer)** (`Verilog`) — [GitHub](https://github.com/MiSTer-devel/Minimig-AGA_MiSTer): Full Amiga OCS/ECS/AGA hardware implementation on MiSTer FPGA. Reference for DMA bus slot arbitration across Agnus, Denise, and Paula.
+### 5.2 Reference System Emulator & Architecture
+- **[vAmiga 4.5](ref_src/vAmiga-4.5)** (`C++`) — [GitHub](https://github.com/dirkwhoffmann/vAmiga): Clean, object-oriented C++ A500/A1000/A2000 emulator by Dirk W. Hoffmann. Reference for decoupling Agnus, Denise, and Paula across a unified CCK grid.
 
-### 5.3 Test Suites & Verification
-- **[SingleStepTests-m68000](ref_src/SingleStepTests-m68000)** — [GitHub](https://github.com/SingleStepTests/m68000): 127 exhaustive per-instruction JSON validation test suites generated from MAME's microcoded core. Provides register/memory/prefetch starting conditions and expected cycle-by-cycle output states.
-- **[SingleStepTests-680x0](ref_src/SingleStepTests-680x0)** — [GitHub](https://github.com/SingleStepTests/680x0): Tom Harte's single-step processor test vectors.
-- **[amiga-stuff-testkit](ref_src/amiga-stuff-testkit-v1.21)** — [GitHub](https://github.com/keirf/amiga-test-kit): Keir Fraser's Amiga Test Kit (ADF boot disk) for testing CIA timers, floppy PLL decoding, memory autoconfig, and chipset interrupts.
+### 5.3 Custom Chipset Regression Test Suite
 - **[vAmigaTS](ref_src/vAmigaTS)** — [GitHub](https://github.com/dirkwhoffmann/vAmigaTS): Automated regression test suite consisting of ADF test disks and reference video renders for Copper lists, Blitter fills, and raster effects.
 
-### 5.4 Reference System Emulators
-- **[WinUAE](ref_src/WinUAE-6030)** — [GitHub](https://github.com/tonioni/WinUAE): Most comprehensive cycle-exact Amiga emulator by Toni Wilen. Ultimate reference for edge cases (floppy MFM sync, CIA TOD timers, Gary/Agnus bus contention).
-- **[vAmiga](ref_src/vAmiga-4.5)** — [GitHub](https://github.com/dirkwhoffmann/vAmiga): Clean, object-oriented C++ A500/A1000/A2000 emulator by Dirk W. Hoffmann. Reference for decoupling Agnus, Denise, and Paula across a unified CCK grid.
-- **[ScriptedAmigaEmulator](ref_src/ScriptedAmigaEmulator)** — [GitHub](https://github.com/naTmeg/ScriptedAmigaEmulator): High-level JavaScript Amiga emulator by Rupert Hausberger.
-- **[MAME](ref_src/mame-mame0289)** — [GitHub](https://github.com/mamedev/mame): Reference implementations for shared peripheral chips (MOS 8520 CIA, M68000 CPU).
-
-### 5.5 Visual Post-Processing
-- **[RetroVisor.app](ref_src/RetroVisor.app)** — [GitHub](https://github.com/dirkwhoffmann/RetroVisor): CRT shader pipeline reference (scanlines, phosphor bloom, curvature, shadow mask) by Dirk W. Hoffmann.
-
-### 5.6 Hardware Schematics & Circuits
+### 5.4 Hardware Schematics & Circuits
 Hardware schematics and PCB traces (such as the interactive [Amiga PCB Explorer](https://www.amigapcb.org/) or public board scans) can be referenced online on demand. Motherboard circuit logic (CIA partial decoding, Gary bus contention, Paula DMA) is formalized directly in [`Obsidian/Amiga/Design/`](Obsidian/Amiga/Design/), and the complete A500 audio filter circuit is bundled in [`tools/blep_generator/`](tools/blep_generator/).
 
 
@@ -210,7 +163,7 @@ Hardware schematics and PCB traces (such as the interactive [Amiga PCB Explorer]
 
 ## 6. Compiling & Running Tests
 
-The emulator features a multi-tiered test architecture: standard subsystem unit tests, automated architecture rule validation, dual-suite M68000 single-step instruction verification (MAME + Tom Harte hardware vectors), Cartesian DMA contention stress tests, and a dedicated diagnostic CLI.
+The emulator features a multi-tiered test architecture: standard subsystem unit tests, automated architecture rule validation, cycle-exact M68000 single-step instruction verification against physical silicon vectors (Tom Harte SingleStepTests), Cartesian DMA contention stress tests, and a dedicated diagnostic CLI.
 
 ### 6.1 Standard Compilation & Subsystem Unit Tests
 ```powershell
@@ -236,16 +189,15 @@ Enforces architectural rules and quality constraints defined in [AGENTS.md](AGEN
 cargo test -p test_runner --test test_architecture_rules
 ```
 
-### 6.3 M68000 SingleStepTests (Dual-Suite Hardware Verification)
-Validates CPU instruction execution against two independent, complementary test suites:
-1. **MAME SingleStepTests:** [`ref_src/SingleStepTests-m68000/v1/`](ref_src/SingleStepTests-m68000/v1/) (127 suites, includes Line-A, Line-F, STOP).
-2. **Tom Harte SingleStepTests-680x0:** [`ref_src/SingleStepTests-680x0/68000/v1/`](ref_src/SingleStepTests-680x0/68000/v1/) (124 suites, ~1,000,000 test vectors, ground truth for `TAS` RMW cycles).
+### 6.3 M68000 SingleStepTests (Physical Silicon Hardware Verification)
+Validates CPU instruction execution against Tom Harte's cycle-exact physical hardware vectors:
+- **Tom Harte SingleStepTests-680x0:** [`ref_src/SingleStepTests-680x0/68000/v1/`](ref_src/SingleStepTests-680x0/68000/v1/) (124 suites, ~1,000,000 test vectors captured on physical 68000 silicon pins, including exact `TAS` RMW bus cycles, CCR undefined bits, and prefetch timing).
 
 > [!NOTE]
 > Ensure test JSON files are decoded before running (see [Section 3.2](#32-decode-singlesteptests-json-files)).
 
 #### Default Sample Run (Fast Smoke Test)
-By default, each instruction suite runs a sampled subset of 50 test cases (~5–6 seconds total):
+By default, each instruction suite runs a sampled subset of 50 test cases (~5 seconds total):
 ```powershell
 # Run sampled SingleStepTests across all implemented opcodes
 cargo test -p test_runner --test test_singlestep
@@ -257,11 +209,11 @@ cargo test -p test_runner --test test_singlestep test_move_w
 ```
 
 #### Full Exhaustive Verification (`SINGLESTEP_FULL`)
-Setting `SINGLESTEP_FULL=1` (or `true`) disables sampling limits and executes **100% of all ~300,000 test vectors** across all 127 suites from both MAME and Tom Harte in parallel (typically completes in 12–15 seconds).
+Setting `SINGLESTEP_FULL=1` (or `true`) disables sampling limits and executes **100% of all test vectors** across all suites in parallel (typically completes in ~5–6 seconds).
 
 - **PowerShell (Windows):**
   ```powershell
-  # Full exhaustive run across all implemented opcodes (~300,000 vectors)
+  # Full exhaustive run across all implemented opcodes
   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
 
   # Full exhaustive run for a single instruction suite

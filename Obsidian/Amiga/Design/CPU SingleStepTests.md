@@ -20,19 +20,18 @@ related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-St
 > Operational test running, command shortcuts, and debugging checklists are documented in the [m68k-singlestep-test](../../../.agents/skills/m68k-singlestep-test/SKILL.md) skill.
 > Step-by-step instruction implementation is guided by [add-m68k-instruction](../../../.agents/skills/add-m68k-instruction/SKILL.md).
 
-This document defines the complete specification and Rust data structures for running the **SingleStepTests** test suites against the M68000 CPU emulator. It specifies validation against both:
-1. The **MAME SingleStepTests suite** in [`ref_src/SingleStepTests-m68000/v1/`](../../../ref_src/SingleStepTests-m68000/v1) (127 JSON files).
-2. The **Tom Harte SingleStepTests-680x0 suite** in [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) (124 `.json` files, ~1,000,000 tests).
+This document defines the complete specification and Rust data structures for running the **SingleStepTests** test suites against the M68000 CPU emulator. It specifies validation against:
+1. The **Tom Harte SingleStepTests-680x0 suite** in [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) (124 `.json` files, ~1,000,000 tests captured directly from physical 68000 silicon pins).
 
 ---
 
 ## 1. Dual Test Suite Overview
 
-To ensure robust, ground-truth verification and eliminate single-source simulation artifacts, the M68000 CPU emulator is validated against **two independent, complementary single-step test suites**:
+To ensure robust, ground-truth verification and eliminate single-source simulation artifacts, the M68000 CPU emulator was developed and validated against single-step test suites:
 
-| Feature | Suite 1: MAME SingleStepTests | Suite 2: Tom Harte SingleStepTests |
+| Feature | Suite 1: MAME SingleStepTests (Historical) | Suite 2: Tom Harte SingleStepTests (Hardware) |
 | :--- | :--- | :--- |
-| **Path** | [`ref_src/SingleStepTests-m68000/v1/`](../../../ref_src/SingleStepTests-m68000/v1) | [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) |
+| **Path** | Upstream MAME JSON Suite (historical) | [`ref_src/SingleStepTests-680x0/68000/v1/`](../../../ref_src/SingleStepTests-680x0/68000/v1) |
 | **File Format** | Plain `.json` (and `.json.bin`) | Plain `.json` |
 | **Suite Count** | **127 test files** | **124 test files** |
 | **Test Scale** | ~1,000–5,000 tests per file | ~8,000+ tests per file (~1,000,000 total) |
@@ -358,18 +357,17 @@ Having access to both the MAME and Tom Harte test suites provides an invaluable 
 ### 9.2 Triangulation Protocol
 When diagnosing a test mismatch:
 1. **Fails in MAME, Passes in Tom Harte:**
-   - Check if the instruction is `TAS`, `TRAPV`, or touches a known MAME microcode generator quirk. If Tom Harte passes and verified against [Moira 3.0](../../../ref_src/Moira-3.0), the core is behaving accurately.
+   - Check if the instruction is `TAS`, `TRAPV`, or touches a known MAME microcode generator quirk. If Tom Harte passes and verified against Moira 3.0 or vAmiga 4.5, the core is behaving accurately.
 2. **Fails in Tom Harte, Passes in MAME:**
    - Tom Harte generates vastly more random address combinations (~8,000 per opcode). A failure here typically reveals an unaligned address boundary edge case or unhandled condition code combination that MAME's smaller sample missed.
 3. **Fails in Both:**
    - Definite implementation bug in decoding, effective address calculation, CCK phase alignment, or CCR flag updates.
 
-### 9.3 Automated Dual-Suite Integration Test Matrix
-The integration test suite in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs) executes dual-suite cross-validation on every `cargo test` run. Each opcode test invokes `run_dual_test("<OPCODE>", limit)`, simultaneously validating vectors against:
-- **MAME suite** (`ref_src/SingleStepTests-m68000/v1/<OPCODE>.json`)
-- **Real 68k / Tom Harte suite** (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json`)
+### 9.3 Automated Single-Step Integration Test Matrix
+The integration test suite in [`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs) executes hardware cross-validation on every `cargo test` run. Each opcode test invokes `run_test("<OPCODE>", limit)`, validating vectors against:
+- **Tom Harte Real 68k Suite** (`ref_src/SingleStepTests-680x0/68000/v1/<OPCODE>.json`)
 
-Currently active dual-suite tests cover all implemented instructions:
+Currently active tests cover all implemented instructions:
 - **System & Control**: `NOP`, `RTS`, `TRAP`, `Bcc` (`BRA`), `JMP`, `JSR`
 - **Data Movement**: `MOVE.b`, `MOVE.w`, `MOVE.l`, `MOVEA.w`, `MOVEA.l`
 - **Arithmetic**: `ADD.b`, `ADD.w`, `ADD.l`, `ADDA.w`, `ADDA.l`, `SUB.b`, `SUB.w`, `SUB.l`, `SUBA.w`, `SUBA.l`
@@ -418,7 +416,6 @@ cargo run -p test_runner -- --suite ADD.b
 ## 11. Reference Documentation & Upstream Ground Truth
 
 - [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Standard instruction timings and bus operation counts.
-- [MAME SingleStepTests Suite](../../../ref_src/SingleStepTests-m68000/v1): Official upstream cycle-exact test suite.
 - [Tom Harte SingleStepTests-680x0 Suite](../../../ref_src/SingleStepTests-680x0/68000/v1): Comprehensive randomized test vectors for 68000 CPU.
 - [CPU Motorola M68000 Design Specification](CPU%20Motorola%20M68000.md): Register architecture, condition codes, and processor status.
 - [CPU Micro-Step State Machine Specification](CPU%20Micro-Step%20State%20Machine.md): Color Clock cycle decomposition and microcode execution.

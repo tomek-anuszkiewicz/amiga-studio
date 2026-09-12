@@ -130,15 +130,6 @@ pub fn run_single_test_detail_with_bus(
     for i in 0..8 {
         let val = cpu.state.d_regs()[i];
         if val != expected_d[i] {
-            // Documented simulator divergence: on Address Error during DBcc,
-            // real 68000 silicon (Tom Harte) decrements Dn in the ALU before the bus fault,
-            // whereas MAME's microcode simulator aborts without updating Dn.
-            if !is_harte && cpu.state.ssp != test.initial.ssp && file_path.contains("DBcc") {
-                let diff = expected_d[i].wrapping_sub(val);
-                if diff == 1 {
-                    continue;
-                }
-            }
             failure.diffs.push(StateDiff::DataRegister {
                 reg: i,
                 actual: val,
@@ -160,16 +151,6 @@ pub fn run_single_test_detail_with_bus(
     for i in 0..7 {
         let val = cpu.state.a_regs()[i];
         if val != expected_a[i] {
-            // Documented simulator divergence: on Address Error during (An)+ / -(An),
-            // real 68000 silicon (Tom Harte) updates An in the AGU before the bus fault,
-            // whereas MAME's microcode interpreter aborts without updating An.
-            if !is_harte && cpu.state.ssp != test.initial.ssp {
-                let diff = val.wrapping_sub(expected_a[i]);
-                let diff_rev = expected_a[i].wrapping_sub(val);
-                if diff == 2 || diff == 4 || diff_rev == 2 || diff_rev == 4 {
-                    continue;
-                }
-            }
             failure.diffs.push(StateDiff::AddressRegister {
                 reg: i,
                 actual: val,
@@ -194,51 +175,13 @@ pub fn run_single_test_detail_with_bus(
 
     // Verify Status Register (CCR flags)
     if cpu.state.sr != test.final_state.sr {
-        // Documented simulator divergence: for ASR on negative values with count > operand width,
-        // MAME's microcode simulator keeps shifting sign bits into X and C (setting X=1, C=1),
-        // whereas real 68000 silicon (Tom Harte) exhausts the register and outputs 0 to X and C.
-        let is_mame_asr_divergence = !is_harte && {
-            let diff = cpu.state.sr ^ test.final_state.sr;
-            diff == 0x11 && (test.final_state.sr & 0x11) == 0x11
-        };
-        // Documented simulator divergence: on Address Error during MOVE.l destination write,
-        // real 68000 silicon sets CCR based on the full 32-bit operand, whereas MAME's
-        // microcode simulator prematurely sets CCR based on the lower 16-bit word in mmrl1 (or leaves CCR unchanged).
-        let is_mame_move_l_divergence = !is_harte
-            && cpu.state.ssp != test.initial.ssp
-            && (cpu.state.sr & 0xFFE0) == (test.final_state.sr & 0xFFE0)
-            && file_path.contains("MOVE.l");
-        // Documented simulator divergence: on DIVU and DIVS overflow (V=1),
-        // the Motorola PRM defines N and Z as officially undefined.
-        // Real 68000 silicon (Tom Harte) preserves the prior N and Z flags,
-        // whereas MAME's microcode simulator hardcodes N=1, Z=0.
-        let is_mame_div_overflow_divergence = !is_harte
-            && (test.final_state.sr & 0x0002) != 0
-            && (cpu.state.sr & 0x0002) != 0
-            && ((cpu.state.sr ^ test.final_state.sr) & !0x000C) == 0
-            && (file_path.contains("DIVU") || file_path.contains("DIVS"));
-        // Documented simulator divergence: on CHK when no trap is taken (0 <= Dn <= <ea>),
-        // the Motorola PRM explicitly defines N, Z, V, and C as officially undefined.
-        // Real 68000 silicon (Tom Harte) preserves the prior N flag (and clears Z, V, C),
-        // whereas MAME's microcode simulator hardcodes clearing N (N=0).
-        let is_mame_chk_no_trap_divergence = !is_harte
-            && (cpu.state.sr ^ test.final_state.sr) == 0x0008
-            && (test.final_state.sr & 0x0008) == 0
-            && file_path.contains("CHK");
-
-        if !is_mame_asr_divergence
-            && !is_mame_move_l_divergence
-            && !is_mame_div_overflow_divergence
-            && !is_mame_chk_no_trap_divergence
-        {
-            let (summary, flags_diff) = format_ccr_diff(cpu.state.sr, test.final_state.sr);
-            failure.diffs.push(StateDiff::StatusRegister {
-                actual: cpu.state.sr,
-                expected: test.final_state.sr,
-                details: summary,
-                diverging_flags: flags_diff,
-            });
-        }
+        let (summary, flags_diff) = format_ccr_diff(cpu.state.sr, test.final_state.sr);
+        failure.diffs.push(StateDiff::StatusRegister {
+            actual: cpu.state.sr,
+            expected: test.final_state.sr,
+            details: summary,
+            diverging_flags: flags_diff,
+        });
     }
 
     // Verify Program Counter (accommodates both MAME prefetch-ahead PC and Tom Harte architectural PC)
@@ -257,21 +200,15 @@ pub fn run_single_test_detail_with_bus(
         let expected_byte = (entry[1] & 0xFF) as u8;
         let actual_byte = bus.read_byte_debug(addr);
         if actual_byte != expected_byte {
-            // Note: Section 1.1 of CPU SingleStepTests documents that in the Address Error
-            // Internal Information Word at SSP+1, the lower nibble (I/N and Function Code bits)
-            // exhibits documented differences between MAME's microcode simulator and Tom Harte real silicon.
+            // Note: In the Address Error Internal Information Word at SSP+1, the lower nibble
+            // (I/N and Function Code bits) is masked out for hardware invariance.
             if addr == cpu.state.ssp.wrapping_add(1)
                 && (actual_byte & 0xF0) == (expected_byte & 0xF0)
             {
                 continue;
             }
-            // Note: MAME MOVE.l divergence in pushed SR on stack at SSP+9
-            if !is_harte && addr == cpu.state.ssp.wrapping_add(9) && file_path.contains("MOVE.l") {
-                continue;
-            }
-            // Note: Documented divergence in Address Error stack frame IR (SSP+6..=SSP+7)
-            // and info word (SSP+0..=SSP+1) for MOVE.w -(An): MAME pushes the prefetched word,
-            // whereas Tom Harte hardware captures expect the original opcode.
+            // Note: In M68000 Address Error stack frame for MOVE.w -(An), hardware captures
+            // exhibit variations in the pushed instruction register (SSP+6..=SSP+7).
             if is_harte
                 && file_path.contains("MOVE.w")
                 && (addr == cpu.state.ssp
@@ -282,26 +219,9 @@ pub fn run_single_test_detail_with_bus(
                 continue;
             }
             // Note: In M68000 Address Error stack frame, the PC pushed at SSP+10..=SSP+13
-            // exhibits documented pipeline stage variations across MAME's microcode simulator
-            // (e.g. instruction_pc vs instruction_pc + ext_words) and real 68000 silicon (target - 4).
+            // exhibits documented pipeline stage variations across real silicon captures.
             if addr >= cpu.state.ssp.wrapping_add(10) && addr <= cpu.state.ssp.wrapping_add(13) {
                 continue;
-            }
-            // Note: Documented simulator divergence: on LINK A7, real 68000 silicon (Tom Harte)
-            // pushes the decremented SP-4 onto the stack, whereas MAME's software simulator pushes the un-decremented SP.
-            if !is_harte
-                && file_path.contains("LINK")
-                && (test.name.contains("LINK A7") || test.name.contains("4e57"))
-            {
-                let init_sp = if (test.initial.sr & 0x2000) != 0 {
-                    test.initial.ssp
-                } else {
-                    test.initial.usp
-                };
-                let stack_write_start = init_sp.wrapping_sub(4);
-                if addr >= stack_write_start && addr < init_sp {
-                    continue;
-                }
             }
             failure.diffs.push(StateDiff::RamByte {
                 address: addr,

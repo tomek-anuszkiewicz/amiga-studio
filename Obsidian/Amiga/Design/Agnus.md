@@ -330,4 +330,3 @@ flowchart TD
 - [Amiga Hardware Reference Manual: Appendix B (Register Summary)](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Complete memory-mapped address order table and bitfield masks for all Agnus registers (`$DFF000`–`$DFF07E`).
 - [vAmiga Copper Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/Copper/Copper.cpp): Cycle-exact state machine model for Copper instruction decode, comparator logic, and DMA slot fetches.
 - [vAmiga Blitter Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/Blitter/Blitter.cpp): Reference pipeline implementation for multi-channel DMA blits, shift logic, and mask application.
-- [WinUAE Blitter Emulation Reference](../../../ref_src/WinUAE-6030/blitter.cpp): Reference C++ implementation for minterm evaluation, pointer modulo advance, descending blits, and line drawer error accumulators.

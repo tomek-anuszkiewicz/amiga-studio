@@ -913,8 +913,6 @@ The table below catalogs representative micro-step sequences for each fundamenta
 - [68000 User's Manual: Section 8 (16-Bit Instruction Execution Timing & Bus Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Cycle counts, read/write bus cycle decompositions, and effective address timing.
 - [68000 User's Manual: Section 6 (Exception Processing, Stack Frames & Reset)](../Reference/68000%20User's%20Manual/06%20-%20Section%206%20-%20Exception%20Processing,%20Stack%20Frames%20%26%20Reset.md): Diagnostic 7-word Address Error / Bus Error stack frame layout and SSW encoding.
 - [Instruction Prefetch on the Motorola 68000 Processor](../Reference/Instruction%20Prefetch%20on%20the%20Motorola%2068000%20Processor.md): 2-word prefetch refill sequencing and pipeline capture timing.
-- [Moira M68000 Reference Implementation](../../../ref_src/Moira-3.0/): Cycle-exact micro-stepping reference core.
-- [Musashi M68000 Reference Implementation](../../../ref_src/Musashi/m68kcpu.c): Reference C execution loop and opcode handlers.
 - [M68000 Micro-Step Engine Implementation](../../../crates/m68000/src/micro/engine.rs): Living Rust micro-step state machine, phase advancement, and atomic bus helpers.
 - [M68000 Dispatch Table Implementation](../../../crates/m68000/src/micro/dispatch_table.rs): 65,536-entry static opcode descriptor universe.
 

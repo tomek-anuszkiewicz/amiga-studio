@@ -642,6 +642,5 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
 - [68000 User's Manual: Section 8 (16-Bit Instruction Timing Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Standard clock cycle tables, effective address calculation times, and bus read/write operation counts.
 - [Instruction Prefetch on the Motorola 68000 Processor](../Reference/Instruction%20Prefetch%20on%20the%20Motorola%2068000%20Processor.md): Hardware prefetch queue behavior (`IRC`/`IRD`), extension word capture timing, and branch target refills.
 - [Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis](../Reference/Motorola%2068000%20DIVU%20%26%20DIVS%20Cycle-Accurate%20Timing%20Analysis.md): Microcode division loop mechanics, quotient bit evaluations, and hardware execution cycle formulas.
-- [Musashi M68000 Reference Implementation](../../../ref_src/Musashi/m68kcpu.c): Reference C emulation of opcode execution, CCR condition code flag evaluation, and exception trapping.
 - [M68000 Crate Source Implementation](../../../crates/m68000/src/lib.rs): Living Rust implementation of the cycle-exact CPU core, micro-step dispatch, and instruction handlers.
 

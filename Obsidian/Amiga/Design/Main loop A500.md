@@ -157,4 +157,3 @@ On each CCK step, Agnus evaluates the horizontal scanline slot schedule ($227.5$
 - [Amiga Hardware Reference Manual: Chapter 7 (System Control Hardware)](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): System reset sequences, bus arbitration lines, and interrupt prioritization.
 - [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard layout, master system clocks, bus timing, and chip interconnections.
 - [vAmiga System Coordinator Reference](../../../ref_src/vAmiga-4.5/Core/Components/Amiga.cpp): Master execution loop, sub-frame step scheduling, and decoupled host buffer flushes.
-- [WinUAE Custom Chip Coordination Reference](../../../ref_src/WinUAE-6030/custom.cpp): Master CCK loop dispatching DMA slots, Copper events, and CPU synchronization.
