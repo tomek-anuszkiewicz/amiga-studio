@@ -88,24 +88,35 @@ git merge origin/master
 > 5. To cancel and restore previous state: `git merge --abort` (or `git rebase --abort`).
 
 ### Step 5: Final Reintegration (Merge Back to Primary Repository)
-When feature work is finished and all tests pass:
+When feature work is finished and all tests pass, reintegrate changes into `master`:
 
+#### Scenario A: Clean Reintegration (Zero Conflicts)
+If `master` has not diverged or changes merge cleanly without conflicts, a fast-forward merge is permitted:
 ```powershell
-# Switch back to primary repository
 cd ..\Amiga
-
-# Merge feature branch (fast-forward if possible)
 git checkout master
-git merge <branch-name>
-```
-
-If `master` has advanced while working in the worktree, rebase the feature branch first:
-```powershell
-cd ..\Amiga-<branch-name>
-git rebase master
-cd ..\Amiga
 git merge --ff-only <branch-name>
 ```
+
+#### Scenario B: Divergent Work or Merge Conflicts (Mandatory Merge Commit)
+Per the repository rule ([`git-merge-commits.md`](../../.agents/rules/git-merge-commits.md)), if `master` has diverged or merge conflicts occur:
+1. **Never squash or rebase away the merge point:** An explicit merge commit must be created to preserve the branch history and document the conflict resolution audit trail.
+2. **Perform standard merge:**
+   ```powershell
+   cd ..\Amiga
+   git checkout master
+   git merge <branch-name>
+   ```
+3. **Resolve all conflicts holistically:** Ensure no working features, tests, or docs from either branch are dropped.
+4. **Pass verification gate:**
+   ```powershell
+   cargo fmt --all -- --check
+   cargo test -p test_runner --test test_architecture_rules
+   ```
+5. **Commit the formal merge commit:**
+   ```powershell
+   git commit -m "merge(<branch-name>): integrate <feature> into master"
+   ```
 
 ### Step 6: Teardown & Clean Up
 Once merged, remove the worktree and clean up references:
