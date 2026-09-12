@@ -1353,3 +1353,22 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.54s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:35 CEST] — Trimmed Qdrant Prompt to Minimal Notice & Official Website Link
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1`: Removed all command snippets, options, and Docker/binary mentions when Qdrant is unreachable.
+- **What Was Changed (The Concrete Reality)**:
+  - Trimmed the Qdrant connection failure block in `tools/bootstrap.ps1` down to 4 lean lines:
+    1. Warning that port 6333 is unreachable.
+    2. Direct notice: *"Please install and start Qdrant to use the AI RAG documentation knowledge base (-Doc)."*
+    3. Official homepage link: `https://qdrant.tech`.
+    4. Note that Qdrant is only needed for `-Doc`, while emulator runs via `cargo run -p gui`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Zero Unnecessary Specifics:* Programmers have diverse environments (Docker, Podman, system packages, homebrew, standalone binaries, remote servers). Providing concrete command examples or options adds noise and artificial constraints. Simply notifying that Qdrant must be listening on port 6333 and pointing to `https://qdrant.tech` leaves full autonomy to the developer.
+- **Verification & Test Results**:
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1 -Test`: Passed clean test suite verification.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

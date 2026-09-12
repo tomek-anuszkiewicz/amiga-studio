@@ -230,17 +230,10 @@ if ($Doc -or $All) {
         if (-not $QdrantAvailable) {
             Write-Host ""
             Write-Warning "Qdrant vector database is not reachable on http://localhost:6333."
+            Write-Host "Please install and start Qdrant to use the AI RAG documentation knowledge base (-Doc)."
+            Write-Host "Official website & installation guide: https://qdrant.tech" -ForegroundColor Yellow
             Write-Host ""
-            Write-Host "Qdrant powers the optional AI agent RAG knowledge base (-Doc)." -ForegroundColor Cyan
-            Write-Host "To install and run Qdrant, see the official quickstart guide:"
-            Write-Host "  https://qdrant.tech/documentation/quick-start/" -ForegroundColor White
-            Write-Host ""
-            Write-Host "Quickstart options (must expose port 6333):" -ForegroundColor Yellow
-            Write-Host "  Docker:     docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant" -ForegroundColor White
-            Write-Host "  Standalone: https://github.com/qdrant/qdrant/releases" -ForegroundColor White
-            Write-Host ""
-            Write-Host "NOTE: Qdrant is ONLY needed for AI agent RAG knowledge retrieval (-Doc)." -ForegroundColor DarkGray
-            Write-Host "      You can build, test, and play the emulator without Qdrant: cargo run -p gui" -ForegroundColor DarkGray
+            Write-Host "NOTE: Qdrant is ONLY needed for -Doc. You can run the emulator via 'cargo run -p gui'." -ForegroundColor DarkGray
             Write-Host ""
         } else {
             Write-Host "[OK] Qdrant vector database is active on http://localhost:6333." -ForegroundColor Green
