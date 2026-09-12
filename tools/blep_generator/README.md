@@ -38,6 +38,9 @@ The generator models the exact analog filtering path of the Amiga 500 and Amiga 
    - Discretized via the Bilinear Transform ($s \to z$ domain).
    - **Fixed Low-Pass**: 1st-order RC filter ($R_{331} / C_{331}$, $f_c \approx 4.9\,\text{kHz}$ on A500, $f_c \approx 32\,\text{kHz}$ on A1200).
    - **Switchable LED Filter**: 2nd-order Sallen-Key low-pass filter ($R_{332}, R_{333}, C_{332}, C_{333}$, $f_0 \approx 3275\,\text{Hz}$, $Q \approx 0.65$).
+
+![Amiga 500 Audio Filter Schematic](./a500_audio_filter_schematic.png)
+
 5. **Numerical Step Integration**: Integrates the impulse response into a step response:
    $$s[n] = -\sum_{k} h[k] + \sum_{k=0}^n h[k]$$
 6. **Quantization & Scaling**: Normalizes and scales to 18-bit fixed point dynamic range ($2^{17} = 131072$).
