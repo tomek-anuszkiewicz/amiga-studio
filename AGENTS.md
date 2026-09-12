@@ -31,6 +31,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Workspace Architecture & Re-Exports** ([`workspace-structure-and-reexports.md`](.agents/rules/workspace-structure-and-reexports.md)): Strictly flat crate layout and 3-tier re-export hierarchy.
 - **Rust Best Practices** ([`rust-best-practices.md`](.agents/rules/rust-best-practices.md)): Safe borrowing, zero unwraps in runtime, wrapping math, and unit tests.
 - **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for functional/utility logic; headless integration tests for GUI; dedicated `tests/` directories with zero inline tests in `src/`.
+- **Repro-First Defect Resolution** ([`repro-first.md`](.agents/rules/repro-first.md)): Mandatory isolated failing test before modifying production code.
 - **egui & Frontend Best Practices** ([`egui-best-practices.md`](.agents/rules/egui-best-practices.md)): Synchronous state pull, 1:1 layout mapping, bounded time-slicing, WASM/DPI adaptation, and universal in-app documentation.
 - **Git Commits & Atomic History** ([`git-commits.md`](.agents/rules/git-commits.md)): Context reconstruction, atomic commit decomposition, Conventional Commits, and pre-commit test gates.
 - **Git Merge Commits & Worktrees** ([`git-merge-commits.md`](.agents/rules/git-merge-commits.md)): Mandatory merge commits on conflict resolution; worktree lifecycle and cleanup.
@@ -68,12 +69,12 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 1. **Guest vs Host Endianness**:
    - Motorola 68000 is **strictly Big-Endian**; modern host machines are Little-Endian.
    - **Never** perform host-endian pointer casting or `transmute` on guest memory buffers.
-   - Always decode/encode multi-byte values using explicit endian conversion helpers (`u16::from_be_bytes`, `u32::from_be_bytes`, `val.to_be_bytes()`).
-   - *Endianness Bypass*: Bitwise operations (`AND`, `OR`, `EOR`, `NOT`), zeroing (`CLR`), and memory block transfers (DMA, `MOVEM`, `MOVE (An), (Am)`) commute with byte reversal and can bypass endian swapping in performance-critical hot paths.
+   - Decode/encode multi-byte values using explicit endian conversion helpers (`u16::from_be_bytes`, `u32::from_be_bytes`, `val.to_be_bytes()`).
+   - *Endianness Bypass*: Bitwise operations (`AND`, `OR`, `EOR`, `NOT`), zeroing (`CLR`), and memory block transfers (DMA, `MOVEM`, `MOVE (An), (Am)`) commute with byte reversal and can bypass endian swapping in hot paths.
 
 2. **Zero Host Panics on Guest Code**:
-   - Emulated guest code must **never panic the host process**. Do not use `.unwrap()` or `.expect()` in runtime emulation paths.
-   - Unmapped/disconnected address reads simulate open bus: return `$FF` for byte, `$FFFF` for word (standard A500 floating bus pulled high). Configurable via `MemoryBus::set_unmapped_byte()` for synthetic test harnesses (e.g. SingleStepTests flat memory defaulting to `$00`).
+   - Emulated guest code must **never panic the host process**. Zero `.unwrap()` / `.expect()` in runtime emulation paths.
+   - Unmapped/disconnected address reads simulate open bus: return `$FF` for byte, `$FFFF` for word (standard A500 floating bus pulled high). Configurable via `MemoryBus::set_unmapped_byte()` for synthetic test harnesses.
    - Unaligned word/long accesses must trigger M68000 Address Error exception (Vector 3).
 
 3. **Arithmetic & Overflow Handling**:
@@ -81,39 +82,30 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 
 4. **Zero-Allocation Hot Path & WASM Constraints**:
    - Hot execution paths (`step()`, `step_cck()`, memory accesses, interrupt polling) must perform **zero dynamic heap allocations** (`Vec::new`, `Box::new`, `format!`, `String`). Use fixed arrays, bitflags, or in-place state.
-   - Core crate constraints: No `std::time::Instant::now()` (panics in WASM without shims), no `std::thread`, no `std::fs` (load ROMs/disks as `&[u8]` byte slices).
+   - Core crate constraints: No `std::time::Instant::now()`, no `std::thread`, no `std::fs` (load ROMs/disks as `&[u8]` byte slices).
 
-5. **Subsystem Architecture & Implementation Guidelines**:
-   Detailed operational and architectural guidelines are modularized under `.agents/rules/` to avoid redundancy:
-   - **Hardware Efficiency & Prohibited Patterns:** Flat execution, zero `macro_rules!`, zero const-generic instruction handlers, and out-of-line cold exceptions $\rightarrow$ [`performance-and-readability.md`](.agents/rules/performance-and-readability.md).
-   - **File Size & Cohesion:** Strict $\le 800$-line threshold for `.rs` files and 1:1 opcode-to-file mapping under `crates/m68000/src/instructions/` with zero subdirectories $\rightarrow$ [`file-size-and-cohesion.md`](.agents/rules/file-size-and-cohesion.md).
-   - **Method Inlining:** Targeted rules for `#[inline]`, `#[inline(always)]`, and `#[inline(never)]` $\rightarrow$ [`method-inlining.md`](.agents/rules/method-inlining.md).
-   - **Workspace Structure:** Flat crates directory and 3-tier re-export hierarchy $\rightarrow$ [`workspace-structure-and-reexports.md`](.agents/rules/workspace-structure-and-reexports.md).
-   - **Opcode Micro-Steps & Dual Staging:** Mandatory `IDLE` micro-step naming and dual staging registers (`addr1`, `addr2`) with split address error invariance $\rightarrow$ [`opcode-naming.md`](.agents/rules/opcode-naming.md) and [`performance-and-readability.md`](.agents/rules/performance-and-readability.md).
+5. **Subsystem Guidelines & Platform Quirks**:
+   - Subsystem-specific rules (file sizes, canonical micro-steps, inlining, workspace layout) are modularized under `.agents/rules/` per Section 1.
+   - Comprehensive silicon traps, non-intuitive timings, and anti-tamper invariants reside in [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md).
 
 ---
 
 ## 4. Quality Assurance & Definition of Done
 
 - **Mandatory Formatting:** `cargo fmt --all -- --check`.
+- **Pre-Flight Gate:** Run `python tools/pre_flight.py` (checks formatting, attractors, AGENTS.md size, and architecture rules).
 - **Automated Architecture Tests:** Pass `cargo test -p test_runner --test test_architecture_rules` (validates file sizes, zero runtime panics, zero custom macros, zero const generics, canonical IDLE steps, zero inline tests in src/, path privacy, inlining, and link integrity).
-- **Single-Step CPU Validation:** On any changes to `crates/m68000`:
-  ```powershell
-  $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
-  ```
-  Validates all instruction test suites against Tom Harte physical silicon vectors in parallel.
-- **Cartesian DMA Contention:** On CPU or bus changes:
-  ```powershell
-  cargo test -p test_runner --test test_dma_cartesian
-  ```
-  Validates cycle invariance ($C = C_0 + 2 \times \text{wait\_states}$), Fast RAM immunity, and state invariance across $2^k \times 2^M$ permutation space.
+- **Single-Step CPU Validation:** Run `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep` on any `crates/m68000` changes.
+- **Cartesian DMA Contention:** Run `cargo test -p test_runner --test test_dma_cartesian` on CPU/bus changes (validates cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity).
+- **Repro-First Defect Resolution:** Author an isolated failing reproduction test in `tests/` before editing production code per [`repro-first.md`](.agents/rules/repro-first.md).
 - **Unit Testing Policy:** Mandatory unit test coverage for functional/utility logic and headless integration tests for GUI per [`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md).
 - **Obsidian Design Docs:** Update corresponding design documents in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md) and evaluate Line 1 YAML properties per [`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md).
-- **Engineering Diary:** Log actual changes, technical rationale, and test results in [DIARY.md](DIARY.md) (Section 10) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md).
-- **Roadmap Maintenance:** Mark completed tasks and prune active list in [ROADMAP.md](ROADMAP.md) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md).
+- **Engineering Diary:** Log actual changes, technical rationale, and test results in [DIARY.md](DIARY.md) (Section 10) per [`diary-maintenance.md`](.agents/rules/diary-maintenance.md).
+- **Roadmap Maintenance:** Mark completed tasks and prune active list in [ROADMAP.md](ROADMAP.md) per [`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md).
 - **Milestone Gates:** Run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) and [`prune-dead-code`](.agents/skills/prune-dead-code/SKILL.md) upon major roadmap milestone completion.
 - **Prohibition of Blind Golden Hash Modifications**: Modifying golden test hashes, cycle totals, or benchmark reference constants to silence a failing test is strictly forbidden per [`spec-compliance.md`](.agents/rules/spec-compliance.md). Perform root-cause analysis on regressions.
 - **Milestone Review:** Run [`/code-review`](.agents/workflows/code-review.md) before declaring roadmap milestones complete.
+
 
 ---
 
@@ -121,7 +113,9 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 
 - **Knowledge Retrieval Precedence**: Mandatory `graphify query` before viewing source files and `python tools/rag_search.py` before opening reference manuals per [`graphify.md`](.agents/rules/graphify.md) and [`amiga-rag.md`](.agents/rules/amiga-rag.md).
 - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
+- **Platform Quirks & Invariants**: Centralized hardware silicon idiosyncrasies and anti-tamper invariants reside in [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md).
 - **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and Guru Book reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via `rag_search` tool (`amiga-rag`).
 - **RAG Tooling & Infrastructure**: Pipeline, CLI indexer (`amiga_rag`), and FastMCP server reside in [`tools/rag`](tools/rag), backed by local Qdrant vector database (`amiga` collection).
 - **Reference Emulator Source Code**: Clean-room reference implementation (vAmiga) and test suite (vAmigaTS) reside in [ref_src](ref_src).
 - **Single-Step Test Vectors**: Official physical silicon test vectors for M68000 CPU are in [ref_src/SingleStepTests-680x0/68000/v1](ref_src/SingleStepTests-680x0/68000/v1).
+

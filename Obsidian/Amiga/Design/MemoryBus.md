@@ -1,6 +1,6 @@
 ---
-title: "Amiga 500 MemoryBus Architecture & Hardware Quirks"
-aliases: ["MemoryBus", "Gary", "Address Map", "Bus Arbitration"]
+title: "Amiga 500 MemoryBus Architecture & Bus Topology"
+aliases: ["MemoryBus", "Gary", "Address Map", "Bus Arbitration", "Bus Topology"]
 tags: ["amiga", "design", "memory_bus", "chip_ram", "gary"]
 category: "Design"
 subsystem: "memory_bus"
@@ -10,7 +10,7 @@ updated: 2026-09-12
 related: ["[Agnus.md](Agnus.md)", "[CycleCounter.md](CycleCounter.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)"]
 ---
 
-# Amiga 500 MemoryBus Architecture & Hardware Quirks
+# Amiga 500 MemoryBus Architecture & Bus Topology
 
 > [!NOTE]
 > Global endianness rules, wrapping arithmetic, and WASM constraints are defined in [AGENTS.md](../../../AGENTS.md).
@@ -125,7 +125,7 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
 
 ---
 
-## 4. Hardware Quirks & Address Decoding Rules
+## 4. Address Decoding Architecture & Memory Topology
 
 ### Floating Bus / Unmapped Address Space
 - Reads to unmapped regions return **`0xFF`** (8-bit) or **`0xFFFF`** (16-bit).
@@ -158,7 +158,7 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
   - Gary asserts `_CUSTOM` when `A23..A16 = $DF`. Address lines **`A9..A15` are ignored**, producing the 128-fold mirror of the 512-byte register block across `$DFF000-$DFFFFE`.
 - **16-bit Word Read:** Read 8-bit register from addressed CIA on its active byte lane, and set the unmapped byte lane to **`0xFF`**.
 
-### TAS (Test-And-Set) Read-Modify-Write Hardware Bug
+### TAS (Test-And-Set) Read-Modify-Write Silicon Erratum
 - **Chip RAM (`$000000-$07FFFF`) and Slow RAM (`$C00000-$C7FFFF`):**
   - Agnus/Gary fails to latch the write phase of an unbroken RMW cycle.
   - Evaluate memory content, return data, and allow CPU condition codes ($N$, $Z$) to update.

@@ -70,6 +70,16 @@ Before declaring any feature, bug fix, or opcode implementation complete:
 
 ---
 
-## 5. Execution Skills for Testing
+## 5. Bug Fixing & Defect Resolution: Repro-First Mandate
+Whenever resolving a bug, timing divergence, or instruction failure, follow the mandatory Red-Green-Refactor protocol in [`repro-first.md`](repro-first.md):
+1. Write an isolated, failing reproduction test in `crates/<crate>/tests/`.
+2. Confirm the failure on current unmodified code.
+3. Implement the minimal fix in `crates/*/src/`.
+4. Verify non-regression across adjacent suites and keep the test committed as a permanent regression sentinel.
+
+---
+
+## 6. Execution Skills for Testing
 - **Crate Unit & Integration Test Scaffolding:** Follow [`scaffold-crate-tests`](../skills/scaffold-crate-tests/SKILL.md) to author comprehensive external test suites under `crates/<crate>/tests/test_<crate>.rs`.
 - **CPU Silicon Cycle Verification:** Follow [`m68k-singlestep-test`](../skills/m68k-singlestep-test/SKILL.md) when validating instructions against Tom Harte physical silicon vectors (`SingleStepTests-680x0`).
+

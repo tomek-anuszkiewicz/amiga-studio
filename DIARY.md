@@ -2155,3 +2155,53 @@ Every future modification or implementation task must append an entry following 
   - tools/log_diary.py dry-run and live append verified
   - tools/scaffold_crate.py dry-run verified for Tier 1, 2, and 3
   - pre-flight quality gates 100% passed.
+---
+
+### [2026-09-12 23:17 CEST] — Codification of Repro-First Rule and Centralized Platform Quirks Catalog
+- **Affected Subsystems**:
+  - `architecture`
+  - `testing`
+  - `documentation`
+  - `obsidian`
+- **What Was Changed (The Concrete Reality)**:
+  - Created .agents/rules/repro-first.md defining mandatory Red-Green-Refactor regression protocol before editing production code
+  - Created Obsidian/Amiga/Design/Platform Quirks and Invariants Catalog.md centralizing hardware silicon traps across M68000, Agnus, Denise, Paula, CIA, and MemoryBus
+  - Updated .agents/rules/unit-testing-policy.md and Obsidian/Amiga/Design/General Architecture.md with cross-references
+  - Streamlined AGENTS.md to include rule and catalog pointers while strictly respecting <= 14,000 byte ceiling (13,354 bytes)
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates risk of agents or developers smoothing out counter-intuitive hardware silicon behaviors that generic models assume are defects by providing a centralized index
+  - Establishes an unbending repro-first test guard for all defect resolution to prevent unanchored edits and regression loops
+- **Verification & Test Results**:
+  - tools/pre_flight.py passed with 100% compliance across formatting
+  - attractor discipline (313 files)
+  - AGENTS.md size check (13
+  - 354 bytes <= 14
+  - 000 limit)
+  - and all 15 automated architecture tests in 1.79s
+---
+
+### [2026-09-12 23:29 CEST] — Purification of Platform Quirks Catalog & Subsystem Topology Clarification
+- **Affected Subsystems**:
+  - `documentation`
+  - `obsidian`
+  - `architecture`
+  - `memory_bus`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed normal architectural principles (Agnus DMA scheduling, Blitter Nasty mode, CIA partial decoding) from Platform Quirks Catalog
+  - Updated MemoryBus.md to 'Address Decoding Architecture & Bus Topology'
+  - Replaced 'Hardware Quirks' terminology with 'Address Decoding Architecture & Memory Topology' and classified TAS as a silicon erratum
+  - Established strict scope boundary preventing standard operating modes from being cataloged as quirks
+- **Architectural Rationale & Trade-Offs**:
+  - Preserves strict engineering hygiene by separating genuine physical silicon quirks and errata (RMW prefetch ordering
+  - A7 alignment
+  - TAS RMW drop) from foundational
+  - intentional hardware operating principles (Agnus DMA arbitration
+  - Blitter Nasty
+  - CIA mirroring) which belong exclusively in subsystem architecture specifications
+- **Verification & Test Results**:
+  - tools/pre_flight.py passed with 100% compliance across formatting
+  - attractor discipline (313 files)
+  - AGENTS.md size check (13
+  - 354 bytes <= 14
+  - 000 limit)
+  - and all 15 architecture tests in 1.75s
