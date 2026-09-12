@@ -2239,3 +2239,41 @@ Every future modification or implementation task must append an entry following 
   - Aligns development priority directly with getting the Amiga custom chipsets, reset flow, and floppy controller operational to run authentic software.
 - **Verification & Test Results**:
   - `python tools/pre_flight.py` passed with 100% compliance across formatting, attractor discipline (312 files), AGENTS.md ceiling (13,354 bytes), and all 15 architecture rules tests.
+
+---
+
+### [2026-09-12 23:57 CEST] — Roadmap Milestone Addition: Custom Chip Hardware Registers, Propagation Latency & Clock Domains
+- **Affected Subsystems**:
+  - `ROADMAP.md` (inserted Step 2.2: Custom Chip Hardware Registers, Propagation Latency & Clock Domains)
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated and inserted **Step 2.2: Custom Chip Hardware Registers, Propagation Latency & Clock Domains [Active Focus]** immediately following Step 2.1 in `ROADMAP.md`.
+  - Defined explicit scope for:
+    1. *Hardware Register Access Semantics:* Strict read-only, write-only, strobe, and clear-on-read register classifications across Agnus ($DFF000–$DFF07E), Denise ($DFF080–$DFF0DE), Paula ($DFF0A0–$DFF0FE), and CIAs ($BFE001 / $BFD000).
+    2. *Electronic Propagation Latency:* Physical circuit simulation modeling $K$ CCK phase delay before register writes take operational effect.
+    3. *Cross-Chip Chain Reactions:* Inter-chip cascade triggers (e.g. `DMACON` bits dynamically gating Copper/Blitter or audio/disk DMA).
+    4. *Re-trigger & Write Abort:* Immediate cancellation and restart of multi-cycle state machines upon mid-sequence register overwrites.
+    5. *Main Loop Integration:* Zero-allocation ring latches embedded directly within chip structs and woven into `step_cck(cck)`.
+    6. *CIA E-Clock Frequency Domain:* Explicit decoupling for the dual MOS 8520 CIAs running on the Motorola 68000 E-Clock ($\text{CCK} / 5 = \text{CPU} / 10 \approx 709\text{ kHz}$ PAL / $716\text{ kHz}$ NTSC).
+  - Renumbered subsequent steps: Reset Sequencing to Step 2.3, DMA Arbiter to Step 2.4, Decomposed Subsystems to Step 2.5, Audio/Shaders to Step 2.6.
+- **Architectural Rationale & Trade-Offs**:
+  - Custom chip register access and delayed propagation are foundational to accurate machine-wide reset sequencing (`reset_cold`) and DMA scheduling. Defining register access semantics and clock domain differences upfront ensures physical circuit fidelity prior to wiring reset defaults and bus locks.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py` passed with 100% compliance across formatting, attractor discipline (312 files), AGENTS.md ceiling (13,354 bytes), and all 15 architecture rules tests.
+
+---
+
+### [2026-09-12 23:59 CEST] — Roadmap Milestone Addition: Subsystem Action Dispatch & Multi-Chip Register Binding Pipeline
+- **Affected Subsystems**:
+  - `ROADMAP.md` (inserted Step 2.3: Subsystem Action Dispatch & Multi-Chip Register Binding Pipeline)
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated and inserted **Step 2.3: Subsystem Action Dispatch & Multi-Chip Register Binding Pipeline** directly after Step 2.2 in `ROADMAP.md`.
+  - Defined explicit scope for:
+    1. *Semantic Action Method Dispatch:* Mapping low-level register bits and latched state mutations to explicit, strongly typed action methods on subsystem structs (e.g. `FloppyDrive::set_motor(bool)`, `Blitter::trigger_blt()`, `AudioChannel::set_dma_enabled(bool)`, `Copper::strobe_jump(addr)`, `Denise::set_bplcon0(val)`), eliminating raw polling loops.
+    2. *Propagation-Aware Action Triggering:* Coupling subsystem action execution with the $K$ CCK phase delay pipeline so that physical actions fire on the exact operational cycle when the register mutation becomes effective.
+    3. *Multi-Chip Aggregate Device Control:* Unifying composite devices driven across multiple hardware controllers—specifically the floppy drive subsystem coordinated across CIA-A (input status sensing), CIA-B (motor, step, dir, side, drive select), and Paula (MFM stream DMA, DSKLEN, sync detector, level 1 interrupt)—without circular references.
+    4. *Cross-Subsystem Semantic Mappings:* Direct routing of `DMACON`/`DMACONR` to DMA engines, `INTENA`/`INTREQ` to machine loop IPL arbitration, `BPLCON0`/`BPLCON1` to Denise/Agnus DMA allocation, and `COPJMP` strobes to Copper PC reload.
+  - Renumbered subsequent steps: Reset Sequencing to Step 2.4, DMA Arbiter to Step 2.5, Decomposed Subsystems to Step 2.6, Audio/Shaders to Step 2.7.
+- **Architectural Rationale & Trade-Offs**:
+  - Pure register buffers without action dispatch force peripheral devices to continuously poll raw register bits, introducing wasted cycles or brittle multi-chip synchronization. Defining a propagation-aware action dispatch pipeline ensures hardware events fire deterministically on the exact Color Clock cycle while maintaining strict borrow splitting and zero circular references across crates.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py` passed with 100% compliance across formatting, attractor discipline (312 files), AGENTS.md ceiling (13,354 bytes), and all 15 architecture rules tests.

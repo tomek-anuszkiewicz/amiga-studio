@@ -58,26 +58,42 @@ This document outlines the phased development plan, hardware milestones, verific
   - Implemented multi-level stepping interfaces: `step_cck(cck: u64)`, `step_instruction()`, `step_cycles(n)`, `step_frame()`.
   - Central interrupt priority arbitration pipeline: samples Paula (Levels 1, 3, 4, 5), CIA-A (Level 2), and CIA-B (Level 6), calculates highest unmasked level, and drives `cpu.state.ipl`.
   - 100% verified: clean `cargo check --workspace`, 24 unit tests across new crates, architecture test validation, and `test_dma_cartesian` pass.
-- **Step 2.2: Machine-Wide Reset Sequencing (reset_cold & reset_warm) [Active Focus]:**
+- **Step 2.2: Custom Chip Hardware Registers, Propagation Latency & Clock Domains [Active Focus]:**
+  - **Hardware Register Mapping & Access Semantics:** Implement custom chip hardware registers across Agnus ($DFF000–$DFF07E), Denise ($DFF080–$DFF0DE), Paula ($DFF0A0–$DFF0FE), and CIAs ($BFE001 / $BFD000) with strict hardware access permissions: write-only registers (e.g. `DMACON`, `INTENA`, `BPLCON0`), read-only status registers (e.g. `DMACONR`, `INTENAR`, `VPOSR`), strobes (e.g. `COPJMP1`), and read-sensitive registers (e.g. clear-on-read `INTREQR`).
+  - **Electronic Propagation Latency ($K$ CCK Phase Delay Pipeline):** Model physical circuit propagation delays where written values do not take instantaneous cross-chip effect; staged mutations take effect after calibrated Color Clock phases / CCK cycles before altering the active execution path.
+  - **Cross-Chip Chain Reactions:** Changes in one register trigger domino effects across companion chips (e.g. Agnus `DMACON` bit enabling Paula disk/audio DMA or Copper restart; Denise `BPLCON0` bitplane count altering Agnus DMA slot allocations).
+  - **Re-trigger & Abort on Mid-Sequence Writes:** Subsequent register writes interrupting in-flight multi-cycle sequences abort pending mutations and restart cycle timing from the beginning.
+  - **Machine Loop Weaving:** Wire register mutation propagation directly into the main `A500Machine::step_cck(cck)` loop with zero dynamic heap allocations (`[Option<DelayedMutation>; N]` fixed inline rings embedded directly in chip structs).
+  - **CIA E-Clock Frequency Domain Decoupling:** Model the distinct, significantly slower clock domain of the dual MOS 8520 CIAs, which run off the Motorola 68000 E-Clock ($\text{CCK} / 5 = \text{CPU} / 10 \approx 709{,}379\text{ Hz}$ PAL / $715{,}909\text{ Hz}$ NTSC; $1\ \text{E-Clock} = 10\ \text{CPU clocks} = 5\ \text{CCK cycles}$) with correct 10-clock phase alignment and E-clock synchronous register transfers.
+- **Step 2.3: Subsystem Action Dispatch & Multi-Chip Register Binding Pipeline:**
+  - **Semantic Action Method Dispatch:** Bridge low-level register bits and latched state transitions into explicit, strongly typed action methods on subsystem structs (e.g., `FloppyDrive::set_motor(bool)`, `Blitter::trigger_blt()`, `AudioChannel::set_dma_enabled(bool)`, `Copper::strobe_jump(addr)`, `Denise::set_bplcon0(val)`), replacing raw register polling with event-driven hardware dispatch.
+  - **Propagation-Aware Action Triggering:** When a delayed register mutation matures after its $K$ CCK phase delay (e.g. 2 cycles after write), the effective latch invokes the corresponding action method in the target subsystem struct on the exact operational cycle.
+  - **Multi-Chip Aggregate Device Control (e.g. Floppy Subsystem):** Model peripheral devices driven across multiple independent controllers simultaneously:
+    - *CIA-A Port A ($BFE001):* Input sensing (`/DSKRDY`, `/DSKTRACK0`, `/DSKPROT`, `/DSKCHANGE`).
+    - *CIA-B Port B ($BFD100):* Motor latch (`/DSKMTR`), step pulse (`/DSKSTEP`), step direction (`/DSKDIR`), side select (`/DSKSIDE`), drive unit select (`/DSKSEL0`–`/DSKSEL3`).
+    - *Paula Disk Controller ($DFF018–$DFF024):* MFM track stream DMA (`DSKPTH`/`DSKPTL`), length counter (`DSKLEN`), sync word detection (`DSKSYNC = $4489`), and Level 1 disk interrupt generation.
+    - Coordinate these disparate register sources into cohesive action dispatches on `FloppyDrive` and `FloppySubsystem` without circular references or shared pointers.
+  - **Cross-Subsystem Semantic Mappings:**
+    - `DMACON` / `DMACONR`: DMA channel enable/disable actions routed to Blitter, Copper, 4x Audio channels, and Disk DMA.
+    - `INTENA` / `INTREQ`: Interrupt master and channel enables routed to the central machine loop IPL arbiter.
+    - `BPLCON0` / `BPLCON1`: Bitplane count and scroll delay actions dispatched to Denise and Agnus DMA allocation.
+    - `COPJMP1` / `COPJMP2`: Strobe address triggers dispatched to Copper program counter reload.
+- **Step 2.4: Machine-Wide Reset Sequencing (reset_cold & reset_warm):**
   - Physical _RESET line propagation across all chips.
   - Boot overlay engagement (map_kickstart_to_low_memory in MemoryBus).
   - *Cold Reset:* Zero physical RAM buffers ($00), reset chip registers to power-on defaults (DMACON = $0000, INTENA/INTREQ = $0000, CIA latches cleared), initialize CPU SR = $2700, load initial SSP/PC from $000000/$000004 (Kickstart ROM), prime prefetch queue (IR, IRC).
   - *Warm Reset:* Preserve RAM contents intact (ensuring Kickstart memory checksum and resident module discovery pass), re-engage _OVL, assert chip reset lines, reload initial vectors.
   - Hardware keyboard reset line: wire Ctrl-Amiga-Amiga reset trigger line to main machine reset flow.
-- **Step 2.3: Delayed Signal & Register Mutation Propagation Pipeline:**
-  - *Physical Circuit Simulation:* Register reads return the currently latched active state **immediately** ("Read is NOW"). Register writes, strobes, and register mutations (e.g. DMACON, BPLCON0, COLORxx, INTENA, COPJMP1, BLTSIZE, CIA timer latches) do not take instantaneous cross-chip effect; they are staged and propagate after $K$ Color Clock phases / CCK cycles before altering the active execution path.
-  - *Zero-Allocation Hot Path Design:* Model staged mutations using fixed-size inline pipeline latches / ring buffers (e.g. [Option<DelayedWrite>; 4] or fixed-capacity shift latches) embedded directly within chip structs. Zero dynamic heap allocation (Vec, Box) during CCK stepping.
-  - *Save State Persistence:* The delayed mutation pipeline, staged values, and remaining cycle countdowns are fully serializable in save states (AgnusState, DeniseState, etc.), guaranteeing deterministic round-trip snapshot capture and rewind/restore even mid-propagation.
-- **Step 2.4: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
+- **Step 2.5: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure):**
   - Implement the baseline Agnus horizontal scanline DMA slot schedule (CCK 0..3 DRAM refresh, CCK 4 disk, CCK 5..8 audio, CCK 12..27 sprites, bitplanes, and even/odd slots).
   - CPU and Blitter contention arbitration (BLTPRI Blitter Nasty mode).
   - Direct bus lock exposure: drive bus lock methods (lock_chip_ram / unlock_chip_ram) so the CPU and all custom chips observe bus contention and stall with wait states (BusResult::WaitState), establishing correct bus contention physics even before individual channel internal DSP/rendering logic is fully completed.
-- **Step 2.5: Decomposed Subsystem Deep Implementations:**
+- **Step 2.6: Decomposed Subsystem Deep Implementations:**
   - *Agnus:* Copper coprocessor state machine (MOVE, WAIT, SKIP, CDANG danger mode), 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer, ascending/descending modes).
   - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (blep_tables.rs) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.
   - *Denise:* Video pixel serializer, bitplanes (1–6), 8 hardware sprites, 32-color palette (RGB444), dual playfield, collision detection registers (CLXDAT, CLXCON).
   - *CIAs (Dual MOS 8520):* Timers A & B, TOD clock, serial shift register (SDR), parallel/control ports, E-clock synchronization.
-- **Step 2.6: Host Audio, CRT Shaders & Copper/DMA Logic Analyzer:**
+- **Step 2.7: Host Audio, CRT Shaders & Copper/DMA Logic Analyzer:**
   - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio).
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
   - Copper list visualizer with live beam position cursor and DMA slot logic analyzer timeline.
