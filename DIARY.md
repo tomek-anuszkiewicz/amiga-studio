@@ -2021,4 +2021,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `cargo test --workspace --exclude test_runner`: All test suites across all 18 crates compiled cleanly and passed with 0 errors.
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 automated architecture tests passed in 0.59s (zero unwraps, zero custom macros, file sizes <= 800 lines, link integrity verified).
+
+---
+
+### [2026-09-12 21:30 CEST] — Formalization of Dedicated tests/ Directory Architecture & Automated CI Invariant
+- **Affected Subsystems**:
+  - `.agents/rules/unit-testing-policy.md`: Added Section 3 explicitly mandating dedicated `crates/<crate>/tests/` directories and strictly prohibiting inline tests (`#[cfg(test)] mod tests`) inside `crates/<crate>/src/`. Updated Definition of Done checklist.
+  - `AGENTS.md`: Updated Section 1 and Section 4 to index and enforce the zero-inline-tests policy while strictly adhering to the 14,000 bytes ceiling (13,679 bytes).
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Implemented automated architecture test `test_zero_inline_tests_in_crates_src` asserting zero `#[cfg(test)]`, `mod tests`, or `#[test]` attributes inside any `crates/*/src/` file.
+- **What Was Changed (The Concrete Reality)**:
+  - Formally codified the project's testing architecture standard so that every crate (e.g. `crates/audio/`, `crates/agnus/`, `crates/machine_loop/`) must place unit, integration, and regression tests under `tests/` and never inline in `src/lib.rs`.
+  - Added automated CI enforcement in `test_architecture_rules.rs` scanning all Rust source files under `crates/*/src/` to permanently prevent inline tests from ever being reintroduced.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates test clutter from production code, enforces public API testability, and prevents test code from inflating production file sizes or complicating static analysis and unwrap audits.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 15 tests passed in 0.81s (including `test_zero_inline_tests_in_crates_src`).
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 304 files scanned, 0 attractors found.
   - `cargo fmt --all -- --check`: 100% compliant.

@@ -30,7 +30,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Method Inlining Strategy** ([`method-inlining.md`](.agents/rules/method-inlining.md)): Targeted `#[inline]`, `#[inline(always)]`, and `#[inline(never)]` annotations.
 - **Workspace Architecture & Re-Exports** ([`workspace-structure-and-reexports.md`](.agents/rules/workspace-structure-and-reexports.md)): Strictly flat crate layout and 3-tier re-export hierarchy.
 - **Rust Best Practices** ([`rust-best-practices.md`](.agents/rules/rust-best-practices.md)): Safe borrowing, zero unwraps in runtime, wrapping math, and unit tests.
-- **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for functional/utility logic; headless integration tests for GUI.
+- **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for functional/utility logic; headless integration tests for GUI; dedicated `tests/` directories with zero inline tests in `src/`.
 - **egui & Frontend Best Practices** ([`egui-best-practices.md`](.agents/rules/egui-best-practices.md)): Synchronous state pull, 1:1 layout mapping, bounded time-slicing, WASM/DPI adaptation, and universal in-app documentation.
 - **Git Commits & Atomic History** ([`git-commits.md`](.agents/rules/git-commits.md)): Context reconstruction, atomic commit decomposition, Conventional Commits, and pre-commit test gates.
 - **Git Merge Commits & Worktrees** ([`git-merge-commits.md`](.agents/rules/git-merge-commits.md)): Mandatory merge commits on conflict resolution; worktree lifecycle and cleanup.
@@ -96,7 +96,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 ## 4. Quality Assurance & Definition of Done
 
 - **Mandatory Formatting:** `cargo fmt --all -- --check`.
-- **Automated Architecture Tests:** Pass `cargo test -p test_runner --test test_architecture_rules` (validates file sizes, zero runtime panics, zero custom macros, zero const generics, canonical IDLE steps, path privacy, inlining, and link integrity).
+- **Automated Architecture Tests:** Pass `cargo test -p test_runner --test test_architecture_rules` (validates file sizes, zero runtime panics, zero custom macros, zero const generics, canonical IDLE steps, zero inline tests in src/, path privacy, inlining, and link integrity).
 - **Single-Step CPU Validation:** On any changes to `crates/m68000`:
   ```powershell
   $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep

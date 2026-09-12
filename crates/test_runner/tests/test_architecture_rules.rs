@@ -1048,3 +1048,46 @@ fn test_zero_synthetic_attractors() {
         violations.join("\n")
     );
 }
+
+#[test]
+fn test_zero_inline_tests_in_crates_src() {
+    let repo_root = find_repo_root();
+    let crates_dir = repo_root.join("crates");
+    let mut rs_files = Vec::new();
+    collect_rs_files(&crates_dir, &mut rs_files);
+
+    let mut violations = Vec::new();
+
+    for file in rs_files {
+        // Only inspect production files under src/
+        if !file.components().any(|c| c.as_os_str() == "src") {
+            continue;
+        }
+
+        let content = fs::read_to_string(&file).expect("Failed to read source file");
+        let rel_path = file.strip_prefix(&repo_root).unwrap_or(&file);
+
+        for (line_idx, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed == "#[cfg(test)]"
+                || trimmed == "mod tests {"
+                || trimmed == "mod test {"
+                || trimmed.starts_with("#[test]")
+            {
+                violations.push(format!(
+                    "{}:{} -> Found inline test attribute or module: `{}`",
+                    rel_path.display(),
+                    line_idx + 1,
+                    trimmed
+                ));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Inline tests found in production src/ files:\n{}\n\
+        All tests must be placed in dedicated test files under crates/<crate>/tests/ per .agents/rules/unit-testing-policy.md.",
+        violations.join("\n")
+    );
+}

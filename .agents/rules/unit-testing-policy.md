@@ -43,10 +43,26 @@ Unlike backend systems, GUI components under `crates/gui` must not rely on fragi
 
 ---
 
-## 3. Definition of Done Checklist for Testing
+## 3. Test Placement Architecture: Dedicated `tests/` Directory Only (Zero Inline Tests in `src/`)
+
+To guarantee clean separation between production logic and test harnesses, all tests across the workspace must reside strictly in external test suites:
+
+1. **Dedicated `tests/` Directory Standard:**
+   - For every workspace crate (e.g. `crates/audio/`, `crates/agnus/`, `crates/machine_loop/`), all unit tests, integration tests, and regressions **must be placed in `crates/<crate>/tests/`** (e.g. `crates/<crate>/tests/test_<crate>.rs` or `crates/<crate>/tests/*.rs`).
+2. **Strict Prohibition of Inline Tests in `src/`:**
+   - Embedding `#[cfg(test)] mod tests { ... }` or `#[test]` inside `crates/<crate>/src/lib.rs` (or any other `src/*.rs` file) is strictly forbidden across all workspace crates.
+3. **Core Architectural Rationale:**
+   - **Pure Production Code:** Production code in `src/` remains lean, uncluttered, and readable. Static analysis, dead-code detection, and file size limits ($\le 800$ lines) reflect genuine runtime code.
+   - **Decoupled API Verification:** External test files compile as distinct crates, forcing tests to exercise modules strictly through public interfaces as downstream consumers (`machine_loop`, `debugger`, `gui`) do.
+   - **Zero Host Panics Validation:** Keeps runtime panic checks in CI (`test_zero_runtime_panics_or_unwraps`) strictly focused on production code without needing test-specific exemptions.
+
+---
+
+## 4. Definition of Done Checklist for Testing
 
 Before declaring any feature, bug fix, or opcode implementation complete:
 - [ ] Are all new or modified functional methods backed by unit tests?
+- [ ] Are all tests located strictly in `crates/<crate>/tests/`, with zero inline `#[cfg(test)]` in `crates/<crate>/src/`?
 - [ ] Does the disassembler handle all expected opcode patterns without falling back to `DATA.W`?
 - [ ] Do all unit tests run fast (< 1s total) and deterministic with zero race conditions?
 - [ ] Are GUI changes verified with headless integration tests in `crates/gui/tests/test_interactions.rs`?
