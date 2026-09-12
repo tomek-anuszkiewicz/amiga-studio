@@ -1372,3 +1372,17 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:38 CEST] — Removed Compiler Target Triple (wasm32-unknown-unknown) from README.md
+- **Affected Subsystems**:
+  - `README.md`: Simplified project introduction sentence.
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the compiler target triple parenthetical `(wasm32-unknown-unknown)` from the main tagline in `README.md` line 3, leaving clean `"engineered for native desktop platforms and WebAssembly."`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Approachable Presentation:* LLVM compilation target triples belong in developer guides and build documentation, not on the opening landing page. Referring cleanly to "WebAssembly" communicates browser play capability without confusing or intimidating readers with low-level compiler jargon.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

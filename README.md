@@ -1,6 +1,6 @@
 # Amiga 500 Cycle-Exact Emulator in Rust
 
-A cycle-exact, high-performance **Commodore Amiga 500** (OCS) emulator written in Rust, engineered for native desktop platforms and WebAssembly (`wasm32-unknown-unknown`).
+A cycle-exact, high-performance **Commodore Amiga 500** (OCS) emulator written in Rust, engineered for native desktop platforms and WebAssembly.
 
 Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`) without hard drives or bulky expansion clutter.
 
