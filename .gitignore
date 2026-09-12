@@ -11,3 +11,26 @@ tests/benchmarks/quick/
 tests/benchmarks/standard/
 tests/benchmarks/thorough/
 tests/singlestep/
+
+# Third-party reference sources & test suites
+/ref_src/
+
+# External reference manuals & documentation
+/Obsidian/Amiga/Reference/
+
+# Temporary and archived documentation
+/docs-*/
+/archive/
+
+# Hardware schematics & service manuals
+/schematics/
+/schematics-unused/
+
+# Generated knowledge graphs & caches
+/graphify-out/
+
+# Third-party tools & executables
+/tools/winguide/
+/tools/AmigaTestKit-*/
+/adfs/
+/progs/
