@@ -14,6 +14,7 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **Zero Host Panics (`performance-and-readability.md`):** No `.unwrap()` or `.expect()` in runtime emulation hot paths.
 - **Hardware Efficiency & Readability:** Zero custom macros (`macro_rules!`), zero const-generic instruction handlers, contiguous memory layouts, and zero heap allocations in execution loops.
 - **Attractor Discipline (`attractor-discipline.md`):** Zero synthetic academic jargon, theatrical testing metaphors, or heading slogans.
+- **Amiga RAG Knowledge Base (`amiga-rag.md`):** Mandatory pre-task conceptual retrieval and automated reindexing on documentation changes.
 - **Graphify AST Knowledge Graph (`graphify.md`):** Consult the code knowledge graph for AST queries and adhere to scoped subtree re-indexing (`crates/` vs `ref_src/`).
 
 ---
@@ -21,10 +22,13 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 ## 2. Knowledge Retrieval: RAG & Graphify
 
 ### A. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
-- Connects to local Qdrant database (`http://localhost:6333`, collection: `amiga`).
-- Indexes official Commodore Hardware Reference Manuals, 68000 PRMs, and Guru book under `Obsidian/Amiga/Reference/`, alongside design specs under `Obsidian/Amiga/Design/`.
-- Query via tool: `rag_search(query="<topic>", sources=["amiga", "obsidian"])`.
-- Run indexing via CLI: `.\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga" --source amiga`.
+- **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `amiga`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, Guru book, and design specs under `Obsidian/Amiga/`.
+- **Automated Reindexing Trigger ([`amiga-rag.md`](../.agents/rules/amiga-rag.md)):**
+  - Reindexing is **fully automated**: whenever hardware documentation, reference guides, or design notes under `Obsidian/Amiga/` are added, modified, or reorganized, incremental reindexing is triggered automatically without requiring manual execution.
+  - Powered by a local SHA-256 hash cache (`amiga_rag_cache.json`), re-indexing verifies unchanged files instantly (< 1s) and embeds only modified text.
+- **Query Tools & Manual Override:**
+  - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "obsidian"])`.
+  - Manual / interactive CLI runner: `.\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga" --source amiga`.
 
 ### B. Code Structure & Relationships: AST Knowledge Graph (`graphify`)
 - **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:

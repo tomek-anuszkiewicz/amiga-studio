@@ -1489,3 +1489,19 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.54s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 17:02 CEST] — Documented Automated RAG Reindexing in docs/ai_agents.md
+- **Affected Subsystems**:
+  - `docs/ai_agents.md`: Expanded Section 2.A to clarify automated reindexing and SHA-256 caching.
+- **What Was Changed (The Concrete Reality)**:
+  - Documented that RAG vector reindexing is **fully automated**: whenever documentation or architecture notes in `Obsidian/Amiga/` are added, modified, or reorganized, incremental reindexing runs automatically without requiring manual execution.
+  - Highlighted the SHA-256 hash cache (`amiga_rag_cache.json`) allowing sub-second validation of unchanged files.
+  - Linked `.agents/rules/amiga-rag.md` in both Section 1 and Section 2.A.
+- **Architectural Rationale & Trade-Offs**:
+  - *Autonomous Knowledge Freshness:* Clarifying that the RAG pipeline is automated ensures developers and agents know they do not need to pause their workflow to run manual indexing scripts after making documentation updates.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.56s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
