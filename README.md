@@ -2,7 +2,7 @@
 
 A cycle-exact, high-performance **Commodore Amiga 500** (OCS) emulator written in Rust, engineered for native desktop platforms and WebAssembly (`wasm32-unknown-unknown`).
 
-Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`, and direct binary injection) without hard drives or bulky expansion clutter.
+Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`) without hard drives or bulky expansion clutter.
 
 ---
 
@@ -50,9 +50,9 @@ trunk serve crates/gui/index.html --open
 | **`Shift + F10`** | **Step Backward (Rewind)** | Restores previous execution snapshot from the high-capacity temporal buffer. |
 | **`F11`** | **Step CCK** | Steps 1 Color Clock phase (2 CPU clocks, CCK1 / CCK2). |
 | **`Alt + T`** | **Toggle Recording** | Activates or pauses temporal execution history recording. |
-| **`Ctrl + O`** | **Load Binary** | Opens file dialog to inject compiled machine code at any arbitrary RAM address. |
+| **`Ctrl + O`** | **Load Binary** | Opens file dialog to load compiled machine code at an arbitrary RAM address. |
 | **`Ctrl + R`** | **Reset Cold** | Restores initial hardware state and reloads CPU vectors. |
-| **Drag & Drop** | **Quick File Injection** | Drag any `.adf`, `.bin`, or `.rom` directly onto the window. |
+| **Drag & Drop** | **Quick File Loading** | Drag any `.adf`, `.bin`, or `.rom` directly onto the window. |
 
 ### Developer Studio & Time-Travel Debugger
 When the Developer Studio is active (`F12` or running `cargo run -p gui` without `--game`), the interface provides:

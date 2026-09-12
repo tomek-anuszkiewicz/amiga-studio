@@ -1239,3 +1239,20 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.55s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:16 CEST] — Purged Jargon Phrasing ("Direct Binary Injection") from README.md
+- **Affected Subsystems**:
+  - `README.md`: Refined project tagline and shortcut table to eliminate confusing "injection" terminology.
+- **What Was Changed (The Concrete Reality)**:
+  - Simplified the main project tagline in `README.md` line 5 from `"Focused on the authentic floppy disk gaming experience (DF0:, .adf, and direct binary injection) without hard drives or bulky expansion clutter"` to `"Focused on the authentic floppy disk gaming experience (DF0:, .adf) without hard drives or bulky expansion clutter"`.
+  - Normalized GUI shortcut descriptions in the keybindings table:
+    - Replaced `"Opens file dialog to inject compiled machine code at any arbitrary RAM address"` with `"Opens file dialog to load compiled machine code at an arbitrary RAM address"`.
+    - Replaced `"Quick File Injection"` with `"Quick File Loading"`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Clarity over Confusing Jargon:* The phrase "direct binary injection" sounded like obscure debugger jargon and diluted the core message of the emulator on the landing page. The emulator's primary focus for players is authentic floppy disk gaming (`DF0:`, `.adf`). Machine code and ROM loading are properly documented in developer sections using plain English ("load") rather than "inject".
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.52s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
