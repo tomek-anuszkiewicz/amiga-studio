@@ -1287,3 +1287,33 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.53s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:22 CEST] — Extracted Developer Studio & Debugger Guide to docs/debugger.md and Cleaned Player README
+- **Affected Subsystems**:
+  - `README.md`: Streamlined Section 1 to retain strictly player controls and linked the developer guide.
+  - `docs/debugger.md`: Created dedicated, comprehensive guide for the Developer Studio, time-travel rewind, and debugging tools.
+- **What Was Changed (The Concrete Reality)**:
+  - Streamlined the Player Keybindings table in `README.md` to strictly include player-focused shortcuts:
+    - `F5` / `Space` (Run / Pause)
+    - `Ctrl + R` (Cold Reset / Reboot)
+    - `F12` (Toggle Screen Mode)
+    - `Drag & Drop` (Insert Floppy Disk `.adf` into `DF0:`)
+  - Purged developer/debugger shortcuts (`F10`, `Shift + F10`, `F11`, `Alt + T`, `Ctrl + O`) and the verbose "Developer Studio & Time-Travel Debugger" section from `README.md`.
+  - Authored [`docs/debugger.md`](docs/debugger.md) consolidating:
+    1. Launch commands (docked studio vs game mode toggle).
+    2. Complete developer shortcut reference table.
+    3. Time-Travel Rewind ring buffer mechanics ($\ge 1.0\text{s}$ PAL cycle history).
+    4. Live Register Inspector with diff highlighting and hex editing.
+    5. Memory Hex Grid with byte mutation glow and inline editing.
+    6. Disassembly view with in-place assembly patching (`✏`).
+    7. PC breakpoints and memory watchpoints.
+    8. Structural cross-links to [`Obsidian/Amiga/Design/Debugger.md`](Obsidian/Amiga/Design/Debugger.md).
+  - Linked [`docs/debugger.md`](docs/debugger.md) both in `README.md` Section 1 and in Section 3's `docs/` technical index.
+- **Architectural Rationale & Trade-Offs**:
+  - *Separation of Player Experience from Developer Tooling:* Gamers launching Amiga disks want a clean, minimal 4-line control reference without being confronted by microarchitectural CCK stepping and temporal trace buffers. Moving the debugger documentation into `docs/debugger.md` elevates the landing page while providing a thorough reference guide for developers and AI agents.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.56s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

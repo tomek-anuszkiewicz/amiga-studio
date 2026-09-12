@@ -36,34 +36,19 @@ trunk serve crates/gui/index.html --open
 - Press **`F12`** at any time to toggle between **Clean Game Mode** and the **Developer Studio / Debugger**.
 - Switching into Developer Studio pauses emulation immediately, allowing instant inspection of registers, custom chip states, and memory.
 
-### Loading Games & Software
-- **Floppy Disks (`.adf`):** Drag and drop any `.adf` image onto the emulator window, or select floppy drive `DF0:` from the top menu.
-- **Machine Code Binaries:** Drag and drop compiled binaries (`.bin`, `.rom`) onto the window, or launch directly at a target RAM address:
-  ```powershell
-  cargo run -p gui -- --load path/to/game.bin --addr 001000
-  ```
+### Loading Games
+- **Floppy Disks (`.adf`):** Drag and drop any `.adf` image directly onto the emulator window to insert it into `DF0:` and start playing.
 
-### Keybindings & Controls
+### Player Keybindings & Controls
 
 | Shortcut | Action | Description |
 | :--- | :--- | :--- |
-| **`F12`** | **Toggle GUI / Game Mode** | Switches between Developer Studio and Clean Screen. Pauses emulation on entry. |
-| **`F5` / `Space`** | **Run / Pause** | Toggles continuous free-running emulation. |
-| **`F10`** | **Step Instruction** | Executes exactly 1 M68000 instruction, recording trace and history. |
-| **`Shift + F10`** | **Step Backward (Rewind)** | Restores previous execution snapshot from the high-capacity temporal buffer. |
-| **`F11`** | **Step CCK** | Steps 1 Color Clock phase (2 CPU clocks, CCK1 / CCK2). |
-| **`Alt + T`** | **Toggle Recording** | Activates or pauses temporal execution history recording. |
-| **`Ctrl + O`** | **Load Binary** | Opens file dialog to load compiled machine code at an arbitrary RAM address. |
-| **`Ctrl + R`** | **Reset Cold** | Restores initial hardware state and reloads CPU vectors. |
-| **Drag & Drop** | **Quick File Loading** | Drag any `.adf`, `.bin`, or `.rom` directly onto the window. |
+| **`F5` / `Space`** | **Run / Pause** | Toggles continuous emulation. |
+| **`Ctrl + R`** | **Reset / Restart** | Performs cold reset, restoring initial hardware state and rebooting. |
+| **`F12`** | **Toggle Screen Mode** | Switches between Clean Game Display and the Developer Studio. |
+| **Drag & Drop** | **Insert Floppy (`DF0:`)** | Drag any `.adf` disk image directly onto the window. |
 
-### Developer Studio & Time-Travel Debugger
-When the Developer Studio is active (`F12` or running `cargo run -p gui` without `--game`), the interface provides:
-- **Time-Travel Rewind ($\ge 1.0\text{s}$ PAL History):** High-capacity ring buffer recording cycle-exact CPU states with zero runtime heap allocations. Scrub backwards and forwards by instruction, frame (~70,824 CCK), or specific CCK cycle timestamp.
-- **Live Register Inspector:** Interactive view of all 68000 registers ($D_0-D_7, A_0-A_7, PC, SR, USP, SSP$) with diff highlighting (cyan glow on changed values). Click any register to edit in hex.
-- **Memory Hex Grid:** Live memory viewer with inline byte editing (Tab/Enter advances, Esc cancels). Mutated bytes glow in amber/cyan.
-- **Disassembly In-Place Editing:** Click the pencil icon (`✏`) to edit instructions using standard assembly (e.g. `NOP`, `MOVE.W D0, D1`) with byte-size safety verification.
-- **Breakpoints & Watchpoints:** Execution breakpoints on Program Counter and memory watchpoints on `Read`, `Write`, or `Any` access across arbitrary address blocks.
+*(For advanced developer controls, instruction stepping, live memory editing, and time-travel rewind, see the [Developer Studio & Debugger Guide](docs/debugger.md).)*
 
 ---
 
@@ -116,6 +101,7 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 ### Repository Architecture & Verification Guides (`docs/`)
 
 - [**Core Architecture & Hardware Execution Model**](docs/architecture.md): Color Clock phases (CCK1/CCK2), Gary bus arbitration, Agnus DMA contention, circuit simulation, Big-Endian invariance, and decoupled ownership.
+- [**Developer Studio & Time-Travel Debugger**](docs/debugger.md): Developer controls, time-travel rewind ring buffer, live register inspection, memory hex grid editing, disassembly patching, and breakpoints.
 - [**Test Suite & Verification Framework**](docs/testing.md): Physical hardware single-step test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), and CLI regression diagnostics.
 - [**AI Agent Engineering & Pair-Programming Guide**](docs/ai_agents.md): Autonomous AI agent pairing guidelines, rules adherence, RAG knowledge base, Graphify AST, and specialized skills.
 - [**Parallel Development with Git Worktrees**](docs/worktrees.md): Multi-branch parallel workflows and isolated build contexts.
