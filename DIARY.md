@@ -1422,3 +1422,20 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.56s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:48 CEST] — Added Step 4 (Dedicated Player GUI & Frontend Experience) to ROADMAP.md
+- **Affected Subsystems**:
+  - `ROADMAP.md`: Added Step 4 under Section 2 covering the player frontend experience.
+- **What Was Changed (The Concrete Reality)**:
+  - Added Step 4 to `ROADMAP.md` structured across 3 core functional pillars:
+    1. *Hardware Configuration & Kickstart ROM Selector (Step 4.1):* Amiga profile picker (Basic A500, Classic 1 MB Recommended, Expanded 4 MB), modal warning that switching configs requires a cold machine reset, and Kickstart file selector with integrity checksums.
+    2. *Multi-Drive Floppy Disk Manager (`DF0:`–`DF3:`, Step 4.2):* Drive slot manager, individual drive enable/active checkboxes for external units, ADF file pickers with quick insert/eject/write-protect toggles, and motor/drive LED status indicators.
+    3. *Visual Save State Manager (Step 4.3):* Interactive state browser with automatic screenshot frame thumbnail captures, formatted timestamps, optional custom user labels/descriptions, and hardware configuration integrity verification.
+- **Architectural Rationale & Trade-Offs**:
+  - *Player-Centric Frontend Focus:* While the Developer Studio GUI caters to low-level microcode debugging and register inspection, regular players need an intuitive, distraction-free control layer for swapping floppy disks, choosing hardware presets, and browsing visual save states with screenshot previews. Formalizing Step 4 ensures the player experience receives first-class design attention.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.57s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.

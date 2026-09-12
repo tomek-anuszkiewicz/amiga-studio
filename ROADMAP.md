@@ -101,6 +101,24 @@ This document outlines the phased development plan, hardware milestones, verific
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
   - Copper list visualizer with live beam position cursor and DMA slot logic analyzer timeline.
 
+### Step 4: Dedicated Player GUI & Frontend Experience
+- **Step 4.1: Hardware Configuration & Kickstart ROM Selector:**
+  - Amiga hardware profile selector (Basic A500 512 KB, Classic A500 1 MB [Recommended], Expanded A500 4 MB).
+  - Explicit notification and confirmation modal informing the user that changing hardware parameters requires a cold machine reset.
+  - Kickstart ROM manager: file picker for Kickstart ROM images (1.2, 1.3, custom ROMs) with automatic checksum validation (CRC32/SHA-256).
+- **Step 4.2: Multi-Drive Floppy Disk Manager (`DF0:` – `DF3:`):**
+  - Drive slot manager displaying primary internal drive `DF0:` and optional external drives (`DF1:`–`DF3:`).
+  - Individual drive enable/active toggle checkboxes to mount or disconnect external floppy drives on the fly.
+  - ADF file picker per drive with quick insert, eject, and write-protect latch controls.
+  - Visual drive activity indicators and floppy motor/stepping audio feedback.
+- **Step 4.3: Visual Save State Manager (Screenshots, Timestamps & Custom Labels):**
+  - Interactive save/load state overlay and slot manager.
+  - Visual snapshot cards containing:
+    - **Automatic Screen Capture:** Embedded thumbnail screenshot of the active Amiga display captured at the exact moment of saving.
+    - **Timestamp:** Formatted creation date and time.
+    - **Custom Label:** Optional user-defined state name / description for memorable checkpoints and game phases.
+    - **Configuration Integrity Guard:** Verifies matching hardware profiles (RAM sizes, chipset mode) before restoring state to prevent emulator panics or guest crashes.
+
 ---
 
 ## 3. AI Agent Testing & Differential Execution Strategy
