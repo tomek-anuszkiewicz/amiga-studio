@@ -6,6 +6,7 @@ members = [
     "crates/memory_bus",
     "crates/m68000",
     "crates/debugger",
+    "crates/gui",
     "crates/test_runner",
     "tools/blep_generator",
 ]

@@ -80,11 +80,51 @@ Translates host input devices into Amiga hardware register events:
 
 ## 5. Developer GUI & Debugger Integration
 
-The GUI incorporates an integrated developer studio and debugger. 
-- **Direct State Pull:** Panels poll emulator state directly (`&CpuState`, `&mut MemoryBus`, `&mut Debugger`) on render. Zero async messages, zero callback overhead.
-- **Synchronous Stepping:** Execution steps immediately record execution snapshots into a temporal history ring buffer for time-travel debugging.
+The GUI incorporates an integrated developer studio and debugger implemented in [`crates/gui`](../../../crates/gui):
+- **Dual Execution Modes:**
+  - **Full Developer GUI (`ViewMode::Developer`):** Complete studio layout with register inspector, microcode visualizer, disassembly view, memory hex/search, breakpoints manager, execution trace log, and temporal rewind scrubber.
+  - **Clean Screen / Game Mode (`ViewMode::ScreenOnly`):** Distraction-free 4:3 CRT monitor viewport with retro bezel, ideal for standalone game execution.
+- **Instant Debugger Toggle (`F2`, `F12`, `Escape` & Floating Button):**
+  - Pressing **`F2`**, **`F12`**, or clicking the floating **`[ 🛠 Debugger (F12) ]`** button in game mode immediately **pauses emulation and opens the Developer GUI** at that exact cycle.
+  - Pressing **`F2`**, **`F12`**, **`Escape`** (from ScreenOnly), or clicking **`[ 🎮 Game View (F2 / F12) ]`** returns to clean screen view and resumes playing.
+  - Supporting `F2` alongside `F12` eliminates the browser key collision where pressing `F12` in Chrome/Edge opens browser DevTools instead of toggling the emulator.
+- **Collapsible Sub-Panels & Symmetrical Dock Alignment (`egui::CollapsingHeader`):**
+  - Sub-panels in the Left Dock (Data Registers, Address Registers, Execution Status & CCR, Microcode Inspector) and Right Dock (Memory Search, Breakpoints & Watchpoints, Execution Trace Log) are collapsible with `.default_open(true)`.
+  - Group boxes expand to 100% of available width (`ui.set_width(ui.available_width())`), eliminating vertical black gutter gaps against panel borders.
+  - Data Registers (`d_regs_grid`) and Address Registers (`a_regs_grid`) share a unified 6-column geometry with 3-character labels (`D0:`..`D7:`, `A0:`..`A7:`), ensuring pixel-perfect alignment across columns. Active `A7 = SSP / USP` state is displayed cleanly via tooltips and dedicated status rows without inflating column widths.
+  - Removed disruptive horizontal separator between Execution Status and Microcode Inspector.
+- **Enhanced High-Visibility Scrollbars:**
+  - Configured global `ScrollStyle` (`bar_width = 12.0`, `dormant_handle_opacity = 0.65`, `dormant_background_opacity = 0.35`, `active_handle_opacity = 1.0`) across all themes. Long data streams (Memory Hex, Trace Log, Disassembly) maintain permanent visibility, while fixed-height docks adapt dynamically (`VisibleWhenNeeded`) without phantom gutter bars.
+- **Interactive Memory Watchpoint Highlighting:**
+  - Bytes in the Memory Hex editor covered by active watchpoints are distinctly highlighted with amber/crimson badges in both Hex and ASCII columns.
+  - Right-click context menu enables setting 1-byte, Word (2 bytes), Long (4 bytes), or range watchpoints with Read, Write, or Any access modes.
+  - **Alt+Click** on any byte cell instantly toggles a 1-byte Write watchpoint.
+- **Smart Startup Modes:**
+  - Native Desktop (`cargo run -p gui`) defaults to Developer GUI, or starts in Game Mode via `--game` or `AMIGA_DEV_GUI=0`.
+  - WebAssembly (`trunk serve crates/gui/index.html`) defaults to Game Mode.
+- **High-Capacity Temporal Debugging (>=1.0s PAL Execution):**
+  - High-capacity ring buffer (default 250,000 frames) in headless [`crates/debugger/src/temporal.rs`](../../../crates/debugger/src/temporal.rs) capturing cycle-exact snapshots with zero heap allocations.
+  - Dynamic capacity presets (`25k`, `50k`, `100k`, `250k`, `500k`) resizable on the fly.
+  - Live recording toggle (`[⏺ Rec: ON]` / `[⏸ Rec: OFF]`, `Alt+T`).
+  - Multi-granularity navigation: `[⏮ First]`, `[◀◀ Frame]` (70,824 CCKs), `[-10]`, `[◀ -1]`, `[+1 ▶]`, `[+10]`, `[Frame ▶▶]`, and `[Live Head ⏭]`.
+  - Target cycle jumping: direct input field `[ Jump to CCK: #_______ ] [ Go ]`.
+- **Breakpoints & Watchpoints Manager:**
+  - Dedicated panel in Right Dock to inspect, toggle, add, and remove PC execution breakpoints.
+  - Register-based conditional rules (e.g. `PC == $001004 IF D0 == $2A`).
+  - Memory range watchpoints (`Read`, `Write`, `Any`).
+- **Arbitrary-Address Binary Loading:**
+  - `Ctrl + O` or menu opens file dialog and prompts for any target RAM address (e.g. `$001000`, `$070000`, `$000000`).
+  - Startup CLI: `cargo run -p gui -- --load path/to/code.bin --addr 001000`.
+  - Drag-and-drop: dropping any `.bin`, `.rom`, or executable directly onto the window triggers the loader modal.
+  - Automatically disengages Kickstart boot overlay (`bus.map_chip_ram_to_low_memory()`), initializes SP if needed, primes prefetch queue, and scrolls the memory editor.
+- **Interactive Editing & Step Diff Highlighting:**
+  - **Registers:** Click to edit D0-D7, A0-A7, PC, SR, USP, SSP. Editing PC re-primes prefetch. Changed registers glow with pill badges.
+  - **CCR Flags:** Click to toggle bits; changed bits display distinct glowing outlines.
+  - **Memory:** Inline hex byte editing with auto-focus and Tab navigation. Rendered cleanly as monospace text on natural theme panel background (zero pill/grid Moiré artifacts). Modified bytes highlighted in crisp cyan text, zeros muted, and watched bytes distinctly framed with flat coral borders.
+  - **Disassembly In-Place Editing:** Edit instruction via assembly mnemonics (`NOP`, `MOVE.W D0, D1`) or raw hex (`4E71`). **Byte size invariance is strictly enforced**: if the replacement differs in byte count from the original, the change is aborted with an error banner.
+- **Direct State Pull & Bounded Slicing:** Panels poll emulator state directly on render. Free-running execution uses bounded time-slicing (`MAX_INSTRUCTIONS_PER_FRAME = 5000`).
 - **Detailed Layout & Operational Specification:**
-  - For the complete panel-by-panel operational specification, user interactions, memory editor/search, microcode inspector, temporal scrubber, hotkey matrix, and 1:1 file hierarchy, see **[GUI Specification.md](GUI%20Specification.md)**.
+  - For the complete panel-by-panel operational specification, see **[GUI Specification.md](GUI%20Specification.md)**.
 
 ---
 

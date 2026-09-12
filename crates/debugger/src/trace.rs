@@ -83,6 +83,21 @@ impl TraceRingBuffer {
         res
     }
 
+    /// Returns a reference to an entry in chronological order without allocation
+    #[inline]
+    pub fn get(&self, chronological_idx: usize) -> Option<&TraceEntry> {
+        if chronological_idx >= self.count {
+            return None;
+        }
+        let start = if self.count < TRACE_BUFFER_SIZE {
+            0
+        } else {
+            self.head
+        };
+        let idx = (start + chronological_idx) % TRACE_BUFFER_SIZE;
+        self.buffer[idx].as_ref()
+    }
+
     /// Clears the ring buffer
     pub fn clear(&mut self) {
         self.buffer.fill(None);

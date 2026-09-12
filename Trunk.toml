@@ -1,0 +1,6 @@
+[build]
+target = "crates/gui/index.html"
+dist = "crates/gui/dist"
+
+[watch]
+watch = ["crates/gui/src"]

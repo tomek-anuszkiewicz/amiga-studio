@@ -36,13 +36,14 @@ The debugger provides fine-grained stepping modes via [`StepMode`](../../../crat
 The debugger maintains a collection of traps evaluated during execution (defined in [`crates/debugger/src/breakpoints.rs`](../../../crates/debugger/src/breakpoints.rs)):
 
 ### 3.1 Breakpoint Types
-1. **Instruction Breakpoint (`pc_breakpoints`):**
-   - Triggers when the CPU's program counter equals a specific 24-bit address (`pc == target_addr`) before executing the opcode. Implemented in [`crates/debugger/src/breakpoints.rs`](../../../crates/debugger/src/breakpoints.rs).
-2. **Memory Watchpoint (`watchpoints`):**
-   - Triggers on Read, Write, or Any access within an address range (`start_addr..=end_addr`). Implemented in [`crates/debugger/src/breakpoints.rs`](../../../crates/debugger/src/breakpoints.rs).
-3. **Register Condition Breakpoint (Planned for GUI Studio):**
+1. **Instruction Breakpoint (`PcBreakpoint`):**
+   - Triggers when the CPU's program counter equals a specific 24-bit address (`pc == target_addr`) before executing the opcode.
+2. **Memory Watchpoint (`MemoryWatchpoint`):**
+   - Triggers on Read, Write, or Access within an address range (`start_addr..=end_addr`).
+   - Optional value matching (e.g., break only if writing byte `$FF`).
+3. **Register Condition Breakpoint (`ConditionBreakpoint`):**
    - Evaluates boolean expressions against CPU state (e.g. `D0 == 0` or `SR & 0x2000 == 0`).
-4. **Custom Chip Event Traps (Planned for Phase 2):**
+4. **Custom Chip Event Traps:**
    - Break on Copper `WAIT` or `SKIP` instruction.
    - Break on Blitter start or finish (`BLIT` interrupt).
    - Break on CIA timer underflow.
@@ -51,7 +52,7 @@ The debugger maintains a collection of traps evaluated during execution (defined
 
 ## 4. Inspection & Disassembly Engines
 
-### 4.1 M68000 Disassembler (Implemented)
+### 4.1 M68000 Disassembler
 - Disassembles machine code directly from a given memory address without side effects.
 - Correctly decodes:
   - Opcode sizes (`.b`, `.w`, `.l`).
@@ -63,8 +64,28 @@ The debugger maintains a collection of traps evaluated during execution (defined
 The disassembler is built-in and decoupled from any specific machine or bus struct, operating via [`disassemble`](../../../crates/debugger/src/disassembler.rs):
 - Operates against a side-effect-free word reader closure `Fn(u32) -> u16`.
 - Returns a [`Disassembly`](../../../crates/debugger/src/disassembler.rs) struct containing `pc`, raw instruction words (`words: [u16; 5]`, `word_count`), mnemonic (`&'static str`), and formatted operands (`String`), alongside total consumed instruction stream bytes.
+- Highly cohesive, modular architecture respecting source file size limits:
+  - [`disassembler.rs`](../../../crates/debugger/src/disassembler.rs): Core instruction decoding, control flow (`RTS`, `RTE`, `STOP`, `TRAP`, `LINK`, `UNLK`), branches (`Bcc`, `DBcc`, `Scc`), `MOVE`/`MOVEA`/`MOVEQ`, `MOVEM`, single-operand ops (`CLR`, `NEG`, `NOT`, `TST`, `SWAP`, `EXT`, `LEA`, `PEA`), and smart stream alignment via `find_aligned_disassembly_start`.
+  - [`disassembler_alu.rs`](../../../crates/debugger/src/disassembler_alu.rs): Arithmetic, logic, comparisons (`ADD`, `SUB`, `AND`, `OR`, `EOR`, `CMP`, `CMPA`, `CMPM`), immediate ops (`ORI`, `ANDI`, `SUBI`, `ADDI`, `EORI`, `CMPI`), bit operations (`BTST`, `BSET`, `BCLR`, `BCHG`), multiply/divide (`MULU`, `MULS`, `DIVU`, `DIVS`), and shifts/rotates (`ASL/ASR`, `LSL/LSR`, `ROL/ROR`, `ROXL/ROXR`).
+  - [`ea_format.rs`](../../../crates/debugger/src/ea_format.rs): Dedicated formatting helpers for effective addresses (`format_ea`), immediate values (`format_immediate`), condition codes (`bcc_condition_name`, `dbcc_condition_name`, `scc_condition_name`), and MOVEM register masks (`format_movem_reg_list`).
 
-### 4.2 Copper List Disassembler (Planned for Phase 2)
+#### 4.1.2 CISC Stream Alignment & Code Guessing (`find_aligned_disassembly_start`)
+In variable-length M68000 CISC architectures (instructions ranging from 2 to 10 bytes), naive backward stepping (e.g. subtracting an arbitrary byte offset) easily falls inside extension words or uninitialized zero padding, producing phantom instructions (e.g. `$0000` $\to$ `ORI.B #$00, D0`).
+
+The [`find_aligned_disassembly_start`](../../../crates/debugger/src/disassembler.rs) algorithm addresses this:
+1. **Hardware History Prioritization:** Checks execution history (`temporal` and `trace`) for recent instruction boundaries that cleanly sweep forward to `target_pc`.
+2. **Backward Sweep Heuristic:** Evaluates candidate starting addresses backwards in 2-byte steps, verifying that disassembling forward lands exactly on `target_pc`.
+3. **Overlapping Boundary Pruning:** Detects and eliminates candidates that fall inside multi-word instruction spans of preceding valid candidates.
+4. **Code vs Non-Code Scoring:** Heavily penalizes unmapped/zero-fill `ORI.B` from empty memory and unknown opcodes (`DATA.W`), while rewarding recognized instructions to maximize legitimate code and minimize padding artifacts.
+5. **Entry Point Fallback:** When at or near program entry with zero memory before it, cleanly anchors at `target_pc` to prevent spurious display of phantom instructions.
+
+### 4.2 M68000 Mini-Assembler
+The debugger provides an interactive line assembler via [`assemble_instruction`](../../../crates/debugger/src/assembler.rs):
+- Assembles mnemonic lines into raw M68000 machine code words.
+- Supports control instructions (`NOP`, `RTS`, `RTE`, `RESET`, `TRAPV`, `RTR`, `ILLEGAL`, `TRAP #vector`, `LINK`, `UNLK`), branches (`BRA`, `BSR`, `Bcc`, `DBRA`, `DBcc`), data movement (`MOVE`, `MOVEA`, `MOVEQ`, `LEA`, `PEA`), ALU operations (`ADD`, `SUB`, `ADDQ`, `SUBQ`, `ADDA`, `SUBA`, `AND`, `OR`, `EOR`, `CMP`, `CMPA`, `CMPI`, `MULU`, `MULS`, `DIVU`, `DIVS`), unary ops (`CLR`, `NEG`, `NOT`, `TST`, `SWAP`, `EXT`), and raw hex words.
+- Supports both decimal (`#-16`, `#42`) and hexadecimal (`#$1000`, `0x2000`) immediate literals, as well as sized absolute addressing (`($002000).L`, `($1000).W`).
+
+### 4.3 Copper List Disassembler
 - Traverses the Copper instruction stream starting from `COP1LC` or `COP2LC`.
 - Disassembles instructions into:
   - `MOVE $DFFxxx, #$yyyy`
@@ -72,7 +93,7 @@ The disassembler is built-in and decoupled from any specific machine or bus stru
   - `SKIP (H: x, V: y)`
 - Detects infinite loops or illegal jumps outside Chip RAM.
 
-### 4.3 Custom Chip State Inspectors (Planned for Phase 2)
+### 4.3 Custom Chip State Inspectors
 - **Blitter Inspector:** Reports channels enabled ($A, B, C, D$), source/destination addresses (`BLTxPTH/L`), minterm formula, line-draw mode, and busy state.
 - **DMA Visualizer / Logic Analyzer:** Records a timeline of which hardware subsystem (Copper, Blitter, Bitplanes 1–6, Sprites 0–7, Audio 0–3, Disk, CPU) occupied each CCK slot across the scanline.
 - **Interrupt Inspector:** Displays current `INTENA` mask, pending `INTREQ` latches, and active IPL level.
@@ -87,4 +108,4 @@ The debugger maintains an in-memory ring buffer (e.g. 1024 entries) of [`TraceEn
 - Disassembled text representation (`disassembly: String`).
 - CPU register state snapshot (`registers: CpuState`).
 
-When a crash, illegal instruction, or unhandled exception occurs, this ring buffer provides an instant post-mortem trace of the instructions leading up to the fault.
+Zero-allocation access for UI virtual scrolling is provided via `trace.get(chronological_idx)`, returning `Option<&TraceEntry>`. When a crash, illegal instruction, or unhandled exception occurs, this ring buffer provides an instant post-mortem trace of the instructions leading up to the fault.
