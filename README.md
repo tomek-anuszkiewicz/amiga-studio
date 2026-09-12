@@ -53,13 +53,9 @@ The goal of this repository is to build a modern, system-agnostic, cycle-exact A
 │   ├── vAmiga-4.5/
 │   ├── fx68k/
 │   └── ...
-├── schematics/              <- Consolidated hardware schematics and IC datasheets
-│   ├── a500/                <- Active Phase 1 schematics (Rev 5, Rev 6A/7, A501, IC datasheets)
-│   └── other-models/        <- Other Commodore Amiga models (A1000, A1200, A2000, etc.)
 ├── tools/                   <- Developer tools, offline table generators, and AI tooling
-│   ├── BlebGenerator/       <- C# sinc BLEP table generator
-│   ├── rag/                 <- Local RAG ingestion pipeline, CLI indexer (amiga_rag), and FastMCP server
-│   └── winguide/            <- AmigaGuide viewer utility
+│   ├── blep_generator/      <- Band-Limited Step (BLEP) table generator for Paula audio
+│   └── rag/                 <- Local RAG ingestion pipeline, CLI indexer (amiga_rag), and FastMCP server
 ├── tests/                   <- Test media, testbenches, and disk images
 │   └── disks/               <- ADF test disk images (AmigaTestKit)
 ├── archive/                 <- Cold storage for digitized / inactive raw sources
@@ -179,19 +175,19 @@ trunk serve crates/gui/index.html --open
 
 The `ref_src/` directory houses 17 local reference implementations, testbenches, and hardware descriptions:
 
-### 4.1 Motorola 68000 CPU Cores
+### 5.1 Motorola 68000 CPU Cores
 - **[Moira 3.0](ref_src/Moira-3.0)** (`C++`) — [GitHub](https://github.com/dirkwhoffmann/Moira): Cycle-exact, micro-operation based MC68000 core by Dirk W. Hoffmann. Primary behavioral standard for bus cycle phases ($S_0-S_7$), instruction prefetch, and CCK clock synchronization.
 - **[Musashi](ref_src/Musashi)** (`C`) — [GitHub](https://github.com/kstenerud/Musashi): Industry-standard portable 680x0 emulator core by Karl Stenerud. Reference for complete opcode decoding, CCR flags, and exception frames.
 - **[m68k-rs](ref_src/m68k-rs-m68k-v0.11.6)** (`Rust`) — [GitHub](https://github.com/benletchford/m68k-rs): Pure Rust M68000–M68060 core featuring clean bus abstraction (`AddressBus`).
 - **[EASy68K](ref_src/EASy68K-master)** — [GitHub](https://github.com/EASy68K/EASy68K) / [Web](http://www.easy68k.com): 68000 assembly editor, assembler, and simulator toolchain for authoring bare-metal test routines.
 
-### 4.2 Hardware & FPGA Descriptions (HDL)
+### 5.2 Hardware & FPGA Descriptions (HDL)
 - **[fx68k](ref_src/fx68k)** (`Verilog`) — [GitHub](https://github.com/ijor/fx68k): Cycle-exact, microcode-level 68000 hardware description by Jorge Cwik (ijor). Ground-truth reference for silicon-level microcode, prefetch refills, and bus wait states.
 - **[TG68K.C](ref_src/TG68K.C)** (`VHDL`) — [GitHub](https://github.com/TobiFlex/TG68K.C): Synthesizable 68000 FPGA core by Tobias Gubener.
 - **[deniser](ref_src/deniser-1.0.0)** (`VHDL`) — [GitHub](https://github.com/endofexclusive/deniser): Drop-in FPGA replacement for the Amiga Denise video chip detailing planar-to-chunky conversion, sprite multiplexing, and HAM/EHB modes.
 - **[Minimig-AGA_MiSTer](ref_src/Minimig-AGA_MiSTer)** (`Verilog`) — [GitHub](https://github.com/MiSTer-devel/Minimig-AGA_MiSTer): Full Amiga OCS/ECS/AGA hardware implementation on MiSTer FPGA. Reference for DMA bus slot arbitration across Agnus, Denise, and Paula.
 
-### 4.3 Test Suites & Verification
+### 5.3 Test Suites & Verification
 - **[SingleStepTests-m68000](ref_src/SingleStepTests-m68000)** — [GitHub](https://github.com/SingleStepTests/m68000): 127 exhaustive per-instruction JSON validation test suites generated from MAME's microcoded core. Provides register/memory/prefetch starting conditions and expected cycle-by-cycle output states.
 - **[SingleStepTests-680x0](ref_src/SingleStepTests-680x0)** — [GitHub](https://github.com/SingleStepTests/680x0): Tom Harte's single-step processor test vectors.
 - **[amiga-stuff-testkit](ref_src/amiga-stuff-testkit-v1.21)** — [GitHub](https://github.com/keirf/amiga-test-kit): Keir Fraser's Amiga Test Kit (ADF boot disk) for testing CIA timers, floppy PLL decoding, memory autoconfig, and chipset interrupts.
@@ -205,6 +201,19 @@ The `ref_src/` directory houses 17 local reference implementations, testbenches,
 
 ### 5.5 Visual Post-Processing
 - **[RetroVisor.app](ref_src/RetroVisor.app)** — [GitHub](https://github.com/dirkwhoffmann/RetroVisor): CRT shader pipeline reference (scanlines, phosphor bloom, curvature, shadow mask) by Dirk W. Hoffmann.
+
+### 5.6 Hardware Schematics & Circuit Archives (Online References)
+The physical hardware schematics, motherboard revisions, and component datasheets decoupled from Git are mirrored across several public retro-computing archives:
+- **[Amiga PCB Explorer](https://www.amigapcb.org/)** — Interactive, searchable web-based PCB schematic and trace explorer for the Amiga 500 (Rev 6A / Rev 8A.1).
+- **[Amiga Technical Resource (amiga.serveftp.net)](http://amiga.serveftp.net/schematics.html)** — Toni Wilen's comprehensive schematic repository with direct downloads:
+  - **Amiga 500**: [A500 R6 Schematics (PDF)](http://amiga.serveftp.net/Schematics/A500_schematics/A500_R6_schematic.pdf) | [A500 System Schematics (PDF)](http://amiga.serveftp.net/Schematics/A500_schematics/A500_schematics.pdf) | [A500 & A501 (LHA)](http://amiga.serveftp.net/Schematics/A500_schematics/A500_schematics-JPEG.LHA)
+  - **Amiga 500+**: [A500+ Schematics (PDF)](http://amiga.serveftp.net/Schematics/A500+_schematics/A500+_schematics.pdf) | [A500+ Full Service Manual (PNG)](http://amiga.serveftp.net/Schematics/A500+_schematics/A500+_FullServiceManual-PNG.LHA)
+  - **Other Models**: [A1000](http://amiga.serveftp.net/Schematics/A1000_schematics/A1000_schematics.pdf) | [A2000 R6](http://amiga.serveftp.net/Schematics/A2000_schematics/A2000_R6_schematic.pdf) | [A3000 R9](http://amiga.serveftp.net/Schematics/A3000_schematics/A3000_R9_schematic.pdf) | [A1200 R1](http://amiga.serveftp.net/Schematics/A1200_schematics/A1200_R1_schematic.pdf) | [A4000](http://amiga.serveftp.net/Schematics/A4000_schematics/A4000_schematics.pdf) | [CD32](http://amiga.serveftp.net/Schematics/CD32_schematics/CD32_service_manual.pdf)
+  - **Expansions**: [A520 Video Modulator](http://amiga.serveftp.net/Schematics/A520_schematics/A520_schematic.pdf) | [A570 CD-ROM](http://amiga.serveftp.net/Schematics/A570_schematics/A570_schematics.pdf) | [A590 Hard Drive](http://amiga.serveftp.net/Schematics/A590_service_manual/A590_schematics.pdf) | [A2091 SCSI](http://amiga.serveftp.net/Schematics/A2091_schematics/A2091_service_manual.pdf)
+- **[Retro-Commodore A500 Scans](https://retro-commodore.eu/amiga-500/)** — High-resolution scans of original Commodore Amiga 500 service manuals, motherboard schematics, and engineering addenda.
+- **[Big Book of Amiga Hardware (BBOAH)](https://bigbookofamigahardware.com/)** — Hardware specifications, jumper settings, expansion connector pinouts, and board revisions.
+- **[The Amiga Museum](https://theamigamuseum.com/)** — System architecture timelines, hardware specs, and revision histories.
+- **[A500 Audio Output & Filter Circuit Schematic](tools/blep_generator/a500_audio_filter_schematic.png)** — Local high-resolution schematic of the A500 Rev 6A/7 audio output subsystem (Paula 8364, LF347 Sallen-Key low-pass filter, JFET LED switch, and power rails) embedded in the [BLEP Generator tool](tools/blep_generator/README.md).
 
 ---
 

@@ -935,6 +935,72 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_singlestep -- nop`: Passed.
   - `python scripts/lint_attractors.py`: Clean pass across 263 files (exit code 0).
 
+---
 
+### [2026-09-12 14:36 CEST] — Deletion of Obsolete WinGuide Utility & Tools Cleanup
+- **Affected Subsystems**:
+  - `tools/winguide/`: Deleted unused third-party viewer directory (`WinGuide.exe`, `Winguide.rea`).
+  - `README.md`: Removed `tools/winguide/` from repository layout tree; updated `tools/blep_generator` entry.
+  - `.gitignore`: Pruned obsolete `/tools/winguide/` ignore pattern.
+- **What Was Changed (The Concrete Reality)**:
+  - Permanently removed the obsolete third-party viewer directory `tools/winguide/` containing `WinGuide.exe` and `Winguide.rea`.
+  - Synchronized `README.md` repository directory tree structure to reflect active developer tools.
+  - Removed dangling `/tools/winguide/` pattern from `.gitignore`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Tooling Hygiene:* AmigaGuide documentation has been fully converted into structured Markdown under `Obsidian/Amiga/Reference/` and indexed into the local RAG knowledge base. The standalone Windows viewer utility was unused and redundant.
+- **Verification & Test Results**:
+  - Verified directory removal on disk (`Test-Path "tools\winguide"` returned `False`).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed (0.52s).
+  - `python scripts/lint_attractors.py`: Clean pass across all files.
 
+---
+
+### [2026-09-12 14:50 CEST] — Hardware Schematics Catalog in README & Blep Generator Audio Filter Schematic
+- **Affected Subsystems**:
+  - `README.md`: Added Section 5.6 (*Hardware Schematics & Circuit Archives*) with direct links to Amiga PCB Explorer, Toni Wilen's Amiga Technical Resource archive, Retro-Commodore scans, and BBOAH; annotated `schematics/` in repository tree.
+  - `tools/blep_generator/`: Integrated full high-resolution circuit schematic [`a500_audio_filter_schematic.png`](file:///d:/Programowanie/Amiga/tools/blep_generator/a500_audio_filter_schematic.png) from Commodore Rev 6A/7 Sheet 4 (covering Paula 8364 audio outputs, the complete Audio Filters down to ground, Gary floppy logic, and Paula/U14 power decoupling); fixed Markdown rendering in `tools/blep_generator/README.md`.
+- **What Was Changed (The Concrete Reality)**:
+  - Documented online public mirrors for hardware schematics in `README.md`, fulfilling external link centralization without bloating the Git repository.
+  - Extracted the complete Commodore Sheet 4 schematic into `tools/blep_generator/a500_audio_filter_schematic.png`, preserving all ground lines, power supply rails, and IC pinouts without bottom cutoff.
+  - Corrected image embedding syntax in `tools/blep_generator/README.md` (`./a500_audio_filter_schematic.png`, unindented) to ensure immediate rendering across VS Code and GitHub markdown previews.
+- **Architectural Rationale & Trade-Offs**:
+  - *Contextual Proximity & Completeness:* Having the entire circuit schematic (Paula audio pins -> filter network -> op-amp power rails) side-by-side with the BLEP synthesis mathematical equations and IIR biquad models provides instant visual clarity on physical component designations ($R_{331}, C_{331}, R_{332}, R_{333}, C_{332}, C_{333}$, power decoupling) for Paula DSP development.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed (0.53s).
+  - `cargo fmt --all -- --check`: Clean formatting across the workspace.
+  - `python scripts/lint_attractors.py`: Clean pass across 263 files.
+
+---
+
+### [2026-09-12 15:02 CEST] — Extraction of Foundational Hardware Circuit Realities into MemoryBus Design Spec
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/MemoryBus.md`: Formalized four hardware architecture ground-truth realities extracted from motherboard circuit schematics and Gary pinouts.
+- **What Was Changed (The Concrete Reality)**:
+  - **CIA Partial Address Decoding & Gary Chip Select:** Documented that MOS 8520 CIAs only connect `RS0..RS3` to 68000 address lines `A8..A11` (with `A1..A7` unconnected), causing every register to mirror across 256-byte boundaries; Gary decodes `_CS` via `A12 = 0` (CIA-A, odd bytes) and `A13 = 0` (CIA-B, even bytes). Contrasted with custom chips (`A1..A8` connected, `A9..A15` ignored, 128-fold mirroring across `$DFF000-$DFFFFE`).
+  - **Slow RAM Contention & OCS Agnus Invisibility:** Documented that trapdoor RAM at `$C00000-$C7FFFF` is decoded by Gary (`_RAMEN`), physically resides on the shared Chip RAM bus, and suffers full wait states via `_DTACK` withholding whenever Agnus DMA is active. Clarified the OCS Agnus 19-bit DRAM address limit (`DRA0..DRA8` = 512 KB), proving that custom chip DMA physically cannot address or see Slow RAM.
+  - **Boot Overlay Asymmetry (CPU vs Custom Chipset):** Established that Gary's `_OVL` interception applies strictly to 68000 CPU bus transactions (`A23..A19`), whereas Agnus DRAM address lines (`DRA0..DRA8`) drive Chip RAM directly. Even while `_OVL = 0`, custom chip DMA accesses to `$000000` always hit physical Chip RAM, never Kickstart ROM.
+  - **Paula & Chipset DMA Bus Signaling (`DMAL` & `RGA`):** Documented Agnus master DMA scheduling and physical signaling to Paula via pin 12 (`DMAL`) and register address lines `RGA(8:1)` for `AUDxDAT` and `DSKDAT`.
+  - Updated YAML frontmatter `related` array linking `Paula.md` and `CIA.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Extracting Hardware Realities from Schematics:* As physical schematics are decoupled and untracked, vital hardware circuit facts (pin wirings, address line skips, and cross-chip bus arbitrations) are permanently documented in the authoritative design specification and indexed into RAG.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed (0.53s), including link integrity check.
+  - `python scripts/lint_attractors.py`: Clean pass across 263 files.
+
+---
+
+### [2026-09-12 15:05 CEST] — Deletion of Decoupled Local Hardware Schematics Directory
+- **Affected Subsystems**:
+  - `schematics/`: Removed the local directory (162 files, ~127 MB) from disk following the centralization of curated online schematic mirrors in `README.md` (Section 5.6) and extraction of the audio filter schematic to `tools/blep_generator/`.
+  - `README.md`: Pruned `schematics/` entry from the directory layout tree.
+- **What Was Changed (The Concrete Reality)**:
+  - Deleted the untracked `schematics/` directory via `Remove-Item -Recurse -Force "schematics"`.
+  - Updated the repository layout tree in `README.md` to reflect the removal.
+  - Preserved `.gitignore` entries (`/schematics/`, `/schematics-unused/`) to prevent accidental commits of local schematics.
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean-Room Hygiene & Lean Disk Footprint:* With essential hardware circuit realities transcribed into `MemoryBus.md`, the audio filter circuit schematic preserved directly alongside the BLEP tool in `tools/blep_generator/`, and verified public download mirrors indexed in `README.md`, retaining ~127 MB of redundant PDFs and scans locally on disk is unnecessary.
+- **Verification & Test Results**:
+  - Verified directory removal on disk (`Test-Path "schematics"` returned `False`).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed.
+  - `python scripts/lint_attractors.py`: Clean pass.
 

@@ -18,19 +18,8 @@ tests/singlestep/
 # External reference manuals & documentation
 /Obsidian/Amiga/Reference/
 
-# Temporary and archived documentation
-/docs-*/
-/archive/
-
-# Hardware schematics & service manuals
-/schematics/
-/schematics-unused/
-
 # Generated knowledge graphs & caches
 /graphify-out/
 
 # Third-party tools & executables
-/tools/winguide/
-/tools/AmigaTestKit-*/
-/adfs/
-/progs/
+/tools/AmigaTestKit/
