@@ -17,6 +17,9 @@ Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`) without 
 
 ## 1. For Players (Quick Start)
 
+> Prebuilt desktop executables (`.exe`) and WebAssembly browser bundles will be published under **Releases**.
+> To run directly from source (requires the [Rust toolchain](https://rustup.rs)):
+
 ### Launching the Emulator
 
 Run in **Clean Standalone Game Mode** (clean 50 Hz PAL display without toolbars or dock windows):
@@ -67,7 +70,7 @@ When the Developer Studio is active (`F12` or running `cargo run -p gui` without
 ## 2. For Developers (Build & Bootstrap)
 
 ### Zero-Setup Build & Execution
-A freshly cloned repository is **100% self-contained for compilation and execution**. No bootstrapping, external downloads, or database services are required to build and run the emulator:
+A freshly cloned repository is **100% self-contained for compilation and execution** using the standard stable Rust toolchain ([rustup.rs](https://rustup.rs)). No bootstrapping, external downloads, or database services are required to build and run the emulator:
 
 ```powershell
 # Build entire workspace (debug profile)
@@ -81,7 +84,7 @@ cargo test -p m68000
 cargo test -p memory_bus
 ```
 
-### Optional Two-Tier Bootstrapping (`tools/bootstrap.ps1`)
+### Optional Bootstrapping (`tools/bootstrap.ps1`)
 
 Bootstrapping is **strictly optional** and only needed for specialized development tasks:
 

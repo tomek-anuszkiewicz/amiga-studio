@@ -1271,3 +1271,19 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.55s.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+---
+
+### [2026-09-12 16:20 CEST] — Added Prebuilt Releases & Rust Toolchain Prerequisite Notes to README.md
+- **Affected Subsystems**:
+  - `README.md`: Added release guidance for players and Rust toolchain link for developers.
+- **What Was Changed (The Concrete Reality)**:
+  - Added an introductory callout in Section 1 (For Players) noting that prebuilt desktop executables and browser builds will be published under Releases, while building from source requires the Rust toolchain.
+  - Added a direct link to `rustup.rs` in Section 2 (For Developers) under Zero-Setup Build & Execution.
+  - Updated Section 2.2 heading from `"Optional Two-Tier Bootstrapping"` to `"Optional Bootstrapping"` to reflect the 3-tier structure (`-Test`, `-Graph`, `-Doc`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Minimalism and Zero Clutter:* Avoided adding verbose IDE configuration tutorials, PATH instructions, or VS Code extension guides. Developers and Rustaceans already know how to manage their environment, while players look for prebuilt releases. A clean, 1-line reference to `rustup.rs` and Releases maintains professional documentation standards without cognitive bloat.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.53s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 264 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
