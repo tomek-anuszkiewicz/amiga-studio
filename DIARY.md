@@ -175,5 +175,6 @@ This serves a larger, ambitious vision:
   - The curated, de-duplicated design documentation (`Obsidian/Amiga/Design/`).
   - The automated test suites (SingleStepTests, vAmigaTS).
 - **The Experiment:** Can an AI agent, armed with the lessons, rules, and architecture recorded during this project, autonomously re-synthesize the complete cycle-exact emulator from scratch?
+- The operational recipe, ingestion pipeline, and instructions to prepare this clean-room experiment are detailed in **[BOOTSTRAP.md](BOOTSTRAP.md)**.
 
 This diary stands as the living record of how those foundations were built.

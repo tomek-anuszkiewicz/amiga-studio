@@ -1,6 +1,6 @@
-# TODO: Autonomous Amiga Emulator Regeneration & Clean-Room Pipeline
+# BOOTSTRAP: Autonomous Amiga Emulator Reconstruction & Clean-Room Pipeline
 
-Loose thoughts and strategic tasks to execute at the end of the project, after completing the working emulator and living documentation baseline.
+This document defines the strategic recipe and minimal instructional framework required to execute **Section 8 of [DIARY.md](DIARY.md)** (*"The Ultimate Goal: The Clean-Room Re-Generation Experiment"*): enabling an autonomous AI agent to independently rebuild the cycle-exact Amiga 500 emulator from scratch.
 
 ---
 
