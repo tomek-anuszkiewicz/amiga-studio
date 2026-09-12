@@ -70,7 +70,31 @@ Rather than cluttering the code with premature optimizations, bit-twiddling hack
 
 ---
 
-## 3. The 6-Stage Evolution of the M68000 CPU Core
+## 3. Modular Workspace Architecture & Two-Tier Hardware Decomposition
+
+From the very inception of the project, a clean architectural boundary was planned for the entire machine:
+- **Dedicated Crates for Major Chips (Tier 1):** Every primary physical custom chip and subsystem receives its own dedicated workspace crate (`crates/agnus`, `crates/denise`, `crates/paula`, `crates/cia`, `crates/m68000`, `crates/memory_bus`).
+- **Decoupled Crates & Modules for Sub-Units (Tier 2):** Rather than allowing chip structs to become monolithic God objects, major sub-components are decomposed into independent, specialized crates and modules:
+  - **Agnus:** Independent state machines for the Copper coprocessor (`MOVE`, `WAIT`, `SKIP`, `CDANG`) and 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer).
+  - **Paula:** 4 DMA audio channels, floppy disk MFM track controller, serial UART, and interrupt multiplexer.
+  - **Denise:** Video pixel serializers, bitplane fetch engines (1–6 planes), 8 hardware sprite generators, and palette registers (RGB444).
+  - **CIAs:** Dual MOS 8520 chips decomposed into Timers A & B, TOD 50/60 Hz clock, serial shift register (SDR), and parallel ports.
+  - **Peripheral & Storage:** Decoupled crates for RTC (`crates/rtc`), Floppy drive/MFM, and Audio sinks.
+- Following our 3-tier ownership model, parent peers conceptually own and re-export their sub-components, while peers never hold circular references to other peers.
+
+---
+
+## 4. Physical Circuit Simulation: Standalone BLEP Audio Synthesis
+
+A dedicated engineering effort was devoted to modeling the physical analog sound output of the Amiga Paula chip with pristine accuracy:
+- **WinUAE Parameterization & Circuit Derivation:** The Band-Limited Step (BLEP) synthesis engine was modeled and parameterized based on verified reference implementations in WinUAE.
+- **Pure Mathematical Standalone Module:** Rather than hardcoding magic sound samples or relying on arbitrary host audio filtering, the BLEP synthesis is implemented as an independent, decoupled module containing all the underlying physics and signal-processing mathematics (`crates/paula/src/blep_tables.rs`).
+- **Analog RC Component Values:** The step response and frequency roll-off tables are computed directly from the physical component values of the Amiga motherboard circuit—the precise resistance (resistors in ohms) and capacitance (capacitors in farads) forming the analog low-pass filter network (including dynamic CIA-A LED filter switching).
+- This ensures alias-free, cycle-accurate analog audio reconstruction directly from first physical principles.
+
+---
+
+## 5. The 6-Stage Evolution of the M68000 CPU Core
 
 The CPU core (`crates/m68000`) did not emerge in a single iteration. It required six distinct evolutionary stages to arrive at its current refined state.
 
@@ -113,7 +137,7 @@ Throughout Stages 1 and 2, all prototyping, cycle slicing, and architectural deb
 
 ---
 
-## 4. CPU Opcode Benchmarking & Performance Profiling
+## 6. CPU Opcode Benchmarking & Performance Profiling
 
 Following the stabilization of the CPU core, a dedicated milestone was initiated to measure host performance, execution latency, and cache behavior across the opcode matrix:
 - **Dedicated Git Worktree Isolation:** The Benchmarking harness and the Developer Studio GUI were developed in parallel on separate Git worktrees (`git worktree`) across isolated branches to keep measurement code and UI work cleanly decoupled.
@@ -122,7 +146,7 @@ Following the stabilization of the CPU core, a dedicated milestone was initiated
 
 ---
 
-## 5. Subsystem Evolution & The Developer Studio GUI
+## 7. Subsystem Evolution & The Developer Studio GUI
 
 The same human-directed iterative refinement drove all other subsystems:
 
@@ -140,22 +164,7 @@ The same human-directed iterative refinement drove all other subsystems:
 
 ---
 
-## 6. Two-Tier Hardware Decomposition
-
-A critical architectural decision was how to structure the custom chips:
-
-1. **Tier 1: Macro Chip Isolation (The Obvious Layer):**
-   - High-level, dedicated crates for each physical chip: `agnus`, `denise`, `paula`, `cia`, `m68000`, `memory_bus`.
-2. **Tier 2: Granular Internal Sub-Components (The Human Mandate):**
-   - Rather than letting chip structs become monolithic God objects, the human mandated deep internal decomposition for every sub-unit:
-     - **Agnus:** Independent state machines for the Copper coprocessor (`MOVE`, `WAIT`, `SKIP`, `CDANG`) and 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer).
-     - **Paula:** Native BLEP synthesis audio engine (4 independent channels with dynamic CIA-A LED filter), floppy MFM track controller, UART, and interrupt multiplexer.
-     - **Denise:** Video pixel serializers, bitplane fetch engines (1–6 planes), 8 hardware sprite generators, and palette registers (RGB444).
-     - **CIAs:** Dual MOS 8520 chips decomposed into Timers A & B, TOD 50/60 Hz clock, serial shift register (SDR), and parallel ports.
-
----
-
-## 7. The Ultimate Goal: The Clean-Room Re-Generation Experiment
+## 8. The Ultimate Goal: The Clean-Room Re-Generation Experiment
 
 Every bug fix, architectural decision, and hardware quirk in this project has been continuously documented in `Obsidian/Amiga/Design/`.
 
