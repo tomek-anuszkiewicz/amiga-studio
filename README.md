@@ -202,18 +202,9 @@ The `ref_src/` directory houses 17 local reference implementations, testbenches,
 ### 5.5 Visual Post-Processing
 - **[RetroVisor.app](ref_src/RetroVisor.app)** — [GitHub](https://github.com/dirkwhoffmann/RetroVisor): CRT shader pipeline reference (scanlines, phosphor bloom, curvature, shadow mask) by Dirk W. Hoffmann.
 
-### 5.6 Hardware Schematics & Circuit Archives (Online References)
-The physical hardware schematics, motherboard revisions, and component datasheets decoupled from Git are mirrored across several public retro-computing archives:
-- **[Amiga PCB Explorer](https://www.amigapcb.org/)** — Interactive, searchable web-based PCB schematic and trace explorer for the Amiga 500 (Rev 6A / Rev 8A.1).
-- **[Amiga Technical Resource (amiga.serveftp.net)](http://amiga.serveftp.net/schematics.html)** — Toni Wilen's comprehensive schematic repository with direct downloads:
-  - **Amiga 500**: [A500 R6 Schematics (PDF)](http://amiga.serveftp.net/Schematics/A500_schematics/A500_R6_schematic.pdf) | [A500 System Schematics (PDF)](http://amiga.serveftp.net/Schematics/A500_schematics/A500_schematics.pdf) | [A500 & A501 (LHA)](http://amiga.serveftp.net/Schematics/A500_schematics/A500_schematics-JPEG.LHA)
-  - **Amiga 500+**: [A500+ Schematics (PDF)](http://amiga.serveftp.net/Schematics/A500+_schematics/A500+_schematics.pdf) | [A500+ Full Service Manual (PNG)](http://amiga.serveftp.net/Schematics/A500+_schematics/A500+_FullServiceManual-PNG.LHA)
-  - **Other Models**: [A1000](http://amiga.serveftp.net/Schematics/A1000_schematics/A1000_schematics.pdf) | [A2000 R6](http://amiga.serveftp.net/Schematics/A2000_schematics/A2000_R6_schematic.pdf) | [A3000 R9](http://amiga.serveftp.net/Schematics/A3000_schematics/A3000_R9_schematic.pdf) | [A1200 R1](http://amiga.serveftp.net/Schematics/A1200_schematics/A1200_R1_schematic.pdf) | [A4000](http://amiga.serveftp.net/Schematics/A4000_schematics/A4000_schematics.pdf) | [CD32](http://amiga.serveftp.net/Schematics/CD32_schematics/CD32_service_manual.pdf)
-  - **Expansions**: [A520 Video Modulator](http://amiga.serveftp.net/Schematics/A520_schematics/A520_schematic.pdf) | [A570 CD-ROM](http://amiga.serveftp.net/Schematics/A570_schematics/A570_schematics.pdf) | [A590 Hard Drive](http://amiga.serveftp.net/Schematics/A590_service_manual/A590_schematics.pdf) | [A2091 SCSI](http://amiga.serveftp.net/Schematics/A2091_schematics/A2091_service_manual.pdf)
-- **[Retro-Commodore A500 Scans](https://retro-commodore.eu/amiga-500/)** — High-resolution scans of original Commodore Amiga 500 service manuals, motherboard schematics, and engineering addenda.
-- **[Big Book of Amiga Hardware (BBOAH)](https://bigbookofamigahardware.com/)** — Hardware specifications, jumper settings, expansion connector pinouts, and board revisions.
-- **[The Amiga Museum](https://theamigamuseum.com/)** — System architecture timelines, hardware specs, and revision histories.
-- **[A500 Audio Output & Filter Circuit Schematic](tools/blep_generator/a500_audio_filter_schematic.png)** — Local high-resolution schematic of the A500 Rev 6A/7 audio output subsystem (Paula 8364, LF347 Sallen-Key low-pass filter, JFET LED switch, and power rails) embedded in the [BLEP Generator tool](tools/blep_generator/README.md).
+### 5.6 Hardware Schematics & Circuits
+Hardware schematics and PCB traces (such as the interactive [Amiga PCB Explorer](https://www.amigapcb.org/) or public board scans) can be referenced online on demand. Motherboard circuit logic (CIA partial decoding, Gary bus contention, Paula DMA) is formalized directly in [`Obsidian/Amiga/Design/`](Obsidian/Amiga/Design/), and the complete A500 audio filter circuit is bundled in [`tools/blep_generator/`](tools/blep_generator/).
+
 
 ---
 

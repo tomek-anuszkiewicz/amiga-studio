@@ -1004,3 +1004,18 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed.
   - `python scripts/lint_attractors.py`: Clean pass.
 
+---
+
+### [2026-09-12 15:10 CEST] — Condensation of README Hardware Schematics Section (Second-Order Reduction)
+- **Affected Subsystems**:
+  - `README.md`: Replaced the 25-line Section 5.6 external PDF link-farm with a concise 2-sentence note pointing to online archives on demand and anchoring developers to in-repo circuit specifications (`Obsidian/Amiga/Design/` and `tools/blep_generator/`).
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated 15 fragile, deep links to individual PDFs hosted on a dynamic DNS home server (`amiga.serveftp.net`) for non-A500 hardware (A3000, A4000, CD32, expansions).
+  - Preserved direct pointer to Amiga PCB Explorer and repository-internal circuit documentation.
+- **Architectural Rationale & Trade-Offs**:
+  - *Mitigating Bit-Rot & Redundant Link-Farms:* Deep links to external PDF archives degrade rapidly and create maintenance drag. Developers and LLMs can query search engines or generative tools on demand, while core hardware design invariants remain formally documented and verified within the repository.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed.
+  - `python scripts/lint_attractors.py`: Clean pass across 263 files.
+
+
