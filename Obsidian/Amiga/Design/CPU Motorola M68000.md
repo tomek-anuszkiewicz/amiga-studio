@@ -62,7 +62,7 @@ Field:  T    0    S    0    0   I2   I1   I0    0    0    0    X    N    Z    V 
   - **Bit 1 (`V`)**: Overflow flag (set on 2's complement arithmetic overflow).
   - **Bit 0 (`C`)**: Carry flag (set on borrow or carry out).
 
-#### Mechanical Sympathy: Branchless Condition Code Setters
+#### Host Hardware Efficiency: Branchless Condition Code Setters
 To avoid host branch mispredictions in hot execution paths, the core employs direct branchless bitwise CCR updates (`set_ccr_xnzvc`, `set_ccr_nzvc`, `set_ccr_nz_clear_vc`, `set_ccr_nzc_clear_v`, `set_ccr_z_only`, `set_ccr_raw`). All CCR setter methods are marked `#[inline(always)]` in [`crates/m68000/src/state.rs`](../../../crates/m68000/src/state.rs).
 
 ### 1.2 Complete M68000 Addressing Modes Specification

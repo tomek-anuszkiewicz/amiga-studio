@@ -38,7 +38,7 @@ Audit the diff against the guidelines in `AGENTS.md`:
 - [ ] Explicit wrapping arithmetic (`wrapping_add`, `wrapping_sub`) on ALU and cycle operations.
 - [ ] Emulated guest faults do not panic the host process.
 
-### B. Host CPU Mechanical Sympathy & Readability
+### B. Host Hardware Efficiency & Readability
 - [ ] Branch minimization: hot loops favor flattened, direct dispatch over deep nested `match`/`if` trees ("code may be expansive").
 - [ ] Zero allocations: no `Vec`, `Box`, `String`, or `format!` in `step()`, `step_cck()`, or memory paths.
 - [ ] Endianness Bypass: bitwise operations (`AND`, `OR`, `EOR`, `NOT`, `CLR`) avoid redundant byte swapping in hot loops.
@@ -107,7 +107,7 @@ Deliver a structured audit report:
   - [ ] **Code Formatting & Architecture Tests:** `cargo fmt` and `test_architecture_rules` 100% clean.
   - [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests (`tests/<module>.rs` or inline).
   - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
-  - [ ] **Host CPU Mechanical Sympathy:** Flattened dispatch, zero allocations in hot paths, inlining compliance.
+  - [ ] **Host Hardware Efficiency:** Flattened dispatch, zero allocations in hot paths, inlining compliance.
   - [ ] **Readability, No Macros & No Const Generics:** Explicit code, zero `macro_rules!`, zero const-generic handlers.
   - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
   - [ ] **Living Docs, Diary & Roadmap:** Pruned obsolete code, removed implemented code snippets, updated `DIARY.md` changelog, updated roadmap.

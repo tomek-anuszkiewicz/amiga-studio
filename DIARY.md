@@ -883,4 +883,31 @@ Every future modification or implementation task must append an entry following 
   - `AGENTS.md` size confirmed on disk: 13,473 bytes (strictly within $\le 14,000$ byte threshold).
   - `cargo fmt --all -- --check`: 100% compliant.
 
+---
+
+### [2026-09-12 13:40 CEST] — De-clustering "Mechanical Sympathy" Heading & Slogan Attractor
+- **Affected Subsystems**:
+  - `scripts/lint_attractors.py`: Added heading sloganization detection (`^#+\s+.*mechanical sympathy`) and inflated slogan filters (`guardian of mechanical sympathy`, `mechanical sympathy invariant`, `outlawing mechanical sympathy`), with automated case-preserving `--fix` substitutions.
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Integrated heading sloganization assertions into `test_zero_synthetic_attractors()`.
+  - `.agents/rules/attractor-discipline.md`: Added heading slogan prohibition and grounded replacements table entry.
+  - `.agents/rules/performance-and-readability.md`: De-sloganized rule title and Section 1 heading to `High Performance & Host Hardware Efficiency` and `Hardware-Aligned Execution`.
+  - `AGENTS.md`: Updated Section 1.A and Section 3.5 pointers to `Hardware Efficiency & Readability` ($\le 14,000$ B limit preserved).
+  - `.agents/workflows/code-review.md`: Updated Section B heading and checklist item to `Host Hardware Efficiency`.
+  - `ROADMAP.md`: De-sloganized Step 2 heading and task bullets to `Host Pipeline Optimization` and `host hardware efficiency principles`.
+  - `Obsidian/Amiga/Design/`: Refactored headings, tables, and bullets across `CPU Motorola M68000.md`, `CPU Instruction Benchmarking.md`, `CPU Micro-Step State Machine.md`, `Rust Guidelines.md`, and `Git Worktree Workflow.md`.
+  - `crates/m68000/src/state.rs`: Refactored line 249 comment to `Host Hardware Efficiency`.
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned repetitive sloganized occurrences of `mechanical sympathy` across Markdown section headings, checklist summaries, and documentation bullets.
+  - Replaced inflated catchphrases with precise, varied systems engineering terms (`host hardware efficiency`, `host pipeline optimization`, `hardware-aligned execution`, `physical execution reality`).
+  - Confined legitimate references strictly to grounded historical context (Martin Thompson's original systems engineering definition in early diary logs and substrate architecture notes).
+  - Enforced automated CI gates ensuring that future agent passes cannot re-introduce `mechanical sympathy` into Markdown headings or slogans.
+- **Architectural Rationale & Trade-Offs**:
+  - *Preventing Slogan Mode Collapse:* Even valuable systems engineering concepts suffer from rhetorical mode collapse when an LLM begins slapping them indiscriminately into every title, heading, and rule checklist. De-clustering catchphrases preserves professional variety, clarity, and precision.
+- **Verification & Test Results**:
+  - `python scripts/lint_attractors.py`: Clean pass across 263 files (exit code 0).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passing.
+  - `AGENTS.md` size confirmed on disk: 13,501 bytes (strictly within $\le 14,000$ byte threshold).
+  - `cargo fmt --all -- --check`: 100% compliant.
+
+
 

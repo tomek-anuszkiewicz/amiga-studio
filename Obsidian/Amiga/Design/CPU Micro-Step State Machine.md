@@ -35,7 +35,7 @@ The architecture mirrors the physical two-level microcode design of the Motorola
 2. **Zero Runtime Heap Allocation**:
    The entire micro-step table is static `const` data embedded in the host binary (`.rodata`). It requires **0 bytes of dynamic heap allocation** (`Vec`, `Box`, `malloc`) during runtime.
 3. **Specialized Atomic Micro-Step Handlers (Zero-Branch Direct Dispatch)**:
-   Transfer size (Byte vs. Word vs. 32-bit Long decomposition) is **specialized directly into atomic `BusFn` function pointers** (`Cpu::step_bus_read_byte`, `Cpu::step_bus_read_word`, `Cpu::step_bus_write_byte`, `Cpu::step_bus_write_word`, `Cpu::step_bus_write_long_high`, `Cpu::step_bus_write_long_low`). This eliminates nested `match size` branches and dynamic `match step.action` switches in the hot CCK execution loop, honoring host CPU mechanical sympathy.
+   Transfer size (Byte vs. Word vs. 32-bit Long decomposition) is **specialized directly into atomic `BusFn` function pointers** (`Cpu::step_bus_read_byte`, `Cpu::step_bus_read_word`, `Cpu::step_bus_write_byte`, `Cpu::step_bus_write_word`, `Cpu::step_bus_write_long_high`, `Cpu::step_bus_write_long_low`). This eliminates nested `match size` branches and dynamic `match step.action` switches in the hot CCK execution loop, maximizing host CPU execution throughput.
 4. **Pre-Allocated CPU-Level Prefetch Array**:
    `prefetch: [u16; 2]` and `ir: u16` are fixed fields inside `CpuState` (modeling hardware registers `IRC`, `IR`, and `IRD`). Zero dynamic queues.
 5. **Parametric, Bus-Free ALU Function Pointers (`AluFn`)**:
@@ -138,7 +138,7 @@ Embedded in `CpuState` to track sub-cycle progress across Color Clock phases wit
 ### 2.6 Addressing Mode Naming Convention & Canonical Module Layout
 
 #### Canonical Addressing Mode Identifiers
-To maintain rigorous mechanical sympathy and consistency with the Motorola M68000 Programmer's Reference Manual, static micro-step array slices and effective address functions follow standardized addressing mode identifiers:
+To maintain rigorous execution efficiency and consistency with the Motorola M68000 Programmer's Reference Manual, static micro-step array slices and effective address functions follow standardized addressing mode identifiers:
 
 | Suffix | M68000 Addressing Mode | Syntax | Hardware Semantics |
 | :--- | :--- | :--- | :--- |
@@ -890,7 +890,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 
 | Requirement | Specification Implementation |
 | :--- | :--- |
-| **Host Mechanical Sympathy** | Static dispatch array; flat contiguous micro-steps; zero dynamic branching in inner loops; compact contiguous runtime state layout. |
+| **Host Hardware Alignment** | Static dispatch array; flat contiguous micro-steps; zero dynamic branching in inner loops; compact contiguous runtime state layout. |
 | **Cached Slice Pointer Dispatch** | Active step slice pointer `state.micro.current_steps` cached upon opcode prefetch; eliminates 64K table lookups during instruction execution. |
 | **Zero Runtime Allocations** | Complete microcode ROM is `const` in `.rodata`; zero heap allocation during emulation loops. |
 | **Zero Cascaded Size Branches** | Transfer size specialized directly into `BusFn` handlers (`step_bus_read_byte`, `step_bus_read_word`, `step_bus_write_byte`, `step_bus_write_word`, `step_bus_write_long_high`, `step_bus_write_long_low`). |

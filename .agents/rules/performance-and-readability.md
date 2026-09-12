@@ -1,11 +1,11 @@
 ---
 trigger: always_on
-description: High-performance systems programming, host mechanical sympathy, zero runtime heap allocations, and zero user-defined macros/const-generics.
+description: High-performance systems programming, host hardware efficiency, zero runtime heap allocations, and zero user-defined macros/const-generics.
 ---
 
-# High Performance & Host CPU Mechanical Sympathy (with Zero Readability Compromise)
+# High Performance & Host Hardware Efficiency (with Zero Readability Compromise)
 
-## 1. The Host Hardware Reality (Mechanical Sympathy)
+## 1. The Host Hardware Reality (Hardware-Aligned Execution)
 Modern host CPUs (x86_64, aarch64) are deeply pipelined superscalar architectures:
 - **Branch Predictability:** Avoid unpredictable runtime branches in hot paths. Cascaded dynamic conditionals flush execution pipelines.
 - **Contiguous Memory & Locality:** Sequential, flat array structures and compact data layouts outperform pointer chasing and scattered dynamic allocations.

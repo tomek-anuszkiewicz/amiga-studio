@@ -31,6 +31,7 @@ The following synthetic phrases and high-register terms are **strictly quarantin
 | **`testing oracle`** / **`the oracle`** | Theatrical jargon for test verification. | *test verification reference*, *ground truth vector*, *hardware test capture*, *reference harness* |
 | **`The Invariance Invariant`** / **Inflated Invariant Monoculture** | Using "invariant" as a universal answer for routine conventions or rules. | *machine system invariants*, *state assertions*, *architectural consistency*, *mandatory constraints* |
 | **`L1i density`** / **`L1 cache footprint` in docs** | Misplaced physical hardware jargon leaked into pure markdown files. | *compact*, *lean*, *cohesive*, *concise* |
+| **`mechanical sympathy` in headings / slogans** | Overused catchphrase slapped into titles, headings, and role descriptions (*"Guardian of Mechanical Sympathy"*, *"Mechanical Sympathy Invariant"*). Allowed only in grounded low-level substrate execution contexts. | *host hardware efficiency*, *physical execution reality*, *low-level systems comprehension*, *hardware-aligned execution*, *host pipeline optimization* |
 
 ---
 
@@ -38,6 +39,7 @@ The following synthetic phrases and high-register terms are **strictly quarantin
 
 - **Physical Substrate vs Pure Documentation:** Host CPU cache physics (`L1`, `L2`, `L3`, `cache line`, `branch predictor`) are real technical concerns for low-level memory banks, static dispatch tables, and execution profiling.
 - **Prohibition of Leakage:** Never leak microarchitectural cache jargon into pure markdown specifications, skill instructions, or operating rules. Documentation and rules do not run on silicon caches—keep documentation language focused on clarity, structure, and readability.
+- **Prohibition of Sloganization in Headings:** Never use catchphrases like "Mechanical Sympathy" in Markdown section headings (`#`, `##`, `###`, `####`). Use precise systems engineering titles (`Host Hardware Efficiency`, `Physical Execution Reality`, `Host Pipeline Optimization`).
 
 ---
 

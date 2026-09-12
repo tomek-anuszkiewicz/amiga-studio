@@ -19,7 +19,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guideli
 
 > [!NOTE]
 > This document defines the engineering standards, idioms, and best practices for writing Rust code across the Amiga 500 emulator workspace.
-> For host CPU hardware mechanical sympathy, see [performance-and-readability.md](../../../.agents/rules/performance-and-readability.md).
+> For host CPU hardware execution efficiency, see [performance-and-readability.md](../../../.agents/rules/performance-and-readability.md).
 
 ---
 
@@ -110,7 +110,7 @@ Every implementation or bugfix must satisfy:
 ## 6. Reference Documentation & Upstream Ground Truth
 
 - [Rust Systems Rules & Guidelines (AGENTS.md)](../../../AGENTS.md): Complete repository guidelines, memory model, and Definition of Done.
-- [Performance & Mechanical Sympathy Rule](../../../.agents/rules/performance-and-readability.md): Lean execution paths, zero macros, and flat dispatch.
+- [Performance & Readability Rule](../../../.agents/rules/performance-and-readability.md): Lean execution paths, zero macros, and flat dispatch.
 - [Rust Best Practices Rule](../../../.agents/rules/rust-best-practices.md): Safe borrowing, wrapping math, and inlining policies.
 - [Unit Testing Policy](../../../.agents/rules/unit-testing-policy.md): Unit and integration testing mandates.
 - [General Architecture Specification](General%20Architecture.md): Machine topology, bus interfaces, and crate layout.

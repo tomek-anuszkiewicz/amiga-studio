@@ -973,6 +973,18 @@ fn test_zero_synthetic_attractors() {
             "L1i cache thrashing",
             "Misplaced hardware jargon in documentation ('L1i cache thrashing').",
         ),
+        (
+            "guardian of mechanical sympathy",
+            "Sloganized catchphrase ('guardian of mechanical sympathy'). Use 'guardian of hardware reality'.",
+        ),
+        (
+            "mechanical sympathy invariant",
+            "Sloganized catchphrase ('mechanical sympathy invariant'). Use 'hardware reality invariant'.",
+        ),
+        (
+            "outlawing mechanical sympathy",
+            "Sloganized catchphrase ('outlawing mechanical sympathy'). Use 'outlawing direct hardware optimization'.",
+        ),
     ];
 
     let mut violations = Vec::new();
@@ -988,6 +1000,16 @@ fn test_zero_synthetic_attractors() {
 
         for (line_idx, line) in content.lines().enumerate() {
             let lower_line = line.to_lowercase();
+
+            // Check for heading sloganization of 'mechanical sympathy'
+            if line.trim_start().starts_with('#') && lower_line.contains("mechanical sympathy") {
+                violations.push(format!(
+                    "{}:{} -> Heading sloganization of `mechanical sympathy`: Do not use catchphrase in Markdown headings. Use 'Host Hardware Efficiency', 'Physical Execution Reality', or 'Host Pipeline Optimization'.",
+                    rel_path.display(),
+                    line_idx + 1
+                ));
+            }
+
             for &(pattern, reason) in forbidden_patterns {
                 if lower_line.contains(&pattern.to_lowercase()) {
                     violations.push(format!(

@@ -69,6 +69,20 @@ ATTRACTOR_PATTERNS = [
         "scope": [".agents/rules", ".agents/skills", "Obsidian/Amiga/Design"],
         "allow_files": ["scripts/lint_attractors.py", "DIARY.md", "test_architecture_rules.rs", "attractor-discipline.md"],
     },
+    {
+        "name": "Heading Sloganization ('mechanical sympathy' in Markdown headings)",
+        "pattern": re.compile(r"^#+\s+.*mechanical sympathy", re.IGNORECASE),
+        "suggestion": "Do not sloganize 'mechanical sympathy' in Markdown headings. Use 'Host Hardware Efficiency', 'Physical Execution Reality', or 'Host Pipeline Optimization'.",
+        "scope": ["Obsidian/Amiga/Design", ".agents/rules", ".agents/skills", "ROADMAP.md"],
+        "allow_files": ["scripts/lint_attractors.py", "DIARY.md", "test_architecture_rules.rs", "attractor-discipline.md"],
+    },
+    {
+        "name": "Inflated Slogan Catchphrase ('mechanical sympathy invariant' / 'guardian of mechanical sympathy')",
+        "pattern": re.compile(r"\b(guardian of mechanical sympathy|outlawing mechanical sympathy|mechanical sympathy invariant)\b", re.IGNORECASE),
+        "suggestion": "Avoid sloganized mechanical sympathy catchphrases. Use 'guardian of hardware reality', 'hardware-aligned execution', etc.",
+        "scope": ["Obsidian/Amiga/Design", ".agents/rules", ".agents/skills", "crates"],
+        "allow_files": ["scripts/lint_attractors.py", "DIARY.md", "test_architecture_rules.rs", "attractor-discipline.md"],
+    },
 ]
 
 
@@ -142,6 +156,10 @@ def apply_replacements(content: str) -> tuple[str, int]:
         (re.compile(r"\bL1i density\b", re.IGNORECASE), "compact execution paths"),
         (re.compile(r"\bL1 cache footprint\b", re.IGNORECASE), "compact memory footprint"),
         (re.compile(r"\bL1i cache thrashing\b", re.IGNORECASE), "instruction cache stalls"),
+        (re.compile(r"\bguardian of mechanical sympathy\b", re.IGNORECASE), "guardian of hardware reality"),
+        (re.compile(r"\bmechanical sympathy invariant\b", re.IGNORECASE), "hardware reality invariant"),
+        (re.compile(r"\boutlawing mechanical sympathy\b", re.IGNORECASE), "outlawing direct hardware optimization"),
+        (re.compile(r"(^#+\s+.*)\bmechanical sympathy\b", re.IGNORECASE | re.MULTILINE), r"\1host hardware efficiency"),
     ]
 
     total_fixed = 0

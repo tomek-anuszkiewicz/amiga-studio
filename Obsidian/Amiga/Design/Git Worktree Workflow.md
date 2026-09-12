@@ -205,6 +205,6 @@ Review of repository ignored paths and whether to replicate them in worktrees:
 - [Git Merge Commits & Worktrees Rule](../../../.agents/rules/git-merge-commits.md): Worktree lifecycle, branch isolation, and mandatory merge commit policies.
 - [Specification Compliance Rule](../../../.agents/rules/spec-compliance.md): Ground truth adherence and divergence escalation protocols.
 - [General Architecture Specification](General%20Architecture.md): Machine topology, bus interfaces, and subsystem ownership.
-- [Rust Guidelines & Systems Architecture](Rust%20Guidelines.md): File size thresholds, inlining rules, and mechanical sympathy.
+- [Rust Guidelines & Systems Architecture](Rust%20Guidelines.md): File size thresholds, inlining rules, and execution efficiency.
 
 

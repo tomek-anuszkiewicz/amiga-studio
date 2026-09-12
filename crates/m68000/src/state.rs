@@ -246,7 +246,7 @@ impl CpuState {
         self.sr = (self.sr & !0x001F) | ((ccr as u16) & 0x001F);
     }
 
-    // --- Branchless Multi-Flag CCR Setters (Mechanical Sympathy) ---
+    // --- Branchless Multi-Flag CCR Setters (Host Hardware Efficiency) ---
 
     /// Sets all 5 flags (X, N, Z, V, C) simultaneously in a single 16-bit operation without branching.
     /// Used by: ADD, ADDI, ADDQ, SUB, SUBI, SUBQ, NEG, arithmetic shifts, etc.
