@@ -295,6 +295,9 @@ impl TestMemoryBus {
 
     #[inline]
     fn is_chip_ram_target_internal(classification: &HashMap<u32, MemoryType>, addr: u32) -> bool {
+        if classification.is_empty() {
+            return false;
+        }
         // 1. Check explicit classification first (exact byte or word boundary)
         if let Some(&mem_type) = classification.get(&addr) {
             return mem_type == MemoryType::ChipRam;

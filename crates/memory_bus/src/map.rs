@@ -94,84 +94,59 @@ impl<'de> Deserialize<'de> for BankHandler {
 // Individual Memory Bank Handler Implementations
 // =============================================================================
 
-/// Read handler for Chip RAM ($000000-$07FFFF, optionally extended)
+/// Read handler for Chip RAM ($000000-$07FFFF)
+#[inline(always)]
 pub fn read_chip_ram(bus: &MemoryBus, addr: u32) -> u8 {
-    if bus.low_memory_overlay && addr < 0x080000 {
-        return bus.read_kickstart_byte(addr);
-    }
-    if (addr as usize) < bus.chip_ram.len() {
-        bus.chip_ram[addr as usize]
-    } else {
-        0xFF
-    }
+    bus.chip_ram[addr as usize]
 }
 
-/// Read word handler for Chip RAM ($000000-$07FFFF, optionally extended)
+/// Read word handler for Chip RAM ($000000-$07FFFF)
+#[inline(always)]
 pub fn read_chip_ram_word(bus: &MemoryBus, addr: u32) -> u16 {
-    if bus.low_memory_overlay && addr < 0x080000 {
-        return bus.read_kickstart_word(addr);
-    }
     let idx = addr as usize;
-    if idx + 1 < bus.chip_ram.len() {
-        u16::from_be_bytes([bus.chip_ram[idx], bus.chip_ram[idx + 1]])
-    } else {
-        0xFFFF
-    }
+    u16::from_be_bytes([bus.chip_ram[idx], bus.chip_ram[idx + 1]])
 }
 
-/// Write handler for Chip RAM ($000000-$07FFFF, optionally extended)
+/// Write handler for Chip RAM ($000000-$07FFFF)
+#[inline(always)]
 pub fn write_chip_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
-    if bus.low_memory_overlay && addr < 0x080000 {
-        // Writes to Kickstart ROM space during overlay are discarded
-        return;
-    }
-    if (addr as usize) < bus.chip_ram.len() {
-        bus.chip_ram[addr as usize] = val;
-    }
+    bus.chip_ram[addr as usize] = val;
 }
 
-/// Write word handler for Chip RAM ($000000-$07FFFF, optionally extended)
+/// Write word handler for Chip RAM ($000000-$07FFFF)
+#[inline(always)]
 pub fn write_chip_ram_word(bus: &mut MemoryBus, addr: u32, val: u16) {
-    if bus.low_memory_overlay && addr < 0x080000 {
-        return;
-    }
     let idx = addr as usize;
-    if idx + 1 < bus.chip_ram.len() {
-        let bytes = val.to_be_bytes();
-        bus.chip_ram[idx] = bytes[0];
-        bus.chip_ram[idx + 1] = bytes[1];
-    }
+    let bytes = val.to_be_bytes();
+    bus.chip_ram[idx] = bytes[0];
+    bus.chip_ram[idx + 1] = bytes[1];
 }
 
 /// Read handler for Auto-Config Fast RAM ($200000-$9FFFFF)
 pub fn read_fast_ram(bus: &MemoryBus, addr: u32) -> u8 {
     if let Some(fast_ram) = &bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
-        if offset < fast_ram.len() {
-            return fast_ram[offset];
-        }
+        fast_ram[offset]
+    } else {
+        0xFF
     }
-    0xFF
 }
 
 /// Read word handler for Auto-Config Fast RAM ($200000-$9FFFFF)
 pub fn read_fast_ram_word(bus: &MemoryBus, addr: u32) -> u16 {
     if let Some(fast_ram) = &bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
-        if offset + 1 < fast_ram.len() {
-            return u16::from_be_bytes([fast_ram[offset], fast_ram[offset + 1]]);
-        }
+        u16::from_be_bytes([fast_ram[offset], fast_ram[offset + 1]])
+    } else {
+        0xFFFF
     }
-    0xFFFF
 }
 
 /// Write handler for Auto-Config Fast RAM ($200000-$9FFFFF)
 pub fn write_fast_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
     if let Some(fast_ram) = &mut bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
-        if offset < fast_ram.len() {
-            fast_ram[offset] = val;
-        }
+        fast_ram[offset] = val;
     }
 }
 
@@ -179,11 +154,9 @@ pub fn write_fast_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
 pub fn write_fast_ram_word(bus: &mut MemoryBus, addr: u32, val: u16) {
     if let Some(fast_ram) = &mut bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
-        if offset + 1 < fast_ram.len() {
-            let bytes = val.to_be_bytes();
-            fast_ram[offset] = bytes[0];
-            fast_ram[offset + 1] = bytes[1];
-        }
+        let bytes = val.to_be_bytes();
+        fast_ram[offset] = bytes[0];
+        fast_ram[offset + 1] = bytes[1];
     }
 }
 
@@ -251,31 +224,27 @@ pub fn write_cia_word(bus: &mut MemoryBus, addr: u32, val: u16) {
 pub fn read_slow_ram(bus: &MemoryBus, addr: u32) -> u8 {
     if let Some(slow_ram) = &bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
-        if offset < slow_ram.len() {
-            return slow_ram[offset];
-        }
+        slow_ram[offset]
+    } else {
+        0xFF
     }
-    0xFF
 }
 
 /// Read word handler for Slow / Trapdoor RAM ($C00000-$C7FFFF)
 pub fn read_slow_ram_word(bus: &MemoryBus, addr: u32) -> u16 {
     if let Some(slow_ram) = &bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
-        if offset + 1 < slow_ram.len() {
-            return u16::from_be_bytes([slow_ram[offset], slow_ram[offset + 1]]);
-        }
+        u16::from_be_bytes([slow_ram[offset], slow_ram[offset + 1]])
+    } else {
+        0xFFFF
     }
-    0xFFFF
 }
 
 /// Write handler for Slow / Trapdoor RAM ($C00000-$C7FFFF)
 pub fn write_slow_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
     if let Some(slow_ram) = &mut bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
-        if offset < slow_ram.len() {
-            slow_ram[offset] = val;
-        }
+        slow_ram[offset] = val;
     }
 }
 
@@ -283,11 +252,9 @@ pub fn write_slow_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
 pub fn write_slow_ram_word(bus: &mut MemoryBus, addr: u32, val: u16) {
     if let Some(slow_ram) = &mut bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
-        if offset + 1 < slow_ram.len() {
-            let bytes = val.to_be_bytes();
-            slow_ram[offset] = bytes[0];
-            slow_ram[offset + 1] = bytes[1];
-        }
+        let bytes = val.to_be_bytes();
+        slow_ram[offset] = bytes[0];
+        slow_ram[offset + 1] = bytes[1];
     }
 }
 
@@ -367,14 +334,14 @@ pub fn write_custom_chips_word(bus: &mut MemoryBus, addr: u32, val: u16) {
     }
 }
 
-/// Read handler for Kickstart ROM ($F80000-$FFFFFF)
+/// Read handler for Kickstart ROM ($F80000-$FFFFFF, mirrored at $000000 during boot overlay)
 pub fn read_kickstart_rom(bus: &MemoryBus, addr: u32) -> u8 {
-    bus.read_kickstart_byte(addr - 0xF80000)
+    bus.read_kickstart_byte(addr)
 }
 
-/// Read word handler for Kickstart ROM ($F80000-$FFFFFF)
+/// Read word handler for Kickstart ROM ($F80000-$FFFFFF, mirrored at $000000 during boot overlay)
 pub fn read_kickstart_rom_word(bus: &MemoryBus, addr: u32) -> u16 {
-    bus.read_kickstart_word(addr - 0xF80000)
+    bus.read_kickstart_word(addr)
 }
 
 /// Write handler for Kickstart ROM (ROM writes are silent no-ops)
@@ -605,7 +572,7 @@ impl MemoryBus {
         (self.bank_map[bank_idx].write_word)(self, addr, data);
     }
 
-    /// Read 16-bit word from Kickstart ROM (handling 256KB and 512KB mirroring)
+    /// Read 16-bit word from Kickstart ROM (256 KB, mirrored across $F80000..$FFFFFF)
     #[inline]
     pub(crate) fn read_kickstart_word(&self, offset: u32) -> u16 {
         if self.kickstart_rom.is_empty() {
@@ -631,7 +598,7 @@ impl MemoryBus {
         (self.bank_map[bank_idx].write_byte)(self, addr, val);
     }
 
-    /// Read byte from Kickstart ROM (handling 256KB and 512KB mirroring)
+    /// Read byte from Kickstart ROM (256 KB, mirrored across $F80000..$FFFFFF)
     #[inline]
     pub(crate) fn read_kickstart_byte(&self, offset: u32) -> u8 {
         if self.kickstart_rom.is_empty() {
@@ -640,28 +607,25 @@ impl MemoryBus {
         let rom_len = self.kickstart_rom.len();
         let mask = (rom_len - 1) as u32;
         let idx = (offset & mask) as usize;
-        if idx < rom_len {
-            self.kickstart_rom[idx]
-        } else {
-            0xFF
-        }
+        self.kickstart_rom[idx]
     }
 
     /// Handles the Amiga TAS unbroken RMW hardware bug:
     /// In Chip RAM and Slow RAM, Gary / Agnus fails to latch the write phase, dropping the write.
     /// In Fast RAM, the write phase succeeds.
     pub fn write_tas_byte(&mut self, addr: u32, data: u8) -> BusResult<()> {
-        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+        let addr = addr & 0x00FF_FFFF;
+        let bank = self.bank_map[(addr >> 16) as usize];
+        if self.chip_ram_blocked && bank.is_contended {
             return BusResult::WaitState;
         }
-        let addr = addr & 0x00FF_FFFF;
-        // Check if target is Chip RAM or Slow RAM
-        if addr < 0x100000 || (0xC00000..=0xC7FFFF).contains(&addr) {
+        // Check if target is Chip RAM or Slow RAM (contended)
+        if bank.is_contended {
             // Hardware bug: Gary drops the write phase. Memory is unmodified.
             return BusResult::Ready(());
         }
         // In Fast RAM, write succeeds
-        self.write_byte_internal(addr, data);
+        (bank.write_byte)(self, addr, data);
         BusResult::Ready(())
     }
 }

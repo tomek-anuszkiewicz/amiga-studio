@@ -103,10 +103,17 @@ fn test_256_entry_bank_map() {
     use memory_bus::MemoryBank;
 
     // 1. Standard 1MB config
-    let bus = MemoryBus::new();
-    // Chip RAM: banks 0..=7
+    let mut bus = MemoryBus::new();
+    // At startup, low-memory overlay is active: banks 0..=7 point to Kickstart ROM
+    for b in 0..=7 {
+        assert_eq!(bus.bank_map[b], MemoryBank::KickstartRom);
+        assert!(!bus.bank_map[b].is_contended);
+    }
+    // Disengage overlay to restore physical Chip RAM map
+    bus.map_chip_ram_to_low_memory();
     for b in 0..=7 {
         assert_eq!(bus.bank_map[b], MemoryBank::ChipRam);
+        assert!(bus.bank_map[b].is_contended);
     }
     // Extended Chip: 8..=15 are OpenBus on 512k baseline
     for b in 8..=15 {
@@ -130,7 +137,8 @@ fn test_256_entry_bank_map() {
     assert_eq!(bus.bank_map, memory_bus::map::BANK_MAP_STANDARD);
 
     // 2. Bare 512k config: SlowRam and RTC become OpenBus
-    let bare_bus = MemoryBus::from_config(A500Config::bare_512k(VideoStandard::Pal));
+    let mut bare_bus = MemoryBus::from_config(A500Config::bare_512k(VideoStandard::Pal));
+    bare_bus.map_chip_ram_to_low_memory();
     for b in 0xC0..=0xC7 {
         assert_eq!(bare_bus.bank_map[b], MemoryBank::OpenBus);
     }
@@ -138,7 +146,8 @@ fn test_256_entry_bank_map() {
     assert_eq!(bare_bus.bank_map, memory_bus::map::BANK_MAP_BARE);
 
     // 3. Expanded config: Fast RAM occupies 0x20..=0x5F
-    let exp_bus = MemoryBus::from_config(A500Config::expanded_power_user(VideoStandard::Pal));
+    let mut exp_bus = MemoryBus::from_config(A500Config::expanded_power_user(VideoStandard::Pal));
+    exp_bus.map_chip_ram_to_low_memory();
     for b in 0x20..=0x5F {
         assert_eq!(exp_bus.bank_map[b], MemoryBank::FastRam);
     }

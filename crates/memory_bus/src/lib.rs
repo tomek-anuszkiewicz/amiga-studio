@@ -28,16 +28,14 @@ use serde::{Deserialize, Serialize};
 
 /// Maximum size of physical memory regions
 pub const CHIP_RAM_SIZE_512K: usize = 512 * 1024;
-pub const CHIP_RAM_SIZE_1MB: usize = 1024 * 1024;
 pub const SLOW_RAM_SIZE: usize = 512 * 1024;
 pub const FAST_RAM_SIZE: usize = 8 * 1024 * 1024; // Max 8MB Zorro II Fast RAM
 pub const KICKSTART_SIZE_256K: usize = 256 * 1024;
-pub const KICKSTART_SIZE_512K: usize = 512 * 1024;
 
 /// Classification of a 64 KB physical memory bank
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MemoryBank {
-    /// Chip RAM (Base $000000-$07FFFF, optionally extended to $000000-$0FFFFF)
+    /// Chip RAM ($000000-$07FFFF)
     ChipRam,
     /// Auto-Config Fast RAM expansion ($200000-$9FFFFF)
     FastRam,
@@ -65,7 +63,7 @@ pub struct MemoryBus {
     #[serde(with = "big_array")]
     pub bank_map: [BankHandler; 256],
 
-    /// Physical Chip RAM buffer (512 KB default, expandable to 1 MB)
+    /// Physical Chip RAM buffer (512 KB)
     pub chip_ram: Vec<u8>,
 
     /// Slow / Pseudo-fast RAM at $C00000 (512 KB, trapdoor expansion)
@@ -74,7 +72,7 @@ pub struct MemoryBus {
     /// Fast RAM at $200000 (up to 8 MB)
     pub fast_ram: Option<Vec<u8>>,
 
-    /// Kickstart ROM buffer (256 KB or 512 KB)
+    /// Physical Kickstart ROM buffer (256 KB)
     pub kickstart_rom: Vec<u8>,
 
     /// Flag indicating whether Agnus/DMA currently blocks the Chip RAM bus
@@ -185,6 +183,11 @@ impl MemoryBus {
 
         self.rtc.model = config.rtc();
         self.bank_map = map::build_bank_map(&config);
+        if self.low_memory_overlay {
+            for b in 0x00..=0x07 {
+                self.bank_map[b] = map::KICKSTART_ROM_HANDLER;
+            }
+        }
         self.config = config;
     }
 
@@ -197,11 +200,17 @@ impl MemoryBus {
     /// Engages low-memory boot overlay (_OVL), routing $000000-$07FFFF accesses to Kickstart ROM
     pub fn map_kickstart_to_low_memory(&mut self) {
         self.low_memory_overlay = true;
+        for b in 0x00..=0x07 {
+            self.bank_map[b] = map::KICKSTART_ROM_HANDLER;
+        }
     }
 
     /// Disengages low-memory boot overlay (_OVL), restoring physical Chip RAM at $000000-$07FFFF
     pub fn map_chip_ram_to_low_memory(&mut self) {
         self.low_memory_overlay = false;
+        for b in 0x00..=0x07 {
+            self.bank_map[b] = map::CHIP_RAM_HANDLER;
+        }
     }
 
     /// Queries whether the low-memory overlay is currently engaged
@@ -237,30 +246,36 @@ impl MemoryBus {
     /// Returns `BusResult::WaitState` if the target is Chip RAM (or Slow RAM) and Agnus/DMA is blocking the bus.
     #[inline(always)]
     pub fn read_byte(&self, addr: u32) -> BusResult<u8> {
-        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+        let addr = addr & 0x00FF_FFFF;
+        let bank = &self.bank_map[(addr >> 16) as usize];
+        if self.chip_ram_blocked && bank.is_contended {
             return BusResult::WaitState;
         }
-        BusResult::Ready(self.read_byte_internal(addr))
+        BusResult::Ready((bank.read_byte)(self, addr))
     }
 
     /// Reads a 16-bit Big-Endian word from the 24-bit physical address space, checking for Chip RAM bus contention.
     /// Returns `BusResult::WaitState` if the target is Chip RAM (or Slow RAM) and Agnus/DMA is blocking the bus.
     #[inline(always)]
     pub fn read_word(&self, addr: u32) -> BusResult<u16> {
-        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+        let addr = addr & 0x00FF_FFFF;
+        let bank = &self.bank_map[(addr >> 16) as usize];
+        if self.chip_ram_blocked && bank.is_contended {
             return BusResult::WaitState;
         }
-        BusResult::Ready(self.read_word_internal(addr))
+        BusResult::Ready((bank.read_word)(self, addr))
     }
 
     /// Writes an 8-bit byte to the 24-bit physical address space, checking for Chip RAM bus contention.
     /// Returns `BusResult::WaitState` if the target is Chip RAM (or Slow RAM) and Agnus/DMA is blocking the bus.
     #[inline(always)]
     pub fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
-        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+        let addr = addr & 0x00FF_FFFF;
+        let bank = self.bank_map[(addr >> 16) as usize];
+        if self.chip_ram_blocked && bank.is_contended {
             return BusResult::WaitState;
         }
-        self.write_byte_internal(addr, val);
+        (bank.write_byte)(self, addr, val);
         BusResult::Ready(())
     }
 
@@ -268,10 +283,12 @@ impl MemoryBus {
     /// Returns `BusResult::WaitState` if the target is Chip RAM (or Slow RAM) and Agnus/DMA is blocking the bus.
     #[inline(always)]
     pub fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
-        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
+        let addr = addr & 0x00FF_FFFF;
+        let bank = self.bank_map[(addr >> 16) as usize];
+        if self.chip_ram_blocked && bank.is_contended {
             return BusResult::WaitState;
         }
-        self.write_word_internal(addr, val);
+        (bank.write_word)(self, addr, val);
         BusResult::Ready(())
     }
 

@@ -417,3 +417,97 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: 12/12 passed (formatting, file sizes, zero unwraps in `disassembler`, zero custom macros, path privacy, rule file size limits).
   - `cargo fmt --all -- --check`: passed cleanly.
 
+---
+
+### [2026-09-12 10:35 CEST] — 64 KB Memory Bank Precalculation & Dynamic CIA Boot Overlay Swapping
+- **Affected Subsystems**:
+  - `crates/memory_bus/src/map.rs` (added `BOOT_OVERLAY_HANDLER`, removed `low_memory_overlay` branching from Chip RAM handlers, simplified `write_tas_byte`)
+  - `crates/memory_bus/src/lib.rs` (dynamic bank swapping in `map_kickstart_to_low_memory` and `map_chip_ram_to_low_memory`, fused single-lookup bank dispatch in `read_byte`, `read_word`, `write_byte`, `write_word`)
+  - `crates/memory_bus/src/arbitration.rs` (eliminated range checks in `is_chip_ram_target`, querying `bank_map[idx].is_contended` directly)
+  - `crates/memory_bus/src/test_bus.rs` (added empty classification fast-path in `is_chip_ram_target_internal`)
+  - `crates/memory_bus/tests/test_config.rs` (updated `test_256_entry_bank_map` to verify precalculated boot overlay bank mappings)
+  - `Obsidian/Amiga/Design/MemoryBus.md` (updated low-memory boot overlay and contention documentation)
+- **What Was Changed (The Concrete Reality)**:
+  - Transitioned the memory bus from runtime conditional checks (`if low_memory_overlay && addr < 0x080000`) on every memory cycle to a precalculated hardware-exact bank swapping model.
+  - Unified Kickstart ROM handling: eliminated `BOOT_OVERLAY_HANDLER` and `read_overlay_rom` completely in favor of `KICKSTART_ROM_HANDLER`. Because Kickstart ROM address decoding masks with `rom_len - 1` (where `0xF80000 & mask == 0`), the exact same handler and byte/word reader serves both the `$F80000..$FFFFFF` base mapping and the `$000000..$07FFFF` low-memory boot overlay.
+  - When the OS writes to CIA-A Port A bit 0 (`_OVL = 1`), `map_chip_ram_to_low_memory()` dynamically swaps banks `0x00..=0x07` to `CHIP_RAM_HANDLER` (`is_contended = true`). When overlay is active, banks `0x00..=0x07` directly reference `KICKSTART_ROM_HANDLER` (`is_contended = false`).
+  - Completely eliminated all `if bus.low_memory_overlay` checks from `read_chip_ram`, `read_chip_ram_word`, `write_chip_ram`, and `write_chip_ram_word`.
+  - Eliminated redundant `if (addr as usize) < bus.chip_ram.len()` bounds checks in `read_chip_ram`, `read_chip_ram_word`, `write_chip_ram`, and `write_chip_ram_word`: since banks 0..7 map strictly to `$000000..$07FFFF` (< 512 KB), any address reaching these handlers is guaranteed within bounds.
+  - Streamlined Fast RAM (`read_fast_ram`, `write_fast_ram`), Slow RAM (`read_slow_ram`, `write_slow_ram`), and Kickstart ROM (`read_kickstart_byte`) by eliminating redundant `offset < len` and `idx < rom_len` branches.
+  - Fused bank table indexing in `read_byte`, `read_word`, `write_byte`, and `write_word`: the bank descriptor is now retrieved once per cycle, evaluating contention and dispatching the function pointer in a single pass without redundant table lookups.
+  - Simplified `write_tas_byte` to use `bank.is_contended` directly instead of complex address range checks.
+  - Added an `if classification.is_empty()` fast-path in `TestMemoryBus::is_chip_ram_target_internal`, avoiding double `HashMap` queries during standard single-step tests.
+- **Architectural Rationale & Trade-Offs**:
+  - *Host CPU Mechanical Sympathy:* Amiga code generates up to 1.77 million memory transfers per second. Eliminating 2-3 dynamic branches and 1 table lookup per transfer saves 5-10 million CPU operations per second on the host, preventing instruction cache eviction and branch misprediction stalls in superscalar host pipelines.
+  - *Hardware Accuracy:* This aligns with physical Amiga motherboard circuitry, where Gary PLD lines `A23..A16` select bank decoders directly. The CIA overlay bit simply toggles the address decoding lines rather than invoking dynamic software switches on every cycle.
+- **Verification & Invariants**:
+  - `cargo test -p memory_bus`: All 22 tests passed (boot overlay, CIA control, contention, RTC, configs).
+  - `cargo test -p test_runner --test test_dma_cartesian`: All 19 tests passed (full $2^k \times 2^M$ DMA contention permutations verified).
+  - `cargo test -p m68000`: All 42 tests passed.
+  - `cargo test -p test_runner --test test_singlestep test_nop` / `test_add_w`: passed.
+  - `cargo test -p gui --test test_interactions`: All 25 tests passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 12 architecture rules passed (file size <= 800 lines, zero macros, zero panics, strict English).
+  - `cargo fmt --all -- --check`: Clean formatting.
+
+---
+
+### [2026-09-12 10:45 CEST] — Obsidian Vault RAG Indexer Script & One-Way Privacy Membrane Ingestion
+- **Affected Subsystems**:
+  - `<PATH_TO_VAULT>/index_to_rag.ps1` (new PowerShell launcher in Obsidian vault for automated Qdrant ingestion)
+  - `<PATH_TO_VAULT>/.ragignore` (new exclusion manifest enforcing strict exclusion of `_Private/` and editor dot-folders)
+  - `tools/rag/rag_qdrant/indexer.py` (added `.ragignore` parsing, `--exclude` and `--include-dirs` filtering, scoped deleted-file pruning)
+  - `tools/rag/rag_qdrant/cli.py` (added `--exclude`, `--include-dirs`, and `--no-root-notes` options to CLI)
+  - `tools/rag/README.md` (updated CLI documentation with exclusion and filtering examples)
+- **What Was Changed (The Concrete Reality)**:
+  - Created `index_to_rag.ps1` in the user's Obsidian vault (`D:\GoogleDrive\AI\Obsidian\Default`).
+  - Implemented dual-mode layer discovery:
+    - **Universal Mode (Default):** Dynamically discovers all directories starting with two digits (`^[0-9]{2}`), seamlessly ingesting existing layers (`01 Substrate & Mechanical Sympathy`, `02 Harness...`, ..., `05 Operator Psychology...`) and automatically adapting when future layers (`06...`, `07...`) are added.
+    - **Strict Mode (`-Strict`):** Explicitly restricts ingestion to the 5 canonical layers defined in the vault's information hierarchy.
+  - Enforced the **One-Way Privacy Membrane**:
+    - Multi-layered defense guarantees that `_Private/` and any folder/file matching `*private*` (case-insensitive) are strictly excluded from RAG ingestion.
+    - Active runtime guard in `index_to_rag.ps1` immediately aborts execution if any private directory is targeted.
+    - Added default ignore rules in `indexer.py` for `.obsidian`, `.smart-env`, `.trash`, and case-insensitive `_private` / `private`.
+    - Integrated `.ragignore` file parsing directly into `KnowledgeIndexer.index_directory`.
+  - Fixed cache cleanup scoping in `indexer.py`:
+    - Previously, `delete_file_points` purged all points in `source_cache[source_name]` not present in `active_paths`. When indexing directories in succession under the same source tag, subsequent folders wiped out previously indexed vectors.
+    - Scoped deletion strictly to files within the directory being indexed (`old_p.is_relative_to(dir_path)`), preventing inter-directory cache invalidation.
+- **Architectural Rationale & Trade-Offs**:
+  - *Unified Vault Ingestion:* Indexing the vault root with `--include-dirs` ensures that chunk paths stored in Qdrant retain their knowledge layer prefix (e.g. `01 Substrate & Mechanical Sympathy/...`), enriching vector retrieval context with the structural layer.
+  - *Automatic Stale Vector Cleanup:* Reorganizing the vault from older flat categories (`Architecture Guidelines/`, `Future/`) to numbered layers meant 84 stale vectors lingered in Qdrant. Root-scoped pruning automatically removes obsolete vectors from disk while adding the new layer hierarchy in an atomic pass.
+- **Verification & Invariants**:
+  - `powershell -File tools\rag\bin\amiga_rag.ps1 --help`: verified CLI argument parsing and help banner.
+  - `powershell -File <PATH_TO_VAULT>\index_to_rag.ps1 -Status`: verified Qdrant connectivity and status report.
+  - Executed full vault indexing: 100 public notes (1,996 chunks) chunked and incrementally ingested with zero private leaks.
+
+---
+
+### [2026-09-12 10:50 CEST] — Removal of Premature KICKSTART_SIZE_512K Constant & 256 KB ROM Scope Alignment
+- **Affected Subsystems**:
+  - `crates/memory_bus/src/lib.rs` (removed unused `KICKSTART_SIZE_512K` constant; refined `kickstart_rom` doc comment to 256 KB)
+  - `crates/memory_bus/src/map.rs` (aligned `read_kickstart_word` and `read_kickstart_byte` doc comments to 256 KB mirroring)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed `pub const KICKSTART_SIZE_512K: usize = 512 * 1024;` from `crates/memory_bus/src/lib.rs`.
+  - Updated `MemoryBus.kickstart_rom` field documentation from `(256 KB or 512 KB)` to `(256 KB)` to accurately reflect current Amiga 500 Kickstart 1.2 / 1.3 physical ROM scope.
+  - Refined doc comments on `read_kickstart_word` and `read_kickstart_byte` in `crates/memory_bus/src/map.rs` to explicitly state 256 KB ROM mirroring across Gary's decoded `$F80000..$FFFFFF` space.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of Dead / Premature Constants:* The Amiga 500 baseline uses 256 KB ROMs (Kickstart 1.2 / 1.3). 512 KB ROMs (Kickstart 2.04+, A500+, A600, A3000, A1200) require different address decoding and memory bank configurations. Exposing a 512 KB constant without active configuration or architecture support creates ambiguity.
+
+---
+
+### [2026-09-12 10:52 CEST] — Removal of Premature CHIP_RAM_SIZE_1MB Constant & 512 KB Chip RAM Baseline Alignment
+- **Affected Subsystems**:
+  - `crates/memory_bus/src/lib.rs` (removed unused `CHIP_RAM_SIZE_1MB` constant; updated `MemoryBank::ChipRam` and `MemoryBus.chip_ram` doc comments to 512 KB baseline)
+  - `crates/memory_bus/src/map.rs` (aligned `read_chip_ram`, `read_chip_ram_word`, `write_chip_ram`, `write_chip_ram_word` doc comments to standard 512 KB `$000000-$07FFFF` range)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed `pub const CHIP_RAM_SIZE_1MB: usize = 1024 * 1024;` from `crates/memory_bus/src/lib.rs`.
+  - Updated `MemoryBank::ChipRam` enum documentation from `(Base $000000-$07FFFF, optionally extended to $000000-$0FFFFF)` to `($000000-$07FFFF)`.
+  - Updated `MemoryBus.chip_ram` field doc comment to `Physical Chip RAM buffer (512 KB)`.
+  - Refined Chip RAM read/write doc comments in `crates/memory_bus/src/map.rs` to remove speculative `optionally extended` notes.
+- **Architectural Rationale & Trade-Offs**:
+  - *Baseline Alignment with A500 OCS Hardware:* The standard Amiga 500 OCS baseline has 512 KB of onboard Chip RAM (`ChipRamSize::Kb512`), with additional RAM at `$C00000` mapped as Slow/Trapdoor pseudo-fast RAM rather than true Chip RAM. 1 MB Chip RAM requires ECS Agnus (8372A) or motherboard jumper modifications not active in current presets. Retaining unused 1 MB Chip RAM constants created dead code and false expectations.
+- **Verification & Invariants**:
+  - `cargo test -p memory_bus`: All 22 tests passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 12 architectural checks passed.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
+

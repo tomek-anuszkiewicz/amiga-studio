@@ -148,6 +148,11 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
   - **Bit 0 written as `0`:** Invokes `map_kickstart_to_low_memory()`, re-engaging Kickstart ROM over low Chip RAM.
   - **Bit 0 written as `1`:** Invokes `map_chip_ram_to_low_memory()`, exposing physical Chip RAM at `$000000-$07FFFF`.
 - Methods use explicit routing semantics without "OVL" or "overlay" in their names (`map_kickstart_to_low_memory()` and `map_chip_ram_to_low_memory()`).
+- **Dynamic 64 KB Bank Swapping & Precalculated Contention:**
+  - Toggling overlay dynamically swaps banks `0x00..=0x07` in `self.bank_map`:
+    - **Overlay Active (`_OVL = 0`):** Populates `bank_map[0x00..=0x07]` directly with `KICKSTART_ROM_HANDLER` (`MemoryBank::KickstartRom`, `is_contended = false`). Because Kickstart ROM address decoding masks with `rom_len - 1`, address lines `A18..A0` match whether accessed at `$000000` or `$F80000`, requiring zero address translation or separate overlay handlers.
+    - **Overlay Inactive (`_OVL = 1`):** Populates `bank_map[0x00..=0x07]` with `CHIP_RAM_HANDLER` (`MemoryBank::ChipRam`, `is_contended = true`).
+  - This completely eliminates all runtime `if low_memory_overlay` branch evaluations from `read_chip_ram`, `write_chip_ram`, and `is_chip_ram_target`.
 
 ### Kickstart ROM Space ($F80000-$FFFFFF) & Mirroring Rules
 - **Physical Hardware Behavior (Gary & Mask-ROM):**
@@ -161,13 +166,12 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
   - **512 KB Kickstart ROMs (Kickstart 2.04 / 3.1):** Fills the complete 512 KB range without aliasing.
   - **Unloaded / Missing ROM:** Returns floating bus `$FF`.
 - **Emulator Implementation:**
-  - `write_kickstart_rom`: Implemented as a direct no-op (`fn write_kickstart_rom(_bus: &mut MemoryBus, _addr: u32, _val: u8) {}`).
-  - `write_chip_ram`: When `low_memory_overlay == true` and `addr < 0x080000`, writes are safely discarded without altering underlying Chip RAM or ROM.
+  - `write_kickstart_rom`: Implemented as a direct no-op (`fn write_kickstart_rom(_bus: &mut MemoryBus, _addr: u32, _val: u8) {}`). Discards writes to ROM at both `$F80000` and `$000000` (during boot overlay) without altering underlying Chip RAM or ROM.
 
 ### Slow RAM ($C00000-$C7FFFF) Gary / Agnus Bus Contention Quirk
 - Although Slow RAM is physically located on the trapdoor expansion, Gary routes its bus control through Agnus arbitration lines.
 - Consequently, whenever Agnus DMA blocks Chip RAM (`chip_ram_blocked == true`), accesses to Slow RAM are **also blocked and stall the CPU**.
-- **Exception under Overlay:** When low-memory overlay is active (`low_memory_overlay == true`), accesses below `$080000` route to Kickstart ROM, which is non-contended and never stalls.
+- **Precalculated Contention:** The `is_contended` flag is precalculated in the 256-entry bank dispatch table: `SLOW_RAM_HANDLER` has `is_contended = true`, `CHIP_RAM_HANDLER` has `is_contended = true`, and `KICKSTART_ROM_HANDLER` has `is_contended = false`. Thus, bus arbitration queries `bank.is_contended` in $O(1)$ without runtime range checks.
 
 ### DMA Arbitration Methods
 Expose methods to simulate Agnus cycle stealing:
