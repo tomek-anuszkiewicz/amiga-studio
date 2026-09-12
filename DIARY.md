@@ -798,3 +798,24 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.60s.
   - `AGENTS.md` size confirmed on disk: 12,578 bytes (within $\le 14,000$ byte threshold).
   - `cargo fmt --all -- --check`: 100% compliant.
+
+---
+
+### [2026-09-12 12:55 CEST] — Git Commits & Atomic History Protocol Rule
+- **Affected Subsystems**:
+  - `.agents/rules/git-commits.md`: Created dedicated operating rule for commit decomposition, Conventional Commits, context reconstruction, and pre-commit verification gates.
+  - `AGENTS.md`: Indexed `git-commits.md` in Section 1.
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the full protocol governing standard git commit operations (`zrób commita`, `commit`):
+    - **Context Reconstruction:** Running `git status` / `git diff --stat` and cross-referencing recent entries in `DIARY.md` (Section 10) and session transcripts to reconstruct multi-phase work.
+    - **Atomic Decomposition:** Mandating that accumulated changes across distinct domains (docs, rules/skills, subsystem logic, architecture tests) be separated into dedicated atomic commits using targeted `git add` rather than blind bulk commits (`git add -A`).
+    - **Cohesive Unit Exception:** Preserving code + unit test + design doc in a single commit when they belong to the exact same feature.
+    - **Conventional Commits:** Standardizing `<type>(<scope>): <summary>` format in strict English with structured bullet points.
+    - **Pre-Commit Quality Gate:** Mandating `cargo fmt --all -- --check` and architecture test suite runs before committing.
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean, Auditable Git History:* Large multi-task development sessions frequently accumulate diverse modifications across documentation, rules, tests, and code. Decomposing these into atomic commits with context informed by `DIARY.md` ensures the Git log remains bisectable, clean, and meaningful.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 13 tests passed in 0.53s.
+  - `AGENTS.md` size: 12,767 bytes (strictly $\le 14,000$).
+  - `.agents/rules/git-commits.md` size: 4,041 bytes (strictly $\le 23,000$).
+  - `cargo fmt --all -- --check`: 100% compliant.
