@@ -1,385 +1,124 @@
 # Amiga 500 Cycle-Exact Emulator in Rust
 
-A cycle-exact, high-performance **Commodore Amiga 500** (OCS) emulator written in Rust, engineered for native desktop targets (x86_64, aarch64) and WebAssembly (`wasm32-unknown-unknown`).
+A cycle-exact, high-performance **Commodore Amiga 500** (OCS) emulator written in Rust, engineered for native desktop platforms and WebAssembly (`wasm32-unknown-unknown`).
+
+Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`, and direct binary injection) without hard drives or bulky expansion clutter.
 
 ---
 
-## 1. Project Purpose & Architecture
+## Hardware Configurations Supported
 
-The goal of this repository is to build a modern, system-agnostic, cycle-exact Amiga 500 emulator:
-
-- **Cycle-Exact Clock Granularity:** Synchronized to the Amiga Color Clock (**CCK**, ~3.54 MHz PAL / ~3.58 MHz NTSC). 1 M68000 bus cycle = 4 CPU clocks = 2 CCK cycles (CCK1 and CCK2).
-- **Two-Phase Bus Contention:** Memory bus transactions observe bus availability via `MemoryBusResult`. Contention on Chip RAM caused by Agnus DMA naturally stalls the CPU without synthetic hacks.
-- **Circuit Simulation:** Inter-chip signals and register writes propagate on subsequent clock phases or cycles, mimicking real physical hardware delay.
-- **Zero Host Panics & Strict Endianness:** Safe Big-Endian decoding (`from_be_bytes`), wrapping arithmetic (`wrapping_add`), and zero panics on unmapped guest memory reads (simulating open bus `$FF`).
-- **Decoupled Architecture:** No circular references between subsystems (`Cpu`, `MemoryBus`, `Agnus`, `Denise`, `Paula`, `CIAs`). All orchestration is driven by the top-level machine loop (`A500`).
-- **WASM-Ready & Headless Core:** Core crate has zero platform dependencies (no `std::fs`, `std::thread`, or `std::time::Instant`). All ROMs, disk images, video buffers, and audio streams are passed across decoupled interfaces.
+- **Basic A500:** 512 KB Chip RAM (early OCS revision 5 motherboard).
+- **Classic A500:** 512 KB Chip RAM + 512 KB Trapdoor Slow RAM at `$C00000` (the standard European 1 MB gaming configuration).
+- **Expanded A500:** Optional Auto-Config Fast RAM ($200000..$9FFFFF) with non-contended zero wait-state execution.
+- **Target Platforms:** Native desktop executable (Windows, Linux, macOS) and WebAssembly for direct browser play.
 
 ---
 
-## 2. Repository Structure
+## 1. For Players (Quick Start)
 
-```
-├── .agents/                 <- Antigravity IDE configuration, rules, and skills
-│   ├── rules/               <- Local rules (amiga-rag, graphify)
-│   └── skills/              <- On-demand runbooks (add-m68k-instruction, m68k-singlestep-test)
-├── Obsidian/                <- Complete technical knowledge base
-│   └── Amiga/
-│       ├── Design/          <- Component architecture specifications
-│       │   ├── Agnus.md
-│       │   ├── CIA.md
-│       │   ├── Configuration.md
-│       │   ├── CPU Motorola M68000.md
-│       │   ├── CPU SingleStepTests.md
-│       │   ├── CycleCounter.md
-│       │   ├── Debugger.md
-│       │   ├── Denise.md
-│       │   ├── Floppy.md
-│       │   ├── General Architecture.md
-│       │   ├── GUI.md
-│       │   ├── Joystick.md
-│       │   ├── Keyboard.md
-│       │   ├── Main loop A500.md
-│       │   ├── MemoryBus.md
-│       │   ├── Mouse.md
-│       │   ├── Paula.md
-│       │   └── SaveState.md
-│       └── Reference/       <- Official Commodore HRM, PRMs, Guru book (indexed by RAG)
-├── ref_src/                 <- Clean-room reference emulator and physical test suites
-│   ├── SingleStepTests-680x0/ <- Physical hardware M68000 cycle test vectors (Tom Harte)
-│   ├── vAmiga-4.5/          <- Clean cycle-exact C++ reference emulator (Dirk W. Hoffmann)
-│   └── vAmigaTS/            <- Amiga custom chipset regression ADF test disks
-├── tools/                   <- Developer tools, offline table generators, and AI tooling
-│   ├── blep_generator/      <- Band-Limited Step (BLEP) table generator for Paula audio
-│   └── rag/                 <- Local RAG ingestion pipeline, CLI indexer (amiga_rag), and FastMCP server
-├── tests/                   <- Test media, testbenches, and disk images
-│   └── disks/               <- ADF test disk images (AmigaTestKit)
-├── archive/                 <- Cold storage for digitized / inactive raw sources
-│   ├── docs-original/       <- Raw sources digitized into Obsidian Reference
-│   └── docs-non-a500/       <- Inactive manuals (68020+, AGA, etc.)
-├── AGENTS.md                <- Authoritative project rules and Rust systems guidelines
-├── ROADMAP.md               <- Project milestones, implementation steps, and agent testing strategy
-└── README.md
-```
+### Launching the Emulator
 
----
-
-## 3. Compiling & Running the Emulator
-
-A freshly cloned repository is **100% self-contained for compilation and execution**: zero external downloads or bootstrapping steps are required to build and launch the emulator core or GUI.
-
-### 3.1 Prerequisites
-Ensure the Rust stable toolchain is installed with the WebAssembly compilation target:
+Run in **Clean Standalone Game Mode** (clean 50 Hz PAL display without toolbars or dock windows):
 ```powershell
-# Add WebAssembly target for browser builds
-rustup target add wasm32-unknown-unknown
-```
-
-*(Optional)* For syntax-aware code pattern matching:
-```powershell
-winget install ast-grep
-```
-
-### 3.2 Compiling from Source
-```powershell
-# Build entire emulator workspace (debug profile)
-cargo build
-
-# Build optimized native release binary for the GUI
-cargo build --release -p gui
-
-# Typecheck core and GUI for WebAssembly
-cargo check --target wasm32-unknown-unknown
-```
-
-### 3.3 Running the Emulator
-The emulator features a unified frontend supporting both desktop native execution and WebAssembly browser play, with dual execution modes:
-
-```powershell
-# 1. Developer Studio (desktop default: live CPU registers, memory hex grid, time-travel scrubber)
-cargo run -p gui
-
-# 2. Clean Standalone Game Mode (hides all docks, raw 50 Hz PAL video output)
 cargo run -p gui -- --game
+```
 
-# 3. Load arbitrary machine code binary at startup (e.g. at $001000)
-cargo run -p gui -- --load path/to/program.bin --addr 001000
-
-# 4. WebAssembly (Browser Canvas via Trunk)
+Or open the **WebAssembly Browser Canvas** (via Trunk):
+```powershell
 trunk serve crates/gui/index.html --open
 ```
 
-#### Environment Variables
-- `AMIGA_DEV_GUI=1`: Forces Developer Studio mode at startup.
-- `AMIGA_DEV_GUI=0`: Forces Clean Standalone Game mode at startup.
+### Screen Modes & Clean Toggle (`F12`)
+- Press **`F12`** at any time to toggle between **Clean Game Mode** and the **Developer Studio / Debugger**.
+- Switching into Developer Studio pauses emulation immediately, allowing instant inspection of registers, custom chip states, and memory.
 
-### 3.4 Global Keybindings & Controls
+### Loading Games & Software
+- **Floppy Disks (`.adf`):** Drag and drop any `.adf` image onto the emulator window, or select floppy drive `DF0:` from the top menu.
+- **Machine Code Binaries:** Drag and drop compiled binaries (`.bin`, `.rom`) onto the window, or launch directly at a target RAM address:
+  ```powershell
+  cargo run -p gui -- --load path/to/game.bin --addr 001000
+  ```
+
+### Keybindings & Controls
+
 | Shortcut | Action | Description |
-|---|---|---|
-| **`F12`** | **Toggle GUI / Game Mode** | Switches between Developer GUI and Clean Screen. In game mode, pauses emulation immediately to inspect state. |
+| :--- | :--- | :--- |
+| **`F12`** | **Toggle GUI / Game Mode** | Switches between Developer Studio and Clean Screen. Pauses emulation on entry. |
 | **`F5` / `Space`** | **Run / Pause** | Toggles continuous free-running emulation. |
-| **`F10`** | **Step Instruction** | Executes exactly 1 M68000 instruction, recording trace & history. |
+| **`F10`** | **Step Instruction** | Executes exactly 1 M68000 instruction, recording trace and history. |
 | **`Shift + F10`** | **Step Backward (Rewind)** | Restores previous execution snapshot from the high-capacity temporal buffer. |
 | **`F11`** | **Step CCK** | Steps 1 Color Clock phase (2 CPU clocks, CCK1 / CCK2). |
-| **`Alt + T`** | **Toggle Temporal Recording** | Dynamically activates or pauses temporal execution history recording. |
+| **`Alt + T`** | **Toggle Recording** | Activates or pauses temporal execution history recording. |
 | **`Ctrl + O`** | **Load Binary** | Opens file dialog to inject compiled machine code at any arbitrary RAM address. |
-| **`Ctrl + R`** | **Reset Cold** | Restores hardware state and resets CPU vectors from memory. |
-| **Drag & Drop** | **Quick File Injection** | Drag any `.bin`, `.rom`, or executable directly onto the window. |
+| **`Ctrl + R`** | **Reset Cold** | Restores initial hardware state and reloads CPU vectors. |
+| **Drag & Drop** | **Quick File Injection** | Drag any `.adf`, `.bin`, or `.rom` directly onto the window. |
 
-### 3.5 Interactive Debugging, Temporal Navigation & Breakpoints
-- **Temporal Time-Travel Debugging (>=1.0s PAL Execution):**
-  - High-capacity circular ring buffer (default 250,000 frames) recording cycle-exact CPU states with zero heap allocations in hot paths.
-  - Multi-granularity navigation: `[⏮ First]`, `[◀◀ Frame]` (~70,824 CCK PAL video frame), `[-10]`, `[◀ -1]`, `[+1 ▶]`, `[+10]`, `[Frame ▶▶]`, and `[Live Head ⏭]`.
-  - Scrubber slider with real-time millisecond offsets (e.g. `-245.3 ms`) and relative CCK deltas.
-  - Direct target cycle jumping: enter any CCK cycle number (`[ Jump to CCK: #_______ ] [ Go ]`) to scrub directly to that hardware moment.
-  - Buffer capacity presets: `25k (~0.1s)`, `50k (~0.2s)`, `100k (~0.4s)`, `250k (~1.0s)`, `500k (~2.0s)` dynamically resizable on the fly.
-- **Breakpoints & Watchpoints Manager:**
-  - Full interactive panel in Right Dock to inspect, toggle, add, and delete PC execution breakpoints.
-  - Register-based conditional rules (e.g. `PC == $001004 IF D0 == $2A`).
-  - Memory range watchpoints monitoring `Read`, `Write`, or `Any` access across arbitrary address blocks.
-- **CPU Registers & Diff Highlights:** Click any register value ($D_0-D_7, A_0-A_7, PC, SR, USP, SSP$) to edit its hex value. Editing $PC$ automatically primes prefetch. Changed registers and flags glow in cyan.
-- **Memory Hex Grid:** Click any byte to edit inline. Tab/Enter advances to the next byte, Esc cancels. Mutated bytes glow in amber/cyan.
-- **Disassembly In-Place Editing:** Click the pencil icon (`✏`) to edit the instruction using standard assembly (e.g. `NOP`, `MOVE.W D0, D1`) or raw hex (`4E71`). **Byte size invariance is strictly enforced**: if the replacement instruction differs in size from the original instruction, the change is rejected with an error banner.
+### Developer Studio & Time-Travel Debugger
+When the Developer Studio is active (`F12` or running `cargo run -p gui` without `--game`), the interface provides:
+- **Time-Travel Rewind ($\ge 1.0\text{s}$ PAL History):** High-capacity ring buffer recording cycle-exact CPU states with zero runtime heap allocations. Scrub backwards and forwards by instruction, frame (~70,824 CCK), or specific CCK cycle timestamp.
+- **Live Register Inspector:** Interactive view of all 68000 registers ($D_0-D_7, A_0-A_7, PC, SR, USP, SSP$) with diff highlighting (cyan glow on changed values). Click any register to edit in hex.
+- **Memory Hex Grid:** Live memory viewer with inline byte editing (Tab/Enter advances, Esc cancels). Mutated bytes glow in amber/cyan.
+- **Disassembly In-Place Editing:** Click the pencil icon (`✏`) to edit instructions using standard assembly (e.g. `NOP`, `MOVE.W D0, D1`) with byte-size safety verification.
+- **Breakpoints & Watchpoints:** Execution breakpoints on Program Counter and memory watchpoints on `Read`, `Write`, or `Any` access across arbitrary address blocks.
 
 ---
 
-## 4. Bootstrapping the Environment (`-Doc` vs `-Test`)
+## 2. For Developers (Build & Bootstrap)
 
-> [!NOTE]
-> **Is bootstrapping mandatory?**
-> - **NO** if you only want to build and run the emulator (`cargo run -p gui`) or run core subsystem unit tests (`cargo test -p m68000`, `cargo test -p memory_bus`).
-> - **YES** if you want to either:
->   1. Interact with AI agents, query hardware reference manuals, and develop design specifications (**Knowledge & Documentation Bootstrap**).
->   2. Compile and run the cycle-exact silicon test suite (`crates/test_runner`) or custom chipset regression disks (**Verification & Test Suite Bootstrap**).
+### Zero-Setup Build & Execution
+A freshly cloned repository is **100% self-contained for compilation and execution**. No bootstrapping, external downloads, or database services are required to build and run the emulator:
 
-The repository provides a dedicated runner script (`tools/bootstrap.ps1`) supporting selective switches:
-
-| Bootstrap Mode | Switch | Primary Purpose | What It Provisions | When Required |
-| :--- | :--- | :--- | :--- | :--- |
-| **Knowledge & AI Documentation** | `-Doc` | AI agent pair-programming, technical Q&A, hardware register research | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, Guru book (`Obsidian/Amiga/Reference/`), and design notes (`Obsidian/Amiga/Design/`) | When authoring new features, investigating custom chip circuit details, or querying design specs via local RAG |
-| **Verification & Hardware Test Suites** | `-Test` | Exhaustive instruction validation & DMA contention tests | Verifies/prepares Tom Harte physical silicon test vectors in `ref_src/SingleStepTests-680x0/68000/v1/` (124 JSON suites, ~1,000,000 vectors) and regression test disks (`tools/AmigaTestKit`, `ref_src/vAmigaTS`) | When compiling `test_runner`, running `cargo test -p test_runner --test test_singlestep`, or executing Cartesian DMA contention stress tests |
-| **Complete Environment** | `-All` | Complete developer & testbed preparation | Executes both Documentation and Hardware Test Suite bootstrapping | Initial developer setup or full CI environment initialization |
-
-### 4.1 Tier 1: Knowledge & Documentation Bootstrap (`-Doc`)
-Run this tier when you want to pair-program with AI agents or execute semantic search over Commodore hardware reference documentation:
 ```powershell
-# Provision local vector database and index technical documentation:
+# Build entire workspace (debug profile)
+cargo build
+
+# Build optimized native release binary for GUI
+cargo build --release -p gui
+
+# Run core subsystem unit tests
+cargo test -p m68000
+cargo test -p memory_bus
+```
+
+### Optional Two-Tier Bootstrapping (`tools/bootstrap.ps1`)
+
+Bootstrapping is **strictly optional** and only needed for specialized development tasks:
+
+| Mode | Switch | When Needed | What It Provisions |
+| :--- | :--- | :--- | :--- |
+| **Knowledge & AI Docs** | `-Doc` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, Guru book, and design specs |
+| **Verification Testbed** | `-Test` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Prepares Tom Harte physical silicon test vectors (`ref_src/SingleStepTests-680x0/`, 124 suites, ~1,000,000 vectors) and regression test disks |
+| **Full Setup** | `-All` | Complete initial development setup | Provisions both documentation knowledge bases and verification test vectors |
+
+```powershell
+# Documentation & AI pair-programming setup:
 .\tools\bootstrap.ps1 -Doc
-```
-*Direct CLI alternative:*
-```powershell
-.\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga" --source amiga
-```
 
-### 4.2 Tier 2: Verification & Hardware Test Suite Bootstrap (`-Test`)
-Run this tier before running the exhaustive single-step M68000 test suite or DMA contention testbench:
-```powershell
-# Verify presence of physical silicon test vectors and run a smoke check:
+# Hardware test vectors verification setup:
 .\tools\bootstrap.ps1 -Test
-```
-- **Physical Test Vectors:** Validates the presence of `ref_src/SingleStepTests-680x0/68000/v1/*.json`. If missing, clone or extract from [SingleStepTests/680x0](https://github.com/SingleStepTests/680x0).
-- **System Regression Media:** Verifies `tools/AmigaTestKit/AmigaTestKit.adf` and `ref_src/vAmigaTS/`.
-- **Smoke Validation:** Automatically runs `cargo test -p test_runner --test test_singlestep test_nop` to confirm test harness operational readiness.
 
-### 4.3 Full Bootstrap (`-All`)
-To bootstrap both documentation knowledge bases and verification test vectors in one step:
-```powershell
+# Complete setup:
 .\tools\bootstrap.ps1 -All
 ```
 
 ---
 
-## 5. Local Reference Repositories & Tooling Catalog
+## 3. Documentation Cheat Sheet & Technical Index
 
-Clean-room reference code and verification suites in `ref_src/`:
+### Repository Architecture & Verification Guides (`docs/`)
 
-### 5.1 Physical Hardware CPU Verification
-- **[SingleStepTests-680x0](ref_src/SingleStepTests-680x0)** — [GitHub](https://github.com/SingleStepTests/680x0): Tom Harte's single-step processor test vectors captured from physical Motorola 68000 silicon pins. Provides cycle-exact bus cycles, `TAS` indivisible RMW operations, undefined CCR flag behaviors, and AGU pre-fault commitment verification.
+- [**Core Architecture & Hardware Execution Model**](docs/architecture.md): Color Clock phases (CCK1/CCK2), Gary bus arbitration, Agnus DMA contention, circuit simulation, Big-Endian invariance, and decoupled ownership.
+- [**Test Suite & Verification Framework**](docs/testing.md): Physical hardware single-step test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), and CLI regression diagnostics.
+- [**AI Agent Engineering & Pair-Programming Guide**](docs/ai_agents.md): Autonomous AI agent pairing guidelines, rules adherence, RAG knowledge base, Graphify AST, and specialized skills.
+- [**Parallel Development with Git Worktrees**](docs/worktrees.md): Multi-branch parallel workflows and isolated build contexts.
 
-### 5.2 Reference System Emulator & Architecture
-- **[vAmiga 4.5](ref_src/vAmiga-4.5)** (`C++`) — [GitHub](https://github.com/dirkwhoffmann/vAmiga): Clean, object-oriented C++ A500/A1000/A2000 emulator by Dirk W. Hoffmann. Reference for decoupling Agnus, Denise, and Paula across a unified CCK grid.
+### Subsystem Design Specifications (`Obsidian/Amiga/Design/`)
 
-### 5.3 Custom Chipset Regression Test Suite
-- **[vAmigaTS](ref_src/vAmigaTS)** — [GitHub](https://github.com/dirkwhoffmann/vAmigaTS): Automated regression test suite consisting of ADF test disks and reference video renders for Copper lists, Blitter fills, and raster effects.
-
-### 5.4 Hardware Schematics & Circuits
-Hardware schematics and PCB traces (such as the interactive [Amiga PCB Explorer](https://www.amigapcb.org/) or public board scans) can be referenced online on demand. Motherboard circuit logic (CIA partial decoding, Gary bus contention, Paula DMA) is formalized directly in [`Obsidian/Amiga/Design/`](Obsidian/Amiga/Design/), and the complete A500 audio filter circuit is bundled in [`tools/blep_generator/`](tools/blep_generator/).
-
-
----
-
-## 6. Compiling & Running Tests
-
-The emulator features a multi-tiered test architecture: standard subsystem unit tests, automated architecture rule validation, cycle-exact M68000 single-step instruction verification against physical silicon vectors (Tom Harte SingleStepTests), Cartesian DMA contention stress tests, and a dedicated diagnostic CLI.
-
-### 6.1 Standard Compilation & Subsystem Unit Tests
-```powershell
-# Build emulator core and tools
-cargo build
-
-# Typecheck for WebAssembly (WASM target)
-cargo check --target wasm32-unknown-unknown
-
-# Run all standard workspace unit and integration tests
-cargo test
-
-# Run tests for specific subsystem crates
-cargo test -p m68000        # CPU core (addressing modes, micro-archetypes, CCK bus)
-cargo test -p memory_bus    # Memory bus mapping, Gary logic, and autoconfig
-cargo test -p rtc           # MSM6242B Real-Time Clock
-cargo test -p debugger      # Interactive disassembly and breakpoint engine
-```
-
-### 6.2 Automated Architecture Rules Compliance
-Enforces architectural rules and quality constraints defined in [AGENTS.md](AGENTS.md) (formatting, file size limits $\le 800$ lines, zero runtime panics/unwraps, path privacy, zero custom macros, and inlining rules):
-```powershell
-cargo test -p test_runner --test test_architecture_rules
-```
-
-### 6.3 M68000 SingleStepTests (Physical Silicon Hardware Verification)
-Validates CPU instruction execution against Tom Harte's cycle-exact physical hardware vectors:
-- **Tom Harte SingleStepTests-680x0:** [`ref_src/SingleStepTests-680x0/68000/v1/`](ref_src/SingleStepTests-680x0/68000/v1/) (124 suites, ~1,000,000 test vectors captured on physical 68000 silicon pins, including exact `TAS` RMW bus cycles, CCR undefined bits, and prefetch timing).
-
-> [!NOTE]
-> Ensure test JSON files are decoded before running (see [Section 3.2](#32-decode-singlesteptests-json-files)).
-
-#### Default Sample Run (Fast Smoke Test)
-By default, each instruction suite runs a sampled subset of 50 test cases (~5 seconds total):
-```powershell
-# Run sampled SingleStepTests across all implemented opcodes
-cargo test -p test_runner --test test_singlestep
-
-# Run tests for a specific instruction or group
-cargo test -p test_runner --test test_singlestep test_nop
-cargo test -p test_runner --test test_singlestep test_add_b
-cargo test -p test_runner --test test_singlestep test_move_w
-```
-
-#### Full Exhaustive Verification (`SINGLESTEP_FULL`)
-Setting `SINGLESTEP_FULL=1` (or `true`) disables sampling limits and executes **100% of all test vectors** across all suites in parallel (typically completes in ~5–6 seconds).
-
-- **PowerShell (Windows):**
-  ```powershell
-  # Full exhaustive run across all implemented opcodes
-  $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
-
-  # Full exhaustive run for a single instruction suite
-  $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep -- test_add_b
-  ```
-
-- **Bash / Linux / macOS / WSL:**
-  ```bash
-  # Full exhaustive run across all implemented opcodes
-  SINGLESTEP_FULL=1 cargo test -p test_runner --test test_singlestep
-
-  # Full exhaustive run for a single instruction suite
-  SINGLESTEP_FULL=1 cargo test -p test_runner --test test_singlestep -- test_add_b
-  ```
-
-#### Custom Sample Limit (`SINGLESTEP_LIMIT`)
-To evaluate an arbitrary sample size (e.g. 200 or 500 test cases per suite):
-- **PowerShell:**
-  ```powershell
-  $env:SINGLESTEP_LIMIT = "500"; cargo test -p test_runner --test test_singlestep
-  ```
-- **Bash:**
-  ```bash
-  SINGLESTEP_LIMIT=500 cargo test -p test_runner --test test_singlestep
-  ```
-
-### 6.4 Cartesian DMA Contention Verification
-Validates cycle-exact M68000 micro-stepping and wait-state handling under Agnus DMA bus contention across the full combinatorial Cartesian product:
-- **Address Permutations ($2^k$):** Sweeps all role assignments of memory cells touched by the instruction (`ChipRam` vs `FastRam`).
-- **DMA Schedule Permutations ($2^M$):** Sweeps every bit pattern of stalled vs free CCK slots across the execution window.
-- **Asserted Invariants:**
-  1. *Cycle Invariance:* $C = C_0 + 2 \times \text{wait\_states}$
-  2. *Fast RAM Immunity:* $C = C_0$ without wait states when only Fast RAM is accessed.
-  3. *State Invariance:* CPU registers and RAM are 100% bit-identical to the uncontended golden run.
-
-```powershell
-# Run full Cartesian DMA contention test suite
-cargo test -p test_runner --test test_dma_cartesian
-
-# Run Cartesian tests for specific category
-cargo test -p test_runner --test test_dma_cartesian test_dma_cartesian_system_and_traps
-```
-
-### 6.5 CLI Test Diagnostics, Coverage & Regression Tracker
-The `test_runner` crate includes a standalone CLI tool for inspecting coverage matrices, viewing live failure diagnostics, and detecting regressions:
-
-```powershell
-# Display global pass/fail matrix and coverage summary across all opcodes
-cargo run -p test_runner -- --summary
-
-# Detect regressions and fixed tests compared to previous run (via tests/singlestep/)
-cargo run -p test_runner -- --diff
-
-# Execute a single opcode suite directly with live diagnostic failure output
-cargo run -p test_runner -- --suite ADD.b
-```
-
-- 🔴 **Regressions:** Tests that previously passed but now fail are highlighted with `⚠️ [REGRESSION DETECTED]`.
-- 🟢 **Improvements:** Tests that previously failed but now pass are highlighted with `🎉 [PROGRESS / FIX]`.
-
----
-
-## 7. Driving Future Development with AI Agents
-
-This repository is configured for autonomous pair-programming with AI agents:
-
-1. **Strict Guardrails:** All agent interactions must follow [AGENTS.md](AGENTS.md) (no panics, wrapping arithmetic, big-endian conversions, zero allocations in hot paths).
-2. **Domain Knowledge RAG:** Use the `amiga-rag` tool (`rag_search`) to query official Commodore Hardware Reference Manuals and PRMs in `Obsidian/Amiga/Reference/`. The RAG pipeline and FastMCP server reside in [`tools/rag/`](tools/rag/), backed by the local Qdrant vector database (`amiga` collection, incremental cache configured via `RAG_CACHE_FILE` in `.env`).
-3. **AST & Code Knowledge Graph:** Use `graphify` (`graphify query`, `graphify explain`) to inspect code relationships, types, and architectural hierarchies.
-4. **Instruction Implementation:** Activate the `add-m68k-instruction` skill for a step-by-step checklist (decoding, CCK micro-steps, CCR flag updates, prefetch pipeline, and test harness integration).
-5. **Test Failure Diagnosis:** Activate the `m68k-singlestep-test` skill to diagnose CCR mismatches ($X, N, Z, V, C$), prefetch queue offsets, and Address Error stack frames.
-
----
-
-## 8. Git Worktree Workflow (Parallel Branch Development)
-
-For isolated branch development, parallel testing, or running concurrent agent sessions without switching branches, use **Git Worktrees**:
-
-### 8.1 Creating a Worktree
-```powershell
-# Create branch and checkout into sibling directory
-git worktree add ..\Amiga-<branch-name> -b <branch-name>
-
-# Copy required untracked configuration (.env)
-$target = "..\Amiga-<branch-name>"
-@('.env') | ForEach-Object { if (Test-Path $_) { Copy-Item -Recurse -Force $_ "$target\$_" } }
-```
-
-### 7.2 Working & Testing
-```powershell
-cd ..\Amiga-<branch-name>
-cargo test -p test_runner --test test_architecture_rules
-git commit -am "feat(subsystem): description"
-```
-
-### 7.3 Syncing Latest Master Changes into Worktree
-Because the worktree shares the local `.git` repository, any commits to `master` can be immediately merged or rebased without pushing/fetching:
-```powershell
-cd ..\Amiga-<branch-name>
-
-# Option A: Merge master into feature branch
-git merge master
-
-# Option B: Rebase feature branch on top of master
-git rebase master
-```
-
-### 7.4 Reintegrating & Cleaning Up
-```powershell
-# In primary repository:
-cd ..\Amiga
-git checkout master
-git merge <branch-name>
-
-# Teardown worktree and remove branch:
-git worktree remove ..\Amiga-<branch-name>
-git branch -d <branch-name>
-```
-
-> [!TIP]
-> For complete details on `.gitignore` analysis, RAG indexing constraints, and Obsidian vault handling in worktrees, see [Git Worktree Workflow](Obsidian/Amiga/Design/Git%20Worktree%20Workflow.md).
-
+| Category | Component Specifications |
+| :--- | :--- |
+| **System & Bus** | [General Architecture](Obsidian/Amiga/Design/General%20Architecture.md) • [Main Loop (A500)](Obsidian/Amiga/Design/Main%20loop%20A500.md) • [Memory Bus & Gary](Obsidian/Amiga/Design/MemoryBus.md) • [Cycle Counter](Obsidian/Amiga/Design/CycleCounter.md) • [Save States](Obsidian/Amiga/Design/SaveState.md) • [Configuration](Obsidian/Amiga/Design/Configuration.md) |
+| **CPU (M68000)** | [CPU Motorola M68000](Obsidian/Amiga/Design/CPU%20Motorola%20M68000.md) • [Micro-Step State Machine](Obsidian/Amiga/Design/CPU%20Micro-Step%20State%20Machine.md) • [CPU SingleStepTests](Obsidian/Amiga/Design/CPU%20SingleStepTests.md) • [CPU Instruction Benchmarking](Obsidian/Amiga/Design/CPU%20Instruction%20Benchmarking.md) |
+| **Custom Chipset** | [Agnus (Copper & Blitter)](Obsidian/Amiga/Design/Agnus.md) • [Denise (Video & Sprites)](Obsidian/Amiga/Design/Denise.md) • [Paula (Audio & Floppy DMA)](Obsidian/Amiga/Design/Paula.md) • [CIA (Timers & Serial Ports)](Obsidian/Amiga/Design/CIA.md) • [Floppy Disk Controller](Obsidian/Amiga/Design/Floppy.md) |
+| **Peripherals & I/O** | [Keyboard Controller](Obsidian/Amiga/Design/Keyboard.md) • [Mouse Controller](Obsidian/Amiga/Design/Mouse.md) • [Joystick Controller](Obsidian/Amiga/Design/Joystick.md) • [Real-Time Clock (RTC)](Obsidian/Amiga/Design/RTC.md) |
+| **Frontend & UI** | [GUI Specification](Obsidian/Amiga/Design/GUI%20Specification.md) • [GUI Architecture](Obsidian/Amiga/Design/GUI.md) • [Debugger Engine](Obsidian/Amiga/Design/Debugger.md) • [egui Guidelines](Obsidian/Amiga/Design/egui%20Guidelines.md) • [Rust Coding Guidelines](Obsidian/Amiga/Design/Rust%20Guidelines.md) |

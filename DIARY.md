@@ -1084,5 +1084,26 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.53s.
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
 
-
+### [2026-09-12 15:48 CEST] — Player-First README Landing Page & Technical Documentation Extraction to `docs/`
+- **Affected Subsystems**:
+  - `README.md`: Restructured the landing page into a punchy, 4-tier landing page and cheat sheet ("ściąga") tailored for players and developers.
+    1. *Scope & Hardware Targets:* Amiga 500 (OCS) gaming emulator dedicated to authentic floppy gaming (`DF0:`, `.adf`, direct binary injection) without hard drives or bulky expansion clutter; configurations: Basic (512 KB Chip), Classic (512 KB Chip + 512 KB Slow RAM at `$C00000`), Expanded (Fast RAM); Native desktop + WebAssembly.
+    2. *For Players (Quick Start):* Clean game launch (`--game`), WebAssembly browser launch (`trunk serve`), instant clean-screen pause/resume toggle (`F12`), loading floppy disks (`.adf`) and machine code binaries (`--load`), complete global keybindings reference table, and Developer Studio features (time-travel rewind, live register diffs, inline memory hex editing, disassembly patching, and breakpoints).
+    3. *For Developers (Build & Bootstrap):* Zero-setup build instructions (`cargo build`, `cargo run -p gui`), explicit notice that bootstrapping is strictly optional and not required to compile or play, and clean two-tier bootstrapping summary (`tools/bootstrap.ps1 -Doc` vs `-Test`).
+    4. *Documentation Cheat Sheet & Technical Index:* Standardized links to deep technical docs in `docs/` and structured index of all 28 subsystem architecture specifications under `Obsidian/Amiga/Design/`.
+  - `docs/`: Created GitHub-standard documentation repository containing extracted deep technical guides:
+    - `docs/architecture.md`: Formal CCK1/CCK2 Color Clock phases, Gary bus arbitration, Agnus DMA contention, circuit simulation, Big-Endian invariance, and decoupled ownership.
+    - `docs/testing.md`: SingleStep test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), and CLI regression diagnostics.
+    - `docs/ai_agents.md`: AI agent pair-programming guide, rules adherence, RAG knowledge base, Graphify AST, and specialized skills.
+    - `docs/worktrees.md`: Multi-branch parallel workflows and isolated build contexts with Git worktrees.
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned dense, verbose architectural and testing blocks from `README.md`, reducing it from 386 lines down to an attractive, easily scannable 130-line landing page.
+  - Placed player experience and quick start front and center while retaining an organized technical index for contributors and AI agents.
+- **Architectural Rationale & Trade-Offs**:
+  - *Separation of Landing Page vs Technical Deep Dives:* A repository `README.md` serves as a front porch for users and players trying to launch games or developers wanting to compile. Burying keybindings and launch commands beneath pages of microarchitectural bus timing diagrams hurt readability. Extracting deep specifications into GitHub-standard `docs/` maintains rigorous technical documentation while presenting a welcoming, intuitive landing page.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 14 tests passed in 0.54s (verifying zero broken markdown links in `README.md` and `docs/`).
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 268 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
