@@ -69,7 +69,24 @@ To eliminate hallucinated hardware behavior, we anchored the agent to two unforg
 
 ---
 
-## 4. The Entire Testing Spectrum Authored by the Agent
+## 4. Catching Performance Bottlenecks: Micro-Benchmarking Every CPU Instruction
+
+Cycle accuracy is only half the equation in emulation. If an instruction handler is riddled with hidden host pipeline stalls, missing inlining annotations, or unpredictable branches, the emulator will chug and burn processor cycles.
+
+To ensure the agent didn't write code that was cycle-accurate but agonizingly slow on modern hardware, we built a **dedicated CPU instruction micro-benchmarking and anomaly detection engine**:
+
+- **Benchmarking Every Opcode & Addressing Mode:** The harness measures host execution time in nanoseconds against emulated Amiga Color Clocks for every single instruction and addressing mode variant, computing a normalized performance ratio:
+  $$R_{\text{norm}} = \frac{\text{Host Execution Time (ns)}}{\text{Amiga Hardware Clocks (CCK)}}$$
+- **Spotting Performance Defects at a Glance:** Rather than manually profiling with external tools, our engine automatically compares instructions across families and addressing modes, flagging performance anomalies right away:
+  - **Type A (Hot Path Spikes):** Detects if a specific instruction is unexpectedly slower than its sibling opcodes in the same family (>2.5x baseline).
+  - **Type B (Addressing Mode Inefficiencies):** Flags if an indirect or indexed addressing mode spikes relative to direct register operations (>3.0x register baseline), instantly catching a missing `#[inline(always)]` annotation or an accidental dynamic branch.
+  - **Type C (Branch Predictor Thrashing):** Catches excessive execution jitter (>5.0% CV across passes) caused by host CPU pipeline flushes.
+
+Whenever the agent refactored instruction decoding, effective address calculation, or ALU logic, this benchmark harness gave us immediate proof of whether the code was truly fast or hiding an accidental bottleneck.
+
+---
+
+## 5. The Entire Testing Spectrum Authored by the Agent
 
 People often assume that if an AI writes production code, the human must at least write the tests to keep it honest. In our case, **I never wrote, designed, or proposed a single test of any kind**. The agent authored every unit test, integration test, architecture check, and regression harness across all 26 workspace crates from the very beginning:
 
@@ -83,7 +100,7 @@ Early on, I occasionally prompted: *"Write tests for this, coverage is missing."
 
 ---
 
-## 5. Documentation is an Iterative Compass, Never a Holy Grail
+## 6. Documentation is an Iterative Compass, Never a Holy Grail
 
 The repository contains dozens of deep architectural specs under [`Obsidian/Amiga/Design/`](../Obsidian/Amiga/Design/) and [`docs/`](../docs/). But here is an essential truth about how they were made: **documentation was never treated as a sacred holy grail or a long, upfront waterfall marathon.**
 
@@ -98,7 +115,7 @@ Documentation was a fast, iterative working compass—never an upfront bureaucra
 
 ---
 
-## 6. The Methodology: The "Minimal Frame" Rule
+## 7. The Methodology: The "Minimal Frame" Rule
 
 When people try to build complex systems with AI, they usually hand the agent a big specification and say: *"Build the CPU."* That never works. It produces thousands of lines of brittle, unmaintainable code that falls apart the moment you run a real test.
 
@@ -122,7 +139,7 @@ Once we proved that minimal frame on one instruction or one cycle, the architect
 
 ---
 
-## 7. The Architectural Blueprint: Flat Code, Rich Ownership
+## 8. The Architectural Blueprint: Flat Code, Rich Ownership
 
 Now for the under-the-hood technical choices. How did we actually structure the Rust codebase?
 
@@ -167,7 +184,7 @@ Before drafting our first module, the agent served as an interactive research en
 
 1. **You Don't Need to Type Code or Tests:** An AI agent can generate 100% of the production code, test suites (unit, integration, GUI, and architecture checks), and technical documentation if you provide sharp architectural leadership.
 2. **Be a Sparring Partner, Not an Intern Babysitter:** Debate trade-offs, challenge decisions, and continuously upgrade the harness (rules and skills) whenever the AI trips.
-3. **Anchor to Real-World Test Vectors:** Use external, exhaustive test suites (like SingleStepTests and vAmigaTS) so the agent has an undeniable, silicon-level source of truth.
+3. **Anchor to Silicon Accuracy & Performance Benchmarks:** Pair exhaustive hardware test vectors (SingleStepTests, vAmigaTS) with instruction micro-benchmarks and anomaly detection to guarantee code is both 100% cycle-exact and blistering fast.
 4. **Docs as an Iterative Compass, Not a Holy Grail:** Draft documentation just until the architecture is "good enough to code," then refine and expand it in lockstep as real-world code reveals edge cases.
 5. **Build the Minimal Frame:** Never ask an agent to build a whole subsystem at once. Prove the architecture on one instruction or one bus cycle first.
 6. **Flat Structure, Rich Ownership:** Keep your file tree flat and navigable, but use Rust's strict compile-time ownership to eliminate circular pointer soup.
