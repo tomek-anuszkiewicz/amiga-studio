@@ -1,5 +1,5 @@
 ---
-trigger: model_decision
+trigger: always_on
 description: Mandatory comprehensive unit test coverage for functional and utility classes; headless integration tests for GUI.
 ---
 
