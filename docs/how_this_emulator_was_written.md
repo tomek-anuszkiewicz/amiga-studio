@@ -8,7 +8,7 @@ Here is the honest breakdown of how this cycle-exact Amiga 500 emulator was buil
 
 Here is the most defining fact about this project: **I did not write a single line of Rust code. Not one.**
 
-I didn't write any of the implementation code. And just as importantly, **I never wrote or manually designed a single unit or integration test**. Every struct, every micro-step in the Motorola 68000 CPU state machine, every bus arbitration check in Gary, every custom chip pipeline, every single test suite, and every design document in this repository was generated and maintained by the AI agent.
+I didn't write any of the implementation code. And just as importantly, **I never wrote, designed, or proposed a single test of any kind**—from individual unit tests and multi-chip integration suites to GUI test harnesses and automated architecture gates. Every struct, every micro-step in the Motorola 68000 CPU state machine, every bus arbitration check in Gary, every custom chip pipeline, every single test suite, and every design document in this repository was generated and maintained by the AI agent.
 
 My role was different. I was the **System Architect, Strategic Director, and Engineering Sparring Partner**. I didn't treat the agent like a junior intern who needs syntax babysitting, and I definitely didn't treat it like a glorified autocomplete widget. We worked as high-bandwidth engineering peers.
 
@@ -86,12 +86,15 @@ flowchart LR
     D --> A
 ```
 
-### A. Unit Tests From Day One
-- The agent wrote unit tests from the very first commit. I never wrote a test case or designed test harnesses myself.
-- Over time, we baked testing directly into the harness:
-  - **Unit Testing Policy (`unit-testing-policy.md`):** Mandated external test suites in `crates/*/tests/` with zero inline test clutter inside `src/`.
-  - **Repro-First Defect Resolution (`repro-first.md`):** Whenever a bug surfaced, the agent had to write a failing reproduction test before touching production code.
-  - **Automated Architecture Tests:** Our CI suite (`cargo test -p test_runner --test test_architecture_rules`) automatically verified that no public module lacked unit tests, eliminating the need for me to remind the agent.
+### A. The Entire Testing Spectrum Authored by the Agent
+- **Zero Human Test Code:** People often assume that if an AI writes production code, the human must at least write the tests to keep it honest. In our case, **I never wrote, designed, or proposed a single test of any kind**. The agent authored every unit test, integration test, architecture check, and regression harness across all 26 workspace crates from the very beginning.
+- **Covering the Full Testing Spectrum:**
+  - **Exhaustive Unit Tests:** Verifying opcode decoders, CCR arithmetic flags, memory alignment checks, and register mutation pipelines.
+  - **Multi-Chip Integration Tests:** Validating physical bus handshakes between chips—like the Copper triggering Blitter operations, Paula asserting CPU interrupt lines (IPL 1-6), Gary overlay switching on CIA-A `_OVL` pin transitions, and floppy head stepping.
+  - **Headless GUI Integration Tests:** Offscreen frame rendering (`egui_kittest` + `wgpu`) asserting that the debugger window, panel splitters, and user keystrokes work without ever panicking the host.
+  - **Automated Architecture & Hygiene Tests:** A dedicated test suite (`cargo test -p test_runner --test test_architecture_rules`) that verifies constitutional rules automatically on every build—enforcing file size limits ($\le 800$ lines), canonical micro-step constants, zero inline tests in `src/`, and zero runtime panics.
+  - **Repro-First Bug Verification:** Whenever an edge case or bug appeared, the agent had to first write an isolated failing reproduction test before touching a single line of production code.
+- **From Gentle Reminders to Total Automation:** Early on, I occasionally prompted: *"Write tests for this, coverage is missing."* But as we polished the harness, testing became an automatic, non-negotiable Definition of Done. The agent wrote, ran, and validated comprehensive test suites autonomously before declaring any task finished.
 
 ### B. Practical Rules, Not Theoretical Fluff
 We maintained modular operational rules under `.agents/rules/` that attacked concrete failure modes:
@@ -137,7 +140,7 @@ These weren't planned on day one. They emerged naturally from continuous enginee
 
 ## Key Takeaways for Building with AI
 
-1. **You Don't Need to Type Code:** An AI agent can generate 100% of the production code and tests if you provide sharp architectural leadership.
+1. **You Don't Need to Type Code or Tests:** An AI agent can generate 100% of the production code, test suites (unit, integration, GUI, and architecture checks), and technical documentation if you provide sharp architectural leadership.
 2. **Explore the Domain First:** Spend time deconstructing hardware specs and reference manuals before writing your first module.
 3. **Build the Minimal Frame:** Never ask an agent to build a whole subsystem at once. Prove the architecture on one instruction or one bus cycle first.
 4. **Anchor to Real-World Test Vectors:** Use external, exhaustive test suites (like SingleStepTests and vAmigaTS) so the agent has an undeniable source of truth.
