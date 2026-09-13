@@ -2643,9 +2643,21 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.61s.
   - `python tools/check_polish.py --git`: Passed across all staged diff additions.
 
+---
 
-
-
-
-
-
+### [2026-09-14 01:47 CEST] — Reverted Commit 694db42 (Restored tools and amiga-scaffold-crate skill)
+- **Affected Subsystems**:
+  - `tools/log_diary.py`: Restored script.
+  - `tools/pre_flight.py`: Restored script.
+  - `tools/scaffold_crate.py`: Restored script.
+  - `.agents/skills/amiga-scaffold-crate/SKILL.md`: Restored skill.
+  - `AGENTS.md`, `.agents/rules/diary-maintenance.md`, `.agents/rules/repro-first.md`, `.agents/rules/parallel-execution.md`: Restored references.
+- **What Was Changed (The Concrete Reality)**:
+  - Executed git revert for commit 694db42 per user directive.
+  - Fully restored all 3 tooling scripts, skill directory, and rule citations.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 332 files (0 violations).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed.
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
+  - `python tools/check_polish.py --git`: Passed across all staged diff additions.

@@ -18,7 +18,7 @@ Whenever an agent is tasked with fixing a bug, CPU instruction divergence, bus c
 flowchart LR
     A["1. Author Failing Test<br/>(crates/*/tests/)"] --> B["2. Verify Failure<br/>(cargo test -p ...)"]
     B --> C["3. Implement Minimal Fix<br/>(crates/*/src/)"]
-    C --> D["4. Verify Pass & Non-Regression<br/>(cargo test)"]
+    C --> D["4. Verify Pass & Non-Regression<br/>(pre_flight.py)"]
 ```
 
 1. **Mandatory Failing Test First (The Red Phase):**
@@ -35,7 +35,7 @@ flowchart LR
      - For CPU changes: Run SingleStepTests (`cargo test -p test_runner --test test_singlestep`).
      - For Bus/DMA changes: Run Cartesian contention tests (`cargo test -p test_runner --test test_dma_cartesian`).
      - For GUI changes: Run headless integration tests (`cargo test -p gui --test test_interactions`).
-     - Always run formatting and architecture checks (`cargo fmt --all -- --check`, `cargo test -p test_runner --test test_architecture_rules`).
+     - Always run the Pre-Flight Gate (`python tools/pre_flight.py`).
 
 4. **Permanent Regression Anchor:**
    - The reproduction test must remain in `crates/<crate>/tests/` permanently to prevent future regressions.
