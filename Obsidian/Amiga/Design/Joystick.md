@@ -7,7 +7,7 @@ subsystem: "denise"
 status: "active"
 created: 2026-09-04
 updated: 2026-09-12
-related: ["[Mouse.md](Mouse.md)", "[Denise.md](Denise.md)", "[CIA.md](CIA.md)", "[General Architecture.md](General%20Architecture.md)"]
+related: ["[Game Ports.md](Game%20Ports.md)", "[Mouse.md](Mouse.md)", "[Denise.md](Denise.md)", "[CIA.md](CIA.md)", "[General Architecture.md](General%20Architecture.md)"]
 ---
 
 # Amiga 500 Joystick Subsystem & Input Architecture
@@ -15,7 +15,7 @@ related: ["[Mouse.md](Mouse.md)", "[Denise.md](Denise.md)", "[CIA.md](CIA.md)", 
 This document specifies the hardware registers, electrical interface, extended adapter standards, and cross-platform host input abstraction for digital and proportional joysticks in the Amiga 500 emulator.
 
 > [!NOTE]
-> For top-level machine coordination, see [General Architecture.md](General%20Architecture.md). For game port switching and configuration, see [Configuration.md](Configuration.md). For frontend UI input routing, see [GUI.md](GUI.md).
+> For dual game port bus routing, see [Game Ports.md](Game%20Ports.md). For top-level machine coordination, see [General Architecture.md](General%20Architecture.md). For game port switching and configuration, see [Configuration.md](Configuration.md). For frontend UI input routing, see [GUI.md](GUI.md).
 
 ---
 

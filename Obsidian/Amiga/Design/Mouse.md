@@ -7,7 +7,7 @@ subsystem: "denise"
 status: "active"
 created: 2026-09-04
 updated: 2026-09-12
-related: ["[Joystick.md](Joystick.md)", "[Denise.md](Denise.md)", "[CIA.md](CIA.md)", "[GUI.md](GUI.md)", "[General Architecture.md](General%20Architecture.md)"]
+related: ["[Game Ports.md](Game%20Ports.md)", "[Joystick.md](Joystick.md)", "[Denise.md](Denise.md)", "[CIA.md](CIA.md)", "[GUI.md](GUI.md)", "[General Architecture.md](General%20Architecture.md)"]
 ---
 
 # Amiga 500 Mouse Subsystem & Pointer Architecture
@@ -15,7 +15,7 @@ related: ["[Joystick.md](Joystick.md)", "[Denise.md](Denise.md)", "[CIA.md](CIA.
 This document specifies the hardware registers, quadrature counter mechanics, button sensing, and cross-platform host mouse/touchscreen input abstraction for the Amiga 500 emulator.
 
 > [!NOTE]
-> For top-level machine coordination, see [General Architecture.md](General%20Architecture.md). For game port configurations, see [Configuration.md](Configuration.md). For digital joysticks, see [Joystick.md](Joystick.md). For GUI pointer locking, see [GUI.md](GUI.md).
+> For dual game port bus routing, see [Game Ports.md](Game%20Ports.md). For top-level machine coordination, see [General Architecture.md](General%20Architecture.md). For game port configurations, see [Configuration.md](Configuration.md). For digital joysticks, see [Joystick.md](Joystick.md). For GUI pointer locking, see [GUI.md](GUI.md).
 
 ---
 
