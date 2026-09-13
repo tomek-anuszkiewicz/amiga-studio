@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+trigger: model_decision
 description: Strict English output policy for all agent responses, plans, artifacts, and code.
 ---
 

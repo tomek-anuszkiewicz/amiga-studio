@@ -2626,6 +2626,24 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.62s.
   - `python tools/check_polish.py --git`: Passed across all staged diff additions.
 
+---
+
+### [2026-09-14 01:45 CEST] — Changed language-policy.md Trigger to model_decision
+- **Affected Subsystems**:
+  - `.agents/rules/language-policy.md`: Switched frontmatter trigger from `always_on` to `model_decision`.
+  - `AGENTS.md`: Moved Language Policy from Section 1.A (Universal Invariants) to Section 1.B (Domain-Specific Rules).
+- **What Was Changed (The Concrete Reality)**:
+  - Configured progressive disclosure for `language-policy.md`, reducing per-turn prompt overhead while preserving the 1-line constitutional mandate in `AGENTS.md`.
+  - Relies on the active runtime hook (`language-policy-guard` in `.agents/hooks.json`) and git pre-commit hook to mechanically prevent Polish vocabulary leakage into files.
+- **Architectural Rationale & Trade-Offs**:
+  - *Context Optimization with Mechanical Enforcement:* Offloads verbose policy text from baseline context to on-demand progressive retrieval. The active PreToolUse hook acts as the definitive safety net.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 331 files (0 violations).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.61s.
+  - `python tools/check_polish.py --git`: Passed across all staged diff additions.
+
+
 
 
 
