@@ -108,8 +108,9 @@ impl Paula {
         self.mutations = [None; PAULA_MUTATION_CAPACITY];
     }
 
-    /// Advances Paula timers and processes in-flight register mutations by 1 Color Clock
-    pub fn step_cck(&mut self) {
+    /// Advances Paula timers and processes in-flight register mutations by 1 Color Clock.
+    /// Returns any register writes that matured and committed on this exact cycle.
+    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; 8] {
         let mut due = [None; 8];
         let mut due_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {
@@ -121,6 +122,7 @@ impl Paula {
         for item in due.iter().flatten() {
             self.commit_register_write(item.0, item.1);
         }
+        due
     }
 
     /// Reads a Paula register by offset ($000..$1FE).
@@ -140,8 +142,9 @@ impl Paula {
         }
     }
 
-    /// Schedules a staged register write with appropriate propagation delay and overwrite mode
-    pub fn write_register(&mut self, offset: u16, val: u16) {
+    /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
+    /// Returns `Some((offset, val))` if committed immediately, or `None` if staged in pipeline.
+    pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {
         let offset = offset & 0x1FE;
         let (delay, mode) = match offset {
             0x09A | 0x09C => (1, MutationMode::OverwritePending), // INTENA, INTREQ (1 CCK)
@@ -161,6 +164,9 @@ impl Paula {
 
         if !stage_mutation(&mut self.mutations, offset, val, delay, mode) {
             self.commit_register_write(offset, val);
+            Some((offset, val))
+        } else {
+            None
         }
     }
 

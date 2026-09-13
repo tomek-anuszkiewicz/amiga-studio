@@ -96,6 +96,11 @@ pub struct MemoryBus {
     /// Count of pending custom register bus write events
     pub pending_custom_write_count: usize,
 
+    /// Pending CIA register bus write events to be dispatched to CIA chips
+    pub pending_cia_writes: [Option<CiaWriteEvent>; MAX_PENDING_CIA_WRITES],
+    /// Count of pending CIA register bus write events
+    pub pending_cia_write_count: usize,
+
     /// Real-Time Clock (OKI MSM6242B) at $DC0000..$DC003F
     pub rtc: rtc::RtcMsm6242b,
 
@@ -108,11 +113,22 @@ pub struct MemoryBus {
 /// Maximum queued custom bus writes per cycle
 pub const MAX_PENDING_CUSTOM_WRITES: usize = 8;
 
+/// Maximum queued CIA bus writes per cycle
+pub const MAX_PENDING_CIA_WRITES: usize = 8;
+
 /// In-flight custom register bus write event
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CustomWriteEvent {
     pub offset: u16,
     pub val: u16,
+}
+
+/// In-flight CIA register bus write event
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CiaWriteEvent {
+    pub is_cia_b: bool,
+    pub reg: u8,
+    pub val: u8,
 }
 
 #[inline(always)]
@@ -174,6 +190,8 @@ impl MemoryBus {
             custom_registers: [0xFFFF; 256],
             pending_custom_writes: [None; MAX_PENDING_CUSTOM_WRITES],
             pending_custom_write_count: 0,
+            pending_cia_writes: [None; MAX_PENDING_CIA_WRITES],
+            pending_cia_write_count: 0,
             rtc,
             unmapped_byte: 0xFF,
         };
@@ -206,6 +224,33 @@ impl MemoryBus {
     #[inline]
     pub fn has_pending_custom_writes(&self) -> bool {
         self.pending_custom_write_count > 0
+    }
+
+    /// Enqueues a CIA register write event for dispatch to CIA chips
+    #[inline]
+    pub fn enqueue_cia_write(&mut self, is_cia_b: bool, reg: u8, val: u8) {
+        if self.pending_cia_write_count < MAX_PENDING_CIA_WRITES {
+            self.pending_cia_writes[self.pending_cia_write_count] =
+                Some(CiaWriteEvent { is_cia_b, reg, val });
+            self.pending_cia_write_count += 1;
+        }
+    }
+
+    /// Pops the next pending CIA register write event
+    #[inline]
+    pub fn pop_cia_write(&mut self) -> Option<CiaWriteEvent> {
+        if self.pending_cia_write_count > 0 {
+            self.pending_cia_write_count -= 1;
+            self.pending_cia_writes[self.pending_cia_write_count].take()
+        } else {
+            None
+        }
+    }
+
+    /// Returns true if there are pending CIA register write events
+    #[inline]
+    pub fn has_pending_cia_writes(&self) -> bool {
+        self.pending_cia_write_count > 0
     }
 
     /// Reconfigures RAM buffers and RTC mapping by applying a new A500Config

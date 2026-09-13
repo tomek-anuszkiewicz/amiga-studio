@@ -20,6 +20,8 @@ pub struct AudioChannel {
     pub dat: u16,
     /// Current down-counter for sample clocking
     pub counter: u16,
+    /// DMA enabled for this channel via DMACON (AUDxEN and DMAEN)
+    pub dma_enabled: bool,
     /// True while channel DMA / playback is active
     pub active: bool,
 }
@@ -33,6 +35,7 @@ impl AudioChannel {
         self.vol = 0;
         self.dat = 0;
         self.counter = 0;
+        self.dma_enabled = false;
         self.active = false;
     }
 }
@@ -54,6 +57,25 @@ impl Audio {
     pub fn reset(&mut self) {
         for ch in &mut self.channels {
             ch.reset();
+        }
+    }
+
+    /// Sets DMA enabled state for a specific channel (0..3)
+    #[inline]
+    pub fn set_channel_dma(&mut self, channel: usize, enabled: bool) {
+        if channel < 4 {
+            self.channels[channel].dma_enabled = enabled;
+            if !enabled {
+                self.channels[channel].active = false;
+            }
+        }
+    }
+
+    /// Action method: synchronizes all 4 channel DMA enables from DMACON (bits 0..3 and bit 9 DMAEN)
+    pub fn set_dma_enables(&mut self, channel_mask: u8, master_enabled: bool) {
+        for ch in 0..4 {
+            let enabled = master_enabled && ((channel_mask & (1 << ch)) != 0);
+            self.set_channel_dma(ch, enabled);
         }
     }
 

@@ -3,6 +3,7 @@
 //! 16-pixel wide hardware sprites, vertical start/stop comparators,
 //! sprite pairing for 15-color mode, and multiplexing.
 
+use config::BeamPosition;
 use serde::{Deserialize, Serialize};
 
 /// State for a single hardware sprite channel (0..7)
@@ -59,6 +60,8 @@ impl SpriteChannel {
 pub struct Sprites {
     /// 8 independent hardware sprite channels (Sprites 0 to 7)
     pub channels: [SpriteChannel; 8],
+    /// Sprite DMA enabled via DMACON (SPREN bit 5 and DMAEN bit 9)
+    pub dma_enabled: bool,
 }
 
 impl Sprites {
@@ -72,6 +75,24 @@ impl Sprites {
         for ch in &mut self.channels {
             *ch = SpriteChannel::default();
         }
+        self.dma_enabled = false;
+    }
+
+    /// Sets Sprite DMA enabled state from DMACON
+    #[inline]
+    pub fn set_dma_enabled(&mut self, enabled: bool) {
+        self.dma_enabled = enabled;
+        if !enabled {
+            for ch in &mut self.channels {
+                ch.is_armed = false;
+            }
+        }
+    }
+
+    /// Advances Sprite engine state by 1 Color Clock observing beam coordinates
+    #[inline]
+    pub fn step_cck(&mut self, _beam: BeamPosition) {
+        // Sprite comparator matching and serialization
     }
 
     /// Sets sprite position register (SPRxPOS)

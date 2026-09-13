@@ -44,6 +44,10 @@ pub struct Blitter {
     pub is_busy: bool,
     /// True if all output words of the blit were zero (for collision/cookie cut)
     pub is_zero: bool,
+    /// Blitter DMA channel enabled via DMACON (BLTEN bit 6 and DMAEN bit 9)
+    pub dma_enabled: bool,
+    /// Blitter Nasty / CPU priority mode (BLTPRI bit 10 in DMACON)
+    pub bltpri: bool,
 }
 
 impl Blitter {
@@ -72,11 +76,66 @@ impl Blitter {
         self.bltcdat = 0;
         self.is_busy = false;
         self.is_zero = true;
+        self.dma_enabled = false;
+        self.bltpri = false;
+    }
+
+    /// Sets Blitter DMA enabled state from DMACON
+    #[inline]
+    pub fn set_dma_enabled(&mut self, enabled: bool) {
+        self.dma_enabled = enabled;
+        if !enabled {
+            self.is_busy = false;
+        }
+    }
+
+    /// Sets Blitter Nasty priority mode from DMACON (BLTPRI, bit 10)
+    #[inline]
+    pub fn set_bltpri(&mut self, enabled: bool) {
+        self.bltpri = enabled;
+    }
+
+    /// Synchronizes channel pointers from Agnus registers
+    #[inline]
+    pub fn sync_pointers(&mut self, apt: u32, bpt: u32, cpt: u32, dpt: u32) {
+        self.bltapt = apt;
+        self.bltbpt = bpt;
+        self.bltcpt = cpt;
+        self.bltdpt = dpt;
+    }
+
+    /// Synchronizes control registers and channel modulos from Agnus
+    #[inline]
+    pub fn sync_controls(
+        &mut self,
+        con0: u16,
+        con1: u16,
+        afwm: u16,
+        alwm: u16,
+        amod: i16,
+        bmod: i16,
+        cmod: i16,
+        dmod: i16,
+    ) {
+        self.bltcon0 = con0;
+        self.bltcon1 = con1;
+        self.bltafwm = afwm;
+        self.bltalwm = alwm;
+        self.bltamod = amod;
+        self.bltbmod = bmod;
+        self.bltcmod = cmod;
+        self.bltdmod = dmod;
     }
 
     /// Triggers a new blit operation by writing BLTSIZE
     #[inline]
     pub fn start_blit(&mut self, bltsize: u16) {
+        self.trigger_blit(bltsize);
+    }
+
+    /// Action method: triggers blit execution when BLTSIZE matures
+    #[inline]
+    pub fn trigger_blit(&mut self, bltsize: u16) {
         self.bltsize = bltsize;
         self.is_busy = true;
         self.is_zero = true;

@@ -123,8 +123,9 @@ impl Denise {
         self.mutations = [None; DENISE_MUTATION_CAPACITY];
     }
 
-    /// Advances Denise pixel pipeline and processes in-flight mutations by 1 Color Clock
-    pub fn step_cck(&mut self) {
+    /// Advances Denise pixel pipeline and processes in-flight mutations by 1 Color Clock.
+    /// Returns any register writes that matured and committed on this exact cycle.
+    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; 8] {
         let mut due = [None; 8];
         let mut due_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {
@@ -136,6 +137,64 @@ impl Denise {
         for item in due.iter().flatten() {
             self.commit_register_write(item.0, item.1);
         }
+        due
+    }
+
+    /// Action method: sets BPLCON0 and updates active display mode flags
+    #[inline]
+    pub fn set_bplcon0(&mut self, val: u16) {
+        self.bplcon0 = val;
+    }
+
+    /// Action method: sets BPLCON1 horizontal scroll offsets
+    #[inline]
+    pub fn set_bplcon1(&mut self, val: u16) {
+        self.bplcon1 = val;
+    }
+
+    /// Action method: sets BPLCON2 priority flags
+    #[inline]
+    pub fn set_bplcon2(&mut self, val: u16) {
+        self.bplcon2 = val;
+    }
+
+    /// Action method: sets an individual RGB444 color palette entry
+    #[inline]
+    pub fn set_color(&mut self, index: usize, rgb: u16) {
+        if index < COLOR_PALETTE_SIZE {
+            self.color[index] = rgb & 0x0FFF;
+        }
+    }
+
+    /// Action method: sets display window clipping coordinates
+    #[inline]
+    pub fn set_diw(&mut self, strt: u16, stop: u16) {
+        self.diwstrt = strt;
+        self.diwstop = stop;
+    }
+
+    /// Returns the active number of bitplanes (0..6)
+    #[inline]
+    pub fn bitplane_count(&self) -> u8 {
+        ((self.bplcon0 >> 12) & 0x07) as u8
+    }
+
+    /// Returns true if High-Resolution (640-pixel) mode is enabled
+    #[inline]
+    pub fn is_hires(&self) -> bool {
+        (self.bplcon0 & 0x8000) != 0
+    }
+
+    /// Returns true if Hold-And-Modify (HAM) mode is enabled
+    #[inline]
+    pub fn is_ham(&self) -> bool {
+        (self.bplcon0 & 0x0800) != 0
+    }
+
+    /// Returns true if Dual Playfield mode is enabled
+    #[inline]
+    pub fn is_dual_playfield(&self) -> bool {
+        (self.bplcon0 & 0x0400) != 0
     }
 
     /// Reads collision data register (CLXDAT at $DFF00E) and clears it immediately on read
@@ -168,8 +227,9 @@ impl Denise {
         }
     }
 
-    /// Schedules a staged register write with appropriate propagation delay and overwrite mode
-    pub fn write_register(&mut self, offset: u16, val: u16) {
+    /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
+    /// Returns `Some((offset, val))` if committed immediately, or `None` if staged in pipeline.
+    pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {
         let offset = offset & 0x1FE;
         let (delay, mode) = match offset {
             0x100 | 0x102 | 0x104 | 0x106 => (1, MutationMode::OverwritePending), // BPLCON0..3
@@ -183,15 +243,18 @@ impl Denise {
 
         if !stage_mutation(&mut self.mutations, offset, val, delay, mode) {
             self.commit_register_write(offset, val);
+            Some((offset, val))
+        } else {
+            None
         }
     }
 
     /// Commits a register write directly into active Denise silicon state
     pub fn commit_register_write(&mut self, offset: u16, val: u16) {
         match offset & 0x1FE {
-            0x100 => self.bplcon0 = val,
-            0x102 => self.bplcon1 = val,
-            0x104 => self.bplcon2 = val,
+            0x100 => self.set_bplcon0(val),
+            0x102 => self.set_bplcon1(val),
+            0x104 => self.set_bplcon2(val),
             0x106 => self.bplcon3 = val,
             0x08E => self.diwstrt = val,
             0x090 => self.diwstop = val,

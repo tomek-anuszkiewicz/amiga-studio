@@ -108,7 +108,7 @@ impl A500Machine {
         let game_ports = game_ports::GamePorts::new();
         let parallel_port = parallel_port::ParallelPort::new();
 
-        Self {
+        let mut machine = Self {
             config,
             cpu,
             memory_bus,
@@ -129,7 +129,10 @@ impl A500Machine {
             keyboard,
             game_ports,
             parallel_port,
-        }
+        };
+        machine.poll_peripheral_pins();
+        machine.sync_memory_bus_registers();
+        machine
     }
 
     /// Performs cold reset: zeroes RAM, resets all chips and devices to power-on defaults
@@ -221,33 +224,52 @@ impl A500Machine {
         paula_ipl.max(cia_a_ipl).max(cia_b_ipl)
     }
 
-    /// Dispatches a custom register bus write to the target chip(s) with physical propagation delay
+    /// Dispatches a custom register bus write to the target chip(s) with physical propagation delay.
+    /// If any write commits immediately (e.g. overflow fallback or 0 delay), triggers its action immediately.
     pub fn dispatch_custom_write(&mut self, offset: u16, val: u16) {
         let offset = offset & 0x1FE;
         match offset {
             // Shared / Broadcast: DMACON ($096) -> Agnus and Paula
             0x096 => {
-                self.agnus.write_register(0x096, val);
-                self.paula.write_register(0x096, val);
+                if let Some((r, v)) = self.agnus.write_register(0x096, val) {
+                    self.dispatch_agnus_action(r, v);
+                }
+                if let Some((r, v)) = self.paula.write_register(0x096, val) {
+                    self.dispatch_paula_action(r, v);
+                }
             }
             // Shared / Broadcast: BPLCON0 ($100) -> Denise (1 CCK) & Agnus (4 CCK)
             0x100 => {
-                self.denise.write_register(0x100, val);
-                self.agnus.write_register(0x100, val);
+                if let Some((r, v)) = self.denise.write_register(0x100, val) {
+                    self.dispatch_denise_action(r, v);
+                }
+                if let Some((r, v)) = self.agnus.write_register(0x100, val) {
+                    self.dispatch_agnus_action(r, v);
+                }
             }
             // Shared / Broadcast: BPLCON1 ($102) -> Denise & Agnus
             0x102 => {
-                self.denise.write_register(0x102, val);
-                self.agnus.write_register(0x102, val);
+                if let Some((r, v)) = self.denise.write_register(0x102, val) {
+                    self.dispatch_denise_action(r, v);
+                }
+                if let Some((r, v)) = self.agnus.write_register(0x102, val) {
+                    self.dispatch_agnus_action(r, v);
+                }
             }
             // Shared / Broadcast: DIWSTRT ($08E) & DIWSTOP ($090) -> Denise & Agnus
             0x08E | 0x090 => {
-                self.denise.write_register(offset, val);
-                self.agnus.write_register(offset, val);
+                if let Some((r, v)) = self.denise.write_register(offset, val) {
+                    self.dispatch_denise_action(r, v);
+                }
+                if let Some((r, v)) = self.agnus.write_register(offset, val) {
+                    self.dispatch_agnus_action(r, v);
+                }
             }
             // Denise-specific registers (CLXCON, BPLCON2/3, BPLDAT, SPRITES, COLORS)
             0x098 | 0x104 | 0x106 | 0x110..=0x11A | 0x140..=0x17E | 0x180..=0x1BE | 0x036 => {
-                self.denise.write_register(offset, val);
+                if let Some((r, v)) = self.denise.write_register(offset, val) {
+                    self.dispatch_denise_action(r, v);
+                }
             }
             // Paula-specific registers (INTENA, INTREQ, ADKCON, UART, DSKLEN/SYNC, AUDIO)
             0x09A
@@ -260,13 +282,160 @@ impl A500Machine {
             | 0x030..=0x034
             | 0x07E
             | 0x0A0..=0x0DE => {
-                self.paula.write_register(offset, val);
+                if let Some((r, v)) = self.paula.write_register(offset, val) {
+                    self.dispatch_paula_action(r, v);
+                }
             }
             // Agnus-specific registers (Blitter, Copper, DMA pointers, modulos, DDF)
             _ => {
-                self.agnus.write_register(offset, val);
+                if let Some((r, v)) = self.agnus.write_register(offset, val) {
+                    self.dispatch_agnus_action(r, v);
+                }
             }
         }
+    }
+
+    /// Action method dispatch for committed Agnus registers
+    pub fn dispatch_agnus_action(&mut self, reg: u16, val: u16) {
+        match reg & 0x1FE {
+            0x096 => {
+                // DMACON channel routing
+                self.dma.write_dmacon(val);
+                let dmaen = (self.agnus.dmacon & 0x0200) != 0;
+                self.audio
+                    .set_dma_enables((self.agnus.dmacon & 0x000F) as u8, dmaen);
+                self.floppy
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0010) != 0);
+                self.sprites
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0020) != 0);
+                self.blitter
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0040) != 0);
+                self.blitter.set_bltpri((self.agnus.dmacon & 0x0400) != 0);
+                self.copper
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0080) != 0);
+                self.frame_builder
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0100) != 0);
+            }
+            0x088 => {
+                self.copper.strobe_jump1(self.agnus.cop1lc);
+            }
+            0x08A => {
+                self.copper.strobe_jump2(self.agnus.cop2lc);
+            }
+            0x080 | 0x082 => {
+                self.copper.set_cop1lc(self.agnus.cop1lc);
+            }
+            0x084 | 0x086 => {
+                self.copper.set_cop2lc(self.agnus.cop2lc);
+            }
+            0x02E => {
+                self.copper.set_copcon(val);
+            }
+            0x058 => {
+                self.blitter.sync_pointers(
+                    self.agnus.bltapt,
+                    self.agnus.bltbpt,
+                    self.agnus.bltcpt,
+                    self.agnus.bltdpt,
+                );
+                self.blitter.sync_controls(
+                    self.agnus.bltcon0,
+                    self.agnus.bltcon1,
+                    self.agnus.bltafwm,
+                    self.agnus.bltalwm,
+                    self.agnus.bltamod,
+                    self.agnus.bltbmod,
+                    self.agnus.bltcmod,
+                    self.agnus.bltdmod,
+                );
+                self.blitter.trigger_blit(val);
+            }
+            0x100 => {
+                self.denise.set_bplcon0(val);
+            }
+            0x102 => {
+                self.denise.set_bplcon1(val);
+            }
+            0x08E | 0x090 => {
+                self.denise.set_diw(self.agnus.diwstrt, self.agnus.diwstop);
+            }
+            _ => {}
+        }
+    }
+
+    /// Action method dispatch for committed Paula registers
+    pub fn dispatch_paula_action(&mut self, reg: u16, val: u16) {
+        match reg & 0x1FE {
+            // Audio channel 0
+            0x0A4 => self.audio.set_len(0, val),
+            0x0A6 => self.audio.set_per(0, val),
+            0x0A8 => self.audio.set_vol(0, (val & 0x7F) as u8),
+            0x0AA => self.audio.set_dat(0, val),
+
+            // Audio channel 1
+            0x0B4 => self.audio.set_len(1, val),
+            0x0B6 => self.audio.set_per(1, val),
+            0x0B8 => self.audio.set_vol(1, (val & 0x7F) as u8),
+            0x0BA => self.audio.set_dat(1, val),
+
+            // Audio channel 2
+            0x0C4 => self.audio.set_len(2, val),
+            0x0C6 => self.audio.set_per(2, val),
+            0x0C8 => self.audio.set_vol(2, (val & 0x7F) as u8),
+            0x0CA => self.audio.set_dat(2, val),
+
+            // Audio channel 3
+            0x0D4 => self.audio.set_len(3, val),
+            0x0D6 => self.audio.set_per(3, val),
+            0x0D8 => self.audio.set_vol(3, (val & 0x7F) as u8),
+            0x0DA => self.audio.set_dat(3, val),
+
+            // Floppy disk controller registers
+            0x020 | 0x022 => self.floppy.set_dskpt(self.agnus.dskpt),
+            0x024 => self.floppy.set_dsklen(val),
+            0x07E => self.floppy.set_dsksyn(val),
+            0x09E => self.floppy.set_adkcon(self.paula.adkcon),
+            0x096 => {
+                let dmaen = (self.agnus.dmacon & 0x0200) != 0;
+                self.floppy
+                    .set_dma_enabled(dmaen && (self.paula.dma_enables & 0x0010) != 0);
+                self.audio
+                    .set_dma_enables((self.paula.dma_enables & 0x000F) as u8, dmaen);
+            }
+            _ => {}
+        }
+    }
+
+    /// Action method dispatch for committed Denise registers
+    pub fn dispatch_denise_action(&mut self, reg: u16, val: u16) {
+        match reg & 0x1FE {
+            0x100 => self.denise.set_bplcon0(val),
+            0x102 => self.denise.set_bplcon1(val),
+            0x104 => self.denise.set_bplcon2(val),
+            0x180..=0x1BE => {
+                let idx = ((reg - 0x180) / 2) as usize;
+                self.denise.set_color(idx, val);
+            }
+            0x08E | 0x090 => {
+                self.denise
+                    .set_diw(self.denise.diwstrt, self.denise.diwstop);
+            }
+            _ => {}
+        }
+    }
+
+    /// Action method dispatch for committed CIA registers
+    pub fn dispatch_cia_action(&mut self, id: cia::CiaId, reg: u8, val: u8) {
+        if id == cia::CiaId::B && (reg & 0x0F) == 0x1 {
+            // CIA-B Port B ($BFD100): drive motor latching, stepping, side select, and unit select
+            self.floppy.handle_ciab_port_b_write(val);
+        }
+    }
+
+    /// Polls peripheral sensing lines into CIA input pins
+    pub fn poll_peripheral_pins(&mut self) {
+        let floppy_inputs = self.floppy.sample_ciaa_port_a_inputs();
+        self.cia_a.set_input_pins_a(floppy_inputs, 0x3C);
     }
 
     /// Synchronizes active chip register values into the MemoryBus read snapshot
@@ -286,6 +455,94 @@ impl A500Machine {
         self.memory_bus.custom_registers[0x01A >> 1] = self.paula.dskbytr;
         self.memory_bus.custom_registers[0x01C >> 1] = self.paula.intena;
         self.memory_bus.custom_registers[0x01E >> 1] = self.paula.intreq;
+        for i in 0..16 {
+            self.memory_bus.cia_a_registers[i] = self.cia_a.peek_register(i as u8);
+            self.memory_bus.cia_b_registers[i] = self.cia_b.peek_register(i as u8);
+        }
+    }
+
+    /// Advances all peer custom chips, coprocessors, and peripheral subsystems by exactly 1 Color Clock (~280 ns),
+    /// draining pending bus writes, dispatching matured actions, syncing registers, and arbitrating interrupts.
+    pub fn step_subsystems_cck(&mut self) {
+        // 1. Drain and dispatch pending bus writes to target custom chips and CIAs
+        while let Some(event) = self.memory_bus.pop_custom_write() {
+            self.dispatch_custom_write(event.offset, event.val);
+        }
+        while let Some(event) = self.memory_bus.pop_cia_write() {
+            if event.is_cia_b {
+                if let Some((r, v)) = self.cia_b.write_register(event.reg, event.val) {
+                    self.dispatch_cia_action(cia::CiaId::B, r, v);
+                }
+            } else {
+                if let Some((r, v)) = self.cia_a.write_register(event.reg, event.val) {
+                    self.dispatch_cia_action(cia::CiaId::A, r, v);
+                }
+            }
+        }
+
+        // 2. Advance Agnus raster beam counters and mutation pipeline
+        let agnus_due = self.agnus.step_cck();
+        for item in agnus_due.iter().flatten() {
+            self.dispatch_agnus_action(item.0, item.1);
+        }
+        let beam = self.agnus.beam();
+
+        // 3. Step Copper coprocessor with beam coordinates
+        self.copper.step_cck(beam);
+
+        // 4. Step Blitter engine
+        self.blitter.step_cck();
+
+        // 5. Step DMA scheduler and evaluate Chip RAM contention
+        self.dma.step_cck();
+        self.agnus.chip_ram_blocked = self
+            .dma
+            .is_chip_ram_blocked(beam.hpos, self.blitter.is_busy);
+        self.memory_bus.chip_ram_blocked = self.agnus.chip_ram_blocked;
+
+        // 6. Step Denise video serializer and mutation pipeline
+        let denise_due = self.denise.step_cck();
+        for item in denise_due.iter().flatten() {
+            self.dispatch_denise_action(item.0, item.1);
+        }
+        self.sprites.step_cck(beam);
+        self.frame_builder.step_cck(beam);
+
+        // 7. Step Paula audio, floppy, serial transceivers, and mutation pipeline
+        let paula_due = self.paula.step_cck();
+        for item in paula_due.iter().flatten() {
+            self.dispatch_paula_action(item.0, item.1);
+        }
+        self.audio.step_cck();
+        self.floppy.step_cck();
+        self.serial_port.step_cck();
+
+        // 8. Step CIAs and dispatch E-Clock mutations
+        let cia_a_due = self.cia_a.step_cck();
+        for item in cia_a_due.iter().flatten() {
+            self.dispatch_cia_action(cia::CiaId::A, item.0, item.1);
+        }
+        let cia_b_due = self.cia_b.step_cck();
+        for item in cia_b_due.iter().flatten() {
+            self.dispatch_cia_action(cia::CiaId::B, item.0, item.1);
+        }
+
+        // 9. Cross-Chip Cascades (Physical Pins)
+        if let Some(chip_ram_engaged) = self.cia_a.ovl_transition() {
+            if chip_ram_engaged {
+                self.memory_bus.map_chip_ram_to_low_memory();
+            } else {
+                self.memory_bus.map_kickstart_to_low_memory();
+            }
+        }
+        self.poll_peripheral_pins();
+
+        // 10. Sync active chip registers into the MemoryBus read snapshot
+        self.sync_memory_bus_registers();
+
+        // 11. Central interrupt priority line (IPL 1-6) arbitration
+        let ipl = self.resolve_ipl();
+        self.cpu.state.ipl = ipl;
     }
 
     /// Advances the entire machine by exactly 1 Color Clock (~280 ns).
@@ -294,57 +551,10 @@ impl A500Machine {
         // 1. Advance master monotonic Color Clock counter
         self.cck = self.cck.wrapping_add(1);
 
-        // 2. Drain and dispatch pending bus writes to target custom chips
-        while let Some(event) = self.memory_bus.pop_custom_write() {
-            self.dispatch_custom_write(event.offset, event.val);
-        }
+        // 2. Advance non-CPU subsystems
+        self.step_subsystems_cck();
 
-        // 3. Advance Agnus raster beam counters and mutation pipeline
-        self.agnus.step_cck();
-
-        // 4. Step Copper coprocessor
-        self.copper.step_cck();
-
-        // 5. Step Blitter engine
-        self.blitter.step_cck();
-
-        // 6. Step DMA scheduler and evaluate Chip RAM contention
-        self.dma.step_cck();
-        self.agnus.chip_ram_blocked = self
-            .dma
-            .is_chip_ram_blocked(self.agnus.hpos, self.blitter.is_busy);
-        self.memory_bus.chip_ram_blocked = self.agnus.chip_ram_blocked;
-
-        // 7. Step Denise video serializer and mutation pipeline
-        self.denise.step_cck();
-
-        // 8. Step Paula audio, floppy, serial transceivers, and mutation pipeline
-        self.audio.step_cck();
-        self.floppy.step_cck();
-        self.serial_port.step_cck();
-        self.paula.step_cck();
-
-        // 9. Step CIAs
-        self.cia_a.step_cck();
-        self.cia_b.step_cck();
-
-        // 10. Cross-Chip Cascades (Physical Pins)
-        if let Some(chip_ram_engaged) = self.cia_a.ovl_transition() {
-            if chip_ram_engaged {
-                self.memory_bus.map_chip_ram_to_low_memory();
-            } else {
-                self.memory_bus.map_kickstart_to_low_memory();
-            }
-        }
-
-        // 11. Sync active chip registers into the MemoryBus read snapshot
-        self.sync_memory_bus_registers();
-
-        // 12. Central interrupt priority line (IPL 1-6) arbitration
-        let ipl = self.resolve_ipl();
-        self.cpu.state.ipl = ipl;
-
-        // 13. Step CPU Color Clock phase with bus reference
+        // 3. Step CPU Color Clock phase with bus reference
         self.cpu.step_cck(&mut self.memory_bus);
     }
 

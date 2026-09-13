@@ -115,17 +115,20 @@ impl Cia {
         self.mutations = [None; CIA_REGISTER_COUNT];
     }
 
-    /// Advances CIA internal timers and E-Clock prescaler by 1 Color Clock
-    pub fn step_cck(&mut self) {
+    /// Advances CIA internal timers and E-Clock prescaler by 1 Color Clock.
+    /// Returns any register writes that matured and committed on this exact cycle.
+    pub fn step_cck(&mut self) -> [Option<(u8, u8)>; 4] {
         self.eclock_phase = self.eclock_phase.wrapping_add(1);
         if self.eclock_phase >= CCK_PER_ECLOCK {
             self.eclock_phase = 0;
-            self.step_eclock();
+            self.step_eclock()
+        } else {
+            [None; 4]
         }
     }
 
     /// Ticks CIA timers on each E-Clock pulse (every 5 CCKs)
-    fn step_eclock(&mut self) {
+    fn step_eclock(&mut self) -> [Option<(u8, u8)>; 4] {
         // 1. Process in-flight mutations scheduled for this E-Clock
         let mut due = [None; 4];
         let mut due_count = 0;
@@ -164,6 +167,8 @@ impl Cia {
                 self.tb_counter = self.tb_counter.wrapping_sub(1);
             }
         }
+
+        due
     }
 
     /// Sets ICR request bit and updates master IRQ flag
@@ -249,8 +254,15 @@ impl Cia {
         }
     }
 
-    /// Stages a register write with E-Clock delay in the mutation pipeline
-    pub fn stage_write(&mut self, reg: u8, val: u8, delay_eclocks: u8, mode: MutationMode) {
+    /// Stages a register write with E-Clock delay in the mutation pipeline.
+    /// Returns `Some((reg, val))` if committed immediately, or `None` if staged in pipeline.
+    pub fn stage_write(
+        &mut self,
+        reg: u8,
+        val: u8,
+        delay_eclocks: u8,
+        mode: MutationMode,
+    ) -> Option<(u8, u8)> {
         let reg = reg & 0x0F;
         if !stage_mutation(
             &mut self.mutations,
@@ -260,12 +272,25 @@ impl Cia {
             mode,
         ) {
             self.commit_register_write(reg, val);
+            Some((reg, val))
+        } else {
+            None
         }
     }
 
-    /// Writes CIA register directly upon completion of synchronous E-Clock bus cycle
-    pub fn write_register(&mut self, reg: u8, val: u8) {
+    /// Writes CIA register directly upon completion of synchronous E-Clock bus cycle.
+    /// Returns `Some((reg, val))` representing the committed write.
+    pub fn write_register(&mut self, reg: u8, val: u8) -> Option<(u8, u8)> {
+        let reg = reg & 0x0F;
         self.commit_register_write(reg, val);
+        Some((reg, val))
+    }
+
+    /// Injects external peripheral input pin levels into Port A for bits configured as inputs (`!ddra`)
+    #[inline]
+    pub fn set_input_pins_a(&mut self, pins: u8, mask: u8) {
+        let input_mask = mask & !self.ddra;
+        self.pra = (self.pra & !input_mask) | (pins & input_mask);
     }
 
     /// Commits a register write directly into active CIA silicon state

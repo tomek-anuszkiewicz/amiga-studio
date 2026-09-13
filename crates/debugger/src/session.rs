@@ -106,21 +106,9 @@ impl DebuggerSession {
         let ccks = (clocks as u64) / 2;
         self.machine.cck = self.machine.cck.wrapping_add(ccks);
         for _ in 0..ccks {
-            self.machine.agnus.step_cck();
-            self.machine.copper.step_cck();
-            self.machine.blitter.step_cck();
-            self.machine.dma.step_cck();
-            self.machine.denise.step_cck();
-            self.machine.audio.step_cck();
-            self.machine.floppy.step_cck();
-            self.machine.serial_port.step_cck();
-            self.machine.paula.step_cck();
-            self.machine.cia_a.step_cck();
-            self.machine.cia_b.step_cck();
+            self.machine.step_subsystems_cck();
         }
         self.machine.memory_bus.step_cck(ccks);
-        let ipl = self.machine.resolve_ipl();
-        self.machine.cpu.state.ipl = ipl;
     }
 
     /// Steps exactly 1 Color Clock phase (~280 ns) across the entire machine

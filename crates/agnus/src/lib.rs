@@ -4,7 +4,7 @@
 //! the Copper coprocessor and 4-channel DMA Blitter.
 
 pub use config::AgnusModel;
-use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
+use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
 /// Maximum horizontal Color Clock cycles per scanline (PAL)
@@ -182,22 +182,10 @@ impl Agnus {
         self.mutations = [None; AGNUS_MUTATION_CAPACITY];
     }
 
-    /// Advances raster beam position and processes in-flight register mutations by 1 Color Clock
-    pub fn step_cck(&mut self) {
-        // 1. Process and commit due register mutations
-        let mut due = [None; 8];
-        let mut due_count = 0;
-        tick_mutations(&mut self.mutations, |reg, val| {
-            if due_count < due.len() {
-                due[due_count] = Some((reg, val));
-                due_count += 1;
-            }
-        });
-        for item in due.iter().flatten() {
-            self.commit_register_write(item.0, item.1);
-        }
-
-        // 2. Advance horizontal and vertical raster beam counters
+    /// Advances raster beam position and processes in-flight register mutations by 1 Color Clock.
+    /// Returns any register writes that matured and committed on this exact cycle.
+    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; 8] {
+        // 1. Advance horizontal and vertical raster beam counters
         let max_lines = match self.model {
             AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
             _ => PAL_FRAME_LINES,
@@ -212,6 +200,27 @@ impl Agnus {
                 self.lof = !self.lof;
             }
         }
+
+        // 2. Process and commit due register mutations
+        let mut due = [None; 8];
+        let mut due_count = 0;
+        tick_mutations(&mut self.mutations, |reg, val| {
+            if due_count < due.len() {
+                due[due_count] = Some((reg, val));
+                due_count += 1;
+            }
+        });
+        for item in due.iter().flatten() {
+            self.commit_register_write(item.0, item.1);
+        }
+
+        due
+    }
+
+    /// Returns the current raster beam position snapshot
+    #[inline]
+    pub fn beam(&self) -> BeamPosition {
+        BeamPosition::new(self.hpos, self.vpos, self.lof)
     }
 
     /// Returns true if Chip RAM is currently locked by custom chip DMA
@@ -268,8 +277,10 @@ impl Agnus {
         }
     }
 
-    /// Schedules a staged register write with appropriate propagation delay and overwrite mode
-    pub fn write_register(&mut self, offset: u16, val: u16) {
+    /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
+    /// Returns `Some((offset, val))` if the register was committed immediately (e.g. overflow fallback or delay 0),
+    /// or `None` if staged in the mutation pipeline.
+    pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {
         let offset = offset & 0x1FE;
         let (delay, mode) = match offset {
             0x096 => (2, MutationMode::OverwritePending), // DMACON
@@ -290,6 +301,9 @@ impl Agnus {
 
         if !stage_mutation(&mut self.mutations, offset, val, delay, mode) {
             self.commit_register_write(offset, val);
+            Some((offset, val))
+        } else {
+            None
         }
     }
 

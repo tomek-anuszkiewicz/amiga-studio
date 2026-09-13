@@ -475,7 +475,7 @@ fn test_disassembly_instruction_decoding_fibonacci() {
     let (dis5, len5) = debugger::disassemble(0x001010, |a| {
         app.session.machine.memory_bus.read_word_debug(a)
     });
-    assert_eq!(dis5.mnemonic, "DBRA");
+    assert!(dis5.mnemonic == "DBF" || dis5.mnemonic == "DBRA");
     assert!(dis5.operands.contains("D3"));
     assert_eq!(len5, 4);
 }

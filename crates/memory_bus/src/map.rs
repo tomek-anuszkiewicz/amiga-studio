@@ -193,15 +193,17 @@ pub fn write_cia(bus: &mut MemoryBus, addr: u32, val: u8) {
     // CIA-B ($BFD000-$BFDF00)
     if (0xBFD000..=0xBFDF00).contains(&addr) {
         if (addr & 1) == 0 {
-            let reg = ((addr >> 8) & 0x0F) as usize;
-            bus.cia_b_registers[reg] = val;
+            let reg = ((addr >> 8) & 0x0F) as u8;
+            bus.cia_b_registers[reg as usize] = val;
+            bus.enqueue_cia_write(true, reg, val);
         }
         return;
     }
     // CIA-A ($BFE001-$BFEF01)
     if (0xBFE001..=0xBFEF01).contains(&addr) && (addr & 1) == 1 {
-        let reg = ((addr >> 8) & 0x0F) as usize;
-        bus.cia_a_registers[reg] = val;
+        let reg = ((addr >> 8) & 0x0F) as u8;
+        bus.cia_a_registers[reg as usize] = val;
+        bus.enqueue_cia_write(false, reg, val);
         // CIA-A bit 0 of Port A ($BFE001) controls the low-memory overlay (_OVL)
         if reg == 0 {
             if (val & 0x01) == 0 {

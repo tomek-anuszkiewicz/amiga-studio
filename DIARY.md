@@ -2457,3 +2457,39 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.73s.
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
 
+---
+
+### [2026-09-13 16:45 CEST] — Step 2.3: Subsystem Action Dispatch & Multi-Chip Register Binding Pipeline
+- **Affected Subsystems**:
+  - `crates/config`: Added `BeamPosition` struct (`hpos: u16`, `vpos: u16`, `lof: bool`) with `const fn new()`.
+  - `crates/copper`: Added `dma_enabled`, `set_dma_enabled`, `set_cop1lc`, `set_cop2lc`, `strobe_jump1`, `strobe_jump2`, and beam-aware `step_cck(&mut self, _beam: BeamPosition)`.
+  - `crates/blitter`: Added `dma_enabled`, `set_dma_enabled`, `bltpri`, `set_bltpri`, `sync_pointers`, `sync_controls`, and `trigger_blit(bltsize)` setting `is_busy = true`.
+  - `crates/audio`: Added `dma_enabled` to `AudioChannel`, `set_channel_dma(ch, bool)`, and `set_dma_enables(mask, master)` to `Audio`.
+  - `crates/sprites`: Added `dma_enabled`, `set_dma_enabled`, and `step_cck(&mut self, _beam: BeamPosition)`.
+  - `crates/frame_builder`: Added `dma_enabled`, `set_dma_enabled`, and `step_cck(&mut self, beam: BeamPosition)`.
+  - `crates/agnus`: Added `beam() -> BeamPosition`, updated `step_cck` to return matured mutations `[Option<(u16, u16)>; 8]`, and updated `write_register` to return `Option<(u16, u16)>` on immediate commit.
+  - `crates/denise`: Updated `step_cck` to return `[Option<(u16, u16)>; 8]`, updated `write_register` to return `Option<(u16, u16)>`, and added semantic action setters (`set_bplcon0`, `set_bplcon1`, `set_bplcon2`, `set_color`, `set_diw`).
+  - `crates/paula`: Updated `step_cck` to return `[Option<(u16, u16)>; 8]`, and updated `write_register` to return `Option<(u16, u16)>`.
+  - `crates/cia`: Updated `step_cck` to return `[Option<(u8, u8)>; 4]`, updated `stage_write`/`write_register` to return `Option<(u8, u8)>`, and added `set_input_pins_a(&mut self, pins, mask)`.
+  - `crates/floppy`: Fully implemented `FloppyDrive` (shared motor latching on select, head stepping with direction, track 0 sensing, disk change flip-flop cleared only on step pulse with disk inserted) and `FloppyController` (`handle_ciab_port_b_write`, `sample_ciaa_port_a_inputs`, `set_dsklen` 2-write arming sequence, `set_dskpt`, `set_dsksyn`, `set_adkcon`).
+  - `crates/memory_bus`: Added `pending_cia_writes: [Option<CiaWriteEvent>; 8]`, `enqueue_cia_write()`, and `pop_cia_write()` to queue CPU/Copper CIA bus writes for dispatch to CIA chips.
+  - `crates/machine_loop`: Added `dispatch_agnus_action`, `dispatch_paula_action`, `dispatch_denise_action`, `dispatch_cia_action`, `poll_peripheral_pins`, and unified non-CPU subsystem stepping via `step_subsystems_cck()`. Synchronized CIA registers in `sync_memory_bus_registers`.
+  - `crates/machine_loop/tests/test_action_dispatch.rs`: Added 4 comprehensive integration tests validating DMACON broadcast routing, Copper strobe jumps, Blitter pointer synchronization & busy triggering, and end-to-end floppy bus control and sensor readback.
+  - `crates/floppy/tests/test_floppy.rs`: 6 comprehensive unit tests validating physical drive stepping, DSKLEN 2-write arming, disk change flip-flop, CIA-B motor latching/stepping, and CIA-A sensing inputs.
+  - `crates/debugger/src/session.rs`: Refactored `step_instruction` to delegate non-CPU stepping directly to `self.machine.step_subsystems_cck()`.
+  - `crates/gui/tests/test_interactions.rs`: Updated DBcc condition 1 test assertion to accept DBF/DBRA.
+  - `Obsidian/Amiga/Design/`: Updated `Main loop A500.md` (Section 5.3) and `Floppy.md` (Section 10).
+  - `ROADMAP.md`: Marked Step 2.3 as complete and advanced Active Focus to Step 2.4.
+- **What Was Changed (The Concrete Reality)**:
+  - Translated low-level register writes and matured mutation pipeline events into strongly typed action methods across all subsystem structs, eliminating raw register polling.
+  - Modeled physical multi-chip aggregate device control for the Amiga floppy subsystem across CIA-A Port A ($BFE001 sensing lines), CIA-B Port B ($BFD100 drive mechanics), and Paula (DMA arming and track transfer).
+  - Implemented decoupled master raster beam observation passing `BeamPosition` directly to `step_cck(beam)` without circular references.
+- **Architectural Rationale & Trade-Offs**:
+  - *Unified Subsystem Stepping:* Implemented `A500Machine::step_subsystems_cck()` to advance non-CPU hardware across `machine_loop` and `debugger::session`, preventing desynchronization between free run and single-step debug modes.
+  - *Zero Runtime Allocations:* All event queues, mutation returns, and pin buffers use fixed inline arrays.
+- **Verification & Test Results**:
+  - `cargo test -p floppy`: 6 passed.
+  - `cargo test -p machine_loop --test test_action_dispatch`: 4 passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: 17 passed.
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
+

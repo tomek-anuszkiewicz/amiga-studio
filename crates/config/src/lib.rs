@@ -10,6 +10,25 @@ pub use mutation::{stage_mutation, tick_mutations, DelayedMutation, MutationMode
 
 use serde::{Deserialize, Serialize};
 
+/// Master raster beam position counter (synchronized to Color Clock)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct BeamPosition {
+    /// Horizontal Color Clock index (0..227 CCK)
+    pub hpos: u16,
+    /// Vertical scanline index (0..311 PAL, 0..261 NTSC)
+    pub vpos: u16,
+    /// Long Frame toggle bit (interlace mode)
+    pub lof: bool,
+}
+
+impl BeamPosition {
+    /// Creates a new beam position with given coordinates
+    #[inline]
+    pub const fn new(hpos: u16, vpos: u16, lof: bool) -> Self {
+        Self { hpos, vpos, lof }
+    }
+}
+
 /// Canonical hardware configuration presets
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum A500Preset {

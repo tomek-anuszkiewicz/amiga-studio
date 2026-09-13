@@ -3,6 +3,7 @@
 //! Assembles scanline pixel data, applies display window clipping,
 //! and generates 32-bit ARGB frame buffers for host display frontends.
 
+use config::BeamPosition;
 use serde::{Deserialize, Serialize};
 
 /// Maximum overscan width in high-resolution pixels
@@ -23,6 +24,8 @@ pub struct FrameBuilder {
     pub vpos: u16,
     /// Current horizontal Color Clock position
     pub hpos: u16,
+    /// Bitplane DMA channel enabled via DMACON (BPLEN bit 8 and DMAEN bit 9)
+    pub dma_enabled: bool,
     /// True when a complete video frame has been rasterized (VBlank reached)
     pub frame_ready: bool,
     /// Full 32-bit ARGB pixel buffer (0xAARRGGBB)
@@ -56,6 +59,7 @@ impl FrameBuilder {
             height: MAX_FRAME_HEIGHT as u32,
             vpos: 0,
             hpos: 0,
+            dma_enabled: false,
             frame_ready: false,
             buffer: vec![0xFF000000; FRAME_BUFFER_PIXELS],
         }
@@ -65,8 +69,25 @@ impl FrameBuilder {
     pub fn reset(&mut self) {
         self.vpos = 0;
         self.hpos = 0;
+        self.dma_enabled = false;
         self.frame_ready = false;
         self.buffer.fill(0xFF000000);
+    }
+
+    /// Sets Bitplane DMA enabled state from DMACON
+    #[inline]
+    pub fn set_dma_enabled(&mut self, enabled: bool) {
+        self.dma_enabled = enabled;
+    }
+
+    /// Advances frame builder by 1 Color Clock observing current beam coordinates
+    #[inline]
+    pub fn step_cck(&mut self, beam: BeamPosition) {
+        self.hpos = beam.hpos;
+        self.vpos = beam.vpos;
+        if beam.hpos == 0 && beam.vpos == 0 {
+            self.frame_ready = true;
+        }
     }
 
     /// Sets an individual pixel color (0xAARRGGBB) with boundary checking

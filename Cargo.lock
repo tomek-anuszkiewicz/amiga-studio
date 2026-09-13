@@ -776,6 +776,7 @@ dependencies = [
 name = "copper"
 version = "0.1.0"
 dependencies = [
+ "config",
  "serde",
 ]
 
@@ -1355,6 +1356,7 @@ dependencies = [
 name = "frame_builder"
 version = "0.1.0"
 dependencies = [
+ "config",
  "serde",
 ]
 
@@ -3345,6 +3347,7 @@ dependencies = [
 name = "sprites"
 version = "0.1.0"
 dependencies = [
+ "config",
  "serde",
 ]
 

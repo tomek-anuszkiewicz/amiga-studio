@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "paula"
 status: "active"
 created: 2026-09-06
-updated: 2026-09-12
+updated: 2026-09-13
 related: ["[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[MemoryBus.md](MemoryBus.md)", "[CycleCounter.md](CycleCounter.md)", "[Agnus.md](Agnus.md)"]
 ---
 
@@ -363,4 +363,21 @@ flowchart TD
 - [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware - Floppy)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): Low-level MFM encoding format, sector layout, data checksums, and sync word (`$4489`) mechanics.
 - [Amiga Hardware Reference Manual: Appendix I (External Disk Connector Interface Specification)](../Reference/Hardware%20Reference%20Manual/17%20-%20Appendix%20I%20-%20External%20Disk%20Connector%20Interface%20Specification.md): DB23 external drive pinouts, motor control, drive selection logic, and head step timing.
 - [vAmiga Floppy Drive Implementation](../../../ref_src/vAmiga-4.5/Core/Peripherals/Drive/FloppyDrive.cpp): Reference physical drive emulation, revolution timers, track stepping, and ADF image parsing.
+
+---
+
+## 10. Subsystem Implementation (`crates/floppy`)
+
+The physical floppy subsystem is implemented in `crates/floppy` adhering strictly to zero dynamic heap allocations and physical signal modeling:
+
+1. **`FloppyDrive` Mechanics (`crates/floppy/src/lib.rs`):**
+   - Head cylinder tracking ($0..79$, clampable up to 83 for extended tracks) with `_DIR` polarity ($0 = \text{inward}, 1 = \text{outward}$).
+   - Track 0 optical sensor (`is_track0()`) active only at cylinder 0.
+   - Motor flip-flop latched exclusively on the falling edge of `_SELx`.
+   - Disk change flip-flop (`_CHNG`) set on disk ejection, remaining asserted until cleared by a step pulse while a disk is present.
+2. **`FloppyController` Multi-Chip Bridge:**
+   - **CIA-B Interface (`handle_ciab_port_b_write`):** Processes output writes to $BFD100, calculating falling edges to latch `_MTR` and pulse `_STEP` across drives `DF0:` through `DF3:`.
+   - **CIA-A Interface (`sample_ciaa_port_a_inputs`):** Generates active sensing bits ($3C$ floating open-collector default, or active drive status lines `_RDY`, `_TK0`, `_WPROT`, `_CHNG`) for $BFE001.
+   - **Paula DMA Arming (`set_dsklen`):** Enforces the exact 2-write arming sequence. The first write with bit 15 arms the transfer; the second consecutive write with bit 15 starts DMA. Clearing bit 15 unarms and halts DMA immediately.
+
 

@@ -326,7 +326,7 @@ fn test_roundtrip_assemble_and_disassemble() {
         ("NOP", "NOP", ""),
         ("RTS", "RTS", ""),
         ("MOVE.W D0, D1", "MOVE.W", "D0, D1"),
-        ("MOVEQ #$2A, D0", "MOVEQ", "#$2A, D0"),
+        ("MOVEQ #42, D0", "MOVEQ", "#42, D0"),
         ("ADD.W D0, D1", "ADD.W", "D0, D1"),
         ("SUB.L D2, D3", "SUB.L", "D2, D3"),
         ("AND.W D0, D4", "AND.W", "D0, D4"),
