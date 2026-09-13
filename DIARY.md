@@ -2402,7 +2402,22 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p disassembler`: All 24 tests passed across 6 modular test suites (`test_lib`, `test_branch`, `test_data`, `test_alu`, `test_ea`, `test_align`).
   - `cargo test -p memory_bus`: All 29 tests passed across 5 test suites (`test_arbitration`, `test_map`, `test_config`, `test_rtc`, `test_memory_bus`).
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.60s.
-  - `python tools/pre_flight.py`: All 4 quality gates passed cleanly (Formatting: 100%, Attractor Discipline: 317 files clean, AGENTS.md: 13,334 bytes $\le$ 14,000, Architecture Rules: 17 passed).
+  - `python tools/pre_flight.py`: All 4 quality gates passed cleanly (Formatting: 100%, Attractor Discipline: 317 files clean, AGENTS.md: 13,334 bytes $\le$ 14,000, Architecture Rules: 17 passed).---
 
-
-
+### [2026-09-13 13:46 CEST] — Elevated git-commits.md to Universal Invariant with Mandatory Post-Task Commit Mandate
+- **Affected Subsystems**:
+  - `.agents/rules/git-commits.md` (promoted frontmatter from `trigger: model_decision` to `trigger: always_on`; retitled to `Git Commits & Immediate Atomic History Protocol`; introduced Section 1.1: Mandatory Post-Task Commit Rule)
+  - `AGENTS.md` (promoted `Immediate Atomic Commits ([git-commits.md](.agents/rules/git-commits.md))` to Section 1A Universal Invariants; verified $\le 14,000$ byte limit at 13,387 bytes)
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user feedback regarding delayed, accumulated Git commits causing uncommitted working tree states, interrupted workflows, and fragile bulk commits across agent conversational turns.
+  - Promoted `.agents/rules/git-commits.md` to a Universal Invariant (`trigger: always_on`), ensuring the rule is unconditionally injected into every prompt session.
+  - Added Section 1.1 to `.agents/rules/git-commits.md`: *Mandatory Post-Task Commit Rule (Zero Dirty Working Trees Across Turns)*:
+    - Mandated that every discrete task, refactoring, bug fix, feature addition, or documentation update must conclude with an immediate, verified Git commit before completing the turn.
+    - Explicitly forbade leaving uncommitted changes sitting in the working tree across turns or batching multiple unrelated changes into delayed bulk commits.
+  - Updated `AGENTS.md` Section 1A to include `Immediate Atomic Commits` as an always-on universal invariant, removing it from Section 1B (`model_decision`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Preventing Compaction Context Loss & Broken Intermediate States:* When agents delay commits across multiple turns, context compactions and unexpected interruptions can leave uncommitted files stranded in the working tree. Enforcing an immediate atomic commit at the end of every completed task guarantees a clean working tree, verified git bisectability, and atomic rollback points.
+  - *Constitutional Size Budget:* Moving the rule pointer into Section 1A and pruning Section 1B preserved `AGENTS.md` at 13,387 bytes, safely below the 14,000-byte constitutional limit.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: All 4 gates passed cleanly (Formatting: 100%, Attractor Discipline: 322 files clean, AGENTS.md: 13,387 bytes $\le 14,000$, Architecture Rules: 17 passed).
+  - Working tree status checked with `git status`.

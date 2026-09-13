@@ -1,19 +1,24 @@
 ---
-trigger: model_decision
-description: Git commit operations, context reconstruction from DIARY.md, atomic commit decomposition, and Conventional Commits standards.
+trigger: always_on
+description: Mandatory immediate atomic Git commit after every completed task, zero accumulated uncommitted changes, Conventional Commits, and pre-commit test gates.
 ---
 
-# Git Commits & Atomic History Protocol
+# Git Commits & Immediate Atomic History Protocol
 
-This rule governs standard Git commit creation, atomic commit decomposition, context reconstruction, and commit message standards across the repository.
+This rule governs standard Git commit creation, mandatory immediate commits after every discrete task, atomic commit decomposition, context reconstruction, and Conventional Commit standards across the repository.
 
 ---
 
-## 1. Rule Mandate & Operational Triggers
+## 1. Rule Mandate & Immediate Commit Protocol
 
-Whenever the user directs the agent to commit (e.g. *"zrób commita"*, *"commit"*, *"zrób commit"*) or when completing an implementation task requiring version control:
-- The agent **must never default to blind bulk staging (`git add -A; git commit -m "..."`)** if accumulated changes span multiple distinct architectural concerns.
-- The agent must follow the 4-step pipeline: **Inspect $\to$ Decompose $\to$ Format $\to$ Verify**.
+1. **Mandatory Post-Task Commit Rule (Zero Dirty Working Trees Across Turns)**:
+   - Every discrete change, refactoring, bug fix, new capability, or documentation update **must conclude with an immediate, verified Git commit before completing the turn**.
+   - The agent **must never leave uncommitted changes sitting in the working tree** across conversational turns or accumulate multiple unrelated modifications into delayed bulk commits.
+   - Leaving uncommitted changes leads to context loss across compaction, broken intermediate states, and brittle merge conflicts. Commit early, commit atomically.
+
+2. **No Blind Bulk Staging Across Disparate Concerns**:
+   - The agent **must never default to blind bulk staging (`git add -A; git commit -m "..."`)** if changes span multiple distinct architectural concerns.
+   - Follow the 4-step pipeline: **Inspect $\to$ Decompose $\to$ Format $\to$ Verify**.
 
 ---
 
