@@ -2539,5 +2539,25 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.61s.
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
 
+---
+
+### [2026-09-13 20:07 CEST] — Pruned Platitudes & Niche Hardware Jargon in docs/how_this_emulator_was_written.md
+- **Affected Subsystems**:
+  - `docs/how_this_emulator_was_written.md`: Targeted editorial pruning for a GitHub software developer audience.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated blindingly obvious platitudes ("oczywiste oczywistości") that detract from technical credibility:
+    1. *Removed Junior Intern vs Sparring Partner Table:* Deleted platitudes like "don't get frustrated" and "don't passively accept bad code".
+    2. *Removed Standalone Waterfall Documentation Lecture:* Cut the Agile 101 explanation about waterfall vs iterative docs.
+    3. *Removed OOP vs Rust Module Lecture:* Cut the generic lecture about Java/C# class-per-file fragmentation.
+  - Replaced retro hardware jargon and chip-specific name-dropping with universal systems concepts:
+    1. *Generalized Register Details:* Replaced CCR flags, prefetch queues, and chip-specific labels (Gary, Agnus, Denise, Paula) with general concepts (ALU status flags, register states, bus cycles, custom co-processors, DMA memory contention, and discrete sub-clock phases).
+    2. *Reframed Audio Detour:* Positioned the BLEP generator strictly around digital audio anti-aliasing without variable-rate retro chip details.
+  - Streamlined text to ~110 lines of dense, high-signal systems engineering content.
+- **Architectural Rationale & Trade-Offs**:
+  - *Targeting GitHub Software Engineers:* Programmers reading an emulator repository on GitHub do not need generic advice on prompt engineering or Agile documentation, nor do they want obscure retro chip register trivia upfront. Focusing on the minimal frame pattern, physical silicon validation, micro-benchmarks, and Rust ownership maximizes impact and respect.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly (Formatting: 100%, Attractor Discipline: 331 files clean, AGENTS.md: 13,387 bytes <= 14,000, Architecture Rules: 17 passed).
+
+
 
 
