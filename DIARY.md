@@ -344,7 +344,7 @@ This serves a larger, ambitious vision:
   - The curated, de-duplicated design documentation (`Obsidian/Amiga/Design/`).
   - The automated test suites (SingleStepTests, vAmigaTS).
 - **The Experiment:** Can an AI agent, armed with the lessons, rules, and architecture recorded during this project, autonomously re-synthesize the complete cycle-exact emulator from scratch?
-- The operational recipe, ingestion pipeline, and instructions to prepare this clean-room experiment are detailed in **[BOOTSTRAP.md](BOOTSTRAP.md)**.
+- The operational recipe, ingestion pipeline, and instructions to prepare this clean-room experiment are integrated into Section 3.5 of **[ROADMAP.md](ROADMAP.md)**.
 
 This diary stands as the living record of how those foundations were built.
 
@@ -379,7 +379,7 @@ Every future modification or implementation task must append an entry following 
   - Initialized Section 10 in `DIARY.md` with an explicit entry schema and this inaugural entry.
 - **Architectural Rationale & Trade-Offs**:
   - *The "Squashed Commit" Information Loss:* During active emulator development, commits are frequently batched or squashed when merging worktrees (e.g. `feat/benchmarks`, `feat/gui` into `master`). While git commit messages summarize high-level features, the granular problem-solving narrative, rejected prototypes, and subtle edge-case discoveries risk being lost.
-  - *Self-Documenting Evolution:* Keeping `DIARY.md` synchronized in lockstep with the code guarantees that the engineering journey remains completely transparent, human-readable, and aligned with the long-term clean-room re-generation experiment ([BOOTSTRAP.md](BOOTSTRAP.md)).
+  - *Self-Documenting Evolution:* Keeping `DIARY.md` synchronized in lockstep with the code guarantees that the engineering journey remains completely transparent, human-readable, and aligned with the long-term clean-room re-generation experiment ([ROADMAP.md](ROADMAP.md)).
 - **Verification & Invariants**:
   - Executed `cargo test -p test_runner --test test_architecture_rules` verifying that `AGENTS.md` (22,348 bytes) and `.agents/rules/docs-maintenance.md` (4,524 bytes) remain strictly under the 23,000-byte prompt-injection safety ceiling (`test_rule_files_size_limit_and_truncation_safety`).
   - Ran `cargo fmt --all -- --check` across the entire workspace.
@@ -2296,3 +2296,29 @@ Every future modification or implementation task must append an entry following 
   - Implementing full save state serialization and restoration immediately alongside register propagation and before deep subsystem logic ensures state serialization is designed into every chip from day one, rather than retrofitted as an afterthought. It also empowers the Developer Studio debugger and automated test harnesses to take checkpoints, debug tricky edge cases, and perform deterministic state replays.
 - **Verification & Test Results**:
   - `python tools/pre_flight.py` passed with 100% compliance across formatting, attractor discipline, AGENTS.md ceiling, and all architecture rules tests.
+
+---
+
+### [2026-09-13 12:40 CEST] — Roadmap & Bootstrap Consolidation: Staged Autonomous Reconstruction Pipeline
+- **Affected Subsystems**:
+  - `BOOTSTRAP.md` (deleted standalone file)
+  - `ROADMAP.md` (pruned completed Section 5, added baseline deliverable summary, pruned Section 3.5 completed task, and added staged clean-room reconstruction)
+  - `DIARY.md` (updated Section 9 and 10 links, added Section 10 engineering log entry)
+- **What Was Changed (The Concrete Reality)**:
+  - Deleted obsolete standalone `BOOTSTRAP.md` file, removing duplicated goals and consolidating the clean-room regeneration vision into `ROADMAP.md`.
+  - Pruned completed Section 5 (*Repository Sanitization & Public Release Preparation*, including 5.1 and 5.2) from the active backlog in `ROADMAP.md` per `roadmap-maintenance.md`.
+  - Added a permanent summary of the completed repository sanitization deliverable (Git history audit, 146 empty commits pruned, asset decoupling, and 99.8% packfile reduction) to the Completed Baseline Deliverables section in Phase 1 of `ROADMAP.md`.
+  - Pruned the completed *Documentation Conversion Skills Audit & AmigaGuide Evaluation* bullet from Section 3.5 of `ROADMAP.md`.
+  - Expanded Section 3.5 with the exploratory clean-room verification milestone: *Staged Clean-Room Reconstruction & Autonomous Documentation-to-Code Regeneration Testing*. Formulated an incremental 4-stage verification cycle:
+    1. *Targeted Subsystem Source Deletion:* Remove source code of an isolated module or auxiliary crate.
+    2. *Autonomous Re-generation:* Instruct the agent to re-synthesize the implementation solely from `Obsidian/Amiga/Design/` and test suites.
+    3. *Parity & Diff Evaluation:* Compare generated sources with proven originals and verify against test suites.
+    4. *Prompt & Documentation Refinement:* Calibrate prompts and design specifications to close gaps.
+  - Updated active references in `DIARY.md` (Section 9 line 347 and Section 10 line 382) to reference `ROADMAP.md` Section 3.5, preserving link integrity.
+- **Architectural Rationale & Trade-Offs**:
+  - A separate `BOOTSTRAP.md` created fragmented documentation and redundant tracking alongside `ROADMAP.md` Section 3.5. Unifying all remaining active goals into `ROADMAP.md` enforces a single source of truth for the project roadmap.
+  - Pruning completed milestones into high-level baseline summaries keeps `ROADMAP.md` focused purely on remaining actionable work while retaining full historical accountability.
+- **Verification & Test Results**:
+  - Validated link integrity and path references across repository files.
+  - Executed pre-flight quality gates (`tools/pre_flight.py`) and architecture test suites (`test_architecture_rules`).
+

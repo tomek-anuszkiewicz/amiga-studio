@@ -29,6 +29,8 @@ This document outlines the phased development plan, hardware milestones, verific
   - Exhaustive cycle-exact benchmarking framework in crates/test_runner measuring instruction execution time, cycles per instruction, and throughput across all 65,536 dispatch entries and operand modes.
   - Comprehensive golden reference datasets (m68k_benchmark_baseline.csv, m68k_benchmark_baseline.json) with cryptographic SHA256 anti-tamper contracts (golden_row_hashes.rs).
   - Automated execution trace audit logger (--dump-traces), statistical variance tracker, and cycle anomaly detector.
+- **Repository Sanitization & History Scrubbing (Completed Baseline Deliverable):**
+  - Full Git history audit, Conventional Commits normalization, pruning of 146 empty/redundant commits (preserving author/committer timestamps), and deep asset purge (decoupling `ref_src`, PDFs, schematics, and caches), shrinking repository packfile from ~2.8 GB to 4.43 MB (99.8% reduction).
 
 ### Phase 2: Enhanced Chipset (ECS) & Later Models
 - **A500 Rev 6A (1 MB Chip):** Fat Agnus 8372A with 1 MB Chip RAM jumper configuration.
@@ -218,10 +220,6 @@ To guarantee that autonomous AI agents can reconstruct and verify emulator subsy
   - Validate SHA-256 incremental hashing cache, chunking fidelity, multi-threaded fast embeddings, and offline sidecar vision descriptions (`<image>.txt`).
   - Ensure zero regressions or stalls during fresh database initialization and incremental reindexing.
 
-- **Documentation Conversion Skills Audit & AmigaGuide Evaluation (Completed):**
-  - Audited skill inventory in `.agents/skills/`: retained and documented all 11 active core skills across 3 functional domains in `docs/ai_agents.md`.
-  - Confirmed `pdf-to-markdown` as the primary manual extraction pipeline and retained `amigaguide-to-markdown` for Commodore hypertext documentation.
-
 - **Iterative Design Documentation Calibration Loop (`Obsidian/Amiga/Design/`):**
   - Establish a closed-loop calibration process for design specifications:
     1. Bootstrap design specifications into the RAG vector collection (`amiga`).
@@ -229,6 +227,15 @@ To guarantee that autonomous AI agents can reconstruct and verify emulator subsy
     3. Inspect retrieved chunks, identifying gaps, ambiguity, or missing circuit invariants.
     4. Refine and calibrate the design Markdown files per [`.agents/rules/vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md) (inverted pyramid structure, dual-layer linking).
     5. Re-bootstrap into RAG and verify improved agent comprehension and code generation accuracy.
+
+- **Staged Clean-Room Reconstruction & Autonomous Documentation-to-Code Regeneration Testing:**
+  - Test and validate the end-to-end capability of an autonomous AI agent to reconstruct emulator subsystems directly from design documentation and rules.
+  - Execute this methodology in incremental stages:
+    1. **Targeted Subsystem Source Deletion:** Delete the source code of an isolated subsystem or module (e.g. an auxiliary crate, a peripheral device, or a coprocessor block).
+    2. **Autonomous Re-generation:** Instruct the agent to re-synthesize the deleted implementation solely from curated design specifications (`Obsidian/Amiga/Design/`), architectural invariants, and test vectors.
+    3. **Parity & Diff Evaluation:** Compare the re-generated source code against the original implementation and verify behavior against test suites.
+    4. **Prompt & Documentation Refinement:** If the generated code diverges, misses hardware nuances, or fails tests, enhance the prompts, skill instructions, or design documentation with explicit invariants and edge-case guidance.
+  - *Exploratory Methodology:* The exact evaluation framework, metrics, and tooling for this experiment represent uncharted territory (*terra incognita*) and will be formulated and refined iteratively as pilot experiments progress.
 
 - **End-to-End Hardening of `tools/bootstrap.ps1`:**
   - Exhaustively test the complete PowerShell bootstrapper across all flag configurations (`-Test`, `-Graph`, `-Doc`, `-All`).
@@ -242,33 +249,3 @@ To guarantee that autonomous AI agents can reconstruct and verify emulator subsy
 - Extract graphics (bitplanes, sprites, palettes) and audio samples directly from memory buffers.
 - Annotate assets, memory addresses, and game phases using LLM assistance.
 - Map active assets to the visual 24-bit memory map.
-
----
-
-## 5. Repository Sanitization & Public Release Preparation
-
-To prepare the repository for open-source publication and public release, the codebase and Git history underwent a thorough sanitization and scrubbing pass. This eliminated bulky external assets, copyright-encumbered materials, accidental historical leaks, and commit noise while consolidating fragmented work into a clean, professional, and logical development history (reduced `.git` packfile from ~2.8 GB to 4.43 MB).
-
-### 5.1 Historical Commit Message Normalization & Atomic Squashing
-- [x] **Rewrite & Standardize Commit Messages:**
-  - Audited all historical commits across the repository to replace auto-generated, low-signal, or casual commit messages.
-  - Standardized messages into clean, professional, descriptive entries following Conventional Commits, closely aligned with the narrative in `DIARY.md`.
-- [x] **Commit History Reordering & Empty Commit Pruning:**
-  - Audited commit history and pruned 146 empty/redundant commits using `git-filter-repo` with `--prune-empty=always`.
-  - Retained exact author identities, email addresses, and original author/committer timestamps across all 212 clean commits.
-
-### 5.2 Deep Git History Scrubbing, Privacy Audit & Asset Purge
-- [x] **Historical Content Hygiene & Privacy Audit:**
-  - Thoroughly inspected all past commits and tree snapshots for leaks, sensitive personal information, private absolute paths, temporary debugging dumps, or unintended scratch files.
-- [x] **Preserve Commit Metadata & Branch Topology:**
-  - Executed comprehensive history rewrite using `git-filter-repo` ensuring commit author dates, committer timestamps, and overall branch topology remain intact.
-- [x] **Purge Bulky, Copyrighted & Third-Party Assets from All Commits:**
-  - **Reference Emulator Sources (`ref_src/`):** Completely purged from past commits; decoupled via `.gitignore` and retained 100% locally on disk for SingleStepTests.
-  - **Books & Reference Documents:** Removed historical OCR caches and reference PDFs (`Obsidian/Amiga/Reference/`) from Git history; retained 100% locally on disk for RAG.
-  - **Hardware Schematics (`schematics/`):** Purged all schematic scans and PDFs from Git history; retained 100% locally on disk.
-  - **Third-Party Tools & Standalone Executables:** Purged third-party diagnostic executables (`AmigaTestKit`, `WinGuide.exe`) from Git history.
-  - **Generated Knowledge Graphs & Analysis Artifacts:** Purged `graphify-out/` and local AST/vector caches from Git history.
-  - **Repository Footprint Result:** Successfully reduced `.git` packfile database from **~2.8 GB down to 4.43 MB** (a 99.8% reduction), while preserving 100% of local disk assets.
-
-
-
