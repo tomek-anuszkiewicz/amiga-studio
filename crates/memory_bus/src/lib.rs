@@ -91,6 +91,11 @@ pub struct MemoryBus {
     #[serde(with = "big_array")]
     pub custom_registers: [u16; 256],
 
+    /// Pending custom register bus write events to be dispatched to custom chips
+    pub pending_custom_writes: [Option<CustomWriteEvent>; MAX_PENDING_CUSTOM_WRITES],
+    /// Count of pending custom register bus write events
+    pub pending_custom_write_count: usize,
+
     /// Real-Time Clock (OKI MSM6242B) at $DC0000..$DC003F
     pub rtc: rtc::RtcMsm6242b,
 
@@ -98,6 +103,16 @@ pub struct MemoryBus {
     /// In real Amiga hardware execution, this is 0xFF (floating open bus with pull-up resistors).
     #[serde(default = "default_unmapped_byte")]
     pub unmapped_byte: u8,
+}
+
+/// Maximum queued custom bus writes per cycle
+pub const MAX_PENDING_CUSTOM_WRITES: usize = 8;
+
+/// In-flight custom register bus write event
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CustomWriteEvent {
+    pub offset: u16,
+    pub val: u16,
 }
 
 #[inline(always)]
@@ -157,11 +172,40 @@ impl MemoryBus {
             cia_a_registers: [0xFF; 16],
             cia_b_registers: [0xFF; 16],
             custom_registers: [0xFFFF; 256],
+            pending_custom_writes: [None; MAX_PENDING_CUSTOM_WRITES],
+            pending_custom_write_count: 0,
             rtc,
             unmapped_byte: 0xFF,
         };
         bus.map_kickstart_to_low_memory();
         bus
+    }
+
+    /// Enqueues a custom register write event for dispatch to custom chips
+    #[inline]
+    pub fn enqueue_custom_write(&mut self, offset: u16, val: u16) {
+        if self.pending_custom_write_count < MAX_PENDING_CUSTOM_WRITES {
+            self.pending_custom_writes[self.pending_custom_write_count] =
+                Some(CustomWriteEvent { offset, val });
+            self.pending_custom_write_count += 1;
+        }
+    }
+
+    /// Pops the next pending custom register write event
+    #[inline]
+    pub fn pop_custom_write(&mut self) -> Option<CustomWriteEvent> {
+        if self.pending_custom_write_count > 0 {
+            self.pending_custom_write_count -= 1;
+            self.pending_custom_writes[self.pending_custom_write_count].take()
+        } else {
+            None
+        }
+    }
+
+    /// Returns true if there are pending custom register write events
+    #[inline]
+    pub fn has_pending_custom_writes(&self) -> bool {
+        self.pending_custom_write_count > 0
     }
 
     /// Reconfigures RAM buffers and RTC mapping by applying a new A500Config

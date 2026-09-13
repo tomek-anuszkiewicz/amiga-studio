@@ -221,45 +221,130 @@ impl A500Machine {
         paula_ipl.max(cia_a_ipl).max(cia_b_ipl)
     }
 
+    /// Dispatches a custom register bus write to the target chip(s) with physical propagation delay
+    pub fn dispatch_custom_write(&mut self, offset: u16, val: u16) {
+        let offset = offset & 0x1FE;
+        match offset {
+            // Shared / Broadcast: DMACON ($096) -> Agnus and Paula
+            0x096 => {
+                self.agnus.write_register(0x096, val);
+                self.paula.write_register(0x096, val);
+            }
+            // Shared / Broadcast: BPLCON0 ($100) -> Denise (1 CCK) & Agnus (4 CCK)
+            0x100 => {
+                self.denise.write_register(0x100, val);
+                self.agnus.write_register(0x100, val);
+            }
+            // Shared / Broadcast: BPLCON1 ($102) -> Denise & Agnus
+            0x102 => {
+                self.denise.write_register(0x102, val);
+                self.agnus.write_register(0x102, val);
+            }
+            // Shared / Broadcast: DIWSTRT ($08E) & DIWSTOP ($090) -> Denise & Agnus
+            0x08E | 0x090 => {
+                self.denise.write_register(offset, val);
+                self.agnus.write_register(offset, val);
+            }
+            // Denise-specific registers (CLXCON, BPLCON2/3, BPLDAT, SPRITES, COLORS)
+            0x098 | 0x104 | 0x106 | 0x110..=0x11A | 0x140..=0x17E | 0x180..=0x1BE | 0x036 => {
+                self.denise.write_register(offset, val);
+            }
+            // Paula-specific registers (INTENA, INTREQ, ADKCON, UART, DSKLEN/SYNC, AUDIO)
+            0x09A
+            | 0x09C
+            | 0x09E
+            | 0x018
+            | 0x01A
+            | 0x024
+            | 0x026
+            | 0x030..=0x034
+            | 0x07E
+            | 0x0A0..=0x0DE => {
+                self.paula.write_register(offset, val);
+            }
+            // Agnus-specific registers (Blitter, Copper, DMA pointers, modulos, DDF)
+            _ => {
+                self.agnus.write_register(offset, val);
+            }
+        }
+    }
+
+    /// Synchronizes active chip register values into the MemoryBus read snapshot
+    #[inline]
+    pub fn sync_memory_bus_registers(&mut self) {
+        self.memory_bus.custom_registers[0x002 >> 1] = self.agnus.read_dmaconr();
+        self.memory_bus.custom_registers[0x004 >> 1] = self.agnus.vposr();
+        self.memory_bus.custom_registers[0x006 >> 1] = self.agnus.vhposr();
+        self.memory_bus.custom_registers[0x00A >> 1] = self.denise.joy0dat;
+        self.memory_bus.custom_registers[0x00C >> 1] = self.denise.joy1dat;
+        self.memory_bus.custom_registers[0x00E >> 1] = self.denise.peek_register(0x00E);
+        self.memory_bus.custom_registers[0x010 >> 1] = self.paula.adkcon;
+        self.memory_bus.custom_registers[0x012 >> 1] = self.paula.pot0dat;
+        self.memory_bus.custom_registers[0x014 >> 1] = self.paula.pot1dat;
+        self.memory_bus.custom_registers[0x016 >> 1] = self.paula.potgor;
+        self.memory_bus.custom_registers[0x018 >> 1] = self.paula.serdatr;
+        self.memory_bus.custom_registers[0x01A >> 1] = self.paula.dskbytr;
+        self.memory_bus.custom_registers[0x01C >> 1] = self.paula.intena;
+        self.memory_bus.custom_registers[0x01E >> 1] = self.paula.intreq;
+    }
+
     /// Advances the entire machine by exactly 1 Color Clock (~280 ns).
     /// Subsystems receive required peer handles via method call parameters.
     pub fn step_cck(&mut self) {
         // 1. Advance master monotonic Color Clock counter
         self.cck = self.cck.wrapping_add(1);
 
-        // 2. Advance Agnus raster beam counters
+        // 2. Drain and dispatch pending bus writes to target custom chips
+        while let Some(event) = self.memory_bus.pop_custom_write() {
+            self.dispatch_custom_write(event.offset, event.val);
+        }
+
+        // 3. Advance Agnus raster beam counters and mutation pipeline
         self.agnus.step_cck();
 
-        // 3. Step Copper coprocessor
+        // 4. Step Copper coprocessor
         self.copper.step_cck();
 
-        // 4. Step Blitter engine
+        // 5. Step Blitter engine
         self.blitter.step_cck();
 
-        // 5. Step DMA scheduler and evaluate Chip RAM contention
+        // 6. Step DMA scheduler and evaluate Chip RAM contention
         self.dma.step_cck();
         self.agnus.chip_ram_blocked = self
             .dma
             .is_chip_ram_blocked(self.agnus.hpos, self.blitter.is_busy);
+        self.memory_bus.chip_ram_blocked = self.agnus.chip_ram_blocked;
 
-        // 6. Step Denise video serializer
+        // 7. Step Denise video serializer and mutation pipeline
         self.denise.step_cck();
 
-        // 7. Step Paula audio, floppy, and serial transceivers
+        // 8. Step Paula audio, floppy, serial transceivers, and mutation pipeline
         self.audio.step_cck();
         self.floppy.step_cck();
         self.serial_port.step_cck();
         self.paula.step_cck();
 
-        // 8. Step CIAs
+        // 9. Step CIAs
         self.cia_a.step_cck();
         self.cia_b.step_cck();
 
-        // 9. Central interrupt priority line (IPL 1-6) arbitration
+        // 10. Cross-Chip Cascades (Physical Pins)
+        if let Some(chip_ram_engaged) = self.cia_a.ovl_transition() {
+            if chip_ram_engaged {
+                self.memory_bus.map_chip_ram_to_low_memory();
+            } else {
+                self.memory_bus.map_kickstart_to_low_memory();
+            }
+        }
+
+        // 11. Sync active chip registers into the MemoryBus read snapshot
+        self.sync_memory_bus_registers();
+
+        // 12. Central interrupt priority line (IPL 1-6) arbitration
         let ipl = self.resolve_ipl();
         self.cpu.state.ipl = ipl;
 
-        // 10. Step CPU Color Clock phase with bus reference
+        // 13. Step CPU Color Clock phase with bus reference
         self.cpu.step_cck(&mut self.memory_bus);
     }
 

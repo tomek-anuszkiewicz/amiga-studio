@@ -3,6 +3,11 @@
 //! Encapsulated, read-only configuration model for the Amiga 500 emulator.
 //! State mutation is restricted exclusively to applying canonical hardware presets.
 
+pub mod big_array;
+pub mod mutation;
+
+pub use mutation::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
+
 use serde::{Deserialize, Serialize};
 
 /// Canonical hardware configuration presets

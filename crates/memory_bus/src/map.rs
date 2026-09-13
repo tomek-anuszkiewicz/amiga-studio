@@ -316,21 +316,26 @@ pub fn read_custom_chips_word(bus: &MemoryBus, addr: u32) -> u16 {
 /// Write handler for Custom Chip Registers ($DFF000-$DFFFFE)
 pub fn write_custom_chips(bus: &mut MemoryBus, addr: u32, val: u8) {
     if (0xDFF000..=0xDFFFFF).contains(&addr) {
-        let word_idx = ((addr & 0x1FE) >> 1) as usize;
+        let offset = (addr & 0x1FE) as u16;
+        let word_idx = (offset >> 1) as usize;
         let current = bus.custom_registers[word_idx];
-        bus.custom_registers[word_idx] = if (addr & 1) == 0 {
+        let merged = if (addr & 1) == 0 {
             ((val as u16) << 8) | (current & 0x00FF)
         } else {
             (current & 0xFF00) | (val as u16)
         };
+        bus.custom_registers[word_idx] = merged;
+        bus.enqueue_custom_write(offset, merged);
     }
 }
 
 /// Write word handler for Custom Chip Registers ($DFF000-$DFFFFE)
 pub fn write_custom_chips_word(bus: &mut MemoryBus, addr: u32, val: u16) {
     if (0xDFF000..=0xDFFFFF).contains(&addr) {
-        let word_idx = ((addr & 0x1FE) >> 1) as usize;
+        let offset = (addr & 0x1FE) as u16;
+        let word_idx = (offset >> 1) as usize;
         bus.custom_registers[word_idx] = val;
+        bus.enqueue_custom_write(offset, val);
     }
 }
 
