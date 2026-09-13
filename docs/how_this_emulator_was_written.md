@@ -174,17 +174,14 @@ Look at [`crates/debugger/src/`](../crates/debugger/src/) as the poster child of
 
 When you open a file, you get the entire functional aspect in one coherent place. No jumping between ten different files to understand a single feature.
 
-### C. Paula's Audio & The BLEP Story: From Python Math to Standalone Rust
-A great example of how we brought outside ideas into the emulator is the audio subsystem. 
+### C. A Teaser for Math Enthusiasts: Paula & The BLEP Generator
+If you enjoy digital signal processing and mathematics, the audio subsystem in [`tools/blep_generator`](../tools/blep_generator/) is well worth a look.
 
-Commodore's Paula chip features four independent audio DMA channels running at variable playback rates. In software emulation, jumping sample levels on arbitrary clock cycles causes harsh digital aliasing. The gold standard solution is **Band-Limited Steps (BLEP)**, which injects pre-calculated bandlimited step responses whenever a DAC transition occurs.
+Commodore's Paula chip features four independent audio DMA channels running at variable sample rates. In software emulation, jumping sample values on arbitrary clock cycles causes harsh digital aliasing. The gold standard solution is **Band-Limited Steps (BLEP)**—injecting pre-calculated step responses whenever a DAC transition occurs.
 
-Here's how that came together:
-- **The Starting Point:** Earlier on, I found a Python script online that generated generic BLEP tables using heavy scientific libraries (NumPy, SciPy). It wasn't my original creation, nor was it tuned for the Amiga, but it proved the mathematical concept.
-- **The Challenge:** I brought the script to the agent with a challenge: *"We need this in our emulator, but we need it tailored to the actual physical Amiga 500 audio hardware—and we want it as a pure, zero-dependency Rust tool."*
-- **Pure Standalone Rust:** The agent analyzed the Amiga 500 analog audio schematics, modeled the physical filtering path (the 1st-order RC low-pass filter and the switchable 2nd-order Sallen-Key "LED filter"), and implemented the entire pipeline from scratch in a standalone Rust generator ([`tools/blep_generator`](../tools/blep_generator/)). It computes minimum-phase sinc pulses, Kaiser windows, and IIR biquad analog filters with zero external math dependencies, outputting cycle-exact lookup tables that match real Amiga hardware down to 0.03% error vs WinUAE reference captures.
+We had an existing Python script that generated these BLEP tables, but it was tied to heavy external math libraries. Bringing it into our emulator turned into a fascinating personal detour into DSP. I spent a lot of time diving into the mathematical apparatus—grappling with sinc pulses, Kaiser windows, and phase transforms to really wrap my head around the underlying math.
 
-It's a perfect example of human-agent synergy: the human spots a high-level solution and sets the destination, while the agent deconstructs the hardware schematics, does the heavy math, and writes clean, idiomatic systems code.
+Together with the agent, we ported that prototype into a standalone, zero-dependency Rust tool with zero external math libraries. It generates cycle-exact lookup tables directly from first principles. If you love DSP math, check out [`tools/blep_generator`](../tools/blep_generator/)—it's a great example of diving into a new mathematical domain and turning a prototype script into clean, standalone Rust.
 
 ### D. Exploring Hardware Before Writing Code
 Before drafting our first module, the agent served as an interactive research engine to deconstruct how the Amiga 500 actually works:
