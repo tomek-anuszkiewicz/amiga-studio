@@ -71,3 +71,27 @@ fn test_machine_cold_and_warm_reset() {
     assert_eq!(machine.paula.intena, 0x0000);
     assert_eq!(machine.memory_bus.read_byte_debug(0x001000), 0x00); // Zeroed!
 }
+
+#[test]
+fn test_machine_game_ports_routing() {
+    let config = A500Config::default();
+    let mut machine = A500Machine::new(config);
+
+    // Initial state: Port 1 = Mouse, Port 2 = Joystick
+    assert!(!machine.game_ports.fire1_port1());
+    assert!(!machine.game_ports.fire1_port2());
+
+    // Host input events routed via machine forwarders
+    machine.set_mouse_buttons(true, false, true);
+    assert!(machine.game_ports.fire1_port1());
+    assert_eq!(machine.game_ports.potgor(0x0000) & (1 << 8), 0); // Middle button pulled low
+
+    machine.set_joystick(true, false, false, false, true, false);
+    assert!(machine.game_ports.fire1_port2());
+    assert_eq!(machine.game_ports.joy1dat(), 0x0100); // Up direction set in bit 8
+
+    // Reset restores defaults
+    machine.reset_cold();
+    assert!(!machine.game_ports.fire1_port1());
+    assert!(!machine.game_ports.fire1_port2());
+}

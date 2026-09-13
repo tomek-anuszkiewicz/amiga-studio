@@ -13,6 +13,7 @@ pub use denise;
 pub use dma;
 pub use floppy;
 pub use frame_builder;
+pub use game_ports;
 pub use joystick;
 pub use keyboard;
 pub use m68000;
@@ -72,10 +73,8 @@ pub struct A500Machine {
     pub serial_port: serial_port::SerialPort,
     /// MOS 6500/1 keyboard microcontroller with reset logic
     pub keyboard: keyboard::Keyboard,
-    /// Port 1 Amiga quadrature mouse
-    pub mouse: mouse::Mouse,
-    /// Port 2 Atari 9-pin digital joystick
-    pub joystick: joystick::Joystick,
+    /// Amiga dual controller game ports (Port 1 Mouse / Port 2 Joystick)
+    pub game_ports: game_ports::GamePorts,
     /// Centronics 8-bit parallel printer port interface
     pub parallel_port: parallel_port::ParallelPort,
 }
@@ -106,8 +105,7 @@ impl A500Machine {
         let floppy = floppy::FloppyController::new();
         let serial_port = serial_port::SerialPort::new();
         let keyboard = keyboard::Keyboard::new();
-        let mouse = mouse::Mouse::new();
-        let joystick = joystick::Joystick::new();
+        let game_ports = game_ports::GamePorts::new();
         let parallel_port = parallel_port::ParallelPort::new();
 
         Self {
@@ -129,8 +127,7 @@ impl A500Machine {
             floppy,
             serial_port,
             keyboard,
-            mouse,
-            joystick,
+            game_ports,
             parallel_port,
         }
     }
@@ -156,8 +153,7 @@ impl A500Machine {
         self.floppy.reset();
         self.serial_port.reset();
         self.keyboard.reset();
-        self.mouse.reset();
-        self.joystick.reset();
+        self.game_ports.reset();
         self.parallel_port.reset();
         self.cpu.reset(&mut self.memory_bus);
     }
@@ -183,10 +179,36 @@ impl A500Machine {
         self.floppy.reset();
         self.serial_port.reset();
         self.keyboard.reset();
-        self.mouse.reset();
-        self.joystick.reset();
+        self.game_ports.reset();
         self.parallel_port.reset();
         self.cpu.reset(&mut self.memory_bus);
+    }
+
+    /// Applies relative mouse movement deltas to the connected mouse (Port 1 default)
+    #[inline]
+    pub fn apply_mouse_delta(&mut self, dx: i32, dy: i32) {
+        self.game_ports.apply_mouse_delta(dx, dy);
+    }
+
+    /// Sets mouse button states on the connected mouse (Port 1 default)
+    #[inline]
+    pub fn set_mouse_buttons(&mut self, left: bool, right: bool, middle: bool) {
+        self.game_ports.set_mouse_buttons(left, right, middle);
+    }
+
+    /// Sets joystick directional switches and fire buttons on the connected joystick (Port 2 default)
+    #[inline]
+    pub fn set_joystick(
+        &mut self,
+        up: bool,
+        down: bool,
+        left: bool,
+        right: bool,
+        fire1: bool,
+        fire2: bool,
+    ) {
+        self.game_ports
+            .set_joystick(up, down, left, right, fire1, fire2);
     }
 
     /// Resolves the highest pending interrupt level across Paula, CIA-A, and CIA-B

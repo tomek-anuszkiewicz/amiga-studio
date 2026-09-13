@@ -15,6 +15,7 @@ denise = { workspace = true }
 dma = { workspace = true }
 floppy = { workspace = true }
 frame_builder = { workspace = true }
+game_ports = { workspace = true }
 joystick = { workspace = true }
 keyboard = { workspace = true }
 m68000 = { workspace = true }

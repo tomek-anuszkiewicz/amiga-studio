@@ -25,6 +25,7 @@ members = [
     "crates/disassembler",
     "crates/debugger",
     "crates/gui",
+    "crates/game_ports",
     "crates/test_runner",
     "tools/blep_generator",
 ]
@@ -64,6 +65,7 @@ memory_bus = { path = "crates/memory_bus" }
 m68000 = { path = "crates/m68000" }
 disassembler = { path = "crates/disassembler" }
 debugger = { path = "crates/debugger" }
+game_ports = { path = "crates/game_ports" }
 
 [profile.test]
 opt-level = 0

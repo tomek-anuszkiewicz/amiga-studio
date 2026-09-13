@@ -1431,6 +1431,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "game_ports"
+version = "0.1.0"
+dependencies = [
+ "config",
+ "joystick",
+ "mouse",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2074,6 +2085,7 @@ dependencies = [
  "dma",
  "floppy",
  "frame_builder",
+ "game_ports",
  "joystick",
  "keyboard",
  "m68000",
