@@ -2558,6 +2558,26 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly (Formatting: 100%, Attractor Discipline: 331 files clean, AGENTS.md: 13,387 bytes <= 14,000, Architecture Rules: 17 passed).
 
+---
+
+### [2026-09-14 01:25 CEST] — Created author-methodology-doc Skill (Inverted Pyramid Narrative Architecture)
+- **Affected Subsystems**:
+  - `.agents/skills/author-methodology-doc/SKILL.md`: Authored dedicated skill defining the 6-layer Inverted Pyramid hierarchy for narrative and methodology documents.
+  - `docs/ai_agents.md`: Registered `author-methodology-doc` under Section 3.C (Architecture, Knowledge & Documentation).
+- **What Was Changed (The Concrete Reality)**:
+  - Created `.agents/skills/author-methodology-doc/SKILL.md` encapsulating:
+    1. *Input & Target Document Resolution:* Supports explicit command arguments (e.g. `/author-methodology-doc <path>`), implicit fallback to the active editor tab, and interactive disambiguation.
+    2. *6-Layer Inverted Pyramid Architecture:* 1. The Hook & Core Thesis (Lines 1–50) $\to$ 2. Strategic & Human Dimensions $\to$ 3. Core Architectural Patterns & Solutions $\to$ 4. Substrate & Execution Realities $\to$ 5. Tactical Execution & Developer Workflows $\to$ 6. Synthesis & Knowledge Graph Relationships.
+    3. *Anti-Trap Safeguards:* Codified rules eliminating the "Bottom-Heavy Accumulation Trap" and mandating a 100% Content & Thought Preservation standard (pure structural re-ordering with zero dilution of technical substance).
+    4. *Practical 5-Step Restructuring Procedure:* Outline extraction $\to$ Identify buried treasures in bottom 30% $\to$ Top-down re-ordering $\to$ Completeness diff verification $\to$ Atomic Conventional Commit.
+  - Registered the new skill in `docs/ai_agents.md` Section 3.C.
+- **Architectural Rationale & Trade-Offs**:
+  - *Separation of Hardware Rules from Narrative Recipes:* Rather than forcing hardware specifications in `Obsidian/Amiga/Design/` into an essay structure, packaging this model as an on-demand skill (`author-methodology-doc`) allows developers and agents to invoke it specifically for retrospective case studies (like `docs/how_this_emulator_was_written.md`), devlogs, and methodology notes without cluttering core emulator rules.
+- **Verification & Test Results**:
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 332 files (0 violations).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.62s.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+
 
 
 

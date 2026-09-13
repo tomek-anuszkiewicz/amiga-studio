@@ -72,4 +72,5 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`pdf-to-markdown`](../.agents/skills/pdf-to-markdown/SKILL.md): High-fidelity document conversion toolchain (PyMuPDF chapter splitting, figure cropping, SVG vectorization, and table stitching) for technical reference manuals.
 - [`amigaguide-to-markdown`](../.agents/skills/amigaguide-to-markdown/SKILL.md): Hypertext conversion pipeline for Commodore AmigaGuide documents (`.guide`) into linked Markdown files.
 - [`index-amiga-rag`](../.agents/skills/index-amiga-rag/SKILL.md): Operational procedure for Qdrant vector reindexing, status verification, and offline visual diagram sidecar maintenance (`<image>.txt`).
+- [`author-methodology-doc`](../.agents/skills/author-methodology-doc/SKILL.md): Author, audit, or restructure narrative articles, methodology documents, essays, and retrospective devlogs (e.g. `docs/how_this_emulator_was_written.md`) using the 6-layer Inverted Pyramid hierarchy.
 - [`graphify`](../.agents/skills/graphify/SKILL.md): Persistent code knowledge graph navigation, call hierarchy tracing, and scoped subtree updates (`crates/` vs `ref_src/`).
