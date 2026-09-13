@@ -87,8 +87,22 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guideli
 
 ---
 
-## 4. Module Cohesion & File Size Thresholds
+## 4. Module Cohesion & File Organization: Aspect-per-File
 
+### 4.1 "Aspect-per-File", Not "Class/Struct-per-File"
+A foundational architectural mandate is organizing code by **behavioral aspect** rather than the rigid OOP convention of "one class/struct per file":
+- **High Cohesion:** Group data structures, enums, helper functions, and operational logic together in a single file when they govern the same functional capability (e.g., `breakpoints.rs` in `crates/debugger` combines breakpoint definitions, condition evaluators, and hit-testing logic).
+- **Anti-Fragmentation:** Never fragment a cohesive capability across artificial micro-files just because multiple structs exist (`Breakpoint.rs`, `BreakpointCondition.rs`, etc.).
+- **Canonical Reference (`crates/debugger/src/`):**
+  - `assembler.rs`: Text-to-binary assembly parsing, tokenization, and machine code generation.
+  - `breakpoints.rs`: Breakpoints, watchpoints, condition evaluators, and hit-testing logic.
+  - `loader.rs`: Binary injection and entrypoint setup.
+  - `session.rs`: Debugger session state coordination and lifecycle.
+  - `stepping.rs`: Instruction flow navigation (step into, step over, step out, frame step).
+  - `temporal.rs`: Time-travel rewind ring buffers and state snapshotting.
+  - `trace.rs`: Execution trace recording and history display.
+
+### 4.2 File Size Thresholds
 To keep the codebase maintainable and prevent monolithic files:
 - **< 300 lines:** Baseline for focused modules, state structs, and handlers.
 - **300–600 lines:** Sweet spot combining types, enums, and operational logic.

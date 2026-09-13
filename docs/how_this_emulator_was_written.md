@@ -114,6 +114,22 @@ The repository contains dozens of deep architectural specs under [`Obsidian/Amig
 - **Iterative Scrutiny:** I reviewed every draft, pushed back on flawed logic, and said *"No, that's not right, change it like this"* until the document was watertight.
 - **Automated Upkeep:** Once established, the agent was responsible for maintaining the documentation in lockstep with the code—updating specs and verifying link integrity whenever a subsystem changed.
 
+### D. "Aspect-per-File", Not "Class-per-File"
+A major architectural choice I enforced across the codebase was rejecting the classic object-oriented trap: splitting every single struct into its own tiny file. In languages like Java or C#, you often end up with twenty micro-files for one feature (`Breakpoint.rs`, `BreakpointManager.rs`, `BreakpointCondition.rs`), which fragments your attention and forces artificial boilerplate.
+
+Instead, we organized code strictly by **behavioral aspect per file**. A single file encapsulates an entire capability from top to bottom.
+
+Look at [`crates/debugger/src/`](../crates/debugger/src/) as the poster child of this approach:
+- `assembler.rs`: Everything needed to parse text into 68000 machine code.
+- `breakpoints.rs`: Structs, condition evaluators, and hit-testing logic for all breakpoints and watchpoints.
+- `loader.rs`: Binary executable injection into RAM and CPU entrypoint setup.
+- `session.rs`: High-level session coordination and state lifecycle.
+- `stepping.rs`: Execution control (step into, step over, step out, frame step).
+- `temporal.rs`: Time-travel rewind ring buffers and snapshot seeking.
+- `trace.rs`: Execution trace recording and bottom log display.
+
+When you open a file, you get the entire functional aspect in one coherent place. No jumping between ten different files to understand a single feature.
+
 ---
 
 ## 5. The Sparring Partner Mindset
