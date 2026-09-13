@@ -2661,3 +2661,25 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed.
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
   - `python tools/check_polish.py --git`: Passed across all staged diff additions.
+
+---
+
+### [2026-09-14 01:51 CEST] — Removed Redundant Crate and Test Scaffolding Skills and Tool
+- **Affected Subsystems**:
+  - `tools/scaffold_crate.py`: Deleted redundant crate generator script.
+  - `.agents/skills/amiga-scaffold-crate/`: Deleted skill and `SKILL.md`.
+  - `.agents/skills/scaffold-crate-tests/`: Deleted skill and `SKILL.md`.
+  - `.agents/rules/unit-testing-policy.md`: Removed obsolete reference to `scaffold-crate-tests`.
+- **What Was Changed (The Concrete Reality)**:
+  - Evaluated agent toolchain ergonomics and verified that autonomous agents naturally write source code and external unit tests directly rather than calling external multi-step Python CLI generators.
+  - Removed `tools/scaffold_crate.py`, `.agents/skills/amiga-scaffold-crate/`, and `.agents/skills/scaffold-crate-tests/`.
+  - Cleaned up cross-references in `.agents/rules/unit-testing-policy.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Cognitive Overhead Reduction:* Eliminates unused skills and duplicate recipes from the agent skill inventory. Strict unit test invariants (external `tests/` suites, zero inline tests) remain enforced by `.agents/rules/unit-testing-policy.md` and automated architecture tests (`crates/test_runner/tests/test_architecture_rules.rs`).
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: Passed cleanly.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly.
+  - `cargo test -p test_runner --test test_architecture_rules`: Passed cleanly.
+  - `python tools/pre_flight.py`: Passed cleanly.
+  - `python tools/check_polish.py --git`: Passed across all staged diff additions.
+

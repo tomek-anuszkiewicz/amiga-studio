@@ -80,6 +80,5 @@ Whenever resolving a bug, timing divergence, or instruction failure, follow the 
 ---
 
 ## 6. Execution Skills for Testing
-- **Crate Unit & Integration Test Scaffolding:** Follow [`scaffold-crate-tests`](../skills/scaffold-crate-tests/SKILL.md) to author comprehensive external test suites under `crates/<crate>/tests/test_<crate>.rs`.
 - **CPU Silicon Cycle Verification:** Follow [`m68k-singlestep-test`](../skills/m68k-singlestep-test/SKILL.md) when validating instructions against Tom Harte physical silicon vectors (`SingleStepTests-680x0`).
 
