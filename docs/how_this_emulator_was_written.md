@@ -1,141 +1,145 @@
 # How This Emulator Was Written: Pair-Programming with an AI Agent
 
-This document details the engineering methodology, collaboration dynamics, and harness design behind the development of this cycle-exact Amiga 500 emulator.
+Here is the honest breakdown of how this cycle-exact Amiga 500 emulator was built from scratch in Rust—and how an AI agent generated 100% of the code, tests, and documentation under human architectural direction.
 
 ---
 
-## Executive Summary: Zero Hand-Written Code
+## The Headline: Zero Hand-Written Code
 
-The most defining characteristic of this project is a simple fact: **the human developer did not write a single gram of code**.
+Here is the most defining fact about this project: **I did not write a single line of Rust code. Not one.**
 
-Not a single line of Rust implementation code was typed manually by the human. Furthermore, **not a single unit or integration test was manually authored or proposed by the human**. Every data structure, opcode micro-step, memory bus arbitration routine, custom chip state machine, test harness, and technical design document was generated and maintained by the AI agent under human architectural steering.
+I didn't write any of the implementation code. And just as importantly, **I never wrote or manually designed a single unit or integration test**. Every struct, every micro-step in the Motorola 68000 CPU state machine, every bus arbitration check in Gary, every custom chip pipeline, every single test suite, and every design document in this repository was generated and maintained by the AI agent.
 
-Instead of writing syntax, the human acted as **System Architect, Strategic Director, and Intellectual Sparring Partner**. The agent was not treated as a passive autocompletion widget or a subordinate junior programmer needing low-level hand-holding, but as a high-bandwidth engineering peer.
+My role was different. I was the **System Architect, Strategic Director, and Engineering Sparring Partner**. I didn't treat the agent like a junior intern who needs syntax babysitting, and I definitely didn't treat it like a glorified autocomplete widget. We worked as high-bandwidth engineering peers.
 
-This document synthesizes the core pillars of how this collaboration operated.
-
----
-
-## 1. Domain Knowledge Exploration & Machine Comprehension
-
-Before writing production code, the agent served as an interactive engine for **exploring and deconstructing the Amiga hardware architecture**:
-
-- **Systemic Questioning & Deep Analysis:** Rather than treating emulation as guesswork, the developer engaged the agent in exhaustive Q&A sessions analyzing the Commodore Amiga hardware reference manuals, Motorola 68000 programmer reference manuals, and physical hardware schematics.
-- **Inter-Chip Interplay:** Initial sessions focused on clarifying the subtle interactions between chips: how Agnus (Copper/Blitter) arbitrates the shared Chip RAM bus with the CPU, how Gary manages address decoding and DTACK wait states, how Paula synchronizes audio and floppy DMA slots, and how the dual 8520 CIAs generate timer interrupts.
-- **Grounded Hardware Mental Model:** By probing edge cases through dialogue—such as open-bus floating behavior (`$FF`/`$FFFF`), color clock phase boundaries (`CCK1`/`CCK2`), and bus contention penalties—the developer and agent established a shared, rigorous mental model of the physical silicon before committing to any software structures.
+Here is exactly how that collaboration worked in practice.
 
 ---
 
-## 2. Architectural Exploration & The "Minimal Frame" Methodology
+## 1. Exploring the Amiga Architecture Before Writing a Line of Code
 
-Emulating a complex, cycle-exact system requires navigating countless architectural trade-offs. The development followed a strict collaborative workflow:
+The biggest mistake you can make with an AI agent is jumping straight into code generation before you both understand the machine. 
+
+Before drafting our first Rust module, the agent served as an interactive research engine to deconstruct how the Amiga 500 actually works:
+
+- **Deep Q&A Over Original Manuals:** We spent hours in focused Q&A sessions tearing through the Commodore Hardware Reference Manual, the Motorola 68000 Programmer's Reference Manual, and physical circuit schematics.
+- **Untangling Custom Chip Interactions:** We mapped out how the chipset pieces fit together: how Agnus (Copper and Blitter) shares the Chip RAM bus with the CPU, how Gary handles address decoding and DTACK wait states, how Paula interleaves audio and floppy DMA cycles, and how the dual MOS 8520 CIAs drive timer interrupts.
+- **Building a Solid Mental Model:** We dug into physical hardware quirks before touching the keyboard—open-bus floating values (`$FF`/`$FFFF`), color clock phase boundaries (`CCK1`/`CCK2`), and bus contention penalties.
+
+By the time we started writing code, we weren't guessing. We had a crisp, shared mental model of the physical hardware.
+
+---
+
+## 2. The "Minimal Frame" Rule: Nail the Skeleton First, Then Scale
+
+When people try to build complex systems with AI, they usually hand the agent a big specification and say: *"Build the CPU."* That never works. It produces thousands of lines of brittle, unmaintainable code that falls apart the moment you run a real test.
+
+Our approach was the exact opposite: **the agent was never unleashed on a subsystem until we proved the architecture on the smallest possible working slice—what we called the "minimal frame."**
 
 ```mermaid
 flowchart TD
-    A["1. Explore Problem Space\n(Identify hardware constraint or subsystem)"] --> B["2. Collaborative Debate\n(Agent proposes solutions; human challenges & contributes alternatives)"]
-    B --> C["3. Select Optimal Architecture\n(Evaluate host pipeline efficiency, clarity, and hardware fidelity)"]
-    C --> D["4. The 'Minimal Frame' Prototype\n(Manually verify on smallest, simplest slice: 1 opcode, 1 bus cycle, 1 phase)"]
-    D --> E["5. Automated Scale-Out\n(Agent is unleashed across the subsystem under automated test gates)"]
+    A["1. Identify Hardware Constraint\n(e.g., bus cycle, DMA slot, interrupt line)"] --> B["2. Debate the Architecture\n(Agent proposes solutions; human challenges & offers alternatives)"]
+    B --> C["3. Pick the Cleanest Design\n(Focus on host CPU efficiency, zero allocations, and clear data flow)"]
+    C --> D["4. Build the 'Minimal Frame'\n(Prove it on 1 opcode, 1 bus cycle, or 1 clock phase)"]
+    D --> E["5. Unleash Automated Scale-Out\n(Agent scales across the subsystem under strict test gates)"]
 ```
 
-### The "Minimal Frame" Principle
-A critical rule prevented unanchored code generation: **the agent was never unleashed on large subsystems without a proven, verified minimal frame**.
+Before implementing hundreds of M68000 instructions or complex chip registers, we sat down and built the minimal operational skeleton together:
+- How does a single bus cycle break down across Color Clock phases (`CCK1` address/strobe vs `CCK2` sample/commit)?
+- How does the memory bus signal wait states (`BusResult::WaitState`) when custom chip DMA blocks the CPU?
+- How do decoupled chips talk to each other without messy circular pointer soup (`Rc<RefCell<...>>`)?
+- How does an interrupt request line (`IPL 1-6`) travel from Paula and the CIAs into the CPU?
 
-Before scaling out to hundreds of CPU instructions or extensive chip features, the human and agent first established and verified the minimal operational skeleton:
-- How does a single CPU bus cycle split across Color Clock phases (`CCK1` address/strobe vs `CCK2` sample/commit)?
-- How does the memory bus return `BusResult::WaitState` when Chip RAM is contended by DMA?
-- How do decoupled subsystems exchange signals without circular pointer references (`Rc<RefCell<...>>`)?
-- How does the interrupt priority level (`IPL 1-6`) propagate between Paula/CIAs and the CPU?
-
-Only after this minimal frame was proven and tested on the simplest possible slice was the agent given clearance to scale out the full implementation autonomously.
+Once we proved that minimal frame on one instruction or one cycle, the architecture was locked in. Only then was the agent unleashed to scale out the full implementation across the subsystem.
 
 ---
 
-## 3. External Ground Truth: SingleStepTests & vAmigaTS
+## 3. Real Silicon Test Vectors Don't Care About AI Guesses
 
-An AI agent working solely from documentation or text prompts can easily hallucinate plausible-looking logic that fails on actual hardware corner cases. To eliminate this risk, the project relied heavily on two exhaustive, external ground truth verification suites:
+LLMs are remarkably good at generating code that looks plausible, compiles cleanly, and passes basic hand-rolled smoke tests—yet completely breaks the moment you boot a real Amiga game or demoscene raster trick.
 
-### A. Tom Harte SingleStepTests (Motorola 68000 Silicon Vectors)
-- **Scale:** Over 1 million cycle-by-cycle physical hardware captures across 124 distinct test suites (`ref_src/SingleStepTests-680x0/`).
-- **Granularity:** Each test case specifies the exact initial CPU registers, memory state, and prefetch queue (`IR`/`IRC`), stepping the CPU through execution and asserting every intermediate bus cycle, data strobe, address bus state, and condition code flag ($X, N, Z, V, C$).
-- **Cycle-Exact Calibration:** Every M68000 instruction implemented by the agent was validated directly against these physical silicon vectors (`SINGLESTEP_FULL=1`). If an instruction diverged by even a single bus phase or CCR bit, the agent could not guess or negotiate—it had to trace the micro-step state machine and correct the micro-operations until the silicon captures matched 100%.
+To eliminate hallucinated hardware behavior, we anchored the agent to two unforgiving, external test suites:
 
-### B. vAmigaTS (Amiga Chipset & Timing Test Suite)
-- **Scale & Scope:** Christian Bauer's comprehensive automated test suite, executing real Amiga machine code programs designed to stress test custom chip edge cases.
-- **Subsystem Coverage:** Rigorous validation of Agnus Copper beam racing, Blitter nasty bus contention, Denise bitplane fetching, sprite multiplexing, Paula audio period intervals, and MOS 8520 CIA timer rollover and TOD atomic latches.
-- **Eliminating Regressions:** By verifying subsystems against vAmigaTS captures and reference behaviors, the agent had an objective, unforgiving baseline that prevented regressions during refactorings.
+### A. Tom Harte's SingleStepTests (Real 68000 Silicon Captures)
+- **Over 1 Million Test Vectors:** We imported 124 comprehensive test suites (`ref_src/SingleStepTests-680x0/`) captured directly from physical Motorola 68000 silicon.
+- **Cycle-by-Cycle Verification:** Every single test case initializes registers, memory, and the CPU prefetch queue (`IR`/`IRC`), steps through execution, and asserts every bus cycle, address strobe, data transfer, and condition code flag ($X, N, Z, V, C$).
+- **No Room to Bluff:** When the agent wrote an opcode, we ran it against these physical silicon captures (`SINGLESTEP_FULL=1`). If a test failed by even a single clock phase or flag bit, the agent couldn't argue or fudge the implementation—it had to step through its micro-steps and fix the state machine until it matched real Motorola silicon 100%.
+
+### B. vAmigaTS (Amiga Chipset Timing Suite)
+- **Real Machine Code Tests:** Christian Bauer's vAmiga test suite runs real Amiga machine code programs designed to push custom chip edge cases to their breaking point.
+- **Custom Chip Stress-Testing:** It verified Agnus Copper beam synchronization, Blitter nasty bus priority, Denise bitplane latches, sprite multiplexing, and CIA timer rollovers.
+- **Zero Regression Confidence:** Every time we refactored bus logic or chip synchronization, we had an objective, external verification baseline to prove we hadn't broken hardware timing.
 
 ---
 
-## 4. The Agent Harness: Continuous Evolution & Relentless Polishing
+## 4. The Real Job: Continuously Polishing the Agent Harness
 
-An autonomous AI agent is only as reliable as the harness that constrains, guides, and verifies it. A central lesson of this project is that **the entire agent harness was in a state of continuous evolution and relentless polishing**.
+If you want an AI agent to reliably write high-performance systems code, you don't micromanage its typing. You build a strict, supportive harness around it.
 
-The harness was not a static configuration set up at the beginning; it was constantly shaped, hardened, and refined alongside the emulator code itself.
+And here is the vital insight: **the harness was not something we set up on day one and forgot about. It was in a state of continuous evolution and relentless polishing throughout the entire project.**
 
 ```mermaid
 flowchart LR
-    A["Agent Session\n& Execution"] --> B["Observation\n& Review"]
-    B --> C["Detect Friction / Blind Spot"]
-    C --> D["Update Rules, Skills,\nor Architecture Tests"]
+    A["Agent Session\n& Coding"] --> B["Observation\n& Code Review"]
+    B --> C["Spot a Friction Point\nor Blind Spot"]
+    C --> D["Upgrade Rules, Skills,\nor Architecture Tests"]
     D --> A
 ```
 
-### A. Unit Tests Written by the Agent From Day One
-- From the very first line of code, **the agent authored all unit and integration tests**. The human never wrote a single test case manually or designed test scaffolding.
-- Over time, test authoring evolved from an implicit practice into an ironclad, automated requirement:
-  - **Unit Testing Policy (`unit-testing-policy.md`):** Mandated dedicated `crates/*/tests/` suites for all functional modules, strictly prohibiting inline tests in `src/`.
-  - **Repro-First Defect Resolution (`repro-first.md`):** Mandated that before any bug was fixed, the agent had to first author an isolated, failing reproduction test.
-  - **Automated Architecture Tests:** CI gates (`cargo test -p test_runner --test test_architecture_rules`) began enforcing test presence, non-panicking code, and strict architectural standards automatically, eliminating the need for the human to remind the agent to add tests.
+### A. Unit Tests From Day One
+- The agent wrote unit tests from the very first commit. I never wrote a test case or designed test harnesses myself.
+- Over time, we baked testing directly into the harness:
+  - **Unit Testing Policy (`unit-testing-policy.md`):** Mandated external test suites in `crates/*/tests/` with zero inline test clutter inside `src/`.
+  - **Repro-First Defect Resolution (`repro-first.md`):** Whenever a bug surfaced, the agent had to write a failing reproduction test before touching production code.
+  - **Automated Architecture Tests:** Our CI suite (`cargo test -p test_runner --test test_architecture_rules`) automatically verified that no public module lacked unit tests, eliminating the need for me to remind the agent.
 
-### B. Modular Constitutional Guardrails
-Operational rules under `.agents/rules/` grew organically to eliminate recurring classes of errors:
-- **Language Policy (`language-policy.md`):** Strict English for all code, comments, documentation, and commits.
-- **Hardware Efficiency & Readability (`performance-and-readability.md`):** Strict prohibition of custom macros (`macro_rules!`) and const-generic opcode functions; contiguous arrays; zero heap allocations in emulation hot paths; zero `.unwrap()` or panic paths.
-- **Attractor Discipline (`attractor-discipline.md`):** Active prevention of synthetic academic jargon, inflated invariant slogans, and leaked buzzwords.
-- **Immediate Atomic Commits (`git-commits.md`):** Mandatory verified commit after every discrete task, preventing uncommitted working trees across conversational turns.
+### B. Practical Rules, Not Theoretical Fluff
+We maintained modular operational rules under `.agents/rules/` that attacked concrete failure modes:
+- **Clean Performance & Readability (`performance-and-readability.md`):** Banned complex custom macros (`macro_rules!`) and const-generic opcode functions that obfuscate code. Mandated contiguous memory layouts, zero heap allocations inside the emulation loop, and zero runtime `.unwrap()` panics.
+- **Attractor Discipline (`attractor-discipline.md`):** Filtered out academic jargon and fake complexity to keep discussions grounded in clear software engineering.
+- **Immediate Atomic Commits (`git-commits.md`):** Required a clean, verified Git commit after every completed task, ensuring the working tree was never left dirty across turns.
 
-### C. Self-Maintaining Architecture Documentation
-The agent maintains its own technical architecture documentation:
-- Every major code change is reflected immediately in [`Obsidian/Amiga/Design/`](../Obsidian/Amiga/Design/) and [`docs/`](../docs/).
-- Link graphs and YAML frontmatter are audited continuously (`obsidian-vault-linking`).
-- Hardware reference manuals and architectural notes are indexed in a local vector database (Qdrant) via `amiga-rag`.
+### C. Self-Maintaining Documentation
+Whenever the agent modified a subsystem, it updated the design documentation in [`Obsidian/Amiga/Design/`](../Obsidian/Amiga/Design/) and [`docs/`](../docs/) in the same turn. The documentation evolved in lockstep with the code, not as an afterthought.
 
 ---
 
-## 5. The Sparring Partner Dynamic & Continuous Calibration
+## 5. The Sparring Partner Mindset
 
-The human-agent dynamic was explicitly structured as a **partnership between peers**:
+The relationship worked because we treated each other as technical partners:
 
-| Anti-Pattern: Treating Agent as Junior | Reality: The Sparring Partner Dynamic |
+| The "Junior Intern" Trap | The Sparring Partner Mindset |
 | :--- | :--- |
-| Micromanaging syntax and spelling | Setting strategic architectural vision and goals |
-| Blaming the model for repeated mistakes | Updating rules and skills so mistakes cannot reoccur |
-| Accepting the first code draft passively | Challenging decisions, debating trade-offs, and counter-proposing |
-| Writing code manually when agent struggles | Improving the test harness and constraints until the agent succeeds |
+| Micromanaging syntax, variable names, and formatting | Setting high-level architectural direction and constraints |
+| Getting frustrated when the model makes a mistake | Updating the rules and skills so that mistake can never happen again |
+| Passively accepting whatever code the model outputs | Debating trade-offs, pushing back, and suggesting better alternatives |
+| Stepping in to write code manually when the AI struggles | Polishing the harness and test feedback loops until the AI succeeds |
 
-The human observed execution in real time, challenged architectural decisions, and intervened when an assumption looked questionable. But rather than fixing mistakes manually in the code editor, the developer channeled that energy into **upgrading the rules, skills, and test harnesses**. The system became progressively smarter, more autonomous, and more robust with each completed milestone.
+Whenever the agent stumbled or took a suboptimal shortcut, I didn't reach for my keyboard to fix it. Instead, I asked: *Why did the agent make that choice? What rule or skill was missing or ambiguous?* 
 
----
-
-## 6. Mutual Synergy & Unexpectedly Elegant Solutions
-
-One of the greatest sources of satisfaction in this project was the **emergence of solutions that exceeded initial human expectations**.
-
-Through iterative debate and reciprocal critique, the human and agent frequently converged on architectural patterns that neither would have produced in isolation:
-- **Fused Color Clock ALU Micro-Steps:** Merging arithmetic calculations, CCR evaluation, and Effective Address operations directly into the 2-clock bus phases (`BUS_READ_IDLE`, `BUS_WRITE_IDLE`) eliminated artificial zero-clock states while mirroring real physical silicon timing.
-- **Dual Staging Registers (`addr1` / `addr2`):** Elegant handling of dual-memory M68000 instructions (`CMPM`, `ABCD`, `ADDX`, `SUBX`) without pointer juggling, maintaining strict Address Error exception invariance.
-- **Decoupled Snapshot Architecture:** Zero-copy, queryable subsystem states enabling both WebAssembly export and zero-allocation time-travel debugger rewind without circular references.
-
-These solutions were not anticipated at project inception—they emerged naturally from rigorous sparring against physical hardware constraints and strict architectural guardrails.
+Then I updated the rule, refined the skill, or added an architecture test. Every mistake made the harness stronger. Over time, the agent required fewer corrections and operated with remarkable velocity.
 
 ---
 
-## Summary of Key Takeaways
+## 6. When the Collaboration Surprises You
 
-1. **Zero Human Code:** 100% of Rust code, tests, and technical specs were generated by the AI agent under human guidance.
-2. **Tests From Day One:** The agent authored all unit and integration tests from the beginning, later formalized into automated Definition of Done gates.
-3. **External Ground Truth:** Exhaustive physical silicon vectors (SingleStepTests) and chipset test suites (vAmigaTS) grounded the implementation in undeniable hardware reality.
-4. **The Minimal Frame:** Always build and prove the smallest functional skeleton before scaling out automated implementation.
-5. **Continuous Harness Polishing:** Treat the harness (rules, skills, automated architecture tests) as an evolving product that is continuously refined.
-6. **Sparring Partner Relationship:** Treat the agent as an intellectual peer to discover solutions superior to individual design instincts.
+The most rewarding part of this project was discovering solutions that exceeded what either of us would have come up with alone.
+
+Through back-and-forth architectural sparring, we repeatedly landed on designs that were cleaner and more elegant than my original ideas:
+
+- **Fusing ALU Work into 2-Clock Bus Phases:** Instead of creating artificial zero-cycle micro-steps for ALU operations, we realized we could fuse math, CCR flag updates, and Effective Address calculations directly into the natural 2-clock bus idle phases (`BUS_READ_IDLE`, `BUS_WRITE_IDLE`). It eliminated state overhead while matching physical silicon timing.
+- **Dual Staging Registers (`addr1` / `addr2`):** For dual-memory instructions (`CMPM`, `ABCD`, `ADDX`, `SUBX`), we avoided messy pointer juggling by using dedicated staging registers. This neatly guaranteed that unaligned source reads trigger an Address Error with the destination register untouched—matching real Motorola 68000 silicon quirks.
+- **Decoupled Snapshot State:** Separating the machine's state structs from runtime handles made WebAssembly export effortless and gave us zero-allocation time-travel debugger rewinds for free.
+
+These weren't planned on day one. They emerged naturally from continuous engineering dialogue, grounded in real hardware constraints and backed by a disciplined harness.
+
+---
+
+## Key Takeaways for Building with AI
+
+1. **You Don't Need to Type Code:** An AI agent can generate 100% of the production code and tests if you provide sharp architectural leadership.
+2. **Explore the Domain First:** Spend time deconstructing hardware specs and reference manuals before writing your first module.
+3. **Build the Minimal Frame:** Never ask an agent to build a whole subsystem at once. Prove the architecture on one instruction or one bus cycle first.
+4. **Anchor to Real-World Test Vectors:** Use external, exhaustive test suites (like SingleStepTests and vAmigaTS) so the agent has an undeniable source of truth.
+5. **Treat the Harness as a Product:** Constantly polish your rules, skills, and automated architecture tests whenever friction appears.
+6. **Be a Sparring Partner:** Debate ideas, push back on trade-offs, and let the collaborative process produce designs better than your initial instincts.
