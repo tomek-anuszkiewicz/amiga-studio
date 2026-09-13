@@ -93,7 +93,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 ## 4. Quality Assurance & Definition of Done
 
 - **Mandatory Formatting:** `cargo fmt --all -- --check`.
-- **Pre-Flight Gate:** Run `python tools/pre_flight.py` (checks formatting, attractors, AGENTS.md size, and architecture rules).
+- **Attractor & Vocabulary Discipline:** Run `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`.
 - **Automated Architecture Tests:** Pass `cargo test -p test_runner --test test_architecture_rules` (validates file sizes, zero runtime panics, zero custom macros, zero const generics, canonical IDLE steps, zero inline tests in src/, path privacy, inlining, and link integrity).
 - **Single-Step CPU Validation:** Run `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep` on any `crates/m68000` changes.
 - **Cartesian DMA Contention:** Run `cargo test -p test_runner --test test_dma_cartesian` on CPU/bus changes (validates cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity).

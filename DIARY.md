@@ -2602,6 +2602,31 @@ Every future modification or implementation task must append an entry following 
   - Hook simulation tests: Successfully confirmed `decision: "deny"` on Polish payloads and `decision: "allow"` on clean code.
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
 
+---
+
+### [2026-09-14 01:42 CEST] — Removed Obsolete Tools (log_diary, pre_flight, scaffold_crate) & amiga-scaffold-crate Skill
+- **Affected Subsystems**:
+  - `tools/log_diary.py`: Removed script.
+  - `tools/pre_flight.py`: Removed script.
+  - `tools/scaffold_crate.py`: Removed script.
+  - `.agents/skills/amiga-scaffold-crate/`: Removed skill directory and `SKILL.md`.
+  - `AGENTS.md`: Pruned pre_flight reference from Section 4, replacing with direct attractor linting.
+  - `.agents/rules/diary-maintenance.md`: Pruned Section 2 (log_diary tool).
+  - `.agents/rules/repro-first.md`: Removed pre_flight from Step 4 non-regression checks.
+  - `.agents/rules/parallel-execution.md`: Removed pre_flight reference from Section 5.
+- **What Was Changed (The Concrete Reality)**:
+  - Deleted `tools/log_diary.py`, `tools/pre_flight.py`, and `tools/scaffold_crate.py` per user directive.
+  - Deleted `.agents/skills/amiga-scaffold-crate/` skill directory.
+  - Synchronized architectural documentation and operating rules across `AGENTS.md`, `diary-maintenance.md`, `repro-first.md`, and `parallel-execution.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Repository Surface Pruning:* Streamlined tools and agent skills by eliminating redundant scaffolding and monolithic pre-flight wrappers, favoring lean, direct standard toolchain commands (`cargo fmt`, `cargo test`, `lint_attractors.py`, and `check_polish.py`).
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed across 331 files (0 violations).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.62s.
+  - `python tools/check_polish.py --git`: Passed across all staged diff additions.
+
+
 
 
 
