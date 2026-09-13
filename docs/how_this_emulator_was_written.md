@@ -8,7 +8,9 @@ Here is the honest breakdown of how this cycle-exact Amiga 500 emulator was buil
 
 Here is the most defining fact about this project: **I did not write a single line of Rust code. Not one.**
 
-I didn't write any of the implementation code. And just as importantly, **I never wrote, designed, or proposed a single test of any kind**—from individual unit tests and multi-chip integration suites to GUI test harnesses and automated architecture gates. Every struct, every micro-step in the Motorola 68000 CPU state machine, every bus arbitration check in Gary, every custom chip pipeline, every single test suite, and every design document in this repository was generated and maintained by the AI agent.
+I didn't write any of the implementation code. And just as importantly, **I never wrote, designed, or proposed a single test of any kind**—from individual unit tests and multi-chip integration suites to GUI test harnesses and automated architecture gates. Every struct, every micro-step in the Motorola 68000 CPU state machine, every bus arbitration check in Gary, every custom chip pipeline, and every test suite was generated and maintained by the AI agent.
+
+Even the dozens of deep technical design specs in this repository were drafted and maintained by the agent. But make no mistake: **every document was driven by human initiative and intense back-and-forth debate**. It was always: *"Let's create a spec for this subsystem"*, *"What if the CPU accesses Slow RAM during a Blitter cycle?"*, *"Add this corner case"*, or *"No, that's not how it works—revise it."* The agent put the thoughts into markdown, but the agenda, the critical questions, and the relentless corrections came from me.
 
 And here is the even more candid reality: **I didn't fully understand how the Amiga works going in, and this project was my very first contact with Rust.**
 
@@ -106,8 +108,11 @@ We maintained modular operational rules under `.agents/rules/` that attacked con
 - **Attractor Discipline (`attractor-discipline.md`):** Filtered out academic jargon and fake complexity to keep discussions grounded in clear software engineering.
 - **Immediate Atomic Commits (`git-commits.md`):** Required a clean, verified Git commit after every completed task, ensuring the working tree was never left dirty across turns.
 
-### C. Self-Maintaining Documentation
-Whenever the agent modified a subsystem, it updated the design documentation in [`Obsidian/Amiga/Design/`](../Obsidian/Amiga/Design/) and [`docs/`](../docs/) in the same turn. The documentation evolved in lockstep with the code, not as an afterthought.
+### C. Human-Directed, Agent-Maintained Documentation
+The repository contains dozens of deep architectural specs under [`Obsidian/Amiga/Design/`](../Obsidian/Amiga/Design/) and [`docs/`](../docs/). But the agent didn't draft these in isolation:
+- **Human-Driven Debates:** Every document started with human initiative: *"Write a design document on Paula audio DMA"*, *"What if the CPU accesses registers out-of-order?"*, *"Add this section, but remove that assumption."*
+- **Iterative Scrutiny:** I reviewed every draft, pushed back on flawed logic, and said *"No, that's not right, change it like this"* until the document was watertight.
+- **Automated Upkeep:** Once established, the agent was responsible for maintaining the documentation in lockstep with the code—updating specs and verifying link integrity whenever a subsystem changed.
 
 ---
 
