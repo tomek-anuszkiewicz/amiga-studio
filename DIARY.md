@@ -2421,3 +2421,39 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/pre_flight.py`: All 4 gates passed cleanly (Formatting: 100%, Attractor Discipline: 322 files clean, AGENTS.md: 13,387 bytes $\le 14,000$, Architecture Rules: 17 passed).
   - Working tree status checked with `git status`.
+
+---
+
+### [2026-09-13 14:30 CEST] — Step 2.2: Custom Chip Hardware Registers, Propagation Latency Pipeline & Clock Domains
+- **Affected Subsystems**:
+  - `crates/config`: Added `mutation.rs` (`DelayedMutation`, `MutationMode`, `stage_mutation`, `tick_mutations`), `big_array.rs` (Serde support for arrays of sizes 32 and 64), and unit tests (`crates/config/tests/test_mutation.rs`).
+  - `crates/agnus`: Added active registers (`dmacon`, `copcon`, `copjmp1/2`, `bltcon0/1`, `bltsize`, `bplcon0`), 64-capacity inline mutation buffer, SET/CLR bit 15 logic on `DMACON`, `step_cck()` mutation countdown, immediate reads for `DMACONR`, `VHPOSR`, `VPOSR`, and dedicated test suite (`crates/agnus/tests/test_agnus_registers.rs`).
+  - `crates/denise`: Added 64-capacity inline mutation buffer, `CLXDAT` clear-on-read vs non-destructive `peek_register()`, 1-CCK propagation delay for colors (`COLOR00..31`) and `BPLCON0`, open-bus reads for write-only registers, and dedicated test suite (`crates/denise/tests/test_denise_registers.rs`).
+  - `crates/paula`: Added 32-capacity inline mutation buffer, SET/CLR bit 15 logic on `INTENA`, `INTREQ`, and `ADKCON`, 1-CCK delay for interrupts and 2-CCK delay for `ADKCON`, `dma_enables` latch from cross-chip `DMACON` broadcast, and dedicated test suite (`crates/paula/tests/test_paula_registers.rs`).
+  - `crates/cia`: Added 16-capacity inline mutation buffer, `stage_write()` with 5-CCK E-Clock propagation delay, TOD atomic read-freeze (`TODHI` freeze, `TODLO` unfreeze), `ICR` clear-on-read vs `peek_register()`, `_OVL` and `_LED` pin transition tracking, and dedicated test suite (`crates/cia/tests/test_cia_registers.rs`).
+  - `crates/memory_bus`: Added `pending_custom_writes: [Option<CustomWriteEvent>; 8]`, `enqueue_custom_write()`, and `pop_custom_write()` to queue CPU/Copper bus writes for dispatch to custom chips.
+  - `crates/machine_loop`: Orchestrated custom chip write event draining, multi-chip dispatch, per-chip `step_cck()` execution, cross-chip cascades (`cia_a.ovl_transition()` -> Gary overlay disengage, `paula.ipl_pins()` -> `cpu.set_ipl()`), sync of readable register snapshot into `memory_bus.custom_registers`, and dedicated integration test suite (`crates/machine_loop/tests/test_register_propagation.rs`).
+  - `Obsidian/Amiga/Design/`: Updated `Main loop A500.md`, `Agnus.md`, `Denise.md`, `Paula.md`, and `CIA.md` with exact buffer capacities, propagation latencies, register access semantics, and overflow safety.
+  - `ROADMAP.md`: Marked Step 2.2 as fully completed.
+- **What Was Changed (The Concrete Reality)**:
+  - Implemented the dual access semantics: "Read is NOW" (active latched values returned with zero delay) vs "Write is Staged" (register writes enter an inline delay pipeline and commit after calibrated Color Clocks).
+  - Supported two distinct propagation modes: `MutationMode::Pipeline` for FIFO streaming data (colors, audio samples) and `MutationMode::OverwritePending` for control/strobe registers (`DMACON`, `INTENA`, `INTREQ`, `BLTSIZE`, `COPJMP1/2`).
+  - Sized mutation buffers to exactly match write register counts (Agnus: 64, Denise: 64, Paula: 32, CIA: 16) with zero runtime heap allocations and defensive overflow fallback with error logging.
+  - Implemented asymmetric register pairs (`DMACONR`/`DMACON`, `INTENAR`/`INTREQ`, `ADKCONR`/`ADKCON`, `VPOSR`/`VPOSW`) and open bus floating returns (`0xFFFF`) for write-only registers.
+  - Implemented simultaneous cross-chip bus broadcast (e.g. `BPLCON0` committing to Denise in 1 CCK and Agnus in 4 CCK; `DMACON` committing to Agnus in 2 CCK and broadcasting to Paula to control audio/disk DMA enables).
+  - Implemented hardware physical pin cascades: `CIA-A _OVL` pin transition directly controlling the Gary boot overlay on `MemoryBus`, and Paula interrupt request evaluation directly asserting CPU IPL lines (1..6).
+  - Implemented MOS 8520 E-Clock frequency domain stepping (5 CCK per E-Clock tick), TOD 24-bit atomic read-freeze on `TODHI` and unfreeze on `TODLO`, and `ICR` clear-on-read.
+- **Architectural Rationale & Trade-Offs**:
+  - *Tier 1 Configuration Placement for Shared Structs:* Placed `DelayedMutation` and `MutationMode` in `crates/config` so all Tier 2 sibling crates (`agnus`, `denise`, `paula`, `cia`, `memory_bus`) can utilize them without violating the flat, non-circular workspace layout.
+  - *Zero-Allocation Hot Path:* Using inline fixed-capacity arrays with Serde big-array serialization guarantees zero heap allocation during cycle execution while maintaining complete save state reproducibility.
+  - *Defensive Overflow Invariant:* Saturation of mutation buffers triggers immediate fallback commit with error logging, ensuring the host emulator never panics under rogue guest code or high-frequency debugger injections.
+- **Verification & Test Results**:
+  - `crates/config/tests/test_mutation.rs`: 3 passed.
+  - `crates/agnus/tests/test_agnus_registers.rs`: 6 passed.
+  - `crates/denise/tests/test_denise_registers.rs`: 4 passed.
+  - `crates/paula/tests/test_paula_registers.rs`: 4 passed.
+  - `crates/cia/tests/test_cia_registers.rs`: 4 passed.
+  - `crates/machine_loop/tests/test_register_propagation.rs`: 5 passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.73s.
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
+

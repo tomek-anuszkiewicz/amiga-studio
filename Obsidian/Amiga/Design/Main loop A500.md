@@ -173,8 +173,15 @@ flowchart LR
 
 ### 5.1 Hot-Path Zero-Allocation Architecture
 To satisfy Rule 2.4 (zero allocation in hot path):
-- Staged mutations are modeled using fixed-size inline ring buffers / fixed arrays (e.g. `[Option<DelayedMutation>; 4]`) embedded directly in chip structs.
-- No `Vec`, `Box`, or heap allocations are performed when registering or committing mutations.
+- Staged mutations are modeled using fixed-size inline ring buffers / fixed arrays embedded directly in chip structs:
+  - `Agnus`: `[Option<DelayedMutation>; 64]` (covering all Agnus write registers including Copper, Blitter, and beam controls).
+  - `Denise`: `[Option<DelayedMutation>; 64]` (covering palette `COLOR00..31`, bitplane control `BPLCON0..3`, and sprites).
+  - `Paula`: `[Option<DelayedMutation>; 32]` (covering audio channels, interrupt control `INTENA`/`INTREQ`, and disk controller).
+  - `CIA`: `[Option<DelayedMutation>; 16]` (covering all 16 addressable 8520 register offsets).
+- Two distinct mutation propagation modes are supported:
+  - `MutationMode::Pipeline`: Pipelined FIFO wave for streaming registers (colors, audio samples, bitplane pointers).
+  - `MutationMode::OverwritePending`: Control/strobe registers (`DMACON`, `INTENA`, `INTREQ`, `BLTSIZE`, `COPJMP1/2`) where back-to-back writes replace pending mutations targeting the same register.
+- Overflow Protection: If the mutation buffer capacity is exceeded, an immediate fallback commit is executed with a defensive error log, guaranteeing zero host panics and zero heap allocations.
 
 ### 5.2 Deterministic Save State Serialization
 All pending mutations, staged register values, and remaining cycle countdowns are fully serialized within the subsystem snapshot structs (`AgnusState`, `DeniseState`, etc.):

@@ -84,6 +84,15 @@ All Agnus registers are mapped within the Custom Chip register space (`$DFF000`â
 | **`$DFF08C`** | W | **`COPINS`**  | Copper Instruction register latch |
 | **`$DFF096`** | W | **`DMACON`**  | DMA Control write (bit 15: SET/CLR, bits 0â€“14: channel enables) |
 
+### 3.1 Register Access Semantics & Propagation Latency Pipeline
+- **Immediate Latch Reads:** `DMACONR` (`$DFF002`), `VHPOSR` (`$DFF004`), and `VPOSR` (`$DFF006`) return the active hardware register state immediately on the bus read phase with zero delay.
+- **Write Staging Buffer:** Agnus embeds an inline fixed-capacity mutation array `[Option<DelayedMutation>; 64]` sizing to its addressable write register set.
+- **Propagation Timing:**
+  - `DMACON` (`$DFF096`): Propagates with 2 CCK delay (`MutationMode::OverwritePending`). Bit 15 determines SET/CLR behavior. Propagates simultaneously across the bus to synchronize Paula DMA channel enables (`AUD0..3`, `DSK`).
+  - `BPLCON0` (`$DFF100` mirror): Propagates with 4 CCK delay (`MutationMode::OverwritePending`) to synchronize Agnus bitplane DMA slot schedule.
+  - Strobes (`COPJMP1`, `COPJMP2`, `BLTSIZE`): Propagate with 2 CCK delay (`MutationMode::OverwritePending`).
+- **Defensive Overflow Protection:** If debugger injections saturate the 64-slot buffer, writes commit immediately with a defensive error log, preserving zero-panic invariants.
+
 ---
 
 ## 4. Master Beam Counters (`VHPOSR` & `VPOSR`)

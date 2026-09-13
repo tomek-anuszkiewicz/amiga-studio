@@ -75,6 +75,20 @@ Paula registers are mapped in the Custom Chip space (`$DFF008`–`$DFF032`, `$DF
 | **`$DFF0A8`–`$DFF0D8`** | W | **`AUDxVOL`** | Audio Channel 0–3 Volume (6-bit linear: $0$ to $64$) |
 | **`$DFF0AA`–`$DFF0DA`** | W | **`AUDxDAT`** | Audio Channel 0–3 Sample Data Holding Latch |
 
+### 3.1 Register Access Semantics & Propagation Latency Pipeline
+- **Asymmetric Register Pairs:**
+  - `INTENAR` (`$DFF01C`) read vs `INTENA` (`$DFF09A`) write.
+  - `INTREQR` (`$DFF01E`) read vs `INTREQ` (`$DFF09C`) write.
+  - `ADKCONR` (`$DFF010`) read vs `ADKCON` (`$DFF09E`) write.
+  - Bit 15 on write registers controls `SET/CLR` mechanics: writing with bit 15 = 1 sets individual masked bits; bit 15 = 0 clears them.
+- **Write Staging Buffer:** Paula embeds an inline fixed-capacity mutation array `[Option<DelayedMutation>; 32]` sizing to its addressable write register set.
+- **Propagation Timing:**
+  - `INTENA` / `INTREQ`: Propagates with 1 CCK delay (`MutationMode::OverwritePending`). Paula's central interrupt encoder recalculates IPL lines to the CPU at the conclusion of the 1-CCK propagation.
+  - `ADKCON`: Propagates with 2 CCK delay (`MutationMode::OverwritePending`).
+  - Audio Volume / Period (`AUDxVOL`, `AUDxPER`): Propagate with 1 CCK delay (`MutationMode::Pipeline`).
+  - Cross-Chip `DMACON` Broadcast: Paula latches DMA enables for audio channels (`AUD0..3`) and floppy disk (`DSK`) broadcast from the memory bus.
+- **Defensive Overflow Protection:** If debugger injections saturate the 32-slot buffer, writes commit immediately with a defensive error log, preserving zero-panic invariants.
+
 ---
 
 ## 4. 4-Channel DMA Audio Engine

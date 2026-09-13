@@ -70,6 +70,16 @@ The 8520 is a native 8-bit peripheral connected across the Amiga 16-bit data bus
 | **`$BFEE01`** | **`$BFDE00`** | R/W | **`CRA`** | Control Register A |
 | **`$BFEF01`** | **`$BFDF00`** | R/W | **`CRB`** | Control Register B |
 
+### 3.2 Register Access Semantics & Clock Domain Latency Pipeline
+- **E-Clock Frequency Domain:** CIAs run synchronously to the Motorola E-Clock ($f_{CCK}/5 \approx 709\ \text{kHz}$). Staged CIA register writes commit after 5 CCK ticks (`MutationMode::Pipeline`).
+- **Write Staging Buffer:** Each CIA embeds an inline fixed-capacity mutation array `[Option<DelayedMutation>; 16]` covering all 16 addressable register offsets ($0..15$).
+- **TOD Atomic Read-Freeze:** Reading `TODHI` (`$BFEA01`/`$BFDA00`) atomically latches (freezes) the running TOD counter into internal read holding registers. Reading `TODMID` returns the latched mid-byte. Reading `TODLO` returns the latched low-byte and unfreezes the latches, resuming real-time latch tracking.
+- **ICR Clear-on-Read:** Reading `ICR` (`$BFED01`/`$BFDD00`) returns pending interrupt flags and immediately clears them (`0x00`). Debugger inspections via `peek_register(0x0D)` read non-destructively without clearing.
+- **Pin Transition Cascades:**
+  - `CIA-A Port A bit 0 (_OVL)`: Writing to `PRA` bit 0 drives `ovl_transition()`. When configured as an output (`DDRA` bit 0 = 1) and driven HIGH (1), the Gary boot overlay is permanently disengaged in `MemoryBus`, exposing low Chip RAM at `$000000..$07FFFF`.
+  - `CIA-A Port A bit 1 (_LED)`: Writing to `PRA` bit 1 drives `led_transition()`, controlling the low-pass audio filter on the Paula audio output stage.
+- **Defensive Overflow Protection:** If debugger injections saturate the 16-slot buffer, writes commit immediately with a defensive error log, preserving zero-panic invariants.
+
 ---
 
 ## 4. 16-Bit Interval Timers (Timer A & Timer B)

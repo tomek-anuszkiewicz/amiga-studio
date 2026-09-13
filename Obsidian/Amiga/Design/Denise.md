@@ -74,6 +74,15 @@ All Denise registers are mapped in the Custom Chip register space (`$DFF000`–`
 | **`$DFF144`–`$DFF17E`** | W | **`SPR0DATA/B`–`SPR7DATA/B`** | Sprite 0–7 Image Data Registers |
 | **`$DFF180`–`$DFF1BE`** | W | **`COLOR00`–`COLOR31`** | 32 Palette Color Registers (12-bit RGB444: 4 bits R, 4 bits G, 4 bits B) |
 
+### 3.1 Register Access Semantics & Propagation Latency Pipeline
+- **Clear-on-Read Mechanics:** `CLXDAT` (`$DFF00E`) latches sprite and playfield collision flags. Reading `CLXDAT` returns the active collision state and immediately clears all collision latches (`0x0000`). Debugger inspections via `peek_register(0x00E)` read non-destructively without clearing.
+- **Write Staging Buffer:** Denise embeds an inline fixed-capacity mutation array `[Option<DelayedMutation>; 64]` sizing to its addressable write register set (`COLOR00..31`, `BPLCON0..3`, `SPR0..7`).
+- **Propagation Timing:**
+  - `BPLCON0` (`$DFF100`): Propagates with 1 CCK delay (`MutationMode::OverwritePending`). Denise decodes bitplane count and display mode within 1 CCK of the bus write.
+  - Palette Registers (`COLOR00`–`COLOR31`): Propagate with 1 CCK delay (`MutationMode::Pipeline`) ensuring raster colors change deterministically on the subsequent Color Clock.
+  - Display Window Registers (`DIWSTRT`, `DIWSTOP`, `DDFSTRT`, `DDFSTOP`): Propagate with 1 CCK delay (`MutationMode::OverwritePending`).
+- **Defensive Overflow Protection:** If debugger injections saturate the 64-slot buffer, writes commit immediately with a defensive error log, preserving zero-panic invariants.
+
 ---
 
 ## 4. Pixel Pipeline & Display Modes
