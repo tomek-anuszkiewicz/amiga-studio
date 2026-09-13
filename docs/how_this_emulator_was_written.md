@@ -108,11 +108,17 @@ We maintained modular operational rules under `.agents/rules/` that attacked con
 - **Attractor Discipline (`attractor-discipline.md`):** Filtered out academic jargon and fake complexity to keep discussions grounded in clear software engineering.
 - **Immediate Atomic Commits (`git-commits.md`):** Required a clean, verified Git commit after every completed task, ensuring the working tree was never left dirty across turns.
 
-### C. Human-Directed, Agent-Maintained Documentation
-The repository contains dozens of deep architectural specs under [`Obsidian/Amiga/Design/`](../Obsidian/Amiga/Design/) and [`docs/`](../docs/). But the agent didn't draft these in isolation:
-- **Human-Driven Debates:** Every document started with human initiative: *"Write a design document on Paula audio DMA"*, *"What if the CPU accesses registers out-of-order?"*, *"Add this section, but remove that assumption."*
-- **Iterative Scrutiny:** I reviewed every draft, pushed back on flawed logic, and said *"No, that's not right, change it like this"* until the document was watertight.
-- **Automated Upkeep:** Once established, the agent was responsible for maintaining the documentation in lockstep with the code—updating specs and verifying link integrity whenever a subsystem changed.
+### C. Documentation is an Iterative Compass, Never a Holy Grail
+The repository contains dozens of deep architectural specs under [`Obsidian/Amiga/Design/`](../Obsidian/Amiga/Design/) and [`docs/`](../docs/). But here is an essential truth about how they were made: **documentation was never treated as a sacred holy grail or a long, upfront waterfall marathon.**
+
+A common trap with AI-assisted coding is spending weeks drafting an exhaustive, "perfect" specification in the naive hope that it will magically generate a flawless codebase in one shot. That never works.
+
+Instead, our approach was pragmatic:
+- **Good Enough to Start Coding:** We developed documentation collaboratively with the agent only up to the point where the architecture felt solid and clear. As soon as I felt, *"Okay, this makes sense, the interfaces are sane"*, we stopped writing docs and immediately moved to code and tests.
+- **Human-Driven Debates:** The docs were never generated in a vacuum. Every spec started from human initiative: *"Write a design document on Paula audio DMA"*, *"What if the CPU accesses registers out-of-order?"*, *"Add this section, but remove that assumption."*
+- **Refined in Lockstep with Code:** From the moment coding began, the documentation lived and breathed with the implementation. Whenever writing code revealed gaps, missing edge cases, or hardware quirks, we updated and expanded the documentation alongside the code.
+
+Documentation was a fast, iterative working compass—never an upfront bureaucratic monument.
 
 ### D. "Aspect-per-File", Not "Class-per-File"
 A major architectural choice I enforced across the codebase was rejecting the classic object-oriented trap: splitting every single struct into its own tiny file. In languages like Java or C#, you often end up with twenty micro-files for one feature (`Breakpoint.rs`, `BreakpointManager.rs`, `BreakpointCondition.rs`), which fragments your attention and forces artificial boilerplate.
@@ -162,7 +168,7 @@ These breakthroughs weren't planned upfront on day one. They emerged naturally f
 ## Key Takeaways for Building with AI
 
 1. **You Don't Need to Type Code or Tests:** An AI agent can generate 100% of the production code, test suites (unit, integration, GUI, and architecture checks), and technical documentation if you provide sharp architectural leadership.
-2. **Explore the Domain First:** Spend time deconstructing hardware specs and reference manuals before writing your first module.
+2. **Docs as an Iterative Compass, Not a Holy Grail:** Draft documentation just until the architecture is "good enough to code," then refine and expand it in lockstep as real-world code reveals edge cases.
 3. **Build the Minimal Frame:** Never ask an agent to build a whole subsystem at once. Prove the architecture on one instruction or one bus cycle first.
 4. **Anchor to Real-World Test Vectors:** Use external, exhaustive test suites (like SingleStepTests and vAmigaTS) so the agent has an undeniable source of truth.
 5. **Treat the Harness as a Product:** Constantly polish your rules, skills, and automated architecture tests whenever friction appears.
