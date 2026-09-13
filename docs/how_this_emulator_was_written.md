@@ -128,13 +128,9 @@ Then I updated the rule, refined the skill, or added an architecture test. Every
 
 The most rewarding part of this project was discovering solutions that exceeded what either of us would have come up with alone.
 
-Through back-and-forth architectural sparring, we repeatedly landed on designs that were cleaner and more elegant than my original ideas:
+Through back-and-forth architectural sparring, we repeatedly landed on designs that were cleaner, more robust, and more elegant than my original ideas—solutions I had not foreseen at all going in, but which turned out to be exceptionally well-suited to the hardware.
 
-- **Fusing ALU Work into 2-Clock Bus Phases:** Instead of creating artificial zero-cycle micro-steps for ALU operations, we realized we could fuse math, CCR flag updates, and Effective Address calculations directly into the natural 2-clock bus idle phases (`BUS_READ_IDLE`, `BUS_WRITE_IDLE`). It eliminated state overhead while matching physical silicon timing.
-- **Dual Staging Registers (`addr1` / `addr2`):** For dual-memory instructions (`CMPM`, `ABCD`, `ADDX`, `SUBX`), we avoided messy pointer juggling by using dedicated staging registers. This neatly guaranteed that unaligned source reads trigger an Address Error with the destination register untouched—matching real Motorola 68000 silicon quirks.
-- **Decoupled Snapshot State:** Separating the machine's state structs from runtime handles made WebAssembly export effortless and gave us zero-allocation time-travel debugger rewinds for free.
-
-These weren't planned on day one. They emerged naturally from continuous engineering dialogue, grounded in real hardware constraints and backed by a disciplined harness.
+These breakthroughs weren't planned upfront on day one. They emerged naturally from continuous engineering dialogue, grounded in real hardware constraints and backed by a disciplined, evolving harness.
 
 ---
 
