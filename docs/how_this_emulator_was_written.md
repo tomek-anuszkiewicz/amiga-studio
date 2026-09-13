@@ -174,14 +174,14 @@ Look at [`crates/debugger/src/`](../crates/debugger/src/) as the poster child of
 
 When you open a file, you get the entire functional aspect in one coherent place. No jumping between ten different files to understand a single feature.
 
-### C. A Teaser for Math Enthusiasts: Paula & The BLEP Generator
-If you enjoy digital signal processing and mathematics, the audio subsystem in [`tools/blep_generator`](../tools/blep_generator/) is well worth a look.
+### C. A Teaser for Audio & DSP Enthusiasts: Paula & The BLEP Generator
+If you enjoy digital signal processing and sound synthesis, the audio subsystem in [`tools/blep_generator`](../tools/blep_generator/) is well worth a look.
 
 Commodore's Paula chip features four independent audio DMA channels running at variable sample rates. In software emulation, jumping sample values on arbitrary clock cycles causes harsh digital aliasing. The gold standard solution is **Band-Limited Steps (BLEP)**—injecting pre-calculated step responses whenever a DAC transition occurs.
 
-We had an existing Python script that generated these BLEP tables, but it was tied to heavy external math libraries. Bringing it into our emulator turned into a fascinating personal detour into DSP. I spent a lot of time diving into the mathematical apparatus—grappling with sinc pulses, Kaiser windows, and phase transforms to really wrap my head around the underlying math.
+We had an existing Python script that generated these BLEP tables, but it was tied to heavy external math libraries. Bringing it into our emulator turned into a genuinely fun personal detour into DSP. I had a great time getting my hands dirty with the fundamentals—experimenting with low-pass and high-pass filters, sample rate conversion (resampling), and reconstructing continuous signals from discrete DAC steps.
 
-Together with the agent, we ported that prototype into a standalone, zero-dependency Rust tool with zero external math libraries. It generates cycle-exact lookup tables directly from first principles. If you love DSP math, check out [`tools/blep_generator`](../tools/blep_generator/)—it's a great example of diving into a new mathematical domain and turning a prototype script into clean, standalone Rust.
+Together with the agent, we ported that prototype into a standalone, zero-dependency Rust tool with zero external math libraries. It computes the windowed sinc pulses, minimum-phase transforms, and analog RC filter responses directly from first principles. If you enjoy audio DSP, check out [`tools/blep_generator`](../tools/blep_generator/)—it's a great example of diving into a practical signal processing problem and turning a prototype script into clean, standalone Rust.
 
 ### D. Exploring Hardware Before Writing Code
 Before drafting our first module, the agent served as an interactive research engine to deconstruct how the Amiga 500 actually works:
