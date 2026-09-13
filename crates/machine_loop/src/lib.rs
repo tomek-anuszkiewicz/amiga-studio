@@ -40,7 +40,7 @@ pub struct A500Machine {
     /// Monotonic master 64-bit Color Clock counter (CCK)
     pub cck: u64,
 
-    // --- Custom Chipsets (Układy) ---
+    // --- Custom Chipsets ---
     /// Agnus (beam counters, chip RAM bus arbitration)
     pub agnus: agnus::Agnus,
     /// Denise (video control, palette, collision registers)
@@ -52,7 +52,7 @@ pub struct A500Machine {
     /// CIA-B (timers, TOD, port A/B, parallel handshakes)
     pub cia_b: cia::Cia,
 
-    // --- Coprocessors & Display Engines (Wyspecjalizowane Części) ---
+    // --- Coprocessors & Display Engines ---
     /// Agnus Copper coprocessor
     pub copper: copper::Copper,
     /// Agnus 4-channel DMA Blitter
@@ -66,7 +66,7 @@ pub struct A500Machine {
     /// Paula 4-channel 8-bit DMA audio engine
     pub audio: audio::Audio,
 
-    // --- Peripherals & Controller Devices (Urządzenia) ---
+    // --- Peripherals & Controller Devices ---
     /// Paula 3.5" DD floppy disk drive controller & mechanics
     pub floppy: floppy::FloppyController,
     /// Paula RS-232 serial UART transceiver

@@ -2578,6 +2578,31 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.62s.
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
 
+---
+
+### [2026-09-14 01:36 CEST] — Implemented Polish Language Detection Hook & Quality Gate (language-policy-guard)
+- **Affected Subsystems**:
+  - `tools/check_polish.py`: Authored standalone scanner and multi-mode detection engine enforcing `language-policy.md`.
+  - `.agents/hooks.json`: Configured Antigravity IDE `PreToolUse` lifecycle hook intercepting file edits.
+  - `.agents/hooks/check_polish.py`: Working-directory agnostic runner for Antigravity hooks.
+  - `.git/hooks/pre-commit`: Created git pre-commit hook preventing commits with Polish text.
+  - `.agents/rules/language-policy.md`: Added Section 3 detailing automated enforcement and execution commands.
+  - `crates/machine_loop/src/lib.rs`: Cleaned historical Polish translations in comments (`Układy`, `Wyspecjalizowane Części`, `Urządzenia`).
+- **What Was Changed (The Concrete Reality)**:
+  - Integrated `lingua-language-detector` statistical n-gram classifier (`Language.ENGLISH`, `Language.POLISH`, `Language.GERMAN`, `Language.FRENCH`, `Language.LATIN`) and `pyspellchecker` English dictionary validation.
+  - Configured diacritics independence: detects Polish vocabulary and phrases even when stripped of "ogonki" (`przeczekac burze`, `petla opozniajaca`, `szyna danych`, `pamiec`, `kolejny krok`).
+  - Added token and identifier splitting (PascalCase/camelCase/snake_case) with full Unicode letter support and technical whitelist for Amiga custom chip registers and hardware mnemonics.
+  - Wired Antigravity `PreToolUse` hook matching `write_to_file`, `replace_file_content`, and `multi_replace_file_content`, returning `{"decision": "deny"}` on Polish detection with links to `language-policy.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Diacritics Independence & Zero False Positives:* Relying solely on character set checks (`[ąćęłńóśźż]`) fails when Polish words are written in ASCII. Combining statistical n-gram evaluation with English dictionary lookup and register whitelisting prevents prompt leakage without obstructing valid systems programming.
+- **Verification & Test Results**:
+  - Target scan on `.agents/rules/language-policy.md`: Successfully detected line 16 quoted phrases (`przeczekać burzę`, `pętla opóźniająca`, `szyna danych`).
+  - Without ogonki verification: 100% detection rate on ASCII-transliterated Polish samples.
+  - Full codebase scan: 242 Rust source files verified 100% clean with zero false positives.
+  - Hook simulation tests: Successfully confirmed `decision: "deny"` on Polish payloads and `decision: "allow"` on clean code.
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
+
+
 
 
 

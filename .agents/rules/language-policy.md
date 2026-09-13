@@ -22,3 +22,11 @@ description: Strict English output policy for all agent responses, plans, artifa
   > 🎙️ **Transcribed User Voice Input:** "[Exact spoken user transcription]"
   ```
 - Everything following the transcription header (model advisory, explanations, execution steps, tool descriptions, and user prompts) must immediately and strictly continue in English.
+
+## 3. Automated Enforcement & Pre-Tool Hook (`language-policy-guard`)
+- **Lifecycle Pre-Tool Hook**: Active in `.agents/hooks.json` under `language-policy-guard`. It intercepts file modification tools (`write_to_file`, `replace_file_content`, `multi_replace_file_content`) and blocks execution (`decision: deny`) if Polish vocabulary or phrases are introduced in content.
+- **Diacritics-Independent Detection**: Powered by `lingua-language-detector` and `tools/check_polish.py`. Evaluates text using statistical n-gram models and lexical dictionaries, identifying Polish words even when written without diacritics ("ogonki").
+- **Verification Commands**:
+  - Run CLI check on any target file: `python tools/check_polish.py [path]` (defaults to `language-policy.md` when omitted).
+  - Run check across staged git files: `python tools/check_polish.py --git` (enforced via `.git/hooks/pre-commit`).
+
