@@ -166,7 +166,7 @@ pub fn bcc_condition_name(cond: u8) -> &'static str {
 pub fn dbcc_condition_name(cond: u8) -> &'static str {
     match cond & 0x0F {
         0 => "DBT",
-        1 => "DBRA",
+        1 => "DBF",
         2 => "DBHI",
         3 => "DBLS",
         4 => "DBCC",

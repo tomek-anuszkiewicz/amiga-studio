@@ -200,17 +200,17 @@ fn test_disassemble_immediate_arithmetic() {
     let read = |pc: u32| mem[((pc - 0x1000) / 2) as usize];
 
     let (d, b) = disassemble(0x1000, read);
-    assert_eq!(d.mnemonic, "ORI");
+    assert_eq!(d.mnemonic, "ORI.W");
     assert_eq!(d.operands, "#$2700, SR");
     assert_eq!(b, 4);
 
     let (d, b) = disassemble(0x1004, read);
-    assert_eq!(d.mnemonic, "ANDI");
+    assert_eq!(d.mnemonic, "ANDI.W");
     assert_eq!(d.operands, "#$0700, SR");
     assert_eq!(b, 4);
 
     let (d, b) = disassemble(0x1008, read);
-    assert_eq!(d.mnemonic, "EORI");
+    assert_eq!(d.mnemonic, "EORI.B");
     assert_eq!(d.operands, "#$1F, CCR");
     assert_eq!(b, 4);
 

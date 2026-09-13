@@ -75,8 +75,8 @@ pub fn try_disassemble_data(
     // 3. MOVEQ ($7000..$7FFF)
     if (op & 0xF100) == 0x7000 {
         let reg = ((op >> 9) & 7) as u8;
-        let data = (op & 0xFF) as u8;
-        return Some(("MOVEQ", format!("#${:02X}, D{}", data, reg)));
+        let data = (op & 0xFF) as i8;
+        return Some(("MOVEQ", format!("#{}, D{}", data, reg)));
     }
 
     // 4. MOVEM ($4880..$48BF, $48C0..$48FF, $4C80..$4CBF, $4CC0..$4CFF)
@@ -133,25 +133,25 @@ pub fn try_disassemble_data(
     // 7. MOVE to/from USP ($4E60, $4E68)
     if (op & 0xFFF8) == 0x4E60 {
         let an = (op & 0x07) as u8;
-        return Some(("MOVE", format!("A{}, USP", an)));
+        return Some(("MOVE", format!("USP, A{}", an)));
     }
     if (op & 0xFFF8) == 0x4E68 {
         let an = (op & 0x07) as u8;
-        return Some(("MOVE", format!("USP, A{}", an)));
+        return Some(("MOVE", format!("A{}, USP", an)));
     }
 
     // 8. SR & CCR transfers ($40C0, $44C0, $46C0)
     if (op & 0xFFC0) == 0x40C0 {
         let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
-        return Some(("MOVE", format!("SR, {}", ea_str)));
+        return Some(("MOVE.W", format!("SR, {}", ea_str)));
     }
     if (op & 0xFFC0) == 0x44C0 {
         let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
-        return Some(("MOVE", format!("{}, CCR", ea_str)));
+        return Some(("MOVE.W", format!("{}, CCR", ea_str)));
     }
     if (op & 0xFFC0) == 0x46C0 {
         let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
-        return Some(("MOVE", format!("{}, SR", ea_str)));
+        return Some(("MOVE.W", format!("{}, SR", ea_str)));
     }
 
     // 9. CLR, NEG, NEGX, NOT, TST ($4000..$4AFF)
@@ -179,6 +179,9 @@ pub fn try_disassemble_data(
             };
             let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
             return Some((mnem, ea_str));
+        } else if group_4 == 0x4A && size_bits == 3 {
+            let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+            return Some(("TAS", ea_str));
         }
     }
 

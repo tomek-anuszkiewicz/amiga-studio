@@ -89,7 +89,7 @@ fn test_disassemble_branches_and_loops() {
     assert_eq!(b, 4);
 
     let (d, b) = disassemble(0x100A, read);
-    assert_eq!(d.mnemonic, "DBRA");
+    assert_eq!(d.mnemonic, "DBF");
     assert!(d.operands.contains("D3"));
     assert_eq!(b, 4);
 

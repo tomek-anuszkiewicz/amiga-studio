@@ -36,7 +36,7 @@ pub fn try_disassemble_branch(
     if (op & 0xFFF8) == 0x4E50 {
         let an = (op & 0x07) as u8;
         let d16 = next_word() as i16;
-        return Some(("LINK", format!("A{}, #${:04X}", an, d16)));
+        return Some(("LINK", format!("A{}, #{}", an, d16)));
     }
     if (op & 0xFFF8) == 0x4E58 {
         let an = (op & 0x07) as u8;

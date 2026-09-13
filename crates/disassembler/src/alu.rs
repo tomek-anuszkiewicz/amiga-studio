@@ -45,27 +45,27 @@ pub fn try_disassemble_alu(
         match op {
             0x003C => {
                 let imm = format_immediate(1, &mut next_word);
-                return Some(("ORI", format!("{}, CCR", imm)));
+                return Some(("ORI.B", format!("{}, CCR", imm)));
             }
             0x007C => {
                 let imm = format_immediate(2, &mut next_word);
-                return Some(("ORI", format!("{}, SR", imm)));
+                return Some(("ORI.W", format!("{}, SR", imm)));
             }
             0x023C => {
                 let imm = format_immediate(1, &mut next_word);
-                return Some(("ANDI", format!("{}, CCR", imm)));
+                return Some(("ANDI.B", format!("{}, CCR", imm)));
             }
             0x027C => {
                 let imm = format_immediate(2, &mut next_word);
-                return Some(("ANDI", format!("{}, SR", imm)));
+                return Some(("ANDI.W", format!("{}, SR", imm)));
             }
             0x0A3C => {
                 let imm = format_immediate(1, &mut next_word);
-                return Some(("EORI", format!("{}, CCR", imm)));
+                return Some(("EORI.B", format!("{}, CCR", imm)));
             }
             0x0A7C => {
                 let imm = format_immediate(2, &mut next_word);
-                return Some(("EORI", format!("{}, SR", imm)));
+                return Some(("EORI.W", format!("{}, SR", imm)));
             }
             _ => {}
         }
@@ -131,7 +131,7 @@ pub fn try_disassemble_alu(
 
         // CMPM (Ay)+, (Ax)+
         if (op & 0xF138) == 0xB108 {
-            let mnem = match opmode {
+            let mnem = match opmode & 3 {
                 0 => "CMPM.B",
                 1 => "CMPM.W",
                 2 => "CMPM.L",
@@ -202,6 +202,21 @@ pub fn try_disassemble_alu(
             let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
             return Some(("DIVS.W", format!("{}, D{}", ea_str, reg)));
         }
+    }
+
+    // ABCD & SBCD ($C100..$C10F, $8100..$810F)
+    if (op & 0xF1F0) == 0xC100 || (op & 0xF1F0) == 0x8100 {
+        let is_abcd = (op & 0xF000) == 0xC000;
+        let mnem = if is_abcd { "ABCD" } else { "SBCD" };
+        let rx = ((op >> 9) & 7) as u8;
+        let ry = (op & 7) as u8;
+        let is_mem = (op & 0x0008) != 0;
+        let ops = if is_mem {
+            format!("-(A{}), -(A{})", ry, rx)
+        } else {
+            format!("D{}, D{}", ry, rx)
+        };
+        return Some((mnem, ops));
     }
 
     // 4. ADD, ADDA, ADDX, SUB, SUBA, SUBX, AND, OR

@@ -32,7 +32,7 @@ fn test_disassemble_data_movement_and_lea() {
 
     let (d, b) = disassemble(0x1006, read);
     assert_eq!(d.mnemonic, "MOVEQ");
-    assert_eq!(d.operands, "#$2A, D0");
+    assert_eq!(d.operands, "#42, D0");
     assert_eq!(b, 2);
 
     let (d, b) = disassemble(0x1008, read);
@@ -79,7 +79,7 @@ fn test_disassemble_stack_and_registers() {
 
     let (d, b) = disassemble(0x1000, read);
     assert_eq!(d.mnemonic, "LINK");
-    assert_eq!(d.operands, "A6, #$FFF0");
+    assert_eq!(d.operands, "A6, #-16");
     assert_eq!(b, 4);
 
     let (d, b) = disassemble(0x1004, read);
@@ -89,12 +89,12 @@ fn test_disassemble_stack_and_registers() {
 
     let (d, b) = disassemble(0x1006, read);
     assert_eq!(d.mnemonic, "MOVE");
-    assert_eq!(d.operands, "USP, A0");
+    assert_eq!(d.operands, "A0, USP");
     assert_eq!(b, 2);
 
     let (d, b) = disassemble(0x1008, read);
     assert_eq!(d.mnemonic, "MOVE");
-    assert_eq!(d.operands, "A1, USP");
+    assert_eq!(d.operands, "USP, A1");
     assert_eq!(b, 2);
 
     let (d, b) = disassemble(0x100A, read);
@@ -131,24 +131,36 @@ fn test_disassemble_stack_and_registers() {
 #[test]
 fn test_disassemble_sr_and_ccr() {
     let mem = [
-        0x40C0, // MOVE SR, D0
-        0x46C0, // MOVE D0, SR
-        0x44C0, // MOVE D0, CCR
+        0x40C0, // MOVE.W SR, D0
+        0x46C0, // MOVE.W D0, SR
+        0x44C0, // MOVE.W D0, CCR
+        0x4E60, // MOVE USP, A0
+        0x4E68, // MOVE A0, USP
     ];
     let read = |pc: u32| mem[((pc - 0x1000) / 2) as usize];
 
     let (d, b) = disassemble(0x1000, read);
-    assert_eq!(d.mnemonic, "MOVE");
+    assert_eq!(d.mnemonic, "MOVE.W");
     assert_eq!(d.operands, "SR, D0");
     assert_eq!(b, 2);
 
     let (d, b) = disassemble(0x1002, read);
-    assert_eq!(d.mnemonic, "MOVE");
+    assert_eq!(d.mnemonic, "MOVE.W");
     assert_eq!(d.operands, "D0, SR");
     assert_eq!(b, 2);
 
     let (d, b) = disassemble(0x1004, read);
-    assert_eq!(d.mnemonic, "MOVE");
+    assert_eq!(d.mnemonic, "MOVE.W");
     assert_eq!(d.operands, "D0, CCR");
+    assert_eq!(b, 2);
+
+    let (d, b) = disassemble(0x1006, read);
+    assert_eq!(d.mnemonic, "MOVE");
+    assert_eq!(d.operands, "USP, A0");
+    assert_eq!(b, 2);
+
+    let (d, b) = disassemble(0x1008, read);
+    assert_eq!(d.mnemonic, "MOVE");
+    assert_eq!(d.operands, "A0, USP");
     assert_eq!(b, 2);
 }

@@ -125,7 +125,7 @@ fn test_condition_names() {
     assert_eq!(bcc_condition_name(7), "BEQ");
 
     assert_eq!(dbcc_condition_name(0), "DBT");
-    assert_eq!(dbcc_condition_name(1), "DBRA");
+    assert_eq!(dbcc_condition_name(1), "DBF");
     assert_eq!(dbcc_condition_name(6), "DBNE");
     assert_eq!(dbcc_condition_name(7), "DBEQ");
 
