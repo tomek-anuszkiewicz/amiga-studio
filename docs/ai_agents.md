@@ -2,6 +2,8 @@
 
 This repository is engineered from the ground up for autonomous AI agent pair-programming with strict architectural guardrails.
 
+> 📖 **Case Study & Engineering Narrative:** For an in-depth retrospective on how this emulator was built with zero hand-written human code through architectural sparring, minimal frame prototyping, and an evolving harness, see [How This Emulator Was Written: Pair-Programming with an AI Agent](how_this_emulator_was_written.md).
+
 ---
 
 ## 1. Architectural Guardrails & Invariants

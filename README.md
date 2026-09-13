@@ -103,6 +103,7 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 - [**Core Architecture & Hardware Execution Model**](docs/architecture.md): Color Clock phases (CCK1/CCK2), Gary bus arbitration, Agnus DMA contention, circuit simulation, Big-Endian invariance, and decoupled ownership.
 - [**Developer Studio & Time-Travel Debugger**](docs/debugger.md): Developer controls, time-travel rewind ring buffer, live register inspection, memory hex grid editing, disassembly patching, and breakpoints.
 - [**Test Suite & Verification Framework**](docs/testing.md): Physical hardware single-step test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), and CLI regression diagnostics.
+- [**How This Emulator Was Written: Pair-Programming with an AI Agent**](docs/how_this_emulator_was_written.md): Engineering methodology, zero-code human steering, architectural sparring, minimal frame prototyping, and the evolutionary harness.
 - [**AI Agent Engineering & Pair-Programming Guide**](docs/ai_agents.md): Autonomous AI agent pairing guidelines, rules adherence, RAG knowledge base, Graphify AST, and specialized skills.
 - [**Git Worktree Workflow & Parallel Development**](docs/worktrees.md): Isolated Cargo build caches, concurrent AI sessions, untracked configuration (`.env`), branch synchronization, and clean teardown.
 
