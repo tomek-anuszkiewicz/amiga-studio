@@ -2349,3 +2349,33 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules` (all 16 architecture rules passed).
   - `python tools/pre_flight.py` (100% compliant across formatting, attractor discipline, AGENTS.md limits, and architecture tests).
 
+---
+
+### [2026-09-13 13:20 CEST] — Dual Game Ports Subsystem (`game_ports`) & Unit Testing Policy Hardening
+- **Affected Subsystems**:
+  - `.agents/rules/unit-testing-policy.md` (elevated to Universal Invariant `trigger: always_on`)
+  - `AGENTS.md` (promoted Unit Testing Policy to Section 1A Universal Invariants; verified $\le 14,000$ byte limit at 13,334 bytes)
+  - `Cargo.toml` & `Cargo.lock` (registered `crates/game_ports` in workspace)
+  - `crates/game_ports/` (new crate: `PortDevice`, `GamePortsState`, `GamePorts`, Denise/Paula/CIA-A decoders, host event forwarders, dedicated 7-test suite)
+  - `crates/machine_loop/` (integrated `pub game_ports: game_ports::GamePorts` into `A500Machine`, replaced separate mouse/joystick fields, added host event forwarders and integration test)
+  - `crates/disassembler/tests/` (added dedicated modular unit test suites `test_ea.rs` and `test_align.rs`)
+  - `crates/test_runner/tests/test_architecture_rules.rs` (added `game_ports` to `CORE_EMULATION_CRATES` and added `test_every_crate_has_dedicated_external_tests_suite`)
+- **What Was Changed (The Concrete Reality)**:
+  - Created dedicated `crates/game_ports` subsystem to cleanly model the Amiga 500's two 9-pin controller ports (Port 1 and Port 2). Implemented `PortDevice` enum (`None`, `Mouse`, `Joystick`), `GamePortsState` (serializable snapshot), and `GamePorts` handle providing hardware signal decoding for Denise (`joy0dat`/`joy1dat`), Paula (`pot0dat`/`pot1dat`/`potgor`), and CIA-A (`fire1_port1`/`fire1_port2` on PRA bits 6 and 7).
+  - Integrated `game_ports` into `A500Machine` in `crates/machine_loop`, eliminating isolated, fragmented peripheral fields and routing host input events through unified game port abstractions.
+  - Elevated the Unit Testing Policy ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)) from a domain-specific model decision rule to a Universal Invariant (`trigger: always_on`) in `AGENTS.md` Section 1A, establishing an unconditional rule across all agent sessions that every new or modified struct, public function, and utility module must have dedicated unit tests in `crates/<crate>/tests/` before declaring work done.
+  - Authored dedicated modular unit test suites for `crates/disassembler`:
+    - `crates/disassembler/tests/test_ea.rs`: Comprehensive validation of `format_ea` across all 12 addressing modes (register direct, indirect, displacement, index, PC-relative, immediate), `format_immediate` size formatting, `format_movem_reg_list` register range masks, and branch/condition names (`bcc_condition_name`, `dbcc_condition_name`, `scc_condition_name`).
+    - `crates/disassembler/tests/test_align.rs`: Tested boundary conditions, historical execution anchor priority, zero-padding memory penalties, and variable-length CISC instruction synchronization.
+  - Implemented an automated architectural test gate `test_every_crate_has_dedicated_external_tests_suite` in `crates/test_runner/tests/test_architecture_rules.rs` asserting that every workspace crate contains an active `tests/` directory with at least one `.rs` test suite.
+- **Architectural Rationale & Trade-Offs**:
+  - *Physical Controller Bus Architecture:* Amiga 9-pin game ports do not wire cleanly into a single custom chip; Denise handles direction counters, Paula handles analog pot counters and right/middle buttons, while CIA-A handles primary fire triggers. Consolidating these signal lines into a unified `game_ports` crate accurately reflects physical chassis wiring and prevents cross-chip coupling.
+  - *Universal Testing Invariant:* Elevating the testing policy to `trigger: always_on` guarantees prompt visibility on every turn, preventing agents from treating unit test creation as an afterthought.
+- **Verification & Test Results**:
+  - `cargo test -p game_ports`: All 7 unit tests passed.
+  - `cargo test -p machine_loop`: All 4 machine tests passed including game port signal routing.
+  - `cargo test -p disassembler`: All 20 tests passed across `test_disassembler`, `test_ea`, and `test_align`.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed.
+  - `python tools/pre_flight.py`: All 4 quality gates passed cleanly (Formatting: 100%, Attractor Discipline: 316 files clean, AGENTS.md: 13,334 bytes $\le$ 14,000, Architecture Rules: 17 passed).
+
+

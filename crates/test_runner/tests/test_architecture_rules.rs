@@ -48,6 +48,7 @@ const CORE_EMULATION_CRATES: &[&str] = &[
     "serial_port",
     "paula",
     "keyboard",
+    "game_ports",
     "parallel_port",
     "cia",
     "machine_loop",
@@ -1167,5 +1168,57 @@ fn test_zero_backward_compatibility_shims_and_stale_aliases() {
         "Architecture Rule Violation: Backward-compatibility shims or stale aliases detected:\n{}\n\
         All refactorings must be atomic with zero transitional aliases per .agents/rules/workspace-structure-and-reexports.md.",
         violations.join("\n")
+    );
+}
+
+#[test]
+fn test_every_crate_has_dedicated_external_tests_suite() {
+    let repo_root = find_repo_root();
+    let crates_dir = repo_root.join("crates");
+
+    let mut missing_tests_crates = Vec::new();
+
+    let entries = fs::read_dir(&crates_dir).expect("Failed to read crates directory");
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() && path.join("Cargo.toml").exists() {
+            let crate_name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+
+            let tests_dir = path.join("tests");
+            if !tests_dir.is_dir() {
+                missing_tests_crates.push(format!(
+                    "crates/{} -> Missing dedicated tests/ directory",
+                    crate_name
+                ));
+                continue;
+            }
+
+            let rs_test_count = fs::read_dir(&tests_dir)
+                .map(|dir_entries| {
+                    dir_entries
+                        .flatten()
+                        .filter(|e| e.path().extension().map_or(false, |ext| ext == "rs"))
+                        .count()
+                })
+                .unwrap_or(0);
+
+            if rs_test_count == 0 {
+                missing_tests_crates.push(format!(
+                    "crates/{} -> tests/ directory contains zero .rs test files",
+                    crate_name
+                ));
+            }
+        }
+    }
+
+    assert!(
+        missing_tests_crates.is_empty(),
+        "Architecture Rule Violation: Crates missing dedicated external test suites:\n{}\n\
+        Every crate must contain an active tests/ directory with dedicated .rs unit test files per .agents/rules/unit-testing-policy.md.",
+        missing_tests_crates.join("\n")
     );
 }
