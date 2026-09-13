@@ -10,7 +10,7 @@ Here is the most defining fact about this project: **I did not write a single li
 
 I didn't write any of the implementation code. And just as importantly, **I never wrote, designed, or proposed a single test of any kind**—from individual unit tests and multi-chip integration suites to GUI test harnesses and automated architecture gates. Every struct, every micro-step in the Motorola 68000 CPU state machine, every bus arbitration check in Gary, every custom chip pipeline, and every test suite was generated and maintained by the AI agent.
 
-*(With one fun teaser: earlier on, I had adapted a Python script that used scientific math libraries to generate band-limited audio step tables for sound emulation. Together with the agent, we ported that entire pipeline into a standalone, zero-dependency Rust tool that synthesizes our audio BLEP tables—more on that below.)*
+*(With one fun teaser: earlier on, I found a Python script using scientific math libraries to generate generic band-limited audio step tables. Together with the agent, we turned that concept into a standalone, zero-dependency Rust tool that models the Amiga's physical analog circuit and synthesizes our audio BLEP tables—more on that below.)*
 
 And here is the even more candid reality: **I didn't fully understand how the Amiga works going in, and this project was my very first contact with Rust.**
 
@@ -180,11 +180,11 @@ A great example of how we brought outside ideas into the emulator is the audio s
 Commodore's Paula chip features four independent audio DMA channels running at variable playback rates. In software emulation, jumping sample levels on arbitrary clock cycles causes harsh digital aliasing. The gold standard solution is **Band-Limited Steps (BLEP)**, which injects pre-calculated bandlimited step responses whenever a DAC transition occurs.
 
 Here's how that came together:
-- **The Starting Point:** Earlier on, I had come across a Python script that generated BLEP tables using heavy scientific libraries (NumPy, SciPy). It wasn't my original creation, but it proved the mathematical concept.
-- **Rescaling & Hardware Tuning:** I rescaled and tuned the mathematical parameters to match the physical analog filtering path of the Amiga 500—including the 1st-order RC low-pass filter and the switchable 2nd-order Sallen-Key "LED filter".
-- **Pure Standalone Rust:** Together with the agent, we ported that entire mathematical pipeline into a pure, standalone Rust generator ([`tools/blep_generator`](../tools/blep_generator/)). It computes minimum-phase sinc pulses, Kaiser windows, and IIR biquad analog filters with zero external math dependencies, outputting cycle-exact lookup tables that match real Amiga hardware down to 0.03% error vs WinUAE.
+- **The Starting Point:** Earlier on, I found a Python script online that generated generic BLEP tables using heavy scientific libraries (NumPy, SciPy). It wasn't my original creation, nor was it tuned for the Amiga, but it proved the mathematical concept.
+- **The Challenge:** I brought the script to the agent with a challenge: *"We need this in our emulator, but we need it tailored to the actual physical Amiga 500 audio hardware—and we want it as a pure, zero-dependency Rust tool."*
+- **Pure Standalone Rust:** The agent analyzed the Amiga 500 analog audio schematics, modeled the physical filtering path (the 1st-order RC low-pass filter and the switchable 2nd-order Sallen-Key "LED filter"), and implemented the entire pipeline from scratch in a standalone Rust generator ([`tools/blep_generator`](../tools/blep_generator/)). It computes minimum-phase sinc pulses, Kaiser windows, and IIR biquad analog filters with zero external math dependencies, outputting cycle-exact lookup tables that match real Amiga hardware down to 0.03% error vs WinUAE reference captures.
 
-It's a perfect example of human-agent synergy: taking an existing concept, tailoring it to physical hardware specs, and letting the agent turn it into clean, idiomatic systems code.
+It's a perfect example of human-agent synergy: the human spots a high-level solution and sets the destination, while the agent deconstructs the hardware schematics, does the heavy math, and writes clean, idiomatic systems code.
 
 ### D. Exploring Hardware Before Writing Code
 Before drafting our first module, the agent served as an interactive research engine to deconstruct how the Amiga 500 actually works:
