@@ -79,3 +79,39 @@ fn test_find_aligned_disassembly_start_variable_length_sync() {
     let start2 = find_aligned_disassembly_start(0x3008, 2, &mem, &[]);
     assert_eq!(start2, 0x3000);
 }
+
+#[test]
+fn test_find_aligned_disassembly_start_fibonacci() {
+    // Memory layout:
+    // $0FFE: 0000 (padding before entry)
+    // $1000: 41F9 0000 2000 (LEA ($2000).L, A0 - 6 bytes)
+    // $1006: 4240 (CLR.W D0 - 2 bytes)
+    // $1008: 323C 0001 (MOVE.W #1, D1 - 4 bytes)
+    // $100C: 4E71 (NOP)
+    let read = |pc: u32| match pc {
+        0x1000 => 0x41F9,
+        0x1002 => 0x0000,
+        0x1004 => 0x2000,
+        0x1006 => 0x4240,
+        0x1008 => 0x323C,
+        0x100A => 0x0001,
+        0x100C => 0x4E71,
+        _ => 0x0000,
+    };
+
+    // 1. At entry point ($1000): should NOT back up into zeros ($0FFC..$0FFE)
+    let start_at_entry = find_aligned_disassembly_start(0x1000, 3, read, &[]);
+    assert_eq!(start_at_entry, 0x1000);
+
+    // 2. At second instruction ($1006): with history [0x1000]
+    let start_at_1006_with_hist = find_aligned_disassembly_start(0x1006, 3, read, &[0x1000]);
+    assert_eq!(start_at_1006_with_hist, 0x1000);
+
+    // 3. At second instruction ($1006): without history (pure heuristic code guessing)
+    let start_at_1006_no_hist = find_aligned_disassembly_start(0x1006, 3, read, &[]);
+    assert_eq!(start_at_1006_no_hist, 0x1000);
+
+    // 4. At third instruction ($1008): should anchor at $1000
+    let start_at_1008 = find_aligned_disassembly_start(0x1008, 3, read, &[0x1000, 0x1006]);
+    assert_eq!(start_at_1008, 0x1000);
+}
