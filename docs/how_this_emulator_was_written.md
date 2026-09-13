@@ -10,8 +10,6 @@ Here is the most defining fact about this project: **I did not write a single li
 
 I didn't write any of the implementation code. And just as importantly, **I never wrote, designed, or proposed a single test of any kind**—from individual unit tests and multi-chip integration suites to GUI test harnesses and automated architecture gates. Every struct, every micro-step in the Motorola 68000 CPU state machine, every bus arbitration check in Gary, every custom chip pipeline, and every test suite was generated and maintained by the AI agent.
 
-*(With one fun teaser: earlier on, I found a Python script using scientific math libraries to generate generic band-limited audio step tables. Together with the agent, we turned that concept into a standalone, zero-dependency Rust tool that models the Amiga's physical analog circuit and synthesizes our audio BLEP tables—more on that below.)*
-
 And here is the even more candid reality: **I didn't fully understand how the Amiga works going in, and this project was my very first contact with Rust.**
 
 I didn't have all the deep hardware details of the 68000 CPU, Agnus, Denise, or Paula memorized. Nor was I a seasoned Rust programmer—in all honesty, there are still plenty of things about Rust that I probably don't know today. 
@@ -174,14 +172,12 @@ Look at [`crates/debugger/src/`](../crates/debugger/src/) as the poster child of
 
 When you open a file, you get the entire functional aspect in one coherent place. No jumping between ten different files to understand a single feature.
 
-### C. A Teaser for Audio & DSP Enthusiasts: Paula & The BLEP Generator
-If you enjoy digital signal processing and sound synthesis, the audio subsystem in [`tools/blep_generator`](../tools/blep_generator/) is well worth a look.
+### C. DSP from First Principles: Paula & The BLEP Generator
+Paula features four independent DMA audio channels running at variable sample rates. In software emulation, jumping DAC values across arbitrary clock cycles causes harsh digital aliasing. A standard, effective solution is **Band-Limited Steps (BLEP)**—injecting pre-calculated step responses whenever a transition occurs.
 
-Commodore's Paula chip features four independent audio DMA channels running at variable sample rates. In software emulation, jumping sample values on arbitrary clock cycles causes harsh digital aliasing. The gold standard solution is **Band-Limited Steps (BLEP)**—injecting pre-calculated step responses whenever a DAC transition occurs.
+We started with an existing Python script to generate these tables, but it relied on heavy external numerical libraries. Porting it into our project turned into a genuinely fun detour into DSP. I had a great time getting my hands dirty with the fundamentals—experimenting with low-pass and high-pass filters, sample rate conversion, and reconstructing continuous signals from discrete steps.
 
-We had an existing Python script that generated these BLEP tables, but it was tied to heavy external math libraries. Bringing it into our emulator turned into a genuinely fun personal detour into DSP. I had a great time getting my hands dirty with the fundamentals—experimenting with low-pass and high-pass filters, sample rate conversion (resampling), and reconstructing continuous signals from discrete DAC steps.
-
-Together with the agent, we ported that prototype into a standalone, zero-dependency Rust tool with zero external math libraries. It computes the windowed sinc pulses, minimum-phase transforms, and analog RC filter responses directly from first principles. If you enjoy audio DSP, check out [`tools/blep_generator`](../tools/blep_generator/)—it's a great example of diving into a practical signal processing problem and turning a prototype script into clean, standalone Rust.
+Together with the agent, we turned that prototype into a standalone Rust tool in [`tools/blep_generator`](../tools/blep_generator/) with zero external dependencies. It derives the windowed sinc pulses, minimum-phase transforms, and analog RC filter curves directly from first principles. It was one of the most rewarding side quests in the project: taking a mathematical script and turning it into clean, self-contained systems code.
 
 ### D. Exploring Hardware Before Writing Code
 Before drafting our first module, the agent served as an interactive research engine to deconstruct how the Amiga 500 actually works:
