@@ -2519,4 +2519,25 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly (Formatting: 100%, Attractor Discipline: 331 files clean, AGENTS.md: 13,387 bytes <= 14,000, Architecture Rules: 17 passed).
 
+---
+
+### [2026-09-13 20:05 CEST] — Streamlined & Consolidated docs/how_this_emulator_was_written.md
+- **Affected Subsystems**:
+  - `docs/how_this_emulator_was_written.md`: Comprehensive consolidation, deduplication, and tone balancing.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed feedback regarding narrative pacing and length by restructuring the document into five tightly focused sections:
+    1. *The Headline (Zero Code, Zero Tests, Zero Prior Rust):* Kept the honest, disarming admission of zero prior Rust background and zero hand-written tests, while reframing the human role from personal proclamation to the repeatable engineering dynamic of *Architect, Constraint Setter, and Sparring Partner*.
+    2. *The Methodology (Mindset & The Minimal Frame):* Merged the sparring partner mindset with the minimal frame workflow and collaborative hardware research into a single cohesive process diagram and table.
+    3. *The Zero-Trust Verification Engine:* Consolidated four previously fragmented testing sections into one unified technical pillar combining Tom Harte physical silicon captures, vAmigaTS timing tests, instruction micro-benchmarks ($R_{\text{norm}}$ with Type A/B/C anomaly detection), and the full autonomous testing spectrum (unit, multi-chip integration, headless GUI, and architecture gates).
+    4. *Documentation as an Iterative Compass:* Kept the pragmatic principle that specs are living compasses refined in lockstep with code, not upfront waterfall monuments.
+    5. *Systems Architecture in Rust:* Tightly presented flat crate/module organization, compile-time verified ownership, aspect-per-file modularity, and a concise DSP callout for the standalone BLEP generator.
+- **Architectural Rationale & Trade-Offs**:
+  - *Eliminating Redundant Loops:* Testing was previously repeated across four separate sections, causing the document to drag. Unifying it into a single hierarchical verification engine cuts repetition while strengthening the technical argument.
+  - *Engineering Playbook vs Self-Promotion:* Shifting emphasis from personal claims to reproducible engineering principles elevates the document into a high-credibility case study that resonates with systems programmers.
+- **Verification & Test Results**:
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 331 files (0 violations).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.61s.
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
+
+
 
