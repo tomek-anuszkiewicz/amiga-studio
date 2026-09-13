@@ -10,7 +10,11 @@ Here is the most defining fact about this project: **I did not write a single li
 
 I didn't write any of the implementation code. And just as importantly, **I never wrote, designed, or proposed a single test of any kind**—from individual unit tests and multi-chip integration suites to GUI test harnesses and automated architecture gates. Every struct, every micro-step in the Motorola 68000 CPU state machine, every bus arbitration check in Gary, every custom chip pipeline, every single test suite, and every design document in this repository was generated and maintained by the AI agent.
 
-My role was different. I was the **System Architect, Strategic Director, and Engineering Sparring Partner**. I didn't treat the agent like a junior intern who needs syntax babysitting, and I definitely didn't treat it like a glorified autocomplete widget. We worked as high-bandwidth engineering peers.
+And here is the even more candid reality: **I didn't fully understand how the Amiga works going in, and this project was my very first contact with Rust.**
+
+I didn't have all the deep hardware details of the 68000 CPU, Agnus, Denise, or Paula memorized. Nor was I a seasoned Rust programmer—in all honesty, there are still plenty of things about Rust that I probably don't know today. 
+
+My role wasn't writing syntax or pretending to be an all-knowing hardware guru. It was acting as the **System Architect, Strategic Director, and Engineering Sparring Partner**. I didn't treat the agent like a junior intern who needs syntax babysitting, and I definitely didn't treat it like a glorified autocomplete widget. We worked as high-bandwidth engineering peers, exploring both the hardware architecture and the systems design together.
 
 Here is exactly how that collaboration worked in practice.
 
