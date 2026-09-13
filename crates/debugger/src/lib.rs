@@ -26,13 +26,3 @@ pub use session::DebuggerSession;
 pub use stepping::{Debugger, StepMode};
 pub use temporal::{TemporalFrame, TemporalHistory, DEFAULT_TEMPORAL_CAPACITY, PAL_FRAME_CCK};
 pub use trace::{TraceEntry, TraceRingBuffer};
-
-/// Backward compatibility alias for the former `ea_format` module
-pub mod ea_format {
-    pub use disassembler::*;
-}
-
-/// Backward compatibility alias for the former `disassembler` module
-pub mod disassembler {
-    pub use disassembler::*;
-}

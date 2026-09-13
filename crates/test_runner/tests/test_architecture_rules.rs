@@ -1091,3 +1091,81 @@ fn test_zero_inline_tests_in_crates_src() {
         violations.join("\n")
     );
 }
+
+#[test]
+fn test_zero_backward_compatibility_shims_and_stale_aliases() {
+    let repo_root = find_repo_root();
+    let crates_dir = repo_root.join("crates");
+    let mut rs_files = Vec::new();
+    collect_rs_files(&crates_dir, &mut rs_files);
+
+    let forbidden_phrases = [
+        "backward compatibility alias",
+        "legacy compatibility",
+        "compatibility alias",
+        "run_dual_test",
+    ];
+
+    let mut violations = Vec::new();
+
+    for file in rs_files {
+        let file_name = file.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if file_name == "test_architecture_rules.rs" {
+            continue;
+        }
+
+        let content = fs::read_to_string(&file).expect("Failed to read source file");
+        let rel_path = file.strip_prefix(&repo_root).unwrap_or(&file);
+
+        // 1. Check for forbidden phrases/aliases in comments and code
+        for (line_idx, line) in content.lines().enumerate() {
+            let lower = line.to_lowercase();
+            for phrase in &forbidden_phrases {
+                if lower.contains(phrase) {
+                    violations.push(format!(
+                        "{}:{} -> Contains forbidden compatibility phrase/alias `{}`",
+                        rel_path.display(),
+                        line_idx + 1,
+                        phrase
+                    ));
+                }
+            }
+        }
+
+        // 2. Check for dummy wrapper modules like `pub mod <name> { pub use ...; }` in lib.rs
+        if file.file_name().map_or(false, |n| n == "lib.rs") {
+            let lines: Vec<&str> = content.lines().collect();
+            for (i, line) in lines.iter().enumerate() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("pub mod ") && trimmed.ends_with('{') {
+                    let mod_name = trimmed
+                        .strip_prefix("pub mod ")
+                        .unwrap_or("")
+                        .trim_end_matches('{')
+                        .trim();
+                    // Legitimate namespace modules (function_code in arbitration, micro in m68000)
+                    if mod_name == "micro" || mod_name == "function_code" {
+                        continue;
+                    }
+                    let end_idx = std::cmp::min(i + 5, lines.len());
+                    let block = lines[i..end_idx].join(" ");
+                    if block.contains("pub use ") && block.contains('*') {
+                        violations.push(format!(
+                            "{}:{} -> Dummy backward-compatibility wrapper module `{}` detected. Re-export directly or update callers per .agents/rules/workspace-structure-and-reexports.md.",
+                            rel_path.display(),
+                            i + 1,
+                            trimmed
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Backward-compatibility shims or stale aliases detected:\n{}\n\
+        All refactorings must be atomic with zero transitional aliases per .agents/rules/workspace-structure-and-reexports.md.",
+        violations.join("\n")
+    );
+}

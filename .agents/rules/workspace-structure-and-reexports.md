@@ -81,3 +81,19 @@ Tier 3: Contained Sub-Components (rtc, copper, blitter, audio_dacs)
 1. **The "God Bus" Absorption**: Do not re-export active coprocessors (`agnus`, `paula`, `cia`) from `memory_bus`. They are autonomous peers, not child storage buffers.
 2. **Peer Leaks**: Do not re-export a peer subsystem just because a method accepts it. Use dependency inversion or trait interfaces instead.
 3. **Deep Directory Nesting**: Do not place crates inside other crate folders (e.g. `crates/memory_bus/rtc`). Keep all crates flat in `crates/*` and let `pub use` establish the namespace.
+4. **Compatibility Shims & Stale Aliases**: Never introduce transitional dummy wrapper modules (`pub mod former { pub use new::*; }`) or import aliases (`use new as old;`) to delay updating callers.
+
+---
+
+## 5. Prohibition of Backward-Compatibility Shims & Stale Aliases (Mandatory Atomic Refactoring)
+
+In this closed repository with zero external downstream semver consumers, all refactorings are **monolithic and atomic**:
+1. **Zero Backward-Compatibility Shims:**
+   - Never introduce artificial dummy inline wrapper modules (e.g. `pub mod former_mod { pub use new_crate::*; }`) to emulate obsolete crate or file structures.
+   - Never leave transitional import aliases (e.g. `use new_fn as old_fn;`) across files or test harnesses.
+   - Never write forwarding stub functions or deprecated wrappers when renaming or relocating functionality.
+2. **Atomic Workspace Updates:**
+   - Whenever extracting a submodule into a standalone crate or relocating types, immediately search and update all call sites across the entire repository (`crates/*`, `tests/*`) in the exact same commit.
+   - Do not defer call-site updates behind compatibility shims.
+3. **No Legacy Compatibility Comments:**
+   - Do not annotate active convenience methods or public APIs with "legacy compatibility" doc comments. If a method is obsolete, remove it; if it is active, describe its actual functional behavior.

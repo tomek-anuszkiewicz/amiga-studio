@@ -1,9 +1,9 @@
 //! Stepping primitives and Headless Debugger Engine
 
 use crate::breakpoints::BreakpointManager;
-use crate::disassembler::{disassemble, Disassembly};
 use crate::temporal::TemporalHistory;
 use crate::trace::TraceRingBuffer;
+use crate::{disassemble, Disassembly};
 use m68000::Cpu;
 use memory_bus::MemoryBus;
 

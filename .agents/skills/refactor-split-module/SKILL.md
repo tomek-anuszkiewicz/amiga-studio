@@ -24,6 +24,7 @@ Activate this skill whenever:
 2. **Flat Instruction Hierarchy:** Under `crates/m68000/src/instructions/`, maintain a flat 1:1 opcode-to-file mapping with zero subdirectories.
 3. **3-Tier Re-Export Preservation:** External callers must not experience breaking API changes. Re-export public types from the crate root (`src/lib.rs`) via `pub use submodule::TypeName;`.
 4. **Disjoint Borrowing & Zero Allocations:** Ensure split submodules preserve independent field borrowing without requiring `Rc<RefCell<...>>` or heap allocations in hot paths.
+5. **Zero Backward-Compatibility Shims (Atomic Refactoring):** Do not create dummy wrapper modules (`pub mod former { pub use new::*; }`) or import aliases (`use new as old;`) to delay updating callers. Update all consumers across the workspace directly to the new canonical path in the same task.
 
 ---
 
@@ -55,6 +56,7 @@ Examine the oversized file and identify natural functional boundaries:
    mod submodule;
    pub use submodule::{ExportedType1, ExportedType2};
    ```
+5. If types or submodules are relocated or split across crates, grep and update all call sites across the entire repository immediately. Never leave transitional dummy wrapper modules or backward-compatibility aliases.
 
 ### Step 4: Verify Zero Host Panics & Inlining
 Ensure extracted code adheres to project invariants:

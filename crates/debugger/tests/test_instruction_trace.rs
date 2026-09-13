@@ -1,4 +1,4 @@
-use debugger::disassembler::disassemble;
+use debugger::disassemble;
 use debugger::DebuggerSession;
 use std::fs;
 use std::path::Path;

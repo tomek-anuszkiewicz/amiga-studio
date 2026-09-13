@@ -2322,3 +2322,30 @@ Every future modification or implementation task must append an entry following 
   - Validated link integrity and path references across repository files.
   - Executed pre-flight quality gates (`tools/pre_flight.py`) and architecture test suites (`test_architecture_rules`).
 
+---
+
+### [2026-09-13 13:05 CEST] — Elimination of Backward-Compatibility Shims & Anti-Shim Architecture Policy
+- **Affected Subsystems**:
+  - `crates/debugger/src/lib.rs` (deleted `pub mod ea_format` and `pub mod disassembler` aliases)
+  - `crates/debugger/src/stepping.rs` (migrated import to canonical `crate::{disassemble, Disassembly}`)
+  - `crates/debugger/tests/test_instruction_trace.rs` (migrated import to canonical `debugger::disassemble`)
+  - `crates/debugger/src/breakpoints.rs` (clarified doc comment on `check_pc` removing misleading "legacy compatibility" note)
+  - `crates/test_runner/tests/test_singlestep.rs` (removed `run_dual_test*` alias imports and migrated ~80 test call sites to `run_test*`)
+  - `.agents/rules/workspace-structure-and-reexports.md` (added Section 5: Prohibition of Backward-Compatibility Shims & Stale Aliases)
+  - `.agents/skills/refactor-split-module/SKILL.md` (mandated zero backward-compatibility shims during module decomposition)
+  - `.agents/skills/prune-dead-code/SKILL.md` (added audit step for backward-compatibility dummy modules and import aliases)
+  - `crates/test_runner/tests/test_architecture_rules.rs` (added automated test `test_zero_backward_compatibility_shims_and_stale_aliases`)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed vestigial backward-compatibility module wrappers in `crates/debugger/src/lib.rs` left from the historical extraction of `crates/disassembler`.
+  - Removed transitional import aliases in `crates/test_runner/tests/test_singlestep.rs` left from historical unification of the dual-runner harness to Tom Harte single-step runner, updating ~80 test functions to invoke `run_test`, `run_test_filtered`, and `run_test_with_mode` directly.
+  - Formulated the *Mandatory Atomic Refactoring & Zero Shims Policy* in `.agents/rules/workspace-structure-and-reexports.md`, establishing that closed-world workspaces must never leave transitional shims or dummy wrappers.
+  - Updated skills (`refactor-split-module`, `prune-dead-code`) to enforce atomic refactoring and dead shim pruning.
+  - Implemented an automated architectural test gate `test_zero_backward_compatibility_shims_and_stale_aliases` in `test_architecture_rules.rs` scanning for dummy wrapper modules and compatibility alias phrasing to permanently prevent regression.
+- **Architectural Rationale & Trade-Offs**:
+  - In an internal, closed-world Cargo workspace with zero external downstream semver consumers, backward-compatibility shims create dead code, misleading namespaces, and cognitive clutter. All module extractions and symbol renamings must be performed atomically across the entire repository in the same change set.
+- **Verification & Test Results**:
+  - `cargo test -p debugger` (all 49 tests passed across 9 suites).
+  - `cargo test -p test_runner --test test_singlestep -- test_nop` (passed).
+  - `cargo test -p test_runner --test test_architecture_rules` (all 16 architecture rules passed).
+  - `python tools/pre_flight.py` (100% compliant across formatting, attractor discipline, AGENTS.md limits, and architecture tests).
+

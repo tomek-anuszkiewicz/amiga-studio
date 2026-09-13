@@ -216,7 +216,7 @@ impl BreakpointManager {
         false
     }
 
-    /// Checks if an unconditional PC breakpoint is hit (legacy compatibility)
+    /// Checks if an unconditional PC breakpoint is hit at the given address
     #[inline]
     pub fn check_pc(&self, pc: u32) -> bool {
         let pc = pc & 0x00FF_FFFF;

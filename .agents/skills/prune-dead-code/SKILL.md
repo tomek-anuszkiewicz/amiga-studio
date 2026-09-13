@@ -33,15 +33,16 @@ Inspect the output for:
 Audit domain-specific constants and internal methods that may be unreferenced outside their defining module:
 - Search for constants in `crates/*/src/` that are no longer referenced by active execution paths (e.g., historical memory sizing constants or superseded mask definitions).
 - Check `pub use` re-exports in crate root files (`crates/*/src/lib.rs`) against the 3-Tier Re-Export Strategy in [`.agents/rules/workspace-structure-and-reexports.md`](../../rules/workspace-structure-and-reexports.md).
+- Search for vestigial backward-compatibility dummy modules (e.g. `pub mod former { pub use ...; }`) or transitional import aliases (`use ... as ...`).
 
 ### Step 3: Scaffolding & Test Cleanup
-- Audit `tests/` and helper harnesses for superseded test fixtures or mock objects no longer invoked by current integration tests.
+- Audit `tests/` and helper harnesses for superseded test fixtures, mock objects, or compatibility aliases no longer invoked by current integration tests.
 - Verify whether obsolete benchmark catalog rows or legacy dispatch shims are present.
 
 ### Step 4: Safe Removal & Refactoring
 - Remove confirmed dead symbols directly.
 - Avoid introducing speculative replacements.
-- If a method was deprecated, eliminate it completely rather than leaving dead stub wrappers.
+- If a method or module was deprecated or relocated, eliminate it completely rather than leaving dead stub wrappers or backward-compatibility aliases; update all callers to canonical paths.
 
 ### Step 5: Regression & Correctness Verification
 Validate that no necessary symbols were inadvertently removed:
