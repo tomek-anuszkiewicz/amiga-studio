@@ -2378,4 +2378,31 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed.
   - `python tools/pre_flight.py`: All 4 quality gates passed cleanly (Formatting: 100%, Attractor Discipline: 316 files clean, AGENTS.md: 13,334 bytes $\le$ 14,000, Architecture Rules: 17 passed).
 
+---
+
+### [2026-09-13 13:35 CEST] — Workspace Test Architecture Harmonization: 1:1 Parity for Disassembler & MemoryBus
+- **Affected Subsystems**:
+  - `crates/disassembler/tests/` (decomposed monolithic `test_disassembler.rs` into `test_lib.rs`, `test_branch.rs`, `test_data.rs`, `test_alu.rs`; integrated fibonacci anchor test into `test_align.rs`)
+  - `crates/memory_bus/tests/` (added dedicated unit test suites `test_arbitration.rs` and `test_map.rs`)
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated the monolithic 530-line `test_disassembler.rs` file in `crates/disassembler`, restructuring tests into 1:1 modular unit test files mirroring `crates/disassembler/src/`:
+    - `test_lib.rs`: Top-level `disassemble()` entry point, raw data fallback (`DATA.W $xxxx`), instruction length counting, and line formatting.
+    - `test_branch.rs`: Branching, loop, and control flow instructions (`src/branch.rs`: `BRA`, `BSR`, `Bcc`, `DBcc`, `Scc`, `JMP`, `JSR`, `RTS`, `RTE`, `RTR`, `TRAP`, `STOP`, `RESET`).
+    - `test_data.rs`: Data movement, stack frame management, and register unary ops (`src/data.rs`: `MOVE`, `MOVEA`, `MOVEM`, `MOVEP`, `MOVEQ`, `LEA`, `PEA`, `LINK`, `UNLK`, `SWAP`, `EXT`, `EXG`, `MOVE to/from SR/CCR`).
+    - `test_alu.rs`: Arithmetic, logic, multiplication, division, shifts, and rotates (`src/alu.rs`: `ADD`, `SUB`, `CMP`, `AND`, `OR`, `EOR`, `CLR`, `NEG`, `NOT`, `MULS`/`MULU`, `DIVS`/`DIVU`, bit manipulation, shifts/rotates, and immediate arithmetic).
+    - `test_align.rs`: Enhanced with Fibonacci sequence execution anchor synchronization.
+    - `test_ea.rs`: Retained dedicated effective address formatting test suite.
+  - Added dedicated unit test suites to `crates/memory_bus`:
+    - `test_arbitration.rs`: Verifies transfer qualifiers (`function_code::USER_DATA`, etc.), operand access sizes (`BusAccessSize`), `BusResult` methods (`is_ready`, `is_wait`, `ok`, `unwrap_or`), `MemoryBus::is_chip_ram_target`, Chip RAM DMA lock contention (`BusResult::WaitState`), and Fast RAM DMA immunity.
+    - `test_map.rs`: Verifies 24-bit physical memory map classification across bank tables, unmapped open-bus floating lines (`$FF`/`$FFFF`), boot overlay mechanics (`_OVL`), and 512KB Chip RAM boundaries.
+- **Architectural Rationale & Trade-Offs**:
+  - *Granular Fault Localization:* Monolithic test files obscure which submodule regressed upon failure and discourage modular refactoring. Establishing 1:1 parity between source modules and external test suites makes unit test coverage explicit, maintainable, and aligned across the workspace.
+  - *Single-Module Standard Clarification:* Single-module crates retain `tests/test_<crate>.rs` to ensure distinct test target binaries across the 26 workspace crates during `cargo test --workspace`.
+- **Verification & Test Results**:
+  - `cargo test -p disassembler`: All 24 tests passed across 6 modular test suites (`test_lib`, `test_branch`, `test_data`, `test_alu`, `test_ea`, `test_align`).
+  - `cargo test -p memory_bus`: All 29 tests passed across 5 test suites (`test_arbitration`, `test_map`, `test_config`, `test_rtc`, `test_memory_bus`).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed in 0.60s.
+  - `python tools/pre_flight.py`: All 4 quality gates passed cleanly (Formatting: 100%, Attractor Discipline: 317 files clean, AGENTS.md: 13,334 bytes $\le$ 14,000, Architecture Rules: 17 passed).
+
+
 
