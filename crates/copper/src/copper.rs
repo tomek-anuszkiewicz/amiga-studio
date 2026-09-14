@@ -113,6 +113,12 @@ impl Copper {
         self.state = CopperState::FetchIR1(2);
     }
 
+    /// Returns true if the Copper is actively fetching instructions from Chip RAM (not idle or waiting)
+    #[inline]
+    pub fn is_active_fetching(&self) -> bool {
+        self.dma_enabled && self.is_running && !self.is_waiting
+    }
+
     /// Action method: triggers Copper restart on COP1LC address
     #[inline]
     pub fn strobe_jump1(&mut self, addr: u32) {

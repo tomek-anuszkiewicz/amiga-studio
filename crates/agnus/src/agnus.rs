@@ -178,9 +178,51 @@ impl Agnus {
         self.pending_copper_write = self.copper.step_cck(beam, self.blitter.is_busy, chip_ram);
         self.blitter.step_cck_ram(chip_ram);
         self.dma.step_cck();
-        self.chip_ram_blocked = self
-            .dma
-            .is_chip_ram_blocked(beam.hpos, self.blitter.is_busy);
+
+        // Evaluate 8-tier Master DMA Bus Arbitration
+        let copper_wants_bus = self.copper.is_active_fetching();
+        let blitter_wants_bus = self.blitter.is_busy;
+        let owner = self.dma.arbitrate(
+            beam.hpos,
+            beam.vpos,
+            self.dskpt != 0,
+            [true, true, true, true],
+            copper_wants_bus,
+            blitter_wants_bus,
+            true,
+        );
+        self.chip_ram_blocked = self.dma.chip_ram_blocked;
+
+        match owner {
+            dma::DmaChannel::Bitplane(plane) => {
+                let p = plane as usize;
+                if p < 6 && !chip_ram.is_empty() {
+                    let addr = (self.bplpt[p] as usize) & (chip_ram.len().wrapping_sub(1));
+                    if addr + 1 < chip_ram.len() {
+                        self.bplpt[p] = self.bplpt[p].wrapping_add(2) & 0x0007_FFFE;
+                    }
+                }
+            }
+            dma::DmaChannel::Sprite(sprite) => {
+                let s = sprite as usize;
+                if s < 8 && !chip_ram.is_empty() {
+                    let addr = (self.sprpt[s] as usize) & (chip_ram.len().wrapping_sub(1));
+                    if addr + 1 < chip_ram.len() {
+                        self.sprpt[s] = self.sprpt[s].wrapping_add(2) & 0x0007_FFFE;
+                    }
+                }
+            }
+            dma::DmaChannel::Audio(ch) => {
+                let c = ch as usize;
+                if c < 4 && !chip_ram.is_empty() {
+                    let addr = (self.audpt[c] as usize) & (chip_ram.len().wrapping_sub(1));
+                    if addr + 1 < chip_ram.len() {
+                        self.audpt[c] = self.audpt[c].wrapping_add(2) & 0x0007_FFFE;
+                    }
+                }
+            }
+            _ => {}
+        }
 
         // 3. Process and commit due register mutations
         let mut due = [None; 8];
@@ -328,10 +370,22 @@ impl Agnus {
             0x086 => {
                 self.copper.cop2lc = (self.copper.cop2lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
             }
-            0x08E => self.diwstrt = val,
-            0x090 => self.diwstop = val,
-            0x092 => self.ddfstrt = val & 0x00FC,
-            0x094 => self.ddfstop = val & 0x00FC,
+            0x08E => {
+                self.diwstrt = val;
+                self.dma.set_diwstrt(val);
+            }
+            0x090 => {
+                self.diwstop = val;
+                self.dma.set_diwstop(val);
+            }
+            0x092 => {
+                self.ddfstrt = val & 0x00FC;
+                self.dma.set_ddfstrt(val & 0x00FC);
+            }
+            0x094 => {
+                self.ddfstop = val & 0x00FC;
+                self.dma.set_ddfstop(val & 0x00FC);
+            }
             0x100 => self.set_bplcon0(val),
             0x102 => self.bplcon1 = val,
             0x108 => self.bpl1mod = val as i16,

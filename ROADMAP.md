@@ -164,27 +164,23 @@ This document outlines the phased development plan, hardware milestones, verific
     - 24-bit Time-of-Day (TOD) clock ticking on 50 Hz (PAL) / 60 Hz (NTSC) vertical blank pulses with alarm match interrupt (`ALARM`, ICR bit 2).
     - Serial Data Register (SDR) bidirectional shift register synchronized with MOS 6500/1 keyboard protocol on CIA-A SP/CNT pins $\to$ Level 2 `PORTS` interrupt.
     - Dedicated unit & integration tests in `crates/cia/tests/test_cia_advanced.rs`, `crates/keyboard/tests/test_keyboard_advanced.rs`, and `crates/machine_loop/tests/test_cia_keyboard_integration.rs` (100% verified across 21 unit and integration tests).
-- **Step 2.8: Agnus Master DMA Bus Arbiter, Time-Slot Scheduling & Chip RAM Contention Engine [Active Focus]:**
+- **Step 2.8: Agnus Master DMA Bus Arbiter, Time-Slot Scheduling & Chip RAM Contention Engine [Completed: 2026-09-14]:**
   - **Horizontal Scanline DMA Slot Schedule (227/228 CCK PAL / 226 CCK NTSC):**
-    - *Fixed Time-Slot Execution:* Orchestrate physical memory fetch cycles for DRAM Refresh (CCK 0..3), Floppy Disk DMA (CCK 4), 4 Audio channels (CCK 5..8), and 8 Sprite pairs (CCK 12..27), routing words into target subsystem holding latches.
-    - *Dynamic Bitplane DMA Allocation & CPU Cycle Stealing:*
-      - Display Data Fetch window (`DDFSTRT`..=`DDFSTOP`) during active vertical scanlines driven by `BPLCON0` planecount (1–6) and resolution (LoRes vs HiRes).
-      - LoRes 1–4 planes: 4 memory cycles allocated every 8 CCKs (even slots), leaving odd cycles free for CPU.
-      - LoRes 5–6 planes: Bitplane DMA steals 50% of odd cycles, causing direct CPU wait states during display fetch.
-      - HiRes 4 planes: Bitplane DMA claims 100% of memory cycles in the fetch window, completely locking out the CPU.
+    - *Fixed Time-Slot Execution:* Orchestrated physical memory fetch cycles for DRAM Refresh (CCK 0..3), Floppy Disk DMA (CCK 4), 4 Audio channels (CCK 5..8), and 8 Sprite pairs (CCK 12..27), with direct physical address pointer progression (`bplpt`, `sprpt`, `audpt`).
+    - *Dynamic Bitplane DMA Allocation & CPU Cycle Stealing:* Display Data Fetch window (`DDFSTRT`..=`DDFSTOP`) during active display lines driven by `BPLCON0` planecount (1–6) and resolution (LoRes vs HiRes). LoRes 1–4 planes consume even cycles (phases 0, 2, 4, 6); LoRes 5–6 planes steal odd cycles (phases 1, 3); HiRes 4 planes claims 100% of bus bandwidth, completely locking out the CPU in the display window.
   - **Strict 8-Tier Bus Priority Hierarchy & Slot Re-assignment:**
     - Refresh > Disk > Audio > Bitplane > Sprite > Copper > Blitter > CPU.
-    - Dynamic slot release: If a high-priority channel is disabled in `DMACON` or idle, release the slot immediately to Copper, Blitter, or CPU.
+    - Dynamic slot release: When a higher-priority channel is disabled in `DMACON` or inactive, Agnus immediately releases the cycle to Copper, Blitter, or CPU.
   - **Blitter & Copper Bus Contention Mechanics:**
-    - *Copper Bus Participation:* Copper claims available cycles (even/odd) when not blocked by higher-priority Bitplane/Sprite DMA.
-    - *Normal Blitter Mode (`BLTPRI == 0`):* Blitter uses remaining idle cycles; implement Agnus CPU starvation yield logic (forcing Blitter to yield 1 cycle whenever CPU is starved for 3 consecutive memory cycles).
-    - *Blitter Nasty Mode (`BLTPRI == 1`):* Agnus awards all available cycles to Blitter, locking CPU out of Chip RAM.
+    - *Copper Bus Participation:* Copper fetches instruction words when enabled and active (not waiting on beam position or halted).
+    - *Normal Blitter Mode (`BLTPRI == 0`):* Blitter claims available cycles; Agnus enforces a 3-cycle CPU starvation yield mechanism, forcing the Blitter to yield the 4th cycle unconditionally to the CPU.
+    - *Blitter Nasty Mode (`BLTPRI == 1`):* Agnus awards all available cycles to the Blitter, locking the CPU out of Chip RAM.
   - **Direct Bus Lock Exposure & End-to-End Propagation:**
     - Direct drive of `chip_ram_blocked` on `PhysicalMemory` during contended slots: CPU Chip RAM (`$000000–$07FFFF`) and Slow RAM (`$C00000–$C7FFFF`) accesses return `BusResult::WaitState` and stall cycle-accurately.
     - Preserves 100% Fast RAM (`$200000–$9FFFFF`) immunity (zero wait states under heavy DMA or Blitter Nasty).
   - **Dedicated Integration Test Suite:**
-    - Comprehensive test coverage in `crates/machine_loop/tests/test_dma_contention.rs` and `crates/dma/tests/test_dma.rs` verifying fixed slot stalls, Fast RAM immunity, bitplane contention scaling (0 vs 4 vs 6 planes), Blitter Nasty CPU lock-out, and CPU 3-cycle starvation release.
-- **Step 2.9: Host Audio Playback & CRT Presentation Shaders:**
+    - 100% verified across 6 unit tests in `crates/dma/tests/test_dma.rs`, 5 integration tests in `crates/machine_loop/tests/test_dma_contention.rs`, and 19 Cartesian DMA tests in `crates/test_runner/tests/test_dma_cartesian.rs`.
+- **Step 2.9: Host Audio Playback & CRT Presentation Shaders [Active Focus]:**
   - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio) with dynamic resampling and ring buffer underflow/overflow protection.
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
 - **Step 2.10: Host Input Subsystem, Game Controller Mapping & Port Hub (`crates/keyboard`, `crates/mouse`, `crates/joystick`, `crates/game_ports`, `crates/gui`):**

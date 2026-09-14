@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "agnus"
 status: "active"
 created: 2026-09-06
-updated: 2026-09-12
+updated: 2026-09-14
 related: ["[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Denise.md](Denise.md)"]
 ---
 
@@ -227,27 +227,33 @@ flowchart LR
     SLOTS --> RESID["Remaining Even/Odd Slots:\nCopper, Blitter, CPU"]
 ```
 
-### 5.1 Fixed Time Slot Allocations
-1. **DRAM Refresh:** 4 dedicated memory cycles during horizontal blanking (`CCK 0`–`3`).
-2. **Floppy Disk DMA:** 1 dedicated memory cycle per scanline (`CCK 4`).
-3. **Audio DMA:** 4 memory cycles (1 for each audio channel `AUD0`–`AUD3`) per scanline (`CCK 5`–`8`).
-4. **Sprite DMA:** 16 memory cycles (2 words per sprite for `SPR0`–`SPR7`) per scanline (`CCK 12`–`27`).
-5. **Bitplane DMA:** Dynamically allocated according to display depth (`BPLCON0`):
-   - In 4-plane Low-Res: Claims 4 slots out of every 8.
-   - In 6-plane Low-Res or 4-plane Hi-Res: Claims 6 slots out of every 8.
+### 5.1 8-Tier Master DMA Priority Hierarchy
+Agnus resolves bus mastership on every single Color Clock cycle according to a strict 8-tier priority hierarchy:
 
-### 5.2 CPU Access & Blitter Nasty (`BLTPRI`)
-- **Even Cycles:** Dedicated to Agnus DMA (Refresh, Audio, Disk, Sprites, Bitplanes).
-- **Odd Cycles:** Available to the Motorola 68000 CPU.
-- **Blitter Nasty Mode (`DMACON` bit 10 `BLTPRI`):**
-  - When `BLTPRI == 0`, the Blitter only uses idle even slots and odd slots when the CPU does not request them.
-  - When `BLTPRI == 1` ("Blitter Nasty"), Agnus awards **all available memory cycles** (both even and odd) to the Blitter. If the Blitter requires bus cycles, the CPU is completely locked out (`MemoryBusResult::Blocked`), maximizing blit transfer speed.
+1. **DRAM Refresh (`CCK 0..3`):** 4 dedicated memory cycles during horizontal blanking. Unconditionally locks the Chip RAM bus.
+2. **Floppy Disk DMA (`CCK 4`):** 1 dedicated memory cycle per scanline when disk DMA is enabled (`DMACON` bit 4 `DSKEN`) and active (`dskpt != 0`).
+3. **Audio DMA (`CCK 5..8`):** 4 dedicated cycles (1 for each audio channel `AUD0`–`AUD3`) per scanline when enabled (`DMACON` bit 0 `AUD0EN`..bit 3 `AUD3EN`).
+4. **Bitplane DMA (`DDFSTRT`..=`DDFSTOP`):** Dynamically scheduled in the display data fetch window according to resolution and plane count (`BPLCON0`):
+   - **Low-Res (1–4 planes):** Even phases (0, 2, 4, 6) claim planes 1–4. Odd phases remain free for the CPU.
+   - **Low-Res (5–6 planes):** Cycle stealing active. Odd phases 1 and 3 are stolen by planes 5 and 6 (stealing 25% or 50% of CPU slots). Odd phases 5 and 7 remain free.
+   - **Hi-Res (1–4 planes):** Double data rate. Planes 1–4 consume both even and odd cycles. 4-plane Hi-Res claims 100% of bus bandwidth in the display window, causing complete CPU lockout.
+5. **Sprite DMA (`CCK 12..27`):** 16 memory cycles (2 words per sprite for `SPR0`–`SPR7`) per scanline when enabled (`DMACON` bit 5 `SPREN`).
+6. **Copper Coprocessor:** Active when Copper DMA is enabled (`DMACON` bit 7 `COPEN`) and the Copper is actively fetching instruction words (not waiting on beam position or halted).
+7. **Blitter:** Active when Blitter DMA is enabled (`DMACON` bit 6 `BLTEN`) and Blitter is busy (`is_busy == true`):
+   - **Blitter Nasty Mode (`DMACON` bit 10 `BLTPRI == 1`):** The Blitter claims all available bus cycles (both even and odd), locking out the CPU completely while active.
+   - **Normal Mode (`BLTPRI == 0`):** Agnus monitors CPU starvation. If custom chip DMA or Blitter starves the CPU for 3 consecutive cycles, Agnus forces the Blitter to yield the 4th cycle unconditionally to the CPU (`DmaChannel::Cpu`), and the starvation counter resets.
+8. **Motorola 68000 CPU:** Granted bus mastership whenever no higher-priority custom chip channel claims the cycle.
 
-### 5.3 Baseline DMA Bus Contention Exposure
-The baseline DMA arbiter implements horizontal scanline slot arbitration before individual custom chip internal logic (e.g. video bitplane serialization, audio BLEP synthesis) is completed:
-- On each CCK cycle, Agnus determines if the active slot is allocated to custom chip DMA or claimed by Blitter Nasty.
-- Agnus signals `MemoryBus::set_chip_ram_blocked(blocked)`.
-- When `blocked == true`, any CPU access to Chip RAM (`$000000-$07FFFF`) stalls via `MemoryBusResult::Blocked`, asserting wait states. Fast RAM (`$200000-$27FFFF`) remains accessible at full speed without contention.
+### 5.2 Dynamic Slot Release & Pointer Progression
+- **Dynamic Slot Release:** If a fixed time-slot channel is disabled in `DMACON` or inactive (e.g. disk pointer zero or sprite DMA disabled), the cycle is immediately released down the hierarchy to Copper, Blitter, or CPU.
+- **Physical Address Pointer Advancement:** When a custom channel (`Bitplane`, `Sprite`, `Audio`) is granted a bus slot, Agnus advances its corresponding physical pointer (`bplpt[p]`, `sprpt[s]`, `audpt[c]`) by 2 bytes within the Chip RAM space (`& 0x0007_FFFE`).
+
+### 5.3 Chip RAM Contention & Bus Wait-State Assertion
+Agnus communicates contention state directly to the memory subsystem via `self.chip_ram_blocked`:
+- When `owner != DmaChannel::Cpu`, `chip_ram_blocked` is asserted (`true`).
+- `machine_loop` propagates `chip_ram_blocked` to `PhysicalMemory`.
+- Any CPU bus cycle targeting Chip RAM (`$000000-$07FFFF`) or Slow RAM (`$C00000-$C7FFFF`) receives `BusResult::WaitState`, stalling the 68000 micro-step execution until the bus is released.
+- **Fast RAM Immunity:** CPU accesses to Auto-Config Fast RAM (`$200000-$9FFFFF`) bypass Chip RAM arbitration entirely, executing with zero wait states even under 100% DMA bus saturation.
 
 ### 5.4 Delayed Mutation Propagation Pipeline
 In Agnus, writes to control registers (`DMACON`, `BLTCON0/1`, `COPCON`) or strobes (`COPJMP1/2`, `BLTSIZE`) do not take instantaneous cross-chip effect:

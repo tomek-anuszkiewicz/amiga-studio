@@ -3324,6 +3324,43 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p cia -p keyboard -p machine_loop`: All 46 tests passed cleanly.
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
 
+---
+
+### [2026-09-14 12:05 CEST] — Step 2.8: Agnus Master DMA Bus Arbiter, Time-Slot Scheduling & Chip RAM Contention Engine
+- **Affected Subsystems**:
+  - `crates/dma/src/dma.rs` (8-tier master DMA priority arbiter, dynamic bitplane cycle stealing, Blitter Nasty, and CPU starvation yield)
+  - `crates/dma/tests/test_dma.rs` (6 comprehensive unit tests covering slot schedules, cycle stealing, Blitter modes, and starvation)
+  - `crates/copper/src/copper.rs` (added `is_active_fetching()` helper method for Copper bus participation)
+  - `crates/agnus/src/agnus.rs` (integrated DMA arbiter into `step_cck_ram()`, synced DIW/DDF/BPLCON0, physical pointer advancement, and `chip_ram_blocked` drive)
+  - `crates/machine_loop/tests/test_dma_contention.rs` (5 end-to-end integration tests verifying fixed slot contention, Fast RAM immunity, bitplane scaling, Blitter Nasty, and 3-cycle CPU starvation yield)
+  - `Obsidian/Amiga/Design/Agnus.md` (updated Section 5 with full 8-tier hierarchy, bitplane math, and starvation yield)
+  - `Obsidian/Amiga/Design/MemoryBus.md` (updated Section 3 with Agnus arbiter integration and Fast RAM immunity)
+  - `ROADMAP.md` (marked Step 2.8 as completed and activated Step 2.9)
+- **What Was Changed (The Concrete Reality)**:
+  - Rewrote `crates/dma/src/dma.rs`:
+    - Implemented `DmaChannel` enum with the strict 8-tier priority hierarchy: `Refresh` > `Disk` > `Audio(0..3)` > `Bitplane(0..5)` > `Sprite(0..7)` > `Copper` > `Blitter` > `Cpu`.
+    - Implemented `arbitrate(...)` evaluating fixed slot assignments across horizontal scanlines (Refresh slots 0..3, Disk slot 4, Audio slots 5..8, Sprites slots 12..27).
+    - Implemented dynamic bitplane scheduling within the display data fetch window (`DDFSTRT`..=`DDFSTOP`): LoRes 1–4 planes on even slots, LoRes 5–6 planes stealing 25% or 50% of odd cycles, and HiRes 4 planes claiming 100% of memory bandwidth (complete CPU lockout).
+    - Implemented dynamic slot release: unallocated, disabled, or idle channels immediately yield their cycles down to Copper, Blitter, or CPU.
+    - Implemented Blitter Nasty (`BLTPRI == 1`) vs Normal Blitter mode (`BLTPRI == 0`) with a 3-cycle CPU starvation counter, guaranteeing that the 4th cycle is unconditionally yielded to the CPU.
+  - Enhanced `crates/copper/src/copper.rs`:
+    - Added `is_active_fetching()` returning true when Copper DMA is enabled and the coprocessor is actively executing instructions (not waiting on beam position or halted).
+  - Enhanced `crates/agnus/src/agnus.rs`:
+    - Synchronized `DIWSTRT`, `DIWSTOP`, `DDFSTRT`, `DDFSTOP`, and `BPLCON0` writes into `self.dma`.
+    - Evaluated `self.dma.arbitrate(...)` during `step_cck_ram()`, setting `self.chip_ram_blocked = self.dma.chip_ram_blocked`.
+    - Advanced physical Chip RAM pointers (`bplpt[p]`, `sprpt[s]`, `audpt[c]`) by 2 bytes within `$0007_FFFE` when granted a DMA bus slot.
+  - Authored comprehensive test suites:
+    - `crates/dma/tests/test_dma.rs` (6 unit tests covering all slot schedules, cycle stealing, Blitter Nasty, and starvation yield).
+    - `crates/machine_loop/tests/test_dma_contention.rs` (5 integration tests validating fixed slot contention, Fast RAM immunity, bitplane scaling, Blitter Nasty, and CPU starvation release).
+- **Architectural Rationale & Trade-Offs**:
+  - *Unified Arbiter Ownership:* Centralizing all slot schedules, DDF cycle stealing, and Blitter starvation inside `DmaScheduler` keeps `Agnus` clean and cohesive (~530 lines) while remaining completely decoupled from CPU and bus implementations.
+  - *Passive Bus Result Wait States:* Driving `chip_ram_blocked` on `PhysicalMemory` allows CPU bus accesses to Chip RAM and Slow RAM to stall with zero dynamic allocations, preserving Fast RAM immunity without complex bus locking callbacks.
+- **Verification & Test Results**:
+  - `cargo test -p dma`: All 6 unit tests passed.
+  - `cargo test -p machine_loop --test test_dma_contention`: All 5 integration tests passed.
+  - `cargo test -p test_runner --test test_dma_cartesian`: All 19 tests passed (validating cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ across full instruction set).
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly.
+
 
 
 

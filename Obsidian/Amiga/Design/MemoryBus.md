@@ -97,7 +97,7 @@ While the CPU requires 2 Color Clocks to complete an instruction bus transaction
 - **Write Cycle:** At CCK1, the CPU drives address and data onto pins (`BusCycle`). At CCK2, Gary asserts $\overline{\text{DTACK}}$ (or withholds it if Agnus DMA is active), and the write commits directly to physical Chip RAM.
 
 Maintain the following internal bus state:
-- `chip_ram_blocked: bool`: Flag indicating whether Agnus / Blitter / DMA is currently occupying the Chip RAM bus.
+- `chip_ram_blocked: bool`: Flag indicating whether Agnus / Blitter / DMA is currently occupying the Chip RAM bus. Evaluated cycle-by-cycle by the Agnus Master DMA Arbiter (8-tier priority schedule: Refresh, Disk, Audio, Bitplane, Sprite, Copper, Blitter, CPU) and forwarded to `PhysicalMemory` by the central machine loop. Fast RAM (`$200000-$9FFFFF`) bypasses this check completely and executes with zero wait states.
 
 ### Types & Arbitration Primitives
 
