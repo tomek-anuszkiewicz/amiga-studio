@@ -210,7 +210,12 @@ if ($Graph -or $All) {
         Write-Host ""
     } else {
         Write-Host "Updating code AST knowledge graph in graphify-out/ (graphify update .)..." -ForegroundColor Cyan
-        graphify update .
+        Push-Location $RepoRoot
+        try {
+            graphify update .
+        } finally {
+            Pop-Location
+        }
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Code knowledge graph updated successfully in graphify-out/." -ForegroundColor Green
         } else {

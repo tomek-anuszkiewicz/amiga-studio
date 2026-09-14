@@ -3431,3 +3431,19 @@ Every future modification or implementation task must append an entry following 
   - Tested `tools/bootstrap_reference.ps1 -Item prm` (verified `[SKIP] Target already provisioned: M68000PRM.pdf (4.51 MB)`).
   - Tested `tools/bootstrap_reference.ps1 -List` (verified clean 2-mirror matrix for PRM).
   - `python tools/pre_flight.py`: 100% compliant across all quality gates.
+---
+
+### [2026-09-14 15:32 CEST] — Anchored Graphify Update to RepoRoot in Repository Bootstrapper
+- **Affected Subsystems**:
+  - `tools`
+- **What Was Changed (The Concrete Reality)**:
+  - In `tools/bootstrap.ps1`, wrapped `graphify update .` inside `Push-Location $RepoRoot` / `Pop-Location`.
+  - When developers invoked `.\bootstrap.ps1 -Graph` from inside `tools/`, relative path `.` previously resolved to `tools/` instead of the repository root, scanning only the `tools/` subfolder (269 nodes in ~6s) rather than the complete repository (`crates/` and `ref_src/vAmiga`, 3,086 nodes).
+  - Anchoring execution to `$RepoRoot` guarantees consistent full-repository AST scanning and updates to `graphify-out/` regardless of the caller's working directory.
+- **Architectural Rationale & Trade-Offs**:
+  - CLI utility scripts must be CWD-agnostic. Relying on the caller's current working directory causes silent misbehavior (extracting incomplete subgraphs into wrong output paths).
+  - Using PowerShell `Push-Location` / `Pop-Location` ensures the caller's terminal location is cleanly restored even if graph extraction is interrupted or encounters an error.
+- **Verification & Test Results**:
+  - Tested execution from `tools/` directory: confirmed `graphify update .` executes at repository root and targets full repository AST.
+  - `python tools/pre_flight.py`: 100% compliant across all quality gates.
+
