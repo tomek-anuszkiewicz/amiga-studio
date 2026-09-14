@@ -252,3 +252,91 @@ Always inspect the source PDF page before attempting to trace or redraw an SVG:
    - Result: 100% mathematical precision, crisp vector rendering at any zoom level, and true selectable/searchable text.
 3. **Fallback to Bitmap Tracing**:
    - Only use raster-to-SVG vector tracing (or manual reconstruction) when the source PDF is verified to be a pure scanned paper scan (e.g. vintage 1980s microfiche or scanner raster images with zero embedded vector operators).
+
+---
+
+## 14. Carriage Return (`\r`) Table Row Splitting in LaTeX Formulas
+
+### Problem
+When generating Markdown programmatically or transcribing LaTeX formulas like `$\rightarrow$`, `$\rho$`, or `$\right.`:
+- In Python, JavaScript, and shell string literals, `\r` is interpreted as a **carriage return** character (`ASCII 13`).
+- A string like `"Straightforward block copy (A $\rightarrow$ D)"` is evaluated as `"Straightforward block copy (A $" + "\r" + "ightarrow$ D)"`.
+- The carriage return introduces an unintended line break right in the middle of a Markdown table row!
+- Because Markdown table syntax strictly requires an entire row to reside on a single uninterrupted physical line bounded by `|`, the broken line collapses the table rendering completely in editors (VS Code, Obsidian, GitHub).
+
+### Solution
+1. **Raw Strings in Code**: Always use raw string literals in Python (`r"$\rightarrow$"` or `r"""..."""`) or double-escape backslashes (`"$\\rightarrow$"`).
+2. **Unicode Arrows in Prose**: For simple directional arrows in tables and prose, prefer native Unicode characters (`A → D` or `A ⇒ D`) rather than LaTeX math blocks (`$\rightarrow$`).
+3. **Automated Audit**: `audit_conversion.py` validates that lines containing pipe characters `|` do not contain unescaped carriage returns (`\r`) or orphaned table cells.
+
+---
+
+## 15. Dual-Column Parallel Reference Tables (Compact 4-Column Layouts)
+
+### Problem
+In printed hardware manuals, dense reference tables (e.g. *Table 6-1: Table of Common Minterm Values*, register maps, opcode tables) frequently use a **dual-column parallel layout** (e.g. `Selected Equation | LF Code | Selected Equation | LF Code`) to fit 30+ items onto a single printed page without splitting across pages.
+When converting to Markdown, LLMs often make two mistakes:
+1. They linearize the table into a single massive, 30-row 2-column table that requires excessive scrolling.
+2. They invent arbitrary artificial columns (e.g. adding `Function Name`, `Minterms Included`, `Common Graphics Use Case`), diverging from the source book's authoritative specification.
+
+### Solution: Strict 1:1 Parallel Layout Preservation
+1. **Match the Physical Table Topology**: Preserve the exact 4-column parallel structure from the manual:
+   ```markdown
+   ### Table 6-1: Table of Common Minterm Values
+
+   | Selected Equation | `BLTCON0` LF Code | Selected Equation | `BLTCON0` LF Code |
+   | :--- | :---: | :--- | :---: |
+   | $D = A$ | `$F0` | $D = AB$ | `$C0` |
+   | $D = \overline{A}$ | `$0F` | $D = A\overline{B}$ | `$30` |
+   | $D = B$ | `$CC` | $D = \overline{A}B$ | `$0C` |
+   | $D = \overline{B}$ | `$33` | $D = \overline{A}\overline{B}$ | `$03` |
+   ```
+2. **KaTeX Math Precision**: Use `\overline{...}` for negation overlines ($\overline{A}$, $\overline{B}$).
+3. **Backtick Hex Codes**: All hex constants must be backticked (`` `$F0` ``) to prevent KaTeX math collision.
+4. **Empty Trailing Cells**: If the left side has more entries than the right side (odd total count), pad the final right-side cells with empty spaces (`| | |`).
+
+---
+
+## 16. Obsidian Collapsible Callouts vs Broken Raw HTML `<details>`
+
+### Problem
+In Obsidian (particularly in Live Preview mode powered by CodeMirror 6), enclosing Markdown code blocks (```` ```text ````) inside raw HTML `<details>` and `<summary>` tags breaks CommonMark parsing:
+- The HTML tags are rendered as literal text with syntax-highlighted red labels (`<details>`, `<summary>`).
+- The collapsible disclosure triangle fails to render.
+- The monospace text block inside leaks out uncollapsed.
+
+### Solution: Native Obsidian Foldable Callout Syntax
+Obsidian natively supports collapsible callouts using `-` (collapsed by default) or `+` (expanded by default):
+```markdown
+> [!NOTE]- Click to view Text / ASCII Diagram
+> ```text
+>        +-----+   [percntrld]
+>        | 100 | ------------+
+>        +-----+             |
+> ...
+> ```
+```
+- **Live Preview & Reading View**: Renders with an interactive fold toggle arrow natively across all themes.
+- **Zero Raw HTML Leaks**: Eliminates all raw `<details>` and `<summary>` tag issues.
+
+---
+
+## 17. Multi-Tier Representation for Dense Hardware FSM / State Diagrams
+
+### Problem
+Complex physical state machines (e.g. *Figure 5-8: Audio State Diagram*) contain multiple states and transition arrows annotated with multi-line Boolean conditions and hardware action triggers (e.g. `(perfin · (AUDxON + AUDxIP)) [pbufld, AUDxDR if napnav, percntrld]`).
+Attempting to force every single condition and action onto raw Mermaid arrow labels:
+- Crushes the graph into an illegible horizontal spaghetti line.
+- Text labels overlap into unreadable grey smudges.
+- Fails both human readability and technical utility.
+
+### Solution: The 4-Tier Representation Standard
+1. **Macro Flowchart in Mermaid (`flowchart TD`)**:
+   Top-down layout with isolated subgraphs (e.g. `Recovery States`), showing high-level state progression and primary enable/strobe signals (`AUDxON`, `AUDxDAT`, `perfin`).
+2. **Detailed State Transition & Action Matrix Table**:
+   An exhaustive Markdown table immediately following the diagram detailing every condition, qualification, and hardware action trigger.
+3. **Text / ASCII Fallback inside Native Callout**:
+   Monospace circuit sketch folded inside `> [!NOTE]- Click to view Text / ASCII Diagram`.
+4. **Cropped High-Res Raster Scan + `.txt` Technical Sidecar**:
+   Cropped figure from the original print scan (`assets/figure_XX_<slug>.png`) paired with a comprehensive `.txt` sidecar per `asset-descriptions.md` for offline Amiga RAG indexing.
+

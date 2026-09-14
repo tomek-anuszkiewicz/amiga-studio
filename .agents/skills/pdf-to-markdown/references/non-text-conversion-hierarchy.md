@@ -69,6 +69,21 @@ When encountering ASCII register bitfield boxes in manuals (e.g. `| 15 | 14 | ..
 | 7-0 | `LF0-7` | Minterm logic function selector |
 ```
 
+### Dual-Column Parallel Reference Tables (Compact 4-Column Layouts)
+Dense reference tables in printed manuals (e.g. *Table 6-1: Table of Common Minterm Values*, register maps, opcode tables) frequently use a **4-column parallel layout** (`Selected Equation | LF Code | Selected Equation | LF Code`) to fit 30+ items onto a single printed page.
+- **Preserve Topology**: Never collapse into an endlessly long 2-column list or invent extraneous columns.
+- **KaTeX & Backticks**: Format Boolean algebra using KaTeX ($\overline{A}$, $D = A\overline{B}$) and backtick all hex codes (`` `$F0` ``).
+- **LaTeX Carriage Return (`\r`) Invariant**: Never permit raw `$\rightarrow$` inside table rows to evaluate as carriage returns (`\r`), which splits markdown table lines. Prefer Unicode arrows (`A → D`).
+
+```markdown
+| Selected Equation | `BLTCON0` LF Code | Selected Equation | `BLTCON0` LF Code |
+| :--- | :---: | :--- | :---: |
+| $D = A$ | `$F0` | $D = AB$ | `$C0` |
+| $D = \overline{A}$ | `$0F` | $D = A\overline{B}$ | `$30` |
+| $D = B$ | `$CC` | $D = \overline{A}B$ | `$0C` |
+| $D = \overline{B}$ | `$33` | $D = \overline{A}\overline{B}$ | `$03` |
+```
+
 ---
 
 ## 3. Priority 3: Native Diagrams (Mermaid + ASCII Fallback)
@@ -78,24 +93,22 @@ State machines, architectural flowcharts, block diagrams, pipeline queues, and b
 
 ### Rules & Reformatting
 1. **Render Native Mermaid**: Use `flowchart TD` / `flowchart LR` or `sequenceDiagram`.
-2. **ASCII Fallback**: Provide a compact text/ASCII diagram inside an expandable details block:
+2. **ASCII Fallback inside Native Callout**: Provide a compact text/ASCII diagram folded inside a native Obsidian collapsible callout (`> [!NOTE]-`):
    ```markdown
    ```mermaid
    flowchart TD
        Fetch --> Decode --> Execute
    ```
 
-   <details>
-   <summary>Click to view Text / ASCII Diagram</summary>
-
-   ```text
-   +-------+     +--------+     +---------+
-   | Fetch | --> | Decode | --> | Execute |
-   +-------+     +--------+     +---------+
+   > [!NOTE]- Click to view Text / ASCII Diagram
+   > ```text
+   > +-------+     +--------+     +---------+
+   > | Fetch | --> | Decode | --> | Execute |
+   > +-------+     +--------+     +---------+
+   > ```
    ```
-   </details>
-   ```
-3. **No Redundant Images**: **Do NOT embed a raster image if a Mermaid diagram is generated to represent it.** Generating both an image and a Mermaid graph creates redundant visual clutter.
+3. **Prohibition of Raw HTML `<details>`**: Never use raw HTML `<details><summary>` tags around Markdown code blocks, as this breaks CommonMark parsing in Obsidian Live Preview and renders raw tags.
+4. **No Redundant Images**: **Do NOT embed a raster image if a Mermaid diagram is generated to represent it.** Generating both an image and a Mermaid graph creates redundant visual clutter.
 
 ---
 

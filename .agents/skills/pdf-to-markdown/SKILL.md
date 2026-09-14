@@ -25,7 +25,7 @@ All conversion scripts and references reside inside this skill directory:
 │   ├── audit_conversion.py                # Automated semantic sanity auditor (catches prose-in-code leaks)
 │   └── validate_links.py                  # Anchor, image asset, and link integrity validator
 └── references/
-    ├── pdf-conversion-pitfalls.md         # Detailed guide to the 11 known conversion pitfalls & fixes
+    ├── pdf-conversion-pitfalls.md         # Detailed guide to the 17 known conversion pitfalls & fixes
     ├── non-text-conversion-hierarchy.md   # Decision matrix: Code vs Table vs Mermaid vs Text vs Crop vs SVG
     └── table-merging-heuristics.md        # Reference on stitching split tables across page boundaries
 ```
@@ -55,11 +55,22 @@ When encountering diagrams, code, tables, and visual figures in the PDF, apply t
 2. **Priority 2: Standard Markdown Tables**:
    - First choice for structured tabular data: pinout tables, register lists, sector layouts, memory maps.
    - **Register Bitfields**: When encountering ASCII register bitfield boxes (`| 15 | 14 | ... | 0 |`), convert them into clean Markdown tables (`| Bit(s) | Name | Function |`).
+   - **Dual-Column Parallel Tables**: In printed hardware manuals, reference tables (e.g. Table 6-1 minterms, opcode charts) frequently use a **4-column parallel layout** (`Selected Equation | LF Code | Selected Equation | LF Code`). Strictly preserve the 4-column parallel topology matching the physical book. Never collapse or linearize into a single tall table or invent artificial columns.
+   - **LaTeX Carriage Return (`\r`) Invariant**: Never allow `$\rightarrow$` or LaTeX commands with `\r` to be parsed as carriage return control characters (`ASCII 13`), which splits Markdown table rows onto two lines and corrupts table rendering. In tables and prose, prefer Unicode arrows (`A → D` or `A ⇒ D`) or properly escaped strings.
+   - **KaTeX Math & Hex Codes**: Use `\overline{...}` for negation overlines ($\overline{A}$, $\overline{B}$) and always enclose hex codes in backticks (`` `$F0` ``) to prevent KaTeX math collision.
 3. **Priority 3: Native Diagrams (Mermaid + ASCII Fallback)**:
    - For state machines, flowcharts, block diagrams, pipeline queues, and bus handshakes.
    - Generate a clean native Mermaid flowchart (`flowchart TD` or `sequenceDiagram`).
-   - Provide a compact text/ASCII diagram inside an expandable details block:
-     `<details><summary>Click to view Text / ASCII Diagram</summary>...</details>`.
+   - Provide a compact text/ASCII diagram inside a native Obsidian collapsible callout:
+     ```markdown
+     > [!NOTE]- Click to view Text / ASCII Diagram
+     > ```text
+     > +-------+     +--------+
+     > | State | --> | Next   |
+     > +-------+     +--------+
+     > ```
+     ```
+   - **Prohibition of Raw HTML `<details>`**: Raw HTML `<details><summary>` tags break CommonMark formatting and render as raw red tags in Obsidian Live Preview. Always use native Obsidian folded callouts (`> [!NOTE]-`).
    - **No Redundant Images**: **Do NOT embed a raster image if a Mermaid diagram is generated to represent it.** Generating both an image and a Mermaid graph creates redundant visual clutter.
 4. **Priority 4: HTML Tables**:
    - When complex cell spans (`colspan`, `rowspan`), multi-line cell entries, or nested structures are required.

@@ -37,7 +37,8 @@ class AuditReport:
     code_blocks_count: int = 0
     prose_in_code_issues: List[Tuple[int, str]] = field(default_factory=list)
     fragmented_code_issues: List[Tuple[int, str]] = field(default_factory=list)
-    empty_heading_issues: List[Tuple[int, str]] = field(default_factory=list)
+    table_row_issues: List[Tuple[int, str]] = field(default_factory=list)
+    raw_details_issues: List[Tuple[int, str]] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     is_clean: bool = True
 
@@ -47,8 +48,11 @@ def audit_markdown_file(file_path: Path) -> AuditReport:
     report = AuditReport(file_path=file_path)
 
     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-        lines = f.readlines()
+        content = f.read()
 
+    # Check for raw carriage returns in content (excluding CRLF line endings)
+    # i.e., \r not followed immediately by \n, or \r inside a string literal like \rightarrow
+    lines = content.splitlines(keepends=False)
     report.total_lines = len(lines)
 
     in_code_block = False
@@ -58,7 +62,27 @@ def audit_markdown_file(file_path: Path) -> AuditReport:
     is_mermaid = False
 
     for line_num, line in enumerate(lines, 1):
-        stripped = line.strip()
+        stripped = line.strip().lstrip(">").strip()
+
+        # Check for unescaped carriage returns inside the line
+        if "\r" in line:
+            report.table_row_issues.append(
+                (line_num, "Line contains raw carriage return character (\\r) causing unintended line split")
+            )
+
+        # Check for raw HTML details/summary tags
+        if ("<details" in line.lower() or "<summary" in line.lower()) and not in_code_block:
+            report.raw_details_issues.append(
+                (line_num, "Raw HTML <details>/<summary> tag found; use native Obsidian callout '> [!NOTE]-' instead")
+            )
+
+        # Check for malformed table rows (orphaned table cell split across lines)
+        if "|" in line and not in_code_block:
+            # If line has pipe but doesn't start or end with pipe (and isn't inside a quote block)
+            if stripped.endswith("|") and not stripped.startswith("|") and not stripped.startswith("+-") and not stripped.startswith("+="):
+                report.table_row_issues.append(
+                    (line_num, f"Orphaned or split table row detected: '{stripped[:60]}'")
+                )
 
         if stripped.startswith("```"):
             if not in_code_block:
@@ -104,7 +128,7 @@ def audit_markdown_file(file_path: Path) -> AuditReport:
                 f"Abnormally high code block density ({ratio:.1%} of all lines are in code blocks)"
             )
 
-    if report.prose_in_code_issues or report.fragmented_code_issues:
+    if report.prose_in_code_issues or report.fragmented_code_issues or report.table_row_issues or report.raw_details_issues:
         report.is_clean = False
 
     return report
@@ -141,6 +165,10 @@ def main() -> int:
                 print(f"  - Line {line_no} [PROSE LEAK]: {issue}")
             for line_no, issue in report.fragmented_code_issues:
                 print(f"  - Line {line_no} [FRAGMENT]: {issue}")
+            for line_no, issue in report.table_row_issues:
+                print(f"  - Line {line_no} [TABLE ROW]: {issue}")
+            for line_no, issue in report.raw_details_issues:
+                print(f"  - Line {line_no} [RAW DETAILS]: {issue}")
             for warn in report.warnings:
                 print(f"  - [WARNING]: {warn}")
             print()
