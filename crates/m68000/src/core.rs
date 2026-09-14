@@ -3,9 +3,10 @@
 use crate::micro::types;
 use crate::state::CpuState;
 use physical_memory::{AddressBus, BusResult};
+use serde::{Deserialize, Serialize};
 
 /// Motorola 68000 CPU Core
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cpu {
     pub state: CpuState,
 }
@@ -223,6 +224,15 @@ impl Cpu {
         let desc = &crate::micro::dispatch_table::OPCODE_DESCRIPTOR_TABLE[self.state.ir as usize];
         if !desc.steps.is_empty() {
             self.state.micro.initiate_instruction(desc);
+        }
+    }
+
+    /// Re-hydrates cached micro-step function pointers from the static dispatch table after deserialization
+    #[inline]
+    pub fn rehydrate_micro_steps(&mut self) {
+        let desc = &crate::micro::dispatch_table::OPCODE_DESCRIPTOR_TABLE[self.state.ir as usize];
+        if !desc.steps.is_empty() {
+            self.state.micro.current_steps = desc.steps;
         }
     }
 

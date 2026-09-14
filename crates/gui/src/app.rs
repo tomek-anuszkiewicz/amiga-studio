@@ -135,6 +135,7 @@ pub struct EmulatorApp {
     pub pending_binary_path: Option<PathBuf>,
     pub load_target_addr_str: String,
     pub load_auto_prime: bool,
+    pub toast_message: Option<(String, usize)>,
 }
 
 impl Default for EmulatorApp {
@@ -172,6 +173,7 @@ impl Default for EmulatorApp {
             pending_binary_path: None,
             load_target_addr_str: "001000".to_string(),
             load_auto_prime: true,
+            toast_message: None,
         }
     }
 }
@@ -291,6 +293,26 @@ impl EmulatorApp {
         // Ctrl + O: Load Binary
         if input.modifiers.command && input.key_pressed(egui::Key::O) {
             self.open_load_binary_dialog();
+        }
+
+        // F6: Quick Save Slot 1
+        if input.key_pressed(egui::Key::F6) {
+            crate::layout::top_menu_bar::quick_save_slot(self, 1);
+        }
+
+        // F9: Quick Load Slot 1
+        if input.key_pressed(egui::Key::F9) {
+            crate::layout::top_menu_bar::quick_load_slot(self, 1);
+        }
+
+        // Ctrl + S: Save State to File
+        if input.modifiers.command && input.key_pressed(egui::Key::S) {
+            crate::layout::top_menu_bar::open_save_state_dialog(self);
+        }
+
+        // Ctrl + L: Load State from File
+        if input.modifiers.command && input.key_pressed(egui::Key::L) {
+            crate::layout::top_menu_bar::open_load_state_dialog(self);
         }
 
         // Ctrl + Plus / Equal: Zoom In

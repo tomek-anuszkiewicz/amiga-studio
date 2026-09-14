@@ -2087,6 +2087,7 @@ dependencies = [
  "cia",
  "config",
  "denise",
+ "flate2",
  "floppy",
  "game_ports",
  "joystick",
@@ -2099,6 +2100,7 @@ dependencies = [
  "physical_memory",
  "rtc",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

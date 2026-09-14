@@ -2909,8 +2909,29 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `cargo test -p agnus -p paula -p denise -p memory_bus -p machine_loop -p copper -p blitter`: All unit and integration test suites passed cleanly.
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 tests passed.
-  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
+---
 
-
-
-
+### [2026-09-14 05:00 CEST] — Machine-Wide Save State Serialization & Restoration Across Machine Core, Headless Debugger and Developer Studio (Step 2.4)
+- **Affected Subsystems**:
+  - `crates/m68000`: Derived `Serialize, Deserialize` on `Cpu`; added `pub fn rehydrate_micro_steps(&mut self)` to repopulate cached opcode micro-step slices from `OPCODE_DESCRIPTOR_TABLE` post-deserialization. Implemented manual `PartialEq, Eq` for `CpuMicroState` comparing all architectural registers and flags while ignoring the skipped `current_steps` execution cache pointer.
+  - `crates/physical_memory`: Derived `PartialEq, Eq` on `PhysicalMemory`.
+  - `crates/frame_builder`: Derived `Serialize, Deserialize` with `#[serde(default = "default_frame_buffer", skip_serializing)]` on `buffer: Vec<u32>` with `FRAME_BUFFER_PIXELS` sizing, preventing index-out-of-bounds panics post-deserialization while minimizing state file footprint.
+  - `crates/machine_loop`: Added `serde_json` and `flate2` dependencies. Implemented `crates/machine_loop/src/save_state.rs` defining `SaveStateHeader` (magic `A500`, version `1`, RAM sizing, Kickstart ROM CRC32, timestamp, cycle counters, flags), `A500State` snapshot struct, `SaveStateError`, IEEE 802.3 `compute_crc32()`, JSON and gzip compression (with automatic gzip magic sniffing `$1F $8B`), and file persistence. Exported `save_state` module and implemented `save_state()`, `save_state_self_contained()`, `load_state()`, `save_state_to_file()`, and `load_state_from_file()`. Added dedicated test suite `crates/machine_loop/tests/test_save_state.rs` (8 unit and integration tests).
+  - `crates/debugger`: Re-exported save state types in `crates/debugger/src/debugger.rs`. Extended `DebuggerSession` in `crates/debugger/src/session.rs` with `quick_slots: [Option<A500State>; 5]`, save/load state methods (synchronizing CCK, refreshing `prev_cpu_state`, updating memory diff baselines, resetting temporal scrub cursor, and pausing execution), JSON and file helpers, and quick slots 1–5. Added test suite `crates/debugger/tests/test_debugger_save_state.rs` (3 unit and integration tests).
+  - `crates/gui`: Added `State` dropdown menu in `crates/gui/src/layout/top_menu_bar.rs` (`Save State to File...`, `Load State from File...`, quick slots 1–5) and toast notifications (`toast_message`). Wired global keyboard shortcuts in `crates/gui/src/app.rs` (`F6` Quick Save Slot 1, `F9` Quick Load Slot 1, `Ctrl+S`, `Ctrl+L`). Added headless integration test in `crates/gui/tests/test_interactions.rs`.
+  - `Obsidian/Amiga/Design/SaveState.md`: Synchronized frontmatter properties and state schema with production implementation.
+  - `ROADMAP.md`: Marked Step 2.4 as completed and updated next milestone focus to Step 2.5.
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated and verified the architectural decision regarding custom chip state: chips (`Copper`, `Blitter`, `Agnus`, `Denise`, `Paula`, `Cia`) are already flat value containers with zero circular pointers or OS handles. They serve directly as canonical serializable state records, avoiding redundant `*State` mirror structs.
+  - Implemented decoupled, allocation-free snapshot generation and restoration supporting both Referenced ROM mode (storing CRC32 checksums to omit duplicate 256KB/512KB ROM buffers) and Self-Contained ROM mode (embedding ROM data).
+  - Built transparent serialization supporting human-readable JSON and gzip-compressed binary formats.
+  - Added full debugger engine integration and headless GUI shortcut support operating seamlessly across both Developer and ScreenOnly view modes.
+- **Architectural Rationale & Trade-Offs**:
+  - *Ephemeral Execution Pointer Hydration:* `CpuMicroState.current_steps` holds a static execution pointer (`&'static [MicroStep]`) to `OPCODE_DESCRIPTOR_TABLE`. Skipping it during serialization avoids storing process-specific addresses. Calling `cpu.rehydrate_micro_steps()` upon `load_state()` repopulates the slice immediately, ensuring bit-for-bit equivalence and uninterrupted execution.
+  - *Headless UI Operation:* Moving quick slots and state management into `DebuggerSession` ensures state saves and loads operate reliably even in `ViewMode::ScreenOnly` without requiring open developer panels.
+- **Verification & Test Results**:
+  - `cargo test -p machine_loop --test test_save_state`: All 8 tests passed.
+  - `cargo test -p debugger --test test_debugger_save_state`: All 3 tests passed.
+  - `cargo test -p gui --test test_interactions test_simulated_quick_save_and_load_shortcuts`: Passed.
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly (Formatting: 100%, Attractors: clean across 337 files, AGENTS.md: 13,582 bytes <= 14,000 limit, Architecture Rules: 18/18 passed).

@@ -4,7 +4,7 @@
 //! headless execution controller decoupled from GUI frameworks.
 
 use config::A500Config;
-use machine_loop::A500Machine;
+use machine_loop::{A500Machine, A500State, SaveStateError};
 use physical_memory::MemoryBus;
 
 use crate::loader::inject_binary;
@@ -30,6 +30,9 @@ pub struct DebuggerSession {
     // Diff memory snapshot (256 bytes around prev_hex_base)
     pub prev_hex_bytes: [u8; 256],
     pub prev_hex_base: u32,
+
+    /// Quick Save Slots (slots 1..=5)
+    pub quick_slots: [Option<A500State>; 5],
 }
 
 impl Default for DebuggerSession {
@@ -55,6 +58,7 @@ impl DebuggerSession {
             prev_cpu_state: None,
             prev_hex_bytes: [0; 256],
             prev_hex_base: 0,
+            quick_slots: [None, None, None, None, None],
         }
     }
 
@@ -255,5 +259,92 @@ impl DebuggerSession {
             data,
             auto_prime,
         )
+    }
+
+    /// Saves the current machine state into an `A500State` snapshot
+    pub fn save_state(&self) -> A500State {
+        self.machine.save_state()
+    }
+
+    /// Saves the machine state in self-contained mode (embedding Kickstart ROM)
+    pub fn save_state_self_contained(&self) -> A500State {
+        self.machine.save_state_self_contained()
+    }
+
+    /// Restores machine state from an `A500State` snapshot and synchronizes debugger tracking
+    pub fn load_state(&mut self, state: &A500State) -> Result<(), SaveStateError> {
+        self.machine.load_state(state)?;
+
+        // Synchronize debugger telemetry and execution tracking
+        self.debugger.current_cck = self.machine.cck;
+        self.prev_cpu_state = Some(self.machine.cpu.state.clone());
+        self.capture_memory_snapshot(self.prev_hex_base);
+        self.jump_to_live_head();
+        self.is_running = false;
+
+        Ok(())
+    }
+
+    /// Serializes machine state to pretty-printed JSON
+    pub fn save_state_to_json(&self) -> Result<String, SaveStateError> {
+        self.save_state().to_json_pretty()
+    }
+
+    /// Deserializes machine state from JSON
+    pub fn load_state_from_json(&mut self, json_str: &str) -> Result<(), SaveStateError> {
+        let state = A500State::from_json(json_str)?;
+        self.load_state(&state)
+    }
+
+    /// Saves machine state directly to a file (compressed or JSON)
+    pub fn save_state_to_file(
+        &self,
+        path: impl AsRef<std::path::Path>,
+        self_contained: bool,
+    ) -> Result<(), SaveStateError> {
+        self.machine.save_state_to_file(path, self_contained)
+    }
+
+    /// Loads machine state directly from a file
+    pub fn load_state_from_file(
+        &mut self,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<(), SaveStateError> {
+        let state = A500State::load_from_file(path)?;
+        self.load_state(&state)
+    }
+
+    /// Saves machine snapshot to an in-memory quick slot (1..=5)
+    pub fn save_quick_slot(&mut self, slot: usize) -> Result<(), SaveStateError> {
+        if slot == 0 || slot > 5 {
+            return Err(SaveStateError::CorruptedData(format!(
+                "Invalid quick slot index: {slot} (must be 1..=5)"
+            )));
+        }
+        self.quick_slots[slot - 1] = Some(self.save_state());
+        Ok(())
+    }
+
+    /// Loads machine snapshot from an in-memory quick slot (1..=5)
+    pub fn load_quick_slot(&mut self, slot: usize) -> Result<(), SaveStateError> {
+        if slot == 0 || slot > 5 {
+            return Err(SaveStateError::CorruptedData(format!(
+                "Invalid quick slot index: {slot} (must be 1..=5)"
+            )));
+        }
+        let state = self.quick_slots[slot - 1]
+            .clone()
+            .ok_or_else(|| SaveStateError::CorruptedData(format!("Quick slot {slot} is empty")))?;
+        self.load_state(&state)
+    }
+
+    /// Returns true if the specified quick slot (1..=5) is populated
+    #[inline]
+    pub fn has_quick_slot(&self, slot: usize) -> bool {
+        if slot == 0 || slot > 5 {
+            false
+        } else {
+            self.quick_slots[slot - 1].is_some()
+        }
     }
 }

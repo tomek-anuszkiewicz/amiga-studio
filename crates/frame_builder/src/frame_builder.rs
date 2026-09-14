@@ -29,8 +29,13 @@ pub struct FrameBuilder {
     /// True when a complete video frame has been rasterized (VBlank reached)
     pub frame_ready: bool,
     /// Full 32-bit ARGB pixel buffer (0xAARRGGBB)
-    #[serde(skip)]
+    #[serde(default = "default_frame_buffer", skip_serializing)]
     buffer: Vec<u32>,
+}
+
+#[inline]
+fn default_frame_buffer() -> Vec<u32> {
+    vec![0xFF000000; FRAME_BUFFER_PIXELS]
 }
 
 impl Default for FrameBuilder {

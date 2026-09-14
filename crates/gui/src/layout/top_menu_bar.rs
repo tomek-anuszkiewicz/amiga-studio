@@ -32,6 +32,63 @@ pub fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     }
                 });
 
+                // --- 2. State Menu ---
+                ui.menu_button("State", |ui| {
+                    if ui.button("💾 Save State to File... (Ctrl+S)").clicked() {
+                        open_save_state_dialog(app);
+                        ui.close_menu();
+                    }
+
+                    if ui.button("📂 Load State from File... (Ctrl+L)").clicked() {
+                        open_load_state_dialog(app);
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    if ui.button("⚡ Quick Save Slot 1 (F6)").clicked() {
+                        quick_save_slot(app, 1);
+                        ui.close_menu();
+                    }
+
+                    let slot1_label = if app.session.has_quick_slot(1) {
+                        "🔄 Quick Load Slot 1 (F9)"
+                    } else {
+                        "🔄 Quick Load Slot 1 (Empty)"
+                    };
+                    if ui
+                        .add_enabled(
+                            app.session.has_quick_slot(1),
+                            egui::Button::new(slot1_label),
+                        )
+                        .clicked()
+                    {
+                        quick_load_slot(app, 1);
+                        ui.close_menu();
+                    }
+
+                    ui.separator();
+
+                    ui.menu_button("Slots 2–5", |ui| {
+                        for slot in 2..=5 {
+                            ui.horizontal(|ui| {
+                                if ui.button(format!("Save #{slot}")).clicked() {
+                                    quick_save_slot(app, slot);
+                                }
+                                let loaded = app.session.has_quick_slot(slot);
+                                let btn = egui::Button::new(if loaded {
+                                    format!("Load #{slot}")
+                                } else {
+                                    format!("#{slot} (Empty)")
+                                });
+                                if ui.add_enabled(loaded, btn).clicked() {
+                                    quick_load_slot(app, slot);
+                                }
+                            });
+                        }
+                    });
+                });
+
                 ui.separator();
 
                 // --- 2. Execution Controls ---
@@ -79,6 +136,18 @@ pub fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 };
 
                 ui.colored_label(bg_color, format!(" ● [{}] ", status_text));
+
+                if let Some((ref msg, ref mut frames)) = app.toast_message {
+                    ui.colored_label(egui::Color32::from_rgb(0, 220, 255), format!(" 💾 {msg} "));
+                    if *frames > 0 {
+                        *frames -= 1;
+                    }
+                }
+                if let Some((_, frames)) = app.toast_message {
+                    if frames == 0 {
+                        app.toast_message = None;
+                    }
+                }
 
                 ui.separator();
 
@@ -162,4 +231,54 @@ pub fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 }
             });
         });
+}
+
+/// Saves snapshot to an in-memory quick-save slot (1..=5)
+pub fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
+    if let Ok(()) = app.session.save_quick_slot(slot) {
+        app.toast_message = Some((format!("Quick-saved to Slot #{slot}"), 180));
+    }
+}
+
+/// Restores snapshot from an in-memory quick-save slot (1..=5)
+pub fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
+    if let Ok(()) = app.session.load_quick_slot(slot) {
+        app.disassembly_view_addr = None;
+        app.toast_message = Some((format!("Restored from Slot #{slot}"), 180));
+    }
+}
+
+/// Opens native file chooser dialog to save an A500 state file
+pub fn open_save_state_dialog(app: &mut EmulatorApp) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let file = rfd::FileDialog::new()
+            .set_title("Save Amiga 500 State")
+            .add_filter("Amiga Save State (*.a500z, *.json)", &["a500z", "json"])
+            .save_file();
+
+        if let Some(path) = file {
+            if let Ok(()) = app.session.save_state_to_file(&path, false) {
+                app.toast_message = Some((format!("State saved to {}", path.display()), 180));
+            }
+        }
+    }
+}
+
+/// Opens native file chooser dialog to load an A500 state file
+pub fn open_load_state_dialog(app: &mut EmulatorApp) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let file = rfd::FileDialog::new()
+            .set_title("Load Amiga 500 State")
+            .add_filter("Amiga Save State (*.a500z, *.json)", &["a500z", "json"])
+            .pick_file();
+
+        if let Some(path) = file {
+            if let Ok(()) = app.session.load_state_from_file(&path) {
+                app.disassembly_view_addr = None;
+                app.toast_message = Some((format!("State loaded from {}", path.display()), 180));
+            }
+        }
+    }
 }

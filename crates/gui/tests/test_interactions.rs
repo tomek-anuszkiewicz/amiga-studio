@@ -1669,3 +1669,65 @@ fn test_right_dock_bottom_docking_and_fill() {
     );
     assert_eq!(measured.unwrap(), app.right_dock_bottom_height);
 }
+
+#[test]
+fn test_simulated_quick_save_and_load_shortcuts() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+
+    // Advance 300 CCKs
+    for _ in 0..300 {
+        app.session.step_cck();
+    }
+    assert_eq!(app.session.debugger.current_cck, 300);
+    assert!(!app.session.has_quick_slot(1));
+
+    // 1. Simulate F6 (Quick Save Slot 1)
+    let input_f6 = RawInput {
+        events: vec![Event::Key {
+            key: Key::F6,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::NONE,
+        }],
+        ..Default::default()
+    };
+    let _ = ctx.run(input_f6, |ctx| {
+        app.update_ui(ctx);
+    });
+
+    assert!(app.session.has_quick_slot(1));
+    assert!(app.toast_message.is_some());
+    assert!(app
+        .toast_message
+        .as_ref()
+        .unwrap()
+        .0
+        .contains("Quick-saved"));
+
+    // Advance 500 more CCKs
+    for _ in 0..500 {
+        app.session.step_cck();
+    }
+    assert_eq!(app.session.debugger.current_cck, 800);
+
+    // 2. Simulate F9 (Quick Load Slot 1)
+    let input_f9 = RawInput {
+        events: vec![Event::Key {
+            key: Key::F9,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::NONE,
+        }],
+        ..Default::default()
+    };
+    let _ = ctx.run(input_f9, |ctx| {
+        app.update_ui(ctx);
+    });
+
+    assert_eq!(app.session.debugger.current_cck, 300);
+    assert_eq!(app.session.machine.cck, 300);
+    assert!(app.toast_message.as_ref().unwrap().0.contains("Restored"));
+}

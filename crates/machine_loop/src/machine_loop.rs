@@ -21,6 +21,9 @@ pub use physical_memory;
 pub use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 pub use rtc;
 
+pub mod save_state;
+pub use save_state::*;
+
 use config::A500Config;
 use m68000::Cpu;
 
@@ -354,5 +357,155 @@ impl A500Machine {
         while !(self.agnus.vpos == 0 && initial_vpos != 0) {
             self.step_cck();
         }
+    }
+
+    /// Captures a complete machine state snapshot in referenced Kickstart ROM mode
+    pub fn save_state(&self) -> A500State {
+        let kickstart_crc32 = compute_crc32(&self.physical_memory.kickstart_rom);
+        let header = SaveStateHeader {
+            magic: SAVE_STATE_MAGIC,
+            version: SAVE_STATE_VERSION,
+            timestamp: 0,
+            video_standard: self.config.video_standard(),
+            chip_ram_size: self.physical_memory.chip_ram.len(),
+            slow_ram_size: self
+                .physical_memory
+                .slow_ram
+                .as_ref()
+                .map_or(0, |r| r.len()),
+            fast_ram_size: self
+                .physical_memory
+                .fast_ram
+                .as_ref()
+                .map_or(0, |r| r.len()),
+            kickstart_crc32,
+            is_self_contained: false,
+        };
+
+        let mut mem_clone = self.physical_memory.clone();
+        // In referenced mode, do not duplicate Kickstart ROM in the snapshot
+        mem_clone.kickstart_rom = Vec::new();
+
+        A500State {
+            header,
+            cck: self.cck,
+            config: self.config.clone(),
+            cpu: self.cpu.state.clone(),
+            physical_memory: mem_clone,
+            rtc: self.rtc.clone(),
+            agnus: self.agnus.clone(),
+            denise: self.denise.clone(),
+            paula: self.paula.clone(),
+            cia_a: self.cia_a.clone(),
+            cia_b: self.cia_b.clone(),
+            floppy: self.floppy.clone(),
+            keyboard: self.keyboard.clone(),
+            game_ports: self.game_ports.clone(),
+            parallel_port: self.parallel_port.clone(),
+        }
+    }
+
+    /// Captures a self-contained state snapshot with embedded Kickstart ROM
+    pub fn save_state_self_contained(&self) -> A500State {
+        let mut state = self.save_state();
+        state.header.is_self_contained = true;
+        state.physical_memory.kickstart_rom = self.physical_memory.kickstart_rom.clone();
+        state
+    }
+
+    /// Restores a complete machine state snapshot with strict compatibility guards
+    pub fn load_state(&mut self, state: &A500State) -> Result<(), SaveStateError> {
+        // 1. Verify Magic header
+        if state.header.magic != SAVE_STATE_MAGIC {
+            return Err(SaveStateError::InvalidMagic);
+        }
+
+        // 2. Verify Schema Version
+        if state.header.version != SAVE_STATE_VERSION {
+            return Err(SaveStateError::IncompatibleVersion {
+                found: state.header.version,
+                supported: SAVE_STATE_VERSION,
+            });
+        }
+
+        // 3. Verify Chip RAM configuration compatibility
+        let current_chip_size = self.physical_memory.chip_ram.len();
+        if state.header.chip_ram_size != current_chip_size {
+            return Err(SaveStateError::MemorySizeMismatch {
+                expected_chip: state.header.chip_ram_size,
+                actual_chip: current_chip_size,
+            });
+        }
+
+        // 4. Verify Kickstart ROM compatibility
+        if state.header.is_self_contained {
+            self.physical_memory.kickstart_rom = state.physical_memory.kickstart_rom.clone();
+        } else if self.physical_memory.is_kickstart_loaded() {
+            let active_crc = compute_crc32(&self.physical_memory.kickstart_rom);
+            if state.header.kickstart_crc32 != 0 && active_crc != state.header.kickstart_crc32 {
+                return Err(SaveStateError::KickstartMismatch {
+                    expected_crc: state.header.kickstart_crc32,
+                    actual_crc: active_crc,
+                });
+            }
+        }
+
+        // 5. Restore Physical Memory (preserving active ROM in referenced mode)
+        let active_rom = self.physical_memory.kickstart_rom.clone();
+        self.physical_memory = state.physical_memory.clone();
+        if !state.header.is_self_contained {
+            self.physical_memory.kickstart_rom = active_rom;
+        }
+
+        // 6. Restore Master Monotonic Color Clock counter
+        self.cck = state.cck;
+
+        // 7. Restore CPU state and re-hydrate static micro-step pointers
+        self.cpu.state = state.cpu.clone();
+        self.cpu.rehydrate_micro_steps();
+
+        // 8. Restore Custom Chips & Peripherals
+        self.rtc = state.rtc.clone();
+        self.agnus = state.agnus.clone();
+        self.denise = state.denise.clone();
+        self.paula = state.paula.clone();
+        self.cia_a = state.cia_a.clone();
+        self.cia_b = state.cia_b.clone();
+        self.floppy = state.floppy.clone();
+        self.keyboard = state.keyboard.clone();
+        self.game_ports = state.game_ports.clone();
+        self.parallel_port = state.parallel_port.clone();
+
+        // 9. Re-poll peripheral pins to establish consistent signal line levels
+        self.poll_peripheral_pins();
+
+        Ok(())
+    }
+
+    /// Saves the machine state snapshot to a file (compressed if requested or matching extension)
+    pub fn save_state_to_file(
+        &self,
+        path: impl AsRef<std::path::Path>,
+        self_contained: bool,
+    ) -> Result<(), SaveStateError> {
+        let state = if self_contained {
+            self.save_state_self_contained()
+        } else {
+            self.save_state()
+        };
+        let path = path.as_ref();
+        let is_gz = path
+            .extension()
+            .map_or(false, |ext| ext == "gz" || ext == "a500z");
+        state.save_to_file(path, is_gz)
+    }
+
+    /// Restores the machine state from a file, automatically detecting format/compression
+    pub fn load_state_from_file(
+        &mut self,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<(), SaveStateError> {
+        let state = A500State::load_from_file(path)?;
+        self.load_state(&state)
     }
 }

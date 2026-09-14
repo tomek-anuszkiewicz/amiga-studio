@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-12
+updated: 2026-09-14
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Agnus.md](Agnus.md)"]
 ---
 
@@ -31,7 +31,9 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md
    - Taking a snapshot at cycle $T$, restoring it into a fresh machine instance, and stepping $N$ cycles must produce bit-for-bit identical hardware registers and memory contents as stepping continuously without saving.
 4. **Self-Contained vs. Referenced ROM Modes:**
    - Because a Kickstart ROM is only 256 KB (or 512 KB) and compresses down to ~150 KB, save states can optionally embed the entire ROM image directly. This provides 100% standalone portability across different computers without requiring external ROM files.
-   - Alternatively, a lightweight reference mode stores the SHA-256 and CRC32 checksums of the Kickstart ROM.
+   - Alternatively, a lightweight reference mode stores the CRC32 checksum of the Kickstart ROM.
+5. **Direct Chip Value Containment:**
+   - Unlike `Cpu` which isolates register snapshots in `CpuState` for external test harnesses (SingleStepTests), custom chips (`Copper`, `Blitter`, `Agnus`, `Denise`, `Paula`, `Cia`) are already flat value containers with zero circular pointers. They are themselves the canonical serializable state records, avoiding duplicate wrapper structs.
 
 ---
 
@@ -43,39 +45,59 @@ use serde::{Deserialize, Serialize};
 /// Master state container representing a full Amiga 500 machine snapshot.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct A500State {
+    /// Compatibility header and hardware configuration metadata
     pub header: SaveStateHeader,
     /// Monotonically increasing 64-bit Color Clock count
     pub cck: u64,
+    /// Active hardware configuration model
+    pub config: A500Config,
+    /// Motorola 68000 CPU register and micro-execution state
     pub cpu: CpuState,
-    pub agnus: AgnusState,
-    pub denise: DeniseState,
-    pub paula: PaulaState,
-    pub cia_a: CiaState,
-    pub cia_b: CiaState,
-    pub memory_bus: MemoryBusState,
-    pub peripherals: PeripheralsState,
+    /// 24-bit physical memory buffers, overlay flag, and open bus settings
+    pub physical_memory: PhysicalMemory,
+    /// OKI MSM6242B Real-Time Clock
+    pub rtc: rtc::RtcMsm6242b,
+    /// Agnus (beam counters, copper, blitter, dma, chip RAM bus lock)
+    pub agnus: agnus::Agnus,
+    /// Denise (video control, sprites, frame builder, color palette, collisions)
+    pub denise: denise::Denise,
+    /// Paula (audio channels, serial UART, interrupt multiplexer)
+    pub paula: paula::Paula,
+    /// MOS 8520 CIA-A
+    pub cia_a: cia::Cia,
+    /// MOS 8520 CIA-B
+    pub cia_b: cia::Cia,
+    /// 3.5" DD Floppy controller and drive units
+    pub floppy: floppy::FloppyController,
+    /// MOS 6500/1 keyboard microcontroller
+    pub keyboard: keyboard::Keyboard,
+    /// Dual Atari 9-pin controller game ports
+    pub game_ports: game_ports::GamePorts,
+    /// Centronics parallel printer port
+    pub parallel_port: parallel_port::ParallelPort,
 }
 
 /// Metadata header identifying state compatibility and machine configuration.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SaveStateHeader {
-    /// Format identifier: b"A500" in binary, omitted or "A500STATE" in JSON
+    /// Format identifier: b"A500"
     pub magic: [u8; 4],
     /// Schema format version (e.g. 1)
     pub version: u32,
-    /// Video standard (0 = PAL, 1 = NTSC)
-    pub video_standard: u8,
+    /// Creation timestamp (UTC Unix seconds)
+    pub timestamp: u64,
+    /// Video standard (PAL or NTSC)
+    pub video_standard: VideoStandard,
     /// Configured Chip RAM size in bytes (e.g. 524,288 or 1,048,576)
-    pub chip_ram_size: u32,
+    pub chip_ram_size: usize,
     /// Configured Slow RAM size in bytes (0 or 524,288)
-    pub slow_ram_size: u32,
+    pub slow_ram_size: usize,
     /// Configured Fast RAM size in bytes (0 to 8,388,608)
-    pub fast_ram_size: u32,
-    /// Kickstart ROM verification checksum (CRC32 and SHA-256)
+    pub fast_ram_size: usize,
+    /// Kickstart ROM verification checksum (IEEE 802.3 CRC32)
     pub kickstart_crc32: u32,
-    pub kickstart_sha256: [u8; 32],
-    /// Optional embedded Kickstart ROM data (making the save state 100% self-contained)
-    pub embedded_kickstart: Option<Vec<u8>>,
+    /// True if Kickstart ROM bytes are embedded inside the state (self-contained mode)
+    pub is_self_contained: bool,
 }
 
 /// Motorola 68000 CPU core state.

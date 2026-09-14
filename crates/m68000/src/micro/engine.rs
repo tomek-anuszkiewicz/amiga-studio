@@ -7,7 +7,7 @@ use super::types::{default_empty_steps, MicroStep, OpcodeDescriptor, EMPTY_STEPS
 use serde::{Deserialize, Serialize};
 
 /// Sub-cycle execution micro-state of the M68000 CPU
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpuMicroState {
     /// Instruction Register Capture prefetch latch (68000 IRC)
     #[serde(default)]
@@ -68,6 +68,31 @@ pub struct CpuMicroState {
     #[serde(default)]
     pub ssp_base: u32,
 }
+
+impl PartialEq for CpuMicroState {
+    fn eq(&self, other: &Self) -> bool {
+        self.irc == other.irc
+            && self.micro_step == other.micro_step
+            && self.ea_high == other.ea_high
+            && self.movem_mask == other.movem_mask
+            && self.movem_state == other.movem_state
+            && self.clocks_remaining == other.clocks_remaining
+            && self.source == other.source
+            && self.destination == other.destination
+            && self.ea_addr == other.ea_addr
+            && self.addr1 == other.addr1
+            && self.addr2 == other.addr2
+            && self.reg_src == other.reg_src
+            && self.reg_dst == other.reg_dst
+            && self.target_refill == other.target_refill
+            && self.prefetch_retired == other.prefetch_retired
+            && self.fault_addr == other.fault_addr
+            && self.info_word == other.info_word
+            && self.ssp_base == other.ssp_base
+    }
+}
+
+impl Eq for CpuMicroState {}
 
 impl Default for CpuMicroState {
     fn default() -> Self {

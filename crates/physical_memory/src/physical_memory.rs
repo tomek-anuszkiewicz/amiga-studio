@@ -54,7 +54,7 @@ pub enum MemoryBank {
 }
 
 /// Cycle-exact Amiga 500 PhysicalMemory
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PhysicalMemory {
     /// Active hardware configuration
     pub config: A500Config,
