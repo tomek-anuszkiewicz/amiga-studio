@@ -3128,3 +3128,27 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p agnus -p machine_loop`: All 42 tests passed across action dispatch, interrupts, and registers.
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed cleanly.
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
+---
+
+### [2026-09-14 11:26 CEST] — Tooling: Git Worktree Lifecycle Automation & NTFS Junction Asset Linking
+- **Affected Subsystems**:
+  - `tools/git/worktree.ps1`
+  - `.agents/skills/git-worktree/SKILL.md`
+  - `.agents/skills/git-resolve-merge/SKILL.md`
+  - `.agents/rules/git-merge-commits.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Created tools/git/worktree.ps1 supporting add, remove, sync, and list commands
+  - Implemented automatic NTFS directory junctions for heavy ignored test suites and documentation (ref_src 6.5 GB, Obsidian/Amiga/Reference, tools/AmigaTestKit, tests/singlestep, tests/benchmarks, graphify-out) and direct copy of .env
+  - Authored dedicated git-worktree skill establishing brother directory placement convention (../<repo>-<branch>)
+  - Updated git-resolve-merge skill and git-merge-commits.md rule deprecating internal .worktrees/ path
+  - Executed worktree.ps1 sync restoring link integrity across design docs
+- **Architectural Rationale & Trade-Offs**:
+  - Worktrees by default omit gitignored files breaking SingleStepTests and documentation links
+  - Physical copying of 6.5 GB ref_src wastes gigabytes of disk space and takes minutes
+  - NTFS directory junctions provide instantaneous 0 ms 0 byte links without requiring administrator privileges
+  - Automated teardown safely unlinks junctions prior to git worktree remove to avoid deleting referenced assets
+- **Verification & Test Results**:
+  - worktree.ps1 add and remove lifecycle verified cleanly
+  - worktree.ps1 sync resolved 30+ broken doc links in active worktree
+  - cargo test -p test_runner --test test_architecture_rules passed 18/18
+  - python tools/pre_flight.py passed all 4 gates
