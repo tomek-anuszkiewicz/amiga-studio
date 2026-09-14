@@ -9,6 +9,16 @@ pub use sprites;
 pub use config::DeniseModel;
 use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
+
+/// Denise sub-unit execution profile metrics for a single sampled Color Clock cycle
+#[derive(Debug, Clone, Copy, Default)]
+pub struct DeniseSubsystemProfile {
+    /// FrameBuilder pixel compositing and raster synthesis duration
+    pub frame_builder: Duration,
+    /// Sprite engines position comparison and line buffer evaluation duration
+    pub sprites: Duration,
+}
 
 /// Total number of hardware color palette registers
 pub const COLOR_PALETTE_SIZE: usize = 32;
@@ -232,6 +242,41 @@ impl Denise {
         let backdrop_argb = frame_builder::rgb444_to_argb32(self.color[0]);
         self.frame_builder
             .set_cck_pixels(beam.hpos, beam.vpos, backdrop_argb);
+
+        let mut due = [None; 8];
+        let mut due_count = 0;
+        tick_mutations(&mut self.mutations, |reg, val| {
+            if due_count < due.len() {
+                due[due_count] = Some((reg, val));
+                due_count += 1;
+            }
+        });
+        for item in due.iter().flatten() {
+            self.commit_register_write(item.0, item.1);
+        }
+        due
+    }
+
+    /// Advances Denise by 1 Color Clock, profiling sub-units (Sprites, FrameBuilder)
+    pub fn step_cck_profiled(
+        &mut self,
+        beam: BeamPosition,
+        profile: &mut DeniseSubsystemProfile,
+    ) -> [Option<(u16, u16)>; 8] {
+        if beam.hpos == 0 {
+            self.last_ham_rgb = self.color[0];
+        }
+
+        let t_sprites = std::time::Instant::now();
+        self.sprites.step_cck(beam);
+        profile.sprites += t_sprites.elapsed();
+
+        let t_fb = std::time::Instant::now();
+        self.frame_builder.step_cck(beam);
+        let backdrop_argb = frame_builder::rgb444_to_argb32(self.color[0]);
+        self.frame_builder
+            .set_cck_pixels(beam.hpos, beam.vpos, backdrop_argb);
+        profile.frame_builder += t_fb.elapsed();
 
         let mut due = [None; 8];
         let mut due_count = 0;

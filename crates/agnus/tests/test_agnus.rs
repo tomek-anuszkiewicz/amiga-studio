@@ -22,3 +22,18 @@ fn test_agnus_vposr_chip_id() {
     let agnus_ntsc = Agnus::new(AgnusModel::OcsNtsc8370);
     assert_eq!(agnus_ntsc.vposr() & 0x7000, 0x1000);
 }
+
+#[test]
+fn test_agnus_step_cck_ram_profiled() {
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    let mut chip_ram = vec![0u8; 512 * 1024];
+    let mut profile = agnus::AgnusSubsystemProfile::default();
+
+    agnus.step_cck_ram_profiled(&mut chip_ram, &mut profile);
+
+    // Profile counters should record execution durations
+    assert!(profile.beam >= std::time::Duration::ZERO);
+    assert!(profile.copper >= std::time::Duration::ZERO);
+    assert!(profile.blitter >= std::time::Duration::ZERO);
+    assert!(profile.dma >= std::time::Duration::ZERO);
+}

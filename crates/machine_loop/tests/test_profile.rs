@@ -42,5 +42,21 @@ fn test_step_frame_profiled_execution() {
     assert!(stats.cpu_duration > Duration::ZERO);
     assert!(stats.agnus_duration > Duration::ZERO);
     assert!(stats.denise_duration > Duration::ZERO);
+    assert!(stats.paula_duration > Duration::ZERO);
+    assert!(stats.cia_duration > Duration::ZERO);
+
+    // Sub-unit granularity assertions
+    assert!(stats.dma_duration >= Duration::ZERO);
+    assert!(stats.copper_duration >= Duration::ZERO);
+    assert!(stats.blitter_duration >= Duration::ZERO);
+    assert!(stats.frame_builder_duration >= Duration::ZERO);
+    assert!(stats.sprites_duration >= Duration::ZERO);
+    assert!(stats.audio_duration >= Duration::ZERO);
+    assert!(stats.floppy_duration >= Duration::ZERO);
+    assert!(stats.cia_a_duration >= Duration::ZERO);
+    assert!(stats.cia_b_duration >= Duration::ZERO);
+    assert!(stats.rtc_duration >= Duration::ZERO);
+    assert!(stats.keyboard_duration >= Duration::ZERO);
+
     assert!(stats.fps() > 0.0);
 }

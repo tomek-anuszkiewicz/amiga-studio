@@ -3689,4 +3689,29 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: 20 passed in 5.81s.
   - `python tools/pre_flight.py`: 100% passed (Formatting, Attractor Discipline, AGENTS.md ceiling, API coverage, Architecture rules).
 
+---
+
+### [2026-09-14 22:15 CEST] — Sub-Unit Granular Profiling & Machine Loop Refactoring
+- **Affected Subsystems**:
+  - `crates/machine_loop/src/profile.rs` (extended `SubsystemProfileStats` with sub-unit metrics, 2-tier tree formatter, and moved `step_frame_profiled` implementation)
+  - `crates/machine_loop/src/machine_loop.rs` (extracted `step_frame_profiled` to `profile.rs` shrinking file from 785 to 620 lines)
+  - `crates/machine_loop/tests/test_profile.rs` (added sub-unit assertions)
+  - `crates/agnus/src/agnus.rs` (`AgnusSubsystemProfile`, `step_cck_ram_profiled` for Copper, Blitter, DMA, and Beam)
+  - `crates/agnus/tests/test_agnus.rs` (`test_agnus_step_cck_ram_profiled`)
+  - `crates/denise/src/denise.rs` (`DeniseSubsystemProfile`, `step_cck_profiled` for FrameBuilder and Sprites)
+  - `crates/denise/tests/test_denise.rs` (`test_denise_step_cck_profiled`)
+- **What Was Changed (The Concrete Reality)**:
+  - **Hierarchical 2-Tier Execution Profiler**:
+    - Extended internal profiler beyond top-level custom chips to sub-unit granularity:
+      - Agnus: Master DMA Slot Arbitration, Copper Coprocessor, Blitter Engine, Beam Counters & Mutations.
+      - Denise: FrameBuilder (Pixel Compositor) and Hardware Sprites.
+      - Paula: Audio Engine & DAC and Floppy Disk Controller.
+      - CIAs & Peripherals: CIA-A, CIA-B, Real-Time Clock, and Keyboard.
+  - **Architecture & Line Budget Guardrail**:
+    - By relocating `step_frame_profiled` to `crates/machine_loop/src/profile.rs`, `machine_loop.rs` safely reduced from 785 to 620 lines, preserving headroom against the $\le 800$ line limit.
+- **Verification & Test Results**:
+  - `cargo test -p machine_loop -p agnus -p denise`: 47 tests passed cleanly.
+  - `cargo run -p test_runner --release -- vamiga --test coptim1 --profile`: Verified 2-tier tree output breakdown.
+  - `python tools/pre_flight.py`: 100% passed across all gates (Formatting, Attractor Discipline, AGENTS.md, Test Coupling, API Coverage, Architecture Rules).
+
 
