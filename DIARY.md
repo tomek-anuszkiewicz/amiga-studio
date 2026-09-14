@@ -3595,3 +3595,40 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 20 architecture tests passed in 6.46s.
   - `python tools/pre_flight.py`: All 6 pre-flight quality gates passed 100% cleanly.
 
+---
+
+### [2026-09-14 17:55 CEST] — vAmigaTS Test Runner & Verification Engine (Step 2 Delivery)
+- **Affected Subsystems**:
+  - `crates/test_runner/src/vamiga/` (`catalog.rs`, `script.rs`, `runner.rs`, `mod.rs`)
+  - `crates/test_runner/src/main.rs` (CLI `vamiga` command dispatch)
+  - `crates/test_runner/tests/test_vamiga_runner.rs` (automated test suite)
+  - `ROADMAP.md` (Step 2 categorized matrix and explicit deferred suite gates)
+- **What Was Changed (The Concrete Reality)**:
+  - **Full Cataloging & Discovery Engine (`catalog.rs`)**:
+    - Recursively indexes all 2,077 test directories under `ref_src/vAmigaTS`.
+    - Parses ADF bootblock headers, verifying Sector 2 (`$000400`) direct-injection compatibility.
+    - Classifies all tests into 1,468 active Phase 1 Baseline OCS executable tests and 609 deferred tests with explicit reasons (`Fpu`, `EcsOrAgaOnly`, `Cpu68010Only`, `NonStandardBootblock`, `NoRawReference`).
+    - Maps tests to primary roadmap categories: `Copper`, `Blitter`, `Agnus`, `Denise`, `Paula`, `Cpu`, `Cia`, `Mainboard`, `Memory`, `Misc`.
+  - **RetroShell Script Parser (`script.rs`)**:
+    - Parses `.retrosh` directives (`regression setup`, `wait N seconds/frames`, `cpu set revision`, `screenshot save`).
+    - Translates wait directives into calibrated direct-injection frame execution budgets.
+  - **Runner Engine & Differencer (`runner.rs`)**:
+    - Extends the runner to execute tests from `VamigaTestDescriptor`, running the machine loop for $N$ frames, extracting the $716 \times 285$ 24-bit RGB viewport, and matching against reference `.raw` frame captures.
+    - Added `run_vamiga_suite` batch runner collecting `VamigaSuiteSummary` metrics with pass rate, elapsed time, and first mismatch coordinates.
+  - **Unified CLI Tooling (`main.rs`)**:
+    - Added `cargo run -p test_runner -- vamiga [OPTIONS]` supporting `--category <CAT>`, `--test <NAME>`, `--frames <N>`, `--max-tests <N>`, `--list-deferred`, `--summary`, and `--verbose`.
+  - **Automated Verification Tests (`test_vamiga_runner.rs`)**:
+    - Added 5 unit/integration tests verifying catalog discovery, category filtering, retrosh parsing, deferred classification, and end-to-end single test execution.
+  - **Roadmap Synchronization (`ROADMAP.md`)**:
+    - Formally recorded the delivery of the v1.0 runner engine and established explicit roadmap milestone gates for the 609 deferred tests.
+- **Architectural Rationale & Trade-Offs**:
+  - *Direct Injection Velocity vs Floppy Latency:* By injecting the Sector 2 test payload directly into Chip RAM at `$00070000` and stubbing ExecBase/GfxBase calls, tests execute and render in milliseconds without Kickstart bootstrap delays, turning a multi-hour floppy regression run into an agile developer harness.
+  - *Explicit Deferral Tracking vs Silent Failure:* Classifying non-OCS tests (FPU, ECS, AGA, 68010, MFM) with structured enum reasons ensures that only genuine OCS hardware discrepancies are evaluated during Phase 1, while preserving a transparent contract for when deferred suites will be verified.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_vamiga_runner`: 5 passed in 2.43s.
+  - `cargo test -p test_runner --test test_vamiga_harness --test test_vamiga_copper --test test_vamiga_blitter --test test_vamiga_denise --test test_vamiga_paula`: 12 passed.
+  - `cargo run -p test_runner -- vamiga --list-deferred`: Verified catalog index (2,077 total, 1,468 active, 609 deferred).
+  - `cargo run -p test_runner -- vamiga --category copper --max-tests 5`: Verified category batch execution.
+  - `cargo test -p test_runner --test test_architecture_rules`: 20 passed in 6.70s.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 366 files.
+

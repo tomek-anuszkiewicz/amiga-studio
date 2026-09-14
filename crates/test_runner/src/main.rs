@@ -3,17 +3,24 @@
 use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use test_runner::reporter::{resolve_results_dir, GlobalTestSummary, SuiteResult};
+use test_runner::vamiga::{
+    run_vamiga_suite, run_vamiga_test, VamigaCatalog, VamigaCategory, VamigaRunConfig,
+    VamigaTestStatus,
+};
 
 fn print_usage() {
-    println!("M68000 SingleStepTest Runner & Diagnostic Tool");
+    println!("M68000 SingleStepTest & vAmigaTS Verification Runner");
     println!("Usage: cargo run -p test_runner -- [COMMAND]\n");
     println!("Commands:");
     println!("  bench [OPTIONS]  Execute M68000 instruction benchmarking suite");
     println!("                   Options: --quick, --standard, --thorough");
     println!("                            --filter <TAG>, --unroll <K>, --passes <N>");
     println!("                            --out-dir <PATH>, --no-pin, --dump-traces");
+    println!("  vamiga [OPTIONS] Execute vAmigaTS regression verification test harness");
+    println!("                   Options: --category <CAT>, --test <NAME>, --frames <N>");
+    println!("                            --max-tests <N>, --list-deferred, --summary, -v");
     println!("  --summary        Print global pass/fail coverage table across all tested opcodes");
     println!("  --diff           Compare latest test runs against previous runs to detect regressions/fixes");
     println!(
@@ -269,6 +276,159 @@ fn run_benchmarks_cli(args: &[String]) {
     }
 }
 
+fn run_vamiga_cli(args: &[String]) {
+    let repo_root = if Path::new("ref_src/vAmigaTS").is_dir() {
+        PathBuf::from("ref_src/vAmigaTS")
+    } else if Path::new("../../ref_src/vAmigaTS").is_dir() {
+        PathBuf::from("../../ref_src/vAmigaTS")
+    } else {
+        eprintln!("Error: Cannot find ref_src/vAmigaTS directory.");
+        return;
+    };
+
+    let mut category = VamigaCategory::All;
+    let mut specific_test: Option<String> = None;
+    let mut list_deferred = false;
+    let mut show_summary = true;
+    let mut max_tests: Option<usize> = None;
+    let mut config = VamigaRunConfig::default();
+
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--category" | "-c" => {
+                if i + 1 < args.len() {
+                    if let Some(cat) = VamigaCategory::from_str_loose(&args[i + 1]) {
+                        category = cat;
+                    } else {
+                        eprintln!("Unknown category: {}", args[i + 1]);
+                        return;
+                    }
+                    i += 1;
+                }
+            }
+            "--test" | "-t" => {
+                if i + 1 < args.len() {
+                    specific_test = Some(args[i + 1].clone());
+                    i += 1;
+                }
+            }
+            "--frames" | "-f" => {
+                if i + 1 < args.len() {
+                    if let Ok(frames) = args[i + 1].parse::<u32>() {
+                        config.frames_to_run = frames;
+                    }
+                    i += 1;
+                }
+            }
+            "--max-tests" | "-n" => {
+                if i + 1 < args.len() {
+                    if let Ok(n) = args[i + 1].parse::<usize>() {
+                        max_tests = Some(n);
+                    }
+                    i += 1;
+                }
+            }
+            "--list-deferred" => {
+                list_deferred = true;
+            }
+            "--summary" => {
+                show_summary = true;
+            }
+            "--verbose" | "-v" => {
+                config.verbose = true;
+            }
+            other => {
+                eprintln!("Unknown vamiga option: {}", other);
+            }
+        }
+        i += 1;
+    }
+
+    println!(
+        "[*] Discovering vAmigaTS test catalog in: {}",
+        repo_root.display()
+    );
+    let catalog = VamigaCatalog::discover(&repo_root);
+    let stats = catalog.stats();
+
+    println!(
+        "[*] Catalog indexed: {} total tests ({} runnable in Phase 1 Baseline, {} deferred)",
+        stats.total_tests, stats.runnable_tests, stats.deferred_tests
+    );
+
+    if list_deferred {
+        println!("\n=========================================================================================");
+        println!("📋 vAmigaTS DEFERRED TEST SUITES BREAKDOWN");
+        println!("=========================================================================================");
+        for (reason, count) in &stats.deferred_by_reason {
+            println!("  • {:<55} {:>4} tests", reason, count);
+        }
+        println!("-----------------------------------------------------------------------------------------");
+        println!("Roadmap Targets for Deferred Suites:");
+        println!("  1. FPU Coprocessor Required (206)      -> Phase 3: Advanced Graphics Architecture & FPU");
+        println!("  2. ECS/AGA Silicon Only (114)          -> Phase 2 (ECS) & Phase 3 (AGA)");
+        println!("  3. Motorola 68010 Required (91)        -> 68010 CPU Architecture Milestone");
+        println!("  4. AmigaOS Floppy Boot Required (6)    -> Step 6: Real-World Amiga Workloads (MFM Boot)");
+        println!(
+            "  5. Non-Visual / Photo Only (193)       -> Step 2.7: Non-Visual Register Assertions"
+        );
+        println!("=========================================================================================\n");
+        return;
+    }
+
+    if let Some(query) = specific_test {
+        let desc = match catalog.find_test(&query) {
+            Some(d) => d,
+            None => {
+                eprintln!("Error: Test '{}' not found in catalog.", query);
+                return;
+            }
+        };
+
+        println!(
+            "\n[*] Running single test: {} ({:?})",
+            desc.name, desc.category
+        );
+        println!("    Rel Dir: {}", desc.rel_dir.display());
+        println!("    Status:  {:?}", desc.status);
+
+        if desc.status != VamigaTestStatus::Runnable {
+            eprintln!("Cannot run deferred test in Phase 1 Baseline.");
+            return;
+        }
+
+        match run_vamiga_test(desc, &config) {
+            Ok(res) => {
+                if res.passed {
+                    println!("✅ PASS: 100% pixel match ({} pixels)", res.total_pixels);
+                } else {
+                    println!(
+                        "❌ FAIL: {}/{} mismatched pixels ({:.2}%)",
+                        res.mismatched_pixels,
+                        res.total_pixels,
+                        (res.mismatched_pixels as f64 / res.total_pixels as f64) * 100.0
+                    );
+                    if let Some(diff) = &res.first_mismatch {
+                        println!(
+                            "    First mismatch at ({}, {}): actual={:?}, expected={:?}",
+                            diff.x, diff.y, diff.actual, diff.expected
+                        );
+                    }
+                }
+            }
+            Err(e) => eprintln!("Execution error: {}", e),
+        }
+        return;
+    }
+
+    // Batch run category
+    let summary = run_vamiga_suite(&catalog, category, &config, max_tests);
+    if show_summary {
+        summary.print_summary();
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let results_dir = resolve_results_dir();
@@ -280,6 +440,7 @@ fn main() {
 
     match args[1].as_str() {
         "bench" => run_benchmarks_cli(&args[2..]),
+        "vamiga" => run_vamiga_cli(&args[2..]),
         "--summary" => print_summary(&results_dir),
         "--diff" => print_diff(&results_dir),
         "--suite" => {

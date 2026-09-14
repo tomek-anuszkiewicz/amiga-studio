@@ -69,40 +69,29 @@ This document outlines the phased development plan, hardware milestones, verific
   - Test and refine upcoming Save State management (`State` menu, in-memory quick slots 1–5, `F6`/`F9` shortcuts, native file dialogs, and State Manager modal dialog).
 
 ### Step 2: vAmigaTS Automated Test Suite Execution Harness & Silicon Verification Gate (Active Focus)
-- **Direct-Injection Payload Extraction Architecture (`$000400` Sector 2 Slicing):**
-  - **Zero-Floppy Bare-Metal Bootstrap:** Exploit the standard vAmigaTS micro-bootblock layout present across 2,068 out of 2,077 test ADFs (99.6%).
-  - **Direct Chip RAM Injection:** 2,068 out of 2,077 test ADFs (99.6%) use the standard micro-bootblock that loads Sector 2 (`$000400`) directly to `$00070000`. By injecting the payload and providing a minimal zero-allocation stub ExecBase/GfxBase table, tests run in milliseconds without Kickstart bootstrap delays.
-  - **Machine State & Prefetch Initialization:** Set Supervisor Stack Pointer ($SSP = \$0007FF00$), zero CPU data/address registers, and prime the CPU instruction prefetch pipeline directly at target entry point (`set_pc_and_prime_prefetch(0x070000)`).
-- **Verification of Remaining Non-Standard Test ADFs (9 Tests):**
-  - **Full Suite Completeness Mandate:** While 2,068 ADFs (99.6%) leverage Sector 2 direct injection, the remaining 9 non-standard test ADFs must also be supported and verified to reach 100% test coverage across all 2,077 test ADFs and 2,815 physical silicon reference captures.
-  - **Execution Path:** Execute these remaining tests via floppy MFM track decoding and bootblock streaming (using the existing `crates/floppy` controller and CIA index pulse handling) or specialized custom entry point loaders.
-- **Dual Runtime Test Execution Categories:**
-  - **Pure Bare-Metal Custom Chip Tests (2,118 test files):** Autonomous test execution touching exclusively custom chip registers ($DFF000–$DFF1FE) and dual MOS 8520 CIAs ($BFE001 / $BFD000) with zero OS, trap, or Kickstart library dependencies.
-  - **Scarab Mini-Startup Tests (~874 test files):** Provide a lightweight, zero-allocation stub `ExecBase` jump table at address `$000004` handling standard `graphics.library` cleanup calls (`OpenLibrary`, `LoadView(NULL)`, `WaitTOF`, `CloseLibrary`), or execute against initialized Kickstart 1.3 memory image.
-- **Cycle-Exact Output Verification & Golden Reference Differencer:**
-  - **Full Frame Buffer Golden Matchers:** Automated headless comparison of `Denise` / `FrameBuilder` rendered output against the 2,815 verified $716 \times 285$ 24-bit RGB (`.raw`, 612,180 bytes) reference frame captures in `ref_src/vAmigaTS`.
-  - **Micro-Timing Anomaly Detection:** Any discrepancy in CIA timer underflow, Copper beam wait wake-up, or interrupt assertion manifests immediately as shifted colored raster bars (`COLOR00`) or displaced bitplane/sprite pixels.
-  - **Non-Visual Register & State Assertions:** For pure arithmetic, flag, and timing tests, assert register states (`DMACONR`, `INTENAR`, `VPOSR`, `ICR`, CIA counters) upon reaching test completion breakpoints.
-- **Targeted Subsystem Verification Sub-Suites (`cargo test -p test_runner --test test_vamiga_*`):**
-  - *Suite 2.1: CIA Timers, TOD & ICR Interrupts:* `ref_src/vAmigaTS/CIA/CIA/Timer/` (`timer1`–`timer5`, `cont1`–`cont4`), validating cascaded timers, one-shot reloads, and Level 2 / Level 6 IRQ timing.
-  - *Suite 2.2: Agnus Copper Coprocessor Engine:* `ref_src/vAmigaTS/Agnus/Copper/` (`Wait/`, `Skip/`, `coptim/`, `coprace/`, `copvbl/`), verifying 4-CCK instruction cycle timing, beam wake-up latency, and `CDANG` danger mode.
-  - *Suite 2.3: Agnus 4-Channel DMA Blitter Engine:* `ref_src/vAmigaTS/Agnus/Blitter/` (`line/`, `fill/`, `timing/`, `bbusy/`, `bltint/`), verifying 256-minterm Boolean ALU, barrel shifts, modulos, and `_BLITINT` generation.
-  - *Suite 2.4: Denise Video, Bitplanes & Sprites:* `ref_src/vAmigaTS/Denise/` (`Registers/`, `Modes/`, `DIW/`, `Sprites/`), verifying pixel serialization, palette translation, display window clipping, and sprite multiplexing.
-  - *Suite 2.5: Paula Audio & Interrupts:* `ref_src/vAmigaTS/Paula/` (`Audio/`, `Interrupts/basicint/`), verifying PCM sample streaming, period clock division, and Level 1–4 interrupt requests.
-  - *Suite 2.6: Agnus Master DMA Contention & CPU Stealing:* `ref_src/vAmigaTS/Agnus/Blitter/bususage`, `cputim`, `Denise/Sprites/spritedma`, verifying cycle-exact CPU wait-state stalling under heavy DMA and Blitter Nasty.
-- **Test Suite Categorization, Filtering & Deferred Execution Matrix:**
-  - *Chipset Model Scope Filter (Phase 1 OCS Baseline vs Phase 2 ECS / Phase 3 AGA):*
-    - The active test execution harness strictly targets the Phase 1 Baseline A500 OCS machine model (Fat Agnus 8371 PAL / 8370 NTSC, OCS Denise 8362, 512 KB Chip RAM).
-    - Tests in `ref_src/vAmigaTS` that specifically exercise ECS features (Agnus 8372A 1MB/2MB registers, Denise 8373 Productivity modes, `BPLCON3`, SuperHires) or AGA hardware (68EC020, 24-bit palette, 8 bitplanes) and provide only `_ecs.raw`, `_plus.raw`, or `_A1200.raw` reference captures are formally filtered and deferred to Phase 2 (ECS) and Phase 3 (AGA).
-  - *Output Verification Modality Filter (Visual RGB24 Viewport vs Non-Visual Register Assertions):*
-    - Tests producing $716 \times 285$ RGB24 frame buffers are matched pixel-for-pixel against verified `.raw` / `_ocs.raw` captures.
-    - CIA tests, serial/parallel communication tests, and register-level test cases that only have hardware CRT camera photographs (`.jpeg`) or lack visual frame buffers are filtered into non-visual verification harnesses asserting register and memory states (`DMACONR`, `INTENAR`, `VPOSR`, `ICR`, CIA counters) upon reaching breakpoint milestones.
-  - *Bootstrap Modality Filter (Sector 2 Direct Injection vs Floppy MFM Boot):*
-    - 2,068 ADFs (99.6%) execute via Sector 2 direct Chip RAM injection with zero-allocation Exec/Gfx stubs.
-    - The 9 non-standard ADFs are scheduled for MFM track streaming / custom bootblock loader verification.
-  - *OS Library Dependency Filter (Scarab Ministartup vs Full Kickstart ROM):*
-    - Tests running under bare-metal or Scarab ministartup execute immediately via our zero-allocation stub jump tables.
-    - Tests with dependencies on full Kickstart 1.3 libraries (`dos.library`, `intuition.library`, filesystem) are deferred to the Kickstart 1.3 low-memory overlay bootstrap milestone.
+- **Delivered vAmigaTS Runner Engine & Verification Infrastructure (v1.0):**
+  - Fully recursive catalog discovery and categorization engine in `crates/test_runner/src/vamiga/` (`catalog.rs`, `script.rs`, `runner.rs`, `matcher.rs`, `injector.rs`).
+  - Indexes all 2,077 test directories in `ref_src/vAmigaTS`, classifying each test into 1,468 active Phase 1 Baseline OCS tests and 609 formally deferred tests.
+  - Direct-injection payload extractor slicing Sector 2 (`$000400`) directly into Chip RAM at `$00070000`, installing zero-allocation ExecBase/GfxBase stub tables and setting Supervisor Stack Pointer ($SSP = \$0007FF00$).
+  - Full `.retrosh` script directive parser extracting target machine profiles, CPU revisions, and calibrated frame execution budgets.
+  - Golden raw reference frame differencer matching rendered $716 \times 285$ 24-bit RGB viewports against 2,815 physical silicon frame captures (`.raw` / `_ocs.raw`).
+  - Unified CLI test runner interface: `cargo run -p test_runner -- vamiga [--category <CAT>] [--test <NAME>] [--frames <N>] [--list-deferred] [--summary] [-v]`.
+  - 100% verified across 12 automated unit and integration tests (`crates/test_runner/tests/test_vamiga_runner.rs`, `test_vamiga_harness.rs`, `test_vamiga_copper.rs`, `test_vamiga_blitter.rs`, `test_vamiga_denise.rs`, `test_vamiga_paula.rs`).
+- **Test Suite Categorization, Filtering & Deferred Execution Matrix (609 Deferred Tests):**
+  - *FPU Coprocessor Suite Gate (206 tests deferred to Phase 3 AGA & FPU):* Tests in `ref_src/vAmigaTS/FPU/` requiring Motorola MC68881/68882 math coprocessors.
+  - *ECS & AGA Silicon Suite Gate (112 tests deferred to Phase 2 ECS & Phase 3 AGA):* Tests providing exclusively `_ecs.raw`, `_plus.raw`, or `_aga.raw` reference captures exercising ECS Denise 8373 / SuperHires / BPLCON3 or AGA 24-bit palettes.
+  - *Motorola 68010 CPU Architecture Gate (91 tests deferred to 68010 Extension Milestone):* Tests providing exclusively `_68010.raw` captures exercising 68010-specific instructions (`BKPT`, `MOVE from CCR`, `MOVES`, `VBR`, loop mode).
+  - *AmigaOS Floppy MFM Bootblock Gate (7 tests deferred to Step 6 Floppy MFM & Full OS Boot):* Non-standard bootblock tests requiring genuine floppy track MFM streaming and `dos.library` initialization (`diwvmras`, `btst_ipl`, `overscan2`, `bplcon_rmb`, `sprxpos`, `memspeed1`, `memspeed2`).
+  - *Non-Visual Register Assertion Gate (193 tests deferred to Step 2.7):* Peripheral tests (CIA, UART, joystick) lacking 24-bit RGB `.raw` frame captures (providing only CRT camera photographs `.JPG`).
+- **Targeted Subsystem Verification Sub-Suites Execution Track (1,468 Active Baseline Tests):**
+  - Execute category-by-category using `cargo run -p test_runner -- vamiga -c <CAT>`, diagnosing and resolving emulation discrepancies:
+    - *Sub-Suite 2.1: Agnus Copper Coprocessor Engine (114 tests):* `Agnus/Copper/` (`Wait/`, `Skip/`, `coptim/`, `coprace/`, `copvbl/`), verifying 4-CCK instruction cycle timing, beam wake-up latency, and `CDANG` danger mode.
+    - *Sub-Suite 2.2: Agnus 4-Channel DMA Blitter Engine (250 tests):* `Agnus/Blitter/` (`line/`, `fill/`, `timing/`, `bbusy/`, `bltint/`), verifying 256-minterm Boolean ALU, barrel shifts, modulos, and `_BLITINT` generation.
+    - *Sub-Suite 2.3: Denise Video, Bitplanes & Sprites (210 tests):* `Denise/` (`Registers/`, `Modes/`, `DIW/`, `Sprites/`), verifying pixel serialization, palette translation, display window clipping, and sprite multiplexing.
+    - *Sub-Suite 2.4: Paula Audio & Interrupts (107 tests):* `Paula/` (`Audio/`, `Interrupts/basicint/`), verifying PCM sample streaming, period clock division, and Level 1–4 interrupt requests.
+    - *Sub-Suite 2.5: M68000 CPU Instruction & Exception Pipeline (503 tests):* `CPU/` (ALU, bitwise, shifts, exceptions, traps, IPL autovectors).
+    - *Sub-Suite 2.6: Agnus Master DMA Contention & CPU Stealing (225 tests):* `Agnus/` (`DMACON/`, `BplDma/`, `DIW/`, `DDF/`, `bususage/`), verifying cycle-exact CPU wait-state stalling under heavy DMA and Blitter Nasty.
+    - *Sub-Suite 2.7: Mainboard & Memory Addressing (58 tests):* `Mainboard/`, `Memory/`, `Misc/`, verifying address decoding, port registers, and RAM expansion configurations.
 
 ### Step 3: Custom Chipset Debugger & Deep Architectural Observability (Developer Studio Extension)
 - **Step 3.1: Custom Chipset Registers & Mutation Delay Pipeline Inspector:**
