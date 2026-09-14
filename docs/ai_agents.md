@@ -42,7 +42,7 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
   - **Reference Emulator Sources (`ref_src/`):** Clean C++ reference implementation (`ref_src/vAmiga`) and external test harnesses.
 - **Incremental Knowledge Graph Updates ([`graphify.md`](../.agents/rules/graphify.md)):**
   - Graphify maintains an AST cache that extracts only modified files in 1–2 seconds without LLM calls.
-  - After modifications to code in `crates/` or `ref_src/`, run `graphify update .` from the repository root (or via `.\tools\bootstrap.ps1 -Graph`).
+  - After modifications to code in `crates/` or `ref_src/`, run `graphify update .` from the repository root (or via `.\tools\bootstrap.ps1 -Graphify`).
   - This keeps a single unified knowledge graph in `graphify-out/` connecting active emulator crates and reference implementations.
 - **Query Tools:**
   - `graphify query "<question>"`: Query symbol dependencies, call hierarchies, and architectural boundaries.

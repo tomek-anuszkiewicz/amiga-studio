@@ -364,7 +364,7 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
 
 To guarantee that autonomous AI agents can reconstruct and verify emulator subsystems cleanly, the repository bootstrapping and knowledge ingestion pipeline must undergo end-to-end verification and calibration:
 
-- **Verification of Document Bootstrapping (`tools/bootstrap.ps1 -Doc` / Qdrant RAG):**
+- **Verification of Document Bootstrapping (`tools/bootstrap.ps1 -Rag` / Qdrant RAG):**
   - Verify end-to-end documentation ingestion against the local Qdrant vector database (`http://localhost:6333`).
   - Validate SHA-256 incremental hashing cache, chunking fidelity, multi-threaded fast embeddings, and offline sidecar vision descriptions (`<image>.txt`).
   - Ensure zero regressions or stalls during fresh database initialization and incremental reindexing.
@@ -394,7 +394,7 @@ To guarantee that autonomous AI agents can reconstruct and verify emulator subsy
     3. **Minimal Ground Truth Retainment:** Preserve solely the lean, canonical primary sources (`Hardware Reference Manual`, `Instruction Prefetch`, `Undocumented Features`, core `68000 User's Manual`), minimizing repository footprint and eliminating vector embedding noise.
 
 - **End-to-End Hardening of `tools/bootstrap.ps1`:**
-  - Exhaustively test the complete PowerShell bootstrapper across all flag configurations (`-Test`, `-Graph`, `-Doc`, `-All`).
+  - Exhaustively test the complete PowerShell bootstrapper across all flag configurations (`-Test`, `-Graphify`, `-Rag`, `-All`).
   - Verify clean-room resilience on fresh environments: archive decompression (`.gz`/`.zip`), directory creation, missing dependency warnings, and non-zero exit code reporting.
 
 ---

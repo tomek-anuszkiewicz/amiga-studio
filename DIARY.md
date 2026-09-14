@@ -3462,5 +3462,24 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - End-to-end root re-extraction: `graphify update .` rebuilt 3,087 nodes, 5,471 edges, and 182 communities across `crates/` and `ref_src/vAmiga` in ~2 seconds.
   - `python tools/pre_flight.py`: 100% compliant across all quality gates.
+---
+
+### [2026-09-14 15:42 CEST] — Renamed Bootstrapper Parameters to -Graphify and -Rag with Backwards-Compatible Aliases
+- **Affected Subsystems**:
+  - `tools`
+  - `documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - In `tools/bootstrap.ps1`, renamed parameter switch `$Graph` to primary `$Graphify` and decorated with `[Alias("Graph")]`.
+  - Renamed parameter switch `$Doc` to primary `$Rag` and decorated with `[Alias("Doc", "Qdrant")]`.
+  - Updated help, usage menus, and error messages in `tools/bootstrap.ps1` to present `-Graphify` and `-Rag`.
+  - Updated `README.md`, `ROADMAP.md`, `docs/ai_agents.md`, and `.agents/skills/graphify/SKILL.md` to reference `-Graphify` and `-Rag`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Precise Technology-Aligned Naming:* `-Graphify` and `-Rag` immediately communicate the exact tooling and purpose (Graphify AST graph vs Qdrant vector retrieval), eliminating ambiguity over what "Graph" or "Doc" provisions.
+  - *Zero Breaking Changes via PowerShell Aliases:* Defining `[Alias("Graph")]` and `[Alias("Doc", "Qdrant")]` ensures existing scripts, developer muscle memory, and alternate synonyms continue to work seamlessly.
+- **Verification & Test Results**:
+  - Tested `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap.ps1` (verified clean usage menu with `-Test`, `-Graphify`, `-Rag`, `-Ref`, `-All`).
+  - Tested alias resolution: confirmed `-Graph` triggers `$Graphify` and `-Doc`/`-Qdrant` trigger `$Rag`.
+  - `python tools/pre_flight.py`: 100% compliant across all quality gates.
+
 
 

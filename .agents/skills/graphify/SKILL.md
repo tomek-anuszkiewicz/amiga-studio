@@ -45,7 +45,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ## Incremental Re-indexing (Amiga 500 Emulator Policy)
 
 Per project rule [`.agents/rules/graphify.md`](../../rules/graphify.md), graphify maintains an incremental AST cache. When code in `crates/` or `ref_src/` changes, run an incremental update from the repository root to keep the unified cross-codebase knowledge graph up to date:
-- **Incremental Update after Code Changes:** Run `graphify update .` (or `.\tools\bootstrap.ps1 -Graph`).
+- **Incremental Update after Code Changes:** Run `graphify update .` (or `.\tools\bootstrap.ps1 -Graphify`).
 - This preserves a single, unified knowledge graph in `graphify-out/` linking active emulator crates and reference implementations, taking only 1–2 seconds without LLM calls.
 
 ## What graphify is for

@@ -76,8 +76,8 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
 | **Verification Testbed** | `-Test` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
-| **Code Knowledge Graph** | `-Graph` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
-| **Documentation & RAG** | `-Doc` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, Guru book, and design specs |
+| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
+| **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, Guru book, and design specs |
 | **Full Setup** | `-All` | Complete initial development setup | Provisions all components (hardware test vectors -> Graphify AST -> RAG documentation) |
 
 ```powershell
@@ -85,10 +85,10 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 .\tools\bootstrap.ps1 -Test
 
 # Code AST knowledge graph setup:
-.\tools\bootstrap.ps1 -Graph
+.\tools\bootstrap.ps1 -Graphify
 
 # Documentation & AI pair-programming setup:
-.\tools\bootstrap.ps1 -Doc
+.\tools\bootstrap.ps1 -Rag
 
 # Complete setup (tests -> Graphify AST -> RAG docs):
 .\tools\bootstrap.ps1 -All

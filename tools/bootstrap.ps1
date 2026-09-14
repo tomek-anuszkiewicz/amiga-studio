@@ -4,23 +4,25 @@
 
 .DESCRIPTION
     Provisions external test assets and AI knowledge bases:
-    -Test  : Verifies and provisions physical silicon SingleStepTests test vectors and regression media.
-    -Graph : Generates and updates AST-level code knowledge graph (graphify-out/) for structural queries.
-    -Doc   : Indexes Commodore reference manuals and Obsidian design notes into local RAG vector database.
-    -All   : Executes test suites, Graphify AST, and RAG documentation bootstrapping (tests -> Graphify -> RAG).
+    -Test     : Verifies and provisions physical silicon SingleStepTests test vectors and regression media.
+    -Graphify : Generates and updates AST-level code knowledge graph (graphify-out/) for structural queries (alias: -Graph).
+    -Rag      : Indexes Commodore reference manuals and Obsidian design notes into local RAG vector database (aliases: -Doc, -Qdrant).
+    -All      : Executes test suites, Graphify AST, and RAG documentation bootstrapping (tests -> Graphify -> RAG).
 
 .EXAMPLE
     .\tools\bootstrap.ps1 -Test
-    .\tools\bootstrap.ps1 -Graph
-    .\tools\bootstrap.ps1 -Doc
+    .\tools\bootstrap.ps1 -Graphify
+    .\tools\bootstrap.ps1 -Rag
     .\tools\bootstrap.ps1 -All
 #>
 
 [CmdletBinding()]
 param(
     [switch]$Test,
-    [switch]$Graph,
-    [switch]$Doc,
+    [Alias("Graph")]
+    [switch]$Graphify,
+    [Alias("Doc", "Qdrant")]
+    [switch]$Rag,
     [switch]$Ref,
     [string]$RefItem,
     [Alias("AllMirrors")]
@@ -41,25 +43,25 @@ function Show-Usage {
     Write-Host "      A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'."
     Write-Host ""
     Write-Host "Usage:"
-    Write-Host "  .\tools\bootstrap.ps1 -Test  : Provision hardware test vectors (SingleStepTests, vAmiga, AmigaTestKit)"
-    Write-Host "  .\tools\bootstrap.ps1 -Graph : Provision code knowledge graph (Graphify AST extraction)"
-    Write-Host "  .\tools\bootstrap.ps1 -Doc   : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian notes)"
-    Write-Host "  .\tools\bootstrap.ps1 -Ref   : Provision external reference materials into temp/ (PDFs, HTML crawls)"
-    Write-Host "  .\tools\bootstrap.ps1 -All   : Provision all components (tests -> Graphify AST -> RAG docs)"
+    Write-Host "  .\tools\bootstrap.ps1 -Test     : Provision hardware test vectors (SingleStepTests, vAmiga, AmigaTestKit)"
+    Write-Host "  .\tools\bootstrap.ps1 -Graphify : Provision code knowledge graph (Graphify AST extraction)"
+    Write-Host "  .\tools\bootstrap.ps1 -Rag      : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian notes)"
+    Write-Host "  .\tools\bootstrap.ps1 -Ref      : Provision external reference materials into temp/ (PDFs, HTML crawls)"
+    Write-Host "  .\tools\bootstrap.ps1 -All      : Provision all components (tests -> Graphify AST -> RAG docs)"
     Write-Host ""
 }
 
 if ($ExtractOnly) { $Ref = $true }
 
-if (-not $Doc -and -not $Test -and -not $Graph -and -not $Ref -and -not $All) {
+if (-not $Rag -and -not $Test -and -not $Graphify -and -not $Ref -and -not $All) {
     Show-Usage
     exit 0
 }
 
 $TotalSteps = 0
 if ($Test -or $All) { $TotalSteps++ }
-if ($Graph -or $All) { $TotalSteps++ }
-if ($Doc -or $All) { $TotalSteps++ }
+if ($Graphify -or $All) { $TotalSteps++ }
+if ($Rag -or $All) { $TotalSteps++ }
 if ($Ref) { $TotalSteps++ }
 $CurrentStep = 1
 
@@ -186,9 +188,9 @@ if ($Test -or $All) {
 }
 
 # -----------------------------------------------------------------------------
-# Tier 2: Code Knowledge Graph Bootstrap (-Graph / -All)
+# Tier 2: Code Knowledge Graph Bootstrap (-Graphify / -All)
 # -----------------------------------------------------------------------------
-if ($Graph -or $All) {
+if ($Graphify -or $All) {
     Write-Host ""
     Write-Host "[$CurrentStep/$TotalSteps] Bootstrapping Code Knowledge Graph (Graphify AST)..." -ForegroundColor Green
     Write-Host "-----------------------------------------------------------------" -ForegroundColor DarkGray
@@ -225,9 +227,9 @@ if ($Graph -or $All) {
 }
 
 # -----------------------------------------------------------------------------
-# Tier 3: Knowledge & Documentation Bootstrap (-Doc / -All)
+# Tier 3: Knowledge & Documentation Bootstrap (-Rag / -All)
 # -----------------------------------------------------------------------------
-if ($Doc -or $All) {
+if ($Rag -or $All) {
     Write-Host ""
     Write-Host "[$CurrentStep/$TotalSteps] Bootstrapping Documentation & AI Knowledge Base..." -ForegroundColor Green
     Write-Host "--------------------------------------------------------" -ForegroundColor DarkGray
@@ -245,10 +247,10 @@ if ($Doc -or $All) {
         if (-not $QdrantAvailable) {
             Write-Host ""
             Write-Warning "Qdrant vector database is not reachable on http://localhost:6333."
-            Write-Host "Please install and start Qdrant to use the AI RAG documentation knowledge base (-Doc)."
+            Write-Host "Please install and start Qdrant to use the AI RAG documentation knowledge base (-Rag)."
             Write-Host "Official website & installation guide: https://qdrant.tech" -ForegroundColor Yellow
             Write-Host ""
-            Write-Host "NOTE: Qdrant is ONLY needed for -Doc. You can run the emulator via 'cargo run -p gui'." -ForegroundColor DarkGray
+            Write-Host "NOTE: Qdrant is ONLY needed for -Rag. You can run the emulator via 'cargo run -p gui'." -ForegroundColor DarkGray
             Write-Host ""
         } else {
             Write-Host "[OK] Qdrant vector database is active on http://localhost:6333." -ForegroundColor Green
