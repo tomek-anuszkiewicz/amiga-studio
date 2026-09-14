@@ -3152,3 +3152,20 @@ Every future modification or implementation task must append an entry following 
   - worktree.ps1 sync resolved 30+ broken doc links in active worktree
   - cargo test -p test_runner --test test_architecture_rules passed 18/18
   - python tools/pre_flight.py passed all 4 gates
+---
+
+### [2026-09-14 11:28 CEST] — Documentation: Remove Redundant docs/worktrees.md in Favor of git-worktree Skill
+- **Affected Subsystems**:
+  - `docs/worktrees.md`
+  - `README.md`
+  - `.agents/skills/git-worktree/SKILL.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Deleted obsolete docs/worktrees.md manual cheatsheet
+  - Updated README.md index to reference .agents/skills/git-worktree/SKILL.md and tools/git/worktree.ps1
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates documentation rot and split-brain instructions where obsolete manual commands were diverging from automated NTFS junction tooling
+  - Centralizes worktree operational knowledge in the agent skill
+- **Verification & Test Results**:
+  - git rm docs/worktrees.md clean
+  - README.md link updated
+  - pre-flight quality gates passed
