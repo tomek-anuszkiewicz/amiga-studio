@@ -64,15 +64,20 @@ When converting formatted elements, follow the strict priority ladder in `refere
    - Regular English prose sentences with punctuation must **NEVER** be enclosed in code blocks.
 2. **Priority 2: Standard GitHub-Flavored Markdown (GFM) Tables**:
    - First choice for structured tabular data: register breakdowns, bus cycle sequences, instruction classification tables, and timing specifications.
-3. **Priority 3: HTML Tables (Complex Spans)**:
+3. **Priority 3: Native Diagrams (Mermaid + ASCII Fallback)**:
+   - For pipeline flows, queue architectures, bus handshakes, block diagrams, and state machines.
+   - Generate a clean native Mermaid flowchart (e.g. `flowchart TD` or `sequenceDiagram`).
+   - Provide a compact text/ASCII diagram inside `<details><summary>Click to view Text / ASCII Diagram</summary>...</details>`.
+   - **No Redundant Images:** **Do NOT embed a raster image if a Mermaid diagram is generated to represent it.** Generating both an image and a Mermaid graph creates redundant visual clutter.
+4. **Priority 4: HTML Tables (Complex Spans)**:
    - Used only when complex cell spans (`colspan` or `rowspan`) or multi-line cell entries cannot be represented in GFM.
    - **Math Rule:** CommonMark parsers do not evaluate `$math$` inside `<td>`. Use pure HTML/Unicode (`2<sup>16</sup>`, `&plusmn;`, `&Omega;`).
-4. **Priority 4: Monotone Text Blocks (` ```text `)**:
+5. **Priority 5: Monotone Text Blocks (` ```text `)**:
    - For memory hex dumps and raw byte alignment where fixed-width spacing is mandatory.
-5. **Priority 5: ASCII Art (Only if Strictly Readable)**:
+6. **Priority 6: ASCII Art (Only if Strictly Readable)**:
    - For simple register bitfield layouts *only if strictly aligned and immediately readable*. If unaligned across varying fonts or screen sizes, convert to a Markdown table or cropped image.
-6. **Priority 6: Image Placeholders & Asset References**:
-   - Insert standardized placeholders for diagrams, circuit schematics, or register drawings:
+7. **Priority 7: Image Placeholders & Asset References (When Mermaid Cannot Model)**:
+   - Only for complex analog waveforms, physical IC chip pinouts, dense schematics, or photographs:
      - For existing HTML assets: `<image placeholder src="folder/image.gif" alt="Figure Description" />`
      - For visual page regions: `<crop page="N" xmin="X1" ymin="Y1" xmax="X2" ymax="Y2" label="Figure Description" />`
 

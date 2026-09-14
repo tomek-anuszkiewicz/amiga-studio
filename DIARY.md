@@ -3682,3 +3682,23 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python .agents/skills/html-to-markdown/scripts/download_assets.py`: Verified image extraction and sidecar generation on `68kPrefetch.html` (`image001.gif` and `image001.gif.txt`).
   - `python tools/pre_flight.py`: Passed 100% cleanly across all gates (Formatting, Attractors, AGENTS.md ceiling: 13,576 bytes, Architecture rules: 18 passed).
+
+---
+
+### [2026-09-15 00:15 CEST] — Mermaid Diagram Priority Over Raster Images & Redundancy Prevention
+- **Affected Subsystems**:
+  - `.agents/skills/html-to-markdown/` (`SKILL.md`, `references/llm-transcription-prompt.md`)
+  - `Obsidian/Amiga/Reference/temp/html-sandbox/` (`Instruction Prefetch on the Motorola 68000 Processor.md`, `visual_comparison.png`)
+- **What Was Changed (The Concrete Reality)**:
+  - Codified an explicit visual priority rule in `references/llm-transcription-prompt.md` and `SKILL.md`:
+    - Whenever a diagram in the source document is a pipeline flow, queue architecture, bus handshake, block diagram, or state machine, it must be generated as a native Mermaid diagram (` ```mermaid `) with a compact text/ASCII fallback inside `<details>`.
+    - Strictly prohibited embedding or duplicating raster images (`<image placeholder ...>` or `![...](...)`) when a Mermaid diagram is generated to represent the same concept.
+    - Confined image placeholders exclusively to diagrams that cannot be modeled in Mermaid (analog waveforms, physical IC chip pinouts, dense electrical schematics, photographs).
+  - Updated candidate document `temp/html-sandbox/Instruction Prefetch on the Motorola 68000 Processor.md`: removed redundant `image001.gif` link immediately preceding the prefetch queue Mermaid diagram.
+  - Re-rendered side-by-side visual comparison (`visual_comparison.png`), confirming clean presentation without visual duplication.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of Redundant Visual Noise:* Generating both a raster bitmap image and a Mermaid flowchart creates jarring, cluttered double-rendering (especially in dark mode, where white-background legacy bitmaps contrast poorly against dark theme backgrounds). Native Mermaid provides crisp, theme-aware, vector-crisp rendering at all zoom levels.
+- **Verification & Test Results**:
+  - `python .agents/skills/html-to-markdown/scripts/validate_links.py`: 29/29 links valid (0 errors).
+  - `python .agents/skills/html-to-markdown/scripts/render_comparison.py`: Re-rendered `visual_comparison.png` cleanly.
+  - `python tools/pre_flight.py`: Passed 100% across all quality gates.

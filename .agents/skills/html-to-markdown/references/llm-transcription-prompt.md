@@ -63,23 +63,29 @@ When encountering diagrams, code, tables, and visual figures, apply this strict 
   | `$DFF002` | `BLTCON1` | W | Blitter control register 1 |
   ```
 
-### Priority 3: HTML Tables (Complex Spans)
+### Priority 3: Native Diagrams (Mermaid + ASCII Fallback)
+- For pipeline flows, queue architectures, bus handshakes, block diagrams, and state machines:
+  - Generate a clean native Mermaid flowchart (e.g. `flowchart TD` or `sequenceDiagram`).
+  - Provide a compact text/ASCII diagram inside `<details><summary>Click to view Text / ASCII Diagram</summary>...</details>`.
+  - **NO REDUNDANT IMAGE ASSETS:** **Do NOT embed a raster image (`<image placeholder ...>` or `![...](...)`) if a Mermaid diagram is generated to represent it.** Generating both an image and a Mermaid graph produces redundant visual clutter.
+
+### Priority 4: HTML Tables (Complex Spans)
 - Used only when complex cell spans (`colspan` or `rowspan`) or multi-line cell entries cannot be represented in GFM.
 - **Math Rule for HTML Tables:**
   - CommonMark parsers do not evaluate `$math$` delimiters inside `<td>` tags.
   - Use pure HTML and Unicode entities: `2<sup>16</sup>`, `T<sub>CLK</sub>`, `&plusmn;`, `&Omega;`.
 
-### Priority 4: Monotone Text Blocks (` ```text `)
+### Priority 5: Monotone Text Blocks (` ```text `)
 - For memory hex dumps and raw byte alignment where fixed-width spacing is essential:
   ```text
   0000: 48 65 6c 6c 6f 20 57 6f 72 6c 64 21
   ```
 
-### Priority 5: ASCII Art (Only if Strictly Readable)
+### Priority 6: ASCII Art (Only if Strictly Readable)
 - Monospace diagrams for simple register bitfield layouts *only if strictly aligned and immediately readable*. If unaligned across varying fonts or screen sizes, convert to a Markdown table or cropped image.
 
-### Priority 6: Image Placeholders & Asset References
-- For diagrams, flowcharts, schematics, and waveforms, insert a standardized placeholder:
+### Priority 7: Image Placeholders (Only When Mermaid Cannot Model)
+- **Only** use image placeholders for complex analog waveforms, physical IC pinouts, dense electrical schematics, or photographs that cannot be cleanly modeled in Mermaid:
   - If referencing an existing image file or URL:
     `<image placeholder src="folder/image.gif" alt="Figure Description" />`
   - If cropping a region from a rendered page PNG:
