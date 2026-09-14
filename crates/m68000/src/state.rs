@@ -53,6 +53,10 @@ pub struct CpuState {
     pub stopped: bool,
     pub halted: bool,
 
+    /// Asserted when the privileged RESET instruction is executed, pulsing external _RESET line
+    #[serde(default)]
+    pub reset_line_asserted: bool,
+
     /// Sub-cycle execution micro-state (atomic micro-steps and in-flight bus cycles)
     #[serde(default)]
     pub micro: crate::micro::CpuMicroState,
@@ -77,6 +81,7 @@ impl Default for CpuState {
             instruction_pc: 0,
             stopped: false,
             halted: false,
+            reset_line_asserted: false,
             micro: crate::micro::CpuMicroState::default(),
             cycle_counter: 0,
         }
@@ -168,6 +173,14 @@ impl CpuState {
     pub fn set_a_regs(&mut self, regs: [u32; 8]) {
         self.a = regs;
         self.sync_stack_pointers();
+    }
+
+    /// Clears data registers D0-D7, address registers A0-A7, and USP to zero
+    #[inline]
+    pub fn clear_registers(&mut self) {
+        self.d.fill(0);
+        self.a.fill(0);
+        self.usp = 0;
     }
 
     /// Read address register by index (0-7 returns A0-A7)

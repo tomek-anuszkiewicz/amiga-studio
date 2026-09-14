@@ -19,6 +19,8 @@ pub fn alu_reset(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
         state.micro.current_steps = &common::STEPS_PRIVILEGE_VIOLATION;
         state.micro.micro_step = 0;
         state.micro.clocks_remaining = 0;
+    } else {
+        state.reset_line_asserted = true;
     }
 }
 

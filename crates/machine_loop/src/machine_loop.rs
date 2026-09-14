@@ -88,7 +88,7 @@ impl A500Machine {
         if !physical_memory.is_kickstart_loaded() {
             physical_memory.map_chip_ram_to_low_memory();
         }
-        cpu.reset(&mut physical_memory);
+        cpu.reset_cold(&mut physical_memory);
         let agnus = agnus::Agnus::new(config.agnus_model());
         let denise = denise::Denise::new(config.denise_model());
         let paula = paula::Paula::new();
@@ -118,6 +118,7 @@ impl A500Machine {
             parallel_port,
         };
         machine.poll_peripheral_pins();
+        machine.cpu.state.ipl = machine.resolve_ipl();
         machine
     }
 
@@ -137,7 +138,9 @@ impl A500Machine {
         self.keyboard.reset();
         self.game_ports.reset();
         self.parallel_port.reset();
-        self.cpu.reset(&mut self.physical_memory);
+        self.cpu.reset_cold(&mut self.physical_memory);
+        self.poll_peripheral_pins();
+        self.cpu.state.ipl = self.resolve_ipl();
     }
 
     /// Performs warm reset: preserves RAM, re-engages overlay, restarts execution
@@ -156,7 +159,28 @@ impl A500Machine {
         self.keyboard.reset();
         self.game_ports.reset();
         self.parallel_port.reset();
-        self.cpu.reset(&mut self.physical_memory);
+        self.cpu.reset_warm(&mut self.physical_memory);
+        self.poll_peripheral_pins();
+        self.cpu.state.ipl = self.resolve_ipl();
+    }
+
+    /// Resets all external devices (custom chips, CIAs, peripherals, overlay)
+    /// without modifying RAM or CPU registers/PC. Invoked by M68000 `RESET` instruction.
+    pub fn reset_external_devices(&mut self) {
+        self.physical_memory.map_kickstart_to_low_memory();
+        if !self.physical_memory.is_kickstart_loaded() {
+            self.physical_memory.map_chip_ram_to_low_memory();
+        }
+        self.agnus.reset();
+        self.denise.reset();
+        self.paula.reset();
+        self.cia_a.reset();
+        self.cia_b.reset();
+        self.floppy.reset();
+        self.game_ports.reset();
+        self.parallel_port.reset();
+        self.poll_peripheral_pins();
+        self.cpu.state.ipl = self.resolve_ipl();
     }
 
     /// Applies relative mouse movement deltas to the connected mouse (Port 1 default)
@@ -321,7 +345,20 @@ impl A500Machine {
         // 2. Advance non-CPU subsystems
         self.step_subsystems_cck();
 
-        // 3. Step CPU Color Clock phase with bus reference
+        // 3. Hardware keyboard reset line (Ctrl-Amiga-Amiga)
+        if self.keyboard.reset_line_asserted {
+            self.keyboard.reset_line_asserted = false;
+            self.reset_warm();
+            return;
+        }
+
+        // 4. M68000 external RESET instruction pulse
+        if self.cpu.state.reset_line_asserted {
+            self.cpu.state.reset_line_asserted = false;
+            self.reset_external_devices();
+        }
+
+        // 5. Step CPU Color Clock phase with bus reference
         let mut bus = MemoryBus {
             mem: &mut self.physical_memory,
             agnus: &mut self.agnus,
