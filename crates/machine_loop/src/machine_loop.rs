@@ -218,10 +218,30 @@ impl A500Machine {
         self.memory_bus().dispatch_cia_action(id, reg, val);
     }
 
-    /// Polls peripheral sensing lines into CIA input pins
+    /// Polls peripheral sensing lines into CIA input pins and custom chip port latches
     pub fn poll_peripheral_pins(&mut self) {
+        // 1. Floppy disk sensing lines -> CIA-A Port A bits 2..5 (mask 0x3C)
         let floppy_inputs = self.floppy.sample_ciaa_port_a_inputs();
         self.cia_a.set_input_pins_a(floppy_inputs, 0x3C);
+
+        // 2. Game ports fire buttons -> CIA-A Port A bits 6..7 (mask 0xC0, active low)
+        let mut fire_pins = 0xC0;
+        if self.game_ports.fire1_port1() {
+            fire_pins &= !0x40; // Bit 6 = /FIR0 (Port 1 left mouse button)
+        }
+        if self.game_ports.fire1_port2() {
+            fire_pins &= !0x80; // Bit 7 = /FIR1 (Port 2 joystick fire 1)
+        }
+        self.cia_a.set_input_pins_a(fire_pins, 0xC0);
+
+        // 3. Mouse/joystick quadrature counters -> Denise JOY0DAT & JOY1DAT
+        self.denise.joy0dat = self.game_ports.joy0dat();
+        self.denise.joy1dat = self.game_ports.joy1dat();
+
+        // 4. Pot counters & POTGOR -> Paula POT0DAT, POT1DAT, POTGOR
+        self.paula.pot0dat = self.game_ports.pot0dat();
+        self.paula.pot1dat = self.game_ports.pot1dat();
+        self.paula.potgor = self.game_ports.potgor(self.paula.potgo);
     }
 
     /// Advances all peer custom chips, coprocessors, and peripheral subsystems by exactly 1 Color Clock (~280 ns),
@@ -233,6 +253,11 @@ impl A500Machine {
             self.dispatch_agnus_action(item.0, item.1);
         }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
+
+        // Cross-Chip Signal: Blitter completion (_BLITINT) -> Paula INTREQ bit 6 (mask 0x0040)
+        if self.agnus.poll_blitter_irq() {
+            self.paula.set_interrupt_request(0x0040);
+        }
 
         // 2. Step Denise (steps sprites, frame_builder, video serializer, and mutation pipeline)
         let beam = self.agnus.beam();
@@ -247,6 +272,14 @@ impl A500Machine {
             self.dispatch_paula_action(item.0, item.1);
         }
         self.floppy.step_cck();
+
+        // Cross-Chip Signal: Audio channel buffer loop (AUDxDSR) -> Agnus audpt reload & Paula interrupt
+        for ch in 0..4 {
+            if self.paula.poll_audio_restart(ch) {
+                self.agnus.reload_audio_ptr(ch);
+                self.paula.set_interrupt_request(1u16 << (7 + ch));
+            }
+        }
 
         // 4. Step CIAs and dispatch E-Clock mutations
         let cia_a_due = self.cia_a.step_cck();

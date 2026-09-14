@@ -27,13 +27,58 @@ pub struct MemoryBus<'a> {
 }
 
 impl<'a> MemoryBus<'a> {
-    /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT)
+    /// Assembles composite live DSKBYTR status from Floppy, Agnus, and Paula,
+    /// atomically clearing bit 15 (`DSKBYT`) per Clear-on-Read hardware semantics.
+    pub fn read_dskbytr(&mut self) -> u16 {
+        let floppy_val = self.floppy.read_dskbytr();
+        let dmaon = if (self.agnus.dmacon & 0x0210) == 0x0210 {
+            0x4000
+        } else {
+            0
+        };
+        let diskwrite = if (self.paula.dsklen & 0x4000) != 0 {
+            0x2000
+        } else {
+            0
+        };
+        (floppy_val & 0x90FF) | dmaon | diskwrite
+    }
+
+    /// Peeks composite live DSKBYTR status without clearing bit 15
+    pub fn peek_dskbytr(&self) -> u16 {
+        let floppy_val = self.floppy.peek_dskbytr();
+        let dmaon = if (self.agnus.dmacon & 0x0210) == 0x0210 {
+            0x4000
+        } else {
+            0
+        };
+        let diskwrite = if (self.paula.dsklen & 0x4000) != 0 {
+            0x2000
+        } else {
+            0
+        };
+        (floppy_val & 0x90FF) | dmaon | diskwrite
+    }
+
+    /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT, DSKBYTR)
     pub fn read_custom_word(&mut self, offset: u16) -> u16 {
         let offset = offset & 0x1FE;
         match offset {
-            0x002 | 0x004 | 0x006 => self.agnus.read_register(offset),
-            0x00A | 0x00C | 0x00E => self.denise.read_register(offset),
-            0x010..=0x01E => self.paula.read_register(offset),
+            0x000 => self.agnus.read_register(0x000),
+            0x002 => self.agnus.read_dmaconr(),
+            0x004 => self.agnus.vposr(),
+            0x006 => self.agnus.vhposr(),
+            0x00A => self.denise.joy0dat,
+            0x00C => self.denise.joy1dat,
+            0x00E => self.denise.read_clxdat(),
+            0x010 => self.paula.adkcon,
+            0x012 => self.paula.pot0dat,
+            0x014 => self.paula.pot1dat,
+            0x016 => self.paula.potgor,
+            0x018 => self.paula.serial_port.serdatr,
+            0x01A => self.read_dskbytr(),
+            0x01C => self.paula.intena,
+            0x01E => self.paula.intreq,
             _ => 0xFFFF,
         }
     }
@@ -42,9 +87,21 @@ impl<'a> MemoryBus<'a> {
     pub fn peek_custom_word(&self, offset: u16) -> u16 {
         let offset = offset & 0x1FE;
         match offset {
-            0x002 | 0x004 | 0x006 => self.agnus.read_register(offset),
-            0x00A | 0x00C | 0x00E => self.denise.peek_register(offset),
-            0x010..=0x01E => self.paula.read_register(offset),
+            0x000 => self.agnus.read_register(0x000),
+            0x002 => self.agnus.read_dmaconr(),
+            0x004 => self.agnus.vposr(),
+            0x006 => self.agnus.vhposr(),
+            0x00A => self.denise.joy0dat,
+            0x00C => self.denise.joy1dat,
+            0x00E => self.denise.clxdat,
+            0x010 => self.paula.adkcon,
+            0x012 => self.paula.pot0dat,
+            0x014 => self.paula.pot1dat,
+            0x016 => self.paula.potgor,
+            0x018 => self.paula.serial_port.serdatr,
+            0x01A => self.peek_dskbytr(),
+            0x01C => self.paula.intena,
+            0x01E => self.paula.intreq,
             _ => 0xFFFF,
         }
     }
@@ -122,13 +179,10 @@ impl<'a> MemoryBus<'a> {
     pub fn dispatch_custom_write(&mut self, offset: u16, val: u16) {
         let offset = offset & 0x1FE;
         match offset {
-            // Shared / Broadcast: DMACON ($096) -> Agnus and Paula
+            // Master DMA control: staged in Agnus, broadcasts to all chips on commit
             0x096 => {
                 if let Some((r, v)) = self.agnus.write_register(0x096, val) {
                     self.dispatch_agnus_action(r, v);
-                }
-                if let Some((r, v)) = self.paula.write_register(0x096, val) {
-                    self.dispatch_paula_action(r, v);
                 }
             }
             // Shared / Broadcast: BPLCON0 ($100) -> Denise (1 CCK) & Agnus (4 CCK)
@@ -158,13 +212,13 @@ impl<'a> MemoryBus<'a> {
                     self.dispatch_agnus_action(r, v);
                 }
             }
-            // Denise-specific registers (CLXCON, BPLCON2/3, BPLDAT, SPRITES, COLORS)
+            // Denise-specific registers (CLXCON, BPLCON2/3, BPLDAT, SPRITES, COLORS, JOYTEST)
             0x098 | 0x104 | 0x106 | 0x110..=0x11A | 0x140..=0x17E | 0x180..=0x1BE | 0x036 => {
                 if let Some((r, v)) = self.denise.write_register(offset, val) {
                     self.dispatch_denise_action(r, v);
                 }
             }
-            // Paula-specific registers (INTENA, INTREQ, ADKCON, UART, DSKLEN/SYNC, AUDIO)
+            // Paula-specific registers (INTENA, INTREQ, ADKCON, UART, DSKLEN/SYNC, AUDIO length/period/volume/data)
             0x09A
             | 0x09C
             | 0x09E
@@ -174,12 +228,27 @@ impl<'a> MemoryBus<'a> {
             | 0x026
             | 0x030..=0x034
             | 0x07E
-            | 0x0A0..=0x0DE => {
+            | 0x0A4
+            | 0x0A6
+            | 0x0A8
+            | 0x0AA
+            | 0x0B4
+            | 0x0B6
+            | 0x0B8
+            | 0x0BA
+            | 0x0C4
+            | 0x0C6
+            | 0x0C8
+            | 0x0CA
+            | 0x0D4
+            | 0x0D6
+            | 0x0D8
+            | 0x0DA => {
                 if let Some((r, v)) = self.paula.write_register(offset, val) {
                     self.dispatch_paula_action(r, v);
                 }
             }
-            // Agnus-specific registers (Blitter, Copper, DMA pointers, modulos, DDF)
+            // Agnus-specific registers (Blitter, Copper, DMA pointers, modulos, DDF, AUDxLC)
             _ => {
                 if let Some((r, v)) = self.agnus.write_register(offset, val) {
                     self.dispatch_agnus_action(r, v);
@@ -193,6 +262,12 @@ impl<'a> MemoryBus<'a> {
         match reg & 0x1FE {
             0x096 => {
                 self.agnus.dma.write_dmacon(val);
+                // Broadcast to Paula's dma_enables
+                if (val & 0x8000) != 0 {
+                    self.paula.dma_enables |= val & 0x001F;
+                } else {
+                    self.paula.dma_enables &= !(val & 0x001F);
+                }
                 let dmaen = (self.agnus.dmacon & 0x0200) != 0;
                 self.paula
                     .audio
@@ -215,45 +290,22 @@ impl<'a> MemoryBus<'a> {
                     .frame_builder
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0100) != 0);
             }
-            0x088 => {
-                self.agnus.copper.strobe_jump1(self.agnus.cop1lc);
-            }
-            0x08A => {
-                self.agnus.copper.strobe_jump2(self.agnus.cop2lc);
-            }
-            0x080 | 0x082 => {
-                self.agnus.copper.set_cop1lc(self.agnus.cop1lc);
-            }
-            0x084 | 0x086 => {
-                self.agnus.copper.set_cop2lc(self.agnus.cop2lc);
-            }
-            0x02E => {
-                self.agnus.copper.set_copcon(val);
-            }
-            0x058 => {
-                self.agnus.blitter.sync_pointers(
-                    self.agnus.bltapt,
-                    self.agnus.bltbpt,
-                    self.agnus.bltcpt,
-                    self.agnus.bltdpt,
-                );
-                self.agnus.blitter.sync_controls(
-                    self.agnus.bltcon0,
-                    self.agnus.bltcon1,
-                    self.agnus.bltafwm,
-                    self.agnus.bltalwm,
-                    self.agnus.bltamod,
-                    self.agnus.bltbmod,
-                    self.agnus.bltcmod,
-                    self.agnus.bltdmod,
-                );
-                self.agnus.blitter.trigger_blit(val);
+            0x020 | 0x022 => {
+                self.floppy.set_dskpt(self.agnus.dskpt);
             }
             0x100 => {
-                self.denise.set_bplcon0(val);
+                self.agnus.set_bplcon0(val);
             }
-            0x102 => {
-                self.denise.set_bplcon1(val);
+            0x088 => {
+                let cop1lc = self.agnus.copper.cop1lc;
+                self.agnus.copper.strobe_jump1(cop1lc);
+            }
+            0x08A => {
+                let cop2lc = self.agnus.copper.cop2lc;
+                self.agnus.copper.strobe_jump2(cop2lc);
+            }
+            0x058 => {
+                self.agnus.blitter.trigger_blit(val);
             }
             0x08E | 0x090 => {
                 self.denise.set_diw(self.agnus.diwstrt, self.agnus.diwstop);
@@ -265,38 +317,9 @@ impl<'a> MemoryBus<'a> {
     /// Action method dispatch for committed Paula registers
     pub fn dispatch_paula_action(&mut self, reg: u16, val: u16) {
         match reg & 0x1FE {
-            0x0A4 => self.paula.audio.set_len(0, val),
-            0x0A6 => self.paula.audio.set_per(0, val),
-            0x0A8 => self.paula.audio.set_vol(0, (val & 0x7F) as u8),
-            0x0AA => self.paula.audio.set_dat(0, val),
-
-            0x0B4 => self.paula.audio.set_len(1, val),
-            0x0B6 => self.paula.audio.set_per(1, val),
-            0x0B8 => self.paula.audio.set_vol(1, (val & 0x7F) as u8),
-            0x0BA => self.paula.audio.set_dat(1, val),
-
-            0x0C4 => self.paula.audio.set_len(2, val),
-            0x0C6 => self.paula.audio.set_per(2, val),
-            0x0C8 => self.paula.audio.set_vol(2, (val & 0x7F) as u8),
-            0x0CA => self.paula.audio.set_dat(2, val),
-
-            0x0D4 => self.paula.audio.set_len(3, val),
-            0x0D6 => self.paula.audio.set_per(3, val),
-            0x0D8 => self.paula.audio.set_vol(3, (val & 0x7F) as u8),
-            0x0DA => self.paula.audio.set_dat(3, val),
-
-            0x020 | 0x022 => self.floppy.set_dskpt(self.agnus.dskpt),
             0x024 => self.floppy.set_dsklen(val),
             0x07E => self.floppy.set_dsksyn(val),
             0x09E => self.floppy.set_adkcon(self.paula.adkcon),
-            0x096 => {
-                let dmaen = (self.agnus.dmacon & 0x0200) != 0;
-                self.floppy
-                    .set_dma_enabled(dmaen && (self.paula.dma_enables & 0x0010) != 0);
-                self.paula
-                    .audio
-                    .set_dma_enables((self.paula.dma_enables & 0x000F) as u8, dmaen);
-            }
             _ => {}
         }
     }

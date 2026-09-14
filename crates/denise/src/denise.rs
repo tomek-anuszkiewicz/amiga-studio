@@ -63,11 +63,6 @@ pub struct Denise {
 
     /// Bitplane data latches ($110-$11A)
     pub bpldat: [u16; 6],
-    /// Sprite position and data registers ($140-$17E: POS, CTL, DATA, DATB)
-    pub sprpos: [u16; 8],
-    pub sprctl: [u16; 8],
-    pub sprdata: [u16; 8],
-    pub sprdatb: [u16; 8],
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
@@ -98,10 +93,6 @@ impl Denise {
             joy0dat: 0,
             joy1dat: 0,
             bpldat: [0; 6],
-            sprpos: [0; 8],
-            sprctl: [0; 8],
-            sprdata: [0; 8],
-            sprdatb: [0; 8],
             mutations: [None; DENISE_MUTATION_CAPACITY],
         }
     }
@@ -127,10 +118,6 @@ impl Denise {
         self.joy0dat = 0;
         self.joy1dat = 0;
         self.bpldat.fill(0);
-        self.sprpos.fill(0);
-        self.sprctl.fill(0);
-        self.sprdata.fill(0);
-        self.sprdatb.fill(0);
         self.mutations = [None; DENISE_MUTATION_CAPACITY];
     }
 
@@ -298,10 +285,10 @@ impl Denise {
                 let sub = ((offset - 0x140) % 8) / 2;
                 if spr < 8 {
                     match sub {
-                        0 => self.sprpos[spr] = val,
-                        1 => self.sprctl[spr] = val,
-                        2 => self.sprdata[spr] = val,
-                        3 => self.sprdatb[spr] = val,
+                        0 => self.sprites.channels[spr].pos = val,
+                        1 => self.sprites.channels[spr].ctl = val,
+                        2 => self.sprites.channels[spr].data_a = val,
+                        3 => self.sprites.channels[spr].data_b = val,
                         _ => {}
                     }
                 }

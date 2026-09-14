@@ -24,6 +24,8 @@ pub struct AudioChannel {
     pub dma_enabled: bool,
     /// True while channel DMA / playback is active
     pub active: bool,
+    /// DMA restart strobe for Agnus pointer reload (AUDxDSR)
+    pub restart_strobe: bool,
 }
 
 impl AudioChannel {
@@ -37,6 +39,7 @@ impl AudioChannel {
         self.counter = 0;
         self.dma_enabled = false;
         self.active = false;
+        self.restart_strobe = false;
     }
 }
 
@@ -76,6 +79,26 @@ impl Audio {
         for ch in 0..4 {
             let enabled = master_enabled && ((channel_mask & (1 << ch)) != 0);
             self.set_channel_dma(ch, enabled);
+        }
+    }
+
+    /// Polls and clears the DMA restart strobe (`AUDxDSR`) for audio channel `ch`
+    #[inline]
+    pub fn poll_restart_strobe(&mut self, ch: usize) -> bool {
+        if ch < 4 {
+            let strobe = self.channels[ch].restart_strobe;
+            self.channels[ch].restart_strobe = false;
+            strobe
+        } else {
+            false
+        }
+    }
+
+    /// Action method: triggers sample buffer finish and restart strobe for channel `ch`
+    #[inline]
+    pub fn trigger_buffer_finish(&mut self, ch: usize) {
+        if ch < 4 {
+            self.channels[ch].restart_strobe = true;
         }
     }
 

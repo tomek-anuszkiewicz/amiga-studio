@@ -86,7 +86,6 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
     machine.step_cck();
     machine.step_cck();
 
-    assert_eq!(machine.agnus.cop1lc, 0x00041000);
     assert_eq!(machine.agnus.copper.cop1lc, 0x00041000);
 
     // Strobe COPJMP1 ($088)
@@ -112,7 +111,6 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
     machine.step_cck();
     machine.step_cck();
 
-    assert_eq!(machine.agnus.cop2lc, 0x00052000);
     assert_eq!(machine.agnus.copper.cop2lc, 0x00052000);
 
     // Strobe COPJMP2 ($08A)
@@ -147,8 +145,8 @@ fn test_blitter_size_triggers_busy_and_syncs_pointers() {
     machine.step_cck();
     machine.step_cck();
 
-    assert_eq!(machine.agnus.bltapt, 0x00012344);
-    assert_eq!(machine.agnus.bltcon0, 0x09F0);
+    assert_eq!(machine.agnus.blitter.bltapt, 0x00012344);
+    assert_eq!(machine.agnus.blitter.bltcon0, 0x09F0);
 
     // Initially blitter is idle
     assert!(!machine.agnus.blitter.is_busy);
@@ -254,4 +252,71 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
 
     // Second consecutive write with bit 15 sets dma_active
     assert!(machine.floppy.is_dma_active());
+}
+
+#[test]
+fn test_blitter_finish_asserts_blitint_and_escalates_ipl() {
+    let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+
+    // Enable master INTEN (bit 14) and Level 3 BLIT interrupt (bit 6): 0xC040
+    assert_eq!(
+        machine.memory_bus().write_word(0xDFF09A, 0xC040),
+        BusResult::Ready(())
+    );
+    machine.step_cck(); // Mature INTENA write
+
+    assert_eq!(machine.cpu.state.ipl, 0);
+    assert!(!machine.agnus.blitter.is_busy);
+
+    // Trigger a blit
+    machine.agnus.blitter.trigger_blit(0x0408);
+    assert!(machine.agnus.blitter.is_busy);
+
+    // Blitter completes execution
+    machine.agnus.blitter.finish_blit();
+    assert!(!machine.agnus.blitter.is_busy);
+
+    // Step 1 CCK: machine loop polls Agnus blitter IRQ, sets Paula INTREQ bit 6, arbitrates IPL to 3
+    machine.step_cck();
+    assert_eq!(machine.paula.intreq & 0x0040, 0x0040);
+    assert_eq!(machine.cpu.state.ipl, 3);
+}
+
+#[test]
+fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
+    let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+
+    // Enable master INTEN (bit 14) and Audio Channel 0 interrupt (bit 7): 0xC080
+    assert_eq!(
+        machine.memory_bus().write_word(0xDFF09A, 0xC080),
+        BusResult::Ready(())
+    );
+    machine.step_cck(); // Mature INTENA write
+
+    // Set Audio Channel 0 loop address via AUD0LCH/LCL: $00025000
+    assert_eq!(
+        machine.memory_bus().write_word(0xDFF0A0, 0x0002),
+        BusResult::Ready(())
+    );
+    assert_eq!(
+        machine.memory_bus().write_word(0xDFF0A2, 0x5000),
+        BusResult::Ready(())
+    );
+    machine.step_cck();
+    machine.step_cck(); // Mature in Agnus
+
+    assert_eq!(machine.agnus.audlc[0], 0x0002_5000);
+    assert_eq!(machine.agnus.audpt[0], 0x0002_5000);
+
+    // Simulate DMA playback advancing the pointer past the buffer
+    machine.agnus.audpt[0] = 0x0002_5100;
+
+    // Paula audio channel 0 finishes sample buffer and requests loop restart (AUD0DSR)
+    machine.paula.audio.trigger_buffer_finish(0);
+
+    // Step 1 CCK: Agnus reloads audpt[0] from audlc[0], Paula asserts INTREQ bit 7, CPU IPL -> 4
+    machine.step_cck();
+    assert_eq!(machine.agnus.audpt[0], 0x0002_5000);
+    assert_eq!(machine.paula.intreq & 0x0080, 0x0080);
+    assert_eq!(machine.cpu.state.ipl, 4);
 }

@@ -78,15 +78,9 @@ fn test_custom_register_broadcast_and_routing() {
         // Write DMACON ($DFF096): set master DMA enable and Copper DMA enable ($8280)
         let _ = bus.write_word(0xDFF096, 0x8280);
     }
-    // Check that Agnus and Paula both staged DMACON mutation with physical propagation delay
+    // Check that Agnus staged DMACON mutation with physical propagation delay
     let agnus_staged = mb
         .agnus
-        .mutations
-        .iter()
-        .flatten()
-        .any(|m| m.reg_offset == 0x096 && m.value == 0x8280);
-    let paula_staged = mb
-        .paula
         .mutations
         .iter()
         .flatten()
@@ -95,10 +89,17 @@ fn test_custom_register_broadcast_and_routing() {
         agnus_staged,
         "Agnus must stage DMACON write in mutation pipeline"
     );
-    assert!(
-        paula_staged,
-        "Paula must stage DMACON write in mutation pipeline"
-    );
+
+    // Step 2 CCKs: Agnus mutation matures and broadcasts to Paula and subsystems
+    let due1 = mb.agnus.step_cck();
+    for item in due1.iter().flatten() {
+        mb.router().dispatch_agnus_action(item.0, item.1);
+    }
+    let due2 = mb.agnus.step_cck();
+    for item in due2.iter().flatten() {
+        mb.router().dispatch_agnus_action(item.0, item.1);
+    }
+    assert!(mb.agnus.copper.dma_enabled, "Copper DMA must be enabled");
 }
 
 #[test]

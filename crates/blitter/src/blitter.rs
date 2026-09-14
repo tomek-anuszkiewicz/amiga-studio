@@ -48,6 +48,8 @@ pub struct Blitter {
     pub dma_enabled: bool,
     /// Blitter Nasty / CPU priority mode (BLTPRI bit 10 in DMACON)
     pub bltpri: bool,
+    /// Level 3 blitter interrupt request strobe (_BLITINT)
+    pub blit_irq: bool,
 }
 
 impl Blitter {
@@ -78,6 +80,7 @@ impl Blitter {
         self.is_zero = true;
         self.dma_enabled = false;
         self.bltpri = false;
+        self.blit_irq = false;
     }
 
     /// Sets Blitter DMA enabled state from DMACON
@@ -139,6 +142,21 @@ impl Blitter {
         self.bltsize = bltsize;
         self.is_busy = true;
         self.is_zero = true;
+    }
+
+    /// Action method: finishes the active blit, resets busy, and asserts Level 3 `_BLITINT`
+    #[inline]
+    pub fn finish_blit(&mut self) {
+        self.is_busy = false;
+        self.blit_irq = true;
+    }
+
+    /// Polls and clears the blitter interrupt request strobe (_BLITINT)
+    #[inline]
+    pub fn poll_blit_irq(&mut self) -> bool {
+        let irq = self.blit_irq;
+        self.blit_irq = false;
+        irq
     }
 
     /// Advances the Blitter state by 1 Color Clock

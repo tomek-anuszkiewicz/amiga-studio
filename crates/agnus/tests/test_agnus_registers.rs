@@ -87,12 +87,12 @@ fn test_blitter_and_copper_pointers() {
     // COP1LCH ($080) = $0007, COP1LCL ($082) = $2000
     agnus.commit_register_write(0x080, 0x0007);
     agnus.commit_register_write(0x082, 0x2000);
-    assert_eq!(agnus.cop1lc, 0x0007_2000);
+    assert_eq!(agnus.copper.cop1lc, 0x0007_2000);
 
     // BLTAPTH ($050) = $0003, BLTAPTL ($052) = $4566
     agnus.commit_register_write(0x050, 0x0003);
     agnus.commit_register_write(0x052, 0x4566);
-    assert_eq!(agnus.bltapt, 0x0003_4566);
+    assert_eq!(agnus.blitter.bltapt, 0x0003_4566);
 }
 
 #[test]

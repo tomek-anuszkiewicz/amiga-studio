@@ -2882,6 +2882,35 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_dma_cartesian`: PASSED (19/19 tests).
   - `cargo check --target wasm32-unknown-unknown -p gui --lib`: PASSED.
 
+---
+
+### [2026-09-14 04:25 CEST] — Custom Chipset Register Wiring, SSoT Consolidation & Live Read Interconnect
+- **Affected Subsystems**:
+  - `crates/agnus`: Consolidated Blitter and Copper fields to enforce Single Source of Truth (SSoT), delegating register reads/writes directly to `self.blitter` and `self.copper`. Added `vposr()` / `vhposr()` getters. Updated `read_dmaconr()` to query `blitter.is_busy` and `blitter.is_zero` live.
+  - `crates/blitter`: Added `_BLITINT` completion signaling via `finish_blit()` and `blit_irq` flag to assert Level 3 interrupt on Paula upon blit completion.
+  - `crates/audio`: Added `AUDxDSR` restart strobe signaling (`trigger_buffer_finish` / `poll_restart_strobe`) to reload Agnus audio pointers (`audpt[ch] = audlc[ch]`) and assert Level 4 interrupt (`_INT4`) on Paula when channel buffer completes (`len == 1`).
+  - `crates/paula`: Delegated audio channel registers and serial port registers directly to `self.audio` and `self.serial_port`.
+  - `crates/denise`: Delegated sprite position and control registers directly to `self.sprites`.
+  - `crates/machine_loop`: Polled `_BLITINT` and `AUDxDSR` cross-chip events in `step_cck()` to assert Level 3 and Level 4 interrupts and reload Agnus audio DMA pointers. Added test assertions for end-to-end hardware signal cascades.
+  - `crates/memory_bus`: Implemented live combinatorial read interconnect in `read_custom_word()` / `peek_custom_word()`:
+    - Composite `DSKBYTR` ($01A) assembly (MFM byte, WORDEQUAL, DISKWRITE, DMAON) with atomic Clear-on-Read on bit 15 (`DSKBYT`).
+    - Wired `JOY0DAT` / `JOY1DAT` ($00A/$00C) and `POTGOR` ($016) to live `GamePorts` quadrature mouse counters and button pins.
+    - Routed `DSKPTH`/`DSKPTL` ($020/$022) and `AUDxLCH`/`AUDxLCL` ($0A0..$0D2) to Agnus.
+    - Enforced strict floating open-bus return `$FFFF` on all write-only custom registers ($040..$074, $080..$08A, $096, $09A..$09E, etc.).
+  - `crates/memory_bus/tests/test_register_wiring.rs`: Added dedicated test suite verifying Table 3 cross-chip signals, SSoT consistency, DSKBYTR Clear-on-Read, and write-only open-bus floating behavior.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated redundant state duplication between parent custom chips and their internal engines.
+  - Wired cross-chip event strobes matching Table 3 of the Cross-Chip Signals Catalog.
+  - Implemented live read routing in MemoryBus with composite register assembly.
+  - Verified 100% test pass rate across all modified crates and architecture gates.
+- **Architectural Rationale & Trade-Offs**:
+  - *Single Source of Truth:* Eliminating parallel registers in parent chips prevents desynchronization where an engine updates internal state but the parent register remains stale.
+  - *Decoupled Cross-Chip Strobes:* Event strobes like `_BLITINT` and `AUDxDSR` are latched in the child engine and polled by the coordinator during CCK progression, maintaining parameter-based borrow splitting without circular handles.
+- **Verification & Test Results**:
+  - `cargo test -p agnus -p paula -p denise -p memory_bus -p machine_loop -p copper -p blitter`: All unit and integration test suites passed cleanly.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 tests passed.
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
+
 
 
 

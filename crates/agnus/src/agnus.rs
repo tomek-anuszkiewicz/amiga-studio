@@ -46,12 +46,6 @@ pub struct Agnus {
     // --- Active Latched Registers (Read is NOW) ---
     /// DMACON / DMACONR ($096 / $002) - active DMA channel enables
     pub dmacon: u16,
-    /// COPCON ($02E) - Copper control register (bit 1: CDANG)
-    pub copcon: u16,
-    /// Copper location pointer 1 ($080-$082)
-    pub cop1lc: u32,
-    /// Copper location pointer 2 ($084-$086)
-    pub cop2lc: u32,
     /// Display Window Start ($08E)
     pub diwstrt: u16,
     /// Display Window Stop ($090)
@@ -74,28 +68,10 @@ pub struct Agnus {
     pub sprpt: [u32; 8],
     /// Audio DMA pointers 0..3 ($0A0, $0B0, $0C0, $0D0)
     pub audpt: [u32; 4],
+    /// Audio DMA start/loop locations 0..3 (AUDxLCH/AUDxLCL)
+    pub audlc: [u32; 4],
     /// Floppy Disk DMA pointer ($020-$022)
     pub dskpt: u32,
-
-    // --- Blitter Active Registers ($040-$074) ---
-    pub bltcon0: u16,
-    pub bltcon1: u16,
-    pub bltafwm: u16,
-    pub bltalwm: u16,
-    pub bltcpt: u32,
-    pub bltbpt: u32,
-    pub bltapt: u32,
-    pub bltdpt: u32,
-    pub bltsize: u16,
-    pub bltcmod: i16,
-    pub bltbmod: i16,
-    pub bltamod: i16,
-    pub bltdmod: i16,
-    pub bltcdat: u16,
-    pub bltbdat: u16,
-    pub bltadat: u16,
-    pub blitter_busy: bool,
-    pub blitter_zero: bool,
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
@@ -115,9 +91,6 @@ impl Agnus {
             lof: false,
             chip_ram_blocked: false,
             dmacon: 0,
-            copcon: 0,
-            cop1lc: 0,
-            cop2lc: 0,
             diwstrt: 0,
             diwstop: 0,
             ddfstrt: 0x0038,
@@ -129,25 +102,8 @@ impl Agnus {
             bplpt: [0; 6],
             sprpt: [0; 8],
             audpt: [0; 4],
+            audlc: [0; 4],
             dskpt: 0,
-            bltcon0: 0,
-            bltcon1: 0,
-            bltafwm: 0xFFFF,
-            bltalwm: 0xFFFF,
-            bltcpt: 0,
-            bltbpt: 0,
-            bltapt: 0,
-            bltdpt: 0,
-            bltsize: 0,
-            bltcmod: 0,
-            bltbmod: 0,
-            bltamod: 0,
-            bltdmod: 0,
-            bltcdat: 0,
-            bltbdat: 0,
-            bltadat: 0,
-            blitter_busy: false,
-            blitter_zero: false,
             mutations: [None; AGNUS_MUTATION_CAPACITY],
         }
     }
@@ -162,9 +118,6 @@ impl Agnus {
         self.lof = false;
         self.chip_ram_blocked = false;
         self.dmacon = 0;
-        self.copcon = 0;
-        self.cop1lc = 0;
-        self.cop2lc = 0;
         self.diwstrt = 0;
         self.diwstop = 0;
         self.ddfstrt = 0x0038;
@@ -176,25 +129,8 @@ impl Agnus {
         self.bplpt.fill(0);
         self.sprpt.fill(0);
         self.audpt.fill(0);
+        self.audlc.fill(0);
         self.dskpt = 0;
-        self.bltcon0 = 0;
-        self.bltcon1 = 0;
-        self.bltafwm = 0xFFFF;
-        self.bltalwm = 0xFFFF;
-        self.bltcpt = 0;
-        self.bltbpt = 0;
-        self.bltapt = 0;
-        self.bltdpt = 0;
-        self.bltsize = 0;
-        self.bltcmod = 0;
-        self.bltbmod = 0;
-        self.bltamod = 0;
-        self.bltdmod = 0;
-        self.bltcdat = 0;
-        self.bltbdat = 0;
-        self.bltadat = 0;
-        self.blitter_busy = false;
-        self.blitter_zero = false;
         self.mutations = [None; AGNUS_MUTATION_CAPACITY];
     }
 
@@ -282,10 +218,10 @@ impl Agnus {
     #[inline]
     pub fn read_dmaconr(&self) -> u16 {
         let mut val = self.dmacon & 0x07FF;
-        if self.blitter_busy || self.blitter.is_busy {
+        if self.blitter.is_busy {
             val |= 0x8000; // BBUSY
         }
-        if self.blitter_zero || self.blitter.is_zero {
+        if self.blitter.is_zero {
             val |= 0x4000; // BZERO
         }
         val
@@ -322,6 +258,10 @@ impl Agnus {
             0x080..=0x086 => (2, MutationMode::OverwritePending), // COP1LC, COP2LC
             0x0E0..=0x0F6 => (2, MutationMode::OverwritePending), // BPLxPTH/L
             0x120..=0x13E => (2, MutationMode::OverwritePending), // SPRxPTH/L
+            0x020 | 0x022 => (2, MutationMode::OverwritePending), // DSKPTH, DSKPTL
+            0x0A0 | 0x0A2 | 0x0B0 | 0x0B2 | 0x0C0 | 0x0C2 | 0x0D0 | 0x0D2 => {
+                (2, MutationMode::OverwritePending)
+            } // AUDxLCH, AUDxLCL
             _ => (2, MutationMode::OverwritePending),
         };
 
@@ -344,44 +284,71 @@ impl Agnus {
                     self.dmacon &= !(val & 0x7FFF);
                 }
             }
-            0x02E => self.copcon = val,
-            0x080 => self.cop1lc = (self.cop1lc & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16),
-            0x082 => self.cop1lc = (self.cop1lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32),
-            0x084 => self.cop2lc = (self.cop2lc & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16),
-            0x086 => self.cop2lc = (self.cop2lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32),
+            0x02E => self.copper.set_copcon(val),
+            0x080 => {
+                self.copper.cop1lc =
+                    (self.copper.cop1lc & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+            }
+            0x082 => {
+                self.copper.cop1lc = (self.copper.cop1lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+            }
+            0x084 => {
+                self.copper.cop2lc =
+                    (self.copper.cop2lc & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+            }
+            0x086 => {
+                self.copper.cop2lc = (self.copper.cop2lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+            }
             0x08E => self.diwstrt = val,
             0x090 => self.diwstop = val,
             0x092 => self.ddfstrt = val & 0x00FC,
             0x094 => self.ddfstop = val & 0x00FC,
-            0x100 => self.bplcon0 = val,
+            0x100 => self.set_bplcon0(val),
             0x102 => self.bplcon1 = val,
             0x108 => self.bpl1mod = val as i16,
             0x10A => self.bpl2mod = val as i16,
 
             // Blitter registers
-            0x040 => self.bltcon0 = val,
-            0x042 => self.bltcon1 = val,
-            0x044 => self.bltafwm = val,
-            0x046 => self.bltalwm = val,
-            0x048 => self.bltcpt = (self.bltcpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16),
-            0x04A => self.bltcpt = (self.bltcpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32),
-            0x04C => self.bltbpt = (self.bltbpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16),
-            0x04E => self.bltbpt = (self.bltbpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32),
-            0x050 => self.bltapt = (self.bltapt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16),
-            0x052 => self.bltapt = (self.bltapt & 0xFFFF_0000) | ((val & 0xFFFE) as u32),
-            0x054 => self.bltdpt = (self.bltdpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16),
-            0x056 => self.bltdpt = (self.bltdpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32),
-            0x058 => {
-                self.bltsize = val;
-                self.blitter_busy = true;
+            0x040 => self.blitter.bltcon0 = val,
+            0x042 => self.blitter.bltcon1 = val,
+            0x044 => self.blitter.bltafwm = val,
+            0x046 => self.blitter.bltalwm = val,
+            0x048 => {
+                self.blitter.bltcpt =
+                    (self.blitter.bltcpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
             }
-            0x060 => self.bltcmod = val as i16,
-            0x062 => self.bltbmod = val as i16,
-            0x064 => self.bltamod = val as i16,
-            0x066 => self.bltdmod = val as i16,
-            0x070 => self.bltcdat = val,
-            0x072 => self.bltbdat = val,
-            0x074 => self.bltadat = val,
+            0x04A => {
+                self.blitter.bltcpt = (self.blitter.bltcpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+            }
+            0x04C => {
+                self.blitter.bltbpt =
+                    (self.blitter.bltbpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+            }
+            0x04E => {
+                self.blitter.bltbpt = (self.blitter.bltbpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+            }
+            0x050 => {
+                self.blitter.bltapt =
+                    (self.blitter.bltapt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+            }
+            0x052 => {
+                self.blitter.bltapt = (self.blitter.bltapt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+            }
+            0x054 => {
+                self.blitter.bltdpt =
+                    (self.blitter.bltdpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
+            }
+            0x056 => {
+                self.blitter.bltdpt = (self.blitter.bltdpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
+            }
+            0x058 => self.blitter.trigger_blit(val),
+            0x060 => self.blitter.bltcmod = val as i16,
+            0x062 => self.blitter.bltbmod = val as i16,
+            0x064 => self.blitter.bltamod = val as i16,
+            0x066 => self.blitter.bltdmod = val as i16,
+            0x070 => self.blitter.bltcdat = val,
+            0x072 => self.blitter.bltbdat = val,
+            0x074 => self.blitter.bltadat = val,
 
             // Bitplane pointers
             0x0E0..=0x0F6 => {
@@ -413,8 +380,51 @@ impl Agnus {
                 }
             }
 
+            // Floppy Disk DMA pointer
+            0x020 => {
+                self.dskpt = (self.dskpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16);
+            }
+            0x022 => {
+                self.dskpt = (self.dskpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32);
+            }
+
+            // Audio DMA location pointers (AUD0LCH/LCL..AUD3LCH/LCL)
+            0x0A0 | 0x0A2 | 0x0B0 | 0x0B2 | 0x0C0 | 0x0C2 | 0x0D0 | 0x0D2 => {
+                let ch = ((offset - 0x0A0) / 0x10) as usize;
+                if ch < 4 {
+                    if (offset & 2) == 0 {
+                        self.audlc[ch] =
+                            (self.audlc[ch] & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16);
+                    } else {
+                        self.audlc[ch] = (self.audlc[ch] & 0xFFFF_0000) | ((val & 0xFFFE) as u32);
+                    }
+                    self.audpt[ch] = self.audlc[ch];
+                }
+            }
+
             _ => {}
         }
+    }
+
+    /// Action method: sets BPLCON0 and synchronizes Agnus DMA scheduler
+    #[inline]
+    pub fn set_bplcon0(&mut self, val: u16) {
+        self.bplcon0 = val;
+        self.dma.set_bplcon0(val);
+    }
+
+    /// Reloads audio DMA pointer from latched start address (AUDxLC) for channel `channel` (0..3)
+    #[inline]
+    pub fn reload_audio_ptr(&mut self, channel: usize) {
+        if channel < 4 {
+            self.audpt[channel] = self.audlc[channel];
+        }
+    }
+
+    /// Polls and clears the blitter completion interrupt flag
+    #[inline]
+    pub fn poll_blitter_irq(&mut self) -> bool {
+        self.blitter.poll_blit_irq()
     }
 
     /// Queries whether a specific DMA channel is enabled in DMACON

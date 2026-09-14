@@ -330,6 +330,21 @@ impl FloppyController {
         (self.dsklen & 0x4000) != 0
     }
 
+    /// Returns the live 8-bit deserialized MFM data byte and status flags,
+    /// atomically clearing bit 15 (`DSKBYT`) per Clear-on-Read hardware semantics.
+    #[inline]
+    pub fn read_dskbytr(&mut self) -> u16 {
+        let val = self.dskbytr;
+        self.dskbytr &= !0x8000;
+        val
+    }
+
+    /// Peeks DSKBYTR without clearing bit 15 (for debuggers and UI)
+    #[inline]
+    pub fn peek_dskbytr(&self) -> u16 {
+        self.dskbytr
+    }
+
     /// Advances floppy controller state by 1 Color Clock
     #[inline]
     pub fn step_cck(&mut self) {

@@ -17,6 +17,8 @@ pub struct Copper {
     pub cop_pc: u32,
     /// Current instruction latch
     pub copins: u16,
+    /// Copper control register ($02E)
+    pub copcon: u16,
     /// Copper Danger mode flag (COPCON bit 1: allows writes to $DFF000..$DFF07E)
     pub cdang: bool,
     /// Copper DMA channel enabled via DMACON (COPEN bit 7 and DMAEN bit 9)
@@ -39,6 +41,7 @@ impl Copper {
         self.cop2lc = 0;
         self.cop_pc = 0;
         self.copins = 0;
+        self.copcon = 0;
         self.cdang = false;
         self.dma_enabled = false;
         self.is_running = false;
@@ -96,6 +99,7 @@ impl Copper {
     /// Writes COPCON control register
     #[inline]
     pub fn set_copcon(&mut self, val: u16) {
+        self.copcon = val;
         self.cdang = (val & 0x0002) != 0;
     }
 

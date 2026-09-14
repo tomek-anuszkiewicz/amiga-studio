@@ -33,22 +33,11 @@ pub struct Paula {
     pub potgor: u16,
     pub potgo: u16,
 
-    /// Serial UART data read ($018), write ($030), and period divisor ($032)
-    pub serdatr: u16,
-    pub serdat: u16,
-    pub serper: u16,
-
     /// Floppy disk data byte read ($01A), length ($024), data ($026), and sync ($07E)
     pub dskbytr: u16,
     pub dsklen: u16,
     pub dskdat: u16,
     pub dsksync: u16,
-
-    /// 4 Audio channels active state ($0A4-$0DA)
-    pub audlen: [u16; 4],
-    pub audper: [u16; 4],
-    pub audvol: [u16; 4],
-    pub auddat: [u16; 4],
 
     /// Paula-local DMA enables latched from DMACON ($096: AUD0..3EN, DSKEN)
     pub dma_enables: u16,
@@ -77,17 +66,10 @@ impl Paula {
             pot1dat: 0,
             potgor: 0,
             potgo: 0,
-            serdatr: 0x3000, // TBE & TSRE set by default on power-on (TX empty)
-            serdat: 0,
-            serper: 0,
             dskbytr: 0,
             dsklen: 0,
             dskdat: 0,
             dsksync: 0x4489,
-            audlen: [0; 4],
-            audper: [0; 4],
-            audvol: [0; 4],
-            auddat: [0; 4],
             dma_enables: 0,
             mutations: [None; PAULA_MUTATION_CAPACITY],
         }
@@ -104,17 +86,10 @@ impl Paula {
         self.pot1dat = 0;
         self.potgor = 0;
         self.potgo = 0;
-        self.serdatr = 0x3000;
-        self.serdat = 0;
-        self.serper = 0;
         self.dskbytr = 0;
         self.dsklen = 0;
         self.dskdat = 0;
         self.dsksync = 0x4489;
-        self.audlen.fill(0);
-        self.audper.fill(0);
-        self.audvol.fill(0);
-        self.auddat.fill(0);
         self.dma_enables = 0;
         self.mutations = [None; PAULA_MUTATION_CAPACITY];
     }
@@ -147,7 +122,7 @@ impl Paula {
             0x012 => self.pot0dat,
             0x014 => self.pot1dat,
             0x016 => self.potgor,
-            0x018 => self.serdatr,
+            0x018 => self.serial_port.serdatr,
             0x01A => self.dskbytr,
             0x01C => self.intena,
             0x01E => self.intreq,
@@ -204,33 +179,33 @@ impl Paula {
                     self.dma_enables &= !(val & 0x001F);
                 }
             }
-            0x030 => self.serdat = val,
-            0x032 => self.serper = val,
+            0x030 => self.serial_port.write_serdat(val),
+            0x032 => self.serial_port.write_serper(val),
             0x034 => self.potgo = val,
             0x024 => self.dsklen = val,
             0x026 => self.dskdat = val,
             0x07E => self.dsksync = val,
 
             // Audio channel registers
-            0x0A4 => self.audlen[0] = val,
-            0x0A6 => self.audper[0] = val,
-            0x0A8 => self.audvol[0] = val & 0x007F,
-            0x0AA => self.auddat[0] = val,
+            0x0A4 => self.audio.set_len(0, val),
+            0x0A6 => self.audio.set_per(0, val),
+            0x0A8 => self.audio.set_vol(0, (val & 0x007F) as u8),
+            0x0AA => self.audio.set_dat(0, val),
 
-            0x0B4 => self.audlen[1] = val,
-            0x0B6 => self.audper[1] = val,
-            0x0B8 => self.audvol[1] = val & 0x007F,
-            0x0BA => self.auddat[1] = val,
+            0x0B4 => self.audio.set_len(1, val),
+            0x0B6 => self.audio.set_per(1, val),
+            0x0B8 => self.audio.set_vol(1, (val & 0x007F) as u8),
+            0x0BA => self.audio.set_dat(1, val),
 
-            0x0C4 => self.audlen[2] = val,
-            0x0C6 => self.audper[2] = val,
-            0x0C8 => self.audvol[2] = val & 0x007F,
-            0x0CA => self.auddat[2] = val,
+            0x0C4 => self.audio.set_len(2, val),
+            0x0C6 => self.audio.set_per(2, val),
+            0x0C8 => self.audio.set_vol(2, (val & 0x007F) as u8),
+            0x0CA => self.audio.set_dat(2, val),
 
-            0x0D4 => self.audlen[3] = val,
-            0x0D6 => self.audper[3] = val,
-            0x0D8 => self.audvol[3] = val & 0x007F,
-            0x0DA => self.auddat[3] = val,
+            0x0D4 => self.audio.set_len(3, val),
+            0x0D6 => self.audio.set_per(3, val),
+            0x0D8 => self.audio.set_vol(3, (val & 0x007F) as u8),
+            0x0DA => self.audio.set_dat(3, val),
 
             _ => {}
         }
@@ -264,6 +239,12 @@ impl Paula {
     #[inline]
     pub fn clear_interrupt_request(&mut self, mask: u16) {
         self.intreq &= !(mask & 0x7FFF);
+    }
+
+    /// Polls and clears the audio DMA restart strobe (`AUDxDSR`) for channel `ch`
+    #[inline]
+    pub fn poll_audio_restart(&mut self, ch: usize) -> bool {
+        self.audio.poll_restart_strobe(ch)
     }
 
     /// Evaluates pending, enabled interrupt sources and returns the highest active IPL (0..6)

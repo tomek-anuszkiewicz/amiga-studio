@@ -29,6 +29,8 @@ pub enum DmaChannel {
 pub struct DmaScheduler {
     /// Active DMA Control register state (DMACON / DMACONR)
     pub dmacon: u16,
+    /// Bitplane Control 0 ($100, bits 12..14 planecount)
+    pub bplcon0: u16,
 }
 
 impl DmaScheduler {
@@ -40,6 +42,19 @@ impl DmaScheduler {
     /// Resets DMACON to power-on default (all DMA disabled: $0000)
     pub fn reset(&mut self) {
         self.dmacon = 0;
+        self.bplcon0 = 0;
+    }
+
+    /// Sets BPLCON0 register value
+    #[inline]
+    pub fn set_bplcon0(&mut self, val: u16) {
+        self.bplcon0 = val;
+    }
+
+    /// Returns the active number of bitplane DMA channels (0..6)
+    #[inline]
+    pub fn planecount(&self) -> u8 {
+        ((self.bplcon0 >> 12) & 0x07) as u8
     }
 
     /// Advances DMA scheduler by 1 Color Clock
