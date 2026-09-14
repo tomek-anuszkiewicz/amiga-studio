@@ -34,6 +34,44 @@ from .chunker import MarkdownChunker
 from .vision import VisionAnalyzer
 
 
+def _setup_cuda_dll_paths():
+    """Discovers NVIDIA CUDA and cuDNN DLL directories and registers them with Windows DLL search path."""
+    import sys
+    if sys.platform != "win32":
+        return
+    import site
+    search_dirs = []
+    try:
+        site_dirs = list(site.getsitepackages())
+        user_site = site.getusersitepackages()
+        if isinstance(user_site, str):
+            site_dirs.append(user_site)
+        for base in site_dirs:
+            nv_dir = Path(base) / "nvidia"
+            if nv_dir.is_dir():
+                for bin_dir in nv_dir.glob("*/bin"):
+                    if bin_dir.is_dir():
+                        search_dirs.append(bin_dir)
+    except Exception:
+        pass
+
+    cuda_path = os.environ.get("CUDA_PATH")
+    if cuda_path:
+        p = Path(cuda_path) / "bin"
+        if p.is_dir():
+            search_dirs.append(p)
+
+    for d in search_dirs:
+        try:
+            os.add_dll_directory(str(d))
+            os.environ["PATH"] = str(d) + os.pathsep + os.environ.get("PATH", "")
+        except Exception:
+            pass
+
+
+_setup_cuda_dll_paths()
+
+
 class KnowledgeIndexer:
     def __init__(self):
         self.client = QdrantClient(url=QDRANT_URL, timeout=QDRANT_TIMEOUT)

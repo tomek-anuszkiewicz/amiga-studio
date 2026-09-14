@@ -292,8 +292,8 @@ def main():
             if host_gpu:
                 advisory_lines.append(f"  [bold green]Discrete GPU Detected:[/bold green] {host_gpu}")
                 advisory_lines.append(f"  [yellow]Status:[/yellow] Running on CPU because ONNX CUDA runtime libraries (cublasLt64) were not loaded.")
-                advisory_lines.append(f"  [bold cyan]To unlock 5-10x faster RTX acceleration:[/bold cyan]")
-                advisory_lines.append(f"    [white]pip install \"onnxruntime-gpu<1.30\" --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/[/white]")
+                advisory_lines.append(f"  [bold cyan]To unlock 5-10x faster RTX acceleration (installs missing cublasLt64 DLL):[/bold cyan]")
+                advisory_lines.append(f"    [white]pip install nvidia-cublas-cu12[/white]")
             else:
                 advisory_lines.append(f"  [bold yellow]No discrete NVIDIA GPU detected.[/bold yellow] Running on multi-core CPU ({NUM_WORKERS} threads).")
 
