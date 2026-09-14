@@ -3818,5 +3818,35 @@ Every future modification or implementation task must append an entry following 
   - `python tools/run_tests.py --all`: Tier 1 (23 crates + 7 test_runner suites, 9.84s) and Tier 2 (memory_bus, machine_loop, debugger, gui, 3.21s) 100% passed in 13.05s.
   - `python tools/pre_flight.py`: All 20 architecture rules, formatting, attractors, size limits, test coupling, and API coverage checks passed cleanly.
 
+---
+
+### [2026-09-15 01:00 CEST] — Systematic Tier 2 Testing Framework & Expansion of Whole-Machine Loop Suites
+- **Affected Subsystems**:
+  - `crates/machine_loop/tests/common/mod.rs` (extended `MachineHarness` with `new_with_preset` for hardware preset configurations including Fast RAM)
+  - `crates/machine_loop/tests/test_cia_machine_integration.rs` (new test suite: CIA-A Timer A underflow Level 2 PORTS IRQ, CIA-B Timer A underflow Level 6 EXTER IRQ, 50 Hz VBlank TOD ticking)
+  - `crates/machine_loop/tests/test_interrupt_pipeline_integration.rs` (new test suite: multi-interrupt priority arbitration across Levels 1..6, master and channel INTENA masking, and CPU autovector exception dispatch)
+  - `crates/machine_loop/tests/test_copper_control_flow_integration.rs` (new test suite: Copper SKIP instruction condition evaluation and CDANG danger mode register protection in COPCON)
+  - `crates/machine_loop/tests/test_denise_bitplane_integration.rs` (new test suite: DIWSTRT/DIWSTOP display window clipping, BPLCON0 1-bitplane mode, bitplane serialization, and FrameBuilder scanline rasterization)
+  - `crates/machine_loop/tests/test_blitter_nasty_contention_integration.rs` (new test suite: Blitter Nasty BLTPRI Chip RAM wait-state bus lockout alongside Fast RAM CPU execution immunity)
+  - `.agents/rules/unit-testing-policy.md` (codified 4-Question Integration Checklist and 4 Standardized Integration Test Archetypes)
+  - `Obsidian/Amiga/Design/Testing Strategy and Quality Assurance.md` (documented testing heuristics, archetypes, and expanded Custom Chip Verification Matrix)
+  - `ROADMAP.md` (updated Whole-Machine Integration deliverable with expanded suite metrics)
+- **What Was Changed (The Concrete Reality)**:
+  - **Systematic Heuristics & Test Archetypes**:
+    - Addressed the user's architectural challenge on making Tier 2 integration tests reproducible and objective, eliminating ambiguity behind "expand tests".
+    - Established the 4-Question Integration Checklist evaluating Control & Strobe mutation, Autonomous Memory transfer, Cross-Chip Signals/IRQs, and Hardware Contention/Wait-states.
+    - Defined 4 concrete test recipes: Archetype A (Autonomous Progress), Archetype B (Signal Escalation & CPU Autovector), Archetype C (DMA Gatekeeping), and Archetype D (Contention & Concurrency).
+  - **Authored 5 New Whole-Machine Integration Suites (14 Tests)**:
+    - *CIAs (`test_cia_machine_integration.rs`):* Validated cascaded E-Clock timer countdowns, ICR underflow latching, Paula PORTS/EXTER signal assertion, and 50 Hz vertical blanking TOD incrementation.
+    - *Interrupts (`test_interrupt_pipeline_integration.rs`):* Validated strict priority resolution when Levels 1, 3, 4, and 6 are asserted simultaneously, dynamic INTENA masking, and CPU autovector vector table jump with SR mask elevation.
+    - *Copper Control Flow (`test_copper_control_flow_integration.rs`):* Validated Copper SKIP condition evaluation (skipping instructions when beam has passed coordinate vs executing when beam is before coordinate) and CDANG danger mode gating writes below $080.
+    - *Denise Bitplanes (`test_denise_bitplane_integration.rs`):* Validated display window boundary math, 1-bitplane serialization, palette translation, and FrameBuilder 32-bit linear ARGB rasterization.
+    - *Blitter Nasty (`test_blitter_nasty_contention_integration.rs`):* Validated Agnus BLTPRI bus arbiter locking CPU out of Chip RAM with WaitState returns while Fast RAM ($200000) execution continues with 100% throughput.
+- **Verification & Test Results**:
+  - `cargo test -p machine_loop`: All 17 integration test binaries (including 27 Tier 2 integration tests) passed cleanly (0.43s).
+  - `python tools/run_tests.py --all`: Tier 1 (23 crates + 7 test_runner suites, 2.74s) and Tier 2 (4 crates, 4.83s) 100% passed in 7.57s.
+  - `python tools/pre_flight.py`: 100% compliant across formatting, attractors, size ceilings, test coupling, and architecture rules.
+
+
 
 

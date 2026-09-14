@@ -87,18 +87,36 @@ graph TD
      - `test_action_dispatch.rs`: Register writes dispatching strongly-typed actions across custom chips.
      - `test_reset.rs`: Cold, warm, and external CPU RESET instruction handling.
      - `test_rtc.rs`: Real-time clock BCD decoding and cycle-exact stepping.
-     - `test_save_state.rs`: Complete machine state serialization and restoration roundtrip.
+      - `test_save_state.rs`: Complete machine state serialization and restoration roundtrip.
+
+#### The 4-Question Integration Checklist (When Tier 2 Tests are Mandatory)
+
+Whenever any custom chip, coprocessor, peripheral device, or interrupt line is added, modified, or refactored:
+1. **Control & Strobe Mutation:** Does changing register bits (e.g. `DMACON`, `INTENA`, `COPCON`) gate or trigger execution?
+2. **Autonomous Memory Transfer:** Does the subsystem read or write Chip RAM over multiple CCK cycles (Copper, Blitter, Denise, Audio, Floppy)?
+3. **Cross-Chip Signal & Interrupt Routing:** Does the subsystem raise an interrupt line, latch status, or send electronic signals to other chips (Paula -> CPU, Agnus -> Denise, CIAs -> CPU)?
+4. **Hardware Contention & Wait States:** Does the subsystem compete for Chip RAM slots or stall the CPU?
+
+If the answer to **any** question is **YES**, authoring a Tier 2 integration test in `crates/machine_loop/tests/` is mandatory.
+
+#### The 4 Standardized Integration Test Archetypes
+
+1. **Archetype A (Autonomous Progress):** Setup registers/memory -> trigger strobe -> step $N$ CCKs -> assert mutated Chip RAM buffer.
+2. **Archetype B (Signal Escalation & CPU Autovector):** Trigger event -> step CCKs -> assert CPU IPL escalation and PC vector branch.
+3. **Archetype C (DMA Gatekeeping):** Step with DMA bit set (assert progress) -> step with bit or master `DMAEN` cleared (assert zero progress).
+4. **Archetype D (Contention & Concurrency):** Run active Chip RAM transfer -> assert CPU wait states on Chip RAM alongside zero wait states in Fast RAM.
 
 #### Custom Chip Whole-Machine Verification Matrix
 
 | Custom Chip | Primary Integration Test File | Verified Operational Capabilities |
 | :--- | :--- | :--- |
-| **Copper** | `test_copper_machine_integration.rs` | List execution, beam `WAIT`, `MOVE` to `COLOR00`, DMACON enable/disable, Level 3 IRQ |
-| **Blitter** | `test_blitter_machine_integration.rs` | 2D copy & fill in Chip RAM, `BLTSIZE` start, Level 3 `_BLITINT` assertion, CPU bus lockout |
-| **Denise** | `test_denise_palette_sprite_integration.rs` | 32-color batch mutation without dropping, sprite vertical window, `SPRxDATA` arming, DMA toggling |
-| **Paula** | `test_audio_machine_integration.rs` | Audio DMA playback from Chip RAM, period scaling, sample buffer generation, Level 4 `AUD0DSR` |
+| **Copper** | `test_copper_machine_integration.rs`, `test_copper_control_flow_integration.rs` | List execution, beam `WAIT`, `MOVE` to `COLOR00`, DMACON enable/disable, Level 3 IRQ, `SKIP` condition, `CDANG` danger mode |
+| **Blitter** | `test_blitter_machine_integration.rs`, `test_blitter_nasty_contention_integration.rs` | 2D copy & fill in Chip RAM, `BLTSIZE` start, Level 3 `_BLITINT` assertion, CPU bus lockout, Blitter Nasty vs Fast RAM immunity |
+| **Denise** | `test_denise_palette_sprite_integration.rs`, `test_denise_bitplane_integration.rs` | 32-color batch mutation, sprite vertical window, `SPRxDATA` arming, DMA toggling, 1-plane bitplane fetch, display window clipping |
+| **Paula** | `test_audio_machine_integration.rs`, `test_interrupt_pipeline_integration.rs` | Audio DMA playback, period scaling, sample buffer generation, Level 4 `AUD0DSR`, multi-interrupt IPL 1-6 arbitration, INTENA masking |
 | **DMA Arbiter** | `test_dma_switching_and_signals_integration.rs` | Bitwise SET/CLR in `DMACON`, master `DMAEN` global halt, 1-2 CCK electronic delays, open bus `$FFFF` |
-| **CIAs** | `test_cia_keyboard_integration.rs` | Keyboard serial shift to CIA-A `SDR`, Level 2 IRQ, horizontal TOD (CIA-B), vertical TOD (CIA-A) |
+| **CIAs** | `test_cia_keyboard_integration.rs`, `test_cia_machine_integration.rs` | Keyboard serial shift to CIA-A `SDR`, Timer A/B underflow Level 2/6 IRQs, horizontal TOD (CIA-B), vertical TOD 50 Hz tick (CIA-A) |
+
 
   2. **Debugger & Tooling Nexus ([`crates/debugger/tests/`](../../../crates/debugger/tests/))**:
      - `test_debugger.rs` & `test_stepping_and_session.rs`: Debugger session stepping `machine_loop` and CPU core.

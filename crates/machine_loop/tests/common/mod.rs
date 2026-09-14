@@ -3,7 +3,6 @@
 //! Provides a lightweight, ergonomic harness for constructing synthetic
 //! whole-machine integration tests spanning CPU, Agnus, Denise, Paula, and CIAs.
 
-use config::A500Config;
 use machine_loop::A500Machine;
 
 /// Fluent test harness wrapping an initialized `A500Machine` in low-memory Chip RAM mode
@@ -23,7 +22,22 @@ impl Default for MachineHarness {
 impl MachineHarness {
     /// Creates a new machine test harness with Chip RAM engaged at $000000 and supervisor mode active
     pub fn new() -> Self {
-        let config = A500Config::default();
+        Self::new_with_preset(config::A500Preset::Standard1Mb)
+    }
+
+    /// Creates a new machine test harness with a specific hardware configuration preset
+    pub fn new_with_preset(preset: config::A500Preset) -> Self {
+        let config = match preset {
+            config::A500Preset::Bare512k => {
+                config::A500Config::bare_512k(config::VideoStandard::Pal)
+            }
+            config::A500Preset::Standard1Mb => {
+                config::A500Config::standard_1mb(config::VideoStandard::Pal)
+            }
+            config::A500Preset::ExpandedPowerUser => {
+                config::A500Config::expanded_power_user(config::VideoStandard::Pal)
+            }
+        };
         let mut machine = A500Machine::new(config);
         machine.physical_memory.map_chip_ram_to_low_memory();
 

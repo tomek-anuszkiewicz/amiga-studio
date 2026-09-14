@@ -31,24 +31,33 @@ Every non-UI functional module, utility class, parser, decoder, evaluator, data 
 
 Isolated unit tests verify individual logic gates, ALU operations, and formula evaluations. However, hardware silicon behavior emerges from the tight, synchronized coordination between custom chips, DMA channels, and CPU bus cycles.
 
-Whenever a custom chip or peripheral subsystem (`copper`, `blitter`, `denise`, `paula`, `cia`, `floppy`) is introduced, modified, or extended:
-1. **Mandatory Whole-Machine Test Coverage:**
-   - The developer or agent **must author or maintain at least one lightweight Tier 2 integration test** in `crates/machine_loop/tests/` (e.g. `test_<subsystem>_machine_integration.rs`).
-2. **Core Operational Checkpoints:**
-   - **DMA Channel Control:** Verify that `DMACON` bits enable/disable the channel cleanly and that disabling master `DMAEN` immediately halts active transfers.
-   - **Cross-Chip Signal Propagation:** Verify that register writes observe physical electronic delay pipelines (e.g. 1 to 2 CCKs) rather than taking effect instantaneously.
-   - **Functional Execution:** Verify the subsystem's fundamental contract end-to-end:
-     - Copper executes `WAIT` and mutates display registers at target raster coordinates.
-     - Blitter mutates Chip RAM buffers (copy, invert, fill) and asserts `_BLITINT`.
-     - Denise arms sprite channels, tracks vertical windows `[VSTART..VSTOP)`, and outputs pixels.
-     - Paula consumes audio DMA words, advances periods, and raises Level 4 interrupts (`AUDxDSR`).
-     - CIAs generate timer interrupts and TOD ticks.
-3. **Synthetic, Zero-Asset Architecture:**
-   - Tier 2 tests must remain fast (< 5ms per test) and self-contained in Chip RAM using `MachineHarness`.
-   - Never rely on Kickstart ROMs or ADF floppy disks for Tier 2 verification.
-   - Pinpoint exact subsystem regressions before executing heavy Tier 3 test runners.
+### A. The 4-Question Integration Checklist (When a Tier 2 Test is Mandatory)
+Whenever any custom chip, coprocessor, peripheral device, or interrupt line is added, modified, or extended, evaluate this objective 4-question checklist:
+1. **Control & Strobe Mutation:** Does changing register bits (e.g. `DMACON`, `INTENA`, `COPCON`) gate or trigger execution?
+2. **Autonomous Memory Transfer:** Does the subsystem read or write Chip RAM over multiple CCK cycles (Copper, Blitter, Denise, Audio, Floppy)?
+3. **Cross-Chip Signal & Interrupt Routing:** Does the subsystem raise an interrupt line, latch status, or send electronic signals to other chips (Paula -> CPU, Agnus -> Denise, CIAs -> CPU)?
+4. **Hardware Contention & Wait States:** Does the subsystem compete for Chip RAM slots or stall the CPU?
+
+If the answer to **any** of the four questions is **YES**, a corresponding Tier 2 integration test in `crates/machine_loop/tests/test_<subsystem>_machine_integration.rs` is **mandatory**.
+
+### B. The 4 Standardized Integration Test Archetypes (Recipes)
+Every Tier 2 integration test must follow one of four standardized, reproducible archetypes using `MachineHarness`:
+1. **Archetype A: Autonomous Execution & Memory Mutation:**
+   - Setup memory/registers -> trigger strobe -> step $N$ CCKs -> assert mutated Chip RAM buffer or target register.
+2. **Archetype B: Signal Escalation & CPU Autovector:**
+   - Setup interrupt vector table -> trigger event -> step CCKs -> assert CPU IPL escalation and PC vector branch.
+3. **Archetype C: DMA Master & Channel Gatekeeping:**
+   - Step with channel DMA bit set (assert progress) -> step with channel bit or master `DMAEN` cleared (assert zero progress).
+4. **Archetype D: Contention & Dual-Bus Concurrency:**
+   - Run active Chip RAM transfer -> assert CPU wait states when targeting Chip RAM alongside zero wait states when executing in Fast RAM.
+
+### C. Synthetic, Zero-Asset Architecture:
+- Tier 2 tests must remain fast (< 5ms per test) and self-contained in Chip RAM using `MachineHarness`.
+- Never rely on Kickstart ROMs or ADF floppy disks for Tier 2 verification.
+- Pinpoint exact subsystem regressions before executing heavy Tier 3 test runners.
 
 ---
+
 
 ## 3. GUI Components: Mandatory Headless Integration Tests
 

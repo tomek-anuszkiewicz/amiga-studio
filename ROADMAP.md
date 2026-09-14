@@ -43,8 +43,9 @@ This document outlines the phased development plan, hardware milestones, verific
   - 100% verified across 114 unit and integration tests throughout the workspace.
 - **Whole-Machine Integration & Cross-Chip Pipeline Verification (Completed Baseline Deliverable):**
   - Full `A500Machine` cycle-exact integration test suite (`crates/machine_loop/tests/`) running unified CPU and chipset color clock loops (`step_cck`, `step_instruction`).
-  - Synthetic end-to-end verification covering Copper beam synchronization and register mutations, Blitter 2D memory copies and fill operations, Denise palette batch updates and sprite arming/windowing, Paula audio sample streaming and IRQ generation, and DMACON master/channel arbitration with 1-cycle electronic signal propagation.
-  - 100% verified across 13 integration test cases in `crates/machine_loop/tests/` without relying on heavy full-frame reference captures.
+  - Synthetic end-to-end verification covering Copper beam synchronization, `WAIT`/`MOVE`, `SKIP` condition branching, and `CDANG` danger mode; Blitter 2D memory copies, area fill operations, and Blitter Nasty contention vs Fast RAM immunity; Denise palette batch updates, sprite arming/windowing, 1-bitplane fetch, and display window clipping; Paula audio sample streaming, buffer refill IRQ, and multi-interrupt priority arbitration (IPL 1–6); CIA-A/B timer underflows, 50 Hz VBlank TOD ticking, and DMACON master/channel arbitration with 1-cycle electronic signal propagation.
+  - Standardized 4-question integration checklist and 4 canonical test archetypes codified in `.agents/rules/unit-testing-policy.md` and design specifications.
+  - 100% verified across 27 integration test cases in `crates/machine_loop/tests/` without relying on heavy full-frame reference captures.
 
 
 ### Phase 2: Enhanced Chipset (ECS) & Later Models
