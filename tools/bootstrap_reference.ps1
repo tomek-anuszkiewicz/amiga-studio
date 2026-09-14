@@ -97,10 +97,10 @@ $Catalog = @(
                 MinSize = 50000000
             },
             @{
-                Name    = "AmigaDev Elowar ADCD 2.1 (Online HTML Guide)"
-                Url     = "http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0000.html"
-                File    = "Hardware_Manual_guide_node0000.html"
-                MinSize = 3000
+                Name    = "Internet Archive (1985 1st Ed PDF)"
+                Url     = "https://archive.org/download/Amiga_Hardware_Reference_Manual_1985_Commodore/Amiga_Hardware_Reference_Manual_1985_Commodore.pdf"
+                File    = "Amiga_Hardware_Reference_Manual_1985_Commodore.pdf"
+                MinSize = 2000000
             }
         )
     },

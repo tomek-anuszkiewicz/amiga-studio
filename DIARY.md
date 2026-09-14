@@ -3301,3 +3301,23 @@ Every future modification or implementation task must append an entry following 
   - Verified archive skip and -Force re-extraction
   - Verified -NoExtract and tools/bootstrap.ps1 parameter forwarding
   - python tools/pre_flight.py: All 4 quality gates passed cleanly.
+---
+
+### [2026-09-14 13:45 CEST] — Replaced Elowar HTML with 1985 1st Edition PDF in Hardware Reference Manual Mirrors
+- **Affected Subsystems**:
+  - `tools`
+  - `reference`
+  - `documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed single-node Elowar HTML mirror from HRM catalog in tools/bootstrap_reference.ps1 in favor of keeping HRM strictly as PDF
+  - Configured Internet Archive 1985 1st Edition PDF as Mirror 3
+  - Deleted orphan Hardware_Manual_guide_node0000.html from temp/Hardware Reference Manual/
+  - Updated Obsidian/Amiga/Reference/README.md mirror fallback table.
+- **Architectural Rationale & Trade-Offs**:
+  - The Elowar ADCD 2.1 guide consists of 250+ interconnected HTML nodes and GIF schematics, downloading only node0000.html resulted in an incomplete anchor page
+  - Full recursive crawling of 250+ pages was redundant since the complete HRM text, registers, and diagrams are already 100% converted into Markdown in Obsidian/Amiga/Reference/Hardware Reference Manual/ and authoritative 2nd and 3rd edition PDFs are already present
+  - Consolidating HRM strictly to PDF editions maintains clean single-file download semantics and eliminates loose HTML scrapings in temp/.
+- **Verification & Test Results**:
+  - Deleted temp/Hardware Reference Manual/Hardware_Manual_guide_node0000.html
+  - Verified tools/bootstrap_reference.ps1 -List and -Item hrm
+  - tools/pre_flight.py: 100% compliant across all gates.
