@@ -75,7 +75,7 @@ pub fn alu_cmp_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_cmp_l_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.micro.source & 0xFFFF_0000) | (state.prefetch[0] as u32);
+    let s = state.micro.source;
     let d = state.d_long(reg_dst as usize);
     cmp_l(state, s, d);
 }
