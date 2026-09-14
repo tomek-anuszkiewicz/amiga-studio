@@ -20,7 +20,9 @@ fn print_usage() {
     println!("                            --out-dir <PATH>, --no-pin, --dump-traces");
     println!("  vamiga [OPTIONS] Execute vAmigaTS regression verification test harness");
     println!("                   Options: --category <CAT>, --test <NAME>, --frames <N>");
-    println!("                            --max-tests <N>, --list-deferred, --summary, -v");
+    println!(
+        "                            --max-tests <N>, --list-deferred, --summary, --profile, -v"
+    );
     println!("  --summary        Print global pass/fail coverage table across all tested opcodes");
     println!("  --diff           Compare latest test runs against previous runs to detect regressions/fixes");
     println!(
@@ -334,6 +336,9 @@ fn run_vamiga_cli(args: &[String]) {
             }
             "--summary" => {
                 show_summary = true;
+            }
+            "--profile" => {
+                config.profile = true;
             }
             "--verbose" | "-v" => {
                 config.verbose = true;
