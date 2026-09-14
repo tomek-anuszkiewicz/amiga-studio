@@ -41,6 +41,8 @@ pub struct Paula {
 
     /// Paula-local DMA enables latched from DMACON ($096: AUD0..3EN, DSKEN)
     pub dma_enables: u16,
+    /// Master DMA enable flag latched from DMACON bit 9 (DMAEN)
+    pub dma_master: bool,
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
@@ -71,6 +73,7 @@ impl Paula {
             dskdat: 0,
             dsksync: 0x4489,
             dma_enables: 0,
+            dma_master: false,
             mutations: [None; PAULA_MUTATION_CAPACITY],
         }
     }
@@ -91,6 +94,7 @@ impl Paula {
         self.dskdat = 0;
         self.dsksync = 0x4489;
         self.dma_enables = 0;
+        self.dma_master = false;
         self.mutations = [None; PAULA_MUTATION_CAPACITY];
     }
 
@@ -98,6 +102,12 @@ impl Paula {
     /// Returns any register writes that matured and committed on this exact cycle.
     pub fn step_cck(&mut self) -> [Option<(u16, u16)>; 8] {
         self.audio.step_cck();
+        for ch in 0..4 {
+            if self.audio.poll_channel_irq(ch) {
+                // Level 4 audio interrupt: bits 7..10 in INTREQ
+                self.set_interrupt_request(1 << (7 + ch));
+            }
+        }
         self.serial_port.step_cck();
         let mut due = [None; 8];
         let mut due_count = 0;
@@ -143,6 +153,9 @@ impl Paula {
             0x034 => (2, MutationMode::OverwritePending),         // POTGO (2 CCK)
             0x024 => (2, MutationMode::OverwritePending),         // DSKLEN (2 CCK)
             0x07E => (2, MutationMode::OverwritePending),         // DSKSYNC (2 CCK)
+            0x0A0 | 0x0A2 | 0x0B0 | 0x0B2 | 0x0C0 | 0x0C2 | 0x0D0 | 0x0D2 => {
+                (2, MutationMode::OverwritePending)
+            } // AUDxLCH / AUDxLCL
             0x0A4 | 0x0B4 | 0x0C4 | 0x0D4 => (2, MutationMode::OverwritePending), // AUDxLEN
             0x0A6 | 0x0B6 | 0x0C6 | 0x0D6 => (2, MutationMode::OverwritePending), // AUDxPER
             0x0A8 | 0x0B8 | 0x0C8 | 0x0D8 => (2, MutationMode::OverwritePending), // AUDxVOL
@@ -170,14 +183,23 @@ impl Paula {
                 } else {
                     self.adkcon &= !(val & 0x7FFF);
                 }
+                self.audio.set_adkcon(self.adkcon);
             }
             0x096 => {
-                // DMACON broadcast: update Paula's local channel enables (AUD0..3EN, DSKEN)
+                // DMACON broadcast: update Paula's local channel enables (AUD0..3EN, DSKEN, DMAEN)
                 if (val & 0x8000) != 0 {
-                    self.dma_enables |= val & 0x001F; // DSKEN (bit 4) + AUD3..0EN (bits 3..0)
+                    if (val & 0x0200) != 0 {
+                        self.dma_master = true;
+                    }
+                    self.dma_enables |= val & 0x001F;
                 } else {
+                    if (val & 0x0200) != 0 {
+                        self.dma_master = false;
+                    }
                     self.dma_enables &= !(val & 0x001F);
                 }
+                self.audio
+                    .set_dma_enables((self.dma_enables & 0x000F) as u8, self.dma_master);
             }
             0x030 => self.serial_port.write_serdat(val),
             0x032 => self.serial_port.write_serper(val),
@@ -186,22 +208,65 @@ impl Paula {
             0x026 => self.dskdat = val,
             0x07E => self.dsksync = val,
 
-            // Audio channel registers
+            // Audio channel 0 pointer
+            0x0A0 => {
+                let high = (val as u32) << 16;
+                let low = self.audio.channels[0].lc & 0x0000FFFF;
+                self.audio.set_loc(0, high | low);
+            }
+            0x0A2 => {
+                let high = self.audio.channels[0].lc & 0xFFFF0000;
+                let low = val as u32;
+                self.audio.set_loc(0, high | low);
+            }
             0x0A4 => self.audio.set_len(0, val),
             0x0A6 => self.audio.set_per(0, val),
             0x0A8 => self.audio.set_vol(0, (val & 0x007F) as u8),
             0x0AA => self.audio.set_dat(0, val),
 
+            // Audio channel 1 pointer
+            0x0B0 => {
+                let high = (val as u32) << 16;
+                let low = self.audio.channels[1].lc & 0x0000FFFF;
+                self.audio.set_loc(1, high | low);
+            }
+            0x0B2 => {
+                let high = self.audio.channels[1].lc & 0xFFFF0000;
+                let low = val as u32;
+                self.audio.set_loc(1, high | low);
+            }
             0x0B4 => self.audio.set_len(1, val),
             0x0B6 => self.audio.set_per(1, val),
             0x0B8 => self.audio.set_vol(1, (val & 0x007F) as u8),
             0x0BA => self.audio.set_dat(1, val),
 
+            // Audio channel 2 pointer
+            0x0C0 => {
+                let high = (val as u32) << 16;
+                let low = self.audio.channels[2].lc & 0x0000FFFF;
+                self.audio.set_loc(2, high | low);
+            }
+            0x0C2 => {
+                let high = self.audio.channels[2].lc & 0xFFFF0000;
+                let low = val as u32;
+                self.audio.set_loc(2, high | low);
+            }
             0x0C4 => self.audio.set_len(2, val),
             0x0C6 => self.audio.set_per(2, val),
             0x0C8 => self.audio.set_vol(2, (val & 0x007F) as u8),
             0x0CA => self.audio.set_dat(2, val),
 
+            // Audio channel 3 pointer
+            0x0D0 => {
+                let high = (val as u32) << 16;
+                let low = self.audio.channels[3].lc & 0x0000FFFF;
+                self.audio.set_loc(3, high | low);
+            }
+            0x0D2 => {
+                let high = self.audio.channels[3].lc & 0xFFFF0000;
+                let low = val as u32;
+                self.audio.set_loc(3, high | low);
+            }
             0x0D4 => self.audio.set_len(3, val),
             0x0D6 => self.audio.set_per(3, val),
             0x0D8 => self.audio.set_vol(3, (val & 0x007F) as u8),

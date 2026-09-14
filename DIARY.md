@@ -3219,5 +3219,47 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: 100% formatted.
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
 
+---
+
+### [2026-09-14 11:32 CEST] — Step 2.7.5: Paula 4-Channel DMA Audio Subsystem Implementation
+- **Affected Subsystems**:
+  - `crates/audio/src/audio.rs` (implemented 4-channel 8-bit signed PCM streaming, period counting, volume multiplication, ADKCON modulation, stereo mixing, and ring buffer)
+  - `crates/paula/src/paula.rs` (integrated Level 4 audio IRQs bits 7..10 into INTREQ, wired AUDxLCH/LCL pointers, synchronized ADKCON and DMACON master/channel enables)
+  - `crates/audio/tests/test_audio.rs` (authored comprehensive 7-test unit suite)
+  - `ROADMAP.md` (marked Step 2.7.5 as completed)
+- **What Was Changed (The Concrete Reality)**:
+  - Upgraded `AudioChannel` in `crates/audio/src/audio.rs`:
+    - Implemented sequential 2-sample unpacking from `AUDxDAT` (high byte followed by low byte in 2's complement `i8`).
+    - Implemented period division down-counter from `AUDxPER`, triggering sample outputs upon counter expiration.
+    - Implemented 6-bit linear volume scaling (`(sample * vol) / 64`) with volume clamped to 0..64.
+    - Implemented buffer length tracking (`AUDxLEN`) and automatic DMA pointer loop reloading from `AUDxLC`, asserting `AUDxDSR` restart strobe and Level 4 audio interrupt upon buffer completion.
+    - Implemented cross-channel frequency and volume modulation driven by `ADKCON` bits 0..5 (channels 0..2 modulating volume and period of channels 1..3).
+  - Implemented stereo output mixing and FIFO ring buffer in `Audio`:
+    - Channel assignment: channels 0 & 3 to Right channel, channels 1 & 2 to Left channel.
+    - Fixed-capacity 1024-entry ring buffer (`ring_buffer: [StereoSample; 1024]`) with overwrite protection and safe sample popping.
+    - Added `step_cck_ram(&mut self, chip_ram: &[u8])` supporting autonomous cycle-by-cycle DMA fetches from Chip RAM.
+  - Integrated into `crates/paula/src/paula.rs`:
+    - Wired `AUDxLCH` and `AUDxLCL` (registers `$0A0/$0A2`, `$0B0/$0B2`, `$0C0/$0C2`, `$0D0/$0D2`) to write the 32-bit sample location pointers.
+    - Wired `step_cck` to poll `poll_channel_irq(ch)` across channels 0..3 and assert Level 4 interrupt bits (7..10) into `INTREQ`.
+    - Wired `ADKCON` writes to update `self.audio.set_adkcon()`.
+    - Wired `DMACON` writes to latch `dma_master` and update `self.audio.set_dma_enables()`.
+  - Authored a comprehensive 7-test unit suite in `crates/audio/tests/test_audio.rs`:
+    - `test_audio_channel_configuration_and_reset`: tests register fields, volume clamping, and reset.
+    - `test_audio_pcm_sample_streaming_and_period`: tests period countdown and 2-sample byte sequencing (+127 then -128) from `AUDxDAT`.
+    - `test_audio_volume_scaling`: tests 6-bit linear volume scaling across positive, negative, and zero volume levels.
+    - `test_audio_adkcon_volume_and_period_modulation`: validates Channel 0 modulating Channel 1 volume (`USE0V1`) and period (`USE0P1`).
+    - `test_audio_dma_looping_and_interrupt`: validates DMA word fetch from Chip RAM, buffer loop reloading, and Level 4 interrupt assertion.
+    - `test_audio_stereo_mixing_and_ring_buffer`: validates Left (CH1+CH2) and Right (CH0+CH3) stereo mixing.
+    - `test_audio_ring_buffer_wrapping`: validates circular ring buffer wrapping and capacity bounds.
+- **Architectural Rationale & Trade-Offs**:
+  - *Fixed Ring Buffer Architecture:* Utilizing a static 1024-sample inline buffer avoids dynamic heap allocation in the hot emulation path while providing ample headroom for host audio backend decoupling.
+  - *Pre-Tick DMA Fetch Invariance:* Fulfilling pending DMA requests at the start of `step_cck_ram` guarantees data latch readiness for the immediate sample tick.
+- **Verification & Test Results**:
+  - `cargo test -p audio`: All 7 unit tests passed cleanly in `test_audio.rs`.
+  - `cargo test -p paula`: All 5 unit and register tests passed cleanly.
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
+
+
 
 

@@ -145,13 +145,13 @@ This document outlines the phased development plan, hardware milestones, verific
     - Mid-frame sprite multiplexing (re-arming lower on the display with new control words).
     - Hardware playfield/sprite collision detection latches (`CLXDAT` / `CLXCON`).
     - Dedicated unit & integration tests in `crates/sprites/tests/test_sprites.rs` (100% verified across 8 unit tests).
-  - **Step 2.7.5: Paula 4-Channel DMA Audio Subsystem (`crates/audio`, `crates/paula`):**
+  - **[COMPLETED] Step 2.7.5: Paula 4-Channel DMA Audio Subsystem (`crates/audio`, `crates/paula`):**
     - 8-bit signed PCM sample streaming (2 samples per 16-bit word from `AUDxDAT`).
     - Period clock dividers (`AUDxPER`) and 6-bit linear volume multipliers (`AUDxVOL`: 0..64).
     - Agnus DMA word fetch from `AUDxLC`, length down-counter (`AUDxLEN`), buffer loop reload (`AUDxDSR`), and Level 4 `AUD0..AUD3` interrupt requests.
     - Cross-channel frequency and volume modulation via `ADKCON` bits 0..7.
     - Stereo channel mixer (Channels 0 & 3 to Right, Channels 1 & 2 to Left) with ring buffer output.
-    - Dedicated unit & integration tests in `crates/audio/tests/test_audio.rs`.
+    - Dedicated unit & integration tests in `crates/audio/tests/test_audio.rs` (100% verified across 7 unit tests).
   - **Step 2.7.6: Floppy MFM Controller & ADF Track Streaming Engine (`crates/floppy`, `crates/paula`):**
     - Standard 880 KB ADF sector image container (80 tracks $\times$ 2 heads $\times$ 11 sectors $\times$ 512 bytes).
     - Physical Amiga MFM track encoder and decoder with standard sync words (`$4489`), track headers, and checksums.
