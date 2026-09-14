@@ -43,15 +43,24 @@ Unlike backend systems, GUI components under `crates/gui` must not rely on fragi
 
 ---
 
-## 3. Test Placement Architecture: Dedicated `tests/` Directory Only (Zero Inline Tests in `src/`)
+## 3. Test Placement Architecture: Dedicated `tests/` Directory & 3-Tier Taxonomy
 
 To guarantee clean separation between production logic and test harnesses, all tests across the workspace must reside strictly in external test suites:
 
 1. **Dedicated `tests/` Directory Standard:**
    - For every workspace crate (e.g. `crates/audio/`, `crates/agnus/`, `crates/machine_loop/`), all unit tests, integration tests, and regressions **must be placed in `crates/<crate>/tests/`** (e.g. `crates/<crate>/tests/test_<crate>.rs` or `crates/<crate>/tests/*.rs`).
-2. **Strict Prohibition of Inline Tests in `src/`:**
+2. **Canonical Test Naming Convention (`test_<name>.rs`):**
+   - In Cargo, every `.rs` file directly inside `crates/<crate>/tests/` compiles into an independent test binary.
+   - **All test files must strictly start with the `test_` prefix** (e.g. `test_anomaly.rs`, `test_line.rs`). Bare filenames without `test_` are prohibited. Shared non-test helper modules must reside inside subdirectories (e.g. `tests/common/mod.rs`).
+3. **1:1 Multi-Module Parity:**
+   - Multi-module crates with distinct computational modules (e.g. `blitter`, `disassembler`, `floppy`, `config`, `physical_memory`) must maintain dedicated 1:1 unit test files mirroring each submodule (`line.rs` -> `test_line.rs`, `minterm.rs` -> `test_minterm.rs`, `mfm.rs` -> `test_mfm.rs`).
+4. **Strict Prohibition of Inline Tests in `src/`:**
    - Embedding `#[cfg(test)] mod tests { ... }` or `#[test]` inside `crates/<crate>/src/<crate>.rs` (or any other `src/*.rs` file) is strictly forbidden across all workspace crates.
-3. **Core Architectural Rationale:**
+5. **The 3-Tier Testing Taxonomy:**
+   - **Tier 1 (Isolated Unit Tests, L1):** Fast, isolated tests of single crates and algorithmic modules (< 2s). Run via `python tools/run_tests.py --unit`.
+   - **Tier 2 (Headless Multi-Crate Integration Tests, L2):** Cross-subsystem orchestration across machine loop, debugger, GUI, and bus routing (`machine_loop`, `debugger`, `gui`, `memory_bus`). Run via `python tools/run_tests.py --integration`.
+   - **Tier 3 (Silicon Verification & Verification Harness, L3):** Tom Harte physical silicon SingleStepTests, Cartesian DMA contention sweeps, vAmigaTS RGB24 viewport matchers, opcode benchmarks, and architecture rules. Run via `python tools/run_tests.py --harness`.
+6. **Core Architectural Rationale:**
    - **Pure Production Code:** Production code in `src/` remains lean, uncluttered, and readable. Static analysis, dead-code detection, and file size limits ($\le 800$ lines) reflect genuine runtime code.
    - **Decoupled API Verification:** External test files compile as distinct crates, forcing tests to exercise modules strictly through public interfaces as downstream consumers (`machine_loop`, `debugger`, `gui`) do.
    - **Zero Host Panics Validation:** Keeps runtime panic checks in CI (`test_zero_runtime_panics_or_unwraps`) strictly focused on production code without needing test-specific exemptions.

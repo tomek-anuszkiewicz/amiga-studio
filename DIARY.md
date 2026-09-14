@@ -3550,3 +3550,48 @@ Every future modification or implementation task must append an entry following 
   - *Explicit Phase Gates vs Silent Omission:* Documenting exactly when and how deferred tests are brought back into the active verification harness prevents tests from being forgotten when the emulator evolves from Phase 1 OCS Baseline into ECS and AGA.
 - **Verification & Test Results**:
   - `python tools/pre_flight.py`: All 6 quality gates passed 100%.
+
+---
+
+### [2026-09-14 17:20 CEST] — Workspace-Wide Unit vs. Integration Test Harmonization
+- **Affected Subsystems**:
+  - `crates/blitter/tests/` (added `test_line.rs` and `test_minterm.rs` achieving 1:1 multi-module unit test parity)
+  - `crates/test_runner/tests/` (renamed 7 unit test files to canonical `test_` prefix: `test_anomaly.rs`, `test_builder.rs`, `test_golden_row_hashes.rs`, `test_persistence.rs`, `test_platform.rs`, `test_prng.rs`, `test_stats.rs`)
+  - `crates/physical_memory/tests/` (renamed legacy `test_memory_bus.rs` -> `test_physical_memory.rs`)
+  - `tools/run_tests.py` (new 3-Tier test runner CLI: `--unit`, `--integration`, `--harness`, `--all`)
+  - `crates/test_runner/tests/test_architecture_rules.rs` (added `test_canonical_test_file_naming_convention` and `test_multi_module_crate_test_parity`)
+  - `.agents/rules/unit-testing-policy.md` (formalized 3-tier testing taxonomy, canonical test naming, and 1:1 multi-module parity)
+  - `Obsidian/Amiga/Design/Testing Strategy and Quality Assurance.md` (new comprehensive architectural testing specification)
+  - `Obsidian/Amiga/Design/General Architecture.md` and `CPU Instruction Benchmarking.md` (updated links and references)
+- **What Was Changed (The Concrete Reality)**:
+  - **1:1 Multi-Module Unit Test Parity for `blitter`**:
+    - Decomposed testing for `crates/blitter` by adding dedicated unit test files mirroring internal algorithmic submodules:
+      - `test_line.rs`: Unit tests for `LineDrawer`, octant direction selection (SUD, SUL, AUL), primary/secondary axis stepping, shift wrapping (ASH 15->0 and pointer advancement), error accumulator progression, sign updates, and `execute_line_blit`.
+      - `test_minterm.rs`: Exhaustive unit tests for `eval_minterm` across all 8 truth-table terms (LF0..LF7), classic Amiga graphic minterms (Cookie-cut `$CA`, Invert `$50`, Copy `$F0`, XOR `$5A`, OR `$FA`), and `apply_fill` in both inclusive and exclusive modes with multi-byte carry propagation.
+  - **Workspace Test File Naming Standardization (`test_<name>.rs`)**:
+    - Harmonized test filenames in `crates/test_runner/tests/` by adding the standard `test_` prefix to 7 unit test files (`test_anomaly.rs`, `test_builder.rs`, `test_golden_row_hashes.rs`, `test_persistence.rs`, `test_platform.rs`, `test_prng.rs`, `test_stats.rs`), establishing 100% naming uniformity across all 70+ test files in the workspace.
+    - Renamed legacy `crates/physical_memory/tests/test_memory_bus.rs` to `test_physical_memory.rs`, eliminating naming ambiguity with `crates/memory_bus/tests/`.
+  - **3-Tier Test Runner Tooling (`tools/run_tests.py`)**:
+    - Engineered a fast, zero-dependency test runner providing targeted execution tiers:
+      - `--unit`: Executes Tier 1 isolated unit tests across 24 peripheral, CPU, and chipset crates in < 10 seconds.
+      - `--integration`: Executes Tier 2 multi-crate orchestration suites (`machine_loop`, `debugger`, `gui`, `memory_bus`).
+      - `--harness`: Executes Tier 3 verification harness suites (architecture rules, Cartesian DMA, benchmark smoke).
+      - `--all`: Runs Tier 1 + Tier 2.
+  - **Automated Architecture Guardrail Hardening (`test_architecture_rules.rs`)**:
+    - Added `test_canonical_test_file_naming_convention()`: Asserts that 100% of `.rs` files directly inside any `crates/*/tests/` directory strictly start with `test_`.
+    - Added `test_multi_module_crate_test_parity()`: Asserts that all multi-module crates (`blitter`, `disassembler`, `floppy`, `config`, `physical_memory`) maintain dedicated 1:1 unit test files for each major computational submodule.
+  - **Design Documentation & Rules**:
+    - Authored `Obsidian/Amiga/Design/Testing Strategy and Quality Assurance.md` with complete Obsidian frontmatter properties, inverted-pyramid taxonomy, and bidirectional links to `General Architecture.md`.
+    - Synchronized `.agents/rules/unit-testing-policy.md` with the 3-tier testing taxonomy and CLI commands.
+- **Architectural Rationale & Trade-Offs**:
+  - *Tiered Velocity vs Monolithic Stalls:* In large Rust workspaces, running `cargo test --workspace` indiscriminately compiles dozens of integration binaries and runs heavy multi-chip simulations. Establishing the 3-tier taxonomy allows developers and agents to run fast unit tests (< 10s) during iterative development, while reserving full-machine orchestration and silicon suites for gate reviews.
+  - *Canonical Naming Uniformity:* Cargo compiles every `.rs` file directly under `tests/` as an independent test executable. Enforcing the `test_` prefix across 100% of test files prevents accidental orphan helpers or inconsistent naming across crates.
+- **Verification & Test Results**:
+  - `cargo test -p blitter`: All 17 tests passed across `test_blitter.rs` (10), `test_line.rs` (4), `test_minterm.rs` (3).
+  - `cargo test -p physical_memory --test test_physical_memory`: All 5 tests passed.
+  - `cargo test -p test_runner` (7 renamed suites): All 29 tests passed.
+  - `python tools/run_tests.py --unit`: PASSED in 9.48s.
+  - `python tools/run_tests.py --integration`: PASSED in 14.69s.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 20 architecture tests passed in 6.46s.
+  - `python tools/pre_flight.py`: All 6 pre-flight quality gates passed 100% cleanly.
+

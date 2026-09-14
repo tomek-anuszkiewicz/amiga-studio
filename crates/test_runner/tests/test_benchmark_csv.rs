@@ -22,8 +22,9 @@
 //! to silence a test failure is strictly prohibited by AGENTS.md and spec-compliance.md.
 //! =========================================================================================
 
-mod golden_row_hashes;
-pub use golden_row_hashes::GOLDEN_ROW_HASHES_324;
+#[path = "test_golden_row_hashes.rs"]
+mod test_golden_row_hashes;
+pub use test_golden_row_hashes::GOLDEN_ROW_HASHES_324;
 
 use std::fs;
 use std::path::{Path, PathBuf};

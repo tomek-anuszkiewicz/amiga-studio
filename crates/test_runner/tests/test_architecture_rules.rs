@@ -730,7 +730,7 @@ fn test_golden_hash_anti_tamper_policy_compliance() {
     let target_files = [
         ("test_benchmark_trace.rs", true),
         ("test_benchmark_csv.rs", true),
-        ("golden_row_hashes.rs", false),
+        ("test_golden_row_hashes.rs", false),
     ];
 
     let mut violations = Vec::new();
@@ -1321,6 +1321,110 @@ fn test_named_crate_roots_and_zero_generic_lib_rs() {
         violations.is_empty(),
         "Architecture Rule Violation: Crate root naming violations detected:\n{}\n\
         All workspace library crates must name their entry point `src/<crate_name>.rs` and configure `[lib] path` per .agents/rules/workspace-structure-and-reexports.md.",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn test_canonical_test_file_naming_convention() {
+    let repo_root = find_repo_root();
+    let crates_dir = repo_root.join("crates");
+
+    let mut violations = Vec::new();
+
+    let entries = fs::read_dir(&crates_dir).expect("Failed to read crates directory");
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() && path.join("Cargo.toml").exists() {
+            let crate_name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+
+            let tests_dir = path.join("tests");
+            if tests_dir.is_dir() {
+                if let Ok(dir_entries) = fs::read_dir(&tests_dir) {
+                    for file_entry in dir_entries.flatten() {
+                        let file_path = file_entry.path();
+                        if file_path.is_file()
+                            && file_path.extension().map_or(false, |ext| ext == "rs")
+                        {
+                            let file_name =
+                                file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+                            if !file_name.starts_with("test_") {
+                                violations.push(format!(
+                                    "crates/{}/tests/{}: Test file does not start with `test_` prefix",
+                                    crate_name, file_name
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Non-canonical test filenames detected:\n{}\n\
+        In Cargo workspaces, all integration test files directly inside `crates/<crate>/tests/` must strictly start with `test_` (e.g. `test_<name>.rs`) per .agents/rules/unit-testing-policy.md.",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn test_multi_module_crate_test_parity() {
+    let repo_root = find_repo_root();
+    let crates_dir = repo_root.join("crates");
+
+    let required_multi_module_tests: &[(&str, &[&str])] = &[
+        (
+            "blitter",
+            &["test_blitter.rs", "test_line.rs", "test_minterm.rs"],
+        ),
+        (
+            "disassembler",
+            &[
+                "test_align.rs",
+                "test_alu.rs",
+                "test_branch.rs",
+                "test_data.rs",
+                "test_ea.rs",
+            ],
+        ),
+        ("floppy", &["test_floppy.rs", "test_mfm.rs"]),
+        ("config", &["test_config.rs", "test_mutation.rs"]),
+        (
+            "physical_memory",
+            &[
+                "test_arbitration.rs",
+                "test_map.rs",
+                "test_physical_memory.rs",
+            ],
+        ),
+    ];
+
+    let mut violations = Vec::new();
+
+    for &(crate_name, expected_files) in required_multi_module_tests {
+        let tests_dir = crates_dir.join(crate_name).join("tests");
+        for &expected_file in expected_files {
+            let file_path = tests_dir.join(expected_file);
+            if !file_path.is_file() {
+                violations.push(format!(
+                    "crates/{}/tests/{}: Missing 1:1 modular unit test file for submodule",
+                    crate_name, expected_file
+                ));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Missing modular unit test files in multi-module crates:\n{}\n\
+        Multi-module crates must maintain 1:1 test parity with dedicated unit test suites for each major algorithmic submodule.",
         violations.join("\n")
     );
 }
