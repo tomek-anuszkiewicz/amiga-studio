@@ -3660,3 +3660,25 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/html-to-markdown/scripts/replace_placeholders.py`: Verified resolution of both `<image placeholder>` and `<crop>` tags, generating sanitized assets and valid `.txt` sidecars.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 346 files.
   - `python tools/pre_flight.py`: 100% compliant across all quality gates (Formatting, Attractors, AGENTS.md ceiling, Architecture rules: 18 passed).
+
+---
+
+### [2026-09-14 23:55 CEST] — Decoupling Conversion to LLM Prompts & HTML Asset Downloader Integration
+- **Affected Subsystems**:
+  - `.agents/skills/html-to-markdown/` (`SKILL.md`, `references/llm-transcription-prompt.md`, `scripts/download_assets.py`)
+- **What Was Changed (The Concrete Reality)**:
+  - Formally decoupled document transcription from mechanical conversion scripts, directing agents to pass HTML sources directly to LLM Multimodal Vision using a standalone, reusable prompt specification.
+  - Authored `references/llm-transcription-prompt.md`:
+    - Encapsulates the complete LLM prompt specification: Cardinal Rule of Conversion (100% fidelity, zero omissions/hallucinations), Non-Text Conversion Hierarchy (code blocks with aligned assembly columns, GFM tables, HTML tables with Unicode entities, monotone text, ASCII art, image placeholders).
+    - Detailed Table of Contents (TOC) requirements: clean `## Contents` header, hierarchical nested bullet indentation (`##` $\rightarrow$ `- [Title](#anchor)`, `###` $\rightarrow$ `  - [Subtitle](#anchor)`), standardized lowercase slug anchors with punctuation stripped, and mandatory 100% link resolution.
+    - Strict Motorola Hex backtick rule (`` `$00000004` ``) for KaTeX protection, mathematical KaTeX syntax, and Obsidian callout mapping table (`> [!NOTE]`, `> [!WARNING]`, `> [!IMPORTANT]`).
+  - Implemented `scripts/download_assets.py`:
+    - Scans HTML documents for `<img>` references, extracts local files or downloads remote HTTP/HTTPS images into `assets/`.
+    - Sanitizes asset filenames and ensures Git-tracked technical sidecars (`<image_path>.txt`) are created per `.agents/rules/asset-descriptions.md`.
+  - Overhauled `SKILL.md` to establish the streamlined 5-phase operational workflow (Asset Download $\to$ LLM Transcription with prompt specification $\to$ Placeholder Resolution $\to$ Visual QA $\to$ Link Integrity).
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of Brittle DOM Scripting:* Arbitrary HTML documents cannot be parsed deterministically with regex or BeautifulSoup without producing layout regressions (such as broken TOC anchors or corrupted code blocks). Passing the unified prompt specification directly to LLM vision yields semantically sound, publication-grade Markdown.
+  - *Automated Asset Pipeline:* Pre-downloading and organizing assets before transcription ensures that image links and sidecars are immediately available and resolvable.
+- **Verification & Test Results**:
+  - `python .agents/skills/html-to-markdown/scripts/download_assets.py`: Verified image extraction and sidecar generation on `68kPrefetch.html` (`image001.gif` and `image001.gif.txt`).
+  - `python tools/pre_flight.py`: Passed 100% cleanly across all gates (Formatting, Attractors, AGENTS.md ceiling: 13,576 bytes, Architecture rules: 18 passed).
