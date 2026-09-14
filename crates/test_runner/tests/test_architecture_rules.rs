@@ -1206,19 +1206,34 @@ fn test_every_crate_has_dedicated_external_tests_suite() {
                 continue;
             }
 
-            let rs_test_count = fs::read_dir(&tests_dir)
-                .map(|dir_entries| {
-                    dir_entries
-                        .flatten()
-                        .filter(|e| e.path().extension().map_or(false, |ext| ext == "rs"))
-                        .count()
-                })
-                .unwrap_or(0);
+            let mut rs_test_count = 0;
+            let mut total_test_functions = 0;
+
+            if let Ok(dir_entries) = fs::read_dir(&tests_dir) {
+                for file_entry in dir_entries.flatten() {
+                    let file_path = file_entry.path();
+                    if file_path.extension().map_or(false, |ext| ext == "rs") {
+                        rs_test_count += 1;
+                        if let Ok(content) = fs::read_to_string(&file_path) {
+                            for line in content.lines() {
+                                if line.trim().starts_with("#[test]") {
+                                    total_test_functions += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             if rs_test_count == 0 {
                 missing_tests_crates.push(format!(
                     "crates/{} -> tests/ directory contains zero .rs test files",
                     crate_name
+                ));
+            } else if total_test_functions == 0 {
+                missing_tests_crates.push(format!(
+                    "crates/{} -> tests/ directory contains {} .rs files, but zero active #[test] functions",
+                    crate_name, rs_test_count
                 ));
             }
         }

@@ -3447,6 +3447,54 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_singlestep -- test_cmp_l`: Passed.
   - `python tools/pre_flight.py`: All 4 quality gates (Formatting, Attractor Discipline, AGENTS.md Size, Architecture Rules) passed 100%.
 
+---
+
+### [2026-09-14 14:35 CEST] — Workspace Unit Test Suite Audit, Peripheral Hardening & Debugger Machine Stepping Resolution
+- **Affected Subsystems**:
+  - `crates/machine_loop/src/machine_loop.rs` (`A500Machine::step_cck()` return type, `A500Machine::step_instruction()`)
+  - `crates/debugger/src/session.rs` (`DebuggerSession::step_instruction()`, `run_slice()`, `live_cpu_state`)
+  - `crates/debugger/tests/test_debugger.rs` (relative CCK advancement assertion)
+  - `crates/frame_builder/tests/test_frame_builder.rs` (expanded unit tests covering colors, clipping, bounds, CCK pixels, viewport extraction)
+  - `crates/joystick/tests/test_joystick.rs` (expanded unit tests covering cardinal and diagonal directions, fire buttons, joy_dat isolation)
+  - `crates/mouse/tests/test_mouse.rs` (expanded unit tests covering motion, 8-bit wrapping, 3 buttons, joy0dat isolation)
+  - `crates/parallel_port/tests/test_parallel_port.rs` (expanded unit tests covering data lines, direction masking, handshake lines)
+  - `crates/serial_port/tests/test_serial_port.rs` (expanded unit tests covering SERDAT/SERDATR, SERPER baud divisor, handshake lines, step_cck)
+  - `crates/test_runner/tests/golden_row_hashes.rs` (added `test_golden_row_hashes_integrity` anti-tamper test)
+  - `crates/test_runner/tests/test_architecture_rules.rs` (strengthened `test_every_crate_has_dedicated_external_tests_suite` to assert active `#[test]` functions)
+- **What Was Changed (The Concrete Reality)**:
+  - **Full Quantitative Unit Test Audit**:
+    - Conducted comprehensive audit across all 27 workspace crates, verifying that 100% of crates have dedicated `crates/<crate>/tests/` test suites with zero inline `#[test]` functions in `src/`.
+    - Identified 5 peripheral crates with minimal single-test suites (`frame_builder`, `joystick`, `mouse`, `parallel_port`, `serial_port`) and expanded them into thorough, production-grade test suites covering edge cases, wrapping math, and hardware registers.
+  - **Debugger & Machine Loop Cycle Stepping Resolution**:
+    - Resolved a silicon deadlock where `DebuggerSession::step_instruction()` stepped the CPU in an isolated loop against physical memory without advancing peripheral chips or Agnus DMA channels. When Chip RAM was blocked by DMA contention, `chip_ram_blocked` never cleared, causing infinite hangs during headless GUI tests and debugger stepping.
+    - Updated `A500Machine::step_cck() -> bool` to return whether the CPU instruction retired on the current cycle.
+    - Updated `A500Machine::step_instruction()` to loop on `step_cck()` until the instruction retires, halting, or stopping.
+    - Refactored `DebuggerSession::step_instruction()` to delegate to `self.machine.step_instruction()`, advancing all machine hardware in lockstep.
+    - Added `live_cpu_state: Option<CpuState>` tracking to restore the live CPU snapshot when scrubbing temporal history back to live head.
+  - **Peripheral Unit Test Suite Hardening**:
+    - `frame_builder`: Added tests for `rgb444_to_argb32()` nibble replication, `is_in_display_window()` standard and MSB-extended DIWSTOP window bounds, pixel boundary clipping, `set_cck_pixels()` quad-pixel generation, `step_cck()` beam lifecycle, and `extract_vamiga_raw_viewport()`.
+    - `joystick`: Added tests for all 4 cardinal and 4 diagonal directions, bitwise XOR truth tables, fire button state independence from `joy_dat()`, and reset.
+    - `mouse`: Added tests for relative motion accumulation, 8-bit counter overflow/underflow ($0 \to 255$ and $255 \to 0$), 3-button states and isolation from `joy_dat()`, and reset.
+    - `parallel_port`: Added tests for 8-bit bidirectional data lines, direction masking, handshake signals (`strobe`, `busy`, `paper_out`, `select`), and reset.
+    - `serial_port`: Added tests for UART transmitter flags (`TBE` and `TSRE`), `SERPER` baud divisor and 9-bit framing bit, RS-232 modem handshake lines (`cts`, `rts`, `dsr`, `cd`), and CCK clock stepping.
+  - **Anti-Tamper & Architecture Rule Guardrail Hardening**:
+    - Converted `golden_row_hashes.rs` from an unexecuted constant definition file into an active test verifying that all 324 row hashes are non-zero, unique, and strictly partitioned across the 3 benchmark profiles (108 per profile).
+    - Upgraded `test_every_crate_has_dedicated_external_tests_suite` in `test_architecture_rules.rs` to scan `.rs` test files and ensure that every crate contains at least one active `#[test]` function, closing the gap where empty test files or data constants could satisfy the directory existence check.
+- **Architectural Rationale & Trade-Offs**:
+  - *Lockstep Machine Stepping Invariant:* In a cycle-exact Amiga emulator, the CPU cannot be stepped in isolation from Agnus and the MemoryBus. Stepping the complete machine ensures DMA contention, wait states, and register mutations resolve deterministically in both free-run and debugger single-step modes.
+  - *Strict Test Directory Policy:* Placing all unit tests in external `tests/` suites ensures production code remains completely free of test scaffolding, enabling clean dead-code analysis and adherence to the 800-line limit.
+- **Verification & Test Results**:
+  - `cargo test -p frame_builder`: 8 passed.
+  - `cargo test -p joystick`: 3 passed.
+  - `cargo test -p mouse`: 4 passed.
+  - `cargo test -p parallel_port`: 4 passed.
+  - `cargo test -p serial_port`: 4 passed.
+  - `cargo test -p debugger`: All 9 test suites (42 tests) passed in 0.46s.
+  - `cargo test -p gui --test test_interactions`: All 36 headless integration tests passed in 0.36s.
+  - `cargo test -p test_runner --test golden_row_hashes`: 1 passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed in 6.08s.
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates (Formatting, Attractor Discipline, AGENTS.md Size, Architecture Rules) passed 100%.
+
 
 
 

@@ -337,3 +337,67 @@ pub const GOLDEN_ROW_HASHES_324: [u64; 324] = [
     0x3BDD5CB862720EEF, // [322] TRAP,TRAP #0,Immediate,System,4E40,34,149992500
     0x12F702430A978749, // [323] TRAPV,TRAPV,Implied,System,4E76,4,149992500
 ];
+
+#[test]
+fn test_golden_row_hashes_integrity() {
+    assert_eq!(
+        GOLDEN_ROW_HASHES_324.len(),
+        324,
+        "Expected exactly 324 golden row hashes (108 per profile across 3 profiles)"
+    );
+
+    // All hashes must be non-zero
+    for (idx, &hash) in GOLDEN_ROW_HASHES_324.iter().enumerate() {
+        assert_ne!(
+            hash, 0,
+            "Golden row hash at index {} is zero, which indicates uninitialized or corrupt vector",
+            idx
+        );
+    }
+
+    // 3 distinct profiles: Quick (0..108), Standard (108..216), Thorough (216..324)
+    let quick = &GOLDEN_ROW_HASHES_324[0..108];
+    let standard = &GOLDEN_ROW_HASHES_324[108..216];
+    let thorough = &GOLDEN_ROW_HASHES_324[216..324];
+
+    let mut quick_set = std::collections::HashSet::new();
+    for &h in quick {
+        assert!(
+            quick_set.insert(h),
+            "Duplicate hash 0x{:016X} detected within Quick profile",
+            h
+        );
+    }
+    assert_eq!(quick_set.len(), 108);
+
+    let mut standard_set = std::collections::HashSet::new();
+    for &h in standard {
+        assert!(
+            standard_set.insert(h),
+            "Duplicate hash 0x{:016X} detected within Standard profile",
+            h
+        );
+    }
+    assert_eq!(standard_set.len(), 108);
+
+    let mut thorough_set = std::collections::HashSet::new();
+    for &h in thorough {
+        assert!(
+            thorough_set.insert(h),
+            "Duplicate hash 0x{:016X} detected within Thorough profile",
+            h
+        );
+    }
+    assert_eq!(thorough_set.len(), 108);
+
+    // Overall uniqueness across all 324 entries
+    let mut all_set = std::collections::HashSet::new();
+    for &h in &GOLDEN_ROW_HASHES_324 {
+        assert!(
+            all_set.insert(h),
+            "Cross-profile collision or duplicate hash 0x{:016X} detected in golden catalog",
+            h
+        );
+    }
+    assert_eq!(all_set.len(), 324);
+}
