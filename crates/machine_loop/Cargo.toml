@@ -6,15 +6,10 @@ license.workspace = true
 
 [dependencies]
 agnus = { workspace = true }
-audio = { workspace = true }
-blitter = { workspace = true }
 cia = { workspace = true }
 config = { workspace = true }
-copper = { workspace = true }
 denise = { workspace = true }
-dma = { workspace = true }
 floppy = { workspace = true }
-frame_builder = { workspace = true }
 game_ports = { workspace = true }
 joystick = { workspace = true }
 keyboard = { workspace = true }
@@ -26,5 +21,3 @@ parallel_port = { workspace = true }
 paula = { workspace = true }
 rtc = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serial_port = { workspace = true }
-sprites = { workspace = true }

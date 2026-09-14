@@ -52,7 +52,7 @@ fn test_machine_cold_and_warm_reset() {
     // 1. Simulate running machine: alter RAM, advance clocks, alter chip registers
     machine.step_cycles(500);
     assert_eq!(machine.cck, 500);
-    machine.dma.write_dmacon(0x8200); // Enable DMA
+    machine.agnus.dma.write_dmacon(0x8200); // Enable DMA
     machine.paula.write_intena(0x8080); // Enable Audio 0 IRQ
     let _ = machine.memory_bus().write_byte(0x001000, 0x42);
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42);
@@ -60,14 +60,14 @@ fn test_machine_cold_and_warm_reset() {
     // 2. Perform warm reset: preserves RAM, resets CCK to 0, resets chips
     machine.reset_warm();
     assert_eq!(machine.cck, 0);
-    assert_eq!(machine.dma.dmacon, 0x0000);
+    assert_eq!(machine.agnus.dma.dmacon, 0x0000);
     assert_eq!(machine.paula.intena, 0x0000);
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42); // Preserved!
 
     // 3. Perform cold reset: zeroes RAM, resets CCK to 0, resets chips
     machine.reset_cold();
     assert_eq!(machine.cck, 0);
-    assert_eq!(machine.dma.dmacon, 0x0000);
+    assert_eq!(machine.agnus.dma.dmacon, 0x0000);
     assert_eq!(machine.paula.intena, 0x0000);
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x00); // Zeroed!
 }

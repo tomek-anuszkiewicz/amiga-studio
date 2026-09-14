@@ -6,4 +6,6 @@ license.workspace = true
 
 [dependencies]
 config = { workspace = true }
+frame_builder = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+sprites = { workspace = true }

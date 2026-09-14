@@ -12,12 +12,6 @@ denise = { workspace = true }
 paula = { workspace = true }
 cia = { workspace = true }
 rtc = { workspace = true }
-copper = { workspace = true }
-blitter = { workspace = true }
-dma = { workspace = true }
-sprites = { workspace = true }
-frame_builder = { workspace = true }
-audio = { workspace = true }
 floppy = { workspace = true }
 
 [dev-dependencies]

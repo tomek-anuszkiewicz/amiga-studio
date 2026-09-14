@@ -6,4 +6,7 @@ license.workspace = true
 
 [dependencies]
 config = { workspace = true }
+blitter = { workspace = true }
+copper = { workspace = true }
+dma = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

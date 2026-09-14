@@ -3,6 +3,9 @@
 //! 4-channel DMA audio, floppy disk MFM controller, serial UART transceiver,
 //! and central interrupt multiplexer (INTENA, INTREQ -> IPL 1..6).
 
+pub use audio;
+pub use serial_port;
+
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +15,10 @@ pub const PAULA_MUTATION_CAPACITY: usize = 32;
 /// Paula custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Paula {
+    /// 4-channel DMA audio subsystem
+    pub audio: audio::Audio,
+    /// RS-232 serial UART transceiver
+    pub serial_port: serial_port::SerialPort,
     // --- Active Latched Registers (Read is NOW) ---
     /// Interrupt Enable register (INTENA / INTENAR at $DFF09A / $DFF01C)
     pub intena: u16,
@@ -61,6 +68,8 @@ impl Paula {
     /// Creates a new Paula instance
     pub fn new() -> Self {
         Self {
+            audio: audio::Audio::new(),
+            serial_port: serial_port::SerialPort::new(),
             intena: 0,
             intreq: 0,
             adkcon: 0,
@@ -86,6 +95,8 @@ impl Paula {
 
     /// Resets Paula interrupt and audio registers to power-on defaults
     pub fn reset(&mut self) {
+        self.audio.reset();
+        self.serial_port.reset();
         self.intena = 0;
         self.intreq = 0;
         self.adkcon = 0;
@@ -111,6 +122,8 @@ impl Paula {
     /// Advances Paula timers and processes in-flight register mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
     pub fn step_cck(&mut self) -> [Option<(u16, u16)>; 8] {
+        self.audio.step_cck();
+        self.serial_port.step_cck();
         let mut due = [None; 8];
         let mut due_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {

@@ -3,16 +3,11 @@
 //! Tier 0 top-level machine chassis that owns and coordinates all peer subsystems,
 //! custom chips, coprocessors, and peripheral devices in a flat, decoupled structure.
 
-pub use agnus;
-pub use audio;
-pub use blitter;
+pub use agnus::{self, blitter, copper, dma};
 pub use cia;
 pub use config;
-pub use copper;
-pub use denise;
-pub use dma;
+pub use denise::{self, frame_builder, sprites};
 pub use floppy;
-pub use frame_builder;
 pub use game_ports;
 pub use joystick;
 pub use keyboard;
@@ -21,12 +16,10 @@ pub use memory_bus;
 pub use memory_bus::MemoryBus;
 pub use mouse;
 pub use parallel_port;
-pub use paula;
+pub use paula::{self, audio, serial_port};
 pub use physical_memory;
 pub use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 pub use rtc;
-pub use serial_port;
-pub use sprites;
 
 use config::A500Config;
 use m68000::Cpu;
@@ -46,36 +39,20 @@ pub struct A500Machine {
     pub rtc: rtc::RtcMsm6242b,
 
     // --- Custom Chipsets ---
-    /// Agnus (beam counters, chip RAM bus arbitration)
+    /// Agnus (beam counters, copper, blitter, dma, chip RAM bus arbitration)
     pub agnus: agnus::Agnus,
-    /// Denise (video control, palette, collision registers)
+    /// Denise (video control, sprites, frame builder, palette, collision registers)
     pub denise: denise::Denise,
-    /// Paula (interrupt request / enable arbitration)
+    /// Paula (audio, serial UART, interrupt request / enable arbitration)
     pub paula: paula::Paula,
     /// CIA-A (timers, TOD, port A/B, keyboard interface, overlay)
     pub cia_a: cia::Cia,
     /// CIA-B (timers, TOD, port A/B, parallel handshakes)
     pub cia_b: cia::Cia,
 
-    // --- Coprocessors & Display Engines ---
-    /// Agnus Copper coprocessor
-    pub copper: copper::Copper,
-    /// Agnus 4-channel DMA Blitter
-    pub blitter: blitter::Blitter,
-    /// Agnus DMA slot arbiter & scheduler
-    pub dma: dma::DmaScheduler,
-    /// Denise 8 hardware sprite engines
-    pub sprites: sprites::Sprites,
-    /// Denise raster scanline pixel compositor & frame buffer
-    pub frame_builder: frame_builder::FrameBuilder,
-    /// Paula 4-channel 8-bit DMA audio engine
-    pub audio: audio::Audio,
-
     // --- Peripherals & Controller Devices ---
     /// Paula 3.5" DD floppy disk drive controller & mechanics
     pub floppy: floppy::FloppyController,
-    /// Paula RS-232 serial UART transceiver
-    pub serial_port: serial_port::SerialPort,
     /// MOS 6500/1 keyboard microcontroller with reset logic
     pub keyboard: keyboard::Keyboard,
     /// Amiga dual controller game ports (Port 1 Mouse / Port 2 Joystick)
@@ -96,12 +73,6 @@ impl A500Machine {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            copper: &mut self.copper,
-            blitter: &mut self.blitter,
-            dma: &mut self.dma,
-            sprites: &mut self.sprites,
-            frame_builder: &mut self.frame_builder,
-            audio: &mut self.audio,
             floppy: &mut self.floppy,
         }
     }
@@ -122,15 +93,7 @@ impl A500Machine {
         let cia_b = cia::Cia::new(cia::CiaId::B);
         let rtc = rtc::RtcMsm6242b::new(config.rtc());
 
-        let copper = copper::Copper::new();
-        let blitter = blitter::Blitter::new();
-        let dma = dma::DmaScheduler::new();
-        let sprites = sprites::Sprites::new();
-        let frame_builder = frame_builder::FrameBuilder::new();
-        let audio = audio::Audio::new();
-
         let floppy = floppy::FloppyController::new();
-        let serial_port = serial_port::SerialPort::new();
         let keyboard = keyboard::Keyboard::new();
         let game_ports = game_ports::GamePorts::new();
         let parallel_port = parallel_port::ParallelPort::new();
@@ -146,14 +109,7 @@ impl A500Machine {
             paula,
             cia_a,
             cia_b,
-            copper,
-            blitter,
-            dma,
-            sprites,
-            frame_builder,
-            audio,
             floppy,
-            serial_port,
             keyboard,
             game_ports,
             parallel_port,
@@ -174,14 +130,7 @@ impl A500Machine {
         self.paula.reset();
         self.cia_a.reset();
         self.cia_b.reset();
-        self.copper.reset();
-        self.blitter.reset();
-        self.dma.reset();
-        self.sprites.reset();
-        self.frame_builder.reset();
-        self.audio.reset();
         self.floppy.reset();
-        self.serial_port.reset();
         self.keyboard.reset();
         self.game_ports.reset();
         self.parallel_port.reset();
@@ -200,14 +149,7 @@ impl A500Machine {
         self.paula.reset();
         self.cia_a.reset();
         self.cia_b.reset();
-        self.copper.reset();
-        self.blitter.reset();
-        self.dma.reset();
-        self.sprites.reset();
-        self.frame_builder.reset();
-        self.audio.reset();
         self.floppy.reset();
-        self.serial_port.reset();
         self.keyboard.reset();
         self.game_ports.reset();
         self.parallel_port.reset();
@@ -285,44 +227,28 @@ impl A500Machine {
     /// Advances all peer custom chips, coprocessors, and peripheral subsystems by exactly 1 Color Clock (~280 ns),
     /// dispatching matured actions, advancing RTC, and arbitrating interrupts.
     pub fn step_subsystems_cck(&mut self) {
-        // 1. Advance Agnus raster beam counters and mutation pipeline
+        // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
         let agnus_due = self.agnus.step_cck();
         for item in agnus_due.iter().flatten() {
             self.dispatch_agnus_action(item.0, item.1);
         }
-        let beam = self.agnus.beam();
-
-        // 2. Step Copper coprocessor with beam coordinates
-        self.copper.step_cck(beam);
-
-        // 3. Step Blitter engine
-        self.blitter.step_cck();
-
-        // 4. Step DMA scheduler and evaluate Chip RAM contention
-        self.dma.step_cck();
-        self.agnus.chip_ram_blocked = self
-            .dma
-            .is_chip_ram_blocked(beam.hpos, self.blitter.is_busy);
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
 
-        // 5. Step Denise video serializer and mutation pipeline
-        let denise_due = self.denise.step_cck();
+        // 2. Step Denise (steps sprites, frame_builder, video serializer, and mutation pipeline)
+        let beam = self.agnus.beam();
+        let denise_due = self.denise.step_cck(beam);
         for item in denise_due.iter().flatten() {
             self.dispatch_denise_action(item.0, item.1);
         }
-        self.sprites.step_cck(beam);
-        self.frame_builder.step_cck(beam);
 
-        // 6. Step Paula audio, floppy, serial transceivers, and mutation pipeline
+        // 3. Step Paula (steps audio, serial_port, and mutation pipeline)
         let paula_due = self.paula.step_cck();
         for item in paula_due.iter().flatten() {
             self.dispatch_paula_action(item.0, item.1);
         }
-        self.audio.step_cck();
         self.floppy.step_cck();
-        self.serial_port.step_cck();
 
-        // 7. Step CIAs and dispatch E-Clock mutations
+        // 4. Step CIAs and dispatch E-Clock mutations
         let cia_a_due = self.cia_a.step_cck();
         for item in cia_a_due.iter().flatten() {
             self.dispatch_cia_action(cia::CiaId::A, item.0, item.1);
@@ -332,10 +258,10 @@ impl A500Machine {
             self.dispatch_cia_action(cia::CiaId::B, item.0, item.1);
         }
 
-        // 8. Step Real-Time Clock
+        // 5. Step Real-Time Clock
         self.rtc.step_cck(1);
 
-        // 9. Cross-Chip Cascades (Physical Pins)
+        // 6. Cross-Chip Cascades (Physical Pins)
         if let Some(chip_ram_engaged) = self.cia_a.ovl_transition() {
             if chip_ram_engaged {
                 self.physical_memory.map_chip_ram_to_low_memory();
@@ -345,7 +271,7 @@ impl A500Machine {
         }
         self.poll_peripheral_pins();
 
-        // 10. Central interrupt priority line (IPL 1-6) arbitration
+        // 7. Central interrupt priority line (IPL 1-6) arbitration
         let ipl = self.resolve_ipl();
         self.cpu.state.ipl = ipl;
     }
@@ -368,12 +294,6 @@ impl A500Machine {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            copper: &mut self.copper,
-            blitter: &mut self.blitter,
-            dma: &mut self.dma,
-            sprites: &mut self.sprites,
-            frame_builder: &mut self.frame_builder,
-            audio: &mut self.audio,
             floppy: &mut self.floppy,
         };
         self.cpu.step_cck(&mut bus);

@@ -5,18 +5,12 @@
 //! peripheral controllers (`CIA-A`, `CIA-B`), and expansion hardware (`RTC`).
 
 use agnus::Agnus;
-use audio::Audio;
-use blitter::Blitter;
 use cia::{Cia, CiaId};
-use copper::Copper;
 use denise::Denise;
-use dma::DmaScheduler;
 use floppy::FloppyController;
-use frame_builder::FrameBuilder;
 use paula::Paula;
 use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 use rtc::RtcMsm6242b;
-use sprites::Sprites;
 
 pub use physical_memory;
 
@@ -29,12 +23,6 @@ pub struct MemoryBus<'a> {
     pub cia_a: &'a mut Cia,
     pub cia_b: &'a mut Cia,
     pub rtc: &'a mut RtcMsm6242b,
-    pub copper: &'a mut Copper,
-    pub blitter: &'a mut Blitter,
-    pub dma: &'a mut DmaScheduler,
-    pub sprites: &'a mut Sprites,
-    pub frame_builder: &'a mut FrameBuilder,
-    pub audio: &'a mut Audio,
     pub floppy: &'a mut FloppyController,
 }
 
@@ -204,45 +192,52 @@ impl<'a> MemoryBus<'a> {
     pub fn dispatch_agnus_action(&mut self, reg: u16, val: u16) {
         match reg & 0x1FE {
             0x096 => {
-                self.dma.write_dmacon(val);
+                self.agnus.dma.write_dmacon(val);
                 let dmaen = (self.agnus.dmacon & 0x0200) != 0;
-                self.audio
+                self.paula
+                    .audio
                     .set_dma_enables((self.agnus.dmacon & 0x000F) as u8, dmaen);
                 self.floppy
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0010) != 0);
-                self.sprites
+                self.denise
+                    .sprites
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0020) != 0);
-                self.blitter
+                self.agnus
+                    .blitter
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0040) != 0);
-                self.blitter.set_bltpri((self.agnus.dmacon & 0x0400) != 0);
-                self.copper
+                self.agnus
+                    .blitter
+                    .set_bltpri((self.agnus.dmacon & 0x0400) != 0);
+                self.agnus
+                    .copper
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0080) != 0);
-                self.frame_builder
+                self.denise
+                    .frame_builder
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0100) != 0);
             }
             0x088 => {
-                self.copper.strobe_jump1(self.agnus.cop1lc);
+                self.agnus.copper.strobe_jump1(self.agnus.cop1lc);
             }
             0x08A => {
-                self.copper.strobe_jump2(self.agnus.cop2lc);
+                self.agnus.copper.strobe_jump2(self.agnus.cop2lc);
             }
             0x080 | 0x082 => {
-                self.copper.set_cop1lc(self.agnus.cop1lc);
+                self.agnus.copper.set_cop1lc(self.agnus.cop1lc);
             }
             0x084 | 0x086 => {
-                self.copper.set_cop2lc(self.agnus.cop2lc);
+                self.agnus.copper.set_cop2lc(self.agnus.cop2lc);
             }
             0x02E => {
-                self.copper.set_copcon(val);
+                self.agnus.copper.set_copcon(val);
             }
             0x058 => {
-                self.blitter.sync_pointers(
+                self.agnus.blitter.sync_pointers(
                     self.agnus.bltapt,
                     self.agnus.bltbpt,
                     self.agnus.bltcpt,
                     self.agnus.bltdpt,
                 );
-                self.blitter.sync_controls(
+                self.agnus.blitter.sync_controls(
                     self.agnus.bltcon0,
                     self.agnus.bltcon1,
                     self.agnus.bltafwm,
@@ -252,7 +247,7 @@ impl<'a> MemoryBus<'a> {
                     self.agnus.bltcmod,
                     self.agnus.bltdmod,
                 );
-                self.blitter.trigger_blit(val);
+                self.agnus.blitter.trigger_blit(val);
             }
             0x100 => {
                 self.denise.set_bplcon0(val);
@@ -270,25 +265,25 @@ impl<'a> MemoryBus<'a> {
     /// Action method dispatch for committed Paula registers
     pub fn dispatch_paula_action(&mut self, reg: u16, val: u16) {
         match reg & 0x1FE {
-            0x0A4 => self.audio.set_len(0, val),
-            0x0A6 => self.audio.set_per(0, val),
-            0x0A8 => self.audio.set_vol(0, (val & 0x7F) as u8),
-            0x0AA => self.audio.set_dat(0, val),
+            0x0A4 => self.paula.audio.set_len(0, val),
+            0x0A6 => self.paula.audio.set_per(0, val),
+            0x0A8 => self.paula.audio.set_vol(0, (val & 0x7F) as u8),
+            0x0AA => self.paula.audio.set_dat(0, val),
 
-            0x0B4 => self.audio.set_len(1, val),
-            0x0B6 => self.audio.set_per(1, val),
-            0x0B8 => self.audio.set_vol(1, (val & 0x7F) as u8),
-            0x0BA => self.audio.set_dat(1, val),
+            0x0B4 => self.paula.audio.set_len(1, val),
+            0x0B6 => self.paula.audio.set_per(1, val),
+            0x0B8 => self.paula.audio.set_vol(1, (val & 0x7F) as u8),
+            0x0BA => self.paula.audio.set_dat(1, val),
 
-            0x0C4 => self.audio.set_len(2, val),
-            0x0C6 => self.audio.set_per(2, val),
-            0x0C8 => self.audio.set_vol(2, (val & 0x7F) as u8),
-            0x0CA => self.audio.set_dat(2, val),
+            0x0C4 => self.paula.audio.set_len(2, val),
+            0x0C6 => self.paula.audio.set_per(2, val),
+            0x0C8 => self.paula.audio.set_vol(2, (val & 0x7F) as u8),
+            0x0CA => self.paula.audio.set_dat(2, val),
 
-            0x0D4 => self.audio.set_len(3, val),
-            0x0D6 => self.audio.set_per(3, val),
-            0x0D8 => self.audio.set_vol(3, (val & 0x7F) as u8),
-            0x0DA => self.audio.set_dat(3, val),
+            0x0D4 => self.paula.audio.set_len(3, val),
+            0x0D6 => self.paula.audio.set_per(3, val),
+            0x0D8 => self.paula.audio.set_vol(3, (val & 0x7F) as u8),
+            0x0DA => self.paula.audio.set_dat(3, val),
 
             0x020 | 0x022 => self.floppy.set_dskpt(self.agnus.dskpt),
             0x024 => self.floppy.set_dsklen(val),
@@ -298,7 +293,8 @@ impl<'a> MemoryBus<'a> {
                 let dmaen = (self.agnus.dmacon & 0x0200) != 0;
                 self.floppy
                     .set_dma_enabled(dmaen && (self.paula.dma_enables & 0x0010) != 0);
-                self.audio
+                self.paula
+                    .audio
                     .set_dma_enables((self.paula.dma_enables & 0x000F) as u8, dmaen);
             }
             _ => {}

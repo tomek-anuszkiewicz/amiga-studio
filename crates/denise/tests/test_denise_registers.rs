@@ -25,7 +25,7 @@ fn test_color_write_propagation_delay_1_cck() {
     assert_eq!(denise.read_color(0), 0);
 
     // Step 1 CCK (Cycle T+1): matures and commits!
-    denise.step_cck();
+    denise.step_cck(config::BeamPosition::default());
     assert_eq!(denise.read_color(0), 0x0F00);
 }
 
@@ -40,7 +40,7 @@ fn test_bplcon0_denise_propagation_delay_1_cck() {
     assert_eq!(denise.bplcon0, 0);
 
     // After 1 CCK: commits
-    denise.step_cck();
+    denise.step_cck(config::BeamPosition::default());
     assert_eq!(denise.bplcon0, 0x8200);
 }
 

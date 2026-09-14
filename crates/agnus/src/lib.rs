@@ -3,6 +3,10 @@
 //! Master bus controller, DMA arbiter, raster beam counter, and host for
 //! the Copper coprocessor and 4-channel DMA Blitter.
 
+pub use blitter;
+pub use copper;
+pub use dma;
+
 pub use config::AgnusModel;
 use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
@@ -24,6 +28,12 @@ pub const AGNUS_MUTATION_CAPACITY: usize = 64;
 pub struct Agnus {
     /// Active Agnus chip hardware model (8370, 8371, 8372A)
     pub model: AgnusModel,
+    /// Agnus Copper coprocessor
+    pub copper: copper::Copper,
+    /// Agnus 4-channel DMA Blitter
+    pub blitter: blitter::Blitter,
+    /// Agnus DMA slot arbiter & scheduler
+    pub dma: dma::DmaScheduler,
     /// Horizontal raster beam counter (0..227 CCK)
     pub hpos: u16,
     /// Vertical scanline counter (0..312 PAL, 0..262 NTSC)
@@ -97,6 +107,9 @@ impl Agnus {
     pub fn new(model: AgnusModel) -> Self {
         Self {
             model,
+            copper: copper::Copper::new(),
+            blitter: blitter::Blitter::new(),
+            dma: dma::DmaScheduler::new(),
             hpos: 0,
             vpos: 0,
             lof: false,
@@ -141,6 +154,9 @@ impl Agnus {
 
     /// Resets Agnus registers and beam counters to power-on defaults
     pub fn reset(&mut self) {
+        self.copper.reset();
+        self.blitter.reset();
+        self.dma.reset();
         self.hpos = 0;
         self.vpos = 0;
         self.lof = false;
@@ -182,7 +198,8 @@ impl Agnus {
         self.mutations = [None; AGNUS_MUTATION_CAPACITY];
     }
 
-    /// Advances raster beam position and processes in-flight register mutations by 1 Color Clock.
+    /// Advances raster beam position, steps embedded coprocessors and schedulers,
+    /// and processes in-flight register mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
     pub fn step_cck(&mut self) -> [Option<(u16, u16)>; 8] {
         // 1. Advance horizontal and vertical raster beam counters
@@ -201,7 +218,16 @@ impl Agnus {
             }
         }
 
-        // 2. Process and commit due register mutations
+        // 2. Step embedded coprocessors and schedulers
+        let beam = self.beam();
+        self.copper.step_cck(beam);
+        self.blitter.step_cck();
+        self.dma.step_cck();
+        self.chip_ram_blocked = self
+            .dma
+            .is_chip_ram_blocked(beam.hpos, self.blitter.is_busy);
+
+        // 3. Process and commit due register mutations
         let mut due = [None; 8];
         let mut due_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {
@@ -256,10 +282,10 @@ impl Agnus {
     #[inline]
     pub fn read_dmaconr(&self) -> u16 {
         let mut val = self.dmacon & 0x07FF;
-        if self.blitter_busy {
+        if self.blitter_busy || self.blitter.is_busy {
             val |= 0x8000; // BBUSY
         }
-        if self.blitter_zero {
+        if self.blitter_zero || self.blitter.is_zero {
             val |= 0x4000; // BZERO
         }
         val

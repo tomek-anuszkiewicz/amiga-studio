@@ -7,14 +7,14 @@ fn test_dmacon_routing_to_all_subsystems() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
 
     // Initially all DMA channels are disabled
-    assert!(!machine.copper.dma_enabled);
-    assert!(!machine.blitter.dma_enabled);
-    assert!(!machine.blitter.bltpri);
-    assert!(!machine.sprites.dma_enabled);
+    assert!(!machine.agnus.copper.dma_enabled);
+    assert!(!machine.agnus.blitter.dma_enabled);
+    assert!(!machine.agnus.blitter.bltpri);
+    assert!(!machine.denise.sprites.dma_enabled);
     assert!(!machine.floppy.dma_enabled);
-    assert!(!machine.frame_builder.dma_enabled);
+    assert!(!machine.denise.frame_builder.dma_enabled);
     for ch in 0..4 {
-        assert!(!machine.audio.channels[ch].dma_enabled);
+        assert!(!machine.paula.audio.channels[ch].dma_enabled);
     }
 
     // Write DMACON ($DFF096) = 0x83FF:
@@ -30,14 +30,14 @@ fn test_dmacon_routing_to_all_subsystems() {
     machine.step_cck();
 
     // Verify all subsystems received their DMA enables
-    assert!(machine.copper.dma_enabled);
-    assert!(machine.blitter.dma_enabled);
-    assert!(!machine.blitter.bltpri);
-    assert!(machine.sprites.dma_enabled);
+    assert!(machine.agnus.copper.dma_enabled);
+    assert!(machine.agnus.blitter.dma_enabled);
+    assert!(!machine.agnus.blitter.bltpri);
+    assert!(machine.denise.sprites.dma_enabled);
     assert!(machine.floppy.dma_enabled);
-    assert!(machine.frame_builder.dma_enabled);
+    assert!(machine.denise.frame_builder.dma_enabled);
     for ch in 0..4 {
-        assert!(machine.audio.channels[ch].dma_enabled);
+        assert!(machine.paula.audio.channels[ch].dma_enabled);
     }
 
     // Write DMACON = 0x8400 (SET BLTPRI)
@@ -47,7 +47,7 @@ fn test_dmacon_routing_to_all_subsystems() {
     );
     machine.step_cck();
     machine.step_cck();
-    assert!(machine.blitter.bltpri);
+    assert!(machine.agnus.blitter.bltpri);
 
     // Write DMACON = 0x0200 (CLR DMAEN master enable)
     assert_eq!(
@@ -58,13 +58,13 @@ fn test_dmacon_routing_to_all_subsystems() {
     machine.step_cck();
 
     // Master DMAEN is now 0; all subsystems must be disabled
-    assert!(!machine.copper.dma_enabled);
-    assert!(!machine.blitter.dma_enabled);
-    assert!(!machine.sprites.dma_enabled);
+    assert!(!machine.agnus.copper.dma_enabled);
+    assert!(!machine.agnus.blitter.dma_enabled);
+    assert!(!machine.denise.sprites.dma_enabled);
     assert!(!machine.floppy.dma_enabled);
-    assert!(!machine.frame_builder.dma_enabled);
+    assert!(!machine.denise.frame_builder.dma_enabled);
     for ch in 0..4 {
-        assert!(!machine.audio.channels[ch].dma_enabled);
+        assert!(!machine.paula.audio.channels[ch].dma_enabled);
     }
 }
 
@@ -87,7 +87,7 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
     machine.step_cck();
 
     assert_eq!(machine.agnus.cop1lc, 0x00041000);
-    assert_eq!(machine.copper.cop1lc, 0x00041000);
+    assert_eq!(machine.agnus.copper.cop1lc, 0x00041000);
 
     // Strobe COPJMP1 ($088)
     assert_eq!(
@@ -98,7 +98,7 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
     machine.step_cck();
 
     // Copper PC should have reloaded from COP1LC
-    assert_eq!(machine.copper.cop_pc, 0x00041000);
+    assert_eq!(machine.agnus.copper.cop_pc, 0x00041000);
 
     // Program COP2LC via bus: COP2LCH ($084) = 0x0005, COP2LCL ($086) = 0x2000
     assert_eq!(
@@ -113,7 +113,7 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
     machine.step_cck();
 
     assert_eq!(machine.agnus.cop2lc, 0x00052000);
-    assert_eq!(machine.copper.cop2lc, 0x00052000);
+    assert_eq!(machine.agnus.copper.cop2lc, 0x00052000);
 
     // Strobe COPJMP2 ($08A)
     assert_eq!(
@@ -124,7 +124,7 @@ fn test_copper_strobe_jumps_and_pointer_sync() {
     machine.step_cck();
 
     // Copper PC should have reloaded from COP2LC
-    assert_eq!(machine.copper.cop_pc, 0x00052000);
+    assert_eq!(machine.agnus.copper.cop_pc, 0x00052000);
 }
 
 #[test]
@@ -151,7 +151,7 @@ fn test_blitter_size_triggers_busy_and_syncs_pointers() {
     assert_eq!(machine.agnus.bltcon0, 0x09F0);
 
     // Initially blitter is idle
-    assert!(!machine.blitter.is_busy);
+    assert!(!machine.agnus.blitter.is_busy);
 
     // Write BLTSIZE ($058) = 0x0404 (4 lines of 4 words)
     assert_eq!(
@@ -162,10 +162,10 @@ fn test_blitter_size_triggers_busy_and_syncs_pointers() {
     machine.step_cck();
 
     // Blitter should have synced pointers and triggered busy
-    assert!(machine.blitter.is_busy);
-    assert_eq!(machine.blitter.bltapt, 0x00012344);
-    assert_eq!(machine.blitter.bltcon0, 0x09F0);
-    assert_eq!(machine.blitter.bltsize, 0x0404);
+    assert!(machine.agnus.blitter.is_busy);
+    assert_eq!(machine.agnus.blitter.bltapt, 0x00012344);
+    assert_eq!(machine.agnus.blitter.bltcon0, 0x09F0);
+    assert_eq!(machine.agnus.blitter.bltsize, 0x0404);
 }
 
 #[test]

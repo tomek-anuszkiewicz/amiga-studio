@@ -3,8 +3,11 @@
 //! Video pixel serializer, bitplane shifters, Dual Playfield, HAM6, EHB,
 //! 32-color palette (COLOR00..COLOR31), hardware sprites, and game port counters.
 
+pub use frame_builder;
+pub use sprites;
+
 pub use config::DeniseModel;
-use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
+use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
 /// Total number of hardware color palette registers
@@ -18,6 +21,10 @@ pub const DENISE_MUTATION_CAPACITY: usize = 64;
 pub struct Denise {
     /// Active Denise chip hardware model (8362 OCS, 8373 ECS)
     pub model: DeniseModel,
+    /// Denise 8 hardware sprite engines
+    pub sprites: sprites::Sprites,
+    /// Denise raster scanline pixel compositor & frame buffer
+    pub frame_builder: frame_builder::FrameBuilder,
 
     // --- Active Latched Registers (Read is NOW) ---
     /// Bitplane Control 0 (plane count BPU, HIRES, HAM, DBLPF, COLOR)
@@ -72,6 +79,8 @@ impl Denise {
     pub fn new(model: DeniseModel) -> Self {
         Self {
             model,
+            sprites: sprites::Sprites::new(),
+            frame_builder: frame_builder::FrameBuilder::new(),
             bplcon0: 0,
             bplcon1: 0,
             bplcon2: 0,
@@ -99,6 +108,8 @@ impl Denise {
 
     /// Resets Denise registers to power-on defaults
     pub fn reset(&mut self) {
+        self.sprites.reset();
+        self.frame_builder.reset();
         self.bplcon0 = 0;
         self.bplcon1 = 0;
         self.bplcon2 = 0;
@@ -123,9 +134,13 @@ impl Denise {
         self.mutations = [None; DENISE_MUTATION_CAPACITY];
     }
 
-    /// Advances Denise pixel pipeline and processes in-flight mutations by 1 Color Clock.
+    /// Advances Denise pixel pipeline, steps sprites and frame builder,
+    /// and processes in-flight mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; 8] {
+    pub fn step_cck(&mut self, beam: BeamPosition) -> [Option<(u16, u16)>; 8] {
+        self.sprites.step_cck(beam);
+        self.frame_builder.step_cck(beam);
+
         let mut due = [None; 8];
         let mut due_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {

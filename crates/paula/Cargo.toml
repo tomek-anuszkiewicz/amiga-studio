@@ -5,5 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+audio = { workspace = true }
 config = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+serial_port = { workspace = true }

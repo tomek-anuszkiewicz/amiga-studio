@@ -4,20 +4,14 @@
 //! Custom Chips ($DFFxxx), CIAs ($BFDxxx/$BFExxx), and RTC ($DCxxxx).
 
 use agnus::Agnus;
-use audio::Audio;
-use blitter::Blitter;
 use cia::{Cia, CiaId};
 use config::{A500Config, RtcModel, VideoStandard};
-use copper::Copper;
 use denise::{Denise, DeniseModel};
-use dma::DmaScheduler;
 use floppy::FloppyController;
-use frame_builder::FrameBuilder;
 use memory_bus::MemoryBus;
 use paula::Paula;
 use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 use rtc::RtcMsm6242b;
-use sprites::Sprites;
 
 struct TestMotherboard {
     mem: PhysicalMemory,
@@ -27,12 +21,6 @@ struct TestMotherboard {
     cia_a: Cia,
     cia_b: Cia,
     rtc: RtcMsm6242b,
-    copper: Copper,
-    blitter: Blitter,
-    dma: DmaScheduler,
-    sprites: Sprites,
-    frame_builder: FrameBuilder,
-    audio: Audio,
     floppy: FloppyController,
 }
 
@@ -48,12 +36,6 @@ impl TestMotherboard {
             cia_a: Cia::new(CiaId::A),
             cia_b: Cia::new(CiaId::B),
             rtc: RtcMsm6242b::new(RtcModel::Msm6242b),
-            copper: Copper::new(),
-            blitter: Blitter::new(),
-            dma: DmaScheduler::new(),
-            sprites: Sprites::new(),
-            frame_builder: FrameBuilder::new(),
-            audio: Audio::new(),
             floppy: FloppyController::new(),
         }
     }
@@ -67,12 +49,6 @@ impl TestMotherboard {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            copper: &mut self.copper,
-            blitter: &mut self.blitter,
-            dma: &mut self.dma,
-            sprites: &mut self.sprites,
-            frame_builder: &mut self.frame_builder,
-            audio: &mut self.audio,
             floppy: &mut self.floppy,
         }
     }

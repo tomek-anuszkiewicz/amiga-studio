@@ -2833,4 +2833,26 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/hooks/check_polish.py --git`: Passed.
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architectural unit tests passed.
 
+---
+
+### [2026-09-14 03:45 CEST] — Hierarchical Chipset Ownership Refactoring (Agnus, Denise, Paula)
+- **Affected Subsystems**:
+  - `crates/agnus`: Embedded `pub copper: copper::Copper`, `pub blitter: blitter::Blitter`, and `pub dma: dma::DmaScheduler`. Added sub-component initialization to `new()`, resetting to `reset()`, and unified step execution to `step_cck()`. Updated `read_dmaconr()` to query `blitter.is_busy` and `blitter.is_zero`. Re-exported `blitter`, `copper`, and `dma`.
+  - `crates/denise`: Embedded `pub sprites: sprites::Sprites` and `pub frame_builder: frame_builder::FrameBuilder`. Added sub-component initialization, reset, and raster-synchronized stepping via `step_cck(beam: BeamPosition)`. Re-exported `sprites` and `frame_builder`.
+  - `crates/paula`: Embedded `pub audio: audio::Audio` and `pub serial_port: serial_port::SerialPort`. Added sub-component initialization, reset, and cycle-by-cycle stepping in `step_cck()`. Re-exported `audio` and `serial_port`.
+  - `crates/memory_bus`: Pruned standalone sub-component fields (`copper`, `blitter`, `dma`, `sprites`, `frame_builder`, `audio`) from `MemoryBus<'a>` and dependencies from `Cargo.toml`. Routed all custom register actions directly through owning chips (`agnus.copper`, `agnus.blitter`, `agnus.dma`, `denise.sprites`, `denise.frame_builder`, `paula.audio`). Updated integration tests in `tests/test_router.rs`.
+  - `crates/machine_loop`: Pruned 7 redundant flat fields from `A500Machine` and dependencies from `Cargo.toml`. Simplified `new()`, `reset_cold()`, `reset_warm()`, and `memory_bus()`. Streamlined `step_subsystems_cck()` so chips autonomously advance their internal engines. Updated test suites (`test_action_dispatch.rs`, `test_machine_loop.rs`).
+- **What Was Changed (The Concrete Reality)**:
+  - Migrated 7 previously flat sibling components into authentic physical silicon ownership hierarchies matching actual Amiga MOS/CSG chip dies.
+  - Re-exported sub-component modules from their parent chip crates, ensuring backward compatibility.
+  - Preserved 100% of register mutation pipelines, action dispatches, and physical delay timing without changing external behavior.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminating flat sibling fields prevents architectural drift where the machine chassis or memory bus router manages individual internal chip engines directly.
+  - Ownership now mirrors physical silicon boundaries: Agnus coordinates Copper, Blitter, and DMA contention; Denise coordinates Sprites and the video FrameBuilder; Paula coordinates 4-channel DMA Audio and the serial UART.
+- **Verification & Test Results**:
+  - `cargo check --workspace --tests`: Passed cleanly with zero warnings/errors.
+  - `cargo test --workspace`: All test suites across all crates passed.
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly (Formatting: 100%, Attractors: clean, AGENTS.md ceiling: compliant, Architecture Rules: 17/17 tests passed).
+
+
 
