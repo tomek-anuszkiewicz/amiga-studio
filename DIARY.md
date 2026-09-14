@@ -3534,10 +3534,19 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed in 6.10s.
   - `python tools/pre_flight.py`: All 6 pre-flight quality gates passed cleanly.
 
+---
 
-
-
-
-
-
-
+### [2026-09-14 17:05 CEST] — Roadmap Synchronization & Deferred Test Suite Verification Gate Anchoring
+- **Affected Subsystems**:
+  - `ROADMAP.md` (anchored deferred test gates in Phase 2 ECS, Phase 3 AGA, and Step 6 Full-OS/MFM Floppy)
+  - `crates/test_runner/src/vamiga/` (architectural inquiry resolution on test filters and scope)
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user inquiry regarding whether all 2,077 vAmigaTS test ADFs are executed blindly or filtered, and whether deferred tests are documented in the roadmap for future milestones.
+  - Formally codified and anchored the *4-Tier Test Suite Categorization, Filtering & Deferred Execution Matrix* across the roadmap's later milestones:
+    - Anchored **Deferred ECS vAmigaTS Test Suite Execution Gate** directly under *Phase 2: Enhanced Chipset (ECS) & Later Models* to unfilter and verify all tests requiring ECS hardware (`_ecs.raw`, `_plus.raw`, `BPLCON3`, SuperHires, 1 MB/2MB Agnus registers).
+    - Anchored **Deferred AGA vAmigaTS Test Suite Execution Gate** under *Phase 3: Advanced Graphics Architecture (AGA / A1200)* to unfilter and verify AGA tests (`_A1200.raw`, 68EC020, 24-bit palette, 8 bitplanes).
+    - Anchored **Deferred Full-OS & MFM Floppy vAmigaTS Test Suites Verification Gate** under *Step 6: Real-World Amiga Workloads* to execute the 9 non-standard test ADFs via physical floppy MFM track streaming and Kickstart 1.3 `dos.library`/`intuition.library` bootstrap.
+- **Architectural Rationale & Trade-Offs**:
+  - *Explicit Phase Gates vs Silent Omission:* Documenting exactly when and how deferred tests are brought back into the active verification harness prevents tests from being forgotten when the emulator evolves from Phase 1 OCS Baseline into ECS and AGA.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: All 6 quality gates passed 100%.

@@ -45,7 +45,13 @@ This document outlines the phased development plan, hardware milestones, verific
 ### Phase 2: Enhanced Chipset (ECS) & Later Models
 - **A500 Rev 6A (1 MB Chip):** Fat Agnus 8372A with 1 MB Chip RAM jumper configuration.
 - **A500 Plus:** Full ECS chipset (Agnus 8372A 1MB, Denise 8373 with Productivity modes), Kickstart 2.04 (512 KB), onboard battery-backed RTC.
+- **Deferred ECS vAmigaTS Test Suite Execution Gate:**
+  - Unfilter and execute all vAmigaTS test suites deferred during Phase 1 that require ECS silicon features (`_ecs.raw`, `_plus.raw`, `BPLCON3`, SuperHires, 1 MB / 2 MB Agnus registers, and Productivity scan modes) per the *Test Suite Categorization, Filtering & Deferred Execution Matrix* in Step 2.
+
+### Phase 3: Advanced Graphics Architecture (AGA / A1200)
 - **A1200 (AGA):** Motorola 68EC020 (32-bit), 2 MB Chip RAM, Alice, Lisa, 24-bit color palette.
+- **Deferred AGA vAmigaTS Test Suite Execution Gate:**
+  - Unfilter and execute all vAmigaTS test suites requiring AGA silicon features (`_A1200.raw`, 68EC020 CPU, 24-bit color palette, 8 bitplanes) deferred during Phase 1 & 2.
 
 ### Peripheral Extensions (Post-Baseline)
 - **4-Player Joystick Adapter:** Parallel port 4-joystick adapter for multiplayer games (e.g. *Super Skidmarks*, *Dynablaster*).
@@ -172,6 +178,9 @@ This document outlines the phased development plan, hardware milestones, verific
     - **Configuration Integrity Guard:** Verifies matching hardware profiles (RAM sizes, chipset mode) before restoring state to prevent emulator panics or guest crashes.
 
 ### Step 6: Real-World Amiga Workloads, Host Cache Profiling & Pipeline Optimization (Post-Boot)
+- **Deferred Full-OS & MFM Floppy vAmigaTS Test Suites Verification Gate:**
+  - Execute the 9 non-standard test ADFs using physical floppy MFM track streaming via the `crates/floppy` controller.
+  - Unfilter and execute all vAmigaTS tests requiring full Kickstart 1.3 bootstrap (`dos.library`, `intuition.library`, and filesystem calls) deferred from Phase 1 bare-metal execution.
 - **End-to-End Bootable ADF Integration Testing (`cargo test -p test_runner --test test_boot_adf`):**
   - Load and execute established Amiga benchmarks and diagnostic suites directly from floppy disk images (e.g. `AmigaTestKit.adf`, `SysInfo.adf`, Dhrystone) on the authentic Kickstart / Amiga chipset stack.
   - Leverage existing address guards, breakpoint traps, and instruction bounds for parameterized termination.
