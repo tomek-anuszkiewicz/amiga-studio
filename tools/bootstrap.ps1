@@ -23,6 +23,8 @@ param(
     [switch]$Doc,
     [switch]$Ref,
     [string]$RefItem,
+    [Alias("AllMirrors")]
+    [switch]$AllSources,
     [switch]$All
 )
 
@@ -265,11 +267,16 @@ if ($Ref) {
     if (-not (Test-Path $RefScript)) {
         Write-Error "bootstrap_reference.ps1 not found at: $RefScript"
     } else {
+        $RefParams = @{}
         if ($RefItem) {
-            & $RefScript -Item $RefItem
+            $RefParams["Item"] = $RefItem
         } else {
-            & $RefScript -All
+            $RefParams["All"] = $true
         }
+        if ($AllSources) {
+            $RefParams["AllSources"] = $true
+        }
+        & $RefScript @RefParams
     }
 }
 

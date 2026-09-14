@@ -9,6 +9,8 @@
 
     Features:
     - Multi-source resilience: 2-3 verified mirrors per document with automated failover.
+    - All-sources mode (-AllSources / -AllMirrors): downloads from all available mirrors
+      for comprehensive testing or archival redundancy.
     - Full web crawling for multi-page articles (e.g. Kuba Winnicki's 16-page 'Achtung! Amiga').
     - Clear error reporting if all mirror sources for an item are unavailable.
     - Intentional Git visibility: temp/ is not hidden by .gitignore so temporary raw assets
@@ -19,6 +21,10 @@
 
 .PARAMETER Item
     Downloads a specific document by name or alias (e.g. "Hardware Reference Manual", "Prefetch").
+
+.PARAMETER AllSources
+    Downloads from ALL mirrors and sources for each document, rather than stopping after
+    the first successful mirror. Also aliased as -AllMirrors.
 
 .PARAMETER Destination
     Custom destination directory (defaults to Obsidian/Amiga/Reference/temp).
@@ -32,8 +38,8 @@
 .EXAMPLE
     .\tools\bootstrap_reference.ps1 -List
     .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual"
-    .\tools\bootstrap_reference.ps1 -Item "Undocumented features"
-    .\tools\bootstrap_reference.ps1 -All
+    .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual" -AllSources
+    .\tools\bootstrap_reference.ps1 -All -AllSources
 #>
 
 [CmdletBinding()]
@@ -41,6 +47,8 @@ param(
     [switch]$All,
     [string]$Item,
     [string]$Destination,
+    [Alias("AllMirrors")]
+    [switch]$AllSources,
     [switch]$Force,
     [switch]$List
 )
@@ -73,17 +81,22 @@ $Catalog = @(
         Description = "Addison-Wesley 2nd Edition (1989) covering OCS/ECS, A1000/A500/A2000"
         Mirrors     = @(
             @{
-                Name = "Internet Archive (1989 2nd Ed PDF)"
-                Url  = "https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
+                Name    = "Internet Archive (1989 2nd Ed PDF)"
+                Url     = "https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
+                File    = "Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
+                MinSize = 30000000
             },
             @{
-                Name = "Internet Archive (1991 3rd Ed ECS PDF)"
-                Url  = "https://archive.org/download/amiga-hardware-reference-manual-3rd-edition/Amiga_Hardware_Reference_Manual_3rd_edition.pdf"
+                Name    = "Internet Archive (1991 3rd Ed ECS PDF)"
+                Url     = "https://archive.org/download/amiga-hardware-reference-manual-3rd-edition/Amiga_Hardware_Reference_Manual_3rd_edition.pdf"
+                File    = "Amiga_Hardware_Reference_Manual_3rd_edition.pdf"
+                MinSize = 50000000
             },
             @{
-                Name = "AmigaDev Elowar ADCD 2.1 (Online HTML Guide)"
-                Url  = "http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0000.html"
-                File = "Hardware_Manual_guide_node0000.html"
+                Name    = "AmigaDev Elowar ADCD 2.1 (Online HTML Guide)"
+                Url     = "http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node0000.html"
+                File    = "Hardware_Manual_guide_node0000.html"
+                MinSize = 3000
             }
         )
     },
@@ -97,16 +110,22 @@ $Catalog = @(
         Description = "Commodore-Amiga OEM Manual (1987) with schematics and expansion architecture"
         Mirrors     = @(
             @{
-                Name = "Internet Archive (1987 OEM PDF, Primary Scan)"
-                Url  = "https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual.pdf"
+                Name    = "Internet Archive (1987 OEM PDF, Primary Scan)"
+                Url     = "https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual.pdf"
+                File    = "Commodore_Amiga_A500-A2000_Technical_Reference_Manual.pdf"
+                MinSize = 15000000
             },
             @{
-                Name = "Internet Archive (Alternate Clean Scan PDF)"
-                Url  = "https://archive.org/download/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf"
+                Name    = "Internet Archive (Alternate Clean Scan PDF)"
+                Url     = "https://archive.org/download/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf"
+                File    = "Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf"
+                MinSize = 10000000
             },
             @{
-                Name = "Internet Archive (Searchable OCR Text PDF)"
-                Url  = "https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual_text.pdf"
+                Name    = "Internet Archive (Searchable OCR Text PDF)"
+                Url     = "https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual_text.pdf"
+                File    = "Commodore_Amiga_A500-A2000_Technical_Reference_Manual_text.pdf"
+                MinSize = 5000000
             }
         )
     },
@@ -120,16 +139,22 @@ $Catalog = @(
         Description = "Motorola M68000PM/AD Rev 1 (1992) covering 68000 and CPU32 instruction sets"
         Mirrors     = @(
             @{
-                Name = "Internet Archive (M68000PM/AD Rev 1 1992 PDF, Complete)"
-                Url  = "https://archive.org/download/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition.pdf"
+                Name    = "Internet Archive (M68000PM/AD Rev 1 1992 PDF, Complete)"
+                Url     = "https://archive.org/download/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition.pdf"
+                File    = "M68000_Programmers_Reference_Manual_4th_Edition.pdf"
+                MinSize = 100000000
             },
             @{
-                Name = "Internet Archive (Motorola Family PRM Alternate Scan)"
-                Url  = "https://archive.org/download/m68000familyprog0000unse/m68000familyprog0000unse.pdf"
+                Name    = "Internet Archive (1984 PRM Scan PDF)"
+                Url     = "https://archive.org/download/M68000PRM/M68000PRM.pdf"
+                File    = "M68000PRM.pdf"
+                MinSize = 4000000
             },
             @{
-                Name = "Internet Archive (Searchable OCR Text PDF)"
-                Url  = "https://archive.org/download/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition_text.pdf"
+                Name    = "Internet Archive (Searchable OCR Text PDF)"
+                Url     = "https://archive.org/download/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition_text.pdf"
+                File    = "M68000_Programmers_Reference_Manual_text.pdf"
+                MinSize = 4000000
             }
         )
     },
@@ -143,16 +168,22 @@ $Catalog = @(
         Description = "Motorola M68000UM/AD Rev 8 (1993) with bus cycle timing and electrical tables"
         Mirrors     = @(
             @{
-                Name = "Internet Archive / Bitsavers (Rev 8 1993 PDF)"
-                Url  = "https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf"
+                Name    = "Internet Archive / Bitsavers (Rev 8 1993 PDF)"
+                Url     = "https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf"
+                File    = "M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8.pdf"
+                MinSize = 8000000
             },
             @{
-                Name = "Internet Archive (Motorola Microprocessors UM Alternate Scan)"
-                Url  = "https://archive.org/download/m6800081632bitmi0000unse_l8l8/m6800081632bitmi0000unse_l8l8.pdf"
+                Name    = "Internet Archive (Rev 8 Alternate Archive Item)"
+                Url     = "https://archive.org/download/bitsavers_motorola6868000MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf"
+                File    = "M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_mirror2.pdf"
+                MinSize = 8000000
             },
             @{
-                Name = "Internet Archive (Searchable OCR Text PDF)"
-                Url  = "https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993_text.pdf"
+                Name    = "Internet Archive / Bitsavers (Motorola 68000 Family Reference 1988 PDF)"
+                Url     = "https://archive.org/download/bitsavers_motorola68rence1988_23248083/M68000_Family_Reference_1988.pdf"
+                File    = "M68000_Family_Reference_1988.pdf"
+                MinSize = 15000000
             }
         )
     },
@@ -166,16 +197,22 @@ $Catalog = @(
         Description = "Jorge Cwik's authoritative microarchitectural prefetch queue study (v1.3, 2005)"
         Mirrors     = @(
             @{
-                Name = "Pasti Project (Original Live Web)"
-                Url  = "http://pasti.fxatari.com/68kdocs/68kPrefetch.html"
+                Name    = "Pasti Project (Original Live Web)"
+                Url     = "http://pasti.fxatari.com/68kdocs/68kPrefetch.html"
+                File    = "68kPrefetch.html"
+                MinSize = 20000
             },
             @{
-                Name = "Wayback Machine (2021 Snapshot)"
-                Url  = "https://web.archive.org/web/20210211153835id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html"
+                Name    = "Wayback Machine (2021 Snapshot)"
+                Url     = "https://web.archive.org/web/20210211153835id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html"
+                File    = "68kPrefetch_wayback_2021.html"
+                MinSize = 20000
             },
             @{
-                Name = "Wayback Machine (2019 Snapshot)"
-                Url  = "https://web.archive.org/web/20190317072535id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html"
+                Name    = "Wayback Machine (2019 Snapshot)"
+                Url     = "https://web.archive.org/web/20190317072535id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html"
+                File    = "68kPrefetch_wayback_2019.html"
+                MinSize = 20000
             }
         )
     },
@@ -208,14 +245,17 @@ $Catalog = @(
             @{
                 Name    = "Achtung! Amiga (Original Live Web)"
                 BaseUrl = "https://www.winnicki.net/amiga/achtung/"
+                SubDir  = ""
             },
             @{
                 Name    = "Wayback Machine (2022 Snapshot)"
                 BaseUrl = "https://web.archive.org/web/20220330190533id_/https://www.winnicki.net/amiga/achtung/"
+                SubDir  = "wayback_2022"
             },
             @{
                 Name    = "Wayback Machine (2016 Snapshot)"
                 BaseUrl = "https://web.archive.org/web/20160410052327id_/http://www.winnicki.net/amiga/achtung/"
+                SubDir  = "wayback_2016"
             }
         )
     },
@@ -224,18 +264,27 @@ $Catalog = @(
         Name        = "Amiga Guru Book"
         Folder      = "Amiga Guru Book"
         Type        = "SingleFile"
-        TargetFile  = "The_Amiga_Guru_Book.pdf"
-        MinSize     = 100000000
-        Description = "Ralph Babel's 2nd Edition Abridged (1993) Amiga system reference"
+        TargetFile  = "gurubook-info.lha"
+        MinSize     = 30000
+        Description = "Ralph Babel's 2nd Edition Abridged (1993) Amiga system reference overview"
         Mirrors     = @(
             @{
-                Name = "vdoc.pub Community Scan (740-Page PDF)"
-                Url  = "https://vdoc.pub/documents/the-amiga-guru-book-3g783k1i91t0"
+                Name    = "Aminet Documentation & Errata Index (LHA Archive)"
+                Url     = "http://aminet.net/docs/misc/gurubook-info.lha"
+                File    = "gurubook-info.lha"
+                MinSize = 30000
             },
             @{
-                Name = "Aminet Documentation & Errata Index (LHA)"
-                Url  = "http://aminet.net/docs/misc/gurubook-info.lha"
-                File = "gurubook-info.lha"
+                Name    = "Aminet Main Mirror (LHA Archive)"
+                Url     = "http://main.aminet.net/docs/misc/gurubook-info.lha"
+                File    = "gurubook-info_main.lha"
+                MinSize = 30000
+            },
+            @{
+                Name    = "Aminet Readme File"
+                Url     = "http://aminet.net/docs/misc/gurubook-info.readme"
+                File    = "gurubook-info.readme"
+                MinSize = 100
             }
         )
     }
@@ -258,7 +307,8 @@ function Show-CatalogList {
         $idx = 1
         foreach ($m in $item.Mirrors) {
             $mUrl = if ($m.Url) { $m.Url } else { $m.BaseUrl }
-            Write-Host "      $idx. $($m.Name)" -ForegroundColor White
+            $mFile = if ($m.File) { " (File: $($m.File))" } elseif ($m.SubDir) { " (SubDir: $($m.SubDir))" } else { "" }
+            Write-Host "      $idx. $($m.Name)$mFile" -ForegroundColor White
             Write-Host "         $mUrl" -ForegroundColor DarkGray
             $idx++
         }
@@ -291,35 +341,41 @@ function Download-SingleFile {
     param(
         [hashtable]$Item,
         [string]$TargetDir,
-        [bool]$ForceDownload
+        [bool]$ForceDownload,
+        [bool]$AllSourcesMode
     )
-
-    $TargetFileName = $Item.TargetFile
-    $DestinationPath = Join-Path $TargetDir $TargetFileName
-
-    if (-not $ForceDownload -and (Test-Path $DestinationPath)) {
-        $CurrentSize = (Get-Item $DestinationPath).Length
-        if ($CurrentSize -ge $Item.MinSize) {
-            Write-Host "  [SKIP] Already present: $TargetFileName ($([math]::Round($CurrentSize / 1MB, 2)) MB)" -ForegroundColor DarkGray
-            return $true
-        }
-    }
 
     $MirrorIndex = 1
     $TotalMirrors = $Item.Mirrors.Count
+    $AnySuccess = $false
 
     foreach ($mirror in $Item.Mirrors) {
         $SourceUrl = $mirror.Url
-        $ActualFileName = if ($mirror.File) { $mirror.File } else { $TargetFileName }
+        $ActualFileName = if ($mirror.File) { $mirror.File } else { $Item.TargetFile }
         $ActualDestPath = Join-Path $TargetDir $ActualFileName
 
-        Write-Host "  Trying mirror [$MirrorIndex/$TotalMirrors]: $($mirror.Name)..." -ForegroundColor Cyan
+        $MinExpected = if ($mirror.MinSize) { $mirror.MinSize } elseif ($mirror.File) { 1000 } else { $Item.MinSize }
+
+        if (-not $ForceDownload -and (Test-Path $ActualDestPath)) {
+            $CurrentSize = (Get-Item $ActualDestPath).Length
+            if ($CurrentSize -ge $MinExpected) {
+                Write-Host "  [SKIP] Already present ($($mirror.Name)): $ActualFileName ($([math]::Round($CurrentSize / 1MB, 2)) MB)" -ForegroundColor DarkGray
+                $AnySuccess = $true
+                if (-not $AllSourcesMode) {
+                    return $true
+                }
+                $MirrorIndex++
+                continue
+            }
+        }
+
+        Write-Host "  Downloading from mirror [$MirrorIndex/$TotalMirrors]: $($mirror.Name)..." -ForegroundColor Cyan
         Write-Host "    $SourceUrl" -ForegroundColor DarkGray
 
         try {
             $webRequest = [System.Net.HttpWebRequest]::Create($SourceUrl)
             $webRequest.Method = "GET"
-            $webRequest.Timeout = 25000
+            $webRequest.Timeout = 30000
             $webRequest.UserAgent = $DefaultUserAgent
             $webRequest.AllowAutoRedirect = $true
 
@@ -344,13 +400,14 @@ function Download-SingleFile {
             $webResponse.Close()
             $webResponse.Dispose()
 
-            # Verify downloaded size if minimum expected size is defined
-            $MinExpected = if ($mirror.MinSize) { $mirror.MinSize } elseif ($mirror.File) { 1000 } else { $Item.MinSize }
             if ($totalBytes -ge $MinExpected) {
                 Write-Host "  [OK] Downloaded successfully: $ActualFileName ($([math]::Round($totalBytes / 1MB, 2)) MB)" -ForegroundColor Green
-                return $true
+                $AnySuccess = $true
+                if (-not $AllSourcesMode) {
+                    return $true
+                }
             } else {
-                Write-Warning "  Downloaded file is smaller than expected ($totalBytes bytes < $MinExpected bytes). Trying next mirror..."
+                Write-Warning "  Downloaded file is smaller than expected ($totalBytes bytes < $MinExpected bytes)."
                 Remove-Item -Path $ActualDestPath -Force -ErrorAction SilentlyContinue
             }
         }
@@ -364,6 +421,10 @@ function Download-SingleFile {
         $MirrorIndex++
     }
 
+    if ($AnySuccess) {
+        return $true
+    }
+
     # All mirrors failed
     Write-Error "ERROR: All $TotalMirrors configured mirror sources for '$($Item.Name)' failed. Please verify internet connection or manually place the file in: $TargetDir"
     return $false
@@ -373,23 +434,33 @@ function Download-CrawlItem {
     param(
         [hashtable]$Item,
         [string]$TargetDir,
-        [bool]$ForceDownload
+        [bool]$ForceDownload,
+        [bool]$AllSourcesMode
     )
 
     $TotalPages = $Item.SubPages.Count
     $MirrorIndex = 1
     $TotalMirrors = $Item.Mirrors.Count
+    $AnySuccess = $false
 
     foreach ($mirror in $Item.Mirrors) {
         $BaseUrl = $mirror.BaseUrl
+        $CrawlTargetDir = if ($AllSourcesMode -and $mirror.SubDir) { Join-Path $TargetDir $mirror.SubDir } else { $TargetDir }
+        if (-not (Test-Path $CrawlTargetDir)) {
+            New-Item -ItemType Directory -Path $CrawlTargetDir -Force | Out-Null
+        }
+
         Write-Host "  Attempting crawl from mirror [$MirrorIndex/$TotalMirrors]: $($mirror.Name)..." -ForegroundColor Cyan
         Write-Host "    Base URL: $BaseUrl" -ForegroundColor DarkGray
+        if ($CrawlTargetDir -ne $TargetDir) {
+            Write-Host "    Subfolder: $($mirror.SubDir)" -ForegroundColor DarkGray
+        }
 
         $SuccessCount = 0
         $FailedPages = @()
 
         foreach ($subpage in $Item.SubPages) {
-            $PageDest = Join-Path $TargetDir $subpage
+            $PageDest = Join-Path $CrawlTargetDir $subpage
             $PageDir = Split-Path -Parent $PageDest
             if (-not (Test-Path $PageDir)) {
                 New-Item -ItemType Directory -Path $PageDir -Force | Out-Null
@@ -441,12 +512,19 @@ function Download-CrawlItem {
 
         if ($SuccessCount -eq $TotalPages) {
             Write-Host "  [OK] Successfully crawled all $TotalPages pages from $($mirror.Name)." -ForegroundColor Green
-            return $true
+            $AnySuccess = $true
+            if (-not $AllSourcesMode) {
+                return $true
+            }
         } else {
-            Write-Warning "  Mirror crawled $SuccessCount/$TotalPages pages. $($FailedPages.Count) pages failed. Trying next mirror..."
+            Write-Warning "  Mirror crawled $SuccessCount/$TotalPages pages. $($FailedPages.Count) pages failed."
         }
 
         $MirrorIndex++
+    }
+
+    if ($AnySuccess) {
+        return $true
     }
 
     # All mirrors failed
@@ -471,6 +549,7 @@ if (-not $All -and -not $Item) {
     Write-Host "  .\tools\bootstrap_reference.ps1 -List        : Show all documents and configured mirrors"
     Write-Host "  .\tools\bootstrap_reference.ps1 -Item <name> : Download specific document"
     Write-Host "  .\tools\bootstrap_reference.ps1 -All         : Download all reference materials"
+    Write-Host "  .\tools\bootstrap_reference.ps1 -AllSources  : Download from ALL mirrors for each document"
     Write-Host ""
     exit 0
 }
@@ -478,7 +557,7 @@ if (-not $All -and -not $Item) {
 Ensure-StagingReadme -TempDir $Destination
 
 $ItemsToProcess = @()
-if ($All) {
+if ($All -or ($Item -and ($Item.ToLower() -eq "-all" -or $Item.ToLower() -eq "all"))) {
     $ItemsToProcess = $Catalog
 } elseif ($Item) {
     $SearchTerm = $Item.ToLower()
@@ -496,8 +575,9 @@ if ($All) {
 
 Write-Host ""
 Write-Host "Bootstrapping External Amiga Reference Materials" -ForegroundColor Cyan
-Write-Host "Destination: $Destination" -ForegroundColor DarkGray
-Write-Host "Items to process: $($ItemsToProcess.Count)" -ForegroundColor DarkGray
+Write-Host "Destination : $Destination" -ForegroundColor DarkGray
+Write-Host "Items count : $($ItemsToProcess.Count)" -ForegroundColor DarkGray
+Write-Host "Mode        : $(if ($AllSources) { 'All Mirrors & Sources (Redundancy Mode)' } else { 'Failover Mode (First Success)' })" -ForegroundColor Yellow
 Write-Host ""
 
 $HasErrors = $false
@@ -513,9 +593,9 @@ foreach ($entry in $ItemsToProcess) {
 
     $Success = $false
     if ($entry.Type -eq "Crawl") {
-        $Success = Download-CrawlItem -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force
+        $Success = Download-CrawlItem -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
     } else {
-        $Success = Download-SingleFile -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force
+        $Success = Download-SingleFile -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
     }
 
     if (-not $Success) {

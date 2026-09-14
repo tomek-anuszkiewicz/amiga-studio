@@ -62,11 +62,15 @@ To download raw, unprocessed source materials (PDF scans, HTML crawls, and archi
 # Download multi-page HTML articles (crawls all subpages)
 .\tools\bootstrap_reference.ps1 -Item "Undocumented features"
 
-# Download all reference materials
+# Download all reference materials (default failover mode: stops after 1st successful mirror)
 .\tools\bootstrap_reference.ps1 -All
+
+# Download from ALL mirrors & sources simultaneously (redundancy & full testing mode)
+.\tools\bootstrap_reference.ps1 -All -AllSources
 
 # Or via the main repository bootstrapper
 .\tools\bootstrap.ps1 -Ref
+.\tools\bootstrap.ps1 -Ref -AllSources
 ```
 
 ---

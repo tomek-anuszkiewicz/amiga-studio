@@ -3252,5 +3252,29 @@ Every future modification or implementation task must append an entry following 
   - Confirmed `git status` flags `temp/` as untracked when populated, and returns to clean when deleted.
   - `python tools/pre_flight.py`: All 4 quality gates passed cleanly.
 
+---
+
+### [2026-09-14 13:30 CEST] — Tooling: All-Sources Redundancy Mode for External Reference Bootstrapper
+- **Affected Subsystems**:
+  - `tools/bootstrap_reference.ps1` (added `-AllSources` / `-AllMirrors` mode, explicit target filenames per mirror, and adjusted minimum size thresholds)
+  - `tools/bootstrap.ps1` (forwarded `-AllSources` via hashtable splatting into `bootstrap_reference.ps1`)
+  - `Obsidian/Amiga/Reference/README.md` (documented `-AllSources` / `-AllMirrors` switch and side-by-side archival staging)
+- **What Was Changed (The Concrete Reality)**:
+  - Added `-AllSources` switch (aliased to `-AllMirrors`) allowing developers to download from *every* configured mirror simultaneously rather than halting on the first successful mirror.
+  - Assigned distinct, explicit filenames (`File = "..."`) to all mirrors across the catalog (e.g. `Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf`, `Amiga_Hardware_Reference_Manual_3rd_edition.pdf`, `Hardware_Manual_guide_node0000.html`), allowing multiple editions, OCR scans, and web snapshots to coexist side-by-side in `temp/`.
+  - Updated web crawler logic to support segregated subdirectories (`SubDir`) per crawl mirror (e.g. `wayback_2022/`, `wayback_2016/`).
+  - Replaced broken or borrow-restricted Archive.org mirrors with public, open items (`M68000PRM.pdf` and `M68000_Family_Reference_1988.pdf`).
+  - Calibrated size validation thresholds (lowered `Hardware_Manual_guide_node0000.html` threshold to 3000 bytes).
+  - Fixed parameter splatting between `tools/bootstrap.ps1` and `tools/bootstrap_reference.ps1` using PowerShell hashtables (`@RefParams`) to prevent switch-to-string parameter conversion.
+- **Architectural Rationale & Trade-Offs**:
+  - *Comprehensive Archival Preservation:* Different mirrors often carry distinct revisions (e.g. Addison-Wesley 2nd Edition covering OCS vs. 3rd Edition covering ECS, or Motorola PRM Rev 1 vs. 1984 1st edition). Redundancy mode enables capturing the complete historical spectrum of documentation side-by-side.
+  - *Idempotent Resumption:* Each file's presence and minimum byte size are verified independently. Subsequent runs instantaneously skip existing files in under 2 seconds.
+- **Verification & Test Results**:
+  - Executed full all-sources run (`.\tools\bootstrap_reference.ps1 -All -AllSources`): downloaded 67 files totaling ~389.2 MB across all 7 items and all active mirrors.
+  - Verified skip idempotency: re-running with `-AllSources` verified all 7 items and skipped existing files in under 2 seconds with exit code `0`.
+  - Verified end-to-end delegation through `.\tools\bootstrap.ps1 -Ref -AllSources`.
+  - `python tools/pre_flight.py`: All 4 quality gates passed cleanly.
+
+
 
 
