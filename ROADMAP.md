@@ -187,6 +187,33 @@ This document outlines the phased development plan, hardware milestones, verific
 - **Step 2.9: Host Audio Playback & CRT Presentation Shaders:**
   - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio) with dynamic resampling and ring buffer underflow/overflow protection.
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
+- **Step 2.10: Host Input Subsystem, Game Controller Mapping & Port Hub (`crates/keyboard`, `crates/mouse`, `crates/joystick`, `crates/game_ports`, `crates/gui`):**
+  - **Host Keyboard to Amiga Matrix & Scancode Mapping:**
+    - Full mapping table from host keyboard events (`winit::keyboard::KeyCode` / `egui::Key`) to raw Amiga scancodes.
+    - Amiga-specific qualifiers: Left/Right Amiga keys (mapped to host Windows/Command or Alt), Left/Right Alt, Ctrl, CapsLock, Help, and numeric keypad.
+    - Hardware reset combo: `Ctrl + Left Amiga + Right Amiga` assertion wired into `keyboard.reset_line_asserted` triggering machine warm reset (`reset_warm`).
+    - **Keyboard-as-Joystick Emulation:** Configurable key bindings (e.g. Numpad `8/4/6/2` + `0/5/Enter`, or `WASD` + `Space`, or Arrow keys + `RCtrl`) mapped to Amiga Port 1 or Port 2 digital joystick switches for players without physical gamepads.
+  - **Dual Game Port Hub & Amiga Port Hot-Swapping (`crates/game_ports`):**
+    - Independent device slot assignment:
+      - *Port 1:* Mouse (default), Digital Joystick, CD32 Pad, Keyboard-Joystick 1, or Disconnected.
+      - *Port 2:* Digital Joystick (default), Mouse (for 2-player dual-mouse games like *The Settlers* and *Lemmings*), CD32 Pad, Keyboard-Joystick 2, or Disconnected.
+    - Multi-device configurations:
+      - Simultaneous dual-mouse mode decoding independent quadrature into `JOY0DAT` and `JOY1DAT`.
+      - Simultaneous dual-joystick mode decoding independent directional switches into `JOY0DAT` and `JOY1DAT`.
+    - Hardware button routing: Primary Fire / Left Click to CIA-A `PRA` bits 6 & 7 (`/FIR0`, `/FIR1`), Secondary Fire / Right Click to Paula `POTGOR` bits 10 & 14, and Middle Button / Fire 3 to Paula `POTGOR` bits 8 & 12.
+    - CD32 7-button shift register protocol serialization over pin 5 clocked by Paula `POTGO`.
+  - **Physical Host Mouse Capture & Motion Scaling (`crates/mouse`, `crates/gui`):**
+    - Viewport mouse grab/lock mode capturing relative mouse deltas (`dx`, `dy`), hiding the host cursor, with clean toggle/release shortcuts (`Esc` or Middle-Click).
+    - Relative motion delta accumulation and scaling into Amiga 8-bit wrap-around quadrature counters ($X, Y \in 0..255$).
+    - Configurable sensitivity, acceleration, and axis inversion parameters.
+  - **Physical Gamepad & Joystick Ingestion (`crates/joystick`, `crates/gui`):**
+    - Host gamepad enumeration and event streaming (via `gilrs` on native desktop and HTML5 Gamepad API in WebAssembly).
+    - Mapping analog sticks / D-pads with configurable deadzones to Amiga 4-direction digital switches.
+    - Multi-button mapping (Fire 1, Fire 2, CD32 buttons) and dynamic assignment of connected physical controllers to Amiga Port 1 / Port 2.
+  - **Interactive Developer Studio Input Configuration UI (`crates/gui`):**
+    - Dedicated "Game Ports & Input" tab/dock: visual status of Port 1 and Port 2, connected device dropdowns, real-time input indicators (directional switch arrows and fire button LEDs), and keyboard-joystick toggles.
+  - **Dedicated Unit & Integration Tests:**
+    - Test suites verifying host scancode translation, keyboard-as-joystick key mapping, dual-mouse and dual-joystick port arbitration, POTGOR button sensing, and headless UI input interaction.
 
 ### Step 3: vAmigaTS Automated Test Suite Execution Harness & Silicon Verification Gate
 - **Direct-Injection Payload Extraction Architecture (`$000400` Sector 2 Slicing):**

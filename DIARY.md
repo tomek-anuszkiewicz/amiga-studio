@@ -3076,3 +3076,25 @@ Every future modification or implementation task must append an entry following 
   - *Zero Floppy/MFM Decoupling:* By extracting the binary from offset `$000400`, we decouple custom chip verification from floppy disk hardware simulation, avoiding circular testing dependencies.
 - **Verification & Test Results**:
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
+
+---
+
+### [2026-09-14 06:05 CEST] — Roadmap Architecture Expansion: Host Input Subsystem, Game Controller Mapping & Port Hub (Step 2.10)
+- **Affected Subsystems**:
+  - `ROADMAP.md` (introduced Step 2.10 for host input, game controllers, and dual port hub)
+  - `DIARY.md` (recorded architectural rationale and hardware analysis)
+- **What Was Changed (The Concrete Reality)**:
+  - Reviewed the scope of Milestone 2 regarding host interaction, recognizing that while Step 2.9 covered host audio playback and CRT presentation shaders, host user input (keyboard matrix, mouse grab, physical gamepads, dual game ports) lacked an explicit implementation milestone.
+  - Formalized **`Step 2.10: Host Input Subsystem, Game Controller Mapping & Port Hub`** across `crates/keyboard`, `crates/mouse`, `crates/joystick`, `crates/game_ports`, and `crates/gui`.
+  - Analyzed and documented Amiga hardware multi-controller capabilities:
+    - *Dual-Mouse Operation:* Verified that Denise independently decodes quadrature signals across both `JOY0DAT` ($DFF00A) and `JOY1DAT` ($DFF00C), while CIA-A Port A (`/FIR0`, `/FIR1`) and Paula `POTGOR` provide independent button sensing, supporting simultaneous dual mice for titles like *Lemmings* (2-player mode) and *The Settlers* (*Die Siedler*).
+    - *Dual-Joystick Operation:* Independent 4-direction switch XOR matrix decoding on both ports with primary fire buttons on CIA-A Port A and secondary fire on Paula `POTGOR`, supporting 2-player arcade/sports titles (*Sensible Soccer*, *SWIV*, *Lotus 2*).
+    - *CD32 Gamepads:* Modeled 7-button serialization over pin 5 using a shift register clocked by Paula `POTGO`.
+    - *Keyboard-as-Joystick Emulation:* Configurable mappings (Numpad, WASD, Arrow keys) routing into Port 1 / Port 2 digital switches for players without physical controllers.
+    - *Host Input Ingestion:* Desktop gamepad support via `gilrs` and WASM support via HTML5 Gamepad API, alongside viewport mouse capture and raw relative delta tracking.
+- **Architectural Rationale & Trade-Offs**:
+  - *Decoupling Input from AV Presentation:* Keeping Step 2.9 focused purely on audio sinks and CRT shader pipelines while establishing Step 2.10 for input preserves subsystem cohesion and aligns directly with our decoupled crate boundaries (`keyboard`, `mouse`, `joystick`, `game_ports`).
+  - *First-Class Hardware Flexibility:* Rather than hardcoding Port 1 to Mouse and Port 2 to Joystick, treating both ports as hot-swappable slots allows seamless configuration of dual mice, dual joysticks, or hybrid setups directly from the Developer Studio GUI.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: Pre-flight quality gates passing cleanly.
+
