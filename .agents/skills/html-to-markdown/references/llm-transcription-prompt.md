@@ -27,12 +27,14 @@ Instruct the Markdown renderer with a clean, accessible Table of Contents placed
 3. **Anchor Slugs:**
    - Slugs must match standard GitHub and Obsidian header anchors:
      - Convert all characters to lowercase.
-     - Replace spaces with hyphens (`-`).
-     - Remove punctuation (colons, commas, periods, quotation marks, parentheses, slashes).
-     - Consecutive hyphens are collapsed into a single hyphen.
+     - Strip punctuation and symbols (ampersands `&`, colons, commas, periods, quotes, parentheses, backticks, equals signs).
+     - Replace spaces and underscores with hyphens (`-`).
+     - Collapse multiple consecutive hyphens into a single hyphen.
    - Example:
      - Heading: `## Chapter I: Introduction & Background`
-     - Link: `- [Chapter I: Introduction & Background](#chapter-i-introduction--background)`
+     - Link: `- [Chapter I: Introduction & Background](#chapter-i-introduction-background)`
+     - Heading: `### Queue Architecture & Registers`
+     - Link: `  - [Queue Architecture & Registers](#queue-architecture-registers)`
 4. **100% Anchor Integrity:** Every link in the TOC must resolve to an actual heading in the body. Never include phantom headings or dead links.
 
 ---
