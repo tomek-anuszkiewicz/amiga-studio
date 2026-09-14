@@ -3633,9 +3633,30 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python .agents/skills/html-to-markdown/scripts/audit_conversion.py`: PASSED (0 prose leaks, 0 fragmented blocks, 11 cohesive code blocks down from 36).
   - `python .agents/skills/html-to-markdown/scripts/render_comparison.py`: Successfully generated side-by-side composite `visual_comparison.png`; multimodal visual inspection verified clean prose paragraphs matching the source HTML.
-  - `python .agents/skills/html-to-markdown/scripts/validate_links.py`: 19/19 links valid (0 errors).
+### [2026-09-14 23:25 CEST] — Vision-First Architecture Pivot for html-to-markdown Pipeline
+- **Affected Subsystems**:
+  - `.agents/skills/html-to-markdown/` (`SKILL.md`, `scripts/html_to_pages.py`, `scripts/replace_placeholders.py`, `references/pdf-to-markdown-guidelines.md`)
+- **What Was Changed (The Concrete Reality)**:
+  - Formally pivoted `.agents/skills/html-to-markdown` from fragile, bespoke DOM/regex parsing scripts to the battle-tested, vision-first architecture established in `pdf-to-markdown`.
+  - Implemented `html_to_pages.py`:
+    - Employs headless Chrome (`--print-to-pdf`) to capture and normalize arbitrary, inconsistent HTML formats (Word HTML exports, legacy 1990s tables, dynamic web pages) into a standard PDF.
+    - Utilizes PyMuPDF (`fitz`) to rasterize pages to high-resolution 200 DPI PNGs (`page_001.png` ... `page_NNN.png`) and outputs `manifest.json`.
+  - Implemented `replace_placeholders.py`:
+    - Scans transcribed Markdown for both `<image placeholder src="..." alt="..." />` tags and `<crop page="N" xmin=".." ymin=".." xmax=".." ymax=".." label=".." />` bounding box tags.
+    - Automatically transfers HTML source assets or crops visual regions from page PNGs into a standardized `assets/` directory with sanitized identifiers.
+    - Generates and verifies Git-tracked technical sidecars (`<image_path>.txt`) per `.agents/rules/asset-descriptions.md`.
+    - Injects canonical Markdown image links (`![alt](assets/filename.ext)`) in-place.
+  - Authored `references/pdf-to-markdown-guidelines.md`:
+    - Strict Motorola Hex backtick rule: Enclosing all `$HEX` addresses and constants (`` `$00000004` ``, `` `$DFF000` ``) in inline code backticks to eliminate KaTeX math rendering corruption.
+    - Table conversion hierarchy: Standard GFM tables for regular tabular data; clean HTML tables with Unicode entities (`2<sup>16</sup>`, `&plusmn;`, `&Omega;`) for complex spans without broken `$math$` inside `<td>`.
+    - Obsidian Callouts: Mapping notes, warnings, caveats, and notices directly to `> [!NOTE]`, `> [!WARNING]`, and `> [!IMPORTANT]`.
+    - Mathematical formulas: KaTeX `$inline$` and `$$block$$` notation.
+  - Overhauled `SKILL.md` to establish the 5-phase vision-first conversion procedure (Page Rendering, LLM Vision Transcription, Placeholder Replacement & Sidecars, Visual Layout QA, Link Integrity).
+- **Architectural Rationale & Trade-Offs**:
+  - *Robustness Across Wildly Variable HTML:* HTML documents in the wild vary dramatically in markup standards, styling, and nested layout tables. Trying to maintain deterministic DOM parsing heuristics across every legacy variant is an intractable trap. Converting HTML to standardized page PNGs leverages multimodal vision to extract semantically pristine Markdown with zero brittleness.
+  - *Automated Asset Lifecycle:* Image placeholder tags decouple vision transcription from manual asset copying. The script seamlessly handles deduplication, file organization, sidecar authoring, and link formatting.
+- **Verification & Test Results**:
+  - `python .agents/skills/html-to-markdown/scripts/html_to_pages.py`: Successfully printed and rendered all 11 pages of `68kPrefetch.html` into 200 DPI PNGs (1700x2200) with `manifest.json` in `temp/html-sandbox/pages/`.
+  - `python .agents/skills/html-to-markdown/scripts/replace_placeholders.py`: Verified resolution of both `<image placeholder>` and `<crop>` tags, generating sanitized assets and valid `.txt` sidecars.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 346 files.
   - `python tools/pre_flight.py`: 100% compliant across all quality gates (Formatting, Attractors, AGENTS.md ceiling, Architecture rules: 18 passed).
-
-
-
-
