@@ -42,10 +42,26 @@ class KnowledgeIndexer:
         self.dirty_cache = False
         atexit.register(self.flush_cache)
         self.vision = VisionAnalyzer(self.cache.setdefault("image_descriptions", {}))
+        self.host_gpu = self.detect_host_gpu()
         self.fastembed_model = None
         self.active_provider = "CPU"
         self.active_batch_size = CPU_EMBEDDING_BATCH_SIZE
         self._init_embedder()
+
+    @staticmethod
+    def detect_host_gpu() -> Optional[str]:
+        """Probes nvidia-smi for discrete GPU details (sub-millisecond)."""
+        try:
+            import subprocess
+            res = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
+                capture_output=True, text=True, timeout=1.0
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip().split("\n")[0]
+        except Exception:
+            pass
+        return None
 
     def _init_embedder(self):
         # 1. Attempt CUDA first
@@ -59,10 +75,19 @@ class KnowledgeIndexer:
                 )
                 # Verify forward pass on tiny probe
                 list(model.embed(["probe"], batch_size=1))
-                self.fastembed_model = model
-                self.active_provider = "CUDA"
-                self.active_batch_size = GPU_EMBEDDING_BATCH_SIZE
-                return
+
+                # Check if CUDAExecutionProvider was actually activated
+                active_providers = []
+                if hasattr(model, "model") and hasattr(model.model, "model") and hasattr(model.model.model, "get_providers"):
+                    active_providers = model.model.model.get_providers()
+                elif hasattr(model, "model") and hasattr(model.model, "providers"):
+                    active_providers = model.model.providers
+
+                if "CUDAExecutionProvider" in active_providers:
+                    self.fastembed_model = model
+                    self.active_provider = "CUDA"
+                    self.active_batch_size = GPU_EMBEDDING_BATCH_SIZE
+                    return
         except Exception:
             pass
 

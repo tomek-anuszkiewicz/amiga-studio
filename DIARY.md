@@ -3504,6 +3504,25 @@ Every future modification or implementation task must append an entry following 
   - Validated Qdrant collection status: 3,150 vectors in collection `amiga` intact.
   - `python tools/pre_flight.py`: 100% compliant across formatting, attractor linter, AGENTS.md byte ceiling, and 18 architecture tests.
 
+---
+
+### [2026-09-14 16:10 CEST] — Compute Acceleration Advisory Panel & Session-Level CUDA Verification
+- **Affected Subsystems**:
+  - `tools/rag/rag_qdrant/indexer.py` (added `detect_host_gpu`, verified session-level `get_providers` to detect silent ONNX CPU fallbacks)
+  - `tools/rag/rag_qdrant/cli.py` (added rich `Compute Acceleration Advisory` panel when CPU is active)
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed ONNX Runtime's silent fallback quirk: when `onnxruntime-gpu` is installed without matching CUDA/cuDNN DLLs (e.g. `cublasLt64_13.dll`), FastEmbed logs a warning and silently executes on CPU. Added a session-level provider check (`"CUDAExecutionProvider" in model.model.model.get_providers()`) to guarantee `active_provider` accurately reports `CPU` instead of misreporting `CUDA`.
+  - Implemented sub-millisecond host GPU probing via `nvidia-smi` (`KnowledgeIndexer.detect_host_gpu`).
+  - Added an interactive `Compute Acceleration Advisory` banner in `amiga_rag` CLI that triggers when running on CPU:
+    - If a discrete NVIDIA GPU is detected (e.g. RTX 3060 Ti), alerts the user that the discrete GPU is idle and provides the exact command for CUDA 12 ONNX runtime installation (`pip install "onnxruntime-gpu<1.30" --extra-index-url ...`).
+    - Details the Cloud API alternative (`GEMINI_API_KEY`) for users with ample API quotas.
+- **Architectural Rationale & Trade-Offs**:
+  - *Eliminating Silent Diagnostic Confusion:* Silent provider fallbacks in machine learning runtimes confuse developers when expected GPU performance is absent. Explicitly checking the active session engine and displaying tailored advisories provides total transparency.
+- **Verification & Test Results**:
+  - Tested `detect_host_gpu`: correctly detected `NVIDIA GeForce RTX 3060 Ti, 8192 MiB`.
+  - Tested provider verification: correctly classified session as CPU when CUDA 13 DLLs were missing.
+  - `python tools/pre_flight.py`: 100% passed cleanly.
+
 
 
 

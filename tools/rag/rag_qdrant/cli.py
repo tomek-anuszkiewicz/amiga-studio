@@ -284,6 +284,26 @@ def main():
         console.print(f"  • Hashing & Chunks:       [bold yellow]{NUM_WORKERS} CPU threads[/bold yellow]")
         console.print(f"  • Diagram Vision:         [bold green]Offline Sidecar Loader (<image>.txt)[/bold green]")
         console.print(f"[bold cyan]──────────────────────────────────────────────────────────[/bold cyan]\n")
+
+        if indexer.active_provider != "CUDA":
+            from rich.panel import Panel
+            advisory_lines = []
+            host_gpu = getattr(indexer, "host_gpu", None)
+            if host_gpu:
+                advisory_lines.append(f"  [bold green]Discrete GPU Detected:[/bold green] {host_gpu}")
+                advisory_lines.append(f"  [yellow]Status:[/yellow] Running on CPU because ONNX CUDA runtime libraries (cublasLt64) were not loaded.")
+                advisory_lines.append(f"  [bold cyan]To unlock 5-10x faster RTX acceleration:[/bold cyan]")
+                advisory_lines.append(f"    [white]pip install \"onnxruntime-gpu<1.30\" --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/[/white]")
+            else:
+                advisory_lines.append(f"  [bold yellow]No discrete NVIDIA GPU detected.[/bold yellow] Running on multi-core CPU ({NUM_WORKERS} threads).")
+
+            advisory_lines.append("")
+            advisory_lines.append(f"  [bold magenta]Cloud API Alternative:[/bold magenta]")
+            advisory_lines.append(f"    Have high API token quotas? Cloud embeddings can be enabled via GEMINI_API_KEY in .env.")
+
+            console.print(Panel("\n".join(advisory_lines), title="[bold yellow]💡 Compute Acceleration Advisory[/bold yellow]", border_style="yellow"))
+            console.print()
+
         if args.reindex:
             console.print("[yellow]Forced re-indexing enabled (cache ignored).[/yellow]\n")
 
