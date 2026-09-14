@@ -7,14 +7,14 @@ subsystem: "general"
 status: "active"
 created: 2026-08-31
 updated: 2026-09-12
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CycleCounter.md](CycleCounter.md)", "[Agnus.md](Agnus.md)"]
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Agnus.md](Agnus.md)"]
 ---
 
 # Amiga 500 Save State Architecture & Serialization Specification
 
 > [!NOTE]
 > System ownership principles and decoupling constraints are defined in [AGENTS.md](../../../AGENTS.md) and [General Architecture.md](General%20Architecture.md).
-> Master clock synchronization is detailed in [CycleCounter.md](CycleCounter.md).
+> Master clock synchronization is detailed in [Main loop A500.md](Main%20loop%20A500.md).
 > Memory layout and low-memory overlay rules are specified in [MemoryBus.md](MemoryBus.md). Machine state serialization is driven by [Main loop A500.md](Main%20loop%20A500.md). Subsystem state schemas are defined in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md), [Agnus.md](Agnus.md), [Denise.md](Denise.md), [Paula.md](Paula.md), [CIA.md](CIA.md), and [RTC.md](RTC.md).
 
 ---
@@ -44,7 +44,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct A500State {
     pub header: SaveStateHeader,
-    pub cycle_counter: CycleCounterState,
+    /// Monotonically increasing 64-bit Color Clock count
+    pub cck: u64,
     pub cpu: CpuState,
     pub agnus: AgnusState,
     pub denise: DeniseState,
@@ -75,13 +76,6 @@ pub struct SaveStateHeader {
     pub kickstart_sha256: [u8; 32],
     /// Optional embedded Kickstart ROM data (making the save state 100% self-contained)
     pub embedded_kickstart: Option<Vec<u8>>,
-}
-
-/// Global master clock state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CycleCounterState {
-    /// Monotonically increasing 64-bit Color Clock count
-    pub total_cck: u64,
 }
 
 /// Motorola 68000 CPU core state.

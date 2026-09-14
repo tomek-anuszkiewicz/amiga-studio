@@ -7,13 +7,13 @@ subsystem: "rtc"
 status: "active"
 created: 2026-09-06
 updated: 2026-09-12
-related: ["[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[CycleCounter.md](CycleCounter.md)", "[SaveState.md](SaveState.md)"]
+related: ["[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)"]
 ---
 
 # Amiga 500 Real-Time Clock (RTC) Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [CycleCounter.md](CycleCounter.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
 > Save state structures for RTC are specified in [SaveState.md](SaveState.md). Hardware presets and active RTC model configurations are defined in [Configuration.md](Configuration.md).
 > Implementation resides in the dedicated foundational crate [`crates/rtc`](../../../crates/rtc).
 

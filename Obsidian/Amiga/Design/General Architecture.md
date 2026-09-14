@@ -25,7 +25,7 @@ The emulator is organized around a top-level machine struct named A500, which ow
 graph TD
     A500["A500 Machine Loop"] --> CPU["CPU (Motorola 68000)"]
     A500 --> BUS["MemoryBus (24-bit / 16-bit)"]
-    A500 --> CLK["CycleCounter (64-bit CCK)"]
+    A500 --> CLK["Master CCK Counter (u64)"]
     A500 --> AGNUS["Agnus (DMA / Copper / Blitter)"]
     A500 --> DENISE["Denise (Video / Bitplanes)"]
     A500 --> PAULA["Paula (Audio / UART / Interrupts)"]
@@ -158,7 +158,6 @@ graph TD
 - [Denise.md](Denise.md): Video pixel serializer, bitplanes, sprites, palette, and collisions.
 - [Paula.md](Paula.md): 4-channel DMA audio, floppy disk MFM controller, serial UART, and central interrupt multiplexer.
 - [CIA.md](CIA.md): Dual MOS 8520 Complex Interface Adapters (timers, TOD, SDR, parallel & control ports).
-- [CycleCounter.md](CycleCounter.md): Master Color Clock counter.
 - [SaveState.md](SaveState.md): State serialization model.
 - [Configuration.md](Configuration.md): Machine configuration, RAM sizes, chipset models, and ROM injection.
 - [Debugger.md](Debugger.md): Headless debugger backend, stepping, breakpoints, and disassembler.

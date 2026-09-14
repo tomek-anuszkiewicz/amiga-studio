@@ -7,34 +7,67 @@ subsystem: "general"
 status: "active"
 created: 2026-08-31
 updated: 2026-09-13
-related: ["[General Architecture.md](General%20Architecture.md)", "[CycleCounter.md](CycleCounter.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Agnus.md](Agnus.md)"]
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Agnus.md](Agnus.md)"]
 ---
 
 # Amiga 500 Main Machine Loop & Subsystem Coordination
 
 > [!NOTE]
 > Ownership architecture and module decoupling principles are defined in [AGENTS.md](../../../AGENTS.md) and [General Architecture.md](General%20Architecture.md).
-> Master clock timing is specified in [CycleCounter.md](CycleCounter.md), physical bus arbitration in [MemoryBus.md](MemoryBus.md), and CPU execution in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Custom chips are detailed in [Agnus.md](Agnus.md), [Denise.md](Denise.md), and [Paula.md](Paula.md).
+> Physical bus arbitration is specified in [MemoryBus.md](MemoryBus.md), and CPU execution in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Custom chips are detailed in [Agnus.md](Agnus.md), [Denise.md](Denise.md), and [Paula.md](Paula.md).
 
 ---
 
-## 1. Machine Struct (`A500`)
+## 1. Master System Clock & Frequency Hierarchy
 
-The top-level `A500` struct owns and orchestrates all components without circular references:
-- `cpu`: Motorola 68000 core
+The Amiga 500 derives all system clock frequencies from a single master crystal oscillator. All processing units operate in synchronous harmonic lock:
+
+```mermaid
+flowchart TD
+    XTAL["Master Crystal Oscillator\nPAL: 28.37516 MHz | NTSC: 28.63636 MHz"] --> DIV4["Divide by 4"]
+    XTAL --> DIV8["Divide by 8"]
+    
+    DIV4 --> CPU_CLK["CPU Clock (7.09379 MHz PAL / 7.15909 MHz NTSC)\n1 Cycle ≈ 140.97 ns (PAL) / 139.68 ns (NTSC)"]
+    DIV8 --> CCK["Color Clock / CCK (3.546895 MHz PAL / 3.579545 MHz NTSC)\n1 CCK ≈ 281.94 ns (PAL) / 279.37 ns (NTSC)"]
+    
+    CPU_CLK --> CPU["Motorola 68000 CPU\n(4 Clocks per Bus Cycle = 2 CCKs)"]
+    CCK --> AGNUS["Agnus (Master Beam Counter / Copper / Blitter DMA)"]
+    CCK --> DENISE["Denise (Pixel Serializer / Sprites / Palette)"]
+    CCK --> PAULA["Paula (Audio Periods / Floppy MFM / UART)"]
+    
+    CPU_CLK --> DIV10["Divide by 10 (E-Clock Divider in CIAs)\n6 Clocks Low / 4 Clocks High"]
+    DIV10 --> ECLK["Motorola E-Clock (709.379 kHz PAL / 715.909 kHz NTSC)\n1 E-Clock = 5 CCKs ≈ 1.4097 µs (PAL)"]
+    ECLK --> CIAA["CIA-A (Timers A/B, TOD, Keyboard SDR)"]
+    ECLK --> CIAB["CIA-B (Timers A/B, TOD, Floppy Control)"]
+```
+
+### 1.1 Master Frequency Standards
+
+| Standard | Master Oscillator ($f_{\text{master}}$) | CPU Clock ($f_{\text{cpu}} = \frac{f_{\text{master}}}{4}$) | Color Clock ($f_{\text{cck}} = \frac{f_{\text{master}}}{8}$) | E-Clock ($f_{\text{e}} = \frac{f_{\text{cpu}}}{10}$) | CCK Period ($T_{\text{cck}}$) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **PAL** | **$28.375160\ \text{MHz}$** | **$7.093790\ \text{MHz}$** | **$3.546895\ \text{MHz}$** | **$709.379\ \text{kHz}$** | $\approx 281.9368\ \text{ns}$ |
+| **NTSC** | **$28.636360\ \text{MHz}$** | **$7.159090\ \text{MHz}$** | **$3.579545\ \text{MHz}$** | **$715.909\ \text{kHz}$** | $\approx 279.3651\ \text{ns}$ |
+
+---
+
+## 2. Machine Struct (`A500Machine`)
+
+The top-level `A500Machine` struct (`crates/machine_loop/src/lib.rs`) owns and orchestrates all components without circular references:
+- `cpu`: Motorola 68000 core (`m68000::Cpu`)
 - `memory_bus`: 24-bit address decoder, RAM buffers, and Kickstart ROM storage
-- `cycle_counter`: Master 64-bit Color Clock counter (CCK)
+- `cck`: Monotonic master 64-bit Color Clock counter (`pub cck: u64`)
 - `agnus`, `denise`, `paula`: Custom chipsets
+- `copper`, `blitter`, `dma`: Coprocessors and DMA slot scheduler
 - `cia_a`, `cia_b`: MOS 8520 Complex Interface Adapters
 
 ---
 
-## 2. Stepping Capabilities & Master Clock Loop
+## 3. Stepping Capabilities & Master Clock Loop
 
 The main loop provides three levels of stepping granularity:
 
 1. **Single CCK Step (`step_cck`)**:
-   - Advance `cycle_counter` by 1 CCK (~280 ns PAL / ~279 ns NTSC).
+   - Advance `self.cck` by 1 CCK (~280 ns PAL / ~279 ns NTSC) using wrapping arithmetic.
    - Clock custom chips (Agnus beam counter/Copper/Blitter, Denise pixel pipeline, Paula audio).
    - Clock CIAs (decrement Timer A & B, update TOD).
    - Clock CPU bus phase (**CCK1** or **CCK2**):
@@ -45,10 +78,7 @@ The main loop provides three levels of stepping granularity:
    - Executes a designated number of Color Clocks in a loop.
 3. **Full Video Frame Step (`step_frame`)**:
    - Executes until Denise / Agnus completes a full vertical frame (VBlank transition).
-
----
-
-## 3. Interrupt Arbitration Pipeline
+## 4. Interrupt Arbitration Pipeline
 
 On each CCK step, the main loop coordinates interrupt requests across chips:
 
@@ -71,11 +101,11 @@ flowchart TD
 
 ---
 
-## 4. Reset Flows: Cold vs. Warm Reset & Physical Circuit Mechanics
+## 5. Reset Flows: Cold vs. Warm Reset & Physical Circuit Mechanics
 
 On real Amiga hardware, **all resets start CPU execution from address `$000000` via the Gary low-memory boot overlay (`_OVL`)**:
 
-### 4.1 Physical Reset Lines & Timing
+### 5.1 Physical Reset Lines & Timing
 1. **Physical Reset Circuitry:**
    - **Power-On Reset:** A 555 timer circuit on the Amiga motherboard asserts the bidirectional open-collector `_RESET` and `_HALT` lines LOW simultaneously for ~500 ms upon system power-up.
    - **Keyboard Reset (`Ctrl-Amiga-Amiga`):** The MOS 6500/1 keyboard microcontroller transmits warning code `$78` to CIA-A over the serial link, allowing AmigaOS up to 10 seconds to park floppy drive heads and flush disk cache buffers. After an ACK handshake or timeout (~500 ms), the keyboard pulls the motherboard `_RESET` line LOW for $\ge 500$ ms.
@@ -96,7 +126,7 @@ On real Amiga hardware, **all resets start CPU execution from address `$000000` 
 
 ---
 
-### 4.2 Subsystem Reset Defaults Table
+### 5.2 Subsystem Reset Defaults Table
 
 | Subsystem / Chip | Register / State | Power-On / Hardware Reset Value | Circuit Effect |
 | :--- | :--- | :--- | :--- |
@@ -121,7 +151,7 @@ On real Amiga hardware, **all resets start CPU execution from address `$000000` 
 
 ---
 
-### 4.3 Cold / Hard Reset (`reset_cold`)
+### 5.3 Cold / Hard Reset (`reset_cold`)
 1. **MemoryBus:** Call `memory_bus.reset_cold()`. Zeroes all physical Chip RAM, Slow RAM, and Fast RAM buffers (`$00`) and engages low-memory overlay (`map_kickstart_to_low_memory()`).
    - *Headless / Test Invariant:* If no Kickstart ROM is loaded (synthetic test mode), disengages overlay so test RAM at `$000000` remains visible.
 2. **Master CCK Counter:** Set `self.cck = 0`.
@@ -138,7 +168,7 @@ On real Amiga hardware, **all resets start CPU execution from address `$000000` 
 
 ---
 
-### 4.4 Warm Reset (`reset_warm`)
+### 5.4 Warm Reset (`reset_warm`)
 1. **MemoryBus:** Call `memory_bus.reset_warm()`. **Leaves RAM contents completely intact!** Re-engages low-memory overlay (`map_kickstart_to_low_memory()`).
    - *Headless / Test Invariant:* If no Kickstart ROM is loaded, disengages overlay so test RAM at `$000000` remains visible.
 2. **Master CCK Counter:** Set `self.cck = 0`.
@@ -155,7 +185,7 @@ On real Amiga hardware, **all resets start CPU execution from address `$000000` 
 
 ---
 
-## 5. Delayed Signal & Register Mutation Propagation Pipeline
+## 6. Delayed Signal & Register Mutation Propagation Pipeline
 
 Physical Amiga circuit traces and custom chip internal latches exhibit finite propagation delays:
 - **Read is NOW**: Reading a custom register returns the *currently latched active value* immediately with zero delay.
@@ -171,7 +201,7 @@ flowchart LR
     REG_READ["Register Read\n(Cycle T)"] --> ACTIVE["Read Active Latched Value NOW\n(Immediate Bus Return)"]
 ```
 
-### 5.1 Hot-Path Zero-Allocation Architecture
+### 6.1 Hot-Path Zero-Allocation Architecture
 To satisfy Rule 2.4 (zero allocation in hot path):
 - Staged mutations are modeled using fixed-size inline ring buffers / fixed arrays embedded directly in chip structs:
   - `Agnus`: `[Option<DelayedMutation>; 64]` (covering all Agnus write registers including Copper, Blitter, and beam controls).
@@ -183,11 +213,11 @@ To satisfy Rule 2.4 (zero allocation in hot path):
   - `MutationMode::OverwritePending`: Control/strobe registers (`DMACON`, `INTENA`, `INTREQ`, `BLTSIZE`, `COPJMP1/2`) where back-to-back writes replace pending mutations targeting the same register.
 - Overflow Protection: If the mutation buffer capacity is exceeded, an immediate fallback commit is executed with a defensive error log, guaranteeing zero host panics and zero heap allocations.
 
-### 5.2 Deterministic Save State Serialization
+### 6.2 Deterministic Save State Serialization
 All pending mutations, staged register values, and remaining cycle countdowns are fully serialized within the subsystem snapshot structs (`AgnusState`, `DeniseState`, etc.):
 - Restoring a save state captured mid-propagation guarantees that pending writes commit at the exact target cycle, ensuring bit-for-bit cycle-exact repeatability.
 
-### 5.3 Subsystem Action Dispatch & Multi-Chip Register Binding Pipeline
+### 6.3 Subsystem Action Dispatch & Multi-Chip Register Binding Pipeline
 When in-flight register mutations mature (or commit immediately upon bus write), the machine loop translates raw register modifications into strongly typed action methods on subsystem handles:
 - **`DMACON` ($096) Master & Channel Routing:**
   - Routes individual DMA enables to `Audio` (channels 0..3), `FloppyController` (`dma_enabled`), `Sprites` (`dma_enabled`), `Blitter` (`dma_enabled`), `Copper` (`dma_enabled`), and `FrameBuilder` (`dma_enabled`).
@@ -208,7 +238,7 @@ When in-flight register mutations mature (or commit immediately upon bus write),
 
 ---
 
-## 6. Baseline Agnus DMA Bus Contention Arbitration
+## 7. Baseline Agnus DMA Bus Contention Arbitration
 
 On each CCK step, Agnus evaluates the horizontal scanline slot schedule ($227.5$ CCKs per PAL line):
 1. **DMA Slot Allocation**:
@@ -223,7 +253,7 @@ On each CCK step, Agnus evaluates the horizontal scanline slot schedule ($227.5$
 
 ---
 
-## 7. Host Interfaces & Persistence
+## 8. Host Interfaces & Persistence
 
 - **Video Frame Retrieval:** Returns current frame buffer slice (`&[u32]` ARGB, $720 \times 576$ max PAL).
 - **Audio Sample Retrieval:** Decouples stereo audio ring buffers (`&[i16]`).
@@ -231,7 +261,7 @@ On each CCK step, Agnus evaluates the horizontal scanline slot schedule ($227.5$
 
 ---
 
-## 8. Reference Documentation & Upstream Ground Truth
+## 9. Reference Documentation & Upstream Ground Truth
 
 - [Amiga Hardware Reference Manual: Chapter 7 (System Control Hardware)](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): System reset sequences, bus arbitration lines, and interrupt prioritization.
 - [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard layout, master system clocks, bus timing, and chip interconnections.

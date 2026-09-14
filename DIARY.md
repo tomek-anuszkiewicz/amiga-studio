@@ -2683,3 +2683,26 @@ Every future modification or implementation task must append an entry following 
   - `python tools/pre_flight.py`: Passed cleanly.
   - `python tools/check_polish.py --git`: Passed across all staged diff additions.
 
+---
+
+### [2026-09-14 02:08 CEST] — Removed Obsolete CycleCounter.md & Integrated Clock Hierarchy into Main Loop
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/CycleCounter.md`: Removed obsolete specification file.
+  - `Obsidian/Amiga/Design/Main loop A500.md`: Integrated master crystal oscillator clock generation diagram, PAL/NTSC standards table, and documented monotonic `cck: u64` stepping on `A500Machine`.
+  - `AGENTS.md`: Updated Section 2.3 to reflect that `A500Machine` tracks master Color Clocks directly via monotonic `cck: u64` rather than an owned subsystem.
+  - `README.md`: Pruned `Cycle Counter` from documentation map table.
+  - `Obsidian/Amiga/Design/`: Updated frontmatter and body links across 10 design documents (`General Architecture.md`, `SaveState.md`, `MemoryBus.md`, `Agnus.md`, `Denise.md`, `Paula.md`, `CIA.md`, `CPU Motorola M68000.md`, `CPU Micro-Step State Machine.md`, `RTC.md`, `Floppy.md`).
+- **What Was Changed (The Concrete Reality)**:
+  - Aligned design documentation with active codebase architecture. Rather than an artificial standalone `CycleCounter` object shared across subsystems, the machine tracks master Color Clocks via `A500Machine.cck: u64` in `crates/machine_loop` and the CPU tracks clock cycles via `CpuState.cycle_counter: u64` in `crates/m68000`.
+  - Preserved the physical hardware master crystal divider network and PAL/NTSC frequency table in `Main loop A500.md`.
+  - Eliminated all dead links to `CycleCounter.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Code-Spec Harmony:* Eliminates phantom abstractions from architectural specifications. System timing remains exact, but without pretending there is an independent `CycleCounter` subsystem.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed (including `test_obsidian_design_docs_links_integrity` with 0 broken links).
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 329 files (0 violations).
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/pre_flight.py`: All 4 pre-flight gates passed cleanly.
+  - `python tools/check_polish.py --git`: Passed across all staged additions.
+
+

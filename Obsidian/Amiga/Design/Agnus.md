@@ -7,13 +7,13 @@ subsystem: "agnus"
 status: "active"
 created: 2026-09-06
 updated: 2026-09-12
-related: ["[MemoryBus.md](MemoryBus.md)", "[CycleCounter.md](CycleCounter.md)", "[SaveState.md](SaveState.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Denise.md](Denise.md)"]
+related: ["[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Denise.md](Denise.md)"]
 ---
 
 # Agnus (MOS 8370 / 8371 / 8372A) Architecture & Hardware Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [CycleCounter.md](CycleCounter.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
 > Save state structures for Agnus are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt delivery are governed by [Main loop A500.md](Main%20loop%20A500.md). Video synchronization is coordinated with [Denise.md](Denise.md) and DMA audio/disk cycles with [Paula.md](Paula.md).
 
 ---

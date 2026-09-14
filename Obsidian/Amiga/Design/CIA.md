@@ -7,13 +7,13 @@ subsystem: "cia"
 status: "active"
 created: 2026-09-06
 updated: 2026-09-12
-related: ["[MemoryBus.md](MemoryBus.md)", "[CycleCounter.md](CycleCounter.md)", "[SaveState.md](SaveState.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Paula.md](Paula.md)"]
+related: ["[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Paula.md](Paula.md)"]
 ---
 
 # MOS 8520 Complex Interface Adapters (CIA-A & CIA-B) Specification
 
 > [!NOTE]
-> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [CycleCounter.md](CycleCounter.md).
+> System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
 > Save state structures for the CIAs are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt delivery are governed by [Main loop A500.md](Main%20loop%20A500.md) and [Paula.md](Paula.md).
 > Detailed keyboard serial protocol and handshake timings are documented in [Keyboard.md](Keyboard.md). Floppy drive control lines (step, motor, side) are coordinated with [Floppy.md](Floppy.md).
 

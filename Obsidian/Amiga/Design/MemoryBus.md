@@ -7,14 +7,14 @@ subsystem: "memory_bus"
 status: "active"
 created: 2026-08-31
 updated: 2026-09-12
-related: ["[Agnus.md](Agnus.md)", "[CycleCounter.md](CycleCounter.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)"]
+related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)"]
 ---
 
 # Amiga 500 MemoryBus Architecture & Bus Topology
 
 > [!NOTE]
 > Global endianness rules, wrapping arithmetic, and WASM constraints are defined in [AGENTS.md](../../../AGENTS.md).
-> Color Clock timing is defined in [CycleCounter.md](CycleCounter.md). DMA contention and cycle stealing are coordinated with [Agnus.md](Agnus.md). Machine stepping and reset cycles are driven by [Main loop A500.md](Main%20loop%20A500.md), and CPU bus transactions are executed in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md).
+> Color Clock timing is defined in [Main loop A500.md](Main%20loop%20A500.md). DMA contention and cycle stealing are coordinated with [Agnus.md](Agnus.md). Machine stepping and reset cycles are driven by [Main loop A500.md](Main%20loop%20A500.md), and CPU bus transactions are executed in [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md).
 
 ---
 

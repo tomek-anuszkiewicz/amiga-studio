@@ -7,7 +7,7 @@ subsystem: "m68000"
 status: "active"
 created: 2026-09-08
 updated: 2026-09-12
-related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[CycleCounter.md](CycleCounter.md)"]
+related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 ---
 
 # Architecture Specification: M68000 Cycle-Exact Micro-Step State Machine
