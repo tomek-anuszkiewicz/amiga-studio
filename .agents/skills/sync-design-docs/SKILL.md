@@ -46,7 +46,7 @@ For each affected design document:
 1. **Remove Speculative Snippets:** Delete tentative code proposals, hypothetical sketches, or superseded draft ideas written before implementation.
 2. **Replace Raw Code Duplication:** Design documents must not duplicate full Rust structs or functions. Replace verbatim code blocks with concise hardware behavior descriptions, tables, and direct markdown links to the living Rust source files:
    ```markdown
-   For the cycle-exact bus arbitration implementation, see [`MemoryBus::step_cck`](file:///d:/Programowanie/Amiga/crates/memory_bus/src/lib.rs).
+   For the cycle-exact bus arbitration implementation, see [`MemoryBus::step_cck`](../../../crates/memory_bus/src/memory_bus.rs).
    ```
 
 ### Step 4: Update Crate Dependency Mermaid Graph (If Dependencies Changed)

@@ -128,7 +128,7 @@ If the branch was developed in an external worktree:
   - **Conflict Decision Log:**
     | Conflicted File | Conflicting Aspects | Resolution Rationale |
     | :--- | :--- | :--- |
-    | `crates/.../lib.rs` | Both branches added imports | Merged both import blocks, eliminated duplicate entries |
+    | `crates/.../<crate>.rs` | Both branches added imports | Merged both import blocks, eliminated duplicate entries |
   - **Test Verification:**
     - `cargo test --all`: PASS
     - `cargo fmt --all -- --check`: PASS

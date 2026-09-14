@@ -5,6 +5,9 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[lib]
+path = "src/memory_bus.rs"
+
 [dependencies]
 physical_memory = { workspace = true }
 agnus = { workspace = true }

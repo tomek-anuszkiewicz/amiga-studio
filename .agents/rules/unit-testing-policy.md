@@ -13,7 +13,7 @@ To guarantee emulator fidelity, zero regressions, and complete opcode support, t
 
 Every non-UI functional module, utility class, parser, decoder, evaluator, data structure, and hardware state machine **must have comprehensive unit test coverage**:
 
-1. **Disassemblers & Parsers (`crates/disassembler/src/lib.rs`, `crates/debugger/src/assembler.rs`):**
+1. **Disassemblers & Parsers (`crates/disassembler/src/disassembler.rs`, `crates/debugger/src/assembler.rs`):**
    - **Exhaustive Opcode Coverage:** Must test every supported M68000 instruction mnemonic, addressing mode, and condition code variant.
    - **Zero Unintended Fallbacks:** Unit tests must assert that valid instructions never fall back to `DATA.W` or unformatted raw bytes.
    - **Roundtrip Validation:** Where applicable, assemble -> disassemble roundtrip tests must verify consistency between assembler and disassembler.
@@ -50,7 +50,7 @@ To guarantee clean separation between production logic and test harnesses, all t
 1. **Dedicated `tests/` Directory Standard:**
    - For every workspace crate (e.g. `crates/audio/`, `crates/agnus/`, `crates/machine_loop/`), all unit tests, integration tests, and regressions **must be placed in `crates/<crate>/tests/`** (e.g. `crates/<crate>/tests/test_<crate>.rs` or `crates/<crate>/tests/*.rs`).
 2. **Strict Prohibition of Inline Tests in `src/`:**
-   - Embedding `#[cfg(test)] mod tests { ... }` or `#[test]` inside `crates/<crate>/src/lib.rs` (or any other `src/*.rs` file) is strictly forbidden across all workspace crates.
+   - Embedding `#[cfg(test)] mod tests { ... }` or `#[test]` inside `crates/<crate>/src/<crate>.rs` (or any other `src/*.rs` file) is strictly forbidden across all workspace crates.
 3. **Core Architectural Rationale:**
    - **Pure Production Code:** Production code in `src/` remains lean, uncluttered, and readable. Static analysis, dead-code detection, and file size limits ($\le 800$ lines) reflect genuine runtime code.
    - **Decoupled API Verification:** External test files compile as distinct crates, forcing tests to exercise modules strictly through public interfaces as downstream consumers (`machine_loop`, `debugger`, `gui`) do.

@@ -47,8 +47,8 @@ graph TD
 * **Single Mutation Vector**: Configuration can only be modified atomically via `apply_preset(preset)`.
 * **RTC Model**: Held internally as an explicit `RtcModel` enum.
 
-The master configuration is encapsulated in [`A500Config`](../../../crates/config/src/lib.rs), which strictly enforces immutability and single-point mutation:
-- **Encapsulated Types (Defined directly in [`crates/config/src/lib.rs`](../../../crates/config/src/lib.rs)):**
+The master configuration is encapsulated in [`A500Config`](../../../crates/config/src/config.rs), which strictly enforces immutability and single-point mutation:
+- **Encapsulated Types (Defined directly in [`crates/config/src/config.rs`](../../../crates/config/src/config.rs)):**
   - **`A500Preset`**: Canonical hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`).
   - **`VideoStandard`**: Display timing standard (`Pal` at ~50 Hz / 3.546895 MHz CCK, `Ntsc` at ~60 Hz / 3.579545 MHz CCK).
   - **`ChipRamSize`**: Chip RAM sizing (`Kb512`).
@@ -101,4 +101,4 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 
 - [Amiga Hardware Reference Manual: Appendix D (System Memory Map)](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md): Memory map boundaries for 512 KB Chip, 512 KB Slow, and 8 MB Auto-Config address spaces.
 - [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard revision differences, jumper configurations (JP2 512K/1MB Agnus, JP1 50/60Hz tick), and expansion bus options.
-- [Configuration Subsystem Implementation Source](../../../crates/config/src/lib.rs): Rust implementation of `A500Config`, hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`), and video standards.
+- [Configuration Subsystem Implementation Source](../../../crates/config/src/config.rs): Rust implementation of `A500Config`, hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`), and video standards.

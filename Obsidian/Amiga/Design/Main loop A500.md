@@ -52,7 +52,7 @@ flowchart TD
 
 ## 2. Machine Struct (`A500Machine`)
 
-The top-level `A500Machine` struct (`crates/machine_loop/src/lib.rs`) owns and orchestrates all components without circular references:
+The top-level `A500Machine` struct (`crates/machine_loop/src/machine_loop.rs`) owns and orchestrates all components without circular references:
 - `cpu`: Motorola 68000 core (`m68000::Cpu`)
 - `physical_memory`: 24-bit physical storage and RAM/ROM buffers (`physical_memory::PhysicalMemory`)
 - `cck`: Monotonic master 64-bit Color Clock counter (`pub cck: u64`)

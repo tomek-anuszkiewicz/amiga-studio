@@ -128,6 +128,6 @@ Target:    Physical DRAM    Floppy     Paula Audio Engine           Denise Video
   - [`vAmigaTS Test Suite`](../../../ref_src/vAmigaTS): Comprehensive hardware verification suite covering DMA cycle contention and bus interactions.
 - **Living Crate Source Files**:
   - [`crates/config/src/mutation.rs`](../../../crates/config/src/mutation.rs): Definition of `MutationMode`, `DelayedMutation`, and electronic propagation countdown pipelines.
-  - [`crates/memory_bus/src/lib.rs`](../../../crates/memory_bus/src/lib.rs): Motherboard address router (`MemoryBus`) routing custom register accesses and CIA port selects.
-  - [`crates/machine_loop/src/lib.rs`](../../../crates/machine_loop/src/lib.rs): Machine loop coordinating CCK progression, action dispatch, and interrupt priority resolution.
+  - [`crates/memory_bus/src/memory_bus.rs`](../../../crates/memory_bus/src/memory_bus.rs): Motherboard address router (`MemoryBus`) routing custom register accesses and CIA port selects.
+  - [`crates/machine_loop/src/machine_loop.rs`](../../../crates/machine_loop/src/machine_loop.rs): Machine loop coordinating CCK progression, action dispatch, and interrupt priority resolution.
 

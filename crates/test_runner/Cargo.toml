@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[lib]
+path = "src/test_runner.rs"
+
 [dependencies]
 m68000 = { workspace = true }
 physical_memory = { workspace = true }

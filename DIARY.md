@@ -2854,5 +2854,34 @@ Every future modification or implementation task must append an entry following 
   - `cargo test --workspace`: All test suites across all crates passed.
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly (Formatting: 100%, Attractors: clean, AGENTS.md ceiling: compliant, Architecture Rules: 17/17 tests passed).
 
+---
+
+### [2026-09-14 03:55 CEST] — Workspace-Wide Migration: Named Crate Roots (<crate>.rs) & Zero Generic lib.rs
+- **Affected Subsystems**:
+  - `crates/*`: Renamed all 27 library root files from generic `src/lib.rs` to dedicated named entrypoints `src/<crate_name>.rs` (e.g. `crates/agnus/src/agnus.rs`, `crates/m68000/src/m68000.rs`).
+  - `crates/*/Cargo.toml`: Added explicit `[lib] path = "src/<crate_name>.rs"` configuration to all 27 library crate manifests.
+  - `crates/disassembler/tests`: Renamed `test_lib.rs` to `test_disassembler_facade.rs` to eliminate residual generic naming.
+  - `crates/test_runner`: Updated `test_zero_backward_compatibility_shims_and_stale_aliases` to inspect named crate roots; added `test_named_crate_roots_and_zero_generic_lib_rs` enforcing zero `lib.rs` across workspace and explicit `[lib] path` in manifests.
+  - `.agents/rules/workspace-structure-and-reexports.md`: Added Section 6 codifying the Named Crate Roots & Zero Generic `lib.rs` mandate.
+  - `.agents/rules/unit-testing-policy.md`, `.agents/rules/vault-linking-and-graph-integrity.md`, `AGENTS.md`: Updated crate root paths and pointers while strictly maintaining the 14,000-byte constitutional ceiling.
+  - `.agents/skills/*`: Synchronized `refactor-split-module`, `prune-dead-code`, `sync-design-docs`, and `git-resolve-merge` skills to reflect named crate roots.
+  - `Obsidian/Amiga/Design/*`: Updated all relative links across 12 design specifications, maintaining 100% link integrity.
+- **What Was Changed (The Concrete Reality)**:
+  - Renamed 27 `src/lib.rs` files to `src/<crate>.rs` via `git mv`.
+  - Configured explicit `[lib] path` in 27 `Cargo.toml` manifests.
+  - Implemented automated architectural verification gate in `test_architecture_rules.rs`.
+  - Updated all markdown documentation links across Obsidian and `.agents/`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Disambiguation and Developer Ergonomics:* In large multi-crate workspaces, multiple open `lib.rs` tabs in IDEs create ambiguity and cognitive friction. Naming crate roots 1:1 after their crates (`agnus.rs`, `m68000.rs`, `gui.rs`) provides instant context and exact grep/fuzzy-find matching.
+  - *Automated Enforcement:* Mandated in operating rules and mechanically locked down via automated CI architecture tests.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: All 4 gates passed cleanly (Formatting: 100%, Attractors: clean, AGENTS.md: 13,582 bytes <= 14,000 limit, Architecture Rules: 18/18 passed).
+  - `cargo test -p test_runner --test test_architecture_rules test_named_crate_roots_and_zero_generic_lib_rs`: PASSED.
+  - `cargo test -p test_runner --test test_architecture_rules test_obsidian_design_docs_links_integrity`: PASSED.
+  - `cargo test --workspace --exclude test_runner`: PASSED across all 26 crates.
+  - `cargo test -p test_runner --test test_dma_cartesian`: PASSED (19/19 tests).
+  - `cargo check --target wasm32-unknown-unknown -p gui --lib`: PASSED.
+
+
 
 

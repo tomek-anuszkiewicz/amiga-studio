@@ -1134,8 +1134,16 @@ fn test_zero_backward_compatibility_shims_and_stale_aliases() {
             }
         }
 
-        // 2. Check for dummy wrapper modules like `pub mod <name> { pub use ...; }` in lib.rs
-        if file.file_name().map_or(false, |n| n == "lib.rs") {
+        // 2. Check for dummy wrapper modules like `pub mod <name> { pub use ...; }` in crate root
+        let file_stem = file.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        let parent_dir_name = file
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
+        let is_crate_root = file_stem == parent_dir_name;
+        if is_crate_root {
             let lines: Vec<&str> = content.lines().collect();
             for (i, line) in lines.iter().enumerate() {
                 let trimmed = line.trim();
@@ -1221,5 +1229,70 @@ fn test_every_crate_has_dedicated_external_tests_suite() {
         "Architecture Rule Violation: Crates missing dedicated external test suites:\n{}\n\
         Every crate must contain an active tests/ directory with dedicated .rs unit test files per .agents/rules/unit-testing-policy.md.",
         missing_tests_crates.join("\n")
+    );
+}
+
+#[test]
+fn test_named_crate_roots_and_zero_generic_lib_rs() {
+    let repo_root = find_repo_root();
+    let crates_dir = repo_root.join("crates");
+
+    let mut violations = Vec::new();
+
+    // 1. Assert zero files named lib.rs exist in the repository
+    let mut all_rs_files = Vec::new();
+    collect_rs_files(&repo_root, &mut all_rs_files);
+    for file in all_rs_files {
+        if file
+            .components()
+            .any(|c| c.as_os_str() == "target" || c.as_os_str() == ".git")
+        {
+            continue;
+        }
+        if file.file_name().map_or(false, |n| n == "lib.rs") {
+            let rel = file.strip_prefix(&repo_root).unwrap_or(&file);
+            violations.push(format!(
+                "{}: Generic `lib.rs` file name is strictly forbidden. Use `<crate_name>.rs` matching the crate.",
+                rel.display()
+            ));
+        }
+    }
+
+    // 2. For each crate under crates/*, verify that src/<crate_name>.rs exists and Cargo.toml configures [lib] path
+    let entries = fs::read_dir(&crates_dir).expect("Failed to read crates directory");
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() && path.join("Cargo.toml").exists() {
+            let crate_name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+
+            let expected_root = path.join("src").join(format!("{}.rs", crate_name));
+            if !expected_root.is_file() {
+                violations.push(format!(
+                    "crates/{}: Missing expected crate root file `src/{}.rs`",
+                    crate_name, crate_name
+                ));
+            }
+
+            let cargo_toml = path.join("Cargo.toml");
+            let toml_content = fs::read_to_string(&cargo_toml).expect("Failed to read Cargo.toml");
+            let expected_lib_entry = format!("path = \"src/{}.rs\"", crate_name);
+            if !toml_content.contains(&expected_lib_entry) {
+                violations.push(format!(
+                    "crates/{}/Cargo.toml: Missing `[lib]` configuration with `{}`",
+                    crate_name, expected_lib_entry
+                ));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Crate root naming violations detected:\n{}\n\
+        All workspace library crates must name their entry point `src/<crate_name>.rs` and configure `[lib] path` per .agents/rules/workspace-structure-and-reexports.md.",
+        violations.join("\n")
     );
 }

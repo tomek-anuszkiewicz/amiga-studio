@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[lib]
+path = "src/game_ports.rs"
+
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 config = { workspace = true }

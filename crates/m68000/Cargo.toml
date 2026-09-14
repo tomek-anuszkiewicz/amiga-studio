@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[lib]
+path = "src/m68000.rs"
+
 [dependencies]
 physical_memory = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

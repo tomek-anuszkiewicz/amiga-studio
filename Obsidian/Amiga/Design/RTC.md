@@ -150,7 +150,7 @@ To support both interactive real-time emulation and headless benchmark/warp exec
 
 ## 6. Save State Architecture (`RtcState`)
 
-Per [SaveState.md](SaveState.md), RTC state is serialized as an independent, decoupled snapshot defined in [`RtcMsm6242b`](../../../crates/rtc/src/lib.rs):
+Per [SaveState.md](SaveState.md), RTC state is serialized as an independent, decoupled snapshot defined in [`RtcMsm6242b`](../../../crates/rtc/src/rtc.rs):
 - **`model` (`RtcModel`)**: Active RTC hardware configuration (`None` or `Msm6242b`).
 - **`registers` (`[u8; 16]`)**: 16 4-bit register latches (`$0..$F`) holding BCD digits.
 - **`control_d` (`u8`)**: Latched value of Control Register D (Hold, Busy, IRQ, 30s adjustment).

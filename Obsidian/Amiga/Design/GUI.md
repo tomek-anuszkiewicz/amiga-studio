@@ -183,6 +183,6 @@ The UI adapts to host OS and browser appearance preferences:
 - [GUI Detailed Layout & Panel Specification](GUI%20Specification.md): Pixel-perfect dock geometries, keyboard shortcuts, and component structures.
 - [egui Guidelines & Frontend Best Practices](egui%20Guidelines.md): Immediate-mode UI patterns, bounded execution, and headless testing rules.
 - [Debugger Architecture & Inspection Engine](Debugger.md): Breakpoint traps, stepping controls, and disassembler facade.
-- [GUI Crate Implementation](../../../crates/gui/src/lib.rs): Living Rust implementation of eframe app, views, docks, and modals.
+- [GUI Crate Implementation](../../../crates/gui/src/gui.rs): Living Rust implementation of eframe app, views, docks, and modals.
 - [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
 - [vAmiga Desktop Reference](../../../ref_src/vAmiga-4.5/): Reference emulator GUI layout and presentation architecture.

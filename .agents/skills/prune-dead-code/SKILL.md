@@ -32,7 +32,7 @@ Inspect the output for:
 ### Step 2: Unreferenced Constant & Symbol Audit
 Audit domain-specific constants and internal methods that may be unreferenced outside their defining module:
 - Search for constants in `crates/*/src/` that are no longer referenced by active execution paths (e.g., historical memory sizing constants or superseded mask definitions).
-- Check `pub use` re-exports in crate root files (`crates/*/src/lib.rs`) against the 3-Tier Re-Export Strategy in [`.agents/rules/workspace-structure-and-reexports.md`](../../rules/workspace-structure-and-reexports.md).
+- Check `pub use` re-exports in crate root files (`crates/*/src/<crate>.rs`) against the 3-Tier Re-Export Strategy in [`.agents/rules/workspace-structure-and-reexports.md`](../../rules/workspace-structure-and-reexports.md).
 - Search for vestigial backward-compatibility dummy modules (e.g. `pub mod former { pub use ...; }`) or transitional import aliases (`use ... as ...`).
 
 ### Step 3: Scaffolding & Test Cleanup
@@ -82,6 +82,6 @@ Ensure all workspace tests pass with 100% green status.
   - **Pruned Symbols & Locations:**
     | Dead Symbol | File Path | Line Range | Verified Zero Callers |
     | :--- | :--- | :--- | :--- |
-    | `fn old_helper` | `crates/.../lib.rs` | L45-L60 | Confirmed via grep |
+    | `fn old_helper` | `crates/.../<crate>.rs` | L45-L60 | Confirmed via grep |
   - **Verification:** `cargo test --workspace` (PASS).
   ```

@@ -138,7 +138,7 @@ Every inspectable or interactive element across all docks, panels, and modal dia
 - [egui Best Practices Rule](../../../.agents/rules/egui-best-practices.md): Mandatory immediate-mode UI rules and headless testing policies.
 - [GUI Frontend Architecture & Overview](GUI.md): Display scaling, CRT shaders, and audio ring buffers.
 - [GUI Detailed Layout & Panel Specification](GUI%20Specification.md): Panel layouts, geometries, and interactive editor specs.
-- [GUI Crate Implementation](../../../crates/gui/src/lib.rs): Living Rust implementation of eframe app, views, docks, and modals.
+- [GUI Crate Implementation](../../../crates/gui/src/gui.rs): Living Rust implementation of eframe app, views, docks, and modals.
 - [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
 
 

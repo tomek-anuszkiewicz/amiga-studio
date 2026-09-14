@@ -87,7 +87,7 @@ The disassembler is extracted into its own dedicated zero-dependency workspace c
 - Operates against a side-effect-free word reader closure `Fn(u32) -> u16`.
 - Returns a [`Disassembly`](../../../crates/disassembler/src/types.rs) struct containing `pc`, raw instruction words (`words: [u16; 5]`, `word_count`), mnemonic (`&'static str`), and formatted operands (`String`), alongside total consumed instruction stream bytes.
 - Highly cohesive, modular architecture strictly respecting source file size limits (< 400 lines per module):
-  - [`lib.rs`](../../../crates/disassembler/src/lib.rs): Crate facade, module declarations, and main [`disassemble`](../../../crates/disassembler/src/lib.rs) coordinator function.
+  - [`disassembler.rs`](../../../crates/disassembler/src/disassembler.rs): Crate facade, module declarations, and main [`disassemble`](../../../crates/disassembler/src/disassembler.rs) coordinator function.
   - [`types.rs`](../../../crates/disassembler/src/types.rs): [`Disassembly`](../../../crates/disassembler/src/types.rs) representation and string line formatting (`format_line`).
   - [`ea.rs`](../../../crates/disassembler/src/ea.rs): Dedicated formatting helpers for effective addresses (`format_ea`), immediate values (`format_immediate`), condition codes (`bcc_condition_name`, `dbcc_condition_name`, `scc_condition_name`), and MOVEM register masks (`format_movem_reg_list`).
   - [`alu.rs`](../../../crates/disassembler/src/alu.rs): Arithmetic, logic, comparisons (`ADD`, `SUB`, `AND`, `OR`, `EOR`, `CMP`, `CMPA`, `CMPM`), immediate ops (`ORI`, `ANDI`, `SUBI`, `ADDI`, `EORI`, `CMPI`), bit operations (`BTST`, `BSET`, `BCLR`, `BCHG`), multiply/divide (`MULU`, `MULS`, `DIVU`, `DIVS`), and shifts/rotates (`ASL/ASR`, `LSL/LSR`, `ROL/ROR`, `ROXL/ROXR`).
@@ -143,8 +143,8 @@ Zero-allocation access for UI virtual scrolling is provided via `trace.get(chron
 - [68000 User's Manual: Section 2 (Introduction & Programmer's Model)](../Reference/68000%20User's%20Manual/02%20-%20Section%202%20-%20Introduction%20%26%20Programmer's%20Model.md): Register structures, status register bits, and user/supervisor modes.
 - [68000 User's Manual: Section 6 (Exception Processing, Stack Frames & Reset)](../Reference/68000%20User's%20Manual/06%20-%20Section%206%20-%20Exception%20Processing,%20Stack%20Frames%20%26%20Reset.md): Vector traps, exception stacking frames, and interrupt priority levels.
 - [Amiga Hardware Reference Manual: Chapter 1 (Introduction)](../Reference/Hardware%20Reference%20Manual/01%20-%20Chapter%201%20-%20Introduction.md): Chip registers, DMA channel assignments, and interrupt mechanisms.
-- [Debugger Engine Implementation](../../../crates/debugger/src/lib.rs): Living Rust implementation of breakpoints, trace ring buffers, and mini-assembler.
-- [Disassembler Crate Implementation](../../../crates/disassembler/src/lib.rs): Living Rust disassembler and stream alignment engine.
+- [Debugger Engine Implementation](../../../crates/debugger/src/debugger.rs): Living Rust implementation of breakpoints, trace ring buffers, and mini-assembler.
+- [Disassembler Crate Implementation](../../../crates/disassembler/src/disassembler.rs): Living Rust disassembler and stream alignment engine.
 - [General Architecture Specification](General%20Architecture.md): Machine topology, bus interfaces, and subsystem ownership.
 - [GUI Design Specification](GUI%20Specification.md): Developer Studio integration, dock panels, and keyboard shortcuts.
 

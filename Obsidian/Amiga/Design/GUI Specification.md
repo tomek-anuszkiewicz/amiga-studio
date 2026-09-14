@@ -53,7 +53,7 @@ The physical arrangement on screen strictly maps 1:1 to the Rust source code hie
 - [`crates/gui/Cargo.toml`](../../../crates/gui/Cargo.toml): Package configuration and UI dependencies (`eframe`, `egui`, `rfd`, `m68000`, `physical_memory`, `debugger`, `config`, `rtc`).
 - [`Trunk.toml`](../../../Trunk.toml): Root Trunk configuration enabling `trunk serve --open` and `trunk build` directly from workspace root.
 - [`crates/gui/index.html`](../../../crates/gui/index.html): HTML5 canvas runner template for WebAssembly browser execution.
-- [`crates/gui/src/lib.rs`](../../../crates/gui/src/lib.rs): WebAssembly entrypoint (`eframe::WebRunner`) and shared re-exports.
+- [`crates/gui/src/gui.rs`](../../../crates/gui/src/gui.rs): WebAssembly entrypoint (`eframe::WebRunner`) and shared re-exports.
 - [`crates/gui/src/main.rs`](../../../crates/gui/src/main.rs): Desktop native entrypoint (`eframe::run_native`) with 1600x840 default viewport (optimized for 16:9 displays at 100-125% DPI scaling).
 - [`crates/gui/src/app.rs`](../../../crates/gui/src/app.rs): Central `EmulatorApp` orchestrator, 4-column dock orchestration, bounded time-slicing execution, and event loop.
 - [`crates/gui/src/theme.rs`](../../../crates/gui/src/theme.rs): Dark, Light, and Classic Amiga Workbench color palettes.
@@ -293,7 +293,7 @@ To guarantee that the visual presentation can be reconstructed from specificatio
 - [Debugger Architecture & Inspection Engine](Debugger.md): Breakpoint traps, stepping controls, and disassembler facade.
 - [Binary Injection & Loader Implementation](../../../crates/debugger/src/loader.rs): Kickstart overlay disengagement, RAM injection, and prefetch priming.
 - [Temporal Debugger Ring Buffer](../../../crates/debugger/src/temporal.rs): High-capacity zero-allocation execution history ring buffer.
-- [GUI Crate Implementation](../../../crates/gui/src/lib.rs): Living Rust implementation of eframe app, views, docks, and modals.
+- [GUI Crate Implementation](../../../crates/gui/src/gui.rs): Living Rust implementation of eframe app, views, docks, and modals.
 - [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
 
 

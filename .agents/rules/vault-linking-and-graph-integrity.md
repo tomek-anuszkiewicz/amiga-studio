@@ -84,7 +84,7 @@ All links in `Obsidian/Amiga/Design/` must adhere to mathematically verified rel
 | :--- | :--- | :--- |
 | **Sibling Design Doc** | `[File.md](File.md)` or `[Title](File.md)` | `[Agnus.md](Agnus.md)` |
 | **Hardware Reference Manual** | `[Title](../Reference/<Folder>/<File>.md)` | `[HRM Ch 2](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md)` |
-| **Workspace Crates** | `[`crates/<crate>/...`](../../../crates/<crate>/...)` | `[`crates/m68000/src/lib.rs`](../../../crates/m68000/src/lib.rs)` |
+| **Workspace Crates** | `[`crates/<crate>/...`](../../../crates/<crate>/...)` | `[`crates/m68000/src/m68000.rs`](../../../crates/m68000/src/m68000.rs)` |
 | **Operational Rules** | `[`rule.md`](../../../.agents/rules/<rule>.md)` | `[`docs-maintenance.md`](../../../.agents/rules/docs-maintenance.md)` |
 | **Reference Source (`ref_src`)** | `[`ref_src/...`](../../../ref_src/<path>)` | `[`vAmiga Agnus`](../../../ref_src/vAmiga-4.5/Core/Chips/Agnus/Copper.cpp)` |
 | **Root Docs (`AGENTS.md`, `ROADMAP.md`)**| `[Doc](../../../<Doc>.md)` | `[AGENTS.md](../../../AGENTS.md)` |

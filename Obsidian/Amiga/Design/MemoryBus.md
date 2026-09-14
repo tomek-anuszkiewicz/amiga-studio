@@ -21,8 +21,8 @@ related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", 
 ## 1. Scope & Physical Address Space
 
 - **Module Locations:**
-  - [`crates/physical_memory/src/lib.rs`](../../../crates/physical_memory/src/lib.rs): Pure 24-bit physical storage (`PhysicalMemory`), RAM/ROM buffers, open-bus defaults, and DMA wait-state contention.
-  - [`crates/memory_bus/src/lib.rs`](../../../crates/memory_bus/src/lib.rs): Zero-cost motherboard address router (`MemoryBus<'a>`), decoding the 24-bit physical address space and routing transactions live to `PhysicalMemory`, Custom Chips, CIAs, and the RTC.
+  - [`crates/physical_memory/src/physical_memory.rs`](../../../crates/physical_memory/src/physical_memory.rs): Pure 24-bit physical storage (`PhysicalMemory`), RAM/ROM buffers, open-bus defaults, and DMA wait-state contention.
+  - [`crates/memory_bus/src/memory_bus.rs`](../../../crates/memory_bus/src/memory_bus.rs): Zero-cost motherboard address router (`MemoryBus<'a>`), decoding the 24-bit physical address space and routing transactions live to `PhysicalMemory`, Custom Chips, CIAs, and the RTC.
 - **Bus Width:** 24-bit physical address space (`$000000`–`$FFFFFF`, 16 MB) and a 16-bit wide data bus supporting 8-bit byte and 16-bit Big-Endian word accesses.
 
 ---
@@ -66,7 +66,7 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
   - `$C0..=$C7`: `SLOW_RAM_HANDLER` (512 KB A501 trapdoor RAM, active in `Standard1Mb` & `ExpandedPowerUser`)
   - `$F8..=$FF`: `KICKSTART_ROM_HANDLER`
   - `$BF`, `$DC`, `$DF`, and unmapped ranges: `OPEN_BUS_HANDLER` (floating high `$FF` / `$FFFF`, silent writes).
-- **Motherboard Routing in `MemoryBus` ([`crates/memory_bus/src/lib.rs`](../../../crates/memory_bus/src/lib.rs)):**
+- **Motherboard Routing in `MemoryBus` ([`crates/memory_bus/src/memory_bus.rs`](../../../crates/memory_bus/src/memory_bus.rs)):**
   - `$DF`: Custom Chip Registers (`$DFF000..$DFFFFE`) routed directly to live Agnus, Denise, and Paula registers (see [Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) and [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)).
   - `$BF`: CIA Peripheral Registers (`$BFD000..$BFEF01`) routed directly to CIA-A and CIA-B.
   - `$DC`: Real-Time Clock (`$DC0000..$DC003F`) routed to OKI MSM6242B.
@@ -233,7 +233,7 @@ To support headless unit testing, SingleStepTests, and debugger inspection witho
 
 ## 5. Memory Bus Reset Semantics
 
-The memory bus reset behavior is implemented in [`crates/physical_memory/src/lib.rs`](../../../crates/physical_memory/src/lib.rs):
+The memory bus reset behavior is implemented in [`crates/physical_memory/src/physical_memory.rs`](../../../crates/physical_memory/src/physical_memory.rs):
 
 - **Cold / Hard Reset (`reset_cold`)**:
   - Wipes all physical RAM (Chip RAM, Slow RAM, Fast RAM) to zero.
@@ -251,4 +251,4 @@ The memory bus reset behavior is implemented in [`crates/physical_memory/src/lib
 - [Amiga Hardware Reference Manual: Appendix D (System Memory Map)](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md): Standard memory map allocations, chip register blocks, CIA odd/even byte mirrors, and expansion ranges.
 - [68000 User's Manual: Section 5 (16-Bit Bus Operations)](../Reference/68000%20User's%20Manual/05%20-%20Section%205%20-%2016-Bit%20Bus%20Operations%20%28Read,%20Write,%20RMW%29.md): Bus cycle state transitions ($S_0$ through $S_7$), `/AS`, `/UDS`, `/LDS`, and `/DTACK` handshake protocols.
 - [A500/A2000 Technical Reference Manual: System Block Diagrams](../Reference/A500%20A2000%20Technical%20Reference%20Manual/02%20-%20Section%202%20System%20Block%20Diagrams.md): Gary custom gate array architecture, address decoding, and system bus buffers.
-- [PhysicalMemory Subsystem Implementation Source](../../../crates/physical_memory/src/lib.rs): Living Rust implementation of 24-bit physical addressing, 256-entry bank table dispatch, open bus float pull-up, and test RAM injection.
+- [PhysicalMemory Subsystem Implementation Source](../../../crates/physical_memory/src/physical_memory.rs): Living Rust implementation of 24-bit physical addressing, 256-entry bank table dispatch, open bus float pull-up, and test RAM injection.

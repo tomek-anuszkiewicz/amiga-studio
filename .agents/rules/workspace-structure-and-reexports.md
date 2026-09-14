@@ -46,7 +46,7 @@ Tier 3: Contained Sub-Components (rtc, copper, blitter, audio_dacs)
   - `audio_channel` belongs to `paula`.
 - **Rule**: The parent peer **must** re-export the child crate:
   ```rust
-  // In crates/memory_bus/src/lib.rs
+  // In crates/memory_bus/src/memory_bus.rs
   pub use rtc;                   // Module namespace: memory_bus::rtc::*
   pub use rtc::RtcMsm6242b;      // Flat convenience shortcut
   ```
@@ -55,7 +55,7 @@ Tier 3: Contained Sub-Components (rtc, copper, blitter, audio_dacs)
 - The machine chassis that owns all peers.
 - **Rule**: Acts as the unified gateway for host frontends (Desktop GUI, WebAssembly, CLI):
   ```rust
-  // In crates/a500/src/lib.rs (future)
+  // In crates/a500/src/a500.rs (future)
   pub use config;
   pub use memory_bus;
   pub use m68000;
@@ -97,3 +97,20 @@ In this closed repository with zero external downstream semver consumers, all re
    - Do not defer call-site updates behind compatibility shims.
 3. **No Legacy Compatibility Comments:**
    - Do not annotate active convenience methods or public APIs with "legacy compatibility" doc comments. If a method is obsolete, remove it; if it is active, describe its actual functional behavior.
+
+---
+
+## 6. Named Crate Roots & Zero Generic `lib.rs` Mandate
+
+To improve searchability, eliminate ambiguous file tabs in editors, and guarantee consistent 1:1 crate-to-root alignment:
+1. **Named Entry Points**:
+   - Every library crate under `crates/<crate_name>/` must name its root entry point file `src/<crate_name>.rs` matching the crate directory name (e.g. `crates/agnus/src/agnus.rs`, `crates/m68000/src/m68000.rs`).
+   - The crate's `Cargo.toml` must explicitly configure the library target path:
+     ```toml
+     [lib]
+     path = "src/<crate_name>.rs"
+     ```
+2. **Strict Prohibition of Generic `lib.rs`**:
+   - Files named `lib.rs` are **strictly forbidden** anywhere across workspace crates (`crates/`) and helper tools (`tools/`).
+   - Enforced by automated architecture test `test_named_crate_roots_and_zero_generic_lib_rs`.
+

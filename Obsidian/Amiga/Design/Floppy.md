@@ -370,7 +370,7 @@ flowchart TD
 
 The physical floppy subsystem is implemented in `crates/floppy` adhering strictly to zero dynamic heap allocations and physical signal modeling:
 
-1. **`FloppyDrive` Mechanics (`crates/floppy/src/lib.rs`):**
+1. **`FloppyDrive` Mechanics (`crates/floppy/src/floppy.rs`):**
    - Head cylinder tracking ($0..79$, clampable up to 83 for extended tracks) with `_DIR` polarity ($0 = \text{inward}, 1 = \text{outward}$).
    - Track 0 optical sensor (`is_track0()`) active only at cylinder 0.
    - Motor flip-flop latched exclusively on the falling edge of `_SELx`.

@@ -204,8 +204,8 @@ Notice the split ownership between Agnus and Paula across each audio channel:
   - [`vAmiga Reference Source`](../../../ref_src/vAmiga-4.5): Clean-room implementation of custom chip register address mapping and strobe dispatch.
   - [`vAmigaTS Test Suite`](../../../ref_src/vAmigaTS): Verification test harness for custom register write side-effects and open-bus floating behavior.
 - **Living Crate Source Files**:
-  - [`crates/memory_bus/src/lib.rs`](../../../crates/memory_bus/src/lib.rs): Motherboard address router dispatching custom register reads and writes live to subsystem handles.
-  - [`crates/agnus/src/lib.rs`](../../../crates/agnus/src/lib.rs): Agnus beam counters, DMA control, and Copper/Blitter register handling.
-  - [`crates/denise/src/lib.rs`](../../../crates/denise/src/lib.rs): Denise bitplane control, palette registers, and collision latches.
-  - [`crates/paula/src/lib.rs`](../../../crates/paula/src/lib.rs): Paula interrupt enable/request masks, audio channel registers, and floppy/serial interfaces.
+  - [`crates/memory_bus/src/memory_bus.rs`](../../../crates/memory_bus/src/memory_bus.rs): Motherboard address router dispatching custom register reads and writes live to subsystem handles.
+  - [`crates/agnus/src/agnus.rs`](../../../crates/agnus/src/agnus.rs): Agnus beam counters, DMA control, and Copper/Blitter register handling.
+  - [`crates/denise/src/denise.rs`](../../../crates/denise/src/denise.rs): Denise bitplane control, palette registers, and collision latches.
+  - [`crates/paula/src/paula.rs`](../../../crates/paula/src/paula.rs): Paula interrupt enable/request masks, audio channel registers, and floppy/serial interfaces.
 
