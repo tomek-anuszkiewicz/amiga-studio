@@ -133,7 +133,8 @@ def main() -> int:
         if report.is_clean and not report.warnings:
             print(f"  [PASS] {file_path.name} (Lines: {report.total_lines}, Code blocks: {report.code_blocks_count})")
         else:
-            overall_clean = False
+            if not report.is_clean:
+                overall_clean = False
             status = "[FAIL]" if not report.is_clean else "[WARN]"
             print(f"{status} {file_path}:")
             for line_no, issue in report.prose_in_code_issues:
