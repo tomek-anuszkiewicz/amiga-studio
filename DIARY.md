@@ -3058,4 +3058,21 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 341 files clean, 0 violations.
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed.
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly.
+---
 
+### [2026-09-14 05:55 CEST] — Strategic Roadmap Elevation: vAmigaTS Direct-Injection Test Harness Elevated to Step 3
+- **Affected Subsystems**:
+  - `ROADMAP.md` (promoted vAmigaTS test harness to new Step 3, renumbered subsequent Steps 4–6, synchronized Section 3.2)
+  - `DIARY.md` (recorded empirical analysis of 2,077 vAmigaTS ADFs and architectural rationale)
+- **What Was Changed (The Concrete Reality)**:
+  - Conducted an empirical audit of the 2,077 test disk images in `ref_src/vAmigaTS/` across all subsystems (`Agnus`, `Denise`, `Paula`, `CIA`, `CPU`, `Memory`).
+  - Discovered that **2,068 out of 2,077 ADFs (99.6%)** utilize an identical micro-bootblock that reads a pre-assembled payload of `$F400` bytes from Sector 2 (byte offset `$000400`) directly into Chip RAM at address `$00070000` and executes `jmp $70000`.
+  - Discovered that **2,118 test files** are pure bare-metal custom chip programs with zero dependencies on Kickstart ROM, AmigaOS libraries, or floppy drive mechanics—touching only `$DFFxxx` and `$BFExxx`/`$BFDxxx` registers.
+  - Formulated the direct-injection execution architecture: slicing the binary payload from offset `$000400` of the ADF, injecting it into `PhysicalMemory` at `$00070000`, setting $SSP = \$0007FF00$, and priming prefetch at `$00070000` via `set_pc_and_prime_prefetch`.
+  - Elevated the vAmigaTS verification suite from a late post-boot milestone (former Step 5) into **`Step 3: vAmigaTS Automated Test Suite Execution Harness & Silicon Verification Gate`**, positioning it immediately following Step 2.7 (Subsystem Execution Engines) and Step 2.8 (Agnus DMA Arbiter).
+  - Renumbered subsequent milestones in `ROADMAP.md`: Step 4 (Custom Chipset Debugger & Observability), Step 5 (Dedicated Player GUI), Step 6 (Real-World Amiga Workloads & Post-Boot Profiling).
+- **Architectural Rationale & Trade-Offs**:
+  - *Eliminating Mock Verification in Favor of Ground Truth:* Building synthetic mocks for complex silicon behaviors (e.g. CIA cascaded timers, Copper wake-up latency, Blitter 256-minterms) risks baking incorrect assumptions into the test suite. Promoting vAmigaTS to Step 3 provides an objective, silicon-validated ground truth suite of over 2,000 test cases and 2,815 reference frame dumps (`.raw`) to verify each subsystem before player frontend work.
+  - *Zero Floppy/MFM Decoupling:* By extracting the binary from offset `$000400`, we decouple custom chip verification from floppy disk hardware simulation, avoiding circular testing dependencies.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
