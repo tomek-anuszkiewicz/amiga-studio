@@ -6,8 +6,8 @@ fn test_agnus_beam_progression() {
     assert_eq!(agnus.hpos, 0);
     assert_eq!(agnus.vpos, 0);
 
-    // Step through one full horizontal scanline
-    for _ in 0..=PAL_LINE_CCKS {
+    // Step through one full horizontal scanline (227 CCKs)
+    for _ in 0..PAL_LINE_CCKS {
         agnus.step_cck();
     }
     assert_eq!(agnus.vpos, 1);

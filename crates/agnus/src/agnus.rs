@@ -163,7 +163,7 @@ impl Agnus {
         };
 
         self.hpos = self.hpos.wrapping_add(1);
-        if self.hpos > PAL_LINE_CCKS {
+        if self.hpos >= PAL_LINE_CCKS {
             self.hpos = 0;
             self.vpos = self.vpos.wrapping_add(1);
             if self.vpos >= max_lines {

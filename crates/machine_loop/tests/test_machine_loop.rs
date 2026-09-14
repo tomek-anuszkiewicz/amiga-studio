@@ -104,6 +104,6 @@ fn test_machine_step_frame() {
     assert_eq!(machine.cck, 0);
     machine.step_frame();
 
-    // Standard PAL frame has 312 lines * 228 CCKs (0..=227) = 71,136 CCKs
-    assert_eq!(machine.cck, 71_136);
+    // Standard PAL frame has 312 lines * 227 CCKs = 70,824 CCKs
+    assert_eq!(machine.cck, 70_824);
 }
