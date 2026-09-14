@@ -84,6 +84,19 @@ This document outlines the phased development plan, hardware milestones, verific
   - *Suite 2.4: Denise Video, Bitplanes & Sprites:* `ref_src/vAmigaTS/Denise/` (`Registers/`, `Modes/`, `DIW/`, `Sprites/`), verifying pixel serialization, palette translation, display window clipping, and sprite multiplexing.
   - *Suite 2.5: Paula Audio & Interrupts:* `ref_src/vAmigaTS/Paula/` (`Audio/`, `Interrupts/basicint/`), verifying PCM sample streaming, period clock division, and Level 1–4 interrupt requests.
   - *Suite 2.6: Agnus Master DMA Contention & CPU Stealing:* `ref_src/vAmigaTS/Agnus/Blitter/bususage`, `cputim`, `Denise/Sprites/spritedma`, verifying cycle-exact CPU wait-state stalling under heavy DMA and Blitter Nasty.
+- **Test Suite Categorization, Filtering & Deferred Execution Matrix:**
+  - *Chipset Model Scope Filter (Phase 1 OCS Baseline vs Phase 2 ECS / Phase 3 AGA):*
+    - The active test execution harness strictly targets the Phase 1 Baseline A500 OCS machine model (Fat Agnus 8371 PAL / 8370 NTSC, OCS Denise 8362, 512 KB Chip RAM).
+    - Tests in `ref_src/vAmigaTS` that specifically exercise ECS features (Agnus 8372A 1MB/2MB registers, Denise 8373 Productivity modes, `BPLCON3`, SuperHires) or AGA hardware (68EC020, 24-bit palette, 8 bitplanes) and provide only `_ecs.raw`, `_plus.raw`, or `_A1200.raw` reference captures are formally filtered and deferred to Phase 2 (ECS) and Phase 3 (AGA).
+  - *Output Verification Modality Filter (Visual RGB24 Viewport vs Non-Visual Register Assertions):*
+    - Tests producing $716 \times 285$ RGB24 frame buffers are matched pixel-for-pixel against verified `.raw` / `_ocs.raw` captures.
+    - CIA tests, serial/parallel communication tests, and register-level test cases that only have hardware CRT camera photographs (`.jpeg`) or lack visual frame buffers are filtered into non-visual verification harnesses asserting register and memory states (`DMACONR`, `INTENAR`, `VPOSR`, `ICR`, CIA counters) upon reaching breakpoint milestones.
+  - *Bootstrap Modality Filter (Sector 2 Direct Injection vs Floppy MFM Boot):*
+    - 2,068 ADFs (99.6%) execute via Sector 2 direct Chip RAM injection with zero-allocation Exec/Gfx stubs.
+    - The 9 non-standard ADFs are scheduled for MFM track streaming / custom bootblock loader verification.
+  - *OS Library Dependency Filter (Scarab Ministartup vs Full Kickstart ROM):*
+    - Tests running under bare-metal or Scarab ministartup execute immediately via our zero-allocation stub jump tables.
+    - Tests with dependencies on full Kickstart 1.3 libraries (`dos.library`, `intuition.library`, filesystem) are deferred to the Kickstart 1.3 low-memory overlay bootstrap milestone.
 
 ### Step 3: Custom Chipset Debugger & Deep Architectural Observability (Developer Studio Extension)
 - **Step 3.1: Custom Chipset Registers & Mutation Delay Pipeline Inspector:**

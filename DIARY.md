@@ -3406,9 +3406,11 @@ Every future modification or implementation task must append an entry following 
   - `crates/m68000/` (`instructions/cmp.rs`: fixed `alu_cmp_l_imm_dn` immediate operand sourcing)
   - `crates/test_runner/tests/` (`test_vamiga_harness.rs`, `test_vamiga_copper.rs`, `test_vamiga_blitter.rs`, `test_vamiga_denise.rs`, `test_vamiga_paula.rs`)
 - **What Was Changed (The Concrete Reality)**:
-  - **Roadmap Re-Prioritization & Non-Standard Test Requirements**:
+  - **Roadmap Re-Prioritization, Non-Standard Tests & Filtering Matrix**:
     - Reorganized `ROADMAP.md` by promoting `vAmigaTS Automated Test Suite Execution Harness & Silicon Verification Gate` to active focus and postponing host presentation/input drivers (cpal audio & gamepad hub) to Step 4.
     - Explicitly codified testing requirements: 2,068 out of 2,077 test ADFs (99.6%) leverage Sector 2 (`$000400`) direct Chip RAM injection to `$00070000`, while the remaining 9 non-standard test ADFs are scheduled for MFM track streaming/bootblock decoding to reach 100% test coverage across all 2,815 physical silicon reference captures.
+    - Added comprehensive 4-tier filtering matrix to `ROADMAP.md`: Chipset Model Scope (OCS baseline vs ECS/AGA deferrals), Output Verification Modality (RGB24 `.raw` viewports vs non-visual/camera photo assertions), Bootstrap Modality (direct injection vs floppy MFM), and OS Library Dependencies (ministartup stubs vs full Kickstart 1.3 bootstrap).
+    - Updated `runner.rs` reference search to prioritize `_ocs.raw` when matching captures.
   - **Direct-Injection Payload Extractor & OS Stubs (`crates/test_runner/src/vamiga/injector.rs`)**:
     - Built zero-floppy bare-metal bootstrap extractor slicing Sector 2 (`$000400`) directly into Chip RAM at `$00070000` (length up to 62 KB).
     - Installed zero-allocation stub vector tables for `ExecBase` (`$00001000`) and `GfxBase` (`$00002000`) handling `OpenLibrary`, `CloseLibrary`, `LoadView`, `WaitTOF`, and `SuperVisor` with immediate return instructions (`rts`), enabling test code to proceed directly to `MAIN`.

@@ -69,15 +69,15 @@ pub fn run_vamiga_test_from_dir(
     let adf_bytes = fs::read(&adf_path)
         .map_err(|e| format!("Failed to read ADF file {:?}: {}", adf_path, e))?;
 
-    // Try finding raw file: <test_name>.raw, or <test_name>_ocs.raw, or <test_name>_ecs.raw
+    // Try finding raw file: prefer <test_name>_ocs.raw, then <test_name>.raw, then <test_name>_ecs.raw
     let raw_path = {
-        let direct = test_dir.join(format!("{}.raw", test_name));
         let ocs = test_dir.join(format!("{}_ocs.raw", test_name));
+        let direct = test_dir.join(format!("{}.raw", test_name));
         let ecs = test_dir.join(format!("{}_ecs.raw", test_name));
-        if direct.exists() {
-            direct
-        } else if ocs.exists() {
+        if ocs.exists() {
             ocs
+        } else if direct.exists() {
+            direct
         } else if ecs.exists() {
             ecs
         } else {
