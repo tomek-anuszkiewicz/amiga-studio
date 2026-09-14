@@ -3169,3 +3169,17 @@ Every future modification or implementation task must append an entry following 
   - git rm docs/worktrees.md clean
   - README.md link updated
   - pre-flight quality gates passed
+---
+
+### [2026-09-14 11:31 CEST] — Configuration: Restructure .gitignore with Detailed Categorization & Preserved Asset Notices
+- **Affected Subsystems**:
+  - `.gitignore`
+- **What Was Changed (The Concrete Reality)**:
+  - Reorganized .gitignore into 7 clean categories: environment config, ephemeral cloud buffers, editor UI state, Python bytecode, Cargo build artifacts, local test run outputs, and preserved external reference assets
+  - Added prominent warning header and descriptions for critical preserved directories (/ref_src/, /Obsidian/Amiga/Reference/, /graphify-out/, /tools/AmigaTestKit/) to prevent accidental deletion
+- **Architectural Rationale & Trade-Offs**:
+  - Distinguishes safe-to-delete caches from critical multi-gigabyte reference materials and test vectors
+  - Explicitly documents NTFS junction linking behavior for worktrees
+- **Verification & Test Results**:
+  - git status verified identical ignore behavior
+  - pre_flight.py passed all 4 quality gates

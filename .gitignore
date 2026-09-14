@@ -1,25 +1,72 @@
+# ==============================================================================
+# Git Ignore Configuration for Amiga 500 Emulator
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Environment & Local Host Configuration
+# ------------------------------------------------------------------------------
+# Local environment variables (e.g. RAG_CACHE_FILE path, Qdrant URL, host ports).
+# Critical for tools and scripts; preserved across worktrees via copy.
+.env
+
+# ------------------------------------------------------------------------------
+# 2. Ephemeral Cloud Sync Buffers (Safe to delete)
+# ------------------------------------------------------------------------------
+# Temporary staging directories created by Google Drive background synchronization.
 .tmp.driveupload/
-graphify-out/cache/
 .tmp.drivedownload/
+
+# ------------------------------------------------------------------------------
+# 3. Editor & Workspace UI State (Safe to delete)
+# ------------------------------------------------------------------------------
+# Local Obsidian vault state: active workspace tabs and remembered cursor positions.
 Obsidian/Amiga/.obsidian/workspace.json
 Obsidian/Amiga/.obsidian/plugins/remember-cursor-position/cursor-positions.json
-.env
+
+# ------------------------------------------------------------------------------
+# 4. Python Runtime Bytecode Cache (Safe to delete)
+# ------------------------------------------------------------------------------
+# Ephemeral compiled bytecode created when running repository tools (*.py).
 __pycache__/
+*.py[cod]
+
+# ------------------------------------------------------------------------------
+# 5. Rust Cargo Build Outputs (Safe to delete / Regenerated on build)
+# ------------------------------------------------------------------------------
+# Target compilation directory for Rust crates. Kept isolated per worktree to
+# prevent concurrent Cargo compiler locks.
 target/
 
+# ------------------------------------------------------------------------------
+# 6. Local Test & Benchmark Execution Outputs (Regenerated on test runs)
+# ------------------------------------------------------------------------------
+# Run artifacts, CSV results, and execution traces produced by local benchmark
+# and SingleStep test harness invocations.
 tests/benchmarks/quick/
 tests/benchmarks/standard/
 tests/benchmarks/thorough/
 tests/singlestep/
 
-# Third-party reference sources & test suites
+# ==============================================================================
+# 7. PRESERVED EXTERNAL ASSETS & REFERENCE DATA (CRITICAL - DO NOT PURGE / DELETE!)
+# ==============================================================================
+# The items below are excluded from Git history to avoid committing multi-gigabyte
+# external binaries, but THEY CONTAIN CRITICAL DATA AND MUST NEVER BE DELETED.
+#
+# They are automatically linked into isolated Git worktrees via zero-cost NTFS
+# directory junctions (0 ms, 0 bytes) using `tools/git/worktree.ps1`:
+# ==============================================================================
+
+# Physical 68000 silicon test vectors (SingleStepTests, 6.5 GB) & clean-room
+# reference emulators (vAmiga, Musashi, MAME, WinUAE).
 /ref_src/
 
-# External reference manuals & documentation
+# Ingested Commodore hardware manuals and technical specifications
+# (Amiga HRM, Motorola 68000 PRM, Amiga Guru Book, A500/A2000 Tech Reference).
 /Obsidian/Amiga/Reference/
 
-# Generated knowledge graphs & caches
+# Graphify AST knowledge graph database, semantic indices, and architecture maps.
 /graphify-out/
 
-# Third-party tools & executables
+# Keir Fraser Amiga Test Kit floppy disk images (.adf), debug symbols, and release docs.
 /tools/AmigaTestKit/
