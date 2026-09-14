@@ -17,7 +17,7 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **Hardware Efficiency & Readability:** Zero custom macros (`macro_rules!`), zero const-generic instruction handlers, contiguous memory layouts, and zero heap allocations in execution loops.
 - **Attractor Discipline (`attractor-discipline.md`):** Zero synthetic academic jargon, theatrical testing metaphors, or heading slogans.
 - **Amiga RAG Knowledge Base (`amiga-rag.md`):** Mandatory pre-task conceptual retrieval and automated reindexing on documentation changes.
-- **Graphify AST Knowledge Graph (`graphify.md`):** Consult the code knowledge graph for AST queries and adhere to scoped subtree re-indexing (`crates/` vs `ref_src/`).
+- **Graphify AST Knowledge Graph (`graphify.md`):** Consult the code knowledge graph for AST queries and maintain the unified codebase graph via fast incremental updates (`graphify update .`).
 
 ---
 
@@ -40,11 +40,10 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:
   - **Active Emulator Crates (`crates/`):** Core Rust workspace (`m68000`, `memory_bus`, `debugger`, `gui`, `config`, `rtc`, `test_runner`).
   - **Reference Emulator Sources (`ref_src/`):** Clean C++ reference implementation (`ref_src/vAmiga`) and external test harnesses.
-- **Scoped Subtree Re-indexing Rule ([`graphify.md`](../.agents/rules/graphify.md)):**
-  - To prevent slow full-repository re-crawls during localized edits, both codebases are indexed and updated independently:
-    - On modifications within active crates: `graphify update crates/`
-    - On modifications within reference sources: `graphify update ref_src/`
-  - Full-repository indexing (`graphify update .`) is reserved for initial setup via `.\tools\bootstrap.ps1 -Graph` or major cross-cutting refactors.
+- **Incremental Knowledge Graph Updates ([`graphify.md`](../.agents/rules/graphify.md)):**
+  - Graphify maintains an AST cache that extracts only modified files in 1–2 seconds without LLM calls.
+  - After modifications to code in `crates/` or `ref_src/`, run `graphify update .` from the repository root (or via `.\tools\bootstrap.ps1 -Graph`).
+  - This keeps a single unified knowledge graph in `graphify-out/` connecting active emulator crates and reference implementations.
 - **Query Tools:**
   - `graphify query "<question>"`: Query symbol dependencies, call hierarchies, and architectural boundaries.
   - `graphify path "<A>" "<B>"`: Trace the shortest dependency or call path between two types or functions.

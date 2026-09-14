@@ -42,12 +42,11 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 /graphify explain "SwinTransformer"                   # plain-language explanation of a node
 ```
 
-## Scoped Subtree Re-indexing (Amiga 500 Emulator Policy)
+## Incremental Re-indexing (Amiga 500 Emulator Policy)
 
-Per project rule [`.agents/rules/graphify.md`](../../rules/graphify.md), graphify updates during development must **always remain strictly scoped** to the touched subtree to avoid unnecessary AST recalculation and token bloat:
-- **When code in `crates/` changes:** Run `graphify update crates/`
-- **When code in `ref_src/` changes:** Run `graphify update ref_src/`
-- **Full Workspace Crawls Prohibited:** Never execute `graphify update .` automatically during localized code modifications. Whole-repo re-extraction is reserved solely for explicit user requests.
+Per project rule [`.agents/rules/graphify.md`](../../rules/graphify.md), graphify maintains an incremental AST cache. When code in `crates/` or `ref_src/` changes, run an incremental update from the repository root to keep the unified cross-codebase knowledge graph up to date:
+- **Incremental Update after Code Changes:** Run `graphify update .` (or `.\tools\bootstrap.ps1 -Graph`).
+- This preserves a single, unified knowledge graph in `graphify-out/` linking active emulator crates and reference implementations, taking only 1–2 seconds without LLM calls.
 
 ## What graphify is for
 

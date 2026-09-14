@@ -3446,4 +3446,21 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Tested execution from `tools/` directory: confirmed `graphify update .` executes at repository root and targets full repository AST.
   - `python tools/pre_flight.py`: 100% compliant across all quality gates.
+---
+
+### [2026-09-14 15:36 CEST] — Standardized on Unified Incremental Graphify Updates (Purged Subtree Scoping)
+- **Affected Subsystems**:
+  - `agents`
+  - `documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Cleaned up obsolete instructions mandating separate scoped subgraphs (`graphify update crates/` vs `graphify update ref_src/`).
+  - Standardized all rules and skills (`.agents/rules/graphify.md`, `.agents/skills/graphify/SKILL.md`, `docs/ai_agents.md`, `AGENTS.md`) on a single unified incremental update command: `graphify update .` (or `.\tools\bootstrap.ps1 -Graph`).
+  - Re-verified performance: `graphify update .` uses native AST file caching and completes incremental passes in 1–2 seconds without LLM calls.
+- **Architectural Rationale & Trade-Offs**:
+  - *Unified Cross-Codebase Knowledge Graph:* Subtree updates previously ran the risk of splintering the graph or generating disjoint outputs (`crates/graphify-out/`), breaking cross-codebase links between active Rust emulator crates and clean-room C++ reference implementations (`ref_src/vAmiga`).
+  - *Sub-Second Incremental Performance:* Because Graphify's AST extraction caches unchanged files, running `graphify update .` from repository root re-extracts only modified files, providing the speed of scoped updates while keeping the unified knowledge graph 100% complete and cohesive.
+- **Verification & Test Results**:
+  - End-to-end root re-extraction: `graphify update .` rebuilt 3,087 nodes, 5,471 edges, and 182 communities across `crates/` and `ref_src/vAmiga` in ~2 seconds.
+  - `python tools/pre_flight.py`: 100% compliant across all quality gates.
+
 
