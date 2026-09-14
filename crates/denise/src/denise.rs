@@ -16,6 +16,94 @@ pub const COLOR_PALETTE_SIZE: usize = 32;
 /// Fixed-capacity in-flight register mutation buffer for Denise (covers 32 colors + controls)
 pub const DENISE_MUTATION_CAPACITY: usize = 64;
 
+/// Decodes a HAM6 pixel given raw bitplane data and previous held RGB color
+#[inline(always)]
+pub fn decode_ham6(
+    planes_data: u8,
+    palette: &[u16; COLOR_PALETTE_SIZE],
+    held_rgb: &mut u16,
+) -> u16 {
+    let ctrl = (planes_data >> 4) & 0x03;
+    let data = (planes_data & 0x0F) as u16;
+
+    let r = (*held_rgb >> 8) & 0xF;
+    let g = (*held_rgb >> 4) & 0xF;
+    let b = *held_rgb & 0xF;
+
+    match ctrl {
+        0 => {
+            let col = palette[data as usize] & 0x0FFF;
+            *held_rgb = col;
+            col
+        }
+        1 => {
+            let col = (r << 8) | (g << 4) | data;
+            *held_rgb = col;
+            col
+        }
+        2 => {
+            let col = (data << 8) | (g << 4) | b;
+            *held_rgb = col;
+            col
+        }
+        3 => {
+            let col = (r << 8) | (data << 4) | b;
+            *held_rgb = col;
+            col
+        }
+        _ => *held_rgb,
+    }
+}
+
+/// Decodes an Extra Half-Brite (EHB) pixel given raw bitplane data
+#[inline(always)]
+pub fn decode_ehb(planes_data: u8, palette: &[u16; COLOR_PALETTE_SIZE]) -> u16 {
+    let idx = (planes_data & 0x1F) as usize;
+    let col = palette[idx];
+    if (planes_data & 0x20) != 0 {
+        let r = ((col >> 8) & 0xF) >> 1;
+        let g = ((col >> 4) & 0xF) >> 1;
+        let b = (col & 0xF) >> 1;
+        (r << 8) | (g << 4) | b
+    } else {
+        col
+    }
+}
+
+/// Decodes a Dual Playfield pixel given raw bitplane data and PF2 priority flag
+#[inline(always)]
+pub fn decode_dual_playfield(
+    planes_data: u8,
+    palette: &[u16; COLOR_PALETTE_SIZE],
+    pf2_priority: bool,
+) -> u16 {
+    let pf1_idx = (planes_data & 0x01)
+        | (((planes_data >> 2) & 0x01) << 1)
+        | (((planes_data >> 4) & 0x01) << 2);
+
+    let pf2_idx = ((planes_data >> 1) & 0x01)
+        | (((planes_data >> 3) & 0x01) << 1)
+        | (((planes_data >> 5) & 0x01) << 2);
+
+    let pf1_col = if pf1_idx != 0 {
+        Some(palette[pf1_idx as usize])
+    } else {
+        None
+    };
+
+    let pf2_col = if pf2_idx != 0 {
+        Some(palette[8 + pf2_idx as usize])
+    } else {
+        None
+    };
+
+    if pf2_priority {
+        pf2_col.or(pf1_col).unwrap_or(palette[0])
+    } else {
+        pf1_col.or(pf2_col).unwrap_or(palette[0])
+    }
+}
+
 /// Denise video display processor state
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Denise {
@@ -63,6 +151,10 @@ pub struct Denise {
 
     /// Bitplane data latches ($110-$11A)
     pub bpldat: [u16; 6],
+    /// Active parallel bitplane shift registers
+    pub shifters: [u16; 6],
+    /// Last held color for HAM6 mode
+    pub last_ham_rgb: u16,
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
@@ -93,6 +185,8 @@ impl Denise {
             joy0dat: 0,
             joy1dat: 0,
             bpldat: [0; 6],
+            shifters: [0; 6],
+            last_ham_rgb: 0,
             mutations: [None; DENISE_MUTATION_CAPACITY],
         }
     }
@@ -118,6 +212,8 @@ impl Denise {
         self.joy0dat = 0;
         self.joy1dat = 0;
         self.bpldat.fill(0);
+        self.shifters.fill(0);
+        self.last_ham_rgb = 0;
         self.mutations = [None; DENISE_MUTATION_CAPACITY];
     }
 
@@ -125,6 +221,10 @@ impl Denise {
     /// and processes in-flight mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
     pub fn step_cck(&mut self, beam: BeamPosition) -> [Option<(u16, u16)>; 8] {
+        if beam.hpos == 0 {
+            self.last_ham_rgb = self.color[0];
+        }
+
         self.sprites.step_cck(beam);
         self.frame_builder.step_cck(beam);
 
@@ -140,6 +240,85 @@ impl Denise {
             self.commit_register_write(item.0, item.1);
         }
         due
+    }
+
+    /// Loads 6 parallel bitplane words into active shift registers
+    #[inline]
+    pub fn load_bitplane_data(&mut self, data: [u16; 6]) {
+        self.bpldat = data;
+        self.shifters = data;
+    }
+
+    /// Shifts out 1 pixel (MSB first) across all 6 bitplanes
+    #[inline]
+    pub fn shift_pixel(&mut self) -> u8 {
+        let mut val = 0u8;
+        for (i, shifter) in self.shifters.iter_mut().enumerate() {
+            if (*shifter & 0x8000) != 0 {
+                val |= 1 << i;
+            }
+            *shifter <<= 1;
+        }
+        val
+    }
+
+    /// Decodes a 6-bit pixel into 12-bit RGB444 based on active display mode
+    pub fn decode_pixel(&mut self, planes_data: u8) -> u16 {
+        let plane_count = self.bitplane_count();
+        if plane_count == 0 {
+            return self.color[0];
+        }
+
+        let mask = if plane_count >= 6 {
+            0x3F
+        } else {
+            (1 << plane_count) - 1
+        };
+        let data = planes_data & mask;
+
+        if self.is_ham() && plane_count == 6 {
+            decode_ham6(data, &self.color, &mut self.last_ham_rgb)
+        } else if self.is_dual_playfield() {
+            let pf2_priority = (self.bplcon2 & 0x0040) != 0;
+            decode_dual_playfield(data, &self.color, pf2_priority)
+        } else if plane_count == 6 && !self.is_hires() {
+            decode_ehb(data, &self.color)
+        } else {
+            let idx = (data & 0x1F) as usize;
+            self.color[idx]
+        }
+    }
+
+    /// Renders a full horizontal scanline of bitplane word blocks into FrameBuilder
+    pub fn render_scanline(&mut self, vpos: u16, word_blocks: &[[u16; 6]]) {
+        self.last_ham_rgb = self.color[0];
+        let pf1_delay = (self.bplcon1 & 0x0F) as usize;
+        let hires = self.is_hires();
+        let scale = if hires { 2 } else { 1 };
+
+        let mut pixel_x = 0usize;
+
+        let backdrop_argb = frame_builder::rgb444_to_argb32(self.color[0]);
+        for _ in 0..(pf1_delay * scale) {
+            self.frame_builder
+                .set_pixel(pixel_x, vpos as usize, backdrop_argb);
+            pixel_x += 1;
+        }
+
+        for block in word_blocks {
+            self.load_bitplane_data(*block);
+
+            for _ in 0..16 {
+                let pixel_data = self.shift_pixel();
+                let rgb = self.decode_pixel(pixel_data);
+                let argb = frame_builder::rgb444_to_argb32(rgb);
+
+                for _ in 0..scale {
+                    self.frame_builder.set_pixel(pixel_x, vpos as usize, argb);
+                    pixel_x += 1;
+                }
+            }
+        }
     }
 
     /// Action method: sets BPLCON0 and updates active display mode flags

@@ -13,6 +13,30 @@ pub const MAX_FRAME_HEIGHT: usize = 576;
 /// Total pixel count of the uncompressed frame buffer
 pub const FRAME_BUFFER_PIXELS: usize = MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT;
 
+/// Converts a 12-bit Amiga RGB444 color to a 32-bit host ARGB color (0xAARRGGBB)
+#[inline(always)]
+pub fn rgb444_to_argb32(rgb: u16) -> u32 {
+    let r = ((rgb >> 8) & 0xF) as u32;
+    let g = ((rgb >> 4) & 0xF) as u32;
+    let b = (rgb & 0xF) as u32;
+    let r8 = (r << 4) | r;
+    let g8 = (g << 4) | g;
+    let b8 = (b << 4) | b;
+    0xFF00_0000 | (r8 << 16) | (g8 << 8) | b8
+}
+
+/// Checks whether a given raster coordinate is within the active Display Window (DIW)
+#[inline]
+pub fn is_in_display_window(hcoord: u16, vcoord: u16, diwstrt: u16, diwstop: u16) -> bool {
+    let vstart = (diwstrt >> 8) & 0xFF;
+    let vstop = ((diwstop >> 8) & 0xFF) | (if (diwstop & 0x8000) != 0 { 0 } else { 0x100 });
+
+    let hstart = diwstrt & 0xFF;
+    let hstop = (diwstop & 0xFF) | 0x100;
+
+    vcoord >= vstart && vcoord < vstop && hcoord >= hstart && hcoord < hstop
+}
+
 /// Raster video frame builder and display buffer
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FrameBuilder {
@@ -29,7 +53,7 @@ pub struct FrameBuilder {
     /// True when a complete video frame has been rasterized (VBlank reached)
     pub frame_ready: bool,
     /// Full 32-bit ARGB pixel buffer (0xAARRGGBB)
-    #[serde(default = "default_frame_buffer", skip_serializing)]
+    #[serde(default = "default_frame_buffer", skip)]
     buffer: Vec<u32>,
 }
 
@@ -104,10 +128,27 @@ impl FrameBuilder {
         }
     }
 
+    /// Retrieves an individual pixel color (0xAARRGGBB) with boundary checking
+    #[inline]
+    pub fn get_pixel(&self, x: usize, y: usize) -> u32 {
+        if x < MAX_FRAME_WIDTH && y < MAX_FRAME_HEIGHT {
+            let idx = y * MAX_FRAME_WIDTH + x;
+            self.buffer[idx]
+        } else {
+            0xFF000000
+        }
+    }
+
     /// Returns a slice of the 32-bit ARGB frame buffer
     #[inline]
     pub fn frame_buffer(&self) -> &[u32] {
         &self.buffer
+    }
+
+    /// Returns a mutable slice of the 32-bit ARGB frame buffer
+    #[inline]
+    pub fn frame_buffer_mut(&mut self) -> &mut [u32] {
+        &mut self.buffer
     }
 
     /// Marks the start of a new video frame

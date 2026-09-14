@@ -3158,3 +3158,32 @@ Every future modification or implementation task must append an entry following 
   - `cargo test --workspace`: All 250+ workspace tests passed with 0 failures (including all 127 single-step CPU tests, 19 cartesian DMA contention tests, and golden benchmark trace tests).
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
 
+---
+
+### [2026-09-14 11:24 CEST] — Step 2.7.3: Denise Video Compositor & Bitplane Pixel Serializer Implementation
+- **Affected Subsystems**:
+  - `crates/frame_builder/src/frame_builder.rs` (implemented `rgb444_to_argb32`, exact Commodore silicon `is_in_display_window`, and buffer accessors)
+  - `crates/denise/src/denise.rs` (implemented 6-bitplane shift registers, HAM6 engine, EHB engine, Dual Playfield priority mixer, and scanline rasterizer)
+  - `crates/denise/tests/test_pixel_pipeline.rs` (authored comprehensive 7-test suite for all video modes)
+  - `ROADMAP.md` (marked Step 2.7.3 as completed)
+- **What Was Changed (The Concrete Reality)**:
+  - Enhanced `crates/frame_builder/src/frame_builder.rs`:
+    - Implemented `rgb444_to_argb32(rgb)` translating 12-bit Amiga RGB palette values to host 32-bit ARGB `0xAARRGGBB` via 4-bit nibble replication (`(n << 4) | n`).
+    - Implemented exact Commodore silicon Display Window clipping (`is_in_display_window`): extracted vertical stop with MSB inversion ($VSTOP = V_{\text{raw}} \mid ((\text{raw} \& 0x8000) \ne 0 \ ?\ 0 : 0x100)$) and horizontal stop with fixed $H8 = 1$ ($HSTOP = H_{\text{raw}} \mid 0x100$), ensuring correct clipping for both PAL ($VSTOP=300$) and NTSC ($VSTOP=244$).
+    - Added safe pixel getter `get_pixel(x, y)` and mutable buffer accessor `frame_buffer_mut()`.
+  - Implemented the full Denise pixel pipeline in `crates/denise/src/denise.rs`:
+    - Added parallel 16-bit shift registers (`shifters: [u16; 6]`) loaded from `bpldat` via `load_bitplane_data([u16; 6])` and shifted out MSB-first via `shift_pixel() -> u8`.
+    - Implemented Hold-And-Modify (`HAM6`) color generator (`decode_ham6`): evaluates planes 5-6 control bits (`00` for palette lookup, `01` for modify Blue, `10` for modify Red, `11` for modify Green), holding prior pixel components and resetting to `COLOR00` at line start (`hpos == 0`).
+    - Implemented Extra Half-Brite (`EHB`) color generator (`decode_ehb`): evaluates plane 6; if 0, outputs standard palette color; if 1, halves RGB components ($R/2, G/2, B/2$), producing 32 shadow tones for 64 simultaneous colors.
+    - Implemented Dual Playfield mode (`decode_dual_playfield`): partitions odd planes (1, 3, 5) to Playfield 1 (`COLOR00..COLOR07`) and even planes (2, 4, 6) to Playfield 2 (`COLOR08..COLOR15`), arbitrating layer priority via `BPLCON2` bit 6 (`PF2PRI`) with color 0 transparency.
+    - Implemented `render_scanline(vpos, word_blocks)` compositing full scanlines into `FrameBuilder` with horizontal fine scrolling delays (`BPLCON1` `PF1H`) and HiRes pixel scaling.
+  - Authored a comprehensive 7-test suite in `crates/denise/tests/test_pixel_pipeline.rs` verifying RGB444 to ARGB32 expansion, display window clipping boundaries, bitplane deserialization and palette lookup, EHB shadow halving, HAM6 hold-and-modify sequences, Dual Playfield priority layering, and fine scrolling delays.
+- **Architectural Rationale & Trade-Offs**:
+  - *Decoupled Pure Color Decode Functions:* Decomposing `decode_ham6`, `decode_ehb`, and `decode_dual_playfield` as pure, standalone inline functions makes each video mode independently verifiable in unit tests without requiring a full machine instance or active raster beam loop.
+  - *Strict Zero Allocations:* The scanline renderer and pixel serializers operate on fixed arrays and slices without runtime allocations.
+- **Verification & Test Results**:
+  - `cargo test -p denise -p frame_builder`: All 13 tests passed cleanly across `test_pixel_pipeline.rs`, `test_denise.rs`, `test_denise_registers.rs`, and `test_frame_builder.rs`.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed cleanly.
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
+
+

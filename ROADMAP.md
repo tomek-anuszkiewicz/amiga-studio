@@ -136,7 +136,7 @@ This document outlines the phased development plan, hardware milestones, verific
     - 32-color palette translation (RGB444 to 32-bit ARGB `0xAARRGGBB` in `FrameBuilder` pixel buffer).
     - Extra Half-Brite (EHB, 6 planes, half luminance) and Hold-And-Modify (HAM6) color generation.
     - Dual Playfield mode (`BPLCON0` bit 10) with layer priority arbitration via `BPLCON2`.
-    - Dedicated unit & integration tests in `crates/denise/tests/test_pixel_pipeline.rs`.
+    - Dedicated unit & integration tests in `crates/denise/tests/test_pixel_pipeline.rs` (100% verified across 7 unit tests).
   - **Step 2.7.4: Denise 8 Hardware Sprite Engines & Multiplexing (`crates/sprites`):**
     - Vertical start/stop comparators ($VPOS == VSTART \to$ arm channel, $VPOS == VSTOP \to$ disarm channel).
     - 16-pixel dual shift registers serializing 2 bits per pixel starting at $HPOS == HSTART$.
