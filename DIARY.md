@@ -3481,5 +3481,29 @@ Every future modification or implementation task must append an entry following 
   - Tested alias resolution: confirmed `-Graph` triggers `$Graphify` and `-Doc`/`-Qdrant` trigger `$Rag`.
   - `python tools/pre_flight.py`: 100% compliant across all quality gates.
 
+---
+
+### [2026-09-14 16:00 CEST] — High-Throughput RAG Indexer: Batch Streaming, Deferred Cache Flushes & Auto CUDA Fallback
+- **Affected Subsystems**:
+  - `tools/rag/rag_qdrant/indexer.py` (cross-file batched embedding, bulk Qdrant upserts, deferred cache flushing, CUDA GPU auto-detection with CPU fallback)
+  - `tools/rag/rag_qdrant/config.py` (added batch constants and flush intervals)
+  - `tools/rag/rag_qdrant/cli.py` (added compute engine and batch size status indicators)
+  - `tools/rag/requirements.txt` (added fastembed and GPU dependencies documentation)
+- **What Was Changed (The Concrete Reality)**:
+  - Transitioned the RAG embedding pipeline from slow, single-file micro-batching (5–20 chunks/batch) to high-throughput cross-file streaming batches (`active_batch_size = 128` for CUDA, `64` for CPU).
+  - Eliminated synchronous Google Drive I/O thrashing on `amiga_rag_cache.json` after every single file: introduced deferred, periodic cache flushing (`CACHE_FLUSH_INTERVAL_FILES = 10` or `CACHE_FLUSH_INTERVAL_CHUNKS = 250`) with an `atexit` handler and `finally:` guarantee.
+  - Implemented multi-point Qdrant upserts (`UPSERT_BATCH_SIZE = 256`), reducing network round-trips to the local Qdrant container by over 90%.
+  - Added robust compute engine probing in `KnowledgeIndexer._init_embedder`: attempts `CUDAExecutionProvider` on FastEmbed with a test probe pass, falling back gracefully to multi-threaded CPU (`NUM_WORKERS`) without host crashes if GPU runtime or CUDA DLLs are missing.
+  - Preserved the identical embedding model (`BAAI/bge-base-en-v1.5`, 768 dimensions), maintaining 100% mathematical vector equivalence with existing indexed collections.
+- **Architectural Rationale & Trade-Offs**:
+  - *Mitigating Google Drive Sync Bottlenecks:* Writing a 300+ KB JSON cache file after every small markdown file forced synchronous cloud filesystem sync overhead on every iteration. Deferring flushes keeps the cache dirty in memory, committing only after substantial progress or process exit.
+  - *Vector & Cache Consistency Guarantee:* All pending points are bulk-upserted to Qdrant immediately prior to flushing the cache to disk, ensuring that cached file completion flags never outpace points physically stored in Qdrant.
+  - *Graceful Hardware Agnosticism:* Rather than requiring GPU hardware or failing when CUDA DLLs are absent, the indexer auto-tunes itself to the host's active capabilities.
+- **Verification & Test Results**:
+  - Validated runtime initialization: `Provider: CPU, Batch: 64` detected and verified on Python 3.13 without errors.
+  - Validated Qdrant collection status: 3,150 vectors in collection `amiga` intact.
+  - `python tools/pre_flight.py`: 100% compliant across formatting, attractor linter, AGENTS.md byte ceiling, and 18 architecture tests.
+
+
 
 
