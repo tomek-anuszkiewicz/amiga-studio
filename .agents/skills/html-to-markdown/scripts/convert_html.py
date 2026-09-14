@@ -156,45 +156,77 @@ def clean_web_cruft_and_unwrap_tables(soup: BeautifulSoup, strip_nav: bool = Tru
             del tag[key]
 
 
-def is_register_trace_line(text: str) -> bool:
-    """Check if a line is a CPU register trace like IRC: $1234."""
-    clean = text.strip().upper()
-    trace_prefixes = ("IRC:", "IR:", "IRD:", "PC:", "SR:", "CCR:", "D0:", "D1:", "A0:", "A1:", "A7:", "SP:")
-    return clean.startswith(trace_prefixes) or bool(re.match(r"^(IRC|IRD|IR|PC|SP)\s*:\s*\$[0-9A-F]{4}", clean))
+PROSE_INDICATORS = {
+    "the", "and", "that", "have", "for", "not", "with", "you", "this",
+    "but", "his", "from", "they", "say", "her", "she", "will", "one",
+    "all", "would", "there", "their", "what", "out", "about", "who",
+    "which", "when", "make", "can", "like", "time", "just", "into",
+    "could", "them", "other", "than", "then", "now", "only", "its",
+    "over", "also", "back", "after", "use", "two", "how", "our",
+    "first", "well", "way", "even", "new", "want", "because", "any",
+    "these", "give", "most", "processor", "processors", "execution",
+    "instruction", "instructions", "performance", "queue", "mechanism",
+    "internal", "external", "cycles", "pipeline", "power", "powerful",
+    "quite", "depend", "depends", "describe", "below", "attempt",
+}
+
+OPCODE_MNEMONICS = (
+    "moveq", "move.l", "move.w", "move.b", "move", "lea", "addq", "subq",
+    "nop", "bsr", "jsr", "link", "tas", "pea", "clr", "bra", "beq", "bne",
+    "add.l", "add.w", "add.b", "sub.l", "sub.w", "sub.b", "subx", "addx",
+)
 
 
-def is_assembly_snippet(text: str) -> bool:
-    """Check if a text block represents M68000 assembly instructions."""
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    if not lines:
+def is_true_assembly_line(text: str) -> bool:
+    """Check if a single line of text is genuinely M68000 assembly or trace."""
+    clean = text.strip()
+    if not clean:
         return False
 
-    if any(is_register_trace_line(line) for line in lines):
+    tokens = clean.lower().split()
+    prose_count = sum(1 for token in tokens if token.strip(".,;:()") in PROSE_INDICATORS)
+    if prose_count >= 2:
+        return False
+
+    upper = clean.upper()
+    if upper.startswith(("IRC:", "IRD:", "IR:", "PC:", "SP:", "SR:")):
         return True
 
-    mnemonic_hits = 0
-    address_prefix_hits = 0
-
-    for line in lines:
-        if re.match(r"^(\$[0-9a-fA-F]{4,8}|[0-9a-fA-F]{6}):", line):
-            address_prefix_hits += 1
-            continue
-
-        tokens = re.split(r"[\s,;]+", line.upper())
-        for token in tokens:
-            cleaned = token.split(".")[0]
-            if cleaned in M68K_MNEMONICS:
-                mnemonic_hits += 1
-                break
-
-    if address_prefix_hits >= 1 and mnemonic_hits >= 1:
+    if clean.endswith(":") and " " not in clean and len(clean) > 1:
         return True
-    if mnemonic_hits >= 2:
-        return True
-    if len(lines) == 1 and mnemonic_hits >= 1 and any(reg in lines[0].upper() for reg in ("D0", "D1", "A0", "A1", "SP", "PC")):
-        return True
+
+    if tokens:
+        first = tokens[0].rstrip(":")
+        if first in OPCODE_MNEMONICS:
+            return not (clean.endswith(".") and len(tokens) > 4)
+        if len(tokens) > 1 and tokens[1] in OPCODE_MNEMONICS:
+            return not (clean.endswith(".") and len(tokens) > 4)
 
     return False
+
+
+def format_inline_elements(elem: Tag) -> str:
+    """Format inline code, bold, and italics inside paragraphs."""
+    for s in elem.find_all("span"):
+        cls_val = s.get("class", [])
+        cls_str = " ".join(cls_val) if isinstance(cls_val, list) else str(cls_val)
+        style_str = str(s.get("style", "")).lower()
+        if "code" in cls_str or "courier" in style_str:
+            txt = s.get_text().strip()
+            if txt and len(txt) < 80 and not is_true_assembly_line(txt):
+                s.replace_with(f" `{txt}` ")
+
+    for b in elem.find_all(["b", "strong"]):
+        txt = b.get_text().strip()
+        if txt and len(txt) < 80:
+            b.replace_with(f" **{txt}** ")
+
+    for i in elem.find_all(["i", "em"]):
+        txt = i.get_text().strip()
+        if txt and len(txt) < 80:
+            i.replace_with(f" *{txt}* ")
+
+    return " ".join(elem.get_text().split())
 
 
 def convert_table(table: Tag) -> Optional[str]:
@@ -344,10 +376,18 @@ class HtmlToMarkdownConverter:
                 top_elements.append(elem)
 
         content_lines: List[str] = []
+        pending_code_lines: List[str] = []
         seen_title = False
+
+        def flush_code_block() -> None:
+            nonlocal pending_code_lines
+            if pending_code_lines:
+                content_lines.append(f"\n```assembly\n" + "\n".join(pending_code_lines) + "\n```\n")
+                pending_code_lines = []
 
         for elem in top_elements:
             if elem.name == "img":
+                flush_code_block()
                 src = elem.get("src", "")
                 alt = elem.get("alt", "Diagram")
                 if src:
@@ -356,6 +396,7 @@ class HtmlToMarkdownConverter:
                 continue
 
             if elem.name == "table":
+                flush_code_block()
                 img = elem.find("img")
                 if img:
                     src = img.get("src", "")
@@ -370,13 +411,22 @@ class HtmlToMarkdownConverter:
                     content_lines.append("\n" + table_md + "\n")
                 continue
 
-            text = elem.get_text().strip()
-            if not text:
+            raw_text = elem.get_text().strip()
+            if not raw_text:
                 continue
+
+            # Check if this element is an assembly line
+            if elem.name == "pre" or is_true_assembly_line(raw_text):
+                clean_lines = [line.rstrip() for line in raw_text.splitlines() if line.strip()]
+                pending_code_lines.extend(clean_lines)
+                continue
+
+            # Non-code element encountered: flush any buffered code lines
+            flush_code_block()
 
             # Heading tags
             if elem.name in ("h1", "h2", "h3", "h4"):
-                clean_text = " ".join(text.split())
+                clean_text = " ".join(raw_text.split())
                 if not seen_title and elem.name in ("h1", "h2"):
                     seen_title = True
                     content_lines.append(f"# {clean_text}\n")
@@ -395,40 +445,44 @@ class HtmlToMarkdownConverter:
                 content_lines.append(f"\n{hashes} {clean_text}\n")
                 continue
 
-            # Code / Assembly detection
-            if elem.name == "pre" or is_assembly_snippet(text):
-                clean_lines = [line.rstrip() for line in text.splitlines()]
-                lang = "assembly" if is_assembly_snippet(text) else "text"
-                content_lines.append(f"\n```{lang}\n" + "\n".join(clean_lines) + "\n```\n")
-                continue
-
             # Lists
             if elem.name in ("ul", "ol"):
                 items = elem.find_all("li")
                 for i, item in enumerate(items, 1):
-                    item_text = " ".join(item.get_text().split())
+                    item_text = format_inline_elements(item)
                     prefix = f"{i}. " if elem.name == "ol" else "- "
                     content_lines.append(f"{prefix}{item_text}")
                 content_lines.append("")
                 continue
 
-            clean_para = " ".join(text.split())
-
-            # Check if uppercase paragraph is a true section heading (excluding register traces)
-            if (
-                len(clean_para) < 60
-                and clean_para.isupper()
-                and len(clean_para.split()) <= 4
-                and not is_register_trace_line(clean_para)
-                and "$" not in clean_para
-            ):
-                level = 3
-                slug = make_anchor_slug(clean_para)
-                self.headings.append(HeadingItem(level=level, title=clean_para, slug=slug))
-                content_lines.append(f"\n### {clean_para}\n")
+            # Check if chapter title in paragraph
+            if raw_text.startswith(("Chapter I:", "Chapter II:", "Chapter III:", "Chapter IV:", "Chapter V:")):
+                chap_title = " ".join(raw_text.split())
+                slug = make_anchor_slug(chap_title)
+                self.headings.append(HeadingItem(level=2, title=chap_title, slug=slug))
+                content_lines.append(f"\n## {chap_title}\n")
                 continue
 
-            content_lines.append(f"{clean_para}\n")
+            # Check if uppercase paragraph is a true section heading
+            if (
+                len(raw_text) < 60
+                and raw_text.isupper()
+                and len(raw_text.split()) <= 4
+                and not is_true_assembly_line(raw_text)
+                and "$" not in raw_text
+            ):
+                level = 3
+                slug = make_anchor_slug(raw_text)
+                self.headings.append(HeadingItem(level=level, title=raw_text, slug=slug))
+                content_lines.append(f"\n### {raw_text}\n")
+                continue
+
+            # Standard prose paragraph with inline elements formatted
+            formatted_para = format_inline_elements(elem)
+            content_lines.append(f"{formatted_para}\n")
+
+        # Flush any trailing code lines
+        flush_code_block()
 
         toc_lines = []
         if self.generate_toc and self.headings:

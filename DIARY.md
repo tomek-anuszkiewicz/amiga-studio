@@ -3612,8 +3612,30 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/html-to-markdown/scripts/diff_reference.py`: Candidate (575 lines, 3,374 words) achieved 104.7% word count parity and 40.4% vocabulary overlap with ground truth reference, successfully isolating CPU register trace sequences from headings.
   - Multi-page validation: Converted 17 HTML files from `Undocumented features of OCS, ECS and AGA chipsets/live` with clean layout unnesting (e.g. `Video_timings.md` at 620 lines with ASCII timing diagrams).
   - `git diff --stat`: Confirmed zero modifications to existing reference files.
-  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 342 files clean (0 violations).
   - `python tools/pre_flight.py`: 100% compliant across all quality gates (Formatting, Attractors, AGENTS.md ceiling, Architecture rules: 18 passed).
+
+---
+
+### [2026-09-14 22:45 CEST] — Refined html-to-markdown Pipeline with Visual Rendering and Semantic Sanity Audits
+- **Affected Subsystems**:
+  - `.agents/skills/html-to-markdown/` (`SKILL.md`, `scripts/convert_html.py`, `scripts/render_comparison.py`, `scripts/audit_conversion.py`)
+  - `Obsidian/Amiga/Reference/temp/html-sandbox/` (`Instruction Prefetch on the Motorola 68000 Processor.md`, `visual_comparison.png`)
+- **What Was Changed (The Concrete Reality)**:
+  - Resolved a severe false-positive code block bug in `convert_html.py` where regular English prose paragraphs containing conjunctions ("and", "or", "not") were mistakenly classified as M68000 assembly instructions and wrapped in code fences.
+  - Added strict prose vs assembly discriminator using stopword detection, instruction mnemonic verification, and punctuation heuristics.
+  - Implemented contiguous code line merging, uniting multi-line assembly routines (e.g. self-modifying code snippet) into cohesive code fences rather than fragmented 1-line boxes.
+  - Implemented `render_comparison.py` using headless browser automation (Google Chrome / Microsoft Edge) and `markdown-it-py` to render both original HTML and converted Markdown into a high-resolution side-by-side composite image (`visual_comparison.png`).
+  - Implemented `audit_conversion.py` to automatically detect visual and semantic conversion blunders (prose leaked into code blocks, adjacent fragmented code boxes, abnormal code line ratios) before human inspection.
+  - Integrated visual rendering and automated sanity audit steps as mandatory phases in `SKILL.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Automated Visual Defect Prevention:* Relying purely on line counts or link checks allows glaring visual discrepancies (such as regular paragraphs rendered in dark monospace code boxes) to slip through. Automated sanity auditing combined with side-by-side rendering guarantees that visual errors are caught immediately.
+  - *Clean Prose & Inline Formatting:* Preserves flowing typography for document body text while isolating true assembly routines and register traces into proper code blocks.
+- **Verification & Test Results**:
+  - `python .agents/skills/html-to-markdown/scripts/audit_conversion.py`: PASSED (0 prose leaks, 0 fragmented blocks, 11 cohesive code blocks down from 36).
+  - `python .agents/skills/html-to-markdown/scripts/render_comparison.py`: Successfully generated side-by-side composite `visual_comparison.png`; multimodal visual inspection verified clean prose paragraphs matching the source HTML.
+  - `python .agents/skills/html-to-markdown/scripts/validate_links.py`: 19/19 links valid (0 errors).
+  - `python tools/pre_flight.py`: 100% compliant across all quality gates (Formatting, Attractors, AGENTS.md ceiling, Architecture rules: 18 passed).
+
 
 
 

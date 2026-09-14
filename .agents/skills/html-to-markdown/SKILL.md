@@ -18,6 +18,8 @@ All conversion scripts and references reside inside this skill directory:
 ├── SKILL.md                               # This workflow recipe
 ├── scripts/
 │   ├── convert_html.py                    # Main HTML-to-Markdown parser, sanitizer & compiler
+│   ├── render_comparison.py               # Headless browser side-by-side visual renderer (HTML vs Markdown)
+│   ├── audit_conversion.py                # Automated visual & semantic sanity auditor (catches prose-in-code leaks)
 │   ├── diff_reference.py                  # Structural AST & metric comparator against ground truth
 │   └── validate_links.py                  # Anchor, image asset, and link integrity validator
 └── references/
@@ -46,6 +48,7 @@ When encountering diagrams, code, tables, and visual figures in HTML documents, 
    - For all programming listings, opcode sequences, and memory maps.
    - Enforce explicit language tags (e.g. `assembly` for M68000).
    - Standardize indentations (aligned columns: `Label:  Mnemonic  Operands  ; Comment`).
+   - Standard prose sentences with punctuation must **NEVER** be enclosed in code blocks.
 2. **Priority 2: Standard Markdown Tables**:
    - First choice for structured tabular data: register breakdowns, bus cycle sequences, instruction classification tables, and timing specifications.
    - Layout-only tables (e.g. single-cell wrapping tables used purely for image centering) must be unwrapped.
@@ -84,27 +87,45 @@ python .agents/skills/html-to-markdown/scripts/convert_html.py `
   --title "Document Title" `
   --author "Author Name" `
   --source-url "http://example.com/doc.html" `
+  --copy-assets `
   --toc
 ```
 
-### Step 4: Compare Against Ground Truth Reference
-If a verified reference exists, run the structural diff tool:
+### Step 4: Automated Semantic & Visual Sanity Audit
+Run the automated sanity auditor to immediately catch visual and structural blunders:
+```powershell
+python .agents/skills/html-to-markdown/scripts/audit_conversion.py `
+  "Obsidian/Amiga/Reference/temp/html-sandbox/doc.md"
+```
+The auditor automatically validates:
+- **Prose Leakage:** Fails if regular prose sentences are mistakenly enclosed in code blocks.
+- **Fragmented Code Blocks:** Fails if consecutive single-line code blocks were not merged.
+- **Code Block Density:** Warns if an abnormally high proportion of lines are in code blocks.
+
+### Step 5: Side-by-Side Visual Rendering & Multimodal Verification
+Generate a side-by-side composite comparison rendering both the original HTML and the converted Markdown:
+```powershell
+python .agents/skills/html-to-markdown/scripts/render_comparison.py `
+  --html "Obsidian/Amiga/Reference/temp/DocFolder/doc.html" `
+  --markdown "Obsidian/Amiga/Reference/temp/html-sandbox/doc.md" `
+  --output-dir "Obsidian/Amiga/Reference/temp/html-sandbox"
+```
+- Inspect `visual_comparison.png` using `view_file` to visually review layout alignment, font styling, and diagram rendering.
+- Visually confirm that prose flows normally, headings match, and code blocks are properly scoped.
+
+### Step 6: Compare Against Ground Truth Reference (If Available)
+If a verified ground truth reference exists, run the structural diff tool:
 ```powershell
 python .agents/skills/html-to-markdown/scripts/diff_reference.py `
   "Obsidian/Amiga/Reference/temp/html-sandbox/doc.md" `
   "Obsidian/Amiga/Reference/doc.md"
 ```
-Audit:
-- Heading hierarchy (H1, H2, H3)
-- Table cell retention
-- Code block count and formatting
-- Character encoding integrity (no `\ufffd` or missing quotes)
 
-### Step 5: Validate Links and Assets
+### Step 7: Validate Links and Assets
 ```powershell
 python .agents/skills/html-to-markdown/scripts/validate_links.py `
   "Obsidian/Amiga/Reference/temp/html-sandbox/doc.md"
 ```
 
-### Step 6: Review & Finalize
-Once validated, the resulting document meets all Obsidian vault standards, including Line 1 YAML properties and dual-layer linking.
+### Step 8: Review & Finalize
+Once all automated gates and visual inspections pass, the resulting document meets all Obsidian vault standards, including Line 1 YAML properties and dual-layer linking.
