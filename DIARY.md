@@ -3183,3 +3183,25 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - git status verified identical ignore behavior
   - pre_flight.py passed all 4 quality gates
+
+---
+
+### [2026-09-14 11:50 CEST] — Documentation: Prune Zero-Utilization Reference Manuals & Itemize .gitignore
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/68000 Resident Structured Assembler Reference Manual/` (permanently deleted 13 chapters)
+  - `Obsidian/Amiga/Reference/Guide to the Amiga Kickstart.md` (deleted)
+  - `Obsidian/Amiga/Reference/68000 FAQ 1.md` (deleted)
+  - `Obsidian/Amiga/Reference/68000 FAQ 2.md` (deleted)
+  - `.gitignore` (itemized individual ignore rules for each retained reference manual and file)
+  - `ROADMAP.md` (updated Section 3.5 Reference Documentation Audit milestone)
+- **What Was Changed (The Concrete Reality)**:
+  - Permanently removed Tier 3 zero-utilization reference documentation (Motorola proprietary ASM68K assembler manual, end-user Kickstart buying guide, and BBS PCB wiring FAQs) per the audit protocol.
+  - Replaced the blanket `/Obsidian/Amiga/Reference/` ignore pattern in `.gitignore` with itemized individual ignore rules for each canonical retained manual and document (`68000 Programmer's Reference Manual/`, `68000 User's Manual/`, `A500 A2000 Technical Reference Manual/`, `Amiga Guru Book/`, `Hardware Reference Manual/`, and standalone markdown technical notes).
+  - Updated `ROADMAP.md` to reflect completion of the Tier 3 reference pruning milestone and maintain a clean backlog.
+- **Architectural Rationale & Trade-Offs**:
+  - *Directory Transparency:* A blanket ignore on `/Obsidian/Amiga/Reference/` blinded Git to any new or untracked files placed in the reference directory. Itemizing rules per retained item ensures immediate Git visibility of any new, modified, or extraneous files.
+  - *Noise Reduction:* Eliminating 16 unused reference files (0.24 MB) reduces embedding noise and eliminates obsolete documentation without impacting core hardware specifications.
+- **Verification & Test Results**:
+  - Verified git status shows only intentional modifications (.gitignore, ROADMAP.md, DIARY.md) and accurately flags temporary probes in `Obsidian/Amiga/Reference/`.
+  - `python tools/pre_flight.py`: All 4 quality gates passed cleanly.
+
