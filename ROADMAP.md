@@ -159,7 +159,7 @@ This document outlines the phased development plan, hardware milestones, verific
     - Level 1 `DSKBLK` completion interrupt strobe to Paula.
     - PIO MFM byte deserialization via `DSKBYTR` with `DSKBYT` bit 15 status flag.
     - Dedicated unit & integration tests in `crates/floppy/tests/test_mfm.rs` (100% verified across 5 unit tests; 11 tests across floppy crate).
-  - **Step 2.7.7: Dual CIA MOS 8520 Timers, TOD & Keyboard Serial Interface (`crates/cia`, `crates/keyboard`):**
+  - **[COMPLETED] Step 2.7.7: Dual CIA MOS 8520 Timers, TOD & Keyboard Serial Interface (`crates/cia`, `crates/keyboard`):**
     - Cascaded 32-bit timer mode: Timer B counting Timer A underflows (`CRB` bits 5..6).
     - 24-bit Time-of-Day (TOD) clock ticking on 50 Hz (PAL) / 60 Hz (NTSC) vertical blank pulses with alarm match interrupt (`ALARM`, ICR bit 2).
     - Serial Data Register (SDR) bidirectional shift register synchronized with MOS 6500/1 keyboard protocol on CIA-A SP/CNT pins $\to$ Level 2 `PORTS` interrupt.

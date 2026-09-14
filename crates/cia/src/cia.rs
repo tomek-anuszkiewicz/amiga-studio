@@ -64,6 +64,8 @@ pub struct Cia {
     pub tod_latched: bool,
     /// Frozen TOD snapshot value captured upon reading TODHI
     pub tod_latch_val: u32,
+    /// True if TOD counter increment is halted (halted by writing TODHI until TODLO is written)
+    pub tod_halted: bool,
     /// Serial Data Register (shift register)
     pub sdr: u8,
     /// Interrupt Control Register data/requests (read: cleared on read)
@@ -108,6 +110,7 @@ impl Cia {
         self.tod_alarm = 0;
         self.tod_latched = false;
         self.tod_latch_val = 0;
+        self.tod_halted = false;
         self.sdr = 0;
         self.icr_data = 0;
         self.icr_mask = 0;
@@ -143,10 +146,12 @@ impl Cia {
         }
 
         // 2. Timer A down-count (if CRA bit 0 is set)
+        let mut ta_underflow = false;
         if (self.cra & 0x01) != 0 {
             if self.ta_counter == 0 {
                 self.ta_counter = self.ta_latch;
                 self.trigger_icr(0x01); // Bit 0: Timer A underflow
+                ta_underflow = true;
                 if (self.cra & 0x08) != 0 {
                     self.cra &= !0x01; // One-shot mode: stop timer
                 }
@@ -157,14 +162,23 @@ impl Cia {
 
         // 3. Timer B down-count (if CRB bit 0 is set)
         if (self.crb & 0x01) != 0 {
-            if self.tb_counter == 0 {
-                self.tb_counter = self.tb_latch;
-                self.trigger_icr(0x02); // Bit 1: Timer B underflow
-                if (self.crb & 0x08) != 0 {
-                    self.crb &= !0x01; // One-shot mode: stop timer
+            let inmode = (self.crb >> 5) & 0x03;
+            let tb_decrement = match inmode {
+                0x00 => true,                // Counts E-Clock pulses
+                0x02 | 0x03 => ta_underflow, // Cascaded 32-bit counting: Timer A underflow pulses
+                _ => false,                  // 0x01: Counts CNT pin pulses (handled via step_cnt)
+            };
+
+            if tb_decrement {
+                if self.tb_counter == 0 {
+                    self.tb_counter = self.tb_latch;
+                    self.trigger_icr(0x02); // Bit 1: Timer B underflow
+                    if (self.crb & 0x08) != 0 {
+                        self.crb &= !0x01; // One-shot mode: stop timer
+                    }
+                } else {
+                    self.tb_counter = self.tb_counter.wrapping_sub(1);
                 }
-            } else {
-                self.tb_counter = self.tb_counter.wrapping_sub(1);
             }
         }
 
@@ -321,15 +335,27 @@ impl Cia {
                 }
             }
             0x8 => {
-                // TOD write (low byte starts counter)
-                self.tod = (self.tod & 0xFFFF00) | (val as u32);
+                if (self.crb & 0x80) != 0 {
+                    self.tod_alarm = (self.tod_alarm & 0xFFFF00) | (val as u32);
+                } else {
+                    self.tod = (self.tod & 0xFFFF00) | (val as u32);
+                    self.tod_halted = false; // Writing TODLO restarts counter
+                }
             }
             0x9 => {
-                self.tod = (self.tod & 0xFF00FF) | ((val as u32) << 8);
+                if (self.crb & 0x80) != 0 {
+                    self.tod_alarm = (self.tod_alarm & 0xFF00FF) | ((val as u32) << 8);
+                } else {
+                    self.tod = (self.tod & 0xFF00FF) | ((val as u32) << 8);
+                }
             }
             0xA => {
-                // TOD write high byte halts counter until TODLO is written
-                self.tod = (self.tod & 0x00FFFF) | ((val as u32) << 16);
+                if (self.crb & 0x80) != 0 {
+                    self.tod_alarm = (self.tod_alarm & 0x00FFFF) | ((val as u32) << 16);
+                } else {
+                    self.tod = (self.tod & 0x00FFFF) | ((val as u32) << 16);
+                    self.tod_halted = true; // Writing TODHI halts counter until TODLO is written
+                }
             }
             0xC => self.sdr = val,
             0xD => {
@@ -354,6 +380,57 @@ impl Cia {
             }
             _ => {}
         }
+    }
+
+    /// Advances the 24-bit Time-of-Day (TOD) counter by 1 tick.
+    /// In CIA-A, this is connected to 50/60 Hz VSync ticks.
+    /// In CIA-B, this is connected to horizontal scanline HSync ticks.
+    ///
+    /// If counter increment is not halted and matches the alarm register,
+    /// asserts the TOD alarm interrupt in ICR (bit 2).
+    pub fn tick_tod(&mut self) {
+        if !self.tod_halted {
+            self.tod = (self.tod.wrapping_add(1)) & 0x00FF_FFFF;
+            if self.tod == (self.tod_alarm & 0x00FF_FFFF) {
+                self.trigger_icr(0x04); // Bit 2: TOD alarm match
+            }
+        }
+    }
+
+    /// Clocks an external transition on the CNT pin.
+    /// If Timer B is in CNT count mode (CRB bits 6..5 == %01), decrements Timer B.
+    pub fn step_cnt(&mut self) {
+        if (self.crb & 0x01) != 0 && ((self.crb >> 5) & 0x03) == 0x01 {
+            if self.tb_counter == 0 {
+                self.tb_counter = self.tb_latch;
+                self.trigger_icr(0x02); // Bit 1: Timer B underflow
+                if (self.crb & 0x08) != 0 {
+                    self.crb &= !0x01; // One-shot mode: stop timer
+                }
+            } else {
+                self.tb_counter = self.tb_counter.wrapping_sub(1);
+            }
+        }
+    }
+
+    /// Shifts an 8-bit byte serially into the SDR from an external device (e.g. keyboard),
+    /// latching the byte and asserting the SDR interrupt in ICR (bit 3).
+    pub fn shift_in_sdr(&mut self, val: u8) {
+        self.sdr = val;
+        self.trigger_icr(0x08); // Bit 3: SDR shift complete
+    }
+
+    /// Returns true if the SDR is configured in serial output mode (CRA bit 6 = 1)
+    #[inline]
+    pub fn is_sdr_output(&self) -> bool {
+        (self.cra & 0x40) != 0
+    }
+
+    /// Triggers the FLAG pin negative edge interrupt (ICR bit 4).
+    /// Connected to parallel port ACK on CIA-A, serial port CD on CIA-B.
+    #[inline]
+    pub fn trigger_flag_pin(&mut self) {
+        self.trigger_icr(0x10); // Bit 4: FLAG pin transition
     }
 
     /// Checks if Port A bit 0 (`_OVL`) has transitioned

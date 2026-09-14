@@ -214,6 +214,14 @@ impl Audio {
         }
     }
 
+    /// Action method: triggers sample buffer finish and restart strobe for channel `ch`
+    #[inline]
+    pub fn trigger_buffer_finish(&mut self, ch: usize) {
+        if ch < 4 {
+            self.channels[ch].restart_strobe = true;
+        }
+    }
+
     /// Polls and clears pending Level 4 interrupt request for channel `ch`
     #[inline]
     pub fn poll_channel_irq(&mut self, ch: usize) -> bool {

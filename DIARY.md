@@ -3295,6 +3295,36 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: 100% compliant.
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
 
+---
+
+### [2026-09-14 11:58 CEST] — Step 2.7.7: Dual CIA MOS 8520 Timers, TOD & Keyboard Serial Interface
+- **Affected Subsystems**:
+  - `crates/cia/src/cia.rs` (cascaded 32-bit Timer B counting Timer A underflows, 24-bit Time-of-Day clock, and SDR shift register with handshake)
+  - `crates/keyboard/src/keyboard.rs` (bidirectional transmission state machine, circular FIFO queue, Caps Lock hardware quirk, reset warning)
+  - `crates/machine_loop/src/machine_loop.rs` (SDR handshake polling, TOD horizontal and vertical blank ticking, hardware warm reset pulse)
+  - `crates/cia/tests/test_cia_advanced.rs` (6 tests: cascaded 32-bit counting, TOD alarm match, SDR shift-in, one-shot mode)
+  - `crates/keyboard/tests/test_keyboard_advanced.rs` (6 tests: Caps Lock toggle quirk, power-up stream, buffer overflow, serial handshake)
+  - `crates/machine_loop/tests/test_cia_keyboard_integration.rs` (3 tests: scancode delivery to CIA-A SDR and Level 2 IRQ, TOD ticking, warm reset)
+  - `ROADMAP.md` (marked Step 2.7.7 as completed)
+- **What Was Changed (The Concrete Reality)**:
+  - Enhanced `crates/cia/src/cia.rs`:
+    - Implemented cascaded 32-bit timer mode (`CRB` bits 5..6): Timer B decrements on Timer A underflow pulses.
+    - Implemented 24-bit Time-of-Day (`tod`) counter ticking on 50 Hz VBlank pulses (CIA-A) and horizontal line sync (CIA-B), with alarm comparison triggering `ALARM` interrupt (`ICR` bit 2).
+    - Implemented Serial Data Register (`sdr`) bidirectional shifting on CIA-A SP/CNT pins, with `is_sdr_output()` handshake detection.
+  - Enhanced `crates/keyboard/src/keyboard.rs`:
+    - Implemented full circular buffer FIFO type-ahead queue with overflow detection (`SCANCODE_BUFFER_OVERFLOW`).
+    - Implemented bidirectional `step(kdat_handshake)` state machine transitioning between `Idle` and `WaitingHandshake`.
+    - Implemented hardware Caps Lock toggle quirk (transmits $62 on toggle on, $E2 on toggle off, zero transmission on key-up).
+    - Implemented Ctrl-Amiga-Amiga reset sequence generating hardware reset warning scancode and asserting `reset_line_asserted`.
+  - Authored comprehensive test suites:
+    - `crates/cia/tests/test_cia_advanced.rs` (100% verified across 6 unit tests).
+    - `crates/keyboard/tests/test_keyboard_advanced.rs` (100% verified across 6 unit tests).
+    - `crates/machine_loop/tests/test_cia_keyboard_integration.rs` (100% verified across 3 end-to-end tests).
+- **Verification & Test Results**:
+  - `cargo test -p cia -p keyboard -p machine_loop`: All 46 tests passed cleanly.
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
+
+
 
 
 

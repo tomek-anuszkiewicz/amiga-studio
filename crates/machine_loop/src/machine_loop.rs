@@ -302,13 +302,17 @@ impl A500Machine {
             self.paula.set_interrupt_request(0x0040);
         }
 
-        // Cross-Chip Signal: Vertical blanking interval -> Paula INTREQ bit 5 (mask 0x0020)
+        // Cross-Chip Signal: Vertical blanking interval -> Paula INTREQ bit 5 (mask 0x0020) & CIA-A TOD tick
         if self.agnus.poll_vblank_irq() {
             self.paula.set_interrupt_request(0x0020);
+            self.cia_a.tick_tod();
         }
 
         // 2. Step Denise (steps sprites, frame_builder, video serializer, and mutation pipeline)
         let beam = self.agnus.beam();
+        if beam.hpos == 0 {
+            self.cia_b.tick_tod(); // CIA-B TOD tracks horizontal scanline sync
+        }
         let denise_due = self.denise.step_cck(beam);
         for item in denise_due.iter().flatten() {
             self.dispatch_denise_action(item.0, item.1);
@@ -334,7 +338,13 @@ impl A500Machine {
             }
         }
 
-        // 4. Step CIAs and dispatch E-Clock mutations
+        // 4. Step Keyboard serial transmission to CIA-A
+        let kdat_handshake = self.cia_a.is_sdr_output();
+        if let Some(scancode) = self.keyboard.step(kdat_handshake) {
+            self.cia_a.shift_in_sdr(scancode);
+        }
+
+        // 5. Step CIAs and dispatch E-Clock mutations
         let cia_a_due = self.cia_a.step_cck();
         for item in cia_a_due.iter().flatten() {
             self.dispatch_cia_action(cia::CiaId::A, item.0, item.1);
@@ -354,7 +364,7 @@ impl A500Machine {
             self.paula.set_interrupt_request(0x2000);
         }
 
-        // 5. Step Real-Time Clock
+        // 6. Step Real-Time Clock
         self.rtc.step_cck(1);
 
         // 6. Cross-Chip Cascades (Physical Pins)
@@ -425,9 +435,12 @@ impl A500Machine {
 
     /// Executes Color Clocks until a full vertical video frame completes (VBlank transition)
     pub fn step_frame(&mut self) {
-        let initial_vpos = self.agnus.vpos;
-        self.step_cck();
-        while !(self.agnus.vpos == 0 && initial_vpos != 0) {
+        if self.agnus.vpos == 0 {
+            while self.agnus.vpos == 0 {
+                self.step_cck();
+            }
+        }
+        while self.agnus.vpos != 0 {
             self.step_cck();
         }
     }
