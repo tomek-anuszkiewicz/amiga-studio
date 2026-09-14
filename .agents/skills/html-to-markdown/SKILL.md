@@ -83,7 +83,56 @@ When converting formatted elements, follow the strict priority ladder in `refere
 
 ---
 
-## 4. Table of Contents (TOC) Architecture
+## 4. Obsidian Frontmatter, Properties & Tags Standard
+
+All converted technical reference documents are targeted for Obsidian vaults and GitHub documentation. Transcriptions must begin on Line 1 with active YAML frontmatter bounded by `---`:
+
+```yaml
+---
+title: "Canonical Full Document Title"
+author: "Author Name or Handle"
+source: "https://canonical-url.org/article"
+original_site: "Original Publication or Website Name"
+date: "YYYY"
+tags:
+  - amiga
+  - hardware
+  - chipset
+  - reference
+properties:
+  author: "Author Name or Handle"
+  source: "https://canonical-url.org/article"
+  original_site: "Original Publication or Website Name"
+  archive_date: "YYYY"
+---
+```
+
+- **Tags:** Lowercase, domain-specific classification tags (e.g. `amiga`, `hardware`, `chipset`, `m68000`, `copper`, `sprites`, `denise`, `agnus`, `paula`, `reference`).
+- **Properties Dictionary:** Mirrored key attributes under `properties:` for Obsidian Dataview and property graph evaluation.
+
+---
+
+## 5. Multi-Page HTML Crawl Consolidation Protocol
+
+When the source document consists of multiple crawled HTML files (e.g. `index.html` plus linked chapter pages like `Chapter_1.html`, `What_is_this_all_about.html`, etc.):
+
+1. **Topological Discovery & Canonical Sequencing:**
+   - Inspect `index.html` (the site Table of Contents) or follow `[Next]` / `[Previous]` navigation links to determine the authoritative sequence of chapters.
+2. **Prune Recurring Web Chrome & Boilerplate:**
+   - Strip site navigation bars (`[Contents]`, `[Next]`, `[Previous]`, `[Home]`), header banners, breadcrumbs, and recurring site footer badges (copyright icons, webcounters, host branding).
+   - Only preserve actual technical prose, code listings, tables, and notes.
+3. **Convert Cross-Page Hyperlinks to Local Anchors:**
+   - Remap inter-page links (e.g. `<a href="Copper.html#regchanges">` or `href="CD32_Controller.html"`) into document-local Markdown anchors (e.g. `[More register changes in a scanline](#21-more-register-changes-in-a-scanline)`).
+   - Ensure every converted internal link points to a valid heading anchor in the unified document.
+4. **Unified Document Hierarchy:**
+   - Assemble all chapters under a single top-level H1 (`# Title`).
+   - Map each individual HTML page to a sequential H2 (`## 1. Chapter Name`, `## 2. Chapter Name`) or H3 for subsections, preserving clear hierarchical numbering.
+5. **Unified Table of Contents:**
+   - Synthesize a comprehensive 2-level Table of Contents at the top of the document indexing all consolidated chapters and subsections.
+
+---
+
+## 6. Table of Contents (TOC) Architecture
 
 The LLM must construct a clean, hierarchical Table of Contents placed immediately after the document title and metadata:
 
@@ -94,14 +143,22 @@ The LLM must construct a clean, hierarchical Table of Contents placed immediatel
 
 ---
 
-## 5. Operational Workflow
+## 7. Operational Workflow
 
 ### Phase 1: Download & Prepare Assets
-Run `download_assets.py` to extract, copy, or download all images referenced in the HTML document to `assets/` and generate technical `.txt` sidecars:
+Run `download_assets.py` to extract, copy, or download all images referenced in the HTML document (or all HTML files in a crawl directory) to `assets/` and generate technical `.txt` sidecars:
 ```powershell
+# For single HTML file:
 python .agents/skills/html-to-markdown/scripts/download_assets.py `
   --html "Obsidian/Amiga/Reference/temp/DocFolder/doc.html" `
   --assets-dir "Obsidian/Amiga/Reference/temp/html-sandbox/assets"
+
+# For multi-page HTML directory crawl:
+Get-ChildItem "Obsidian/Amiga/Reference/temp/DocFolder/*.html" | ForEach-Object {
+  python .agents/skills/html-to-markdown/scripts/download_assets.py `
+    --html $_.FullName `
+    --assets-dir "Obsidian/Amiga/Reference/temp/html-sandbox/assets"
+}
 ```
 *(Optional)* If visual page layout inspection is needed, render high-res page PNGs:
 ```powershell
@@ -114,14 +171,15 @@ python .agents/skills/html-to-markdown/scripts/html_to_pages.py `
 ### Phase 2: LLM Transcription
 Instruct the LLM to perform the conversion by providing:
 1. The full prompt instructions from [`references/llm-transcription-prompt.md`](references/llm-transcription-prompt.md).
-2. The HTML source text (or page PNGs).
+2. The HTML source text (or page PNGs). For multi-page crawls, follow **Section 5 (Multi-Page HTML Crawl Consolidation Protocol)** to consolidate chapters sequentially into a single reference document.
 
 The LLM will produce clean Markdown with:
+- Line 1 Obsidian Properties (YAML frontmatter with tags and metadata).
 - Backticked Motorola hex values (`` `$00000004` ``) to protect KaTeX math rendering.
 - GFM tables for structured data.
-- Hierarchical TOC with exact matching anchors.
+- Hierarchical 2-level TOC with exact matching anchors.
 - Native Obsidian callouts (`> [!NOTE]`, `> [!WARNING]`, `> [!IMPORTANT]`).
-- Image placeholders (`<image placeholder ...>` or `<crop ...>`).
+- Image placeholders (`<image placeholder ...>` or `<crop ...>`) when Mermaid cannot model the graphic.
 
 ### Phase 3: Resolve Image Placeholders
 Run `replace_placeholders.py` to verify assets, update image links, and guarantee sidecars:

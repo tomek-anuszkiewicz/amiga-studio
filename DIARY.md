@@ -3721,3 +3721,24 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/html-to-markdown/scripts/validate_links.py`: 61 links checked, 0 errors found (100% PASS).
   - `python .agents/skills/html-to-markdown/scripts/diff_reference.py`: 100% heading coverage (33/33 headings matched), 100% line ratio, 99.9% vocabulary overlap against ground truth reference.
   - `python tools/pre_flight.py`: Passed 100% cleanly across all gates (Formatting, Attractors, AGENTS.md ceiling: 13,576 bytes, Architecture rules: 18 passed).
+
+---
+
+### [2026-09-15 00:25 CEST] — Codification of Obsidian Properties & Multi-Page HTML Crawl Consolidation
+- **Affected Subsystems**:
+  - `.agents/skills/html-to-markdown/` (`SKILL.md`, `references/llm-transcription-prompt.md`)
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the **Obsidian Frontmatter, Properties & Tags Standard** in both `SKILL.md` and `references/llm-transcription-prompt.md`:
+    - Enforces that all transcribed documents begin on Line 1 with active YAML frontmatter bounded by `---`.
+    - Standardizes keys (`title`, `author`, `source`, `original_site`, `date`, `tags`, `properties`), including lowercase domain tags (`amiga`, `hardware`, `chipset`, `m68000`, `copper`, `sprites`, `reference`) and a mirrored properties map for Obsidian Dataview / property graph indexing.
+  - Codified the **Multi-Page HTML Crawl Consolidation Protocol**:
+    - Topological discovery: inspecting `index.html` or traversing `[Next]`/`[Previous]` navigation links to determine canonical reading order.
+    - Pruning recurring website chrome: stripping navigation bars (`[Contents]`, `[Home]`, `[Next]`, `[Previous]`), header banners, breadcrumbs, and footer boilerplate (copyright icons, counters, site logos).
+    - Cross-page link remapping: converting inter-page hyperlinks (e.g. `<a href="page.html#anchor">`) directly into document-local Markdown anchors (`#page-anchor`).
+    - Unified document hierarchy: consolidating multiple fractured pages into a single cohesive Markdown document with an H1 title, 2-level Table of Contents, and sequential H2/H3 chapter headings.
+  - Updated Phase 1 (asset downloading across crawl directories) and Phase 2 (LLM transcription instructions) in `SKILL.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Standardized Multi-Page Web Crawl Conversion:* Replaces ad-hoc agent deduction with a reproducible, codified standard for unifying multi-chapter web documentation into publication-grade Obsidian reference notes.
+  - *Obsidian Vault Interoperability:* Standardized frontmatter properties and tags ensure all newly converted reference notes immediately integrate into the vault graph, search filters, and Dataview tables.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: Passed 100% cleanly across all gates (Formatting, Attractor Discipline: 344 files clean, AGENTS.md ceiling: 13,576 bytes, Architecture rules: 18 passed in 0.78s).
