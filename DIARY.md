@@ -3128,3 +3128,33 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p agnus -p machine_loop`: All 42 tests passed across action dispatch, interrupts, and registers.
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed cleanly.
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
+
+---
+
+### [2026-09-14 11:20 CEST] — Step 2.7.2: Agnus 4-Channel DMA Blitter Engine Implementation
+- **Affected Subsystems**:
+  - `crates/blitter/src/minterm.rs` (implemented 256-minterm Boolean ALU and inclusive/exclusive fill logic)
+  - `crates/blitter/src/line.rs` (implemented Bresenham vector line drawer with octant direction selection and single-bit mode)
+  - `crates/blitter/src/blitter.rs` (implemented barrel shifters, area blit engine, line blit engine, and cycle-by-cycle phase sequencer)
+  - `crates/blitter/tests/test_blitter.rs` (authored comprehensive 10-test suite verifying truth tables, shifters, masks, modulos, and line mode)
+  - `crates/agnus/src/agnus.rs` (updated `step_cck_ram(&mut chip_ram)` to drive `blitter.step_cck_ram` and synchronized `DMACON` with `dma_enabled` and `bltpri`)
+  - `crates/machine_loop/src/machine_loop.rs` (routed mutable Chip RAM slice into `agnus.step_cck_ram`)
+  - `ROADMAP.md` (marked Step 2.7.2 as completed)
+- **What Was Changed (The Concrete Reality)**:
+  - Decomposed the Blitter architecture into modular, single-responsibility files under `crates/blitter/src/`:
+    - `minterm.rs`: Implemented `eval_minterm(a, b, c, minterm)` executing the full 8-bit truth table ($LF0..LF7$) combining channels A, B, and C into destination D with zero heap allocation and high host pipeline efficiency. Implemented `apply_fill(data, carry, exclusive)` supporting both inclusive ($IFE$) and exclusive ($EFE$) fill modes from right to left with row carry initialization ($FCI$).
+    - `line.rs`: Implemented `LineDrawer` and `step_pixel` modeling the Amiga hardware Bresenham line algorithm. Mapped all 8 octants using Table 6-3 from the Commodore Hardware Reference Manual (`SUD`, `SUL`, `AUL`), updated the 16-bit signed slope error accumulator in `BLTAPT` via `BLTAMOD` / `BLTBMOD`, and handled single-bit per line plotting (`SING`) to ensure clean polygon boundary edge generation for subsequent fill passes.
+    - `blitter.rs`: Implemented `barrel_shift` supporting 0..15 bit shifts with inter-word carry propagation across word boundaries in both ascending and descending (`DESC`) modes. Implemented row-by-row word transfer loops supporting signed modulos (`BLTAMOD`..`BLTDMOD`), first and last word masking (`BLTAFWM` / `BLTALWM`), zero flag detection (`is_zero`), and level 3 `_BLITINT` interrupt assertion upon completion. Implemented both synchronous execution (`execute_blit`, `execute_area_blit`, `execute_line_blit`) and cycle-by-cycle channel slot stepping (`step_cck_ram`).
+  - Integrated with `Agnus` and `machine_loop`:
+    - Updated `Agnus::step_cck_ram(&mut self, chip_ram: &mut [u8])` to advance `self.blitter.step_cck_ram(chip_ram)`.
+    - Wired `DMACON` writes in Agnus to update `self.blitter.set_dma_enabled()` based on `DMAEN` & `BLTEN` and `self.blitter.set_bltpri()` based on `BLTPRI`.
+    - In `machine_loop.rs`, passed `&mut self.physical_memory.chip_ram` to `step_cck_ram`.
+  - Authored a comprehensive 10-test suite in `crates/blitter/tests/test_blitter.rs` covering truth tables (copy, invert, cookie cut, XOR), barrel shifter carry retention, first/last word masking, ascending 2D grid copies with modulos, descending overlapping copies, inclusive and exclusive fill, Bresenham line drawing, zero flag detection, and cycle-by-cycle stepping.
+- **Architectural Rationale & Trade-Offs**:
+  - *Dual Execution Modes (One-Shot & Cycle-by-Cycle):* Supporting both `execute_blit` (instant full-blit execution) and `step_cck_ram` (cycle-by-cycle channel DMA slots) gives the emulator the ability to execute blits synchronously for high-performance modes, headless unit tests, and instant debug tools, while maintaining exact cycle arbitration and bus contention tracking in `step_cck`.
+  - *File Cohesion & Size Limits:* All files remain strictly $\le 800$ lines (`blitter.rs` at 756 lines, `line.rs` at 132 lines, `minterm.rs` at 79 lines), adhering strictly to `file-size-and-cohesion.md`.
+- **Verification & Test Results**:
+  - `cargo test -p blitter`: All 10 unit tests passed cleanly in `test_blitter.rs`.
+  - `cargo test --workspace`: All 250+ workspace tests passed with 0 failures (including all 127 single-step CPU tests, 19 cartesian DMA contention tests, and golden benchmark trace tests).
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
+

@@ -128,7 +128,7 @@ This document outlines the phased development plan, hardware milestones, verific
     - Row-by-row word transfer loop with signed modulos (`BLTAMOD`..`BLTDMOD`) in ascending and descending (`DESC` bit 1 in `BLTCON1`) modes.
     - Bresenham line drawer mode (`LINE == 1` in `BLTCON1`) with octant direction selection, error accumulators, and single-bit line generation.
     - Zero detection (`is_zero`) for cookie cuts and collision checks, followed by Level 3 `_BLITINT` completion strobe to Paula.
-    - Dedicated unit & integration tests in `crates/blitter/tests/test_blitter.rs`.
+    - Dedicated unit & integration tests in `crates/blitter/tests/test_blitter.rs` (100% verified across 10 unit tests).
   - **Step 2.7.3: Denise Video Compositor & Bitplane Pixel Serializer (`crates/denise`, `crates/frame_builder`):**
     - 6 parallel bitplane shift registers supporting LoRes (140 ns / 1 pixel per CCK) and HiRes (70 ns / 2 pixels per CCK).
     - Display Window generator (`DIWSTRT` / `DIWSTOP` clipping boundaries, backdrop/border color `COLOR00`).

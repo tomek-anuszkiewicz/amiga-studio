@@ -149,13 +149,13 @@ impl Agnus {
     /// Returns any register writes that matured and committed on this exact cycle.
     #[inline]
     pub fn step_cck(&mut self) -> [Option<(u16, u16)>; 8] {
-        self.step_cck_ram(&[])
+        self.step_cck_ram(&mut [])
     }
 
     /// Advances raster beam position, steps embedded coprocessors and schedulers with Chip RAM access,
     /// and processes in-flight register mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck_ram(&mut self, chip_ram: &[u8]) -> [Option<(u16, u16)>; 8] {
+    pub fn step_cck_ram(&mut self, chip_ram: &mut [u8]) -> [Option<(u16, u16)>; 8] {
         // 1. Advance horizontal and vertical raster beam counters
         let max_lines = match self.model {
             AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
@@ -176,7 +176,7 @@ impl Agnus {
         // 2. Step embedded coprocessors and schedulers
         let beam = self.beam();
         self.pending_copper_write = self.copper.step_cck(beam, self.blitter.is_busy, chip_ram);
-        self.blitter.step_cck();
+        self.blitter.step_cck_ram(chip_ram);
         self.dma.step_cck();
         self.chip_ram_blocked = self
             .dma
@@ -308,6 +308,10 @@ impl Agnus {
                 } else {
                     self.dmacon &= !(val & 0x7FFF);
                 }
+                self.dma.write_dmacon(val);
+                let dma_en = self.is_dma_enabled(0x0040);
+                self.blitter.set_dma_enabled(dma_en);
+                self.blitter.set_bltpri(self.is_blitter_nasty());
             }
             0x02E => self.copper.set_copcon(val),
             0x080 => {
