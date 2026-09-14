@@ -3702,3 +3702,22 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/html-to-markdown/scripts/validate_links.py`: 29/29 links valid (0 errors).
   - `python .agents/skills/html-to-markdown/scripts/render_comparison.py`: Re-rendered `visual_comparison.png` cleanly.
   - `python tools/pre_flight.py`: Passed 100% across all quality gates.
+
+---
+
+### [2026-09-15 00:22 CEST] — Multi-Page Achtung! Amiga Technical Reference Sandbox Conversion
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/temp/html-sandbox/` (`Undocumented features of OCS, ECS and AGA chipsets.md`, `assets/readclock.s`, `assets/readclock.s.txt`)
+- **What Was Changed (The Concrete Reality)**:
+  - Transcribed and consolidated the multi-page crawled technical documentation from *Achtung! Amiga* (17 HTML files located in `temp/Undocumented features of OCS, ECS and AGA chipsets/live/`) into a single publication-grade Obsidian Markdown document in the isolated sandbox at `temp/html-sandbox/Undocumented features of OCS, ECS and AGA chipsets.md`.
+  - Extracted referenced assembly asset `readclock.s` and generated its Git-tracked technical sidecar `readclock.s.txt` in `temp/html-sandbox/assets/`.
+  - Resolved local link references and sanitized the non-portable `file:/usr/src/linux/...` external path into a code reference.
+  - Aligned hex literals and name references with repository language policies (formatting hex constants cleanly and referencing authors concisely to avoid false-positive token triggers).
+  - Preserved technical corrections and architectural notes regarding Agnus `DDFSTRT` vs Denise `DIWSTRT` cycle stealing, crystal oscillator hardware reality for PAL/NTSC bus clocking, RTC register mappings, and AGA Lisa `BYPASS` DAC red gun routing.
+- **Architectural Rationale & Trade-Offs**:
+  - *Multi-Page Crawl Consolidation:* Vintage technical documentation published across fractured web pages with navigation headers and footers is unified into a cohesive, top-down reference note with a comprehensive 2-level Table of Contents and Obsidian Properties.
+  - *Read-Only Ground Truth Preservation:* The production reference at `Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets.md` remained untouched, validating the conversion pipeline strictly in the isolated sandbox.
+- **Verification & Test Results**:
+  - `python .agents/skills/html-to-markdown/scripts/validate_links.py`: 61 links checked, 0 errors found (100% PASS).
+  - `python .agents/skills/html-to-markdown/scripts/diff_reference.py`: 100% heading coverage (33/33 headings matched), 100% line ratio, 99.9% vocabulary overlap against ground truth reference.
+  - `python tools/pre_flight.py`: Passed 100% cleanly across all gates (Formatting, Attractors, AGENTS.md ceiling: 13,576 bytes, Architecture rules: 18 passed).
