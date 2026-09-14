@@ -3759,3 +3759,41 @@ Every future modification or implementation task must append an entry following 
   - *Clean Skill Footprint & Zero Context Waste:* Eliminates 32 KB of redundant documentation and dead code. Any future agent or subagent invoking `html-to-markdown` now has exactly one authoritative prompt reference (`references/llm-transcription-prompt.md`) without conflicting or duplicate guidelines.
 - **Verification & Test Results**:
   - `python tools/pre_flight.py`: Passed 100% cleanly across all gates (Formatting, Attractor Discipline: 341 files clean with 0 violations, AGENTS.md ceiling: 13,576 bytes, Architecture rules: 18 passed in 0.85s).
+
+---
+
+### [2026-09-15 01:15 CEST] — PDF-to-Markdown Benchmark Sandbox: 20 Representative HRM Pages & Figure 5-8 / Page 187 Trial Conversion
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/scripts/pdf_to_pages.py` (added `--pages` comma-separated list support for selective page rendering)
+  - `.agents/skills/pdf-to-markdown/scripts/audit_conversion.py` (recognized `mermaid` diagram blocks to avoid false-positive code density warnings)
+  - `Obsidian/Amiga/Reference/temp/pdf-sandbox/` (sandbox workspace: 20 rendered 200 DPI PNG pages, trial markdowns, assets, and technical sidecar)
+- **What Was Changed (The Concrete Reality)**:
+  - Enhanced `pdf_to_pages.py` to accept arbitrary page selections (`--pages p1,p2,...`), rendering high-resolution 200 DPI PNGs without requiring continuous monolithic ranges.
+  - Extracted a curated benchmark suite of 20 representative pages from `Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf`:
+    - Table of Contents: Pages 9, 10
+    - Architecture & Diagrams: Page 20 (Simplified Amiga Block Diagram)
+    - Instruction & Reference Tables: Page 32 (Summary of Copper Instructions), Page 71 (Display Window DIWSTRT/DIWSTOP), Page 164 (Audio Attach Mode Table), Page 203 (BLTCON1 Octant Line Drawing), Page 315 (System Memory Map)
+    - Code Listings: Page 37 (Copper List Assembly)
+    - Register Bitfield Boxes: Page 45 (Copper Skip/Control), Page 218 (DMACON/DMACONR)
+    - State Machines: **Page 180 (Figure 5-8: Audio State Diagram)**
+    - Mathematical Expressions: **Page 187 (Blitter Minterms & Boolean Algebra)**, Page 188 (Table 6-1 Logic Expansion)
+    - Hardware Waveforms & Pinouts: Page 207 (DMA Allocation Chart), Page 268 (Parallel Interface), Page 276 (Serial Interface Timing), Page 303 (Custom Chip DIP Pinout), Page 355 (Appendix F: 8520 CIA Interface)
+  - Executed trial conversion of **Page 180** (`page_180.md`):
+    - Modeled the 8-state Paula audio channel state machine using native Mermaid (`stateDiagram-v2`), clearly distinguishing recovery states (`100`, `110`, `111`) from active DMA fetch and playback states (`000`, `001`, `101`, `010`, `011`).
+    - Added an expandable monospace text/ASCII fallback diagram inside `<details>`.
+    - Formulated a comprehensive transition and action matrix table capturing all complex conditional micro-actions (`napnav`, `dmasen`, `AUDxDR`, `AUDxDSR`, `intreq2`, `perfin`, attach volume/period routing).
+    - Extracted a crisp cropped raster image of Figure 5-8 (`assets/figure_5-8_audio_state_diagram.png`) and authored a pristine technical sidecar (`figure_5-8_audio_state_diagram.png.txt`) for offline Amiga RAG indexing.
+  - Executed trial conversion of **Page 187** (`page_187.md`):
+    - Formatted Boolean logic equations and minterms using KaTeX overline notation ($\overline{A}\overline{B}\overline{C}$, $D = A\overline{C} + B$, expansion derivations).
+    - Backticked all Motorola hex numbers (`` `$80` ``, `` `$CA` ``) to prevent KaTeX collision.
+    - Wrapped notes in native Obsidian callouts (`> [!NOTE]`).
+  - Updated `audit_conversion.py` so that `mermaid` blocks are classified as diagrams rather than source code, eliminating false-positive code density warnings.
+- **Architectural Rationale & Trade-Offs**:
+  - *Multi-Tier Representation for Complex FSMs:* Dense hardware state diagrams (like Figure 5-8) contain transition annotations too detailed to fit on raw Mermaid edges without overlapping. Combining a clean high-level Mermaid state graph with an exhaustive transition matrix table and a high-res cropped fallback ensures both visual clarity and 100% technical fidelity.
+  - *Targeted 20-Page Benchmark Suite:* Validating the conversion pipeline against a calibrated 20-page cross-section of structural challenges exposes formatting and OCR anomalies before attempting full-manual conversions.
+- **Verification & Test Results**:
+  - `audit_conversion.py`: 100% PASS (0 prose leaks, 0 fragmented blocks).
+  - `validate_links.py`: 100% PASS (0 broken links).
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed in 0.89s.
+  - `python tools/pre_flight.py`: 100% compliant across formatting, attractors, AGENTS.md limits, and architecture rules.
+
