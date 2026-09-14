@@ -387,10 +387,10 @@ To guarantee that autonomous AI agents can reconstruct and verify emulator subsy
   - *Exploratory Methodology:* The exact evaluation framework, metrics, and tooling for this experiment represent uncharted territory (*terra incognita*) and will be formulated and refined iteratively as pilot experiments progress.
 
 - **Reference Documentation Audit & Final Pruning Protocol (`Obsidian/Amiga/Reference/`):**
-  - Completed Tier 3 zero-utilization pruning: permanently eliminated unused documentation (`68000 Resident Structured Assembler Reference Manual` [13 chapters], `Guide to the Amiga Kickstart.md`, and `68000 FAQ 1 & 2.md`) and replaced blanket ignore with itemized individual ignore rules in `.gitignore` for directory visibility.
+  - Completed Tier 3 zero-utilization pruning: permanently eliminated unused documentation (`68000 Resident Structured Assembler Reference Manual` [13 chapters], `Guide to the Amiga Kickstart.md`, `68000 FAQ 1 & 2.md`, and `The Amiga Guru Book` [26 chapters + assets]) and replaced blanket ignore with itemized individual ignore rules in `.gitignore` for directory visibility.
   - Following the achievement of mature clean-room autonomous regeneration from design specifications (`Obsidian/Amiga/Design/`):
     1. **Agent History Audit:** Inspect historical agent transcripts and vector database retrieval logs to determine which reference materials were ever actually consulted.
-    2. **Prune Hardware Irrelevancies from Multi-Volume Manuals:** Strip unused subsystem sections (e.g. FPU 68881/2 in PRM, PC XT Bridgeboard / SCSI in A500/A2000 Technical Reference Manual, high-level AmigaOS C/DOS in Amiga Guru Book).
+    2. **Prune Hardware Irrelevancies from Multi-Volume Manuals:** Strip unused subsystem sections (e.g. FPU 68881/2 in PRM, PC XT Bridgeboard / SCSI in A500/A2000 Technical Reference Manual; *Amiga Guru Book* permanently purged due to OS/C-level irrelevance).
     3. **Minimal Ground Truth Retainment:** Preserve solely the lean, canonical primary sources (`Hardware Reference Manual`, `Instruction Prefetch`, `Undocumented Features`, core `68000 User's Manual`), minimizing repository footprint and eliminating vector embedding noise.
 
 - **End-to-End Hardening of `tools/bootstrap.ps1`:**

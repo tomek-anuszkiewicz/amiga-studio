@@ -114,7 +114,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Knowledge Retrieval Precedence**: Mandatory `graphify query` before viewing source files and `python tools/rag_search.py` before opening reference manuals per [`graphify.md`](.agents/rules/graphify.md) and [`amiga-rag.md`](.agents/rules/amiga-rag.md).
 - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
 - **Platform Quirks & Invariants**: Centralized hardware silicon idiosyncrasies and anti-tamper invariants reside in [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md).
-- **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and Guru Book reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via `rag_search` tool (`amiga-rag`).
+- **Official Hardware Documentation**: Amiga Hardware Reference Manual, 68000 PRMs, and technical specs reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) and can be searched via `rag_search` tool (`amiga-rag`).
 - **RAG Tooling & Infrastructure**: Pipeline, CLI indexer (`amiga_rag`), and FastMCP server reside in [`tools/rag`](tools/rag), backed by local Qdrant vector database (`amiga` collection).
 - **Reference Emulator Source Code**: Clean-room reference implementation (vAmiga) and test suite (vAmigaTS) reside in [ref_src](ref_src).
 - **Single-Step Test Vectors**: Official physical silicon test vectors for M68000 CPU are in [ref_src/SingleStepTests-680x0/68000/v1](ref_src/SingleStepTests-680x0/68000/v1).

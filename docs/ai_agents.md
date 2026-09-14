@@ -24,7 +24,7 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 ## 2. Knowledge Retrieval: RAG & Graphify
 
 ### A. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
-- **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `amiga`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, Guru book, and design specs under `Obsidian/Amiga/`.
+- **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `amiga`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
 - **Automated Reindexing Trigger ([`amiga-rag.md`](../.agents/rules/amiga-rag.md)):**
   - Reindexing is **fully automated**: whenever hardware documentation, reference guides, or design notes under `Obsidian/Amiga/` are added, modified, or reorganized, incremental reindexing is triggered automatically without requiring manual execution.
   - Powered by a local SHA-256 hash cache (`amiga_rag_cache.json`), re-indexing verifies unchanged files instantly (< 1s) and embeds only modified text.

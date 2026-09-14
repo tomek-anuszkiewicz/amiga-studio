@@ -89,7 +89,7 @@ The GUI and the emulator core interact through a strictly **synchronous, pull-ba
 
 ## 3. Universal In-App Documentation Standard (Zero External Lookup)
 
-The Developer Studio is designed as a **self-contained Amiga hardware encyclopedia**. Every interactive and inspectable UI element must provide rich contextual documentation upon hover, removing any need to switch to external PDF reference manuals (Amiga Hardware Reference Manual, Motorola 68000 PRM, Guru Book):
+The Developer Studio is designed as a **self-contained Amiga hardware encyclopedia**. Every interactive and inspectable UI element must provide rich contextual documentation upon hover, removing any need to switch to external PDF reference manuals (Amiga Hardware Reference Manual, Motorola 68000 PRM):
 
 1. **Hover Universality:** 100% of labels, registers, flags, memory cells, and controls must implement `.on_hover_ui` or `.on_hover_text`.
 2. **Context Depth:**

@@ -3540,3 +3540,29 @@ Every future modification or implementation task must append an entry following 
   - Verified absence of references to `iff_to_png` across codebase (`crates/`, `tools/`, `tests/`).
   - `cargo test -p test_runner --test test_architecture_rules`: all 18 tests passed.
   - `python tools/pre_flight.py`: 100% compliant across all quality gates.
+
+---
+
+### [2026-09-14 21:55 CEST] — Purged The Amiga Guru Book and Cleaned Reference Ecosystem
+- **Affected Subsystems**:
+  - `tools/bootstrap_reference.ps1` (removed `gurubook` catalog entry and all associated download mirror definitions)
+  - `Obsidian/Amiga/Reference/Amiga Guru Book/` (physically purged 26 chapters and assets from the reference vault)
+  - `Obsidian/Amiga/Reference/temp/` (purged staging directory and temporary downloaded assets)
+  - `.gitignore` (removed `/Obsidian/Amiga/Reference/Amiga Guru Book/`)
+  - `ROADMAP.md` (recorded Tier 3 pruning completion for The Amiga Guru Book)
+  - `AGENTS.md`, `README.md`, `docs/ai_agents.md`, `Obsidian/Amiga/Design/` (`RTC.md`, `egui Guidelines.md`, `GUI Specification.md`)
+- **What Was Changed (The Concrete Reality)**:
+  - Completely purged *The Amiga Guru Book* (26 markdown chapters and SVG assets) from `Obsidian/Amiga/Reference/Amiga Guru Book/`.
+  - Removed the `gurubook` entry from `tools/bootstrap_reference.ps1`, leaving the 6 canonical hardware references (HRM, TRM, PRM, UM, Prefetch, Undocumented Features).
+  - Deleted `Obsidian/Amiga/Reference/temp/` and confirmed zero untracked artifacts remain.
+  - Replaced the single citation to Guru Book Chapter 9 in `Obsidian/Amiga/Design/RTC.md` with a direct reference to the *OKI MSM6242B Hardware Data Sheet*.
+  - Cleaned all references to the Guru Book from `AGENTS.md`, `README.md`, `docs/ai_agents.md`, `ROADMAP.md`, `Obsidian/Amiga/Reference/README.md`, and GUI design documents.
+- **Architectural Rationale & Trade-Offs**:
+  - *Hardware Fidelity vs Software Scope:* *The Amiga Guru Book* focuses heavily on high-level software development (C compilers, SAS/C & Aztec C charts, amiga.lib, BCPL global vector, dos.library packets, and CLI/Workbench startup). Because this cycle-exact A500 emulator boots directly from physical Kickstart ROMs without high-level AmigaDOS emulation, software API manuals offer zero hardware simulation value.
+  - *Vector Search Signal-to-Noise:* Removing high-level software documentation prevents vector search pollution in RAG embeddings, ensuring hardware queries match purely against authoritative Commodore hardware manuals and Motorola silicon specifications.
+- **Verification & Test Results**:
+  - Confirmed deletion: `Test-Path "Obsidian/Amiga/Reference/Amiga Guru Book"` returned `False`.
+  - Confirmed catalog clean state: `.\tools\bootstrap_reference.ps1 -List` cleanly lists 6 canonical hardware reference sources.
+  - Verified architecture tests: `cargo test -p test_runner --test test_architecture_rules` passed all 18 tests.
+  - Verified pre-flight gate: `python tools/pre_flight.py` passed 100% cleanly across all gates.
+

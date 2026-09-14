@@ -95,7 +95,7 @@ Because `egui` draws every widget on every frame:
 
 ## 8. Self-Documenting UI & Comprehensive In-App Documentation
 
-The emulator frontend embodies the **Zero-External-Lookup Principle**: the application serves as a self-contained, interactive hardware encyclopedia and execution studio. A developer, reverse engineer, or retro enthusiast exploring the system should never need to leave the emulator to consult external Commodore Hardware Reference Manuals (HRM), Motorola 68000 PRMs, or Guru Book specs to understand what a bit, signal, register, or addressing mode means.
+The emulator frontend embodies the **Zero-External-Lookup Principle**: the application serves as a self-contained, interactive hardware encyclopedia and execution studio. A developer, reverse engineer, or retro enthusiast exploring the system should never need to leave the emulator to consult external Commodore Hardware Reference Manuals (HRM), Motorola 68000 PRMs, or hardware register specs to understand what a bit, signal, register, or addressing mode means.
 
 ### 8.1 Universal Hover Documentation Coverage
 Every inspectable or interactive element across all docks, panels, and modal dialogs must provide contextual documentation:

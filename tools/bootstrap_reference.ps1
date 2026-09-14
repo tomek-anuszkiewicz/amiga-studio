@@ -174,30 +174,6 @@ $Catalog = @(
         )
     },
     @{
-        Id              = "gurubook"
-        Name            = "Amiga Guru Book"
-        Folder          = "Amiga Guru Book"
-        Type            = "SingleFile"
-        TargetFile      = "gurubook-blurb.guide"
-        MinSize         = 50000
-        Description     = "Ralph Babel's Amiga system reference overview and documentation guide"
-        CleanupPatterns = @("*.lha", "gurubook-review*.txt", "gurubook-blurb.txt")
-        Mirrors         = @(
-            @{
-                Name    = "Aminet Documentation (LHA Archive, Primary)"
-                Url     = "http://aminet.net/docs/misc/gurubook-info.lha"
-                File    = "gurubook-info.lha"
-                MinSize = 30000
-            },
-            @{
-                Name    = "Aminet Main Mirror (LHA Archive, Failover)"
-                Url     = "http://main.aminet.net/docs/misc/gurubook-info.lha"
-                File    = "gurubook-info.lha"
-                MinSize = 30000
-            }
-        )
-    },
-    @{
         Id          = "prefetch"
         Name        = "Instruction Prefetch on the Motorola 68000 Processor"
         Folder      = "Instruction Prefetch on the Motorola 68000 Processor"

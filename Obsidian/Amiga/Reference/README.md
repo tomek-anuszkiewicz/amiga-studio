@@ -42,10 +42,6 @@ The repository maintains converted, structured markdown documents for rapid navi
 7. **`Undocumented features of OCS, ECS and AGA chipsets`**:
    - Kuba Winnicki's 16-page publication (*Achtung! Amiga*, 2002).
    - Covers undocumented Copper hazards, sprite demultiplexing, DMA arbitration quirks, and UHRES display modes.
-8. **`Amiga Guru Book`**:
-   - Ralph Babel's definitive Amiga systems reference (2nd Edition Abridged, 1993).
-   - Exhaustive coverage of Exec internals, system structures, and device driver protocols.
-   - Maintained directly in structured Markdown under [`Obsidian/Amiga/Reference/Amiga Guru Book/`](Amiga%20Guru%20Book/) (internal markdown repository; excluded from external raw binary downloads).
 
 ---
 
@@ -94,7 +90,6 @@ To protect against dead links, server downtime, and rate limits, every reference
 | **`68000 User's Manual`** | [Internet Archive / Bitsavers (Rev 8 PDF, 601 DPI 216p)](https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive (Rev 8 Alternate Item)](https://archive.org/download/bitsavers_motorola6868000MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive / Bitsavers (Family Reference 1988, 608p)](https://archive.org/download/bitsavers_motorola68rence1988_23248083/M68000_Family_Reference_1988.pdf) |
 | **`Instruction Prefetch`** | [Pasti Project (Original Live Web)](http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2021 Snapshot)](https://web.archive.org/web/20210211153835id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2019 Snapshot)](https://web.archive.org/web/20190317072535id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) |
 | **`Undocumented features`** | [Achtung! Amiga (Original Live Web)](https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2022 Snapshot)](https://web.archive.org/web/20220330190533id_/https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2016 Snapshot)](https://web.archive.org/web/20160410052327id_/http://www.winnicki.net/amiga/achtung/) |
-| **`Amiga Guru Book`** | [Aminet Archive (`gurubook-info.lha`, Primary)](http://aminet.net/docs/misc/gurubook-info.lha) | [Aminet Main Mirror (`gurubook-info.lha`, Failover)](http://main.aminet.net/docs/misc/gurubook-info.lha) | Maintained directly in internal Markdown |
 
 ### Automated Failover & Error Reporting Policy
 - **Sequential Mirror Traversal:** The bootstrapper attempts Mirror 1 first. If a transient error, HTTP 404/503, connection timeout, or byte-size mismatch occurs, it logs a warning and immediately falls back to Mirror 2, then Mirror 3.
