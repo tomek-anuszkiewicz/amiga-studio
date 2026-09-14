@@ -110,8 +110,8 @@ This document outlines the phased development plan, hardware milestones, verific
   - **Dedicated Automated Verification:**
     - 100% verified across 4 unit tests in `crates/m68000/tests/test_interrupts.rs` and 4 end-to-end integration tests in `crates/machine_loop/tests/test_interrupt_pipeline.rs`.
 - **Step 2.7: Subsystem Core Functional Implementations & Autonomous Execution Engines [Active Focus]:**
-  - **Step 2.7.1: Agnus Copper Coprocessor Execution Engine (`crates/copper`):**
-    - Cycle-accurate two-word (32-bit / 4 CCK) instruction stream fetch from Chip RAM via `PhysicalMemory`:
+  - **[COMPLETED] Step 2.7.1: Agnus Copper Coprocessor Execution Engine (`crates/copper`):**
+    - Cycle-accurate two-word (32-bit / 4 CCK) instruction stream fetch from Chip RAM:
       - 2 CCKs for IR1 (register destination address or VPOS/HPOS target).
       - 2 CCKs for IR2 (data word or wait/skip mask).
     - Execution state machine:
@@ -119,7 +119,7 @@ This document outlines the phased development plan, hardware milestones, verific
       - `WAIT`: beam position comparison against target coordinates masked by $VPOS\_MASK$ / $HPOS\_MASK$, Blitter Finished Disable bit (`BFD` / bit 15: halting Copper while Blitter is busy), and 2-CCK wake-up latency.
       - `SKIP`: conditional bypass of the subsequent instruction word pair if beam $\ge$ target.
     - Dynamic program counter (`cop_pc`) progression, `COPJMP1` / `COPJMP2` strobe restarts, and automatic VBlank restart on `COP1LC`.
-    - Dedicated unit & integration tests in `crates/copper/tests/test_copper.rs`.
+    - Dedicated unit & integration tests in `crates/copper/tests/test_copper.rs` (100% verified across 7 unit tests).
   - **Step 2.7.2: Agnus 4-Channel DMA Blitter Engine (`crates/blitter`):**
     - 4-channel cycle sequencer ($USEA \to USEB \to USEC \to USED$ from `BLTCON0` bits 11..8), consuming 1 bus cycle (2 CCKs) per active channel word.
     - 256-minterm Boolean ALU implementing full 8-bit truth table ($LF0..LF7$) combining channels A, B, and C into destination D.

@@ -3098,3 +3098,33 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/pre_flight.py`: Pre-flight quality gates passing cleanly.
 
+---
+
+### [2026-09-14 06:15 CEST] — Step 2.7.1: Agnus Copper Coprocessor Execution Engine Implementation
+- **Affected Subsystems**:
+  - `crates/copper/src/copper.rs` (implemented `CopperState` machine, instruction fetch, `MOVE`, `WAIT`, `SKIP`, and VBlank restart)
+  - `crates/copper/tests/test_copper.rs` (authored comprehensive 7-test suite for all execution modes)
+  - `crates/agnus/src/agnus.rs` (integrated `step_cck_ram(&chip_ram)` and `poll_copper_write()`)
+  - `crates/machine_loop/src/machine_loop.rs` (wired `step_cck_ram` and routed Copper `MOVE` writes via `dispatch_custom_write`)
+  - `ROADMAP.md` (marked Step 2.7.1 as completed)
+- **What Was Changed (The Concrete Reality)**:
+  - Implemented the cycle-accurate Copper execution pipeline in `crates/copper/src/copper.rs`:
+    - Defined `CopperState` enum: `Idle`, `FetchIR1(u8)`, `FetchIR2(u8)`, `Waiting`, `Wakeup(u8)`.
+    - Modeled two-word 32-bit instruction fetching across natural 2-clock Color Clock phases (2 CCKs for IR1 destination/target, 2 CCKs for IR2 data/mask) directly from Chip RAM with safe offset wrapping.
+    - Implemented `MOVE`: writes 16-bit data word to custom register offset `IR1 & 0x01FE`. Enforced `CDANG` danger mode protection: writes to registers $< \$080$ are rejected as no-ops unless `cdang == true`.
+    - Implemented `WAIT`: evaluates beam coordinates against $VPOS$ target (bits 15..8) and $HPOS$ target (bits 7..1), masked by $VPOS\_MASK$ and $HPOS\_MASK$ in IR2. Evaluates the Blitter Finished Disable bit (`BFD`, bit 15 of IR2); if $BFD == 0$, halts Copper until Blitter is idle. Implemented 2-CCK wake-up delay upon condition satisfaction and handled the standard `$FFFF, $FFFE` end-of-list terminator.
+    - Implemented `SKIP`: evaluates the identical beam position comparator and conditionally bypasses the subsequent 32-bit instruction pair (`cop_pc += 4`).
+    - Handled automatic restart at vertical blank (`vpos == 0 && hpos == 0`) reloading `cop_pc = cop1lc`, alongside strobe jumps (`COPJMP1` / `COPJMP2`).
+  - Integrated with `Agnus` and `machine_loop`:
+    - Added `Agnus::step_cck_ram(&mut self, chip_ram: &[u8])` returning committed register mutations in `due`, while recording any Copper `MOVE` write in `pending_copper_write`.
+    - Exposed `Agnus::poll_copper_write(&mut self) -> Option<(u16, u16)>`.
+    - In `machine_loop.rs`, passed `&self.physical_memory.chip_ram` to `step_cck_ram`, dispatched Agnus mutations via `dispatch_agnus_action`, and routed polled Copper writes directly to `dispatch_custom_write`.
+  - Authored a comprehensive 7-test suite in `crates/copper/tests/test_copper.rs` validating reset/restart, 4-CCK `MOVE` cycle timing and data, `CDANG` filtering, `WAIT` beam matching, `BFD` blitter holding, `SKIP` instruction bypass, and VBlank automatic restart.
+- **Architectural Rationale & Trade-Offs**:
+  - *Decoupling Copper Writes from Agnus Mutations:* Agnus committed mutations are internal register changes that need cross-chip action execution via `dispatch_agnus_action`. Copper `MOVE` instructions, by contrast, are external writes that can target any custom register (including Denise and Paula palette/audio registers). Separating them via `poll_copper_write()` allows `machine_loop` to route Copper writes through `dispatch_custom_write`, preserving complete register coverage without breaking Agnus internal state.
+  - *Zero Heap Allocation in Execution:* Copper steps without dynamic heap allocations, using inline state machine transitions and immutable slice reads (`&[u8]`).
+- **Verification & Test Results**:
+  - `cargo test -p copper`: All 7 unit tests passed cleanly in `test_copper.rs`.
+  - `cargo test -p agnus -p machine_loop`: All 42 tests passed across action dispatch, interrupts, and registers.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed cleanly.
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).

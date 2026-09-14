@@ -75,6 +75,9 @@ pub struct Agnus {
     /// Vertical blanking interrupt request strobe
     #[serde(default)]
     pub vblank_irq: bool,
+    /// Pending custom register write emitted by the Copper on this cycle
+    #[serde(default)]
+    pub pending_copper_write: Option<(u16, u16)>,
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
@@ -87,6 +90,7 @@ impl Agnus {
         Self {
             model,
             vblank_irq: false,
+            pending_copper_write: None,
             copper: copper::Copper::new(),
             blitter: blitter::Blitter::new(),
             dma: dma::DmaScheduler::new(),
@@ -136,13 +140,22 @@ impl Agnus {
         self.audlc.fill(0);
         self.dskpt = 0;
         self.vblank_irq = false;
+        self.pending_copper_write = None;
         self.mutations = [None; AGNUS_MUTATION_CAPACITY];
     }
 
     /// Advances raster beam position, steps embedded coprocessors and schedulers,
     /// and processes in-flight register mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
+    #[inline]
     pub fn step_cck(&mut self) -> [Option<(u16, u16)>; 8] {
+        self.step_cck_ram(&[])
+    }
+
+    /// Advances raster beam position, steps embedded coprocessors and schedulers with Chip RAM access,
+    /// and processes in-flight register mutations by 1 Color Clock.
+    /// Returns any register writes that matured and committed on this exact cycle.
+    pub fn step_cck_ram(&mut self, chip_ram: &[u8]) -> [Option<(u16, u16)>; 8] {
         // 1. Advance horizontal and vertical raster beam counters
         let max_lines = match self.model {
             AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
@@ -162,7 +175,7 @@ impl Agnus {
 
         // 2. Step embedded coprocessors and schedulers
         let beam = self.beam();
-        self.copper.step_cck(beam);
+        self.pending_copper_write = self.copper.step_cck(beam, self.blitter.is_busy, chip_ram);
         self.blitter.step_cck();
         self.dma.step_cck();
         self.chip_ram_blocked = self
@@ -183,6 +196,12 @@ impl Agnus {
         }
 
         due
+    }
+
+    /// Polls and clears any custom register write emitted by the Copper on this cycle
+    #[inline]
+    pub fn poll_copper_write(&mut self) -> Option<(u16, u16)> {
+        self.pending_copper_write.take()
     }
 
     /// Returns the current raster beam position snapshot

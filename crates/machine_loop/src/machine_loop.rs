@@ -288,9 +288,12 @@ impl A500Machine {
     /// dispatching matured actions, advancing RTC, and arbitrating interrupts.
     pub fn step_subsystems_cck(&mut self) {
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
-        let agnus_due = self.agnus.step_cck();
+        let agnus_due = self.agnus.step_cck_ram(&self.physical_memory.chip_ram);
         for item in agnus_due.iter().flatten() {
             self.dispatch_agnus_action(item.0, item.1);
+        }
+        if let Some((reg, val)) = self.agnus.poll_copper_write() {
+            self.dispatch_custom_write(reg, val);
         }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
 
