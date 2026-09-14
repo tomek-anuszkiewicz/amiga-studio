@@ -25,6 +25,8 @@ param(
     [string]$RefItem,
     [Alias("AllMirrors")]
     [switch]$AllSources,
+    [switch]$NoExtract,
+    [switch]$ExtractOnly,
     [switch]$All
 )
 
@@ -46,6 +48,8 @@ function Show-Usage {
     Write-Host "  .\tools\bootstrap.ps1 -All   : Provision all components (tests -> Graphify AST -> RAG docs)"
     Write-Host ""
 }
+
+if ($ExtractOnly) { $Ref = $true }
 
 if (-not $Doc -and -not $Test -and -not $Graph -and -not $Ref -and -not $All) {
     Show-Usage
@@ -275,6 +279,12 @@ if ($Ref) {
         }
         if ($AllSources) {
             $RefParams["AllSources"] = $true
+        }
+        if ($NoExtract) {
+            $RefParams["NoExtract"] = $true
+        }
+        if ($ExtractOnly) {
+            $RefParams["ExtractOnly"] = $true
         }
         & $RefScript @RefParams
     }

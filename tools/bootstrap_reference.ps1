@@ -40,6 +40,8 @@
     .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual"
     .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual" -AllSources
     .\tools\bootstrap_reference.ps1 -All -AllSources
+    .\tools\bootstrap_reference.ps1 -ExtractOnly
+    .\tools\bootstrap_reference.ps1 -Item gurubook -NoExtract
 #>
 
 [CmdletBinding()]
@@ -50,7 +52,9 @@ param(
     [Alias("AllMirrors")]
     [switch]$AllSources,
     [switch]$Force,
-    [switch]$List
+    [switch]$List,
+    [switch]$NoExtract,
+    [switch]$ExtractOnly
 )
 
 # -----------------------------------------------------------------------------
@@ -331,9 +335,114 @@ This directory contains raw, unprocessed external reference materials (PDF scans
 ## Operational Guidelines
 - **Safe to Delete:** You can safely delete this directory or any subfolder at any time. It has zero impact on compiling, testing, or running the emulator.
 - **Git Visibility:** This directory is intentionally **NOT** listed in `.gitignore`. When files are downloaded, it appears in `git status` as untracked files to ensure developers have visual confirmation of temporary downloaded materials.
+- **Archive Extraction:** Archives (`.lha`, `.lzh`, `.zip`, `.tar.gz`) are automatically unpacked into their respective reference directories by `tools/bootstrap_reference.ps1` using native Windows `tar.exe` (bsdtar with libarchive) or `Expand-Archive`.
 - **Processing:** Converted markdown specifications live in the parent `Obsidian/Amiga/Reference/` directory and are tracked in Git.
 '@
         Set-Content -Path $ReadmePath -Value $Content -Encoding UTF8
+    }
+}
+
+function Expand-ReferenceArchive {
+    param(
+        [string]$ArchiveFilePath,
+        [string]$DestinationDir,
+        [switch]$Force
+    )
+
+    if (-not (Test-Path $ArchiveFilePath)) { return }
+    if (-not (Test-Path $DestinationDir)) {
+        New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
+    }
+
+    $FileName = [System.IO.Path]::GetFileName($ArchiveFilePath)
+    $Ext = [System.IO.Path]::GetExtension($ArchiveFilePath).ToLower()
+    $KnownArchiveExtensions = @(".lha", ".lzh", ".zip", ".tar", ".gz", ".tgz")
+
+    if ($Ext -notin $KnownArchiveExtensions) {
+        return
+    }
+
+    $tarCmd = Get-Command tar.exe -ErrorAction SilentlyContinue
+
+    # Check if already unpacked unless -Force is requested
+    if (-not $Force -and $tarCmd) {
+        $firstEntry = (& tar.exe -tf "$ArchiveFilePath" 2>&1 | Where-Object { $_ -and -not $_.EndsWith('/') } | Select-Object -First 1)
+        if ($firstEntry) {
+            $checkPath = Join-Path $DestinationDir $firstEntry
+            if (Test-Path $checkPath) {
+                Write-Host "  [SKIP] Archive already unpacked: $FileName" -ForegroundColor DarkGray
+                return
+            }
+        }
+    }
+
+    Write-Host "  Extracting archive: $FileName..." -ForegroundColor Cyan
+
+    $extracted = $false
+
+    # 1. Primary: Windows native tar.exe (bsdtar with libarchive supports LHA, LZH, ZIP, TAR, GZ, TGZ)
+    if ($tarCmd) {
+        try {
+            $prevEap = $ErrorActionPreference
+            $ErrorActionPreference = "Continue"
+            & tar.exe -xf "$ArchiveFilePath" -C "$DestinationDir" 2>&1 | Out-Null
+            $ErrorActionPreference = $prevEap
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "  [OK] Unpacked $FileName into: $DestinationDir" -ForegroundColor Green
+                $extracted = $true
+            }
+        } catch {
+            Write-Warning "  tar.exe failed to extract $($FileName): $($_.Exception.Message)"
+        }
+    }
+
+    # 2. Fallback for .zip: PowerShell built-in Expand-Archive
+    if (-not $extracted -and $Ext -eq ".zip") {
+        try {
+            Expand-Archive -Path $ArchiveFilePath -DestinationPath $DestinationDir -Force:$Force
+            Write-Host "  [OK] Unpacked $FileName with Expand-Archive into: $DestinationDir" -ForegroundColor Green
+            $extracted = $true
+        } catch {
+            Write-Warning "  Expand-Archive failed: $($_.Exception.Message)"
+        }
+    }
+
+    # 3. Fallback for 7z if available on PATH
+    if (-not $extracted) {
+        $7zCmd = Get-Command 7z.exe -ErrorAction SilentlyContinue
+        if ($7zCmd) {
+            try {
+                $yFlag = if ($Force) { "-y" } else { "-aoa" }
+                & 7z.exe x "$ArchiveFilePath" "-o$DestinationDir" $yFlag | Out-Null
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "  [OK] Unpacked $FileName with 7-Zip into: $DestinationDir" -ForegroundColor Green
+                    $extracted = $true
+                }
+            } catch {
+                Write-Warning "  7z.exe failed to extract $($FileName): $($_.Exception.Message)"
+            }
+        }
+    }
+
+    if (-not $extracted) {
+        Write-Warning "  Could not extract $FileName. Please ensure Windows tar.exe (native in Windows 10/11) or 7-Zip is available."
+    }
+}
+
+function Expand-DirectoryArchives {
+    param(
+        [string]$TargetDir,
+        [switch]$Force
+    )
+
+    if (-not (Test-Path $TargetDir)) { return }
+
+    $ArchiveExtensions = @("*.lha", "*.lzh", "*.zip", "*.tar", "*.tar.gz", "*.tgz")
+    foreach ($pattern in $ArchiveExtensions) {
+        $archives = Get-ChildItem -Path $TargetDir -Filter $pattern -File -ErrorAction SilentlyContinue
+        foreach ($archive in $archives) {
+            Expand-ReferenceArchive -ArchiveFilePath $archive.FullName -DestinationDir $TargetDir -Force:$Force
+        }
     }
 }
 
@@ -342,7 +451,8 @@ function Download-SingleFile {
         [hashtable]$Item,
         [string]$TargetDir,
         [bool]$ForceDownload,
-        [bool]$AllSourcesMode
+        [bool]$AllSourcesMode,
+        [bool]$AutoExtract = $true
     )
 
     $MirrorIndex = 1
@@ -360,6 +470,9 @@ function Download-SingleFile {
             $CurrentSize = (Get-Item $ActualDestPath).Length
             if ($CurrentSize -ge $MinExpected) {
                 Write-Host "  [SKIP] Already present ($($mirror.Name)): $ActualFileName ($([math]::Round($CurrentSize / 1MB, 2)) MB)" -ForegroundColor DarkGray
+                if ($AutoExtract) {
+                    Expand-ReferenceArchive -ArchiveFilePath $ActualDestPath -DestinationDir $TargetDir -Force:$ForceDownload
+                }
                 $AnySuccess = $true
                 if (-not $AllSourcesMode) {
                     return $true
@@ -402,6 +515,9 @@ function Download-SingleFile {
 
             if ($totalBytes -ge $MinExpected) {
                 Write-Host "  [OK] Downloaded successfully: $ActualFileName ($([math]::Round($totalBytes / 1MB, 2)) MB)" -ForegroundColor Green
+                if ($AutoExtract) {
+                    Expand-ReferenceArchive -ArchiveFilePath $ActualDestPath -DestinationDir $TargetDir -Force:$ForceDownload
+                }
                 $AnySuccess = $true
                 if (-not $AllSourcesMode) {
                     return $true
@@ -541,7 +657,7 @@ if ($List) {
     exit 0
 }
 
-if (-not $All -and -not $Item) {
+if (-not $All -and -not $Item -and -not $ExtractOnly) {
     Write-Host ""
     Write-Host "Amiga Reference Bootstrapper" -ForegroundColor Cyan
     Write-Host "============================" -ForegroundColor Cyan
@@ -550,6 +666,8 @@ if (-not $All -and -not $Item) {
     Write-Host "  .\tools\bootstrap_reference.ps1 -Item <name> : Download specific document"
     Write-Host "  .\tools\bootstrap_reference.ps1 -All         : Download all reference materials"
     Write-Host "  .\tools\bootstrap_reference.ps1 -AllSources  : Download from ALL mirrors for each document"
+    Write-Host "  .\tools\bootstrap_reference.ps1 -ExtractOnly : Unpack existing archives without downloading"
+    Write-Host "  .\tools\bootstrap_reference.ps1 -NoExtract   : Download archives without unpacking them"
     Write-Host ""
     exit 0
 }
@@ -571,6 +689,26 @@ if ($All -or ($Item -and ($Item.ToLower() -eq "-all" -or $Item.ToLower() -eq "al
         exit 1
     }
     $ItemsToProcess = @($Matched)
+} elseif ($ExtractOnly) {
+    $ItemsToProcess = $Catalog
+}
+
+if ($ExtractOnly) {
+    Write-Host ""
+    Write-Host "Extracting Reference Archives..." -ForegroundColor Cyan
+    Write-Host "Destination : $Destination" -ForegroundColor DarkGray
+    Write-Host "Items count : $($ItemsToProcess.Count)" -ForegroundColor DarkGray
+    Write-Host ""
+
+    foreach ($entry in $ItemsToProcess) {
+        $ItemTargetDir = Join-Path $Destination $entry.Folder
+        Write-Host "Checking archives for '$($entry.Name)'..." -ForegroundColor Yellow
+        Expand-DirectoryArchives -TargetDir $ItemTargetDir -Force:$Force
+        Write-Host ""
+    }
+
+    Write-Host "Archive extraction completed." -ForegroundColor Green
+    exit 0
 }
 
 Write-Host ""
@@ -595,7 +733,7 @@ foreach ($entry in $ItemsToProcess) {
     if ($entry.Type -eq "Crawl") {
         $Success = Download-CrawlItem -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
     } else {
-        $Success = Download-SingleFile -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
+        $Success = Download-SingleFile -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources -AutoExtract (-not $NoExtract)
     }
 
     if (-not $Success) {

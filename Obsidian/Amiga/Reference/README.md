@@ -68,6 +68,12 @@ To download raw, unprocessed source materials (PDF scans, HTML crawls, and archi
 # Download from ALL mirrors & sources simultaneously (redundancy & full testing mode)
 .\tools\bootstrap_reference.ps1 -All -AllSources
 
+# Unpack existing archives in temp/ without downloading
+.\tools\bootstrap_reference.ps1 -ExtractOnly
+
+# Download archives without automatic unpacking
+.\tools\bootstrap_reference.ps1 -Item gurubook -NoExtract
+
 # Or via the main repository bootstrapper
 .\tools\bootstrap.ps1 -Ref
 .\tools\bootstrap.ps1 -Ref -AllSources

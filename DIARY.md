@@ -3278,3 +3278,26 @@ Every future modification or implementation task must append an entry following 
 
 
 
+---
+
+### [2026-09-14 13:40 CEST] — Automated Reference Archive Extraction in Bootstrapper Scripts
+- **Affected Subsystems**:
+  - `tools`
+  - `reference`
+  - `documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Implemented Expand-ReferenceArchive and Expand-DirectoryArchives in tools/bootstrap_reference.ps1 supporting native Windows tar.exe for .lha, .lzh, .zip, .tar, .gz archives with Expand-Archive and 7z fallbacks
+  - Added automatic archive unpacking upon download or presence detection
+  - Added -ExtractOnly switch to unpack existing archives without downloading
+  - Added -NoExtract switch to disable extraction
+  - Updated tools/bootstrap.ps1 forwarding extraction flags
+  - Documented archive extraction in temp/README.md and Obsidian/Amiga/Reference/README.md.
+- **Architectural Rationale & Trade-Offs**:
+  - Downloaded reference archives (like Aminet LHA packages) remained compressed in temp/ requiring manual decompression
+  - Windows 10/11 native tar.exe (libarchive) handles LHA/LZH with zero external dependencies
+  - Archive inspection (tar -tf) skips already unpacked archives to avoid redundant disk I/O.
+- **Verification & Test Results**:
+  - Verified extraction on gurubook-info.lha into temp/Amiga Guru Book
+  - Verified archive skip and -Force re-extraction
+  - Verified -NoExtract and tools/bootstrap.ps1 parameter forwarding
+  - python tools/pre_flight.py: All 4 quality gates passed cleanly.
