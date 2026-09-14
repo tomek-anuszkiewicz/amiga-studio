@@ -2935,3 +2935,28 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p gui --test test_interactions test_simulated_quick_save_and_load_shortcuts`: Passed.
   - `cargo fmt --all -- --check`: 100% compliant.
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly (Formatting: 100%, Attractors: clean across 337 files, AGENTS.md: 13,582 bytes <= 14,000 limit, Architecture Rules: 18/18 passed).
+
+---
+
+### [2026-09-14 05:20 CEST] — Machine-Wide Reset Sequencing (reset_cold, reset_warm, RESET instruction & Ctrl-Amiga-Amiga) (Step 2.5)
+- **Affected Subsystems**:
+  - `crates/m68000`: Added `pub reset_line_asserted: bool` to `CpuState` (`#[serde(default)]`) modeling the physical M68000 bidirectional `_RESET` pin. Updated `alu_reset()` in `crates/m68000/src/instructions/reset.rs` to assert `state.reset_line_asserted = true` when executed in supervisor mode. Implemented `reset_cold(&mut self, bus)` (clears D0-D7, A0-A6, USP to zero, re-initializes SR = $2700, fetches initial SSP and PC vectors) and `reset_warm(&mut self, bus)` (preserves D0-D7 and A0-A6 intact, re-initializes SR = $2700, reloads supervisor vectors) on `Cpu`. Added `clear_registers()` helper on `CpuState`.
+  - `crates/machine_loop`: Updated `reset_cold(&mut self)` to invoke `cpu.reset_cold()`, reset all custom chips and peripherals, synchronize peripheral sensing pins (`poll_peripheral_pins()`), and arbitrate IPL to Level 0. Updated `reset_warm(&mut self)` to invoke `cpu.reset_warm()`, preserve physical RAM intact, reset custom chips and peripherals, and synchronize signals. Implemented `reset_external_devices(&mut self)` resetting custom chips, CIAs, peripherals, and re-engaging Gary boot overlay (`_OVL`) without touching RAM or CPU registers/PC. In `step_cck()`, wired immediate warm reset execution on keyboard hardware reset line assertion (`keyboard.reset_line_asserted`) and external devices reset on CPU `reset_line_asserted`.
+  - `crates/machine_loop/tests/test_reset.rs`: Created dedicated integration test suite (6 tests) verifying cold reset full flow (RAM zeroed, chips reset, CPU registers cleared), warm reset full flow (RAM preserved, chips reset, CPU registers preserved), M68000 privileged `RESET` instruction execution and external propagation (custom chips reset, Gary overlay re-engaged, RAM preserved, CPU continuing linear execution past RESET), `RESET` instruction privilege violation in user mode (Vector 8 trap, custom chips untouched), keyboard `Ctrl-Amiga-Amiga` reset trigger, and Gary overlay behavior in Kickstart vs synthetic test mode.
+  - `ROADMAP.md`: Marked Step 2.5 complete and advanced active focus to Step 2.6 (Agnus DMA Bus Arbiter).
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated and verified the physical distinction between Cold Reset (system power-up wiping RAM and clearing CPU state) and Warm Reset (retaining RAM contents and CPU data/address registers to enable Kickstart resident module discovery and Exec checksum validation).
+  - Wired the M68000 privileged `RESET` opcode ($4E70) to pulse the external `_RESET` line, resetting custom chips and re-engaging `_OVL` while leaving RAM and CPU execution untouched.
+  - Wired the keyboard controller's `Ctrl-Amiga-Amiga` reset line directly into the machine execution loop, executing a clean warm reset.
+- **Architectural Rationale & Trade-Offs**:
+  - *Silicon Flip-Flop Invariance on Warm Reset:* On physical silicon, warm reboots leave CPU flip-flops and RAM capacitors powered. Kickstart relies on this invariance to inspect memory tags (`KickTagPtr`), locate surviving device drivers, and preserve RAD: recoverable RAM-disks. Keeping D0-D7 and A0-A6 untouched during `reset_warm()` perfectly mirrors this physical behavior.
+  - *Decoupled Reset Line Signal:* Rather than calling out into the machine loop from deep within the microcode state machine, the CPU merely asserts a physical output latch (`reset_line_asserted`). The machine coordinator samples this line during its Color Clock progression, preserving unidirectional dependency and clean borrow boundaries.
+- **Verification & Test Results**:
+  - `cargo test -p machine_loop --test test_reset`: All 6 integration tests passed.
+  - `cargo test -p machine_loop`: All 36 tests passed.
+  - `cargo test -p m68000`: All 42 tests passed.
+  - `cargo test -p debugger`: All 38 tests passed.
+  - `cargo test -p gui`: All 46 tests passed.
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 340 files.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed.
