@@ -697,6 +697,11 @@ if ($List) {
     exit 0
 }
 
+# Auto-promote -AllSources to -All if no specific -Item is requested
+if ($AllSources -and -not $Item) {
+    $All = $true
+}
+
 if (-not $All -and -not $Item -and -not $ExtractOnly) {
     Write-Host ""
     Write-Host "Amiga Reference Bootstrapper" -ForegroundColor Cyan

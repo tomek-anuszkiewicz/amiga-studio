@@ -3376,5 +3376,21 @@ Every future modification or implementation task must append an entry following 
   - Isolating each mirror crawl (live, wayback_2022, wayback_2016) cleanly into its own subfolder prevents directory pollution and aligns with multi-mirror staging architecture
 - **Verification & Test Results**:
   - Obsidian/Amiga/Reference/temp/Undocumented features... now contains cleanly separated live/, wayback_2022/, and wayback_2016/ subfolders with 0 root files
-  - bootstrap_reference.ps1 -All successfully verifies and skips already crawled assets in 'live'
   - tools/pre_flight.py: 100% compliant across all gates
+---
+
+### [2026-09-14 14:40 CEST] — Fixed CLI Parameter Auto-Promotion for -AllSources in Reference Bootstrapper
+- **Affected Subsystems**:
+  - `tools`
+  - `reference`
+- **What Was Changed (The Concrete Reality)**:
+  - Fixed parameter dispatch in `tools/bootstrap_reference.ps1` so `-AllSources` automatically implies `-All` when no specific `-Item` is requested.
+  - Previously, running `.\tools\bootstrap_reference.ps1 -AllSources` hit the usage guard (`-not $All -and -not $Item`) and showed help text despite `-AllSources` being documented as a valid standalone action.
+  - Verified execution by running `.\tools\bootstrap_reference.ps1 -AllSources` end-to-end, cleanly downloading all 7 reference documents across primary, secondary, and tertiary mirrors.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates friction when developers or automated harnesses run `.\bootstrap_reference.ps1 -AllSources` to fetch comprehensive failover backups.
+  - Matches the documented CLI syntax displayed in the usage menu and README instructions.
+- **Verification & Test Results**:
+  - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap_reference.ps1 -AllSources`: exited with code 0.
+  - Verified all 7 reference items successfully provisioned into `Obsidian/Amiga/Reference/temp/`.
+  - `python tools/pre_flight.py`: 100% compliant across all gates.
