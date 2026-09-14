@@ -18,6 +18,8 @@ use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 use rtc::RtcMsm6242b;
 use sprites::Sprites;
 
+pub use physical_memory;
+
 /// Zero-cost stack-allocated router implementing `AddressBus` across all subsystems
 pub struct MemoryBus<'a> {
     pub mem: &'a mut PhysicalMemory,

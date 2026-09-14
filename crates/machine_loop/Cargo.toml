@@ -20,6 +20,7 @@ joystick = { workspace = true }
 keyboard = { workspace = true }
 m68000 = { workspace = true }
 physical_memory = { workspace = true }
+memory_bus = { workspace = true }
 mouse = { workspace = true }
 parallel_port = { workspace = true }
 paula = { workspace = true }

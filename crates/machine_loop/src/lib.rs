@@ -3,12 +3,9 @@
 //! Tier 0 top-level machine chassis that owns and coordinates all peer subsystems,
 //! custom chips, coprocessors, and peripheral devices in a flat, decoupled structure.
 
-pub mod bus;
-
 pub use agnus;
 pub use audio;
 pub use blitter;
-pub use bus::MemoryBus;
 pub use cia;
 pub use config;
 pub use copper;
@@ -20,6 +17,8 @@ pub use game_ports;
 pub use joystick;
 pub use keyboard;
 pub use m68000;
+pub use memory_bus;
+pub use memory_bus::MemoryBus;
 pub use mouse;
 pub use parallel_port;
 pub use paula;

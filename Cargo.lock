@@ -2092,6 +2092,7 @@ dependencies = [
  "joystick",
  "keyboard",
  "m68000",
+ "memory_bus",
  "mouse",
  "parallel_port",
  "paula",
@@ -2133,6 +2134,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "memory_bus"
+version = "0.1.0"
+dependencies = [
+ "agnus",
+ "audio",
+ "blitter",
+ "cia",
+ "config",
+ "copper",
+ "denise",
+ "dma",
+ "floppy",
+ "frame_builder",
+ "paula",
+ "physical_memory",
+ "rtc",
+ "sprites",
 ]
 
 [[package]]

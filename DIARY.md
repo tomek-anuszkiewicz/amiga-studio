@@ -2764,3 +2764,28 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed (including zero broken links and cargo fmt compliance).
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 331 files (0 violations).
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
+
+---
+
+### [2026-09-14 02:45 CEST] — Extracted MemoryBus Motherboard Router into Dedicated Crate
+- **Affected Subsystems**:
+  - `crates/memory_bus/`: Created dedicated crate housing `MemoryBus<'a>` motherboard router and `AddressBus` implementation.
+  - `crates/memory_bus/tests/test_router.rs`: Authored integration test suite covering physical memory passthrough, custom register broadcast, CIA odd/even byte decoding, overlay toggle, and RTC routing.
+  - `crates/machine_loop/Cargo.toml`: Added `memory_bus` dependency.
+  - `crates/machine_loop/src/lib.rs`: Replaced local `pub mod bus;` with `pub use memory_bus; pub use memory_bus::MemoryBus;`. Removed `crates/machine_loop/src/bus.rs`.
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Added `memory_bus` to `CORE_EMULATION_CRATES`.
+  - `Obsidian/Amiga/Design/MemoryBus.md` & `General Architecture.md`: Updated specifications and crate catalog to document both `physical_memory` (RAM/ROM) and `memory_bus` (motherboard routing).
+- **What Was Changed (The Concrete Reality)**:
+  - Extracted the motherboard address router (`MemoryBus<'a>`) out of `machine_loop` into an independent crate `crates/memory_bus`.
+  - Preserved zero-cost stack allocation and lifetime semantics (`&'a mut PhysicalMemory`, `&'a mut Agnus`, etc.), maintaining zero dynamic heap allocations during instruction stepping.
+  - Decoupled motherboard interconnect logic from machine stepping loops and frame orchestration.
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean Separation of Concerns:* `physical_memory` models raw storage (Chip RAM, Fast RAM, Slow RAM, Kickstart ROM); `memory_bus` models the address decoding backplane (Gary, chip selects, custom register dispatch); and `machine_loop` models temporal orchestration (master CCK counter, frame loop, CPU stepping).
+  - *Decoupled Harness Reusability:* Downstream test suites or debugger components can now interact with the full motherboard bus router without dragging in machine stepping or window loops.
+- **Verification & Test Results**:
+  - `cargo test -p memory_bus`: All 5 tests passed (100%).
+  - `cargo test -p machine_loop`: All 20 tests passed (100%).
+  - `cargo test -p physical_memory`: All 23 tests passed (100%).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 333 files (0 violations).
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.

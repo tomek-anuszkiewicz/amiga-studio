@@ -30,6 +30,7 @@ const LINE_COUNT_EXCEPTIONS: &[&str] = &[
 const CORE_EMULATION_CRATES: &[&str] = &[
     "m68000",
     "physical_memory",
+    "memory_bus",
     "config",
     "rtc",
     "disassembler",

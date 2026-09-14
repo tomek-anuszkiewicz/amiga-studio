@@ -21,6 +21,7 @@ members = [
     "crates/machine_loop",
     "crates/rtc",
     "crates/physical_memory",
+    "crates/memory_bus",
     "crates/m68000",
     "crates/disassembler",
     "crates/debugger",
@@ -62,6 +63,7 @@ cia = { path = "crates/cia" }
 machine_loop = { path = "crates/machine_loop" }
 rtc = { path = "crates/rtc" }
 physical_memory = { path = "crates/physical_memory" }
+memory_bus = { path = "crates/memory_bus" }
 m68000 = { path = "crates/m68000" }
 disassembler = { path = "crates/disassembler" }
 debugger = { path = "crates/debugger" }

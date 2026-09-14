@@ -1,0 +1,24 @@
+[package]
+name = "memory_bus"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+physical_memory = { workspace = true }
+agnus = { workspace = true }
+denise = { workspace = true }
+paula = { workspace = true }
+cia = { workspace = true }
+rtc = { workspace = true }
+copper = { workspace = true }
+blitter = { workspace = true }
+dma = { workspace = true }
+sprites = { workspace = true }
+frame_builder = { workspace = true }
+audio = { workspace = true }
+floppy = { workspace = true }
+
+[dev-dependencies]
+config = { workspace = true }

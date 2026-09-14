@@ -21,8 +21,8 @@ related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", 
 ## 1. Scope & Physical Address Space
 
 - **Module Locations:**
-  - `crates/physical_memory/`: Pure 24-bit physical storage (`PhysicalMemory`), RAM/ROM buffers, open-bus defaults, and DMA wait-state contention.
-  - `crates/machine_loop/src/bus.rs`: Zero-cost motherboard address router (`MemoryBus<'a>`), decoding the 24-bit physical address space and routing transactions live to `PhysicalMemory`, Custom Chips, CIAs, and the RTC.
+  - [`crates/physical_memory/src/lib.rs`](../../../crates/physical_memory/src/lib.rs): Pure 24-bit physical storage (`PhysicalMemory`), RAM/ROM buffers, open-bus defaults, and DMA wait-state contention.
+  - [`crates/memory_bus/src/lib.rs`](../../../crates/memory_bus/src/lib.rs): Zero-cost motherboard address router (`MemoryBus<'a>`), decoding the 24-bit physical address space and routing transactions live to `PhysicalMemory`, Custom Chips, CIAs, and the RTC.
 - **Bus Width:** 24-bit physical address space (`$000000`–`$FFFFFF`, 16 MB) and a 16-bit wide data bus supporting 8-bit byte and 16-bit Big-Endian word accesses.
 
 ---
@@ -66,7 +66,7 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
   - `$C0..=$C7`: `SLOW_RAM_HANDLER` (512 KB A501 trapdoor RAM, active in `Standard1Mb` & `ExpandedPowerUser`)
   - `$F8..=$FF`: `KICKSTART_ROM_HANDLER`
   - `$BF`, `$DC`, `$DF`, and unmapped ranges: `OPEN_BUS_HANDLER` (floating high `$FF` / `$FFFF`, silent writes).
-- **Motherboard Routing in `MemoryBus` (`crates/machine_loop`):**
+- **Motherboard Routing in `MemoryBus` ([`crates/memory_bus/src/lib.rs`](../../../crates/memory_bus/src/lib.rs)):**
   - `$DF`: Custom Chip Registers (`$DFF000..$DFFFFE`) routed directly to live Agnus, Denise, and Paula registers.
   - `$BF`: CIA Peripheral Registers (`$BFD000..$BFEF01`) routed directly to CIA-A and CIA-B.
   - `$DC`: Real-Time Clock (`$DC0000..$DC003F`) routed to OKI MSM6242B.
