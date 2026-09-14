@@ -182,3 +182,46 @@ fn test_aud0lch_aud0lcl_routed_to_agnus() {
     assert_eq!(mb.agnus.audlc[0], 0x0002_8000);
     assert_eq!(mb.agnus.audpt[0], 0x0002_8000);
 }
+
+#[test]
+fn test_dmacon_routing_to_denise_sprites() {
+    let mut mb = TestMotherboard::new();
+
+    assert!(!mb.denise.sprites.dma_enabled);
+
+    // Write DMACON ($DFF096): Master Enable (bit 9) + SPREN (bit 5) -> $8220
+    assert_eq!(
+        mb.router().write_word(0xDFF096, 0x8220),
+        BusResult::Ready(())
+    );
+
+    // Step 2 CCKs for Agnus to mature and dispatch DMACON action
+    let due1 = mb.agnus.step_cck();
+    for item in due1.iter().flatten() {
+        mb.router().dispatch_agnus_action(item.0, item.1);
+    }
+    let due2 = mb.agnus.step_cck();
+    for item in due2.iter().flatten() {
+        mb.router().dispatch_agnus_action(item.0, item.1);
+    }
+
+    // Verify Sprite DMA was enabled in Denise
+    assert!(mb.denise.sprites.dma_enabled);
+
+    // Now clear SPREN: write $0020
+    assert_eq!(
+        mb.router().write_word(0xDFF096, 0x0020),
+        BusResult::Ready(())
+    );
+    let due3 = mb.agnus.step_cck();
+    for item in due3.iter().flatten() {
+        mb.router().dispatch_agnus_action(item.0, item.1);
+    }
+    let due4 = mb.agnus.step_cck();
+    for item in due4.iter().flatten() {
+        mb.router().dispatch_agnus_action(item.0, item.1);
+    }
+
+    // Verify Sprite DMA was disabled in Denise
+    assert!(!mb.denise.sprites.dma_enabled);
+}

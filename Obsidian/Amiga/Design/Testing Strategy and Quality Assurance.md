@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-15
 related: ["[General Architecture.md](General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 ---
 
@@ -34,7 +34,7 @@ graph TD
     end
 
     subgraph Tier2["Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)"]
-        I1["Machine Loop Integration<br/><code>crates/machine_loop/tests/</code><br/>(DMA contention, interrupts, reset, save states)"]:::t2
+        I1["Machine Loop Nexus<br/><code>crates/machine_loop/tests/</code><br/>(DMA contention, interrupts, reset, save states)"]:::t2
         I2["Debugger & Tooling Orchestration<br/><code>crates/debugger/tests/</code><br/>(Binary execution, temporal rewind, stepping)"]:::t2
         I3["Headless Developer Studio UI<br/><code>crates/gui/tests/test_interactions.rs</code><br/>(Full egui frame passes, keyboard, hex editing)"]:::t2
         I4["Motherboard Bus Routing<br/><code>crates/memory_bus/tests/</code><br/>(Address dispatch & register wiring)"]:::t2
@@ -75,12 +75,31 @@ graph TD
 - **Primary Integration Hubs**:
   1. **Machine Loop Nexus ([`crates/machine_loop/tests/`](../../../crates/machine_loop/tests/))**:
      - `test_machine_loop.rs`: Top-level A500 state machine loop step progression, monotonic CCK clock progression, CPU bus wait-states.
+     - `test_copper_machine_integration.rs`: Copper list execution, raster beam WAIT synchronization, palette mutation, and Level 3 IRQ.
+     - `test_blitter_machine_integration.rs`: Blitter 2D memory operations (copy, fill), Chip RAM mutation, and Level 3 `_BLITINT` signaling.
+     - `test_denise_palette_sprite_integration.rs`: Full 32-color palette batch writes, sprite channel vertical comparators, and data arming.
+     - `test_audio_machine_integration.rs`: Paula audio DMA playback streaming from Chip RAM, period clock division, and Level 4 `AUDxDSR` interrupt propagation.
+     - `test_dma_switching_and_signals_integration.rs`: Dynamic `DMACON` bitwise SET/CLR across all chips, electronic signal propagation delays, and unmapped open bus reads.
      - `test_dma_contention.rs`: Agnus DMA scheduler contending with CPU bus accesses.
      - `test_interrupt_pipeline.rs`: Level 1-6 interrupt prioritization between Paula, Agnus, CIA-A, CIA-B and CPU IPL.
      - `test_register_propagation.rs`: CPU writing custom registers with CCK electronic delay pipelines.
      - `test_cia_keyboard_integration.rs`: Physical keyboard transmission -> CIA-A SDR -> Level 2 interrupt to CPU.
      - `test_action_dispatch.rs`: Register writes dispatching strongly-typed actions across custom chips.
+     - `test_reset.rs`: Cold, warm, and external CPU RESET instruction handling.
+     - `test_rtc.rs`: Real-time clock BCD decoding and cycle-exact stepping.
      - `test_save_state.rs`: Complete machine state serialization and restoration roundtrip.
+
+#### Custom Chip Whole-Machine Verification Matrix
+
+| Custom Chip | Primary Integration Test File | Verified Operational Capabilities |
+| :--- | :--- | :--- |
+| **Copper** | `test_copper_machine_integration.rs` | List execution, beam `WAIT`, `MOVE` to `COLOR00`, DMACON enable/disable, Level 3 IRQ |
+| **Blitter** | `test_blitter_machine_integration.rs` | 2D copy & fill in Chip RAM, `BLTSIZE` start, Level 3 `_BLITINT` assertion, CPU bus lockout |
+| **Denise** | `test_denise_palette_sprite_integration.rs` | 32-color batch mutation without dropping, sprite vertical window, `SPRxDATA` arming, DMA toggling |
+| **Paula** | `test_audio_machine_integration.rs` | Audio DMA playback from Chip RAM, period scaling, sample buffer generation, Level 4 `AUD0DSR` |
+| **DMA Arbiter** | `test_dma_switching_and_signals_integration.rs` | Bitwise SET/CLR in `DMACON`, master `DMAEN` global halt, 1-2 CCK electronic delays, open bus `$FFFF` |
+| **CIAs** | `test_cia_keyboard_integration.rs` | Keyboard serial shift to CIA-A `SDR`, Level 2 IRQ, horizontal TOD (CIA-B), vertical TOD (CIA-A) |
+
   2. **Debugger & Tooling Nexus ([`crates/debugger/tests/`](../../../crates/debugger/tests/))**:
      - `test_debugger.rs` & `test_stepping_and_session.rs`: Debugger session stepping `machine_loop` and CPU core.
      - `test_sample_binaries.rs`: Injecting compiled M68000 test binaries into RAM and executing instructions.

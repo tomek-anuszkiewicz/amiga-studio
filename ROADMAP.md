@@ -41,6 +41,11 @@ This document outlines the phased development plan, hardware milestones, verific
   - Autonomous chipset execution engines: Agnus Copper coprocessor (`MOVE`, `WAIT`, `SKIP`, `CDANG`), Agnus 4-channel DMA Blitter (256-minterm Boolean ALU, barrel shifters, line drawer), Denise pixel pipeline (bitplane serializer, 32-color palette, EHB, HAM6, dual playfield) and 8 hardware sprites, Paula 4-channel audio sample streaming, Floppy MFM track encoder/decoder with ADF injection, and dual MOS 8520 CIAs (timers, TOD, keyboard serial shift register).
   - Agnus master DMA bus arbiter with 227/226 CCK horizontal scanline scheduling, 8-tier bus priority, Blitter Nasty / starvation yield, and direct CPU Chip RAM wait-state stalling with Fast RAM immunity.
   - 100% verified across 114 unit and integration tests throughout the workspace.
+- **Whole-Machine Integration & Cross-Chip Pipeline Verification (Completed Baseline Deliverable):**
+  - Full `A500Machine` cycle-exact integration test suite (`crates/machine_loop/tests/`) running unified CPU and chipset color clock loops (`step_cck`, `step_instruction`).
+  - Synthetic end-to-end verification covering Copper beam synchronization and register mutations, Blitter 2D memory copies and fill operations, Denise palette batch updates and sprite arming/windowing, Paula audio sample streaming and IRQ generation, and DMACON master/channel arbitration with 1-cycle electronic signal propagation.
+  - 100% verified across 13 integration test cases in `crates/machine_loop/tests/` without relying on heavy full-frame reference captures.
+
 
 ### Phase 2: Enhanced Chipset (ECS) & Later Models
 - **A500 Rev 6A (1 MB Chip):** Fat Agnus 8372A with 1 MB Chip RAM jumper configuration.

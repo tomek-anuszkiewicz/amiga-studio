@@ -289,6 +289,9 @@ impl<'a> MemoryBus<'a> {
                 self.denise
                     .frame_builder
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0100) != 0);
+                self.denise
+                    .sprites
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0020) != 0);
             }
             0x020 | 0x022 => {
                 self.floppy.set_dskpt(self.agnus.dskpt);

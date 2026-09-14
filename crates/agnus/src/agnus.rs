@@ -225,18 +225,22 @@ impl Agnus {
         }
 
         // 3. Process and commit due register mutations
-        let mut due = [None; 8];
-        let mut due_count = 0;
+        let mut committed = [None; AGNUS_MUTATION_CAPACITY];
+        let mut committed_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {
-            if due_count < due.len() {
-                due[due_count] = Some((reg, val));
-                due_count += 1;
+            if committed_count < committed.len() {
+                committed[committed_count] = Some((reg, val));
+                committed_count += 1;
             }
         });
-        for item in due.iter().flatten() {
+        for item in committed[..committed_count].iter().flatten() {
             self.commit_register_write(item.0, item.1);
         }
 
+        let mut due = [None; 8];
+        for (i, item) in committed[..committed_count.min(8)].iter().enumerate() {
+            due[i] = *item;
+        }
         due
     }
 
@@ -354,6 +358,7 @@ impl Agnus {
                 let dma_en = self.is_dma_enabled(0x0040);
                 self.blitter.set_dma_enabled(dma_en);
                 self.blitter.set_bltpri(self.is_blitter_nasty());
+                self.copper.set_dma_enabled(self.is_dma_enabled(0x0080));
             }
             0x02E => self.copper.set_copcon(val),
             0x080 => {

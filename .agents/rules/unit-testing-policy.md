@@ -27,7 +27,30 @@ Every non-UI functional module, utility class, parser, decoder, evaluator, data 
 
 ---
 
-## 2. GUI Components: Mandatory Headless Integration Tests
+## 2. Whole-Machine Loop Integration Mandate (Tier 2 Custom Chip Verification)
+
+Isolated unit tests verify individual logic gates, ALU operations, and formula evaluations. However, hardware silicon behavior emerges from the tight, synchronized coordination between custom chips, DMA channels, and CPU bus cycles.
+
+Whenever a custom chip or peripheral subsystem (`copper`, `blitter`, `denise`, `paula`, `cia`, `floppy`) is introduced, modified, or extended:
+1. **Mandatory Whole-Machine Test Coverage:**
+   - The developer or agent **must author or maintain at least one lightweight Tier 2 integration test** in `crates/machine_loop/tests/` (e.g. `test_<subsystem>_machine_integration.rs`).
+2. **Core Operational Checkpoints:**
+   - **DMA Channel Control:** Verify that `DMACON` bits enable/disable the channel cleanly and that disabling master `DMAEN` immediately halts active transfers.
+   - **Cross-Chip Signal Propagation:** Verify that register writes observe physical electronic delay pipelines (e.g. 1 to 2 CCKs) rather than taking effect instantaneously.
+   - **Functional Execution:** Verify the subsystem's fundamental contract end-to-end:
+     - Copper executes `WAIT` and mutates display registers at target raster coordinates.
+     - Blitter mutates Chip RAM buffers (copy, invert, fill) and asserts `_BLITINT`.
+     - Denise arms sprite channels, tracks vertical windows `[VSTART..VSTOP)`, and outputs pixels.
+     - Paula consumes audio DMA words, advances periods, and raises Level 4 interrupts (`AUDxDSR`).
+     - CIAs generate timer interrupts and TOD ticks.
+3. **Synthetic, Zero-Asset Architecture:**
+   - Tier 2 tests must remain fast (< 5ms per test) and self-contained in Chip RAM using `MachineHarness`.
+   - Never rely on Kickstart ROMs or ADF floppy disks for Tier 2 verification.
+   - Pinpoint exact subsystem regressions before executing heavy Tier 3 test runners.
+
+---
+
+## 3. GUI Components: Mandatory Headless Integration Tests
 
 Unlike backend systems, GUI components under `crates/gui` must not rely on fragile, mocked unit tests of individual UI fragments. Instead, they must be validated through **end-to-end headless integration tests** (`crates/gui/tests/test_interactions.rs`):
 
@@ -43,7 +66,7 @@ Unlike backend systems, GUI components under `crates/gui` must not rely on fragi
 
 ---
 
-## 3. Test Placement Architecture: Dedicated `tests/` Directory & 3-Tier Taxonomy
+## 4. Test Placement Architecture: Dedicated `tests/` Directory & 3-Tier Taxonomy
 
 To guarantee clean separation between production logic and test harnesses, all tests across the workspace must reside strictly in external test suites:
 
@@ -67,7 +90,7 @@ To guarantee clean separation between production logic and test harnesses, all t
 
 ---
 
-## 4. Automated Verification Gates & Change-Coupling Enforcement
+## 5. Automated Verification Gates & Change-Coupling Enforcement
 
 To prevent shallow scaffolding and untested code from entering the repository, testing is enforced through automated gates and Git hooks:
 
@@ -88,7 +111,7 @@ To prevent shallow scaffolding and untested code from entering the repository, t
 
 ---
 
-## 5. Definition of Done Checklist for Testing
+## 6. Definition of Done Checklist for Testing
 
 Before declaring any feature, bug fix, or opcode implementation complete:
 - [ ] Are all new or modified functional methods backed by unit tests?
@@ -100,7 +123,7 @@ Before declaring any feature, bug fix, or opcode implementation complete:
 
 ---
 
-## 6. Bug Fixing & Defect Resolution: Repro-First Mandate
+## 7. Bug Fixing & Defect Resolution: Repro-First Mandate
 Whenever resolving a bug, timing divergence, or instruction failure, follow the mandatory Red-Green-Refactor protocol in [`repro-first.md`](repro-first.md):
 1. Write an isolated, failing reproduction test in `crates/<crate>/tests/`.
 2. Confirm the failure on current unmodified code.
@@ -109,6 +132,6 @@ Whenever resolving a bug, timing divergence, or instruction failure, follow the 
 
 ---
 
-## 7. Execution Skills for Testing
+## 8. Execution Skills for Testing
 - **CPU Silicon Cycle Verification:** Follow [`m68k-singlestep-test`](../skills/m68k-singlestep-test/SKILL.md) when validating instructions against Tom Harte physical silicon vectors (`SingleStepTests-680x0`).
 

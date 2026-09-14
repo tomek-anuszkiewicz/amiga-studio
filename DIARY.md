@@ -3786,4 +3786,37 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_vamiga_harness`: All 8 tests passed including tolerance boundary test.
   - `python tools/pre_flight.py`: All pre-flight quality gates clean.
 
+---
+
+### [2026-09-15 00:45 CEST] — Tier 2 Whole-Machine Integration Test Suite, Chipset Mutation Pipelines & Coupling Policies
+- **Affected Subsystems**:
+  - `crates/machine_loop/tests/common/mod.rs` (new `MachineHarness` fluent test harness for headless whole-machine orchestration)
+  - `crates/machine_loop/tests/test_copper_machine_integration.rs` (Copper list execution, beam WAIT synchronization, Denise COLOR00 mutation, and Level 3 IRQ integration)
+  - `crates/machine_loop/tests/test_blitter_machine_integration.rs` (Blitter 2D memory copy, 8-word area fill in Chip RAM, and _BLITINT Level 3 IRQ routing)
+  - `crates/machine_loop/tests/test_denise_palette_sprite_integration.rs` (Denise 32-color palette batch updates, sprite vertical window clipping, SPRxDATA arming, and DMA toggles)
+  - `crates/machine_loop/tests/test_audio_machine_integration.rs` (Paula Channel 0 audio DMA streaming from Chip RAM, period clock division, sample generation, and Level 4 AUD0DSR IRQ)
+  - `crates/machine_loop/tests/test_dma_switching_and_signals_integration.rs` (DMACON bitwise SET/CLR arbitration, master DMAEN halt, 1-cycle electronic signal propagation delay, and open bus floating reads)
+  - `crates/agnus/src/agnus.rs`, `crates/agnus/tests/test_agnus.rs` (synchronized Copper DMA enable on DMACON writes; expanded delayed mutation commitment buffer from 8 to AGNUS_MUTATION_CAPACITY)
+  - `crates/denise/src/denise.rs`, `crates/denise/tests/test_denise.rs` (implemented sprite channel arming on SPRxDATA write and disarming on SPRxCTL write; expanded palette mutation commitment buffer from 8 to DENISE_MUTATION_CAPACITY)
+  - `crates/memory_bus/src/memory_bus.rs`, `crates/memory_bus/tests/test_register_wiring.rs` (forwarded DMACON sprite DMA enables to Denise sprites)
+  - `.agents/rules/unit-testing-policy.md` (formalized Section 2: Whole-Machine Loop Integration Mandate for Tier 2 custom chip verification)
+  - `Obsidian/Amiga/Design/Testing Strategy and Quality Assurance.md` (documented Tier 2 machine loop integration test suite and Custom Chip Whole-Machine Verification Matrix)
+  - `ROADMAP.md` (recorded Whole-Machine Integration & Cross-Chip Pipeline Verification in Baseline deliverables)
+- **What Was Changed (The Concrete Reality)**:
+  - **Tier 2 Whole-Machine Integration Test Suite**:
+    - Introduced 13 fast, synthetic whole-machine integration tests in `crates/machine_loop/tests/` running the complete `A500Machine` color clock loop (`step_cck`, `step_instruction`) with unified CPU, Agnus, Denise, Paula, CIAs, and MemoryBus.
+    - Built a reusable `MachineHarness` providing fluent initialization, Chip RAM payload loading, interrupt vector configuration, scanline/CCK stepping, and assertion helpers.
+  - **Hardware Quirks & Defects Discovered and Resolved**:
+    - *Copper DMA Synchronization:* Fixed `Agnus::commit_register_write` (0x096) to update `self.copper.set_dma_enabled()` when writing `DMACON`.
+    - *Delayed Mutation Commitment Buffer Overflow:* Fixed `Agnus::step_cck_ram` and `Denise::step_cck` where a temporary collection buffer with hardcoded capacity 8 caused registers maturing on the same CCK beyond slot 8 to be dropped when `mutations` had capacity 64. Expanded both commitment buffers to full capacity (`AGNUS_MUTATION_CAPACITY` / `DENISE_MUTATION_CAPACITY`).
+    - *Sprite Channel Arming:* Fixed `Denise::commit_register_write` (0x140..=0x17E) to set `is_armed = true` upon writing `data_a` (`SPRxDATA`) and `is_armed = false` upon writing `ctl` (`SPRxCTL`).
+    - *Sprite DMA Propagation:* Added propagation of DMACON sprite DMA enables to `self.denise.sprites.set_dma_enabled` in `MemoryBus::dispatch_agnus_action`.
+  - **Policy & Documentation Mandate**:
+    - Formalized the Tier 2 Whole-Machine Loop Integration Mandate in `.agents/rules/unit-testing-policy.md` and updated `Obsidian/Amiga/Design/Testing Strategy and Quality Assurance.md` with the Custom Chip Verification Matrix.
+- **Verification & Test Results**:
+  - `cargo test -p machine_loop`: All 13 new integration tests passed cleanly (0.42s).
+  - `python tools/run_tests.py --all`: Tier 1 (23 crates + 7 test_runner suites, 9.84s) and Tier 2 (memory_bus, machine_loop, debugger, gui, 3.21s) 100% passed in 13.05s.
+  - `python tools/pre_flight.py`: All 20 architecture rules, formatting, attractors, size limits, test coupling, and API coverage checks passed cleanly.
+
+
 

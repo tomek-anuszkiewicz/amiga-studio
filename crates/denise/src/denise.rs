@@ -233,16 +233,21 @@ impl Denise {
         self.frame_builder
             .set_cck_pixels(beam.hpos, beam.vpos, backdrop_argb);
 
-        let mut due = [None; 8];
-        let mut due_count = 0;
+        let mut committed = [None; DENISE_MUTATION_CAPACITY];
+        let mut committed_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {
-            if due_count < due.len() {
-                due[due_count] = Some((reg, val));
-                due_count += 1;
+            if committed_count < committed.len() {
+                committed[committed_count] = Some((reg, val));
+                committed_count += 1;
             }
         });
-        for item in due.iter().flatten() {
+        for item in committed[..committed_count].iter().flatten() {
             self.commit_register_write(item.0, item.1);
+        }
+
+        let mut due = [None; 8];
+        for (i, item) in committed[..committed_count.min(8)].iter().enumerate() {
+            due[i] = *item;
         }
         due
     }
@@ -470,8 +475,14 @@ impl Denise {
                 if spr < 8 {
                     match sub {
                         0 => self.sprites.channels[spr].pos = val,
-                        1 => self.sprites.channels[spr].ctl = val,
-                        2 => self.sprites.channels[spr].data_a = val,
+                        1 => {
+                            self.sprites.channels[spr].ctl = val;
+                            self.sprites.channels[spr].is_armed = false;
+                        }
+                        2 => {
+                            self.sprites.channels[spr].data_a = val;
+                            self.sprites.channels[spr].is_armed = true;
+                        }
                         3 => self.sprites.channels[spr].data_b = val,
                         _ => {}
                     }
