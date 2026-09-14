@@ -9,6 +9,7 @@ pub mod builder;
 pub mod catalog;
 pub mod catalog_data_a;
 pub mod catalog_data_b;
+pub mod chipset;
 pub mod persistence;
 pub mod platform;
 pub mod prng;
@@ -27,6 +28,7 @@ pub use catalog::{
     all_benchmark_specs, filter_specs, find_spec_by_id, total_benchmark_specs_count,
     AddressingMode, BenchmarkSpec, BenchmarkStrategy, InstructionCategory,
 };
+pub use chipset::*;
 pub use persistence::{
     format_timestamp_filename, load_historical_baseline, load_previous_report,
     persist_benchmark_report, BenchmarkEnvironmentInfo, BenchmarkItemResult, BenchmarkSuiteReport,

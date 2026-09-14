@@ -20,9 +20,6 @@ pub use paula::{self, audio, serial_port};
 pub use physical_memory;
 pub use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 pub use rtc;
-
-pub mod profile;
-pub use profile::*;
 pub mod save_state;
 pub use save_state::*;
 

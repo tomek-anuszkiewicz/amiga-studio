@@ -212,27 +212,3 @@ fn test_vamiga_runner_single_test_execution() {
     // Rendered frame produces diagnostic comparison
     assert!(result.passed || result.mismatched_pixels < 204_060);
 }
-
-#[test]
-fn test_vamiga_runner_profile_execution() {
-    let root = match resolve_vamiga_root() {
-        Some(r) => r,
-        None => return,
-    };
-
-    let catalog = VamigaCatalog::discover(&root);
-    let test_desc = catalog
-        .find_test("coptim1")
-        .expect("coptim1 test should be found in catalog");
-
-    let config = VamigaRunConfig {
-        frames_to_run: 2,
-        profile: true,
-        ..Default::default()
-    };
-
-    let result =
-        run_vamiga_test(test_desc, &config).expect("coptim1 profiled execution should succeed");
-
-    assert_eq!(result.total_pixels, 204_060);
-}

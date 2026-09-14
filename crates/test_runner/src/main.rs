@@ -18,11 +18,13 @@ fn print_usage() {
     println!("                   Options: --quick, --standard, --thorough");
     println!("                            --filter <TAG>, --unroll <K>, --passes <N>");
     println!("                            --out-dir <PATH>, --no-pin, --dump-traces");
+    println!("  benchmark-chipset [OPTIONS] Run chipset throughput benchmark & regression check");
+    println!(
+        "                   Options: --record (record golden baseline), --compare, --frames <N>"
+    );
     println!("  vamiga [OPTIONS] Execute vAmigaTS regression verification test harness");
     println!("                   Options: --category <CAT>, --test <NAME>, --frames <N>");
-    println!(
-        "                            --max-tests <N>, --list-deferred, --summary, --profile, -v"
-    );
+    println!("                            --max-tests <N>, --list-deferred, --summary, -v");
     println!("  --summary        Print global pass/fail coverage table across all tested opcodes");
     println!("  --diff           Compare latest test runs against previous runs to detect regressions/fixes");
     println!(
@@ -337,9 +339,6 @@ fn run_vamiga_cli(args: &[String]) {
             "--summary" => {
                 show_summary = true;
             }
-            "--profile" => {
-                config.profile = true;
-            }
             "--verbose" | "-v" => {
                 config.verbose = true;
             }
@@ -434,6 +433,68 @@ fn run_vamiga_cli(args: &[String]) {
     }
 }
 
+fn run_chipset_benchmarks_cli(args: &[String]) {
+    use test_runner::benchmark::{
+        compare_chipset_baseline, record_chipset_baseline, DEFAULT_BENCHMARK_FRAMES,
+    };
+
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|p| p.parent())
+        .expect("Failed to locate repo root")
+        .to_path_buf();
+
+    let mut record = false;
+    let mut compare = false;
+    let mut frames = DEFAULT_BENCHMARK_FRAMES;
+
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--record" => record = true,
+            "--compare" => compare = true,
+            "--frames" | "-f" => {
+                if i + 1 < args.len() {
+                    if let Ok(f) = args[i + 1].parse::<u32>() {
+                        frames = f;
+                    }
+                    i += 1;
+                }
+            }
+            other => eprintln!("Unknown benchmark-chipset option: {}", other),
+        }
+        i += 1;
+    }
+
+    if record {
+        println!(
+            "[*] Recording chipset performance golden baseline ({} frames)...",
+            frames
+        );
+        if let Err(e) = record_chipset_baseline(&repo_root, frames) {
+            eprintln!("Error recording baseline: {}", e);
+            std::process::exit(1);
+        }
+    } else if compare || (!record && !compare) {
+        println!(
+            "[*] Running chipset performance regression audit ({} frames)...",
+            frames
+        );
+        match compare_chipset_baseline(&repo_root, frames) {
+            Ok(true) => {
+                // Passed
+            }
+            Ok(false) => {
+                std::process::exit(1);
+            }
+            Err(e) => {
+                eprintln!("Error comparing baseline: {}", e);
+                std::process::exit(1);
+            }
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let results_dir = resolve_results_dir();
@@ -445,6 +506,7 @@ fn main() {
 
     match args[1].as_str() {
         "bench" => run_benchmarks_cli(&args[2..]),
+        "benchmark-chipset" => run_chipset_benchmarks_cli(&args[2..]),
         "vamiga" => run_vamiga_cli(&args[2..]),
         "--summary" => print_summary(&results_dir),
         "--diff" => print_diff(&results_dir),

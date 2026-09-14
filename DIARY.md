@@ -3714,4 +3714,33 @@ Every future modification or implementation task must append an entry following 
   - `cargo run -p test_runner --release -- vamiga --test coptim1 --profile`: Verified 2-tier tree output breakdown.
   - `python tools/pre_flight.py`: 100% passed across all gates (Formatting, Attractor Discipline, AGENTS.md, Test Coupling, API Coverage, Architecture Rules).
 
+---
+
+### [2026-09-14 22:45 CEST] — Replaced Internal Profiler with Samply Skill & Git-Tracked Chipset Benchmark Baseline
+- **Affected Subsystems**:
+  - `crates/agnus/src/agnus.rs`, `crates/agnus/tests/test_agnus.rs` (pruned `AgnusSubsystemProfile` and `step_cck_ram_profiled`)
+  - `crates/denise/src/denise.rs`, `crates/denise/tests/test_denise.rs` (pruned `DeniseSubsystemProfile` and `step_cck_profiled`)
+  - `crates/machine_loop/src/machine_loop.rs` (pruned `pub mod profile;` shrinking file to 617 lines)
+  - `crates/machine_loop/src/profile.rs`, `crates/machine_loop/tests/test_profile.rs` (deleted obsolete internal profiler module and tests)
+  - `crates/test_runner/src/main.rs`, `crates/test_runner/src/vamiga/runner.rs`, `crates/test_runner/tests/test_vamiga_runner.rs` (removed `--profile` flag and obsolete tests)
+  - `crates/test_runner/src/benchmark/chipset.rs`, `crates/test_runner/tests/test_chipset_benchmark.rs` (new deterministic chipset benchmark runner and regression comparator)
+  - `tests/benchmarks/chipset_benchmark_baseline.json` (Git-tracked golden throughput baseline for chipset workloads)
+  - `.agents/skills/profile-external/SKILL.md` (agent skill detailing external sampling profiling with samply and Firefox Profiler)
+  - `Obsidian/Amiga/Design/Performance Profiling and Optimization Strategy.md` (design document formalizing the two-tier performance monitoring strategy)
+- **What Was Changed (The Concrete Reality)**:
+  - **Internal Profiler Pruning & Core Simplification**:
+    - Completely purged all internal timer probes, profiling structs, and profiled stepping methods across `Agnus`, `Denise`, and `MachineLoop`.
+    - Restored the core emulation loop to pure, uninhibited native execution without observer effect, function signature pollution, or timer overhead in the per-CCK hot path.
+  - **Two-Tier Performance Monitoring Strategy**:
+    - *Tier 1 (Automated Regression Sentinel):* Implemented `benchmark-chipset` CLI subcommand in `test_runner` (`--record`, `--compare`, `--frames <N>`). Records and compares execution throughput against a Git-tracked JSON baseline (`tests/benchmarks/chipset_benchmark_baseline.json`) with an automated $\pm 10\%$ regression tolerance window.
+    - *Tier 2 (On-Demand Deep Sampling Profiler):* Standardized external statistical sampling profiling using `samply` and Firefox Profiler. Formulated `.agents/skills/profile-external/SKILL.md` guiding agents on capturing call trees, flame graphs, and chip-level module distributions without polluting production code.
+  - **Architectural Documentation**:
+    - Authored `Obsidian/Amiga/Design/Performance Profiling and Optimization Strategy.md` detailing the anti-pattern of internal timer probes, observer effect physics, crate symbol aggregation, and regression detection protocol.
+- **Verification & Test Results**:
+  - `cargo run --release -p test_runner -- benchmark-chipset --compare`: Verified baseline comparison against `coptim1` (108.9 FPS baseline vs 106.8 FPS current, -2.0% delta, verdict `PASS`).
+  - `cargo test -p test_runner --test test_chipset_benchmark`: 3 passed in 0.45s.
+  - `cargo test -p test_runner --test test_architecture_rules`: 20 passed in 5.87s.
+  - `python tools/pre_flight.py`: 100% passed across all gates.
+  - `cargo fmt --all -- --check`: 100% compliant.
+
 

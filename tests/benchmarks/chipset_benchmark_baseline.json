@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "recorded_at": "2026-09-14",
+  "results": [
+    {
+      "name": "coptim1",
+      "category": "Copper Coprocessor",
+      "frames": 50,
+      "cck_count": 3556800,
+      "elapsed_ms": 459.0287,
+      "fps": 108.92565105406263,
+      "cck_mhz": 7.7485351133817995
+    }
+  ]
+}

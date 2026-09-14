@@ -25,8 +25,6 @@ pub struct VamigaRunConfig {
     pub machine_config: A500Config,
     /// Whether to print verbose per-test status lines during execution
     pub verbose: bool,
-    /// Whether to collect and display subsystem profiling metrics across execution
-    pub profile: bool,
 }
 
 impl Default for VamigaRunConfig {
@@ -35,7 +33,6 @@ impl Default for VamigaRunConfig {
             frames_to_run: 8,
             machine_config: A500Config::default(),
             verbose: false,
-            profile: false,
         }
     }
 }
@@ -135,44 +132,18 @@ impl VamigaSuiteSummary {
 
 /// Executes a test directly from memory buffers for ADF and expected RAW reference.
 /// Executes a test directly from memory buffers for ADF and expected RAW reference.
+/// Executes a test directly from memory buffers for ADF and expected RAW reference.
 pub fn run_vamiga_test_buffers(
     adf_bytes: &[u8],
     expected_raw_bytes: &[u8],
     frames_to_run: u32,
     machine_config: &A500Config,
 ) -> Result<VamigaTestResult, String> {
-    run_vamiga_test_buffers_profiled(
-        adf_bytes,
-        expected_raw_bytes,
-        frames_to_run,
-        machine_config,
-        false,
-        None,
-    )
-}
-
-/// Executes a test directly from memory buffers with optional subsystem profiling
-pub fn run_vamiga_test_buffers_profiled(
-    adf_bytes: &[u8],
-    expected_raw_bytes: &[u8],
-    frames_to_run: u32,
-    machine_config: &A500Config,
-    profile: bool,
-    test_name: Option<&str>,
-) -> Result<VamigaTestResult, String> {
     let mut machine = A500Machine::new(machine_config.clone());
     inject_vamiga_test(&mut machine, adf_bytes)?;
 
-    if profile {
-        let mut stats = machine_loop::SubsystemProfileStats::new();
-        for _ in 0..frames_to_run {
-            machine.step_frame_profiled(&mut stats);
-        }
-        stats.print_summary(test_name.unwrap_or("vamiga_test"));
-    } else {
-        for _ in 0..frames_to_run {
-            machine.step_frame();
-        }
+    for _ in 0..frames_to_run {
+        machine.step_frame();
     }
 
     // Extract rendered 716 x 285 RGB24 viewport
@@ -219,14 +190,7 @@ pub fn run_vamiga_test(
         config.frames_to_run
     };
 
-    run_vamiga_test_buffers_profiled(
-        &adf_bytes,
-        &raw_bytes,
-        frames,
-        &config.machine_config,
-        config.profile,
-        Some(&desc.name),
-    )
+    run_vamiga_test_buffers(&adf_bytes, &raw_bytes, frames, &config.machine_config)
 }
 
 /// Executes a test given a test directory path and test name.
@@ -261,13 +225,11 @@ pub fn run_vamiga_test_from_dir(
     let raw_bytes = fs::read(&raw_path)
         .map_err(|e| format!("Failed to read reference raw file {:?}: {}", raw_path, e))?;
 
-    run_vamiga_test_buffers_profiled(
+    run_vamiga_test_buffers(
         &adf_bytes,
         &raw_bytes,
         config.frames_to_run,
         &config.machine_config,
-        config.profile,
-        Some(test_name),
     )
 }
 

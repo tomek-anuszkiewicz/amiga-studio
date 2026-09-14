@@ -10,20 +10,6 @@ pub use dma;
 pub use config::AgnusModel;
 use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
-
-/// Agnus sub-unit execution profile metrics for a single sampled Color Clock cycle
-#[derive(Debug, Clone, Copy, Default)]
-pub struct AgnusSubsystemProfile {
-    /// Copper coprocessor execution duration
-    pub copper: Duration,
-    /// Blitter engine execution duration
-    pub blitter: Duration,
-    /// DMA slot arbitration & pointer increment duration
-    pub dma: Duration,
-    /// Beam counter updates, VBlank IRQ, and register mutations
-    pub beam: Duration,
-}
 
 /// Maximum horizontal Color Clock cycles per scanline (PAL)
 pub const PAL_LINE_CCKS: u16 = 227;
@@ -250,105 +236,6 @@ impl Agnus {
         for item in due.iter().flatten() {
             self.commit_register_write(item.0, item.1);
         }
-
-        due
-    }
-
-    /// Advances Agnus by 1 Color Clock with Chip RAM access, recording fine-grained timing for sub-units
-    pub fn step_cck_ram_profiled(
-        &mut self,
-        chip_ram: &mut [u8],
-        profile: &mut AgnusSubsystemProfile,
-    ) -> [Option<(u16, u16)>; 8] {
-        let t_beam = std::time::Instant::now();
-        let max_lines = match self.model {
-            AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
-            _ => PAL_FRAME_LINES,
-        };
-
-        self.hpos = self.hpos.wrapping_add(1);
-        if self.hpos > PAL_LINE_CCKS {
-            self.hpos = 0;
-            self.vpos = self.vpos.wrapping_add(1);
-            if self.vpos >= max_lines {
-                self.vpos = 0;
-                self.lof = !self.lof;
-                self.vblank_irq = true;
-            }
-        }
-        profile.beam += t_beam.elapsed();
-
-        let beam = self.beam();
-
-        let t_copper = std::time::Instant::now();
-        self.pending_copper_write = self.copper.step_cck(beam, self.blitter.is_busy, chip_ram);
-        profile.copper += t_copper.elapsed();
-
-        let t_blitter = std::time::Instant::now();
-        self.blitter.step_cck_ram(chip_ram);
-        profile.blitter += t_blitter.elapsed();
-
-        let t_dma = std::time::Instant::now();
-        self.dma.step_cck();
-
-        let copper_wants_bus = self.copper.is_active_fetching();
-        let blitter_wants_bus = self.blitter.is_busy;
-        let owner = self.dma.arbitrate(
-            beam.hpos,
-            beam.vpos,
-            self.dskpt != 0,
-            [true, true, true, true],
-            copper_wants_bus,
-            blitter_wants_bus,
-            true,
-        );
-        self.chip_ram_blocked = self.dma.chip_ram_blocked;
-
-        match owner {
-            dma::DmaChannel::Bitplane(plane) => {
-                let p = plane as usize;
-                if p < 6 && !chip_ram.is_empty() {
-                    let addr = (self.bplpt[p] as usize) & (chip_ram.len().wrapping_sub(1));
-                    if addr + 1 < chip_ram.len() {
-                        self.bplpt[p] = self.bplpt[p].wrapping_add(2) & 0x0007_FFFE;
-                    }
-                }
-            }
-            dma::DmaChannel::Sprite(sprite) => {
-                let s = sprite as usize;
-                if s < 8 && !chip_ram.is_empty() {
-                    let addr = (self.sprpt[s] as usize) & (chip_ram.len().wrapping_sub(1));
-                    if addr + 1 < chip_ram.len() {
-                        self.sprpt[s] = self.sprpt[s].wrapping_add(2) & 0x0007_FFFE;
-                    }
-                }
-            }
-            dma::DmaChannel::Audio(ch) => {
-                let c = ch as usize;
-                if c < 4 && !chip_ram.is_empty() {
-                    let addr = (self.audpt[c] as usize) & (chip_ram.len().wrapping_sub(1));
-                    if addr + 1 < chip_ram.len() {
-                        self.audpt[c] = self.audpt[c].wrapping_add(2) & 0x0007_FFFE;
-                    }
-                }
-            }
-            _ => {}
-        }
-        profile.dma += t_dma.elapsed();
-
-        let t_mut = std::time::Instant::now();
-        let mut due = [None; 8];
-        let mut due_count = 0;
-        tick_mutations(&mut self.mutations, |reg, val| {
-            if due_count < due.len() {
-                due[due_count] = Some((reg, val));
-                due_count += 1;
-            }
-        });
-        for item in due.iter().flatten() {
-            self.commit_register_write(item.0, item.1);
-        }
-        profile.beam += t_mut.elapsed();
 
         due
     }

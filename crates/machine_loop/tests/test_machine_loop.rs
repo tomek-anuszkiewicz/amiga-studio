@@ -95,3 +95,15 @@ fn test_machine_game_ports_routing() {
     assert!(!machine.game_ports.fire1_port1());
     assert!(!machine.game_ports.fire1_port2());
 }
+
+#[test]
+fn test_machine_step_frame() {
+    let config = A500Config::default();
+    let mut machine = A500Machine::new(config);
+
+    assert_eq!(machine.cck, 0);
+    machine.step_frame();
+
+    // Standard PAL frame has 312 lines * 228 CCKs (0..=227) = 71,136 CCKs
+    assert_eq!(machine.cck, 71_136);
+}
