@@ -80,21 +80,23 @@ def extract_outline_and_map_chapters(doc: fitz.Document, total_pages: int) -> Li
 
     return chapters
 
-def render_pages_to_png(doc: fitz.Document, out_dir: Path, dpi: int = 200) -> List[str]:
+def render_pages_to_png(doc: fitz.Document, out_dir: Path, dpi: int = 200, start_page: int = 1, end_page: int = None) -> List[str]:
     """
-    Renders every page of the PDF into a zero-padded high-resolution PNG.
+    Renders pages of the PDF into zero-padded high-resolution PNGs.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     rendered_files = []
     total_pages = len(doc)
+    start_p = max(1, start_page)
+    end_p = min(total_pages, end_page) if end_page else total_pages
     
     # Matrix calculation for DPI (72 is standard base PDF DPI)
     zoom = dpi / 72.0
     mat = fitz.Matrix(zoom, zoom)
 
-    print(f"Rendering {total_pages} pages at {dpi} DPI to {out_dir}...")
+    print(f"Rendering pages {start_p} to {end_p} (of {total_pages}) at {dpi} DPI to {out_dir}...")
 
-    for page_num in range(1, total_pages + 1):
+    for page_num in range(start_p, end_p + 1):
         page = doc.load_page(page_num - 1)
         pix = page.get_pixmap(matrix=mat, alpha=False)
         
@@ -103,8 +105,8 @@ def render_pages_to_png(doc: fitz.Document, out_dir: Path, dpi: int = 200) -> Li
         pix.save(str(file_path))
         rendered_files.append(filename)
 
-        if page_num % 25 == 0 or page_num == total_pages:
-            print(f"  Rendered [{page_num:03d}/{total_pages:03d}] pages...")
+        if page_num % 25 == 0 or page_num == end_p:
+            print(f"  Rendered [{page_num:03d}/{end_p:03d}] pages...")
 
     return rendered_files
 
@@ -114,6 +116,9 @@ def main():
     parser.add_argument("--output-dir", "-o", type=str, required=True, help="Output workspace directory")
     parser.add_argument("--dpi", type=int, default=200, help="Rendering resolution in DPI (default: 200)")
     parser.add_argument("--no-render", action="store_true", help="Only extract outline and manifest, skip PNG rendering")
+    parser.add_argument("--start-page", type=int, default=1, help="First page to process (1-based, default: 1)")
+    parser.add_argument("--end-page", type=int, default=None, help="Last page to process (1-based, default: all)")
+    parser.add_argument("--custom-manifest", "-m", type=str, default=None, help="Path to custom chapters manifest JSON")
     args = parser.parse_args()
 
     pdf_path = Path(args.pdf_path)
@@ -127,21 +132,33 @@ def main():
 
     doc = fitz.open(str(pdf_path))
     total_pages = len(doc)
-    print(f"Opened PDF '{pdf_path.name}': {total_pages} total pages.")
+    start_page = max(1, args.start_page)
+    end_page = min(total_pages, args.end_page) if args.end_page else total_pages
+    print(f"Opened PDF '{pdf_path.name}': {total_pages} total pages (processing {start_page}..{end_page}).")
 
     # 1. Extract outline and map chapters
-    chapters = extract_outline_and_map_chapters(doc, total_pages)
+    if args.custom_manifest:
+        custom_manifest_path = Path(args.custom_manifest)
+        if not custom_manifest_path.exists():
+            print(f"Error: Custom manifest '{custom_manifest_path}' does not exist.")
+            sys.exit(1)
+        manifest_data = json.loads(custom_manifest_path.read_text(encoding="utf-8"))
+        chapters = manifest_data.get('chapters', [])
+        print(f"Loaded {len(chapters)} chapters from custom manifest.")
+    else:
+        chapters = extract_outline_and_map_chapters(doc, total_pages)
     
     # 2. Render pages to PNG if requested
     if not args.no_render:
-        rendered_files = render_pages_to_png(doc, pages_dir, dpi=args.dpi)
+        rendered_files = render_pages_to_png(doc, pages_dir, dpi=args.dpi, start_page=start_page, end_page=end_page)
     else:
-        rendered_files = [f"page_{p:03d}.png" for p in range(1, total_pages + 1)]
+        rendered_files = [f"page_{p:03d}.png" for p in range(start_page, end_page + 1)]
 
     # 3. Save manifest
     manifest = {
         'source_pdf': pdf_path.name,
         'total_pages': total_pages,
+        'processed_range': [start_page, end_page],
         'dpi': args.dpi,
         'chapters': chapters,
         'pages': rendered_files
@@ -153,7 +170,7 @@ def main():
     
     print("\nSummary of Mapped Chapters:")
     for ch in chapters:
-        status = " (EXCLUDED - Obsolete Print Matter)" if ch['exclude'] else ""
+        status = " (EXCLUDED - Obsolete Print Matter)" if ch.get('exclude', False) else ""
         print(f"  - [{ch['start_page']:03d}-{ch['end_page']:03d}] {ch['title']}{status}")
 
 if __name__ == "__main__":

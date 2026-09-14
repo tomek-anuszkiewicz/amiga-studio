@@ -6,16 +6,17 @@ Apply this strict 7-level priority ladder to choose the best representation.
 
 ---
 
-## The 7-Level Priority Ladder
+## The 8-Level Priority Ladder
 
 ```text
 Priority 1: Code Block (```c, ```m68k)       -> For programming code; standardize indentations
-Priority 2: Markdown Table                   -> For structured tabular data; clean and searchable
-Priority 3: Monotone Text Block (```text)    -> For memory dumps, hex bytes, raw data alignment
-Priority 4: ASCII Art (Only if Readable)     -> For simple register bitfield diagrams
-Priority 5: HTML Table                       -> For complex tables requiring cell spans (colspan/rowspan)
-Priority 6: Crop to High-Res PNG             -> For complex schematics, waveforms, pinouts
-Priority 7: Native Vector Extraction & SVG -> For scalable block diagrams, logic, and timing charts
+Priority 2: Markdown Table                   -> For structured tabular data and register bitfield summaries
+Priority 3: Native Diagram (Mermaid + ASCII)  -> For block diagrams, state machines, queues; NO redundant images
+Priority 4: HTML Table                       -> For complex tables requiring cell spans (colspan/rowspan)
+Priority 5: Monotone Text Block (```text)    -> For memory dumps, hex bytes, raw data alignment
+Priority 6: ASCII Art (Only if Readable)     -> Fallback for simple diagrams inside <details>
+Priority 7: Crop to High-Res PNG + Sidecar   -> For complex schematics, waveforms, pinouts (requires .txt sidecar)
+Priority 8: Native Vector Extraction & SVG -> For scalable block diagrams when native vector paths exist in PDF
 ```
 
 ---
@@ -55,9 +56,61 @@ Structured information with well-defined columns and rows:
 | `$DFF004` | `BLTAFWM` | W | Blitter first word mask for source A |
 ```
 
+### Register Bitfield Tables (Replacing Messy ASCII Art)
+When encountering ASCII register bitfield boxes in manuals (e.g. `| 15 | 14 | ... | 0 |`), **convert them directly to standard Markdown tables**. Markdown tables reflow properly across devices and are immediately searchable:
+```markdown
+| Bit(s) | Name | Function |
+| :--- | :--- | :--- |
+| 15-12 | `ASH0-3` | Shift value for Blitter channel A |
+| 11 | `USEA` | Enable Blitter source channel A |
+| 10 | `USEB` | Enable Blitter source channel B |
+| 9 | `USEC` | Enable Blitter source channel C |
+| 8 | `USED` | Enable Blitter destination channel D |
+| 7-0 | `LF0-7` | Minterm logic function selector |
+```
+
 ---
 
-## 3. Priority 3: Monotone Text Blocks (` ```text `)
+## 3. Priority 3: Native Diagrams (Mermaid + ASCII Fallback)
+
+### When to Use
+State machines, architectural flowcharts, block diagrams, pipeline queues, and bus handshakes.
+
+### Rules & Reformatting
+1. **Render Native Mermaid**: Use `flowchart TD` / `flowchart LR` or `sequenceDiagram`.
+2. **ASCII Fallback**: Provide a compact text/ASCII diagram inside an expandable details block:
+   ```markdown
+   ```mermaid
+   flowchart TD
+       Fetch --> Decode --> Execute
+   ```
+
+   <details>
+   <summary>Click to view Text / ASCII Diagram</summary>
+
+   ```text
+   +-------+     +--------+     +---------+
+   | Fetch | --> | Decode | --> | Execute |
+   +-------+     +--------+     +---------+
+   ```
+   </details>
+   ```
+3. **No Redundant Images**: **Do NOT embed a raster image if a Mermaid diagram is generated to represent it.** Generating both an image and a Mermaid graph creates redundant visual clutter.
+
+---
+
+## 4. Priority 4: HTML Tables
+
+### When to Use
+When tables require complex merged cells (`colspan` or `rowspan`), multiple text blocks inside a single cell, or styled sub-headers that standard Markdown tables cannot represent.
+
+### Critical Math Rules for HTML Tables
+- Do not use standard `$math$` delimiters inside `<td>` tags (Markdown engines do not parse inline math inside HTML blocks).
+- Use HTML/Unicode formatting: `2<sup>10</sup>`, `T<sub>CLK</sub>`, `&plusmn;`, `&Omega;`.
+
+---
+
+## 5. Priority 5: Monotone Text Blocks (` ```text `)
 
 ### When to Use
 Data where exact fixed-width character alignment is essential, but which does not fit table syntax:
@@ -73,40 +126,17 @@ Data where exact fixed-width character alignment is essential, but which does no
 
 ---
 
-## 4. Priority 4: ASCII Art (Only if Strictly Readable)
+## 6. Priority 6: ASCII Art (Only if Strictly Readable)
 
 ### When to Use
-Simple single-line register bitfield allocations or horizontal signal boxes where monospace text is clean, compact, and immediately legible.
-
-### Criteria
-- **Must be strictly aligned**: If character widths vary or the diagram wraps on standard screens, do not use ASCII art.
-- If it cannot be formatted cleanly in under 80 columns, convert to a Markdown table or crop as an image.
-
-### Example (32-Bit Register Layout)
-```text
- 31            24 23            16 15             8 7              0
-+----------------+----------------+----------------+----------------+
-|      HOB       |      MHB       |      MLB       |      LOB       |
-+----------------+----------------+----------------+----------------+
-```
+Simple compact monospace diagrams that cannot easily be converted to Mermaid and remain strictly legible within 80 columns. If it wraps or is unaligned, convert to a table or crop to an image.
 
 ---
 
-## 5. Priority 5: HTML Tables
+## 7. Priority 7: Crop to High-Res PNG + Mandatory Sidecar (`.txt`)
 
 ### When to Use
-When tables require complex merged cells (`colspan` or `rowspan`), multiple text blocks inside a single cell, or styled sub-headers that standard Markdown tables cannot represent.
-
-### Critical Math Rules for HTML Tables
-- Do not use standard `$math$` delimiters inside `<td>` tags (Markdown engines do not parse inline math inside HTML blocks).
-- Use HTML/Unicode formatting: `2<sup>10</sup>`, `T<sub>CLK</sub>`, `&plusmn;`, `&Omega;`.
-
----
-
-## 6. Priority 6: Crop to High-Res PNG
-
-### When to Use
-Complex visual hardware illustrations that cannot be represented in text:
+Complex visual hardware illustrations that cannot be represented in Mermaid or text:
 - Physical IC pin configuration diagrams.
 - Analog oscillograms and bus cycle timing diagrams.
 - Dense system schematics and PCB connector pinouts.
@@ -114,7 +144,8 @@ Complex visual hardware illustrations that cannot be represented in text:
 ### Rules
 - Render at **150 to 200 DPI**.
 - Add a **10-15% safety padding margin** to the bounding box.
-- Name canonically: `assets/section_XX_figure_X-Y_<slug>.png`.
+- Name canonically: `assets/figure_XX_<slug>.png`.
+- **Mandatory Sidecar (`.txt`)**: Every image asset MUST have a companion `.txt` technical sidecar (e.g. `figure_XX_<slug>.png.txt`) containing the technical circuit/waveform description per `asset-descriptions.md` for offline Amiga RAG vector search.
 
 ---
 

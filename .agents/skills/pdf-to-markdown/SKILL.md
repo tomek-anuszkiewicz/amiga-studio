@@ -18,13 +18,15 @@ All conversion scripts and references reside inside this skill directory:
 ├── SKILL.md                               # This workflow recipe
 ├── scripts/
 │   ├── pdf_to_pages.py                    # PyMuPDF-based PDF chapter splitter & page-to-PNG renderer
-│   ├── extract_crops.py                   # Figure cropper with safety margins, deduplication, & asset naming
+│   ├── extract_crops.py                   # Figure cropper with safety margins, deduplication, & .txt sidecars
 │   ├── merge_chapters.py                  # Page-to-chapter compiler, header/footer stripper, & navigation injector
 │   ├── png_to_svg_helper.py               # Vectorization helper & SVG viewBox/clipPath safety auditor
-│   └── verify_page_vision.py              # Visual double-check tool comparing markdown vs original page PNG
+│   ├── verify_page_vision.py              # Visual double-check tool comparing markdown vs original page PNG
+│   ├── audit_conversion.py                # Automated semantic sanity auditor (catches prose-in-code leaks)
+│   └── validate_links.py                  # Anchor, image asset, and link integrity validator
 └── references/
     ├── pdf-conversion-pitfalls.md         # Detailed guide to the 11 known conversion pitfalls & fixes
-    ├── non-text-conversion-hierarchy.md   # Decision matrix: Code vs Table vs Text Block vs HTML vs PNG vs SVG
+    ├── non-text-conversion-hierarchy.md   # Decision matrix: Code vs Table vs Mermaid vs Text vs Crop vs SVG
     └── table-merging-heuristics.md        # Reference on stitching split tables across page boundaries
 ```
 
@@ -49,34 +51,67 @@ When encountering diagrams, code, tables, and visual figures in the PDF, apply t
    - For all programming code listings.
    - Enforce explicit language tags.
    - Standardize OCR indentations (2 or 4 spaces) and align assembly columns (`Label:    Mnemonic    Operands    ; Comments`).
+   - English prose sentences with punctuation must **NEVER** be enclosed in code blocks.
 2. **Priority 2: Standard Markdown Tables**:
    - First choice for structured tabular data: pinout tables, register lists, sector layouts, memory maps.
-3. **Priority 3: Monotone Text Blocks (` ```text `)**:
-   - Monospace blocks for content requiring strict fixed-width alignment where table syntax is unsuitable:
-     - Memory dumps (hex addresses with ASCII sidebar)
-     - Interactive terminal / CLI transcripts
-     - Raw binary or data packet layouts
-4. **Priority 4: ASCII Art (Only if Strictly Readable)**:
-   - Monospace diagrams for simple register bitfield layouts *only if strictly aligned and immediately readable*. If unaligned across varying fonts or screen sizes, convert to a Markdown table or cropped image.
-5. **Priority 5: HTML Tables**:
+   - **Register Bitfields**: When encountering ASCII register bitfield boxes (`| 15 | 14 | ... | 0 |`), convert them into clean Markdown tables (`| Bit(s) | Name | Function |`).
+3. **Priority 3: Native Diagrams (Mermaid + ASCII Fallback)**:
+   - For state machines, flowcharts, block diagrams, pipeline queues, and bus handshakes.
+   - Generate a clean native Mermaid flowchart (`flowchart TD` or `sequenceDiagram`).
+   - Provide a compact text/ASCII diagram inside an expandable details block:
+     `<details><summary>Click to view Text / ASCII Diagram</summary>...</details>`.
+   - **No Redundant Images**: **Do NOT embed a raster image if a Mermaid diagram is generated to represent it.** Generating both an image and a Mermaid graph creates redundant visual clutter.
+4. **Priority 4: HTML Tables**:
    - When complex cell spans (`colspan`, `rowspan`), multi-line cell entries, or nested structures are required.
    - **Math Rule**: Do not use `$math$` inside `<td>` tags; use pure HTML/Unicode (`2<sup>10</sup>`, `T<sub>CLK</sub>`, `&plusmn;`, `&Omega;`).
-6. **Priority 6: Crop to High-Res PNG**:
-   - For complex physical IC pinouts, oscilloscope waveforms, and dense schematics.
+5. **Priority 5: Monotone Text Blocks (` ```text `)**:
+   - Monospace blocks for content requiring strict fixed-width alignment where table syntax is unsuitable:
+     - Memory dumps (hex addresses with ASCII sidebar).
+     - Interactive terminal / CLI transcripts.
+     - Raw binary or data packet layouts.
+6. **Priority 6: ASCII Art (Only if Strictly Readable)**:
+   - Monospace diagrams for simple structures *only if strictly aligned and immediately readable within 80 columns*. If unaligned across varying fonts or screen sizes, convert to a Markdown table, Mermaid diagram, or cropped image.
+7. **Priority 7: Crop to High-Res PNG + Mandatory Sidecar (`.txt`)**:
+   - For complex physical IC pinouts, oscilloscope waveforms, and dense analog schematics that Mermaid cannot model.
    - Render at 150-200 DPI with a 10-15% safety padding margin.
-7. **Priority 7: Native Vector Extraction & SVG Optimization**:
+   - **Mandatory Technical Sidecars**: Every cropped image MUST have a companion `.txt` technical sidecar (e.g. `figure_XX_<slug>.png.txt`) containing technical circuit/waveform descriptions per `asset-descriptions.md` for offline Amiga RAG vector search.
+8. **Priority 8: Native Vector Extraction & SVG Optimization**:
    - For block diagrams, logic schematics, and digital timing charts to ensure crisp, scalable vector graphics in Obsidian.
    - **Check Source PDF First**: Always inspect the original PDF document to verify if **native non-bitmap content (vector paths, Bézier curves, shapes, and font text)** already exists on the page. If present, extract the native vector graphic directly (via tools like `mutool draw -F svg`, `pdf2svg`, or PyMuPDF) rather than lossy bitmap tracing.
 
 ---
 
-## 4. The 8-Phase Conversion Pipeline
+## 4. Obsidian Frontmatter, Properties & Tags Standard
 
-Follow these phases sequentially when processing a PDF document.
+All converted technical reference manuals must begin on Line 1 with active YAML frontmatter bounded by `---`:
 
-### Phase 1: PDF Analysis & Chapter Mapping
+```yaml
+---
+title: "Canonical Full Manual Title"
+author: "Author Name or Commodore-Amiga, Inc."
+source: "Original Publication Name / Manual"
+date: "YYYY"
+tags:
+  - amiga
+  - hardware
+  - chipset
+  - reference
+properties:
+  author: "Author Name or Commodore-Amiga, Inc."
+  source: "Original Publication Name / Manual"
+  archive_date: "YYYY"
+---
+```
 
-Run `pdf_to_pages.py` to extract bookmarks and map page ranges:
+---
+
+## 5. The Monolithic PDF Conversion Pipeline
+
+The input is typically **one single monolithic PDF book** (200-600+ pages). The conversion does not require splitting the source PDF into multiple physical PDF files; instead, it utilizes structured page mapping and chapter chunking.
+
+### Phase 1: Structural Discovery & Chapter Mapping (`manifest.json`)
+
+Run `pdf_to_pages.py` to inspect the monolithic PDF:
 
 ```bash
 python .agents/skills/pdf-to-markdown/scripts/pdf_to_pages.py \
@@ -85,48 +120,38 @@ python .agents/skills/pdf-to-markdown/scripts/pdf_to_pages.py \
   --dpi 200
 ```
 
-- Renders each page into high-resolution PNGs (`pages/page_001.png`, etc.).
-- Auto-detects chapter page boundaries from PDF bookmarks.
-- Automatically excludes obsolete print matter from chapters:
+- **Bookmark Discovery**: Extracts internal PDF bookmarks (`doc.get_toc()`).
+- **Scanned Books Fallback**: If the PDF is a flat scan without bookmarks, inspect the book's printed Table of Contents pages (typically pages 1-15) and provide a custom manifest via `--custom-manifest manifest.json` mapping chapter titles to their `start_page` and `end_page`.
+- **Excludes Obsolete Print Matter**:
   - Alphabetical Index (digital search replaces it)
   - List of Tables
   - List of Figures
-- Produces `manifest.json`.
+- Produces `manifest.json` defining all chapters, page ranges, and metadata.
 
 ---
 
-### Phase 2: Page-by-Page LLM Vision Transcription
+### Phase 2: High-Resolution Page Rendering
 
-Transcribe each page PNG (`page_001.png` $\dots$) into a page-level Markdown file (`page_001.md`).
-
-#### LLM Vision Transcription Guidelines:
-1. **Full Fidelity**: Transcribe every sentence, table cell, and footnote. Do not summarize.
-2. **Motorola Hex Addresses**: **Always enclose in backticks** (`` `$00000004` ``, `` `$DFF000` ``). Never leave bare `$HEX`, as multiple dollar signs corrupt KaTeX math rendering.
-3. **Figure Crops**: Mark every diagram, schematic, or visual waveform with a `<crop>` tag:
-   ```markdown
-   <crop xmin="120" ymin="340" xmax="950" ymax="780" label="Figure 6-2. Fat Agnus Block Diagram" />
-   ```
-4. **Clean Note Separation**: If a diagram has embedded notes or legends, transcribe them into Markdown callouts below the figure rather than keeping text inside the image:
-   ```markdown
-   > [!NOTE] DMA Time Slot Notes
-   > 1. If divide by zero occurs, an exception occurs.
-   ```
-5. **Obsidian Callouts for Notes, Warnings, and Errors**:
-   - Whenever the source page contains an advisory block (e.g. boxed note, shaded warning, margin caution, or text beginning with `Note:`, `Notice:`, `Warning:`, `Caution:`, `Important:`, `Error:`, `Danger:`), convert it into an Obsidian callout rather than leaving it as plain text or an unstyled blockquote:
-     - `Note:` / `Notice:` / `Info:` $\rightarrow$ `> [!NOTE]` or `> [!INFO]`
-     - `Tip:` / `Hint:` $\rightarrow$ `> [!TIP]`
-     - `Important:` / `Attention:` $\rightarrow$ `> [!IMPORTANT]`
-     - `Warning:` / `Caution:` $\rightarrow$ `> [!WARNING]` or `> [!CAUTION]`
-     - `Error:` / `Danger:` / `Bug:` $\rightarrow$ `> [!DANGER]` or `> [!ERROR]`
-   - Example:
-     ```markdown
-     > [!WARNING] Bus Contention Risk
-     > Never access custom chip registers during DMA cycles without asserting the bus grant signal.
-     ```
+`pdf_to_pages.py` automatically renders all pages (or a specified `--start-page` / `--end-page` range) into 200 DPI PNGs in `workspace/manual_staging/pages/` (`page_001.png`, `page_002.png`, etc.).
 
 ---
 
-### Phase 3: Asset Extraction & Deduplication
+### Phase 3: Chapter-Level Multimodal Vision Transcription
+
+Rather than transcribing single disconnected pages that fragment paragraphs, the LLM transcribes by **chapter chunks** (e.g. pages 15-32):
+
+1. **Continuous Context**: The LLM reads the page sequence for that chapter, unifying paragraphs split across page boundaries.
+2. **Table Continuity**: Tables spanning multiple pages are consolidated into a single Markdown table, stripping redundant repeated print headers.
+3. **Motorola Hex Addresses**: **Always enclose in backticks** (`` `$00000004` ``, `` `$DFF000` ``) to prevent KaTeX math rendering collisions.
+4. **Figure Placeholders**: Mark diagrams that cannot be modeled in Mermaid with `<crop>` tags:
+   ```markdown
+   <crop page="17" xmin="120" ymin="340" xmax="950" ymax="780" label="Figure 6-2. Fat Agnus Timing Waveform" />
+   ```
+5. **Obsidian Callouts**: Convert note boxes, tips, cautions, and warnings into native callouts (`> [!NOTE]`, `> [!WARNING]`, `> [!IMPORTANT]`).
+
+---
+
+### Phase 4: Asset Extraction, Deduplication & Sidecars
 
 Run `extract_crops.py` to crop figures from page PNGs:
 
@@ -140,12 +165,13 @@ python .agents/skills/pdf-to-markdown/scripts/extract_crops.py \
 
 - Adds a 15px safety padding margin to prevent cut-off borders or truncated pin names.
 - Deduplicates identical images across chapters using image content hashing.
-- Standardizes asset naming: `assets/section_XX_figure_X-Y_<slug>.png`.
+- Standardizes asset naming: `assets/figure_XX_<slug>.png`.
 - Replaces `<crop>` tags with standard Markdown image links.
+- **Generates `.txt` Technical Sidecars**: For every extracted asset, creates a companion `assets/figure_XX_<slug>.png.txt` file per `asset-descriptions.md` for offline Amiga RAG vector indexing.
 
 ---
 
-### Phase 4: Vector Extraction, SVG Vectorization & Boundary Audit
+### Phase 5: Vector Extraction, SVG Vectorization & Boundary Audit
 
 For block diagrams and timing charts:
 1. **Audit Source PDF for Native Vectors First**:
@@ -169,12 +195,11 @@ For block diagrams and timing charts:
      ```
    - Ensures `viewBox` has an expanded safety buffer and that outer signal lines, pin labels, and text are not clipped.
 
-
 ---
 
-### Phase 5: Chapter Merging & Header/Footer Stripping
+### Phase 6: Chapter Assembly & Navigation Injection
 
-Compile the page-level Markdowns into cohesive chapter files:
+Compile the transcribed Markdowns into cohesive chapter files:
 
 ```bash
 python .agents/skills/pdf-to-markdown/scripts/merge_chapters.py \
@@ -194,31 +219,28 @@ python .agents/skills/pdf-to-markdown/scripts/merge_chapters.py \
 
 ---
 
-### Phase 6: Visual Double-Check & QA Verification
+### Phase 7: Automated Sanity Audit
 
-Audit the compiled output using `verify_page_vision.py`:
+Run `audit_conversion.py` to catch prose-in-code leaks, unbackticked hex addresses, and fragmented blocks:
 
 ```bash
-python .agents/skills/pdf-to-markdown/scripts/verify_page_vision.py \
-  --page-png "workspace/manual_staging/pages/page_042.png" \
-  --markdown "workspace/manual_staging/pages_md/page_042.md"
+python .agents/skills/pdf-to-markdown/scripts/audit_conversion.py \
+  "Obsidian/Amiga/Reference/ManualName"
 ```
 
 Checklist to verify:
-- [ ] **No Dropped Text**: All footnotes, sub-bullets, fine print, and sidebars present.
-- [ ] **No Cut-Off Graphics**: All 4 borders, IC pin labels, and waveform marks intact.
-- [ ] **No Duplicated Notes**: Explanatory text resides in Markdown, not inside image assets.
-- [ ] **No Broken Tables**: Split multi-page tables cleanly merged without duplicate headers.
-- [ ] **No Bare Hex Addresses**: All `$HEX` enclosed in backticks (` `$000004` `).
+- [ ] **Zero Prose Leaks**: Normal English text is not mistakenly placed inside code blocks.
+- [ ] **Zero Bare Hex Addresses**: All `$HEX` addresses are backticked (`` `$DFF000` ``) to prevent KaTeX math collision.
+- [ ] **No Fragmented Fences**: Adjacent code fences are unified.
 
 ---
 
-### Phase 7: Obsidian Navigation & Link Validation
+### Phase 8: Link Integrity & Asset Audit
 
-Run `validate_links.py` (from `amigaguide-to-markdown/scripts/`) to confirm 100% link resolution:
+Run `validate_links.py` to confirm 100% link resolution:
 
 ```bash
-python .agents/skills/amigaguide-to-markdown/scripts/validate_links.py \
+python .agents/skills/pdf-to-markdown/scripts/validate_links.py \
   "Obsidian/Amiga/Reference/ManualName"
 ```
 

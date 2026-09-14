@@ -46,6 +46,17 @@ def compute_image_hash(img: Image.Image) -> str:
     resized = img.convert('L').resize((64, 64), Image.Resampling.BILINEAR)
     return hashlib.sha256(resized.tobytes()).hexdigest()
 
+def ensure_asset_sidecar(asset_path: Path, description: str) -> None:
+    """Ensures a Git-tracked technical sidecar (<image>.txt) exists for the asset."""
+    sidecar_path = asset_path.with_name(asset_path.name + ".txt")
+    if not sidecar_path.is_file():
+        content = (
+            f"Technical description for {asset_path.name}:\n\n"
+            f"{description.strip()}\n"
+        )
+        sidecar_path.write_text(content, encoding="utf-8")
+        print(f"    Created sidecar: {sidecar_path.name}")
+
 def extract_crops_from_markdown(
     md_dir: Path,
     pages_dir: Path,
@@ -129,10 +140,12 @@ def extract_crops_from_markdown(
                     canonical_name = seen_hashes[img_hash]
                     deduped_crops += 1
                     print(f"  Deduplicated: '{label}' -> reuses '{canonical_name}'")
+                    ensure_asset_sidecar(assets_dir / canonical_name, label)
                     return f"![{label}](assets/{canonical_name})"
                 else:
                     seen_hashes[img_hash] = asset_name
                     cropped_img.save(asset_path, "PNG")
+                    ensure_asset_sidecar(asset_path, label)
                     print(f"  Cropped: {asset_name} ({cropped_img.size[0]}x{cropped_img.size[1]})")
 
             return f"![{label}](assets/{asset_name})"
