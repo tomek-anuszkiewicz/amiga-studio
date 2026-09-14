@@ -92,6 +92,11 @@ This document outlines the phased development plan, hardware milestones, verific
     - *Sub-Suite 2.5: M68000 CPU Instruction & Exception Pipeline (503 tests):* `CPU/` (ALU, bitwise, shifts, exceptions, traps, IPL autovectors).
     - *Sub-Suite 2.6: Agnus Master DMA Contention & CPU Stealing (225 tests):* `Agnus/` (`DMACON/`, `BplDma/`, `DIW/`, `DDF/`, `bususage/`), verifying cycle-exact CPU wait-state stalling under heavy DMA and Blitter Nasty.
     - *Sub-Suite 2.7: Mainboard & Memory Addressing (58 tests):* `Mainboard/`, `Memory/`, `Misc/`, verifying address decoding, port registers, and RAM expansion configurations.
+- **Deferred Pinpoint Optimization: Dynamic Agnus DMA Slot Arbitration (26.3% Profile Bottleneck):**
+  - Pinpoint optimization localized entirely within the Agnus DMA scheduler (`crates/dma/` / `crates/agnus/src/dma/`) to do later.
+  - Optimize the dynamic per-CCK DMA slot priority evaluation into a clean, pre-computed scanline slot lookup table (`[DmaSlot; 227]`).
+  - Strict preservation of code simplicity: keep the code straightforward, transparent, and localized to one place in the DMA scheduler, with zero complex asynchronous event wheels, timing skips, or premature abstractions that sacrifice readability or physical cycle-exactness.
+  - Re-evaluate with `--profile` across vAmigaTS suites to measure empirical throughput gains.
 
 ### Step 3: Custom Chipset Debugger & Deep Architectural Observability (Developer Studio Extension)
 - **Step 3.1: Custom Chipset Registers & Mutation Delay Pipeline Inspector:**
