@@ -2960,3 +2960,17 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: 100% compliant.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 340 files.
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed.
+---
+
+### [2026-09-14 05:29 CEST] — Roadmap Step 2.6 DMA Bus Arbiter Specification & Subsystem Scope Boundary
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Expanded Step 2.6 with full 227-CCK horizontal slot schedule (Refresh 0..3, Disk 4, Audio 5..8, Sprites 12..27, DDFSTRT..DDFSTOP bitplane slots)
+  - Specified dynamic Bitplane DMA contention (1-4 LoRes even slots, 5-6 LoRes odd cycle stealing, 4 HiRes full CPU lockout)
+  - Formalized Blitter Nasty vs normal mode with 3-cycle CPU starvation release and Copper instruction fetch cycles
+  - Defined clear boundary between Step 2.6 (slot schedule and contention physics) and Step 2.7 (deep chip execution kernels)
+- **Architectural Rationale & Trade-Offs**:
+  - Clarify remaining work for Agnus DMA Bus Arbiter milestone and establish strict architectural separation from downstream deep coprocessor implementations
+- **Verification & Test Results**:
+  - cargo test -p test_runner --test test_architecture_rules passed (18/18)

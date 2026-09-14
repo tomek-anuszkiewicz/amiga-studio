@@ -90,9 +90,27 @@ This document outlines the phased development plan, hardware milestones, verific
   - **Initial Signal & Interrupt Synchronization:** Post-reset immediate execution of `poll_peripheral_pins()` and interrupt arbitration (`cpu.state.ipl = resolve_ipl()`), guaranteeing clean, consistent bus states at cycle 0.
   - **Dedicated Automated Verification:** 100% verified across 6 integration tests in `crates/machine_loop/tests/test_reset.rs`.
 - **Step 2.6: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure) [Active Focus]:**
-  - Implement the baseline Agnus horizontal scanline DMA slot schedule (CCK 0..3 DRAM refresh, CCK 4 disk, CCK 5..8 audio, CCK 12..27 sprites, bitplanes, and even/odd slots).
-  - CPU and Blitter contention arbitration (BLTPRI Blitter Nasty mode).
-  - Direct bus lock exposure: drive bus lock methods (lock_chip_ram / unlock_chip_ram) so the CPU and all custom chips observe bus contention and stall with wait states (BusResult::WaitState), establishing correct bus contention physics even before individual channel internal DSP/rendering logic is fully completed.
+  - **Horizontal Scanline DMA Slot Schedule (227 CCK PAL / 226 CCK NTSC):**
+    - *Fixed Time-Slot Allocations:* DRAM Refresh (CCK 0..3), Floppy Disk DMA (CCK 4), 4 Audio DMA channels (CCK 5..8 for AUD0..AUD3), 8 Sprite DMA pairs (CCK 12..27 for SPR0..SPR7, 2 words per sprite).
+    - *Dynamic Bitplane DMA Allocation:* Display Data Fetch window (`DDFSTRT`..=`DDFSTOP`, typically `$0038`..`$00D0`) during active vertical scanlines; dynamic slot allocation driven by `BPLCON0` planecount (1–6) and resolution (LoRes vs HiRes):
+      - LoRes 1–4 planes: 4 memory cycles allocated every 8 CCKs (even slots), leaving odd cycles free for CPU.
+      - LoRes 5–6 planes: Bitplane DMA steals 50% of the odd/CPU cycles, causing measurable CPU contention during display fetch.
+      - HiRes 4 planes: Bitplane DMA claims 100% of memory cycles in the fetch window, completely locking out the CPU during active raster display.
+  - **Strict Bus Priority Hierarchy:**
+    - Refresh > Disk > Audio > Bitplane > Sprite > Copper > Blitter > CPU.
+    - If a high-priority channel does not request its allocated time slot (e.g. channel disabled in `DMACON`), the slot is released to lower-priority DMA, Blitter, or CPU.
+  - **CPU, Blitter & Copper Bus Contention Mechanics:**
+    - *Blitter Nasty Mode (`DMACON` bit 10 `BLTPRI == 1`):* When Blitter is active, Agnus awards all available memory cycles to the Blitter, completely locking CPU out of Chip RAM (`BusResult::WaitState`).
+    - *Normal Blitter Mode (`BLTPRI == 0`):* Blitter uses idle cycles; implement CPU starvation yield logic where Agnus monitors CPU memory requests and forces the Blitter to release 1 cycle whenever the CPU is starved for 3 consecutive memory cycles.
+    - *Copper Instruction Fetch Cycles:* Copper claims bus cycles (2 words = 4 CCKs for `MOVE`, `WAIT`, `SKIP`) when `COPEN` (bit 7) is asserted and the Copper is not halted waiting for beam position or blitter completion.
+  - **Subsystem Separation of Concerns (Step 2.6 Arbiter vs. Step 2.7 Subsystems):**
+    - Step 2.6 establishes the **slot schedule, bus allocation rules, and cycle-exact contention physics (wait-state stalls)** across the machine, without requiring full internal DSP/rendering kernels.
+    - Full subsystem execution logic (Copper `CDANG`/state machine, Blitter 256-minterm ALU/barrel shifters/Bresenham line drawer, Paula BLEP synthesis, and Denise pixel serialization) remains cleanly decoupled under Step 2.7.
+  - **Direct Bus Lock Exposure & End-to-End Propagation:**
+    - Direct drive of `chip_ram_blocked` on `PhysicalMemory` during contended slots: CPU Chip RAM (`$000000–$07FFFF`) and Slow RAM (`$C00000–$C7FFFF`) accesses return `BusResult::WaitState` and stall cycle-accurately.
+    - Preserves 100% Fast RAM (`$200000–$9FFFFF`) immunity (zero wait states under heavy DMA or Blitter Nasty).
+  - **Dedicated Integration Test Suite:**
+    - Comprehensive test coverage in `crates/machine_loop/tests/test_dma_contention.rs` and `crates/dma/tests/test_dma.rs` verifying fixed slot stalls, Fast RAM immunity, bitplane contention scaling (0 vs 4 vs 6 planes), Blitter Nasty CPU lock-out, and CPU 3-cycle starvation release.
 - **Step 2.7: Decomposed Subsystem Deep Implementations:**
   - *Agnus:* Copper coprocessor state machine (MOVE, WAIT, SKIP, CDANG danger mode), 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer, ascending/descending modes).
   - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (blep_tables.rs) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.
