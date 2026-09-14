@@ -3205,3 +3205,23 @@ Every future modification or implementation task must append an entry following 
   - Verified git status shows only intentional modifications (.gitignore, ROADMAP.md, DIARY.md) and accurately flags temporary probes in `Obsidian/Amiga/Reference/`.
   - `python tools/pre_flight.py`: All 4 quality gates passed cleanly.
 
+---
+
+### [2026-09-14 12:05 CEST] — Reference: Track DIVU/DIVS Timing Analysis in Git with Full Provenance
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md` (unignored and tracked in Git with comprehensive provenance and attribution callout)
+  - `.gitignore` (removed ignore rule for the DIVU/DIVS analysis document)
+  - `tools/check_polish.py` (added proper nouns `cwik` and `pasti` to technical whitelist)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed `Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md` from `.gitignore` and added it to Git tracking.
+  - Enhanced document frontmatter and added a dedicated attribution callout documenting original reverse-engineering provenance (Jorge Cwik's standalone C source functions `getDivu68kCycles()` and `getDivs68kCycles()` from the Pasti project) vs. the comprehensive architectural breakdown, mathematical derivations, and micro-engine explanations developed for the Amiga 500 emulator.
+  - Added Section 5 linking upstream references (Pasti, Hatari, WinUAE, MAME) and living Rust implementations (`crates/m68000/src/instructions/divu.rs`, `divs.rs`).
+  - Added `cwik` and `pasti` to `TECHNICAL_WHITELIST` in `tools/check_polish.py` to prevent false positive language policy rejections on author names.
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean Intellectual Property Tracking:* While raw copyrighted commercial books stay gitignored, original architectural analyses and reverse-engineered hardware algorithms with proper attribution belong directly in version control.
+  - *Link Graph Integrity:* Ensures external reference resolution for `Obsidian/Amiga/Design/CPU Motorola M68000.md` targets committed repository assets.
+- **Verification & Test Results**:
+  - `python tools/check_polish.py "Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md"`: Clean (0 violations).
+  - `python tools/pre_flight.py`: All 4 quality gates passed cleanly.
+
+
