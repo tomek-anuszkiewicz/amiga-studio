@@ -3186,4 +3186,38 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed cleanly.
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
 
+---
+
+### [2026-09-14 11:28 CEST] — Step 2.7.4: Denise 8 Hardware Sprite Engines & Multiplexing Implementation
+- **Affected Subsystems**:
+  - `crates/sprites/src/sprites.rs` (implemented vertical and horizontal comparators, 16-pixel dual shift serialization, attached 15-color mode, priority mixer, and CLXDAT/CLXCON collision detection)
+  - `crates/sprites/tests/test_sprites.rs` (authored comprehensive 8-test unit suite covering decoding, arming, attached mode, collisions, priority, and multiplexing)
+  - `ROADMAP.md` (marked Step 2.7.4 as completed)
+- **What Was Changed (The Concrete Reality)**:
+  - Upgraded `SpriteChannel` in `crates/sprites/src/sprites.rs`:
+    - Implemented 9-bit vertical start (`vstart`) and stop (`vstop`) comparators decoding low byte from `pos`/`ctl` and high bits `SV8`/`EV8` from `ctl` bits 2 and 1.
+    - Implemented 9-bit horizontal start position (`hstart`) decoding high 8 bits from `pos` bits 7..0 and low bit `SH0` from `ctl` bit 0.
+    - Modeled hardware horizontal comparator arming protocol: writing `SPRxCTL` disarms the comparator, while writing `SPRxDATA` arms it.
+    - Implemented 16-pixel dual shift registers (`shift_a`, `shift_b`) serializing 2 bits per low-resolution pixel.
+    - Implemented attached sprite mode (`is_attached` via `ctl` bit 7 `ATTACH`): pairs odd and even sprite channels into a 4-bit value selecting from `COLOR16..COLOR31`.
+    - Implemented hardware sprite-to-sprite collision detection in `CLXDAT` per HRM Table 7-3 (bits 9..14 for pairs 0..3) with `CLXCON` odd-sprite enable mask bits (12..15).
+    - Implemented priority mixer: evaluated pairs 0..3 with Sprite 0 holding top priority over all others.
+  - Authored a comprehensive 8-test unit suite in `crates/sprites/tests/test_sprites.rs`:
+    - `test_sprite_decoding_and_reset`: verifies 9-bit position decoding, high bits SV8/EV8/SH0, attach flag, and reset state.
+    - `test_sprite_vertical_comparator_and_scanlines`: verifies vertical active window [VSTART..VSTOP) bounds.
+    - `test_sprite_horizontal_arming_and_shift_serialization`: verifies shift serialization starting exactly at HSTART across all 16 pixels.
+    - `test_sprite_disarming_on_ctl_write`: validates that writing CTL disarms comparator and writing DATA re-arms it.
+    - `test_sprite_attached_mode_15_colors`: validates 15-color palette index calculation (`COLOR16..COLOR31`) from combined even/odd channels.
+    - `test_sprite_to_sprite_collision_clxdat`: validates HRM Table 7-3 bits 9, 10, and 12 on overlapping sprites.
+    - `test_sprite_priority_arbitration`: validates that lower-numbered sprite pairs occlude higher-numbered ones.
+    - `test_sprite_multiplexing`: validates re-arming sprite channels lower down the screen with new coordinates.
+- **Architectural Rationale & Trade-Offs**:
+  - *Direct Shift Serializer without Dynamic Allocation:* Operating directly on `u16` shift registers with bit-shifts keeps `evaluate_pixel` completely allocation-free and extremely fast in the raster pipeline.
+  - *Standard Hardware Spec Conformance:* Aligning collision bits with the exact Commodore Amiga Hardware Reference Manual Table 7-3 ensures seamless compatibility with games and demos relying on `CLXDAT`.
+- **Verification & Test Results**:
+  - `cargo test -p sprites`: All 8 unit tests passed cleanly in `test_sprites.rs`.
+  - `cargo fmt --all -- --check`: 100% formatted.
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
+
+
 
