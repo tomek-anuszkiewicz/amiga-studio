@@ -224,8 +224,9 @@ fn test_debugger_session_controller() {
     assert_eq!(session.temporal.len(), 1);
 
     // Step CCK
+    let prev_cck = session.debugger.current_cck;
     session.step_cck();
-    assert_eq!(session.debugger.current_cck, 3); // 2 + 1 = 3
+    assert_eq!(session.debugger.current_cck, prev_cck + 1);
 
     // Step backward (rewind)
     session.step_backward();

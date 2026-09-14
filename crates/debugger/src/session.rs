@@ -33,6 +33,8 @@ pub struct DebuggerSession {
 
     /// Quick Save Slots (slots 1..=5)
     pub quick_slots: [Option<A500State>; 5],
+    /// Live CPU state preserved while scrubbing historical frames
+    pub live_cpu_state: Option<CpuState>,
 }
 
 impl Default for DebuggerSession {
@@ -59,6 +61,7 @@ impl DebuggerSession {
             prev_hex_bytes: [0; 256],
             prev_hex_base: 0,
             quick_slots: [None, None, None, None, None],
+            live_cpu_state: None,
         }
     }
 
@@ -90,41 +93,51 @@ impl DebuggerSession {
 
     /// Steps exactly 1 M68000 instruction, recording trace and temporal history
     pub fn step_instruction(&mut self) {
+        if self.temporal.scrub_cursor.is_some() {
+            self.jump_to_live_head();
+        }
+
         self.capture_memory_snapshot(self.prev_hex_base);
         self.prev_cpu_state = Some(self.machine.cpu.state.clone());
 
         let pc = self.machine.cpu.state.instruction_pc;
-        self.temporal.record(
-            self.debugger.current_cck,
+        if self.temporal.is_recording() {
+            self.temporal.record(
+                self.machine.cck,
+                pc,
+                self.machine.cpu.state.ir,
+                self.machine.cpu.state.clone(),
+            );
+        }
+        let (disasm, _) = self
+            .debugger
+            .disassemble_at(pc, &mut self.machine.physical_memory);
+        self.debugger.trace.record(
+            self.machine.cck,
             pc,
             self.machine.cpu.state.ir,
+            disasm.format_line(),
             self.machine.cpu.state.clone(),
         );
 
-        let clocks = self
-            .debugger
-            .step_instruction(&mut self.machine.cpu, &mut self.machine.physical_memory);
+        self.machine.step_instruction();
+        self.debugger.current_cck = self.machine.cck;
         self.instructions_executed = self.instructions_executed.saturating_add(1);
-
-        // Advance machine subsystems by elapsed Color Clocks
-        let ccks = (clocks as u64) / 2;
-        self.machine.cck = self.machine.cck.wrapping_add(ccks);
-        for _ in 0..ccks {
-            self.machine.step_subsystems_cck();
-        }
     }
 
     /// Steps exactly 1 Color Clock phase (~280 ns) across the entire machine
     pub fn step_cck(&mut self) {
+        if self.temporal.scrub_cursor.is_some() {
+            self.jump_to_live_head();
+        }
+
         self.capture_memory_snapshot(self.prev_hex_base);
         self.prev_cpu_state = Some(self.machine.cpu.state.clone());
 
-        let prev_micro = self.machine.cpu.state.micro.micro_step;
-        self.machine.step_cck();
+        let completed = self.machine.step_cck();
         self.debugger.current_cck = self.machine.cck;
 
-        // If CPU finished an instruction (transitioned to micro_step == 0)
-        if prev_micro != 0 && self.machine.cpu.state.micro.micro_step == 0 {
+        if completed {
             self.instructions_executed = self.instructions_executed.saturating_add(1);
         }
     }
@@ -135,22 +148,38 @@ impl DebuggerSession {
             return 0;
         }
 
+        if self.temporal.scrub_cursor.is_some() {
+            self.jump_to_live_head();
+        }
+
         if self.prev_cpu_state.is_none() {
             self.capture_memory_snapshot(self.prev_hex_base);
             self.prev_cpu_state = Some(self.machine.cpu.state.clone());
         }
 
-        let steps = self.debugger.run_until_breakpoint_with_temporal(
-            &mut self.machine.cpu,
-            &mut self.machine.physical_memory,
-            &mut self.temporal,
-            max_instructions,
-        );
-        self.instructions_executed = self.instructions_executed.saturating_add(steps as u64);
-        self.machine.cck = self.debugger.current_cck;
+        let mut steps = 0;
+        while steps < max_instructions {
+            let next_pc = self.machine.cpu.state.instruction_pc;
+            if self
+                .debugger
+                .breakpoints
+                .check_pc_with_state(next_pc, &self.machine.cpu.state)
+            {
+                self.is_running = false;
+                break;
+            }
+            if self.machine.cpu.state.halted || self.machine.cpu.state.stopped {
+                self.is_running = false;
+                break;
+            }
 
-        if self.machine.cpu.state.halted || self.machine.cpu.state.stopped {
-            self.is_running = false;
+            self.step_instruction();
+            steps += 1;
+
+            if self.machine.cpu.state.halted || self.machine.cpu.state.stopped {
+                self.is_running = false;
+                break;
+            }
         }
 
         steps
@@ -208,6 +237,9 @@ impl DebuggerSession {
     /// Scrubs to a historical snapshot in the ring buffer
     pub fn scrub_to_frame(&mut self, index: usize) {
         if let Some(frame) = self.temporal.get_chronological(index) {
+            if self.temporal.scrub_cursor.is_none() && self.live_cpu_state.is_none() {
+                self.live_cpu_state = Some(self.machine.cpu.state.clone());
+            }
             self.machine.cpu.state = frame.state.clone();
             self.temporal.scrub_cursor = Some(index);
         }
@@ -215,6 +247,9 @@ impl DebuggerSession {
 
     /// Exits history scrub mode and returns to live head
     pub fn jump_to_live_head(&mut self) {
+        if let Some(live) = self.live_cpu_state.take() {
+            self.machine.cpu.state = live;
+        }
         self.temporal.scrub_cursor = None;
     }
 
@@ -238,6 +273,7 @@ impl DebuggerSession {
         self.debugger.current_cck = 0;
         self.instructions_executed = 0;
         self.prev_cpu_state = None;
+        self.live_cpu_state = None;
     }
 
     /// Warm-resets the A500 machine
@@ -248,6 +284,7 @@ impl DebuggerSession {
             self.machine.physical_memory.map_chip_ram_to_low_memory();
         }
         self.prev_cpu_state = None;
+        self.live_cpu_state = None;
     }
 
     /// Loads binary data into memory and optionally sets PC & primes prefetch

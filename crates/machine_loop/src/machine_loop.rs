@@ -384,7 +384,8 @@ impl A500Machine {
 
     /// Advances the entire machine by exactly 1 Color Clock (~280 ns).
     /// Subsystems receive required peer handles via method call parameters.
-    pub fn step_cck(&mut self) {
+    /// Returns `true` if the M68000 CPU completed an instruction on this Color Clock.
+    pub fn step_cck(&mut self) -> bool {
         // 1. Advance master monotonic Color Clock counter
         self.cck = self.cck.wrapping_add(1);
 
@@ -395,7 +396,7 @@ impl A500Machine {
         if self.keyboard.reset_line_asserted {
             self.keyboard.reset_line_asserted = false;
             self.reset_warm();
-            return;
+            return false;
         }
 
         // 4. M68000 external RESET instruction pulse
@@ -415,7 +416,7 @@ impl A500Machine {
             rtc: &mut self.rtc,
             floppy: &mut self.floppy,
         };
-        self.cpu.step_cck(&mut bus);
+        self.cpu.step_cck(&mut bus)
     }
 
     /// Advances the machine by a given number of Color Clocks
@@ -427,9 +428,11 @@ impl A500Machine {
 
     /// Executes Color Clocks until the current M68000 CPU instruction completes
     pub fn step_instruction(&mut self) {
-        self.step_cck();
-        while self.cpu.state.micro.micro_step != 0 {
-            self.step_cck();
+        loop {
+            let completed = self.step_cck();
+            if completed || self.cpu.state.halted || self.cpu.state.stopped {
+                break;
+            }
         }
     }
 
