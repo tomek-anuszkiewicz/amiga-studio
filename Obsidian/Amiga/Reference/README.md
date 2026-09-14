@@ -22,8 +22,8 @@ related: ["[General Architecture.md](../Design/General%20Architecture.md)", "[Pl
 The repository maintains converted, structured markdown documents for rapid navigation and AI retrieval, backed by external primary sources:
 
 1. **`Hardware Reference Manual`**:
-   - Primary reference for Amiga custom chipsets (OCS/ECS): Agnus, Denise, Paula, Blitter, Copper, and audio channels.
-   - Based on the Addison-Wesley 2nd Edition (1989) typeset on Commodore Amiga 2500/UX (AMIX).
+   - Primary reference for Amiga custom chipsets (OCS): Agnus, Denise, Paula, Blitter, Copper, and audio channels.
+   - Based strictly on the Addison-Wesley 2nd Edition (1989) typeset on Commodore Amiga 2500/UX (AMIX), covering pure A500 OCS hardware without ECS contamination.
 2. **`A500 A2000 Technical Reference Manual`**:
    - Official Commodore-Amiga OEM engineering manual (1987).
    - Covers bus timing, system schematics, Zorro expansion architecture, and bridgeboard signals.
@@ -88,7 +88,7 @@ To protect against dead links, server downtime, and rate limits, every reference
 
 | Document | Primary Mirror (Verified 200 OK) | Secondary Mirror (Verified 200 OK) | Tertiary / Fallback Mirror |
 | :--- | :--- | :--- | :--- |
-| **`Hardware Reference Manual`** | [Internet Archive (1991 3rd Ed ECS PDF, 487p 600 DPI)](https://archive.org/download/amiga-hardware-reference-manual-3rd-edition/Amiga_Hardware_Reference_Manual_3rd_edition.pdf) | [Internet Archive (1989 2nd Ed OCS PDF, 405p 600 DPI)](https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf) | [Internet Archive (1985 1st Ed PDF)](https://archive.org/download/Amiga_Hardware_Reference_Manual_1985_Commodore/Amiga_Hardware_Reference_Manual_1985_Commodore.pdf) |
+| **`Hardware Reference Manual`** | [Internet Archive (1989 2nd Ed OCS PDF, 405p 600 DPI)](https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf) | [Internet Archive (1985 1st Ed PDF)](https://archive.org/download/Amiga_Hardware_Reference_Manual_1985_Commodore/Amiga_Hardware_Reference_Manual_1985_Commodore.pdf) | Manual local file drop |
 | **`A500 A2000 Technical Reference Manual`** | [Internet Archive (1987 OEM Clean Scan PDF, 308p 200 DPI)](https://archive.org/download/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf) | [Internet Archive (1987 OEM Alternate Scan PDF, 309p)](https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual.pdf) | Manual local file drop |
 | **`68000 Programmer's Reference Manual`** | [Internet Archive (M68000PM/AD Rev 1 Vector PDF, 646p)](https://archive.org/download/M68000PRM/M68000PRM.pdf) | [Bitsavers (M68000PM/AD Rev 1 1992 PDF)](https://archive.org/download/bitsavers_motorola68ogrammersReferenceManual1992_2394181/M68000PM_AD_Rev_1_Programmers_Reference_Manual_1992.pdf) | [Internet Archive (M68000PM/AD High-Res Scan)](https://archive.org/download/Motorola_Programmers_Reference_Manual_M68000PM_AD/Motorola_Programmers_Reference_Manual_M68000PM_AD.pdf) |
 | **`68000 User's Manual`** | [Internet Archive / Bitsavers (Rev 8 PDF, 601 DPI 216p)](https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive (Rev 8 Alternate Item)](https://archive.org/download/bitsavers_motorola6868000MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive / Bitsavers (Family Reference 1988, 608p)](https://archive.org/download/bitsavers_motorola68rence1988_23248083/M68000_Family_Reference_1988.pdf) |

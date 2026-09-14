@@ -3392,5 +3392,24 @@ Every future modification or implementation task must append an entry following 
   - Matches the documented CLI syntax displayed in the usage menu and README instructions.
 - **Verification & Test Results**:
   - `powershell -ExecutionPolicy Bypass -File .\tools\bootstrap_reference.ps1 -AllSources`: exited with code 0.
-  - Verified all 7 reference items successfully provisioned into `Obsidian/Amiga/Reference/temp/`.
   - `python tools/pre_flight.py`: 100% compliant across all gates.
+---
+
+### [2026-09-14 14:45 CEST] — Removed 3rd Edition HRM to Enforce Pure OCS Specification Hygiene
+- **Affected Subsystems**:
+  - `tools`
+  - `reference`
+  - `documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the Commodore-Amiga 3rd Edition (1991, ECS) from `tools/bootstrap_reference.ps1` and `Obsidian/Amiga/Reference/README.md`.
+  - Established the Addison-Wesley 2nd Edition (1989, 405 pages, 600 DPI) as the canonical, primary `TargetFile` for the Hardware Reference Manual.
+  - Kept the Commodore 1985 1st Edition as secondary failover.
+  - Deleted the 85.8 MB 3rd Edition PDF (`Amiga_Hardware_Reference_Manual_3rd_edition.pdf`) from `Obsidian/Amiga/Reference/temp/Hardware Reference Manual/`.
+- **Architectural Rationale & Trade-Offs**:
+  - Prevented RAG knowledge leakage and unintentional ECS logic pollution. The 3rd Edition introduces ECS registers (`BPLCON3`, `DIWHIGH`, `BEAMCON0`, Denise SuperHires 35ns pixel clocks) alongside OCS tables, often with subtle disclaimers that can be stripped during vector retrieval chunking.
+  - Feeding the 3rd Edition risked agents inadvertently implementing ECS register bits or timing modes into what is strictly an Amiga 500 (Rev 6A, PAL, OCS) emulator core.
+  - The 1989 2nd Edition covers strictly the Amiga 500 and Amiga 2000, providing 100% pure OCS ground truth with zero ECS interference.
+- **Verification & Test Results**:
+  - Tested `tools/bootstrap_reference.ps1 -Item hrm` (verified skip on existing 2nd Edition target, 40.8 MB).
+  - Tested `tools/bootstrap_reference.ps1 -List` (verified clean 2-mirror catalog for HRM without 3rd Edition).
+  - `python tools/pre_flight.py`: 100% compliant across all quality gates.

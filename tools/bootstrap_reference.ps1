@@ -80,18 +80,12 @@ $Catalog = @(
         Name        = "Hardware Reference Manual"
         Folder      = "Hardware Reference Manual"
         Type        = "SingleFile"
-        TargetFile  = "Amiga_Hardware_Reference_Manual_3rd_edition.pdf"
-        MinSize     = 50000000
-        Description = "Commodore-Amiga 3rd Edition (1991) covering OCS/ECS (487 pages, 600 DPI)"
+        TargetFile  = "Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
+        MinSize     = 30000000
+        Description = "Addison-Wesley 2nd Edition (1989) covering pure A500 OCS (405 pages, 600 DPI)"
         Mirrors     = @(
             @{
-                Name    = "Internet Archive (1991 3rd Ed ECS PDF, Primary 487p 600 DPI)"
-                Url     = "https://archive.org/download/amiga-hardware-reference-manual-3rd-edition/Amiga_Hardware_Reference_Manual_3rd_edition.pdf"
-                File    = "Amiga_Hardware_Reference_Manual_3rd_edition.pdf"
-                MinSize = 50000000
-            },
-            @{
-                Name    = "Internet Archive (1989 2nd Ed OCS PDF, Failover/Baseline 405p 600 DPI)"
+                Name    = "Internet Archive (1989 2nd Ed OCS PDF, Primary A500 OCS 405p 600 DPI)"
                 Url     = "https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
                 File    = "Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
                 MinSize = 30000000
