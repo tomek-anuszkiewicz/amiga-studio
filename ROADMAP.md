@@ -99,22 +99,44 @@ This document outlines the phased development plan, hardware milestones, verific
   - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (blep_tables.rs) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.
   - *Denise:* Video pixel serializer, bitplanes (1–6), 8 hardware sprites, 32-color palette (RGB444), dual playfield, collision detection registers (CLXDAT, CLXCON).
   - *CIAs (Dual MOS 8520):* Timers A & B, TOD clock, serial shift register (SDR), parallel/control ports, E-clock synchronization.
-- **Step 2.8: Host Audio, CRT Shaders & Copper/DMA Logic Analyzer:**
-  - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio).
+- **Step 2.8: Host Audio Playback & CRT Presentation Shaders:**
+  - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio) with dynamic resampling and ring buffer underflow/overflow protection.
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
-  - Copper list visualizer with live beam position cursor and DMA slot logic analyzer timeline.
 
-### Step 3: Dedicated Player GUI & Frontend Experience
-- **Step 3.1: Hardware Configuration & Kickstart ROM Selector:**
+### Step 3: Custom Chipset Debugger & Deep Architectural Observability (Developer Studio Extension)
+- **Step 3.1: Custom Chipset Registers & Mutation Delay Pipeline Inspector:**
+  - Dedicated custom chipset register docks/tabs in Developer Studio (`crates/gui`): Agnus, Denise, Paula, CIAs (A & B), and RTC.
+  - Live values formatted in hex/binary with visual change/delta highlighting (electric cyan diffs).
+  - Bitfield breakdown widgets and interactive tooltips ("Zero-External-Lookup Principle") for complex control/status registers (e.g. `DMACON`/`DMACONR`, `INTENA`/`INTENAR`, `INTREQ`/`INTREQR`, `BPLCON0`-`BPLCON2`, `ADKCON`/`ADKCONR`, CIA `CRA`/`CRB`).
+  - Observability of hardware mutation delays: visualize staged pipeline register latches taking effect across subsequent Color Clock phases ($CCK1 \to CCK2$) rather than instantaneous propagation.
+- **Step 3.2: Agnus DMA Slot Scheduler & Real-Time Bus Allocation Visualizer:**
+  - Horizontal scanline timeline visualizer displaying the 227 Color Clock (CCK) slots per scanline (PAL) / 226 slots (NTSC).
+  - Color-coded channel mapping across fixed and dynamic DMA allocations:
+    - Fixed allocations: DRAM refresh (CCK 0..3), Disk DMA (CCK 4), Audio DMA channels 0–3 (CCK 5..8), Sprite DMA pairs 0–7 (CCK 12..27).
+    - Dynamic allocations: Bitplane DMA (BPL 1–6) across display window, Blitter DMA (channels A, B, C, D), and available CPU bus slots.
+  - Live beam position cursor tracking current horizontal ($HPOS$) and vertical ($VPOS$) raster coordinates.
+  - Bus contention & wait-state indicator: visually identify cycles where CPU or Copper are stalled waiting for Chip RAM access (BLTPRI / Blitter Nasty mode).
+- **Step 3.3: Copper Coprocessor Inspector & Real-Time Execution Tracker:**
+  - Dedicated Copper list disassembler panel decoding instruction streams (`MOVE`, `WAIT`, `SKIP`) directly from Chip RAM pointers (`COP1LC`, `COP2LC`, `COPJMP1`, `COPJMP2`).
+  - Real-time execution pointer tracking: highlight currently executing Copper instruction, pending wait condition (beam comparison against $VPOS$/$HPOS$ and mask), and CDANG danger mode status.
+  - Visual correlation with raster beam: highlight beam position where Copper interrupts or register modifications trigger palette swaps, display window splits, or Blitter dispatches.
+- **Step 3.4: Internal Chipset State Machines & Deep Diagnostics:**
+  - *Blitter Engine Diagnostics:* Visual representation of active channels (A, B, C, D), 256-minterm truth table visualization ($LF$ code decomposition), shift/mask register stages, Bresenham line-drawing state counters, and Blitter busy/idle flags.
+  - *Denise Video & Sprite Pipeline:* Live inspection of bitplane serializers, dual-playfield priority layers, 8 hardware sprite position registers/active states, and hardware collision latches (`CLXDAT`/`CLXCON`).
+  - *Paula Multi-Engine Status:* Audio channel frequency, length, volume, BLEP table synthesis status, floppy MFM bit-stream decoding buffers/sync-word detector (`$4489`), and serial UART FIFO/baud counters.
+  - *CIA Timers & Port Observability:* Live countdown display of Timers A & B, TOD clock sub-second counters, serial shift register (SDR) status, and I/O port pin states.
+
+### Step 4: Dedicated Player GUI & Frontend Experience
+- **Step 4.1: Hardware Configuration & Kickstart ROM Selector:**
   - Amiga hardware profile selector (Basic A500 512 KB, Classic A500 1 MB [Recommended], Expanded A500 4 MB).
   - Explicit notification and confirmation modal informing the user that changing hardware parameters requires a cold machine reset.
   - Kickstart ROM manager: file picker for Kickstart ROM images (1.2, 1.3, custom ROMs) with automatic checksum validation (CRC32/SHA-256).
-- **Step 3.2: Multi-Drive Floppy Disk Manager (`DF0:` – `DF3:`):**
+- **Step 4.2: Multi-Drive Floppy Disk Manager (`DF0:` – `DF3:`):**
   - Drive slot manager displaying primary internal drive `DF0:` and optional external drives (`DF1:`–`DF3:`).
   - Individual drive enable/active toggle checkboxes to mount or disconnect external floppy drives on the fly.
   - ADF file picker per drive with quick insert, eject, and write-protect latch controls.
   - Visual drive activity indicators and floppy motor/stepping audio feedback.
-- **Step 3.3: Visual Save State Manager (Screenshots, Timestamps & Custom Labels):**
+- **Step 4.3: Visual Save State Manager (Screenshots, Timestamps & Custom Labels):**
   - Interactive save/load state overlay and slot manager.
   - Visual snapshot cards containing:
     - **Automatic Screen Capture:** Embedded thumbnail screenshot of the active Amiga display captured at the exact moment of saving.
@@ -122,7 +144,7 @@ This document outlines the phased development plan, hardware milestones, verific
     - **Custom Label:** Optional user-defined state name / description for memorable checkpoints and game phases.
     - **Configuration Integrity Guard:** Verifies matching hardware profiles (RAM sizes, chipset mode) before restoring state to prevent emulator panics or guest crashes.
 
-### Step 4: Real-World Amiga Workloads, Host Cache Profiling & Pipeline Optimization (Post-Boot)
+### Step 5: Real-World Amiga Workloads, Host Cache Profiling & Pipeline Optimization (Post-Boot)
 - **End-to-End Bootable ADF Integration Testing (`cargo test -p test_runner --test test_boot_adf`):**
   - Load and execute established Amiga benchmarks and diagnostic suites directly from floppy disk images (e.g. `AmigaTestKit.adf`, `SysInfo.adf`, Dhrystone) on the authentic Kickstart / Amiga chipset stack.
   - Leverage existing address guards, breakpoint traps, and instruction bounds for parameterized termination.

@@ -2789,3 +2789,25 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 333 files (0 violations).
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.
+
+---
+
+### [2026-09-14 03:10 CEST] — Roadmap Extension: Custom Chipset Debugger & Deep Architectural Observability
+- **Affected Subsystems**:
+  - `ROADMAP.md`: Inserted new `Step 3: Custom Chipset Debugger & Deep Architectural Observability (Developer Studio Extension)` between Step 2 and former Step 3; renumbered Player GUI to Step 4 and Workloads/Profiling to Step 5; refined Step 2.8.
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated a dedicated, comprehensive roadmap milestone for custom chipset debugging and hardware state observability in Developer Studio (`crates/gui`):
+    - *Step 3.1: Custom Chipset Registers & Mutation Delay Pipeline Inspector:* Live hex/binary inspection of Agnus, Denise, Paula, CIA, and RTC registers with electric cyan diffs, bitfield decomposition, self-documenting contextual tooltips ("Zero-External-Lookup Principle"), and pipeline mutation delay stages ($CCK1 \to CCK2$).
+    - *Step 3.2: Agnus DMA Slot Scheduler & Real-Time Bus Allocation Visualizer:* 227 CCK slot scanline timeline (DRAM refresh, disk, audio, sprites, bitplanes, Blitter, CPU), beam position cursor ($HPOS$/$VPOS$), and contention/wait-state indicator.
+    - *Step 3.3: Copper Coprocessor Inspector & Real-Time Execution Tracker:* Copper list disassembler (`MOVE`, `WAIT`, `SKIP`), instruction pointer tracking, beam comparison status, and CDANG danger mode observability.
+    - *Step 3.4: Internal Chipset State Machines & Deep Diagnostics:* Blitter 256-minterm truth tables, channels, and line-drawing state; Denise bitplane serializers and collision latches; Paula audio BLEP tables, floppy MFM buffers, and UART; CIA timers and I/O ports.
+  - Renumbered subsequent milestones in `ROADMAP.md`:
+    - `Step 4: Dedicated Player GUI & Frontend Experience` (Step 4.1–4.3).
+    - `Step 5: Real-World Amiga Workloads, Host Cache Profiling & Pipeline Optimization (Post-Boot)`.
+  - Refined Step 2.8 to focus specifically on `Host Audio Playback & CRT Presentation Shaders`.
+- **Architectural Rationale & Trade-Offs**:
+  - Elevating chipset debugging from secondary tooling into a primary roadmap milestone guarantees that Developer Studio provides visual diagnostics for complex hardware coordination (DMA scheduling, Copper synchronization, bus contention, and mutation pipeline delays) before testing real-world software and game titles.
+- **Verification & Test Results**:
+  - Verified `ROADMAP.md` structure, numbering, and cross-references.
+  - Executed pre-flight quality checks (`tools/pre_flight.py`) and architecture test suites (`test_architecture_rules`).
+
