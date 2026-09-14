@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-13
+updated: 2026-09-14
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Agnus.md](Agnus.md)"]
 ---
 
@@ -83,24 +83,54 @@ The main loop provides three levels of stepping granularity:
    - Executes until Denise / Agnus completes a full vertical frame (VBlank transition).
 ## 4. Interrupt Arbitration Pipeline
 
-On each CCK step, the main loop coordinates interrupt requests across chips:
+On each CCK step (`step_subsystems_cck`), the main loop coordinates interrupt requests across chips, multiplexing physical IRQ lines through Paula, validating `INTENA`, and presenting the highest unmasked priority level to the M68000:
 
 ```mermaid
 flowchart TD
-    PAULA["Paula (Levels 1, 3, 4, 5)"] -->|Pending Request Lines| MAIN_LOOP["A500 Main Loop"]
-    CIAA["CIA-A (Level 2 PORTS)"] -->|Active Line| MAIN_LOOP
-    CIAB["CIA-B (Level 6 EXTER)"] -->|Active Line| MAIN_LOOP
+    AGNUS["Agnus\n(VBlank, Blitter, Copper)"] -->|BLITINT, VERTB, COPINT| PAULA
+    FLOPPY["Floppy DMA\n(Disk Block Complete)"] -->|DSKBLK| PAULA
+    AUDIO["Paula Audio DMA\n(Buffer Reload AUD0-3)"] -->|AUD0..3| PAULA
+    SERIAL["Paula Serial UART\n(TBE, RBF)"] -->|TBE, RBF| PAULA
+    CIAA["CIA-A /IRQ\n(Timer A/B, TOD, SDR)"] -->|PORTS / Level 2| PAULA
+    CIAB["CIA-B /IRQ\n(Timer A/B, TOD, SDR)"] -->|EXTER / Level 6| PAULA
 
-    MAIN_LOOP -->|Calculate Highest Unmasked Priority| RESOLVE["Resolve IPL (0..6)"]
-    RESOLVE -->|cpu.set_ipl(level)| CPU["Motorola 68000 CPU"]
+    PAULA["Paula INTREQ & INTENA\n(Bits 0..14 + Master INTEN)"] -->|Arbitrate Highest Unmasked Level| MAIN_LOOP["Main Machine Loop\n(resolve_ipl)"]
+    MAIN_LOOP -->|cpu.state.ipl = 1..6| CPU["M68000 CPU\n(Autovector Exception / STOP Wakeup)"]
 ```
 
-1. **Query Sources:**
-   - **Paula:** Level 1 (`TBE`, `DSKBLK`, `SOFT`), Level 3 (`VERTB`, `BLIT`, `COPER`), Level 4 (`AUD0-3`), Level 5 (`RBF`, `DSKSYN`).
-   - **CIA-A:** Level 2 (`PORTS`).
-   - **CIA-B:** Level 6 (`EXTER`).
-2. **Resolve Level:** Calculate the highest pending, unmasked interrupt priority level ($IPL \in 1..6$, or $0$ if none).
-3. **Drive CPU Lines:** Call `cpu.set_ipl(resolved_level)`. The CPU samples `ipl` at the instruction microcode boundary against `SR` interrupt mask bits.
+### 4.1 Cross-Chip Signal Sources & Bit Mapping
+
+All peripheral interrupt requests are latched in Paula's `INTREQ` register (`$DFF01E` read, `$DFF09C` write) and masked by `INTENA` (`$DFF01C` read, `$DFF09A` write):
+
+| Source Chip / Peripheral | Signal Name | `INTREQ` / `INTENA` Bit | Level | Autovector | Hardware Meaning |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **Paula Serial** | `TBE` | Bit 0 (`$0001`) | 1 | 25 (`$000064`) | Serial port transmit buffer empty |
+| **Floppy DMA** | `DSKBLK` | Bit 1 (`$0002`) | 1 | 25 (`$000064`) | Disk block DMA transfer completed |
+| **Software** | `SOFT` | Bit 2 (`$0004`) | 1 | 25 (`$000064`) | Software generated interrupt |
+| **CIA-A** | `PORTS` | Bit 3 (`$0008`) | 2 | 26 (`$000068`) | CIA-A `/IRQ` line (Timer A/B underflow, TOD, keyboard SDR) |
+| **Agnus Copper** | `COPINT` | Bit 4 (`$0010`) | 3 | 27 (`$00006C`) | Copper instruction with interrupt flag set |
+| **Agnus Beam** | `VERTB` | Bit 5 (`$0020`) | 3 | 27 (`$00006C`) | Start of Vertical Blanking interval (`vpos == 0 && hpos == 0`) |
+| **Agnus Blitter** | `BLITINT` | Bit 6 (`$0040`) | 3 | 27 (`$00006C`) | Blitter operation finished (`_BLITINT` low pulse) |
+| **Paula Audio** | `AUD0` | Bit 7 (`$0080`) | 4 | 28 (`$000070`) | Audio Channel 0 buffer finished / loop reload |
+| **Paula Audio** | `AUD1` | Bit 8 (`$0100`) | 4 | 28 (`$000070`) | Audio Channel 1 buffer finished / loop reload |
+| **Paula Audio** | `AUD2` | Bit 9 (`$0200`) | 4 | 28 (`$000070`) | Audio Channel 2 buffer finished / loop reload |
+| **Paula Audio** | `AUD3` | Bit 10 (`$0400`) | 4 | 28 (`$000070`) | Audio Channel 3 buffer finished / loop reload |
+| **Paula Serial** | `RBF` | Bit 11 (`$0800`) | 5 | 29 (`$000074`) | Serial port receive buffer full |
+| **Floppy Sync** | `DSKSYN` | Bit 12 (`$1000`) | 5 | 29 (`$000074`) | Disk controller matched sync pattern |
+| **CIA-B** | `EXTER` | Bit 13 (`$2000`) | 6 | 30 (`$000078`) | CIA-B `/IRQ` line (Timer A/B underflow, TOD, floppy index) |
+| **Paula Master** | `INTEN` | Bit 14 (`$4000`) | — | — | Master interrupt enable (gates all Paula/CIA lines) |
+| **Strobe** | `SET/CLR` | Bit 15 (`$8000`) | — | — | Set (`1`) or Clear (`0`) selected bits on write |
+
+### 4.2 Central Arbitration & CPU Delivery
+
+1. **`resolve_ipl()` Execution:**
+   - Evaluates `paula.pending_interrupt_level()`, which checks `intreq & intena` conditioned on master `INTEN` (bit 14).
+   - Validates CIA-A (Level 2) and CIA-B (Level 6) lines passing through Paula's `INTENA` mask bits.
+   - Computes the monotonic maximum: `paula_ipl.max(cia_a_ipl).max(cia_b_ipl)`.
+   - Directly drives `cpu.state.ipl` with the resulting priority ($0..6$).
+2. **CPU Delivery & Exception Entry:**
+   - Evaluated at instruction retirement (`retire_current_instruction()`) or upon waking from `STOP` mode.
+   - If `ipl > interrupt_mask` (or `ipl == 7` for NMI), the CPU immediately initiates the 44-clock `STEPS_INTERRUPT` pipeline, pushes the standard 3-word exception frame ($PC_{\text{low}}, SR, PC_{\text{high}}$) to $SSP$, fetches the autovector from physical memory, and redirects execution to the ISR.
 
 ---
 

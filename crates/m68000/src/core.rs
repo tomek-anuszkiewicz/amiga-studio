@@ -120,8 +120,14 @@ impl Cpu {
     /// Performs instruction boundary validation and initiates the active instruction if uninitialized.
     #[inline]
     pub fn step_cck(&mut self, bus: &mut dyn AddressBus) -> bool {
-        if self.state.halted || self.state.stopped {
+        if self.state.halted {
             return false;
+        }
+
+        if self.state.stopped {
+            if !self.check_and_trigger_interrupt() {
+                return false;
+            }
         }
 
         if !self.ensure_instruction_ready() {
@@ -231,6 +237,9 @@ impl Cpu {
         }
         self.state.instruction_pc = self.state.pc.wrapping_sub(4);
         self.state.micro.reset();
+        if self.check_and_trigger_interrupt() {
+            return;
+        }
         self.initiate_current_instruction();
     }
 
@@ -241,6 +250,28 @@ impl Cpu {
         if !desc.steps.is_empty() {
             self.state.micro.initiate_instruction(desc);
         }
+    }
+
+    /// Checks if an interrupt is pending according to M68000 priority rules,
+    /// and if so, initiates the autovector exception processing sequence.
+    #[inline(always)]
+    pub fn check_and_trigger_interrupt(&mut self) -> bool {
+        if let Some(level) = self.state.is_interrupt_pending() {
+            self.trigger_interrupt(level);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Triggers an Autovector Interrupt exception sequence (44 CPU clocks / 22 CCKs)
+    #[inline(never)]
+    pub fn trigger_interrupt(&mut self, level: u8) {
+        self.state.ipl = level;
+        self.state.micro.reset();
+        self.state.micro.current_steps = &crate::micro::common::STEPS_INTERRUPT;
+        self.state.micro.micro_step = 0;
+        self.state.micro.clocks_remaining = 0;
     }
 
     /// Re-hydrates cached micro-step function pointers from the static dispatch table after deserialization
@@ -277,8 +308,14 @@ impl Cpu {
 
     /// Executes exactly one full M68000 instruction via direct table dispatch
     pub fn step_instruction(&mut self, bus: &mut dyn AddressBus) -> u32 {
-        if self.state.halted || self.state.stopped {
+        if self.state.halted {
             return 0;
+        }
+
+        if self.state.stopped {
+            if !self.check_and_trigger_interrupt() {
+                return 0;
+            }
         }
 
         if !self.ensure_instruction_ready() {

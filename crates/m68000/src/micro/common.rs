@@ -430,3 +430,63 @@ pub fn trigger_divide_by_zero(state: &mut CpuState) {
     state.micro.micro_step = 0;
     state.micro.clocks_remaining = 0;
 }
+
+// ============================================================================
+// Autovector Interrupt Exception Pipeline (Vectors 25..31, 44 Clocks / 22 CCKs)
+// ============================================================================
+
+/// Initial setup for Autovector Interrupt exception:
+/// - Samples active level from `state.ipl` (1..7).
+/// - Determines return PC (current `state.pc` if waking from STOP, otherwise `state.instruction_pc`).
+/// - Stashes return PC in `source`, old SR in `destination`.
+/// - Switches to supervisor mode, clears trace bit, and raises interrupt mask to `level`.
+/// - Computes autovector address: `((24 + level) as u32) * 4`.
+/// - Clears stopped flag.
+pub fn alu_interrupt_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
+    let level = state.ipl.clamp(1, 7);
+    let vector_addr = ((24 + level) as u32) * 4;
+    let return_pc = if state.stopped {
+        state.pc
+    } else {
+        state.instruction_pc
+    };
+    let old_sr = state.sr;
+
+    state.set_supervisor(true);
+    state.sr &= !0x8000;
+    state.set_interrupt_mask(level);
+
+    state.micro.source = return_pc;
+    state.micro.destination = old_sr as u32;
+    state.micro.ea_addr = vector_addr;
+    state.stopped = false;
+}
+
+pub static ALU_INTERRUPT_INIT: MicroStep = MicroStep {
+    bus_fn: None,
+    alu_fn: Some(alu_interrupt_init),
+    base_clocks: 2,
+};
+
+/// Microcode pipeline for Autovector Interrupt exception (Vectors 25..31, 44 CPU clocks / 22 CCKs)
+pub static STEPS_INTERRUPT: [MicroStep; 19] = [
+    ALU_INTERRUPT_INIT,        // 2 clocks (internal state setup)
+    ALU_IDLE_8CLK,             // 8 clocks (internal priority arbitration latency)
+    BUS_WRITE_IDLE,            // 2 clocks (IACK CPU space bus cycle phase 1)
+    BUS_READ_IDLE,             // 2 clocks (IACK autovector ack phase 2)
+    EXCEPTION_PUSH_PCLO_IDLE,  // 2 clocks
+    EXCEPTION_PUSH_PCLO_WRITE, // 2 clocks
+    EXCEPTION_PUSH_SR_IDLE,    // 2 clocks
+    EXCEPTION_PUSH_SR_WRITE,   // 2 clocks
+    EXCEPTION_PUSH_PCHI_IDLE,  // 2 clocks
+    EXCEPTION_PUSH_PCHI_WRITE, // 2 clocks
+    READ_VECTOR_HIGH_READ,     // 2 clocks
+    BUS_READ_IDLE,             // 2 clocks
+    READ_VECTOR_LOW_READ,      // 2 clocks
+    READ_VECTOR_LOW_FINISH,    // 2 clocks
+    READ_TARGET_OPCODE_READ,   // 2 clocks
+    BUS_READ_IDLE,             // 2 clocks
+    ALU_IDLE,                  // 2 clocks
+    PREFETCH_TARGET_READ,      // 2 clocks
+    PREFETCH_TARGET_FINISH,    // 2 clocks
+];

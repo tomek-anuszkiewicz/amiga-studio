@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-12
+updated: 2026-09-14
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 ---
 
@@ -630,6 +630,25 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
   - **RTS (Return from Subroutine):** 16 clocks (8 CCKs). Reads return PC from stack ($A_7$, $A_7+2$), advances $A_7 \leftarrow A_7 + 4$, checks alignment, and refills pipeline from target address.
   - **TRAP (Trap Exception Processing):** 34 clocks (17 CCKs). Pushes return PC and SR to supervisor stack ($SSP$), switches to supervisor mode ($S=1, T=0$), fetches exception vector from `$000080 + \text{vec} \times 4$, and initiates double prefetch refill.
   - **Address Error (Vector 3) & 32-bit Target Fidelity:** Target addresses and stack values retain full 32-bit register width without artificial 24-bit truncation (`& 0x00FF_FFFF`), ensuring cycle-exact diagnostic and stack frame fidelity matching Tom Harte silicon test vectors.
+
+### 7.15 Autovector Interrupt Processing & STOP Instruction Awakening
+
+- **Interrupt Priority Levels (IPL 1–7):**
+  - M68000 samples the 3-bit interrupt priority lines $\overline{\text{IPL0}}-\overline{\text{IPL2}}$ (driven in the emulator by `state.ipl` via `resolve_ipl()`).
+  - **Mask Evaluation:** An interrupt is recognized if `ipl > interrupt_mask` (bits 8–10 of $SR$) and `ipl > 0`, or unconditionally if `ipl == 7` (Level 7 Non-Maskable Interrupt / NMI).
+  - Interrupts are sampled at instruction boundaries (during `retire_current_instruction()`) and while the CPU is suspended by the `STOP` instruction (`state.stopped = true`).
+- **Autovector Exception Micro-Step Pipeline (44 CPU Clocks / 22 CCKs):**
+  - The Amiga 500 hardware asserts the $\overline{\text{VPA}}$ (Valid Peripheral Address) pin during interrupt acknowledge cycles ($A_{19}-A_{16} = 1111_2$), forcing the 68000 to generate an autovector exception according to the interrupt level ($24 + \text{level}$, Vectors 25 through 31 at physical addresses $\$000064$ through $\$00007C$).
+  - Modeled by the cycle-exact sequence `STEPS_INTERRUPT` in [`crates/m68000/src/micro/common.rs`](../../../crates/m68000/src/micro/common.rs):
+    1. **`ALU_INTERRUPT_INIT` (2 clocks):** Samples `ipl`, determines return PC (`state.pc` if waking from STOP, otherwise `state.instruction_pc`), saves old $SR$, switches to Supervisor mode ($S=1, T=0$), raises interrupt mask to `level`, calculates vector address, and clears `state.stopped`.
+    2. **`ALU_IDLE_8CLK` (8 clocks):** Internal priority arbitration and exception setup latency.
+    3. **`BUS_WRITE_IDLE` + `BUS_READ_IDLE` (4 clocks):** IACK CPU space cycle simulation (Address $A_1-A_3 = \text{level}, \overline{\text{VPA}}$ asserted).
+    4. **Stack Pushes (12 clocks):** Pushes return PC low word to $SSP-2$, old $SR$ to $SSP-6$, and return PC high word to $SSP-4$, committing $SSP \leftarrow SSP - 6$.
+    5. **Autovector Fetch (8 clocks):** Reads high word and low word of vector address from physical memory into `ea_addr`.
+    6. **Prefetch Target Refill (10 clocks):** Reads first target opcode from `ea_addr` and prefetches second word from `ea_addr + 2`, completing target refill and transferring control to the Interrupt Service Routine (ISR).
+- **Awakening the `STOP` Instruction:**
+  - When the CPU executes `STOP #<data>`, it writes the immediate word to $SR$ (requiring Supervisor mode) and halts instruction stepping (`state.stopped = true`).
+  - When a qualifying interrupt level (`ipl > mask || ipl == 7`) is asserted, `check_and_trigger_interrupt()` immediately initiates `STEPS_INTERRUPT`, clearing `state.stopped` and jumping directly to the registered autovector handler.
 
 ---
 

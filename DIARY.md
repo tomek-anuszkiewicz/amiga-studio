@@ -2974,3 +2974,40 @@ Every future modification or implementation task must append an entry following 
   - Clarify remaining work for Agnus DMA Bus Arbiter milestone and establish strict architectural separation from downstream deep coprocessor implementations
 - **Verification & Test Results**:
   - cargo test -p test_runner --test test_architecture_rules passed (18/18)
+
+---
+
+### [2026-09-14 05:35 CEST] — End-to-End Multi-Chip Interrupt Architecture & CPU Autovector Exception Pipeline (Step 2.6)
+- **Affected Subsystems**:
+  - `crates/m68000`:
+    - Added `interrupt_mask(&self) -> u8` and `set_interrupt_mask(&mut self, mask: u8)` to `CpuState` accessing $SR$ bits 8..10.
+    - Added `is_interrupt_pending(&self) -> Option<u8>` evaluating M68000 priority rules (`ipl > mask && ipl > 0 || ipl == 7` for Level 7 NMI).
+    - Added `trigger_interrupt(&mut self, level: u8)` and cycle-exact 44 CPU clock / 22 CCK `STEPS_INTERRUPT` autovector micro-step sequence in `crates/m68000/src/micro/common.rs` (initializes supervisor state, sets $SR$ mask, pushes 3-word frame to $SSP$, fetches autovector address $24 + \text{level}$, and prefetches target ISR instructions).
+    - Wired `check_and_trigger_interrupt()` into instruction retirement (`retire_current_instruction()`) and into `step_cck()` / `step_instruction()` to awaken the CPU from `STOP` mode (`state.stopped = true`).
+  - `crates/agnus`:
+    - Added `vblank_irq: bool` flag and `poll_vblank_irq(&mut self) -> bool` to `Agnus`, pulsing on raster frame rollover (`vpos == 0 && hpos == 0`).
+  - `crates/floppy`:
+    - Added `dskblk_irq: bool`, `trigger_dskblk(&mut self)`, and `poll_dskblk_irq(&mut self) -> bool` to `FloppySubsystem`.
+  - `crates/machine_loop`:
+    - Cross-chip signal wiring in `step_subsystems_cck()`: Agnus VBlank -> Paula `INTREQ` bit 5 (`$0020`), Floppy DSKBLK -> Paula `INTREQ` bit 1 (`$0002`), CIA-A `/IRQ` -> Paula `INTREQ` bit 3 (`$0008`), CIA-B `/IRQ` -> Paula `INTREQ` bit 13 (`$2000`).
+    - Added `A500Machine::set_pc_and_prime_prefetch(&mut self, target_pc: u32)`.
+    - Updated `resolve_ipl(&self) -> u8` to validate CIA-A and CIA-B lines passing through Paula's master `INTEN` and channel mask bits in `INTENA`.
+  - `crates/m68000/tests/test_interrupts.rs`: Created 4 CPU unit tests verifying Level 4 autovector exception entry, mask filtering, Level 7 NMI immunity to mask 7, and `STOP` instruction awakening.
+  - `crates/machine_loop/tests/test_interrupt_pipeline.rs`: Created 4 end-to-end integration tests verifying Paula audio buffer completion -> ISR at `$002000` -> `RTE`, CIA-A Timer A underflow -> ISR at `$003000` -> `RTE`, Agnus VBlank -> ISR at `$004000` -> `RTE`, and master `INTENA` suppression.
+  - `Obsidian/Amiga/Design/CPU Motorola M68000.md`: Added Section 7.15 on Autovector Interrupt Processing and `STOP` instruction awakening.
+  - `Obsidian/Amiga/Design/Main loop A500.md`: Expanded Section 4 with comprehensive cross-chip signal table, Paula `INTREQ`/`INTENA` bit mappings, central arbitration, and CPU delivery flow.
+  - `ROADMAP.md`: Logged Step 2.6 completion and updated subsequent step numbering.
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated and verified the complete multi-chip interrupt signaling and arbitration chain from raw hardware triggers to CPU ISR execution and RTE resumption.
+  - Implemented the cycle-exact 44 CPU clock / 22 CCK autovector exception state machine in the M68000 microcode engine, matching Motorola specifications and vAmiga reference behaviors.
+  - Enabled event-driven awakening of the CPU when suspended in `STOP` mode upon arrival of any higher-priority unmasked interrupt or Level 7 NMI.
+- **Architectural Rationale & Trade-Offs**:
+  - *Unified Central Arbitration in Machine Loop:* Peripheral chips (Agnus, Floppy, Audio, Serial, CIAs) do not touch CPU internals directly; they assert requests in Paula's `INTREQ` or toggle physical `/IRQ` pins. The machine loop samples these signals, respects Paula's master `INTEN` and channel enables, and passes the monotonic maximum level to the CPU's sampled `ipl` field.
+  - *Cycle-Exact Exception Pipeline Without Ad-Hoc Hacks:* Rather than instantaneously jumping the PC or synthesizing an out-of-band call, the CPU runs the genuine 22 CCK `STEPS_INTERRUPT` sequence, writing the stack frame through `AddressBus` (which respects Chip RAM wait states and bus contention).
+- **Verification & Test Results**:
+  - `cargo test -p m68000 --test test_interrupts`: All 4 unit tests passed.
+  - `cargo test -p machine_loop --test test_interrupt_pipeline`: All 4 integration tests passed.
+  - `cargo test --workspace`: All workspace test suites passed cleanly (including 19 Cartesian DMA tests and 127 single-step CPU tests).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 341 files clean, 0 violations.
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly.

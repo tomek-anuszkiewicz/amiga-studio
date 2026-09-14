@@ -159,6 +159,9 @@ pub struct FloppyController {
     pub dskbytr: u16,
     /// Audio / Disk control register (ADKCON)
     pub adkcon: u16,
+    /// Disk block DMA completion interrupt strobe
+    #[serde(default)]
+    pub dskblk_irq: bool,
 }
 
 impl Default for FloppyController {
@@ -180,6 +183,7 @@ impl Default for FloppyController {
             dsksyn: STANDARD_DSKSYN,
             dskbytr: 0,
             adkcon: 0,
+            dskblk_irq: false,
         }
     }
 }
@@ -202,6 +206,7 @@ impl FloppyController {
         self.dsksyn = STANDARD_DSKSYN;
         self.dskbytr = 0;
         self.adkcon = 0;
+        self.dskblk_irq = false;
         for drive in &mut self.drives {
             drive.reset();
         }
@@ -349,5 +354,19 @@ impl FloppyController {
     #[inline]
     pub fn step_cck(&mut self) {
         // Scaffold placeholder: MFM bit deserialization during active DMA
+    }
+
+    /// Triggers a disk block transfer finish interrupt strobe (DSKBLK, bit 1)
+    #[inline]
+    pub fn trigger_dskblk(&mut self) {
+        self.dskblk_irq = true;
+    }
+
+    /// Polls and clears the disk block DMA completion interrupt strobe
+    #[inline]
+    pub fn poll_dskblk_irq(&mut self) -> bool {
+        let pending = self.dskblk_irq;
+        self.dskblk_irq = false;
+        pending
     }
 }

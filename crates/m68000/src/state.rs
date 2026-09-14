@@ -247,6 +247,29 @@ impl CpuState {
         (self.sr & SR_S) != 0
     }
 
+    /// Returns the 3-bit interrupt priority mask from SR (bits 8..=10, levels 0..=7)
+    #[inline(always)]
+    pub fn interrupt_mask(&self) -> u8 {
+        ((self.sr >> 8) & 0x07) as u8
+    }
+
+    /// Sets the 3-bit interrupt priority mask in SR (bits 8..=10)
+    #[inline(always)]
+    pub fn set_interrupt_mask(&mut self, mask: u8) {
+        self.sr = (self.sr & !0x0700) | (((mask as u16) & 0x07) << 8);
+    }
+
+    /// Checks whether the currently sampled `ipl` qualifies as a pending interrupt
+    /// according to M68000 priority rules (ipl > mask || ipl == 7 for NMI).
+    #[inline(always)]
+    pub fn is_interrupt_pending(&self) -> Option<u8> {
+        if (self.ipl > self.interrupt_mask() && self.ipl > 0) || self.ipl == 7 {
+            Some(self.ipl)
+        } else {
+            None
+        }
+    }
+
     /// Returns the 8-bit Condition Code Register (lower byte of SR, bits 0..=4)
     #[inline(always)]
     pub fn get_ccr(&self) -> u8 {

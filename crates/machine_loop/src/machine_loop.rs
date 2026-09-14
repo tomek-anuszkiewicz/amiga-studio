@@ -214,8 +214,21 @@ impl A500Machine {
     #[inline]
     pub fn resolve_ipl(&self) -> u8 {
         let paula_ipl = self.paula.pending_interrupt_level();
-        let cia_a_ipl = if self.cia_a.irq_pending() { 2 } else { 0 };
-        let cia_b_ipl = if self.cia_b.irq_pending() { 6 } else { 0 };
+        // CIA-A (Level 2) and CIA-B (Level 6) lines pass through Paula INTENA (bits 3 and 13 + master bit 14)
+        let cia_a_ipl = if self.cia_a.irq_pending()
+            && (self.paula.intena == 0 || (self.paula.intena & 0x4008) == 0x4008)
+        {
+            2
+        } else {
+            0
+        };
+        let cia_b_ipl = if self.cia_b.irq_pending()
+            && (self.paula.intena == 0 || (self.paula.intena & 0x6000) == 0x6000)
+        {
+            6
+        } else {
+            0
+        };
 
         paula_ipl.max(cia_a_ipl).max(cia_b_ipl)
     }
@@ -265,7 +278,7 @@ impl A500Machine {
         self.denise.joy0dat = self.game_ports.joy0dat();
         self.denise.joy1dat = self.game_ports.joy1dat();
 
-        // 4. Pot counters & POTGOR -> Paula POT0DAT, POT1DAT, POTGOR
+        // 4. Analog potentiometer coordinates -> Paula POT0DAT, POT1DAT & POTGOR
         self.paula.pot0dat = self.game_ports.pot0dat();
         self.paula.pot1dat = self.game_ports.pot1dat();
         self.paula.potgor = self.game_ports.potgor(self.paula.potgo);
@@ -286,6 +299,11 @@ impl A500Machine {
             self.paula.set_interrupt_request(0x0040);
         }
 
+        // Cross-Chip Signal: Vertical blanking interval -> Paula INTREQ bit 5 (mask 0x0020)
+        if self.agnus.poll_vblank_irq() {
+            self.paula.set_interrupt_request(0x0020);
+        }
+
         // 2. Step Denise (steps sprites, frame_builder, video serializer, and mutation pipeline)
         let beam = self.agnus.beam();
         let denise_due = self.denise.step_cck(beam);
@@ -299,6 +317,11 @@ impl A500Machine {
             self.dispatch_paula_action(item.0, item.1);
         }
         self.floppy.step_cck();
+
+        // Cross-Chip Signal: Disk block DMA finished -> Paula INTREQ bit 1 (mask 0x0002)
+        if self.floppy.poll_dskblk_irq() {
+            self.paula.set_interrupt_request(0x0002);
+        }
 
         // Cross-Chip Signal: Audio channel buffer loop (AUDxDSR) -> Agnus audpt reload & Paula interrupt
         for ch in 0..4 {
@@ -316,6 +339,16 @@ impl A500Machine {
         let cia_b_due = self.cia_b.step_cck();
         for item in cia_b_due.iter().flatten() {
             self.dispatch_cia_action(cia::CiaId::B, item.0, item.1);
+        }
+
+        // Cross-Chip Signal: CIA-A /IRQ pin -> Paula INTREQ bit 3 (PORTS, mask 0x0008)
+        if self.cia_a.irq_pending() {
+            self.paula.set_interrupt_request(0x0008);
+        }
+
+        // Cross-Chip Signal: CIA-B /IRQ pin -> Paula INTREQ bit 13 (EXTER, mask 0x2000)
+        if self.cia_b.irq_pending() {
+            self.paula.set_interrupt_request(0x2000);
         }
 
         // 5. Step Real-Time Clock
@@ -394,6 +427,22 @@ impl A500Machine {
         while !(self.agnus.vpos == 0 && initial_vpos != 0) {
             self.step_cck();
         }
+    }
+
+    /// Test & Debugger helper: Sets CPU PC to `target_pc` and primes prefetch pipeline
+    #[inline]
+    pub fn set_pc_and_prime_prefetch(&mut self, target_pc: u32) {
+        let mut bus = MemoryBus {
+            mem: &mut self.physical_memory,
+            agnus: &mut self.agnus,
+            denise: &mut self.denise,
+            paula: &mut self.paula,
+            cia_a: &mut self.cia_a,
+            cia_b: &mut self.cia_b,
+            rtc: &mut self.rtc,
+            floppy: &mut self.floppy,
+        };
+        self.cpu.set_pc_and_prime_prefetch(target_pc, &mut bus);
     }
 
     /// Captures a complete machine state snapshot in referenced Kickstart ROM mode

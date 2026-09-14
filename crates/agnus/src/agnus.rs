@@ -72,6 +72,9 @@ pub struct Agnus {
     pub audlc: [u32; 4],
     /// Floppy Disk DMA pointer ($020-$022)
     pub dskpt: u32,
+    /// Vertical blanking interrupt request strobe
+    #[serde(default)]
+    pub vblank_irq: bool,
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
@@ -83,6 +86,7 @@ impl Agnus {
     pub fn new(model: AgnusModel) -> Self {
         Self {
             model,
+            vblank_irq: false,
             copper: copper::Copper::new(),
             blitter: blitter::Blitter::new(),
             dma: dma::DmaScheduler::new(),
@@ -131,6 +135,7 @@ impl Agnus {
         self.audpt.fill(0);
         self.audlc.fill(0);
         self.dskpt = 0;
+        self.vblank_irq = false;
         self.mutations = [None; AGNUS_MUTATION_CAPACITY];
     }
 
@@ -151,6 +156,7 @@ impl Agnus {
             if self.vpos >= max_lines {
                 self.vpos = 0;
                 self.lof = !self.lof;
+                self.vblank_irq = true;
             }
         }
 
@@ -425,6 +431,14 @@ impl Agnus {
     #[inline]
     pub fn poll_blitter_irq(&mut self) -> bool {
         self.blitter.poll_blit_irq()
+    }
+
+    /// Polls and clears the vertical blanking interval interrupt request flag
+    #[inline]
+    pub fn poll_vblank_irq(&mut self) -> bool {
+        let pending = self.vblank_irq;
+        self.vblank_irq = false;
+        pending
     }
 
     /// Queries whether a specific DMA channel is enabled in DMACON

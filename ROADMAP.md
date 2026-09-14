@@ -89,7 +89,27 @@ This document outlines the phased development plan, hardware milestones, verific
   - **Hardware Keyboard Reset Line (`Ctrl-Amiga-Amiga`):** Wired `keyboard.reset_line_asserted` directly into `A500Machine::step_cck()` to trigger an immediate machine warm reset cycle upon qualifier combination detection.
   - **Initial Signal & Interrupt Synchronization:** Post-reset immediate execution of `poll_peripheral_pins()` and interrupt arbitration (`cpu.state.ipl = resolve_ipl()`), guaranteeing clean, consistent bus states at cycle 0.
   - **Dedicated Automated Verification:** 100% verified across 6 integration tests in `crates/machine_loop/tests/test_reset.rs`.
-- **Step 2.6: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure) [Active Focus]:**
+- **Step 2.6: End-to-End Multi-Chip Interrupt Processing & CPU Exception Pipeline [Completed: 2026-09-14]:**
+  - **Cross-Chip Signal Propagation:**
+    - Agnus Vertical Blanking (`vpos == 0 && hpos == 0`) -> Paula `INTREQ` bit 5 (`$0020`, Level 3 `VERTB`).
+    - Agnus Blitter finish (`_BLITINT`) -> Paula `INTREQ` bit 6 (`$0040`, Level 3 `BLITINT`).
+    - Floppy DMA block complete -> Paula `INTREQ` bit 1 (`$0002`, Level 1 `DSKBLK`).
+    - Paula Audio buffer reload loop (`AUD0-3`) -> Paula `INTREQ` bits 7..10 (`$0080`..`$0400`, Level 4 `AUD0-3`).
+    - CIA-A `/IRQ` pin -> Paula `INTREQ` bit 3 (`$0008`, Level 2 `PORTS`).
+    - CIA-B `/IRQ` pin -> Paula `INTREQ` bit 13 (`$2000`, Level 6 `EXTER`).
+  - **Paula `INTENA` / `INTREQ` Central Arbitration (`resolve_ipl`):**
+    - Master enable `INTEN` (bit 14) gating all interrupt levels.
+    - Bit 15 `SET/CLR` strobe write handling.
+    - Priority level derivation ($IPL \in 1..6$, or 0 if none or masked).
+    - Synchronous transfer to `cpu.state.ipl` every CCK phase.
+  - **CPU Autovector Exception Microcode Pipeline (44 CPU Clocks / 22 CCKs):**
+    - Interrupt priority evaluation against $SR$ mask (`ipl > mask && ipl > 0 || ipl == 7`).
+    - Cycle-exact `STEPS_INTERRUPT` pipeline: sampling `ipl`, switching to Supervisor mode, raising interrupt mask, saving return PC and $SR$, pushing 3-word exception frame to $SSP$, fetching autovector address ($24 + \text{level}$), and prefetching ISR target instructions.
+    - `STOP #<data>` instruction awakening: clearing `state.stopped = true` and transitioning directly to the ISR.
+    - `RTE` instruction: popping $SR$ and return PC from $SSP$, restoring user/supervisor state, restoring original interrupt mask, and resuming main thread execution.
+  - **Dedicated Automated Verification:**
+    - 100% verified across 4 unit tests in `crates/m68000/tests/test_interrupts.rs` and 4 end-to-end integration tests in `crates/machine_loop/tests/test_interrupt_pipeline.rs`.
+- **Step 2.7: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure) [Active Focus]:**
   - **Horizontal Scanline DMA Slot Schedule (227 CCK PAL / 226 CCK NTSC):**
     - *Fixed Time-Slot Allocations:* DRAM Refresh (CCK 0..3), Floppy Disk DMA (CCK 4), 4 Audio DMA channels (CCK 5..8 for AUD0..AUD3), 8 Sprite DMA pairs (CCK 12..27 for SPR0..SPR7, 2 words per sprite).
     - *Dynamic Bitplane DMA Allocation:* Display Data Fetch window (`DDFSTRT`..=`DDFSTOP`, typically `$0038`..`$00D0`) during active vertical scanlines; dynamic slot allocation driven by `BPLCON0` planecount (1–6) and resolution (LoRes vs HiRes):
@@ -103,20 +123,20 @@ This document outlines the phased development plan, hardware milestones, verific
     - *Blitter Nasty Mode (`DMACON` bit 10 `BLTPRI == 1`):* When Blitter is active, Agnus awards all available memory cycles to the Blitter, completely locking CPU out of Chip RAM (`BusResult::WaitState`).
     - *Normal Blitter Mode (`BLTPRI == 0`):* Blitter uses idle cycles; implement CPU starvation yield logic where Agnus monitors CPU memory requests and forces the Blitter to release 1 cycle whenever the CPU is starved for 3 consecutive memory cycles.
     - *Copper Instruction Fetch Cycles:* Copper claims bus cycles (2 words = 4 CCKs for `MOVE`, `WAIT`, `SKIP`) when `COPEN` (bit 7) is asserted and the Copper is not halted waiting for beam position or blitter completion.
-  - **Subsystem Separation of Concerns (Step 2.6 Arbiter vs. Step 2.7 Subsystems):**
-    - Step 2.6 establishes the **slot schedule, bus allocation rules, and cycle-exact contention physics (wait-state stalls)** across the machine, without requiring full internal DSP/rendering kernels.
-    - Full subsystem execution logic (Copper `CDANG`/state machine, Blitter 256-minterm ALU/barrel shifters/Bresenham line drawer, Paula BLEP synthesis, and Denise pixel serialization) remains cleanly decoupled under Step 2.7.
+  - **Subsystem Separation of Concerns (Step 2.7 Arbiter vs. Step 2.8 Subsystems):**
+    - Step 2.7 establishes the **slot schedule, bus allocation rules, and cycle-exact contention physics (wait-state stalls)** across the machine, without requiring full internal DSP/rendering kernels.
+    - Full subsystem execution logic (Copper `CDANG`/state machine, Blitter 256-minterm ALU/barrel shifters/Bresenham line drawer, Paula BLEP synthesis, and Denise pixel serialization) remains cleanly decoupled under Step 2.8.
   - **Direct Bus Lock Exposure & End-to-End Propagation:**
     - Direct drive of `chip_ram_blocked` on `PhysicalMemory` during contended slots: CPU Chip RAM (`$000000–$07FFFF`) and Slow RAM (`$C00000–$C7FFFF`) accesses return `BusResult::WaitState` and stall cycle-accurately.
     - Preserves 100% Fast RAM (`$200000–$9FFFFF`) immunity (zero wait states under heavy DMA or Blitter Nasty).
   - **Dedicated Integration Test Suite:**
     - Comprehensive test coverage in `crates/machine_loop/tests/test_dma_contention.rs` and `crates/dma/tests/test_dma.rs` verifying fixed slot stalls, Fast RAM immunity, bitplane contention scaling (0 vs 4 vs 6 planes), Blitter Nasty CPU lock-out, and CPU 3-cycle starvation release.
-- **Step 2.7: Decomposed Subsystem Deep Implementations:**
+- **Step 2.8: Decomposed Subsystem Deep Implementations:**
   - *Agnus:* Copper coprocessor state machine (MOVE, WAIT, SKIP, CDANG danger mode), 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer, ascending/descending modes).
   - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (blep_tables.rs) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.
   - *Denise:* Video pixel serializer, bitplanes (1–6), 8 hardware sprites, 32-color palette (RGB444), dual playfield, collision detection registers (CLXDAT, CLXCON).
   - *CIAs (Dual MOS 8520):* Timers A & B, TOD clock, serial shift register (SDR), parallel/control ports, E-clock synchronization.
-- **Step 2.8: Host Audio Playback & CRT Presentation Shaders:**
+- **Step 2.9: Host Audio Playback & CRT Presentation Shaders:**
   - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio) with dynamic resampling and ring buffer underflow/overflow protection.
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
 
