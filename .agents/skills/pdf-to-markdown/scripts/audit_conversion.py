@@ -55,6 +55,7 @@ def audit_markdown_file(file_path: Path) -> AuditReport:
     current_code_lines: List[str] = []
     code_block_start_line = 0
     last_code_block_end = -999
+    is_mermaid = False
 
     for line_num, line in enumerate(lines, 1):
         stripped = line.strip()
@@ -64,7 +65,9 @@ def audit_markdown_file(file_path: Path) -> AuditReport:
                 in_code_block = True
                 code_block_start_line = line_num
                 current_code_lines = []
-                report.code_blocks_count += 1
+                is_mermaid = stripped.startswith("```mermaid")
+                if not is_mermaid:
+                    report.code_blocks_count += 1
 
                 # Check for fragmented adjacent code blocks (separated by <= 2 lines)
                 if 0 < (line_num - last_code_block_end) <= 2:
@@ -89,7 +92,8 @@ def audit_markdown_file(file_path: Path) -> AuditReport:
             continue
 
         if in_code_block:
-            report.total_code_lines += 1
+            if not is_mermaid:
+                report.total_code_lines += 1
             current_code_lines.append(stripped)
 
     # Check overall code ratio

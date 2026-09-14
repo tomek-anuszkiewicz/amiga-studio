@@ -80,23 +80,29 @@ def extract_outline_and_map_chapters(doc: fitz.Document, total_pages: int) -> Li
 
     return chapters
 
-def render_pages_to_png(doc: fitz.Document, out_dir: Path, dpi: int = 200, start_page: int = 1, end_page: int = None) -> List[str]:
+def render_pages_to_png(doc: fitz.Document, out_dir: Path, dpi: int = 200, start_page: int = 1, end_page: int = None, page_list: List[int] = None) -> List[str]:
     """
     Renders pages of the PDF into zero-padded high-resolution PNGs.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     rendered_files = []
     total_pages = len(doc)
-    start_p = max(1, start_page)
-    end_p = min(total_pages, end_page) if end_page else total_pages
+
+    # Determine pages to render
+    if page_list is not None:
+        target_pages = [p for p in sorted(set(page_list)) if 1 <= p <= total_pages]
+    else:
+        start_p = max(1, start_page)
+        end_p = min(total_pages, end_page) if end_page else total_pages
+        target_pages = list(range(start_p, end_p + 1))
     
     # Matrix calculation for DPI (72 is standard base PDF DPI)
     zoom = dpi / 72.0
     mat = fitz.Matrix(zoom, zoom)
 
-    print(f"Rendering pages {start_p} to {end_p} (of {total_pages}) at {dpi} DPI to {out_dir}...")
+    print(f"Rendering {len(target_pages)} pages (of {total_pages}) at {dpi} DPI to {out_dir}...")
 
-    for page_num in range(start_p, end_p + 1):
+    for i, page_num in enumerate(target_pages, 1):
         page = doc.load_page(page_num - 1)
         pix = page.get_pixmap(matrix=mat, alpha=False)
         
@@ -105,8 +111,8 @@ def render_pages_to_png(doc: fitz.Document, out_dir: Path, dpi: int = 200, start
         pix.save(str(file_path))
         rendered_files.append(filename)
 
-        if page_num % 25 == 0 or page_num == end_p:
-            print(f"  Rendered [{page_num:03d}/{end_p:03d}] pages...")
+        if i % 10 == 0 or i == len(target_pages):
+            print(f"  Rendered [{i:03d}/{len(target_pages):03d}] pages (latest: page_{page_num:03d}.png)...")
 
     return rendered_files
 
@@ -118,6 +124,7 @@ def main():
     parser.add_argument("--no-render", action="store_true", help="Only extract outline and manifest, skip PNG rendering")
     parser.add_argument("--start-page", type=int, default=1, help="First page to process (1-based, default: 1)")
     parser.add_argument("--end-page", type=int, default=None, help="Last page to process (1-based, default: all)")
+    parser.add_argument("--pages", type=str, default=None, help="Comma-separated list of individual pages to render (e.g. 9,10,180,187)")
     parser.add_argument("--custom-manifest", "-m", type=str, default=None, help="Path to custom chapters manifest JSON")
     args = parser.parse_args()
 
@@ -132,9 +139,18 @@ def main():
 
     doc = fitz.open(str(pdf_path))
     total_pages = len(doc)
+
+    selected_pages = None
+    if args.pages:
+        try:
+            selected_pages = [int(p.strip()) for p in args.pages.split(",") if p.strip()]
+        except ValueError:
+            print(f"Error: Invalid --pages format '{args.pages}'. Expected comma-separated integers.")
+            sys.exit(1)
+
     start_page = max(1, args.start_page)
     end_page = min(total_pages, args.end_page) if args.end_page else total_pages
-    print(f"Opened PDF '{pdf_path.name}': {total_pages} total pages (processing {start_page}..{end_page}).")
+    print(f"Opened PDF '{pdf_path.name}': {total_pages} total pages.")
 
     # 1. Extract outline and map chapters
     if args.custom_manifest:
@@ -150,15 +166,17 @@ def main():
     
     # 2. Render pages to PNG if requested
     if not args.no_render:
-        rendered_files = render_pages_to_png(doc, pages_dir, dpi=args.dpi, start_page=start_page, end_page=end_page)
+        rendered_files = render_pages_to_png(doc, pages_dir, dpi=args.dpi, start_page=start_page, end_page=end_page, page_list=selected_pages)
     else:
-        rendered_files = [f"page_{p:03d}.png" for p in range(start_page, end_page + 1)]
+        pages_to_list = selected_pages if selected_pages else list(range(start_page, end_page + 1))
+        rendered_files = [f"page_{p:03d}.png" for p in pages_to_list]
 
     # 3. Save manifest
     manifest = {
         'source_pdf': pdf_path.name,
         'total_pages': total_pages,
-        'processed_range': [start_page, end_page],
+        'processed_range': [start_page, end_page] if not selected_pages else None,
+        'selected_pages': selected_pages,
         'dpi': args.dpi,
         'chapters': chapters,
         'pages': rendered_files
