@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "physical_memory"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-12
-related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)"]
+updated: 2026-09-14
+related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 ---
 
 # Amiga 500 MemoryBus Architecture & Bus Topology
@@ -42,7 +42,7 @@ related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", 
 | **`$C80000 - $DBFFFF`** | ~1.2 MB | **Reserved Space** | Open bus floating lines (`$FF`). |
 | **`$DC0000 - $DC003F`** | 64 B | **[Real-Time Clock (RTC)](RTC.md)** | OKI MSM6242B on A501 / A500+ / A2000. 16 4-bit registers on odd byte addresses (`A0 = 1`). Returns open bus `$FF` when no RTC installed (`RtcModel::None`). See [RTC.md](RTC.md). |
 | **`$DC0040 - $DDFEFF`** | ~127 KB | **Reserved Space** | Open bus floating lines / mirror of custom registers. |
-| **`$DFF000 - $DFFFFE`** | 512 B | **Custom Chip Registers** | 16-bit registers (Agnus, Denise, Paula). Mirrored across `$DFF000-$DFFFFF`. |
+| **`$DFF000 - $DFFFFE`** | 512 B | **[Custom Chip Registers](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)** | 16-bit registers (Agnus, Denise, Paula). Mirrored across `$DFF000-$DFFFFF`. See [Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md). |
 | **`$E00000 - $E7FFFF`** | 512 KB | **Extended ROM / Mirror** | CDTV extended ROM or mirror of 512KB Kickstart lower half. |
 | **`$E80000 - $EFFFFF`** | 512 KB | **Auto-Config I/O Space** | Expansion board autoconfig registers (`$E80000`). |
 | **`$F00000 - $F7FFFF`** | 512 KB | **Cartridge / Diagnostic ROM** | Action Replay / diagnostic expansion space. |
@@ -67,7 +67,7 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
   - `$F8..=$FF`: `KICKSTART_ROM_HANDLER`
   - `$BF`, `$DC`, `$DF`, and unmapped ranges: `OPEN_BUS_HANDLER` (floating high `$FF` / `$FFFF`, silent writes).
 - **Motherboard Routing in `MemoryBus` ([`crates/memory_bus/src/lib.rs`](../../../crates/memory_bus/src/lib.rs)):**
-  - `$DF`: Custom Chip Registers (`$DFF000..$DFFFFE`) routed directly to live Agnus, Denise, and Paula registers.
+  - `$DF`: Custom Chip Registers (`$DFF000..$DFFFFE`) routed directly to live Agnus, Denise, and Paula registers (see [Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) and [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)).
   - `$BF`: CIA Peripheral Registers (`$BFD000..$BFEF01`) routed directly to CIA-A and CIA-B.
   - `$DC`: Real-Time Clock (`$DC0000..$DC003F`) routed to OKI MSM6242B.
   - All other banks: Delegated directly to `PhysicalMemory`.

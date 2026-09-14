@@ -2811,3 +2811,26 @@ Every future modification or implementation task must append an entry following 
   - Verified `ROADMAP.md` structure, numbering, and cross-references.
   - Executed pre-flight quality checks (`tools/pre_flight.py`) and architecture test suites (`test_architecture_rules`).
 
+---
+
+### [2026-09-14 03:30 CEST] — Integrated Custom Chipset Matrix & Cross-Chip Action Dispatch Specifications
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/Cross-Chip Signals and Action Dispatch Catalog.md`: New design specification cataloging closed silicon signal space, inter-chip propagation delays, mutation modes (`OverwritePending` vs `Pipeline`), and scanline DMA slot schedules.
+  - `Obsidian/Amiga/Design/Custom Chip Register Ownership and Access Matrix.md`: New design specification detailing split read/write identities, physical chip ownership (Agnus, Denise, Paula), access modes (`RO`, `WO`, `RW`, `COR`, `STROBE`), and open-bus floating states ($000..$1FE).
+  - `Obsidian/Amiga/Design/Platform Quirks and Invariants Catalog.md`: Linked companion catalogs in frontmatter and quick-reference index, bumped `updated` date.
+  - `Obsidian/Amiga/Design/General Architecture.md`: Added catalog links to top-level `related` properties and Section 4 Subsystem Reference Links.
+  - `Obsidian/Amiga/Design/MemoryBus.md`: Cross-referenced custom chip registers table and address router descriptions to the new register matrix.
+- **What Was Changed (The Concrete Reality)**:
+  - Audited and standardized external design document contributions against all repository architecture rules and Obsidian vault linking standards:
+    - Verified line 1 YAML properties (`title`, `aliases`, `tags`, `category`, `subsystem`, `status`, `created`, `updated`, `related`).
+    - Added mandatory Layer 2 `## 5. Reference Documentation & Upstream Ground Truth` sections with explicit 1-sentence analytical rationales pointing to Commodore Hardware Reference Manuals, undocumented chipset compendiums, reference test harnesses (`vAmigaTS`), and living Rust crate modules (`crates/config/src/mutation.rs`, `crates/memory_bus`, `crates/agnus`, `crates/denise`, `crates/paula`, `crates/machine_loop`).
+    - Percent-encoded URL parentheses (`%28` / `%29`) for markdown link targets (`09 - Appendix A - Register Summary (Alphabetical).md`, `10 - Appendix B - Register Summary (Address Order).md`) to ensure cross-platform link parser compliance.
+    - Verified zero broken links, verified zero quarantined attractors across 334 scanned files, and validated zero external host path leakage.
+- **Architectural Rationale & Trade-Offs**:
+  - Formalizing register ownership, split identities (`DMACONR`/`DMACON`, `VPOSR`/`VPOSW`), and cross-chip signal propagation latencies in authoritative design specs establishes clear contracts for both `crates/memory_bus` motherboard routing and upcoming `crates/gui` Developer Studio inspectors.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly (Formatting: 100%, Attractors: 334 files clean, AGENTS.md: <= 14,000 bytes, Architecture Rules: 17/17 tests passed).
+  - `python .agents/hooks/check_polish.py --git`: Passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architectural unit tests passed.
+
+

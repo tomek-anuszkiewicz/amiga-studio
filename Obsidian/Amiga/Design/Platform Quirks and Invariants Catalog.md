@@ -6,14 +6,15 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-12
-updated: 2026-09-12
-related: ["[General Architecture.md](General%20Architecture.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[Keyboard.md](Keyboard.md)"]
+updated: 2026-09-14
+related: ["[General Architecture.md](General%20Architecture.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[Keyboard.md](Keyboard.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)"]
 ---
 
 # Platform Quirks & Invariants Catalog
 
 - **Parent Architectural Hub:** [General Architecture.md](General%20Architecture.md)
 - **Subsystem Specifications:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [MemoryBus.md](MemoryBus.md) | [Agnus.md](Agnus.md) | [Denise.md](Denise.md) | [Paula.md](Paula.md) | [CIA.md](CIA.md) | [Floppy.md](Floppy.md) | [Keyboard.md](Keyboard.md)
+- **Cross-Chip Catalogs:** [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md) | [Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)
 - **Execution & Invariant Rules:** [`spec-compliance.md`](../../../.agents/rules/spec-compliance.md) | [`performance-and-readability.md`](../../../.agents/rules/performance-and-readability.md) | [`repro-first.md`](../../../.agents/rules/repro-first.md)
 
 > [!IMPORTANT]
