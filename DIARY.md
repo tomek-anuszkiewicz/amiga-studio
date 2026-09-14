@@ -3587,4 +3587,33 @@ Every future modification or implementation task must append an entry following 
   - Verified search retrieval: `python tools/rag_search.py "Copper instruction format"` returned top-ranked HRM Chapter 2 results with 0.842 relevance score.
   - `python tools/pre_flight.py`: 100% compliant across all quality gates.
 
+---
+
+### [2026-09-14 22:25 CEST] — Created html-to-markdown Skill and Established Isolated Benchmark Sandbox
+- **Affected Subsystems**:
+  - `.agents/skills/html-to-markdown/` (`SKILL.md`, `scripts/convert_html.py`, `scripts/diff_reference.py`, `scripts/validate_links.py`, `references/html-sanitization-heuristics.md`, `references/non-text-conversion-hierarchy.md`)
+  - `Obsidian/Amiga/Reference/temp/Instruction Prefetch on the Motorola 68000 Processor/68kPrefetch_files/` (downloaded `image001.gif` and generated Git-tracked technical sidecar `image001.gif.txt`)
+  - `Obsidian/Amiga/Reference/temp/html-sandbox/` (isolated candidate markdown and quantitative structural diff report)
+  - `docs/ai_agents.md` (registered `html-to-markdown` in Section 3.C skills inventory)
+- **What Was Changed (The Concrete Reality)**:
+  - Designed and implemented a dedicated, publication-quality HTML-to-Markdown conversion skill (`.agents/skills/html-to-markdown/`).
+  - Implemented `convert_html.py` featuring encoding auto-detection (Windows-1252 CP1252 entity normalization), Microsoft Word HTML cruft stripping (`mso-*`, `xmlns:v`, `xml` islands), layout table unnesting, M68000 assembly code block detection, GFM table conversion, asset copying with Git-tracked diagram sidecars, and Obsidian YAML frontmatter injection complying with vault linking rules.
+  - Implemented `diff_reference.py` for quantitative AST and structural comparison against reference ground truth documents (evaluating heading coverage, code blocks, tables, and vocabulary overlap).
+  - Implemented `validate_links.py` for comprehensive validation of heading anchor slugs and local asset paths.
+  - Downloaded missing reference diagram asset `image001.gif` from Pasti Project and authored its architectural sidecar description (`image001.gif.txt`) per `.agents/rules/asset-descriptions.md`.
+  - Executed benchmark conversion of Jorge Cwik's *Instruction Prefetch on the Motorola 68000 Processor* into the isolated sandbox (`temp/html-sandbox/`), leaving the ground truth reference in `Obsidian/Amiga/Reference/` 100% untouched.
+  - Validated multi-page directory conversion across the 17 crawled HTML pages of *Undocumented features of OCS, ECS and AGA chipsets*.
+- **Architectural Rationale & Trade-Offs**:
+  - *Standardized Reference Ingestion:* Provides a reusable, automated pipeline for importing legacy web documents and vintage articles into the Obsidian reference vault without manual transcription.
+  - *Protected Ground Truth:* Operating within an isolated sandbox ensures existing verified reference catalogs remain read-only and free from unintentional regressions or overwrites.
+  - *Offline RAG & Diagram Vision Integration:* Automatic asset extraction and sidecar generation ensure diagrams are indexed 100% offline in Qdrant embeddings without external API dependencies.
+- **Verification & Test Results**:
+  - `python .agents/skills/html-to-markdown/scripts/validate_links.py`: 20/20 links and anchors valid (0 errors).
+  - `python .agents/skills/html-to-markdown/scripts/diff_reference.py`: Candidate (575 lines, 3,374 words) achieved 104.7% word count parity and 40.4% vocabulary overlap with ground truth reference, successfully isolating CPU register trace sequences from headings.
+  - Multi-page validation: Converted 17 HTML files from `Undocumented features of OCS, ECS and AGA chipsets/live` with clean layout unnesting (e.g. `Video_timings.md` at 620 lines with ASCII timing diagrams).
+  - `git diff --stat`: Confirmed zero modifications to existing reference files.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 342 files clean (0 violations).
+  - `python tools/pre_flight.py`: 100% compliant across all quality gates (Formatting, Attractors, AGENTS.md ceiling, Architecture rules: 18 passed).
+
+
 
