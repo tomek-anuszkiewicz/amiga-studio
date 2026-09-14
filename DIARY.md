@@ -3361,3 +3361,20 @@ Every future modification or implementation task must append an entry following 
   - Cleaned temp/ directory: deleted 157 MB and 12.8 MB 4th Edition PRM PDFs, 14 MB degraded TRM text PDF, duplicate Rev 8 mirror2, and unneeded Guru Book reviews
   - Verified tools/bootstrap_reference.ps1 -List, -ExtractOnly, and -Item gurubook -Force
   - tools/pre_flight.py: 100% compliant across all gates
+---
+
+### [2026-09-14 14:25 CEST] — Standardized Multi-Page Web Crawl to Subdirectory and Cleaned Root HTMLs
+- **Affected Subsystems**:
+  - `tools`
+  - `reference`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated Undocumented features crawl mirror in tools/bootstrap_reference.ps1 to target 'live' subfolder
+  - Enhanced Download-CrawlItem to automatically use mirror subfolder and report skips when pages already exist
+  - Moved 17 loose HTML files from root of Undocumented features into live/ subdirectory
+- **Architectural Rationale & Trade-Offs**:
+  - Scattered HTML files in the top-level staging directory created clutter alongside Wayback snapshot subdirectories
+  - Isolating each mirror crawl (live, wayback_2022, wayback_2016) cleanly into its own subfolder prevents directory pollution and aligns with multi-mirror staging architecture
+- **Verification & Test Results**:
+  - Obsidian/Amiga/Reference/temp/Undocumented features... now contains cleanly separated live/, wayback_2022/, and wayback_2016/ subfolders with 0 root files
+  - bootstrap_reference.ps1 -All successfully verifies and skips already crawled assets in 'live'
+  - tools/pre_flight.py: 100% compliant across all gates

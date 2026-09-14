@@ -267,7 +267,7 @@ $Catalog = @(
             @{
                 Name    = "Achtung! Amiga (Original Live Web)"
                 BaseUrl = "https://www.winnicki.net/amiga/achtung/"
-                SubDir  = ""
+                SubDir  = "live"
             },
             @{
                 Name    = "Wayback Machine (2022 Snapshot)"
@@ -582,9 +582,28 @@ function Download-CrawlItem {
 
     foreach ($mirror in $Item.Mirrors) {
         $BaseUrl = $mirror.BaseUrl
-        $CrawlTargetDir = if ($AllSourcesMode -and $mirror.SubDir) { Join-Path $TargetDir $mirror.SubDir } else { $TargetDir }
+        $CrawlTargetDir = if ($mirror.SubDir) { Join-Path $TargetDir $mirror.SubDir } else { $TargetDir }
         if (-not (Test-Path $CrawlTargetDir)) {
             New-Item -ItemType Directory -Path $CrawlTargetDir -Force | Out-Null
+        }
+
+        if (-not $ForceDownload) {
+            $ExistingPages = 0
+            foreach ($subpage in $Item.SubPages) {
+                $PageDest = Join-Path $CrawlTargetDir $subpage
+                if ((Test-Path $PageDest) -and ((Get-Item $PageDest).Length -gt 100)) {
+                    $ExistingPages++
+                }
+            }
+            if ($ExistingPages -eq $TotalPages) {
+                Write-Host "  [SKIP] Already crawled ($($mirror.Name)): all $TotalPages pages in '$($mirror.SubDir)'" -ForegroundColor DarkGray
+                $AnySuccess = $true
+                if (-not $AllSourcesMode) {
+                    return $true
+                }
+                $MirrorIndex++
+                continue
+            }
         }
 
         Write-Host "  Attempting crawl from mirror [$MirrorIndex/$TotalMirrors]: $($mirror.Name)..." -ForegroundColor Cyan
