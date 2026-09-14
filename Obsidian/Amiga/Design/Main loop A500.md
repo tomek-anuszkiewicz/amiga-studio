@@ -220,28 +220,44 @@ To satisfy Rule 2.4 (zero allocation in hot path):
 All pending mutations, staged register values, and remaining cycle countdowns are fully serialized within the subsystem snapshot structs (`AgnusState`, `DeniseState`, etc.):
 - Restoring a save state captured mid-propagation guarantees that pending writes commit at the exact target cycle, ensuring bit-for-bit cycle-exact repeatability.
 
-### 6.3 Subsystem Action Dispatch & Multi-Chip Register Binding Pipeline
-When in-flight register mutations mature (or commit immediately upon bus write), the machine loop translates raw register modifications into strongly typed action methods on subsystem handles:
-- **`DMACON` ($096) Master & Channel Routing:**
-  - Routes individual DMA enables to `Audio` (channels 0..3), `FloppyController` (`dma_enabled`), `Sprites` (`dma_enabled`), `Blitter` (`dma_enabled`), `Copper` (`dma_enabled`), and `FrameBuilder` (`dma_enabled`).
-  - Gated by master enable: channel DMA is only active when both master `DMAEN` (bit 9) and the channel enable bit are asserted.
-  - Updates `BLTPRI` (bit 10, Blitter Nasty mode) on `Blitter`.
-- **`Copper` Strobes & Latches:**
-  - `COP1LC` ($080/$082) & `COP2LC` ($084/$086) update Copper pointer latches.
-  - `COPJMP1` ($088) & `COPJMP2` ($08A) strobes reload the active Copper Program Counter (`cop_pc`) and assert `is_running = true`.
-- **`Blitter` Triggering & Register Synchronization:**
-  - Writing `BLTSIZE` ($058) synchronizes all active address pointers (`bltapt`, `bltbpt`, `bltcpt`, `bltdpt`) and control registers (`bltcon0`, `bltcon1`, modulos, masks) from Agnus into the Blitter engine.
-  - Hardware Invariant: Writing `BLTSIZE` immediately arms the Blitter and sets `is_busy = true`, asserting `BBUSY` in `DMACONR` even if DMA is currently disabled.
-- **`Floppy` Subsystem Bridge:**
-  - Writing `DSKLEN` ($024) enforces the physical 2-write arming sequence: the first write with bit 15 arms the controller, and the second consecutive write with bit 15 starts DMA transfer.
-  - Writes to CIA-B Port B ($BFD100) clock the shared `_MTR` wire into drive motor flip-flops on the falling edge of `_SELx`, pulse `_STEP`, and configure `_DIR` and `_SIDE`.
-  - On every CCK cycle, peripheral pin polling samples active drive status lines (`_RDY`, `_TK0`, `_WPROT`, `_CHNG`) into CIA-A Port A ($BFE001) inputs.
-- **Raster Beam Observation:**
-  - Centralized master beam coordinates (`BeamPosition { hpos, vpos, lof }`) from Agnus are passed directly into `step_cck(beam)` on `Copper`, `Sprites`, and `FrameBuilder`, eliminating circular references and dynamic heap allocations.
+### 6.3 Register / Value Pair Return Pattern & Action Routing
+To enforce strictly decoupled ownership with zero circular handles:
+- **Subsystem Returns Matured Pairs:** On each cycle, each subsystem's `step_cck()` advances internal timers and mutation countdowns, returning a fixed array of matured writes: `[Option<(u16, u16)>; 8]` (representing `(register_offset, value)` pairs that committed on this exact cycle):
+  ```rust
+  let agnus_due = self.agnus.step_cck();
+  for item in agnus_due.iter().flatten() {
+      self.dispatch_agnus_action(item.0, item.1);
+  }
+  let denise_due = self.denise.step_cck(beam);
+  for item in denise_due.iter().flatten() {
+      self.dispatch_denise_action(item.0, item.1);
+  }
+  let paula_due = self.paula.step_cck();
+  for item in paula_due.iter().flatten() {
+      self.dispatch_paula_action(item.0, item.1);
+  }
+  ```
+- **Action Method Dispatch:** The machine loop translates these matured register modifications into strongly typed action methods:
+  - **`DMACON` ($096) Master & Channel Routing:**
+    - Routes individual DMA enables to `Audio` (channels 0..3), `FloppyController` (`dma_enabled`), `Sprites` (`dma_enabled`), `Blitter` (`dma_enabled`), `Copper` (`dma_enabled`), and `FrameBuilder` (`dma_enabled`).
+    - Gated by master enable: channel DMA is only active when both master `DMAEN` (bit 9) and the channel enable bit are asserted.
+    - Updates `BLTPRI` (bit 10, Blitter Nasty mode) on `Blitter`.
+  - **`Copper` Strobes & Latches:**
+    - `COP1LC` ($080/$082) & `COP2LC` ($084/$086) update Copper pointer latches.
+    - `COPJMP1` ($088) & `COPJMP2` ($08A) strobes reload the active Copper Program Counter (`cop_pc`) and assert `is_running = true`.
+  - **`Blitter` Triggering & Register Synchronization:**
+    - Writing `BLTSIZE` ($058) synchronizes all active address pointers (`bltapt`, `bltbpt`, `bltcpt`, `bltdpt`) and control registers (`bltcon0`, `bltcon1`, modulos, masks) from Agnus into the Blitter engine.
+    - Hardware Invariant: Writing `BLTSIZE` immediately arms the Blitter and sets `is_busy = true`, asserting `BBUSY` in `DMACONR` even if DMA is currently disabled.
+  - **`Floppy` Subsystem Bridge:**
+    - Writing `DSKLEN` ($024) enforces the physical 2-write arming sequence: the first write with bit 15 arms the controller, and the second consecutive write with bit 15 starts DMA transfer.
+    - Writes to CIA-B Port B ($BFD100) clock the shared `_MTR` wire into drive motor flip-flops on the falling edge of `_SELx`, pulse `_STEP`, and configure `_DIR` and `_SIDE`.
+    - On every CCK cycle, peripheral pin polling samples active drive status lines (`_RDY`, `_TK0`, `_WPROT`, `_CHNG`) into CIA-A Port A ($BFE001) inputs.
+  - **Raster Beam Observation:**
+    - Centralized master beam coordinates (`BeamPosition { hpos, vpos, lof }`) from Agnus are passed directly into `step_cck(beam)` on `Copper`, `Sprites`, and `FrameBuilder`, eliminating circular references and dynamic heap allocations.
 
 ---
 
-## 7. Baseline Agnus DMA Bus Contention Arbitration
+## 7. Baseline Agnus DMA Bus Contention Arbitration & Transfer Architecture
 
 On each CCK step, Agnus evaluates the horizontal scanline slot schedule ($227.5$ CCKs per PAL line):
 1. **DMA Slot Allocation**:
@@ -253,6 +269,13 @@ On each CCK step, Agnus evaluates the horizontal scanline slot schedule ($227.5$
 2. **Contention Flag Exposure**:
    - Agnus drives `memory_bus.set_chip_ram_blocked(blocked)` based on the active DMA slot and `DMACON` bit 10 (`BLTPRI` Blitter Nasty mode).
    - Even before individual custom chip internal logic (e.g. bitplane pixel serializer, audio BLEP synthesis, Blitter minterm ALU) is fully implemented, this baseline arbiter allows the CPU, Copper, and memory bus to observe bus contention and stall with `MemoryBusResult::Blocked`, establishing realistic bus timing from day one.
+3. **DMA Word Transfer Flow via Machine Loop**:
+   - During active DMA slots, Agnus generates the physical Chip RAM address from its pointer registers (`audpt[ch]`, `dskpt`, `sprpt[i]`, `bplpt[i]`).
+   - `machine_loop` reads the 16-bit word from `PhysicalMemory` and routes it into the destination holding latch:
+     - Audio DMA: `paula.audio.set_dat(ch, word)` (loaded into `AUDxDAT`).
+     - Floppy DMA: `paula.dskdat = word` (read mode) or fetched from `paula.dskdat` into RAM (write mode).
+     - Sprites & Bitplanes: Loaded into Denise line serializers.
+   - When Paula's audio channel length reaches completion, Paula signals `AUDxDSR`, which `machine_loop` detects to reload Agnus pointer `audpt[ch] = audlc[ch]` and assert Paula `INTREQ` Level 4 interrupt.
 
 ---
 

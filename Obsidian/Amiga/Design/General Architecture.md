@@ -46,61 +46,101 @@ graph TD
 
 The codebase is organized as a Cargo workspace with decoupled, single-responsibility crates located under crates/:
 
-`mermaid
+```mermaid
 graph TD
+    classDef top fill:#0f2537,stroke:#38ef7d,stroke-width:2px,color:#ffffff;
     classDef core fill:#1e3a5f,stroke:#4f9da6,stroke-width:2px,color:#ffffff;
+    classDef chip fill:#2d1b4e,stroke:#9d4edd,stroke-width:2px,color:#ffffff;
+    classDef subchip fill:#3b1e36,stroke:#f72585,stroke-width:1px,color:#ffffff;
+    classDef periph fill:#1b3b22,stroke:#52b788,stroke-width:2px,color:#ffffff;
     classDef tool fill:#3d2c40,stroke:#d16ba5,stroke-width:2px,color:#ffffff;
-    classDef ext fill:#1c2321,stroke:#5e6472,stroke-width:1px,stroke-dasharray: 5 5,color:#e0e0e0;
 
-    subgraph WorkspaceCrates["Cargo Workspace Crates (crates/*)"]
+    subgraph TopLevel["Top-Level Machine Chassis"]
+        ML["machine_loop<br/><code>crates/machine_loop</code>"]:::top
+    end
+
+    subgraph MemoryAndCPU["Memory Storage & CPU Core"]
         CFG["config<br/><code>crates/config</code>"]:::core
-        RTC["rtc<br/><code>crates/rtc</code>"]:::core
         PMEM["physical_memory<br/><code>crates/physical_memory</code>"]:::core
         MBUS["memory_bus<br/><code>crates/memory_bus</code>"]:::core
+        RTC["rtc<br/><code>crates/rtc</code>"]:::core
         CPU["m68000<br/><code>crates/m68000</code>"]:::core
+    end
+
+    subgraph CustomChips["Custom Chip Coordinators & Coprocessors"]
+        AGNUS["agnus<br/><code>crates/agnus</code>"]:::chip
+        COP["copper<br/><code>crates/copper</code>"]:::subchip
+        BLT["blitter<br/><code>crates/blitter</code>"]:::subchip
+        DMA["dma<br/><code>crates/dma</code>"]:::subchip
+
+        DENISE["denise<br/><code>crates/denise</code>"]:::chip
+        SPR["sprites<br/><code>crates/sprites</code>"]:::subchip
+        FB["frame_builder<br/><code>crates/frame_builder</code>"]:::subchip
+
+        PAULA["paula<br/><code>crates/paula</code>"]:::chip
+        AUD["audio<br/><code>crates/audio</code>"]:::subchip
+        SER["serial_port<br/><code>crates/serial_port</code>"]:::subchip
+
+        CIA["cia (A & B)<br/><code>crates/cia</code>"]:::chip
+    end
+
+    subgraph Peripherals["Peripherals & Input Devices"]
+        GP["game_ports<br/><code>crates/game_ports</code>"]:::periph
+        MOU["mouse<br/><code>crates/mouse</code>"]:::subchip
+        JOY["joystick<br/><code>crates/joystick</code>"]:::subchip
+        FLP["floppy<br/><code>crates/floppy</code>"]:::periph
+        KBD["keyboard<br/><code>crates/keyboard</code>"]:::periph
+        PAR["parallel_port<br/><code>crates/parallel_port</code>"]:::periph
+    end
+
+    subgraph Diagnostics["Diagnostics, Debugger & GUI"]
         DIS["disassembler<br/><code>crates/disassembler</code>"]:::tool
         DBG["debugger<br/><code>crates/debugger</code>"]:::tool
-        TR["test_runner<br/><code>crates/test_runner</code>"]:::tool
         GUI["gui<br/><code>crates/gui</code>"]:::tool
+        TR["test_runner<br/><code>crates/test_runner</code>"]:::tool
     end
 
-    subgraph ExternalDeps["Key External Crates"]
-        SERDE["serde / serde_json<br/>(no_std + alloc)"]:::ext
-        BF["bitflags"]:::ext
-        GZ["flate2"]:::ext
-        EGF["eframe / egui"]:::ext
-        RFD["rfd"]:::ext
-    end
+    %% Chassis Ownership & Routing
+    ML --> CPU
+    ML --> PMEM
+    ML --> MBUS
+    ML --> AGNUS
+    ML --> DENISE
+    ML --> PAULA
+    ML --> CIA
+    ML --> FLP
+    ML --> KBD
+    ML --> GP
+    ML --> PAR
+    ML --> RTC
 
-    %% Internal Dependencies
-    RTC -->|depends on| CFG
-    MEM -->|depends on| CFG
-    MEM -->|depends on| RTC
-    CPU -->|depends on| MEM
-    DBG -->|depends on| CPU
-    DBG -->|depends on| MEM
-    DBG -->|depends on| DIS
-    TR -->|depends on| CPU
-    TR -->|depends on| MEM
-    TR -->|depends on| DIS
-    TR -->|depends on| DBG
-    GUI -->|depends on| CPU
-    GUI -->|depends on| MEM
-    GUI -->|depends on| DBG
-    GUI -->|depends on| CFG
+    %% Logical Containment / Re-exports
+    AGNUS --> COP
+    AGNUS --> BLT
+    AGNUS --> DMA
 
-    %% External Dependencies
-    CFG -.-> SERDE
-    RTC -.-> SERDE
-    MEM -.-> SERDE
-    CPU -.-> SERDE
-    CPU -.-> BF
-    DBG -.-> SERDE
-    TR -.-> SERDE
-    TR -.-> GZ
-    GUI -.-> EGF
-    GUI -.-> RFD
-`
+    DENISE --> SPR
+    DENISE --> FB
+
+    PAULA --> AUD
+    PAULA --> SER
+
+    GP --> MOU
+    GP --> JOY
+
+    %% Memory & Bus Connections
+    PMEM --> CFG
+    PMEM --> RTC
+    MBUS --> PMEM
+    CPU --> PMEM
+
+    %% Tooling Dependencies
+    DBG --> CPU
+    DBG --> PMEM
+    DBG --> DIS
+    GUI --> DBG
+    TR --> DBG
+```
 
 ### Crate Descriptions & Responsibilities
 

@@ -29,18 +29,31 @@ Denise is the video display processor and game port interface for the Amiga:
 
 ---
 
-## 2. Module Decomposition
+## 2. Module Decomposition & Workspace Architecture
 
-Denise is structured into clean, modular subcomponents within `chips/denise/`:
+Denise is partitioned into focused, single-responsibility workspace crates under `crates/`:
 
 ```
-chips/denise/
-├── mod.rs             // Denise coordinator, register dispatch & pixel pipeline
-├── bitplanes.rs       // BPLCON0-3, bitplane serializers, Dual Playfield, HAM6, EHB
-├── sprites.rs         // 8 hardware sprites, position comparators, attached pairs
-├── palette.rs         // COLOR00-COLOR31 (12-bit RGB444 color registers)
-├── collision.rs       // CLXDAT & CLXCON sprite/playfield collision detection
-└── game_ports.rs      // JOY0DAT/JOY1DAT quadrature & POTGO analog charge counters
+crates/
+├── sprites/           // Denise 8 hardware sprites, position comparators, attached pairs
+├── frame_builder/     // Denise raster scanline pixel compositor and 32-bit ARGB frame buffer
+└── denise/            // Denise coordinator, video controls (BPLCON0..3), palette, collisions
+```
+
+### 2.1 Logical Subsystem Containment & Re-Exports
+In accordance with the 3-tier re-export hierarchy, `crates/denise` encapsulates and re-exports its companion crates:
+```rust
+pub use frame_builder;
+pub use sprites;
+
+pub struct Denise {
+    pub model: DeniseModel,
+    pub sprites: sprites::Sprites,
+    pub frame_builder: frame_builder::FrameBuilder,
+    pub bplcon0: u16,
+    pub color: [u16; COLOR_PALETTE_SIZE],
+    // ... collision registers, window coordinates, and in-flight mutation pipeline
+}
 ```
 
 ---

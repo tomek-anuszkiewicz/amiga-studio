@@ -32,17 +32,31 @@ flowchart TD
 
 ---
 
-## 2. Module Decomposition
+## 2. Module Decomposition & Workspace Architecture
 
-Paula is structured into modular subcomponents within `chips/paula/`:
+Paula is partitioned into focused, decoupled workspace crates under `crates/`:
 
 ```
-chips/paula/
-├── mod.rs             // Paula coordinator, register dispatch & tick routing
-├── audio.rs           // 4 independent DMA sound channels, period counters, BLEP sinc
-├── floppy.rs          // Floppy MFM bit serializer/deserializer, sync detector, DMA
-├── uart.rs            // Serial port UART transceiver (SERDAT, SERPER)
-└── interrupts.rs      // Central INTENA and INTREQ priority encoder (IPL 1..6)
+crates/
+├── audio/             // 4-channel DMA audio engine, volume scaling, period counters, BLEP synthesis
+├── serial_port/       // RS-232 UART transceiver (SERDAT, SERPER, 9-bit framing)
+└── paula/             // Paula coordinator, central INTENA/INTREQ multiplexer, and register routing
+```
+
+### 2.1 Logical Subsystem Containment & Re-Exports
+In accordance with the 3-tier re-export hierarchy, `crates/paula` owns and re-exports its companion crates:
+```rust
+pub use audio;
+pub use serial_port;
+
+pub struct Paula {
+    pub audio: audio::Audio,
+    pub serial_port: serial_port::SerialPort,
+    pub intena: u16,
+    pub intreq: u16,
+    pub adkcon: u16,
+    // ... pot counters, floppy latches, and in-flight mutation pipeline
+}
 ```
 
 ---

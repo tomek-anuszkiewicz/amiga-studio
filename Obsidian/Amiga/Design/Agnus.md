@@ -30,17 +30,32 @@ Agnus is the master bus controller, DMA arbiter, and primary coprocessor engine 
 
 ---
 
-## 2. Module Decomposition
+## 2. Module Decomposition & Workspace Architecture
 
-To prevent monolithic structures, Agnus is organized into focused submodules:
+To prevent monolithic structures while maintaining strict flat Cargo workspace conventions, Agnus is partitioned into focused, single-responsibility crates under `crates/`:
 
 ```
-chips/agnus/
-├── mod.rs             // Agnus coordinator, register dispatch & tick routing
-├── beam.rs            // Master raster beam counters (VHPOSR, VPOSR, LOF toggle)
-├── dma.rs             // DMA channel arbiter & DMACON scheduling
-├── copper.rs          // Copper coprocessor state machine (MOVE, WAIT, SKIP)
-└── blitter.rs         // 4-channel DMA Blitter, minterm ALU, Bresenham line drawer
+crates/
+├── copper/            // Agnus Copper coprocessor state machine (MOVE, WAIT, SKIP, CDANG)
+├── blitter/           // 4-channel DMA Blitter, 256 minterms ALU, Bresenham line drawer
+├── dma/               // Agnus scanline DMA slot scheduler (227.5 CCK horizontal schedule)
+└── agnus/             // Agnus coordinator, beam counters (VHPOSR, VPOSR), register dispatch
+```
+
+### 2.1 Logical Subsystem Containment & Re-Exports
+Although each subsystem lives in its own crate under `crates/` for fast, decoupled builds, `Agnus` logically encapsulates and re-exports them via the 3-tier re-export hierarchy:
+```rust
+pub use blitter;
+pub use copper;
+pub use dma;
+
+pub struct Agnus {
+    pub model: AgnusModel,
+    pub copper: copper::Copper,
+    pub blitter: blitter::Blitter,
+    pub dma: dma::DmaScheduler,
+    // ... beam counters, registers, and in-flight mutation pipeline
+}
 ```
 
 ---
@@ -237,9 +252,19 @@ The baseline DMA arbiter implements horizontal scanline slot arbitration before 
 ### 5.4 Delayed Mutation Propagation Pipeline
 In Agnus, writes to control registers (`DMACON`, `BLTCON0/1`, `COPCON`) or strobes (`COPJMP1/2`, `BLTSIZE`) do not take instantaneous cross-chip effect:
 - **Read is NOW**: Reading `DMACONR`, `VHPOSR`, or `VPOSR` returns the currently active, latched state immediately on the current cycle.
-- **Write is Staged**: Writes enter an inline, fixed-capacity pipeline (`[Option<DelayedMutation<u16>>; 4]`).
+- **Write is Staged**: Writes enter an inline, fixed-capacity pipeline (`[Option<DelayedMutation>; 64]`, sized by `AGNUS_MUTATION_CAPACITY`).
 - Each CCK step decrements `remaining_cck`. When it reaches zero, the mutated value commits to the active register (e.g. updating DMA channel enables or triggering the Copper program counter reload).
 - **Zero Allocations & Save State Persistence**: The mutation array contains no heap allocations and is serialized into `AgnusState`, preserving determinism across save/restore cycles.
+
+### 5.5 DMA Word Routing via Central Machine Loop
+To preserve strictly decoupled ownership and eliminate circular references:
+- **Agnus Fetches from Chip RAM:** During designated DMA slots (Floppy slot 4, Audio slots 5..8, Sprites slots 12..27, Bitplanes, Blitter), Agnus addresses `PhysicalMemory` directly using internal pointers (`dskpt`, `audpt[ch]`, `sprpt[i]`, `bplpt[i]`).
+- **Machine Loop Routing:** The fetched 16-bit word is routed through `machine_loop` into the target subsystem's holding latches:
+  - Audio DMA words are transferred to Paula: `paula.audio.set_dat(channel, word)`.
+  - Floppy DMA words are transferred to Paula: `paula.dskdat = word` (or in write mode, Paula provides data to Agnus).
+  - Sprite DMA words are routed to Denise sprite shift registers.
+  - Bitplane DMA words are routed to Denise bitplane serializers.
+- **Channel Event Signals:** When a channel completes or requires buffer loop (`AUDxDSR` in audio, `_BLITINT` in Blitter), the subsystem asserts an event flag, which `machine_loop` passes back to Agnus to reload pointers (`audpt = audlc`) and Paula to assert interrupt requests (`INTREQ`).
 
 ---
 
