@@ -109,7 +109,7 @@ This document outlines the phased development plan, hardware milestones, verific
     - `RTE` instruction: popping $SR$ and return PC from $SSP$, restoring user/supervisor state, restoring original interrupt mask, and resuming main thread execution.
   - **Dedicated Automated Verification:**
     - 100% verified across 4 unit tests in `crates/m68000/tests/test_interrupts.rs` and 4 end-to-end integration tests in `crates/machine_loop/tests/test_interrupt_pipeline.rs`.
-- **Step 2.7: Subsystem Core Functional Implementations & Autonomous Execution Engines [Active Focus]:**
+- **[COMPLETED] Step 2.7: Subsystem Core Functional Implementations & Autonomous Execution Engines:**
   - **[COMPLETED] Step 2.7.1: Agnus Copper Coprocessor Execution Engine (`crates/copper`):**
     - Cycle-accurate two-word (32-bit / 4 CCK) instruction stream fetch from Chip RAM:
       - 2 CCKs for IR1 (register destination address or VPOS/HPOS target).
@@ -163,8 +163,8 @@ This document outlines the phased development plan, hardware milestones, verific
     - Cascaded 32-bit timer mode: Timer B counting Timer A underflows (`CRB` bits 5..6).
     - 24-bit Time-of-Day (TOD) clock ticking on 50 Hz (PAL) / 60 Hz (NTSC) vertical blank pulses with alarm match interrupt (`ALARM`, ICR bit 2).
     - Serial Data Register (SDR) bidirectional shift register synchronized with MOS 6500/1 keyboard protocol on CIA-A SP/CNT pins $\to$ Level 2 `PORTS` interrupt.
-    - Dedicated unit & integration tests in `crates/cia/tests/test_cia_advanced.rs`.
-- **Step 2.8: Agnus Master DMA Bus Arbiter, Time-Slot Scheduling & Chip RAM Contention Engine:**
+    - Dedicated unit & integration tests in `crates/cia/tests/test_cia_advanced.rs`, `crates/keyboard/tests/test_keyboard_advanced.rs`, and `crates/machine_loop/tests/test_cia_keyboard_integration.rs` (100% verified across 21 unit and integration tests).
+- **Step 2.8: Agnus Master DMA Bus Arbiter, Time-Slot Scheduling & Chip RAM Contention Engine [Active Focus]:**
   - **Horizontal Scanline DMA Slot Schedule (227/228 CCK PAL / 226 CCK NTSC):**
     - *Fixed Time-Slot Execution:* Orchestrate physical memory fetch cycles for DRAM Refresh (CCK 0..3), Floppy Disk DMA (CCK 4), 4 Audio channels (CCK 5..8), and 8 Sprite pairs (CCK 12..27), routing words into target subsystem holding latches.
     - *Dynamic Bitplane DMA Allocation & CPU Cycle Stealing:*
