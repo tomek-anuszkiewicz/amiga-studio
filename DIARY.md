@@ -3741,4 +3741,21 @@ Every future modification or implementation task must append an entry following 
   - *Standardized Multi-Page Web Crawl Conversion:* Replaces ad-hoc agent deduction with a reproducible, codified standard for unifying multi-chapter web documentation into publication-grade Obsidian reference notes.
   - *Obsidian Vault Interoperability:* Standardized frontmatter properties and tags ensure all newly converted reference notes immediately integrate into the vault graph, search filters, and Dataview tables.
 - **Verification & Test Results**:
-  - `python tools/pre_flight.py`: Passed 100% cleanly across all gates (Formatting, Attractor Discipline: 344 files clean, AGENTS.md ceiling: 13,576 bytes, Architecture rules: 18 passed in 0.78s).
+  - `python tools/pre_flight.py`: Passed 100% cleanly across all gates (Formatting, Attractors, AGENTS.md ceiling: 13,576 bytes, Architecture rules: 18 passed in 0.78s).
+
+---
+
+### [2026-09-15 00:30 CEST] — Pruning Obsolete Scripts & Consolidating References in html-to-markdown Skill
+- **Affected Subsystems**:
+  - `.agents/skills/html-to-markdown/` (`SKILL.md`, `scripts/convert_html.py`, `references/html-sanitization-heuristics.md`, `references/non-text-conversion-hierarchy.md`, `references/pdf-to-markdown-guidelines.md`)
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned obsolete dead script `scripts/convert_html.py` (~22 KB), the initial mechanical BeautifulSoup/DOM parser created in the early prototype phase that was superseded when the skill migrated to the LLM vision/transcription pipeline.
+  - Eliminated three redundant reference documents whose contents were already fully incorporated into `references/llm-transcription-prompt.md`:
+    - `references/html-sanitization-heuristics.md`: Obsolete DOM regex rules for the deleted script.
+    - `references/non-text-conversion-hierarchy.md`: Duplicate of the decision matrix codified in prompt Section 5 and `SKILL.md` Section 3.
+    - `references/pdf-to-markdown-guidelines.md`: Duplicate of KaTeX escaping, table hierarchy, and callout guidelines codified in prompt Sections 6, 7, and 8.
+  - Updated the directory toolchain tree in `SKILL.md` to reflect the lean, single-prompt architecture.
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean Skill Footprint & Zero Context Waste:* Eliminates 32 KB of redundant documentation and dead code. Any future agent or subagent invoking `html-to-markdown` now has exactly one authoritative prompt reference (`references/llm-transcription-prompt.md`) without conflicting or duplicate guidelines.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: Passed 100% cleanly across all gates (Formatting, Attractor Discipline: 341 files clean with 0 violations, AGENTS.md ceiling: 13,576 bytes, Architecture rules: 18 passed in 0.85s).

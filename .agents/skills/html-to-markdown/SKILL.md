@@ -34,10 +34,7 @@ All conversion scripts and references reside inside this skill directory:
 │   ├── diff_reference.py                  # Structural AST comparator against reference ground truth
 │   └── validate_links.py                  # Anchor, image asset, and link integrity validator
 └── references/
-    ├── llm-transcription-prompt.md        # Comprehensive LLM prompt (Cardinal rules, Non-text hierarchy, TOC rules)
-    ├── pdf-to-markdown-guidelines.md      # KaTeX hex escaping, table hierarchy, callouts & placeholder rules
-    ├── html-sanitization-heuristics.md     # Reference on MSO Word HTML quirks, CP1252, and entity cleanup
-    └── non-text-conversion-hierarchy.md   # Priority ladder: Assembly blocks, GFM tables, diagrams
+    └── llm-transcription-prompt.md        # Unified LLM prompt (Obsidian frontmatter, Multi-page crawl, Non-text hierarchy, TOC rules)
 ```
 
 ---
