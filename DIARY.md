@@ -3523,6 +3523,20 @@ Every future modification or implementation task must append an entry following 
   - Tested provider verification: correctly classified session as CPU when CUDA 13 DLLs were missing.
   - `python tools/pre_flight.py`: 100% passed cleanly.
 
+---
 
-
-
+### [2026-09-14 18:05 CEST] — Pruned Obsolete iff_to_png.py and Refined AmigaGuide Skill Documentation
+- **Affected Subsystems**:
+  - `.agents/skills/amigaguide-to-markdown/scripts/iff_to_png.py` (deleted obsolete standalone image converter)
+  - `.agents/skills/amigaguide-to-markdown/SKILL.md` (pruned Phase 5 IFF graphics conversion step and purged external host paths)
+- **What Was Changed (The Concrete Reality)**:
+  - Deleted `.agents/skills/amigaguide-to-markdown/scripts/iff_to_png.py` as AmigaGuide documentation within the project contains zero IFF/ILBM raster graphics.
+  - Updated `SKILL.md` directory tree, removed Phase 5, renumbered automated verification to Phase 5, and simplified subagent delegation template.
+  - Purged hardcoded external host paths from subagent return contract in `SKILL.md` in strict adherence to path privacy rules.
+- **Architectural Rationale & Trade-Offs**:
+  - *Dead Code Elimination:* Retaining an unused 233-line Python script that depends on Pillow and custom chunk parsers for non-existent IFF assets creates maintenance burden and cognitive overhead.
+  - *Streamlined Conversion Pipeline:* Simplifies the conversion workflow to focus purely on parsing, layout modernization, and heading anchor validation.
+- **Verification & Test Results**:
+  - Verified absence of references to `iff_to_png` across codebase (`crates/`, `tools/`, `tests/`).
+  - `cargo test -p test_runner --test test_architecture_rules`: all 18 tests passed.
+  - `python tools/pre_flight.py`: 100% compliant across all quality gates.

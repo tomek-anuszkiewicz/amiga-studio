@@ -197,8 +197,7 @@ All conversion scripts and references reside inside this skill directory:
 ├── SKILL.md                               # This workflow recipe
 ├── scripts/
 │   ├── convert_guide.py                   # Automated AmigaGuide parser and Markdown generator
-│   ├── validate_links.py                  # Obsidian-exact TD() link & anchor validator
-│   └── iff_to_png.py                      # Amiga IFF ILBM graphic to PNG converter
+│   └── validate_links.py                  # Obsidian-exact TD() link & anchor validator
 └── references/
     ├── amigaguide-spec.md                 # Complete AmigaGuide command and syntax reference
     └── obsidian-linking-quirks.md         # Obsidian heading anchor normalization and decodeURI rules
@@ -294,23 +293,7 @@ Always follow these rules when creating or rewriting links:
 
 ---
 
-### Phase 5: Converting Amiga IFF Graphics to PNG
-
-If the guide references Amiga IFF ILBM graphic files:
-1. Run `iff_to_png.py`:
-   ```bash
-   python .agents/skills/amigaguide-to-markdown/scripts/iff_to_png.py \
-     "path/to/image.iff" \
-     "Obsidian/Amiga/Reference/DocumentName/assets/image.png"
-   ```
-2. Reference the converted image in Markdown using standard syntax:
-   ```markdown
-   ![Figure Title](assets/image.png)
-   ```
-
----
-
-### Phase 6: Automated Verification & Validation
+### Phase 5: Automated Verification & Validation
 
 Always run `validate_links.py` as the final quality gate:
 
@@ -341,18 +324,16 @@ The validator:
     Convert AmigaGuide file `<GUIDE_PATH>` into Obsidian markdown under `Obsidian/Amiga/Reference/<DOC_NAME>/`.
     Follow .agents/skills/amigaguide-to-markdown/SKILL.md:
     1. Parse with `convert_guide.py --mode <split|single>`.
-    2. Convert any referenced IFF ILBM images with `iff_to_png.py`.
-    3. Validate links with `validate_links.py`.
-    4. Return strictly the AmigaGuide Conversion Report below.
+    2. Validate links with `validate_links.py`.
+    3. Return strictly the AmigaGuide Conversion Report below.
     ```
 - **Return Contract (Mandatory Structured Output):**
   The subagent must conclude with this exact markdown block:
   ```markdown
   ### 📖 AmigaGuide Conversion Report
   - **Document Name:** `<doc_name>`
-  - **Destination Path:** [`Obsidian/Amiga/Reference/<doc_name>/`](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Reference/<doc_name>/)
+  - **Destination Path:** `Obsidian/Amiga/Reference/<doc_name>/`
   - **Conversion Mode:** [`split` | `single`]
   - **Nodes / Chapters Processed:** `<total_nodes>` nodes $\to$ `<total_files>` markdown files
-  - **Graphics Converted:** `<num_png>` PNGs in `assets/`
   - **Link Validation Result:** `validate_links.py` 100% PASS (0 broken files, 0 broken anchors).
   ```
