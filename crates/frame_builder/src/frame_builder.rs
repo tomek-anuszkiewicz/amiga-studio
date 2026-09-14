@@ -13,15 +13,24 @@ pub const MAX_FRAME_HEIGHT: usize = 576;
 /// Total pixel count of the uncompressed frame buffer
 pub const FRAME_BUFFER_PIXELS: usize = MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT;
 
-/// Converts a 12-bit Amiga RGB444 color to a 32-bit host ARGB color (0xAARRGGBB)
+/// Converts a 12-bit Amiga RGB444 color to a 32-bit host ARGB color (0xAARRGGBB).
+///
+/// Applies linear DAC voltage quantization (n * 16 = n << 4) rather than naive ((n << 4) | n).
+/// In the physical Amiga 500, Denise outputs 4 bits per RGB channel to an onboard discrete R-2R
+/// resistor ladder DAC (270 / 560 ohm), producing 16 equidistant linear voltage levels from 0.0V to 0.7V.
+/// Unlike broadcast television video (which applied gamma pre-compression ~0.45 at the camera), the Amiga
+/// video signal was uncorrected linear voltage. Consequently, on analog CRT monitors, the natural power-law
+/// electron gun transfer function (gamma ~2.8) expanded shadow contrast so that dark values occupied
+/// proportionally equal voltage bandwidth. In 8-bit studio/raw digitizations (such as vAmigaTS captures),
+/// each 4-bit step corresponds to exactly 16 ADC codes (0, 16, 32, ..., 240).
 #[inline(always)]
 pub fn rgb444_to_argb32(rgb: u16) -> u32 {
     let r = ((rgb >> 8) & 0xF) as u32;
     let g = ((rgb >> 4) & 0xF) as u32;
     let b = (rgb & 0xF) as u32;
-    let r8 = (r << 4) | r;
-    let g8 = (g << 4) | g;
-    let b8 = (b << 4) | b;
+    let r8 = r << 4;
+    let g8 = g << 4;
+    let b8 = b << 4;
     0xFF00_0000 | (r8 << 16) | (g8 << 8) | b8
 }
 

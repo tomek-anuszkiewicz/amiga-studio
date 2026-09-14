@@ -135,6 +135,27 @@ fn test_matcher_detects_single_pixel_difference() {
 }
 
 #[test]
+fn test_matcher_channel_tolerance_boundary() {
+    let frame_act = [0x50u8; VAMIGA_RAW_BYTE_SIZE];
+    let mut frame_exp = [0x50u8; VAMIGA_RAW_BYTE_SIZE];
+
+    // Modify a pixel by exactly +1 on Red and -1 on Blue: should PASS under tolerance
+    frame_exp[0] = 0x51;
+    frame_exp[1] = 0x50;
+    frame_exp[2] = 0x4F;
+
+    let res_tol = compare_raw_frames(&frame_act, &frame_exp).expect("Comparison should succeed");
+    assert!(res_tol.passed);
+    assert_eq!(res_tol.mismatched_pixels, 0);
+
+    // Modify a pixel by +2 on Green: should FAIL
+    frame_exp[1] = 0x52;
+    let res_fail = compare_raw_frames(&frame_act, &frame_exp).expect("Comparison should succeed");
+    assert!(!res_fail.passed);
+    assert_eq!(res_fail.mismatched_pixels, 1);
+}
+
+#[test]
 fn test_matcher_invalid_length_returns_error() {
     let frame_act = [0x00u8; VAMIGA_RAW_BYTE_SIZE];
     let short_exp = vec![0u8; 1000];

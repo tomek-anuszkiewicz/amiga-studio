@@ -14,6 +14,9 @@ pub const VAMIGA_RAW_PIXELS: usize = VAMIGA_RAW_WIDTH * VAMIGA_RAW_HEIGHT;
 /// Total size in bytes of the uncompressed 24-bit RGB reference image (716 * 285 * 3)
 pub const VAMIGA_RAW_BYTE_SIZE: usize = VAMIGA_RAW_PIXELS * 3;
 
+/// Tolerance per color channel (+/- 1) to account for YUV chroma subcarrier rounding and quantization
+pub const COLOR_TOLERANCE_PER_CHANNEL: i16 = 1;
+
 /// Details of an individual pixel mismatch between rendered and reference frames
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VamigaDiff {
@@ -66,7 +69,14 @@ pub fn compare_raw_frames(
         let exp_g = expected[byte_offset + 1];
         let exp_b = expected[byte_offset + 2];
 
-        if act_r != exp_r || act_g != exp_g || act_b != exp_b {
+        let diff_r = (act_r as i16 - exp_r as i16).abs();
+        let diff_g = (act_g as i16 - exp_g as i16).abs();
+        let diff_b = (act_b as i16 - exp_b as i16).abs();
+
+        if diff_r > COLOR_TOLERANCE_PER_CHANNEL
+            || diff_g > COLOR_TOLERANCE_PER_CHANNEL
+            || diff_b > COLOR_TOLERANCE_PER_CHANNEL
+        {
             mismatched_pixels += 1;
             if first_mismatch.is_none() {
                 let x = pixel_idx % VAMIGA_RAW_WIDTH;

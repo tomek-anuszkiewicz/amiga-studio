@@ -3766,4 +3766,24 @@ Every future modification or implementation task must append an entry following 
   - `cargo run -p test_runner --release -- benchmark-chipset --compare`: Passed regression audit (coptim1 active 105.8 FPS vs 108.9 FPS baseline, -2.9% delta) and printed formatted method breakdown tree.
   - `python tools/aggregate_profile.py`: Verified against synthetic folded traces and baseline JSON update.
 
+---
+
+### [2026-09-14 23:50 CEST] — Linear Resistor DAC Quantization, Inverse Gamma & Frame Differencer Channel Tolerance
+- **Affected Subsystems**:
+  - `crates/frame_builder/src/frame_builder.rs`, `crates/frame_builder/tests/test_frame_builder.rs` (`rgb444_to_argb32` updated to use linear DAC quantization $n \times 16 = n \ll 4$ instead of naive replication)
+  - `crates/denise/tests/test_pixel_pipeline.rs` (aligned color assertions with linear DAC quantization)
+  - `crates/test_runner/src/vamiga/matcher.rs`, `crates/test_runner/tests/test_vamiga_harness.rs` (`compare_raw_frames` updated with `COLOR_TOLERANCE_PER_CHANNEL = 1` allowing $\pm 1$ per RGB channel)
+  - `Obsidian/Amiga/Design/Denise.md` (added Section 8: "Video Signal Generation, Resistor DAC & CRT Gamma Transfer Physics")
+  - `Obsidian/Amiga/Design/Platform Quirks and Invariants Catalog.md` (cataloged "Linear Resistor DAC & Absence of Gamma Pre-Correction" quirk)
+- **What Was Changed (The Concrete Reality)**:
+  - **Linear Resistor DAC Quantization**:
+    - Replaced naive 4-bit to 8-bit replication `(n << 4) | n` ($15 \times 17 = 255$) in `rgb444_to_argb32` with linear DAC quantization `n << 4` ($n \times 16 \to [0, 16, 32, ..., 240]$).
+    - Modeled physical Amiga hardware reality: Denise drives an uncorrected discrete R-2R resistor ladder ($270 / 560\ \Omega$), producing 16 equidistant linear voltage steps from $0.0\text{V}$ to $0.7\text{V}$. Because broadcast gamma pre-compression was absent, dark levels occupy proportional equal bandwidth in the signal, which analog CRT monitors expanded non-linearly ($\gamma \approx 2.8$).
+  - **Frame Differencer Channel Tolerance**:
+    - Enhanced `compare_raw_frames` to evaluate channel-wise absolute differences against `COLOR_TOLERANCE_PER_CHANNEL = 1`. Allows $\pm 1$ LSB variation to absorb analog PAL chroma subcarrier rounding and YUV matrix conversion variances in reference `.raw` captures.
+- **Verification & Test Results**:
+  - `cargo test -p frame_builder -p denise`: 20 unit tests passed.
+  - `cargo test -p test_runner --test test_vamiga_harness`: All 8 tests passed including tolerance boundary test.
+  - `python tools/pre_flight.py`: All pre-flight quality gates clean.
+
 

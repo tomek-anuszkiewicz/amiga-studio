@@ -8,19 +8,19 @@ use frame_builder::{
 fn test_rgb444_to_argb32_color_conversion() {
     // Primary and baseline colors
     assert_eq!(rgb444_to_argb32(0x0000), 0xFF000000); // Black
-    assert_eq!(rgb444_to_argb32(0x0FFF), 0xFFFFFFFF); // White
-    assert_eq!(rgb444_to_argb32(0x0F00), 0xFFFF0000); // Red
-    assert_eq!(rgb444_to_argb32(0x00F0), 0xFF00FF00); // Green
-    assert_eq!(rgb444_to_argb32(0x000F), 0xFF0000FF); // Blue
+    assert_eq!(rgb444_to_argb32(0x0FFF), 0xFFF0F0F0); // White
+    assert_eq!(rgb444_to_argb32(0x0F00), 0xFFF00000); // Red
+    assert_eq!(rgb444_to_argb32(0x00F0), 0xFF00F000); // Green
+    assert_eq!(rgb444_to_argb32(0x000F), 0xFF0000F0); // Blue
 
-    // Nibble replication (0xR -> 0xRR, 0xG -> 0xGG, 0xB -> 0xBB)
-    // 0x0A5C: R=0xA -> 0xAA, G=0x5 -> 0x55, B=0xC -> 0xCC
-    assert_eq!(rgb444_to_argb32(0x0A5C), 0xFFAA55CC);
-    // 0x0123: R=0x1 -> 0x11, G=0x2 -> 0x22, B=0x3 -> 0x33
-    assert_eq!(rgb444_to_argb32(0x0123), 0xFF112233);
+    // Linear DAC scaling (0xR -> 0xR0, 0xG -> 0xG0, 0xB -> 0xB0)
+    // 0x0A5C: R=0xA -> 0xA0, G=0x5 -> 0x50, B=0xC -> 0xC0
+    assert_eq!(rgb444_to_argb32(0x0A5C), 0xFFA050C0);
+    // 0x0123: R=0x1 -> 0x10, G=0x2 -> 0x20, B=0x3 -> 0x30
+    assert_eq!(rgb444_to_argb32(0x0123), 0xFF102030);
 
     // Ensure highest nibble (bits 15-12) is ignored
-    assert_eq!(rgb444_to_argb32(0xFA5C), 0xFFAA55CC);
+    assert_eq!(rgb444_to_argb32(0xFA5C), 0xFFA050C0);
 }
 
 #[test]

@@ -189,7 +189,34 @@ Denise houses the directional and quadrature counters for Game Port 1 and Game P
 
 ---
 
-## 8. Reset Defaults
+## 8. Video Signal Generation, Resistor DAC & CRT Gamma Transfer Physics
+
+The conversion from 12-bit Amiga RGB444 color registers (`COLOR00`–`COLOR31`) to analog display voltages and host 32-bit ARGB frame buffers is governed by physical hardware circuits:
+
+### 8.1 Discrete R-2R Resistor Ladder DAC (Linear Voltage)
+Unlike modern graphics hardware with built-in active DACs or non-linear gamma lookup tables:
+- **Onboard Resistor Network:** In the physical Amiga 500, Denise outputs 4 digital CMOS logic lines per color channel ($R_0..R_3$, $G_0..G_3$, $B_0..B_3$) directly to an external discrete resistor network on the motherboard (R-2R ladder utilizing $270\ \Omega$ and $560\ \Omega$ metal film resistors feeding a standard $75\ \Omega$ termination).
+- **Strictly Linear Voltage Steps:** The resistor network functions as a passive digital-to-analog converter producing 16 strictly equidistant, linear voltage levels from $0.0\text{V}$ (code 0) to $0.7\text{V}$ (code 15) with an exact step voltage of $\Delta V = \frac{0.7\text{V}}{15} \approx 46.67\text{ mV}$.
+
+### 8.2 Absence of Broadcast Gamma Pre-Correction
+In standard analog color television broadcast standards (PAL / NTSC / CCIR System I):
+- **Broadcast Standards (Gamma Pre-Compressed):** Television cameras were legally mandated to apply gamma pre-correction ($\gamma \approx 1/2.2 \approx 0.45$) to the video signal before transmission. Because the human visual system is logarithmically sensitive to luminance in dark regions (Weber-Fechner law) and CRT electron guns exhibit a non-linear power-law characteristic ($I \propto V^\gamma$, where $\gamma \approx 2.2–2.8$), pre-compressing highlights and expanding dark tones ensured that dark values occupied significantly more bandwidth in the transmission channel, suppressing transmission noise in shadows.
+- **The Amiga Reality (Uncorrected Raw Signal):** The Amiga 500 contains **zero gamma correction circuitry**. The video signal emitted from the 23-pin RGB port is raw, uncompressed linear voltage directly proportional to the 4-bit digital register values. Consequently, dark levels occupy the exact same proportional voltage bandwidth as highlight levels (each step is 1/15th of the dynamic range).
+
+### 8.3 CRT Monitor Transfer Function & Shadow Contrast
+When an uncorrected Amiga video signal is plugged directly into a period-accurate analog CRT monitor (such as the Commodore 1084S):
+- **Natural CRT Expansion:** The physical power-law response of the CRT monitor's electron gun ($\gamma_{\text{CRT}} \approx 2.8$) acts directly upon the linear voltage:
+  $$L(n) = L_{\text{max}} \times \left(\frac{n}{15}\right)^{2.8}$$
+- **Crushed Shadows & Retro Contrast:** The lowest DAC steps ($n = 1, 2, 3$) produce negligible physical screen luminance ($L(1) = 0.05\%$, $L(2) = 0.35\%$, $L(3) = 1.1\%$), naturally crushing deep shadows into pitch black, while upper steps ($n = 12..15$) generate over $70\%$ of visible luminance. Amiga pixel artists and game developers calibrated their palette choices specifically against this natural CRT darkening.
+
+### 8.4 Studio Quantization ($n \times 16$) & Host Verification Tolerance ($\pm 1$)
+When digitizing Amiga video frames or comparing emulator output against vAmigaTS golden reference captures (`.raw` RGB24 viewports):
+- **Studio Range Scaling ($n \times 16$):** Rather than naively scaling 4-bit values to 8-bit using bit replication `(n << 4) | n` ($15 \times 17 = 255$), the uncorrected linear DAC voltage maps to 8-bit studio quantization ($n \times 16 \to 0, 16, 32, ..., 240$), matching broadcast studio conventions where nominal peak white is capped at code 240 (`0xF0`).
+- **Chroma Subcarrier Rounding ($\pm 1$ Channel Tolerance):** Analog video modulators (such as the Motorola MC1377P inside the Commodore A520 TV modulator) and frame grabber ADC matrix conversions introduce minor $\pm 1$ LSB chroma rounding (e.g. 239 vs 240, 95 vs 96, 63 vs 64). Frame differencers allow a tolerance of $\pm 1$ per RGB channel (`COLOR_TOLERANCE_PER_CHANNEL = 1`) to ensure deterministic matching against physical silicon captures without spurious 1-LSB noise.
+
+---
+
+## 9. Reset Defaults
 
 - **`BPLCON0` (`$DFF100`):** Reset to **`$0000`** (bitplanes disabled, video generation off).
 - **`COLOR00`–`COLOR31`:** Default to **`$0000`** (black).
@@ -198,7 +225,7 @@ Denise houses the directional and quadrature counters for Game Port 1 and Game P
 
 ---
 
-## 9. Reference Documentation & Upstream Ground Truth
+## 10. Reference Documentation & Upstream Ground Truth
 
 - [Amiga Hardware Reference Manual: Chapter 3 (Playfield Hardware)](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Authoritative guide for dual-playfield scrolling, bitplane priority multiplexing, color palette selection, HAM6, and EHB video modes.
 - [Amiga Hardware Reference Manual: Chapter 4 (Sprite Hardware)](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md): Hardware specification for 8 DMA sprite channels, sprite pairing (15-color mode), and hardware collision detection (`CLXDAT`).

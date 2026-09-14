@@ -4,12 +4,12 @@ use denise::{decode_dual_playfield, decode_ehb, decode_ham6, frame_builder, Deni
 #[test]
 fn test_rgb444_to_argb32() {
     assert_eq!(frame_builder::rgb444_to_argb32(0x000), 0xFF00_0000);
-    assert_eq!(frame_builder::rgb444_to_argb32(0xFFF), 0xFFFF_FFFF);
-    assert_eq!(frame_builder::rgb444_to_argb32(0xF00), 0xFFFF_0000);
-    assert_eq!(frame_builder::rgb444_to_argb32(0x0F0), 0xFF00_FF00);
-    assert_eq!(frame_builder::rgb444_to_argb32(0x00F), 0xFF00_00FF);
-    assert_eq!(frame_builder::rgb444_to_argb32(0x123), 0xFF11_2233);
-    assert_eq!(frame_builder::rgb444_to_argb32(0xABC), 0xFFAA_BBCC);
+    assert_eq!(frame_builder::rgb444_to_argb32(0xFFF), 0xFFF0_F0F0);
+    assert_eq!(frame_builder::rgb444_to_argb32(0xF00), 0xFFF0_0000);
+    assert_eq!(frame_builder::rgb444_to_argb32(0x0F0), 0xFF00_F000);
+    assert_eq!(frame_builder::rgb444_to_argb32(0x00F), 0xFF00_00F0);
+    assert_eq!(frame_builder::rgb444_to_argb32(0x123), 0xFF10_2030);
+    assert_eq!(frame_builder::rgb444_to_argb32(0xABC), 0xFFA0_B0C0);
 }
 
 #[test]
@@ -191,8 +191,8 @@ fn test_render_scanline_with_fine_scrolling() {
     for x in 0..4 {
         assert_eq!(denise.frame_builder.get_pixel(x, 100), 0xFF00_0000);
     }
-    // Pixels 4..20 should be white (0xFFFFFFFF)
+    // Pixels 4..20 should be white (0xFFF0F0F0)
     for x in 4..20 {
-        assert_eq!(denise.frame_builder.get_pixel(x, 100), 0xFFFF_FFFF);
+        assert_eq!(denise.frame_builder.get_pixel(x, 100), 0xFFF0_F0F0);
     }
 }
