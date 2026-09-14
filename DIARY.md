@@ -3413,3 +3413,21 @@ Every future modification or implementation task must append an entry following 
   - Tested `tools/bootstrap_reference.ps1 -Item hrm` (verified skip on existing 2nd Edition target, 40.8 MB).
   - Tested `tools/bootstrap_reference.ps1 -List` (verified clean 2-mirror catalog for HRM without 3rd Edition).
   - `python tools/pre_flight.py`: 100% compliant across all quality gates.
+---
+
+### [2026-09-14 14:51 CEST] — Removed Redundant Raster Scan Mirror for 68000 PRM
+- **Affected Subsystems**:
+  - `tools`
+  - `reference`
+  - `documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the 74.7 MB raster scan mirror (`Motorola_Programmers_Reference_Manual_M68000PM_AD.pdf`) from `tools/bootstrap_reference.ps1` and `Obsidian/Amiga/Reference/README.md`.
+  - Deleted the physical file from `Obsidian/Amiga/Reference/temp/68000 Programmer's Reference Manual/`.
+  - Retained exclusively the two born-digital vector PDFs (`M68000PRM.pdf` and Bitsavers `M68000PM_AD_Rev_1_Programmers_Reference_Manual_1992.pdf`).
+- **Architectural Rationale & Trade-Offs**:
+  - The raster scan PDF was 75 MB of uncompressed bitmaps for the same 1992 Rev 1 manual already provisioned as a crystal-clear, searchable 4.5 MB born-digital vector PDF (`M68000PRM.pdf`).
+  - Eliminating the heavy raster mirror saves storage, speeds up full bootsrapping, and avoids lower-quality OCR text extraction in favor of authentic vector font rendering.
+- **Verification & Test Results**:
+  - Tested `tools/bootstrap_reference.ps1 -Item prm` (verified `[SKIP] Target already provisioned: M68000PRM.pdf (4.51 MB)`).
+  - Tested `tools/bootstrap_reference.ps1 -List` (verified clean 2-mirror matrix for PRM).
+  - `python tools/pre_flight.py`: 100% compliant across all quality gates.

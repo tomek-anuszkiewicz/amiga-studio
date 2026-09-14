@@ -141,12 +141,6 @@ $Catalog = @(
                 Url     = "https://archive.org/download/bitsavers_motorola68ogrammersReferenceManual1992_2394181/M68000PM_AD_Rev_1_Programmers_Reference_Manual_1992.pdf"
                 File    = "M68000PM_AD_Rev_1_Programmers_Reference_Manual_1992.pdf"
                 MinSize = 2000000
-            },
-            @{
-                Name    = "Internet Archive (Motorola M68000PM/AD High-Res Scan PDF, Failover)"
-                Url     = "https://archive.org/download/Motorola_Programmers_Reference_Manual_M68000PM_AD/Motorola_Programmers_Reference_Manual_M68000PM_AD.pdf"
-                File    = "Motorola_Programmers_Reference_Manual_M68000PM_AD.pdf"
-                MinSize = 50000000
             }
         )
     },
