@@ -9,13 +9,15 @@ This rule governs the continuous synchronization, pruning, and milestone complet
 
 ---
 
-## 1. Step Completion & Active List Pruning
+## 1. Step Completion & Active Backlog Pruning
 
 Whenever an agent is 100% certain that a roadmap milestone or step in [`ROADMAP.md`](../../ROADMAP.md) has been fully implemented and verified (all unit, integration, and architecture tests pass):
-- As part of that **same task/commit**, you **must update [`ROADMAP.md`](../../ROADMAP.md)**:
-  1. **Remove the completed task** from the active implementation list.
-  2. **Update the concise completed baseline summary** at the top of the roadmap with the newly verified milestone and its capabilities.
-  3. **Renumber and reorder remaining steps** so that [`ROADMAP.md`](../../ROADMAP.md) always reflects the live, remaining backlog.
+- As part of that **same task/commit**, you **must update [`ROADMAP.md`](../../ROADMAP.md)** following the [`roadmap-maintenance`](../skills/roadmap-maintenance/SKILL.md) skill:
+  1. **Zero Retention of Completed Items:** Never mark tasks with `[COMPLETED]`, `[Completed: ...]`, `[x]`, or strikethrough. Do NOT retain completed tasks or verbose implementation breakdowns in Section 2.
+  2. **Completely Delete Finished Tasks:** Delete the completed task, step, or sub-step text from Section 2 ("Core Implementation Strategy (Remaining Milestones)"). The active roadmap must strictly reflect only pending and in-progress work.
+  3. **Update Concise Baseline Summary:** If the completed work represents an architectural milestone or major subsystem capability, update the concise completed baseline summary in Section 1 with high-level verified capabilities.
+  4. **Renumber and Reorder Remaining Steps:** Keep remaining steps and sub-steps sequentially numbered and contiguous.
+  5. **Historical Logging in DIARY.md:** Granular execution narratives, files touched, and technical rationales belong strictly in [`DIARY.md`](../../DIARY.md) (Section 10) and Git commit history, never in [`ROADMAP.md`](../../ROADMAP.md).
 
 ---
 

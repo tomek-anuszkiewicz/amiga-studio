@@ -3361,6 +3361,41 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_dma_cartesian`: All 19 tests passed (validating cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ across full instruction set).
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly.
 
+---
+
+### [2026-09-14 12:55 CEST] — Zero Retention Policy for Completed Roadmap Items in Skills, Rules & ROADMAP.md
+- **Affected Subsystems**:
+  - `.agents/skills/roadmap-maintenance/SKILL.md` (new skill codifying the zero-retention pruning protocol for `ROADMAP.md`)
+  - `.agents/skills/code-review/SKILL.md` (updated code review verification steps and DoD checklist to mandate completed task deletion)
+  - `.agents/workflows/code-review.md` (updated workflow checklists to verify complete removal of completed backlog items)
+  - `.agents/rules/roadmap-maintenance.md` (strengthened rule explicitly prohibiting `[COMPLETED]` tags and mandating task deletion)
+  - `AGENTS.md` (updated Section 1 and Section 4 Definition of Done to specify zero completed items retention)
+  - `ROADMAP.md` (added concise Custom Chipset Integration baseline deliverable to Section 1; purged all completed Steps 2.1–2.8 from Section 2; renumbered remaining backlog steps)
+- **What Was Changed (The Concrete Reality)**:
+  - Created `.agents/skills/roadmap-maintenance/SKILL.md`:
+    - Codified the core principle: `ROADMAP.md` is strictly a forward-looking backlog of pending and active work, never an execution changelog or archive.
+    - Strictly prohibited marking backlog items with `[COMPLETED]`, `[Completed: ...]`, `[x]`, or strikethrough.
+    - Defined the step-by-step pruning procedure: verifying tests, completely deleting finished task descriptions from Section 2, updating high-level baseline deliverables in Section 1 upon major milestone completion, and renumbering remaining steps.
+  - Updated `.agents/skills/code-review/SKILL.md` and `.agents/workflows/code-review.md`:
+    - Added explicit checks verifying that completed tasks are completely deleted from `ROADMAP.md` with zero `[COMPLETED]` markers retained in Section 2.
+  - Updated `.agents/rules/roadmap-maintenance.md`:
+    - Codified zero retention of completed items and linked directly to the `roadmap-maintenance` skill.
+  - Updated `AGENTS.md`:
+    - Replaced ambiguous "Mark completed tasks" phrasing with "Prune and remove completed tasks from ROADMAP.md (zero `[COMPLETED]` items retained)", maintaining strict byte ceiling compliance (13,624 bytes <= 14,000 bytes).
+  - Cleaned up `ROADMAP.md`:
+    - Added concise "Custom Chipset Integration & Autonomous Execution Engines" bullet to Section 1 Baseline Deliverables (114 verified tests).
+    - Completely deleted 127 lines of completed task descriptions across Steps 2.1 through 2.8 from Section 2.
+    - Renumbered remaining steps in Step 2: Step 2.1 (Host Audio Playback & CRT Presentation Shaders) and Step 2.2 (Host Input Subsystem, Game Controller Mapping & Port Hub).
+    - Removed stray `(Completed)` tag from Section 3.3.
+- **Architectural Rationale & Trade-Offs**:
+  - *Separation of Concerns:* Granular chronological history belongs in `DIARY.md` (Section 10) and Git commit logs. Active backlog items in `ROADMAP.md` should only reflect pending work to minimize prompt context bloat and keep upcoming milestones clear.
+- **Verification & Test Results**:
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 351 files (0 attractors).
+  - `cargo fmt --all -- --check`: Passed cleanly.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed cleanly.
+  - Verified `ROADMAP.md` contains zero occurrences of `[COMPLETED]` or `[Completed: ...]` in Section 2.
+
+
 
 
 

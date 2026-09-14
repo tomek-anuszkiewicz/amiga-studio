@@ -31,6 +31,16 @@ This document outlines the phased development plan, hardware milestones, verific
   - Automated execution trace audit logger (--dump-traces), statistical variance tracker, and cycle anomaly detector.
 - **Repository Sanitization & History Scrubbing (Completed Baseline Deliverable):**
   - Full Git history audit, Conventional Commits normalization, pruning of 146 empty/redundant commits (preserving author/committer timestamps), and deep asset purge (decoupling `ref_src`, PDFs, schematics, and caches), shrinking repository packfile from ~2.8 GB to 4.43 MB (99.8% reduction).
+- **Custom Chipset Integration & Autonomous Execution Engines (Completed Baseline Deliverable):**
+  - Scaffolded 17 flat workspace crates (`copper`, `blitter`, `dma`, `agnus`, `sprites`, `frame_builder`, `mouse`, `joystick`, `denise`, `audio`, `floppy`, `serial_port`, `paula`, `keyboard`, `parallel_port`, `cia`, `machine_loop`) with zero circular references and parameter-based borrow splitting.
+  - Complete custom chip hardware registers with calibrated CCK electronic propagation delay pipelines ($K$-phase latency) and zero-cost stack-allocated `MemoryBus<'a>` router decoding Custom Chips (`$DF`), CIAs (`$BF`), and RTC (`$DC`).
+  - Action dispatch pipeline bridging register writes to strongly-typed subsystem methods (`FloppyDrive`, `Blitter`, `Audio`, `Copper`, `Denise`).
+  - Decoupled `A500State` serialization supporting referenced/self-contained modes, JSON and gzip compression (<50 KB), and 5-slot in-memory quick-save ring buffer with Developer Studio UI integration (`F6`/`F9`).
+  - Machine-wide cold (`reset_cold`) and warm (`reset_warm`) reset sequencing, privileged M68000 `RESET` line propagation, and hardware `Ctrl-Amiga-Amiga` reset trigger.
+  - End-to-end multi-chip interrupt priority arbitration pipeline (Levels 1–6) across Agnus, Paula, and CIAs with autovector exception processing.
+  - Autonomous chipset execution engines: Agnus Copper coprocessor (`MOVE`, `WAIT`, `SKIP`, `CDANG`), Agnus 4-channel DMA Blitter (256-minterm Boolean ALU, barrel shifters, line drawer), Denise pixel pipeline (bitplane serializer, 32-color palette, EHB, HAM6, dual playfield) and 8 hardware sprites, Paula 4-channel audio sample streaming, Floppy MFM track encoder/decoder with ADF injection, and dual MOS 8520 CIAs (timers, TOD, keyboard serial shift register).
+  - Agnus master DMA bus arbiter with 227/226 CCK horizontal scanline scheduling, 8-tier bus priority, Blitter Nasty / starvation yield, and direct CPU Chip RAM wait-state stalling with Fast RAM immunity.
+  - 100% verified across 114 unit and integration tests throughout the workspace.
 
 ### Phase 2: Enhanced Chipset (ECS) & Later Models
 - **A500 Rev 6A (1 MB Chip):** Fat Agnus 8372A with 1 MB Chip RAM jumper configuration.
@@ -53,137 +63,10 @@ This document outlines the phased development plan, hardware milestones, verific
   - Test and refine upcoming Save State management (`State` menu, in-memory quick slots 1–5, `F6`/`F9` shortcuts, native file dialogs, and State Manager modal dialog).
 
 ### Step 2: Custom Chipsets & Machine Integration (Agnus, Denise, Paula, CIAs — Active Focus)
-- **Step 2.1: Minimal Machine Main Loop (A500::step_cck) & Subsystem Orchestration (Completed Baseline Scaffold):**
-  - Scaffolded all 17 specialized hardware crates across the Cargo workspace in a flat, decoupled structure: `copper`, `blitter`, `dma`, `agnus`, `sprites`, `frame_builder`, `mouse`, `joystick`, `denise`, `audio`, `floppy`, `serial_port`, `paula`, `keyboard`, `parallel_port`, `cia`, and `machine_loop`.
-  - Created top-level machine struct (`A500Machine`) owning all primary chips, coprocessors, and peripheral devices as flat fields with monotonic `u64` Color Clock (`cck`) counter and zero circular references.
-  - Sibling crates maintain zero dependencies on each other; cycle execution uses parameter-based passing for clean borrow splitting.
-  - Implemented multi-level stepping interfaces: `step_cck(cck: u64)`, `step_instruction()`, `step_cycles(n)`, `step_frame()`.
-  - Central interrupt priority arbitration pipeline: samples Paula (Levels 1, 3, 4, 5), CIA-A (Level 2), and CIA-B (Level 6), calculates highest unmasked level, and drives `cpu.state.ipl`.
-  - 100% verified: clean `cargo check --workspace`, 24 unit tests across new crates, architecture test validation, and `test_dma_cartesian` pass.
-- **Step 2.2: Custom Chip Hardware Registers, Propagation Latency & Clock Domains [Completed: 2026-09-13]:**
-  - **Hardware Register Mapping & Access Semantics:** Implemented custom chip hardware registers across Agnus ($DFF000–$DFF07E), Denise ($DFF080–$DFF0DE), Paula ($DFF0A0–$DFF0FE), and CIAs ($BFE001 / $BFD000) with strict hardware access permissions: write-only registers (`DMACON`, `INTENA`, `BPLCON0`, open-bus floating return `$FFFF`), read-only status registers (`DMACONR`, `INTENAR`, `VPOSR`), strobes (`COPJMP1/2`, `BLTSIZE`), and clear-on-read registers (`CLXDAT`, `ICR` with non-destructive `peek_register()`).
-  - **Electronic Propagation Latency ($K$ CCK Phase Delay Pipeline):** Modeled physical circuit propagation delays where staged writes enter an inline delay pipeline and commit after calibrated Color Clock phases / CCK cycles (Denise colors/BPLCON0: 1 CCK; Paula interrupts: 1 CCK; Paula ADKCON: 2 CCK; Agnus DMACON: 2 CCK; Agnus BPLCON0 mirror: 4 CCK; CIA E-Clock: 5 CCK).
-  - **Propagation Modes & Sizing:** Supported `MutationMode::Pipeline` for streaming data (colors, audio samples) and `MutationMode::OverwritePending` for control/strobe registers. Embedded inline fixed-capacity mutation buffers matching write register counts (Agnus: 64, Denise: 64, Paula: 32, CIA: 16) with zero runtime heap allocations and defensive overflow fallback with error logging.
-  - **Cross-Chip Chain Reactions & Pin Cascades:** Changes in one register trigger domino effects across companion chips (`BPLCON0` simultaneous broadcast with dual latencies; `DMACON` broadcast from Agnus to Paula audio/disk DMA enables; `CIA-A _OVL` pin transition directly controlling Gary boot overlay on `MemoryBus`; Paula interrupt request evaluation asserting CPU IPL lines 1..6).
-  - **CIA E-Clock Frequency Domain Decoupling:** Modeled the distinct, significantly slower clock domain of the dual MOS 8520 CIAs (5 CCK per E-Clock tick), 24-bit TOD atomic read-freeze on `TODHI` and unfreeze on `TODLO`, and `_LED` pin transition.
-  - **Machine Loop Weaving & Zero-Cost Router:** Refactored `crates/memory_bus` into pure physical storage (`PhysicalMemory`), eliminating duplicate register buffers and the ~160M copies/sec synchronization loop in favor of a zero-cost stack-allocated `MemoryBus<'a>` router in `crates/machine_loop` decoding Bank `$DF` (Custom Chips), `$BF` (CIAs), and `$DC` (RTC) directly.
-  - **Dedicated Unit & Integration Tests:** 100% verified across 7 test suites (`test_mutation`, `test_agnus_registers`, `test_denise_registers`, `test_paula_registers`, `test_cia_registers`, `test_register_propagation`, `test_rtc`).
-- **Step 2.3: Subsystem Action Dispatch & Multi-Chip Register Binding Pipeline [Completed: 2026-09-14]:**
-  - **Semantic Action Method Dispatch:** Bridge low-level register bits and latched state transitions into explicit, strongly typed action methods on subsystem structs (`FloppyDrive::set_motor`, `FloppyDrive::step_pulse`, `FloppyController::set_dsklen`, `Blitter::trigger_blit`, `Blitter::sync_pointers`, `Audio::set_dma_enables`, `Copper::strobe_jump1/2`, `Denise::set_bplcon0/1/2`, `Denise::set_color`, `Denise::set_diw`), replacing raw polling with event-driven hardware dispatch.
-  - **Propagation-Aware Action Triggering:** When a delayed register mutation matures after its $K$ CCK phase delay (or immediately upon unqueued writes), the machine loop executes the targeted action method on the exact operational cycle.
-  - **Multi-Chip Aggregate Device Control (Floppy Subsystem):** Full physical modeling across CIA-A Port A ($BFE001: `_CHNG`, `_WPROT`, `_TK0`, `_RDY`), CIA-B Port B ($BFD100: shared `_MTR` latching on `_SELx` falling edge, `_STEP` pulse, `_DIR`, `_SIDE`), and Paula (`DSKLEN` 2-write arming sequence, `DSKPTH/L`, `DSKSYNC`, `ADKCON`).
-  - **Master Raster Beam Observation:** Decoupled `BeamPosition { hpos, vpos, lof }` progression in Agnus passed into `step_cck(beam)` on `Copper`, `Sprites`, and `FrameBuilder` without circular handles or runtime heap allocations.
-  - **Dedicated Integration Tests:** 100% verified in `crates/floppy/tests/test_floppy.rs` and `crates/machine_loop/tests/test_action_dispatch.rs`.
-- **Step 2.4: Machine-Wide Save State Serialization & Restoration (Machine Core & Developer Studio Integration) [Completed: 2026-09-14]:**
-  - **Comprehensive State Schema (`A500State`):** Implemented decoupled, serde-compatible state snapshot container (`A500State`) and metadata header (`SaveStateHeader`) across all machine subsystems: CPU (`CpuState`, `CpuMicroState`), PhysicalMemory (RAM buffers, Gary boot overlay state, bank descriptors), Agnus (beam counters, Copper, Blitter, DMA mask, in-flight mutation pipelines), Denise (sprites, frame builder state, palette), Paula (4 audio channels, serial port, interrupts), and dual CIAs (timers A/B, TOD, ICR latches).
-  - **Zero-Allocation Machine Snapshot API:** Exposed public snapshot and restoration methods on `A500Machine`: `save_state() -> A500State`, `save_state_self_contained()`, `load_state(&state) -> Result<(), SaveStateError>`, `save_state_to_file()`, and `load_state_from_file()`.
-  - **Referenced & Self-Contained ROM Modes:** Implemented standard IEEE 802.3 CRC32 verification guards. In referenced mode, states omit duplicate 256KB/512KB ROM buffers and guard against mismatched Kickstart images; in self-contained mode, states bundle the full ROM image.
-  - **Dual Serialization Formats (JSON & Gzip):** Supported human-readable JSON (`to_json`) and lean gzip-compressed binary (`to_compressed_bytes`), compressing 512KB states down to < 50KB with automatic header sniffing on load.
-  - **Headless Debugger Controller Integration (`DebuggerSession`):** Added 5-slot in-memory quick-save ring buffer (`save_quick_slot` / `load_quick_slot` 1..5), JSON/file persistence, and automated synchronization of debugger telemetry, CCK counters, memory diff baselines, and execution pause.
-  - **Developer Studio GUI Integration (`crates/gui`):** Added dedicated `State` menu bar (`Save State to File...`, `Load State from File...`, quick slots 1–5), global shortcuts (`F6` quick-save, `F9` quick-load, `Ctrl+S`, `Ctrl+L`), native OS file pickers via `rfd`, and transient visual status feedback.
-  - **Deterministic Round-Trip Automated Verification:** 100% verified across 8 tests in `crates/machine_loop/tests/test_save_state.rs`, 3 tests in `crates/debugger/tests/test_debugger_save_state.rs`, and headless integration tests in `crates/gui/tests/test_interactions.rs`.
-- **Step 2.5: Machine-Wide Reset Sequencing (reset_cold & reset_warm) [Completed: 2026-09-14]:**
-  - **Cold Reset (`reset_cold`):** Zeroes physical RAM buffers (`$00`), resets all chip registers and counters to power-on defaults (Agnus `DMACON = $0000`, Denise `COLORxx = $0000`, Paula `INTENA`/`INTREQ = $0000`, CIA `DDRA`/`PRA`/`CRA`/`CRB` cleared), initializes CPU `SR = $2700`, zeroes CPU data/address registers (`D0-D7`, `A0-A6`, `USP`), loads initial `SSP`/`PC` from `$000000`/`$000004` (Kickstart ROM via Gary `_OVL`), and primes prefetch pipeline (`IR`, `IRC`).
-  - **Warm Reset (`reset_warm`):** Preserves RAM contents completely intact (ensuring Kickstart memory checksum and resident module discovery pass), resets custom chip registers, preserves CPU `D0-D7` and `A0-A6` intact (matching silicon flip-flop state retention), re-engages low-memory overlay (`_OVL`), and reloads initial supervisor vectors.
-  - **M68000 `RESET` Privileged Instruction ($4E70) Propagation:** Executing `RESET` in supervisor mode asserts `state.reset_line_asserted`, pulsing the external `_RESET` line to execute `reset_external_devices()` (resets Agnus, Denise, Paula, CIAs, and peripherals; re-engages `_OVL`), while physical RAM and CPU internal registers/PC remain completely undisturbed; execution in user mode cleanly triggers Privilege Violation trap (Vector 8).
-  - **Hardware Keyboard Reset Line (`Ctrl-Amiga-Amiga`):** Wired `keyboard.reset_line_asserted` directly into `A500Machine::step_cck()` to trigger an immediate machine warm reset cycle upon qualifier combination detection.
-  - **Initial Signal & Interrupt Synchronization:** Post-reset immediate execution of `poll_peripheral_pins()` and interrupt arbitration (`cpu.state.ipl = resolve_ipl()`), guaranteeing clean, consistent bus states at cycle 0.
-  - **Dedicated Automated Verification:** 100% verified across 6 integration tests in `crates/machine_loop/tests/test_reset.rs`.
-- **Step 2.6: End-to-End Multi-Chip Interrupt Processing & CPU Exception Pipeline [Completed: 2026-09-14]:**
-  - **Cross-Chip Signal Propagation:**
-    - Agnus Vertical Blanking (`vpos == 0 && hpos == 0`) -> Paula `INTREQ` bit 5 (`$0020`, Level 3 `VERTB`).
-    - Agnus Blitter finish (`_BLITINT`) -> Paula `INTREQ` bit 6 (`$0040`, Level 3 `BLITINT`).
-    - Floppy DMA block complete -> Paula `INTREQ` bit 1 (`$0002`, Level 1 `DSKBLK`).
-    - Paula Audio buffer reload loop (`AUD0-3`) -> Paula `INTREQ` bits 7..10 (`$0080`..`$0400`, Level 4 `AUD0-3`).
-    - CIA-A `/IRQ` pin -> Paula `INTREQ` bit 3 (`$0008`, Level 2 `PORTS`).
-    - CIA-B `/IRQ` pin -> Paula `INTREQ` bit 13 (`$2000`, Level 6 `EXTER`).
-  - **Paula `INTENA` / `INTREQ` Central Arbitration (`resolve_ipl`):**
-    - Master enable `INTEN` (bit 14) gating all interrupt levels.
-    - Bit 15 `SET/CLR` strobe write handling.
-    - Priority level derivation ($IPL \in 1..6$, or 0 if none or masked).
-    - Synchronous transfer to `cpu.state.ipl` every CCK phase.
-  - **CPU Autovector Exception Microcode Pipeline (44 CPU Clocks / 22 CCKs):**
-    - Interrupt priority evaluation against $SR$ mask (`ipl > mask && ipl > 0 || ipl == 7`).
-    - Cycle-exact `STEPS_INTERRUPT` pipeline: sampling `ipl`, switching to Supervisor mode, raising interrupt mask, saving return PC and $SR$, pushing 3-word exception frame to $SSP$, fetching autovector address ($24 + \text{level}$), and prefetching ISR target instructions.
-    - `STOP #<data>` instruction awakening: clearing `state.stopped = true` and transitioning directly to the ISR.
-    - `RTE` instruction: popping $SR$ and return PC from $SSP$, restoring user/supervisor state, restoring original interrupt mask, and resuming main thread execution.
-  - **Dedicated Automated Verification:**
-    - 100% verified across 4 unit tests in `crates/m68000/tests/test_interrupts.rs` and 4 end-to-end integration tests in `crates/machine_loop/tests/test_interrupt_pipeline.rs`.
-- **[COMPLETED] Step 2.7: Subsystem Core Functional Implementations & Autonomous Execution Engines:**
-  - **[COMPLETED] Step 2.7.1: Agnus Copper Coprocessor Execution Engine (`crates/copper`):**
-    - Cycle-accurate two-word (32-bit / 4 CCK) instruction stream fetch from Chip RAM:
-      - 2 CCKs for IR1 (register destination address or VPOS/HPOS target).
-      - 2 CCKs for IR2 (data word or wait/skip mask).
-    - Execution state machine:
-      - `MOVE`: immediate 16-bit write to destination custom register with `CDANG` danger mode protection (registers < `$040` / `$080`).
-      - `WAIT`: beam position comparison against target coordinates masked by $VPOS\_MASK$ / $HPOS\_MASK$, Blitter Finished Disable bit (`BFD` / bit 15: halting Copper while Blitter is busy), and 2-CCK wake-up latency.
-      - `SKIP`: conditional bypass of the subsequent instruction word pair if beam $\ge$ target.
-    - Dynamic program counter (`cop_pc`) progression, `COPJMP1` / `COPJMP2` strobe restarts, and automatic VBlank restart on `COP1LC`.
-    - Dedicated unit & integration tests in `crates/copper/tests/test_copper.rs` (100% verified across 7 unit tests).
-  - **[COMPLETED] Step 2.7.2: Agnus 4-Channel DMA Blitter Engine (`crates/blitter`):**
-    - 4-channel cycle sequencer ($USEA \to USEB \to USEC \to USED$ from `BLTCON0` bits 11..8), consuming 1 bus cycle (2 CCKs) per active channel word.
-    - 256-minterm Boolean ALU implementing full 8-bit truth table ($LF0..LF7$) combining channels A, B, and C into destination D.
-    - Barrel shifters for Channel A (bits 12..15 of `BLTCON0`) and Channel B (bits 12..15 of `BLTCON1`) with inter-word carry retention.
-    - First and last word masking for Channel A (`BLTAFWM` / `BLTALWM`).
-    - Row-by-row word transfer loop with signed modulos (`BLTAMOD`..`BLTDMOD`) in ascending and descending (`DESC` bit 1 in `BLTCON1`) modes.
-    - Bresenham line drawer mode (`LINE == 1` in `BLTCON1`) with octant direction selection, error accumulators, and single-bit line generation.
-    - Zero detection (`is_zero`) for cookie cuts and collision checks, followed by Level 3 `_BLITINT` completion strobe to Paula.
-    - Dedicated unit & integration tests in `crates/blitter/tests/test_blitter.rs` (100% verified across 10 unit tests).
-  - **[COMPLETED] Step 2.7.3: Denise Video Compositor & Bitplane Pixel Serializer (`crates/denise`, `crates/frame_builder`):**
-    - 6 parallel bitplane shift registers supporting LoRes (140 ns / 1 pixel per CCK) and HiRes (70 ns / 2 pixels per CCK).
-    - Display Window generator (`DIWSTRT` / `DIWSTOP` clipping boundaries, backdrop/border color `COLOR00`).
-    - Horizontal scroll delay buffers driven by `BPLCON1` (0..15 pixel shifts for PF1 and PF2).
-    - 32-color palette translation (RGB444 to 32-bit ARGB `0xAARRGGBB` in `FrameBuilder` pixel buffer).
-    - Extra Half-Brite (EHB, 6 planes, half luminance) and Hold-And-Modify (HAM6) color generation.
-    - Dual Playfield mode (`BPLCON0` bit 10) with layer priority arbitration via `BPLCON2`.
-    - Dedicated unit & integration tests in `crates/denise/tests/test_pixel_pipeline.rs` (100% verified across 7 unit tests).
-  - **[COMPLETED] Step 2.7.4: Denise 8 Hardware Sprite Engines & Multiplexing (`crates/sprites`):**
-    - Vertical start/stop comparators ($VPOS == VSTART \to$ arm channel, $VPOS == VSTOP \to$ disarm channel).
-    - 16-pixel dual shift registers serializing 2 bits per pixel starting at $HPOS == HSTART$.
-    - Sprite DMA word fetch (2 words per line per sprite from `SPRxPT` into `SPRxDATA` and `SPRxDATB`).
-    - Attached mode (odd + even sprite pairing for 15-color mode from `COLOR16..COLOR31`).
-    - Mid-frame sprite multiplexing (re-arming lower on the display with new control words).
-    - Hardware playfield/sprite collision detection latches (`CLXDAT` / `CLXCON`).
-    - Dedicated unit & integration tests in `crates/sprites/tests/test_sprites.rs` (100% verified across 8 unit tests).
-  - **[COMPLETED] Step 2.7.5: Paula 4-Channel DMA Audio Subsystem (`crates/audio`, `crates/paula`):**
-    - 8-bit signed PCM sample streaming (2 samples per 16-bit word from `AUDxDAT`).
-    - Period clock dividers (`AUDxPER`) and 6-bit linear volume multipliers (`AUDxVOL`: 0..64).
-    - Agnus DMA word fetch from `AUDxLC`, length down-counter (`AUDxLEN`), buffer loop reload (`AUDxDSR`), and Level 4 `AUD0..AUD3` interrupt requests.
-    - Cross-channel frequency and volume modulation via `ADKCON` bits 0..7.
-    - Stereo channel mixer (Channels 0 & 3 to Right, Channels 1 & 2 to Left) with ring buffer output.
-    - Dedicated unit & integration tests in `crates/audio/tests/test_audio.rs` (100% verified across 7 unit tests).
-  - **[COMPLETED] Step 2.7.6: Floppy MFM Controller & ADF Track Streaming Engine (`crates/floppy`, `crates/paula`):**
-    - Standard 880 KB ADF sector image container (80 tracks $\times$ 2 heads $\times$ 11 sectors $\times$ 512 bytes).
-    - Physical Amiga MFM track encoder and decoder with standard sync words (`$4489`), track headers, and checksums.
-    - DMA word streaming engine into Chip RAM at `DSKPT` with `DSKLEN` decrement.
-    - Level 1 `DSKBLK` completion interrupt strobe to Paula.
-    - PIO MFM byte deserialization via `DSKBYTR` with `DSKBYT` bit 15 status flag.
-    - Dedicated unit & integration tests in `crates/floppy/tests/test_mfm.rs` (100% verified across 5 unit tests; 11 tests across floppy crate).
-  - **[COMPLETED] Step 2.7.7: Dual CIA MOS 8520 Timers, TOD & Keyboard Serial Interface (`crates/cia`, `crates/keyboard`):**
-    - Cascaded 32-bit timer mode: Timer B counting Timer A underflows (`CRB` bits 5..6).
-    - 24-bit Time-of-Day (TOD) clock ticking on 50 Hz (PAL) / 60 Hz (NTSC) vertical blank pulses with alarm match interrupt (`ALARM`, ICR bit 2).
-    - Serial Data Register (SDR) bidirectional shift register synchronized with MOS 6500/1 keyboard protocol on CIA-A SP/CNT pins $\to$ Level 2 `PORTS` interrupt.
-    - Dedicated unit & integration tests in `crates/cia/tests/test_cia_advanced.rs`, `crates/keyboard/tests/test_keyboard_advanced.rs`, and `crates/machine_loop/tests/test_cia_keyboard_integration.rs` (100% verified across 21 unit and integration tests).
-- **Step 2.8: Agnus Master DMA Bus Arbiter, Time-Slot Scheduling & Chip RAM Contention Engine [Completed: 2026-09-14]:**
-  - **Horizontal Scanline DMA Slot Schedule (227/228 CCK PAL / 226 CCK NTSC):**
-    - *Fixed Time-Slot Execution:* Orchestrated physical memory fetch cycles for DRAM Refresh (CCK 0..3), Floppy Disk DMA (CCK 4), 4 Audio channels (CCK 5..8), and 8 Sprite pairs (CCK 12..27), with direct physical address pointer progression (`bplpt`, `sprpt`, `audpt`).
-    - *Dynamic Bitplane DMA Allocation & CPU Cycle Stealing:* Display Data Fetch window (`DDFSTRT`..=`DDFSTOP`) during active display lines driven by `BPLCON0` planecount (1–6) and resolution (LoRes vs HiRes). LoRes 1–4 planes consume even cycles (phases 0, 2, 4, 6); LoRes 5–6 planes steal odd cycles (phases 1, 3); HiRes 4 planes claims 100% of bus bandwidth, completely locking out the CPU in the display window.
-  - **Strict 8-Tier Bus Priority Hierarchy & Slot Re-assignment:**
-    - Refresh > Disk > Audio > Bitplane > Sprite > Copper > Blitter > CPU.
-    - Dynamic slot release: When a higher-priority channel is disabled in `DMACON` or inactive, Agnus immediately releases the cycle to Copper, Blitter, or CPU.
-  - **Blitter & Copper Bus Contention Mechanics:**
-    - *Copper Bus Participation:* Copper fetches instruction words when enabled and active (not waiting on beam position or halted).
-    - *Normal Blitter Mode (`BLTPRI == 0`):* Blitter claims available cycles; Agnus enforces a 3-cycle CPU starvation yield mechanism, forcing the Blitter to yield the 4th cycle unconditionally to the CPU.
-    - *Blitter Nasty Mode (`BLTPRI == 1`):* Agnus awards all available cycles to the Blitter, locking the CPU out of Chip RAM.
-  - **Direct Bus Lock Exposure & End-to-End Propagation:**
-    - Direct drive of `chip_ram_blocked` on `PhysicalMemory` during contended slots: CPU Chip RAM (`$000000–$07FFFF`) and Slow RAM (`$C00000–$C7FFFF`) accesses return `BusResult::WaitState` and stall cycle-accurately.
-    - Preserves 100% Fast RAM (`$200000–$9FFFFF`) immunity (zero wait states under heavy DMA or Blitter Nasty).
-  - **Dedicated Integration Test Suite:**
-    - 100% verified across 6 unit tests in `crates/dma/tests/test_dma.rs`, 5 integration tests in `crates/machine_loop/tests/test_dma_contention.rs`, and 19 Cartesian DMA tests in `crates/test_runner/tests/test_dma_cartesian.rs`.
-- **Step 2.9: Host Audio Playback & CRT Presentation Shaders [Active Focus]:**
+- **Step 2.1: Host Audio Playback & CRT Presentation Shaders [Active Focus]:**
   - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio) with dynamic resampling and ring buffer underflow/overflow protection.
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
-- **Step 2.10: Host Input Subsystem, Game Controller Mapping & Port Hub (`crates/keyboard`, `crates/mouse`, `crates/joystick`, `crates/game_ports`, `crates/gui`):**
+- **Step 2.2: Host Input Subsystem, Game Controller Mapping & Port Hub (`crates/keyboard`, `crates/mouse`, `crates/joystick`, `crates/game_ports`, `crates/gui`):**
   - **Host Keyboard to Amiga Matrix & Scancode Mapping:**
     - Full mapping table from host keyboard events (`winit::keyboard::KeyCode` / `egui::Key`) to raw Amiga scancodes.
     - Amiga-specific qualifiers: Left/Right Amiga keys (mapped to host Windows/Command or Alt), Left/Right Alt, Ctrl, CapsLock, Help, and numeric keypad.
@@ -335,7 +218,7 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
   - Added dedicated hover inspection presets (`hover_register`, `hover_ccr`, `hover_memory`, `game_mode`, `workbench_theme`) with `tooltip_delay = 0.0` for immediate headless capture.
   - Corrected immediate-mode focus lifecycles and keyboard Enter activation across register and disassembly inline editors.
   - Guarded by 29 automated headless integration tests in `crates/gui/tests/test_interactions.rs`.
-- **Interactive Developer Ergonomics, Draggable Splitters & Continuous Memory Browsing (Completed):**
+- **Interactive Developer Ergonomics, Draggable Splitters & Continuous Memory Browsing:**
   - **Full-Height Disassembly & True Infinite Scroll:** Eliminated all outer and nested `ScrollArea` wrappers around Disassembly; visible instruction row count is computed directly from available height (`(ui.available_height() / 19.0).floor() as usize`); mouse-wheel streams instructions forward/backward across 24-bit memory space with Ctrl (10x) and Shift (5x) acceleration and event consumption; includes integrated 24-bit vertical scrollbar ($000000..=$00FFFFFE) on the right edge; stepping (`F10`, `Shift+F10`, `F11`) or running (`F5`) automatically snaps view back to live $PC$.
   - **Vertical Column Splitter (Full HD Mode):** Inline draggable vertical divider (`ResizeHorizontal` cursor with hover stroke) between Column 2 (Disassembly) and Column 3 (CRT Screen & Trace Log), dynamically adjusting `disasm_pane_width` (default 460px, clamped 280px..=total_w - 380px) and persisted in `UserPreferences`.
   - **CRT Screen / Trace Log Horizontal Splitter (Full HD Mode):** Draggable horizontal divider between top Amiga CRT display/temporal bar and bottom Execution Trace Log, persisted in `crt_pane_height`.

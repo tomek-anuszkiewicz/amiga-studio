@@ -68,7 +68,7 @@ Analyze all modified and added files using `git diff`:
 1. **Defect Retrospection (if bug fix / refactor)**: Did the author perform root-cause analysis ("Why did this happen?")? Are dedicated regression tests in place covering edge cases? Were systemic safeguards (architectural rules, lints, or DoD criteria) added to ensure this class of defect never recurs?
 2. **Design Documents**: Did the author update `Obsidian/Amiga/Design/`? Were speculative draft snippets, pre-implementation sketches, and duplicate code snippets of already-written code removed? (The codebase is the single source of truth; design docs must not duplicate implemented Rust code).
 3. **Engineering Diary (`DIARY.md`)**: Did the author append a detailed narrative entry to `DIARY.md` (Section 10) detailing what was actually done, the technical rationale, and architectural decisions, ensuring the granular history is preserved even across squashed/merged commits?
-4. **Roadmap**: If a step in `ROADMAP.md` is 100% complete, was it removed from the active list and added to the baseline summary?
+4. **Roadmap**: If a step in `ROADMAP.md` is 100% complete, was it **completely deleted and removed** from the active backlog (zero `[COMPLETED]` tags or finished task descriptions retained in Section 2 per [`roadmap-maintenance`](../roadmap-maintenance/SKILL.md)), and summarized in the baseline summary if applicable?
 5. **Crate Graph**: Were crate dependencies in `General Architecture.md` updated if `Cargo.toml` was touched?
 
 
@@ -90,7 +90,7 @@ Provide the audit report using the following standard template:
 - [ ] **Rust File Size, Cohesion & Flat Instructions:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Zero subdirectories in `crates/m68000/src/instructions/` (strict flat instruction hierarchy, 1:1 mnemonic files, zero umbrella files). Technical documentation has no line limits.
 - [ ] **Inlining Strategy:** Cross-crate `#[inline]`, CCR `#[inline(always)]`, cold paths `#[inline(never)]`.
 - [ ] **Defect Retrospection & Prevention:** Root cause analyzed, regression tests added, systemic safeguards/docs updated (if bug fix).
-- [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, roadmap updated, and `DIARY.md` chronological changelog updated.
+- [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, completed roadmap steps deleted (zero `[COMPLETED]` markers in Section 2), and `DIARY.md` chronological changelog updated.
 - [ ] **Path Privacy:** Zero external host paths.
 - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
 - [ ] **Attractor & Vocabulary Discipline:** `python .agents/skills/attractor-discipline/scripts/lint_attractors.py` passed cleanly (zero quarantined terms).

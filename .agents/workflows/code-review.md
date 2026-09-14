@@ -87,7 +87,7 @@ Audit the diff against the guidelines in `AGENTS.md`:
 ### G. Documentation, Diary & Roadmap
 - [ ] Corresponding design doc under `Obsidian/Amiga/Design/` updated.
 - [ ] Design document pruned of pre-implementation speculative code, draft sketches, and duplicate code snippets of already-written code (the codebase is the single source of truth; design docs must not duplicate implemented code).
-- [ ] Completed roadmap steps pruned from `ROADMAP.md` and summarized in the baseline section.
+- [ ] Completed roadmap steps completely deleted from `ROADMAP.md` (zero `[COMPLETED]` markers or completed tasks retained in Section 2 per [`.agents/skills/roadmap-maintenance/SKILL.md`](../skills/roadmap-maintenance/SKILL.md)) and summarized in the baseline section.
 - [ ] **Engineering Diary Updated (`DIARY.md`)**: Detailed entry added to `DIARY.md` (Section 10) recording what was actually changed, why, and architectural decisions (preserving granular history beyond squashed/merged git commits).
 - [ ] Crate dependency Mermaid graph updated in `General Architecture.md` if `Cargo.toml` dependencies changed.
 
@@ -128,5 +128,5 @@ Deliver a structured audit report:
   - [ ] **Host Hardware Efficiency:** Flattened dispatch, zero allocations in hot paths, inlining compliance.
   - [ ] **Readability, No Macros & No Const Generics:** Explicit code, zero `macro_rules!`, zero const-generic handlers.
   - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
-  - [ ] **Living Docs, Diary & Roadmap:** Pruned obsolete code, removed implemented code snippets, updated `DIARY.md` changelog, updated roadmap.
+  - [ ] **Living Docs, Diary & Roadmap:** Pruned obsolete code, removed implemented code snippets, updated `DIARY.md` changelog, completed roadmap steps deleted (zero `[COMPLETED]` markers).
 - **Action Items**: Concrete file and line references if any rule is violated.

@@ -25,7 +25,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Strict English for all agent responses, plans, artifacts, source code, and commit messages.
 - **Design Docs Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Synchronizing `Obsidian/Amiga/Design/` specs with code and pruning draft proposals.
 - **Engineering Diary** ([`diary-maintenance.md`](.agents/rules/diary-maintenance.md)): Mandatory chronological narrative logging in `DIARY.md` (Section 10).
-- **Roadmap Maintenance** ([`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md)): Pruning completed tasks, updating baselines, and milestone gates in `ROADMAP.md`.
+- **Roadmap Maintenance** ([`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md)): Zero completed items retention, pruning finished tasks, and updating baselines in `ROADMAP.md`.
 - **Vault Linking & Graph Integrity** ([`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md)): Line 1 YAML properties evaluation, dual-layer linking, and zero broken links across `Obsidian/Amiga/Design/`.
 - **Source File Size & Cohesion** ([`file-size-and-cohesion.md`](.agents/rules/file-size-and-cohesion.md)): File size $\le 800$ lines in `crates/*/src/` (with recognized exceptions), single responsibility, and flat instructions hierarchy.
 - **Opcode Naming & Micro-Steps** ([`opcode-naming.md`](.agents/rules/opcode-naming.md)): Canonical `IDLE` micro-steps, 1:1 opcode files, and dual staging registers (`addr1`/`addr2`).
@@ -101,7 +101,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Unit Testing Policy:** Mandatory unit test coverage for functional/utility logic and headless integration tests for GUI per [`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md).
 - **Obsidian Design Docs:** Update corresponding design documents in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md) and evaluate Line 1 YAML properties per [`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md).
 - **Engineering Diary:** Log actual changes, technical rationale, and test results in [DIARY.md](DIARY.md) (Section 10) per [`diary-maintenance.md`](.agents/rules/diary-maintenance.md).
-- **Roadmap Maintenance:** Mark completed tasks and prune active list in [ROADMAP.md](ROADMAP.md) per [`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md).
+- **Roadmap Maintenance:** Prune and remove completed tasks from [ROADMAP.md](ROADMAP.md) (zero `[COMPLETED]` items retained) per [`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md).
 - **Milestone Gates:** Run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) and [`prune-dead-code`](.agents/skills/prune-dead-code/SKILL.md) upon major roadmap milestone completion.
 - **Prohibition of Blind Golden Hash Modifications**: Modifying golden test hashes, cycle totals, or benchmark reference constants to silence a failing test is strictly forbidden per [`spec-compliance.md`](.agents/rules/spec-compliance.md). Perform root-cause analysis on regressions.
 - **Milestone Review:** Run [`/code-review`](.agents/workflows/code-review.md) before declaring roadmap milestones complete.
