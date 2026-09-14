@@ -3395,6 +3395,57 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed cleanly.
   - Verified `ROADMAP.md` contains zero occurrences of `[COMPLETED]` or `[Completed: ...]` in Section 2.
 
+---
+
+### [2026-09-14 13:30 CEST] — vAmigaTS Direct-Injection Test Harness, Golden Raw Matcher & M68000 CMP.l Defect Resolution
+- **Affected Subsystems**:
+  - `ROADMAP.md` (promoted Step 2: vAmigaTS Test Harness to Active Focus; postponed host peripherals to Step 4; added dedicated coverage clause for remaining 9 non-standard test ADFs)
+  - `crates/test_runner/` (`injector.rs`, `matcher.rs`, `runner.rs`, `mod.rs`, `Cargo.toml`, `src/test_runner.rs`)
+  - `crates/frame_builder/` (`frame_builder.rs`: 912-pixel line width, `set_cck_pixels`, `extract_vamiga_raw_viewport`)
+  - `crates/denise/` (`denise.rs`: composite raster pixels into `frame_builder` on each CCK)
+  - `crates/m68000/` (`instructions/cmp.rs`: fixed `alu_cmp_l_imm_dn` immediate operand sourcing)
+  - `crates/test_runner/tests/` (`test_vamiga_harness.rs`, `test_vamiga_copper.rs`, `test_vamiga_blitter.rs`, `test_vamiga_denise.rs`, `test_vamiga_paula.rs`)
+- **What Was Changed (The Concrete Reality)**:
+  - **Roadmap Re-Prioritization & Non-Standard Test Requirements**:
+    - Reorganized `ROADMAP.md` by promoting `vAmigaTS Automated Test Suite Execution Harness & Silicon Verification Gate` to active focus and postponing host presentation/input drivers (cpal audio & gamepad hub) to Step 4.
+    - Explicitly codified testing requirements: 2,068 out of 2,077 test ADFs (99.6%) leverage Sector 2 (`$000400`) direct Chip RAM injection to `$00070000`, while the remaining 9 non-standard test ADFs are scheduled for MFM track streaming/bootblock decoding to reach 100% test coverage across all 2,815 physical silicon reference captures.
+  - **Direct-Injection Payload Extractor & OS Stubs (`crates/test_runner/src/vamiga/injector.rs`)**:
+    - Built zero-floppy bare-metal bootstrap extractor slicing Sector 2 (`$000400`) directly into Chip RAM at `$00070000` (length up to 62 KB).
+    - Installed zero-allocation stub vector tables for `ExecBase` (`$00001000`) and `GfxBase` (`$00002000`) handling `OpenLibrary`, `CloseLibrary`, `LoadView`, `WaitTOF`, and `SuperVisor` with immediate return instructions (`rts`), enabling test code to proceed directly to `MAIN`.
+    - Initialized CPU state: $SSP = \$0007FF00$, $SR = \$2700$, cleared registers D0–D7 / A0–A6, and primed instruction prefetch pipeline at entry point (`set_pc_and_prime_prefetch(0x070000)`).
+  - **Golden Raw Reference Differencer (`crates/test_runner/src/vamiga/matcher.rs`)**:
+    - Implemented 612,180-byte `.raw` comparator validating Denise rendered viewports against physical silicon captures ($716 \times 285$ RGB24).
+    - Generated granular diagnostic reports on mismatches: total mismatched pixels, percentage variance, coordinates $(X, Y)$ of first mismatch, and expected vs actual RGB bytes.
+  - **Headless Test Runner Engine (`crates/test_runner/src/vamiga/runner.rs`)**:
+    - Engineered driver stepping `A500Machine` for $N$ vertical frames and resolving test artifacts (`.adf` and `.raw` / `_ocs.raw` / `_ecs.raw`).
+  - **Per-Cycle Video Compositing & Viewport Extraction**:
+    - Expanded `MAX_FRAME_WIDTH` in `crates/frame_builder` to 912 pixels ($228\text{ CCK} \times 4\text{ px}$).
+    - Added `FrameBuilder::set_cck_pixels(hpos, vpos, argb)` and wired into `Denise::step_cck(beam)` so Copper mid-scanline palette modulations (`COLOR00`) render per-cycle raster bars.
+    - Added `FrameBuilder::extract_vamiga_raw_viewport` extracting the canonical $716 \times 285$ RGB24 viewport ($X \in [196, 912)$, $Y \in [26, 311)$).
+  - **Root-Cause Defect Resolution in M68000 CPU Core**:
+    - Diagnosed `WaitRaster` hang in `ministartup.i`: tests were looping infinitely on `cmp.l #303<<8, d0`.
+    - Root cause: in `crates/m68000/src/instructions/cmp.rs` (`alu_cmp_l_imm_dn`), the ALU handler was combining the high word with `state.prefetch[0]` instead of reading the fully assembled 32-bit immediate from `state.micro.source`. Because `state.prefetch[0]` held the next instruction opcode (`bne.b` = `0x66EC`), comparisons against immediate longwords always evaluated unequal, preventing loops from terminating.
+    - Corrected handler to use `let s = state.micro.source;`, instantly allowing tests to exit `WaitRaster` and enter `MAIN`.
+  - **Authoring Subsystem Verification Test Suites**:
+    - `test_vamiga_harness.rs`: 7 unit tests verifying constants, stub vectors, payload injection, prefetch priming, and viewport extraction.
+    - `test_vamiga_copper.rs`: integration test running `coptim1` from `Agnus/Copper`.
+    - `test_vamiga_blitter.rs`: integration test running `bbusy0` from `Agnus/Blitter`.
+    - `test_vamiga_denise.rs`: integration test running `diwsub` from `Denise/DIW`.
+    - `test_vamiga_paula.rs`: integration test running `audtim1` from `Paula/Audio`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Direct Injection vs Disk Emulation:* Slicing executable payloads directly to `$00070000` bypasses 10–15 seconds of floppy motor spin-up, MFM track stepping, and Kickstart bootstrap per test, reducing test runtimes to ~0.9s per test for massive CI velocity.
+  - *Per-CCK Backdrop Compositing:* Emulating raster bar output by plotting `COLOR00` into `FrameBuilder` on every Color Clock accurately simulates Denise's continuous DAC output without waiting for full scanline completion.
+- **Verification & Test Results**:
+  - `test_vamiga_harness`: All 7 unit tests passed.
+  - `test_vamiga_copper`: Ran 8 full frames; over 82% pixel match against silicon reference capture.
+  - `test_vamiga_blitter`: Ran 8 full frames; over 78% pixel match.
+  - `test_vamiga_denise`: Ran 8 full frames; over 66% pixel match.
+  - `test_vamiga_paula`: Ran 8 full frames; over 89% pixel match.
+  - `cargo test -p m68000`: All 46 unit tests passed.
+  - `cargo test -p test_runner --test test_singlestep -- test_cmp_l`: Passed.
+  - `python tools/pre_flight.py`: All 4 quality gates (Formatting, Attractor Discipline, AGENTS.md Size, Architecture Rules) passed 100%.
+
+
 
 
 

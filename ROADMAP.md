@@ -62,11 +62,57 @@ This document outlines the phased development plan, hardware milestones, verific
   - Verify layout stability, symmetric margin geometry, scrollbar ergonomics, and responsive display tiers (`LayoutTier::FullHdWide`, `LayoutTier::StandardDesktop`, `LayoutTier::Compact`) across diverse window sizes and display resolutions.
   - Test and refine upcoming Save State management (`State` menu, in-memory quick slots 1–5, `F6`/`F9` shortcuts, native file dialogs, and State Manager modal dialog).
 
-### Step 2: Custom Chipsets & Machine Integration (Agnus, Denise, Paula, CIAs — Active Focus)
-- **Step 2.1: Host Audio Playback & CRT Presentation Shaders [Active Focus]:**
+### Step 2: vAmigaTS Automated Test Suite Execution Harness & Silicon Verification Gate (Active Focus)
+- **Direct-Injection Payload Extraction Architecture (`$000400` Sector 2 Slicing):**
+  - **Zero-Floppy Bare-Metal Bootstrap:** Exploit the standard vAmigaTS micro-bootblock layout present across 2,068 out of 2,077 test ADFs (99.6%).
+  - **Direct Chip RAM Injection:** 2,068 out of 2,077 test ADFs (99.6%) use the standard micro-bootblock that loads Sector 2 (`$000400`) directly to `$00070000`. By injecting the payload and providing a minimal zero-allocation stub ExecBase/GfxBase table, tests run in milliseconds without Kickstart bootstrap delays.
+  - **Machine State & Prefetch Initialization:** Set Supervisor Stack Pointer ($SSP = \$0007FF00$), zero CPU data/address registers, and prime the CPU instruction prefetch pipeline directly at target entry point (`set_pc_and_prime_prefetch(0x070000)`).
+- **Verification of Remaining Non-Standard Test ADFs (9 Tests):**
+  - **Full Suite Completeness Mandate:** While 2,068 ADFs (99.6%) leverage Sector 2 direct injection, the remaining 9 non-standard test ADFs must also be supported and verified to reach 100% test coverage across all 2,077 test ADFs and 2,815 physical silicon reference captures.
+  - **Execution Path:** Execute these remaining tests via floppy MFM track decoding and bootblock streaming (using the existing `crates/floppy` controller and CIA index pulse handling) or specialized custom entry point loaders.
+- **Dual Runtime Test Execution Categories:**
+  - **Pure Bare-Metal Custom Chip Tests (2,118 test files):** Autonomous test execution touching exclusively custom chip registers ($DFF000–$DFF1FE) and dual MOS 8520 CIAs ($BFE001 / $BFD000) with zero OS, trap, or Kickstart library dependencies.
+  - **Scarab Mini-Startup Tests (~874 test files):** Provide a lightweight, zero-allocation stub `ExecBase` jump table at address `$000004` handling standard `graphics.library` cleanup calls (`OpenLibrary`, `LoadView(NULL)`, `WaitTOF`, `CloseLibrary`), or execute against initialized Kickstart 1.3 memory image.
+- **Cycle-Exact Output Verification & Golden Reference Differencer:**
+  - **Full Frame Buffer Golden Matchers:** Automated headless comparison of `Denise` / `FrameBuilder` rendered output against the 2,815 verified $716 \times 285$ 24-bit RGB (`.raw`, 612,180 bytes) reference frame captures in `ref_src/vAmigaTS`.
+  - **Micro-Timing Anomaly Detection:** Any discrepancy in CIA timer underflow, Copper beam wait wake-up, or interrupt assertion manifests immediately as shifted colored raster bars (`COLOR00`) or displaced bitplane/sprite pixels.
+  - **Non-Visual Register & State Assertions:** For pure arithmetic, flag, and timing tests, assert register states (`DMACONR`, `INTENAR`, `VPOSR`, `ICR`, CIA counters) upon reaching test completion breakpoints.
+- **Targeted Subsystem Verification Sub-Suites (`cargo test -p test_runner --test test_vamiga_*`):**
+  - *Suite 2.1: CIA Timers, TOD & ICR Interrupts:* `ref_src/vAmigaTS/CIA/CIA/Timer/` (`timer1`–`timer5`, `cont1`–`cont4`), validating cascaded timers, one-shot reloads, and Level 2 / Level 6 IRQ timing.
+  - *Suite 2.2: Agnus Copper Coprocessor Engine:* `ref_src/vAmigaTS/Agnus/Copper/` (`Wait/`, `Skip/`, `coptim/`, `coprace/`, `copvbl/`), verifying 4-CCK instruction cycle timing, beam wake-up latency, and `CDANG` danger mode.
+  - *Suite 2.3: Agnus 4-Channel DMA Blitter Engine:* `ref_src/vAmigaTS/Agnus/Blitter/` (`line/`, `fill/`, `timing/`, `bbusy/`, `bltint/`), verifying 256-minterm Boolean ALU, barrel shifts, modulos, and `_BLITINT` generation.
+  - *Suite 2.4: Denise Video, Bitplanes & Sprites:* `ref_src/vAmigaTS/Denise/` (`Registers/`, `Modes/`, `DIW/`, `Sprites/`), verifying pixel serialization, palette translation, display window clipping, and sprite multiplexing.
+  - *Suite 2.5: Paula Audio & Interrupts:* `ref_src/vAmigaTS/Paula/` (`Audio/`, `Interrupts/basicint/`), verifying PCM sample streaming, period clock division, and Level 1–4 interrupt requests.
+  - *Suite 2.6: Agnus Master DMA Contention & CPU Stealing:* `ref_src/vAmigaTS/Agnus/Blitter/bususage`, `cputim`, `Denise/Sprites/spritedma`, verifying cycle-exact CPU wait-state stalling under heavy DMA and Blitter Nasty.
+
+### Step 3: Custom Chipset Debugger & Deep Architectural Observability (Developer Studio Extension)
+- **Step 3.1: Custom Chipset Registers & Mutation Delay Pipeline Inspector:**
+  - Dedicated custom chipset register docks/tabs in Developer Studio (`crates/gui`): Agnus, Denise, Paula, CIAs (A & B), and RTC.
+  - Live values formatted in hex/binary with visual change/delta highlighting (electric cyan diffs).
+  - Bitfield breakdown widgets and interactive tooltips ("Zero-External-Lookup Principle") for complex control/status registers (e.g. `DMACON`/`DMACONR`, `INTENA`/`INTENAR`, `INTREQ`/`INTREQR`, `BPLCON0`-`BPLCON2`, `ADKCON`/`ADKCONR`, CIA `CRA`/`CRB`).
+  - Observability of hardware mutation delays: visualize staged pipeline register latches taking effect across subsequent Color Clock phases ($CCK1 \to CCK2$) rather than instantaneous propagation.
+- **Step 3.2: Agnus DMA Slot Scheduler & Real-Time Bus Allocation Visualizer:**
+  - Horizontal scanline timeline visualizer displaying the 227 Color Clock (CCK) slots per scanline (PAL) / 226 slots (NTSC).
+  - Color-coded channel mapping across fixed and dynamic DMA allocations:
+    - Fixed allocations: DRAM refresh (CCK 0..3), Disk DMA (CCK 4), Audio DMA channels 0–3 (CCK 5..8), Sprite DMA pairs 0–7 (CCK 12..27).
+    - Dynamic allocations: Bitplane DMA (BPL 1–6) across display window, Blitter DMA (channels A, B, C, D), and available CPU bus slots.
+  - Live beam position cursor tracking current horizontal ($HPOS$) and vertical ($VPOS$) raster coordinates.
+  - Bus contention & wait-state indicator: visually identify cycles where CPU or Copper are stalled waiting for Chip RAM access (BLTPRI / Blitter Nasty mode).
+- **Step 3.3: Copper Coprocessor Inspector & Real-Time Execution Tracker:**
+  - Dedicated Copper list disassembler panel decoding instruction streams (`MOVE`, `WAIT`, `SKIP`) directly from Chip RAM pointers (`COP1LC`, `COP2LC`, `COPJMP1`, `COPJMP2`).
+  - Real-time execution pointer tracking: highlight currently executing Copper instruction, pending wait condition (beam comparison against $VPOS$/$HPOS$ and mask), and CDANG danger mode status.
+  - Visual correlation with raster beam: highlight beam position where Copper interrupts or register modifications trigger palette swaps, display window splits, or Blitter dispatches.
+- **Step 3.4: Internal Chipset State Machines & Deep Diagnostics:**
+  - *Blitter Engine Diagnostics:* Visual representation of active channels (A, B, C, D), 256-minterm truth table visualization ($LF$ code decomposition), shift/mask register stages, Bresenham line-drawing state counters, and Blitter busy/idle flags.
+  - *Denise Video & Sprite Pipeline:* Live inspection of bitplane serializers, dual-playfield priority layers, 8 hardware sprite position registers/active states, and hardware collision latches (`CLXDAT`/`CLXCON`).
+  - *Paula Multi-Engine Status:* Audio channel frequency, length, volume, BLEP table synthesis status, floppy MFM bit-stream decoding buffers/sync-word detector (`$4489`), and serial UART FIFO/baud counters.
+  - *CIA Timers & Port Observability:* Live countdown display of Timers A & B, TOD clock sub-second counters, serial shift register (SDR) status, and I/O port pin states.
+
+### Step 4: Host I/O Peripherals, Audio Playback & Controller Hub
+- **Step 4.1: Host Audio Playback & CRT Presentation Shaders:**
   - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio) with dynamic resampling and ring buffer underflow/overflow protection.
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
-- **Step 2.2: Host Input Subsystem, Game Controller Mapping & Port Hub (`crates/keyboard`, `crates/mouse`, `crates/joystick`, `crates/game_ports`, `crates/gui`):**
+- **Step 4.2: Host Input Subsystem, Game Controller Mapping & Port Hub (`crates/keyboard`, `crates/mouse`, `crates/joystick`, `crates/game_ports`, `crates/gui`):**
   - **Host Keyboard to Amiga Matrix & Scancode Mapping:**
     - Full mapping table from host keyboard events (`winit::keyboard::KeyCode` / `egui::Key`) to raw Amiga scancodes.
     - Amiga-specific qualifiers: Left/Right Amiga keys (mapped to host Windows/Command or Alt), Left/Right Alt, Ctrl, CapsLock, Help, and numeric keypad.
@@ -93,49 +139,6 @@ This document outlines the phased development plan, hardware milestones, verific
     - Dedicated "Game Ports & Input" tab/dock: visual status of Port 1 and Port 2, connected device dropdowns, real-time input indicators (directional switch arrows and fire button LEDs), and keyboard-joystick toggles.
   - **Dedicated Unit & Integration Tests:**
     - Test suites verifying host scancode translation, keyboard-as-joystick key mapping, dual-mouse and dual-joystick port arbitration, POTGOR button sensing, and headless UI input interaction.
-
-### Step 3: vAmigaTS Automated Test Suite Execution Harness & Silicon Verification Gate
-- **Direct-Injection Payload Extraction Architecture (`$000400` Sector 2 Slicing):**
-  - **Zero-Floppy Bare-Metal Bootstrap:** Exploit the standard vAmigaTS micro-bootblock layout present across 2,068 out of 2,077 test ADFs (99.6%).
-  - **Direct Chip RAM Injection:** Slice the compiled machine code payload directly from offset `$000400` (byte 1024 / Sector 2) of the ADF image into `PhysicalMemory` at address `$00070000` (length `$F400` bytes / ~61 KB), completely bypassing floppy motor emulation, MFM track decoding, and Kickstart bootstrap.
-  - **Machine State & Prefetch Initialization:** Set Supervisor Stack Pointer ($SSP = \$0007FF00$), zero CPU data/address registers, and prime the CPU instruction prefetch pipeline directly at target entry point (`set_pc_and_prime_prefetch(0x070000)`).
-- **Dual Runtime Test Execution Categories:**
-  - **Pure Bare-Metal Custom Chip Tests (2,118 test files):** Autonomous test execution touching exclusively custom chip registers ($DFF000–$DFF1FE) and dual MOS 8520 CIAs ($BFE001 / $BFD000) with zero OS, trap, or Kickstart library dependencies.
-  - **Scarab Mini-Startup Tests (~874 test files):** Provide a lightweight, zero-allocation stub `ExecBase` jump table at address `$000004` handling standard `graphics.library` cleanup calls (`OpenLibrary`, `LoadView(NULL)`, `WaitTOF`, `CloseLibrary`), or execute against initialized Kickstart 1.3 memory image.
-- **Cycle-Exact Output Verification & Golden Reference Differencer:**
-  - **Full Frame Buffer Golden Matchers:** Automated headless comparison of `Denise` / `FrameBuilder` rendered output against the 2,815 verified $716 \times 285$ 24-bit RGB (`.raw`, 612,180 bytes) reference frame captures in `ref_src/vAmigaTS`.
-  - **Micro-Timing Anomaly Detection:** Any discrepancy in CIA timer underflow, Copper beam wait wake-up, or interrupt assertion manifests immediately as shifted colored raster bars (`COLOR00`) or displaced bitplane/sprite pixels.
-  - **Non-Visual Register & State Assertions:** For pure arithmetic, flag, and timing tests, assert register states (`DMACONR`, `INTENAR`, `VPOSR`, `ICR`, CIA counters) upon reaching test completion breakpoints.
-- **Targeted Subsystem Verification Sub-Suites (`cargo test -p test_runner --test test_vamiga_*`):**
-  - *Suite 3.1: CIA Timers, TOD & ICR Interrupts:* `ref_src/vAmigaTS/CIA/CIA/Timer/` (`timer1`–`timer5`, `cont1`–`cont4`), validating cascaded timers, one-shot reloads, and Level 2 / Level 6 IRQ timing.
-  - *Suite 3.2: Agnus Copper Coprocessor Engine:* `ref_src/vAmigaTS/Agnus/Copper/` (`Wait/`, `Skip/`, `coptim/`, `coprace/`, `copvbl/`), verifying 4-CCK instruction cycle timing, beam wake-up latency, and `CDANG` danger mode.
-  - *Suite 3.3: Agnus 4-Channel DMA Blitter Engine:* `ref_src/vAmigaTS/Agnus/Blitter/` (`line/`, `fill/`, `timing/`, `bbusy/`, `bltint/`), verifying 256-minterm Boolean ALU, barrel shifts, modulos, and `_BLITINT` generation.
-  - *Suite 3.4: Denise Video, Bitplanes & Sprites:* `ref_src/vAmigaTS/Denise/` (`Registers/`, `Modes/`, `DIW/`, `Sprites/`), verifying pixel serialization, palette translation, display window clipping, and sprite multiplexing.
-  - *Suite 3.5: Paula Audio & Interrupts:* `ref_src/vAmigaTS/Paula/` (`Audio/`, `Interrupts/basicint/`), verifying PCM sample streaming, period clock division, and Level 1–4 interrupt requests.
-  - *Suite 3.6: Agnus Master DMA Contention & CPU Stealing:* `ref_src/vAmigaTS/Agnus/Blitter/bususage`, `cputim`, `Denise/Sprites/spritedma`, verifying cycle-exact CPU wait-state stalling under heavy DMA and Blitter Nasty.
-
-### Step 4: Custom Chipset Debugger & Deep Architectural Observability (Developer Studio Extension)
-- **Step 4.1: Custom Chipset Registers & Mutation Delay Pipeline Inspector:**
-  - Dedicated custom chipset register docks/tabs in Developer Studio (`crates/gui`): Agnus, Denise, Paula, CIAs (A & B), and RTC.
-  - Live values formatted in hex/binary with visual change/delta highlighting (electric cyan diffs).
-  - Bitfield breakdown widgets and interactive tooltips ("Zero-External-Lookup Principle") for complex control/status registers (e.g. `DMACON`/`DMACONR`, `INTENA`/`INTENAR`, `INTREQ`/`INTREQR`, `BPLCON0`-`BPLCON2`, `ADKCON`/`ADKCONR`, CIA `CRA`/`CRB`).
-  - Observability of hardware mutation delays: visualize staged pipeline register latches taking effect across subsequent Color Clock phases ($CCK1 \to CCK2$) rather than instantaneous propagation.
-- **Step 4.2: Agnus DMA Slot Scheduler & Real-Time Bus Allocation Visualizer:**
-  - Horizontal scanline timeline visualizer displaying the 227 Color Clock (CCK) slots per scanline (PAL) / 226 slots (NTSC).
-  - Color-coded channel mapping across fixed and dynamic DMA allocations:
-    - Fixed allocations: DRAM refresh (CCK 0..3), Disk DMA (CCK 4), Audio DMA channels 0–3 (CCK 5..8), Sprite DMA pairs 0–7 (CCK 12..27).
-    - Dynamic allocations: Bitplane DMA (BPL 1–6) across display window, Blitter DMA (channels A, B, C, D), and available CPU bus slots.
-  - Live beam position cursor tracking current horizontal ($HPOS$) and vertical ($VPOS$) raster coordinates.
-  - Bus contention & wait-state indicator: visually identify cycles where CPU or Copper are stalled waiting for Chip RAM access (BLTPRI / Blitter Nasty mode).
-- **Step 4.3: Copper Coprocessor Inspector & Real-Time Execution Tracker:**
-  - Dedicated Copper list disassembler panel decoding instruction streams (`MOVE`, `WAIT`, `SKIP`) directly from Chip RAM pointers (`COP1LC`, `COP2LC`, `COPJMP1`, `COPJMP2`).
-  - Real-time execution pointer tracking: highlight currently executing Copper instruction, pending wait condition (beam comparison against $VPOS$/$HPOS$ and mask), and CDANG danger mode status.
-  - Visual correlation with raster beam: highlight beam position where Copper interrupts or register modifications trigger palette swaps, display window splits, or Blitter dispatches.
-- **Step 4.4: Internal Chipset State Machines & Deep Diagnostics:**
-  - *Blitter Engine Diagnostics:* Visual representation of active channels (A, B, C, D), 256-minterm truth table visualization ($LF$ code decomposition), shift/mask register stages, Bresenham line-drawing state counters, and Blitter busy/idle flags.
-  - *Denise Video & Sprite Pipeline:* Live inspection of bitplane serializers, dual-playfield priority layers, 8 hardware sprite position registers/active states, and hardware collision latches (`CLXDAT`/`CLXCON`).
-  - *Paula Multi-Engine Status:* Audio channel frequency, length, volume, BLEP table synthesis status, floppy MFM bit-stream decoding buffers/sync-word detector (`$4489`), and serial UART FIFO/baud counters.
-  - *CIA Timers & Port Observability:* Live countdown display of Timers A & B, TOD clock sub-second counters, serial shift register (SDR) status, and I/O port pin states.
 
 ### Step 5: Dedicated Player GUI & Frontend Experience
 - **Step 5.1: Hardware Configuration & Kickstart ROM Selector:**

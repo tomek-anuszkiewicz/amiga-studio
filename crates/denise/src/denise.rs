@@ -228,6 +228,11 @@ impl Denise {
         self.sprites.step_cck(beam);
         self.frame_builder.step_cck(beam);
 
+        // Composite raster pixel into FrameBuilder for the current Color Clock beam position
+        let backdrop_argb = frame_builder::rgb444_to_argb32(self.color[0]);
+        self.frame_builder
+            .set_cck_pixels(beam.hpos, beam.vpos, backdrop_argb);
+
         let mut due = [None; 8];
         let mut due_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {

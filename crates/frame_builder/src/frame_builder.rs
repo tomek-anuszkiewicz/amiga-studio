@@ -6,8 +6,8 @@
 use config::BeamPosition;
 use serde::{Deserialize, Serialize};
 
-/// Maximum overscan width in high-resolution pixels
-pub const MAX_FRAME_WIDTH: usize = 720;
+/// Maximum overscan width in high-resolution pixels (4 pixels per CCK across 228 CCKs)
+pub const MAX_FRAME_WIDTH: usize = 912;
 /// Maximum overscan height in PAL scanlines
 pub const MAX_FRAME_HEIGHT: usize = 576;
 /// Total pixel count of the uncompressed frame buffer
@@ -157,6 +157,36 @@ impl FrameBuilder {
         self.frame_ready = false;
         self.vpos = 0;
         self.hpos = 0;
+    }
+
+    /// Sets 4 consecutive pixels corresponding to 1 Color Clock (CCK) on scanline `vpos`
+    #[inline(always)]
+    pub fn set_cck_pixels(&mut self, hpos: u16, vpos: u16, argb: u32) {
+        let y = vpos as usize;
+        let x_base = (hpos as usize) * 4;
+        if y < MAX_FRAME_HEIGHT && x_base + 3 < MAX_FRAME_WIDTH {
+            let idx = y * MAX_FRAME_WIDTH + x_base;
+            self.buffer[idx] = argb;
+            self.buffer[idx + 1] = argb;
+            self.buffer[idx + 2] = argb;
+            self.buffer[idx + 3] = argb;
+        }
+    }
+
+    /// Extracts the canonical vAmigaTS 716 x 285 RGB24 viewport (X in [196, 912), Y in [26, 311)).
+    /// Writes exactly 612,180 bytes (716 * 285 * 3) into `out`.
+    pub fn extract_vamiga_raw_viewport(&self, out: &mut [u8; 612_180]) {
+        let mut out_idx = 0;
+        for y in 26..311 {
+            let row_offset = y * MAX_FRAME_WIDTH;
+            for x in 196..912 {
+                let argb = self.buffer[row_offset + x];
+                out[out_idx] = ((argb >> 16) & 0xFF) as u8;
+                out[out_idx + 1] = ((argb >> 8) & 0xFF) as u8;
+                out[out_idx + 2] = (argb & 0xFF) as u8;
+                out_idx += 3;
+            }
+        }
     }
 
     /// Signals VBlank and marks the current frame as ready for presentation

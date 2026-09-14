@@ -5,6 +5,7 @@ pub mod reporter;
 pub mod runner;
 pub mod schema;
 pub mod transactions;
+pub mod vamiga;
 
 pub use diagnostic::{CcrBreakdown, StateDiff, TestFailure};
 pub use dma_harness::{
@@ -17,3 +18,4 @@ pub use runner::{
 };
 pub use schema::{CpuTestState, SingleStepTest};
 pub use transactions::{match_transactions, parse_transactions, ExpectedTransaction};
+pub use vamiga::*;
