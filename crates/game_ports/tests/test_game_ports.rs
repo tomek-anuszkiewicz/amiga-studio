@@ -4,7 +4,7 @@
 //! Paula POTGOR right/middle button decoding, CIA-A fire button decoding,
 //! and Serde snapshot serialization.
 
-use game_ports::{GamePorts, GamePortsState, Joystick, PortDevice};
+use game_ports::{GamePorts, GamePortsState, Joystick, Mouse, PortDevice};
 
 #[test]
 fn test_default_ports_configuration() {
@@ -186,4 +186,43 @@ fn test_serde_state_roundtrip() {
         serde_json::from_str(&serialized).expect("Failed to deserialize GamePortsState");
 
     assert_eq!(gp.state, deserialized);
+}
+
+#[test]
+fn test_port_device_methods_and_pot_registers() {
+    let none_dev = PortDevice::None;
+    assert_eq!(none_dev.joy_dat(), 0x0000);
+    assert!(!none_dev.is_fire1_pressed());
+    assert!(!none_dev.is_fire2_pressed());
+    assert!(!none_dev.is_middle_button_pressed());
+
+    let mut m = Mouse::new();
+    m.set_left_button(true);
+    m.set_right_button(true);
+    m.set_middle_button(true);
+    m.move_rel(10, 20);
+    let mouse_dev = PortDevice::Mouse(m);
+    assert_eq!(mouse_dev.joy_dat(), (20 << 8) | 10);
+    assert!(mouse_dev.is_fire1_pressed());
+    assert!(mouse_dev.is_fire2_pressed());
+    assert!(mouse_dev.is_middle_button_pressed());
+
+    let mut j = Joystick::new();
+    j.set_directions(true, false, false, false);
+    j.set_fire1(true);
+    j.set_fire2(true);
+    let joy_dev = PortDevice::Joystick(j);
+    assert_eq!(joy_dev.joy_dat(), 0x0100);
+    assert!(joy_dev.is_fire1_pressed());
+    assert!(joy_dev.is_fire2_pressed());
+    assert!(!joy_dev.is_middle_button_pressed());
+
+    // Paula pot registers
+    let mut gp = GamePorts::new();
+    assert_eq!(gp.pot0dat(), 0x0000);
+    assert_eq!(gp.pot1dat(), 0x0000);
+    gp.state.pot0dat = 0x1234;
+    gp.state.pot1dat = 0x5678;
+    assert_eq!(gp.pot0dat(), 0x1234);
+    assert_eq!(gp.pot1dat(), 0x5678);
 }

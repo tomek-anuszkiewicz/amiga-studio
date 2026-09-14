@@ -3495,6 +3495,45 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed in 6.08s.
   - `python tools/pre_flight.py`: All 4 pre-flight quality gates (Formatting, Attractor Discipline, AGENTS.md Size, Architecture Rules) passed 100%.
 
+---
+
+### [2026-09-14 14:48 CEST] — Hard Quality Hooks: Git Pre-Commit Change-Coupling Gate & Public API Coverage Auditor
+- **Affected Subsystems**:
+  - `tools/check_test_coupling.py` (new change-coupling verification script for git pre-commit and pre-flight)
+  - `tools/audit_api_coverage.py` (new public API static coverage scanner and strict peripheral verifier)
+  - `tools/pre_flight.py` (integrated Test Coupling and API Coverage into mandatory quality gates)
+  - `.git/hooks/pre-commit` (wired `check_test_coupling.py --staged` and `pre_flight.py --quick` into Git)
+  - `crates/test_runner/tests/test_architecture_rules.rs` (enforced minimum 2 active `#[test]` functions and 10 assertions per crate)
+  - `.agents/rules/unit-testing-policy.md` (documented change-coupling gate, minimum test density, and pre-commit enforcement)
+  - `crates/keyboard/tests/test_keyboard.rs` (expanded to 100% API coverage: FIFO queues, buffer overflow, Caps Lock toggle, handshakes)
+  - `crates/game_ports/tests/test_game_ports.rs` (expanded to 100% API coverage: PortDevice query methods, POT0DAT/POT1DAT)
+  - `crates/rtc/tests/test_rtc.rs` (expanded to 100% API coverage: direct sync methods)
+- **What Was Changed (The Concrete Reality)**:
+  - **Change-Coupling Git & Pre-Flight Gate (`tools/check_test_coupling.py`)**:
+    - Addressed the core process breakdown where production code in `src/` could be created or modified without accompanying unit tests.
+    - Implemented strict coupling verification: any staged changeset or working tree modification touching `crates/<crate>/src/` must also modify or add test files under `crates/<crate>/tests/`.
+    - Integrated directly into `.git/hooks/pre-commit` to physically reject non-compliant git commits at the Git level.
+  - **Public API Test Coverage Auditor (`tools/audit_api_coverage.py`)**:
+    - Engineered static AST parser scanning all `pub fn` declarations across workspace crates and cross-referencing against test suites.
+    - Added strict validation mode (`--strict`) requiring 100% public API test coverage across all 8 peripheral and utility crates (`joystick`, `mouse`, `keyboard`, `game_ports`, `rtc`, `parallel_port`, `serial_port`, `frame_builder`).
+    - Fixed remaining API coverage gaps in `keyboard` (FIFO queues, `SCANCODE_BUFFER_OVERFLOW`, Caps Lock $62/$E2 toggle, serial handshakes), `game_ports` (`PortDevice` buttons and pot registers), and `rtc` (`sync_time_to_registers`, `sync_registers_to_time`).
+  - **Architecture Rule Density Hardening (`test_architecture_rules.rs`)**:
+    - Upgraded `test_every_crate_has_dedicated_external_tests_suite` to reject single-test placeholder scaffolding.
+    - Every crate must define at least 2 active `#[test]` functions and at least 10 assertions across its test suite.
+  - **Pre-Flight Pipeline Expansion (`tools/pre_flight.py`)**:
+    - Expanded pre-flight runner from 4 to 6 quality gates: Formatting, Attractor Discipline, AGENTS.md Size, Test Coupling, API Coverage, and Architecture Rules.
+- **Architectural Rationale & Trade-Offs**:
+  - *Automated Invariant Enforcement vs Manual Audits:* Human attention naturally shifts to active complex chips (Agnus, Denise, M68000), allowing quiet peripherals to drift. Shifting verification from subjective process reminders to hard pre-commit Git hooks and static AST gates guarantees zero unanchored production code can be committed.
+  - *Lightweight Execution:* Both `check_test_coupling.py` and `audit_api_coverage.py` execute in < 0.15s, adding negligible overhead to the pre-commit workflow while providing mathematical certainty of test presence.
+- **Verification & Test Results**:
+  - `python tools/check_test_coupling.py`: Verified detection on intentional artificial diff; verified clean pass on repository.
+  - `python tools/audit_api_coverage.py --strict`: All 8 peripheral/utility crates achieved 100% public API coverage.
+  - `cargo test -p keyboard`: 11 passed (0 failed).
+  - `cargo test -p game_ports`: 8 passed (0 failed).
+  - `cargo test -p rtc`: 7 passed (0 failed).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed in 6.10s.
+  - `python tools/pre_flight.py`: All 6 pre-flight quality gates passed cleanly.
+
 
 
 

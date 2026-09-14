@@ -99,3 +99,19 @@ fn test_rtc_step_cck_timing() {
     rtc.step_cck(1);
     assert_eq!(rtc.read_byte(0xDC0001), 9);
 }
+
+#[test]
+fn test_rtc_sync_registers_and_time_methods() {
+    let mut rtc = RtcMsm6242b::new(RtcModel::Msm6242b);
+    rtc.simulated_time = 732205628;
+    rtc.sync_time_to_registers();
+
+    // Verify registers updated from time
+    assert_eq!(rtc.registers[0], 8); // sec 1s
+    assert_eq!(rtc.registers[1], 0); // sec 10s
+
+    // Modify registers directly and sync back to time
+    rtc.registers[0] = 9;
+    rtc.sync_registers_to_time();
+    assert_eq!(rtc.simulated_time, 732205629);
+}

@@ -73,6 +73,28 @@ def check_agents_md():
         return False, f"{size:,} bytes exceeds constitutional ceiling ({MAX_AGENTS_MD_BYTES:,} bytes) by {size - MAX_AGENTS_MD_BYTES:,} bytes", elapsed
     return True, f"{size:,} bytes (<= {MAX_AGENTS_MD_BYTES:,} limit)", elapsed
 
+TEST_COUPLING_SCRIPT = REPO_ROOT / "tools" / "check_test_coupling.py"
+API_COVERAGE_SCRIPT = REPO_ROOT / "tools" / "audit_api_coverage.py"
+
+def check_test_coupling():
+    if not TEST_COUPLING_SCRIPT.exists():
+        return False, f"Test coupling script not found at {TEST_COUPLING_SCRIPT}", 0.0
+    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(TEST_COUPLING_SCRIPT)])
+    if code != 0:
+        output = stdout.strip() or stderr.strip()
+        return False, f"Test coupling check failed:\n{output}", elapsed
+    msg = stdout.strip().replace("[PASS] Change-Coupling Gate: ", "")
+    return True, msg, elapsed
+
+def check_api_coverage():
+    if not API_COVERAGE_SCRIPT.exists():
+        return False, f"API coverage script not found at {API_COVERAGE_SCRIPT}", 0.0
+    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(API_COVERAGE_SCRIPT), "--strict"])
+    if code != 0:
+        output = stdout.strip() or stderr.strip()
+        return False, f"API coverage audit failed:\n{output}", elapsed
+    return True, "100% peripheral/utility public APIs tested", elapsed
+
 def check_architecture_rules():
     cmd = ["cargo", "test", "-p", "test_runner", "--test", "test_architecture_rules", "--", "--quiet"]
     code, stdout, stderr, elapsed = run_cmd(cmd)
@@ -95,6 +117,8 @@ def main():
         ("Formatting", check_formatting),
         ("Attractor Discipline", check_attractors),
         ("AGENTS.md Ceiling", check_agents_md),
+        ("Test Coupling", check_test_coupling),
+        ("API Coverage", check_api_coverage),
     ]
     
     if not quick_mode:

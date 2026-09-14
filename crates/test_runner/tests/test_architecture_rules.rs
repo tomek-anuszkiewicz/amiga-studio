@@ -1208,6 +1208,7 @@ fn test_every_crate_has_dedicated_external_tests_suite() {
 
             let mut rs_test_count = 0;
             let mut total_test_functions = 0;
+            let mut total_assertions = 0;
 
             if let Ok(dir_entries) = fs::read_dir(&tests_dir) {
                 for file_entry in dir_entries.flatten() {
@@ -1216,8 +1217,15 @@ fn test_every_crate_has_dedicated_external_tests_suite() {
                         rs_test_count += 1;
                         if let Ok(content) = fs::read_to_string(&file_path) {
                             for line in content.lines() {
-                                if line.trim().starts_with("#[test]") {
+                                let trimmed = line.trim();
+                                if trimmed.starts_with("#[test]") {
                                     total_test_functions += 1;
+                                }
+                                if trimmed.contains("assert!")
+                                    || trimmed.contains("assert_eq!")
+                                    || trimmed.contains("assert_ne!")
+                                {
+                                    total_assertions += 1;
                                 }
                             }
                         }
@@ -1230,10 +1238,15 @@ fn test_every_crate_has_dedicated_external_tests_suite() {
                     "crates/{} -> tests/ directory contains zero .rs test files",
                     crate_name
                 ));
-            } else if total_test_functions == 0 {
+            } else if total_test_functions < 2 {
                 missing_tests_crates.push(format!(
-                    "crates/{} -> tests/ directory contains {} .rs files, but zero active #[test] functions",
-                    crate_name, rs_test_count
+                    "crates/{} -> Shallow test suite: found only {} active #[test] function(s) (minimum 2 required to prevent placeholder scaffolding)",
+                    crate_name, total_test_functions
+                ));
+            } else if total_assertions < 10 {
+                missing_tests_crates.push(format!(
+                    "crates/{} -> Insufficient assertion density: found only {} assertion(s) across test suite (minimum 10 required)",
+                    crate_name, total_assertions
                 ));
             }
         }

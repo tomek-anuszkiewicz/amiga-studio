@@ -58,7 +58,28 @@ To guarantee clean separation between production logic and test harnesses, all t
 
 ---
 
-## 4. Definition of Done Checklist for Testing
+## 4. Automated Verification Gates & Change-Coupling Enforcement
+
+To prevent shallow scaffolding and untested code from entering the repository, testing is enforced through automated gates and Git hooks:
+
+1. **Change-Coupling Gate (`tools/check_test_coupling.py`):**
+   - Whenever a commit or working tree changeset modifies or adds production code under `crates/<crate>/src/`, it **must also modify or add test files under `crates/<crate>/tests/`**.
+   - Committing changes to `src/` without accompanying test changes is strictly blocked by the Git pre-commit hook and `pre_flight.py`.
+
+2. **Minimum Test & Assertion Density (`test_architecture_rules.rs`):**
+   - Every workspace crate must define at least **2 active `#[test]` functions** and at least **10 assertions** (`assert!`, `assert_eq!`, `assert_ne!`).
+   - Single-test placeholder scaffolding is strictly forbidden.
+
+3. **Public API Coverage Scanner (`tools/audit_api_coverage.py`):**
+   - Scans all public functions (`pub fn`) declared in `src/` and verifies that they are referenced and tested in unit/integration test suites.
+   - Peripheral and utility crates (`joystick`, `mouse`, `keyboard`, `game_ports`, `rtc`, `parallel_port`, `serial_port`, `frame_builder`) must maintain 100% public API test coverage.
+
+4. **Git Pre-Commit Hook (`.git/hooks/pre-commit`):**
+   - Automatically executes `tools/check_polish.py --git`, `tools/check_test_coupling.py --staged`, and `tools/pre_flight.py --quick` on every `git commit`.
+
+---
+
+## 5. Definition of Done Checklist for Testing
 
 Before declaring any feature, bug fix, or opcode implementation complete:
 - [ ] Are all new or modified functional methods backed by unit tests?
@@ -70,7 +91,7 @@ Before declaring any feature, bug fix, or opcode implementation complete:
 
 ---
 
-## 5. Bug Fixing & Defect Resolution: Repro-First Mandate
+## 6. Bug Fixing & Defect Resolution: Repro-First Mandate
 Whenever resolving a bug, timing divergence, or instruction failure, follow the mandatory Red-Green-Refactor protocol in [`repro-first.md`](repro-first.md):
 1. Write an isolated, failing reproduction test in `crates/<crate>/tests/`.
 2. Confirm the failure on current unmodified code.
@@ -79,6 +100,6 @@ Whenever resolving a bug, timing divergence, or instruction failure, follow the 
 
 ---
 
-## 6. Execution Skills for Testing
+## 7. Execution Skills for Testing
 - **CPU Silicon Cycle Verification:** Follow [`m68k-singlestep-test`](../skills/m68k-singlestep-test/SKILL.md) when validating instructions against Tom Harte physical silicon vectors (`SingleStepTests-680x0`).
 
