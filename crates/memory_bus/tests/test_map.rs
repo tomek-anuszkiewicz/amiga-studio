@@ -38,8 +38,8 @@ fn test_boot_overlay_mechanics() {
     assert!(bus.is_low_memory_overlay_active());
     assert_eq!(bus.read_word_debug(0x000000), 0x1122);
 
-    // Disengage overlay via CIA-A Port A bit 0 write to $BFE001
-    bus.write_byte_debug(0xBFE001, 0x01);
+    // Disengage overlay via map_chip_ram_to_low_memory
+    bus.map_chip_ram_to_low_memory();
     assert!(!bus.is_low_memory_overlay_active());
 
     // Address $000000 now accesses physical Chip RAM
@@ -47,7 +47,7 @@ fn test_boot_overlay_mechanics() {
     assert_eq!(bus.read_word_debug(0x000000), 0x9988);
 
     // Re-engage overlay
-    bus.write_byte_debug(0xBFE001, 0x00);
+    bus.map_kickstart_to_low_memory();
     assert!(bus.is_low_memory_overlay_active());
     assert_eq!(bus.read_word_debug(0x000000), 0x1122);
 }

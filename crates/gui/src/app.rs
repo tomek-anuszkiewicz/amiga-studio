@@ -395,7 +395,7 @@ impl EmulatorApp {
                                 ui,
                                 &tokens,
                                 &mut self.session.machine.cpu,
-                                &mut self.session.machine.memory_bus,
+                                &mut self.session.machine.physical_memory,
                                 self.session.prev_cpu_state.as_ref(),
                                 &mut self.active_reg_edit,
                             );
@@ -403,7 +403,7 @@ impl EmulatorApp {
                             render_engine_status(
                                 ui,
                                 &tokens,
-                                self.session.machine.memory_bus.is_chip_ram_locked(),
+                                self.session.machine.physical_memory.is_chip_ram_locked(),
                                 self.session.instructions_executed,
                                 self.session.machine.cpu.state.cycle_counter as u64 / 2,
                                 self.session.machine.cpu.state.sr,
@@ -413,7 +413,7 @@ impl EmulatorApp {
                                 render_microcode(
                                     ui,
                                     &self.session.machine.cpu.state,
-                                    self.session.machine.memory_bus.is_chip_ram_locked(),
+                                    self.session.machine.physical_memory.is_chip_ram_locked(),
                                 );
                             }
                         });
@@ -450,7 +450,7 @@ impl EmulatorApp {
                                         let tools_resp = ui.vertical(|ui| {
                                             render_memory_search(
                                                 ui,
-                                                &self.session.machine.memory_bus,
+                                                &self.session.machine.physical_memory,
                                                 &mut self.hex_base_addr,
                                                 &mut self.memory_search_state,
                                             );
@@ -491,7 +491,7 @@ impl EmulatorApp {
                             |ui| {
                                 render_memory_hex(
                                     ui,
-                                    &mut self.session.machine.memory_bus,
+                                    &mut self.session.machine.physical_memory,
                                     &mut self.session.debugger.breakpoints,
                                     &mut self.hex_base_addr,
                                     &mut self.memory_selected_addr,
@@ -541,7 +541,7 @@ impl EmulatorApp {
                                         render_disassembly(
                                             ui,
                                             &mut self.session.machine.cpu,
-                                            &mut self.session.machine.memory_bus,
+                                            &mut self.session.machine.physical_memory,
                                             &mut self.session.debugger,
                                             &mut self.session.temporal,
                                             &mut self.goto_addr_str,
@@ -674,7 +674,7 @@ impl EmulatorApp {
                             render_disassembly(
                                 ui,
                                 &mut self.session.machine.cpu,
-                                &mut self.session.machine.memory_bus,
+                                &mut self.session.machine.physical_memory,
                                 &mut self.session.debugger,
                                 &mut self.session.temporal,
                                 &mut self.goto_addr_str,

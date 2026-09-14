@@ -2096,6 +2096,7 @@ dependencies = [
  "mouse",
  "parallel_port",
  "paula",
+ "rtc",
  "serde",
  "serial_port",
  "sprites",

@@ -3,21 +3,21 @@
 //! Provides single-instruction O(1) memory bank dispatch using a 256-entry table
 //! of direct function pointers to bank read/write handler methods.
 
-use super::{arbitration::BusResult, MemoryBank, MemoryBus};
+use super::{arbitration::BusResult, MemoryBank, PhysicalMemory};
 use config::{A500Config, A500Preset};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Function pointer signature for an 8-bit memory bank read handler
-pub type BankReadByteFn = fn(&MemoryBus, u32) -> u8;
+pub type BankReadByteFn = fn(&PhysicalMemory, u32) -> u8;
 
 /// Function pointer signature for an 8-bit memory bank write handler
-pub type BankWriteByteFn = fn(&mut MemoryBus, u32, u8);
+pub type BankWriteByteFn = fn(&mut PhysicalMemory, u32, u8);
 
 /// Function pointer signature for a 16-bit memory bank read handler
-pub type BankReadWordFn = fn(&MemoryBus, u32) -> u16;
+pub type BankReadWordFn = fn(&PhysicalMemory, u32) -> u16;
 
 /// Function pointer signature for a 16-bit memory bank write handler
-pub type BankWriteWordFn = fn(&mut MemoryBus, u32, u16);
+pub type BankWriteWordFn = fn(&mut PhysicalMemory, u32, u16);
 
 /// Memory bank handler containing method pointers for direct dispatch
 #[derive(Clone, Copy)]
@@ -96,26 +96,26 @@ impl<'de> Deserialize<'de> for BankHandler {
 
 /// Read handler for Chip RAM ($000000-$07FFFF)
 #[inline(always)]
-pub fn read_chip_ram(bus: &MemoryBus, addr: u32) -> u8 {
+pub fn read_chip_ram(bus: &PhysicalMemory, addr: u32) -> u8 {
     bus.chip_ram[addr as usize]
 }
 
 /// Read word handler for Chip RAM ($000000-$07FFFF)
 #[inline(always)]
-pub fn read_chip_ram_word(bus: &MemoryBus, addr: u32) -> u16 {
+pub fn read_chip_ram_word(bus: &PhysicalMemory, addr: u32) -> u16 {
     let idx = addr as usize;
     u16::from_be_bytes([bus.chip_ram[idx], bus.chip_ram[idx + 1]])
 }
 
 /// Write handler for Chip RAM ($000000-$07FFFF)
 #[inline(always)]
-pub fn write_chip_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
+pub fn write_chip_ram(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     bus.chip_ram[addr as usize] = val;
 }
 
 /// Write word handler for Chip RAM ($000000-$07FFFF)
 #[inline(always)]
-pub fn write_chip_ram_word(bus: &mut MemoryBus, addr: u32, val: u16) {
+pub fn write_chip_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     let idx = addr as usize;
     let bytes = val.to_be_bytes();
     bus.chip_ram[idx] = bytes[0];
@@ -123,7 +123,7 @@ pub fn write_chip_ram_word(bus: &mut MemoryBus, addr: u32, val: u16) {
 }
 
 /// Read handler for Auto-Config Fast RAM ($200000-$9FFFFF)
-pub fn read_fast_ram(bus: &MemoryBus, addr: u32) -> u8 {
+pub fn read_fast_ram(bus: &PhysicalMemory, addr: u32) -> u8 {
     if let Some(fast_ram) = &bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
         fast_ram[offset]
@@ -133,7 +133,7 @@ pub fn read_fast_ram(bus: &MemoryBus, addr: u32) -> u8 {
 }
 
 /// Read word handler for Auto-Config Fast RAM ($200000-$9FFFFF)
-pub fn read_fast_ram_word(bus: &MemoryBus, addr: u32) -> u16 {
+pub fn read_fast_ram_word(bus: &PhysicalMemory, addr: u32) -> u16 {
     if let Some(fast_ram) = &bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
         u16::from_be_bytes([fast_ram[offset], fast_ram[offset + 1]])
@@ -143,7 +143,7 @@ pub fn read_fast_ram_word(bus: &MemoryBus, addr: u32) -> u16 {
 }
 
 /// Write handler for Auto-Config Fast RAM ($200000-$9FFFFF)
-pub fn write_fast_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
+pub fn write_fast_ram(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     if let Some(fast_ram) = &mut bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
         fast_ram[offset] = val;
@@ -151,7 +151,7 @@ pub fn write_fast_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
 }
 
 /// Write word handler for Auto-Config Fast RAM ($200000-$9FFFFF)
-pub fn write_fast_ram_word(bus: &mut MemoryBus, addr: u32, val: u16) {
+pub fn write_fast_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     if let Some(fast_ram) = &mut bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
         let bytes = val.to_be_bytes();
@@ -160,70 +160,8 @@ pub fn write_fast_ram_word(bus: &mut MemoryBus, addr: u32, val: u16) {
     }
 }
 
-/// Read handler for CIA-A ($BFE001) and CIA-B ($BFD000) peripheral registers
-pub fn read_cia(bus: &MemoryBus, addr: u32) -> u8 {
-    // CIA-B ($BFD000-$BFDF00): Even byte addresses (A0 = 0)
-    if (0xBFD000..=0xBFDF00).contains(&addr) {
-        if (addr & 1) == 0 {
-            let reg = ((addr >> 8) & 0x0F) as usize;
-            return bus.cia_b_registers[reg];
-        }
-        return 0xFF;
-    }
-    // CIA-A ($BFE001-$BFEF01): Odd byte addresses (A0 = 1)
-    if (0xBFE001..=0xBFEF01).contains(&addr) {
-        if (addr & 1) == 1 {
-            let reg = ((addr >> 8) & 0x0F) as usize;
-            return bus.cia_a_registers[reg];
-        }
-        return 0xFF;
-    }
-    0xFF
-}
-
-/// Read word handler for CIA-A ($BFE001) and CIA-B ($BFD000) peripheral registers
-pub fn read_cia_word(bus: &MemoryBus, addr: u32) -> u16 {
-    let b0 = read_cia(bus, addr);
-    let b1 = read_cia(bus, addr.wrapping_add(1));
-    u16::from_be_bytes([b0, b1])
-}
-
-/// Write handler for CIA-A ($BFE001) and CIA-B ($BFD000) peripheral registers
-pub fn write_cia(bus: &mut MemoryBus, addr: u32, val: u8) {
-    // CIA-B ($BFD000-$BFDF00)
-    if (0xBFD000..=0xBFDF00).contains(&addr) {
-        if (addr & 1) == 0 {
-            let reg = ((addr >> 8) & 0x0F) as u8;
-            bus.cia_b_registers[reg as usize] = val;
-            bus.enqueue_cia_write(true, reg, val);
-        }
-        return;
-    }
-    // CIA-A ($BFE001-$BFEF01)
-    if (0xBFE001..=0xBFEF01).contains(&addr) && (addr & 1) == 1 {
-        let reg = ((addr >> 8) & 0x0F) as u8;
-        bus.cia_a_registers[reg as usize] = val;
-        bus.enqueue_cia_write(false, reg, val);
-        // CIA-A bit 0 of Port A ($BFE001) controls the low-memory overlay (_OVL)
-        if reg == 0 {
-            if (val & 0x01) == 0 {
-                bus.map_kickstart_to_low_memory();
-            } else {
-                bus.map_chip_ram_to_low_memory();
-            }
-        }
-    }
-}
-
-/// Write word handler for CIA-A ($BFE001) and CIA-B ($BFD000) peripheral registers
-pub fn write_cia_word(bus: &mut MemoryBus, addr: u32, val: u16) {
-    let bytes = val.to_be_bytes();
-    write_cia(bus, addr, bytes[0]);
-    write_cia(bus, addr.wrapping_add(1), bytes[1]);
-}
-
 /// Read handler for Slow / Trapdoor RAM ($C00000-$C7FFFF)
-pub fn read_slow_ram(bus: &MemoryBus, addr: u32) -> u8 {
+pub fn read_slow_ram(bus: &PhysicalMemory, addr: u32) -> u8 {
     if let Some(slow_ram) = &bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
         slow_ram[offset]
@@ -233,7 +171,7 @@ pub fn read_slow_ram(bus: &MemoryBus, addr: u32) -> u8 {
 }
 
 /// Read word handler for Slow / Trapdoor RAM ($C00000-$C7FFFF)
-pub fn read_slow_ram_word(bus: &MemoryBus, addr: u32) -> u16 {
+pub fn read_slow_ram_word(bus: &PhysicalMemory, addr: u32) -> u16 {
     if let Some(slow_ram) = &bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
         u16::from_be_bytes([slow_ram[offset], slow_ram[offset + 1]])
@@ -243,7 +181,7 @@ pub fn read_slow_ram_word(bus: &MemoryBus, addr: u32) -> u16 {
 }
 
 /// Write handler for Slow / Trapdoor RAM ($C00000-$C7FFFF)
-pub fn write_slow_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
+pub fn write_slow_ram(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     if let Some(slow_ram) = &mut bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
         slow_ram[offset] = val;
@@ -251,7 +189,7 @@ pub fn write_slow_ram(bus: &mut MemoryBus, addr: u32, val: u8) {
 }
 
 /// Write word handler for Slow / Trapdoor RAM ($C00000-$C7FFFF)
-pub fn write_slow_ram_word(bus: &mut MemoryBus, addr: u32, val: u16) {
+pub fn write_slow_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     if let Some(slow_ram) = &mut bus.slow_ram {
         let offset = (addr - 0xC00000) as usize;
         let bytes = val.to_be_bytes();
@@ -260,119 +198,38 @@ pub fn write_slow_ram_word(bus: &mut MemoryBus, addr: u32, val: u16) {
     }
 }
 
-/// Read handler for Real-Time Clock ($DC0000-$DC003F)
-pub fn read_rtc(bus: &MemoryBus, addr: u32) -> u8 {
-    if (0xDC0000..=0xDC003F).contains(&addr) {
-        bus.rtc.read_byte(addr)
-    } else {
-        0xFF
-    }
-}
-
-/// Read word handler for Real-Time Clock ($DC0000-$DC003F)
-pub fn read_rtc_word(bus: &MemoryBus, addr: u32) -> u16 {
-    let b0 = read_rtc(bus, addr);
-    let b1 = read_rtc(bus, addr.wrapping_add(1));
-    u16::from_be_bytes([b0, b1])
-}
-
-/// Write handler for Real-Time Clock ($DC0000-$DC003F)
-pub fn write_rtc(bus: &mut MemoryBus, addr: u32, val: u8) {
-    if (0xDC0000..=0xDC003F).contains(&addr) {
-        bus.rtc.write_byte(addr, val);
-    }
-}
-
-/// Write word handler for Real-Time Clock ($DC0000-$DC003F)
-pub fn write_rtc_word(bus: &mut MemoryBus, addr: u32, val: u16) {
-    let bytes = val.to_be_bytes();
-    write_rtc(bus, addr, bytes[0]);
-    write_rtc(bus, addr.wrapping_add(1), bytes[1]);
-}
-
-/// Read handler for Custom Chip Registers ($DFF000-$DFFFFE)
-pub fn read_custom_chips(bus: &MemoryBus, addr: u32) -> u8 {
-    if (0xDFF000..=0xDFFFFF).contains(&addr) {
-        let word_idx = ((addr & 0x1FE) >> 1) as usize;
-        let reg_val = bus.custom_registers[word_idx];
-        if (addr & 1) == 0 {
-            (reg_val >> 8) as u8
-        } else {
-            (reg_val & 0xFF) as u8
-        }
-    } else {
-        0xFF
-    }
-}
-
-/// Read word handler for Custom Chip Registers ($DFF000-$DFFFFE)
-pub fn read_custom_chips_word(bus: &MemoryBus, addr: u32) -> u16 {
-    if (0xDFF000..=0xDFFFFF).contains(&addr) {
-        let word_idx = ((addr & 0x1FE) >> 1) as usize;
-        bus.custom_registers[word_idx]
-    } else {
-        0xFFFF
-    }
-}
-
-/// Write handler for Custom Chip Registers ($DFF000-$DFFFFE)
-pub fn write_custom_chips(bus: &mut MemoryBus, addr: u32, val: u8) {
-    if (0xDFF000..=0xDFFFFF).contains(&addr) {
-        let offset = (addr & 0x1FE) as u16;
-        let word_idx = (offset >> 1) as usize;
-        let current = bus.custom_registers[word_idx];
-        let merged = if (addr & 1) == 0 {
-            ((val as u16) << 8) | (current & 0x00FF)
-        } else {
-            (current & 0xFF00) | (val as u16)
-        };
-        bus.custom_registers[word_idx] = merged;
-        bus.enqueue_custom_write(offset, merged);
-    }
-}
-
-/// Write word handler for Custom Chip Registers ($DFF000-$DFFFFE)
-pub fn write_custom_chips_word(bus: &mut MemoryBus, addr: u32, val: u16) {
-    if (0xDFF000..=0xDFFFFF).contains(&addr) {
-        let offset = (addr & 0x1FE) as u16;
-        let word_idx = (offset >> 1) as usize;
-        bus.custom_registers[word_idx] = val;
-        bus.enqueue_custom_write(offset, val);
-    }
-}
-
 /// Read handler for Kickstart ROM ($F80000-$FFFFFF, mirrored at $000000 during boot overlay)
-pub fn read_kickstart_rom(bus: &MemoryBus, addr: u32) -> u8 {
+pub fn read_kickstart_rom(bus: &PhysicalMemory, addr: u32) -> u8 {
     bus.read_kickstart_byte(addr)
 }
 
 /// Read word handler for Kickstart ROM ($F80000-$FFFFFF, mirrored at $000000 during boot overlay)
-pub fn read_kickstart_rom_word(bus: &MemoryBus, addr: u32) -> u16 {
+pub fn read_kickstart_rom_word(bus: &PhysicalMemory, addr: u32) -> u16 {
     bus.read_kickstart_word(addr)
 }
 
 /// Write handler for Kickstart ROM (ROM writes are silent no-ops)
-pub fn write_kickstart_rom(_bus: &mut MemoryBus, _addr: u32, _val: u8) {}
+pub fn write_kickstart_rom(_bus: &mut PhysicalMemory, _addr: u32, _val: u8) {}
 
 /// Write word handler for Kickstart ROM (ROM writes are silent no-ops)
-pub fn write_kickstart_rom_word(_bus: &mut MemoryBus, _addr: u32, _val: u16) {}
+pub fn write_kickstart_rom_word(_bus: &mut PhysicalMemory, _addr: u32, _val: u16) {}
 
 /// Read handler for unmapped Open Bus (returns floating bus byte, defaults to $FF)
-pub fn read_open_bus(bus: &MemoryBus, _addr: u32) -> u8 {
+pub fn read_open_bus(bus: &PhysicalMemory, _addr: u32) -> u8 {
     bus.unmapped_byte
 }
 
 /// Read word handler for unmapped Open Bus (returns floating bus word, defaults to $FFFF)
-pub fn read_open_bus_word(bus: &MemoryBus, _addr: u32) -> u16 {
+pub fn read_open_bus_word(bus: &PhysicalMemory, _addr: u32) -> u16 {
     let b = bus.unmapped_byte as u16;
     (b << 8) | b
 }
 
 /// Write handler for unmapped Open Bus (writes are silent no-ops)
-pub fn write_open_bus(_bus: &mut MemoryBus, _addr: u32, _val: u8) {}
+pub fn write_open_bus(_bus: &mut PhysicalMemory, _addr: u32, _val: u8) {}
 
 /// Write word handler for unmapped Open Bus (writes are silent no-ops)
-pub fn write_open_bus_word(_bus: &mut MemoryBus, _addr: u32, _val: u16) {}
+pub fn write_open_bus_word(_bus: &mut PhysicalMemory, _addr: u32, _val: u16) {}
 
 // =============================================================================
 // Static Handler Definitions
@@ -399,10 +256,10 @@ pub const FAST_RAM_HANDLER: BankHandler = BankHandler {
 pub const CIA_HANDLER: BankHandler = BankHandler {
     bank: MemoryBank::Cia,
     is_contended: false,
-    read_byte: read_cia,
-    write_byte: write_cia,
-    read_word: read_cia_word,
-    write_word: write_cia_word,
+    read_byte: read_open_bus,
+    write_byte: write_open_bus,
+    read_word: read_open_bus_word,
+    write_word: write_open_bus_word,
 };
 
 pub const SLOW_RAM_HANDLER: BankHandler = BankHandler {
@@ -417,19 +274,19 @@ pub const SLOW_RAM_HANDLER: BankHandler = BankHandler {
 pub const RTC_HANDLER: BankHandler = BankHandler {
     bank: MemoryBank::Rtc,
     is_contended: false,
-    read_byte: read_rtc,
-    write_byte: write_rtc,
-    read_word: read_rtc_word,
-    write_word: write_rtc_word,
+    read_byte: read_open_bus,
+    write_byte: write_open_bus,
+    read_word: read_open_bus_word,
+    write_word: write_open_bus_word,
 };
 
 pub const CUSTOM_CHIPS_HANDLER: BankHandler = BankHandler {
     bank: MemoryBank::CustomChips,
     is_contended: false,
-    read_byte: read_custom_chips,
-    write_byte: write_custom_chips,
-    read_word: read_custom_chips_word,
-    write_word: write_custom_chips_word,
+    read_byte: read_open_bus,
+    write_byte: write_open_bus,
+    read_word: read_open_bus_word,
+    write_word: write_open_bus_word,
 };
 
 pub const KICKSTART_ROM_HANDLER: BankHandler = BankHandler {
@@ -551,10 +408,10 @@ pub fn build_bank_map(config: &A500Config) -> [BankHandler; 256] {
 }
 
 // =============================================================================
-// MemoryBus Method Implementations
+// PhysicalMemory Method Implementations
 // =============================================================================
 
-impl MemoryBus {
+impl PhysicalMemory {
     /// Reads a 16-bit Big-Endian word from the 24-bit physical address space
     #[inline(always)]
     pub(crate) fn read_word_internal(&self, addr: u32) -> u16 {

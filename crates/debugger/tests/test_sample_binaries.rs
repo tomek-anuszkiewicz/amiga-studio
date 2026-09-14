@@ -43,7 +43,7 @@ fn test_all_sample_binaries_execution_and_generation() {
     session.debugger.breakpoints.add_pc_breakpoint(0x001022); // halt
     session.debugger.run_until_breakpoint(
         &mut session.machine.cpu,
-        &mut session.machine.memory_bus,
+        &mut session.machine.physical_memory,
         1000,
     );
 
@@ -51,7 +51,7 @@ fn test_all_sample_binaries_execution_and_generation() {
     let expected_fib = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610];
     for (i, &val) in expected_fib.iter().enumerate() {
         let addr = 0x002000 + (i as u32 * 2);
-        let read = session.machine.memory_bus.read_word_debug(addr);
+        let read = session.machine.physical_memory.read_word_debug(addr);
         assert_eq!(read, val, "Fibonacci[{i}] mismatch at {addr:06X}");
     }
 
@@ -111,7 +111,7 @@ fn test_all_sample_binaries_execution_and_generation() {
         .add_pc_breakpoint(0x001038); // halt
     sort_session.debugger.run_until_breakpoint(
         &mut sort_session.machine.cpu,
-        &mut sort_session.machine.memory_bus,
+        &mut sort_session.machine.physical_memory,
         5000,
     );
 
@@ -121,7 +121,7 @@ fn test_all_sample_binaries_execution_and_generation() {
     ];
     for (i, &val) in expected_sorted.iter().enumerate() {
         let addr = 0x002000 + (i as u32 * 2);
-        let read = sort_session.machine.memory_bus.read_word_debug(addr);
+        let read = sort_session.machine.physical_memory.read_word_debug(addr);
         assert_eq!(read, val, "BubbleSort[{i}] mismatch at {addr:06X}");
     }
 
@@ -205,7 +205,7 @@ fn test_all_sample_binaries_execution_and_generation() {
         .add_pc_breakpoint(0x001056); // halt
     sieve_session.debugger.run_until_breakpoint(
         &mut sieve_session.machine.cpu,
-        &mut sieve_session.machine.memory_bus,
+        &mut sieve_session.machine.physical_memory,
         10000,
     );
 
@@ -218,7 +218,7 @@ fn test_all_sample_binaries_execution_and_generation() {
     for (i, &p) in expected_primes.iter().enumerate() {
         let read = sieve_session
             .machine
-            .memory_bus
+            .physical_memory
             .read_byte_debug(0x002100 + i as u32);
         assert_eq!(read, p, "Prime[{i}] mismatch at $0021{:02X}", i);
     }
@@ -294,7 +294,7 @@ fn test_all_sample_binaries_execution_and_generation() {
     str_session.debugger.breakpoints.add_pc_breakpoint(0x00103E); // halt
     str_session.debugger.run_until_breakpoint(
         &mut str_session.machine.cpu,
-        &mut str_session.machine.memory_bus,
+        &mut str_session.machine.physical_memory,
         2000,
     );
 
@@ -307,7 +307,7 @@ fn test_all_sample_binaries_execution_and_generation() {
     for (i, &ch) in expected_rev.iter().enumerate() {
         let read = str_session
             .machine
-            .memory_bus
+            .physical_memory
             .read_byte_debug(0x002040 + i as u32);
         assert_eq!(read, ch, "Reversed string char[{i}] mismatch");
     }
@@ -374,7 +374,7 @@ fn test_all_sample_binaries_execution_and_generation() {
         .add_pc_breakpoint(0x00101E); // halt
     fact_session.debugger.run_until_breakpoint(
         &mut fact_session.machine.cpu,
-        &mut fact_session.machine.memory_bus,
+        &mut fact_session.machine.physical_memory,
         5000,
     );
 
@@ -383,8 +383,11 @@ fn test_all_sample_binaries_execution_and_generation() {
     let expected_facts: [u32; 8] = [1, 2, 6, 24, 120, 720, 5040, 40320];
     for (i, &f) in expected_facts.iter().enumerate() {
         let addr = 0x002000 + (i as u32 * 4);
-        let hi = fact_session.machine.memory_bus.read_word_debug(addr) as u32;
-        let lo = fact_session.machine.memory_bus.read_word_debug(addr + 2) as u32;
+        let hi = fact_session.machine.physical_memory.read_word_debug(addr) as u32;
+        let lo = fact_session
+            .machine
+            .physical_memory
+            .read_word_debug(addr + 2) as u32;
         let val = (hi << 16) | lo;
         assert_eq!(val, f, "Factorial[{}] mismatch at {addr:06X}", i + 1);
     }

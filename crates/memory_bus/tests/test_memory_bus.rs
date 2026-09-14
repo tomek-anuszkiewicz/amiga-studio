@@ -17,16 +17,16 @@ fn test_boot_overlay_and_cia_control() {
     bus.write_word_debug(0x000000, 0x5678);
     assert_eq!(bus.read_word_debug(0x000000), 0x1234);
 
-    // Disengage overlay (simulate CIA-A Port A bit 0 write of 1 to $BFE001)
-    bus.write_byte_debug(0xBFE001, 0x01);
+    // Disengage overlay via map_chip_ram_to_low_memory
+    bus.map_chip_ram_to_low_memory();
     assert!(!bus.is_low_memory_overlay_active());
 
     // Now $000000 reads physical Chip RAM
     bus.write_word_debug(0x000000, 0xABCD);
     assert_eq!(bus.read_word_debug(0x000000), 0xABCD);
 
-    // Re-engage overlay (write 0 to bit 0 of $BFE001)
-    bus.write_byte_debug(0xBFE001, 0x00);
+    // Re-engage overlay via map_kickstart_to_low_memory
+    bus.map_kickstart_to_low_memory();
     assert!(bus.is_low_memory_overlay_active());
     assert_eq!(bus.read_word_debug(0x000000), 0x1234);
 }

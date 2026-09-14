@@ -1,5 +1,5 @@
 use config::A500Config;
-use machine_loop::A500Machine;
+use machine_loop::{A500Machine, AddressBus};
 
 #[test]
 fn test_machine_creation_and_stepping() {
@@ -54,22 +54,22 @@ fn test_machine_cold_and_warm_reset() {
     assert_eq!(machine.cck, 500);
     machine.dma.write_dmacon(0x8200); // Enable DMA
     machine.paula.write_intena(0x8080); // Enable Audio 0 IRQ
-    let _ = machine.memory_bus.write_byte(0x001000, 0x42);
-    assert_eq!(machine.memory_bus.read_byte_debug(0x001000), 0x42);
+    let _ = machine.memory_bus().write_byte(0x001000, 0x42);
+    assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42);
 
     // 2. Perform warm reset: preserves RAM, resets CCK to 0, resets chips
     machine.reset_warm();
     assert_eq!(machine.cck, 0);
     assert_eq!(machine.dma.dmacon, 0x0000);
     assert_eq!(machine.paula.intena, 0x0000);
-    assert_eq!(machine.memory_bus.read_byte_debug(0x001000), 0x42); // Preserved!
+    assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42); // Preserved!
 
     // 3. Perform cold reset: zeroes RAM, resets CCK to 0, resets chips
     machine.reset_cold();
     assert_eq!(machine.cck, 0);
     assert_eq!(machine.dma.dmacon, 0x0000);
     assert_eq!(machine.paula.intena, 0x0000);
-    assert_eq!(machine.memory_bus.read_byte_debug(0x001000), 0x00); // Zeroed!
+    assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x00); // Zeroed!
 }
 
 #[test]

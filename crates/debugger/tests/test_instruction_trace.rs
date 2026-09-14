@@ -26,7 +26,7 @@ fn test_and_trace_all_sample_binaries() {
                 results.push(
                     session
                         .machine
-                        .memory_bus
+                        .physical_memory
                         .read_word_debug(0x002000 + (i * 2)),
                 );
             }
@@ -52,7 +52,7 @@ fn test_and_trace_all_sample_binaries() {
                 results.push(
                     session
                         .machine
-                        .memory_bus
+                        .physical_memory
                         .read_word_debug(0x002000 + (i * 2)),
                 );
             }
@@ -79,7 +79,12 @@ fn test_and_trace_all_sample_binaries() {
 
             let mut primes = Vec::new();
             for i in 0..18 {
-                primes.push(session.machine.memory_bus.read_byte_debug(0x002100 + i));
+                primes.push(
+                    session
+                        .machine
+                        .physical_memory
+                        .read_byte_debug(0x002100 + i),
+                );
             }
             println!("   [Memory Table $002100..$002111] 18 Primes under 64:");
             println!("   {:?}", primes);
@@ -107,7 +112,12 @@ fn test_and_trace_all_sample_binaries() {
 
             let mut rev_chars = Vec::new();
             for i in 0..16 {
-                rev_chars.push(session.machine.memory_bus.read_byte_debug(0x002040 + i));
+                rev_chars.push(
+                    session
+                        .machine
+                        .physical_memory
+                        .read_byte_debug(0x002040 + i),
+                );
             }
             let rev_str = String::from_utf8_lossy(&rev_chars);
             println!("   [Memory String at $002040]: \"{}\"", rev_str);
@@ -126,8 +136,8 @@ fn test_and_trace_all_sample_binaries() {
             let mut facts = Vec::new();
             for i in 0..8 {
                 let addr = 0x002000 + (i * 4);
-                let hi = session.machine.memory_bus.read_word_debug(addr) as u32;
-                let lo = session.machine.memory_bus.read_word_debug(addr + 2) as u32;
+                let hi = session.machine.physical_memory.read_word_debug(addr) as u32;
+                let lo = session.machine.physical_memory.read_word_debug(addr + 2) as u32;
                 facts.push((hi << 16) | lo);
             }
             println!("   [Memory Table $002000..$00201F] Factorials 1! .. 8!:");
@@ -181,7 +191,9 @@ fn trace_program<F>(
             break;
         }
 
-        let (disasm, _) = disassemble(pc, |addr| session.machine.memory_bus.read_word_debug(addr));
+        let (disasm, _) = disassemble(pc, |addr| {
+            session.machine.physical_memory.read_word_debug(addr)
+        });
         let mnem = if disasm.operands.is_empty() {
             disasm.mnemonic.to_string()
         } else {

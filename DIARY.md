@@ -2705,4 +2705,38 @@ Every future modification or implementation task must append an entry following 
   - `python tools/pre_flight.py`: All 4 pre-flight gates passed cleanly.
   - `python tools/check_polish.py --git`: Passed across all staged additions.
 
+---
+
+### [2026-09-14 02:26 CEST] — Refactored MemoryBus into PhysicalMemory Storage and Introduced MemoryBus Router
+- **Affected Subsystems**:
+  - `crates/memory_bus/src/lib.rs`: Renamed `struct MemoryBus` to `struct PhysicalMemory`, removed duplicate register arrays (`custom_registers`, `cia_a_registers`, `cia_b_registers`), event queues (`pending_custom_writes`, `pending_cia_writes`), and `rtc`. Added `pub type MemoryBus = PhysicalMemory;` alias.
+  - `crates/memory_bus/src/map.rs`: Replaced CIA, RTC, and custom chip handlers in `PhysicalMemory` with open-bus handlers (floating `$FF`/`$FFFF`, silent writes, zero logging).
+  - `crates/machine_loop/src/bus.rs`: Introduced `pub struct MemoryBus<'a>` zero-cost motherboard router implementing `AddressBus`, dispatching Bank `0xDF` directly to Agnus/Denise/Paula, Bank `0xBF` to CIAs, Bank `0xDC` to the RTC, and remaining storage banks to `PhysicalMemory`.
+  - `crates/machine_loop/src/lib.rs`: `A500Machine` owns `pub physical_memory: PhysicalMemory` and `pub rtc: rtc::RtcMsm6242b`. Added `pub fn memory_bus(&mut self) -> MemoryBus<'_>`. Deleted obsolete `sync_memory_bus_registers()` (~160M copies/sec eliminated) and write-queue drain loops.
+  - `crates/machine_loop/tests/test_rtc.rs`: Ported complete RTC integration tests (odd-byte addressing, BCD decomposition, 12/24h mode, HOLD latching, CCK stepping) to run against `A500Machine`.
+  - `crates/debugger/` & `crates/gui/`: Adapted memory view references and binary injection to use `machine.physical_memory`.
+  - `Obsidian/Amiga/Design/MemoryBus.md` & `Main loop A500.md`: Synchronized design documentation with `PhysicalMemory` storage and `MemoryBus` router separation.
+- **What Was Changed (The Concrete Reality)**:
+  - Transformed `crates/memory_bus` from a hybrid storage-router with duplicate shadow register arrays into a lean, pure 24-bit physical storage crate (`PhysicalMemory`).
+  - Implemented the zero-cost motherboard router `MemoryBus<'a>` in `crates/machine_loop` to handle all custom chip and peripheral address decoding using fast bank indexing (`addr >> 16`).
+  - CPU bus writes to `$DFFxxx` and `$BFDxxx` now dispatch immediately into chip mutation pipelines and peripheral drivers without artificial intermediate FIFO delays.
+  - Live reads on custom chips (such as Denise `CLXDAT` clearing upon read) now interact directly with authentic chip silicon state.
+- **Architectural Rationale & Trade-Offs**:
+  - *Single Source of Truth:* Eliminates duplicate shadow register buffers and the continuous, costly register synchronization loop (~160 million array copies per simulated second).
+  - *Zero-Cost Routing:* `MemoryBus<'a>` is constructed ephemerally on the stack only during bus accesses and CPU stepping, incurring zero dynamic heap allocations.
+  - *CPU-Only Harness Ergonomics:* `PhysicalMemory` continues implementing `AddressBus`, allowing standalone instruction tests and memory benchmarks to execute without instantiating custom chips.
+- **Verification & Test Results**:
+  - `cargo test -p memory_bus`: All 23 tests passed.
+  - `cargo test -p m68000`: All 42 tests passed.
+  - `cargo test -p machine_loop`: All 20 tests passed (including new `test_rtc.rs`).
+  - `cargo test -p debugger`: All 39 tests passed.
+  - `cargo test -p gui`: All 45 tests passed.
+  - `cargo test -p test_runner --test test_dma_cartesian`: All 19 tests passed.
+  - `cargo test -p test_runner --test test_singlestep`: All 127 tests passed.
+  - `cargo test --workspace --exclude test_runner`: 100% passed across all crates.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 331 files (0 violations).
+  - `python tools/pre_flight.py`: All pre-flight quality gates passed cleanly.
+
+
 

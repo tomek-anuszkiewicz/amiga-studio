@@ -20,7 +20,9 @@ related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", 
 
 ## 1. Scope & Physical Address Space
 
-- **Module Location:** `memory_bus/`
+- **Module Locations:**
+  - `crates/memory_bus/`: Pure 24-bit physical storage (`PhysicalMemory`), RAM/ROM buffers, open-bus defaults, and DMA wait-state contention.
+  - `crates/machine_loop/src/bus.rs`: Zero-cost motherboard address router (`MemoryBus<'a>`), decoding the 24-bit physical address space and routing transactions live to `PhysicalMemory`, Custom Chips, CIAs, and the RTC.
 - **Bus Width:** 24-bit physical address space (`$000000`–`$FFFFFF`, 16 MB) and a 16-bit wide data bus supporting 8-bit byte and 16-bit Big-Endian word accesses.
 
 ---
@@ -58,14 +60,17 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
 - **Native 16-Bit Word Accesses**: In accordance with the 68000's physical 16-bit wide data bus, word transfers (instruction fetches, stack frames, 16-bit operands) execute directly via `read_word` and `write_word` function pointers, reading or writing aligned 16-bit words directly without decomposing into two separate 8-bit indirect function calls.
 - **Zero Runtime Branches**: Memory accesses execute directly through table indexing `(self.bank_map[(addr >> 16) as usize].read_byte)(self, addr)` or `read_word`. Contention checks query `self.bank_map[(addr >> 16) as usize].is_contended` in $O(1)$ without range arithmetic.
 - **Zero Runtime Setup (`static`/`const`)**: Precalculated as compile-time `static` arrays (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), eliminating all initialization loops or runtime reallocation overhead.
-- **Direct Dispatch**:
+- **Direct Dispatch in `PhysicalMemory`**:
   - `$00..=$07`: `CHIP_RAM_HANDLER`
   - `$20..=$5F`: `FAST_RAM_HANDLER` (4 MB, active in `ExpandedPowerUser`)
-  - `$BF`: `CIA_HANDLER` (CIA-A & CIA-B)
   - `$C0..=$C7`: `SLOW_RAM_HANDLER` (512 KB A501 trapdoor RAM, active in `Standard1Mb` & `ExpandedPowerUser`)
-  - `$DC`: `RTC_HANDLER` (OKI MSM6242B, active in `Standard1Mb` & `ExpandedPowerUser`)
-  - `$DF`: `CUSTOM_CHIPS_HANDLER` (Agnus, Denise, Paula)
   - `$F8..=$FF`: `KICKSTART_ROM_HANDLER`
+  - `$BF`, `$DC`, `$DF`, and unmapped ranges: `OPEN_BUS_HANDLER` (floating high `$FF` / `$FFFF`, silent writes).
+- **Motherboard Routing in `MemoryBus` (`crates/machine_loop`):**
+  - `$DF`: Custom Chip Registers (`$DFF000..$DFFFFE`) routed directly to live Agnus, Denise, and Paula registers.
+  - `$BF`: CIA Peripheral Registers (`$BFD000..$BFEF01`) routed directly to CIA-A and CIA-B.
+  - `$DC`: Real-Time Clock (`$DC0000..$DC003F`) routed to OKI MSM6242B.
+  - All other banks: Delegated directly to `PhysicalMemory`.
 ### 2.2 Unmapped Open Bus Physics ($FF / $FFFF) & Decoupled Test Architecture
 
 - **Amiga Physical Open Bus:**

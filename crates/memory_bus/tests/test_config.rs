@@ -65,24 +65,22 @@ fn test_memory_bus_with_bare_preset_has_open_bus_rtc() {
 }
 
 #[test]
-fn test_memory_bus_with_standard_1mb_has_active_rtc() {
+fn test_memory_bus_with_standard_1mb_has_rtc_bank() {
     let config = A500Config::standard_1mb(VideoStandard::Pal);
     let mut bus = MemoryBus::from_config(config);
 
     assert!(bus.slow_ram.is_some());
     assert!(bus.fast_ram.is_none());
+    assert_eq!(bus.bank_map[0xDC].bank, memory_bus::MemoryBank::Rtc);
 
-    // Even byte addresses return floating open bus $FF
+    // In PhysicalMemory, RTC addresses return floating open bus $FF
     assert_eq!(bus.read_byte_debug(0xDC0000), 0xFF);
-    assert_eq!(bus.read_byte_debug(0xDC0004), 0xFF);
+    assert_eq!(bus.read_byte_debug(0xDC0001), 0xFF);
+    assert_eq!(bus.read_byte_debug(0xDC0005), 0xFF);
 
-    // Write to RTC register 1 (addr $DC0005, 10s of seconds)
-    bus.write_byte_debug(0xDC0005, 0x05);
-    assert_eq!(bus.read_byte_debug(0xDC0005), 0x05);
-
-    // Write to RTC register 0 (addr $DC0001, 1s of seconds)
+    // Writes to unhandled peripheral space are silent no-ops
     bus.write_byte_debug(0xDC0001, 0x09);
-    assert_eq!(bus.read_byte_debug(0xDC0001), 0x09);
+    assert_eq!(bus.read_byte_debug(0xDC0001), 0xFF);
 }
 
 #[test]

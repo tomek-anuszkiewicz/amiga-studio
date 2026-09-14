@@ -208,7 +208,10 @@ fn test_simulated_disassembly_inline_patching() {
 
     // Initial instruction at $1000 is NOP
     assert_eq!(
-        app.session.machine.memory_bus.read_word_debug(0x001000),
+        app.session
+            .machine
+            .physical_memory
+            .read_word_debug(0x001000),
         0x4E71
     );
 
@@ -236,7 +239,10 @@ fn test_simulated_disassembly_inline_patching() {
 
     // Instruction in RAM must now be $3200 and edit mode closed
     assert_eq!(
-        app.session.machine.memory_bus.read_word_debug(0x001000),
+        app.session
+            .machine
+            .physical_memory
+            .read_word_debug(0x001000),
         0x3200
     );
     assert!(app.active_disasm_edit.is_none());
@@ -272,7 +278,10 @@ fn test_simulated_disassembly_inline_patching() {
         .unwrap()
         .contains("Byte size mismatch"));
     assert_eq!(
-        app.session.machine.memory_bus.read_word_debug(0x001000),
+        app.session
+            .machine
+            .physical_memory
+            .read_word_debug(0x001000),
         0x3200
     );
 }
@@ -371,7 +380,7 @@ fn test_startup_clean_memory() {
 
     // Verify memory starts clean zeroed Chip RAM without auto-loaded programs
     for addr in [0x000000, 0x001000, 0x001002, 0x002000, 0x070000] {
-        let val = app.session.machine.memory_bus.read_word_debug(addr);
+        let val = app.session.machine.physical_memory.read_word_debug(addr);
         assert!(
             val == 0xFFFF || val == 0x0000,
             "Expected clean/unmapped memory, got ${:04X}",
@@ -459,21 +468,21 @@ fn test_disassembly_instruction_decoding_fibonacci() {
     app.session.load_binary(0x001000, &code, true);
 
     let (dis0, len0) = debugger::disassemble(0x001000, |a| {
-        app.session.machine.memory_bus.read_word_debug(a)
+        app.session.machine.physical_memory.read_word_debug(a)
     });
     assert_eq!(dis0.mnemonic, "LEA");
     assert!(dis0.operands.contains("($00002000).L, A0"));
     assert_eq!(len0, 6);
 
     let (dis1, len1) = debugger::disassemble(0x001006, |a| {
-        app.session.machine.memory_bus.read_word_debug(a)
+        app.session.machine.physical_memory.read_word_debug(a)
     });
     assert_eq!(dis1.mnemonic, "CLR.W");
     assert_eq!(dis1.operands, "D0");
     assert_eq!(len1, 2);
 
     let (dis5, len5) = debugger::disassemble(0x001010, |a| {
-        app.session.machine.memory_bus.read_word_debug(a)
+        app.session.machine.physical_memory.read_word_debug(a)
     });
     assert!(dis5.mnemonic == "DBF" || dis5.mnemonic == "DBRA");
     assert!(dis5.operands.contains("D3"));
@@ -1142,7 +1151,10 @@ fn test_disassembly_inline_patch_focus_cancel_and_commit() {
     let code = [0x4E, 0x71, 0x4E, 0x75];
     app.session.load_binary(0x001000, &code, true);
     assert_eq!(
-        app.session.machine.memory_bus.read_word_debug(0x001000),
+        app.session
+            .machine
+            .physical_memory
+            .read_word_debug(0x001000),
         0x4E71
     );
 
@@ -1165,7 +1177,10 @@ fn test_disassembly_inline_patch_focus_cancel_and_commit() {
     let _ = ctx.run(input_esc, |ctx| app.update_ui(ctx));
     assert!(app.active_disasm_edit.is_none());
     assert_eq!(
-        app.session.machine.memory_bus.read_word_debug(0x001000),
+        app.session
+            .machine
+            .physical_memory
+            .read_word_debug(0x001000),
         0x4E71
     );
 
@@ -1188,7 +1203,10 @@ fn test_disassembly_inline_patch_focus_cancel_and_commit() {
     let _ = ctx.run(input_enter, |ctx| app.update_ui(ctx));
     assert!(app.active_disasm_edit.is_none());
     assert_eq!(
-        app.session.machine.memory_bus.read_word_debug(0x001000),
+        app.session
+            .machine
+            .physical_memory
+            .read_word_debug(0x001000),
         0x3200
     );
 }

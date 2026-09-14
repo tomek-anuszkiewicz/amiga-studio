@@ -53,9 +53,9 @@ pub enum MemoryBank {
     OpenBus,
 }
 
-/// Cycle-exact Amiga 500 MemoryBus
+/// Cycle-exact Amiga 500 PhysicalMemory
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MemoryBus {
+pub struct PhysicalMemory {
     /// Active hardware configuration
     pub config: A500Config,
 
@@ -81,69 +81,28 @@ pub struct MemoryBus {
     /// Low-memory boot overlay (_OVL) active flag
     pub low_memory_overlay: bool,
 
-    /// CIA-A 8-bit register state placeholder (odd byte addresses $BFE001..$BFEF01)
-    pub cia_a_registers: [u8; 16],
-
-    /// CIA-B 8-bit register state placeholder (even byte addresses $BFD000..$BFDF00)
-    pub cia_b_registers: [u8; 16],
-
-    /// Custom chip register space $DFF000-$DFFFFE (256 16-bit words)
-    #[serde(with = "big_array")]
-    pub custom_registers: [u16; 256],
-
-    /// Pending custom register bus write events to be dispatched to custom chips
-    pub pending_custom_writes: [Option<CustomWriteEvent>; MAX_PENDING_CUSTOM_WRITES],
-    /// Count of pending custom register bus write events
-    pub pending_custom_write_count: usize,
-
-    /// Pending CIA register bus write events to be dispatched to CIA chips
-    pub pending_cia_writes: [Option<CiaWriteEvent>; MAX_PENDING_CIA_WRITES],
-    /// Count of pending CIA register bus write events
-    pub pending_cia_write_count: usize,
-
-    /// Real-Time Clock (OKI MSM6242B) at $DC0000..$DC003F
-    pub rtc: rtc::RtcMsm6242b,
-
     /// Default byte value returned when reading unpopulated memory or unmapped open bus space.
     /// In real Amiga hardware execution, this is 0xFF (floating open bus with pull-up resistors).
     #[serde(default = "default_unmapped_byte")]
     pub unmapped_byte: u8,
 }
 
-/// Maximum queued custom bus writes per cycle
-pub const MAX_PENDING_CUSTOM_WRITES: usize = 8;
-
-/// Maximum queued CIA bus writes per cycle
-pub const MAX_PENDING_CIA_WRITES: usize = 8;
-
-/// In-flight custom register bus write event
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CustomWriteEvent {
-    pub offset: u16,
-    pub val: u16,
-}
-
-/// In-flight CIA register bus write event
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CiaWriteEvent {
-    pub is_cia_b: bool,
-    pub reg: u8,
-    pub val: u8,
-}
+/// Type alias for standalone CPU tests and benchmarks targeting physical memory storage
+pub type MemoryBus = PhysicalMemory;
 
 #[inline(always)]
 fn default_unmapped_byte() -> u8 {
     0xFF
 }
 
-impl Default for MemoryBus {
+impl Default for PhysicalMemory {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl MemoryBus {
-    /// Creates a standard A500 MemoryBus using the default configuration (Standard 1 MB + RTC, PAL)
+impl PhysicalMemory {
+    /// Creates a standard A500 PhysicalMemory using default configuration (Standard 1 MB, PAL)
     pub fn new() -> Self {
         Self::from_config(A500Config::default())
     }
@@ -160,7 +119,7 @@ impl MemoryBus {
         self.unmapped_byte = val;
     }
 
-    /// Creates a MemoryBus configured per the provided A500Config
+    /// Creates PhysicalMemory configured per the provided A500Config
     pub fn from_config(config: A500Config) -> Self {
         let chip_ram_size = match config.chip_ram() {
             ChipRamSize::Kb512 => CHIP_RAM_SIZE_512K,
@@ -174,7 +133,6 @@ impl MemoryBus {
             FastRamSize::Mb4 => Some(vec![0x00; 4 * 1024 * 1024]),
         };
         let bank_map = map::build_bank_map(&config);
-        let rtc = rtc::RtcMsm6242b::new(config.rtc());
 
         let mut bus = Self {
             config,
@@ -185,72 +143,10 @@ impl MemoryBus {
             kickstart_rom: vec![0xFF; KICKSTART_SIZE_256K],
             chip_ram_blocked: false,
             low_memory_overlay: true,
-            cia_a_registers: [0xFF; 16],
-            cia_b_registers: [0xFF; 16],
-            custom_registers: [0xFFFF; 256],
-            pending_custom_writes: [None; MAX_PENDING_CUSTOM_WRITES],
-            pending_custom_write_count: 0,
-            pending_cia_writes: [None; MAX_PENDING_CIA_WRITES],
-            pending_cia_write_count: 0,
-            rtc,
             unmapped_byte: 0xFF,
         };
         bus.map_kickstart_to_low_memory();
         bus
-    }
-
-    /// Enqueues a custom register write event for dispatch to custom chips
-    #[inline]
-    pub fn enqueue_custom_write(&mut self, offset: u16, val: u16) {
-        if self.pending_custom_write_count < MAX_PENDING_CUSTOM_WRITES {
-            self.pending_custom_writes[self.pending_custom_write_count] =
-                Some(CustomWriteEvent { offset, val });
-            self.pending_custom_write_count += 1;
-        }
-    }
-
-    /// Pops the next pending custom register write event
-    #[inline]
-    pub fn pop_custom_write(&mut self) -> Option<CustomWriteEvent> {
-        if self.pending_custom_write_count > 0 {
-            self.pending_custom_write_count -= 1;
-            self.pending_custom_writes[self.pending_custom_write_count].take()
-        } else {
-            None
-        }
-    }
-
-    /// Returns true if there are pending custom register write events
-    #[inline]
-    pub fn has_pending_custom_writes(&self) -> bool {
-        self.pending_custom_write_count > 0
-    }
-
-    /// Enqueues a CIA register write event for dispatch to CIA chips
-    #[inline]
-    pub fn enqueue_cia_write(&mut self, is_cia_b: bool, reg: u8, val: u8) {
-        if self.pending_cia_write_count < MAX_PENDING_CIA_WRITES {
-            self.pending_cia_writes[self.pending_cia_write_count] =
-                Some(CiaWriteEvent { is_cia_b, reg, val });
-            self.pending_cia_write_count += 1;
-        }
-    }
-
-    /// Pops the next pending CIA register write event
-    #[inline]
-    pub fn pop_cia_write(&mut self) -> Option<CiaWriteEvent> {
-        if self.pending_cia_write_count > 0 {
-            self.pending_cia_write_count -= 1;
-            self.pending_cia_writes[self.pending_cia_write_count].take()
-        } else {
-            None
-        }
-    }
-
-    /// Returns true if there are pending CIA register write events
-    #[inline]
-    pub fn has_pending_cia_writes(&self) -> bool {
-        self.pending_cia_write_count > 0
     }
 
     /// Reconfigures RAM buffers and RTC mapping by applying a new A500Config
@@ -270,7 +166,6 @@ impl MemoryBus {
             FastRamSize::Mb4 => Some(vec![0x00; 4 * 1024 * 1024]),
         };
 
-        self.rtc.model = config.rtc();
         self.bank_map = map::build_bank_map(&config);
         if self.low_memory_overlay {
             for b in 0x00..=0x07 {
@@ -278,12 +173,6 @@ impl MemoryBus {
             }
         }
         self.config = config;
-    }
-
-    /// Advances internal clock timers (including Real-Time Clock) by the given CCK cycles
-    #[inline]
-    pub fn step_cck(&mut self, cck_cycles: u64) {
-        self.rtc.step_cck(cck_cycles);
     }
 
     /// Engages low-memory boot overlay (_OVL), routing $000000-$07FFFF accesses to Kickstart ROM
@@ -407,29 +296,29 @@ impl MemoryBus {
     }
 }
 
-impl AddressBus for MemoryBus {
+impl AddressBus for PhysicalMemory {
     #[inline(always)]
     fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
-        MemoryBus::read_byte(self, addr)
+        PhysicalMemory::read_byte(self, addr)
     }
 
     #[inline(always)]
     fn read_word(&mut self, addr: u32) -> BusResult<u16> {
-        MemoryBus::read_word(self, addr)
+        PhysicalMemory::read_word(self, addr)
     }
 
     #[inline(always)]
     fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
-        MemoryBus::write_byte(self, addr, val)
+        PhysicalMemory::write_byte(self, addr, val)
     }
 
     #[inline(always)]
     fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
-        MemoryBus::write_word(self, addr, val)
+        PhysicalMemory::write_word(self, addr, val)
     }
 
     #[inline(always)]
     fn read_word_debug(&self, addr: u32) -> u16 {
-        MemoryBus::read_word_debug(self, addr)
+        PhysicalMemory::read_word_debug(self, addr)
     }
 }

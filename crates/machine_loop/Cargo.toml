@@ -23,6 +23,7 @@ memory_bus = { workspace = true }
 mouse = { workspace = true }
 parallel_port = { workspace = true }
 paula = { workspace = true }
+rtc = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serial_port = { workspace = true }
 sprites = { workspace = true }

@@ -66,20 +66,20 @@ impl DebuggerSession {
     /// Direct reference to the machine's memory bus
     #[inline]
     pub fn bus(&self) -> &MemoryBus {
-        &self.machine.memory_bus
+        &self.machine.physical_memory
     }
 
     /// Direct mutable reference to the machine's memory bus
     #[inline]
     pub fn bus_mut(&mut self) -> &mut MemoryBus {
-        &mut self.machine.memory_bus
+        &mut self.machine.physical_memory
     }
 
     /// Captures a 256-byte snapshot of memory around `base_addr` for diff highlighting
     pub fn capture_memory_snapshot(&mut self, base_addr: u32) {
         for i in 0..256 {
             let addr = base_addr.wrapping_add(i as u32) & 0x00FF_FFFF;
-            self.prev_hex_bytes[i] = self.machine.memory_bus.read_byte_debug(addr);
+            self.prev_hex_bytes[i] = self.machine.physical_memory.read_byte_debug(addr);
         }
         self.prev_hex_base = base_addr;
     }
@@ -99,7 +99,7 @@ impl DebuggerSession {
 
         let clocks = self
             .debugger
-            .step_instruction(&mut self.machine.cpu, &mut self.machine.memory_bus);
+            .step_instruction(&mut self.machine.cpu, &mut self.machine.physical_memory);
         self.instructions_executed = self.instructions_executed.saturating_add(1);
 
         // Advance machine subsystems by elapsed Color Clocks
@@ -108,7 +108,6 @@ impl DebuggerSession {
         for _ in 0..ccks {
             self.machine.step_subsystems_cck();
         }
-        self.machine.memory_bus.step_cck(ccks);
     }
 
     /// Steps exactly 1 Color Clock phase (~280 ns) across the entire machine
@@ -139,7 +138,7 @@ impl DebuggerSession {
 
         let steps = self.debugger.run_until_breakpoint_with_temporal(
             &mut self.machine.cpu,
-            &mut self.machine.memory_bus,
+            &mut self.machine.physical_memory,
             &mut self.temporal,
             max_instructions,
         );
@@ -227,8 +226,8 @@ impl DebuggerSession {
     pub fn reset_cold(&mut self) {
         self.is_running = false;
         self.machine.reset_cold();
-        if !self.machine.memory_bus.is_kickstart_loaded() {
-            self.machine.memory_bus.map_chip_ram_to_low_memory();
+        if !self.machine.physical_memory.is_kickstart_loaded() {
+            self.machine.physical_memory.map_chip_ram_to_low_memory();
         }
         self.temporal.clear();
         self.debugger.trace.clear();
@@ -241,8 +240,8 @@ impl DebuggerSession {
     pub fn reset_warm(&mut self) {
         self.is_running = false;
         self.machine.reset_warm();
-        if !self.machine.memory_bus.is_kickstart_loaded() {
-            self.machine.memory_bus.map_chip_ram_to_low_memory();
+        if !self.machine.physical_memory.is_kickstart_loaded() {
+            self.machine.physical_memory.map_chip_ram_to_low_memory();
         }
         self.prev_cpu_state = None;
     }
@@ -251,7 +250,7 @@ impl DebuggerSession {
     pub fn load_binary(&mut self, target_addr: u32, data: &[u8], auto_prime: bool) -> usize {
         inject_binary(
             &mut self.machine.cpu,
-            &mut self.machine.memory_bus,
+            &mut self.machine.physical_memory,
             target_addr,
             data,
             auto_prime,

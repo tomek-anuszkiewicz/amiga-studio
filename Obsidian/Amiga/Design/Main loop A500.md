@@ -54,11 +54,14 @@ flowchart TD
 
 The top-level `A500Machine` struct (`crates/machine_loop/src/lib.rs`) owns and orchestrates all components without circular references:
 - `cpu`: Motorola 68000 core (`m68000::Cpu`)
-- `memory_bus`: 24-bit address decoder, RAM buffers, and Kickstart ROM storage
+- `physical_memory`: 24-bit physical storage and RAM/ROM buffers (`memory_bus::PhysicalMemory`)
 - `cck`: Monotonic master 64-bit Color Clock counter (`pub cck: u64`)
+- `rtc`: Real-Time Clock OKI MSM6242B (`rtc::RtcMsm6242b`)
 - `agnus`, `denise`, `paula`: Custom chipsets
 - `copper`, `blitter`, `dma`: Coprocessors and DMA slot scheduler
 - `cia_a`, `cia_b`: MOS 8520 Complex Interface Adapters
+- `sprites`, `frame_builder`, `audio`, `floppy`: Coprocessors and peripheral controllers
+- `memory_bus(&mut self) -> MemoryBus<'_>`: Zero-cost transient router decoding the 24-bit physical address space live to storage, custom chips, and peripherals.
 
 ---
 

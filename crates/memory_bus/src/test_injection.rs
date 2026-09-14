@@ -1,8 +1,8 @@
 //! Direct state injection and inspection methods for unit testing, test runners, and debuggers
 
-use super::MemoryBus;
+use super::PhysicalMemory;
 
-impl MemoryBus {
+impl PhysicalMemory {
     /// Loads a sequence of [address, byte] tuples into physical memory without triggering bus cycles or latches
     pub fn load_test_ram(&mut self, entries: &[[u32; 2]]) {
         for entry in entries {
