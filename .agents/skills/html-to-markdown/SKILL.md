@@ -134,8 +134,16 @@ When the source document consists of multiple crawled HTML files (e.g. `index.ht
 The LLM must construct a clean, hierarchical Table of Contents placed immediately after the document title and metadata:
 
 - **Heading:** `## Contents` (or `## Table of Contents`).
-- **Hierarchy:** Nested bullet list matching heading depths (`##` -> `- [Title](#anchor)`, `###` -> `  - [Subtitle](#anchor)`).
-- **Anchor Format:** Lowercase, hyphens for spaces, punctuation stripped.
+- **Hierarchy:** Nested bullet list matching heading depths:
+  - Top-level (`##`): `- [[#Title|Title]]`
+  - Subsections (`###`): `  - [[#Subtitle|Subtitle]]`
+  - Sub-subsections (`####`): `    - [[#Topic|Topic]]`
+- **Obsidian Heading Anchor Standard (No Broken Slugs):**
+  - Standard GitHub kebab-case slugs (e.g. `[Title](#title-slug)`) **do not work in Obsidian** because Obsidian does not use kebab-case slugification; it resolves headings by exact title string.
+  - In Obsidian vaults, use native Wikilink heading references:
+    `- [[#Heading Title|Heading Title]]` (or `[[#Heading Title]]`).
+  - Alternatively, if standard Markdown links are strictly required, use URL-encoded exact titles:
+    `- [Heading Title](#Heading%20Title)`.
 - **100% Resolution:** Every TOC item must resolve to an exact heading in the body.
 
 ---

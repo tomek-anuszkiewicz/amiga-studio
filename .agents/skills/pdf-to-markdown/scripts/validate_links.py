@@ -2,7 +2,7 @@
 """Link & Anchor Validation Tool for Markdown Documents.
 
 Audits Markdown files for broken local image paths, invalid anchor slugs,
-and relative file links.
+and relative file links. Supports both standard Markdown links and Obsidian Wikilinks.
 """
 
 from __future__ import annotations
@@ -10,20 +10,23 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import urllib.parse
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 
 def make_anchor_slug(heading_text: str) -> str:
-    """Generate a GitHub and Obsidian compatible anchor slug."""
+    """Generate a GitHub compatible anchor slug."""
     clean = re.sub(r"[^\w\s-]", "", heading_text.lower())
     return re.sub(r"[\s_]+", "-", clean).strip("-")
 
 
-def extract_anchors_and_links(file_path: Path) -> Tuple[Set[str], List[Tuple[int, str, str]]]:
-    """Extract valid heading anchor slugs and all markdown links from a file."""
-    anchors: Set[str] = set()
-    links: List[Tuple[int, str, str]] = []
+def extract_anchors_and_links(file_path: Path) -> Tuple[Set[str], Set[str], List[Tuple[int, str, str, bool]]]:
+    """Extract valid heading titles, github slugs, and all links (markdown and wikilinks) from a file."""
+    exact_headings: Set[str] = set()
+    github_slugs: Set[str] = set()
+    # links: (line_num, text, target, is_wikilink)
+    links: List[Tuple[int, str, str, bool]] = []
 
     with open(file_path, "r", encoding="utf-8", errors="replace") as stream:
         lines = stream.readlines()
@@ -54,45 +57,83 @@ def extract_anchors_and_links(file_path: Path) -> Tuple[Set[str], List[Tuple[int
             heading_title = heading_match.group(1).strip()
             # Strip link formatting inside heading if any
             heading_title = re.sub(r"\[(.*?)\]\(.*?\)", r"\1", heading_title)
-            slug = make_anchor_slug(heading_title)
-            anchors.add(slug)
+            heading_title = re.sub(r"\[\[(.*?)(?:\|.*?)?\]\]", r"\1", heading_title)
+            clean_title = heading_title.strip()
+            exact_headings.add(clean_title.lower())
+            slug = make_anchor_slug(clean_title)
+            github_slugs.add(slug)
 
-        # Extract markdown links [text](target) and images ![alt](target)
-        found_links = re.findall(r"!?\[(.*?)\]\((.*?)\)", line)
-        for text, target in found_links:
+        # 1. Extract markdown links [text](target) and images ![alt](target)
+        found_md_links = re.findall(r"!?\[(.*?)\]\((.*?)\)", line)
+        for text, target in found_md_links:
             clean_target = target.split()[0].strip()
-            links.append((line_num, text, clean_target))
+            links.append((line_num, text, clean_target, False))
 
-    return anchors, links
+        # 2. Extract Obsidian Wikilinks [[target]] or [[target|display]]
+        found_wiki_links = re.findall(r"!?\[\[(.*?)\]\]", line)
+        for wiki_content in found_wiki_links:
+            if "|" in wiki_content:
+                target_part, display_part = wiki_content.split("|", 1)
+            else:
+                target_part = wiki_content
+                display_part = wiki_content
+            clean_target = target_part.strip()
+            clean_display = display_part.strip()
+            links.append((line_num, clean_display, clean_target, True))
+
+    return exact_headings, github_slugs, links
 
 
-def validate_file(file_path: Path) -> Tuple[int, int, List[str]]:
+def validate_file(file_path: Path, warn_github_slugs: bool = True) -> Tuple[int, int, List[str]]:
     """Validate links and anchors within a single Markdown file."""
-    anchors, links = extract_anchors_and_links(file_path)
+    exact_headings, github_slugs, links = extract_anchors_and_links(file_path)
     errors: List[str] = []
     checked_count = 0
 
     base_dir = file_path.parent
 
-    for line_num, text, target in links:
+    for line_num, text, target, is_wikilink in links:
         checked_count += 1
-
-        # Anchor links
-        if target.startswith("#"):
-            anchor_slug = target[1:].lower()
-            if anchor_slug not in anchors:
-                errors.append(f"Line {line_num}: Broken anchor link '{target}' (heading not found in document)")
-            continue
 
         # Remote HTTP URLs (skip network checking)
         if target.startswith(("http://", "https://", "ftp://", "mailto:")):
             continue
 
+        # Anchor links (internal to this document)
+        if target.startswith("#"):
+            raw_anchor = target[1:].strip()
+            unquoted_anchor = urllib.parse.unquote(raw_anchor).strip()
+
+            # Check if it matches an exact heading (Obsidian style)
+            if unquoted_anchor.lower() in exact_headings or raw_anchor.lower() in exact_headings:
+                continue
+
+            # Check if it matches a GitHub kebab-case slug
+            if raw_anchor.lower() in github_slugs or unquoted_anchor.lower() in github_slugs:
+                if warn_github_slugs:
+                    errors.append(
+                        f"Line {line_num}: GitHub-style slug anchor '{target}' will fail in Obsidian! "
+                        f"Obsidian requires exact heading text like '[[#{unquoted_anchor}]]' or '[{text}](#{urllib.parse.quote(unquoted_anchor)})'."
+                    )
+                continue
+
+            errors.append(f"Line {line_num}: Broken anchor link '{target}' (heading not found in document)")
+            continue
+
+        # Wikilink heading in same document: [[#Heading Name]]
+        if is_wikilink and target.startswith("#"):
+            heading_target = target[1:].strip()
+            if heading_target.lower() not in exact_headings:
+                errors.append(f"Line {line_num}: Broken Wikilink anchor '{target}' (heading not found in document)")
+            continue
+
         # File and asset links
         # Strip potential anchor from target: path.md#anchor
         file_part = target.split("#")[0]
-        resolved_path = (base_dir / file_part).resolve()
+        if not file_part:
+            continue
 
+        resolved_path = (base_dir / file_part).resolve()
         if not resolved_path.exists():
             errors.append(f"Line {line_num}: Broken relative path '{target}' -> '{resolved_path}' does not exist")
 
@@ -102,6 +143,7 @@ def validate_file(file_path: Path) -> Tuple[int, int, List[str]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate links and anchors in Markdown files.")
     parser.add_argument("target", help="Path to Markdown file or directory to validate")
+    parser.add_argument("--allow-github-slugs", action="store_true", help="Do not warn on GitHub kebab-case slugs")
     args = parser.parse_args()
 
     target_path = Path(args.target)
@@ -121,7 +163,7 @@ def main() -> int:
     print(f"Validating {len(md_files)} Markdown file(s)...")
 
     for file_path in md_files:
-        checked, err_count, errors = validate_file(file_path)
+        checked, err_count, errors = validate_file(file_path, warn_github_slugs=not args.allow_github_slugs)
         total_checked += checked
         total_errors += err_count
 
