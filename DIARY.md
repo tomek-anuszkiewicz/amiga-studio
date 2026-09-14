@@ -3672,4 +3672,21 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 368 files.
   - `cargo fmt --all -- --check`: 100% compliant.
 
+---
+
+### [2026-09-14 22:05 CEST] — Deferred Pinpoint Optimization: Dynamic Agnus DMA Slot Arbitration (26.3%)
+- **Affected Subsystems**:
+  - `ROADMAP.md` (added deferred pinpoint optimization track under Step 2)
+  - `Obsidian/Amiga/Design/RTC.md` (repaired markdown reference link to uncommitted Guru Book chapter)
+- **What Was Changed (The Concrete Reality)**:
+  - **Roadmap Optimization Track Added**:
+    - Incorporated the empirical profiling bottleneck identified in benchmark analysis: **Dynamic Agnus DMA Slot Arbitration (26.3%)**.
+    - Specifically scheduled as a deferred pinpoint optimization localized strictly within the Agnus DMA scheduler (`crates/dma/` / `crates/agnus/src/dma/`).
+    - Anchored architectural constraint: maintain straightforward, readable code without complex asynchronous event wheels or skipped-clock tricks, optimizing via a pre-computed scanline slot lookup table (`[DmaSlot; 227]`).
+  - **Obsidian Design Link Integrity**:
+    - Replaced prospective relative markdown link to uncommitted Amiga Guru Book chapter with formatted text citation in `RTC.md`, restoring 100% link integrity across all design documents.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: 20 passed in 5.81s.
+  - `python tools/pre_flight.py`: 100% passed (Formatting, Attractor Discipline, AGENTS.md ceiling, API coverage, Architecture rules).
+
 
