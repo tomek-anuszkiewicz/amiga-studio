@@ -3566,3 +3566,25 @@ Every future modification or implementation task must append an entry following 
   - Verified architecture tests: `cargo test -p test_runner --test test_architecture_rules` passed all 18 tests.
   - Verified pre-flight gate: `python tools/pre_flight.py` passed 100% cleanly across all gates.
 
+---
+
+### [2026-09-14 22:05 CEST] — Pruned amigaguide-to-markdown Skill and Synchronized Qdrant RAG Index
+- **Affected Subsystems**:
+  - `.agents/skills/amigaguide-to-markdown/` (deleted obsolete skill, reference specifications, and scripts)
+  - `docs/ai_agents.md` (removed skill from inventory list in Section 3.C)
+  - `tools/rag/` (synchronized local Qdrant vector database and pruned stale cached points)
+- **What Was Changed (The Concrete Reality)**:
+  - Deleted `.agents/skills/amigaguide-to-markdown/` (including `SKILL.md`, `convert_guide.py`, `validate_links.py`, and AmigaGuide specs). With *The Amiga Guru Book* removed, zero `.guide` documentation assets remain in the project, rendering the pipeline obsolete.
+  - Updated `docs/ai_agents.md` removing `amigaguide-to-markdown` from the documented agent skills inventory.
+  - Reindexed the `amiga` source in Qdrant using `.\tools\rag\bin\amiga_rag.ps1 . --source amiga` with CUDA acceleration (batch size 128).
+  - Purged 1,140 obsolete Guru Book vector embeddings from Qdrant and cleaned the SHA-256 hash cache, leaving 5,310 canonical vectors across 336 documents in the `amiga` source collection.
+- **Architectural Rationale & Trade-Offs**:
+  - *Zero Dead Code & Maintenance Pruning:* Maintaining an AmigaGuide parser and node-linking toolchain when all active reference manuals derive from PDFs (`pdf-to-markdown`) adds unnecessary cognitive overhead and risks bitrot.
+  - *Vector Consistency:* Synchronizing Qdrant and purging removed documentation ensures vector searches match strictly against active hardware reference manuals and architectural design notes.
+- **Verification & Test Results**:
+  - Verified Qdrant collection state: 7,335 total vectors (5,310 `amiga` + 2,025 `obsidian`), 0 missing files.
+  - Verified incremental sync speed: rescanning 336 files took < 1s with 0 unhandled changes.
+  - Verified search retrieval: `python tools/rag_search.py "Copper instruction format"` returned top-ranked HRM Chapter 2 results with 0.842 relevance score.
+  - `python tools/pre_flight.py`: 100% compliant across all quality gates.
+
+
