@@ -3224,4 +3224,33 @@ Every future modification or implementation task must append an entry following 
   - `python tools/check_polish.py "Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md"`: Clean (0 violations).
   - `python tools/pre_flight.py`: All 4 quality gates passed cleanly.
 
+---
+
+### [2026-09-14 13:10 CEST] — Tooling: External Reference Documentation Bootstrapper with Multi-Mirror Fallback
+- **Affected Subsystems**:
+  - `tools/bootstrap_reference.ps1` (new automated reference bootstrapper with multi-source fallback matrix and web crawler)
+  - `tools/bootstrap.ps1` (integrated `-Ref` and `-RefItem` switch into Tier 4 bootstrap execution)
+  - `tools/check_polish.py` (whitelisted reference author and community portal names `winnicki`, `kuba`, `gurubook`, `babel`, `elowar`, `aminet`)
+  - `Obsidian/Amiga/Reference/README.md` (new comprehensive reference documentation library and bootstrapper guide)
+- **What Was Changed (The Concrete Reality)**:
+  - Designed and authored `tools/bootstrap_reference.ps1` supporting `-All`, `-Item <name>`, `-Destination <path>`, `-Force`, and `-List`.
+  - Configured a verified **2–3 mirror fallback matrix** per reference document across Internet Archive collections, established Amiga portals (`amigadev.elowar.com` ADCD 2.1), the worldwide Aminet network, original project sites (`pasti.fxatari.com`, `winnicki.net`), and Wayback Machine snapshots.
+  - Implemented an automated failover engine: sequentially traverses mirrors upon HTTP failure, timeout, or byte length mismatch, and emits an explicit error with non-zero exit code (`exit 1`) if all sources fail.
+  - Built a recursive web crawler for multi-page publications, downloading Kuba Winnicki's *Achtung! Amiga* (root index + 16 technical subpages) into structured local directories.
+  - Ensured intentional Git visibility: `Obsidian/Amiga/Reference/temp/` is intentionally excluded from `.gitignore`, surfacing as untracked files in `git status` when populated to provide visual certainty of temporary assets.
+  - Generated `Obsidian/Amiga/Reference/temp/README.md` clarifying that temporary raw downloads can be safely removed at any time without impacting builds or tests.
+  - Integrated the reference bootstrapper into `tools/bootstrap.ps1` under Tier 4 (`.\tools\bootstrap.ps1 -Ref`).
+  - Authored `Obsidian/Amiga/Reference/README.md` documenting the reference library catalog, provenance, copyright notices, fallback matrix, and manual drop instructions.
+- **Architectural Rationale & Trade-Offs**:
+  - *Multi-Mirror High Availability:* Archival hosts and personal retro sites can suffer transient rate limiting, server reboots, or certificate expiration. Providing 2–3 independent mirrors per item prevents bootstrapper brittleness.
+  - *Intentional Git Visibility:* Hiding temporary downloads via blanket `.gitignore` hides multi-hundred-megabyte files from the developer. Keeping `temp/` untracked ensures immediate visual feedback in `git status` while preventing heavy copyrighted binary blobs from polluting repository history.
+- **Verification & Test Results**:
+  - Tested `bootstrap_reference.ps1 -List` (verified catalog and mirror output).
+  - Tested single-item download on `Instruction Prefetch` (`68kPrefetch.html` fetched and verified skip logic on re-run).
+  - Tested multi-page web crawler on `Undocumented features` (all 17 HTML files crawled successfully from `winnicki.net`).
+  - Tested error reporting and exit code `1` on failed/invalid items.
+  - Confirmed `git status` flags `temp/` as untracked when populated, and returns to clean when deleted.
+  - `python tools/pre_flight.py`: All 4 quality gates passed cleanly.
+
+
 

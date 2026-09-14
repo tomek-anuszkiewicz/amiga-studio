@@ -21,6 +21,8 @@ param(
     [switch]$Test,
     [switch]$Graph,
     [switch]$Doc,
+    [switch]$Ref,
+    [string]$RefItem,
     [switch]$All
 )
 
@@ -38,11 +40,12 @@ function Show-Usage {
     Write-Host "  .\tools\bootstrap.ps1 -Test  : Provision hardware test vectors (SingleStepTests, vAmiga, AmigaTestKit)"
     Write-Host "  .\tools\bootstrap.ps1 -Graph : Provision code knowledge graph (Graphify AST extraction)"
     Write-Host "  .\tools\bootstrap.ps1 -Doc   : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian notes)"
+    Write-Host "  .\tools\bootstrap.ps1 -Ref   : Provision external reference materials into temp/ (PDFs, HTML crawls)"
     Write-Host "  .\tools\bootstrap.ps1 -All   : Provision all components (tests -> Graphify AST -> RAG docs)"
     Write-Host ""
 }
 
-if (-not $Doc -and -not $Test -and -not $Graph -and -not $All) {
+if (-not $Doc -and -not $Test -and -not $Graph -and -not $Ref -and -not $All) {
     Show-Usage
     exit 0
 }
@@ -51,6 +54,7 @@ $TotalSteps = 0
 if ($Test -or $All) { $TotalSteps++ }
 if ($Graph -or $All) { $TotalSteps++ }
 if ($Doc -or $All) { $TotalSteps++ }
+if ($Ref) { $TotalSteps++ }
 $CurrentStep = 1
 
 # -----------------------------------------------------------------------------
@@ -244,6 +248,27 @@ if ($Doc -or $All) {
             } else {
                 Write-Warning "Documentation indexing exited with code $LASTEXITCODE."
             }
+        }
+    }
+}
+
+# -----------------------------------------------------------------------------
+# Tier 4: External Reference Documentation Bootstrap (-Ref)
+# -----------------------------------------------------------------------------
+if ($Ref) {
+    Write-Host ""
+    Write-Host "[$CurrentStep/$TotalSteps] Bootstrapping External Reference Documentation..." -ForegroundColor Green
+    Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
+    $CurrentStep++
+
+    $RefScript = Join-Path $PSScriptRoot "bootstrap_reference.ps1"
+    if (-not (Test-Path $RefScript)) {
+        Write-Error "bootstrap_reference.ps1 not found at: $RefScript"
+    } else {
+        if ($RefItem) {
+            & $RefScript -Item $RefItem
+        } else {
+            & $RefScript -All
         }
     }
 }
