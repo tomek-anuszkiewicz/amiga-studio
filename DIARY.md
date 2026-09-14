@@ -3038,3 +3038,24 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across all files.
   - `python tools/pre_flight.py`: All pre-flight checks passed.
+
+---
+
+### [2026-09-14 05:46 CEST] — Roadmap Scope Clarification: Copper & Blitter Cycle Mechanics Migrated from Step 2.8 into Step 2.7
+- **Affected Subsystems**:
+  - `ROADMAP.md` (refined Step 2.7.1, Step 2.7.2, and Step 2.8)
+  - `DIARY.md` (recorded architectural rationale and scope boundary)
+- **What Was Changed (The Concrete Reality)**:
+  - Audited the operational division between **Step 2.7** (Subsystem Autonomous Execution Engines) and **Step 2.8** (Agnus Master DMA Scheduler & Bus Arbiter).
+  - Identified that Step 2.8 contained detailed specifications of Copper instruction fetch cycles (2 words = 4 CCKs), Copper `WAIT`/`BFD` blitter synchronization, and Blitter channel cycle sequencing that properly belong in the autonomous execution kernels in Step 2.7.
+  - Migrated Copper instruction fetch timing (IR1 destination, IR2 data/mask, 4 CCKs per instruction, 2-CCK wake-up latency) and Blitter Finished Disable (`BFD`) evaluation directly into **Step 2.7.1** (`crates/copper`).
+  - Formally integrated Blitter 4-channel cycle sequencing ($USEA \to USEB \to USEC \to USED$, 2 CCKs per word) into **Step 2.7.2** (`crates/blitter`), acknowledging that basic Blitter Nasty CPU lockout is already in place from the Step 2 baseline.
+  - Refocused **Step 2.8** strictly on master scanline time-slot scheduling (227/228 CCK), the 8-tier bus priority hierarchy (Refresh > Disk > Audio > Bitplane > Sprite > Copper > Blitter > CPU), dynamic cycle stealing for 5–6 bitplanes/HiRes, and Agnus CPU starvation yield logic (yielding 1 cycle every 3 starved CPU cycles when `BLTPRI == 0`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Autonomous Subsystem Kernels vs Master Bus Arbiter:* The execution engine of Copper or Blitter must be functionally self-contained before it can participate in system-wide bus contention. Modeling Copper's 2-word instruction fetch inside Copper ensures it can execute and be tested in isolation with its own step progression, while the DMA arbiter in Step 2.8 simply decides which cycle slots Copper is granted when contending with higher-priority channels.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: Passed cleanly.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 341 files clean, 0 violations.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed.
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly.
+

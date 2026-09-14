@@ -111,12 +111,17 @@ This document outlines the phased development plan, hardware milestones, verific
     - 100% verified across 4 unit tests in `crates/m68000/tests/test_interrupts.rs` and 4 end-to-end integration tests in `crates/machine_loop/tests/test_interrupt_pipeline.rs`.
 - **Step 2.7: Subsystem Core Functional Implementations & Autonomous Execution Engines [Active Focus]:**
   - **Step 2.7.1: Agnus Copper Coprocessor Execution Engine (`crates/copper`):**
-    - Two-word (32-bit) instruction stream fetch from Chip RAM via `PhysicalMemory`.
-    - Cycle-accurate execution state machine: `MOVE` (immediate 16-bit write to destination custom register with `CDANG` danger mode protection for addresses < `$040` / `$080`), `WAIT` (raster beam $VPOS$ & $HPOS$ comparison against target coordinates masked by $VPOS\_MASK$ / $HPOS\_MASK$ and Blitter Finished Disable `BFD` bit), and `SKIP` (conditional bypass of the subsequent instruction).
+    - Cycle-accurate two-word (32-bit / 4 CCK) instruction stream fetch from Chip RAM via `PhysicalMemory`:
+      - 2 CCKs for IR1 (register destination address or VPOS/HPOS target).
+      - 2 CCKs for IR2 (data word or wait/skip mask).
+    - Execution state machine:
+      - `MOVE`: immediate 16-bit write to destination custom register with `CDANG` danger mode protection (registers < `$040` / `$080`).
+      - `WAIT`: beam position comparison against target coordinates masked by $VPOS\_MASK$ / $HPOS\_MASK$, Blitter Finished Disable bit (`BFD` / bit 15: halting Copper while Blitter is busy), and 2-CCK wake-up latency.
+      - `SKIP`: conditional bypass of the subsequent instruction word pair if beam $\ge$ target.
     - Dynamic program counter (`cop_pc`) progression, `COPJMP1` / `COPJMP2` strobe restarts, and automatic VBlank restart on `COP1LC`.
     - Dedicated unit & integration tests in `crates/copper/tests/test_copper.rs`.
   - **Step 2.7.2: Agnus 4-Channel DMA Blitter Engine (`crates/blitter`):**
-    - 4-channel DMA sequence ($USEA$, $USEB$, $USEC$, $USED$ from `BLTCON0` bits 11..8).
+    - 4-channel cycle sequencer ($USEA \to USEB \to USEC \to USED$ from `BLTCON0` bits 11..8), consuming 1 bus cycle (2 CCKs) per active channel word.
     - 256-minterm Boolean ALU implementing full 8-bit truth table ($LF0..LF7$) combining channels A, B, and C into destination D.
     - Barrel shifters for Channel A (bits 12..15 of `BLTCON0`) and Channel B (bits 12..15 of `BLTCON1`) with inter-word carry retention.
     - First and last word masking for Channel A (`BLTAFWM` / `BLTALWM`).
@@ -159,20 +164,21 @@ This document outlines the phased development plan, hardware milestones, verific
     - 24-bit Time-of-Day (TOD) clock ticking on 50 Hz (PAL) / 60 Hz (NTSC) vertical blank pulses with alarm match interrupt (`ALARM`, ICR bit 2).
     - Serial Data Register (SDR) bidirectional shift register synchronized with MOS 6500/1 keyboard protocol on CIA-A SP/CNT pins $\to$ Level 2 `PORTS` interrupt.
     - Dedicated unit & integration tests in `crates/cia/tests/test_cia_advanced.rs`.
-- **Step 2.8: Agnus DMA Bus Arbiter, Time-Slot Scheduling & Chip RAM Contention Engine:**
-  - **Horizontal Scanline DMA Slot Schedule (227 CCK PAL / 226 CCK NTSC):**
-    - *Fixed Time-Slot Allocations:* DRAM Refresh (CCK 0..3), Floppy Disk DMA (CCK 4), 4 Audio DMA channels (CCK 5..8 for AUD0..AUD3), 8 Sprite DMA pairs (CCK 12..27 for SPR0..SPR7, 2 words per sprite).
-    - *Dynamic Bitplane DMA Allocation:* Display Data Fetch window (`DDFSTRT`..=`DDFSTOP`, typically `$0038`..`$00D0`) during active vertical scanlines; dynamic slot allocation driven by `BPLCON0` planecount (1–6) and resolution (LoRes vs HiRes):
+- **Step 2.8: Agnus Master DMA Bus Arbiter, Time-Slot Scheduling & Chip RAM Contention Engine:**
+  - **Horizontal Scanline DMA Slot Schedule (227/228 CCK PAL / 226 CCK NTSC):**
+    - *Fixed Time-Slot Execution:* Orchestrate physical memory fetch cycles for DRAM Refresh (CCK 0..3), Floppy Disk DMA (CCK 4), 4 Audio channels (CCK 5..8), and 8 Sprite pairs (CCK 12..27), routing words into target subsystem holding latches.
+    - *Dynamic Bitplane DMA Allocation & CPU Cycle Stealing:*
+      - Display Data Fetch window (`DDFSTRT`..=`DDFSTOP`) during active vertical scanlines driven by `BPLCON0` planecount (1–6) and resolution (LoRes vs HiRes).
       - LoRes 1–4 planes: 4 memory cycles allocated every 8 CCKs (even slots), leaving odd cycles free for CPU.
-      - LoRes 5–6 planes: Bitplane DMA steals 50% of the odd/CPU cycles, causing measurable CPU contention during display fetch.
-      - HiRes 4 planes: Bitplane DMA claims 100% of memory cycles in the fetch window, completely locking out the CPU during active raster display.
-  - **Strict Bus Priority Hierarchy:**
+      - LoRes 5–6 planes: Bitplane DMA steals 50% of odd cycles, causing direct CPU wait states during display fetch.
+      - HiRes 4 planes: Bitplane DMA claims 100% of memory cycles in the fetch window, completely locking out the CPU.
+  - **Strict 8-Tier Bus Priority Hierarchy & Slot Re-assignment:**
     - Refresh > Disk > Audio > Bitplane > Sprite > Copper > Blitter > CPU.
-    - If a high-priority channel does not request its allocated time slot (e.g. channel disabled in `DMACON`), the slot is released to lower-priority DMA, Blitter, or CPU.
-  - **CPU, Blitter & Copper Bus Contention Mechanics:**
-    - *Blitter Nasty Mode (`DMACON` bit 10 `BLTPRI == 1`):* When Blitter is active, Agnus awards all available memory cycles to the Blitter, completely locking CPU out of Chip RAM (`BusResult::WaitState`).
-    - *Normal Blitter Mode (`BLTPRI == 0`):* Blitter uses idle cycles; implement CPU starvation yield logic where Agnus monitors CPU memory requests and forces the Blitter to release 1 cycle whenever the CPU is starved for 3 consecutive memory cycles.
-    - *Copper Instruction Fetch Cycles:* Copper claims bus cycles (2 words = 4 CCKs for `MOVE`, `WAIT`, `SKIP`) when `COPEN` (bit 7) is asserted and the Copper is not halted waiting for beam position or blitter completion.
+    - Dynamic slot release: If a high-priority channel is disabled in `DMACON` or idle, release the slot immediately to Copper, Blitter, or CPU.
+  - **Blitter & Copper Bus Contention Mechanics:**
+    - *Copper Bus Participation:* Copper claims available cycles (even/odd) when not blocked by higher-priority Bitplane/Sprite DMA.
+    - *Normal Blitter Mode (`BLTPRI == 0`):* Blitter uses remaining idle cycles; implement Agnus CPU starvation yield logic (forcing Blitter to yield 1 cycle whenever CPU is starved for 3 consecutive memory cycles).
+    - *Blitter Nasty Mode (`BLTPRI == 1`):* Agnus awards all available cycles to Blitter, locking CPU out of Chip RAM.
   - **Direct Bus Lock Exposure & End-to-End Propagation:**
     - Direct drive of `chip_ram_blocked` on `PhysicalMemory` during contended slots: CPU Chip RAM (`$000000–$07FFFF`) and Slow RAM (`$C00000–$C7FFFF`) accesses return `BusResult::WaitState` and stall cycle-accurately.
     - Preserves 100% Fast RAM (`$200000–$9FFFFF`) immunity (zero wait states under heavy DMA or Blitter Nasty).
