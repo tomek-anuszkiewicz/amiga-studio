@@ -771,7 +771,7 @@ fn test_move_from_usp() {
 #[test]
 fn test_stop() {
     use m68000::Cpu;
-    use memory_bus::MemoryBus;
+    use physical_memory::MemoryBus;
 
     let mut cpu = Cpu::new();
     let mut bus = MemoryBus::new();

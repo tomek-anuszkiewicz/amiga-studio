@@ -1,6 +1,6 @@
 use debugger::{assemble_instruction, disassemble, Debugger};
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 #[test]
 fn test_disassembler_primitives() {

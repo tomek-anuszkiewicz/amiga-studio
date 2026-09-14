@@ -4,7 +4,7 @@
 //! CCK cycle stepping, and preset mapping per Obsidian/Amiga/Design/RTC.md.
 
 use config::{A500Config, RtcModel, VideoStandard};
-use machine_loop::memory_bus::BusResult;
+use machine_loop::BusResult;
 use machine_loop::{A500Machine, AddressBus};
 
 #[test]

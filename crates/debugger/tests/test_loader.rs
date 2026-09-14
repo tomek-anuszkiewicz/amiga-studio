@@ -1,6 +1,6 @@
 use debugger::loader::{inject_binary, DEFAULT_TARGET_ADDRESS};
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 #[test]
 fn test_inject_binary_with_auto_prime() {

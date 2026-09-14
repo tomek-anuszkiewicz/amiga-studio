@@ -11,7 +11,7 @@
 //! Also validates bus contention stalls (Agnus DMA locking Chip RAM during CCK1 for reads, CCK2 for writes).
 
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 /// Helper to set up a test CPU and MemoryBus with mapped Chip RAM and initialized prefetch pipeline
 fn setup_test_machine(base_pc: u32) -> (Cpu, MemoryBus) {

@@ -13,8 +13,8 @@ use denise::Denise;
 use dma::DmaScheduler;
 use floppy::FloppyController;
 use frame_builder::FrameBuilder;
-use memory_bus::{AddressBus, BusResult, PhysicalMemory};
 use paula::Paula;
+use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 use rtc::RtcMsm6242b;
 use sprites::Sprites;
 

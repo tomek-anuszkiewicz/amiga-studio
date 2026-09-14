@@ -1,4 +1,4 @@
-use memory_bus::{BusResult, MemoryBank, MemoryBus};
+use physical_memory::{BusResult, MemoryBank, MemoryBus};
 
 #[test]
 fn test_bank_map_classification() {

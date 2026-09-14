@@ -5,7 +5,7 @@
 //! Obsidian/Amiga/Design/CPU Instruction Benchmark Strategies.md.
 
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 use super::catalog::{BenchmarkSpec, BenchmarkStrategy};
 use super::prng::XorShift64;

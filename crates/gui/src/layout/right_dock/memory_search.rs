@@ -3,7 +3,7 @@
 //! Pattern search in memory using Hex sequences or ASCII strings.
 
 use egui::{Color32, RichText, Ui};
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SearchMode {

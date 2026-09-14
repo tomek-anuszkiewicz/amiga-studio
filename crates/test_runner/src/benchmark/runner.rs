@@ -5,7 +5,7 @@
 //! per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
 
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

@@ -7,7 +7,7 @@
 use crate::theme::ColorTokens;
 use debugger::{BreakpointManager, WatchAccess};
 use egui::{Color32, RichText, Ui};
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 pub fn render_memory_hex(
     ui: &mut Ui,

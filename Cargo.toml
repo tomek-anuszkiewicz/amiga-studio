@@ -20,7 +20,7 @@ members = [
     "crates/cia",
     "crates/machine_loop",
     "crates/rtc",
-    "crates/memory_bus",
+    "crates/physical_memory",
     "crates/m68000",
     "crates/disassembler",
     "crates/debugger",
@@ -61,7 +61,7 @@ parallel_port = { path = "crates/parallel_port" }
 cia = { path = "crates/cia" }
 machine_loop = { path = "crates/machine_loop" }
 rtc = { path = "crates/rtc" }
-memory_bus = { path = "crates/memory_bus" }
+physical_memory = { path = "crates/physical_memory" }
 m68000 = { path = "crates/m68000" }
 disassembler = { path = "crates/disassembler" }
 debugger = { path = "crates/debugger" }

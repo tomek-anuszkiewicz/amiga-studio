@@ -4,7 +4,7 @@
 //! and setting the Program Counter with prefetch priming.
 
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 /// Default target RAM address for synthetic binaries ($001000)
 pub const DEFAULT_TARGET_ADDRESS: u32 = 0x001000;

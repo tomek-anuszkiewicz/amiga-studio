@@ -6,7 +6,7 @@ use debugger::Debugger;
 use gui::theme::AppTheme;
 use gui::ViewMode;
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 #[test]
 fn test_temporal_history_ring_buffer() {

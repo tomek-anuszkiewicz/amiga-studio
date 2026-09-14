@@ -2,7 +2,7 @@
 
 use crate::micro::types;
 use crate::state::CpuState;
-use memory_bus::{AddressBus, BusResult};
+use physical_memory::{AddressBus, BusResult};
 
 /// Motorola 68000 CPU Core
 #[derive(Debug, Clone)]

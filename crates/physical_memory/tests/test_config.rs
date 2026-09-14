@@ -1,5 +1,5 @@
-use memory_bus::MemoryBus;
-use memory_bus::{
+use physical_memory::MemoryBus;
+use physical_memory::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
 };
 
@@ -71,7 +71,7 @@ fn test_memory_bus_with_standard_1mb_has_rtc_bank() {
 
     assert!(bus.slow_ram.is_some());
     assert!(bus.fast_ram.is_none());
-    assert_eq!(bus.bank_map[0xDC].bank, memory_bus::MemoryBank::Rtc);
+    assert_eq!(bus.bank_map[0xDC].bank, physical_memory::MemoryBank::Rtc);
 
     // In PhysicalMemory, RTC addresses return floating open bus $FF
     assert_eq!(bus.read_byte_debug(0xDC0000), 0xFF);
@@ -98,7 +98,7 @@ fn test_memory_bus_apply_config_dynamically() {
 
 #[test]
 fn test_256_entry_bank_map() {
-    use memory_bus::MemoryBank;
+    use physical_memory::MemoryBank;
 
     // 1. Standard 1MB config
     let mut bus = MemoryBus::new();
@@ -132,7 +132,7 @@ fn test_256_entry_bank_map() {
         assert_eq!(bus.bank_map[b], MemoryBank::KickstartRom);
     }
 
-    assert_eq!(bus.bank_map, memory_bus::map::BANK_MAP_STANDARD);
+    assert_eq!(bus.bank_map, physical_memory::map::BANK_MAP_STANDARD);
 
     // 2. Bare 512k config: SlowRam and RTC become OpenBus
     let mut bare_bus = MemoryBus::from_config(A500Config::bare_512k(VideoStandard::Pal));
@@ -141,7 +141,7 @@ fn test_256_entry_bank_map() {
         assert_eq!(bare_bus.bank_map[b], MemoryBank::OpenBus);
     }
     assert_eq!(bare_bus.bank_map[0xDC], MemoryBank::OpenBus);
-    assert_eq!(bare_bus.bank_map, memory_bus::map::BANK_MAP_BARE);
+    assert_eq!(bare_bus.bank_map, physical_memory::map::BANK_MAP_BARE);
 
     // 3. Expanded config: Fast RAM occupies 0x20..=0x5F
     let mut exp_bus = MemoryBus::from_config(A500Config::expanded_power_user(VideoStandard::Pal));
@@ -149,7 +149,7 @@ fn test_256_entry_bank_map() {
     for b in 0x20..=0x5F {
         assert_eq!(exp_bus.bank_map[b], MemoryBank::FastRam);
     }
-    assert_eq!(exp_bus.bank_map, memory_bus::map::BANK_MAP_EXPANDED);
+    assert_eq!(exp_bus.bank_map, physical_memory::map::BANK_MAP_EXPANDED);
 }
 
 #[test]

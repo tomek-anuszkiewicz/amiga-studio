@@ -3,7 +3,7 @@
 //! Verifies that PhysicalMemory treats Bank 0xDC as open bus space (returning $FF)
 //! with silent no-op writes, and verifies crate re-exports.
 
-use memory_bus::{A500Config, MemoryBus, RtcModel, VideoStandard};
+use physical_memory::{A500Config, MemoryBus, RtcModel, VideoStandard};
 
 #[test]
 fn test_rtc_open_bus_in_physical_memory() {
@@ -30,7 +30,7 @@ fn test_rtc_open_bus_in_physical_memory() {
 #[test]
 fn test_rtc_reexported_module_namespace() {
     // Verify that downstream callers can construct or type-check RtcMsm6242b
-    // directly via memory_bus::rtc::RtcMsm6242b without depending directly on crate rtc
-    let rtc_instance = memory_bus::rtc::RtcMsm6242b::new(memory_bus::RtcModel::Msm6242b);
-    assert_eq!(rtc_instance.model, memory_bus::RtcModel::Msm6242b);
+    // directly via physical_memory::rtc::RtcMsm6242b without depending directly on crate rtc
+    let rtc_instance = physical_memory::rtc::RtcMsm6242b::new(physical_memory::RtcModel::Msm6242b);
+    assert_eq!(rtc_instance.model, physical_memory::RtcModel::Msm6242b);
 }

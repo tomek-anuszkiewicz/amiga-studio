@@ -16,7 +16,7 @@
 //! 10. Multi-register block transfers (`MOVEM.L` save and restore)
 
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 /// Helper: Initializes CPU and Amiga MemoryBus with Chip RAM mapped at `$000000`.
 fn setup_machine() -> (Cpu, MemoryBus) {

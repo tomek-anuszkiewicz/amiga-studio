@@ -9,7 +9,7 @@ use std::path::Path;
 
 use disassembler::disassemble;
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 use super::builder::{
     BenchmarkProgram, BenchmarkProgramBuilder, BENCH_EXIT_PC, BENCH_RAM_BUFFER_A1,

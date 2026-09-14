@@ -4,7 +4,7 @@
 //! subroutine linkage, and CPU/Bus memory injection across all benchmark strategies.
 
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 use test_runner::benchmark::builder::{
     BenchmarkProgramBuilder, BENCH_ENTRY_PC, BENCH_EXIT_PC, BENCH_RAM_BUFFER_A0,
     BENCH_RAM_BUFFER_A1, BENCH_STACK_TOP,

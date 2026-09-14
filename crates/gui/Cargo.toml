@@ -22,7 +22,7 @@ eframe = { version = "0.31", default-features = true, features = ["persistence"]
 egui = { version = "0.31", default-features = true }
 config = { path = "../config" }
 rtc = { path = "../rtc" }
-memory_bus = { path = "../memory_bus" }
+physical_memory = { path = "../physical_memory" }
 m68000 = { path = "../m68000" }
 debugger = { path = "../debugger" }
 serde = { workspace = true }

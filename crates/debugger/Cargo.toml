@@ -9,6 +9,6 @@ config = { workspace = true }
 disassembler = { workspace = true }
 m68000 = { workspace = true }
 machine_loop = { workspace = true }
-memory_bus = { workspace = true }
+physical_memory = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

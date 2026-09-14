@@ -1,5 +1,5 @@
 use config::{A500Config, VideoStandard};
-use machine_loop::memory_bus::BusResult;
+use machine_loop::BusResult;
 use machine_loop::{A500Machine, AddressBus};
 
 #[test]

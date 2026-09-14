@@ -5,7 +5,7 @@
 
 use config::A500Config;
 use machine_loop::A500Machine;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 use crate::loader::inject_binary;
 use crate::stepping::Debugger;

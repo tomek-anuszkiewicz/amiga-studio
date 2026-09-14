@@ -3,7 +3,7 @@
 //! Compares recorded M68000 CPU bus transactions against silicon reference logs
 //! from Tom Harte SingleStepTests-680x0 physical hardware captures.
 
-use memory_bus::{BusAccessSize, RecordedTransaction};
+use physical_memory::{BusAccessSize, RecordedTransaction};
 
 /// Expected transaction parsed from SingleStepTests JSON
 #[derive(Debug, Clone, PartialEq, Eq)]

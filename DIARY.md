@@ -2738,5 +2738,29 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 331 files (0 violations).
   - `python tools/pre_flight.py`: All pre-flight quality gates passed cleanly.
 
+---
 
-
+### [2026-09-14 02:35 CEST] — Renamed memory_bus Crate to physical_memory
+- **Affected Subsystems**:
+  - `crates/memory_bus/` -> `crates/physical_memory/`: Renamed crate directory and package to `physical_memory` via `git mv`.
+  - `Cargo.toml` & `Cargo.lock`: Updated workspace member from `"crates/memory_bus"` to `"crates/physical_memory"`.
+  - Dependent `Cargo.toml` files: Updated `m68000`, `machine_loop`, `debugger`, `gui`, and `test_runner` to depend on `physical_memory`.
+  - `crates/*/src/` & `crates/*/tests/`: Replaced all `use memory_bus::...` imports with `use physical_memory::...`.
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Updated `CORE_EMULATION_CRATES` list to monitor `physical_memory`.
+  - `Obsidian/Amiga/Design/`: Updated source links and crate references in `MemoryBus.md`, `General Architecture.md`, `CPU SingleStepTests.md`, `GUI Specification.md`, `Main loop A500.md`, and `Rust Guidelines.md`.
+- **What Was Changed (The Concrete Reality)**:
+  - Aligned filesystem directory naming and Cargo package nomenclature with the refactored architecture, establishing `crates/physical_memory` as the authoritative physical storage layer.
+  - Preserved the separation between physical storage (`physical_memory::PhysicalMemory`) and motherboard bus routing (`machine_loop::bus::MemoryBus`).
+  - Updated all downstream consumers, tests, benchmarks, and architectural tests to import from `physical_memory`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Nomenclature Clarity:* Eliminates ambiguity between physical storage buffers (`physical_memory`) and bus arbitration/routing (`machine_loop::MemoryBus`).
+  - *Unified Workspace Layout:* Follows standard Rust snake_case crate naming (`physical_memory`) while maintaining flat workspace structure.
+- **Verification & Test Results**:
+  - `cargo test -p physical_memory`: All 23 tests passed.
+  - `cargo test -p m68000`: All 42 tests passed.
+  - `cargo test -p machine_loop`: All 20 tests passed.
+  - `cargo test -p debugger`: All 39 tests passed.
+  - `cargo test -p gui`: All 45 tests passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 17 architecture tests passed (including zero broken links and cargo fmt compliance).
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 331 files (0 violations).
+  - `python tools/pre_flight.py`: All 4 pre-flight quality gates passed cleanly.

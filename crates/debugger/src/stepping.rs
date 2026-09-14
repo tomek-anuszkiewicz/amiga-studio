@@ -5,7 +5,7 @@ use crate::temporal::TemporalHistory;
 use crate::trace::TraceRingBuffer;
 use crate::{disassemble, Disassembly};
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 /// Fine-grained execution stepping modes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

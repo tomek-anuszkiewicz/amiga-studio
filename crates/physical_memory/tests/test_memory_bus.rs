@@ -1,4 +1,4 @@
-use memory_bus::{BusResult, MemoryBus, TestMemoryBus};
+use physical_memory::{BusResult, MemoryBus, TestMemoryBus};
 
 #[test]
 fn test_boot_overlay_and_cia_control() {

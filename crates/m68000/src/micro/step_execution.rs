@@ -1,7 +1,7 @@
 //! Specialized Micro-Step Execution Handlers for M68000 CPU
 
 use crate::core::Cpu;
-use memory_bus::{AddressBus, BusResult};
+use physical_memory::{AddressBus, BusResult};
 
 impl Cpu {
     // ========================================================================

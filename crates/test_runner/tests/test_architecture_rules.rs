@@ -29,7 +29,7 @@ const LINE_COUNT_EXCEPTIONS: &[&str] = &[
 /// Core emulation crates where `.unwrap()` and `.expect()` are strictly forbidden in runtime code.
 const CORE_EMULATION_CRATES: &[&str] = &[
     "m68000",
-    "memory_bus",
+    "physical_memory",
     "config",
     "rtc",
     "disassembler",

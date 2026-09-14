@@ -1,6 +1,6 @@
 use m68000::micro::ea;
 use m68000::{Cpu, CpuState};
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 #[test]
 fn test_addressing_modes_and_a7_byte_quirk() {

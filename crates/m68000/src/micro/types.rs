@@ -5,7 +5,7 @@
 
 use crate::core::Cpu;
 use crate::state::CpuState;
-use memory_bus::{AddressBus, BusResult};
+use physical_memory::{AddressBus, BusResult};
 use serde::{Deserialize, Serialize};
 
 /// Atomic step execution function.
@@ -24,9 +24,9 @@ pub type AluFn = fn(state: &mut CpuState, reg_src: u8, reg_dst: u8);
 #[inline(always)]
 pub fn data_fc(state: &CpuState) -> u8 {
     if state.is_supervisor() {
-        memory_bus::function_code::SUPERVISOR_DATA
+        physical_memory::function_code::SUPERVISOR_DATA
     } else {
-        memory_bus::function_code::USER_DATA
+        physical_memory::function_code::USER_DATA
     }
 }
 
@@ -34,9 +34,9 @@ pub fn data_fc(state: &CpuState) -> u8 {
 #[inline(always)]
 pub fn prog_fc(state: &CpuState) -> u8 {
     if state.is_supervisor() {
-        memory_bus::function_code::SUPERVISOR_PROGRAM
+        physical_memory::function_code::SUPERVISOR_PROGRAM
     } else {
-        memory_bus::function_code::USER_PROGRAM
+        physical_memory::function_code::USER_PROGRAM
     }
 }
 

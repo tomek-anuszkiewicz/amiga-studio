@@ -6,7 +6,7 @@
 //! - Stack pop operations (RTS)
 
 use crate::core::Cpu;
-use memory_bus::{AddressBus, BusResult};
+use physical_memory::{AddressBus, BusResult};
 
 impl Cpu {
     // ========================================================================

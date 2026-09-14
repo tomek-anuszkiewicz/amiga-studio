@@ -1,5 +1,5 @@
 use m68000::{Cpu, MicroStep};
-use memory_bus::{BusResult, MemoryBus};
+use physical_memory::{BusResult, MemoryBus};
 
 #[test]
 fn test_micro_state_initial_and_reset() {

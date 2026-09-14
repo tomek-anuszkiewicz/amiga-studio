@@ -893,7 +893,7 @@ dependencies = [
  "disassembler",
  "m68000",
  "machine_loop",
- "memory_bus",
+ "physical_memory",
  "serde",
  "serde_json",
 ]
@@ -1659,7 +1659,7 @@ dependencies = [
  "egui_kittest",
  "image",
  "m68000",
- "memory_bus",
+ "physical_memory",
  "rfd",
  "rtc",
  "serde",
@@ -2069,7 +2069,7 @@ name = "m68000"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.13.1",
- "memory_bus",
+ "physical_memory",
  "serde",
  "serde_json",
 ]
@@ -2092,10 +2092,10 @@ dependencies = [
  "joystick",
  "keyboard",
  "m68000",
- "memory_bus",
  "mouse",
  "parallel_port",
  "paula",
+ "physical_memory",
  "rtc",
  "serde",
  "serial_port",
@@ -2133,16 +2133,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "memory_bus"
-version = "0.1.0"
-dependencies = [
- "config",
- "rtc",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -2688,6 +2678,16 @@ name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
+
+[[package]]
+name = "physical_memory"
+version = "0.1.0"
+dependencies = [
+ "config",
+ "rtc",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "pin-project"
@@ -3455,7 +3455,7 @@ dependencies = [
  "disassembler",
  "flate2",
  "m68000",
- "memory_bus",
+ "physical_memory",
  "serde",
  "serde_json",
 ]

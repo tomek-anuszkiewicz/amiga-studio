@@ -7,7 +7,7 @@ use crate::micro::common;
 use crate::micro::ea;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
-use memory_bus::{AddressBus, BusResult};
+use physical_memory::{AddressBus, BusResult};
 
 // ============================================================================
 // Pure ALU Callbacks: MOVEM

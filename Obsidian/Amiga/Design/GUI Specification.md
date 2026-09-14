@@ -50,7 +50,7 @@ The physical arrangement on screen strictly maps 1:1 to the Rust source code hie
 ```
 
 ### Living Source File Tree & Implementation Links:
-- [`crates/gui/Cargo.toml`](../../../crates/gui/Cargo.toml): Package configuration and UI dependencies (`eframe`, `egui`, `rfd`, `m68000`, `memory_bus`, `debugger`, `config`, `rtc`).
+- [`crates/gui/Cargo.toml`](../../../crates/gui/Cargo.toml): Package configuration and UI dependencies (`eframe`, `egui`, `rfd`, `m68000`, `physical_memory`, `debugger`, `config`, `rtc`).
 - [`Trunk.toml`](../../../Trunk.toml): Root Trunk configuration enabling `trunk serve --open` and `trunk build` directly from workspace root.
 - [`crates/gui/index.html`](../../../crates/gui/index.html): HTML5 canvas runner template for WebAssembly browser execution.
 - [`crates/gui/src/lib.rs`](../../../crates/gui/src/lib.rs): WebAssembly entrypoint (`eframe::WebRunner`) and shared re-exports.

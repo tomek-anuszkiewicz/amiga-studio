@@ -5,7 +5,7 @@
 use crate::theme::ColorTokens;
 use egui::{Color32, RichText, Ui};
 use m68000::{Cpu, CpuState};
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 /// Register identifier for interactive inline editing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

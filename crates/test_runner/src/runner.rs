@@ -3,7 +3,7 @@ use crate::reporter::{record_suite_result, SuiteResult, TestFailureSummary};
 use crate::schema::SingleStepTest;
 use flate2::read::GzDecoder;
 use m68000::Cpu;
-use memory_bus::TestMemoryBus;
+use physical_memory::TestMemoryBus;
 use std::fs::File;
 use std::io::{BufReader, Read};
 

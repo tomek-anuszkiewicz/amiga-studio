@@ -7,7 +7,7 @@ use crate::theme::ColorTokens;
 use debugger::{assemble_instruction, disassemble, find_aligned_disassembly_start, Debugger};
 use egui::{RichText, Ui};
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 /// State for inline instruction editing in disassembly table
 #[derive(Debug, Clone)]

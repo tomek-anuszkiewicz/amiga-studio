@@ -58,7 +58,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guideli
 ### 2.2 Workspace Flat Layout & 3-Tier Re-Export Strategy
 - All crates reside directly under `crates/*` (strictly flat layout).
 - **Tier 1 (Foundational - `config`):** Presets and machine timings. Never re-exported by peer subsystems.
-- **Tier 2 (Peer Subsystems - `memory_bus`, `m68000`, `agnus`, etc.):** Peers owned by `A500`. Peers never re-export other peers.
+- **Tier 2 (Peer Subsystems - `physical_memory`, `m68000`, `agnus`, etc.):** Peers owned by `A500`. Peers never re-export other peers.
 - **Tier 3 (Sub-Components - `rtc`, `copper`, `blitter`):** Re-exported by their parent subsystem (`pub use rtc::*`).
 - **Tier 0 (Top-Level Facade - `a500` & `desktop_gui`):** Unified gateway for host frontends.
 

@@ -1,4 +1,4 @@
-use memory_bus::{
+use physical_memory::{
     arbitration::{function_code, BusAccessSize, BusResult},
     MemoryBus,
 };

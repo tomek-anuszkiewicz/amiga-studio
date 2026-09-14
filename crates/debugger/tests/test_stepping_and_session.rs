@@ -1,6 +1,6 @@
 use debugger::{Debugger, DebuggerSession};
 use m68000::Cpu;
-use memory_bus::MemoryBus;
+use physical_memory::MemoryBus;
 
 #[test]
 fn test_debugger_stepping_and_breakpoints() {
