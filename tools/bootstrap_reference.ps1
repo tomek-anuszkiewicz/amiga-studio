@@ -80,24 +80,24 @@ $Catalog = @(
         Name        = "Hardware Reference Manual"
         Folder      = "Hardware Reference Manual"
         Type        = "SingleFile"
-        TargetFile  = "Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
-        MinSize     = 30000000
-        Description = "Addison-Wesley 2nd Edition (1989) covering OCS/ECS, A1000/A500/A2000"
+        TargetFile  = "Amiga_Hardware_Reference_Manual_3rd_edition.pdf"
+        MinSize     = 50000000
+        Description = "Commodore-Amiga 3rd Edition (1991) covering OCS/ECS (487 pages, 600 DPI)"
         Mirrors     = @(
             @{
-                Name    = "Internet Archive (1989 2nd Ed PDF)"
-                Url     = "https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
-                File    = "Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
-                MinSize = 30000000
-            },
-            @{
-                Name    = "Internet Archive (1991 3rd Ed ECS PDF)"
+                Name    = "Internet Archive (1991 3rd Ed ECS PDF, Primary 487p 600 DPI)"
                 Url     = "https://archive.org/download/amiga-hardware-reference-manual-3rd-edition/Amiga_Hardware_Reference_Manual_3rd_edition.pdf"
                 File    = "Amiga_Hardware_Reference_Manual_3rd_edition.pdf"
                 MinSize = 50000000
             },
             @{
-                Name    = "Internet Archive (1985 1st Ed PDF)"
+                Name    = "Internet Archive (1989 2nd Ed OCS PDF, Failover/Baseline 405p 600 DPI)"
+                Url     = "https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
+                File    = "Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf"
+                MinSize = 30000000
+            },
+            @{
+                Name    = "Internet Archive (1985 1st Ed PDF, Failover 1st Ed)"
                 Url     = "https://archive.org/download/Amiga_Hardware_Reference_Manual_1985_Commodore/Amiga_Hardware_Reference_Manual_1985_Commodore.pdf"
                 File    = "Amiga_Hardware_Reference_Manual_1985_Commodore.pdf"
                 MinSize = 2000000
@@ -109,27 +109,21 @@ $Catalog = @(
         Name        = "A500 A2000 Technical Reference Manual"
         Folder      = "A500 A2000 Technical Reference Manual"
         Type        = "SingleFile"
-        TargetFile  = "Commodore_Amiga_A500-A2000_Technical_Reference_Manual.pdf"
+        TargetFile  = "Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf"
         MinSize     = 10000000
         Description = "Commodore-Amiga OEM Manual (1987) with schematics and expansion architecture"
         Mirrors     = @(
             @{
-                Name    = "Internet Archive (1987 OEM PDF, Primary Scan)"
-                Url     = "https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual.pdf"
-                File    = "Commodore_Amiga_A500-A2000_Technical_Reference_Manual.pdf"
-                MinSize = 15000000
-            },
-            @{
-                Name    = "Internet Archive (Alternate Clean Scan PDF)"
+                Name    = "Internet Archive (1987 OEM Clean Scan PDF, Primary 308p 200 DPI)"
                 Url     = "https://archive.org/download/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf"
                 File    = "Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf"
                 MinSize = 10000000
             },
             @{
-                Name    = "Internet Archive (Searchable OCR Text PDF)"
-                Url     = "https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual_text.pdf"
-                File    = "Commodore_Amiga_A500-A2000_Technical_Reference_Manual_text.pdf"
-                MinSize = 5000000
+                Name    = "Internet Archive (1987 OEM Alternate Scan PDF, Failover 309p)"
+                Url     = "https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual.pdf"
+                File    = "Commodore_Amiga_A500-A2000_Technical_Reference_Manual.pdf"
+                MinSize = 15000000
             }
         )
     },
@@ -138,27 +132,27 @@ $Catalog = @(
         Name        = "68000 Programmer's Reference Manual"
         Folder      = "68000 Programmer's Reference Manual"
         Type        = "SingleFile"
-        TargetFile  = "M68000_Programmers_Reference_Manual_4th_Edition.pdf"
-        MinSize     = 15000000
-        Description = "Motorola M68000PM/AD Rev 1 (1992) covering 68000 and CPU32 instruction sets"
+        TargetFile  = "M68000PRM.pdf"
+        MinSize     = 2000000
+        Description = "Motorola M68000PM/AD Rev 1 (1992) born-digital vector manual (646 pages)"
         Mirrors     = @(
             @{
-                Name    = "Internet Archive (M68000PM/AD Rev 1 1992 PDF, Complete)"
-                Url     = "https://archive.org/download/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition.pdf"
-                File    = "M68000_Programmers_Reference_Manual_4th_Edition.pdf"
-                MinSize = 100000000
-            },
-            @{
-                Name    = "Internet Archive (1984 PRM Scan PDF)"
+                Name    = "Internet Archive (M68000PM/AD Rev 1 1992 Born-Digital Vector PDF, Primary 646p)"
                 Url     = "https://archive.org/download/M68000PRM/M68000PRM.pdf"
                 File    = "M68000PRM.pdf"
                 MinSize = 4000000
             },
             @{
-                Name    = "Internet Archive (Searchable OCR Text PDF)"
-                Url     = "https://archive.org/download/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition/M68000_16_32-Bit_Microprocessor_Programmers_Reference_Manual_4th_Edition_text.pdf"
-                File    = "M68000_Programmers_Reference_Manual_text.pdf"
-                MinSize = 4000000
+                Name    = "Internet Archive / Bitsavers (M68000PM/AD Rev 1 1992 PDF, Failover)"
+                Url     = "https://archive.org/download/bitsavers_motorola68ogrammersReferenceManual1992_2394181/M68000PM_AD_Rev_1_Programmers_Reference_Manual_1992.pdf"
+                File    = "M68000PM_AD_Rev_1_Programmers_Reference_Manual_1992.pdf"
+                MinSize = 2000000
+            },
+            @{
+                Name    = "Internet Archive (Motorola M68000PM/AD High-Res Scan PDF, Failover)"
+                Url     = "https://archive.org/download/Motorola_Programmers_Reference_Manual_M68000PM_AD/Motorola_Programmers_Reference_Manual_M68000PM_AD.pdf"
+                File    = "Motorola_Programmers_Reference_Manual_M68000PM_AD.pdf"
+                MinSize = 50000000
             }
         )
     },
@@ -172,22 +166,46 @@ $Catalog = @(
         Description = "Motorola M68000UM/AD Rev 8 (1993) with bus cycle timing and electrical tables"
         Mirrors     = @(
             @{
-                Name    = "Internet Archive / Bitsavers (Rev 8 1993 PDF)"
+                Name    = "Internet Archive / Bitsavers (Rev 8 1993 PDF, Primary 601 DPI 216p)"
                 Url     = "https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf"
                 File    = "M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8.pdf"
                 MinSize = 8000000
             },
             @{
-                Name    = "Internet Archive (Rev 8 Alternate Archive Item)"
+                Name    = "Internet Archive (Rev 8 Alternate Archive Item, Failover)"
                 Url     = "https://archive.org/download/bitsavers_motorola6868000MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf"
-                File    = "M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_mirror2.pdf"
+                File    = "M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8.pdf"
                 MinSize = 8000000
             },
             @{
-                Name    = "Internet Archive / Bitsavers (Motorola 68000 Family Reference 1988 PDF)"
+                Name    = "Internet Archive / Bitsavers (Motorola 68000 Family Reference 1988 PDF, Companion 608p)"
                 Url     = "https://archive.org/download/bitsavers_motorola68rence1988_23248083/M68000_Family_Reference_1988.pdf"
                 File    = "M68000_Family_Reference_1988.pdf"
                 MinSize = 15000000
+            }
+        )
+    },
+    @{
+        Id              = "gurubook"
+        Name            = "Amiga Guru Book"
+        Folder          = "Amiga Guru Book"
+        Type            = "SingleFile"
+        TargetFile      = "gurubook-blurb.guide"
+        MinSize         = 50000
+        Description     = "Ralph Babel's Amiga system reference overview and documentation guide"
+        CleanupPatterns = @("*.lha", "gurubook-review*.txt", "gurubook-blurb.txt")
+        Mirrors         = @(
+            @{
+                Name    = "Aminet Documentation (LHA Archive, Primary)"
+                Url     = "http://aminet.net/docs/misc/gurubook-info.lha"
+                File    = "gurubook-info.lha"
+                MinSize = 30000
+            },
+            @{
+                Name    = "Aminet Main Mirror (LHA Archive, Failover)"
+                Url     = "http://main.aminet.net/docs/misc/gurubook-info.lha"
+                File    = "gurubook-info.lha"
+                MinSize = 30000
             }
         )
     },
@@ -317,7 +335,8 @@ function Expand-ReferenceArchive {
     param(
         [string]$ArchiveFilePath,
         [string]$DestinationDir,
-        [switch]$Force
+        [switch]$Force,
+        [string[]]$CleanupPatterns
     )
 
     if (-not (Test-Path $ArchiveFilePath)) { return }
@@ -342,6 +361,14 @@ function Expand-ReferenceArchive {
             $checkPath = Join-Path $DestinationDir $firstEntry
             if (Test-Path $checkPath) {
                 Write-Host "  [SKIP] Archive already unpacked: $FileName" -ForegroundColor DarkGray
+                if ($CleanupPatterns) {
+                    foreach ($pat in $CleanupPatterns) {
+                        $filesToRemove = Get-ChildItem -Path $DestinationDir -Filter $pat -File -ErrorAction SilentlyContinue
+                        foreach ($remFile in $filesToRemove) {
+                            Remove-Item -Path $remFile.FullName -Force -ErrorAction SilentlyContinue
+                        }
+                    }
+                }
                 return
             }
         }
@@ -395,6 +422,17 @@ function Expand-ReferenceArchive {
         }
     }
 
+    if ($extracted -and $CleanupPatterns) {
+        Write-Host "  Applying post-extraction cleanup..." -ForegroundColor DarkGray
+        foreach ($pat in $CleanupPatterns) {
+            $filesToRemove = Get-ChildItem -Path $DestinationDir -Filter $pat -File -ErrorAction SilentlyContinue
+            foreach ($remFile in $filesToRemove) {
+                Remove-Item -Path $remFile.FullName -Force -ErrorAction SilentlyContinue
+                Write-Host "    [REMOVED] $($remFile.Name)" -ForegroundColor DarkGray
+            }
+        }
+    }
+
     if (-not $extracted) {
         Write-Warning "  Could not extract $FileName. Please ensure Windows tar.exe (native in Windows 10/11) or 7-Zip is available."
     }
@@ -403,7 +441,8 @@ function Expand-ReferenceArchive {
 function Expand-DirectoryArchives {
     param(
         [string]$TargetDir,
-        [switch]$Force
+        [switch]$Force,
+        [string[]]$CleanupPatterns
     )
 
     if (-not (Test-Path $TargetDir)) { return }
@@ -412,7 +451,7 @@ function Expand-DirectoryArchives {
     foreach ($pattern in $ArchiveExtensions) {
         $archives = Get-ChildItem -Path $TargetDir -Filter $pattern -File -ErrorAction SilentlyContinue
         foreach ($archive in $archives) {
-            Expand-ReferenceArchive -ArchiveFilePath $archive.FullName -DestinationDir $TargetDir -Force:$Force
+            Expand-ReferenceArchive -ArchiveFilePath $archive.FullName -DestinationDir $TargetDir -Force:$Force -CleanupPatterns $CleanupPatterns
         }
     }
 }
@@ -425,6 +464,17 @@ function Download-SingleFile {
         [bool]$AllSourcesMode,
         [bool]$AutoExtract = $true
     )
+
+    $FinalTargetPath = Join-Path $TargetDir $Item.TargetFile
+    if (-not $ForceDownload -and (Test-Path $FinalTargetPath)) {
+        $FinalSize = (Get-Item $FinalTargetPath).Length
+        if ($FinalSize -ge $Item.MinSize) {
+            Write-Host "  [SKIP] Target already provisioned: $($Item.TargetFile) ($([math]::Round($FinalSize / 1MB, 2)) MB)" -ForegroundColor DarkGray
+            if (-not $AllSourcesMode) {
+                return $true
+            }
+        }
+    }
 
     $MirrorIndex = 1
     $TotalMirrors = $Item.Mirrors.Count
@@ -442,7 +492,7 @@ function Download-SingleFile {
             if ($CurrentSize -ge $MinExpected) {
                 Write-Host "  [SKIP] Already present ($($mirror.Name)): $ActualFileName ($([math]::Round($CurrentSize / 1MB, 2)) MB)" -ForegroundColor DarkGray
                 if ($AutoExtract) {
-                    Expand-ReferenceArchive -ArchiveFilePath $ActualDestPath -DestinationDir $TargetDir -Force:$ForceDownload
+                    Expand-ReferenceArchive -ArchiveFilePath $ActualDestPath -DestinationDir $TargetDir -Force:$ForceDownload -CleanupPatterns $Item.CleanupPatterns
                 }
                 $AnySuccess = $true
                 if (-not $AllSourcesMode) {
@@ -487,7 +537,7 @@ function Download-SingleFile {
             if ($totalBytes -ge $MinExpected) {
                 Write-Host "  [OK] Downloaded successfully: $ActualFileName ($([math]::Round($totalBytes / 1MB, 2)) MB)" -ForegroundColor Green
                 if ($AutoExtract) {
-                    Expand-ReferenceArchive -ArchiveFilePath $ActualDestPath -DestinationDir $TargetDir -Force:$ForceDownload
+                    Expand-ReferenceArchive -ArchiveFilePath $ActualDestPath -DestinationDir $TargetDir -Force:$ForceDownload -CleanupPatterns $Item.CleanupPatterns
                 }
                 $AnySuccess = $true
                 if (-not $AllSourcesMode) {
@@ -674,7 +724,7 @@ if ($ExtractOnly) {
     foreach ($entry in $ItemsToProcess) {
         $ItemTargetDir = Join-Path $Destination $entry.Folder
         Write-Host "Checking archives for '$($entry.Name)'..." -ForegroundColor Yellow
-        Expand-DirectoryArchives -TargetDir $ItemTargetDir -Force:$Force
+        Expand-DirectoryArchives -TargetDir $ItemTargetDir -Force:$Force -CleanupPatterns $entry.CleanupPatterns
         Write-Host ""
     }
 

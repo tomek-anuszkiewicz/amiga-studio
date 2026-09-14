@@ -3340,3 +3340,24 @@ Every future modification or implementation task must append an entry following 
   - Deleted temp/Amiga Guru Book/
   - Verified tools/bootstrap_reference.ps1 -List with 6 core reference sources
   - tools/pre_flight.py: 100% compliant across all gates.
+---
+
+### [2026-09-14 14:21 CEST] — Pruned Degraded Reference Sources and Enabled Automated Post-Archive Cleanup
+- **Affected Subsystems**:
+  - `tools`
+  - `reference`
+  - `documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated tools/bootstrap_reference.ps1 catalog to establish born-digital M68000PRM.pdf (1992 Rev 1, 646p) and clean 308-page TRM scan as primaries
+  - Removed degraded 67 DPI TRM text PDF and incomplete 1984 244-page PRM scans
+  - Implemented automated post-extraction archive cleanup for LHA/ZIP archives to purge archive binaries and promotional review clutter
+  - Updated Obsidian/Amiga/Reference/temp/ to retain only high-fidelity primaries and verified failover mirrors
+  - Updated Obsidian/Amiga/Reference/README.md and temp/README.md with quality standards and mirror table
+- **Architectural Rationale & Trade-Offs**:
+  - Scanned reference materials must meet rigorous fidelity standards for downstream OCR and vision ingestion (>=200-600 DPI or born-digital vector text)
+  - Eliminating 67 DPI heavily compressed MRC PDFs and obsolete editions missing hundreds of pages prevents bad data extraction
+  - Automated post-extraction cleanup ensures that unpacking archives (such as gurubook-info.lha) keeps only canonical documentation (.guide) without accumulating archive binaries or magazine reviews
+- **Verification & Test Results**:
+  - Cleaned temp/ directory: deleted 157 MB and 12.8 MB 4th Edition PRM PDFs, 14 MB degraded TRM text PDF, duplicate Rev 8 mirror2, and unneeded Guru Book reviews
+  - Verified tools/bootstrap_reference.ps1 -List, -ExtractOnly, and -Item gurubook -Force
+  - tools/pre_flight.py: 100% compliant across all gates
