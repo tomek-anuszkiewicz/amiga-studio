@@ -41,7 +41,7 @@
     .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual" -AllSources
     .\tools\bootstrap_reference.ps1 -All -AllSources
     .\tools\bootstrap_reference.ps1 -ExtractOnly
-    .\tools\bootstrap_reference.ps1 -Item gurubook -NoExtract
+    .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual" -NoExtract
 #>
 
 [CmdletBinding()]
@@ -260,35 +260,6 @@ $Catalog = @(
                 Name    = "Wayback Machine (2016 Snapshot)"
                 BaseUrl = "https://web.archive.org/web/20160410052327id_/http://www.winnicki.net/amiga/achtung/"
                 SubDir  = "wayback_2016"
-            }
-        )
-    },
-    @{
-        Id          = "gurubook"
-        Name        = "Amiga Guru Book"
-        Folder      = "Amiga Guru Book"
-        Type        = "SingleFile"
-        TargetFile  = "gurubook-info.lha"
-        MinSize     = 30000
-        Description = "Ralph Babel's 2nd Edition Abridged (1993) Amiga system reference overview"
-        Mirrors     = @(
-            @{
-                Name    = "Aminet Documentation & Errata Index (LHA Archive)"
-                Url     = "http://aminet.net/docs/misc/gurubook-info.lha"
-                File    = "gurubook-info.lha"
-                MinSize = 30000
-            },
-            @{
-                Name    = "Aminet Main Mirror (LHA Archive)"
-                Url     = "http://main.aminet.net/docs/misc/gurubook-info.lha"
-                File    = "gurubook-info_main.lha"
-                MinSize = 30000
-            },
-            @{
-                Name    = "Aminet Readme File"
-                Url     = "http://aminet.net/docs/misc/gurubook-info.readme"
-                File    = "gurubook-info.readme"
-                MinSize = 100
             }
         )
     }

@@ -3321,3 +3321,22 @@ Every future modification or implementation task must append an entry following 
   - Deleted temp/Hardware Reference Manual/Hardware_Manual_guide_node0000.html
   - Verified tools/bootstrap_reference.ps1 -List and -Item hrm
   - tools/pre_flight.py: 100% compliant across all gates.
+---
+
+### [2026-09-14 13:46 CEST] — Removed Guru Book from Bootstrap Reference Catalog and Cleaned Staging
+- **Affected Subsystems**:
+  - `tools`
+  - `reference`
+  - `documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed gurubook catalog entry from tools/bootstrap_reference.ps1
+  - Deleted temp/Amiga Guru Book/ directory and all promotional blurb/review artifacts
+  - Updated Obsidian/Amiga/Reference/README.md clarifying that Ralph Babel's Amiga Guru Book is fully committed in Markdown within the repository and excluded from external binary bootstrapper.
+- **Architectural Rationale & Trade-Offs**:
+  - Aminet only hosted a 35 KB promotional review blurb rather than the actual book
+  - The complete 26-document Markdown edition of The Amiga Guru Book (2nd Edition Abridged, 1993) is already fully maintained and indexed within Obsidian/Amiga/Reference/Amiga Guru Book/
+  - Removing it from tools/bootstrap_reference.ps1 eliminates confusion and prevents downloading redundant review packages.
+- **Verification & Test Results**:
+  - Deleted temp/Amiga Guru Book/
+  - Verified tools/bootstrap_reference.ps1 -List with 6 core reference sources
+  - tools/pre_flight.py: 100% compliant across all gates.

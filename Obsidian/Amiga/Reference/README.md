@@ -45,6 +45,7 @@ The repository maintains converted, structured markdown documents for rapid navi
 8. **`Amiga Guru Book`**:
    - Ralph Babel's definitive Amiga systems reference (2nd Edition Abridged, 1993).
    - Exhaustive coverage of Exec internals, system structures, and device driver protocols.
+   - Maintained directly in structured Markdown under [`Obsidian/Amiga/Reference/Amiga Guru Book/`](Amiga%20Guru%20Book/) (internal markdown repository; excluded from external raw binary downloads).
 
 ---
 
@@ -72,7 +73,7 @@ To download raw, unprocessed source materials (PDF scans, HTML crawls, and archi
 .\tools\bootstrap_reference.ps1 -ExtractOnly
 
 # Download archives without automatic unpacking
-.\tools\bootstrap_reference.ps1 -Item gurubook -NoExtract
+.\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual" -NoExtract
 
 # Or via the main repository bootstrapper
 .\tools\bootstrap.ps1 -Ref
@@ -93,7 +94,6 @@ To protect against dead links, server downtime, and rate limits, every reference
 | **`68000 User's Manual`** | [Internet Archive / Bitsavers (Rev 8 PDF)](https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive (Motorola UM Scan)](https://archive.org/download/m6800081632bitmi0000unse_l8l8/m6800081632bitmi0000unse_l8l8.pdf) | [Internet Archive (Searchable OCR PDF)](https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993_text.pdf) |
 | **`Instruction Prefetch`** | [Pasti Project (Original Live Web)](http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2021 Snapshot)](https://web.archive.org/web/20210211153835id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2019 Snapshot)](https://web.archive.org/web/20190317072535id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) |
 | **`Undocumented features`** | [Achtung! Amiga (Original Live Web)](https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2022 Snapshot)](https://web.archive.org/web/20220330190533id_/https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2016 Snapshot)](https://web.archive.org/web/20160410052327id_/http://www.winnicki.net/amiga/achtung/) |
-| **`Amiga Guru Book`** | [vdoc.pub Community Scan (PDF)](https://vdoc.pub/documents/the-amiga-guru-book-3g783k1i91t0) | [Aminet Archive (`gurubook-info.lha`)](http://aminet.net/docs/misc/gurubook-info.lha) | Manual local file drop |
 
 ### Automated Failover & Error Reporting Policy
 - **Sequential Mirror Traversal:** The bootstrapper attempts Mirror 1 first. If a transient error, HTTP 404/503, connection timeout, or byte-size mismatch occurs, it logs a warning and immediately falls back to Mirror 2, then Mirror 3.
