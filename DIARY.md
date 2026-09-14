@@ -3260,6 +3260,42 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: 100% compliant.
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
 
+---
+
+### [2026-09-14 11:37 CEST] — Step 2.7.6: Floppy MFM Controller & ADF Track Streaming Implementation
+- **Affected Subsystems**:
+  - `crates/floppy/src/mfm.rs` (implemented Amiga MFM odd/even split encoding and decoding, 32-bit XOR checksums, sector and track structures)
+  - `crates/floppy/src/floppy.rs` (integrated ADF container data storage in FloppyDrive, implemented DMA track streaming engine with WORDSYNC pattern matching into Chip RAM)
+  - `crates/floppy/tests/test_mfm.rs` (authored comprehensive 5-test unit suite covering MFM roundtrips, checksum validations, and DMA streaming)
+  - `ROADMAP.md` (marked Step 2.7.6 as completed)
+- **What Was Changed (The Concrete Reality)**:
+  - Created `crates/floppy/src/mfm.rs`:
+    - Implemented `decode_mfm_long(odd, even)` and `encode_mfm_long(payload)` implementing the Amiga split odd/even MFM optimization with synthetic clock bit generation.
+    - Implemented 32-bit XOR checksum calculations for header words and data words (`calculate_mfm_checksum`).
+    - Implemented `encode_amiga_sector(track, sector, data)` producing standard 1088-byte raw MFM blocks (sync mark `$4489 $4489`, header info, 16-byte label, header checksum, data checksum, and 1024-byte data payload).
+    - Implemented `decode_amiga_sector(raw)` validating magic sync, header format `$FF`, track, sector, header checksum, and data checksum with zero panics.
+    - Implemented `encode_amiga_track(track, track_data)` formatting full 5632-byte tracks (11 sectors) with inter-sector gap preambles.
+  - Enhanced `crates/floppy/src/floppy.rs`:
+    - Added `disk_data: Option<Vec<u8>>` to `FloppyDrive` with track extraction helpers `current_track_index()` and `get_current_track_data()`.
+    - Implemented `load_current_track_mfm()` dynamically synthesizing raw MFM track bitstreams on demand when DMA activates.
+    - Implemented `step_cck_ram(&mut self, chip_ram: &mut [u8])` executing word-by-word streaming into Chip RAM at `DSKPT` with `DSKLEN` decrement.
+    - Implemented `WORDSYNC` hardware matching (`ADKCON` bit 10): scans incoming MFM word stream for `DSKSYN` (`$4489`), asserts Level 5 `DSKSYN` interrupt (`INTREQ` bit 12), and sets `DSKBYTR` bit 12.
+    - Asserted Level 1 `DSKBLK` completion interrupt upon `DSKLEN` down-counter reaching zero.
+  - Authored a comprehensive 5-test unit suite in `crates/floppy/tests/test_mfm.rs`:
+    - `test_mfm_longword_encode_decode_roundtrip`: verifies bit-exact roundtrips across arbitrary 32-bit values.
+    - `test_amiga_sector_encode_decode_roundtrip`: validates 1088-byte sector formatting, sync marks, and complete payload extraction.
+    - `test_amiga_sector_checksum_validation`: verifies that tampering with either header or data bytes fails with respective checksum errors.
+    - `test_amiga_track_dma_stream_and_sync`: validates end-to-end ADF loading, WORDSYNC match, Chip RAM streaming, DSKPT advancement, and DSKBLK completion.
+    - `test_dskbytr_clear_on_read`: validates Clear-on-Read hardware semantics for bit 15 (`DSKBYT`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean File Size Separation:* Packaging the MFM encoding/decoding engine into `crates/floppy/src/mfm.rs` (230 lines) kept `floppy.rs` (490 lines) focused on physical drive mechanics and register latching, keeping both files comfortably beneath the 800-line limit.
+  - *Strict Zero-Panic Parsing:* Replaced all slice conversions with dedicated bounds-checked `read_be_u32` helpers, guaranteeing host stability on malformed disk images.
+- **Verification & Test Results**:
+  - `cargo test -p floppy`: All 11 unit tests passed cleanly across `test_floppy.rs` and `test_mfm.rs`.
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly (formatting, attractors, AGENTS.md size, architecture tests).
+
+
 
 
 

@@ -4,6 +4,9 @@
 //! Chinon FB-354 / Sony MPF-110), track geometry, and multi-chip hardware coordination
 //! across CIA-A sensing ($BFE001), CIA-B mechanics ($BFD100), and Paula MFM DMA ($DFF020..$DFF024).
 
+pub mod mfm;
+pub use mfm::*;
+
 use serde::{Deserialize, Serialize};
 
 /// Standard Double Density disk geometry constants
@@ -33,6 +36,9 @@ pub struct FloppyDrive {
     /// Disk change hardware flip-flop: set when disk is removed/changed;
     /// cleared only when a disk is present AND a step pulse is received!
     pub disk_change_flip_flop: bool,
+    /// Loaded 880 KB ADF sector image byte container
+    #[serde(skip)]
+    pub disk_data: Option<Vec<u8>>,
 }
 
 impl Default for FloppyDrive {
@@ -45,6 +51,7 @@ impl Default for FloppyDrive {
             disk_inserted: false,
             write_protected: false,
             disk_change_flip_flop: true, // Power-on with no disk inserted
+            disk_data: None,
         }
     }
 }
@@ -59,6 +66,7 @@ impl FloppyDrive {
         self.disk_inserted = false;
         self.write_protected = false;
         self.disk_change_flip_flop = true;
+        self.disk_data = None;
     }
 
     /// Action method: sets motor power on/off
@@ -97,7 +105,8 @@ impl FloppyDrive {
     }
 
     /// Inserts a floppy disk image into the drive
-    pub fn insert_disk(&mut self, _data: &[u8]) {
+    pub fn insert_disk(&mut self, data: &[u8]) {
+        self.disk_data = Some(data.to_vec());
         self.disk_inserted = true;
         // Inserting a disk trips the change flip-flop until stepped
         self.disk_change_flip_flop = true;
@@ -105,8 +114,30 @@ impl FloppyDrive {
 
     /// Ejects the disk from the drive
     pub fn eject_disk(&mut self) {
+        self.disk_data = None;
         self.disk_inserted = false;
         self.disk_change_flip_flop = true;
+    }
+
+    /// Returns the current physical track index (0..159)
+    #[inline]
+    pub fn current_track_index(&self) -> usize {
+        (self.cylinder as usize) * 2 + (self.side as usize)
+    }
+
+    /// Returns a slice to the unencoded 5632-byte track data if a disk is inserted
+    #[inline]
+    pub fn get_current_track_data(&self) -> Option<&[u8]> {
+        let track_idx = self.current_track_index();
+        let start = track_idx * (SECTORS_PER_TRACK * SECTOR_DATA_BYTES);
+        let end = start + (SECTORS_PER_TRACK * SECTOR_DATA_BYTES);
+        self.disk_data.as_deref().and_then(|d| {
+            if end <= d.len() {
+                Some(&d[start..end])
+            } else {
+                None
+            }
+        })
     }
 
     /// Returns true if the drive head is at Track 0 (cylinder 0)
@@ -159,9 +190,19 @@ pub struct FloppyController {
     pub dskbytr: u16,
     /// Audio / Disk control register (ADKCON)
     pub adkcon: u16,
-    /// Disk block DMA completion interrupt strobe
+    /// Disk block DMA completion interrupt strobe (DSKBLK, Level 1, bit 1)
     #[serde(default)]
     pub dskblk_irq: bool,
+    /// Disk sync pattern match interrupt strobe (DSKSYN, Level 5, bit 12)
+    #[serde(default)]
+    pub dsksyn_irq: bool,
+    /// Active raw MFM track buffer for streaming
+    #[serde(skip)]
+    pub mfm_track_buffer: Vec<u8>,
+    /// Byte offset within the MFM track stream
+    pub mfm_track_pos: usize,
+    /// True when sync word has been matched during read
+    pub wordsync_matched: bool,
 }
 
 impl Default for FloppyController {
@@ -184,6 +225,10 @@ impl Default for FloppyController {
             dskbytr: 0,
             adkcon: 0,
             dskblk_irq: false,
+            dsksyn_irq: false,
+            mfm_track_buffer: Vec::new(),
+            mfm_track_pos: 0,
+            wordsync_matched: false,
         }
     }
 }
@@ -207,6 +252,10 @@ impl FloppyController {
         self.dskbytr = 0;
         self.adkcon = 0;
         self.dskblk_irq = false;
+        self.dsksyn_irq = false;
+        self.mfm_track_buffer.clear();
+        self.mfm_track_pos = 0;
+        self.wordsync_matched = false;
         for drive in &mut self.drives {
             drive.reset();
         }
@@ -296,7 +345,27 @@ impl FloppyController {
         } else {
             // Second write with bit 15 = 1 starts the DMA transfer (if enabled in DMACON)
             self.dma_active = self.dma_enabled;
+            if self.dma_active {
+                self.load_current_track_mfm();
+                self.mfm_track_pos = 0;
+                self.wordsync_matched = false;
+            }
         }
+    }
+
+    /// Encodes the current track of the selected drive into raw MFM format
+    pub fn load_current_track_mfm(&mut self) {
+        for drive in &self.drives {
+            if drive.selected {
+                if let Some(track_data) = drive.get_current_track_data() {
+                    let track_idx = drive.current_track_index() as u8;
+                    self.mfm_track_buffer = encode_amiga_track(track_idx, track_data);
+                    return;
+                }
+            }
+        }
+        // Fallback: raw stream with standard clock pattern
+        self.mfm_track_buffer = vec![0xAA; RAW_MFM_TRACK_BYTES];
     }
 
     /// Action method: sets Disk Sync register (DSKSYNC, default $4489)
@@ -356,6 +425,72 @@ impl FloppyController {
         // Scaffold placeholder: MFM bit deserialization during active DMA
     }
 
+    /// Advances floppy DMA streaming by 1 word slot into Chip RAM
+    pub fn step_cck_ram(&mut self, chip_ram: &mut [u8]) {
+        if !self.dma_active || self.mfm_track_buffer.is_empty() {
+            return;
+        }
+
+        let wordsync = (self.adkcon & 0x0400) != 0;
+
+        // If wordsync is enabled and not yet matched, scan for sync pattern
+        if wordsync && !self.wordsync_matched {
+            let mut found = false;
+            while self.mfm_track_pos + 1 < self.mfm_track_buffer.len() {
+                let word = u16::from_be_bytes([
+                    self.mfm_track_buffer[self.mfm_track_pos],
+                    self.mfm_track_buffer[self.mfm_track_pos + 1],
+                ]);
+                self.mfm_track_pos += 2;
+                if word == self.dsksyn {
+                    self.wordsync_matched = true;
+                    self.dsksyn_irq = true;
+                    self.dskbytr |= 0x1000; // Bit 12: DSKSYN matched
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
+                self.mfm_track_pos = 0;
+                return;
+            }
+        }
+
+        // Fetch next MFM word from track buffer
+        if self.mfm_track_pos + 1 >= self.mfm_track_buffer.len() {
+            self.mfm_track_pos = 0;
+        }
+        let word = u16::from_be_bytes([
+            self.mfm_track_buffer[self.mfm_track_pos],
+            self.mfm_track_buffer[self.mfm_track_pos + 1],
+        ]);
+        self.mfm_track_pos += 2;
+
+        self.dskdat = word;
+        // DSKBYTR: bit 15 (DSKBYT) = 1, bit 12 (DSKSYN) retained, byte 7..0 = low byte of MFM word
+        self.dskbytr = 0x8000 | (self.dskbytr & 0x1000) | ((word & 0x00FF) as u16);
+
+        // DMA memory transfer to Chip RAM
+        if !self.is_write_mode() {
+            let pt = self.dskpt as usize;
+            if pt + 1 < chip_ram.len() {
+                chip_ram[pt] = (word >> 8) as u8;
+                chip_ram[pt + 1] = (word & 0xFF) as u8;
+            }
+            self.dskpt = self.dskpt.wrapping_add(2);
+        }
+
+        // Decrement length counter
+        let len_words = self.dsklen & 0x3FFF;
+        if len_words > 1 {
+            self.dsklen = (self.dsklen & 0xC000) | (len_words - 1);
+        } else {
+            self.dsklen &= 0xC000;
+            self.dma_active = false;
+            self.dskblk_irq = true; // Level 1 DSKBLK completion interrupt
+        }
+    }
+
     /// Triggers a disk block transfer finish interrupt strobe (DSKBLK, bit 1)
     #[inline]
     pub fn trigger_dskblk(&mut self) {
@@ -367,6 +502,14 @@ impl FloppyController {
     pub fn poll_dskblk_irq(&mut self) -> bool {
         let pending = self.dskblk_irq;
         self.dskblk_irq = false;
+        pending
+    }
+
+    /// Polls and clears the disk sync pattern match interrupt strobe
+    #[inline]
+    pub fn poll_dsksyn_irq(&mut self) -> bool {
+        let pending = self.dsksyn_irq;
+        self.dsksyn_irq = false;
         pending
     }
 }

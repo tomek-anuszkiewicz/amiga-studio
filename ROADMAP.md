@@ -152,13 +152,13 @@ This document outlines the phased development plan, hardware milestones, verific
     - Cross-channel frequency and volume modulation via `ADKCON` bits 0..7.
     - Stereo channel mixer (Channels 0 & 3 to Right, Channels 1 & 2 to Left) with ring buffer output.
     - Dedicated unit & integration tests in `crates/audio/tests/test_audio.rs` (100% verified across 7 unit tests).
-  - **Step 2.7.6: Floppy MFM Controller & ADF Track Streaming Engine (`crates/floppy`, `crates/paula`):**
+  - **[COMPLETED] Step 2.7.6: Floppy MFM Controller & ADF Track Streaming Engine (`crates/floppy`, `crates/paula`):**
     - Standard 880 KB ADF sector image container (80 tracks $\times$ 2 heads $\times$ 11 sectors $\times$ 512 bytes).
     - Physical Amiga MFM track encoder and decoder with standard sync words (`$4489`), track headers, and checksums.
     - DMA word streaming engine into Chip RAM at `DSKPT` with `DSKLEN` decrement.
     - Level 1 `DSKBLK` completion interrupt strobe to Paula.
     - PIO MFM byte deserialization via `DSKBYTR` with `DSKBYT` bit 15 status flag.
-    - Dedicated unit & integration tests in `crates/floppy/tests/test_mfm.rs`.
+    - Dedicated unit & integration tests in `crates/floppy/tests/test_mfm.rs` (100% verified across 5 unit tests; 11 tests across floppy crate).
   - **Step 2.7.7: Dual CIA MOS 8520 Timers, TOD & Keyboard Serial Interface (`crates/cia`, `crates/keyboard`):**
     - Cascaded 32-bit timer mode: Timer B counting Timer A underflows (`CRB` bits 5..6).
     - 24-bit Time-of-Day (TOD) clock ticking on 50 Hz (PAL) / 60 Hz (NTSC) vertical blank pulses with alarm match interrupt (`ALARM`, ICR bit 2).
