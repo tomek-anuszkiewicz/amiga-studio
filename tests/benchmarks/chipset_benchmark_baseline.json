@@ -9,7 +9,49 @@
       "cck_count": 3556800,
       "elapsed_ms": 459.0287,
       "fps": 108.92565105406263,
-      "cck_mhz": 7.7485351133817995
+      "cck_mhz": 7.7485351133817995,
+      "methods": {
+        "Cpu::step_cck": {
+          "percent": 31.4,
+          "module": "cpu"
+        },
+        "Agnus::step_cck_ram": {
+          "percent": 32.8,
+          "module": "agnus",
+          "submethods": {
+            "Copper::step_cck": 21.6,
+            "Blitter::step_cck_ram": 0.0,
+            "DmaScheduler::arbitrate": 11.2
+          }
+        },
+        "Denise::step_cck": {
+          "percent": 26.5,
+          "module": "denise",
+          "submethods": {
+            "FrameBuilder::set_cck_pixels": 25.1,
+            "SpriteEngine::step_cck": 1.4
+          }
+        },
+        "Paula::step_cck": {
+          "percent": 3.8,
+          "module": "paula",
+          "submethods": {
+            "Audio::step_cck": 3.8
+          }
+        },
+        "Cia::step_cck": {
+          "percent": 4.2,
+          "module": "cia"
+        },
+        "FloppyController::step_cck": {
+          "percent": 0.8,
+          "module": "floppy"
+        },
+        "Rtc::step_cck": {
+          "percent": 0.5,
+          "module": "rtc"
+        }
+      }
     }
   ]
 }

@@ -3743,4 +3743,27 @@ Every future modification or implementation task must append an entry following 
   - `python tools/pre_flight.py`: 100% passed across all gates.
   - `cargo fmt --all -- --check`: 100% compliant.
 
+---
+
+### [2026-09-14 23:25 CEST] — Agnus PAL Scanline Wrap Fix & Method-Level External Profile Aggregator
+- **Affected Subsystems**:
+  - `crates/agnus/src/agnus.rs`, `crates/agnus/tests/test_agnus.rs` (corrected PAL scanline CCK wrap condition from `>` to `>=` so lines execute 227 CCKs `0..=226`)
+  - `crates/machine_loop/tests/test_machine_loop.rs` (aligned frame CCK assertions with 70,824 CCKs per PAL frame)
+  - `crates/test_runner/src/benchmark/chipset.rs`, `crates/test_runner/tests/test_chipset_benchmark.rs` (extended `ChipsetBenchmarkResult` schema with `methods` breakdown, preserved existing profiles during `--record`, and rendered method distributions during `--compare`)
+  - `tests/benchmarks/chipset_benchmark_baseline.json` (recorded canonical entry method breakdown for `coptim1`)
+  - `tools/aggregate_profile.py` (new utility parsing external profiler outputs into chip/module method percentage distributions)
+  - `.agents/skills/profile-external/SKILL.md`, `Obsidian/Amiga/Design/Performance Profiling and Optimization Strategy.md` (documented method-level profiling workflow and schema)
+- **What Was Changed (The Concrete Reality)**:
+  - **Agnus Scanline Wrap Timing Fix**:
+    - Corrected horizontal scanline wrap check in `Agnus::step_cck_ram`: changed `self.hpos > PAL_LINE_CCKS` to `self.hpos >= PAL_LINE_CCKS`, ensuring horizontal counter progresses across exactly 227 CCKs ($0..=226$, 454 CPU clocks, 280 ns per CCK) and exactly 70,824 CCKs per 312-line PAL vertical frame ($312 \times 227$).
+  - **Method-Level Profile Breakdown Architecture**:
+    - Extended `ChipsetBenchmarkResult` with `methods: Option<BTreeMap<String, MethodProfileEntry>>` mapping canonical entry methods (`step_cck` across CPU, Agnus, Denise, Paula, CIAs, Floppy, RTC) to their respective execution time percentage and submodule tree.
+    - Added `tools/aggregate_profile.py` capable of parsing Firefox Profiler Gecko JSON profiles and collapsed/folded stack traces, mapping call frames to chip/module categories without inserting measurement probes into hot loops.
+    - Updated `chipset_benchmark_baseline.json` with the method profile distribution for `coptim1`.
+- **Verification & Test Results**:
+  - `cargo test -p agnus -p machine_loop`: 49 unit and integration tests passed.
+  - `cargo test -p test_runner --test test_chipset_benchmark`: All 3 tests passed including serialization roundtrip with method breakdown.
+  - `cargo run -p test_runner --release -- benchmark-chipset --compare`: Passed regression audit (coptim1 active 105.8 FPS vs 108.9 FPS baseline, -2.9% delta) and printed formatted method breakdown tree.
+  - `python tools/aggregate_profile.py`: Verified against synthetic folded traces and baseline JSON update.
+
 

@@ -23,6 +23,28 @@ fn resolve_vamiga_root() -> Option<PathBuf> {
 
 #[test]
 fn test_chipset_benchmark_serialization_roundtrip() {
+    let mut methods = std::collections::BTreeMap::new();
+    let mut copper_submethods = std::collections::BTreeMap::new();
+    copper_submethods.insert("Copper::step_cck".to_string(), 21.6);
+    copper_submethods.insert("DmaScheduler::arbitrate".to_string(), 11.2);
+
+    methods.insert(
+        "Agnus::step_cck_ram".to_string(),
+        test_runner::benchmark::chipset::MethodProfileEntry {
+            percent: 32.8,
+            module: Some("agnus".to_string()),
+            submethods: Some(copper_submethods),
+        },
+    );
+    methods.insert(
+        "Cpu::step_cck".to_string(),
+        test_runner::benchmark::chipset::MethodProfileEntry {
+            percent: 31.4,
+            module: Some("cpu".to_string()),
+            submethods: None,
+        },
+    );
+
     let result = ChipsetBenchmarkResult {
         name: "coptim1".to_string(),
         category: "Copper Coprocessor".to_string(),
@@ -31,6 +53,7 @@ fn test_chipset_benchmark_serialization_roundtrip() {
         elapsed_ms: 330.5,
         fps: 151.3,
         cck_mhz: 10.71,
+        methods: Some(methods),
     };
 
     let baseline = ChipsetBenchmarkBaseline {
@@ -47,6 +70,13 @@ fn test_chipset_benchmark_serialization_roundtrip() {
     assert_eq!(deserialized.results.len(), 1);
     assert_eq!(deserialized.results[0].name, "coptim1");
     assert!((deserialized.results[0].fps - 151.3).abs() < 1e-4);
+    let m = deserialized.results[0]
+        .methods
+        .as_ref()
+        .expect("Methods missing");
+    assert_eq!(m.len(), 2);
+    assert_eq!(m["Cpu::step_cck"].percent, 31.4);
+    assert_eq!(m["Agnus::step_cck_ram"].module.as_deref(), Some("agnus"));
 }
 
 #[test]

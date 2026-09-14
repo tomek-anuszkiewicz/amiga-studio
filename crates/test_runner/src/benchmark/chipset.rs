@@ -6,6 +6,7 @@
 use config::A500Config;
 use machine_loop::A500Machine;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -21,6 +22,19 @@ pub const REGRESSION_THRESHOLD_PERCENT: f64 = -5.0;
 
 /// Default frames to execute per benchmark workload
 pub const DEFAULT_BENCHMARK_FRAMES: u32 = 50;
+
+/// Method-level profiling entry captured from external profilers
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MethodProfileEntry {
+    /// Percentage of total execution time spent in this method
+    pub percent: f64,
+    /// Subsystem or chip module name (e.g. "cpu", "agnus", "copper", "blitter", "denise", "paula", "audio", "cia", "floppy")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub module: Option<String>,
+    /// Optional fine-grained submethods / child steps
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub submethods: Option<BTreeMap<String, f64>>,
+}
 
 /// Single benchmark workload execution record
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -39,6 +53,9 @@ pub struct ChipsetBenchmarkResult {
     pub fps: f64,
     /// Effective Color Clock frequency in MHz
     pub cck_mhz: f64,
+    /// Optional method-level execution time distribution captured from external profiler
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub methods: Option<BTreeMap<String, MethodProfileEntry>>,
 }
 
 /// Persistent baseline dataset storing golden performance references
@@ -111,6 +128,7 @@ pub fn benchmark_test_workload(
         elapsed_ms,
         fps,
         cck_mhz,
+        methods: None,
     })
 }
 
@@ -149,14 +167,32 @@ pub fn record_chipset_baseline(
     repo_root: &Path,
     frames: u32,
 ) -> Result<ChipsetBenchmarkBaseline, String> {
-    let results = run_chipset_benchmarks(repo_root, frames)?;
+    let mut results = run_chipset_benchmarks(repo_root, frames)?;
+    let baseline_path = resolve_chipset_baseline_path(repo_root);
+    let existing_baseline: Option<ChipsetBenchmarkBaseline> = if baseline_path.exists() {
+        fs::read_to_string(&baseline_path)
+            .ok()
+            .and_then(|j| serde_json::from_str(&j).ok())
+    } else {
+        None
+    };
+
+    if let Some(existing) = existing_baseline {
+        for res in &mut results {
+            if res.methods.is_none() {
+                if let Some(prev) = existing.results.iter().find(|b| b.name == res.name) {
+                    res.methods = prev.methods.clone();
+                }
+            }
+        }
+    }
+
     let baseline = ChipsetBenchmarkBaseline {
         version: 1,
         recorded_at: "2026-09-14".to_string(),
         results,
     };
 
-    let baseline_path = resolve_chipset_baseline_path(repo_root);
     if let Some(parent) = baseline_path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
@@ -231,6 +267,25 @@ pub fn compare_chipset_baseline(repo_root: &Path, frames: u32) -> Result<bool, S
                     delta_pct,
                     verdict_str
                 );
+
+                if let Some(methods) = &g.methods {
+                    println!("    ├─ Baseline Method Profile Breakdown:");
+                    for (method, entry) in methods {
+                        let module_str = entry.module.as_deref().unwrap_or("subsystem");
+                        println!(
+                            "    │  • {:<28} [{:>7}]: {:>5.1}%",
+                            method, module_str, entry.percent
+                        );
+                        if let Some(submethods) = &entry.submethods {
+                            for (submethod, sub_pct) in submethods {
+                                println!(
+                                    "    │     └─ {:<24}       : {:>5.1}%",
+                                    submethod, sub_pct
+                                );
+                            }
+                        }
+                    }
+                }
             }
             None => {
                 println!(

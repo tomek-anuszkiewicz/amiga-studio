@@ -75,13 +75,51 @@ Modeled after the proven M68000 instruction benchmarking system ([CPU Instructio
         "cck_count": 3556800,
         "elapsed_ms": 459.0,
         "fps": 108.9,
-        "cck_mhz": 7.75
+        "cck_mhz": 7.75,
+        "methods": {
+          "Cpu::step_cck": { "percent": 31.4, "module": "cpu" },
+          "Agnus::step_cck_ram": {
+            "percent": 32.8,
+            "module": "agnus",
+            "submethods": {
+              "Copper::step_cck": 21.6,
+              "Blitter::step_cck_ram": 0.0,
+              "DmaScheduler::arbitrate": 11.2
+            }
+          },
+          "Denise::step_cck": {
+            "percent": 26.5,
+            "module": "denise",
+            "submethods": {
+              "FrameBuilder::set_cck_pixels": 25.1,
+              "SpriteEngine::step_cck": 1.4
+            }
+          },
+          "Paula::step_cck": { "percent": 3.8, "module": "paula", "submethods": { "Audio::step_cck": 3.8 } },
+          "Cia::step_cck": { "percent": 4.2, "module": "cia" },
+          "FloppyController::step_cck": { "percent": 0.8, "module": "floppy" },
+          "Rtc::step_cck": { "percent": 0.5, "module": "rtc" }
+        }
       }
     ]
   }
   ```
 
-### 3.1 Regression Evaluation Protocol
+### 3.1 Method-Level Profile Aggregation (`tools/aggregate_profile.py`)
+To obtain method and module time distribution without intrusive runtime probes:
+1. Run external sampling profiler (`samply record ...` or `perf record ...`).
+2. Aggregate samples by canonical entry method:
+   - `python tools/aggregate_profile.py <profile_file> --target coptim1 --update-baseline tests/benchmarks/chipset_benchmark_baseline.json`
+3. Canonical entry methods:
+   - `Cpu::step_cck` (`cpu`)
+   - `Agnus::step_cck_ram` (`agnus` -> `Copper::step_cck`, `Blitter::step_cck_ram`, `DmaScheduler::arbitrate`)
+   - `Denise::step_cck` (`denise` -> `FrameBuilder::set_cck_pixels`, `SpriteEngine::step_cck`)
+   - `Paula::step_cck` (`paula` -> `Audio::step_cck`)
+   - `Cia::step_cck` (`cia`)
+   - `FloppyController::step_cck` (`floppy`)
+   - `Rtc::step_cck` (`rtc`)
+
+### 3.2 Regression Evaluation Protocol
 The sentinel executes representative benchmark targets for a fixed frame count ($N = 50$) in release mode:
 $$\Delta\% = \frac{\text{FPS}_{\text{active}} - \text{FPS}_{\text{baseline}}}{\text{FPS}_{\text{baseline}}} \times 100$$
 - If $\Delta\% \ge -5.0\%$, the audit passes.

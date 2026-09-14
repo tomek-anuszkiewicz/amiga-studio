@@ -91,7 +91,37 @@ Because Rust symbols retain their fully qualified crate and module hierarchy, yo
 
 ---
 
-## 6. Tier 1 Regression Sentinel: Baseline Verification
+## 6. Extracting Method-Level Profile Breakdowns (`tools/aggregate_profile.py`)
+
+To track the exact percentage of time spent across individual chips and modules without adding invasive runtime probes, use `tools/aggregate_profile.py`.
+
+The aggregator inspects external sampling profiler traces (Samply / Firefox Gecko JSON or folded stack traces) and matches call frames against canonical entry methods:
+- **CPU:** `Cpu::step_cck` (`cpu`)
+- **Agnus:** `Agnus::step_cck_ram` (`agnus`)
+  - `Copper::step_cck` (`copper`)
+  - `Blitter::step_cck_ram` (`blitter`)
+  - `DmaScheduler::arbitrate` (`dma`)
+- **Denise:** `Denise::step_cck` (`denise`)
+  - `FrameBuilder::set_cck_pixels` (`frame_builder`)
+  - `SpriteEngine::step_cck` (`sprites`)
+- **Paula:** `Paula::step_cck` (`paula`)
+  - `Audio::step_cck` (`audio`)
+- **CIAs:** `Cia::step_cck` (`cia`)
+- **Floppy:** `FloppyController::step_cck` (`floppy`)
+- **RTC:** `Rtc::step_cck` (`rtc`)
+
+### Aggregation Command:
+```powershell
+# Parse a profile and view method breakdown table in terminal
+python tools/aggregate_profile.py profile.json --target coptim1
+
+# Ingest profile results directly into the golden benchmark baseline
+python tools/aggregate_profile.py profile.json --target coptim1 --update-baseline tests/benchmarks/chipset_benchmark_baseline.json
+```
+
+---
+
+## 7. Tier 1 Regression Sentinel: Baseline Verification
 
 Before modifying code, check active performance against the Git-tracked baseline:
 
@@ -99,6 +129,8 @@ Before modifying code, check active performance against the Git-tracked baseline
 # Run the automated regression audit
 cargo run --release -p test_runner -- benchmark-chipset --compare
 ```
+
+The comparison audit verifies overall FPS throughput against golden limits and prints the recorded baseline method profile breakdown.
 
 ### Updating the Golden Baseline
 When an approved hardware optimization is verified and pass rates are preserved, update the committed golden baseline:
