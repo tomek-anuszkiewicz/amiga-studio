@@ -3011,3 +3011,30 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 341 files clean, 0 violations.
   - `python tools/pre_flight.py`: All pre-flight quality gates PASSED cleanly.
+
+---
+
+### [2026-09-14 05:40 CEST] — Roadmap Architecture Reorganization: Step 2.7 Subsystem Functional Execution Engines Decomposition
+- **Affected Subsystems**:
+  - `ROADMAP.md` (restructured Step 2.7, 2.8, and 2.9)
+  - `DIARY.md` (recorded architectural rationale and subsystem audit)
+- **What Was Changed (The Concrete Reality)**:
+  - Audited all subsystem crates across the workspace (`copper`, `blitter`, `sprites`, `denise`, `frame_builder`, `audio`, `floppy`, `cia`, `keyboard`) to evaluate the gap between registered wiring and active cycle execution logic.
+  - Recognized that while register dispatch, mutation pipelines, save states, and interrupt propagation are in place, the internal `step_cck()` routines across these crates were empty scaffold stubs.
+  - Restructured `ROADMAP.md` to transform Step 2.7 from a premature *Agnus DMA Bus Arbiter* into **`Step 2.7: Subsystem Core Functional Implementations & Autonomous Execution Engines`**, systematically decomposed into 7 discrete, verifiable sub-steps:
+    - *Step 2.7.1:* Agnus Copper Coprocessor Execution Engine (`crates/copper`) — 32-bit instruction fetch, `MOVE`, `WAIT` (beam position compare + BFD), `SKIP`, CDANG danger mode, strobe restarts.
+    - *Step 2.7.2:* Agnus 4-Channel DMA Blitter Engine (`crates/blitter`) — 256-minterm Boolean ALU ($LF0..LF7$), barrel shifters A/B with carry, first/last word masks, modulo arithmetic, Bresenham line drawer, zero flag, and `_BLITINT`.
+    - *Step 2.7.3:* Denise Video Compositor & Bitplane Pixel Serializer (`crates/denise`, `crates/frame_builder`) — 6 bitplane shift registers (LoRes/HiRes), DIW clipping, BPLCON1 scrolling, RGB444 to 32-bit ARGB palette translation, EHB, HAM6, and Dual Playfield mode.
+    - *Step 2.7.4:* Denise 8 Hardware Sprite Engines & Multiplexing (`crates/sprites`) — scanline comparators ($VPOS == VSTART/VSTOP$), 16-pixel dual shift registers, DMA word fetch, attached 15-color mode, sprite multiplexing, and collision latches.
+    - *Step 2.7.5:* Paula 4-Channel DMA Audio Subsystem (`crates/audio`, `crates/paula`) — 8-bit signed PCM playback, period dividers, volume multipliers, Agnus DMA pointer reload loop (`AUDxDSR`), interrupts, ADKCON cross-channel modulation, and stereo mixing.
+    - *Step 2.7.6:* Floppy MFM Controller & ADF Track Streaming Engine (`crates/floppy`, `crates/paula`) — standard 880 KB ADF sector container, physical MFM track encoder/decoder with `$4489` sync marks, DMA word streaming into Chip RAM, DSKBLK interrupt, and DSKBYTR PIO deserialization.
+    - *Step 2.7.7:* Dual CIA MOS 8520 Timers, TOD & Keyboard Serial Interface (`crates/cia`, `crates/keyboard`) — cascaded 32-bit timer mode (Timer B counting Timer A underflows), 50/60 Hz TOD VBlank clocking & alarm, and SDR keyboard serial handshake on CIA-A SP/CNT pins.
+  - Re-anchored **`Step 2.8: Agnus DMA Bus Arbiter, Time-Slot Scheduling & Chip RAM Contention Engine`** to follow the subsystem execution engines, allowing the arbiter to coordinate real, active DMA masters and cycle-exact `BusResult::WaitState` stalls across the horizontal scanline schedule.
+  - Preserved **`Step 2.9: Host Audio Playback & CRT Presentation Shaders`** for frontend audio sinks and GPU display post-processing.
+- **Architectural Rationale & Trade-Offs**:
+  - *Avoiding Premature DMA Scheduling Abstraction:* Attempting to model cycle-exact DMA bus arbitration and CPU contention while the DMA requesters themselves are empty placeholders leads to brittle, synthetic mocks. Constructing functional subsystem kernels first ensures the DMA arbiter governs genuine memory traffic, pointer advancement, and bus handshakes.
+  - *Granular Verification & Bisectability:* Splitting the previously monolithic Step 2.8 into 7 self-contained sub-steps ensures each custom chip capability can be authored and tested in isolation with its own unit and integration test suite, adhering strictly to the Unit Testing Policy.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across all files.
+  - `python tools/pre_flight.py`: All pre-flight checks passed.

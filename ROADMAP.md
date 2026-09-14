@@ -109,7 +109,57 @@ This document outlines the phased development plan, hardware milestones, verific
     - `RTE` instruction: popping $SR$ and return PC from $SSP$, restoring user/supervisor state, restoring original interrupt mask, and resuming main thread execution.
   - **Dedicated Automated Verification:**
     - 100% verified across 4 unit tests in `crates/m68000/tests/test_interrupts.rs` and 4 end-to-end integration tests in `crates/machine_loop/tests/test_interrupt_pipeline.rs`.
-- **Step 2.7: Agnus DMA Bus Arbiter (Baseline Model & Contention Exposure) [Active Focus]:**
+- **Step 2.7: Subsystem Core Functional Implementations & Autonomous Execution Engines [Active Focus]:**
+  - **Step 2.7.1: Agnus Copper Coprocessor Execution Engine (`crates/copper`):**
+    - Two-word (32-bit) instruction stream fetch from Chip RAM via `PhysicalMemory`.
+    - Cycle-accurate execution state machine: `MOVE` (immediate 16-bit write to destination custom register with `CDANG` danger mode protection for addresses < `$040` / `$080`), `WAIT` (raster beam $VPOS$ & $HPOS$ comparison against target coordinates masked by $VPOS\_MASK$ / $HPOS\_MASK$ and Blitter Finished Disable `BFD` bit), and `SKIP` (conditional bypass of the subsequent instruction).
+    - Dynamic program counter (`cop_pc`) progression, `COPJMP1` / `COPJMP2` strobe restarts, and automatic VBlank restart on `COP1LC`.
+    - Dedicated unit & integration tests in `crates/copper/tests/test_copper.rs`.
+  - **Step 2.7.2: Agnus 4-Channel DMA Blitter Engine (`crates/blitter`):**
+    - 4-channel DMA sequence ($USEA$, $USEB$, $USEC$, $USED$ from `BLTCON0` bits 11..8).
+    - 256-minterm Boolean ALU implementing full 8-bit truth table ($LF0..LF7$) combining channels A, B, and C into destination D.
+    - Barrel shifters for Channel A (bits 12..15 of `BLTCON0`) and Channel B (bits 12..15 of `BLTCON1`) with inter-word carry retention.
+    - First and last word masking for Channel A (`BLTAFWM` / `BLTALWM`).
+    - Row-by-row word transfer loop with signed modulos (`BLTAMOD`..`BLTDMOD`) in ascending and descending (`DESC` bit 1 in `BLTCON1`) modes.
+    - Bresenham line drawer mode (`LINE == 1` in `BLTCON1`) with octant direction selection, error accumulators, and single-bit line generation.
+    - Zero detection (`is_zero`) for cookie cuts and collision checks, followed by Level 3 `_BLITINT` completion strobe to Paula.
+    - Dedicated unit & integration tests in `crates/blitter/tests/test_blitter.rs`.
+  - **Step 2.7.3: Denise Video Compositor & Bitplane Pixel Serializer (`crates/denise`, `crates/frame_builder`):**
+    - 6 parallel bitplane shift registers supporting LoRes (140 ns / 1 pixel per CCK) and HiRes (70 ns / 2 pixels per CCK).
+    - Display Window generator (`DIWSTRT` / `DIWSTOP` clipping boundaries, backdrop/border color `COLOR00`).
+    - Horizontal scroll delay buffers driven by `BPLCON1` (0..15 pixel shifts for PF1 and PF2).
+    - 32-color palette translation (RGB444 to 32-bit ARGB `0xAARRGGBB` in `FrameBuilder` pixel buffer).
+    - Extra Half-Brite (EHB, 6 planes, half luminance) and Hold-And-Modify (HAM6) color generation.
+    - Dual Playfield mode (`BPLCON0` bit 10) with layer priority arbitration via `BPLCON2`.
+    - Dedicated unit & integration tests in `crates/denise/tests/test_pixel_pipeline.rs`.
+  - **Step 2.7.4: Denise 8 Hardware Sprite Engines & Multiplexing (`crates/sprites`):**
+    - Vertical start/stop comparators ($VPOS == VSTART \to$ arm channel, $VPOS == VSTOP \to$ disarm channel).
+    - 16-pixel dual shift registers serializing 2 bits per pixel starting at $HPOS == HSTART$.
+    - Sprite DMA word fetch (2 words per line per sprite from `SPRxPT` into `SPRxDATA` and `SPRxDATB`).
+    - Attached mode (odd + even sprite pairing for 15-color mode from `COLOR16..COLOR31`).
+    - Mid-frame sprite multiplexing (re-arming lower on the display with new control words).
+    - Hardware playfield/sprite collision detection latches (`CLXDAT` / `CLXCON`).
+    - Dedicated unit & integration tests in `crates/sprites/tests/test_sprites.rs`.
+  - **Step 2.7.5: Paula 4-Channel DMA Audio Subsystem (`crates/audio`, `crates/paula`):**
+    - 8-bit signed PCM sample streaming (2 samples per 16-bit word from `AUDxDAT`).
+    - Period clock dividers (`AUDxPER`) and 6-bit linear volume multipliers (`AUDxVOL`: 0..64).
+    - Agnus DMA word fetch from `AUDxLC`, length down-counter (`AUDxLEN`), buffer loop reload (`AUDxDSR`), and Level 4 `AUD0..AUD3` interrupt requests.
+    - Cross-channel frequency and volume modulation via `ADKCON` bits 0..7.
+    - Stereo channel mixer (Channels 0 & 3 to Right, Channels 1 & 2 to Left) with ring buffer output.
+    - Dedicated unit & integration tests in `crates/audio/tests/test_audio.rs`.
+  - **Step 2.7.6: Floppy MFM Controller & ADF Track Streaming Engine (`crates/floppy`, `crates/paula`):**
+    - Standard 880 KB ADF sector image container (80 tracks $\times$ 2 heads $\times$ 11 sectors $\times$ 512 bytes).
+    - Physical Amiga MFM track encoder and decoder with standard sync words (`$4489`), track headers, and checksums.
+    - DMA word streaming engine into Chip RAM at `DSKPT` with `DSKLEN` decrement.
+    - Level 1 `DSKBLK` completion interrupt strobe to Paula.
+    - PIO MFM byte deserialization via `DSKBYTR` with `DSKBYT` bit 15 status flag.
+    - Dedicated unit & integration tests in `crates/floppy/tests/test_mfm.rs`.
+  - **Step 2.7.7: Dual CIA MOS 8520 Timers, TOD & Keyboard Serial Interface (`crates/cia`, `crates/keyboard`):**
+    - Cascaded 32-bit timer mode: Timer B counting Timer A underflows (`CRB` bits 5..6).
+    - 24-bit Time-of-Day (TOD) clock ticking on 50 Hz (PAL) / 60 Hz (NTSC) vertical blank pulses with alarm match interrupt (`ALARM`, ICR bit 2).
+    - Serial Data Register (SDR) bidirectional shift register synchronized with MOS 6500/1 keyboard protocol on CIA-A SP/CNT pins $\to$ Level 2 `PORTS` interrupt.
+    - Dedicated unit & integration tests in `crates/cia/tests/test_cia_advanced.rs`.
+- **Step 2.8: Agnus DMA Bus Arbiter, Time-Slot Scheduling & Chip RAM Contention Engine:**
   - **Horizontal Scanline DMA Slot Schedule (227 CCK PAL / 226 CCK NTSC):**
     - *Fixed Time-Slot Allocations:* DRAM Refresh (CCK 0..3), Floppy Disk DMA (CCK 4), 4 Audio DMA channels (CCK 5..8 for AUD0..AUD3), 8 Sprite DMA pairs (CCK 12..27 for SPR0..SPR7, 2 words per sprite).
     - *Dynamic Bitplane DMA Allocation:* Display Data Fetch window (`DDFSTRT`..=`DDFSTOP`, typically `$0038`..`$00D0`) during active vertical scanlines; dynamic slot allocation driven by `BPLCON0` planecount (1–6) and resolution (LoRes vs HiRes):
@@ -123,19 +173,11 @@ This document outlines the phased development plan, hardware milestones, verific
     - *Blitter Nasty Mode (`DMACON` bit 10 `BLTPRI == 1`):* When Blitter is active, Agnus awards all available memory cycles to the Blitter, completely locking CPU out of Chip RAM (`BusResult::WaitState`).
     - *Normal Blitter Mode (`BLTPRI == 0`):* Blitter uses idle cycles; implement CPU starvation yield logic where Agnus monitors CPU memory requests and forces the Blitter to release 1 cycle whenever the CPU is starved for 3 consecutive memory cycles.
     - *Copper Instruction Fetch Cycles:* Copper claims bus cycles (2 words = 4 CCKs for `MOVE`, `WAIT`, `SKIP`) when `COPEN` (bit 7) is asserted and the Copper is not halted waiting for beam position or blitter completion.
-  - **Subsystem Separation of Concerns (Step 2.7 Arbiter vs. Step 2.8 Subsystems):**
-    - Step 2.7 establishes the **slot schedule, bus allocation rules, and cycle-exact contention physics (wait-state stalls)** across the machine, without requiring full internal DSP/rendering kernels.
-    - Full subsystem execution logic (Copper `CDANG`/state machine, Blitter 256-minterm ALU/barrel shifters/Bresenham line drawer, Paula BLEP synthesis, and Denise pixel serialization) remains cleanly decoupled under Step 2.8.
   - **Direct Bus Lock Exposure & End-to-End Propagation:**
     - Direct drive of `chip_ram_blocked` on `PhysicalMemory` during contended slots: CPU Chip RAM (`$000000–$07FFFF`) and Slow RAM (`$C00000–$C7FFFF`) accesses return `BusResult::WaitState` and stall cycle-accurately.
     - Preserves 100% Fast RAM (`$200000–$9FFFFF`) immunity (zero wait states under heavy DMA or Blitter Nasty).
   - **Dedicated Integration Test Suite:**
     - Comprehensive test coverage in `crates/machine_loop/tests/test_dma_contention.rs` and `crates/dma/tests/test_dma.rs` verifying fixed slot stalls, Fast RAM immunity, bitplane contention scaling (0 vs 4 vs 6 planes), Blitter Nasty CPU lock-out, and CPU 3-cycle starvation release.
-- **Step 2.8: Decomposed Subsystem Deep Implementations:**
-  - *Agnus:* Copper coprocessor state machine (MOVE, WAIT, SKIP, CDANG danger mode), 4-channel DMA Blitter (256 minterms ALU, barrel shifters, Bresenham line drawer, ascending/descending modes).
-  - *Paula Audio Engine with Native BLEP Synthesis:* Precomputed alias-free BLEP tables (blep_tables.rs) across Paula's 4 DMA audio channels (dynamic CIA-A LED filter switching), floppy MFM track controller, serial UART, interrupt multiplexer.
-  - *Denise:* Video pixel serializer, bitplanes (1–6), 8 hardware sprites, 32-color palette (RGB444), dual playfield, collision detection registers (CLXDAT, CLXCON).
-  - *CIAs (Dual MOS 8520):* Timers A & B, TOD clock, serial shift register (SDR), parallel/control ports, E-clock synchronization.
 - **Step 2.9: Host Audio Playback & CRT Presentation Shaders:**
   - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio) with dynamic resampling and ring buffer underflow/overflow protection.
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
