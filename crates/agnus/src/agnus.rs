@@ -15,10 +15,19 @@ use serde::{Deserialize, Serialize};
 pub const PAL_LINE_CCKS: u16 = 227;
 /// Total vertical scanlines per frame (PAL)
 pub const PAL_FRAME_LINES: u16 = 312;
-/// Maximum horizontal Color Clock cycles per scanline (NTSC)
+/// Maximum horizontal Color Clock cycles per scanline (NTSC short line)
 pub const NTSC_LINE_CCKS: u16 = 227;
+/// Short scanline length in Color Clocks (NTSC standard)
+pub const NTSC_SHORT_LINE_CCKS: u16 = 227;
+/// Long scanline length in Color Clocks (NTSC interlace LOL bit active)
+pub const NTSC_LONG_LINE_CCKS: u16 = 228;
 /// Total vertical scanlines per frame (NTSC)
 pub const NTSC_FRAME_LINES: u16 = 262;
+
+/// Number of Color Clocks that Agnus's internal scheduling counter leads the visible display beam
+pub const VHPOSR_PIPELINE_LEAD_CCKS: u16 = 5;
+/// Number of Color Clocks after line wrap during which the vertical ripple counter is settling
+pub const VHPOSR_VERTICAL_SETTLE_CCKS: u16 = 1;
 
 /// Fixed-capacity in-flight register mutation buffer for Agnus (covers all writable registers)
 pub const AGNUS_MUTATION_CAPACITY: usize = 64;
@@ -303,11 +312,9 @@ impl Agnus {
         self.chip_ram_blocked
     }
 
-    /// Reads Vertical & Horizontal beam position (VHPOSR at $DFF006)
-    ///
-    /// The returned beam position reflects internal Agnus pipeline and bus latency (~5 CCKs ahead).
+    /// Returns the pipelined (H, V) beam position as seen by CPU register reads (5 CCKs ahead of display beam).
     #[inline]
-    pub fn vhposr(&self) -> u16 {
+    fn pipelined_beam_readout(&self) -> (u16, u16) {
         let max_lines = match self.model {
             AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
             _ => PAL_FRAME_LINES,
@@ -315,15 +322,15 @@ impl Agnus {
         let line_ccks = match self.model {
             AgnusModel::OcsNtsc8370 => {
                 if self.lol {
-                    228
+                    NTSC_LONG_LINE_CCKS
                 } else {
-                    227
+                    NTSC_SHORT_LINE_CCKS
                 }
             }
             _ => PAL_LINE_CCKS,
         };
 
-        let mut h = self.hpos + 5;
+        let mut h = self.hpos + VHPOSR_PIPELINE_LEAD_CCKS;
         let mut v = self.vpos;
         if h >= line_ccks {
             h -= line_ccks;
@@ -333,7 +340,20 @@ impl Agnus {
             }
         }
 
-        let effective_v = if h <= 1 { self.vpos } else { v };
+        let effective_v = if h <= VHPOSR_VERTICAL_SETTLE_CCKS {
+            self.vpos
+        } else {
+            v
+        };
+        (h as u16, effective_v)
+    }
+
+    /// Reads Vertical & Horizontal beam position (VHPOSR at $DFF006)
+    ///
+    /// The returned beam position reflects internal Agnus pipeline and bus latency (~5 CCKs ahead of display beam).
+    #[inline]
+    pub fn vhposr(&self) -> u16 {
+        let (h, effective_v) = self.pipelined_beam_readout();
         let v_low = (effective_v & 0xFF) as u16;
         (v_low << 8) | (h & 0xFF)
     }
@@ -349,32 +369,8 @@ impl Agnus {
             AgnusModel::OcsNtsc8370 => val |= 0x1000,
             AgnusModel::OcsPal8371 => {}
         }
-        let max_lines = match self.model {
-            AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
-            _ => PAL_FRAME_LINES,
-        };
-        let line_ccks = match self.model {
-            AgnusModel::OcsNtsc8370 => {
-                if self.lol {
-                    228
-                } else {
-                    227
-                }
-            }
-            _ => PAL_LINE_CCKS,
-        };
 
-        let mut h = self.hpos + 4;
-        let mut v = self.vpos;
-        if h >= line_ccks {
-            h -= line_ccks;
-            v = v.wrapping_add(1);
-            if v >= max_lines {
-                v = 0;
-            }
-        }
-
-        let effective_v = if h <= 1 { self.vpos } else { v };
+        let (_h, effective_v) = self.pipelined_beam_readout();
         val |= (effective_v >> 8) & 0x07;
         val
     }

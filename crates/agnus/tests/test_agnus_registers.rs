@@ -1,4 +1,4 @@
-use agnus::{Agnus, AgnusModel};
+use agnus::{Agnus, AgnusModel, PAL_LINE_CCKS, VHPOSR_PIPELINE_LEAD_CCKS};
 
 #[test]
 fn test_dmacon_set_clr_logic() {
@@ -108,10 +108,29 @@ fn test_vhposr_beam_lead_and_parity() {
     let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
     // At hpos = 0, vhposr reflects internal Agnus pipeline lead of 5 CCKs (vAmiga peekVHPOSR)
     let val0 = agnus.vhposr();
-    assert_eq!(val0 & 0x00FF, 5);
+    assert_eq!(val0 & 0x00FF, VHPOSR_PIPELINE_LEAD_CCKS);
 
-    // Step 1 CCK (hpos = 1) -> vhposr must reflect 1 + 5 = 6
+    // Step 1 CCK (hpos = 1) -> vhposr must reflect 1 + VHPOSR_PIPELINE_LEAD_CCKS
     agnus.step_cck();
     let val1 = agnus.vhposr();
-    assert_eq!(val1 & 0x00FF, 6);
+    assert_eq!(val1 & 0x00FF, 1 + VHPOSR_PIPELINE_LEAD_CCKS);
+}
+
+#[test]
+fn test_vposr_and_vhposr_unified_pipeline_lead() {
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    // Both VHPOSR and VPOSR must consistently sample the +5 CCK pipelined beam readout
+    let vhposr = agnus.vhposr();
+    let vposr = agnus.vposr();
+    assert_eq!(vhposr & 0x00FF, VHPOSR_PIPELINE_LEAD_CCKS);
+    // At vpos = 0, V8 is 0
+    assert_eq!(vposr & 0x0007, 0);
+
+    // Advance to scanline 256 where V8 transitions to 1
+    for _ in 0..(256 * PAL_LINE_CCKS as usize) {
+        agnus.step_cck();
+    }
+    // Now vpos = 256, so V8 bit 0 in VPOSR must be 1
+    let vposr_256 = agnus.vposr();
+    assert_eq!(vposr_256 & 0x0001, 1);
 }

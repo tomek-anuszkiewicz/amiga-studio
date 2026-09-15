@@ -4067,4 +4067,27 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 20 architecture tests passed.
   - `python tools/harness/pre_flight.py`: All quality gates passed cleanly.
 
+---
+
+### [2026-09-15 23:35 CEST] — Agnus VHPOSR & VPOSR Beam Pipeline Unification & Named Timing Constants
+- **Affected Subsystems**:
+  - `crates/agnus/src/agnus.rs`
+  - `crates/agnus/tests/test_agnus_registers.rs`
+- **What Was Changed (The Concrete Reality)**:
+  - Extracted shared helper method `pipelined_beam_readout(&self) -> (u16, u16)` in `crates/agnus/src/agnus.rs`.
+  - Unified `vposr()` to sample the exact same internal pipeline lead (`VHPOSR_PIPELINE_LEAD_CCKS = 5`) as `vhposr()`, resolving an accidental divergence where `vposr` used `+ 4` while `vhposr` used `+ 5`.
+  - Replaced naked literals with canonical named constants:
+    - `VHPOSR_PIPELINE_LEAD_CCKS: u16 = 5` (Agnus master counter lead time relative to Denise CRT display raster).
+    - `VHPOSR_VERTICAL_SETTLE_CCKS: u16 = 1` (Vertical ripple counter propagation delay across scanline rollover).
+    - `NTSC_SHORT_LINE_CCKS: u16 = 227` and `NTSC_LONG_LINE_CCKS: u16 = 228` (NTSC line length differentiation when `lol` is active).
+  - Added unit test `test_vposr_and_vhposr_unified_pipeline_lead` in `crates/agnus/tests/test_agnus_registers.rs` verifying that both registers consistently sample the pipelined beam position and advance high vertical bits at line 256.
+- **Architectural Rationale & Trade-Offs**:
+  - *Hardware Cohesion:* Both VHPOSR ($DFF006) and VPOSR ($DFF004) read from the exact same physical beam counter flip-flops in Agnus silicon. Unifying their readout logic eliminates inconsistent pipeline offsets and eliminates duplicated wrap/modulo calculations.
+  - *Self-Documenting Constants:* Replaces mysterious naked numbers with descriptive constants explaining the physical pipeline relationships.
+- **Verification & Test Results**:
+  - `cargo test -p agnus`: All 15 tests passed cleanly (0.04s).
+  - `cargo test -p test_runner --test test_vamiga_blitter`: Both `sblit0` and `bbusy0` passed.
+  - `python tools/harness/pre_flight.py`: 100% compliant across formatting, attractors, AGENTS.md limits, test coupling, API coverage, and all 20 architecture tests.
+
+
 
