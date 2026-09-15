@@ -194,13 +194,9 @@ def reduce_contiguous_graphics(
 
 
 def reduce_stream(workspace_dir: Path, config: dict):
-    raw_candidates = [
-        workspace_dir / "03_raw_stream" / "raw_stream.json",
-        workspace_dir / "raw_stream.json"
-    ]
-    raw_stream_path = next((p for p in raw_candidates if p.exists()), None)
-    if not raw_stream_path:
-        raise FileNotFoundError(f"Missing raw_stream.json in {workspace_dir}")
+    raw_stream_path = workspace_dir / "03_raw_stream" / "raw_stream.json"
+    if not raw_stream_path.exists():
+        raise FileNotFoundError(f"Missing raw_stream.json in {workspace_dir / '03_raw_stream'}")
 
     seam_prompt_path = Path(__file__).resolve().parent / "prompt_seam.md"
     seam_prompt_template = seam_prompt_path.read_text(encoding="utf-8") if seam_prompt_path.exists() else ""
@@ -269,10 +265,6 @@ def reduce_stream(workspace_dir: Path, config: dict):
     out_dir.mkdir(parents=True, exist_ok=True)
     reduced_stream_path = out_dir / "reduced_stream.json"
     with open(reduced_stream_path, "w", encoding="utf-8") as f:
-        json.dump(final_nodes, f, indent=2)
-
-    # Legacy copy for flat access
-    with open(workspace_dir / "reduced_stream.json", "w", encoding="utf-8") as f:
         json.dump(final_nodes, f, indent=2)
 
     print(f"[+] Stage 04 complete. Stream reduced from {len(raw_nodes)} -> {len(final_nodes)} nodes in {reduced_stream_path}")

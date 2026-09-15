@@ -145,14 +145,10 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
 
     # 3. Raw Stream (03)
     raw_path = workspace_dir / "03_raw_stream" / "raw_stream.json"
-    if not raw_path.exists():
-        raw_path = workspace_dir / "raw_stream.json"
     print(f"[*] 03_raw_stream                 : {'OK (' + str(raw_path.stat().st_size) + ' B)' if raw_path.exists() else 'Missing'}")
 
     # 4. Reduced Stream (04)
     red_path = workspace_dir / "04_reduced_stream" / "reduced_stream.json"
-    if not red_path.exists():
-        red_path = workspace_dir / "reduced_stream.json"
     print(f"[*] 04_reduced_stream             : {'OK (' + str(red_path.stat().st_size) + ' B)' if red_path.exists() else 'Missing'}")
 
     # 5. Chapters Raw (05)
@@ -197,7 +193,7 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
 
 
 STAGE_OUTPUT_TARGETS = {
-    1: ["01_pages", "pages", "manifest.json"],
+    1: ["01_pages", "pages", "pages_manifest.json", "manifest.json"],
     2: ["02_segments", "segments"],
     3: ["03_raw_stream", "raw_stream.json", "assets"],
     4: ["04_reduced_stream", "reduced_stream.json"],

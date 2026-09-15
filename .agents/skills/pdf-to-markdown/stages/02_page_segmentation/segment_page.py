@@ -127,9 +127,11 @@ def process_segmentation(workspace_dir: Path, config: dict):
     for f in segments_dir.glob("*.json"):
         f.unlink()
 
-    manifest_path = workspace_dir / "manifest.json"
+    manifest_path = workspace_dir / "pages_manifest.json"
     if not manifest_path.exists():
-        raise FileNotFoundError(f"Missing manifest.json in {workspace_dir}")
+        manifest_path = workspace_dir / "manifest.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"Missing pages_manifest.json in {workspace_dir}")
 
     with open(manifest_path, "r", encoding="utf-8") as f:
         manifest = json.load(f)

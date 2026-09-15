@@ -5,7 +5,7 @@ Deconstructs a physical input PDF into atomic, per-page representations:
 - Single-page vector PDF (page_XXXX.pdf)
 - 300 DPI high-resolution raster image (page_XXXX.png)
 - Geometry text dump from fitz.get_text("blocks") (page_XXXX.json)
-- Master workspace/manifest.json
+- Master workspace/pages_manifest.json
 """
 
 import argparse
@@ -98,7 +98,7 @@ def preprocess_pdf(pdf_path: Path, workspace_dir: Path, dpi: int = 300, max_page
 
     doc.close()
 
-    manifest_path = workspace_dir / "manifest.json"
+    manifest_path = workspace_dir / "pages_manifest.json"
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 

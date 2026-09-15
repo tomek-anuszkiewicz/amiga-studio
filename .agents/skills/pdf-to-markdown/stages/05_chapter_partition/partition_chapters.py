@@ -25,13 +25,9 @@ def generate_slug(text: str) -> str:
 
 
 def partition_chapters(workspace_dir: Path, config: dict):
-    candidates = [
-        workspace_dir / "04_reduced_stream" / "reduced_stream.json",
-        workspace_dir / "reduced_stream.json"
-    ]
-    reduced_stream_path = next((p for p in candidates if p.exists()), None)
-    if not reduced_stream_path:
-        raise FileNotFoundError(f"Missing reduced_stream.json in {workspace_dir}")
+    reduced_stream_path = workspace_dir / "04_reduced_stream" / "reduced_stream.json"
+    if not reduced_stream_path.exists():
+        raise FileNotFoundError(f"Missing reduced_stream.json in {workspace_dir / '04_reduced_stream'}")
 
     with open(reduced_stream_path, "r", encoding="utf-8") as f:
         nodes = json.load(f)

@@ -8,7 +8,7 @@ Performs sequential normalization across the global node stream:
 4. Preserves structural node boundaries for tables, code listings, and headings.
 
 ## Inputs
-- `workspace/raw_stream.json`: Master sequential node stream.
+- `workspace/03_raw_stream/raw_stream.json`: Master sequential node stream.
 - `workspace/01_pages/page_XXXX.png`: 300 DPI raster page images for vision verification.
 - `stages/04_stream_reduction/prompt_seam.md`: LLM prompt for ambiguous cross-page text seams.
 - `stages/04_stream_reduction/prompt_graphics_union.md`: Vision prompt for contiguous graphic union validation.

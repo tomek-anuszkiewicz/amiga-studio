@@ -69,10 +69,6 @@ def build_raw_stream(workspace_dir: Path, config: dict):
     with open(raw_stream_path, "w", encoding="utf-8") as f:
         json.dump(all_nodes, f, indent=2)
 
-    # Legacy copy for flat access
-    with open(workspace_dir / "raw_stream.json", "w", encoding="utf-8") as f:
-        json.dump(all_nodes, f, indent=2)
-
     print(f"[+] Stage 03 complete. {len(all_nodes)} nodes written to {raw_stream_path}")
 
 
