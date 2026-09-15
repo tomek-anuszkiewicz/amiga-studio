@@ -40,10 +40,20 @@ def generate_default_sidecar(node_id: str, raw_text: str, page_num: int) -> str:
 
 
 def process_graphics(workspace_dir: Path, config: dict):
-    chapters_dir = workspace_dir / "chapters"
+    input_candidates = [
+        workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_chapters_continuations",
+        workspace_dir / "05_chapters_raw",
+        workspace_dir / "chapters"
+    ]
+    input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
+    if not input_dir:
+        raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
+
+    out_dir = workspace_dir / "08_chapters_graphics"
+    out_dir.mkdir(parents=True, exist_ok=True)
     assets_dir = workspace_dir / "assets"
-    if not chapters_dir.exists():
-        raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
+    assets_dir.mkdir(parents=True, exist_ok=True)
 
     gemini = GeminiClient(config) if GeminiClient else None
     if gemini and gemini.is_available():
@@ -51,7 +61,7 @@ def process_graphics(workspace_dir: Path, config: dict):
     else:
         print(f"[*] Graphics Worker LLM unavailable (no GEMINI_API_KEY). Using heuristic diagram converter.")
 
-    chapter_files = sorted(list(chapters_dir.glob("*.json")))
+    chapter_files = sorted(list(input_dir.glob("*.json")))
     print(f"[*] Transforming graphics across {len(chapter_files)} chapter files...")
 
     transformed_count = 0
@@ -61,7 +71,6 @@ def process_graphics(workspace_dir: Path, config: dict):
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        modified = False
         for node in nodes:
             if node.get("type") != "graphic":
                 continue
@@ -74,7 +83,6 @@ def process_graphics(workspace_dir: Path, config: dict):
             is_flowchart = bool(re.search(r"(state\s+machine|flowchart|step\s+\d+|transition)", raw_text, re.IGNORECASE))
 
             if is_flowchart:
-                # Generate sample Mermaid block with collapsible ASCII fallback
                 rendered = (
                     f"```mermaid\n"
                     f"flowchart TD\n"
@@ -85,7 +93,6 @@ def process_graphics(workspace_dir: Path, config: dict):
                 )
                 node["rendered_markdown"] = rendered
             else:
-                # Embed as Obsidian wikilink
                 svg_rel = node.get("svg_path")
                 png_rel = node.get("png_path")
                 asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
@@ -103,14 +110,13 @@ def process_graphics(workspace_dir: Path, config: dict):
                 node["sidecar_path"] = f"assets/{sidecar_name}"
                 sidecar_count += 1
 
-            modified = True
             transformed_count += 1
 
-        if modified:
-            with open(c_file, "w", encoding="utf-8") as f:
-                json.dump(nodes, f, indent=2)
+        target_file = out_dir / c_file.name
+        with open(target_file, "w", encoding="utf-8") as f:
+            json.dump(nodes, f, indent=2)
 
-    print(f"[+] Stage 08 complete. Transformed {transformed_count} graphics, generated {sidecar_count} RAG sidecars.")
+    print(f"[+] Stage 08 complete. Transformed {transformed_count} graphics, generated {sidecar_count} RAG sidecars in {out_dir}.")
 
 
 def prepare_graphics_tasks(workspace_dir: Path) -> int:
@@ -118,8 +124,14 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
     Extracts graphic nodes into workspace/tasks/graphics/{node_id}.json and {node_id}.md
     for the Agent to inspect image assets and author Mermaid or sidecars.
     """
-    chapters_dir = workspace_dir / "chapters"
-    if not chapters_dir.exists():
+    input_candidates = [
+        workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_chapters_continuations",
+        workspace_dir / "05_chapters_raw",
+        workspace_dir / "chapters"
+    ]
+    chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
+    if not chapters_dir:
         raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
 
     tasks_dir = workspace_dir / "tasks" / "graphics"
@@ -149,7 +161,7 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
 
             task_meta = {
                 "node_id": node_id,
-                "chapter_file": str(c_file.relative_to(workspace_dir)),
+                "chapter_file": c_file.name,
                 "page": page_num,
                 "svg_path": svg_rel,
                 "png_path": png_rel,
@@ -181,7 +193,7 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
 def apply_graphics_tasks(workspace_dir: Path) -> int:
     """
     Reads workspace/tasks/graphics/{node_id}.md and sidecars,
-    updating chapter JSON files and workspace/assets/.
+    updating workspace/08_chapters_graphics/ and workspace/assets/.
     """
     tasks_dir = workspace_dir / "tasks" / "graphics"
     assets_dir = workspace_dir / "assets"
@@ -191,52 +203,58 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
         print(f"[!] No graphic tasks directory found at {tasks_dir}")
         return 0
 
-    applied_count = 0
+    input_candidates = [
+        workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_chapters_continuations",
+        workspace_dir / "05_chapters_raw",
+        workspace_dir / "chapters"
+    ]
+    input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
+    if not input_dir:
+        raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
+
+    out_dir = workspace_dir / "08_chapters_graphics"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Collect rendered markdown and sidecars
+    rendered_by_node = {}
     for meta_file in sorted(list(tasks_dir.glob("*.json"))):
         with open(meta_file, "r", encoding="utf-8") as f:
             meta = json.load(f)
 
         node_id = meta.get("node_id")
-        chapter_rel = meta.get("chapter_file")
         asset_file = meta.get("asset_file", f"asset_{node_id}.png")
-
         md_file = tasks_dir / f"{node_id}.md"
         sidecar_file = tasks_dir / f"{node_id}.sidecar.txt"
 
-        if not md_file.exists() or not chapter_rel:
-            continue
+        if md_file.exists():
+            with open(md_file, "r", encoding="utf-8") as f:
+                rendered_by_node[node_id] = f.read().strip()
 
-        with open(md_file, "r", encoding="utf-8") as f:
-            rendered_md = f.read().strip()
-
-        # Update sidecar in assets
         sidecar_name = f"{asset_file}.txt"
         if sidecar_file.exists():
             sidecar_dest = assets_dir / sidecar_name
             with open(sidecar_file, "r", encoding="utf-8") as sf:
                 sidecar_dest.write_text(sf.read(), encoding="utf-8")
 
-        chapter_path = workspace_dir / chapter_rel
-        if not chapter_path.exists():
-            continue
-
-        with open(chapter_path, "r", encoding="utf-8") as f:
+    applied_count = 0
+    for c_file in sorted(list(input_dir.glob("*.json"))):
+        with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        updated = False
         for node in nodes:
-            if node.get("node_id") == node_id:
-                node["rendered_markdown"] = rendered_md
-                node["sidecar_path"] = f"assets/{sidecar_name}"
-                updated = True
-                break
+            n_id = node.get("node_id")
+            if n_id in rendered_by_node:
+                node["rendered_markdown"] = rendered_by_node[n_id]
+                asset_f = meta.get("asset_file", f"asset_{n_id}.png")
+                node["sidecar_path"] = f"assets/{asset_f}.txt"
+                applied_count += 1
 
-        if updated:
-            with open(chapter_path, "w", encoding="utf-8") as f:
-                json.dump(nodes, f, indent=2)
-            applied_count += 1
+        target_file = out_dir / c_file.name
+        with open(target_file, "w", encoding="utf-8") as f:
+            json.dump(nodes, f, indent=2)
 
-    print(f"[+] Applied {applied_count} graphic tasks to chapter streams.")
+    print(f"[+] Applied {applied_count} graphic tasks to {out_dir}.")
     return applied_count
 
 

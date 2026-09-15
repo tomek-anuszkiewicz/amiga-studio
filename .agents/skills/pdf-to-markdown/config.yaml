@@ -7,10 +7,18 @@ render:
 
 paths:
   workspace_dir: "workspace"
-  pages_dir: "workspace/pages"
-  segments_dir: "workspace/segments"
-  assets_dir: "workspace/assets"
-  chapters_dir: "workspace/chapters"
+  pages_dir: "workspace/01_pages"
+  segments_dir: "workspace/02_segments"
+  raw_stream_dir: "workspace/03_raw_stream"
+  reduced_stream_dir: "workspace/04_reduced_stream"
+  assets_dir: "workspace/03_raw_stream/assets"
+  chapters_raw_dir: "workspace/05_chapters_raw"
+  chapters_continuations_dir: "workspace/06_chapters_continuations"
+  chapters_tables_dir: "workspace/07_chapters_tables"
+  chapters_graphics_dir: "workspace/08_chapters_graphics"
+  chapters_formatted_dir: "workspace/09_chapters_formatted"
+  markdown_raw_dir: "workspace/10_markdown_raw"
+  markdown_linked_dir: "workspace/11_markdown_linked"
   default_output_dir: "output_markdown"
 
 llm:

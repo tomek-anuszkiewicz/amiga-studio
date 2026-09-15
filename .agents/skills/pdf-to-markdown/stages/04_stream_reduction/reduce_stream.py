@@ -43,14 +43,18 @@ def de_hyphenate_and_join(text1: str, text2: str) -> str:
 
 
 def reduce_stream(workspace_dir: Path, config: dict):
-    raw_stream_path = workspace_dir / "raw_stream.json"
-    if not raw_stream_path.exists():
+    raw_candidates = [
+        workspace_dir / "03_raw_stream" / "raw_stream.json",
+        workspace_dir / "raw_stream.json"
+    ]
+    raw_stream_path = next((p for p in raw_candidates if p.exists()), None)
+    if not raw_stream_path:
         raise FileNotFoundError(f"Missing raw_stream.json in {workspace_dir}")
 
     with open(raw_stream_path, "r", encoding="utf-8") as f:
         raw_nodes = json.load(f)
 
-    print(f"[*] Reducing stream of {len(raw_nodes)} nodes...")
+    print(f"[*] Reducing stream of {len(raw_nodes)} nodes from {raw_stream_path.name}...")
 
     reduced_nodes = []
     skipped_count = 0
@@ -81,8 +85,14 @@ def reduce_stream(workspace_dir: Path, config: dict):
         node_copy["page_end"] = node["page"]
         reduced_nodes.append(node_copy)
 
-    reduced_stream_path = workspace_dir / "reduced_stream.json"
+    out_dir = workspace_dir / "04_reduced_stream"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    reduced_stream_path = out_dir / "reduced_stream.json"
     with open(reduced_stream_path, "w", encoding="utf-8") as f:
+        json.dump(reduced_nodes, f, indent=2)
+
+    # Legacy copy for flat access
+    with open(workspace_dir / "reduced_stream.json", "w", encoding="utf-8") as f:
         json.dump(reduced_nodes, f, indent=2)
 
     print(f"[+] Stage 04 complete. Suppressed {skipped_count} headers/footers.")

@@ -22,15 +22,21 @@ def generate_slug(text: str) -> str:
 
 
 def partition_chapters(workspace_dir: Path, config: dict):
-    reduced_stream_path = workspace_dir / "reduced_stream.json"
-    if not reduced_stream_path.exists():
+    candidates = [
+        workspace_dir / "04_reduced_stream" / "reduced_stream.json",
+        workspace_dir / "reduced_stream.json"
+    ]
+    reduced_stream_path = next((p for p in candidates if p.exists()), None)
+    if not reduced_stream_path:
         raise FileNotFoundError(f"Missing reduced_stream.json in {workspace_dir}")
 
     with open(reduced_stream_path, "r", encoding="utf-8") as f:
         nodes = json.load(f)
 
-    chapters_dir = workspace_dir / "chapters"
-    chapters_dir.mkdir(parents=True, exist_ok=True)
+    chapters_raw_dir = workspace_dir / "05_chapters_raw"
+    chapters_raw_dir.mkdir(parents=True, exist_ok=True)
+    chapters_legacy_dir = workspace_dir / "chapters"
+    chapters_legacy_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[*] Partitioning {len(nodes)} nodes into chapter streams...")
 
@@ -91,16 +97,19 @@ def partition_chapters(workspace_dir: Path, config: dict):
     for idx, part in enumerate(partitions, start=1):
         file_slug = f"{idx:02d}_{part['slug']}"
         file_name = f"{file_slug}.json"
-        target_path = chapters_dir / file_name
-
+        target_path = chapters_raw_dir / file_name
         with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(part["nodes"], f, indent=2)
+
+        # Legacy copy for flat access
+        with open(chapters_legacy_dir / file_name, "w", encoding="utf-8") as f:
             json.dump(part["nodes"], f, indent=2)
 
         manifest.append({
             "index": idx,
             "slug": part["slug"],
             "title": part["title"],
-            "json_file": f"chapters/{file_name}",
+            "json_file": f"05_chapters_raw/{file_name}",
             "target_md_file": f"{file_slug}.md",
             "node_count": len(part["nodes"])
         })
@@ -110,7 +119,7 @@ def partition_chapters(workspace_dir: Path, config: dict):
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
-    print(f"[+] Stage 05 complete. {len(partitions)} chapters partitioned into {chapters_dir}")
+    print(f"[+] Stage 05 complete. {len(partitions)} chapters partitioned into {chapters_raw_dir}")
 
 
 def main():

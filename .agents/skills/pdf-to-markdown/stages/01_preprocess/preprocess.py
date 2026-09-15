@@ -21,7 +21,7 @@ def preprocess_pdf(pdf_path: Path, workspace_dir: Path, dpi: int = 300, max_page
     if not pdf_path.exists():
         raise FileNotFoundError(f"Source PDF does not exist: {pdf_path}")
 
-    pages_dir = workspace_dir / "pages"
+    pages_dir = workspace_dir / "01_pages"
     pages_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[*] Opening PDF: {pdf_path}")
@@ -85,9 +85,9 @@ def preprocess_pdf(pdf_path: Path, workspace_dir: Path, dpi: int = 300, max_page
 
         manifest["pages"].append({
             "page": page_num,
-            "pdf_file": f"pages/{page_str}.pdf",
-            "png_file": f"pages/{page_str}.png",
-            "json_file": f"pages/{page_str}.json",
+            "pdf_file": f"01_pages/{page_str}.pdf",
+            "png_file": f"01_pages/{page_str}.png",
+            "json_file": f"01_pages/{page_str}.json",
             "width": round(rect.width, 2),
             "height": round(rect.height, 2),
             "block_count": len(block_list)

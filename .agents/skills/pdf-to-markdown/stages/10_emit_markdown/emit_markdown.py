@@ -34,6 +34,18 @@ def build_frontmatter(title: str, section_idx: int) -> str:
 
 
 def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
+    input_candidates = [
+        workspace_dir / "09_chapters_formatted",
+        workspace_dir / "08_chapters_graphics",
+        workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_chapters_continuations",
+        workspace_dir / "05_chapters_raw",
+        workspace_dir / "chapters"
+    ]
+    chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
+    if not chapters_dir:
+        raise FileNotFoundError(f"Missing formatted chapters in {workspace_dir}")
+
     manifest_path = workspace_dir / "chapters_manifest.json"
     if not manifest_path.exists():
         raise FileNotFoundError(f"Missing chapters_manifest.json in {workspace_dir}")
@@ -53,7 +65,7 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
                 shutil.copy2(asset_file, out_assets_dir / asset_file.name)
         print(f"[*] Synchronized assets to {out_assets_dir}")
 
-    print(f"[*] Emitting {len(manifest)} Markdown files to {output_dir}...")
+    print(f"[*] Emitting {len(manifest)} Markdown files from {chapters_dir.name} to {output_dir}...")
 
     for entry in manifest:
         idx = entry["index"]
@@ -62,9 +74,13 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
         target_md_name = entry.get("target_md_file", f"{idx:02d}_{slug}.md")
         target_path = output_dir / target_md_name
 
-        json_file = workspace_dir / entry["json_file"]
+        file_slug = f"{idx:02d}_{slug}.json"
+        json_file = chapters_dir / file_slug
         if not json_file.exists():
-            continue
+            # Try path from manifest
+            json_file = workspace_dir / entry["json_file"]
+            if not json_file.exists():
+                continue
 
         with open(json_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)

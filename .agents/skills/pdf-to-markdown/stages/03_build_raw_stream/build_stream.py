@@ -20,7 +20,7 @@ from extract_initial_assets import extract_assets_for_nodes
 
 
 def build_raw_stream(workspace_dir: Path, config: dict):
-    segments_dir = workspace_dir / "segments"
+    segments_dir = workspace_dir / "02_segments" if (workspace_dir / "02_segments").exists() else (workspace_dir / "segments")
     if not segments_dir.exists():
         raise FileNotFoundError(f"Segments directory not found: {segments_dir}")
 
@@ -63,8 +63,14 @@ def build_raw_stream(workspace_dir: Path, config: dict):
     padding = config.get("render", {}).get("padding_margin_ratio", 0.10)
     all_nodes = extract_assets_for_nodes(workspace_dir, all_nodes, padding_ratio=padding)
 
-    raw_stream_path = workspace_dir / "raw_stream.json"
+    raw_dir = workspace_dir / "03_raw_stream"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    raw_stream_path = raw_dir / "raw_stream.json"
     with open(raw_stream_path, "w", encoding="utf-8") as f:
+        json.dump(all_nodes, f, indent=2)
+
+    # Legacy copy for flat access
+    with open(workspace_dir / "raw_stream.json", "w", encoding="utf-8") as f:
         json.dump(all_nodes, f, indent=2)
 
     print(f"[+] Stage 03 complete. {len(all_nodes)} nodes written to {raw_stream_path}")

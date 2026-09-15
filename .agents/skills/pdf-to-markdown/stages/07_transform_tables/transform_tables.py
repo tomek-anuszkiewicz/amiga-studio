@@ -77,9 +77,17 @@ def format_simple_gfm_table(raw_text: str) -> str:
 
 
 def process_tables(workspace_dir: Path, config: dict):
-    chapters_dir = workspace_dir / "chapters"
-    if not chapters_dir.exists():
-        raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
+    input_candidates = [
+        workspace_dir / "06_chapters_continuations",
+        workspace_dir / "05_chapters_raw",
+        workspace_dir / "chapters"
+    ]
+    input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
+    if not input_dir:
+        raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
+
+    out_dir = workspace_dir / "07_chapters_tables"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     prompt_path = Path(__file__).resolve().parent / "prompt_markdown_table.md"
     base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
@@ -90,7 +98,7 @@ def process_tables(workspace_dir: Path, config: dict):
     else:
         print(f"[*] Table Worker LLM unavailable (no GEMINI_API_KEY). Using heuristic GFM table formatter.")
 
-    chapter_files = sorted(list(chapters_dir.glob("*.json")))
+    chapter_files = sorted(list(input_dir.glob("*.json")))
     print(f"[*] Transforming tables across {len(chapter_files)} chapter files...")
 
     transformed_count = 0
@@ -99,7 +107,6 @@ def process_tables(workspace_dir: Path, config: dict):
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        modified = False
         for node in nodes:
             if node.get("type") != "table":
                 continue
@@ -133,14 +140,13 @@ def process_tables(workspace_dir: Path, config: dict):
                 asset_ref = node.get("svg_path") or node.get("png_path") or ""
                 node["rendered_markdown"] = f"![Table]({asset_ref})\n"
 
-            modified = True
             transformed_count += 1
 
-        if modified:
-            with open(c_file, "w", encoding="utf-8") as f:
-                json.dump(nodes, f, indent=2)
+        target_file = out_dir / c_file.name
+        with open(target_file, "w", encoding="utf-8") as f:
+            json.dump(nodes, f, indent=2)
 
-    print(f"[+] Stage 07 complete. Transformed {transformed_count} table blocks.")
+    print(f"[+] Stage 07 complete. Transformed {transformed_count} table blocks into {out_dir}.")
 
 
 def prepare_table_tasks(workspace_dir: Path) -> int:
@@ -148,9 +154,14 @@ def prepare_table_tasks(workspace_dir: Path) -> int:
     Extracts table nodes into workspace/tasks/tables/{node_id}.json and {node_id}.md
     for the Agent to inspect and transform.
     """
-    chapters_dir = workspace_dir / "chapters"
-    if not chapters_dir.exists():
-        raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
+    input_candidates = [
+        workspace_dir / "06_chapters_continuations",
+        workspace_dir / "05_chapters_raw",
+        workspace_dir / "chapters"
+    ]
+    chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
+    if not chapters_dir:
+        raise FileNotFoundError(f"Missing input chapters directory: {chapters_dir}")
 
     tasks_dir = workspace_dir / "tasks" / "tables"
     tasks_dir.mkdir(parents=True, exist_ok=True)
@@ -183,7 +194,7 @@ def prepare_table_tasks(workspace_dir: Path) -> int:
 
             task_meta = {
                 "node_id": node_id,
-                "chapter_file": str(c_file.relative_to(workspace_dir)),
+                "chapter_file": c_file.name,
                 "page": node.get("page"),
                 "continuation_status": node.get("continuation_status"),
                 "merged_nodes": node.get("merged_nodes"),
@@ -212,48 +223,52 @@ def prepare_table_tasks(workspace_dir: Path) -> int:
 def apply_table_tasks(workspace_dir: Path) -> int:
     """
     Reads workspace/tasks/tables/{node_id}.md and injects rendered_markdown
-    back into chapter JSON files.
+    into workspace/07_chapters_tables/ without mutating prior stages.
     """
     tasks_dir = workspace_dir / "tasks" / "tables"
     if not tasks_dir.exists():
         print(f"[!] No table tasks directory found at {tasks_dir}")
         return 0
 
-    applied_count = 0
+    input_candidates = [
+        workspace_dir / "06_chapters_continuations",
+        workspace_dir / "05_chapters_raw",
+        workspace_dir / "chapters"
+    ]
+    input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
+    if not input_dir:
+        raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
+
+    out_dir = workspace_dir / "07_chapters_tables"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Collect rendered markdown for all tasks
+    rendered_by_node = {}
     for meta_file in sorted(list(tasks_dir.glob("*.json"))):
         with open(meta_file, "r", encoding="utf-8") as f:
             meta = json.load(f)
-
         node_id = meta.get("node_id")
-        chapter_rel = meta.get("chapter_file")
         md_file = tasks_dir / f"{node_id}.md"
+        if md_file.exists():
+            with open(md_file, "r", encoding="utf-8") as f:
+                rendered_by_node[node_id] = f.read().strip()
 
-        if not md_file.exists() or not chapter_rel:
-            continue
-
-        with open(md_file, "r", encoding="utf-8") as f:
-            rendered_md = f.read().strip()
-
-        chapter_path = workspace_dir / chapter_rel
-        if not chapter_path.exists():
-            continue
-
-        with open(chapter_path, "r", encoding="utf-8") as f:
+    applied_count = 0
+    for c_file in sorted(list(input_dir.glob("*.json"))):
+        with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        updated = False
         for node in nodes:
-            if node.get("node_id") == node_id:
-                node["rendered_markdown"] = rendered_md
-                updated = True
-                break
+            n_id = node.get("node_id")
+            if n_id in rendered_by_node:
+                node["rendered_markdown"] = rendered_by_node[n_id]
+                applied_count += 1
 
-        if updated:
-            with open(chapter_path, "w", encoding="utf-8") as f:
-                json.dump(nodes, f, indent=2)
-            applied_count += 1
+        target_file = out_dir / c_file.name
+        with open(target_file, "w", encoding="utf-8") as f:
+            json.dump(nodes, f, indent=2)
 
-    print(f"[+] Applied {applied_count} table tasks to chapter streams.")
+    print(f"[+] Applied {applied_count} table tasks to {out_dir}.")
     return applied_count
 
 

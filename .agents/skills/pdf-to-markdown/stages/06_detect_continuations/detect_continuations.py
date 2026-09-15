@@ -51,11 +51,14 @@ def are_tables_likely_continuation(node_a: dict, node_b: dict) -> bool:
 
 
 def process_chapter_continuations(workspace_dir: Path, config: dict):
-    chapters_dir = workspace_dir / "chapters"
-    if not chapters_dir.exists():
-        raise FileNotFoundError(f"Chapters directory missing: {chapters_dir}")
+    input_dir = workspace_dir / "05_chapters_raw" if (workspace_dir / "05_chapters_raw").exists() else (workspace_dir / "chapters")
+    if not input_dir.exists():
+        raise FileNotFoundError(f"Input chapters directory missing: {input_dir}")
 
-    chapter_files = sorted(list(chapters_dir.glob("*.json")))
+    out_dir = workspace_dir / "06_chapters_continuations"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    chapter_files = sorted(list(input_dir.glob("*.json")))
     print(f"[*] Detecting continuations across {len(chapter_files)} chapter files...")
 
     total_continuations = 0
@@ -65,26 +68,21 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        modified = False
         i = 0
         while i < len(nodes) - 1:
             curr_node = nodes[i]
             next_node = nodes[i + 1]
 
-            # Allow skipping whitespace / minor elements if right next
             if are_tables_likely_continuation(curr_node, next_node):
                 group_id = f"table_group_{group_counter:04d}"
                 group_counter += 1
                 total_continuations += 1
-                modified = True
 
-                # Mark head node
                 curr_node["continuation_status"] = "head"
                 curr_node["is_head"] = True
                 curr_node["continuation_group_id"] = group_id
                 curr_node["merged_nodes"] = [curr_node["node_id"], next_node["node_id"]]
 
-                # Collect merged asset paths
                 merged_assets = []
                 for p in ("svg_path", "png_path", "raw_text_path"):
                     if curr_node.get(p):
@@ -93,7 +91,6 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
                         merged_assets.append(next_node[p])
                 curr_node["merged_assets"] = merged_assets
 
-                # Mark child continuation node
                 next_node["continuation_status"] = "continuation"
                 next_node["is_head"] = False
                 next_node["continued_from"] = curr_node["node_id"]
@@ -104,11 +101,12 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
             else:
                 i += 1
 
-        if modified:
-            with open(c_file, "w", encoding="utf-8") as f:
-                json.dump(nodes, f, indent=2)
+        # Write immutable output to 06_chapters_continuations
+        target_file = out_dir / c_file.name
+        with open(target_file, "w", encoding="utf-8") as f:
+            json.dump(nodes, f, indent=2)
 
-    print(f"[+] Stage 06 complete. Detected and linked {total_continuations} multi-page continuations.")
+    print(f"[+] Stage 06 complete. Emitted {len(chapter_files)} chapters to {out_dir} with {total_continuations} continuations.")
 
 
 def prepare_continuation_tasks(workspace_dir: Path) -> int:
@@ -116,7 +114,7 @@ def prepare_continuation_tasks(workspace_dir: Path) -> int:
     Extracts candidate multi-page table/graphic continuations into
     workspace/tasks/continuations/candidates.json for Agent review.
     """
-    chapters_dir = workspace_dir / "chapters"
+    chapters_dir = workspace_dir / "05_chapters_raw" if (workspace_dir / "05_chapters_raw").exists() else (workspace_dir / "chapters")
     if not chapters_dir.exists():
         raise FileNotFoundError(f"Chapters directory missing: {chapters_dir}")
 
@@ -141,7 +139,7 @@ def prepare_continuation_tasks(workspace_dir: Path) -> int:
                     is_cont = are_tables_likely_continuation(curr_node, next_node)
                     candidates.append({
                         "candidate_id": f"cont_{cand_counter:04d}",
-                        "chapter_file": str(c_file.relative_to(workspace_dir)),
+                        "chapter_file": c_file.name,
                         "head_node_id": curr_node["node_id"],
                         "head_page": page_a,
                         "head_snippet": curr_node.get("raw_text", "")[:200],
@@ -163,7 +161,7 @@ def prepare_continuation_tasks(workspace_dir: Path) -> int:
 def apply_continuation_tasks(workspace_dir: Path) -> int:
     """
     Applies confirmed continuations from workspace/tasks/continuations/candidates.json
-    into chapter streams.
+    into workspace/06_chapters_continuations/ without mutating 05_chapters_raw.
     """
     cand_file = workspace_dir / "tasks" / "continuations" / "candidates.json"
     if not cand_file.exists():
@@ -173,24 +171,25 @@ def apply_continuation_tasks(workspace_dir: Path) -> int:
     with open(cand_file, "r", encoding="utf-8") as f:
         candidates = json.load(f)
 
+    input_dir = workspace_dir / "05_chapters_raw" if (workspace_dir / "05_chapters_raw").exists() else (workspace_dir / "chapters")
+    out_dir = workspace_dir / "06_chapters_continuations"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     applied_count = 0
     group_counter = 1
 
-    # Group candidates by chapter
+    # Group candidates by chapter file name
     by_chapter = {}
     for c in candidates:
         if c.get("is_continuation"):
             by_chapter.setdefault(c["chapter_file"], []).append(c)
 
-    for chapter_rel, items in by_chapter.items():
-        chapter_path = workspace_dir / chapter_rel
-        if not chapter_path.exists():
-            continue
-
-        with open(chapter_path, "r", encoding="utf-8") as f:
+    for c_file in sorted(list(input_dir.glob("*.json"))):
+        with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
         node_map = {n.get("node_id"): n for n in nodes}
+        items = by_chapter.get(c_file.name, [])
 
         for item in items:
             head_id = item["head_node_id"]
@@ -223,10 +222,11 @@ def apply_continuation_tasks(workspace_dir: Path) -> int:
 
                 applied_count += 1
 
-        with open(chapter_path, "w", encoding="utf-8") as f:
+        target_file = out_dir / c_file.name
+        with open(target_file, "w", encoding="utf-8") as f:
             json.dump(nodes, f, indent=2)
 
-    print(f"[+] Applied {applied_count} confirmed continuations to chapter streams.")
+    print(f"[+] Applied {applied_count} confirmed continuations to {out_dir}")
     return applied_count
 
 

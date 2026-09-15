@@ -130,36 +130,89 @@ def link_toc_in_file(md_path: Path, catalog: list) -> bool:
     return True
 
 
-def process_toc_linking(output_dir: Path, workspace_dir: Path):
-    if not output_dir.exists():
-        raise FileNotFoundError(f"Output directory does not exist: {output_dir}")
+def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path):
+    if not input_dir.exists():
+        raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
 
-    print(f"[*] Cataloging headers across documents in {output_dir}...")
-    catalog = catalog_headers_across_documents(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_assets_dir = output_dir / "assets"
+    out_assets_dir.mkdir(parents=True, exist_ok=True)
+
+    # Synchronize assets
+    src_assets = input_dir / "assets"
+    if src_assets.exists():
+        for f in src_assets.glob("*"):
+            if f.is_file():
+                shutil.copy2(f, out_assets_dir / f.name)
+
+    print(f"[*] Cataloging headers across documents in {input_dir}...")
+    catalog = catalog_headers_across_documents(input_dir)
     print(f"    Cataloged {len(catalog)} headers.")
 
-    md_files = sorted(list(output_dir.glob("*.md")))
+    md_files = sorted(list(input_dir.glob("*.md")))
     linked_count = 0
 
     for md_path in md_files:
-        if link_toc_in_file(md_path, catalog):
-            print(f"[+] Converted TOC wikilinks and removed markers in {md_path.name}")
-            linked_count += 1
+        with open(md_path, "r", encoding="utf-8") as f:
+            content = f.read()
 
-    print(f"[+] Stage 11 complete. Processed {linked_count} TOC sections.")
+        match = re.search(r"<!-- TOC34534 -->\n(.*?)\n<!-- /TOC34534 -->", content, re.DOTALL)
+        if match:
+            toc_lines = match.group(1).splitlines()
+            linked_lines = []
+            for line in toc_lines:
+                m_bullet = re.match(r"^(\s*[-*]\s*)(.+)$", line)
+                if m_bullet:
+                    prefix = m_bullet.group(1)
+                    title = m_bullet.group(2).strip()
+                    best_match = find_best_header_match(title, catalog)
+                    if best_match:
+                        target_file = best_match["stem"]
+                        target_header = best_match["header"]
+                        wikilink = f"[[{target_file}#{target_header}|{title}]]"
+                        linked_lines.append(f"{prefix}{wikilink}")
+                    else:
+                        linked_lines.append(line)
+                else:
+                    linked_lines.append(line)
+
+            new_toc_block = "\n".join(linked_lines)
+            updated_content = content[:match.start()] + new_toc_block + content[match.end():]
+            linked_count += 1
+            print(f"[+] Converted TOC wikilinks and removed markers in {md_path.name}")
+        else:
+            updated_content = content
+
+        target_file = output_dir / md_path.name
+        with open(target_file, "w", encoding="utf-8") as f:
+            f.write(updated_content)
+
+    print(f"[+] Stage 11 complete. Processed {linked_count} TOC sections into {output_dir}.")
 
 
 def main():
+    import shutil
     parser = argparse.ArgumentParser(description="Stage 11: Fuzzy cross-document Table of Contents linker")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
-    parser.add_argument("--output-dir", type=str, default="output_markdown", help="Output directory")
+    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/10_markdown_raw)")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/11_markdown_linked)")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
-    output_dir = Path(args.output_dir)
 
-    process_toc_linking(output_dir, workspace_dir)
+    input_candidates = [
+        Path(args.input_dir) if args.input_dir else None,
+        workspace_dir / "10_markdown_raw",
+        Path("output_markdown")
+    ]
+    input_dir = next((p for p in input_candidates if p and p.exists() and list(p.glob("*.md"))), None)
+    if not input_dir:
+        raise FileNotFoundError("No input markdown files found for Stage 11")
+
+    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "11_markdown_linked")
+
+    process_toc_linking(input_dir, output_dir, workspace_dir)
 
 
 if __name__ == "__main__":

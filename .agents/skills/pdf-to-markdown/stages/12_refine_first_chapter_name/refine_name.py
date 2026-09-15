@@ -72,17 +72,28 @@ def update_frontmatter_title(content: str, new_title: str) -> str:
 def process_first_chapter_refinement(
     output_dir: Path,
     workspace_dir: Path,
+    input_dir: Path = None,
     config_path: Path = None,
     inspect_only: bool = False,
     override_title: str = None,
     override_slug: str = None
 ):
-    if not output_dir.exists():
-        raise FileNotFoundError(f"Output directory does not exist: {output_dir}")
+    import shutil
 
-    md_files = sorted(list(output_dir.glob("*.md")))
+    if not input_dir:
+        candidates = [
+            workspace_dir / "11_markdown_linked",
+            workspace_dir / "10_markdown_raw",
+            output_dir
+        ]
+        input_dir = next((p for p in candidates if p.exists() and list(p.glob("*.md"))), output_dir)
+
+    if not input_dir.exists():
+        raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
+
+    md_files = sorted(list(input_dir.glob("*.md")))
     if not md_files:
-        print("[!] No Markdown files found in output directory.")
+        print("[!] No Markdown files found in input directory.")
         return
 
     first_file = md_files[0]
@@ -144,6 +155,22 @@ def process_first_chapter_refinement(
         new_title, new_slug = determine_canonical_title_and_slug(content, first_file.name)
 
     new_filename = f"{prefix}_{new_slug}.md"
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_assets_dir = output_dir / "assets"
+    out_assets_dir.mkdir(parents=True, exist_ok=True)
+
+    # If input and output differ, copy files to output without mutating input
+    if input_dir.resolve() != output_dir.resolve():
+        src_assets = input_dir / "assets"
+        if src_assets.exists():
+            for f in src_assets.glob("*"):
+                if f.is_file():
+                    shutil.copy2(f, out_assets_dir / f.name)
+        for f in md_files:
+            shutil.copy2(f, output_dir / f.name)
+
+    target_first_file = output_dir / first_file.name
     new_path = output_dir / new_filename
 
     print(f"[*] Analyzing opening chapter: {first_file.name}")
@@ -153,13 +180,14 @@ def process_first_chapter_refinement(
     # Update YAML frontmatter
     updated_content = update_frontmatter_title(content, new_title)
 
-    if new_path != first_file:
+    if new_path != target_first_file:
         with open(new_path, "w", encoding="utf-8") as f:
             f.write(updated_content)
-        first_file.unlink()
-        print(f"[+] Renamed {first_file.name} -> {new_filename}")
+        if target_first_file.exists():
+            target_first_file.unlink()
+        print(f"[+] Saved canonical file: {new_filename}")
 
-        # Update cross-file wikilinks
+        # Update cross-file wikilinks in output_dir
         new_stem = new_path.stem
         for other_file in output_dir.glob("*.md"):
             with open(other_file, "r", encoding="utf-8") as f:
@@ -170,15 +198,16 @@ def process_first_chapter_refinement(
                     f.write(updated_txt)
                 print(f"    Updated wikilinks in {other_file.name} to point to {new_stem}")
     else:
-        with open(first_file, "w", encoding="utf-8") as f:
+        with open(target_first_file, "w", encoding="utf-8") as f:
             f.write(updated_content)
 
-    print(f"[+] Stage 12 complete. First chapter naming refined.")
+    print(f"[+] Stage 12 complete. Output vault finalized in {output_dir}.")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Stage 12: Refine first chapter name and slug")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
+    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/11_markdown_linked)")
     parser.add_argument("--output-dir", type=str, default="output_markdown", help="Output directory")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
     parser.add_argument("--inspect", action="store_true", help="Inspect opening chapter excerpt and suggested titles")
@@ -188,10 +217,12 @@ def main():
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     output_dir = Path(args.output_dir)
+    input_dir = Path(args.input_dir) if args.input_dir else None
 
     process_first_chapter_refinement(
         output_dir,
         workspace_dir,
+        input_dir=input_dir,
         config_path=Path(args.config),
         inspect_only=args.inspect,
         override_title=args.title,

@@ -107,8 +107,8 @@ def heuristic_segment_page(page_data: dict) -> list:
 
 
 def process_segmentation(workspace_dir: Path, config: dict):
-    pages_dir = workspace_dir / "pages"
-    segments_dir = workspace_dir / "segments"
+    pages_dir = workspace_dir / "01_pages" if (workspace_dir / "01_pages").exists() else (workspace_dir / "pages")
+    segments_dir = workspace_dir / "02_segments"
     segments_dir.mkdir(parents=True, exist_ok=True)
 
     manifest_path = workspace_dir / "manifest.json"

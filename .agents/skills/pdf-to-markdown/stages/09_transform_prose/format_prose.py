@@ -71,9 +71,19 @@ def format_toc_block(raw_text: str) -> str:
 
 
 def process_prose(workspace_dir: Path, config: dict):
-    chapters_dir = workspace_dir / "chapters"
-    if not chapters_dir.exists():
-        raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
+    input_candidates = [
+        workspace_dir / "08_chapters_graphics",
+        workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_chapters_continuations",
+        workspace_dir / "05_chapters_raw",
+        workspace_dir / "chapters"
+    ]
+    input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
+    if not input_dir:
+        raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
+
+    out_dir = workspace_dir / "09_chapters_formatted"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     gemini = GeminiClient(config) if GeminiClient else None
     if gemini and gemini.is_available():
@@ -81,7 +91,7 @@ def process_prose(workspace_dir: Path, config: dict):
     else:
         print(f"[*] Prose Worker LLM unavailable (no GEMINI_API_KEY). Using heuristic prose formatter.")
 
-    chapter_files = sorted(list(chapters_dir.glob("*.json")))
+    chapter_files = sorted(list(input_dir.glob("*.json")))
     print(f"[*] Formatting prose, code, and TOC across {len(chapter_files)} chapter files...")
 
     formatted_count = 0
@@ -90,7 +100,6 @@ def process_prose(workspace_dir: Path, config: dict):
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        modified = False
         for node in nodes:
             n_type = node.get("type")
             raw_text = node.get("raw_text", "")
@@ -102,38 +111,39 @@ def process_prose(workspace_dir: Path, config: dict):
             if n_type == "heading":
                 lvl = node.get("heading_level", 2)
                 node["rendered_markdown"] = format_heading(raw_text, level=lvl)
-                modified = True
                 formatted_count += 1
             elif n_type == "code_block":
                 node["rendered_markdown"] = format_code_block(raw_text)
-                modified = True
                 formatted_count += 1
             elif n_type == "toc":
                 node["rendered_markdown"] = format_toc_block(raw_text)
-                modified = True
                 formatted_count += 1
             elif n_type == "toc_header":
-                # Will be ignored during Stage 10 emission, but provide clean placeholder
                 node["rendered_markdown"] = ""
-                modified = True
             elif n_type == "prose":
                 node["rendered_markdown"] = format_prose_text(raw_text)
-                modified = True
                 formatted_count += 1
 
-        if modified:
-            with open(c_file, "w", encoding="utf-8") as f:
-                json.dump(nodes, f, indent=2)
+        target_file = out_dir / c_file.name
+        with open(target_file, "w", encoding="utf-8") as f:
+            json.dump(nodes, f, indent=2)
 
-    print(f"[+] Stage 09 complete. Formatted {formatted_count} prose/code/TOC nodes.")
+    print(f"[+] Stage 09 complete. Formatted {formatted_count} nodes into {out_dir}.")
 
 
 def prepare_prose_tasks(workspace_dir: Path) -> int:
     """
     Extracts TOC and code block nodes into workspace/tasks/prose/ for inspection.
     """
-    chapters_dir = workspace_dir / "chapters"
-    if not chapters_dir.exists():
+    input_candidates = [
+        workspace_dir / "08_chapters_graphics",
+        workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_chapters_continuations",
+        workspace_dir / "05_chapters_raw",
+        workspace_dir / "chapters"
+    ]
+    chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
+    if not chapters_dir:
         raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
 
     tasks_dir = workspace_dir / "tasks" / "prose"
@@ -155,7 +165,7 @@ def prepare_prose_tasks(workspace_dir: Path) -> int:
 
             task_meta = {
                 "node_id": node_id,
-                "chapter_file": str(c_file.relative_to(workspace_dir)),
+                "chapter_file": c_file.name,
                 "type": n_type,
                 "page": node.get("page"),
                 "raw_text": raw_text,
@@ -177,48 +187,53 @@ def prepare_prose_tasks(workspace_dir: Path) -> int:
 
 def apply_prose_tasks(workspace_dir: Path) -> int:
     """
-    Applies edited prose/TOC tasks back into chapter streams.
+    Applies edited prose/TOC tasks into workspace/09_chapters_formatted/.
     """
     tasks_dir = workspace_dir / "tasks" / "prose"
     if not tasks_dir.exists():
         print(f"[!] No prose tasks directory found at {tasks_dir}")
         return 0
 
-    applied_count = 0
+    input_candidates = [
+        workspace_dir / "08_chapters_graphics",
+        workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_chapters_continuations",
+        workspace_dir / "05_chapters_raw",
+        workspace_dir / "chapters"
+    ]
+    input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
+    if not input_dir:
+        raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
+
+    out_dir = workspace_dir / "09_chapters_formatted"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    rendered_by_node = {}
     for meta_file in sorted(list(tasks_dir.glob("*.json"))):
         with open(meta_file, "r", encoding="utf-8") as f:
             meta = json.load(f)
-
         node_id = meta.get("node_id")
-        chapter_rel = meta.get("chapter_file")
         md_file = tasks_dir / f"{node_id}.md"
+        if md_file.exists():
+            with open(md_file, "r", encoding="utf-8") as f:
+                rendered_by_node[node_id] = f.read().strip()
 
-        if not md_file.exists() or not chapter_rel:
-            continue
-
-        with open(md_file, "r", encoding="utf-8") as f:
-            rendered_md = f.read().strip()
-
-        chapter_path = workspace_dir / chapter_rel
-        if not chapter_path.exists():
-            continue
-
-        with open(chapter_path, "r", encoding="utf-8") as f:
+    applied_count = 0
+    for c_file in sorted(list(input_dir.glob("*.json"))):
+        with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        updated = False
         for node in nodes:
-            if node.get("node_id") == node_id:
-                node["rendered_markdown"] = rendered_md
-                updated = True
-                break
+            n_id = node.get("node_id")
+            if n_id in rendered_by_node:
+                node["rendered_markdown"] = rendered_by_node[n_id]
+                applied_count += 1
 
-        if updated:
-            with open(chapter_path, "w", encoding="utf-8") as f:
-                json.dump(nodes, f, indent=2)
-            applied_count += 1
+        target_file = out_dir / c_file.name
+        with open(target_file, "w", encoding="utf-8") as f:
+            json.dump(nodes, f, indent=2)
 
-    print(f"[+] Applied {applied_count} prose tasks to chapter streams.")
+    print(f"[+] Applied {applied_count} prose tasks to {out_dir}.")
     return applied_count
 
 

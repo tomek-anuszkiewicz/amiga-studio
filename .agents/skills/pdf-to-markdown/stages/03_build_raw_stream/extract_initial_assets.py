@@ -15,7 +15,7 @@ from PIL import Image
 
 def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: float = 0.10) -> list:
     assets_dir = workspace_dir / "assets"
-    pages_dir = workspace_dir / "pages"
+    pages_dir = workspace_dir / "01_pages" if (workspace_dir / "01_pages").exists() else (workspace_dir / "pages")
     assets_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[*] Extracting visual and text assets for tables & graphics (padding: {int(padding_ratio*100)}%)...")

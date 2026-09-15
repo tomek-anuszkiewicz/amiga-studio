@@ -95,8 +95,18 @@ def run_stage(
         cmd.extend(["--pdf", str(pdf_path)])
         if max_pages:
             cmd.extend(["--max-pages", str(max_pages)])
-    if stage_num in ("10", "11", "12"):
-        cmd.extend(["--output-dir", str(output_dir)])
+    elif stage_num == "10":
+        cmd.extend(["--output-dir", str(workspace_dir / "10_markdown_raw")])
+    elif stage_num == "11":
+        cmd.extend([
+            "--input-dir", str(workspace_dir / "10_markdown_raw"),
+            "--output-dir", str(workspace_dir / "11_markdown_linked"),
+        ])
+    elif stage_num == "12":
+        cmd.extend([
+            "--input-dir", str(workspace_dir / "11_markdown_linked"),
+            "--output-dir", str(output_dir),
+        ])
 
     if verbose:
         print(f"[CMD] {' '.join(cmd)}")
@@ -123,41 +133,66 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     print("         PDF-to-Markdown Pipeline Status          ")
     print("==================================================")
 
-    # 1. Pages
-    pages_dir = workspace_dir / "pages"
+    # 1. Pages (01)
+    pages_dir = workspace_dir / "01_pages" if (workspace_dir / "01_pages").exists() else (workspace_dir / "pages")
     pages_count = len(list(pages_dir.glob("page_*.png"))) if pages_dir.exists() else 0
-    print(f"[*] Preprocessed Pages (Stage 01)     : {pages_count}")
+    print(f"[*] 01_pages                      : {pages_count} rendered PNGs")
 
-    # 2. Segments
-    segments_dir = workspace_dir / "segments"
+    # 2. Segments (02)
+    segments_dir = workspace_dir / "02_segments" if (workspace_dir / "02_segments").exists() else (workspace_dir / "segments")
     seg_count = len(list(segments_dir.glob("page_*_segments.json"))) if segments_dir.exists() else 0
-    print(f"[*] Page Segments (Stage 02)          : {seg_count}")
+    print(f"[*] 02_segments                   : {seg_count} segment JSON files")
 
-    # 3. Streams
-    raw_exists = (workspace_dir / "raw_stream.json").exists()
-    red_exists = (workspace_dir / "reduced_stream.json").exists()
-    print(f"[*] Streams (Stages 03-04)            : Raw={'OK' if raw_exists else 'None'}, Reduced={'OK' if red_exists else 'None'}")
+    # 3. Raw Stream (03)
+    raw_path = workspace_dir / "03_raw_stream" / "raw_stream.json"
+    if not raw_path.exists():
+        raw_path = workspace_dir / "raw_stream.json"
+    print(f"[*] 03_raw_stream                 : {'OK (' + str(raw_path.stat().st_size) + ' B)' if raw_path.exists() else 'Missing'}")
 
-    # 4. Chapters
-    chapters_dir = workspace_dir / "chapters"
-    chap_count = len(list(chapters_dir.glob("*.json"))) if chapters_dir.exists() else 0
-    print(f"[*] Chapter JSON Streams (Stage 05)   : {chap_count}")
+    # 4. Reduced Stream (04)
+    red_path = workspace_dir / "04_reduced_stream" / "reduced_stream.json"
+    if not red_path.exists():
+        red_path = workspace_dir / "reduced_stream.json"
+    print(f"[*] 04_reduced_stream             : {'OK (' + str(red_path.stat().st_size) + ' B)' if red_path.exists() else 'Missing'}")
 
-    # 5. Tasks
-    tasks_dir = workspace_dir / "tasks"
-    cont_cand = tasks_dir / "continuations" / "candidates.json"
-    cont_count = len(json.loads(cont_cand.read_text(encoding="utf-8"))) if cont_cand.exists() else 0
-    print(f"[*] Continuation Tasks (Stage 06)     : {cont_count} candidates")
+    # 5. Chapters Raw (05)
+    ch_raw = workspace_dir / "05_chapters_raw" if (workspace_dir / "05_chapters_raw").exists() else (workspace_dir / "chapters")
+    ch_raw_count = len(list(ch_raw.glob("*.json"))) if ch_raw.exists() else 0
+    print(f"[*] 05_chapters_raw               : {ch_raw_count} chapter stream files")
 
-    table_tasks = len(list((tasks_dir / "tables").glob("*.json"))) if (tasks_dir / "tables").exists() else 0
-    print(f"[*] Table Tasks (Stage 07)            : {table_tasks} work items")
+    # 6. Chapters Continuations (06)
+    ch_cont = workspace_dir / "06_chapters_continuations"
+    ch_cont_count = len(list(ch_cont.glob("*.json"))) if ch_cont.exists() else 0
+    print(f"[*] 06_chapters_continuations     : {ch_cont_count} chapter stream files")
 
-    graphic_tasks = len(list((tasks_dir / "graphics").glob("*.json"))) if (tasks_dir / "graphics").exists() else 0
-    print(f"[*] Graphic Tasks (Stage 08)          : {graphic_tasks} work items")
+    # 7. Chapters Tables (07)
+    ch_tbl = workspace_dir / "07_chapters_tables"
+    ch_tbl_count = len(list(ch_tbl.glob("*.json"))) if ch_tbl.exists() else 0
+    print(f"[*] 07_chapters_tables            : {ch_tbl_count} chapter stream files")
 
-    # 6. Output Markdown
+    # 8. Chapters Graphics (08)
+    ch_gfx = workspace_dir / "08_chapters_graphics"
+    ch_gfx_count = len(list(ch_gfx.glob("*.json"))) if ch_gfx.exists() else 0
+    print(f"[*] 08_chapters_graphics          : {ch_gfx_count} chapter stream files")
+
+    # 9. Chapters Formatted (09)
+    ch_fmt = workspace_dir / "09_chapters_formatted"
+    ch_fmt_count = len(list(ch_fmt.glob("*.json"))) if ch_fmt.exists() else 0
+    print(f"[*] 09_chapters_formatted         : {ch_fmt_count} chapter stream files")
+
+    # 10. Markdown Raw (10)
+    md_raw = workspace_dir / "10_markdown_raw"
+    md_raw_count = len(list(md_raw.glob("*.md"))) if md_raw.exists() else 0
+    print(f"[*] 10_markdown_raw               : {md_raw_count} files")
+
+    # 11. Markdown Linked (11)
+    md_linked = workspace_dir / "11_markdown_linked"
+    md_linked_count = len(list(md_linked.glob("*.md"))) if md_linked.exists() else 0
+    print(f"[*] 11_markdown_linked            : {md_linked_count} files")
+
+    # 12. Final Output Markdown (12)
     md_count = len(list(output_dir.glob("*.md"))) if output_dir.exists() else 0
-    print(f"[*] Emitted Markdown Files (Stages 10): {md_count} files in {output_dir.name}/")
+    print(f"[*] 12_final_output               : {md_count} files in {output_dir.name}/")
     print("==================================================\n")
 
 
@@ -249,12 +284,12 @@ def main():
 
     if 1 in stages_to_run and not pdf_path:
         # Check if pages already exist
-        pages_exist = bool(list((workspace_dir / "pages").glob("page_*.png")))
+        pages_exist = bool(list((workspace_dir / "01_pages").glob("page_*.png"))) or bool(list((workspace_dir / "pages").glob("page_*.png")))
         if not pages_exist:
             print("[!] Error: --pdf is required when running Stage 01 without existing preprocessed pages.", file=sys.stderr)
             sys.exit(1)
         else:
-            print("[*] Note: Existing preprocessed pages found in workspace/pages/.")
+            print("[*] Note: Existing preprocessed pages found in workspace.")
 
     print(f"[*] PDF-to-Markdown Pipeline executing stages: {[f'{s:02d}' for s in stages_to_run]}")
     print(f"    Workspace  : {workspace_dir}")
