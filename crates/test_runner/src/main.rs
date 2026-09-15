@@ -413,9 +413,9 @@ fn run_vamiga_cli(args: &[String]) {
                         res.total_pixels,
                         (res.mismatched_pixels as f64 / res.total_pixels as f64) * 100.0
                     );
-                    if let Some(diff) = &res.first_mismatch {
+                    for diff in res.diffs.iter().take(10) {
                         println!(
-                            "    First mismatch at ({}, {}): actual={:?}, expected={:?}",
+                            "    Mismatch at ({}, {}): actual={:?}, expected={:?}",
                             diff.x, diff.y, diff.actual, diff.expected
                         );
                     }

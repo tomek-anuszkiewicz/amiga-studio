@@ -207,7 +207,6 @@ impl Agnus {
 
         // 2. Step embedded coprocessors and schedulers
         let beam = self.beam();
-        self.pending_copper_write = self.copper.step_cck(beam, self.blitter.is_busy, chip_ram);
         self.dma.step_cck();
 
         // Evaluate 8-tier Master DMA Bus Arbitration
@@ -269,6 +268,8 @@ impl Agnus {
             }
             _ => {}
         }
+
+        self.pending_copper_write = self.copper.step_cck(beam, self.blitter.is_busy, chip_ram);
 
         // 3. Process and commit due register mutations
         let mut committed = [None; AGNUS_MUTATION_CAPACITY];

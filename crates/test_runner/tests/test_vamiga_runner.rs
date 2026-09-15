@@ -212,3 +212,31 @@ fn test_vamiga_runner_single_test_execution() {
     // Rendered frame produces diagnostic comparison
     assert!(result.passed || result.mismatched_pixels < 204_060);
 }
+
+#[test]
+fn test_vamiga_matcher_exact_and_tolerance_comparison() {
+    use test_runner::compare_raw_frames;
+
+    let mut actual = [0u8; 612_180];
+    let mut expected = vec![0u8; 612_180];
+
+    // Perfect match
+    let res = compare_raw_frames(&actual, &expected).expect("matcher should run");
+    assert!(res.passed);
+    assert_eq!(res.mismatched_pixels, 0);
+
+    // Linear color code (level 1 = 16) with ADC rounding +/- 1 in expected
+    actual[0] = 16;
+    actual[1] = 16;
+    actual[2] = 16;
+    expected[0] = 15;
+    expected[1] = 15;
+    expected[2] = 16;
+
+    let res = compare_raw_frames(&actual, &expected).expect("matcher should run");
+    assert!(
+        res.passed,
+        "Linear code with +/- 1 ADC deviation should pass"
+    );
+    assert_eq!(res.mismatched_pixels, 0);
+}

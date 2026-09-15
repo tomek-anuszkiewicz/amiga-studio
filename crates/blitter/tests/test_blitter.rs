@@ -284,16 +284,20 @@ fn test_cycle_by_cycle_stepping() {
     blit.bltapt = 0x10;
     blit.bltdpt = 0x40;
 
-    // Start 1 row of 1 word (2 memory cycles)
+    // Start 1 row of 1 word (1 startup cycle + 2 memory cycles)
     blit.start_blit((1 << 6) | 1);
     assert!(blit.is_busy);
     assert!(!blit.poll_blit_irq());
 
-    // Cycle 1: Fetch A
+    // Startup Cycle 1: BLT_STRT
     blit.step_cck_ram(&mut ram);
     assert!(blit.is_busy);
 
-    // Cycle 2: Write D and complete
+    // Word Cycle 1: Fetch A
+    blit.step_cck_ram(&mut ram);
+    assert!(blit.is_busy);
+
+    // Word Cycle 2: Write D and complete
     blit.step_cck_ram(&mut ram);
     assert!(!blit.is_busy);
     assert!(blit.poll_blit_irq());

@@ -123,6 +123,8 @@ pub struct Blitter {
     pub line_drawer: LineDrawer,
     /// Remaining pixels in line mode
     pub line_pixels_left: usize,
+    /// Hardware pipeline startup cycles before word execution begins (BLT_STRT1, BLT_STRT2)
+    pub startup_cycles: u8,
 }
 
 impl Blitter {
@@ -134,6 +136,7 @@ impl Blitter {
     /// Resets all Blitter registers to power-on defaults
     pub fn reset(&mut self) {
         self.phase_index = 0;
+        self.startup_cycles = 0;
         self.bltcon0 = 0;
         self.bltcon1 = 0;
         self.bltafwm = 0;
@@ -232,6 +235,7 @@ impl Blitter {
         self.bltsize = bltsize;
         self.is_busy = true;
         self.is_zero = true;
+        self.startup_cycles = 1;
 
         let width = match bltsize & 0x003F {
             0 => 64,
@@ -289,6 +293,11 @@ impl Blitter {
     /// Advances the Blitter state by 1 Color Clock with Chip RAM access
     pub fn step_cck_ram(&mut self, chip_ram: &mut [u8]) {
         if !self.is_busy || !self.dma_enabled {
+            return;
+        }
+
+        if self.startup_cycles > 0 {
+            self.startup_cycles -= 1;
             return;
         }
 

@@ -131,3 +131,33 @@ fn test_denise_color_write_immediate_commit_timing() {
     let px = denise.frame_builder.get_pixel(50 * 4, 50);
     assert_eq!(px, 0xFFF0_00F0);
 }
+
+#[test]
+fn test_denise_hflop_comparator() {
+    let mut denise = Denise::new(config::DeniseModel::Ocs8362);
+    denise.frame_builder.set_dma_enabled(true);
+    // Standard PAL Display Window: HSTRT = $81 (129), HSTOP = $1C1 (449)
+    denise.write_register(0x08E, 0x2C81); // DIWSTRT: V=44, H=129
+    denise.write_register(0x090, 0xF4C1); // DIWSTOP: V=500, H=449
+    assert!(!denise.hflop);
+
+    // Before HSTRT: hpos = 60 (c0 = 122, c1 = 123) -> hflop is false
+    let beam_before = config::BeamPosition::new(60, 50, false);
+    denise.step_cck(beam_before);
+    assert!(!denise.hflop);
+
+    // At HSTRT: hpos = 63 (c0 = 128, c1 = 129 == hstrt) -> hflop latches true
+    let beam_start = config::BeamPosition::new(63, 50, false);
+    denise.step_cck(beam_start);
+    assert!(denise.hflop);
+
+    // Inside DIW: hpos = 100 -> hflop remains true
+    let beam_mid = config::BeamPosition::new(100, 50, false);
+    denise.step_cck(beam_mid);
+    assert!(denise.hflop);
+
+    // At HSTOP: hpos = 223 (c1 = 449 == hstop) -> hflop latches false after sampling
+    let beam_stop = config::BeamPosition::new(223, 50, false);
+    denise.step_cck(beam_stop);
+    assert!(!denise.hflop);
+}

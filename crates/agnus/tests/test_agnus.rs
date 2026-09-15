@@ -147,3 +147,35 @@ fn test_agnus_bpl_dma_polling() {
     assert_eq!(agnus.poll_bpl_dma(), Some((0, 0xAA55)));
     assert_eq!(agnus.bplpt[0], 0x1002);
 }
+
+#[test]
+fn test_agnus_blitter_copper_step_order() {
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    let mut chip_ram = vec![0u8; 0x40000];
+
+    // Enable DMAEN + BLTEN + COPEN ($8340)
+    agnus.commit_register_write(0x096, 0x8340);
+
+    // Start a 1x1 blit (1 startup cycle + 2 word cycles)
+    agnus.blitter.set_dma_enabled(true);
+    agnus.blitter.bltcon0 = 0x0000; // ABCD = 0 (2 idle cycles)
+    agnus.blitter.start_blit((1 << 6) | 1);
+    assert!(agnus.blitter.is_busy);
+
+    // Step cycle by cycle through Agnus step_cck_ram
+    // HPOS past DRAM refresh and audio/sprite slots
+    agnus.hpos = 50;
+    agnus.vpos = 50;
+
+    // Cycle 1: startup cycle
+    agnus.step_cck_ram(&mut chip_ram);
+    assert!(agnus.blitter.is_busy);
+
+    // Cycle 2: word phase 0
+    agnus.step_cck_ram(&mut chip_ram);
+    assert!(agnus.blitter.is_busy);
+
+    // Cycle 3: word phase 1 (completes)
+    agnus.step_cck_ram(&mut chip_ram);
+    assert!(!agnus.blitter.is_busy);
+}

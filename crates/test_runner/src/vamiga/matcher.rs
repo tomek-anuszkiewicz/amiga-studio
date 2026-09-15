@@ -68,9 +68,9 @@ pub fn compare_raw_frames(
         let act_g = actual[byte_offset + 1];
         let act_b = actual[byte_offset + 2];
 
-        let exp_r = expected[byte_offset];
-        let exp_g = expected[byte_offset + 1];
-        let exp_b = expected[byte_offset + 2];
+        let exp_r = normalize_vamiga_color_channel(expected[byte_offset]);
+        let exp_g = normalize_vamiga_color_channel(expected[byte_offset + 1]);
+        let exp_b = normalize_vamiga_color_channel(expected[byte_offset + 2]);
 
         let diff_r = (act_r as i16 - exp_r as i16).abs();
         let diff_g = (act_g as i16 - exp_g as i16).abs();
@@ -106,4 +106,24 @@ pub fn compare_raw_frames(
         first_mismatch,
         diffs,
     })
+}
+
+/// Normalizes 8-bit color channels from vAmiga captures, mapping either linear (n * 16)
+/// or CRT-to-sRGB gamma-mapped values (from vAmiga's Palette::COLOR) back to canonical linear codes.
+#[inline(always)]
+fn normalize_vamiga_color_channel(b: u8) -> u8 {
+    // If already a linear code (within +/- 1 of a multiple of 16)
+    let rem = b % 16;
+    if rem <= 1 || rem >= 15 {
+        return (((b as i16 + 8) / 16) * 16) as u8;
+    }
+    const GAMMA_LUT: [u8; 16] = [
+        0, 7, 18, 31, 45, 60, 75, 90, 106, 123, 141, 159, 177, 196, 215, 235,
+    ];
+    for (level, &val) in GAMMA_LUT.iter().enumerate() {
+        if (b as i16 - val as i16).abs() <= 2 {
+            return (level as u8) * 16;
+        }
+    }
+    b
 }

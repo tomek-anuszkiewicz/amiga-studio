@@ -76,10 +76,11 @@ fn test_vamiga_blitter_sblit0_execution() {
         );
     }
 
-    // 5-bitplane emoji test matches > 98.8% of pixels (mismatches reduced from 69,280 down to 2,338)
+    // 5-bitplane emoji blit and Copper synchronization achieves 100% exact pixel match
     assert!(
-        result.mismatched_pixels <= 3_000,
-        "sblit0 should achieve > 98% pixel alignment, got {} mismatches",
+        result.passed,
+        "sblit0 should achieve 100% pixel match, got {} mismatches",
         result.mismatched_pixels
     );
+    assert_eq!(result.mismatched_pixels, 0);
 }

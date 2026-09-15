@@ -125,8 +125,11 @@ pub struct Denise {
     pub bplcon3: u16,
     /// Display Window Start ($08E, upper-left corner: VSTART, HSTART)
     pub diwstrt: u16,
-    /// Display Window Stop ($090, lower-right corner: VSTOP, HSTOP)
     pub diwstop: u16,
+    /// Display Window High ($1E4, ECS 10-bit DIW positions)
+    pub diwhigh: u16,
+    /// Internal Denise horizontal display window flip-flop
+    pub hflop: bool,
     /// Display Data Fetch Start ($092)
     pub ddfstrt: u16,
     /// Display Data Fetch Stop ($094)
@@ -155,6 +158,8 @@ pub struct Denise {
     pub bpldat_pipe: [u16; 6],
     /// Active parallel bitplane shift registers
     pub shifters: [u16; 6],
+    /// True when BPL1DAT has been written on the active scanline, arming bitplane serialization
+    pub bpl_armed: bool,
     /// Last held color for HAM6 mode
     pub last_ham_rgb: u16,
 
@@ -176,6 +181,8 @@ impl Denise {
             bplcon3: 0,
             diwstrt: 0,
             diwstop: 0,
+            diwhigh: 0,
+            hflop: false,
             ddfstrt: 0,
             ddfstop: 0,
             bpl1mod: 0,
@@ -189,6 +196,7 @@ impl Denise {
             bpldat: [0; 6],
             bpldat_pipe: [0; 6],
             shifters: [0; 6],
+            bpl_armed: false,
             last_ham_rgb: 0,
             mutations: [None; DENISE_MUTATION_CAPACITY],
         }
@@ -204,6 +212,8 @@ impl Denise {
         self.bplcon3 = 0;
         self.diwstrt = 0;
         self.diwstop = 0;
+        self.diwhigh = 0;
+        self.hflop = false;
         self.ddfstrt = 0;
         self.ddfstop = 0;
         self.bpl1mod = 0;
@@ -217,6 +227,7 @@ impl Denise {
         self.bpldat.fill(0);
         self.bpldat_pipe.fill(0);
         self.shifters.fill(0);
+        self.bpl_armed = false;
         self.last_ham_rgb = 0;
         self.mutations = [None; DENISE_MUTATION_CAPACITY];
     }
@@ -227,6 +238,8 @@ impl Denise {
     pub fn step_cck(&mut self, beam: BeamPosition) -> [Option<(u16, u16)>; 8] {
         if beam.hpos == 0 {
             self.last_ham_rgb = self.color[0];
+            self.bpl_armed = false;
+            self.shifters = [0; 6];
         }
 
         self.sprites.step_cck(beam);
@@ -238,7 +251,48 @@ impl Denise {
         // Horizontal blanking occupies CCKs 0x12..0x23 (18..35)
         let in_hblank = beam.hpos >= 18 && beam.hpos <= 35;
 
-        if self.frame_builder.dma_enabled && self.bitplane_count() > 0 {
+        // Track horizontal and vertical display window flip-flops
+        let vstart = (self.diwstrt >> 8) & 0xFF;
+        let vstop = ((self.diwstop >> 8) & 0xFF)
+            | (if (self.diwstop & 0x8000) != 0 {
+                0
+            } else {
+                0x100
+            });
+        let vflop = beam.vpos >= vstart && beam.vpos < vstop;
+
+        let hstrt = ((self.diwstrt & 0xFF) | 1)
+            | (if (self.diwhigh & (1 << 5)) != 0 {
+                0x100
+            } else {
+                0
+            });
+        let hstop = ((self.diwstop & 0xFF) | 1)
+            | (if (self.diwhigh & (1 << 13)) != 0 || self.diwhigh == 0 {
+                0x100
+            } else {
+                0
+            });
+
+        let c0 = beam.hpos * 2 + 2;
+        if c0 == hstrt {
+            self.hflop = true;
+        }
+        let in_diw0 = self.hflop && vflop;
+        if c0 == hstop {
+            self.hflop = false;
+        }
+
+        let c1 = beam.hpos * 2 + 3;
+        if c1 == hstrt {
+            self.hflop = true;
+        }
+        let in_diw1 = self.hflop && vflop;
+        if c1 == hstop {
+            self.hflop = false;
+        }
+
+        if self.frame_builder.dma_enabled && self.bitplane_count() > 0 && self.bpl_armed {
             let period = if self.is_hires() { 4 } else { 8 };
             if beam.hpos % period == 0 {
                 self.shifters = self.bpldat_pipe;
@@ -258,18 +312,14 @@ impl Denise {
             if self.frame_builder.dma_enabled && plane_count > 0 {
                 let hires = self.is_hires();
                 let pf_delay = ((self.bplcon1 & 0x0F) as usize) * 2;
-                let base_x = (beam.hpos as usize) * 4 + pf_delay;
+                // Physical Denise serializer has a 2-hires-pixel hardware pipeline output latency
+                let base_x = (beam.hpos as usize) * 4 + pf_delay + 2;
                 let backdrop = frame_builder::rgb444_to_argb32(self.color[0]);
                 if hires {
                     for px in 0..4 {
                         let p = self.shift_pixel();
-                        let in_diw_px = frame_builder::is_in_display_window(
-                            beam.hpos * 2 + (px / 2) as u16,
-                            beam.vpos,
-                            self.diwstrt,
-                            self.diwstop,
-                        );
-                        let argb = if in_diw_px {
+                        let in_diw_px = if px < 2 { in_diw0 } else { in_diw1 };
+                        let argb = if in_diw_px && self.bpl_armed {
                             let rgb = self.decode_pixel(p);
                             frame_builder::rgb444_to_argb32(rgb)
                         } else {
@@ -280,21 +330,8 @@ impl Denise {
                     }
                 } else {
                     // Low-res: 2 pixels per CCK, each spanning 2 frame buffer pixels
-                    let in_diw0 = frame_builder::is_in_display_window(
-                        beam.hpos * 2,
-                        beam.vpos,
-                        self.diwstrt,
-                        self.diwstop,
-                    );
-                    let in_diw1 = frame_builder::is_in_display_window(
-                        beam.hpos * 2 + 1,
-                        beam.vpos,
-                        self.diwstrt,
-                        self.diwstop,
-                    );
-
                     let p0 = self.shift_pixel();
-                    let argb0 = if in_diw0 {
+                    let argb0 = if in_diw0 && self.bpl_armed {
                         let rgb0 = self.decode_pixel(p0);
                         frame_builder::rgb444_to_argb32(rgb0)
                     } else {
@@ -302,7 +339,7 @@ impl Denise {
                     };
 
                     let p1 = self.shift_pixel();
-                    let argb1 = if in_diw1 {
+                    let argb1 = if in_diw1 && self.bpl_armed {
                         let rgb1 = self.decode_pixel(p1);
                         frame_builder::rgb444_to_argb32(rgb1)
                     } else {
@@ -314,6 +351,19 @@ impl Denise {
                     self.frame_builder.set_pixel(base_x + 1, y, argb0);
                     self.frame_builder.set_pixel(base_x + 2, y, argb1);
                     self.frame_builder.set_pixel(base_x + 3, y, argb1);
+                }
+
+                if beam.hpos == 226 {
+                    let y = beam.vpos as usize;
+                    let p2 = self.shift_pixel();
+                    let argb2 = if in_diw1 && self.bpl_armed {
+                        let rgb2 = self.decode_pixel(p2);
+                        frame_builder::rgb444_to_argb32(rgb2)
+                    } else {
+                        backdrop
+                    };
+                    self.frame_builder.set_pixel(base_x + 4, y, argb2);
+                    self.frame_builder.set_pixel(base_x + 5, y, argb2);
                 }
             } else {
                 let backdrop_argb = frame_builder::rgb444_to_argb32(self.color[0]);
@@ -361,6 +411,7 @@ impl Denise {
             self.bpldat[plane] = val;
             if plane == 0 {
                 self.bpldat_pipe = self.bpldat;
+                self.bpl_armed = true;
                 if !self.frame_builder.dma_enabled {
                     self.shifters = self.bpldat;
                 }
@@ -558,6 +609,7 @@ impl Denise {
             0x106 => self.bplcon3 = val,
             0x08E => self.diwstrt = val,
             0x090 => self.diwstop = val,
+            0x1E4 => self.diwhigh = val,
             0x098 => self.clxcon = val,
             0x034 => self.potgo = val,
 

@@ -51,7 +51,7 @@ pub fn word_phases(
     let abcd = ((use_a as u8) << 3) | ((use_b as u8) << 2) | ((use_c as u8) << 1) | (use_d as u8);
 
     match abcd {
-        // 0: -- -- (2 idle cycles)
+        // 0: -- -- (2 idle cycles per word)
         0 => (
             [
                 BlitterPhase::BusIdle,
