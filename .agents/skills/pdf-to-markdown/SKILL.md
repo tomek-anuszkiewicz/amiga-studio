@@ -25,21 +25,23 @@ All conversion scripts and references reside inside this skill directory:
 │   ├── audit_conversion.py                # Automated semantic sanity auditor (catches prose-in-code leaks)
 │   └── validate_links.py                  # Anchor, image asset, and link integrity validator
 └── references/
-    ├── pdf-conversion-pitfalls.md         # Detailed guide to the 17 known conversion pitfalls & fixes
+    ├── pdf-conversion-pitfalls.md         # Detailed guide to the 18 known conversion pitfalls & fixes
     ├── non-text-conversion-hierarchy.md   # Decision matrix: Code vs Table vs Mermaid vs Text vs Crop vs SVG
     └── table-merging-heuristics.md        # Reference on stitching split tables across page boundaries
 ```
 
 ---
 
-## 2. Cardinal Rule of Conversion
+## 2. Cardinal Rule of Conversion: Strict 100% Verbatim Fidelity
 
 > [!IMPORTANT]
-> **Content Fidelity & Meaning:**
-> - **You may reformat and polish layout**, typography, indentations, and presentation.
-> - **Preserve 100% of the original content and technical meaning.**
-> - **Do NOT add new content** (no invented text, commentary, or assumed facts).
-> - **Do NOT omit or summarize existing content** (no dropping footnotes, sidebars, or table columns).
+> **Strict Verbatim Invariant (Zero Paraphrasing / Zero AI Rewording):**
+> - **Zero Paraphrasing**: The LLM must **NEVER** rewrite, summarize, rephrase, or "improve" sentences or paragraphs from the source book.
+> - **100% Word-for-Word Transcription**: Every single sentence, phrase, technical caveat, and parameter description must match the source PDF text verbatim.
+> - **Structural Formatting Only**: You may reformat layout, typography, indentations, headers (`#`), list hyphens (`-`), Markdown tables (`|`), backticked hex addresses (`` `$DFF000` ``), and native Obsidian callouts (`> [!NOTE]`).
+> - **Do NOT add new content**: No invented text, commentary, or assumed facts.
+> - **Do NOT omit or summarize content**: No dropping sentences, clauses, footnotes, sidebars, or table columns.
+> - **Direct Text Layer Ingestion**: When the PDF has an embedded digital text layer, extract the raw character stream directly via PyMuPDF rather than typing prose from visual memory.
 
 ---
 

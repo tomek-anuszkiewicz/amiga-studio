@@ -340,3 +340,31 @@ Attempting to force every single condition and action onto raw Mermaid arrow lab
 4. **Cropped High-Res Raster Scan + `.txt` Technical Sidecar**:
    Cropped figure from the original print scan (`assets/figure_XX_<slug>.png`) paired with a comprehensive `.txt` sidecar per `asset-descriptions.md` for offline Amiga RAG indexing.
 
+---
+
+## 18. LLM Paraphrasing and Summarization Drift (Loss of Verbatim Fidelity)
+
+### Problem
+Large language models possess a powerful, default autoregressive bias toward *summarizing*, *rephrasing*, and "polishing" text. When asked to convert a PDF page to Markdown, an unconstrained LLM often:
+1. Replaces detailed sentences with compact AI-written summaries (e.g. replacing Commodore's 4-line description of Chapter 2 with *"How to program the Copper coprocessor to perform synchronized operations with the video beam"*).
+2. Drops technical clauses or caveats that seem "wordy" to the LLM.
+3. Substitutes modern software engineering buzzwords for 1980s hardware terminology.
+
+This destroys the historical and technical authority of reference manuals. An emulator or systems engineer needs the **exact words, formulas, register caveats, and warnings** written by the chip designers.
+
+### Solution: Strict 100% Verbatim Fidelity Invariant
+1. **Zero Paraphrasing / Zero AI Rewording**:
+   - The LLM must NEVER reword, summarize, synthesize, or "improve" sentences from the source book.
+   - Every single sentence, bullet point, parameter name, and explanatory clause must be a **100% word-for-word verbatim transcription** of the source PDF.
+2. **Structural Formatting Only**:
+   - The *only* permitted transformation is applying Markdown structure:
+     - Marking chapter/section headings with `#`, `##`, `###`.
+     - Turning OCR bullets into clean list hyphens (`-`).
+     - Turning structured data into Markdown tables (`| ... |`).
+     - Enclosing register addresses in backticks (`` `$DFF000` ``).
+     - Formatting Boolean algebra in KaTeX (`$\overline{A}$`).
+     - Enclosing notes and warnings inside native Obsidian callouts (`> [!NOTE]`, `> [!CAUTION]`).
+3. **Prefer Direct Text Layer Ingestion**:
+   - When the PDF contains a digital text layer, extract the raw character stream directly via PyMuPDF/fitz and structure it with Markdown formatting rather than retyping prose from visual memory.
+
+
