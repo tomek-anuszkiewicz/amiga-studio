@@ -511,7 +511,7 @@ impl Denise {
             0x100 | 0x102 | 0x104 | 0x106 => (1, MutationMode::OverwritePending), // BPLCON0..3
             0x098 => (1, MutationMode::OverwritePending),                         // CLXCON
             0x08E | 0x090 => (1, MutationMode::OverwritePending), // DIWSTRT, DIWSTOP
-            0x180..=0x1BE => (1, MutationMode::Pipeline),         // COLOR00..31
+            0x180..=0x1BE => (0, MutationMode::OverwritePending), // COLOR00..31 (commits on active cycle)
             0x110..=0x11A => (1, MutationMode::Pipeline),         // BPL1DAT..6DAT
             0x140..=0x17E => (1, MutationMode::OverwritePending), // SPRx
             _ => (1, MutationMode::OverwritePending),

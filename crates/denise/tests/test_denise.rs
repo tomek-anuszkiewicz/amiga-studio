@@ -112,3 +112,22 @@ fn test_denise_short_line_cck227_edge_coverage() {
     assert_eq!(px_226, 0xFF00_F000);
     assert_eq!(px_227, 0xFF00_F000);
 }
+
+#[test]
+fn test_denise_color_write_immediate_commit_timing() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+
+    // Initial backdrop color is black
+    assert_eq!(denise.read_color(0), 0x0000);
+
+    // Writing COLOR00 via write_register must commit immediately on the active cycle (0 delay)
+    let res = denise.write_register(0x180, 0x0F0F);
+    assert_eq!(res, Some((0x180, 0x0F0F)));
+    assert_eq!(denise.read_color(0), 0x0F0F);
+
+    // Stepping CCK at an active beam coordinate draws using the updated color immediately
+    let beam = config::BeamPosition::new(50, 50, false);
+    denise.step_cck(beam);
+    let px = denise.frame_builder.get_pixel(50 * 4, 50);
+    assert_eq!(px, 0xFFF0_00F0);
+}

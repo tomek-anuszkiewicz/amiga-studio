@@ -15,16 +15,17 @@ fn test_clxdat_clear_on_read_vs_peek() {
 }
 
 #[test]
-fn test_color_write_propagation_delay_1_cck() {
+fn test_color_write_immediate_commit_active_cycle() {
     let mut denise = Denise::new(DeniseModel::Ocs8362);
 
     // Write COLOR00 ($180) = 0x0F00 (pure red)
-    denise.write_register(0x180, 0x0F00);
+    let res = denise.write_register(0x180, 0x0F00);
 
-    // Cycle T: Read is NOW (not yet committed)
-    assert_eq!(denise.read_color(0), 0);
+    // Cycle T: Color DAC palette updates immediately on the active cycle
+    assert_eq!(res, Some((0x180, 0x0F00)));
+    assert_eq!(denise.read_color(0), 0x0F00);
 
-    // Step 1 CCK (Cycle T+1): matures and commits!
+    // Step 1 CCK (Cycle T+1): color remains active
     denise.step_cck(config::BeamPosition::default());
     assert_eq!(denise.read_color(0), 0x0F00);
 }

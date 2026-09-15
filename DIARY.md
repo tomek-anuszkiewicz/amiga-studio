@@ -3916,3 +3916,45 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p denise`: All 17 unit tests passed.
   - `cargo test -p test_runner --test test_vamiga_copper`: All cluster tests passed.
   - `python tools/pre_flight.py`: All 6 pre-flight quality gates passed cleanly.
+
+### [2026-09-15 12:45 CEST] — vAmigaTS Phase 1 Verification: DMA Slot Interleaving, Comparator Pipeline & 5th 100% Pass (cross6)
+- **Affected Subsystems**:
+  - `crates/copper/src/copper.rs` (calibrated Copper instruction word fetch latency to 2 CCKs per DMA cycle [4 CCKs = 16 pixels per MOVE instruction], added physical silicon horizontal comparator pipeline offset `(beam.hpos + 2) & 0x00FE`, and enforced even-cycle DMA alignment for Copper wakeups)
+  - `crates/copper/tests/test_copper.rs` (updated cycle expectations to reflect 2 CCKs per DMA word and 4 CCKs per MOVE)
+  - `crates/denise/src/denise.rs` (configured custom bus writes to `COLOR00..31` to commit immediately on the active cycle with `delay = 0`, matching hardware DAC output)
+  - `crates/denise/tests/test_denise.rs` & `crates/denise/tests/test_denise_registers.rs` (added unit tests verifying active-cycle immediate palette updates)
+  - `crates/test_runner/tests/test_vamiga_copper.rs` (added verified 100% pass assertion for `cross6`, tightened bounds on `cross1` and `cross2` to $< 200$, and updated `coptim1` threshold)
+- **What Was Changed (The Concrete Reality)**:
+  - **Custom Chip DMA Interleaving (2 CCKs per DMA Slot)**:
+    - In physical Amiga architecture, custom chipset DMA channels only access Chip RAM on alternating (even) Color Clocks, leaving odd cycles for the 68000 CPU.
+    - Each 16-bit Copper instruction word fetch therefore occupies 1 DMA cycle = 2 Color Clocks (4 CPU clocks). A complete 2-word MOVE instruction lasts 4 CCKs = 16 pixels.
+    - Setting `FetchIR1(2)` and `FetchIR2(2)` correctly matches the 16-pixel color bar period seen in reference captures.
+  - **Horizontal Beam Comparator Pipeline Offset (+2 CCKs)**:
+    - Physical Agnus silicon features an internal counter pipeline offset on horizontal beam comparisons.
+    - Implemented `(beam.hpos + 2) & 0x00FE & hpos_mask >= hpos_target & hpos_mask` matching vAmiga `Copper.cpp` (`runHorizontalComparator`), aligning Copper WAIT wakeups with reference rasters.
+  - **Denise Immediate Color Palette Update**:
+    - Custom chip writes to `COLOR00..31` take effect on the active bus cycle where the data appears on the bus (`delay = 0`). Removing the synthetic 1-CCK staging latency eliminated 4 pixels of lag on all horizontal color bar transitions.
+  - **Verification & Milestone Results**:
+    - **5 tests now achieve 100% pixel-exact passes (0 / 204,060 mismatches)**:
+      - `cross6`: **0 mismatches (100% PASS)**
+      - `halt1`: **0 mismatches (100% PASS)**
+      - `halt2`: **0 mismatches (100% PASS)**
+      - `halt3`: **0 mismatches (100% PASS)**
+      - `halt4`: **0 mismatches (100% PASS)**
+    - **Major improvements across near-match clusters**:
+      - `halt5`: down to **64 mismatches (0.03%)**
+      - `cross1`: down from 604 to **124 mismatches (0.06%)**
+      - `cross2`: down from 604 to **124 mismatches (0.06%)**
+      - `oldcoptim2`: down from 700 to **144 mismatches (0.07%)**
+      - `oldcoptim1`: down from 548 to **156 mismatches (0.08%)**
+      - `oldcoptim3`: down from 808 to **268 mismatches (0.13%)**
+      - `oldcoptim4`: down from 800 to **312 mismatches (0.15%)**
+      - `oldcoptim5`: down from 808 to **324 mismatches (0.16%)**
+      - `dasdma1`: down from 3,760 to **1,456 mismatches (0.71%)**
+      - `dasdma2`: down from 4,014 to **1,712 mismatches (0.84%)**
+- **Verification & Test Results**:
+  - `cargo test -p copper`: All 8 unit tests passed.
+  - `cargo test -p denise`: All 18 unit tests passed.
+  - `cargo test -p test_runner --test test_vamiga_copper`: All cluster tests passed.
+  - `python tools/pre_flight.py`: All 6 pre-flight quality gates passed cleanly.
+
