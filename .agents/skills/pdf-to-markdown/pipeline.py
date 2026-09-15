@@ -71,6 +71,9 @@ def run_stage(
     config_path: Path,
     verbose: bool,
     max_pages: int = None,
+    page_range: str = None,
+    start_page: int = None,
+    end_page: int = None,
 ) -> bool:
     stage_num, stage_dir_name, script_name, desc = stage_info
     script_path = skill_dir / "stages" / stage_dir_name / script_name
@@ -93,7 +96,14 @@ def run_stage(
     # Add stage-specific flags if needed
     if stage_num == "01":
         cmd.extend(["--pdf", str(pdf_path)])
-        if max_pages:
+        if page_range:
+            cmd.extend(["--page-range", str(page_range)])
+        elif start_page or end_page:
+            if start_page:
+                cmd.extend(["--start-page", str(start_page)])
+            if end_page:
+                cmd.extend(["--end-page", str(end_page)])
+        elif max_pages:
             cmd.extend(["--max-pages", str(max_pages)])
     elif stage_num == "10":
         cmd.extend(["--output-dir", str(workspace_dir / "10_markdown_raw")])
@@ -268,6 +278,9 @@ def main():
     parser.add_argument("--from-stage", type=str, help="Start pipeline from stage number (e.g. 03)")
     parser.add_argument("--to-stage", type=str, help="End pipeline at stage number (e.g. 08)")
     parser.add_argument("--max-pages", type=int, help="Limit number of pages processed in Stage 01")
+    parser.add_argument("--page-range", type=str, help="Page range to process in Stage 01 (e.g. 173-178 or 173..178)")
+    parser.add_argument("--start-page", type=int, help="Start page number for Stage 01 (1-indexed)")
+    parser.add_argument("--end-page", type=int, help="End page number for Stage 01 (1-indexed)")
     parser.add_argument("--resume", action="store_true", help="Resume from last successfully completed stage")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose command printing")
     parser.add_argument("--status", action="store_true", help="Display summary status of workspace and task items")
@@ -384,6 +397,9 @@ def main():
             config_path=config_path,
             verbose=args.verbose,
             max_pages=args.max_pages,
+            page_range=args.page_range,
+            start_page=args.start_page,
+            end_page=args.end_page,
         )
 
         if not success:

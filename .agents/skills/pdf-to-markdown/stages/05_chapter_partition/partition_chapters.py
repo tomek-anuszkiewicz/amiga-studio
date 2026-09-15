@@ -133,7 +133,8 @@ def partition_chapters(workspace_dir: Path, config: dict):
             else:
                 # Trailing or orphaned node before first chapter
                 current_chapter_nodes = [node]
-                current_chapter_title = "Introduction"
+                first_line = node.get("raw_text", "").strip().splitlines()[0][:40] if node.get("raw_text") else ""
+                current_chapter_title = first_line if node.get("type") == "heading" and first_line else "Section"
 
         i += 1
 
