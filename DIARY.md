@@ -3822,8 +3822,30 @@ Every future modification or implementation task must append an entry following 
 - **Architectural Rationale & Trade-Offs**:
   - *Decoupled Stage Isolation:* Isolating every transformation into its own stage directory with independent scripts and JSON contracts allows individual stages to be debugged, tested, or resumed without re-running upstream PDF rendering or LLM vision passes.
   - *Unified TOC and Continuation Lifecycles:* Explicitly tagging TOC blocks with unique delimiters and linking continuations in JSON state eliminates fragile text-regex splicing.
+
+---
+
+### [2026-09-16 01:05 CEST] — PDF-to-Markdown: Intra-Page Table Reduction & Multi-Page Continuation Chaining Verification
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/`: Zone prompt and classification instructions in `prompt.md` and `segment_page.py`.
+  - `.agents/skills/pdf-to-markdown/stages/04_stream_reduction/`: Added `reduce_contiguous_tables` in `reduce_stream.py`.
+  - `.agents/skills/pdf-to-markdown/stages/06_detect_continuations/`: Forward-scanning continuation chain loop and title context injection in `detect_continuations.py`.
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Added arbitrary page slicing arguments (`--page-range`, `--start-page`, `--end-page`) and fixed relative workspace path resolution.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed root cause of table caption misclassification: updated prompt definitions so `Table X-Y:` captions are classified as `type: "table"`, reserving `graphic` exclusively for circuit schematics and visual diagrams.
+  - Implemented `reduce_contiguous_tables` in Stage 04: unifies multi-block tables per page into single consolidated table nodes (unifying bounding boxes, generating a single padded crop asset in `04_reduced_stream/assets/`, and purging obsolete fragmented asset files).
+  - Enhanced Stage 06 continuation detection:
+    - Injected table title context into `check_continuation_with_gemini` prompts so the LLM sees the table header structure.
+    - Implemented multi-page continuation chaining (`head` node aggregates all `merged_nodes` and `merged_assets` across consecutive page transitions).
+  - Executed benchmark run on pages 173..178 of `Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf`:
+    - Reduced 39 fragmented table blocks across pages 174..177 into 4 unified table nodes.
+    - Successfully detected and linked `Table 5-8: Five Octave Even-tempered Scale` across pages 174 and 175 (`node_00017` on Page 175 linked to head `node_00008` on Page 174 with `table_group_0001`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Intra-Page Cohesion Before Inter-Page Continuation:* PyMuPDF's block extraction naturally fragments multi-column tables and sub-headers into isolated bounding boxes. Attempting inter-page continuation detection on fragmented blocks causes false negatives because isolated 1-line sub-headers lack tabular schema context. Consolidating contiguous table blocks on each page first provides the complete table context needed for accurate cross-page continuation evaluation.
 - **Verification & Test Results**:
-  - `python .agents/skills/pdf-to-markdown/pipeline.py --help`: Verified CLI argument parsing and help output.
-  - `python tools/pre_flight.py`: Passed 100% cleanly across formatting, attractor discipline (359 files clean), AGENTS.md byte ceiling (13,576 bytes), and all 18 architecture tests.
+  - `python .agents/skills/pdf-to-markdown/pipeline.py --from-stage 02 --to-stage 06`: Pipeline completed successfully with exit code 0.
+  - `06_chapters_continuations/01_section.json`: Verified `is_head: true` on `node_00008` (Page 174) and `continuation_status: "continuation"` on `node_00017` (Page 175).
+  - `python tools/pre_flight.py`: 100% PASS across formatting, attractor discipline (360 files clean), AGENTS.md byte limit, and all 18 architecture tests.
+
 
 
