@@ -17,7 +17,7 @@ Each segment zone must be categorized into exactly one of the following semantic
 7. `prose`: Standard narrative body paragraphs.
 8. `code_block`: Monospace assembly listings, C source code, command-line sessions, memory hex dumps, or preformatted numeric waveform/sample data matrices (e.g. 16 values per row).
 9. `table`: Formal tabular data grids, multi-column register bit assignments, structured parameter lists, and formal table titles (e.g. "Table 5-8: Five Octave Even-tempered Scale"). Do NOT classify sample array headers like "256 Byte Sample" as table.
-10. `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts, photographs, and diagram callouts/figure captions (e.g. "Figure 1-1: ..."). Do NOT classify tables or table titles as graphic.
+10. `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts, photographs, and diagram callouts/figure captions (e.g. "Figure 1-1: ..."). Do NOT classify tables or table titles as graphic. For any block categorized as graphic, specify `graphic_bbox_norm: [x0, y0, x1, y1]` enclosing the ENTIRE visual illustration/diagram area on the page (including the schematic drawing, state circles, waveforms, and caption). For all other block types, `graphic_bbox_norm` must be null.
 
 ## Output Format
 

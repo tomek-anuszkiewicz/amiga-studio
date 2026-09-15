@@ -76,9 +76,9 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
         "- prose: Standard narrative prose body paragraphs.\n"
         "- code_block: Monospace code listings, assembly language, memory hex dumps, or preformatted numeric waveform/sample data arrays (e.g. 16 values per row).\n"
         "- table: Formal tabular data grids, multi-column register bit assignments, structured parameter lists, and formal table titles (e.g. 'Table 5-8: Five Octave Even-tempered Scale'). Do NOT classify sample array headers like '256 Byte Sample' as table.\n"
-        "- graphic: Circuit schematics, timing waveforms, block diagrams, IC pinouts, photographs, and diagram callouts/figure captions (e.g. 'Figure 5-8...'). NEVER classify tables or table titles as graphic.\n\n"
+        "- graphic: Circuit schematics, timing waveforms, block diagrams, IC pinouts, photographs, and diagram callouts/figure captions (e.g. 'Figure 5-8...'). NEVER classify tables or table titles as graphic. For any block categorized as graphic (such as a figure caption or diagram label), provide 'graphic_bbox_norm': [x0, y0, x1, y1] in normalized coordinates (0.0 to 1.0) enclosing the ENTIRE visual illustration/diagram area on the page (including the schematic drawing, state circles, waveforms, and caption). For all other block types, graphic_bbox_norm must be null.\n\n"
         "Return a strict JSON array of objects with fields:\n"
-        '[{"idx": 0, "type": "chapter", "heading_level": 1}, ...]\n\n'
+        '[{"idx": 0, "type": "prose", "heading_level": null, "graphic_bbox_norm": null}, {"idx": 3, "type": "graphic", "heading_level": null, "graphic_bbox_norm": [x0, y0, x1, y1]}, ...]\n\n'
         f"Page {page_num} Text Blocks:\n"
         f"{json.dumps(blocks_summary, indent=2)}"
     )
@@ -88,7 +88,11 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
     if isinstance(classifications, list):
         for item in classifications:
             if isinstance(item, dict) and "idx" in item:
-                type_map[item["idx"]] = (item.get("type", "prose"), item.get("heading_level"))
+                type_map[item["idx"]] = (
+                    item.get("type", "prose"),
+                    item.get("heading_level"),
+                    item.get("graphic_bbox_norm")
+                )
 
     segments = []
     seg_counter = 1
@@ -104,7 +108,17 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
             round(bbox[3] / page_h, 4),
         ])
 
-        seg_type, heading_lvl = type_map.get(i, ("prose", None))
+        seg_type, heading_lvl, g_bbox_norm = type_map.get(i, ("prose", None, None))
+
+        if seg_type == "graphic" and g_bbox_norm and len(g_bbox_norm) == 4:
+            # Expand bounding box to encompass the full visual diagram detected by Vision
+            bbox_norm = [round(c, 4) for c in g_bbox_norm]
+            bbox = [
+                round(bbox_norm[0] * page_w, 2),
+                round(bbox_norm[1] * page_h, 2),
+                round(bbox_norm[2] * page_w, 2),
+                round(bbox_norm[3] * page_h, 2),
+            ]
 
         segments.append({
             "segment_id": f"page_{page_num:04d}_seg_{seg_counter:03d}",
