@@ -18,6 +18,15 @@ import sys
 from pathlib import Path
 import yaml
 
+# Import GeminiClient from skill root
+SKILL_ROOT = Path(__file__).resolve().parents[2]
+if str(SKILL_ROOT) not in sys.path:
+    sys.path.insert(0, str(SKILL_ROOT))
+
+try:
+    from llm_client import GeminiClient
+except ImportError:
+    GeminiClient = None
 
 TOC_START_MARKER = "<!-- TOC34534 -->"
 TOC_END_MARKER = "<!-- /TOC34534 -->"
@@ -65,6 +74,12 @@ def process_prose(workspace_dir: Path, config: dict):
     chapters_dir = workspace_dir / "chapters"
     if not chapters_dir.exists():
         raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
+
+    gemini = GeminiClient(config) if GeminiClient else None
+    if gemini and gemini.is_available():
+        print(f"[*] Prose Worker LLM active ({gemini.default_model}, thinking: {gemini.thinking_level}).")
+    else:
+        print(f"[*] Prose Worker LLM unavailable (no GEMINI_API_KEY). Using heuristic prose formatter.")
 
     chapter_files = sorted(list(chapters_dir.glob("*.json")))
     print(f"[*] Formatting prose, code, and TOC across {len(chapter_files)} chapter files...")

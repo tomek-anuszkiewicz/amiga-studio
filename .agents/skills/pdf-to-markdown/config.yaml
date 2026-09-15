@@ -15,10 +15,11 @@ paths:
 
 llm:
   provider: "google-genai"     # google-genai, openai, or mock/offline
-  model_vision: "gemini-2.5-flash"
-  model_prose: "gemini-2.5-flash"
-  model_table: "gemini-2.5-flash"
-  model_fast: "gemini-2.5-flash"
+  model_vision: "gemini-3.8-flash"
+  model_prose: "gemini-3.8-flash"
+  model_table: "gemini-3.8-flash"
+  model_fast: "gemini-3.8-flash"
+  thinking_level: "medium"
   timeout_seconds: 60
   temperature: 0.1
 

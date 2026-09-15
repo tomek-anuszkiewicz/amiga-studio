@@ -16,6 +16,16 @@ import sys
 from pathlib import Path
 import yaml
 
+# Import GeminiClient from skill root
+SKILL_ROOT = Path(__file__).resolve().parents[2]
+if str(SKILL_ROOT) not in sys.path:
+    sys.path.insert(0, str(SKILL_ROOT))
+
+try:
+    from llm_client import GeminiClient
+except ImportError:
+    GeminiClient = None
+
 
 def format_simple_gfm_table(raw_text: str) -> str:
     """
@@ -71,6 +81,15 @@ def process_tables(workspace_dir: Path, config: dict):
     if not chapters_dir.exists():
         raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
 
+    prompt_path = Path(__file__).resolve().parent / "prompt_markdown_table.md"
+    base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
+
+    gemini = GeminiClient(config) if GeminiClient else None
+    if gemini and gemini.is_available():
+        print(f"[*] Table Worker LLM active ({gemini.default_model}, thinking: {gemini.thinking_level}).")
+    else:
+        print(f"[*] Table Worker LLM unavailable (no GEMINI_API_KEY). Using heuristic GFM table formatter.")
+
     chapter_files = sorted(list(chapters_dir.glob("*.json")))
     print(f"[*] Transforming tables across {len(chapter_files)} chapter files...")
 
@@ -100,12 +119,17 @@ def process_tables(workspace_dir: Path, config: dict):
                 if child_texts:
                     raw_text = raw_text + "\n" + "\n".join(child_texts)
 
-            # Heuristic conversion to GFM Markdown table
-            rendered = format_simple_gfm_table(raw_text)
+            rendered = None
+            if gemini and gemini.is_available() and base_prompt:
+                full_prompt = f"{base_prompt}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
+                rendered = gemini.generate_text(full_prompt)
+
+            if not rendered:
+                rendered = format_simple_gfm_table(raw_text)
+
             if rendered:
                 node["rendered_markdown"] = rendered
             else:
-                # Fallback to asset embed if rendering is empty
                 asset_ref = node.get("svg_path") or node.get("png_path") or ""
                 node["rendered_markdown"] = f"![Table]({asset_ref})\n"
 

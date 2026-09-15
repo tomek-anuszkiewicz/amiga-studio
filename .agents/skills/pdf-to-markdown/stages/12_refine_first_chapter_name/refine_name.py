@@ -14,6 +14,16 @@ import sys
 from pathlib import Path
 import yaml
 
+# Import GeminiClient from skill root
+SKILL_ROOT = Path(__file__).resolve().parents[2]
+if str(SKILL_ROOT) not in sys.path:
+    sys.path.insert(0, str(SKILL_ROOT))
+
+try:
+    from llm_client import GeminiClient
+except ImportError:
+    GeminiClient = None
+
 
 def determine_canonical_title_and_slug(content: str, current_name: str) -> tuple:
     """
@@ -59,7 +69,7 @@ def update_frontmatter_title(content: str, new_title: str) -> str:
     return content
 
 
-def process_first_chapter_refinement(output_dir: Path, workspace_dir: Path):
+def process_first_chapter_refinement(output_dir: Path, workspace_dir: Path, config_path: Path = None):
     if not output_dir.exists():
         raise FileNotFoundError(f"Output directory does not exist: {output_dir}")
 
@@ -76,7 +86,44 @@ def process_first_chapter_refinement(output_dir: Path, workspace_dir: Path):
     with open(first_file, "r", encoding="utf-8") as f:
         content = f.read()
 
-    new_title, new_slug = determine_canonical_title_and_slug(content, first_file.name)
+    config = {}
+    if config_path and config_path.exists():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f) or {}
+        except Exception:
+            config = {}
+
+    gemini = GeminiClient(config) if GeminiClient else None
+    new_title, new_slug = None, None
+
+    if gemini and gemini.is_available():
+        prompt_file = Path(__file__).parent / "prompt.md"
+        base_prompt = ""
+        if prompt_file.exists():
+            with open(prompt_file, "r", encoding="utf-8") as pf:
+                base_prompt = pf.read()
+
+        full_prompt = (
+            f"{base_prompt}\n\n"
+            f"Preliminary File Name: {first_file.name}\n\n"
+            f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
+        )
+        print(f"[*] Calling Gemini ({gemini.default_model}, thinking: {gemini.thinking_level}) for canonical title & slug...")
+        raw_res = gemini.generate_text(full_prompt)
+        if raw_res:
+            try:
+                json_match = re.search(r"\{.*\}", raw_res, re.DOTALL)
+                if json_match:
+                    parsed = json.loads(json_match.group(0))
+                    new_title = parsed.get("title")
+                    new_slug = parsed.get("slug")
+            except Exception as e:
+                print(f"[!] Warning: Failed to parse LLM response as JSON: {e}")
+
+    if not new_title or not new_slug:
+        new_title, new_slug = determine_canonical_title_and_slug(content, first_file.name)
+
     new_filename = f"{prefix}_{new_slug}.md"
     new_path = output_dir / new_filename
 
@@ -121,7 +168,7 @@ def main():
     workspace_dir = Path(args.workspace)
     output_dir = Path(args.output_dir)
 
-    process_first_chapter_refinement(output_dir, workspace_dir)
+    process_first_chapter_refinement(output_dir, workspace_dir, config_path=Path(args.config))
 
 
 if __name__ == "__main__":

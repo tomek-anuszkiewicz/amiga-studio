@@ -15,6 +15,16 @@ import sys
 from pathlib import Path
 import yaml
 
+# Import GeminiClient from skill root
+SKILL_ROOT = Path(__file__).resolve().parents[2]
+if str(SKILL_ROOT) not in sys.path:
+    sys.path.insert(0, str(SKILL_ROOT))
+
+try:
+    from llm_client import GeminiClient
+except ImportError:
+    GeminiClient = None
+
 
 def generate_default_sidecar(node_id: str, raw_text: str, page_num: int) -> str:
     lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
@@ -34,6 +44,12 @@ def process_graphics(workspace_dir: Path, config: dict):
     assets_dir = workspace_dir / "assets"
     if not chapters_dir.exists():
         raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
+
+    gemini = GeminiClient(config) if GeminiClient else None
+    if gemini and gemini.is_available():
+        print(f"[*] Graphics Worker LLM active ({gemini.vision_model}, thinking: {gemini.thinking_level}).")
+    else:
+        print(f"[*] Graphics Worker LLM unavailable (no GEMINI_API_KEY). Using heuristic diagram converter.")
 
     chapter_files = sorted(list(chapters_dir.glob("*.json")))
     print(f"[*] Transforming graphics across {len(chapter_files)} chapter files...")

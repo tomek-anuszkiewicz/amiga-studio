@@ -14,6 +14,16 @@ import sys
 from pathlib import Path
 import yaml
 
+# Import GeminiClient from skill root
+SKILL_ROOT = Path(__file__).resolve().parents[2]
+if str(SKILL_ROOT) not in sys.path:
+    sys.path.insert(0, str(SKILL_ROOT))
+
+try:
+    from llm_client import GeminiClient
+except ImportError:
+    GeminiClient = None
+
 
 def heuristic_segment_page(page_data: dict) -> list:
     """
@@ -109,6 +119,12 @@ def process_segmentation(workspace_dir: Path, config: dict):
         manifest = json.load(f)
 
     total_pages = manifest["total_pages"]
+    gemini = GeminiClient(config) if GeminiClient else None
+    if gemini and gemini.is_available():
+        print(f"[*] Vision LLM active ({gemini.vision_model}, thinking: {gemini.thinking_level}).")
+    else:
+        print(f"[*] Vision LLM unavailable (no GEMINI_API_KEY). Using deterministic layout heuristics.")
+
     print(f"[*] Segmenting {total_pages} pages...")
 
     for page_entry in manifest["pages"]:
