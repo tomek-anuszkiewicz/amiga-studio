@@ -102,3 +102,16 @@ fn test_write_only_registers_read_open_bus() {
     assert_eq!(agnus.read_register(0x080), 0xFFFF);
     assert_eq!(agnus.read_register(0x040), 0xFFFF);
 }
+
+#[test]
+fn test_vhposr_beam_lead_and_parity() {
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    // At hpos = 0, vhposr must reflect hpos + 4 lead
+    let val0 = agnus.vhposr();
+    assert_eq!(val0 & 0x00FF, 4);
+
+    // Step 1 CCK (hpos = 1) -> vhposr must reflect 1 + 4 = 5
+    agnus.step_cck();
+    let val1 = agnus.vhposr();
+    assert_eq!(val1 & 0x00FF, 5);
+}

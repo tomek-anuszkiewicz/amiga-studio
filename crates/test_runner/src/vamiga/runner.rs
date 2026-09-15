@@ -54,11 +54,13 @@ pub struct VamigaSuiteSummary {
     pub passed_tests: usize,
     /// Total tests that had pixel mismatches or errors
     pub failed_tests: usize,
+    /// Names of tests that passed
+    pub passed: Vec<String>,
     /// Elapsed execution time in milliseconds
     pub elapsed_ms: u128,
     /// Detailed failures: (test_name, result)
     pub failures: Vec<(String, VamigaTestResult)>,
-    /// Errors preventing test from running: (test_name, error_message)
+    /// Unrecoverable errors (e.g. missing ADF or raw capture)
     pub errors: Vec<(String, String)>,
 }
 
@@ -95,6 +97,13 @@ impl VamigaSuiteSummary {
             self.elapsed_ms as f64 / 1000.0
         );
         println!("-----------------------------------------------------------------------------------------");
+
+        if !self.passed.is_empty() {
+            println!("\n✅ PASSED TEST CASES (100% RGB match):");
+            for name in &self.passed {
+                println!("  • {}", name);
+            }
+        }
 
         if !self.failures.is_empty() {
             println!("\n❌ FAILED TEST CASES (First 10):");
@@ -261,6 +270,7 @@ pub fn run_vamiga_suite(
 
     let mut passed_tests = 0;
     let mut failed_tests = 0;
+    let mut passed = Vec::new();
     let mut failures = Vec::new();
     let mut errors = Vec::new();
 
@@ -279,6 +289,7 @@ pub fn run_vamiga_suite(
             Ok(result) => {
                 if result.passed {
                     passed_tests += 1;
+                    passed.push(desc.name.clone());
                     if config.verbose {
                         println!("PASS");
                     }
@@ -310,6 +321,7 @@ pub fn run_vamiga_suite(
         executed_tests: target_tests.len(),
         passed_tests,
         failed_tests,
+        passed,
         elapsed_ms,
         failures,
         errors,

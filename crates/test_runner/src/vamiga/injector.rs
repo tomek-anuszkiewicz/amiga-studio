@@ -119,7 +119,7 @@ pub fn inject_vamiga_test(machine: &mut A500Machine, adf_bytes: &[u8]) -> Result
     machine.cpu.state.clear_registers();
     machine.cpu.state.ssp = VAMIGA_STACK_POINTER;
     machine.cpu.state.set_a_long(7, VAMIGA_STACK_POINTER);
-    machine.cpu.state.sr = 0x2700; // Supervisor mode, IPL 7
+    machine.cpu.state.sr = 0x2000; // Supervisor mode, IPL 0 (interrupts enabled)
     machine.set_pc_and_prime_prefetch(VAMIGA_ENTRY_POINT);
 
     Ok(())

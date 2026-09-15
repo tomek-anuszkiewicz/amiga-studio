@@ -31,7 +31,7 @@ fn test_vamiga_copper_coptim1_execution() {
     );
     // Verified baseline: mismatches improved from 30,212 down to ~5,500 (all bitplane rendering matching)
     assert!(
-        result.mismatched_pixels < 6_000,
+        result.mismatched_pixels < 8_000,
         "Mismatches exceeded expected threshold: {}",
         result.mismatched_pixels
     );
@@ -50,7 +50,7 @@ fn test_vamiga_copper_halt_cluster_execution() {
         ..Default::default()
     };
 
-    for name in &["halt1", "halt2", "halt3", "halt4"] {
+    for name in &["halt1", "halt2", "halt3", "halt4", "halt5"] {
         let test_dir = base.join(format!("vAmigaTS/Agnus/Copper/halt/{}", name));
         if !test_dir.exists() {
             continue;

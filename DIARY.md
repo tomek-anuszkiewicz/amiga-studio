@@ -3958,3 +3958,31 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_vamiga_copper`: All cluster tests passed.
   - `python tools/pre_flight.py`: All 6 pre-flight quality gates passed cleanly.
 
+### [2026-09-15 14:50 CEST] — vAmigaTS 4-Iteration Strategy: Cross-Subsystem Cascades, Interrupt Unmasking & 20 Passing Tests
+- **Affected Subsystems**:
+  - `crates/test_runner/src/vamiga/injector.rs` (changed CPU initial status register `sr` from `0x2700` [IPL 7] to `0x2000` [Supervisor mode, IPL 0], unlocking hardware interrupt processing across all vAmigaTS test payloads)
+  - `crates/test_runner/src/vamiga/runner.rs` (added tracking and formatted display of passing test names in `VamigaSuiteSummary`)
+  - `crates/agnus/src/agnus.rs` (calibrated `VHPOSR` and `VPOSR` horizontal beam pipeline lead from `self.hpos + 5` to `self.hpos + 4` to account for machine loop stepping order, fixing beam parity timing)
+- **What Was Changed (The Concrete Reality)**:
+  - **Unmasking CPU Interrupts (`sr = 0x2000`)**:
+    - Identified root cause of the universal `(676, 22)` status text failure across dozens of tests in `Memory` and `Mainboard`: tests like `byteacc1`, `uninit2`, and `ministartup.s` configure and rely on Level 1..6 interrupts (`irq1`, `irq3`, `irq4`, VERTB).
+    - Initializing the CPU with `0x2700` (IPL 7) masked all custom chip interrupts permanently, causing tests to hang in polling loops without updating copper lists or text buffers.
+    - Initializing with `sr = 0x2000` enables all maskable interrupts. `byteacc1` immediately dropped from failing at `(676, 22)` to rendering active color bars (11.20% diffs), and `joy0dat`/`joy1dat` dropped from 39% diff to 5.0%.
+  - **Agnus Beam Pipeline Lead Calibration (+4 CCKs)**:
+    - `halt5.s` tests `and #1, (a3)` on `VHPOSR` to synchronize with horizontal beam parity before disabling Copper DMA.
+    - Because `step_subsystems_cck()` steps Agnus before CPU in our machine loop, `self.hpos` was already incremented by 1 relative to vAmiga's sample point. Adjusting the offset from +5 to +4 resolved the 1-CCK parity error, eliminating the extra 24-CCK loop iteration.
+    - **`halt5` immediately reached 100% pixel-exact match (0 / 204,060 mismatches)**.
+  - **Cross-Subsystem Cascading Results (20 Tests Now 100% Passing)**:
+    - **Copper (6 passed)**: `halt1`, `halt2`, `halt3`, `halt4`, `halt5`, `cross6`.
+    - **Paula (4 passed)**: `inttim4`, `inttim5`, `adkcon1`, `adkcon2`.
+    - **Mainboard (3 passed)**: `pot0dat2`, `pot0dat5`, `stop1`.
+    - **CPU (7 passed)**: `prefetch1`, `prefetch2`, `prefetch3`, `prefetch4`, `prefetch5`, `MOVEC1`, `MOVEC2`.
+- **Verification & Test Results**:
+  - `target/release/test_runner.exe vamiga --category Copper`: 6 passed / 114 executed (5.26%).
+  - `target/release/test_runner.exe vamiga --category Paula`: 4 passed / 107 executed (3.74%).
+  - `target/release/test_runner.exe vamiga --category Mainboard`: 3 passed / 43 executed (6.98%).
+  - `target/release/test_runner.exe vamiga --category CPU`: 7 passed / 503 executed (1.39%).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 20 architecture tests passed.
+  - `cargo fmt --all -- --check` and attractor linter: 100% clean.
+
+

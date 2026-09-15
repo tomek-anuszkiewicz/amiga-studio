@@ -309,7 +309,7 @@ impl Agnus {
             }
         };
 
-        let mut h = self.hpos + 5;
+        let mut h = self.hpos + 4;
         let mut v = self.vpos;
         if h >= line_ccks {
             h -= line_ccks;
@@ -350,7 +350,7 @@ impl Agnus {
             }
         };
 
-        let mut h = self.hpos + 5;
+        let mut h = self.hpos + 4;
         let mut v = self.vpos;
         if h >= line_ccks {
             h -= line_ccks;
