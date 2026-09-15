@@ -96,15 +96,16 @@ fn test_denise_frame_builder_raster_scanline_generation() {
     harness.machine.dispatch_custom_write(0x180, 0x000F);
     harness.step_cck(2);
 
-    // Step across 1 full scanline
+    // Step across to line 30 (active visible scanline outside VBlank lines 0..25)
+    harness.step_until_vpos(30, 50_000);
     harness.step_scanlines(1);
 
     // In linear DAC quantization, RGB444 $00F produces ARGB $FF0000F0
     let expected_argb = frame_builder::rgb444_to_argb32(0x000F);
     assert_eq!(expected_argb, 0xFF00_00F0);
 
-    // Verify FrameBuilder captured the backdrop color on the scanned line (line 0)
-    let pixel = harness.machine.denise.frame_builder.get_pixel(200, 0);
+    // Verify FrameBuilder captured the backdrop color on the scanned line (line 30)
+    let pixel = harness.machine.denise.frame_builder.get_pixel(200, 30);
     assert_eq!(
         pixel, expected_argb,
         "FrameBuilder should contain rendered backdrop pixels on active scanlines"

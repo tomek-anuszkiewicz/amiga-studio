@@ -54,24 +54,24 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
 fn test_register_write_electronic_propagation_delay() {
     let mut harness = MachineHarness::new();
 
-    // Initial palette color is 0
-    assert_eq!(harness.machine.denise.color[0], 0x0000);
+    // Initial DIWSTRT is 0
+    assert_eq!(harness.machine.denise.diwstrt, 0x0000);
 
-    // Dispatch write to COLOR00 ($DFF180) = $05AF
-    harness.machine.dispatch_custom_write(0x180, 0x05AF);
+    // Dispatch write to DIWSTRT ($DFF08E) = $2C81
+    harness.machine.dispatch_custom_write(0x08E, 0x2C81);
 
     // Cycle 0: Write has just been staged into the mutation pipeline, NOT yet committed
     assert_eq!(
-        harness.machine.denise.color[0], 0x0000,
+        harness.machine.denise.diwstrt, 0x0000,
         "Register should not update instantaneously on cycle 0 before clock phase progression"
     );
 
     // Step 1 Color Clock: mutation matures and commits
     harness.machine.step_cck();
 
-    // Cycle 1: Color must now be committed
+    // Cycle 1: DIWSTRT must now be committed
     assert_eq!(
-        harness.machine.denise.color[0], 0x05AF,
+        harness.machine.denise.diwstrt, 0x2C81,
         "Register must commit after propagation delay matures"
     );
 }
