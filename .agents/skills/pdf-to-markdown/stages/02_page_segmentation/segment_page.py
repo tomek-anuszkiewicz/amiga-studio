@@ -38,6 +38,17 @@ def heuristic_segment_page(page_data: dict) -> list:
     segments = []
     seg_counter = 1
 
+    # Pre-scan page to detect if it's part of TOC / Frontmatter lists
+    is_toc_page = False
+    for b in blocks:
+        t = b.get("text", "").strip()
+        if re.search(r"^(table\s+of\s+contents|contents|brief\s+contents|list\s+of\s+figures|list\s+of\s+tables)$", t, re.IGNORECASE):
+            is_toc_page = True
+            break
+        if re.search(r"([._\-~]{2,}|\s{3,}|\t+)\s*\d+$", t, re.MULTILINE):
+            is_toc_page = True
+            break
+
     # Sort blocks top-to-bottom
     sorted_blocks = sorted(blocks, key=lambda b: (b["bbox"][1], b["bbox"][0]))
 
@@ -57,37 +68,44 @@ def heuristic_segment_page(page_data: dict) -> list:
         y0_norm = bbox_norm[1]
         y1_norm = bbox_norm[3]
 
-        # 1. Header detection (top 7% of page)
-        if y1_norm <= 0.08 and len(text.splitlines()) <= 2:
+        # 1. Header detection (top 9% of page)
+        if y1_norm <= 0.09 and len(text.splitlines()) <= 2:
             seg_type = "header"
             heading_lvl = None
-        # 2. Footer detection (bottom 7% of page)
-        elif y0_norm >= 0.93 and len(text.splitlines()) <= 2:
+        # 2. Footer detection (bottom 11% of page)
+        elif y0_norm >= 0.89 and len(text.splitlines()) <= 2:
             seg_type = "footer"
             heading_lvl = None
         # 3. TOC Header detection
-        elif re.search(r"^(table\s+of\s+contents|contents|brief\s+contents)$", text, re.IGNORECASE):
+        elif re.search(r"^(table\s+of\s+contents|contents|brief\s+contents|list\s+of\s+figures|list\s+of\s+tables)$", text, re.IGNORECASE):
             seg_type = "toc_header"
             heading_lvl = 1
-        # 4. Table of Contents line detection (e.g. dots or page numbers at end of line)
-        elif re.search(r"(\.{3,}|\s{3,})\d+$", text, re.MULTILINE):
+        # 4. Table of Contents line detection
+        elif is_toc_page or re.search(r"([._\-~]{2,}|\s{3,}|\t+)\s*\d+$", text, re.MULTILINE):
             seg_type = "toc"
             heading_lvl = None
-        # 5. Major Headings
-        elif (len(text.splitlines()) == 1 and len(text) < 80 and
-              (re.match(r"^(chapter\s+\d+|section\s+[ivxlcdm\d]+|appendix\s+[a-z\d]+)", text, re.IGNORECASE) or
-               text.isupper() and len(text) > 4)):
+        # 5. Major Headings (Level 1: Real chapters/appendices)
+        elif (re.match(r"^(chapter\s+\d+|appendix\s+[a-z\d]+)(\s*[:\-\u2013\u2014]\s*|\s*$|\s+[A-Z])", text, re.IGNORECASE) and
+              not text.endswith((".", "?")) and
+              not re.search(r"^(chapter\s+\d+|appendix\s+[a-z\d]+)\s+(contains|is|are|shows|describes|has)\b", text, re.IGNORECASE)):
             seg_type = "heading"
-            heading_lvl = 1 if "chapter" in text.lower() or "appendix" in text.lower() else 2
-        # 6. Monospace / Code blocks / Hex dumps
+            heading_lvl = 1
+        # 6. Section Headings (Level 2)
+        elif (len(text.splitlines()) == 1 and len(text) < 75 and not text.endswith((".", "?")) and
+              (re.match(r"^(section\s+[ivxlcdm\d]+)", text, re.IGNORECASE) or
+               (text.isupper() and len(text) > 3 and not re.search(r"\b(MOVE|WAIT|JMP|BSR|RTS|NOP|CLR|ADD|SUB)\b", text)) or
+               (re.match(r"^[A-Z][A-Za-z0-9\s,\-'\(\)]{3,50}$", text) and not re.search(r"\b(is|are|the|and|or|was|with)\b", text)))):
+            seg_type = "heading"
+            heading_lvl = 2
+        # 7. Monospace / Code blocks / Hex dumps
         elif re.search(r"(\$[0-9a-f]{4,8}|move\.[bwl]|jmp|lea|jsr|void\s+|int\s+|#include)", text, re.IGNORECASE):
             seg_type = "code_block"
             heading_lvl = None
-        # 7. Tables (multiple tabs, multiple aligned numeric columns)
+        # 8. Tables (multiple tabs, multiple aligned numeric columns)
         elif re.search(r"(\w+\t+\w+|\d+\s{3,}\d+\s{3,}\d+)", text):
             seg_type = "table"
             heading_lvl = None
-        # 8. Standard prose
+        # 9. Standard prose
         else:
             seg_type = "prose"
             heading_lvl = None

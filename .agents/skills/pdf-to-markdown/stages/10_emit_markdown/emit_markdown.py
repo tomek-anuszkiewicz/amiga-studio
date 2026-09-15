@@ -54,6 +54,8 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
         manifest = json.load(f)
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    for old_md in output_dir.glob("*.md"):
+        old_md.unlink()
     out_assets_dir = output_dir / "assets"
     out_assets_dir.mkdir(parents=True, exist_ok=True)
 

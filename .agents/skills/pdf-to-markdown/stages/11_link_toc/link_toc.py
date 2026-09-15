@@ -135,6 +135,8 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path):
         raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    for old_md in output_dir.glob("*.md"):
+        old_md.unlink()
     out_assets_dir = output_dir / "assets"
     out_assets_dir.mkdir(parents=True, exist_ok=True)
 

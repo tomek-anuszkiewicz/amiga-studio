@@ -35,6 +35,12 @@ def determine_canonical_title_and_slug(content: str, current_name: str) -> tuple
     has_toc_links = bool(re.search(r"-\s*\[\[.+\]\]", content))
     has_toc_words = "table of contents" in lower_content or "contents" in lower_content
 
+    # Check if Chapter 1 body is present in this opening file
+    if re.search(r"chapter\s+1\b", lower_content):
+        if has_toc_links or has_toc_words:
+            return "Preface, Contents, and Chapter 1: Introduction", "chapter_1_introduction"
+        return "Chapter 1: Introduction", "chapter_1_introduction"
+
     if has_toc_links or has_toc_words:
         if "preface" in lower_content or "foreword" in lower_content:
             return "Preface and Table of Contents", "preface_and_contents"
@@ -167,6 +173,8 @@ def process_first_chapter_refinement(
             for f in src_assets.glob("*"):
                 if f.is_file():
                     shutil.copy2(f, out_assets_dir / f.name)
+        for old_f in output_dir.glob("*.md"):
+            old_f.unlink()
         for f in md_files:
             shutil.copy2(f, output_dir / f.name)
 
