@@ -386,9 +386,10 @@ def reduce_stream(workspace_dir: Path, config: dict):
     if num_table_unifications > 0:
         print(f"[*] Table Reduction: Consolidated {num_collapsed_tables + num_table_unifications} fragments into {num_table_unifications} unified table(s) (eliminated {num_collapsed_tables} fragmented nodes).")
 
-    # Step 3: Weld consecutive prose + prose nodes across page breaks
+    # Step 3: Weld consecutive prose nodes and consecutive code_block nodes
     final_nodes = []
     welded_prose_count = 0
+    welded_code_count = 0
     for node in nodes_after_tables:
         n_type = node.get("type")
         if final_nodes and final_nodes[-1]["type"] == "prose" and n_type == "prose":
@@ -401,6 +402,22 @@ def reduce_stream(workspace_dir: Path, config: dict):
             welded_prose_count += 1
             continue
 
+        if final_nodes and final_nodes[-1]["type"] == "code_block" and n_type == "code_block" and final_nodes[-1]["page"] == node["page"]:
+            prev = final_nodes[-1]
+            prev["raw_text"] = prev["raw_text"].rstrip() + "\n" + node["raw_text"].lstrip()
+            if "welded_nodes" not in prev:
+                prev["welded_nodes"] = [prev["node_id"]]
+            prev["welded_nodes"].append(node["node_id"])
+            if prev.get("bbox") and node.get("bbox"):
+                prev["bbox"] = [
+                    round(min(prev["bbox"][0], node["bbox"][0]), 2),
+                    round(min(prev["bbox"][1], node["bbox"][1]), 2),
+                    round(max(prev["bbox"][2], node["bbox"][2]), 2),
+                    round(max(prev["bbox"][3], node["bbox"][3]), 2),
+                ]
+            welded_code_count += 1
+            continue
+
         node_copy = dict(node)
         if "page_start" not in node_copy:
             node_copy["page_start"] = node["page"]
@@ -410,6 +427,8 @@ def reduce_stream(workspace_dir: Path, config: dict):
 
     if welded_prose_count > 0:
         print(f"[*] Prose Welding: Welded {welded_prose_count} consecutive prose segments.")
+    if welded_code_count > 0:
+        print(f"[*] Code Welding: Welded {welded_code_count} consecutive code block segments.")
 
     out_dir = workspace_dir / "04_reduced_stream"
     out_dir.mkdir(parents=True, exist_ok=True)

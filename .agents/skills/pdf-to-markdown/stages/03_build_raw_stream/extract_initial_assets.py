@@ -30,7 +30,7 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
     # Group nodes by page for efficient PDF access
     nodes_by_page = {}
     for node in nodes:
-        if node["type"] in ("table", "graphic"):
+        if node["type"] in ("table", "graphic", "code_block"):
             p = node["page"]
             nodes_by_page.setdefault(p, []).append(node)
 

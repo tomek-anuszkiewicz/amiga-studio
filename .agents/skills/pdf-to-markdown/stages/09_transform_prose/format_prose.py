@@ -90,7 +90,13 @@ def process_prose(workspace_dir: Path, config: dict):
                     f"## Node Type: {n_type}\n"
                     f"## Raw Text:\n```text\n{raw_text}\n```\n"
                 )
-                rendered = gemini.generate_text(full_prompt)
+                png_rel = node.get("png_path")
+                png_path = workspace_dir / png_rel if png_rel else None
+
+                if n_type == "code_block" and png_path and png_path.exists():
+                    rendered = gemini.generate_vision(full_prompt, image_path=png_path)
+                else:
+                    rendered = gemini.generate_text(full_prompt)
                 if rendered:
                     rendered_text = rendered.strip()
                     # Ensure TOC delimiter wrapping if toc
