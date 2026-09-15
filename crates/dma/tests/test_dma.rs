@@ -198,3 +198,21 @@ fn test_copper_bus_participation_over_blitter_and_cpu() {
     assert_eq!(owner, DmaChannel::Blitter);
     assert!(dma.chip_ram_blocked);
 }
+
+#[test]
+fn test_dma_is_in_ddf_window_block_boundary() {
+    let mut dma = DmaScheduler::new();
+    dma.ddfstrt = 0x68; // 104
+    dma.ddfstop = 0x70; // 112
+
+    // Low-res: 8-CCK blocks
+    assert!(!dma.is_in_ddf_window(103));
+    // Block 1 (104..111)
+    assert!(dma.is_in_ddf_window(104));
+    assert!(dma.is_in_ddf_window(111));
+    // Block 2 (112..119): block_start = 112 <= ddfstop (112), so all 8 slots are inside
+    assert!(dma.is_in_ddf_window(112));
+    assert!(dma.is_in_ddf_window(119));
+    // Block 3 (120..127): block_start = 120 > ddfstop (112), so outside
+    assert!(!dma.is_in_ddf_window(120));
+}

@@ -40,8 +40,12 @@ pub struct Agnus {
     pub vpos: u16,
     /// Long Frame toggle bit (toggled every field in interlace mode)
     pub lof: bool,
+    /// Long Line toggle bit for PAL (alternates between 227 and 228 CCKs per scanline)
+    pub lol: bool,
     /// True if Chip RAM is currently blocked by custom chip DMA
     pub chip_ram_blocked: bool,
+    /// Pending bitplane DMA word fetched from Chip RAM to be routed to Denise BPLxDAT
+    pub pending_bpl_dma: Option<(u8, u16)>,
 
     // --- Active Latched Registers (Read is NOW) ---
     /// DMACON / DMACONR ($096 / $002) - active DMA channel enables
@@ -97,7 +101,9 @@ impl Agnus {
             hpos: 0,
             vpos: 0,
             lof: false,
+            lol: false,
             chip_ram_blocked: false,
+            pending_bpl_dma: None,
             dmacon: 0,
             diwstrt: 0,
             diwstop: 0,
@@ -124,7 +130,9 @@ impl Agnus {
         self.hpos = 0;
         self.vpos = 0;
         self.lof = false;
+        self.lol = false;
         self.chip_ram_blocked = false;
+        self.pending_bpl_dma = None;
         self.dmacon = 0;
         self.diwstrt = 0;
         self.diwstop = 0;
@@ -161,10 +169,21 @@ impl Agnus {
             AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
             _ => PAL_FRAME_LINES,
         };
+        let line_ccks = match self.model {
+            AgnusModel::OcsNtsc8370 => NTSC_LINE_CCKS,
+            _ => {
+                if self.lol {
+                    228
+                } else {
+                    227
+                }
+            }
+        };
 
         self.hpos = self.hpos.wrapping_add(1);
-        if self.hpos >= PAL_LINE_CCKS {
+        if self.hpos >= line_ccks {
             self.hpos = 0;
+            self.lol = !self.lol;
             self.vpos = self.vpos.wrapping_add(1);
             if self.vpos >= max_lines {
                 self.vpos = 0;
@@ -199,6 +218,8 @@ impl Agnus {
                 if p < 6 && !chip_ram.is_empty() {
                     let addr = (self.bplpt[p] as usize) & (chip_ram.len().wrapping_sub(1));
                     if addr + 1 < chip_ram.len() {
+                        let word = u16::from_be_bytes([chip_ram[addr], chip_ram[addr + 1]]);
+                        self.pending_bpl_dma = Some((plane, word));
                         self.bplpt[p] = self.bplpt[p].wrapping_add(2) & 0x0007_FFFE;
                     }
                 }
@@ -250,6 +271,12 @@ impl Agnus {
         self.pending_copper_write.take()
     }
 
+    /// Polls and clears any bitplane DMA word fetched from Chip RAM on this cycle
+    #[inline]
+    pub fn poll_bpl_dma(&mut self) -> Option<(u8, u16)> {
+        self.pending_bpl_dma.take()
+    }
+
     /// Returns the current raster beam position snapshot
     #[inline]
     pub fn beam(&self) -> BeamPosition {
@@ -263,11 +290,38 @@ impl Agnus {
     }
 
     /// Reads Vertical & Horizontal beam position (VHPOSR at $DFF006)
+    ///
+    /// The returned beam position reflects internal Agnus pipeline and bus latency (~5 CCKs ahead).
     #[inline]
     pub fn vhposr(&self) -> u16 {
-        let v_low = (self.vpos & 0xFF) as u16;
-        let h = (self.hpos & 0xFF) as u16;
-        (v_low << 8) | h
+        let max_lines = match self.model {
+            AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
+            _ => PAL_FRAME_LINES,
+        };
+        let line_ccks = match self.model {
+            AgnusModel::OcsNtsc8370 => NTSC_LINE_CCKS,
+            _ => {
+                if self.lol {
+                    228
+                } else {
+                    227
+                }
+            }
+        };
+
+        let mut h = self.hpos + 5;
+        let mut v = self.vpos;
+        if h >= line_ccks {
+            h -= line_ccks;
+            v = v.wrapping_add(1);
+            if v >= max_lines {
+                v = 0;
+            }
+        }
+
+        let effective_v = if h <= 1 { self.vpos } else { v };
+        let v_low = (effective_v & 0xFF) as u16;
+        (v_low << 8) | (h & 0xFF)
     }
 
     /// Reads Vertical beam position high bit, chip ID, and LOF (VPOSR at $DFF004)
@@ -281,7 +335,33 @@ impl Agnus {
             AgnusModel::OcsNtsc8370 => val |= 0x1000,
             AgnusModel::OcsPal8371 => {}
         }
-        val |= (self.vpos >> 8) & 0x07;
+        let max_lines = match self.model {
+            AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
+            _ => PAL_FRAME_LINES,
+        };
+        let line_ccks = match self.model {
+            AgnusModel::OcsNtsc8370 => NTSC_LINE_CCKS,
+            _ => {
+                if self.lol {
+                    228
+                } else {
+                    227
+                }
+            }
+        };
+
+        let mut h = self.hpos + 5;
+        let mut v = self.vpos;
+        if h >= line_ccks {
+            h -= line_ccks;
+            v = v.wrapping_add(1);
+            if v >= max_lines {
+                v = 0;
+            }
+        }
+
+        let effective_v = if h <= 1 { self.vpos } else { v };
+        val |= (effective_v >> 8) & 0x07;
         val
     }
 

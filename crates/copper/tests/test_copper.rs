@@ -263,3 +263,30 @@ fn test_copper_terminator_and_vblank_restart() {
     assert!(cop.is_running);
     assert_eq!(cop.state, CopperState::FetchIR1(1));
 }
+
+#[test]
+fn test_copper_wait_vertical_boundary_cross_above_line_128() {
+    let mut cop = Copper::new();
+    cop.set_dma_enabled(true);
+    cop.set_cop1lc(0x00010000);
+    cop.restart_list1();
+
+    // WAIT $FFDF, $FFFE (Cross vertical boundary at line 255, hpos 222)
+    let mut ram = vec![0u8; 0x20000];
+    let base = 0x10000;
+    ram[base..base + 4].copy_from_slice(&[0xFF, 0xDF, 0xFF, 0xFE]);
+
+    // Beam at line 127, hpos 222: must NOT wake up (bit 7 of vertical mask must be forced on)
+    let beam_127 = BeamPosition::new(222, 127, false);
+    for _ in 0..4 {
+        cop.step_cck(beam_127, false, &ram);
+    }
+    assert_eq!(cop.state, CopperState::Waiting);
+    assert!(cop.is_waiting);
+
+    // Beam at line 255, hpos 222: matches target coordinates
+    let beam_255 = BeamPosition::new(222, 255, false);
+    cop.step_cck(beam_255, false, &ram);
+    assert_eq!(cop.state, CopperState::FetchIR1(2));
+    assert!(!cop.is_waiting);
+}

@@ -133,7 +133,12 @@ impl DmaScheduler {
     /// Returns true if the horizontal position is inside the Display Data Fetch window
     #[inline]
     pub fn is_in_ddf_window(&self, hpos: u16) -> bool {
-        hpos >= self.ddfstrt && hpos <= self.ddfstop
+        if hpos < self.ddfstrt {
+            return false;
+        }
+        let period = if self.is_hires() { 4 } else { 8 };
+        let block_start = hpos - ((hpos.wrapping_sub(self.ddfstrt)) % period);
+        block_start <= self.ddfstop
     }
 
     /// Returns true if the vertical position is inside active display scanlines

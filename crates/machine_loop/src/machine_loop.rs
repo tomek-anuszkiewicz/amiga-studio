@@ -294,6 +294,9 @@ impl A500Machine {
         if let Some((reg, val)) = self.agnus.poll_copper_write() {
             self.dispatch_custom_write(reg, val);
         }
+        if let Some((plane, word)) = self.agnus.poll_bpl_dma() {
+            self.denise.write_bpldat(plane as usize, word);
+        }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
 
         // Cross-Chip Signal: Blitter completion (_BLITINT) -> Paula INTREQ bit 6 (mask 0x0040)

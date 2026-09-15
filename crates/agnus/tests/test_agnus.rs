@@ -66,3 +66,60 @@ fn test_agnus_batch_mutations_commit_all_without_dropping() {
     assert_eq!(agnus.blitter.bltafwm, 0x1236);
     assert_eq!(agnus.blitter.bltalwm, 0x1237);
 }
+
+#[test]
+fn test_agnus_pal_lol_alternation_and_frame_total() {
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    assert_eq!(agnus.hpos, 0);
+    assert_eq!(agnus.vpos, 0);
+    assert!(!agnus.lol);
+
+    // Line 0 (even) has 227 CCKs
+    for _ in 0..227 {
+        agnus.step_cck();
+    }
+    assert_eq!(agnus.vpos, 1);
+    assert_eq!(agnus.hpos, 0);
+    assert!(agnus.lol);
+
+    // Line 1 (odd) has 228 CCKs
+    for _ in 0..228 {
+        agnus.step_cck();
+    }
+    assert_eq!(agnus.vpos, 2);
+    assert_eq!(agnus.hpos, 0);
+    assert!(!agnus.lol);
+
+    // Total CCKs for the remainder of the 312 lines in the frame
+    let mut total_ccks = 227 + 228;
+    while agnus.vpos != 0 {
+        agnus.step_cck();
+        total_ccks += 1;
+    }
+    assert_eq!(total_ccks, 70_980);
+}
+
+#[test]
+fn test_agnus_bpl_dma_polling() {
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    let mut chip_ram = vec![0u8; 0x40000];
+    chip_ram[0x1000] = 0xAA;
+    chip_ram[0x1001] = 0x55;
+
+    agnus.bplpt[0] = 0x1000;
+    // Enable Master DMA + Bitplane DMA ($8300)
+    agnus.commit_register_write(0x096, 0x8300);
+    // Configure 1 bitplane in BPLCON0 ($1200)
+    agnus.set_bplcon0(0x1200);
+    // DDF window at slot 0x38
+    agnus.ddfstrt = 0x38;
+    agnus.ddfstop = 0xD0;
+
+    agnus.hpos = 0x37;
+    agnus.vpos = 50;
+    agnus.step_cck_ram(&mut chip_ram);
+
+    // Slot 0x38 should have fetched plane 0 from Chip RAM
+    assert_eq!(agnus.poll_bpl_dma(), Some((0, 0xAA55)));
+    assert_eq!(agnus.bplpt[0], 0x1002);
+}

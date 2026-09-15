@@ -144,7 +144,7 @@ impl Copper {
     #[inline]
     pub fn eval_comparator(&self, beam: BeamPosition, blitter_busy: bool) -> bool {
         let vpos_target = ((self.ir1 >> 8) & 0xFF) as u16;
-        let vpos_mask = ((self.ir2 >> 8) & 0x7F) as u16;
+        let vpos_mask = (((self.ir2 >> 8) & 0x7F) | 0x80) as u16;
 
         let cur_v = (beam.vpos & 0xFF) & vpos_mask;
         let tgt_v = vpos_target & vpos_mask;
@@ -201,7 +201,7 @@ impl Copper {
                 self.is_waiting = true;
                 if self.eval_comparator(beam, blitter_busy) {
                     self.is_waiting = false;
-                    self.state = CopperState::Wakeup(2);
+                    self.state = CopperState::FetchIR1(2);
                 } else {
                     self.state = CopperState::Waiting;
                 }
@@ -265,7 +265,7 @@ impl Copper {
                 self.is_waiting = true;
                 if self.eval_comparator(beam, blitter_busy) {
                     self.is_waiting = false;
-                    self.state = CopperState::Wakeup(2);
+                    self.state = CopperState::FetchIR1(2);
                 }
                 None
             }

@@ -110,3 +110,30 @@ fn test_denise_frame_builder_raster_scanline_generation() {
         "FrameBuilder should contain rendered backdrop pixels on active scanlines"
     );
 }
+
+#[test]
+fn test_machine_loop_agnus_bpl_dma_routed_to_denise() {
+    let mut harness = MachineHarness::new();
+
+    // Prepare test pattern in Chip RAM at $1000
+    harness.machine.physical_memory.chip_ram[0x1000] = 0xBE;
+    harness.machine.physical_memory.chip_ram[0x1001] = 0xEF;
+
+    // Point BPL1PTH/L to $1000
+    harness.machine.agnus.bplpt[0] = 0x1000;
+    // Enable Master DMA + Bitplane DMA ($8300)
+    harness.machine.dispatch_custom_write(0x096, 0x8300);
+    // 1 bitplane in BPLCON0 ($1200)
+    harness.machine.dispatch_custom_write(0x100, 0x1200);
+    harness.step_cck(4);
+
+    harness.machine.agnus.ddfstrt = 0x38;
+    harness.machine.agnus.ddfstop = 0xD0;
+    harness.machine.agnus.hpos = 0x37;
+    harness.machine.agnus.vpos = 50;
+
+    // Step machine 1 CCK: Agnus fetches $BEEF for plane 0, routed to Denise
+    harness.machine.step_cck();
+
+    assert_eq!(harness.machine.denise.bpldat[0], 0xBEEF);
+}

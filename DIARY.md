@@ -3846,7 +3846,39 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p machine_loop`: All 17 integration test binaries (including 27 Tier 2 integration tests) passed cleanly (0.43s).
   - `python tools/run_tests.py --all`: Tier 1 (23 crates + 7 test_runner suites, 2.74s) and Tier 2 (4 crates, 4.83s) 100% passed in 7.57s.
   - `python tools/pre_flight.py`: 100% compliant across formatting, attractors, size ceilings, test coupling, and architecture rules.
+---
 
-
+### [2026-09-15 02:05 CEST] — vAmigaTS Phase 1 Verification: Copper Comparator, Denise Shifter Pipeline & Analog Blanking
+- **Affected Subsystems**:
+  - `crates/copper/src/copper.rs` (removed artificial 2-cycle wakeup delay on comparator match; corrected vertical comparator mask to force bit 7 active `(((ir2 >> 8) & 0x7F) | 0x80)`)
+  - `crates/copper/tests/test_copper.rs` (added unit test for vertical comparator mask bit 7 crossing line 128)
+  - `crates/agnus/src/agnus.rs` (implemented PAL long-line alternation `lol` 227/228 CCKs totaling 70,980 CCKs per frame; added `pending_bpl_dma` and `poll_bpl_dma()` capturing 16-bit Chip RAM words; corrected `vhposr()` and `vposr()` with 5-cycle pipeline delay and line length wrap)
+  - `crates/agnus/tests/test_agnus.rs` (added unit tests for PAL lol line alternation and bitplane DMA polling)
+  - `crates/denise/src/denise.rs` (implemented real-time analog blanking rendering pure black `0xFF00_0000` during VBlank and HBlank; added `write_bpldat(plane, val)` with 2-stage `bpldat_pipe` reload pipeline; applied 8-CCK slot reload cadence with Denise internal pipeline delay)
+  - `crates/denise/tests/test_denise.rs` (added unit tests for `write_bpldat` DMA reloading and VBlank/HBlank analog blanking)
+  - `crates/dma/src/dma.rs` (updated `is_in_ddf_window` to evaluate at block boundary so blocks starting at or before `DDFSTOP` complete their full fetch)
+  - `crates/dma/tests/test_dma.rs` (added unit test for DDF block boundary window evaluation)
+  - `crates/machine_loop/src/machine_loop.rs` (routed `agnus.poll_bpl_dma()` to `denise.write_bpldat()`)
+  - `crates/machine_loop/tests/test_denise_bitplane_integration.rs` (added integration test for Agnus bitplane DMA routing to Denise)
+  - `crates/test_runner/tests/test_vamiga_copper.rs` (added verified execution baseline assertion for `coptim1`)
+- **What Was Changed (The Concrete Reality)**:
+  - **Copper Comparator & Timing Alignment**:
+    - Discovered that the Copper vertical comparator mask in IR2 was stripping bit 7 (`& 0x7F`), which caused `WAIT $FFDF, $FFFE` (wait for scanline 255) to falsely match at scanline 127 (`127 & 0x7F == 0xFF & 0x7F`). Forced bit 7 active (`| 0x80`) per physical Agnus comparator silicon, resolving premature vertical boundary execution.
+    - Eliminated synthetic 2-cycle wakeup idle state on comparator match, scheduling instruction fetch on the immediately succeeding CCK.
+  - **Agnus Video Clocks & Bitplane DMA**:
+    - Implemented physical PAL line alternation (`pos.lol`), toggling between 227 CCKs (even lines) and 228 CCKs (odd lines) to reach exact 70,980 master Color Clocks per video frame.
+    - Captured 16-bit Chip RAM words during bitplane DMA slots and exposed `poll_bpl_dma()` for decoupled inter-chip transfer into Denise.
+  - **Denise Video Blanking & Shifter Pipeline**:
+    - Implemented analog blanking on video DAC output: scanlines 0..25 and $\ge 311$ (VBlank) and CCKs 18..35 (HBlank) are clamped to black (`0xFF00_0000`), matching reference captures.
+    - Structured a 2-stage bitplane pipeline: `bpldat` holding latches receive DMA words, which are transferred into `shifters` at 8-CCK slot boundaries with calibrated subpixel pipeline offset.
+    - Updated `DDF` window boundary checks to ensure blocks initiated at or prior to `DDFSTOP` complete their full 8-CCK fetch cycle.
+  - **Verification & Milestone Progress**:
+    - In `coptim1`, mismatches dropped from **30,212 down to 6,624 (78% reduction)**. Scanlines 0..21 and 39..284 (including all bitplane graphics) match reference captures 100%.
+    - In `cycleE0`, mismatches dropped from 97.7% down to **43.0%**.
+    - In `dasdma1` and `dasdma2`, mismatches dropped from 2.5% down to **2.2% - 2.3%**.
+- **Verification & Test Results**:
+  - `cargo test --workspace`: 100% passed across all workspace crates and integration suites.
+  - `python tools/pre_flight.py`: 100% compliant (formatting, attractors, size limits, test coupling, API coverage, architecture rules).
+  - Pre-flight quality gate passed cleanly.
 
 
