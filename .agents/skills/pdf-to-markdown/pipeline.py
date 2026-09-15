@@ -196,6 +196,64 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     print("==================================================\n")
 
 
+STAGE_OUTPUT_TARGETS = {
+    1: ["01_pages", "pages", "manifest.json"],
+    2: ["02_segments", "segments"],
+    3: ["03_raw_stream", "raw_stream.json"],
+    4: ["04_reduced_stream", "reduced_stream.json"],
+    5: ["05_chapters_raw", "chapters", "chapters_manifest.json"],
+    6: ["06_chapters_continuations"],
+    7: ["07_chapters_tables"],
+    8: ["08_chapters_graphics"],
+    9: ["09_chapters_formatted"],
+    10: ["10_markdown_raw"],
+    11: ["11_markdown_linked"],
+    12: ["__OUTPUT_DIR__"],
+}
+
+
+def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_stage: int, status_file: Path):
+    """
+    Cleans all intermediate artifacts and output directories for all stages >= start_stage.
+    Guarantees that re-running from stage N starts completely fresh without stale downstream files.
+    """
+    import shutil
+    print(f"[*] Invalidation: Wiping intermediate and output artifacts for stages {start_stage:02d} to 12...")
+    for s in range(start_stage, 13):
+        targets = STAGE_OUTPUT_TARGETS.get(s, [])
+        for target in targets:
+            if target == "__OUTPUT_DIR__":
+                if output_dir.exists():
+                    for f in output_dir.glob("*.md"):
+                        try:
+                            f.unlink()
+                        except Exception:
+                            pass
+                    assets = output_dir / "assets"
+                    if assets.exists():
+                        shutil.rmtree(assets, ignore_errors=True)
+            else:
+                p = workspace_dir / target
+                if p.is_dir():
+                    shutil.rmtree(p, ignore_errors=True)
+                elif p.is_file():
+                    try:
+                        p.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+
+    # Reset stage status entries for stages >= start_stage
+    if status_file.exists():
+        try:
+            with open(status_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            updated = {k: v for k, v in data.items() if not (k.isdigit() and int(k) >= start_stage)}
+            with open(status_file, "w", encoding="utf-8") as f:
+                json.dump(updated, f, indent=2)
+        except Exception:
+            pass
+
+
 def main():
     parser = argparse.ArgumentParser(description="Master 12-Stage PDF-to-Markdown Pipeline Orchestrator")
     parser.add_argument("--pdf", type=str, help="Path to input technical PDF document")
@@ -289,6 +347,9 @@ def main():
         print(f"[*] Resuming from Stage {stages_to_run[0]:02d}")
     else:
         stages_to_run = list(range(1, len(STAGE_DEFINITIONS) + 1))
+
+    # Clean and invalidate all downstream intermediate and output stages from min(stages_to_run) onwards
+    clean_downstream_stages(workspace_dir, output_dir, stages_to_run[0], status_file)
 
     if 1 in stages_to_run and not pdf_path:
         # Check if pages already exist

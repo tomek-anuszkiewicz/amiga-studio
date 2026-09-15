@@ -52,6 +52,8 @@ def process_graphics(workspace_dir: Path, config: dict):
 
     out_dir = workspace_dir / "08_chapters_graphics"
     out_dir.mkdir(parents=True, exist_ok=True)
+    for f in out_dir.glob("*.json"):
+        f.unlink()
     assets_dir = workspace_dir / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
 

@@ -84,6 +84,8 @@ def process_prose(workspace_dir: Path, config: dict):
 
     out_dir = workspace_dir / "09_chapters_formatted"
     out_dir.mkdir(parents=True, exist_ok=True)
+    for f in out_dir.glob("*.json"):
+        f.unlink()
 
     gemini = GeminiClient(config) if GeminiClient else None
     if gemini and gemini.is_available():

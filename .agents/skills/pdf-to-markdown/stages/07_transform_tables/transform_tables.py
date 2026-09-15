@@ -88,6 +88,8 @@ def process_tables(workspace_dir: Path, config: dict):
 
     out_dir = workspace_dir / "07_chapters_tables"
     out_dir.mkdir(parents=True, exist_ok=True)
+    for f in out_dir.glob("*.json"):
+        f.unlink()
 
     prompt_path = Path(__file__).resolve().parent / "prompt_markdown_table.md"
     base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""

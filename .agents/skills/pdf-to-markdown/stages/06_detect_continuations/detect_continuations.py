@@ -57,6 +57,8 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
 
     out_dir = workspace_dir / "06_chapters_continuations"
     out_dir.mkdir(parents=True, exist_ok=True)
+    for f in out_dir.glob("*.json"):
+        f.unlink()
 
     chapter_files = sorted(list(input_dir.glob("*.json")))
     print(f"[*] Detecting continuations across {len(chapter_files)} chapter files...")
