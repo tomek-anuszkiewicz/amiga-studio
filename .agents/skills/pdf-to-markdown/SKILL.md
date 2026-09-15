@@ -152,16 +152,36 @@ python .agents/skills/pdf-to-markdown/scripts/pdf_to_pages.py \
 
 ### Phase 3: Chapter-Level Multimodal Vision Transcription
 
+> [!IMPORTANT]
+> **Target Environment: Obsidian (Obsidian-Flavored Markdown)**
+> The transcription tool and LLM must be explicitly informed that the **target consumer and rendering environment is Obsidian** (supporting Obsidian Live Preview, Reading View, and KaTeX). This dictates strict formatting rules:
+> - **Native Obsidian Callouts**: Convert note boxes, tips, cautions, and warnings into native Obsidian callouts (`> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`, `> [!IMPORTANT]`).
+> - **Collapsible Blocks (`> [!NOTE]-`)**: For long register tables, secondary code listings, or ASCII fallbacks, use native folded callouts (`> [!NOTE]- Title`). **Never use raw HTML `<details><summary>` tags**, which break CommonMark rendering and display as unrendered red HTML tags in Obsidian Live Preview.
+> - **KaTeX Math Collision Safety**: Enclose all Motorola hex addresses in backticks (`` `$00000004` ``, `` `$DFF000` ``). Bare `$...$` is intercepted by Obsidian's KaTeX engine as inline math, causing syntax errors or invisible equations.
+> - **LaTeX `\r` Row Split Prevention**: Never output raw carriage return control characters (`\r` or unescaped `\rightarrow`) inside tables, which splits Obsidian table rows across lines. Use Unicode arrows (`→` or `⇒`).
+> - **Native Mermaid Diagrams**: Use standard ```mermaid code blocks; Obsidian renders Mermaid natively.
+
 Rather than transcribing single disconnected pages that fragment paragraphs, the LLM transcribes by **chapter chunks** (e.g. pages 15-32):
 
 1. **Continuous Context**: The LLM reads the page sequence for that chapter, unifying paragraphs split across page boundaries.
 2. **Table Continuity**: Tables spanning multiple pages are consolidated into a single Markdown table, stripping redundant repeated print headers.
-3. **Motorola Hex Addresses**: **Always enclose in backticks** (`` `$00000004` ``, `` `$DFF000` ``) to prevent KaTeX math rendering collisions.
-4. **Figure Placeholders**: Mark diagrams that cannot be modeled in Mermaid with `<crop>` tags:
+3. **Figure Placeholders**: Mark diagrams that cannot be modeled in Mermaid with `<crop>` tags:
    ```markdown
    <crop page="17" xmin="120" ymin="340" xmax="950" ymax="780" label="Figure 6-2. Fat Agnus Timing Waveform" />
    ```
-5. **Obsidian Callouts**: Convert note boxes, tips, cautions, and warnings into native callouts (`> [!NOTE]`, `> [!WARNING]`, `> [!IMPORTANT]`).
+4. **Standard LLM Transcription Prompt Template**:
+   ```markdown
+   You are an expert technical book transcriber digitizing reference manuals into Obsidian-Flavored Markdown.
+   TARGET ENVIRONMENT: Obsidian (Obsidian Live Preview and Reading View).
+
+   CRITICAL RULES:
+   1. 100% STRICT VERBATIM FIDELITY: Zero paraphrasing, zero summarizing, zero rewording. Transcribe all text word-for-word.
+   2. OBSIDIAN CALLOUTS: Use native callouts (`> [!NOTE]`, `> [!WARNING]`, etc.). Never use raw HTML `<details><summary>`.
+   3. KATEX SAFETY: Always enclose Motorola hex addresses in backticks (e.g. `$DFF000`, `$0020`).
+   4. TABLES: Preserve physical table structure (including 4-column parallel tables). Never use raw `\r` carriage returns.
+   5. DIAGRAMS: If a diagram is a flowchart or state machine, generate native Mermaid (`mermaid`). Otherwise, insert `<crop page="..." xmin="..." ymin="..." xmax="..." ymax="..." label="..." />`.
+   ```
+
 
 ---
 
@@ -290,20 +310,25 @@ Target: **100% PASS (0 broken files, 0 broken anchors, 0 warnings)**.
 - **Context Savings:** Absorbs 50,000+ multimodal vision tokens, 200 DPI raster page PNGs, figure bounding box coordinates, and multi-step chapter stitching from the main conversation.
 - **Subagent Task Template:**
   - `TaskName`: "PDF Conversion: <manual_name>"
-  - `TaskSummary`: "Executes 7-phase multimodal PDF transcription into Obsidian markdown with figure crops and link validation."
+  - `TaskSummary`: "Executes 9-phase multimodal PDF transcription into Obsidian Markdown with figure crops, statistical fidelity audit, and link validation."
   - `Prompt`:
     ```markdown
-    Convert reference manual PDF: <PDF_PATH> into Obsidian Markdown under `Obsidian/Amiga/Reference/<MANUAL_NAME>/`.
+    Convert reference manual PDF: <PDF_PATH> into Obsidian-Flavored Markdown under `Obsidian/Amiga/Reference/<MANUAL_NAME>/`.
+    TARGET ENVIRONMENT: Obsidian (Obsidian Live Preview and Reading View).
+
     Follow .agents/skills/pdf-to-markdown/SKILL.md:
     1. Phase 1: Render 200 DPI pages with `pdf_to_pages.py`.
-    2. Phase 2: Page-by-page LLM vision transcription (`page_XXX.png` -> `page_XXX.md`). Enclose all hex in backticks (`$HEX`).
-    3. Phase 3: Extract figure crops with `extract_crops.py`.
-    4. Phase 4: Vectorize bounding boxes with `png_to_svg_helper.py`.
-    5. Phase 5: Merge chapters and stitch tables with `merge_chapters.py`.
-    6. Phase 6: Run visual QA audits with `verify_page_vision.py`.
-    7. Phase 7: Validate links with `validate_links.py`.
-    8. Return strictly the PDF Conversion Report below.
+    2. Phase 2: High-resolution page verification.
+    3. Phase 3: Chapter-level LLM vision transcription with 100% strict verbatim fidelity (zero summarizing, native Obsidian callouts `> [!NOTE]`, backticked hex `$DFF000`, no raw `<details>`).
+    4. Phase 4: Extract figure crops & generate `.txt` sidecars with `extract_crops.py`.
+    5. Phase 5: Vectorize bounding boxes with `png_to_svg_helper.py`.
+    6. Phase 6: Merge chapters and stitch tables with `merge_chapters.py`.
+    7. Phase 7: Semantic sanity audit with `audit_conversion.py`.
+    8. Phase 8: Statistical word & lexical fidelity audit with `verify_text_fidelity.py` (word ratio 0.75-1.35, recall >= 85%).
+    9. Phase 9: Validate links and asset paths with `validate_links.py`.
+    10. Return strictly the PDF Conversion Report below.
     ```
+
 - **Return Contract (Mandatory Structured Output):**
   The subagent must conclude with this exact markdown block:
   ```markdown
