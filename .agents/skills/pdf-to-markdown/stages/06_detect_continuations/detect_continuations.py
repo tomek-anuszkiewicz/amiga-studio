@@ -46,12 +46,14 @@ def check_continuation_with_gemini(node_a: dict, node_b: dict, gemini: Optional[
         return False
 
     if gemini and gemini.is_available() and prompt_template:
+        sample_a = text_a if len(text_a) <= 800 else f"{text_a[:350]}\n...\n{text_a[-400:]}"
+        sample_b = text_b if len(text_b) <= 800 else f"{text_b[:500]}\n...\n{text_b[-250:]}"
         prompt = (
             f"{prompt_template}\n\n"
             f"## Block A (Page {page_a}, Type: {node_a.get('type')}):\n"
-            f"```text\n{text_a[-400:]}\n```\n\n"
+            f"```text\n{sample_a}\n```\n\n"
             f"## Block B (Page {page_b}, Type: {node_b.get('type')}):\n"
-            f"```text\n{text_b[:400]}\n```\n"
+            f"```text\n{sample_b}\n```\n"
         )
         res = gemini.generate_json(prompt)
         if isinstance(res, dict) and res.get("is_continuation"):
@@ -90,35 +92,46 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
         i = 0
         while i < len(nodes) - 1:
             curr_node = nodes[i]
-            next_node = nodes[i + 1]
-
-            if check_continuation_with_gemini(curr_node, next_node, gemini, prompt_template):
-                group_id = f"table_group_{group_counter:04d}"
-                group_counter += 1
-                total_continuations += 1
-
-                curr_node["continuation_status"] = "head"
-                curr_node["is_head"] = True
-                curr_node["continuation_group_id"] = group_id
-                curr_node["merged_nodes"] = [curr_node["node_id"], next_node["node_id"]]
-
-                merged_assets = []
-                for p in ("svg_path", "png_path", "raw_text_path"):
-                    if curr_node.get(p):
-                        merged_assets.append(curr_node[p])
-                    if next_node.get(p):
-                        merged_assets.append(next_node[p])
-                curr_node["merged_assets"] = merged_assets
-
-                next_node["continuation_status"] = "continuation"
-                next_node["is_head"] = False
-                next_node["continued_from"] = curr_node["node_id"]
-                next_node["continuation_group_id"] = group_id
-
-                print(f"    Linked continuation: {next_node['node_id']} (Page {next_node['page']}) -> {curr_node['node_id']} (Page {curr_node['page']})")
-                i += 2
-            else:
+            if curr_node.get("type") not in ("table", "graphic"):
                 i += 1
+                continue
+
+            # Forward scan for multi-page continuation chain
+            head_node = curr_node
+            j = i + 1
+            while j < len(nodes):
+                candidate = nodes[j]
+                prev_in_chain = nodes[j - 1]
+                if check_continuation_with_gemini(prev_in_chain, candidate, gemini, prompt_template):
+                    if not head_node.get("continuation_status"):
+                        group_id = f"table_group_{group_counter:04d}"
+                        group_counter += 1
+                        head_node["continuation_status"] = "head"
+                        head_node["is_head"] = True
+                        head_node["continuation_group_id"] = group_id
+                        head_node["merged_nodes"] = [head_node["node_id"]]
+                        head_node["merged_assets"] = []
+                        for p in ("svg_path", "png_path", "raw_text_path"):
+                            if head_node.get(p):
+                                head_node["merged_assets"].append(head_node[p])
+
+                    head_node["merged_nodes"].append(candidate["node_id"])
+                    for p in ("svg_path", "png_path", "raw_text_path"):
+                        if candidate.get(p):
+                            head_node["merged_assets"].append(candidate[p])
+
+                    candidate["continuation_status"] = "continuation"
+                    candidate["is_head"] = False
+                    candidate["continued_from"] = head_node["node_id"]
+                    candidate["continuation_group_id"] = head_node["continuation_group_id"]
+
+                    total_continuations += 1
+                    print(f"    Linked continuation: {candidate['node_id']} (Page {candidate['page']}) -> {head_node['node_id']} (Page {head_node['page']})")
+                    j += 1
+                else:
+                    break
+
+            i = j
 
         # Write immutable output to 06_chapters_continuations
         target_file = out_dir / c_file.name

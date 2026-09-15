@@ -75,8 +75,8 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
         "- heading: Section headings, subheadings, and topic titles within an ongoing chapter (e.g. 'Copper Instruction Summary', 'Register Map', 'Using the Copper Registers'). Do NOT classify the opening chapter banner as heading; use 'chapter'. Use heading_level=1 for major sections, 2 for subsections.\n"
         "- prose: Standard narrative prose body paragraphs.\n"
         "- code_block: Monospace code listings, assembly language, memory dumps.\n"
-        "- table: Structured data tables, register bit assignments, or multi-column grids.\n"
-        "- graphic: Captions, diagram callouts, or embedded schematic labels.\n\n"
+        "- table: Structured data tables, register bit assignments, multi-column grids, and table titles/captions (e.g. 'Table 5-8: Five Octave Even-tempered Scale').\n"
+        "- graphic: Circuit schematics, timing waveforms, block diagrams, IC pinouts, photographs, and diagram callouts/figure captions (e.g. 'Figure 5-8...'). NEVER classify tables or table titles as graphic.\n\n"
         "Return a strict JSON array of objects with fields:\n"
         '[{"idx": 0, "type": "chapter", "heading_level": 1}, ...]\n\n'
         f"Page {page_num} Text Blocks:\n"

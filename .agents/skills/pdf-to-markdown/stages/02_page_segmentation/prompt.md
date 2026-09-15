@@ -16,8 +16,8 @@ Each segment zone must be categorized into exactly one of the following semantic
 6. `heading`: Section headings and subsection titles within an ongoing chapter (e.g. "Copper Instruction Summary", "Register Map", "Using the Copper Registers"). Do NOT classify the opening chapter banner as heading; use `chapter`.
 7. `prose`: Standard narrative body paragraphs.
 8. `code_block`: Monospace assembly listings, C source code, command-line sessions, or memory hex dumps.
-9. `table`: Tabular data grids, multi-column register bit assignments, or structured parameter lists.
-10. `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts, or photographs.
+9. `table`: Tabular data grids, multi-column register bit assignments, structured parameter lists, and table titles/captions (e.g. "Table 5-8: ...", "Table 1-1: ...").
+10. `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts, photographs, and diagram callouts/figure captions (e.g. "Figure 1-1: ..."). Do NOT classify tables or table titles as graphic.
 
 ## Output Format
 

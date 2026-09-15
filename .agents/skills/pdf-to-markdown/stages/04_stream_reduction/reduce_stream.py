@@ -202,6 +202,112 @@ def reduce_contiguous_graphics(
     return reduced_nodes, total_unifications, total_collapsed_nodes
 
 
+def reduce_contiguous_tables(
+    nodes: list,
+    workspace_dir: Path,
+    padding_ratio: float = 0.10,
+    reduced_assets_dir: Path = None,
+) -> tuple:
+    """
+    Identifies runs of contiguous table nodes on the same page.
+    Unifies them into a single consolidated table node, combining bounding boxes,
+    concatenating underlying text, purging fragmented crop assets, and generating
+    a single unified crop asset.
+    """
+    if reduced_assets_dir is None:
+        reduced_assets_dir = workspace_dir / "04_reduced_stream" / "assets"
+    reduced_assets_dir.mkdir(parents=True, exist_ok=True)
+
+    reduced_nodes = []
+    total_unifications = 0
+    total_collapsed_nodes = 0
+    i = 0
+
+    while i < len(nodes):
+        node = nodes[i]
+
+        if node.get("type") == "table":
+            # Detect contiguous run of table nodes on the same page
+            run = [node]
+            j = i + 1
+            while j < len(nodes) and nodes[j].get("type") == "table" and nodes[j].get("page") == node.get("page"):
+                run.append(nodes[j])
+                j += 1
+
+            if len(run) >= 2:
+                page_num = node["page"]
+                # Compute bounding box union in points
+                min_x0 = min(n["bbox"][0] for n in run if n.get("bbox"))
+                min_y0 = min(n["bbox"][1] for n in run if n.get("bbox"))
+                max_x1 = max(n["bbox"][2] for n in run if n.get("bbox"))
+                max_y1 = max(n["bbox"][3] for n in run if n.get("bbox"))
+                union_bbox = [round(min_x0, 2), round(min_y0, 2), round(max_x1, 2), round(max_y1, 2)]
+
+                # Compute normalized bounding box union
+                min_norm_x0 = min(n["bbox_norm"][0] for n in run if n.get("bbox_norm"))
+                min_norm_y0 = min(n["bbox_norm"][1] for n in run if n.get("bbox_norm"))
+                max_norm_x1 = max(n["bbox_norm"][2] for n in run if n.get("bbox_norm"))
+                max_norm_y1 = max(n["bbox_norm"][3] for n in run if n.get("bbox_norm"))
+                union_bbox_norm = [round(min_norm_x0, 4), round(min_norm_y0, 4), round(max_norm_x1, 4), round(max_norm_y1, 4)]
+
+                first_node = run[0]
+                combined_text = "\n\n".join(n.get("raw_text", "").strip() for n in run if n.get("raw_text", "").strip())
+
+                # 1. Delete old individual asset files in 04_reduced_stream/assets/
+                if reduced_assets_dir.exists():
+                    for old_node in run:
+                        old_id = old_node.get("node_id")
+                        if old_id:
+                            for ext in [".png", ".txt", ".svg", ".png.txt"]:
+                                f_asset = reduced_assets_dir / f"asset_{old_id}{ext}"
+                                try:
+                                    f_asset.unlink(missing_ok=True)
+                                except Exception:
+                                    pass
+
+                # 2. Build the single consolidated node
+                unified_node = {
+                    "node_id": first_node["node_id"],
+                    "page": page_num,
+                    "type": "table",
+                    "heading_level": None,
+                    "bbox": union_bbox,
+                    "bbox_norm": union_bbox_norm,
+                    "raw_text": combined_text,
+                    "rendered_markdown": None,
+                    "continuation_status": None,
+                    "metadata": {
+                        "unified_table": True,
+                        "constituent_count": len(run)
+                    },
+                    "welded_nodes": [n["node_id"] for n in run]
+                }
+
+                # 3. Crop/extract the unified asset with safety margin into 04_reduced_stream/assets/
+                if extract_assets_for_nodes:
+                    extract_assets_for_nodes(
+                        workspace_dir,
+                        [unified_node],
+                        padding_ratio=padding_ratio,
+                        assets_dir=reduced_assets_dir,
+                        rel_prefix="04_reduced_stream/assets"
+                    )
+
+                print(f"    [+] Unified {len(run)} table nodes on page {page_num} into {unified_node['node_id']}")
+                total_unifications += 1
+                total_collapsed_nodes += (len(run) - 1)
+
+                reduced_nodes.append(unified_node)
+                i = j
+                continue
+
+        # Single node (or non-table)
+        reduced_nodes.append(node)
+        i += 1
+
+    return reduced_nodes, total_unifications, total_collapsed_nodes
+
+
 def reduce_stream(workspace_dir: Path, config: dict):
     raw_stream_path = workspace_dir / "03_raw_stream" / "raw_stream.json"
     if not raw_stream_path.exists():
@@ -270,10 +376,20 @@ def reduce_stream(workspace_dir: Path, config: dict):
     if num_unifications > 0:
         print(f"[*] Graphic Reduction: Consolidated {num_collapsed_graphics + num_unifications} fragments into {num_unifications} unified diagram(s) (eliminated {num_collapsed_graphics} fragmented nodes).")
 
+    # Step 2b: Unify contiguous table nodes on identical pages
+    nodes_after_tables, num_table_unifications, num_collapsed_tables = reduce_contiguous_tables(
+        nodes_after_graphics,
+        workspace_dir,
+        padding_ratio=padding,
+        reduced_assets_dir=reduced_assets_dir,
+    )
+    if num_table_unifications > 0:
+        print(f"[*] Table Reduction: Consolidated {num_collapsed_tables + num_table_unifications} fragments into {num_table_unifications} unified table(s) (eliminated {num_collapsed_tables} fragmented nodes).")
+
     # Step 3: Weld consecutive prose + prose nodes across page breaks
     final_nodes = []
     welded_prose_count = 0
-    for node in nodes_after_graphics:
+    for node in nodes_after_tables:
         n_type = node.get("type")
         if final_nodes and final_nodes[-1]["type"] == "prose" and n_type == "prose":
             prev = final_nodes[-1]
