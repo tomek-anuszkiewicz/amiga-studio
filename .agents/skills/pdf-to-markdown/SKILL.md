@@ -27,7 +27,7 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │
     ├── 02_page_segmentation/
     │   ├── segment_page.py                  # Vertical banding analysis -> page_XXXX_segments.json
-    │   ├── prompt.md                        # Vision guidelines: header, footer, heading, prose, code_block, table, graphic, toc, toc_header
+    │   ├── prompt.md                        # Vision guidelines: header, footer, chapter, heading, prose, code_block, table, graphic, toc, toc_header
     │   └── README.md
     │
     ├── 03_build_raw_stream/

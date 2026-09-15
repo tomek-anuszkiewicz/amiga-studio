@@ -79,8 +79,8 @@ def process_prose(workspace_dir: Path, config: dict):
             if node.get("rendered_markdown"):
                 continue
 
-            if n_type == "heading":
-                lvl = node.get("heading_level", 2)
+            if n_type in ("heading", "chapter"):
+                lvl = 1 if n_type == "chapter" else (node.get("heading_level") or 2)
                 node["rendered_markdown"] = format_heading(raw_text, level=lvl)
                 formatted_count += 1
             elif n_type == "toc_header":

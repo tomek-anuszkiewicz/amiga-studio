@@ -12,11 +12,12 @@ Each segment zone must be categorized into exactly one of the following semantic
 2. `footer`: Page number or bottom-margin publisher notice.
 3. `toc_header`: The prominent title banner specifically introducing a Table of Contents (e.g. "TABLE OF CONTENTS", "CONTENTS", "Brief Contents").
 4. `toc`: Table of Contents listings and page reference entries.
-5. `heading`: Chapter titles and section headings (e.g. "Chapter 1", "Chapter 2", "INTRODUCTION", "Copper Instruction Summary", "Register Map"). Prominent standalone chapter numbers and major titles must be classified as heading with heading_level=1.
-6. `prose`: Standard narrative body paragraphs.
-7. `code_block`: Monospace assembly listings, C source code, command-line sessions, or memory hex dumps.
-8. `table`: Tabular data grids, multi-column register bit assignments, or structured parameter lists.
-9. `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts, or photographs.
+5. `chapter`: Opening segment on a page indicating a new chapter start (e.g. "Chapter 1", "Chapter 2", "Appendix A", or prominent standalone chapter opening banner). It is the first segment on a page indicating a new chapter.
+6. `heading`: Section headings and subsection titles within an ongoing chapter (e.g. "Copper Instruction Summary", "Register Map", "Using the Copper Registers"). Do NOT classify the opening chapter banner as heading; use `chapter`.
+7. `prose`: Standard narrative body paragraphs.
+8. `code_block`: Monospace assembly listings, C source code, command-line sessions, or memory hex dumps.
+9. `table`: Tabular data grids, multi-column register bit assignments, or structured parameter lists.
+10. `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts, or photographs.
 
 ## Output Format
 

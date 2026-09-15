@@ -71,13 +71,14 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
         "- footer: Running bottom-margin footer or page number at the very bottom of the page.\n"
         "- toc_header: Prominent Table of Contents title banner (e.g. 'Contents', 'Table of Contents').\n"
         "- toc: Table of contents entries, chapter listings, and page number entries.\n"
-        "- heading: Chapter titles and section headings. IMPORTANT: Evaluate the visual typography, large font size, bold weight, and centering on the page image! Standalone major chapter numbers/titles (such as 'Chapter 1', 'Chapter 2', 'INTRODUCTION', 'PREFACE') must be classified as type 'heading' with heading_level=1 (or 2 for subsections).\n"
+        "- chapter: A new chapter start. The opening segment on a page indicating a new chapter (e.g. 'Chapter 1', 'Chapter 2', 'Appendix A', or major standalone chapter opening banner). It is the first segment on a page indicating a new chapter.\n"
+        "- heading: Section headings, subheadings, and topic titles within an ongoing chapter (e.g. 'Copper Instruction Summary', 'Register Map', 'Using the Copper Registers'). Do NOT classify the opening chapter banner as heading; use 'chapter'. Use heading_level=1 for major sections, 2 for subsections.\n"
         "- prose: Standard narrative prose body paragraphs.\n"
         "- code_block: Monospace code listings, assembly language, memory dumps.\n"
         "- table: Structured data tables, register bit assignments, or multi-column grids.\n"
         "- graphic: Captions, diagram callouts, or embedded schematic labels.\n\n"
         "Return a strict JSON array of objects with fields:\n"
-        '[{"idx": 0, "type": "heading", "heading_level": 1}, ...]\n\n'
+        '[{"idx": 0, "type": "chapter", "heading_level": 1}, ...]\n\n'
         f"Page {page_num} Text Blocks:\n"
         f"{json.dumps(blocks_summary, indent=2)}"
     )

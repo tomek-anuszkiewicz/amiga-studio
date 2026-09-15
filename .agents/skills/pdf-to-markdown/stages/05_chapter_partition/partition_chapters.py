@@ -18,40 +18,10 @@ from pathlib import Path
 import yaml
 
 
-def clean_typography_typos(text: str) -> str:
-    """
-    Cleans common OCR and kerning glitches (e.g. wide-spaced capital ligatures).
-    """
-    cleaned = text
-    cleaned = re.sub(r"\bHARDW\s+ARE\b", "HARDWARE", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\bINTER\s+FACE\b", "INTERFACE", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\bOfTStFACB\b", "INTERFACE", cleaned)
-    cleaned = re.sub(r"\bJOY\s+(\d)\s+DAT\b", r"JOY\1DAT", cleaned)
-    cleaned = re.sub(r"\bJOYODATand\b", "JOY0DAT and", cleaned)
-    cleaned = re.sub(r"\u2019", "'", cleaned)
-    cleaned = re.sub(r"[ \t]+", " ", cleaned).strip()
-    return cleaned
-
-
 def generate_slug(text: str) -> str:
-    cleaned = clean_typography_typos(text).lower()
+    cleaned = text.lower()
     cleaned = re.sub(r"[^a-z0-9]+", "_", cleaned).strip("_")
     return cleaned[:40] if cleaned else "section"
-
-
-def is_major_chapter_start(node: dict) -> bool:
-    """
-    Determines if a node is the start of a major chapter/appendix boundary.
-    """
-    if node.get("type") != "heading":
-        return False
-    raw = node.get("raw_text", "").strip()
-    # Matches "Chapter 1", "Chapter 2", "Appendix A", etc.
-    if re.match(r"^Chapter\s+(\d+|[A-Z]+)\b", raw, re.IGNORECASE):
-        return True
-    if re.match(r"^Appendix\s+[A-Z]\b", raw, re.IGNORECASE):
-        return True
-    return False
 
 
 def partition_chapters(workspace_dir: Path, config: dict):
@@ -94,13 +64,13 @@ def partition_chapters(workspace_dir: Path, config: dict):
 
         # Detect First Chapter start (must be after TOC or standalone)
         if first_chapter_idx is None and first_toc_idx is not None and idx > first_toc_idx:
-            if is_major_chapter_start(node):
+            if n_type == "chapter":
                 first_chapter_idx = idx
 
     # Fallback if TOC markers were not present
     if first_chapter_idx is None:
         for idx, node in enumerate(nodes):
-            if is_major_chapter_start(node):
+            if node.get("type") == "chapter":
                 first_chapter_idx = idx
                 break
 
@@ -139,24 +109,24 @@ def partition_chapters(workspace_dir: Path, config: dict):
     while i < len(chapter_nodes):
         node = chapter_nodes[i]
 
-        if is_major_chapter_start(node):
+        if node.get("type") == "chapter":
             # Save previous chapter if active
             if current_chapter_nodes:
                 partitions.append({
                     "index": chapter_counter,
-                    "title": clean_typography_typos(current_chapter_title),
+                    "title": current_chapter_title,
                     "slug": generate_slug(current_chapter_title),
                     "nodes": current_chapter_nodes
                 })
                 chapter_counter += 1
 
-            # Check if next node on the same page is a heading subtitle (e.g. "INTRODUCTION")
+            # Check if next node on the same page is a heading/subtitle (e.g. "INTRODUCTION")
             raw_title = node.get("raw_text", "").strip()
             current_chapter_nodes = [node]
 
             if i + 1 < len(chapter_nodes):
                 next_node = chapter_nodes[i + 1]
-                if next_node.get("page") == node.get("page") and next_node.get("type") == "heading":
+                if next_node.get("page") == node.get("page") and next_node.get("type") in ("heading", "chapter"):
                     subtitle = next_node.get("raw_text", "").strip()
                     current_chapter_title = f"{raw_title}: {subtitle}"
                     current_chapter_nodes.append(next_node)
@@ -179,7 +149,7 @@ def partition_chapters(workspace_dir: Path, config: dict):
     if current_chapter_nodes:
         partitions.append({
             "index": chapter_counter,
-            "title": clean_typography_typos(current_chapter_title),
+            "title": current_chapter_title,
             "slug": generate_slug(current_chapter_title),
             "nodes": current_chapter_nodes
         })
