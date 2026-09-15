@@ -43,8 +43,7 @@ def process_graphics(workspace_dir: Path, config: dict):
     input_candidates = [
         workspace_dir / "07_chapters_tables",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw",
-        workspace_dir / "chapters"
+        workspace_dir / "05_chapters_raw"
     ]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
@@ -149,8 +148,7 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
     input_candidates = [
         workspace_dir / "07_chapters_tables",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw",
-        workspace_dir / "chapters"
+        workspace_dir / "05_chapters_raw"
     ]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:
@@ -228,8 +226,7 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
     input_candidates = [
         workspace_dir / "07_chapters_tables",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw",
-        workspace_dir / "chapters"
+        workspace_dir / "05_chapters_raw"
     ]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:

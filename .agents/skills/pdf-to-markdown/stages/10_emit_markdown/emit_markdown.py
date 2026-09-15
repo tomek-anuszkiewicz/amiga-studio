@@ -39,8 +39,7 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
         workspace_dir / "08_chapters_graphics",
         workspace_dir / "07_chapters_tables",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw",
-        workspace_dir / "chapters"
+        workspace_dir / "05_chapters_raw"
     ]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:

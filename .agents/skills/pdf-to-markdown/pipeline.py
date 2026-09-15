@@ -156,7 +156,7 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     print(f"[*] 04_reduced_stream             : {'OK (' + str(red_path.stat().st_size) + ' B)' if red_path.exists() else 'Missing'}")
 
     # 5. Chapters Raw (05)
-    ch_raw = workspace_dir / "05_chapters_raw" if (workspace_dir / "05_chapters_raw").exists() else (workspace_dir / "chapters")
+    ch_raw = workspace_dir / "05_chapters_raw"
     ch_raw_count = len(list(ch_raw.glob("*.json"))) if ch_raw.exists() else 0
     print(f"[*] 05_chapters_raw               : {ch_raw_count} chapter stream files")
 

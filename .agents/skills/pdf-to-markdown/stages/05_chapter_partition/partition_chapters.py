@@ -38,15 +38,11 @@ def partition_chapters(workspace_dir: Path, config: dict):
 
     chapters_raw_dir = workspace_dir / "05_chapters_raw"
     chapters_raw_dir.mkdir(parents=True, exist_ok=True)
-    chapters_legacy_dir = workspace_dir / "chapters"
-    chapters_legacy_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[*] Partitioning {len(nodes)} nodes into chapter streams...")
 
     # Clean prior chapter json files
     for f in chapters_raw_dir.glob("*.json"):
-        f.unlink()
-    for f in chapters_legacy_dir.glob("*.json"):
         f.unlink()
 
     # Find boundaries for Front Matter and Table of Contents
@@ -170,10 +166,6 @@ def partition_chapters(workspace_dir: Path, config: dict):
         file_name = f"{file_slug}.json"
         target_path = chapters_raw_dir / file_name
         with open(target_path, "w", encoding="utf-8") as f:
-            json.dump(part["nodes"], f, indent=2)
-
-        # Legacy copy for flat access
-        with open(chapters_legacy_dir / file_name, "w", encoding="utf-8") as f:
             json.dump(part["nodes"], f, indent=2)
 
         manifest.append({
