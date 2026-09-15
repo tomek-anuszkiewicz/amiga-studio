@@ -103,15 +103,7 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
             round(bbox[3] / page_h, 4),
         ])
 
-        seg_type, heading_lvl = type_map.get(i, (None, None))
-
-        # Typographical fallback for unmistakable chapter banners
-        if seg_type is None or seg_type == "prose":
-            if re.match(r"^Chapter\s+\d+\b", text, re.IGNORECASE):
-                seg_type = "heading"
-                heading_lvl = 1
-            elif seg_type is None:
-                seg_type = "prose"
+        seg_type, heading_lvl = type_map.get(i, ("prose", None))
 
         segments.append({
             "segment_id": f"page_{page_num:04d}_seg_{seg_counter:03d}",
