@@ -13,10 +13,10 @@ Each segment zone must be categorized into exactly one of the following semantic
 3. `toc_header`: The prominent title banner specifically introducing a Table of Contents (e.g. "TABLE OF CONTENTS", "CONTENTS", "Brief Contents").
 4. `toc`: Table of Contents listings and page reference entries.
 5. `chapter`: Opening segment on a page indicating a new chapter start (e.g. "Chapter 1", "Chapter 2", "Appendix A", or prominent standalone chapter opening banner). It is the first segment on a page indicating a new chapter.
-6. `heading`: Section headings and subsection titles within an ongoing chapter (e.g. "Copper Instruction Summary", "Register Map", "Using the Copper Registers"). Do NOT classify the opening chapter banner as heading; use `chapter`.
+6. `heading`: Section headings, subheadings, topic titles, and data block titles within an ongoing chapter (e.g. "Copper Instruction Summary", "Register Map", "256 Byte Sample", "128 Byte Sample"). Do NOT classify standalone subsection titles as table captions unless it is a formal table title starting with "Table X-Y:".
 7. `prose`: Standard narrative body paragraphs.
-8. `code_block`: Monospace assembly listings, C source code, command-line sessions, or memory hex dumps.
-9. `table`: Tabular data grids, multi-column register bit assignments, structured parameter lists, and table titles/captions (e.g. "Table 5-8: ...", "Table 1-1: ...").
+8. `code_block`: Monospace assembly listings, C source code, command-line sessions, memory hex dumps, or preformatted numeric waveform/sample data matrices (e.g. 16 values per row).
+9. `table`: Formal tabular data grids, multi-column register bit assignments, structured parameter lists, and formal table titles (e.g. "Table 5-8: Five Octave Even-tempered Scale"). Do NOT classify sample array headers like "256 Byte Sample" as table.
 10. `graphic`: Circuit schematics, timing waveforms, block diagrams, IC pinouts, photographs, and diagram callouts/figure captions (e.g. "Figure 1-1: ..."). Do NOT classify tables or table titles as graphic.
 
 ## Output Format

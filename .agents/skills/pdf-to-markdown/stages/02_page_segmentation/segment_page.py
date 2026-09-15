@@ -72,10 +72,10 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
         "- toc_header: Prominent Table of Contents title banner (e.g. 'Contents', 'Table of Contents').\n"
         "- toc: Table of contents entries, chapter listings, and page number entries.\n"
         "- chapter: A new chapter start. The opening segment on a page indicating a new chapter (e.g. 'Chapter 1', 'Chapter 2', 'Appendix A', or major standalone chapter opening banner). It is the first segment on a page indicating a new chapter.\n"
-        "- heading: Section headings, subheadings, and topic titles within an ongoing chapter (e.g. 'Copper Instruction Summary', 'Register Map', 'Using the Copper Registers'). Do NOT classify the opening chapter banner as heading; use 'chapter'. Use heading_level=1 for major sections, 2 for subsections.\n"
+        "- heading: Section headings, subheadings, topic titles, and data block titles within an ongoing chapter (e.g. 'Copper Instruction Summary', 'Register Map', '256 Byte Sample', '128 Byte Sample'). Do NOT classify standalone subsection titles as table captions unless it is a formal table title starting with 'Table X-Y:'. Use heading_level=1 for major sections, 2 for subsections, 3 for sub-headers.\n"
         "- prose: Standard narrative prose body paragraphs.\n"
-        "- code_block: Monospace code listings, assembly language, memory dumps.\n"
-        "- table: Structured data tables, register bit assignments, multi-column grids, and table titles/captions (e.g. 'Table 5-8: Five Octave Even-tempered Scale').\n"
+        "- code_block: Monospace code listings, assembly language, memory hex dumps, or preformatted numeric waveform/sample data arrays (e.g. 16 values per row).\n"
+        "- table: Formal tabular data grids, multi-column register bit assignments, structured parameter lists, and formal table titles (e.g. 'Table 5-8: Five Octave Even-tempered Scale'). Do NOT classify sample array headers like '256 Byte Sample' as table.\n"
         "- graphic: Circuit schematics, timing waveforms, block diagrams, IC pinouts, photographs, and diagram callouts/figure captions (e.g. 'Figure 5-8...'). NEVER classify tables or table titles as graphic.\n\n"
         "Return a strict JSON array of objects with fields:\n"
         '[{"idx": 0, "type": "chapter", "heading_level": 1}, ...]\n\n'

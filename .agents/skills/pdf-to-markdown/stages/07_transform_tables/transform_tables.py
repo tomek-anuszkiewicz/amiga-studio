@@ -76,7 +76,13 @@ def process_tables(workspace_dir: Path, config: dict):
                     raw_text = raw_text + "\n" + "\n".join(child_texts)
 
             full_prompt = f"{base_prompt}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
-            rendered = gemini.generate_text(full_prompt)
+            png_rel = node.get("png_path")
+            png_path = workspace_dir / png_rel if png_rel else None
+
+            if png_path and png_path.exists():
+                rendered = gemini.generate_vision(full_prompt, image_path=png_path)
+            else:
+                rendered = gemini.generate_text(full_prompt)
 
             if rendered:
                 node["rendered_markdown"] = rendered.strip() + "\n"
