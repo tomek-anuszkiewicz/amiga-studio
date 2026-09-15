@@ -101,7 +101,7 @@ impl Copper {
         self.cop_pc = self.cop1lc & 0x0007_FFFE;
         self.is_running = true;
         self.is_waiting = false;
-        self.state = CopperState::FetchIR1(2);
+        self.state = CopperState::FetchIR1(1);
     }
 
     /// Restarts execution using Copper list 2 (COPJMP2 strobe)
@@ -110,7 +110,7 @@ impl Copper {
         self.cop_pc = self.cop2lc & 0x0007_FFFE;
         self.is_running = true;
         self.is_waiting = false;
-        self.state = CopperState::FetchIR1(2);
+        self.state = CopperState::FetchIR1(1);
     }
 
     /// Returns true if the Copper is actively fetching instructions from Chip RAM (not idle or waiting)
@@ -180,14 +180,19 @@ impl Copper {
             // MOVE instruction:
             let reg = self.ir1 & 0x01FE;
             let data = self.ir2;
-            self.state = CopperState::FetchIR1(2);
-            self.is_waiting = false;
 
-            // Copper Danger mode check:
-            // When CDANG is 0, writes to registers below $080 are no-ops
-            if !self.cdang && reg < 0x080 {
+            // Copper Danger mode / illegal register check:
+            // When CDANG is 0, writes to registers below $080 halt Copper.
+            // On OCS, writes below $040 halt Copper even if CDANG is set.
+            let is_illegal = if self.cdang { reg < 0x040 } else { reg < 0x080 };
+
+            if is_illegal {
+                self.is_waiting = true;
+                self.state = CopperState::Idle;
                 None
             } else {
+                self.state = CopperState::FetchIR1(1);
+                self.is_waiting = false;
                 Some((reg, data))
             }
         } else if (self.ir2 & 0x0001) == 0 {
@@ -201,7 +206,7 @@ impl Copper {
                 self.is_waiting = true;
                 if self.eval_comparator(beam, blitter_busy) {
                     self.is_waiting = false;
-                    self.state = CopperState::FetchIR1(2);
+                    self.state = CopperState::FetchIR1(1);
                 } else {
                     self.state = CopperState::Waiting;
                 }
@@ -214,7 +219,7 @@ impl Copper {
                 // Condition met: skip subsequent 32-bit instruction word pair
                 self.cop_pc = self.cop_pc.wrapping_add(4) & 0x0007_FFFE;
             }
-            self.state = CopperState::FetchIR1(2);
+            self.state = CopperState::FetchIR1(1);
             None
         }
     }
@@ -245,7 +250,7 @@ impl Copper {
                     self.ir1 = read_chip_ram_word(chip_ram, self.cop_pc);
                     self.copins = self.ir1;
                     self.cop_pc = self.cop_pc.wrapping_add(2) & 0x0007_FFFE;
-                    self.state = CopperState::FetchIR2(2);
+                    self.state = CopperState::FetchIR2(1);
                 } else {
                     self.state = CopperState::FetchIR1(cck_left.wrapping_sub(1));
                 }
@@ -265,13 +270,13 @@ impl Copper {
                 self.is_waiting = true;
                 if self.eval_comparator(beam, blitter_busy) {
                     self.is_waiting = false;
-                    self.state = CopperState::FetchIR1(2);
+                    self.state = CopperState::FetchIR1(1);
                 }
                 None
             }
             CopperState::Wakeup(cck_left) => {
                 if cck_left <= 1 {
-                    self.state = CopperState::FetchIR1(2);
+                    self.state = CopperState::FetchIR1(1);
                 } else {
                     self.state = CopperState::Wakeup(cck_left.wrapping_sub(1));
                 }

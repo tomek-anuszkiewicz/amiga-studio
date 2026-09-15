@@ -251,6 +251,10 @@ impl Denise {
             // Analog video output DACs are pulled to blanking level (pure black)
             self.frame_builder
                 .set_cck_pixels(beam.hpos, beam.vpos, 0xFF00_0000);
+            if beam.hpos == 226 {
+                self.frame_builder
+                    .set_cck_pixels(227, beam.vpos, 0xFF00_0000);
+            }
         } else {
             // Check whether beam is inside the active Display Window (DIW)
             // Note: DIW coordinates are in low-res pixels (beam.hpos * 2)
@@ -294,6 +298,10 @@ impl Denise {
                 let backdrop_argb = frame_builder::rgb444_to_argb32(self.color[0]);
                 self.frame_builder
                     .set_cck_pixels(beam.hpos, beam.vpos, backdrop_argb);
+                if beam.hpos == 226 {
+                    self.frame_builder
+                        .set_cck_pixels(227, beam.vpos, backdrop_argb);
+                }
             }
         }
 

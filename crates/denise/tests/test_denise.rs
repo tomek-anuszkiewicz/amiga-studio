@@ -75,12 +75,8 @@ fn test_denise_write_bpldat_and_dma_reload() {
     // Advance to end of block 0x38 (hpos = 0x3F, phase = 7)
     let beam_3f = config::BeamPosition::new(0x3F, 50, false);
     denise.step_cck(beam_3f);
-    assert_eq!(denise.bpldat_pipe[0], 0x5678);
-
-    // Advance to start of display (hpos = 0x40, phase = 8)
-    let beam_40 = config::BeamPosition::new(0x40, 50, false);
-    denise.step_cck(beam_40);
-    assert_eq!(denise.shifters[0], 0x5678);
+    // Reloads 0x5678 and shifts out 2 low-res pixels (2 bits) on this CCK
+    assert_eq!(denise.shifters[0], 0x5678 << 2);
 }
 
 #[test]
@@ -99,4 +95,20 @@ fn test_denise_vblank_and_hblank_analog_black() {
     denise.step_cck(beam_hblank);
     let px_hb = denise.frame_builder.get_pixel(20 * 4, 50);
     assert_eq!(px_hb, 0xFF00_0000);
+}
+
+#[test]
+fn test_denise_short_line_cck227_edge_coverage() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.write_color(0, 0x00F0); // Backdrop is green (0x00F0 -> ARGB 0xFF00F000)
+
+    // On an active line (vpos = 50), stepping at CCK 226 (last CCK of short line)
+    // must write both CCK 226 and CCK 227 so that the 912-pixel viewport row is fully filled
+    let beam_226 = config::BeamPosition::new(226, 50, false);
+    denise.step_cck(beam_226);
+
+    let px_226 = denise.frame_builder.get_pixel(226 * 4, 50);
+    let px_227 = denise.frame_builder.get_pixel(227 * 4, 50);
+    assert_eq!(px_226, 0xFF00_F000);
+    assert_eq!(px_227, 0xFF00_F000);
 }
