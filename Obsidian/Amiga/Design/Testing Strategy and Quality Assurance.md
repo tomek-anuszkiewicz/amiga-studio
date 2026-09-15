@@ -134,13 +134,106 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
 - **Key Verification Suites**:
   - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs))**: 45,565 valid opcodes tested cycle-by-cycle against physical silicon captures (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md)).
   - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Full $2^k \times 2^M$ permutation sweep verifying cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity.
-  - **vAmigaTS Visual Frame Differencer ([`crates/test_runner/tests/test_vamiga_*.rs`](../../../crates/test_runner/tests/test_vamiga_harness.rs))**: Automated headless comparison of `Denise` / `FrameBuilder` rendered output against 2,815 physical silicon frame captures.
   - **Opcode Micro-Benchmarks ([`crates/test_runner/tests/test_benchmark_*.rs`](../../../crates/test_runner/tests/test_benchmark_csv.rs))**: Cycle throughput vs golden baseline hashes (see [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)).
   - **Automated Architecture Rules ([`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs))**: 20 automated guardrail tests verifying zero unwraps, file size limits, macro prohibitions, test naming, and 1:1 test parity.
 
 ---
 
-## 3. Structural Conventions & Invariants
+## 3. Tier 4: vAmigaTS Whole-System Visual & Hardware Verification (L4)
+
+vAmigaTS provides full-system integration verification by booting test payloads from ADF floppy images, stepping the machine for $N$ vertical blank frames, and comparing rendered video output (716 × 285 RGB24 viewport, 204,060 pixels) against physical silicon frame captures.
+
+### The 4-Iteration Cascading Verification Protocol
+
+Because an Amiga is a tightly coupled multi-chip system where one clock cycle offset in a central register can manifest as thousands of pixel mismatches across unrelated coprocessors, autonomous agents must never attempt to fix failing tests individually. Instead, verification must follow a structured **4-Iteration Cascading Protocol**:
+
+```mermaid
+graph TD
+    classDef step fill:#1e3a5f,stroke:#4f9da6,stroke-width:2px,color:#ffffff;
+    classDef synth fill:#2d1b4e,stroke:#9d4edd,stroke-width:2px,color:#ffffff;
+
+    I1["<b>Iteration 1: Global Discovery Sweep</b><br/>Run all active baseline tests (1,468)<br/>Isolate shared systemic failure patterns"]:::step
+    I2["<b>Iteration 2: Low-Hanging Systemic Cascades</b><br/>Fix central bus/interrupt/pipeline causes<br/>Verify multi-subsystem pass cascades"]:::step
+    I3["<b>Iteration 3: Geometry & Video Convergence</b><br/>Tune DIW/DDF window, bitplanes, and palettes<br/>Strict 2–3 attempt limit per cluster"]:::step
+    I4["<b>Iteration 4: Final Validation Sweep</b><br/>Run complete baseline suite<br/>Record pass totals in DIARY.md and commit"]:::step
+    SYNTH["<b>Post-Discovery Architectural Synthesis</b><br/>Diff extraction per subsystem<br/>Eliminate ad-hoc if-statements<br/>Unify into single physical hardware law"]:::synth
+
+    I1 --> I2 --> I3 --> I4 --> SYNTH
+```
+
+1. **Iteration 1: Global Discovery Sweep & Baseline Auditing**:
+   - Compile the test runner in release mode (`cargo build --release -p test_runner`).
+   - Run the entire active baseline (`target/release/test_runner.exe vamiga --category all`) across all 1,468 runnable tests in Phase 1 Baseline.
+   - Categorize by subsystem (Copper, Agnus, Blitter, CPU, Denise, Paula, Mainboard, Memory).
+   - Filter out and defer non-runnable tests:
+     - **AGA / ECS Enhanced**: Tests requiring 2 MB Chip RAM or AGA registers (`BPLCON3`, 32-bit burst).
+     - **High CPU / FPU (68020+, 68881/2)**: 32-bit instructions and floating-point math.
+     - **Photo-only tests (CIA)**: Tests lacking 24-bit `.raw` captures.
+     - **Analog Waveform / Stepper Mechanics**: Audio waveform captures without visual frame buffers.
+     - **Interactive scripts (`.retrosh`)**: Real-time mouse and joystick motion scripts.
+   - Identify common, shared failure patterns (e.g. constant mismatch coordinates like `(676, 22)`, frozen loops waiting on interrupts).
+
+2. **Iteration 2: Low-Hanging Systemic Cascades**:
+   - Fix core machine loop and test harness bottlenecks (e.g. unmasking CPU status register `sr = 0x2000` to enable Level 1..6 interrupts; calibrating Agnus raster beam register lead `self.hpos + 4`).
+   - Observe automatic cross-subsystem cascading passes (e.g. Paula interrupts, Mainboard pot counters, Copper halts resolving simultaneously).
+
+3. **Iteration 3: Subsystem Geometry & Video Window Convergence**:
+   - Target near-match test clusters ($< 1\%$ diffs, e.g. Copper `cross1`/`cross2` at 99.94%).
+   - Investigate Denise display window boundaries (`DIWSTRT`/`DIWSTOP`), data fetch windows (`DDFSTRT`/`DDFSTOP`), and bitplane DAC color quantization.
+   - **Enforce the 2–3 Attempt Rule per Cluster**: Never spend more than 2–3 calibration attempts on a single cluster. If an issue requires deep architectural rewrites or analog simulation, document it and proceed to maintain momentum.
+
+4. **Iteration 4: Final Validation Sweep & Regression Lock**:
+   - Re-run the global suite (`--category all`) to capture the updated pass rate.
+   - Verify that earlier passing tests have not regressed.
+   - Log all newly passed tests and quantitative pass rates in [DIARY.md](../../../DIARY.md).
+
+---
+
+## 4. Post-Discovery Architectural Synthesis (The "Anti-Patchwork" Protocol)
+
+A critical failure mode in autonomous AI emulation development is **ad-hoc patch creep**: accumulating local `if`-statements, artificial cycle offsets, and special-case branches to force individual tests to pass. This destroys code readability, violates [AGENTS.md](../../../AGENTS.md), degrades host CPU branch predictability, and breaks adjacent test cases.
+
+To ensure pristine architecture, every verification phase must conclude with the **Post-Discovery Architectural Synthesis**:
+
+### Step-by-Step Synthesis Workflow:
+
+1. **Diff Extraction Across the Sprint**:
+   - Extract the full git changeset from the baseline commit before the test sprint:
+     ```powershell
+     git diff <baseline_commit>..HEAD > sprint_diff.patch
+     ```
+2. **Subsystem Decomposition**:
+   - Partition the diff into independent architectural concerns:
+     - `crates/copper/`: WAIT/SKIP comparators, DMA slot allocation, IR1/IR2 fetch timing.
+     - `crates/agnus/`: Raster beam counters, LOF/LOL interlacing, mutation pipeline delays.
+     - `crates/denise/`: Palette write latency, DIW/DDF window logic, bitplane serialization.
+     - `crates/memory_bus/`: Chip RAM contention, wait-states, open bus floating behavior.
+3. **First-Principles Hardware Law Identification**:
+   - Review all modified lines across the diff from a holistic, bird's-eye perspective:
+     - *Why were these separate adjustments needed?*
+     - *Is there a single physical hardware reality (e.g. bus sampling on the falling edge of CCK2, synchronous signal latching, DMA slot parity) that explains all observed discrepancies?*
+4. **Patchwork Elimination & Model Unification**:
+   - Eliminate every ad-hoc `if` condition added during test exploration.
+   - Implement the identified underlying physical hardware rule cleanly in the appropriate core crate (`memory_bus`, `machine_loop`, `agnus`).
+   - Re-verify that all passing tests continue to pass without a single special-case conditional.
+
+---
+
+## 5. Autonomous Agent Verification Hierarchy (The Self-Building Ladder)
+
+When an autonomous AI agent builds, extends, or refactors any part of the emulator, it must execute tests along the rigorous 5-rung verification ladder:
+
+| Level | Verification Tier | Primary Tool / Command | Pass Criteria |
+| :---: | :--- | :--- | :--- |
+| **L1** | **Isolated Unit Tests** | `cargo test -p <crate>` | 100% pass; $< 1$s runtime; zero allocations |
+| **L2** | **Multi-Crate Integration** | `cargo test -p machine_loop` | 100% pass; 4-question checklist satisfied |
+| **L3** | **Silicon Ground Truth** | `cargo test -p test_runner --test test_singlestep` | Physical silicon opcode match; Cartesian cycle invariance |
+| **L4** | **vAmigaTS Visual Harness** | `target/release/test_runner.exe vamiga --category <cat>` | 4-iteration cascading protocol; RGB24 pixel exact |
+| **L5** | **Architectural Synthesis** | `git diff` review & `python tools/pre_flight.py` | Zero ad-hoc `if` patches; 100% physical hardware model |
+
+---
+
+## 6. Structural Conventions & Invariants
 
 1. **Dedicated External `tests/` Directory**:
    - Zero inline tests in `crates/*/src/` (`#[cfg(test)] mod tests` is strictly forbidden).
@@ -161,7 +254,7 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
 
 ---
 
-## 4. Automated Verification Tooling
+## 7. Automated Verification Tooling
 
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
@@ -173,7 +266,7 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
 
 ---
 
-## 5. Related Architecture Specifications
+## 8. Related Architecture Specifications
 
 - [General Architecture.md](General%20Architecture.md): Amiga 500 system block diagram and crate dependencies.
 - [Main loop A500.md](Main%20loop%20A500.md): Machine loop cycle stepping, reset sequencing, and interrupt arbitration.
