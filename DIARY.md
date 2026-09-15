@@ -3867,5 +3867,22 @@ Every future modification or implementation task must append an entry following 
   - `output_markdown/01_equal_tempered_musical_scale.md`: Verified KaTeX formula, 5-octave cross-page GFM table (Table 5-8), 5 cleanly formatted 16-values-per-row sample waveforms, and Table 5-9 decibel ranges.
   - `python tools/pre_flight.py`: 100% PASS across formatting, attractor discipline (360 files clean), AGENTS.md byte ceiling, and 18 architecture tests.
 
+---
+
+### [2026-09-16 01:50 CEST] — PDF-to-Markdown: Full Visual Diagram Bounding via `graphic_bbox_norm` & State Machine Mermaid Transcription
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/`: Added `graphic_bbox_norm` detection in `prompt.md` and `segment_page.py`.
+  - `.agents/skills/pdf-to-markdown/stages/08_transform_graphics/`: Processed full-sized state machine diagram into Mermaid flowchart + ASCII fallback + RAG sidecar.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed defect where pure diagrams/schematics lacking embedded PDF text blocks (such as Figure 5-8 *Audio State Diagram* on Page 180) were cropped to only the 53-pixel caption line (`Figure 5-8: Audio State Diagram`).
+  - Instructed Gemini Vision in Stage 02 to return `graphic_bbox_norm: [x0, y0, x1, y1]` enclosing the complete visual illustration area on the page.
+  - Expanded the graphic node's bounding box in `segment_page.py` from the 53 px caption to the full 2326x2402 px visual schematic (`[0.113, 0.213, 0.887, 0.835]`).
+  - Tested on Page 180 of the Amiga Hardware Reference Manual: Stage 08 automatically recognized the audio state diagram, transcribing it into a complete, clean Mermaid state transition flowchart (`000`, `001`, `101`, `010`, `011`) with exact hardware signal transitions (`AUDxON`, `perfin`, `AUDxDAT`, `napnav`), collapsible ASCII callout, and a comprehensive technical RAG sidecar.
+- **Verification & Test Results**:
+  - `python .agents/skills/pdf-to-markdown/pipeline.py --start-page 180 --end-page 180`: Pipeline completed with exit code 0.
+  - `output_markdown/01_audio_state_machine.md`: Clean output with signal table, Mermaid diagram, ASCII diagram, and RAG sidecar.
+  - `output_markdown/assets/asset_node_00004.png`: Verified full crop size `(2326, 2402)` pixels.
+  - `python tools/pre_flight.py`: 100% PASS across formatting, attractors, AGENTS.md, and architecture tests.
+
 
 
