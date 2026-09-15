@@ -86,37 +86,37 @@ fn test_bitplane_lores_allocation_and_cycle_stealing() {
     assert!(!dma.is_hires());
 
     // Within active scanline 100 and DDF window (0x38..=0xD0)
-    // Even slots (phases 0, 2, 4, 6) must be claimed by planes 0..3
+    // 4 planes in LoRes: Slots 1 (BPL4), 3 (BPL2), 5 (BPL3), 7 (BPL1)
     let base = 0x0038;
-    assert_eq!(dma.bitplane_channel_for_slot(base + 0, 100), Some(0));
-    assert_eq!(dma.bitplane_channel_for_slot(base + 2, 100), Some(1));
-    assert_eq!(dma.bitplane_channel_for_slot(base + 4, 100), Some(2));
-    assert_eq!(dma.bitplane_channel_for_slot(base + 6, 100), Some(3));
+    assert_eq!(dma.bitplane_channel_for_slot(base + 1, 100), Some(3)); // BPL4
+    assert_eq!(dma.bitplane_channel_for_slot(base + 3, 100), Some(1)); // BPL2
+    assert_eq!(dma.bitplane_channel_for_slot(base + 5, 100), Some(2)); // BPL3
+    assert_eq!(dma.bitplane_channel_for_slot(base + 7, 100), Some(0)); // BPL1
 
-    // Odd slots (phases 1, 3, 5, 7) MUST remain completely free for CPU
-    assert_eq!(dma.bitplane_channel_for_slot(base + 1, 100), None);
-    assert_eq!(dma.bitplane_channel_for_slot(base + 3, 100), None);
-    assert_eq!(dma.bitplane_channel_for_slot(base + 5, 100), None);
-    assert_eq!(dma.bitplane_channel_for_slot(base + 7, 100), None);
+    // Slots 0, 2, 4, 6 MUST remain completely free for CPU/Copper/Blitter with 4 planes
+    assert_eq!(dma.bitplane_channel_for_slot(base + 0, 100), None);
+    assert_eq!(dma.bitplane_channel_for_slot(base + 2, 100), None);
+    assert_eq!(dma.bitplane_channel_for_slot(base + 4, 100), None);
+    assert_eq!(dma.bitplane_channel_for_slot(base + 6, 100), None);
 
-    // Arbitrate odd slot with 4 planes: awards to CPU with zero wait states
-    let owner = dma.arbitrate(base + 1, 100, false, [false; 4], false, false, true);
+    // Arbitrate slot 0 with 4 planes: awards to CPU with zero wait states
+    let owner = dma.arbitrate(base + 0, 100, false, [false; 4], false, false, true);
     assert_eq!(owner, DmaChannel::Cpu);
     assert!(!dma.chip_ram_blocked);
 
-    // Test 5 planes in LoRes (BPLCON0 = 0x5000): Plane 5 steals 25% of odd cycles (phase 1)
+    // Test 5 planes in LoRes (BPLCON0 = 0x5000): Plane 5 steals slot 6
     dma.set_bplcon0(0x5000);
     assert_eq!(dma.planecount(), 5);
-    assert_eq!(dma.bitplane_channel_for_slot(base + 1, 100), Some(4)); // Stolen!
-    assert_eq!(dma.bitplane_channel_for_slot(base + 3, 100), None); // Free
+    assert_eq!(dma.bitplane_channel_for_slot(base + 6, 100), Some(4)); // Stolen by BPL5!
+    assert_eq!(dma.bitplane_channel_for_slot(base + 2, 100), None); // Free
 
-    // Test 6 planes in LoRes (BPLCON0 = 0x6000): Planes 5 & 6 steal 50% of odd cycles (phases 1 & 3)
+    // Test 6 planes in LoRes (BPLCON0 = 0x6000): Plane 6 steals slot 2
     dma.set_bplcon0(0x6000);
     assert_eq!(dma.planecount(), 6);
-    assert_eq!(dma.bitplane_channel_for_slot(base + 1, 100), Some(4)); // Stolen!
-    assert_eq!(dma.bitplane_channel_for_slot(base + 3, 100), Some(5)); // Stolen!
-    assert_eq!(dma.bitplane_channel_for_slot(base + 5, 100), None); // Free
-    assert_eq!(dma.bitplane_channel_for_slot(base + 7, 100), None); // Free
+    assert_eq!(dma.bitplane_channel_for_slot(base + 6, 100), Some(4)); // Stolen by BPL5!
+    assert_eq!(dma.bitplane_channel_for_slot(base + 2, 100), Some(5)); // Stolen by BPL6!
+    assert_eq!(dma.bitplane_channel_for_slot(base + 0, 100), None); // Free
+    assert_eq!(dma.bitplane_channel_for_slot(base + 4, 100), None); // Free
 }
 
 #[test]

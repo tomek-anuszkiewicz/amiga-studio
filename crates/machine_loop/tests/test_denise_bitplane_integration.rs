@@ -130,10 +130,10 @@ fn test_machine_loop_agnus_bpl_dma_routed_to_denise() {
 
     harness.machine.agnus.ddfstrt = 0x38;
     harness.machine.agnus.ddfstop = 0xD0;
-    harness.machine.agnus.hpos = 0x37;
+    harness.machine.agnus.hpos = 0x3E;
     harness.machine.agnus.vpos = 50;
 
-    // Step machine 1 CCK: Agnus fetches $BEEF for plane 0, routed to Denise
+    // Step machine 1 CCK: Agnus reaches slot 0x3F (phase 7) and fetches $BEEF for plane 0, routed to Denise
     harness.machine.step_cck();
 
     assert_eq!(harness.machine.denise.bpldat[0], 0xBEEF);

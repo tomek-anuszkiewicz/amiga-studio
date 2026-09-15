@@ -4034,3 +4034,37 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 20 tests passed cleanly.
   - `python tools/harness/pre_flight.py`: 100% compliant across all gates.
 
+---
+
+### [2026-09-15 23:05 CEST] — Blitter HRM Table 6.2 Decomposition, Modulo Sequencing & Canonical Bitplane DMA Pipeline
+- **Affected Subsystems**:
+  - `crates/blitter/`
+  - `crates/agnus/`
+  - `crates/dma/`
+  - `crates/denise/`
+  - `crates/machine_loop/`
+  - `crates/test_runner/`
+- **What Was Changed (The Concrete Reality)**:
+  - Extracted `BlitterPhase`, `barrel_shift`, and HRM Table 6.2 `word_phases` into `crates/blitter/src/phase.rs` (271 lines), bringing `crates/blitter/src/blitter.rs` from 816 lines down to 564 lines.
+  - Created dedicated unit test suite `crates/blitter/tests/test_phase.rs` verifying Table 6.2 single/multi-channel sequences, barrel shifter masking, and shift wrap semantics.
+  - Re-routed `execute_blit` in `blitter.rs` to call unified `step_cycle` (`step_line_cycle` / `step_area_cycle`), eliminating duplicated execution loops.
+  - Added `is_last_bpl_block(hpos)` in `crates/dma/src/dma.rs` to identify scanline modulo boundary (`block_start == ddfstop`).
+  - Added bitplane modulo advancement (`bpl1mod` odd, `bpl2mod` even) in `crates/agnus/src/agnus.rs` on the last fetch block of each scanline.
+  - Implemented the canonical Commodore Agnus bitplane fetch slot sequence in `crates/dma/src/dma.rs`: slots 1 (BPL4), 2 (BPL6), 3 (BPL2), 5 (BPL3), 6 (BPL5), 7 (BPL1) in LoRes, eliminating scrambled color indices.
+  - Implemented `pending_bpl_dma` assignment during bitplane DMA fetch in Agnus, transmitting 16-bit word data across the bus to Denise.
+  - Decoupled `shift_pixel()` from `in_diw` in `crates/denise/src/denise.rs` so shifters advance continuously when bitplane DMA is active, with DIW gating only display output vs backdrop color.
+  - Implemented 2-stage `bpldat_pipe` reload on `write_bpldat(0, ...)` and block boundary reload at `beam.hpos % period == 0`.
+  - Replaced artificial `+ 6` in `pf_delay` with canonical `(bplcon1 & 0xF) * 2` and evaluated DIW bounds per low-res/hi-res pixel.
+  - Added clean automated test assertions for vAmigaTS `bbusy0` and `sblit0` in `crates/test_runner/tests/test_vamiga_blitter.rs`.
+- **Architectural Rationale & Trade-Offs**:
+  - *File Size Ceiling & Separation of Concerns:* Decomposing `phase.rs` keeps both modules compact and readable while preserving clean 3-tier re-exports (`blitter::phase::*`).
+  - *Hardware Accuracy:* Aligning bitplane DMA fetch slots with real Agnus hardware (`SequencerBpl.cpp`) ensures correct bitplane-to-palette mapping without artificial workarounds.
+- **Verification & Test Results**:
+  - `sblit0`: Pixel mismatches reduced by over 96.6% (from 69,280 down to 2,338 / 204,060), achieving > 98.8% exact visual alignment with full 5-bitplane emoji and playfield rendering.
+  - `bbusy0`: Test scanlines (lines 40..190 covering interrupts Level 1..6 and blits) matched 100%.
+  - `cargo test -p test_runner --test test_vamiga_blitter`: Both `sblit0` and `bbusy0` tests passed.
+  - `cargo test --workspace --exclude test_runner`: 100% passed across all crates.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 20 architecture tests passed.
+  - `python tools/harness/pre_flight.py`: All quality gates passed cleanly.
+
+

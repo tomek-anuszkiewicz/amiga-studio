@@ -111,37 +111,37 @@ fn test_bitplane_contention_scaling() {
     // Case 1: LoRes 4 Planes (BPLCON0 = 0x4000)
     machine.agnus.set_bplcon0(0x4000);
 
-    // Even phase 0: Plane 1 fetches -> Chip RAM blocked
+    // Slot 1: Plane 4 fetches -> Chip RAM blocked
+    machine.agnus.hpos = base + 1 - 1;
+    machine.step_subsystems_cck();
+    assert_eq!(machine.agnus.hpos, base + 1);
+    assert!(machine.physical_memory.chip_ram_blocked);
+
+    // Slot 0: Free for CPU -> zero wait states
     machine.agnus.hpos = base - 1;
     machine.step_subsystems_cck();
     assert_eq!(machine.agnus.hpos, base);
-    assert!(machine.physical_memory.chip_ram_blocked);
-
-    // Odd phase 1: Free for CPU -> zero wait states
-    machine.agnus.hpos = base + 1 - 1;
-    machine.step_subsystems_cck();
-    assert_eq!(machine.agnus.hpos, base + 1);
     assert!(!machine.physical_memory.chip_ram_blocked);
 
-    // Case 2: LoRes 6 Planes (BPLCON0 = 0x6000) -> 50% odd cycle stealing
+    // Case 2: LoRes 6 Planes (BPLCON0 = 0x6000) -> cycle stealing on slots 6 and 2
     machine.agnus.set_bplcon0(0x6000);
 
-    // Odd phase 1: Plane 5 steals cycle -> Chip RAM blocked!
-    machine.agnus.hpos = base + 1 - 1;
+    // Slot 6: Plane 5 steals cycle -> Chip RAM blocked!
+    machine.agnus.hpos = base + 6 - 1;
     machine.step_subsystems_cck();
-    assert_eq!(machine.agnus.hpos, base + 1);
+    assert_eq!(machine.agnus.hpos, base + 6);
     assert!(machine.physical_memory.chip_ram_blocked);
 
-    // Odd phase 3: Plane 6 steals cycle -> Chip RAM blocked!
-    machine.agnus.hpos = base + 3 - 1;
+    // Slot 2: Plane 6 steals cycle -> Chip RAM blocked!
+    machine.agnus.hpos = base + 2 - 1;
     machine.step_subsystems_cck();
-    assert_eq!(machine.agnus.hpos, base + 3);
+    assert_eq!(machine.agnus.hpos, base + 2);
     assert!(machine.physical_memory.chip_ram_blocked);
 
-    // Odd phase 5: Free for CPU -> zero wait states
-    machine.agnus.hpos = base + 5 - 1;
+    // Slot 0: Free for CPU -> zero wait states
+    machine.agnus.hpos = base - 1;
     machine.step_subsystems_cck();
-    assert_eq!(machine.agnus.hpos, base + 5);
+    assert_eq!(machine.agnus.hpos, base);
     assert!(!machine.physical_memory.chip_ram_blocked);
 
     // Case 3: HiRes 4 Planes (BPLCON0 = 0xC000) -> 100% CPU lock-out in DDF window

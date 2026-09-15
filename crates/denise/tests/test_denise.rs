@@ -72,9 +72,9 @@ fn test_denise_write_bpldat_and_dma_reload() {
     // Not reloaded yet
     assert_ne!(denise.shifters[0], 0x5678);
 
-    // Advance to end of block 0x38 (hpos = 0x3F, phase = 7)
-    let beam_3f = config::BeamPosition::new(0x3F, 50, false);
-    denise.step_cck(beam_3f);
+    // Advance to start of next block 0x40 (hpos = 0x40, phase = 0)
+    let beam_40 = config::BeamPosition::new(0x40, 50, false);
+    denise.step_cck(beam_40);
     // Reloads 0x5678 and shifts out 2 low-res pixels (2 bits) on this CCK
     assert_eq!(denise.shifters[0], 0x5678 << 2);
 }

@@ -240,10 +240,8 @@ impl Denise {
 
         if self.frame_builder.dma_enabled && self.bitplane_count() > 0 {
             let period = if self.is_hires() { 4 } else { 8 };
-            let phase = beam.hpos.wrapping_sub(self.ddfstrt);
-            if phase >= period - 1 && ((phase + 1) % period == 0) {
-                self.shifters = self.bpldat;
-                self.bpldat = [0; 6];
+            if beam.hpos % period == 0 {
+                self.shifters = self.bpldat_pipe;
             }
         }
 
@@ -256,37 +254,60 @@ impl Denise {
                     .set_cck_pixels(227, beam.vpos, 0xFF00_0000);
             }
         } else {
-            // Check whether beam is inside the active Display Window (DIW)
-            // Note: DIW coordinates are in low-res pixels (beam.hpos * 2)
-            let in_diw = frame_builder::is_in_display_window(
-                beam.hpos * 2,
-                beam.vpos,
-                self.diwstrt,
-                self.diwstop,
-            );
-
             let plane_count = self.bitplane_count();
-            if in_diw && plane_count > 0 {
+            if self.frame_builder.dma_enabled && plane_count > 0 {
                 let hires = self.is_hires();
-                let pf_delay = ((self.bplcon1 & 0x0F) as usize) * 2 + 6;
+                let pf_delay = ((self.bplcon1 & 0x0F) as usize) * 2;
                 let base_x = (beam.hpos as usize) * 4 + pf_delay;
+                let backdrop = frame_builder::rgb444_to_argb32(self.color[0]);
                 if hires {
                     for px in 0..4 {
                         let p = self.shift_pixel();
-                        let rgb = self.decode_pixel(p);
-                        let argb = frame_builder::rgb444_to_argb32(rgb);
+                        let in_diw_px = frame_builder::is_in_display_window(
+                            beam.hpos * 2 + (px / 2) as u16,
+                            beam.vpos,
+                            self.diwstrt,
+                            self.diwstop,
+                        );
+                        let argb = if in_diw_px {
+                            let rgb = self.decode_pixel(p);
+                            frame_builder::rgb444_to_argb32(rgb)
+                        } else {
+                            backdrop
+                        };
                         self.frame_builder
                             .set_pixel(base_x + px, beam.vpos as usize, argb);
                     }
                 } else {
                     // Low-res: 2 pixels per CCK, each spanning 2 frame buffer pixels
+                    let in_diw0 = frame_builder::is_in_display_window(
+                        beam.hpos * 2,
+                        beam.vpos,
+                        self.diwstrt,
+                        self.diwstop,
+                    );
+                    let in_diw1 = frame_builder::is_in_display_window(
+                        beam.hpos * 2 + 1,
+                        beam.vpos,
+                        self.diwstrt,
+                        self.diwstop,
+                    );
+
                     let p0 = self.shift_pixel();
-                    let rgb0 = self.decode_pixel(p0);
-                    let argb0 = frame_builder::rgb444_to_argb32(rgb0);
+                    let argb0 = if in_diw0 {
+                        let rgb0 = self.decode_pixel(p0);
+                        frame_builder::rgb444_to_argb32(rgb0)
+                    } else {
+                        backdrop
+                    };
 
                     let p1 = self.shift_pixel();
-                    let rgb1 = self.decode_pixel(p1);
-                    let argb1 = frame_builder::rgb444_to_argb32(rgb1);
+                    let argb1 = if in_diw1 {
+                        let rgb1 = self.decode_pixel(p1);
+                        frame_builder::rgb444_to_argb32(rgb1)
+                    } else {
+                        backdrop
+                    };
 
                     let y = beam.vpos as usize;
                     self.frame_builder.set_pixel(base_x, y, argb0);
@@ -338,8 +359,11 @@ impl Denise {
     pub fn write_bpldat(&mut self, plane: usize, val: u16) {
         if plane < 6 {
             self.bpldat[plane] = val;
-            if plane == 0 && !self.frame_builder.dma_enabled {
-                self.shifters = self.bpldat;
+            if plane == 0 {
+                self.bpldat_pipe = self.bpldat;
+                if !self.frame_builder.dma_enabled {
+                    self.shifters = self.bpldat;
+                }
             }
         }
     }

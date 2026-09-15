@@ -197,7 +197,6 @@ impl Agnus {
         // 2. Step embedded coprocessors and schedulers
         let beam = self.beam();
         self.pending_copper_write = self.copper.step_cck(beam, self.blitter.is_busy, chip_ram);
-        self.blitter.step_cck_ram(chip_ram);
         self.dma.step_cck();
 
         // Evaluate 8-tier Master DMA Bus Arbitration
@@ -215,6 +214,9 @@ impl Agnus {
         self.chip_ram_blocked = self.dma.chip_ram_blocked;
 
         match owner {
+            dma::DmaChannel::Blitter => {
+                self.blitter.step_cck_ram(chip_ram);
+            }
             dma::DmaChannel::Bitplane(plane) => {
                 let p = plane as usize;
                 if p < 6 && !chip_ram.is_empty() {
@@ -222,7 +224,17 @@ impl Agnus {
                     if addr + 1 < chip_ram.len() {
                         let word = u16::from_be_bytes([chip_ram[addr], chip_ram[addr + 1]]);
                         self.pending_bpl_dma = Some((plane, word));
-                        self.bplpt[p] = self.bplpt[p].wrapping_add(2) & 0x0007_FFFE;
+                        let mod_inc = if self.dma.is_last_bpl_block(self.hpos) {
+                            if p % 2 == 0 {
+                                self.bpl1mod as i32
+                            } else {
+                                self.bpl2mod as i32
+                            }
+                        } else {
+                            0
+                        };
+                        self.bplpt[p] = self.bplpt[p].wrapping_add(2).wrapping_add(mod_inc as u32)
+                            & 0x0007_FFFE;
                     }
                 }
             }
@@ -311,7 +323,7 @@ impl Agnus {
             _ => PAL_LINE_CCKS,
         };
 
-        let mut h = self.hpos + 4;
+        let mut h = self.hpos + 5;
         let mut v = self.vpos;
         if h >= line_ccks {
             h -= line_ccks;
@@ -372,10 +384,10 @@ impl Agnus {
     pub fn read_dmaconr(&self) -> u16 {
         let mut val = self.dmacon & 0x07FF;
         if self.blitter.is_busy {
-            val |= 0x8000; // BBUSY
+            val |= 0x4000; // BBUSY (bit 14)
         }
         if self.blitter.is_zero {
-            val |= 0x4000; // BZERO
+            val |= 0x2000; // BZERO (bit 13)
         }
         val
     }

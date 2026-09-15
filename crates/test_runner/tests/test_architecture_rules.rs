@@ -1382,7 +1382,12 @@ fn test_multi_module_crate_test_parity() {
     let required_multi_module_tests: &[(&str, &[&str])] = &[
         (
             "blitter",
-            &["test_blitter.rs", "test_line.rs", "test_minterm.rs"],
+            &[
+                "test_blitter.rs",
+                "test_line.rs",
+                "test_minterm.rs",
+                "test_phase.rs",
+            ],
         ),
         (
             "disassembler",

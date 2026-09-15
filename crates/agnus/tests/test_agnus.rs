@@ -139,11 +139,11 @@ fn test_agnus_bpl_dma_polling() {
     agnus.ddfstrt = 0x38;
     agnus.ddfstop = 0xD0;
 
-    agnus.hpos = 0x37;
+    agnus.hpos = 0x3E;
     agnus.vpos = 50;
     agnus.step_cck_ram(&mut chip_ram);
 
-    // Slot 0x38 should have fetched plane 0 from Chip RAM
+    // Slot 0x3F (phase 7 of fetch unit) fetches plane 0 (BPL1) from Chip RAM
     assert_eq!(agnus.poll_bpl_dma(), Some((0, 0xAA55)));
     assert_eq!(agnus.bplpt[0], 0x1002);
 }

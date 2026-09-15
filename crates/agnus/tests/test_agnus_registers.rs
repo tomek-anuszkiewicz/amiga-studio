@@ -106,12 +106,12 @@ fn test_write_only_registers_read_open_bus() {
 #[test]
 fn test_vhposr_beam_lead_and_parity() {
     let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
-    // At hpos = 0, vhposr must reflect hpos + 4 lead
+    // At hpos = 0, vhposr reflects internal Agnus pipeline lead of 5 CCKs (vAmiga peekVHPOSR)
     let val0 = agnus.vhposr();
-    assert_eq!(val0 & 0x00FF, 4);
+    assert_eq!(val0 & 0x00FF, 5);
 
-    // Step 1 CCK (hpos = 1) -> vhposr must reflect 1 + 4 = 5
+    // Step 1 CCK (hpos = 1) -> vhposr must reflect 1 + 5 = 6
     agnus.step_cck();
     let val1 = agnus.vhposr();
-    assert_eq!(val1 & 0x00FF, 5);
+    assert_eq!(val1 & 0x00FF, 6);
 }

@@ -141,6 +141,17 @@ impl DmaScheduler {
         block_start <= self.ddfstop
     }
 
+    /// Returns true if the horizontal position is inside the final Display Data Fetch block of the line
+    #[inline]
+    pub fn is_last_bpl_block(&self, hpos: u16) -> bool {
+        if hpos < self.ddfstrt {
+            return false;
+        }
+        let period = if self.is_hires() { 4 } else { 8 };
+        let block_start = hpos - ((hpos.wrapping_sub(self.ddfstrt)) % period);
+        block_start == self.ddfstop
+    }
+
     /// Returns true if the vertical position is inside active display scanlines
     #[inline]
     pub fn is_in_vertical_display(&self, vpos: u16) -> bool {
@@ -249,25 +260,23 @@ impl DmaScheduler {
         let phase = (hpos.wrapping_sub(self.ddfstrt)) % 8;
 
         if !self.is_hires() {
-            // Low-Resolution (LoRes) scheduling
+            // Low-Resolution (LoRes) scheduling (Canonical Agnus fetch unit sequence)
             match phase {
-                // Even slots: Planes 1..4
-                0 if planes >= 1 => Some(0),
-                2 if planes >= 2 => Some(1),
-                4 if planes >= 3 => Some(2),
-                6 if planes >= 4 => Some(3),
-                // Odd slots: Planes 5..6 (Cycle Stealing)
-                1 if planes >= 5 => Some(4),
-                3 if planes >= 6 => Some(5),
+                1 if planes >= 4 => Some(3), // BPL4
+                2 if planes >= 6 => Some(5), // BPL6
+                3 if planes >= 2 => Some(1), // BPL2
+                5 if planes >= 3 => Some(2), // BPL3
+                6 if planes >= 5 => Some(4), // BPL5
+                7 if planes >= 1 => Some(0), // BPL1
                 _ => None,
             }
         } else {
-            // High-Resolution (HiRes) scheduling (double fetch rate)
+            // High-Resolution (HiRes) scheduling (Canonical Agnus double fetch rate)
             match phase {
-                0 | 4 if planes >= 1 => Some(0),
-                2 | 6 if planes >= 2 => Some(1),
-                1 | 5 if planes >= 3 => Some(2),
-                3 | 7 if planes >= 4 => Some(3),
+                0 | 4 if planes >= 4 => Some(3), // BPL4
+                1 | 5 if planes >= 2 => Some(1), // BPL2
+                2 | 6 if planes >= 3 => Some(2), // BPL3
+                3 | 7 if planes >= 1 => Some(0), // BPL1
                 _ => None,
             }
         }
