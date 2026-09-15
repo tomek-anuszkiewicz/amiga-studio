@@ -3,7 +3,7 @@
 stages/05_chapter_partition/partition_chapters.py:
 Partitions the monolithic reduced_stream.json into chapter-level streams using numeric naming:
 workspace/chapters/{index:02d}_{slug}.json.
-Preamble Invariant: Any segments before the first detected chapter heading are prepended to Chapter 1.
+Preamble & TOC Invariant: Any segments before the first detected chapter heading are partitioned into 00_toc.json (Table of Contents).
 Emits workspace/chapters_manifest.json.
 """
 
@@ -47,6 +47,12 @@ def partition_chapters(workspace_dir: Path, config: dict):
     current_slug = "preliminary"
     has_found_first_heading = False
 
+    # Clean prior chapter json files
+    for f in chapters_raw_dir.glob("*.json"):
+        f.unlink()
+    for f in chapters_legacy_dir.glob("*.json"):
+        f.unlink()
+
     for node in nodes:
         is_heading_1 = (node.get("type") == "heading" and node.get("heading_level") == 1)
 
@@ -57,11 +63,17 @@ def partition_chapters(workspace_dir: Path, config: dict):
 
             if not has_found_first_heading:
                 # First chapter encountered!
-                # Preamble invariant: if current_nodes has content, keep them inside this first chapter
+                # All segments before the first chapter are partitioned into TOC (Table of Contents)
                 has_found_first_heading = True
+                if current_nodes:
+                    partitions.append({
+                        "title": "Table of Contents",
+                        "slug": "toc",
+                        "nodes": current_nodes
+                    })
                 current_title = title_text
                 current_slug = slug
-                current_nodes.append(node)
+                current_nodes = [node]
             else:
                 # Save previous partition
                 if current_nodes:
@@ -93,8 +105,10 @@ def partition_chapters(workspace_dir: Path, config: dict):
         }]
 
     # Write per-chapter JSON files with clean numeric prefixes
+    # If the first partition is TOC, start numbering at 0 so Chapter 1 is 01
+    start_idx = 0 if partitions and partitions[0]["slug"] == "toc" else 1
     manifest = []
-    for idx, part in enumerate(partitions, start=1):
+    for idx, part in enumerate(partitions, start=start_idx):
         file_slug = f"{idx:02d}_{part['slug']}"
         file_name = f"{file_slug}.json"
         target_path = chapters_raw_dir / file_name

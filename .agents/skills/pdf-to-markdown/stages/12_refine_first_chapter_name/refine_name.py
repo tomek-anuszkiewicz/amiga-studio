@@ -30,21 +30,16 @@ def determine_canonical_title_and_slug(content: str, current_name: str) -> tuple
     Analyzes opening section content to determine canonical title and slug.
     """
     lower_content = content.lower()
-
-    # Check for Table of Contents indicators
-    has_toc_links = bool(re.search(r"-\s*\[\[.+\]\]", content))
+    has_toc_links = "[[" in content and ("toc" in lower_content or "contents" in lower_content)
     has_toc_words = "table of contents" in lower_content or "contents" in lower_content
 
-    # Check if Chapter 1 body is present in this opening file
-    if re.search(r"chapter\s+1\b", lower_content):
-        if has_toc_links or has_toc_words:
-            return "Preface, Contents, and Chapter 1: Introduction", "chapter_1_introduction"
-        return "Chapter 1: Introduction", "chapter_1_introduction"
+    # If this is the dedicated TOC partition or contains Table of Contents
+    if "toc" in Path(current_name).stem.lower() or has_toc_links or has_toc_words:
+        return "Table of Contents", "toc"
 
-    if has_toc_links or has_toc_words:
-        if "preface" in lower_content or "foreword" in lower_content:
-            return "Preface and Table of Contents", "preface_and_contents"
-        return "Table of Contents", "table_of_contents"
+    # Check if Chapter 1 body is present in this opening file
+    if re.search(r"^#+\s+chapter\s+1\b", content, re.MULTILINE | re.IGNORECASE):
+        return "Chapter 1: Introduction", "chapter_1"
 
     # Check for Preface / Foreword
     if "preface" in lower_content:

@@ -3,8 +3,8 @@
 ## Objective
 Slices the global `reduced_stream.json` into independent, chapter-level JSON stream files using clean numeric naming (`01_introduction.json`, `02_the_copper.json`).
 
-## Preamble Invariant
-Any segments occurring before the first detected Level 1 chapter heading (such as title page, copyright notices, preface, or front matter) are automatically prepended to the first unit stream. Zero content is discarded or orphaned.
+## Preamble & TOC Invariant
+Any segments occurring before the first detected Level 1 chapter heading (such as title page, copyright notices, preface, and table of contents) are partitioned into their own dedicated unit: `00_toc.json` (`Table of Contents`). Zero content is discarded or orphaned, and Chapter 1 remains isolated as `01_chapter_1.json`.
 
 ## Inputs
 - `workspace/reduced_stream.json`: Normalized node stream.

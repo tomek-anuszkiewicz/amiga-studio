@@ -41,7 +41,7 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │   └── README.md
     │
     ├── 05_chapter_partition/
-    │   ├── partition_chapters.py            # Splits reduced stream into {idx:02d}_{slug}.json; prepends preamble to file 01
+    │   ├── partition_chapters.py            # Splits reduced stream into {idx:02d}_{slug}.json; partitions front matter into 00_toc
     │   └── README.md
     │
     ├── 06_detect_continuations/
@@ -102,7 +102,7 @@ python .agents/skills/pdf-to-markdown/stages/03_build_raw_stream/extract_initial
 # 4. Stream reduction (suppress headers/footers, weld prose, de-hyphenate)
 python .agents/skills/pdf-to-markdown/stages/04_stream_reduction/reduce_stream.py --workspace workspace
 
-# 5. Chapter partition (splits into chapters, prepends front-matter preamble to Chapter 1)
+# 5. Chapter partition (splits into chapters, partitions front matter into 00_toc.json)
 python .agents/skills/pdf-to-markdown/stages/05_chapter_partition/partition_chapters.py --workspace workspace
 ```
 
