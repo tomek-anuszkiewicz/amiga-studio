@@ -11,8 +11,9 @@ Dedicated fuzzy cross-document Table of Contents linker:
 
 import argparse
 import difflib
-import json
+import os
 import re
+import shutil
 import sys
 from pathlib import Path
 import yaml
@@ -193,7 +194,6 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path):
 
 
 def main():
-    import shutil
     parser = argparse.ArgumentParser(description="Stage 11: Fuzzy cross-document Table of Contents linker")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/10_markdown_raw)")
