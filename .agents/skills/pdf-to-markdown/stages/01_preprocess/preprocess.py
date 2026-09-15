@@ -17,7 +17,7 @@ import pymupdf
 import yaml
 
 
-def preprocess_pdf(pdf_path: Path, workspace_dir: Path, dpi: int = 300) -> dict:
+def preprocess_pdf(pdf_path: Path, workspace_dir: Path, dpi: int = 300, max_pages: int = None) -> dict:
     if not pdf_path.exists():
         raise FileNotFoundError(f"Source PDF does not exist: {pdf_path}")
 
@@ -27,7 +27,9 @@ def preprocess_pdf(pdf_path: Path, workspace_dir: Path, dpi: int = 300) -> dict:
     print(f"[*] Opening PDF: {pdf_path}")
     doc = pymupdf.open(str(pdf_path))
     total_pages = len(doc)
-    print(f"[*] Total pages: {total_pages}, Rendering at {dpi} DPI")
+    if max_pages is not None and max_pages > 0:
+        total_pages = min(total_pages, max_pages)
+    print(f"[*] Total pages to process: {total_pages} (of {len(doc)} in doc), Rendering at {dpi} DPI")
 
     manifest = {
         "source_pdf": str(pdf_path),
@@ -109,6 +111,7 @@ def main():
     parser.add_argument("--pdf", type=str, required=True, help="Input PDF document")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--max-pages", type=int, default=None, help="Maximum number of pages to process")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
@@ -121,7 +124,7 @@ def main():
             cfg = yaml.safe_load(f) or {}
             dpi = cfg.get("render", {}).get("dpi", 300)
 
-    preprocess_pdf(pdf_path, workspace_dir, dpi=dpi)
+    preprocess_pdf(pdf_path, workspace_dir, dpi=dpi, max_pages=args.max_pages)
 
 
 if __name__ == "__main__":

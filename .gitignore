@@ -46,6 +46,8 @@ tests/benchmarks/quick/
 tests/benchmarks/standard/
 tests/benchmarks/thorough/
 tests/singlestep/
+.agents/skills/pdf-to-markdown/workspace/
+.agents/skills/pdf-to-markdown/output_markdown/
 
 # ==============================================================================
 # 7. PRESERVED EXTERNAL ASSETS & REFERENCE DATA (CRITICAL - DO NOT PURGE / DELETE!)

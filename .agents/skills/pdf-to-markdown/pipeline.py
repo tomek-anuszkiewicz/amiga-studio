@@ -70,6 +70,7 @@ def run_stage(
     output_dir: Path,
     config_path: Path,
     verbose: bool,
+    max_pages: int = None,
 ) -> bool:
     stage_num, stage_dir_name, script_name, desc = stage_info
     script_path = skill_dir / "stages" / stage_dir_name / script_name
@@ -92,6 +93,8 @@ def run_stage(
     # Add stage-specific flags if needed
     if stage_num == "01":
         cmd.extend(["--pdf", str(pdf_path)])
+        if max_pages:
+            cmd.extend(["--max-pages", str(max_pages)])
     if stage_num in ("10", "11", "12"):
         cmd.extend(["--output-dir", str(output_dir)])
 
@@ -124,6 +127,7 @@ def main():
     parser.add_argument("--stage", type=str, help="Run single stage by number (e.g. 01, 06)")
     parser.add_argument("--from-stage", type=str, help="Start pipeline from stage number (e.g. 03)")
     parser.add_argument("--to-stage", type=str, help="End pipeline at stage number (e.g. 08)")
+    parser.add_argument("--max-pages", type=int, help="Limit number of pages processed in Stage 01")
     parser.add_argument("--resume", action="store_true", help="Resume from last successfully completed stage")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose command printing")
 
@@ -194,6 +198,7 @@ def main():
             output_dir=output_dir,
             config_path=config_path,
             verbose=args.verbose,
+            max_pages=args.max_pages,
         )
 
         if not success:
