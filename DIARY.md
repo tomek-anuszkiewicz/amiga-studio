@@ -3797,3 +3797,33 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed in 0.89s.
   - `python tools/pre_flight.py`: 100% compliant across formatting, attractors, AGENTS.md limits, and architecture rules.
 
+---
+
+### [2026-09-15 14:15 CEST] — Modular 12-Stage PDF-to-Markdown Skill Pipeline Implementation
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/` (`SKILL.md`, `pipeline.py`, `config.yaml`, and 12 stage directories under `stages/`)
+- **What Was Changed (The Concrete Reality)**:
+  - Architected and implemented the complete 12-stage stream-based conversion skill for technical Amiga and Motorola 68000 manuals:
+    - `config.yaml`: Global settings for 300 DPI rendering, 10% safety margin padding on raster crops, marker definitions, and LLM model bindings.
+    - `pipeline.py`: Master CLI orchestrator supporting full end-to-end runs, selective single-stage execution (`--stage`), stage range runs (`--from-stage`, `--to-stage`), and state resumption (`--resume`).
+    - `SKILL.md`: Comprehensive skill guide, workflow recipes, contract specifications, and CLI examples.
+    - `stages/01_preprocess/` (`preprocess.py`, `README.md`): Splits PDF into single-page vector PDFs, 300 DPI PNGs, and PyMuPDF geometry text dumps (`blocks`).
+    - `stages/02_page_segmentation/` (`segment_page.py`, `prompt.md`, `README.md`): Vertical layout analysis categorizing zones into `header`, `footer`, `heading`, `prose`, `code_block`, `table`, `graphic`, `toc`, and `toc_header`.
+    - `stages/03_build_raw_stream/` (`build_stream.py`, `extract_initial_assets.py`, `README.md`): Assembles global sequential `raw_stream.json`, crops SVG/PNG visual assets with a 10% margin, and extracts underlying text from bounding boxes into `assets/asset_{node_id}.txt`.
+    - `stages/04_stream_reduction/` (`reduce_stream.py`, `prompt_seam.md`, `README.md`): Suppresses headers/footers, welds split prose paragraphs across page boundaries, and resolves word de-hyphenation.
+    - `stages/05_chapter_partition/` (`partition_chapters.py`, `README.md`): Slices the stream into section files with clean numeric prefixing (`{index:02d}_{slug}.json`). Enforces the preamble invariant by prepending pre-chapter content to Chapter 1.
+    - `stages/06_detect_continuations/` (`detect_continuations.py`, `prompt_continuation.md`, `README.md`): Scans adjacent table/graphic blocks across page transitions, querying an LLM/heuristic to tag continuation relationships (`head` vs `continuation`, `continuation_group_id`, `merged_assets`).
+    - `stages/07_transform_tables/` (`transform_tables.py`, `prompt_markdown_table.md`, `prompt_html_table.md`, `README.md`): Synthesizes multi-page continuation tables into unified outputs; converts simple tables to GFM (4-column book layout, Unicode arrows) and complex tables to semantic HTML `<table>`.
+    - `stages/08_transform_graphics/` (`transform_graphics.py`, `prompt_mermaid.md`, `prompt_rag_sidecar.md`, `README.md`): Converts state machines/flowcharts to Mermaid + collapsible ASCII callouts (`> [!NOTE]-`), embeds complex schematics as Obsidian wikilinks, and generates technical RAG sidecars (`.png.txt`).
+    - `stages/09_transform_prose/` (`format_prose.py`, `prompt.md`, `README.md`): Formats narrative text, backticks hex addresses and registers, formats code blocks with explicit language tags, and wraps TOC blocks in `<!-- TOC34534 -->` and `<!-- /TOC34534 -->` delimiters.
+    - `stages/10_emit_markdown/` (`emit_markdown.py`, `README.md`): Emits one `.md` file per section formatted as `<output_dir>/{index:02d}_{slug}.md` with Line 1 YAML frontmatter; explicitly ignores `toc_header` segments and synchronizes visual assets.
+    - `stages/11_link_toc/` (`link_toc.py`, `README.md`): Catalogs all headers across generated Markdown documents, fuzzy matches TOC entries, converts them to Obsidian cross-file wikilinks, and strips the temporary `TOC34534` markers.
+    - `stages/12_refine_first_chapter_name/` (`refine_name.py`, `prompt.md`, `README.md`): Inspects the opening chapter content and assigns its canonical title and slug (e.g. `00_table_of_contents.md`), updating frontmatter and cross-file links.
+- **Architectural Rationale & Trade-Offs**:
+  - *Decoupled Stage Isolation:* Isolating every transformation into its own stage directory with independent scripts and JSON contracts allows individual stages to be debugged, tested, or resumed without re-running upstream PDF rendering or LLM vision passes.
+  - *Unified TOC and Continuation Lifecycles:* Explicitly tagging TOC blocks with unique delimiters and linking continuations in JSON state eliminates fragile text-regex splicing.
+- **Verification & Test Results**:
+  - `python .agents/skills/pdf-to-markdown/pipeline.py --help`: Verified CLI argument parsing and help output.
+  - `python tools/pre_flight.py`: Passed 100% cleanly across formatting, attractor discipline (359 files clean), AGENTS.md byte ceiling (13,576 bytes), and all 18 architecture tests.
+
+

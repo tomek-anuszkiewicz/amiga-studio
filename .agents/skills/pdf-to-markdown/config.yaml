@@ -1,0 +1,35 @@
+# Global configuration for the modular PDF-to-Markdown pipeline
+
+render:
+  dpi: 300
+  image_format: "png"
+  padding_margin_ratio: 0.10  # 10% safety margin on raster fallback crops
+
+paths:
+  workspace_dir: "workspace"
+  pages_dir: "workspace/pages"
+  segments_dir: "workspace/segments"
+  assets_dir: "workspace/assets"
+  chapters_dir: "workspace/chapters"
+  default_output_dir: "output_markdown"
+
+llm:
+  provider: "google-genai"     # google-genai, openai, or mock/offline
+  model_vision: "gemini-2.5-flash"
+  model_prose: "gemini-2.5-flash"
+  model_table: "gemini-2.5-flash"
+  model_fast: "gemini-2.5-flash"
+  timeout_seconds: 60
+  temperature: 0.1
+
+markers:
+  toc_start: "<!-- TOC34534 -->"
+  toc_end: "<!-- /TOC34534 -->"
+
+table_heuristics:
+  max_columns_gfm: 6
+  simple_table_check: true
+
+segmentation:
+  min_band_height_pt: 12.0
+  column_gutter_threshold_pt: 18.0
