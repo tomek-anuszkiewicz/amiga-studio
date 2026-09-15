@@ -68,8 +68,40 @@ fn test_agnus_batch_mutations_commit_all_without_dropping() {
 }
 
 #[test]
-fn test_agnus_pal_lol_alternation_and_frame_total() {
+fn test_agnus_pal_scanline_length_and_frame_total() {
     let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    assert_eq!(agnus.hpos, 0);
+    assert_eq!(agnus.vpos, 0);
+    assert!(!agnus.lol);
+
+    // In PAL, all lines have strictly 227 CCKs (PAL_LINE_CCKS)
+    for _ in 0..227 {
+        agnus.step_cck();
+    }
+    assert_eq!(agnus.vpos, 1);
+    assert_eq!(agnus.hpos, 0);
+    assert!(!agnus.lol);
+
+    // Line 1 also has 227 CCKs
+    for _ in 0..227 {
+        agnus.step_cck();
+    }
+    assert_eq!(agnus.vpos, 2);
+    assert_eq!(agnus.hpos, 0);
+    assert!(!agnus.lol);
+
+    // Total CCKs for the 312 lines in the frame: 312 * 227 = 70,824
+    let mut total_ccks = 227 + 227;
+    while agnus.vpos != 0 {
+        agnus.step_cck();
+        total_ccks += 1;
+    }
+    assert_eq!(total_ccks, 70_824);
+}
+
+#[test]
+fn test_agnus_ntsc_lol_alternation() {
+    let mut agnus = Agnus::new(AgnusModel::OcsNtsc8370);
     assert_eq!(agnus.hpos, 0);
     assert_eq!(agnus.vpos, 0);
     assert!(!agnus.lol);
@@ -89,14 +121,6 @@ fn test_agnus_pal_lol_alternation_and_frame_total() {
     assert_eq!(agnus.vpos, 2);
     assert_eq!(agnus.hpos, 0);
     assert!(!agnus.lol);
-
-    // Total CCKs for the remainder of the 312 lines in the frame
-    let mut total_ccks = 227 + 228;
-    while agnus.vpos != 0 {
-        agnus.step_cck();
-        total_ccks += 1;
-    }
-    assert_eq!(total_ccks, 70_980);
 }
 
 #[test]

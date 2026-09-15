@@ -120,6 +120,8 @@ pub fn inject_vamiga_test(machine: &mut A500Machine, adf_bytes: &[u8]) -> Result
     machine.cpu.state.ssp = VAMIGA_STACK_POINTER;
     machine.cpu.state.set_a_long(7, VAMIGA_STACK_POINTER);
     machine.cpu.state.sr = 0x2000; // Supervisor mode, IPL 0 (interrupts enabled)
+                                   // Emulate Kickstart OS state: Master Interrupts (INTEN) enabled
+    machine.paula.intena = 0x4000;
     machine.set_pc_and_prime_prefetch(VAMIGA_ENTRY_POINT);
 
     Ok(())

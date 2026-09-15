@@ -41,6 +41,8 @@ pub struct VamigaTestResult {
     pub total_pixels: usize,
     /// Details of the first mismatched pixel encountered (if any)
     pub first_mismatch: Option<VamigaDiff>,
+    /// Sampled mismatched pixels (up to 256) for diagnostic inspection
+    pub diffs: Vec<VamigaDiff>,
 }
 
 /// Compares a 612,180-byte rendered RGB frame against reference bytes.
@@ -58,6 +60,7 @@ pub fn compare_raw_frames(
 
     let mut mismatched_pixels = 0usize;
     let mut first_mismatch = None;
+    let mut diffs = Vec::new();
 
     for pixel_idx in 0..VAMIGA_RAW_PIXELS {
         let byte_offset = pixel_idx * 3;
@@ -78,15 +81,19 @@ pub fn compare_raw_frames(
             || diff_b > COLOR_TOLERANCE_PER_CHANNEL
         {
             mismatched_pixels += 1;
+            let x = pixel_idx % VAMIGA_RAW_WIDTH;
+            let y = pixel_idx / VAMIGA_RAW_WIDTH;
+            let diff = VamigaDiff {
+                x,
+                y,
+                actual: [act_r, act_g, act_b],
+                expected: [exp_r, exp_g, exp_b],
+            };
             if first_mismatch.is_none() {
-                let x = pixel_idx % VAMIGA_RAW_WIDTH;
-                let y = pixel_idx / VAMIGA_RAW_WIDTH;
-                first_mismatch = Some(VamigaDiff {
-                    x,
-                    y,
-                    actual: [act_r, act_g, act_b],
-                    expected: [exp_r, exp_g, exp_b],
-                });
+                first_mismatch = Some(diff.clone());
+            }
+            if diffs.len() < 256 {
+                diffs.push(diff);
             }
         }
     }
@@ -97,5 +104,6 @@ pub fn compare_raw_frames(
         mismatched_pixels,
         total_pixels: VAMIGA_RAW_PIXELS,
         first_mismatch,
+        diffs,
     })
 }

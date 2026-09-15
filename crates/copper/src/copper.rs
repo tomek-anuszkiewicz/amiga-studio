@@ -250,6 +250,9 @@ impl Copper {
         match self.state {
             CopperState::Idle => None,
             CopperState::FetchIR1(cck_left) => {
+                if beam.hpos == 0xE0 {
+                    return None;
+                }
                 if cck_left <= 1 {
                     self.ir1 = read_chip_ram_word(chip_ram, self.cop_pc);
                     self.copins = self.ir1;
@@ -261,6 +264,9 @@ impl Copper {
                 None
             }
             CopperState::FetchIR2(cck_left) => {
+                if beam.hpos == 0xE0 {
+                    return None;
+                }
                 if cck_left <= 1 {
                     self.ir2 = read_chip_ram_word(chip_ram, self.cop_pc);
                     self.cop_pc = self.cop_pc.wrapping_add(2) & 0x0007_FFFE;

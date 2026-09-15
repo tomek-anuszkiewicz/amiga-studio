@@ -287,3 +287,28 @@ fn test_copper_wait_vertical_boundary_cross_above_line_128() {
     assert_eq!(cop.state, CopperState::FetchIR1(2));
     assert!(!cop.is_waiting);
 }
+
+#[test]
+fn test_copper_dma_denied_at_cycle_e0() {
+    let mut cop = Copper::new();
+    cop.set_dma_enabled(true);
+    cop.set_cop1lc(0x00010000);
+    cop.restart_list1();
+
+    let mut ram = vec![0u8; 0x20000];
+    let base = 0x10000;
+    // MOVE $0180, $0F00
+    ram[base..base + 4].copy_from_slice(&[0x01, 0x80, 0x0F, 0x00]);
+
+    // Beam at HPOS 0xE0: Copper DMA is denied by Agnus hardware
+    let beam_e0 = BeamPosition::new(0xE0, 50, false);
+    let res = cop.step_cck(beam_e0, false, &ram);
+    assert_eq!(res, None);
+    // State must not advance while stalled at cycle 0xE0
+    assert_eq!(cop.state, CopperState::FetchIR1(2));
+
+    // When advancing to HPOS 0xE1 (free cycle), fetch progresses normally
+    let beam_e1 = BeamPosition::new(0xE1, 50, false);
+    cop.step_cck(beam_e1, false, &ram);
+    assert_eq!(cop.state, CopperState::FetchIR1(1));
+}

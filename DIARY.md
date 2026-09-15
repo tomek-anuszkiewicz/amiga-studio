@@ -4005,3 +4005,32 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - pre_flight.py passed 100% (formatting, attractors, AGENTS.md 13,648 bytes, test coupling, API coverage 100%, architecture rules 20/20)
   - run_tests.py --unit and --integration passed cleanly
+
+---
+
+### [2026-09-15 21:55 CEST] — Copper Silicon Cycle $E0 DMA Denial & PAL Constant Scanline Calibration
+- **Affected Subsystems**:
+  - `crates/copper/`
+  - `crates/agnus/`
+  - `crates/test_runner/`
+- **What Was Changed (The Concrete Reality)**:
+  - Implemented Agnus physical silicon Copper DMA lockout at cycle $E0 in `crates/copper/src/copper.rs` across `FetchIR1` and `FetchIR2` states.
+  - Calibrated PAL scanline length in `crates/agnus/src/agnus.rs` to strictly 227 CCKs (`PAL_LINE_CCKS`) without erroneous `lol` long-line alternation (which is exclusive to NTSC subcarrier division).
+  - Updated `crates/agnus/tests/test_agnus.rs` to test constant 227 CCK scanlines and 70,824 total CCKs in PAL frames alongside NTSC alternation.
+  - Added unit test `test_copper_dma_denied_at_cycle_e0` in `crates/copper/tests/test_copper.rs` verifying that Copper fetch stalls without advancing `cck_left` on cycle $E0.
+  - Enabled Paula `INTEN` (Master Interrupt bit 14, `0x4000`) in `crates/test_runner/src/vamiga/injector.rs` to emulate Kickstart OS initialization state.
+  - Augmented `VamigaTestResult` in `crates/test_runner/src/vamiga/matcher.rs` with `diffs: Vec<VamigaDiff>` sample collection to provide precise coordinate and RGB diagnostics on test failures.
+- **Architectural Rationale & Trade-Offs**:
+  - *Physical Silicon Invariant:* In physical Agnus silicon, Copper DMA is denied during cycle $E0 (`pos.h == 0xE0`), preventing bus contention at the horizontal blank wrap boundary.
+  - *PAL Subcarrier Precision:* In PAL, the color clock is ~3.546895 MHz with horizontal rate 15.625 kHz, yielding exactly 227.0 clocks per scanline. Toggling `lol` alternated 227 and 228 CCKs, introducing horizontal jitter across even/odd scanlines.
+- **Verification & Test Results**:
+  - `cross6`: 100% pixel match (0 mismatches).
+  - `cross1`: Mismatches reduced from 124 down to 24 (99.99% match).
+  - `cross2`: Mismatches reduced from 124 down to 12 (99.994% match).
+  - `cross5`: 4 mismatches (99.998% match).
+  - `irq1`–`irq4`: Initial crash/red screen at (0, 0) eliminated; CPU Level 3 autovector handling verified.
+  - `halt1`..`halt5`: 100% pixel match retained across all 5 tests.
+  - `cargo test -p test_runner --test test_vamiga_copper`: Passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 20 tests passed cleanly.
+  - `python tools/harness/pre_flight.py`: 100% compliant across all gates.
+

@@ -170,20 +170,22 @@ impl Agnus {
             _ => PAL_FRAME_LINES,
         };
         let line_ccks = match self.model {
-            AgnusModel::OcsNtsc8370 => NTSC_LINE_CCKS,
-            _ => {
+            AgnusModel::OcsNtsc8370 => {
                 if self.lol {
                     228
                 } else {
                     227
                 }
             }
+            _ => PAL_LINE_CCKS,
         };
 
         self.hpos = self.hpos.wrapping_add(1);
         if self.hpos >= line_ccks {
             self.hpos = 0;
-            self.lol = !self.lol;
+            if matches!(self.model, AgnusModel::OcsNtsc8370) {
+                self.lol = !self.lol;
+            }
             self.vpos = self.vpos.wrapping_add(1);
             if self.vpos >= max_lines {
                 self.vpos = 0;
@@ -299,14 +301,14 @@ impl Agnus {
             _ => PAL_FRAME_LINES,
         };
         let line_ccks = match self.model {
-            AgnusModel::OcsNtsc8370 => NTSC_LINE_CCKS,
-            _ => {
+            AgnusModel::OcsNtsc8370 => {
                 if self.lol {
                     228
                 } else {
                     227
                 }
             }
+            _ => PAL_LINE_CCKS,
         };
 
         let mut h = self.hpos + 4;
@@ -340,14 +342,14 @@ impl Agnus {
             _ => PAL_FRAME_LINES,
         };
         let line_ccks = match self.model {
-            AgnusModel::OcsNtsc8370 => NTSC_LINE_CCKS,
-            _ => {
+            AgnusModel::OcsNtsc8370 => {
                 if self.lol {
                     228
                 } else {
                     227
                 }
             }
+            _ => PAL_LINE_CCKS,
         };
 
         let mut h = self.hpos + 4;
@@ -455,6 +457,8 @@ impl Agnus {
             0x086 => {
                 self.copper.cop2lc = (self.copper.cop2lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
             }
+            0x088 => self.copper.restart_list1(),
+            0x08A => self.copper.restart_list2(),
             0x08E => {
                 self.diwstrt = val;
                 self.dma.set_diwstrt(val);
