@@ -3847,5 +3847,25 @@ Every future modification or implementation task must append an entry following 
   - `06_chapters_continuations/01_section.json`: Verified `is_head: true` on `node_00008` (Page 174) and `continuation_status: "continuation"` on `node_00017` (Page 175).
   - `python tools/pre_flight.py`: 100% PASS across formatting, attractor discipline (360 files clean), AGENTS.md byte limit, and all 18 architecture tests.
 
+---
+
+### [2026-09-16 01:40 CEST] — PDF-to-Markdown: Data Array Code Block Welding, Vision-Assisted Formatting & OCR Glitch Repair
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/`: Refined segmentation prompt to distinguish standalone sample/waveform array headers from formal table captions.
+  - `.agents/skills/pdf-to-markdown/stages/03_build_raw_stream/`: Extended asset extraction (`extract_initial_assets.py`) to generate visual crop PNGs for `code_block` nodes.
+  - `.agents/skills/pdf-to-markdown/stages/04_stream_reduction/`: Added contiguous `code_block` welding (`reduce_stream.py`) to unify fragmented multi-box listings and data arrays on the same page.
+  - `.agents/skills/pdf-to-markdown/stages/07_transform_tables/`: Added Gemini Vision support (`transform_tables.py`) and explicit anti-zipping prompt instructions (`prompt_markdown_table.md`).
+  - `.agents/skills/pdf-to-markdown/stages/09_transform_prose/`: Added Gemini Vision support (`format_prose.py`) and prompt instructions (`prompt.md`) to format numeric waveform sample arrays into 16 values per row, right-aligned, while repairing scanned OCR noise.
+- **What Was Changed (The Concrete Reality)**:
+  - Resolved the Page 176 waveform sample collapsing bug where 5 vertically stacked sample arrays (`256 Byte Sample`, `128 Byte Sample`, `64 Byte Sample`, `32 Byte Sample`, `16 Byte Sample`) were mistakenly zipped into a single 5-column table.
+  - Segmented the sample titles as `heading` level 2 and the numeric arrays as `code_block`.
+  - Implemented contiguous `code_block` welding in Stage 04 so fragmented PyMuPDF text boxes on identical pages (such as the 3 fragments of the 64-byte sample) are welded into a single unified block with a combined bounding box.
+  - Connected Gemini Vision to Stage 07 (tables) and Stage 09 (code blocks) when cropped visual assets exist.
+  - Reconstructed the clean 16-numbers-per-row grid layout in `01_equal_tempered_musical_scale.md` matching the physical manual, repairing OCR character corruptions in arithmetic sequences (e.g. `00\nOOi` -> `-88`, `yJL` -> `92`, `4 0` -> `-40`).
+- **Verification & Test Results**:
+  - `python .agents/skills/pdf-to-markdown/pipeline.py --from-stage 03 --to-stage 12`: Stages 03 through 12 executed cleanly with exit code 0.
+  - `output_markdown/01_equal_tempered_musical_scale.md`: Verified KaTeX formula, 5-octave cross-page GFM table (Table 5-8), 5 cleanly formatted 16-values-per-row sample waveforms, and Table 5-9 decibel ranges.
+  - `python tools/pre_flight.py`: 100% PASS across formatting, attractor discipline (360 files clean), AGENTS.md byte ceiling, and 18 architecture tests.
+
 
 
