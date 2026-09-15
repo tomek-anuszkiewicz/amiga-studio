@@ -89,9 +89,9 @@ To guarantee clean separation between production logic and test harnesses, all t
 4. **Strict Prohibition of Inline Tests in `src/`:**
    - Embedding `#[cfg(test)] mod tests { ... }` or `#[test]` inside `crates/<crate>/src/<crate>.rs` (or any other `src/*.rs` file) is strictly forbidden across all workspace crates.
 5. **The 3-Tier Testing Taxonomy:**
-   - **Tier 1 (Isolated Unit Tests, L1):** Fast, isolated tests of single crates and algorithmic modules (< 2s). Run via `python tools/run_tests.py --unit`.
-   - **Tier 2 (Headless Multi-Crate Integration Tests, L2):** Cross-subsystem orchestration across machine loop, debugger, GUI, and bus routing (`machine_loop`, `debugger`, `gui`, `memory_bus`). Run via `python tools/run_tests.py --integration`.
-   - **Tier 3 (Silicon Verification & Verification Harness, L3):** Tom Harte physical silicon SingleStepTests, Cartesian DMA contention sweeps, vAmigaTS RGB24 viewport matchers, opcode benchmarks, and architecture rules. Run via `python tools/run_tests.py --harness`.
+   - **Tier 1 (Isolated Unit Tests, L1):** Fast, isolated tests of single crates and algorithmic modules (< 2s). Run via `python tools/harness/run_tests.py --unit`.
+   - **Tier 2 (Headless Multi-Crate Integration Tests, L2):** Cross-subsystem orchestration across machine loop, debugger, GUI, and bus routing (`machine_loop`, `debugger`, `gui`, `memory_bus`). Run via `python tools/harness/run_tests.py --integration`.
+   - **Tier 3 (Silicon Verification & Verification Harness, L3):** Tom Harte physical silicon SingleStepTests, Cartesian DMA contention sweeps, vAmigaTS RGB24 viewport matchers, opcode benchmarks, and architecture rules. Run via `python tools/harness/run_tests.py --harness`.
 6. **Core Architectural Rationale:**
    - **Pure Production Code:** Production code in `src/` remains lean, uncluttered, and readable. Static analysis, dead-code detection, and file size limits ($\le 800$ lines) reflect genuine runtime code.
    - **Decoupled API Verification:** External test files compile as distinct crates, forcing tests to exercise modules strictly through public interfaces as downstream consumers (`machine_loop`, `debugger`, `gui`) do.
@@ -103,20 +103,20 @@ To guarantee clean separation between production logic and test harnesses, all t
 
 To prevent shallow scaffolding and untested code from entering the repository, testing is enforced through automated gates and Git hooks:
 
-1. **Change-Coupling Gate (`tools/check_test_coupling.py`):**
+1. **Change-Coupling Gate (`tools/harness/check_test_coupling.py`):**
    - Whenever a commit or working tree changeset modifies or adds production code under `crates/<crate>/src/`, it **must also modify or add test files under `crates/<crate>/tests/`**.
-   - Committing changes to `src/` without accompanying test changes is strictly blocked by the Git pre-commit hook and `pre_flight.py`.
+   - Committing changes to `src/` without accompanying test changes is strictly blocked by the Git pre-commit hook and `tools/harness/pre_flight.py`.
 
 2. **Minimum Test & Assertion Density (`test_architecture_rules.rs`):**
    - Every workspace crate must define at least **2 active `#[test]` functions** and at least **10 assertions** (`assert!`, `assert_eq!`, `assert_ne!`).
    - Single-test placeholder scaffolding is strictly forbidden.
 
-3. **Public API Coverage Scanner (`tools/audit_api_coverage.py`):**
+3. **Public API Coverage Scanner (`tools/harness/audit_api_coverage.py`):**
    - Scans all public functions (`pub fn`) declared in `src/` and verifies that they are referenced and tested in unit/integration test suites.
    - Peripheral and utility crates (`joystick`, `mouse`, `keyboard`, `game_ports`, `rtc`, `parallel_port`, `serial_port`, `frame_builder`) must maintain 100% public API test coverage.
 
 4. **Git Pre-Commit Hook (`.git/hooks/pre-commit`):**
-   - Automatically executes `tools/check_polish.py --git`, `tools/check_test_coupling.py --staged`, and `tools/pre_flight.py --quick` on every `git commit`.
+   - Automatically executes `tools/harness/check_polish.py --git`, `tools/harness/check_test_coupling.py --staged`, and `tools/harness/pre_flight.py --quick` on every `git commit`.
 
 ---
 

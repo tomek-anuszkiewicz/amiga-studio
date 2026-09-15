@@ -8,12 +8,12 @@ import runpy
 
 script_dir = Path(__file__).resolve().parent
 repo_root = script_dir.parent
-target = repo_root / "tools" / "check_polish.py"
+target = repo_root / "tools" / "harness" / "check_polish.py"
 
 if not target.exists():
     # Fallback search up
     for parent in script_dir.parents:
-        cand = parent / "tools" / "check_polish.py"
+        cand = parent / "tools" / "harness" / "check_polish.py"
         if cand.exists():
             target = cand
             break

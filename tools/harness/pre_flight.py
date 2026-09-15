@@ -18,7 +18,7 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 AGENTS_MD_PATH = REPO_ROOT / "AGENTS.md"
 MAX_AGENTS_MD_BYTES = 14000
 LINTER_SCRIPT = REPO_ROOT / ".agents" / "skills" / "attractor-discipline" / "scripts" / "lint_attractors.py"
@@ -73,8 +73,8 @@ def check_agents_md():
         return False, f"{size:,} bytes exceeds constitutional ceiling ({MAX_AGENTS_MD_BYTES:,} bytes) by {size - MAX_AGENTS_MD_BYTES:,} bytes", elapsed
     return True, f"{size:,} bytes (<= {MAX_AGENTS_MD_BYTES:,} limit)", elapsed
 
-TEST_COUPLING_SCRIPT = REPO_ROOT / "tools" / "check_test_coupling.py"
-API_COVERAGE_SCRIPT = REPO_ROOT / "tools" / "audit_api_coverage.py"
+TEST_COUPLING_SCRIPT = Path(__file__).resolve().parent / "check_test_coupling.py"
+API_COVERAGE_SCRIPT = Path(__file__).resolve().parent / "audit_api_coverage.py"
 
 def check_test_coupling():
     if not TEST_COUPLING_SCRIPT.exists():

@@ -35,7 +35,7 @@ flowchart LR
      - For CPU changes: Run SingleStepTests (`cargo test -p test_runner --test test_singlestep`).
      - For Bus/DMA changes: Run Cartesian contention tests (`cargo test -p test_runner --test test_dma_cartesian`).
      - For GUI changes: Run headless integration tests (`cargo test -p gui --test test_interactions`).
-     - Always run the Pre-Flight Gate (`python tools/pre_flight.py`).
+     - Always run the Pre-Flight Gate (`python tools/harness/pre_flight.py`).
 
 4. **Permanent Regression Anchor:**
    - The reproduction test must remain in `crates/<crate>/tests/` permanently to prevent future regressions.

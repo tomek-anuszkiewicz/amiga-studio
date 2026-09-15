@@ -27,7 +27,7 @@ Mandatory Pre-Task Conceptual Retrieval (`source = "obsidian"`):
 
 Division of Responsibility between RAG and Graphify:
 - **Use Graphify** (`graphify query`, `graphify path`, `graphify explain`): For questions about code structure, AST, relationships between source files in this repository, call hierarchies, and architecture.
-- **Use RAG** (`python tools/rag_search.py` or MCP `rag_search`): For domain knowledge, hardware specifications (OCS/ECS/AGA), register definitions, AmigaOS libraries (Exec, Graphics, Intuition), data formats, and personal Obsidian research notes.
+- **Use RAG** (`python tools/harness/rag_search.py` or MCP `rag_search`): For domain knowledge, hardware specifications (OCS/ECS/AGA), register definitions, AmigaOS libraries (Exec, Graphics, Intuition), data formats, and personal Obsidian research notes.
 - **Use Both**: When implementing or debugging a feature — first consult RAG to understand the hardware/library specs and design principles, then consult Graphify to locate and navigate the corresponding code in this repository.
 - If search results include diagram or image file paths, reference them or use `view_file` when helpful.
 - When the user asks about the RAG database state, call `rag_status` or `rag_list_sources`.
@@ -36,11 +36,11 @@ Mandatory Knowledge Retrieval Precedence (Zero Raw Manual Scanning):
 - **Pre-Search Mandate**: Whenever investigating hardware registers, chip timing (Agnus, Denise, Paula), memory maps, or custom chip architecture:
   - You **MUST FIRST** query the knowledge base via CLI or MCP:
     ```powershell
-    python tools/rag_search.py "<query>"
+    python tools/harness/rag_search.py "<query>"
     ```
-  - For architecture notes: `python tools/rag_search.py "<query>" --source obsidian`
-  - For hardware chip specs: `python tools/rag_search.py "<query>" --source amiga`
-- **Prohibition of Direct Manual Crawling**: Never open large reference manuals under `Obsidian/Amiga/Reference/` via `view_file` or perform wide `grep_search` across manuals without first running `tools/rag_search.py`. Use `view_file` only on the specific targeted section or snippet identified by RAG.
+  - For architecture notes: `python tools/harness/rag_search.py "<query>" --source obsidian`
+  - For hardware chip specs: `python tools/harness/rag_search.py "<query>" --source amiga`
+- **Prohibition of Direct Manual Crawling**: Never open large reference manuals under `Obsidian/Amiga/Reference/` via `view_file` or perform wide `grep_search` across manuals without first running `tools/harness/rag_search.py`. Use `view_file` only on the specific targeted section or snippet identified by RAG.
 
 Tooling, Reindexing & Infrastructure:
 - **Tools & MCP Server**: The ingestion pipeline, CLI (`amiga_rag`), and FastMCP server reside in this repository under [`tools/rag/`](tools/rag/) (incremental cache configured in `.env` via `RAG_CACHE_FILE`).

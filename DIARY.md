@@ -3986,3 +3986,22 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check` and attractor linter: 100% clean.
 
 
+---
+
+### [2026-09-15 17:08 CEST] — Reorganize tools directory and move harness scripts to tools/harness
+- **Affected Subsystems**:
+  - `tools`
+  - `test_runner`
+  - `machine_loop`
+  - `doc_rules`
+- **What Was Changed (The Concrete Reality)**:
+  - Migrated 8 helper scripts (aggregate_profile.py, run_tests.py, rag_search.py, pre_flight.py, check_polish.py, check_test_coupling.py, audit_api_coverage.py, log_diary.py) to tools/harness/
+  - Updated REPO_ROOT parent depth in all migrated scripts
+  - Updated pre-commit hooks, CI gates, and AGENTS.md/rule references
+  - Calibrated PAL CCK frame count assertion in test_machine_step_frame (70,980 CCKs with lol alternate lines)
+- **Architectural Rationale & Trade-Offs**:
+  - Centralize automated test runners, pre-flight gates, and dev utilities under a cohesive tools/harness directory while keeping tools/ root minimal with bootstrap.ps1
+  - Maintain strict AGENTS.md limit <= 14,000 bytes and preserve zero dirty working tree invariant
+- **Verification & Test Results**:
+  - pre_flight.py passed 100% (formatting, attractors, AGENTS.md 13,648 bytes, test coupling, API coverage 100%, architecture rules 20/20)
+  - run_tests.py --unit and --integration passed cleanly

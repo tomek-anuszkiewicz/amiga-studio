@@ -17,7 +17,7 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 RAG_DIR = REPO_ROOT / "tools" / "rag"
 
 if str(RAG_DIR) not in sys.path:

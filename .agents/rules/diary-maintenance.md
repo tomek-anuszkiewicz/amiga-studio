@@ -17,12 +17,12 @@ Whenever an agent implements, refactors, fixes, or modifies any code, subsystem,
 
 ---
 
-## 2. Deterministic Logging Tool (`tools/log_diary.py`)
+## 2. Deterministic Logging Tool (`tools/harness/log_diary.py`)
 
 To prevent context bloat and eliminate reading the 90+ KB `DIARY.md` file into context:
 - **Recommended Workflow:** Always use the deterministic CLI tool:
   ```powershell
-  python tools/log_diary.py \
+  python tools/harness/log_diary.py \
     --title "<Title>" \
     --subsystems "<crates/..., rules/...>" \
     --changes "<bullet 1>; <bullet 2>" \

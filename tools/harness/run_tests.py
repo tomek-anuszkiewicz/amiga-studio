@@ -22,7 +22,7 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Tier 1: Pure Unit Tests (isolated crate / algorithmic modules)
 TIER1_UNIT_CRATES = [

@@ -9,7 +9,7 @@ import re
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 CRATES_DIR = REPO_ROOT / "crates"
 
 # Known dispatch tables or auto-generated opcode handlers that are executed via tables

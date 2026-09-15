@@ -31,7 +31,7 @@ except ImportError as e:
     print("Please install requirements: pip install lingua-language-detector pyspellchecker", file=sys.stderr)
     sys.exit(2)
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TARGET_FILE = REPO_ROOT / ".agents" / "rules" / "language-policy.md"
 
 # Build language detector with candidate languages
@@ -286,6 +286,7 @@ def handle_git_hook():
 
     excluded_files = {
         "tools/check_polish.py",
+        "tools/harness/check_polish.py",
         ".agents/rules/language-policy.md",
         ".agents/hooks/check_polish.py",
         "DIARY.md"

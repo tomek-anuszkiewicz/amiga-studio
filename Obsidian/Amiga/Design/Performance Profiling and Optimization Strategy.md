@@ -105,11 +105,11 @@ Modeled after the proven M68000 instruction benchmarking system ([CPU Instructio
   }
   ```
 
-### 3.1 Method-Level Profile Aggregation (`tools/aggregate_profile.py`)
+### 3.1 Method-Level Profile Aggregation (`tools/harness/aggregate_profile.py`)
 To obtain method and module time distribution without intrusive runtime probes:
 1. Run external sampling profiler (`samply record ...` or `perf record ...`).
 2. Aggregate samples by canonical entry method:
-   - `python tools/aggregate_profile.py <profile_file> --target coptim1 --update-baseline tests/benchmarks/chipset_benchmark_baseline.json`
+   - `python tools/harness/aggregate_profile.py <profile_file> --target coptim1 --update-baseline tests/benchmarks/chipset_benchmark_baseline.json`
 3. Canonical entry methods:
    - `Cpu::step_cck` (`cpu`)
    - `Agnus::step_cck_ram` (`agnus` -> `Copper::step_cck`, `Blitter::step_cck_ram`, `DmaScheduler::arbitrate`)

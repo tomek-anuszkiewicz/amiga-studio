@@ -58,7 +58,7 @@ graph TD
 ### Tier 1: Isolated Unit Tests (L1 — Fast, Unit Scope)
 - **Scope**: Single crate, single module in complete isolation. Zero multi-chip machine state.
 - **Execution Speed**: Microseconds to milliseconds (< 2 seconds total across all 24 peripheral and core crates).
-- **Execution Command**: `python tools/run_tests.py --unit`
+- **Execution Command**: `python tools/harness/run_tests.py --unit`
 - **Responsibilities**:
   - Bitwise operations, register reads/writes, wrapping arithmetic, and state transitions.
   - Bresenham line drawer math, octants, and 256-minterm Boolean truth tables ([`crates/blitter/tests/`](../../../crates/blitter/tests/)).
@@ -71,7 +71,7 @@ graph TD
 ### Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)
 - **Scope**: Multi-crate interaction, bus routing, and system loop orchestration.
 - **Execution Speed**: 3 to 15 seconds.
-- **Execution Command**: `python tools/run_tests.py --integration`
+- **Execution Command**: `python tools/harness/run_tests.py --integration`
 - **Primary Integration Hubs**:
   1. **Machine Loop Nexus ([`crates/machine_loop/tests/`](../../../crates/machine_loop/tests/))**:
      - `test_machine_loop.rs`: Top-level A500 state machine loop step progression, monotonic CCK clock progression, CPU bus wait-states.
@@ -130,7 +130,7 @@ If the answer to **any** question is **YES**, authoring a Tier 2 integration tes
 
 ### Tier 3: Silicon Ground Truth & Verification Harness (L3 — Physical Vectors)
 - **Scope**: External reference validation against real Commodore hardware silicon captures and benchmarks.
-- **Execution Command**: `python tools/run_tests.py --harness` or targeted test runners.
+- **Execution Command**: `python tools/harness/run_tests.py --harness` or targeted test runners.
 - **Key Verification Suites**:
   - **Tom Harte SingleStepTests ([`crates/test_runner/tests/test_singlestep.rs`](../../../crates/test_runner/tests/test_singlestep.rs))**: 45,565 valid opcodes tested cycle-by-cycle against physical silicon captures (see [CPU SingleStepTests.md](CPU%20SingleStepTests.md)).
   - **Cartesian DMA Contention ([`crates/test_runner/tests/test_dma_cartesian.rs`](../../../crates/test_runner/tests/test_dma_cartesian.rs))**: Full $2^k \times 2^M$ permutation sweep verifying cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity.
@@ -229,7 +229,7 @@ When an autonomous AI agent builds, extends, or refactors any part of the emulat
 | **L2** | **Multi-Crate Integration** | `cargo test -p machine_loop` | 100% pass; 4-question checklist satisfied |
 | **L3** | **Silicon Ground Truth** | `cargo test -p test_runner --test test_singlestep` | Physical silicon opcode match; Cartesian cycle invariance |
 | **L4** | **vAmigaTS Visual Harness** | `target/release/test_runner.exe vamiga --category <cat>` | 4-iteration cascading protocol; RGB24 pixel exact |
-| **L5** | **Architectural Synthesis** | `git diff` review & `python tools/pre_flight.py` | Zero ad-hoc `if` patches; 100% physical hardware model |
+| **L5** | **Architectural Synthesis** | `git diff` review & `python tools/harness/pre_flight.py` | Zero ad-hoc `if` patches; 100% physical hardware model |
 
 ---
 
@@ -258,10 +258,10 @@ When an autonomous AI agent builds, extends, or refactors any part of the emulat
 
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
-| [`tools/run_tests.py`](../../../tools/run_tests.py) | CLI runner for Tier 1 (`--unit`), Tier 2 (`--integration`), and Tier 3 (`--harness`). | Developer workflow & CI |
-| [`tools/pre_flight.py`](../../../tools/pre_flight.py) | Master 4-gate pre-commit quality checker (Formatting, Attractors, AGENTS.md size, Architecture tests). | Git pre-commit hook & CI |
-| [`tools/check_test_coupling.py`](../../../tools/check_test_coupling.py) | Verifies that changes to `crates/<crate>/src/` are coupled with changes to `crates/<crate>/tests/`. | Git pre-commit hook |
-| [`tools/audit_api_coverage.py`](../../../tools/audit_api_coverage.py) | Statically verifies that public functions (`pub fn`) are referenced and tested in unit/integration suites. | Pre-flight gate (`--strict`) |
+| [`tools/harness/run_tests.py`](../../../tools/harness/run_tests.py) | CLI runner for Tier 1 (`--unit`), Tier 2 (`--integration`), and Tier 3 (`--harness`). | Developer workflow & CI |
+| [`tools/harness/pre_flight.py`](../../../tools/harness/pre_flight.py) | Master 4-gate pre-commit quality checker (Formatting, Attractors, AGENTS.md size, Architecture tests). | Git pre-commit hook & CI |
+| [`tools/harness/check_test_coupling.py`](../../../tools/harness/check_test_coupling.py) | Verifies that changes to `crates/<crate>/src/` are coupled with changes to `crates/<crate>/tests/`. | Git pre-commit hook |
+| [`tools/harness/audit_api_coverage.py`](../../../tools/harness/audit_api_coverage.py) | Statically verifies that public functions (`pub fn`) are referenced and tested in unit/integration suites. | Pre-flight gate (`--strict`) |
 | [`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs) | 20 automated tests validating architectural rules, test naming, and multi-module parity. | `cargo test` & pre-flight gate |
 
 ---
