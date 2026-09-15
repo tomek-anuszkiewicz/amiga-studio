@@ -64,19 +64,20 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
         return []
 
     prompt = (
-        "You are an expert technical book layout analyzer. "
-        "Classify each of the extracted text blocks into exactly ONE semantic type:\n"
-        "- header: Running top header or chapter title rule\n"
-        "- footer: Running bottom footer or page number\n"
-        "- toc_header: Prominent Table of Contents title banner (e.g. 'Contents', 'Table of Contents')\n"
-        "- toc: Table of contents entries, chapter listings, page number entries\n"
-        "- heading: Major chapter heading (heading_level=1) or section heading (heading_level=2 or 3)\n"
-        "- prose: Standard narrative prose paragraphs\n"
-        "- code_block: Monospace code listings, assembly language, memory dumps\n"
-        "- table: Structured data tables, register bit assignments\n"
-        "- graphic: Captions or embedded diagram labels\n\n"
+        "You are an expert technical document layout and typography analyzer for computer manuals. "
+        "Inspect the attached 300 DPI high-resolution page image alongside the extracted text block bounding boxes. "
+        "Classify each of the extracted text blocks into exactly ONE semantic type based on its visual appearance and position:\n"
+        "- header: Running top-margin document header or chapter title rule at the very top of the page.\n"
+        "- footer: Running bottom-margin footer or page number at the very bottom of the page.\n"
+        "- toc_header: Prominent Table of Contents title banner (e.g. 'Contents', 'Table of Contents').\n"
+        "- toc: Table of contents entries, chapter listings, and page number entries.\n"
+        "- heading: Chapter titles and section headings. IMPORTANT: Evaluate the visual typography, large font size, bold weight, and centering on the page image! Standalone major chapter numbers/titles (such as 'Chapter 1', 'Chapter 2', 'INTRODUCTION', 'PREFACE') must be classified as type 'heading' with heading_level=1 (or 2 for subsections).\n"
+        "- prose: Standard narrative prose body paragraphs.\n"
+        "- code_block: Monospace code listings, assembly language, memory dumps.\n"
+        "- table: Structured data tables, register bit assignments, or multi-column grids.\n"
+        "- graphic: Captions, diagram callouts, or embedded schematic labels.\n\n"
         "Return a strict JSON array of objects with fields:\n"
-        "[{\"idx\": 0, \"type\": \"header\", \"heading_level\": null}, ...]\n\n"
+        '[{"idx": 0, "type": "heading", "heading_level": 1}, ...]\n\n'
         f"Page {page_num} Text Blocks:\n"
         f"{json.dumps(blocks_summary, indent=2)}"
     )
@@ -102,7 +103,15 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
             round(bbox[3] / page_h, 4),
         ])
 
-        seg_type, heading_lvl = type_map.get(i, ("prose", None))
+        seg_type, heading_lvl = type_map.get(i, (None, None))
+
+        # Typographical fallback for unmistakable chapter banners
+        if seg_type is None or seg_type == "prose":
+            if re.match(r"^Chapter\s+\d+\b", text, re.IGNORECASE):
+                seg_type = "heading"
+                heading_lvl = 1
+            elif seg_type is None:
+                seg_type = "prose"
 
         segments.append({
             "segment_id": f"page_{page_num:04d}_seg_{seg_counter:03d}",

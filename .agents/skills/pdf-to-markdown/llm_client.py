@@ -20,8 +20,8 @@ class GeminiClient:
     def __init__(self, config: dict = None):
         self.config = (config or {}).get("llm", {})
         self.api_key = os.getenv("GEMINI_API_KEY")
-        self.default_model = self.config.get("model_prose", "gemini-3.6-flash")
-        self.vision_model = self.config.get("model_vision", "gemini-3.6-flash")
+        self.default_model = self.config.get("model_prose", "gemini-3.8-flash")
+        self.vision_model = self.config.get("model_vision", "gemini-3.8-flash")
         self.thinking_level = self.config.get("thinking_level", "medium")
         self.temperature = self.config.get("temperature", 0.1)
         self.client = None

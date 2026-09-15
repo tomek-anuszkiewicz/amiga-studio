@@ -12,7 +12,7 @@ Each segment zone must be categorized into exactly one of the following semantic
 2. `footer`: Page number or bottom-margin publisher notice.
 3. `toc_header`: The prominent title banner specifically introducing a Table of Contents (e.g. "TABLE OF CONTENTS", "CONTENTS", "Brief Contents").
 4. `toc`: Table of Contents listings and page reference entries.
-5. `heading`: Section or subsection titles (e.g. "Copper Instruction Summary", "Register Map").
+5. `heading`: Chapter titles and section headings (e.g. "Chapter 1", "Chapter 2", "INTRODUCTION", "Copper Instruction Summary", "Register Map"). Prominent standalone chapter numbers and major titles must be classified as heading with heading_level=1.
 6. `prose`: Standard narrative body paragraphs.
 7. `code_block`: Monospace assembly listings, C source code, command-line sessions, or memory hex dumps.
 8. `table`: Tabular data grids, multi-column register bit assignments, or structured parameter lists.
