@@ -46,6 +46,8 @@ tests/benchmarks/quick/
 tests/benchmarks/standard/
 tests/benchmarks/thorough/
 tests/singlestep/
+**/workspace/
+**/output_markdown/
 .agents/skills/pdf-to-markdown/workspace/
 .agents/skills/pdf-to-markdown/output_markdown/
 

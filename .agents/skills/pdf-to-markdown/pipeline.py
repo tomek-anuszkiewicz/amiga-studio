@@ -199,8 +199,8 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
 def main():
     parser = argparse.ArgumentParser(description="Master 12-Stage PDF-to-Markdown Pipeline Orchestrator")
     parser.add_argument("--pdf", type=str, help="Path to input technical PDF document")
-    parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory for intermediate data")
-    parser.add_argument("--output-dir", type=str, default="output_markdown", help="Output directory for generated Markdown files")
+    parser.add_argument("--workspace", type=str, default=None, help="Workspace directory for intermediate data (defaults to <book_dir>/workspace)")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory for generated Markdown files (defaults to <book_dir>/output_markdown)")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
     parser.add_argument("--stage", type=str, help="Run single stage by number (e.g. 01, 06)")
     parser.add_argument("--from-stage", type=str, help="Start pipeline from stage number (e.g. 03)")
@@ -222,14 +222,26 @@ def main():
 
     config = load_config(config_path)
 
-    workspace_dir = Path(args.workspace)
-    if not workspace_dir.is_absolute():
-        workspace_dir = skill_dir / workspace_dir
+    pdf_path = Path(args.pdf) if args.pdf else None
+    if pdf_path and not pdf_path.is_absolute():
+        pdf_path = Path.cwd() / pdf_path
+    book_dir = pdf_path.parent if pdf_path else None
+
+    # Default workspace and output directories to the book's directory if PDF is provided
+    if args.workspace:
+        workspace_dir = Path(args.workspace)
+        if not workspace_dir.is_absolute():
+            workspace_dir = (book_dir / workspace_dir) if book_dir else (Path.cwd() / workspace_dir)
+    else:
+        workspace_dir = (book_dir / "workspace") if book_dir else (Path.cwd() / "workspace")
     workspace_dir.mkdir(parents=True, exist_ok=True)
 
-    output_dir = Path(args.output_dir)
-    if not output_dir.is_absolute():
-        output_dir = skill_dir / output_dir
+    if args.output_dir:
+        output_dir = Path(args.output_dir)
+        if not output_dir.is_absolute():
+            output_dir = (book_dir / output_dir) if book_dir else (Path.cwd() / output_dir)
+    else:
+        output_dir = (book_dir / "output_markdown") if book_dir else (Path.cwd() / "output_markdown")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.status:
@@ -258,10 +270,6 @@ def main():
         cmd = [sys.executable, str(script), "--workspace", str(workspace_dir), "--config", str(config_path), "--apply"]
         subprocess.run(cmd, check=True)
         return
-
-    pdf_path = Path(args.pdf) if args.pdf else None
-    if pdf_path and not pdf_path.is_absolute():
-        pdf_path = Path.cwd() / pdf_path
 
     status_file = workspace_dir / "stage_status.json"
 
