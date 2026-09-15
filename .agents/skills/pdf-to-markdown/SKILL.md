@@ -36,8 +36,9 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │   └── README.md
     │
     ├── 04_stream_reduction/
-    │   ├── reduce_stream.py                 # Normalizes stream: suppresses headers/footers, fuses prose
+    │   ├── reduce_stream.py                 # Normalizes stream: suppresses headers/footers, unifies contiguous graphics, fuses prose
     │   ├── prompt_seam.md                   # De-hyphenation & paragraph continuation guidelines
+    │   ├── prompt_graphics_union.md         # Vision validation for contiguous graphic fragment union
     │   └── README.md
     │
     ├── 05_chapter_partition/
@@ -99,7 +100,7 @@ python .agents/skills/pdf-to-markdown/stages/02_page_segmentation/segment_page.p
 python .agents/skills/pdf-to-markdown/stages/03_build_raw_stream/build_stream.py --workspace workspace
 python .agents/skills/pdf-to-markdown/stages/03_build_raw_stream/extract_initial_assets.py --workspace workspace
 
-# 4. Stream reduction (suppress headers/footers, weld prose, de-hyphenate)
+# 4. Stream reduction (suppress headers/footers, unify contiguous graphics, weld prose, de-hyphenate)
 python .agents/skills/pdf-to-markdown/stages/04_stream_reduction/reduce_stream.py --workspace workspace
 
 # 5. Chapter partition (splits into chapters, partitions front matter into 00_toc.json)
