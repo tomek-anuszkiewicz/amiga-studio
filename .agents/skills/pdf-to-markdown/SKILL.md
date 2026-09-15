@@ -22,6 +22,7 @@ All conversion scripts and references reside inside this skill directory:
 │   ├── merge_chapters.py                  # Page-to-chapter compiler, header/footer stripper, & navigation injector
 │   ├── png_to_svg_helper.py               # Vectorization helper & SVG viewBox/clipPath safety auditor
 │   ├── verify_page_vision.py              # Visual double-check tool comparing markdown vs original page PNG
+│   ├── verify_text_fidelity.py            # Statistical word & lexical fidelity auditor (catches summarization)
 │   ├── audit_conversion.py                # Automated semantic sanity auditor (catches prose-in-code leaks)
 │   └── validate_links.py                  # Anchor, image asset, and link integrity validator
 └── references/
@@ -248,7 +249,28 @@ Checklist to verify:
 
 ---
 
-### Phase 8: Link Integrity & Asset Audit
+### Phase 8: Statistical Word & Lexical Fidelity Audit
+
+Run `verify_text_fidelity.py` to compare Markdown pages against the source PDF text layer:
+
+```bash
+python .agents/skills/pdf-to-markdown/scripts/verify_text_fidelity.py \
+  --pdf "path/to/manual.pdf" \
+  --markdown-dir "workspace/manual_staging/pages_md" \
+  --min-ratio 0.75 \
+  --max-ratio 1.35 \
+  --min-recall 0.85
+```
+
+Statistical thresholds:
+- **Word Count Ratio ($R = W_{\text{md}} / W_{\text{pdf}}$)**: Must remain between $0.75$ and $1.35$. Ratios $< 0.75$ flag unacceptable LLM summarization or dropped paragraphs; ratios $> 1.35$ flag AI hallucination or unneeded commentary.
+- **Lexical Vocabulary Recall**: At least $85\%$ of significant words ($\ge 3$ characters) present in the source PDF must exist in the converted Markdown.
+
+Target: **100% PASS across all pages**.
+
+---
+
+### Phase 9: Link Integrity & Asset Audit
 
 Run `validate_links.py` to confirm 100% link resolution:
 
