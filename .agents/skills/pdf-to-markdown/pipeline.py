@@ -306,7 +306,7 @@ def main():
     if args.workspace:
         workspace_dir = Path(args.workspace)
         if not workspace_dir.is_absolute():
-            workspace_dir = (book_dir / workspace_dir) if book_dir else (Path.cwd() / workspace_dir)
+            workspace_dir = Path.cwd() / workspace_dir
     else:
         workspace_dir = (book_dir / "workspace") if book_dir else (Path.cwd() / "workspace")
     workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -314,7 +314,7 @@ def main():
     if args.output_dir:
         output_dir = Path(args.output_dir)
         if not output_dir.is_absolute():
-            output_dir = (book_dir / output_dir) if book_dir else (Path.cwd() / output_dir)
+            output_dir = Path.cwd() / output_dir
     else:
         output_dir = (book_dir / "output_markdown") if book_dir else (Path.cwd() / "output_markdown")
     output_dir.mkdir(parents=True, exist_ok=True)
