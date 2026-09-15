@@ -199,13 +199,13 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
 STAGE_OUTPUT_TARGETS = {
     1: ["01_pages", "pages", "manifest.json"],
     2: ["02_segments", "segments"],
-    3: ["03_raw_stream", "raw_stream.json"],
+    3: ["03_raw_stream", "raw_stream.json", "assets"],
     4: ["04_reduced_stream", "reduced_stream.json"],
     5: ["05_chapters_raw", "chapters", "chapters_manifest.json"],
-    6: ["06_chapters_continuations"],
-    7: ["07_chapters_tables"],
-    8: ["08_chapters_graphics"],
-    9: ["09_chapters_formatted"],
+    6: ["06_chapters_continuations", "tasks/continuations"],
+    7: ["07_chapters_tables", "tasks/tables"],
+    8: ["08_chapters_graphics", "tasks/graphics", "__ASSETS_SIDECARS__"],
+    9: ["09_chapters_formatted", "tasks/prose"],
     10: ["10_markdown_raw"],
     11: ["11_markdown_linked"],
     12: ["__OUTPUT_DIR__"],
@@ -232,6 +232,14 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_stage: 
                     assets = output_dir / "assets"
                     if assets.exists():
                         shutil.rmtree(assets, ignore_errors=True)
+            elif target == "__ASSETS_SIDECARS__":
+                assets_dir = workspace_dir / "assets"
+                if assets_dir.exists():
+                    for txt_file in assets_dir.glob("*.txt"):
+                        try:
+                            txt_file.unlink()
+                        except Exception:
+                            pass
             else:
                 p = workspace_dir / target
                 if p.is_dir():

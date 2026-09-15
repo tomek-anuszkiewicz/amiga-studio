@@ -129,31 +129,26 @@ def process_first_chapter_refinement(
                 config = {}
 
         gemini = GeminiClient(config) if GeminiClient else None
-        if gemini and gemini.is_available():
-            prompt_file = Path(__file__).parent / "prompt.md"
-            base_prompt = ""
-            if prompt_file.exists():
-                with open(prompt_file, "r", encoding="utf-8") as pf:
-                    base_prompt = pf.read()
+        if not gemini or not gemini.is_available():
+            raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 12 name refinement.")
 
-            full_prompt = (
-                f"{base_prompt}\n\n"
-                f"Preliminary File Name: {first_file.name}\n\n"
-                f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
-            )
-            raw_res = gemini.generate_text(full_prompt)
-            if raw_res:
-                try:
-                    json_match = re.search(r"\{.*\}", raw_res, re.DOTALL)
-                    if json_match:
-                        parsed = json.loads(json_match.group(0))
-                        new_title = parsed.get("title")
-                        new_slug = parsed.get("slug")
-                except Exception:
-                    pass
+        prompt_file = Path(__file__).parent / "prompt.md"
+        base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
+
+        full_prompt = (
+            f"{base_prompt}\n\n"
+            f"Preliminary File Name: {first_file.name}\n\n"
+            f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
+        )
+        parsed = gemini.generate_json(full_prompt)
+        if isinstance(parsed, dict):
+            new_title = parsed.get("title")
+            new_slug = parsed.get("slug")
 
     if not new_title or not new_slug:
-        new_title, new_slug = determine_canonical_title_and_slug(content, first_file.name)
+        clean_stem = re.sub(r"^\d+_", "", Path(first_file.name).stem)
+        new_title = clean_stem.replace("_", " ").title()
+        new_slug = clean_stem
 
     new_filename = f"{prefix}_{new_slug}.md"
 

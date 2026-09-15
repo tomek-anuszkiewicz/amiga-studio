@@ -27,55 +27,6 @@ except ImportError:
     GeminiClient = None
 
 
-def format_simple_gfm_table(raw_text: str) -> str:
-    """
-    Heuristic GFM table formatter from raw text.
-    Replaces ASCII arrows with Unicode, escapes pipes, aligns columns.
-    """
-    lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
-    if not lines:
-        return ""
-
-    rows = []
-    max_cols = 0
-    for line in lines:
-        # Split by tab or multiple spaces
-        cells = [c.strip() for c in re.split(r"\t+|\s{3,}", line) if c.strip()]
-        if cells:
-            rows.append(cells)
-            max_cols = max(max_cols, len(cells))
-
-    if max_cols < 2:
-        # Single column fallback
-        return "\n".join(f"- {l}" for l in lines)
-
-    # Normalize row lengths
-    norm_rows = []
-    for r in rows:
-        norm = r + [""] * (max_cols - len(r))
-        # Format hex and unicode arrows
-        formatted_cells = []
-        for c in norm:
-            c = re.sub(r"->", "→", c)
-            c = re.sub(r"<-", "←", c)
-            c = re.sub(r"(\$[0-9A-Fa-f]{3,8})", r"`\1`", c)
-            formatted_cells.append(c)
-        norm_rows.append(formatted_cells)
-
-    # Header
-    header = norm_rows[0]
-    separator = [":---"] * max_cols
-    body = norm_rows[1:] if len(norm_rows) > 1 else []
-
-    out = []
-    out.append("| " + " | ".join(header) + " |")
-    out.append("| " + " | ".join(separator) + " |")
-    for b in body:
-        out.append("| " + " | ".join(b) + " |")
-
-    return "\n".join(out)
-
-
 def process_tables(workspace_dir: Path, config: dict):
     input_candidates = [
         workspace_dir / "06_chapters_continuations",
@@ -95,14 +46,12 @@ def process_tables(workspace_dir: Path, config: dict):
     base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
 
     gemini = GeminiClient(config) if GeminiClient else None
-    if gemini and gemini.is_available():
-        print(f"[*] Table Worker LLM active ({gemini.default_model}, thinking: {gemini.thinking_level}).")
-    else:
-        print(f"[*] Table Worker LLM unavailable (no GEMINI_API_KEY). Using heuristic GFM table formatter.")
+    if not gemini or not gemini.is_available():
+        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 07 table transformation.")
+
+    print(f"[*] Table Worker LLM active ({gemini.default_model}). Transforming tables...")
 
     chapter_files = sorted(list(input_dir.glob("*.json")))
-    print(f"[*] Transforming tables across {len(chapter_files)} chapter files...")
-
     transformed_count = 0
 
     for c_file in chapter_files:
@@ -120,7 +69,6 @@ def process_tables(workspace_dir: Path, config: dict):
             # Gather raw text from this node and any continuations
             raw_text = node.get("raw_text", "")
             if node.get("continuation_status") == "head" and "merged_nodes" in node:
-                # Accumulate text from child continuation nodes
                 child_texts = []
                 for other in nodes:
                     if other.get("node_id") in node["merged_nodes"] and other.get("node_id") != node["node_id"]:
@@ -128,16 +76,11 @@ def process_tables(workspace_dir: Path, config: dict):
                 if child_texts:
                     raw_text = raw_text + "\n" + "\n".join(child_texts)
 
-            rendered = None
-            if gemini and gemini.is_available() and base_prompt:
-                full_prompt = f"{base_prompt}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
-                rendered = gemini.generate_text(full_prompt)
-
-            if not rendered:
-                rendered = format_simple_gfm_table(raw_text)
+            full_prompt = f"{base_prompt}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
+            rendered = gemini.generate_text(full_prompt)
 
             if rendered:
-                node["rendered_markdown"] = rendered
+                node["rendered_markdown"] = rendered.strip() + "\n"
             else:
                 asset_ref = node.get("svg_path") or node.get("png_path") or ""
                 node["rendered_markdown"] = f"![Table]({asset_ref})\n"

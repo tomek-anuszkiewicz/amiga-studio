@@ -12,33 +12,44 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Optional
 import yaml
 
 
-def de_hyphenate_and_join(text1: str, text2: str) -> str:
+# Import GeminiClient from skill root
+SKILL_ROOT = Path(__file__).resolve().parents[2]
+if str(SKILL_ROOT) not in sys.path:
+    sys.path.insert(0, str(SKILL_ROOT))
+
+try:
+    from llm_client import GeminiClient
+except ImportError:
+    GeminiClient = None
+
+
+def weld_prose_with_gemini(text1: str, text2: str, gemini: Optional[GeminiClient], prompt_template: str) -> str:
     """
-    Deterministically joins text1 and text2, repairing split words across seams.
+    Uses Gemini LLM to evaluate cross-page paragraph continuation and perform accurate de-hyphenation.
     """
     t1 = text1.rstrip()
     t2 = text2.lstrip()
 
-    # Check if t1 ends with a hyphenated word: e.g. "instruc-"
-    match = re.search(r"(\b\w+)-$ ", t1 + " ")
-    if match and t2:
-        prefix = match.group(1)
-        # Extract first word of t2
-        match_t2 = re.match(r"^(\w+)(.*)", t2, re.DOTALL)
-        if match_t2:
-            suffix = match_t2.group(1)
-            rest_t2 = match_t2.group(2)
-            joined_word = prefix + suffix
-            base_t1 = t1[:match.start(1)]
-            return f"{base_t1}{joined_word}{rest_t2}"
+    if gemini and gemini.is_available() and prompt_template:
+        prompt = (
+            f"{prompt_template}\n\n"
+            f"## Tail Text of Preceding Page:\n```text\n{t1[-300:]}\n```\n\n"
+            f"## Head Text of Next Page:\n```text\n{t2[:300]}\n```\n"
+        )
+        res = gemini.generate_json(prompt)
+        if isinstance(res, dict) and res.get("is_continuation"):
+            dehyphen = res.get("de_hyphenated_word")
+            if dehyphen and "-" in t1[-12:]:
+                base1 = re.sub(r"\b\w+-\s*$", "", t1)
+                rest2 = re.sub(r"^\w+\s*", "", t2)
+                return f"{base1}{dehyphen} {rest2}"
+            return f"{t1} {t2}"
 
-    # Check if sentence continues without terminal punctuation (. ! ? : ;)
-    if t1 and not re.search(r"[.!?:]\s*$", t1) and t2 and not t2[0].isupper():
-        return f"{t1} {t2}"
-
+    # Default clean separation
     return f"{t1}\n\n{t2}"
 
 
@@ -51,10 +62,17 @@ def reduce_stream(workspace_dir: Path, config: dict):
     if not raw_stream_path:
         raise FileNotFoundError(f"Missing raw_stream.json in {workspace_dir}")
 
+    prompt_path = Path(__file__).resolve().parent / "prompt_seam.md"
+    prompt_template = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
+
+    gemini = GeminiClient(config) if GeminiClient else None
+    if not gemini or not gemini.is_available():
+        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 04 stream reduction.")
+
     with open(raw_stream_path, "r", encoding="utf-8") as f:
         raw_nodes = json.load(f)
 
-    print(f"[*] Reducing stream of {len(raw_nodes)} nodes from {raw_stream_path.name}...")
+    print(f"[*] Reducing stream of {len(raw_nodes)} nodes from {raw_stream_path.name} using Gemini seam analyzer...")
 
     reduced_nodes = []
     skipped_count = 0
@@ -70,9 +88,7 @@ def reduce_stream(workspace_dir: Path, config: dict):
         # 2. Check if we can weld with the preceding node (prose + prose)
         if reduced_nodes and reduced_nodes[-1]["type"] == "prose" and n_type == "prose":
             prev = reduced_nodes[-1]
-            # Weld text
-            prev["raw_text"] = de_hyphenate_and_join(prev["raw_text"], node["raw_text"])
-            # Update end bbox / page metadata
+            prev["raw_text"] = weld_prose_with_gemini(prev["raw_text"], node["raw_text"], gemini, prompt_template)
             prev["page_end"] = node["page"]
             if "welded_nodes" not in prev:
                 prev["welded_nodes"] = [prev["node_id"]]

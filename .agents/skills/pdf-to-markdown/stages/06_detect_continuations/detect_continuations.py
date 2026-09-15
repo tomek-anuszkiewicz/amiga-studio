@@ -11,14 +11,26 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Optional
 import yaml
 
 
-def are_tables_likely_continuation(node_a: dict, node_b: dict) -> bool:
+# Import GeminiClient from skill root
+SKILL_ROOT = Path(__file__).resolve().parents[2]
+if str(SKILL_ROOT) not in sys.path:
+    sys.path.insert(0, str(SKILL_ROOT))
+
+try:
+    from llm_client import GeminiClient
+except ImportError:
+    GeminiClient = None
+
+
+def check_continuation_with_gemini(node_a: dict, node_b: dict, gemini: Optional[GeminiClient], prompt_template: str) -> bool:
     """
-    Deterministic heuristic checking if table B continues table A across a page break.
+    Uses Gemini LLM to analyze candidate adjacent table/graphic blocks across page boundaries.
     """
-    if node_a.get("type") != "table" or node_b.get("type") != "table":
+    if node_a.get("type") not in ("table", "graphic") or node_b.get("type") not in ("table", "graphic"):
         return False
 
     page_a = node_a.get("page", 0)
@@ -28,24 +40,22 @@ def are_tables_likely_continuation(node_a: dict, node_b: dict) -> bool:
     if page_b != page_a + 1:
         return False
 
-    # Check text characteristics
     text_a = node_a.get("raw_text", "").strip()
     text_b = node_b.get("raw_text", "").strip()
     if not text_a or not text_b:
         return False
 
-    lines_a = [l.strip() for l in text_a.splitlines() if l.strip()]
-    lines_b = [l.strip() for l in text_b.splitlines() if l.strip()]
-
-    # If first line of B says "continued" or matches header of A
-    if lines_b and ("continued" in lines_b[0].lower() or (lines_a and lines_a[0].lower() == lines_b[0].lower())):
-        return True
-
-    # Count tab / column structure similarity
-    tab_count_a = sum(l.count("\t") for l in lines_a) / max(1, len(lines_a))
-    tab_count_b = sum(l.count("\t") for l in lines_b) / max(1, len(lines_b))
-    if abs(tab_count_a - tab_count_b) <= 0.5 and tab_count_a > 1.0:
-        return True
+    if gemini and gemini.is_available() and prompt_template:
+        prompt = (
+            f"{prompt_template}\n\n"
+            f"## Block A (Page {page_a}, Type: {node_a.get('type')}):\n"
+            f"```text\n{text_a[-400:]}\n```\n\n"
+            f"## Block B (Page {page_b}, Type: {node_b.get('type')}):\n"
+            f"```text\n{text_b[:400]}\n```\n"
+        )
+        res = gemini.generate_json(prompt)
+        if isinstance(res, dict) and res.get("is_continuation"):
+            return True
 
     return False
 
@@ -60,8 +70,15 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
     for f in out_dir.glob("*.json"):
         f.unlink()
 
+    prompt_path = Path(__file__).resolve().parent / "prompt_continuation.md"
+    prompt_template = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
+
+    gemini = GeminiClient(config) if GeminiClient else None
+    if not gemini or not gemini.is_available():
+        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 06 continuation detection.")
+
     chapter_files = sorted(list(input_dir.glob("*.json")))
-    print(f"[*] Detecting continuations across {len(chapter_files)} chapter files...")
+    print(f"[*] Detecting continuations across {len(chapter_files)} chapter files using Gemini...")
 
     total_continuations = 0
     group_counter = 1
@@ -75,7 +92,7 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
             curr_node = nodes[i]
             next_node = nodes[i + 1]
 
-            if are_tables_likely_continuation(curr_node, next_node):
+            if check_continuation_with_gemini(curr_node, next_node, gemini, prompt_template):
                 group_id = f"table_group_{group_counter:04d}"
                 group_counter += 1
                 total_continuations += 1

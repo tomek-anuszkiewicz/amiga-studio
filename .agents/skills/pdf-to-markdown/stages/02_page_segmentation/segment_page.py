@@ -12,6 +12,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Optional
 import yaml
 
 # Import GeminiClient from skill root
@@ -25,39 +26,75 @@ except ImportError:
     GeminiClient = None
 
 
-def heuristic_segment_page(page_data: dict) -> list:
+def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini: GeminiClient) -> list:
     """
-    Deterministic layout heuristics based on text block geometry and contents.
-    Provides robust fallback and pre-segmentation.
+    Uses Gemini Vision and semantic layout understanding to classify text blocks
+    into precise semantic zones: header, footer, toc_header, toc, heading, prose, code_block, table, graphic.
     """
     page_num = page_data["page"]
-    page_w = page_data["width"]
-    page_h = page_data["height"]
+    page_w = page_data.get("width", 612.0)
+    page_h = page_data.get("height", 792.0)
     blocks = page_data.get("blocks", [])
-
-    segments = []
-    seg_counter = 1
-
-    # Pre-scan page to detect if it's part of TOC / Frontmatter lists
-    is_toc_page = False
-    for b in blocks:
-        t = b.get("text", "").strip()
-        if re.search(r"^(table\s+of\s+contents|contents|brief\s+contents|list\s+of\s+figures|list\s+of\s+tables)$", t, re.IGNORECASE):
-            is_toc_page = True
-            break
-        if re.search(r"([._\-~]{2,}|\s{3,}|\t+)\s*\d+$", t, re.MULTILINE):
-            is_toc_page = True
-            break
+    if not blocks:
+        return []
 
     # Sort blocks top-to-bottom
     sorted_blocks = sorted(blocks, key=lambda b: (b["bbox"][1], b["bbox"][0]))
 
-    for b in sorted_blocks:
+    # Prepare concise summary of blocks for LLM
+    blocks_summary = []
+    for i, b in enumerate(sorted_blocks):
         text = b.get("text", "").strip()
         if not text:
             continue
+        bbox = b.get("bbox", [0, 0, 0, 0])
+        bbox_norm = [
+            round(bbox[0] / page_w, 4),
+            round(bbox[1] / page_h, 4),
+            round(bbox[2] / page_w, 4),
+            round(bbox[3] / page_h, 4),
+        ]
+        blocks_summary.append({
+            "idx": i,
+            "bbox_norm": bbox_norm,
+            "text": text[:200]
+        })
 
-        bbox = b["bbox"]
+    if not blocks_summary:
+        return []
+
+    prompt = (
+        "You are an expert technical book layout analyzer. "
+        "Classify each of the extracted text blocks into exactly ONE semantic type:\n"
+        "- header: Running top header or chapter title rule\n"
+        "- footer: Running bottom footer or page number\n"
+        "- toc_header: Prominent Table of Contents title banner (e.g. 'Contents', 'Table of Contents')\n"
+        "- toc: Table of contents entries, chapter listings, page number entries\n"
+        "- heading: Major chapter heading (heading_level=1) or section heading (heading_level=2 or 3)\n"
+        "- prose: Standard narrative prose paragraphs\n"
+        "- code_block: Monospace code listings, assembly language, memory dumps\n"
+        "- table: Structured data tables, register bit assignments\n"
+        "- graphic: Captions or embedded diagram labels\n\n"
+        "Return a strict JSON array of objects with fields:\n"
+        "[{\"idx\": 0, \"type\": \"header\", \"heading_level\": null}, ...]\n\n"
+        f"Page {page_num} Text Blocks:\n"
+        f"{json.dumps(blocks_summary, indent=2)}"
+    )
+
+    classifications = gemini.generate_json(prompt, image_path=png_path if png_path and png_path.exists() else None)
+    type_map = {}
+    if isinstance(classifications, list):
+        for item in classifications:
+            if isinstance(item, dict) and "idx" in item:
+                type_map[item["idx"]] = (item.get("type", "prose"), item.get("heading_level"))
+
+    segments = []
+    seg_counter = 1
+    for i, b in enumerate(sorted_blocks):
+        text = b.get("text", "").strip()
+        if not text:
+            continue
+        bbox = b.get("bbox", [0, 0, 0, 0])
         bbox_norm = b.get("bbox_norm", [
             round(bbox[0] / page_w, 4),
             round(bbox[1] / page_h, 4),
@@ -65,50 +102,7 @@ def heuristic_segment_page(page_data: dict) -> list:
             round(bbox[3] / page_h, 4),
         ])
 
-        y0_norm = bbox_norm[1]
-        y1_norm = bbox_norm[3]
-
-        # 1. Header detection (top 9% of page)
-        if y1_norm <= 0.09 and len(text.splitlines()) <= 2:
-            seg_type = "header"
-            heading_lvl = None
-        # 2. Footer detection (bottom 11% of page)
-        elif y0_norm >= 0.89 and len(text.splitlines()) <= 2:
-            seg_type = "footer"
-            heading_lvl = None
-        # 3. TOC Header detection
-        elif re.search(r"^(table\s+of\s+contents|contents|brief\s+contents|list\s+of\s+figures|list\s+of\s+tables)$", text, re.IGNORECASE):
-            seg_type = "toc_header"
-            heading_lvl = 1
-        # 4. Table of Contents line detection
-        elif is_toc_page or re.search(r"([._\-~]{2,}|\s{3,}|\t+)\s*\d+$", text, re.MULTILINE):
-            seg_type = "toc"
-            heading_lvl = None
-        # 5. Major Headings (Level 1: Real chapters/appendices)
-        elif (re.match(r"^(chapter\s+\d+|appendix\s+[a-z\d]+)(\s*[:\-\u2013\u2014]\s*|\s*$|\s+[A-Z])", text, re.IGNORECASE) and
-              not text.endswith((".", "?")) and
-              not re.search(r"^(chapter\s+\d+|appendix\s+[a-z\d]+)\s+(contains|is|are|shows|describes|has)\b", text, re.IGNORECASE)):
-            seg_type = "heading"
-            heading_lvl = 1
-        # 6. Section Headings (Level 2)
-        elif (len(text.splitlines()) == 1 and len(text) < 75 and not text.endswith((".", "?")) and
-              (re.match(r"^(section\s+[ivxlcdm\d]+)", text, re.IGNORECASE) or
-               (text.isupper() and len(text) > 3 and not re.search(r"\b(MOVE|WAIT|JMP|BSR|RTS|NOP|CLR|ADD|SUB)\b", text)) or
-               (re.match(r"^[A-Z][A-Za-z0-9\s,\-'\(\)]{3,50}$", text) and not re.search(r"\b(is|are|the|and|or|was|with)\b", text)))):
-            seg_type = "heading"
-            heading_lvl = 2
-        # 7. Monospace / Code blocks / Hex dumps
-        elif re.search(r"(\$[0-9a-f]{4,8}|move\.[bwl]|jmp|lea|jsr|void\s+|int\s+|#include)", text, re.IGNORECASE):
-            seg_type = "code_block"
-            heading_lvl = None
-        # 8. Tables (multiple tabs, multiple aligned numeric columns)
-        elif re.search(r"(\w+\t+\w+|\d+\s{3,}\d+\s{3,}\d+)", text):
-            seg_type = "table"
-            heading_lvl = None
-        # 9. Standard prose
-        else:
-            seg_type = "prose"
-            heading_lvl = None
+        seg_type, heading_lvl = type_map.get(i, ("prose", None))
 
         segments.append({
             "segment_id": f"page_{page_num:04d}_seg_{seg_counter:03d}",
@@ -128,6 +122,8 @@ def process_segmentation(workspace_dir: Path, config: dict):
     pages_dir = workspace_dir / "01_pages" if (workspace_dir / "01_pages").exists() else (workspace_dir / "pages")
     segments_dir = workspace_dir / "02_segments"
     segments_dir.mkdir(parents=True, exist_ok=True)
+    for f in segments_dir.glob("*.json"):
+        f.unlink()
 
     manifest_path = workspace_dir / "manifest.json"
     if not manifest_path.exists():
@@ -138,17 +134,16 @@ def process_segmentation(workspace_dir: Path, config: dict):
 
     total_pages = manifest["total_pages"]
     gemini = GeminiClient(config) if GeminiClient else None
-    if gemini and gemini.is_available():
-        print(f"[*] Vision LLM active ({gemini.vision_model}, thinking: {gemini.thinking_level}).")
-    else:
-        print(f"[*] Vision LLM unavailable (no GEMINI_API_KEY). Using deterministic layout heuristics.")
+    if not gemini or not gemini.is_available():
+        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 02 segmentation.")
 
-    print(f"[*] Segmenting {total_pages} pages...")
+    print(f"[*] Vision LLM active ({gemini.vision_model}). Segmenting {total_pages} pages...")
 
     for page_entry in manifest["pages"]:
         page_num = page_entry["page"]
         page_str = f"page_{page_num:04d}"
         json_file = workspace_dir / page_entry["json_file"]
+        png_file = workspace_dir / page_entry.get("png_file", f"01_pages/{page_str}.png")
 
         if not json_file.exists():
             continue
@@ -156,7 +151,7 @@ def process_segmentation(workspace_dir: Path, config: dict):
         with open(json_file, "r", encoding="utf-8") as f:
             page_data = json.load(f)
 
-        segments = heuristic_segment_page(page_data)
+        segments = classify_page_with_gemini(page_data, png_file, gemini)
 
         out_file = segments_dir / f"{page_str}_segments.json"
         with open(out_file, "w", encoding="utf-8") as f:

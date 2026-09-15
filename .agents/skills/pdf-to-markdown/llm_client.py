@@ -20,8 +20,8 @@ class GeminiClient:
     def __init__(self, config: dict = None):
         self.config = (config or {}).get("llm", {})
         self.api_key = os.getenv("GEMINI_API_KEY")
-        self.default_model = self.config.get("model_prose", "gemini-3.8-flash")
-        self.vision_model = self.config.get("model_vision", "gemini-3.8-flash")
+        self.default_model = self.config.get("model_prose", "gemini-3.6-flash")
+        self.vision_model = self.config.get("model_vision", "gemini-3.6-flash")
         self.thinking_level = self.config.get("thinking_level", "medium")
         self.temperature = self.config.get("temperature", 0.1)
         self.client = None
@@ -42,45 +42,105 @@ class GeminiClient:
 
     def generate_text(self, prompt: str, model: str = None) -> Optional[str]:
         if not self.is_available():
-            return None
-        try:
-            from google.genai import types
-            target_model = model or self.default_model
-            config = types.GenerateContentConfig(
-                temperature=self.temperature,
-                thinking_config=types.ThinkingConfig(thinking_level=self.thinking_level)
-            )
-            response = self.client.models.generate_content(
-                model=target_model,
-                contents=prompt,
-                config=config,
-            )
-            return response.text if response else None
-        except Exception as e:
-            print(f"[!] Warning: LLM generate_text failed: {e}")
-            return None
+            raise RuntimeError("GEMINI_API_KEY environment variable is required for pipeline inference.")
+        import time
+        import re
+        from google.genai import types
+
+        models_to_try = [model or self.default_model]
+        if "gemini-3.6-flash" not in models_to_try:
+            models_to_try.append("gemini-3.6-flash")
+
+        for m in models_to_try:
+            for attempt in range(4):
+                try:
+                    config = types.GenerateContentConfig(
+                        temperature=self.temperature,
+                    )
+                    response = self.client.models.generate_content(
+                        model=m,
+                        contents=prompt,
+                        config=config,
+                    )
+                    if response and response.text:
+                        return response.text
+                except Exception as e:
+                    err_str = str(e)
+                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                        delay_match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str)
+                        delay = float(delay_match.group(1)) + 1.0 if delay_match else (12.0 * (attempt + 1))
+                        print(f"[*] Rate limit (429). Backing off for {delay:.1f}s (attempt {attempt+1}/4)...")
+                        time.sleep(delay)
+                        continue
+                    print(f"[!] Warning: LLM generate_text on model {m} failed: {e}")
+                    break
+        return None
 
     def generate_vision(self, prompt: str, image_path: Path, model: str = None) -> Optional[str]:
         if not self.is_available():
-            return None
+            raise RuntimeError("GEMINI_API_KEY environment variable is required for pipeline inference.")
         if not image_path.exists():
             return None
-        try:
-            from google.genai import types
-            from PIL import Image
+        import time
+        import re
+        from google.genai import types
+        from PIL import Image
 
-            target_model = model or self.vision_model
-            image = Image.open(image_path)
-            config = types.GenerateContentConfig(
-                temperature=self.temperature,
-                thinking_config=types.ThinkingConfig(thinking_level=self.thinking_level)
-            )
-            response = self.client.models.generate_content(
-                model=target_model,
-                contents=[image, prompt],
-                config=config,
-            )
-            return response.text if response else None
-        except Exception as e:
-            print(f"[!] Warning: LLM generate_vision failed: {e}")
+        models_to_try = [model or self.vision_model]
+        if "gemini-3.6-flash" not in models_to_try:
+            models_to_try.append("gemini-3.6-flash")
+
+        image = Image.open(image_path)
+        for m in models_to_try:
+            for attempt in range(4):
+                try:
+                    config = types.GenerateContentConfig(
+                        temperature=self.temperature,
+                    )
+                    response = self.client.models.generate_content(
+                        model=m,
+                        contents=[image, prompt],
+                        config=config,
+                    )
+                    if response and response.text:
+                        return response.text
+                except Exception as e:
+                    err_str = str(e)
+                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                        delay_match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str)
+                        delay = float(delay_match.group(1)) + 1.0 if delay_match else (12.0 * (attempt + 1))
+                        print(f"[*] Rate limit (429). Backing off for {delay:.1f}s (attempt {attempt+1}/4)...")
+                        time.sleep(delay)
+                        continue
+                    print(f"[!] Warning: LLM generate_vision on model {m} failed: {e}")
+                    break
+        return None
+
+    def generate_json(self, prompt: str, image_path: Optional[Path] = None, model: str = None):
+        import json
+        import re
+
+        raw = self.generate_vision(prompt, image_path, model=model) if image_path else self.generate_text(prompt, model=model)
+        if not raw:
             return None
+
+        # Clean markdown fences if present
+        text = raw.strip()
+        fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+        if fence_match:
+            text = fence_match.group(1).strip()
+
+        # Try parsing full text
+        try:
+            return json.loads(text)
+        except Exception:
+            pass
+
+        # Try finding JSON object or array
+        bracket_match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", text)
+        if bracket_match:
+            try:
+                return json.loads(bracket_match.group(1))
+            except Exception as e:
+                print(f"[!] Warning: JSON parse failed: {e}")
+        return None

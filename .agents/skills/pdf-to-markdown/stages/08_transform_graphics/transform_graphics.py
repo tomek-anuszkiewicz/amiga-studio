@@ -58,10 +58,16 @@ def process_graphics(workspace_dir: Path, config: dict):
     assets_dir.mkdir(parents=True, exist_ok=True)
 
     gemini = GeminiClient(config) if GeminiClient else None
-    if gemini and gemini.is_available():
-        print(f"[*] Graphics Worker LLM active ({gemini.vision_model}, thinking: {gemini.thinking_level}).")
-    else:
-        print(f"[*] Graphics Worker LLM unavailable (no GEMINI_API_KEY). Using heuristic diagram converter.")
+    if not gemini or not gemini.is_available():
+        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 08 graphics transformation.")
+
+    mermaid_prompt_path = Path(__file__).resolve().parent / "prompt_mermaid.md"
+    mermaid_prompt = mermaid_prompt_path.read_text(encoding="utf-8") if mermaid_prompt_path.exists() else ""
+
+    sidecar_prompt_path = Path(__file__).resolve().parent / "prompt_rag_sidecar.md"
+    sidecar_prompt = sidecar_prompt_path.read_text(encoding="utf-8") if sidecar_prompt_path.exists() else ""
+
+    print(f"[*] Graphics Worker LLM active ({gemini.vision_model}). Transforming graphics...")
 
     chapter_files = sorted(list(input_dir.glob("*.json")))
     print(f"[*] Transforming graphics across {len(chapter_files)} chapter files...")
@@ -81,38 +87,52 @@ def process_graphics(workspace_dir: Path, config: dict):
             page_num = node.get("page", 1)
             raw_text = node.get("raw_text", "")
 
-            # Check if this is a flowchart / state machine candidate
-            is_flowchart = bool(re.search(r"(state\s+machine|flowchart|step\s+\d+|transition)", raw_text, re.IGNORECASE))
+            svg_rel = node.get("svg_path")
+            png_rel = node.get("png_path")
+            asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
+            png_path = workspace_dir / png_rel if png_rel else None
 
-            if is_flowchart:
-                rendered = (
-                    f"```mermaid\n"
-                    f"flowchart TD\n"
-                    f"    A[\"Start / Initial State\"] --> B[\"{node_id}\"]\n"
-                    f"```\n\n"
-                    f"> [!NOTE]- Click to view Text / ASCII Diagram\n"
-                    f"> [Start] ---> [{node_id}]\n"
-                )
-                node["rendered_markdown"] = rendered
-            else:
-                svg_rel = node.get("svg_path")
-                png_rel = node.get("png_path")
-                asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
+            # First, classify with Gemini if this is a flowchart/state machine or circuit schematic
+            triage_prompt = (
+                "Analyze this technical graphic. Is it a flowchart, state diagram, or structural block chart "
+                "that should be converted to Mermaid code? Or is it a detailed circuit schematic, timing waveform, "
+                "IC pinout, or photographic illustration that must be preserved as an image? "
+                "Return a strict JSON object: {\"type\": \"mermaid\" | \"schematic\", \"caption\": \"Short descriptive title\"}"
+            )
+            triage = gemini.generate_json(triage_prompt, image_path=png_path) if png_path and png_path.exists() else {}
+            graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
+            caption = (triage.get("caption") if isinstance(triage, dict) else None) or (raw_text.splitlines()[0].strip() if raw_text.strip() else f"Figure on page {page_num}")
+            caption = re.sub(r"[\[\]|]", "", caption)
 
-                caption = raw_text.splitlines()[0].strip() if raw_text.strip() else f"Figure on page {page_num}"
-                caption = re.sub(r"[\[\]|]", "", caption)
-                node["rendered_markdown"] = f"![[{asset_file}|{caption}]]\n\n*{caption}*\n"
+            if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:
+                mermaid_res = gemini.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path)
+                if mermaid_res:
+                    node["rendered_markdown"] = mermaid_res.strip() + "\n\n"
+                    transformed_count += 1
+                    continue
 
-                # Generate RAG sidecar .txt file
-                sidecar_name = f"{asset_file}.txt"
-                sidecar_path = assets_dir / sidecar_name
-                sidecar_content = generate_default_sidecar(node_id, raw_text, page_num)
-                with open(sidecar_path, "w", encoding="utf-8") as sf:
-                    sf.write(sidecar_content)
-                node["sidecar_path"] = f"assets/{sidecar_name}"
-                sidecar_count += 1
-
+            # Fallback to Obsidian image embed + RAG sidecar
+            node["rendered_markdown"] = f"![[{asset_file}|{caption}]]\n\n*{caption}*\n\n"
             transformed_count += 1
+
+            # Generate technical engineering sidecar via Gemini Vision
+            sidecar_name = f"{asset_file}.txt"
+            sidecar_path = assets_dir / sidecar_name
+            sidecar_text = None
+            if png_path and png_path.exists() and sidecar_prompt:
+                sidecar_text = gemini.generate_vision(f"{sidecar_prompt}\n\nExtracted Labels:\n{raw_text}", png_path)
+
+            if not sidecar_text:
+                sidecar_text = (
+                    f"Title: {caption}\n"
+                    f"Page: {page_num}\n"
+                    f"Labels:\n{raw_text}\n"
+                )
+
+            with open(sidecar_path, "w", encoding="utf-8") as sf:
+                sf.write(sidecar_text)
+            node["sidecar_path"] = f"assets/{sidecar_name}"
+            sidecar_count += 1
 
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:
