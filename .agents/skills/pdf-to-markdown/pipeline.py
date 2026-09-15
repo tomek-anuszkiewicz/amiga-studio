@@ -118,6 +118,49 @@ def run_stage(
         return False
 
 
+def print_pipeline_status(workspace_dir: Path, output_dir: Path):
+    print("\n==================================================")
+    print("         PDF-to-Markdown Pipeline Status          ")
+    print("==================================================")
+
+    # 1. Pages
+    pages_dir = workspace_dir / "pages"
+    pages_count = len(list(pages_dir.glob("page_*.png"))) if pages_dir.exists() else 0
+    print(f"[*] Preprocessed Pages (Stage 01)     : {pages_count}")
+
+    # 2. Segments
+    segments_dir = workspace_dir / "segments"
+    seg_count = len(list(segments_dir.glob("page_*_segments.json"))) if segments_dir.exists() else 0
+    print(f"[*] Page Segments (Stage 02)          : {seg_count}")
+
+    # 3. Streams
+    raw_exists = (workspace_dir / "raw_stream.json").exists()
+    red_exists = (workspace_dir / "reduced_stream.json").exists()
+    print(f"[*] Streams (Stages 03-04)            : Raw={'OK' if raw_exists else 'None'}, Reduced={'OK' if red_exists else 'None'}")
+
+    # 4. Chapters
+    chapters_dir = workspace_dir / "chapters"
+    chap_count = len(list(chapters_dir.glob("*.json"))) if chapters_dir.exists() else 0
+    print(f"[*] Chapter JSON Streams (Stage 05)   : {chap_count}")
+
+    # 5. Tasks
+    tasks_dir = workspace_dir / "tasks"
+    cont_cand = tasks_dir / "continuations" / "candidates.json"
+    cont_count = len(json.loads(cont_cand.read_text(encoding="utf-8"))) if cont_cand.exists() else 0
+    print(f"[*] Continuation Tasks (Stage 06)     : {cont_count} candidates")
+
+    table_tasks = len(list((tasks_dir / "tables").glob("*.json"))) if (tasks_dir / "tables").exists() else 0
+    print(f"[*] Table Tasks (Stage 07)            : {table_tasks} work items")
+
+    graphic_tasks = len(list((tasks_dir / "graphics").glob("*.json"))) if (tasks_dir / "graphics").exists() else 0
+    print(f"[*] Graphic Tasks (Stage 08)          : {graphic_tasks} work items")
+
+    # 6. Output Markdown
+    md_count = len(list(output_dir.glob("*.md"))) if output_dir.exists() else 0
+    print(f"[*] Emitted Markdown Files (Stages 10): {md_count} files in {output_dir.name}/")
+    print("==================================================\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Master 12-Stage PDF-to-Markdown Pipeline Orchestrator")
     parser.add_argument("--pdf", type=str, help="Path to input technical PDF document")
@@ -130,6 +173,10 @@ def main():
     parser.add_argument("--max-pages", type=int, help="Limit number of pages processed in Stage 01")
     parser.add_argument("--resume", action="store_true", help="Resume from last successfully completed stage")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose command printing")
+    parser.add_argument("--status", action="store_true", help="Display summary status of workspace and task items")
+    parser.add_argument("--prepare-stage", type=str, help="Prepare task items for cognitive stage (06, 07, 08, 09)")
+    parser.add_argument("--apply-stage", type=str, help="Apply Agent's edited task items for cognitive stage (06, 07, 08, 09)")
+    parser.add_argument("--run-deterministic", action="store_true", help="Run deterministic stages (01, 03, 04, 05, 10, 11)")
 
     args = parser.parse_args()
 
@@ -150,43 +197,73 @@ def main():
         output_dir = skill_dir / output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    if args.status:
+        print_pipeline_status(workspace_dir, output_dir)
+        return
+
+    # Handle prepare / apply stage shortcuts
+    if args.prepare_stage:
+        stg = f"{int(args.prepare_stage):02d}"
+        target_info = next((s for s in STAGE_DEFINITIONS if s[0] == stg), None)
+        if not target_info:
+            print(f"[!] Unknown stage: {args.prepare_stage}", file=sys.stderr)
+            sys.exit(1)
+        script = skill_dir / "stages" / target_info[1] / target_info[2]
+        cmd = [sys.executable, str(script), "--workspace", str(workspace_dir), "--config", str(config_path), "--prepare"]
+        subprocess.run(cmd, check=True)
+        return
+
+    if args.apply_stage:
+        stg = f"{int(args.apply_stage):02d}"
+        target_info = next((s for s in STAGE_DEFINITIONS if s[0] == stg), None)
+        if not target_info:
+            print(f"[!] Unknown stage: {args.apply_stage}", file=sys.stderr)
+            sys.exit(1)
+        script = skill_dir / "stages" / target_info[1] / target_info[2]
+        cmd = [sys.executable, str(script), "--workspace", str(workspace_dir), "--config", str(config_path), "--apply"]
+        subprocess.run(cmd, check=True)
+        return
+
     pdf_path = Path(args.pdf) if args.pdf else None
     if pdf_path and not pdf_path.is_absolute():
         pdf_path = Path.cwd() / pdf_path
 
     status_file = workspace_dir / "stage_status.json"
 
-    # Determine which stages to run
-    start_stage = 1
-    end_stage = len(STAGE_DEFINITIONS)
-
-    if args.stage:
+    # Determine stages to run
+    if args.run_deterministic:
+        stages_to_run = [1, 3, 4, 5, 10, 11]
+    elif args.stage:
         target = int(args.stage)
-        start_stage = target
-        end_stage = target
+        stages_to_run = [target]
     elif args.from_stage or args.to_stage:
-        if args.from_stage:
-            start_stage = int(args.from_stage)
-        if args.to_stage:
-            end_stage = int(args.to_stage)
+        s_start = int(args.from_stage) if args.from_stage else 1
+        s_end = int(args.to_stage) if args.to_stage else len(STAGE_DEFINITIONS)
+        stages_to_run = list(range(s_start, s_end + 1))
     elif args.resume:
         last_completed = get_last_completed_stage(status_file)
-        start_stage = min(last_completed + 1, len(STAGE_DEFINITIONS))
-        print(f"[*] Resuming from Stage {start_stage:02d} (last completed: {last_completed:02d})")
+        stages_to_run = list(range(min(last_completed + 1, len(STAGE_DEFINITIONS)), len(STAGE_DEFINITIONS) + 1))
+        print(f"[*] Resuming from Stage {stages_to_run[0]:02d}")
+    else:
+        stages_to_run = list(range(1, len(STAGE_DEFINITIONS) + 1))
 
-    if start_stage == 1 and not pdf_path:
-        print("[!] Error: --pdf is required when running Stage 01", file=sys.stderr)
-        sys.exit(1)
+    if 1 in stages_to_run and not pdf_path:
+        # Check if pages already exist
+        pages_exist = bool(list((workspace_dir / "pages").glob("page_*.png")))
+        if not pages_exist:
+            print("[!] Error: --pdf is required when running Stage 01 without existing preprocessed pages.", file=sys.stderr)
+            sys.exit(1)
+        else:
+            print("[*] Note: Existing preprocessed pages found in workspace/pages/.")
 
-    print(f"[*] PDF-to-Markdown Pipeline initialized.")
-    print(f"    Target range : Stage {start_stage:02d} to Stage {end_stage:02d}")
-    print(f"    Workspace    : {workspace_dir}")
-    print(f"    Output Dir   : {output_dir}")
+    print(f"[*] PDF-to-Markdown Pipeline executing stages: {[f'{s:02d}' for s in stages_to_run]}")
+    print(f"    Workspace  : {workspace_dir}")
+    print(f"    Output Dir : {output_dir}")
     if pdf_path:
-        print(f"    Source PDF   : {pdf_path}")
+        print(f"    Source PDF : {pdf_path}")
 
     for idx, stage_info in enumerate(STAGE_DEFINITIONS, start=1):
-        if idx < start_stage or idx > end_stage:
+        if idx not in stages_to_run:
             continue
 
         success = run_stage(
@@ -205,7 +282,7 @@ def main():
             print(f"\n[!] Pipeline halted at Stage {stage_info[0]} due to failure.", file=sys.stderr)
             sys.exit(1)
 
-    print("\n[+] Pipeline execution completed successfully!")
+    print("\n[+] Selected pipeline stages completed successfully!")
 
 
 if __name__ == "__main__":

@@ -1,14 +1,15 @@
 ---
 name: pdf-to-markdown
-description: Convert technical PDF manuals and reference books into publication-grade Obsidian Markdown using a modular 12-stage stream-based pipeline.
+description: Convert technical PDF manuals and reference books into publication-grade Obsidian Markdown using a modular 12-stage stream-based pipeline driven by the Agent.
 ---
 
-# Recipe: Modular PDF-to-Markdown Conversion Pipeline
+# Recipe: Modular PDF-to-Markdown Conversion Pipeline (Agent-Driven)
 
 This skill converts complex technical PDF documents (such as Amiga hardware reference manuals, hardware schematics, and Motorola 68000 PRMs) into publication-grade Obsidian Markdown.
 
-It is architected around a decoupled **node-stream abstraction**:
-`raw_stream.json` $\to$ `reduced_stream.json` $\to$ `chapters/*.json` $\to$ continuation detection $\to$ specialized workers (tables, graphics, prose) $\to$ Markdown emission $\to$ fuzzy TOC linking $\to$ title refinement.
+It is architected around an **Agent-Driven Hybrid Model**:
+- **Deterministic Python Scripts** handle mechanical tasks (page extraction, 300 DPI rendering, text geometry, asset slicing with 10% margins, stream stitching, chapter partitioning, Markdown emission, and TOC link resolution).
+- **The Agent** acts as the cognitive engine and orchestrator (segmentation validation, multi-page continuation reasoning, table formatting, flowchart-to-Mermaid transcription, RAG sidecar authorship, prose polish, and opening title refinement), eliminating any requirement for external API keys (`GEMINI_API_KEY`).
 
 ---
 
@@ -17,8 +18,8 @@ It is architected around a decoupled **node-stream abstraction**:
 ```text
 .agents/skills/pdf-to-markdown/
 ├── SKILL.md                                 # This workflow manual
-├── pipeline.py                              # Master CLI orchestrator managing stage execution
-├── config.yaml                              # Global configuration (DPI, paths, LLM model settings)
+├── pipeline.py                              # Master CLI orchestrator & task manager
+├── config.yaml                              # Global configuration (DPI, paths, heuristics)
 └── stages/
     ├── 01_preprocess/
     │   ├── preprocess.py                    # Splits PDF -> page_XXXX.pdf, 300 DPI PNG, text blocks JSON
@@ -26,7 +27,7 @@ It is architected around a decoupled **node-stream abstraction**:
     │
     ├── 02_page_segmentation/
     │   ├── segment_page.py                  # Vertical banding analysis -> page_XXXX_segments.json
-    │   ├── prompt.md                        # Vision LLM prompt: header, footer, heading, prose, code_block, table, graphic, toc, toc_header
+    │   ├── prompt.md                        # Vision guidelines: header, footer, heading, prose, code_block, table, graphic, toc, toc_header
     │   └── README.md
     │
     ├── 03_build_raw_stream/
@@ -36,7 +37,7 @@ It is architected around a decoupled **node-stream abstraction**:
     │
     ├── 04_stream_reduction/
     │   ├── reduce_stream.py                 # Normalizes stream: suppresses headers/footers, fuses prose
-    │   ├── prompt_seam.md                   # Lightweight LLM prompt for de-hyphenation & paragraph continuation
+    │   ├── prompt_seam.md                   # De-hyphenation & paragraph continuation guidelines
     │   └── README.md
     │
     ├── 05_chapter_partition/
@@ -44,25 +45,25 @@ It is architected around a decoupled **node-stream abstraction**:
     │   └── README.md
     │
     ├── 06_detect_continuations/
-    │   ├── detect_continuations.py          # Scans adjacent table/graphic blocks; links multi-page continuations in JSON
-    │   ├── prompt_continuation.md           # LLM prompt: evaluates column headers, row flow, or diagram continuation
+    │   ├── detect_continuations.py          # Scans adjacent table/graphic blocks; prepares & applies continuation groups
+    │   ├── prompt_continuation.md           # Continuation evaluation rules
     │   └── README.md
     │
     ├── 07_transform_tables/
-    │   ├── transform_tables.py              # Worker for tables (consumes continuation groups -> unified GFM/HTML table)
-    │   ├── prompt_markdown_table.md         # LLM prompt: 4-column layout, Unicode arrows, math
-    │   ├── prompt_html_table.md             # LLM prompt: colspan/rowspan tables
+    │   ├── transform_tables.py              # Worker for tables (prepares workspace/tasks/tables/ & applies back)
+    │   ├── prompt_markdown_table.md         # 4-column layout, Unicode arrows, math
+    │   ├── prompt_html_table.md             # Colspan/rowspan tables
     │   └── README.md
     │
     ├── 08_transform_graphics/
-    │   ├── transform_graphics.py            # Worker for graphics: Mermaid + ASCII callout vs SVG + RAG sidecars
-    │   ├── prompt_mermaid.md                # LLM prompt: state machines & flowcharts -> Mermaid + ASCII callout
-    │   ├── prompt_rag_sidecar.md            # LLM prompt: detailed signal/timing breakdown for RAG (.png.txt)
+    │   ├── transform_graphics.py            # Worker for graphics (prepares workspace/tasks/graphics/ & applies back)
+    │   ├── prompt_mermaid.md                # Flowcharts & state machines -> Mermaid + ASCII callout
+    │   ├── prompt_rag_sidecar.md            # Technical signal/timing breakdown for RAG (.png.txt)
     │   └── README.md
     │
     ├── 09_transform_prose/
     │   ├── format_prose.py                  # Worker for prose, code_block, and toc (wraps TOC in TOC34534 delimiters)
-    │   ├── prompt.md                        # LLM prompt for clean structural Markdown formatting
+    │   ├── prompt.md                        # Structural Markdown formatting rules
     │   └── README.md
     │
     ├── 10_emit_markdown/
@@ -74,51 +75,105 @@ It is architected around a decoupled **node-stream abstraction**:
     │   └── README.md
     │
     └── 12_refine_first_chapter_name/
-        ├── refine_name.py                   # LLM worker: inspects first chapter content & current name to determine canonical title/slug
-        ├── prompt.md                        # LLM prompt: suggests clean chapter title and filename slug (e.g. Table of Contents)
+        ├── refine_name.py                   # Inspects first chapter content & sets canonical title/slug
+        ├── prompt.md                        # Evaluation guidelines for opening sections
         └── README.md
 ```
 
 ---
 
-## 2. Cardinal Execution Principles
+## 2. Agent Execution Workflow
 
-1. **Independent Subfolder Stages**: Every step in `stages/` is fully runnable in isolation using Python CLI arguments.
-2. **Intermediate Data Contracts**:
-   - `workspace/pages/`: Atomic single-page vector PDFs, 300 DPI PNGs, and text geometry JSONs.
-   - `workspace/segments/`: Visual zone nodes with explicit bounding boxes and types.
-   - `workspace/raw_stream.json`: Flat, sequentially ordered stream with pre-extracted asset paths (`.svg`, `.png`, `.txt`).
-   - `workspace/reduced_stream.json`: Welded paragraphs, de-hyphenated text, and stripped running headers/footers.
-   - `workspace/chapters/*.json`: Partitioned section streams prefixed numerically (`00_...json`, `01_...json`).
-3. **Table & Diagram Triage**:
-   - Simple tables $\to$ GFM tables (4-column book layouts, Unicode arrows `→`).
-   - Complex tables $\to$ Semantic HTML `<table>` with `colspan`/`rowspan`.
-   - Diagrams & flowcharts $\to$ Mermaid + collapsible ASCII callout (`> [!NOTE]-`).
-   - Complex schematics $\to$ High-res SVG/PNG embed + engineering sidecar (`.png.txt`) for offline vector RAG search.
-4. **TOC Delimitation & Fuzzy Linking**:
-   - Stage 09 encloses the TOC in `<!-- TOC34534 -->` and `<!-- /TOC34534 -->`.
-   - Stage 10 ignores `toc_header` banners and emits Markdown files.
-   - Stage 11 parses the `TOC34534` block, fuzzy matches each line against all headers in the output directory, transforms entries into Obsidian wikilinks (`[[02_the_copper#Copper Registers|Copper Registers]]`), and cleans up the markers.
-5. **Canonical Front-Matter Renaming**:
-   - Stage 12 inspects the first emitted Markdown file and uses an LLM to assign the canonical title and slug (e.g. `00_table_of_contents.md`).
+When running a conversion task, the Agent executes the pipeline through 5 distinct phases:
+
+### Phase A: Ingestion & Mechanical Stream Building (Stages 01 – 05)
+Run the deterministic pipeline steps:
+```powershell
+# 1. Preprocess PDF (optionally limit pages with --max-pages for testing)
+python .agents/skills/pdf-to-markdown/stages/01_preprocess/preprocess.py --pdf "<PATH_TO_PDF>" --workspace workspace
+
+# 2. Generate initial segments
+python .agents/skills/pdf-to-markdown/stages/02_page_segmentation/segment_page.py --workspace workspace
+
+# 3. Build raw stream and extract assets (SVG/PNG with 10% margin and raw text files)
+python .agents/skills/pdf-to-markdown/stages/03_build_raw_stream/build_stream.py --workspace workspace
+python .agents/skills/pdf-to-markdown/stages/03_build_raw_stream/extract_initial_assets.py --workspace workspace
+
+# 4. Stream reduction (suppress headers/footers, weld prose, de-hyphenate)
+python .agents/skills/pdf-to-markdown/stages/04_stream_reduction/reduce_stream.py --workspace workspace
+
+# 5. Chapter partition (splits into chapters, prepends front-matter preamble to Chapter 1)
+python .agents/skills/pdf-to-markdown/stages/05_chapter_partition/partition_chapters.py --workspace workspace
+```
+
+### Phase B: Continuation Verification (Stage 06)
+```powershell
+# Prepare continuation candidates for review
+python .agents/skills/pdf-to-markdown/pipeline.py --prepare-stage 06
+```
+1. Inspect `workspace/tasks/continuations/candidates.json` using `view_file`.
+2. Confirm or adjust `is_continuation: true/false`.
+3. Apply confirmed continuations back to chapter streams:
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --apply-stage 06
+```
+
+### Phase C: Cognitive Transformations (Stages 07 – 09)
+
+#### 1. Tables (Stage 07)
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --prepare-stage 07
+```
+- For each `{node_id}.json` in `workspace/tasks/tables/`:
+  - Inspect `raw_text` and image preview (`png_path`).
+  - Edit or refine the table in `workspace/tasks/tables/{node_id}.md` (GFM or semantic HTML table).
+- Apply tables:
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --apply-stage 07
+```
+
+#### 2. Graphics (Stage 08)
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --prepare-stage 08
+```
+- For each `{node_id}.json` in `workspace/tasks/graphics/`:
+  - View image using `view_file` on `png_path`.
+  - If it is a flowchart/state machine, write a Mermaid diagram with collapsible ASCII callout in `{node_id}.md`.
+  - If it is a schematic/timing diagram, author a comprehensive technical description in `{node_id}.sidecar.txt` for RAG vector search.
+- Apply graphics:
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --apply-stage 08
+```
+
+#### 3. Prose & TOC Delimiters (Stage 09)
+```powershell
+# Run heuristic prose formatter (or use --prepare / --apply for manual inspection)
+python .agents/skills/pdf-to-markdown/stages/09_transform_prose/format_prose.py --workspace workspace
+```
+
+### Phase D: Emission & TOC Wikilinking (Stages 10 – 11)
+```powershell
+# 10. Emit Markdown per chapter (suppressing toc_header)
+python .agents/skills/pdf-to-markdown/stages/10_emit_markdown/emit_markdown.py --workspace workspace --output-dir "<OUTPUT_DIR>"
+
+# 11. Cross-file fuzzy TOC linking (converts TOC34534 to Obsidian wikilinks and removes delimiters)
+python .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py --output-dir "<OUTPUT_DIR>"
+```
+
+### Phase E: Opening Section Title Refinement (Stage 12)
+```powershell
+# Inspect opening chapter preview and suggested title
+python .agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py --output-dir "<OUTPUT_DIR>" --inspect
+
+# Apply canonical title and slug (e.g. Table of Contents)
+python .agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py --output-dir "<OUTPUT_DIR>" --title "Table of Contents" --slug "table_of_contents"
+```
 
 ---
 
-## 3. CLI Usage
-
-### Running End-to-End
+## 3. Monitoring & Status Check
+Check pipeline progress and pending tasks at any time:
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --pdf "path/to/manual.pdf" --output-dir "Obsidian/Amiga/Reference/Manual"
+python .agents/skills/pdf-to-markdown/pipeline.py --status
 ```
 
-### Running Specific Stages
-```powershell
-# Run only Stage 01 (Preprocess)
-python .agents/skills/pdf-to-markdown/pipeline.py --pdf "manual.pdf" --stage 01
-
-# Run Stages 06 through 08 (Continuations & Transformations)
-python .agents/skills/pdf-to-markdown/pipeline.py --pdf "manual.pdf" --from-stage 06 --to-stage 08
-
-# Resume from the last incomplete stage
-python .agents/skills/pdf-to-markdown/pipeline.py --pdf "manual.pdf" --resume
-```

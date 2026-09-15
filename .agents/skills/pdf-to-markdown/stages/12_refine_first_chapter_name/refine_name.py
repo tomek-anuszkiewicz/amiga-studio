@@ -69,7 +69,14 @@ def update_frontmatter_title(content: str, new_title: str) -> str:
     return content
 
 
-def process_first_chapter_refinement(output_dir: Path, workspace_dir: Path, config_path: Path = None):
+def process_first_chapter_refinement(
+    output_dir: Path,
+    workspace_dir: Path,
+    config_path: Path = None,
+    inspect_only: bool = False,
+    override_title: str = None,
+    override_slug: str = None
+):
     if not output_dir.exists():
         raise FileNotFoundError(f"Output directory does not exist: {output_dir}")
 
@@ -86,40 +93,52 @@ def process_first_chapter_refinement(output_dir: Path, workspace_dir: Path, conf
     with open(first_file, "r", encoding="utf-8") as f:
         content = f.read()
 
-    config = {}
-    if config_path and config_path.exists():
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f) or {}
-        except Exception:
-            config = {}
+    if inspect_only:
+        print(f"[*] Opening Chapter Inspection: {first_file.name}")
+        print("=" * 60)
+        lines = content.splitlines()[:50]
+        print("\n".join(lines))
+        print("=" * 60)
+        auto_title, auto_slug = determine_canonical_title_and_slug(content, first_file.name)
+        print(f"Suggested Canonical Title: {auto_title}")
+        print(f"Suggested Slug           : {auto_slug}")
+        return
 
-    gemini = GeminiClient(config) if GeminiClient else None
-    new_title, new_slug = None, None
+    new_title = override_title
+    new_slug = override_slug
 
-    if gemini and gemini.is_available():
-        prompt_file = Path(__file__).parent / "prompt.md"
-        base_prompt = ""
-        if prompt_file.exists():
-            with open(prompt_file, "r", encoding="utf-8") as pf:
-                base_prompt = pf.read()
-
-        full_prompt = (
-            f"{base_prompt}\n\n"
-            f"Preliminary File Name: {first_file.name}\n\n"
-            f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
-        )
-        print(f"[*] Calling Gemini ({gemini.default_model}, thinking: {gemini.thinking_level}) for canonical title & slug...")
-        raw_res = gemini.generate_text(full_prompt)
-        if raw_res:
+    if not new_title or not new_slug:
+        config = {}
+        if config_path and config_path.exists():
             try:
-                json_match = re.search(r"\{.*\}", raw_res, re.DOTALL)
-                if json_match:
-                    parsed = json.loads(json_match.group(0))
-                    new_title = parsed.get("title")
-                    new_slug = parsed.get("slug")
-            except Exception as e:
-                print(f"[!] Warning: Failed to parse LLM response as JSON: {e}")
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config = yaml.safe_load(f) or {}
+            except Exception:
+                config = {}
+
+        gemini = GeminiClient(config) if GeminiClient else None
+        if gemini and gemini.is_available():
+            prompt_file = Path(__file__).parent / "prompt.md"
+            base_prompt = ""
+            if prompt_file.exists():
+                with open(prompt_file, "r", encoding="utf-8") as pf:
+                    base_prompt = pf.read()
+
+            full_prompt = (
+                f"{base_prompt}\n\n"
+                f"Preliminary File Name: {first_file.name}\n\n"
+                f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
+            )
+            raw_res = gemini.generate_text(full_prompt)
+            if raw_res:
+                try:
+                    json_match = re.search(r"\{.*\}", raw_res, re.DOTALL)
+                    if json_match:
+                        parsed = json.loads(json_match.group(0))
+                        new_title = parsed.get("title")
+                        new_slug = parsed.get("slug")
+                except Exception:
+                    pass
 
     if not new_title or not new_slug:
         new_title, new_slug = determine_canonical_title_and_slug(content, first_file.name)
@@ -135,13 +154,12 @@ def process_first_chapter_refinement(output_dir: Path, workspace_dir: Path, conf
     updated_content = update_frontmatter_title(content, new_title)
 
     if new_path != first_file:
-        # Write new file and remove old file
         with open(new_path, "w", encoding="utf-8") as f:
             f.write(updated_content)
         first_file.unlink()
         print(f"[+] Renamed {first_file.name} -> {new_filename}")
 
-        # Update any cross-file wikilinks referencing the old stem
+        # Update cross-file wikilinks
         new_stem = new_path.stem
         for other_file in output_dir.glob("*.md"):
             with open(other_file, "r", encoding="utf-8") as f:
@@ -163,12 +181,22 @@ def main():
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--output-dir", type=str, default="output_markdown", help="Output directory")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--inspect", action="store_true", help="Inspect opening chapter excerpt and suggested titles")
+    parser.add_argument("--title", type=str, default=None, help="Explicit canonical title")
+    parser.add_argument("--slug", type=str, default=None, help="Explicit canonical slug")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     output_dir = Path(args.output_dir)
 
-    process_first_chapter_refinement(output_dir, workspace_dir, config_path=Path(args.config))
+    process_first_chapter_refinement(
+        output_dir,
+        workspace_dir,
+        config_path=Path(args.config),
+        inspect_only=args.inspect,
+        override_title=args.title,
+        override_slug=args.slug
+    )
 
 
 if __name__ == "__main__":

@@ -113,14 +113,152 @@ def process_graphics(workspace_dir: Path, config: dict):
     print(f"[+] Stage 08 complete. Transformed {transformed_count} graphics, generated {sidecar_count} RAG sidecars.")
 
 
+def prepare_graphics_tasks(workspace_dir: Path) -> int:
+    """
+    Extracts graphic nodes into workspace/tasks/graphics/{node_id}.json and {node_id}.md
+    for the Agent to inspect image assets and author Mermaid or sidecars.
+    """
+    chapters_dir = workspace_dir / "chapters"
+    if not chapters_dir.exists():
+        raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
+
+    tasks_dir = workspace_dir / "tasks" / "graphics"
+    tasks_dir.mkdir(parents=True, exist_ok=True)
+
+    count = 0
+    for c_file in sorted(list(chapters_dir.glob("*.json"))):
+        with open(c_file, "r", encoding="utf-8") as f:
+            nodes = json.load(f)
+
+        for node in nodes:
+            if node.get("type") != "graphic":
+                continue
+
+            node_id = node.get("node_id", "asset")
+            page_num = node.get("page", 1)
+            raw_text = node.get("raw_text", "")
+
+            svg_rel = node.get("svg_path")
+            png_rel = node.get("png_path")
+            asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
+
+            caption = raw_text.splitlines()[0].strip() if raw_text.strip() else f"Figure on page {page_num}"
+            caption = re.sub(r"[\[\]|]", "", caption)
+            draft_md = f"![[{asset_file}|{caption}]]\n\n*{caption}*\n"
+            draft_sidecar = generate_default_sidecar(node_id, raw_text, page_num)
+
+            task_meta = {
+                "node_id": node_id,
+                "chapter_file": str(c_file.relative_to(workspace_dir)),
+                "page": page_num,
+                "svg_path": svg_rel,
+                "png_path": png_rel,
+                "asset_file": asset_file,
+                "raw_text": raw_text,
+            }
+
+            meta_file = tasks_dir / f"{node_id}.json"
+            md_file = tasks_dir / f"{node_id}.md"
+            sidecar_file = tasks_dir / f"{node_id}.sidecar.txt"
+
+            with open(meta_file, "w", encoding="utf-8") as f:
+                json.dump(task_meta, f, indent=2)
+
+            if not md_file.exists():
+                with open(md_file, "w", encoding="utf-8") as f:
+                    f.write(draft_md)
+
+            if not sidecar_file.exists():
+                with open(sidecar_file, "w", encoding="utf-8") as f:
+                    f.write(draft_sidecar)
+
+            count += 1
+
+    print(f"[+] Prepared {count} graphic tasks in {tasks_dir}")
+    return count
+
+
+def apply_graphics_tasks(workspace_dir: Path) -> int:
+    """
+    Reads workspace/tasks/graphics/{node_id}.md and sidecars,
+    updating chapter JSON files and workspace/assets/.
+    """
+    tasks_dir = workspace_dir / "tasks" / "graphics"
+    assets_dir = workspace_dir / "assets"
+    assets_dir.mkdir(parents=True, exist_ok=True)
+
+    if not tasks_dir.exists():
+        print(f"[!] No graphic tasks directory found at {tasks_dir}")
+        return 0
+
+    applied_count = 0
+    for meta_file in sorted(list(tasks_dir.glob("*.json"))):
+        with open(meta_file, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+
+        node_id = meta.get("node_id")
+        chapter_rel = meta.get("chapter_file")
+        asset_file = meta.get("asset_file", f"asset_{node_id}.png")
+
+        md_file = tasks_dir / f"{node_id}.md"
+        sidecar_file = tasks_dir / f"{node_id}.sidecar.txt"
+
+        if not md_file.exists() or not chapter_rel:
+            continue
+
+        with open(md_file, "r", encoding="utf-8") as f:
+            rendered_md = f.read().strip()
+
+        # Update sidecar in assets
+        sidecar_name = f"{asset_file}.txt"
+        if sidecar_file.exists():
+            sidecar_dest = assets_dir / sidecar_name
+            with open(sidecar_file, "r", encoding="utf-8") as sf:
+                sidecar_dest.write_text(sf.read(), encoding="utf-8")
+
+        chapter_path = workspace_dir / chapter_rel
+        if not chapter_path.exists():
+            continue
+
+        with open(chapter_path, "r", encoding="utf-8") as f:
+            nodes = json.load(f)
+
+        updated = False
+        for node in nodes:
+            if node.get("node_id") == node_id:
+                node["rendered_markdown"] = rendered_md
+                node["sidecar_path"] = f"assets/{sidecar_name}"
+                updated = True
+                break
+
+        if updated:
+            with open(chapter_path, "w", encoding="utf-8") as f:
+                json.dump(nodes, f, indent=2)
+            applied_count += 1
+
+    print(f"[+] Applied {applied_count} graphic tasks to chapter streams.")
+    return applied_count
+
+
 def main():
     parser = argparse.ArgumentParser(description="Stage 08: Transform graphic nodes into Mermaid/Obsidian embeds with RAG sidecars")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--prepare", action="store_true", help="Prepare graphic tasks for the Agent in workspace/tasks/graphics/")
+    parser.add_argument("--apply", action="store_true", help="Apply Agent's edited graphics and sidecars back to chapters")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     config_path = Path(args.config)
+
+    if args.prepare:
+        prepare_graphics_tasks(workspace_dir)
+        return
+
+    if args.apply:
+        apply_graphics_tasks(workspace_dir)
+        return
+
     config = {}
     if config_path.exists():
         with open(config_path, "r", encoding="utf-8") as f:

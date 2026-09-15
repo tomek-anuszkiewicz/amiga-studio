@@ -128,14 +128,119 @@ def process_prose(workspace_dir: Path, config: dict):
     print(f"[+] Stage 09 complete. Formatted {formatted_count} prose/code/TOC nodes.")
 
 
+def prepare_prose_tasks(workspace_dir: Path) -> int:
+    """
+    Extracts TOC and code block nodes into workspace/tasks/prose/ for inspection.
+    """
+    chapters_dir = workspace_dir / "chapters"
+    if not chapters_dir.exists():
+        raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
+
+    tasks_dir = workspace_dir / "tasks" / "prose"
+    tasks_dir.mkdir(parents=True, exist_ok=True)
+
+    count = 0
+    for c_file in sorted(list(chapters_dir.glob("*.json"))):
+        with open(c_file, "r", encoding="utf-8") as f:
+            nodes = json.load(f)
+
+        for node in nodes:
+            n_type = node.get("type")
+            if n_type not in ("toc", "code_block"):
+                continue
+
+            node_id = node.get("node_id")
+            raw_text = node.get("raw_text", "")
+            draft_md = format_toc_block(raw_text) if n_type == "toc" else format_code_block(raw_text)
+
+            task_meta = {
+                "node_id": node_id,
+                "chapter_file": str(c_file.relative_to(workspace_dir)),
+                "type": n_type,
+                "page": node.get("page"),
+                "raw_text": raw_text,
+            }
+
+            with open(tasks_dir / f"{node_id}.json", "w", encoding="utf-8") as f:
+                json.dump(task_meta, f, indent=2)
+
+            md_file = tasks_dir / f"{node_id}.md"
+            if not md_file.exists():
+                with open(md_file, "w", encoding="utf-8") as f:
+                    f.write(draft_md)
+
+            count += 1
+
+    print(f"[+] Prepared {count} special prose/TOC tasks in {tasks_dir}")
+    return count
+
+
+def apply_prose_tasks(workspace_dir: Path) -> int:
+    """
+    Applies edited prose/TOC tasks back into chapter streams.
+    """
+    tasks_dir = workspace_dir / "tasks" / "prose"
+    if not tasks_dir.exists():
+        print(f"[!] No prose tasks directory found at {tasks_dir}")
+        return 0
+
+    applied_count = 0
+    for meta_file in sorted(list(tasks_dir.glob("*.json"))):
+        with open(meta_file, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+
+        node_id = meta.get("node_id")
+        chapter_rel = meta.get("chapter_file")
+        md_file = tasks_dir / f"{node_id}.md"
+
+        if not md_file.exists() or not chapter_rel:
+            continue
+
+        with open(md_file, "r", encoding="utf-8") as f:
+            rendered_md = f.read().strip()
+
+        chapter_path = workspace_dir / chapter_rel
+        if not chapter_path.exists():
+            continue
+
+        with open(chapter_path, "r", encoding="utf-8") as f:
+            nodes = json.load(f)
+
+        updated = False
+        for node in nodes:
+            if node.get("node_id") == node_id:
+                node["rendered_markdown"] = rendered_md
+                updated = True
+                break
+
+        if updated:
+            with open(chapter_path, "w", encoding="utf-8") as f:
+                json.dump(nodes, f, indent=2)
+            applied_count += 1
+
+    print(f"[+] Applied {applied_count} prose tasks to chapter streams.")
+    return applied_count
+
+
 def main():
     parser = argparse.ArgumentParser(description="Stage 09: Format prose, code blocks, and tag TOC")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--prepare", action="store_true", help="Prepare TOC and code tasks in workspace/tasks/prose/")
+    parser.add_argument("--apply", action="store_true", help="Apply Agent's edited prose tasks back to chapters")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     config_path = Path(args.config)
+
+    if args.prepare:
+        prepare_prose_tasks(workspace_dir)
+        return
+
+    if args.apply:
+        apply_prose_tasks(workspace_dir)
+        return
+
     config = {}
     if config_path.exists():
         with open(config_path, "r", encoding="utf-8") as f:

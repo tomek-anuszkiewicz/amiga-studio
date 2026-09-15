@@ -12,11 +12,11 @@ import sys
 from pathlib import Path
 import yaml
 
-# Import asset extractor from same directory
-try:
-    from extract_initial_assets import extract_assets_for_nodes
-except ImportError:
-    from stages.03_build_raw_stream.extract_initial_assets import extract_assets_for_nodes
+CURRENT_DIR = Path(__file__).resolve().parent
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
+
+from extract_initial_assets import extract_assets_for_nodes
 
 
 def build_raw_stream(workspace_dir: Path, config: dict):

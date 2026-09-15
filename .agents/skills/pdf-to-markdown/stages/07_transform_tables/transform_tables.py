@@ -143,14 +143,139 @@ def process_tables(workspace_dir: Path, config: dict):
     print(f"[+] Stage 07 complete. Transformed {transformed_count} table blocks.")
 
 
+def prepare_table_tasks(workspace_dir: Path) -> int:
+    """
+    Extracts table nodes into workspace/tasks/tables/{node_id}.json and {node_id}.md
+    for the Agent to inspect and transform.
+    """
+    chapters_dir = workspace_dir / "chapters"
+    if not chapters_dir.exists():
+        raise FileNotFoundError(f"Missing chapters directory: {chapters_dir}")
+
+    tasks_dir = workspace_dir / "tasks" / "tables"
+    tasks_dir.mkdir(parents=True, exist_ok=True)
+
+    count = 0
+    for c_file in sorted(list(chapters_dir.glob("*.json"))):
+        with open(c_file, "r", encoding="utf-8") as f:
+            nodes = json.load(f)
+
+        for node in nodes:
+            if node.get("type") != "table":
+                continue
+            if node.get("continuation_status") == "continuation":
+                continue
+
+            node_id = node.get("node_id")
+            raw_text = node.get("raw_text", "")
+            if node.get("continuation_status") == "head" and "merged_nodes" in node:
+                child_texts = []
+                for other in nodes:
+                    if other.get("node_id") in node["merged_nodes"] and other.get("node_id") != node_id:
+                        child_texts.append(other.get("raw_text", ""))
+                if child_texts:
+                    raw_text = raw_text + "\n" + "\n".join(child_texts)
+
+            draft_md = format_simple_gfm_table(raw_text)
+            if not draft_md:
+                asset_ref = node.get("svg_path") or node.get("png_path") or ""
+                draft_md = f"![Table]({asset_ref})\n"
+
+            task_meta = {
+                "node_id": node_id,
+                "chapter_file": str(c_file.relative_to(workspace_dir)),
+                "page": node.get("page"),
+                "continuation_status": node.get("continuation_status"),
+                "merged_nodes": node.get("merged_nodes"),
+                "svg_path": node.get("svg_path"),
+                "png_path": node.get("png_path"),
+                "raw_text_path": node.get("raw_text_path"),
+                "raw_text": raw_text,
+            }
+
+            meta_file = tasks_dir / f"{node_id}.json"
+            md_file = tasks_dir / f"{node_id}.md"
+
+            with open(meta_file, "w", encoding="utf-8") as f:
+                json.dump(task_meta, f, indent=2)
+
+            if not md_file.exists():
+                with open(md_file, "w", encoding="utf-8") as f:
+                    f.write(draft_md)
+
+            count += 1
+
+    print(f"[+] Prepared {count} table tasks in {tasks_dir}")
+    return count
+
+
+def apply_table_tasks(workspace_dir: Path) -> int:
+    """
+    Reads workspace/tasks/tables/{node_id}.md and injects rendered_markdown
+    back into chapter JSON files.
+    """
+    tasks_dir = workspace_dir / "tasks" / "tables"
+    if not tasks_dir.exists():
+        print(f"[!] No table tasks directory found at {tasks_dir}")
+        return 0
+
+    applied_count = 0
+    for meta_file in sorted(list(tasks_dir.glob("*.json"))):
+        with open(meta_file, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+
+        node_id = meta.get("node_id")
+        chapter_rel = meta.get("chapter_file")
+        md_file = tasks_dir / f"{node_id}.md"
+
+        if not md_file.exists() or not chapter_rel:
+            continue
+
+        with open(md_file, "r", encoding="utf-8") as f:
+            rendered_md = f.read().strip()
+
+        chapter_path = workspace_dir / chapter_rel
+        if not chapter_path.exists():
+            continue
+
+        with open(chapter_path, "r", encoding="utf-8") as f:
+            nodes = json.load(f)
+
+        updated = False
+        for node in nodes:
+            if node.get("node_id") == node_id:
+                node["rendered_markdown"] = rendered_md
+                updated = True
+                break
+
+        if updated:
+            with open(chapter_path, "w", encoding="utf-8") as f:
+                json.dump(nodes, f, indent=2)
+            applied_count += 1
+
+    print(f"[+] Applied {applied_count} table tasks to chapter streams.")
+    return applied_count
+
+
 def main():
     parser = argparse.ArgumentParser(description="Stage 07: Transform table nodes into Markdown/HTML tables")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--prepare", action="store_true", help="Prepare table tasks for the Agent in workspace/tasks/tables/")
+    parser.add_argument("--apply", action="store_true", help="Apply Agent's edited tables from workspace/tasks/tables/ back to chapters")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     config_path = Path(args.config)
+
+    if args.prepare:
+        prepare_table_tasks(workspace_dir)
+        return
+
+    if args.apply:
+        apply_table_tasks(workspace_dir)
+        return
+
     config = {}
     if config_path.exists():
         with open(config_path, "r", encoding="utf-8") as f:
