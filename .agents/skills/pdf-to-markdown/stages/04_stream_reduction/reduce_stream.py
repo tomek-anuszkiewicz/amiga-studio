@@ -68,17 +68,20 @@ def reduce_contiguous_graphics(
     gemini: Optional[GeminiClient],
     graphics_prompt: str,
     padding_ratio: float = 0.10,
+    reduced_assets_dir: Path = None,
 ) -> tuple:
     """
-    Scans sequential nodes for contiguous runs of graphic nodes on the same page.
-    Queries Gemini Vision with the page PNG and the bounding box union.
+    Identifies runs of contiguous graphic nodes on the same page.
+    Validates with Vision LLM whether the candidate cluster forms a single unified diagram.
     If verified as a single cohesive graphic:
-      1. Purges obsolete individual asset files from workspace/assets/.
-      2. Crops a single unified asset (PNG/SVG) with 10% safety margin.
+      1. Purges obsolete individual asset files from 04_reduced_stream/assets/.
+      2. Crops a single unified asset (PNG/SVG) with 10% safety margin into 04_reduced_stream/assets/.
       3. Replaces the entire sequence of old nodes with a single unified graphic node.
     """
     pages_dir = workspace_dir / "01_pages" if (workspace_dir / "01_pages").exists() else (workspace_dir / "pages")
-    assets_dir = workspace_dir / "assets"
+    if reduced_assets_dir is None:
+        reduced_assets_dir = workspace_dir / "04_reduced_stream" / "assets"
+    reduced_assets_dir.mkdir(parents=True, exist_ok=True)
 
     reduced_nodes = []
     total_unifications = 0
@@ -137,13 +140,13 @@ def reduce_contiguous_graphics(
                     combined_text = "\n".join(labels)
                     full_raw_text = f"{title}\n\n{combined_text}" if title and title not in combined_text else combined_text
 
-                    # 1. Delete old individual asset files in workspace/assets/
-                    if assets_dir.exists():
+                    # 1. Delete old individual asset files in 04_reduced_stream/assets/ (03_raw_stream/assets/ remains untouched!)
+                    if reduced_assets_dir.exists():
                         for old_node in run:
                             old_id = old_node.get("node_id")
                             if old_id:
                                 for ext in [".png", ".txt", ".svg", ".png.txt"]:
-                                    f_asset = assets_dir / f"asset_{old_id}{ext}"
+                                    f_asset = reduced_assets_dir / f"asset_{old_id}{ext}"
                                     try:
                                         f_asset.unlink(missing_ok=True)
                                     except Exception:
@@ -168,9 +171,15 @@ def reduce_contiguous_graphics(
                         "welded_nodes": [n["node_id"] for n in run]
                     }
 
-                    # 3. Crop/extract the unified asset with safety margin
+                    # 3. Crop/extract the unified asset with safety margin into 04_reduced_stream/assets/
                     if extract_assets_for_nodes:
-                        extract_assets_for_nodes(workspace_dir, [unified_node], padding_ratio=padding_ratio)
+                        extract_assets_for_nodes(
+                            workspace_dir,
+                            [unified_node],
+                            padding_ratio=padding_ratio,
+                            assets_dir=reduced_assets_dir,
+                            rel_prefix="04_reduced_stream/assets"
+                        )
 
                     print(f"    [+] Unified {len(run)} graphic nodes on page {page_num} into {unified_node['node_id']}: '{title}'")
                     total_unifications += 1
@@ -224,6 +233,30 @@ def reduce_stream(workspace_dir: Path, config: dict):
 
     print(f"[*] Suppressed {skipped_count} header/footer nodes.")
 
+    # Prepare Stage 04 assets directory by synchronizing from Stage 03
+    import shutil
+    out_dir = workspace_dir / "04_reduced_stream"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    reduced_assets_dir = out_dir / "assets"
+    reduced_assets_dir.mkdir(parents=True, exist_ok=True)
+    raw_assets_dir = workspace_dir / "03_raw_stream" / "assets"
+
+    for old_f in reduced_assets_dir.glob("*"):
+        if old_f.is_file():
+            old_f.unlink()
+    if raw_assets_dir.exists():
+        for asset_f in raw_assets_dir.glob("*"):
+            if asset_f.is_file():
+                shutil.copy2(asset_f, reduced_assets_dir / asset_f.name)
+
+    for n in active_nodes:
+        for k in ("png_path", "svg_path", "raw_text_path"):
+            val = n.get(k)
+            if val and "03_raw_stream/assets" in val:
+                n[k] = val.replace("03_raw_stream/assets", "04_reduced_stream/assets")
+            elif val and val.startswith("assets/"):
+                n[k] = f"04_reduced_stream/{val}"
+
     # Step 2: Unify contiguous graphic nodes on identical pages
     padding = config.get("render", {}).get("padding_margin_ratio", 0.10)
     nodes_after_graphics, num_unifications, num_collapsed_graphics = reduce_contiguous_graphics(
@@ -232,6 +265,7 @@ def reduce_stream(workspace_dir: Path, config: dict):
         gemini,
         graphics_prompt_template,
         padding_ratio=padding,
+        reduced_assets_dir=reduced_assets_dir,
     )
     if num_unifications > 0:
         print(f"[*] Graphic Reduction: Consolidated {num_collapsed_graphics + num_unifications} fragments into {num_unifications} unified diagram(s) (eliminated {num_collapsed_graphics} fragmented nodes).")

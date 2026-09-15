@@ -58,13 +58,19 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
     out_assets_dir = output_dir / "assets"
     out_assets_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Synchronize assets
-    src_assets_dir = workspace_dir / "assets"
-    if src_assets_dir.exists():
+    # 1. Synchronize assets from latest stage
+    asset_candidates = [
+        workspace_dir / "08_chapters_graphics" / "assets",
+        workspace_dir / "04_reduced_stream" / "assets",
+        workspace_dir / "03_raw_stream" / "assets",
+        workspace_dir / "assets",
+    ]
+    src_assets_dir = next((p for p in asset_candidates if p.exists()), None)
+    if src_assets_dir and src_assets_dir.exists():
         for asset_file in src_assets_dir.glob("*"):
             if asset_file.is_file():
                 shutil.copy2(asset_file, out_assets_dir / asset_file.name)
-        print(f"[*] Synchronized assets to {out_assets_dir}")
+        print(f"[*] Synchronized assets from {src_assets_dir} to {out_assets_dir}")
 
     print(f"[*] Emitting {len(manifest)} Markdown files from {chapters_dir.name} to {output_dir}...")
 

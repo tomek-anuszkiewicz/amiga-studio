@@ -229,13 +229,13 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_stage: 
                     if assets.exists():
                         shutil.rmtree(assets, ignore_errors=True)
             elif target == "__ASSETS_SIDECARS__":
-                assets_dir = workspace_dir / "assets"
-                if assets_dir.exists():
-                    for txt_file in assets_dir.glob("*.txt"):
-                        try:
-                            txt_file.unlink()
-                        except Exception:
-                            pass
+                for a_dir in [workspace_dir / "08_chapters_graphics" / "assets", workspace_dir / "04_reduced_stream" / "assets", workspace_dir / "assets"]:
+                    if a_dir.exists():
+                        for txt_file in a_dir.glob("*.png.txt"):
+                            try:
+                                txt_file.unlink()
+                            except Exception:
+                                pass
             else:
                 p = workspace_dir / target
                 if p.is_dir():

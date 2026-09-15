@@ -13,8 +13,15 @@ import pymupdf
 from PIL import Image
 
 
-def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: float = 0.10) -> list:
-    assets_dir = workspace_dir / "assets"
+def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: float = 0.10, assets_dir: Path = None, rel_prefix: str = None) -> list:
+    if assets_dir is None:
+        assets_dir = workspace_dir / "03_raw_stream" / "assets"
+    if rel_prefix is None:
+        try:
+            rel_prefix = assets_dir.relative_to(workspace_dir).as_posix()
+        except Exception:
+            rel_prefix = assets_dir.name
+
     pages_dir = workspace_dir / "01_pages" if (workspace_dir / "01_pages").exists() else (workspace_dir / "pages")
     assets_dir.mkdir(parents=True, exist_ok=True)
 
@@ -69,7 +76,7 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
                 extracted_text = page.get_text("text", clip=clip_rect)
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write(extracted_text.strip() + "\n")
-            node["raw_text_path"] = f"assets/{txt_filename}"
+            node["raw_text_path"] = f"{rel_prefix}/{txt_filename}"
 
             # 2. Extract Vector SVG Clip if supported
             svg_filename = f"asset_{node_id}.svg"
@@ -82,7 +89,7 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
                     if svg_data and len(svg_data) > 200:
                         with open(svg_path, "w", encoding="utf-8") as f:
                             f.write(svg_data)
-                        node["svg_path"] = f"assets/{svg_filename}"
+                        node["svg_path"] = f"{rel_prefix}/{svg_filename}"
                         has_vector = True
                 except Exception:
                     has_vector = False
@@ -94,7 +101,7 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
                 clip_rect = pymupdf.Rect(*padded_bbox)
                 clip_pix = page.get_pixmap(dpi=300, clip=clip_rect)
                 clip_pix.save(str(png_path))
-                node["png_path"] = f"assets/{png_filename}"
+                node["png_path"] = f"{rel_prefix}/{png_filename}"
             elif page_pixmap:
                 # Fallback to cropping raster image
                 pw, ph = page_pixmap.size
@@ -107,7 +114,7 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
                 )
                 cropped_img = page_pixmap.crop(crop_box)
                 cropped_img.save(png_path)
-                node["png_path"] = f"assets/{png_filename}"
+                node["png_path"] = f"{rel_prefix}/{png_filename}"
 
         if doc:
             doc.close()

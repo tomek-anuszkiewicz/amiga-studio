@@ -53,7 +53,11 @@ def process_graphics(workspace_dir: Path, config: dict):
     out_dir.mkdir(parents=True, exist_ok=True)
     for f in out_dir.glob("*.json"):
         f.unlink()
-    assets_dir = workspace_dir / "assets"
+    asset_candidates = [
+        workspace_dir / "04_reduced_stream" / "assets",
+        workspace_dir / "03_raw_stream" / "assets",
+    ]
+    assets_dir = next((p for p in asset_candidates if p.exists()), workspace_dir / "04_reduced_stream" / "assets")
     assets_dir.mkdir(parents=True, exist_ok=True)
 
     gemini = GeminiClient(config) if GeminiClient else None
@@ -130,7 +134,7 @@ def process_graphics(workspace_dir: Path, config: dict):
 
             with open(sidecar_path, "w", encoding="utf-8") as sf:
                 sf.write(sidecar_text)
-            node["sidecar_path"] = f"assets/{sidecar_name}"
+            node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{sidecar_name}"
             sidecar_count += 1
 
         target_file = out_dir / c_file.name
@@ -216,7 +220,11 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
     updating workspace/08_chapters_graphics/ and workspace/assets/.
     """
     tasks_dir = workspace_dir / "tasks" / "graphics"
-    assets_dir = workspace_dir / "assets"
+    asset_candidates = [
+        workspace_dir / "04_reduced_stream" / "assets",
+        workspace_dir / "03_raw_stream" / "assets",
+    ]
+    assets_dir = next((p for p in asset_candidates if p.exists()), workspace_dir / "04_reduced_stream" / "assets")
     assets_dir.mkdir(parents=True, exist_ok=True)
 
     if not tasks_dir.exists():
@@ -266,7 +274,7 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
             if n_id in rendered_by_node:
                 node["rendered_markdown"] = rendered_by_node[n_id]
                 asset_f = meta.get("asset_file", f"asset_{n_id}.png")
-                node["sidecar_path"] = f"assets/{asset_f}.txt"
+                node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{asset_f}.txt"
                 applied_count += 1
 
         target_file = out_dir / c_file.name
