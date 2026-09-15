@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
 stages/05_chapter_partition/partition_chapters.py:
-Partitions the monolithic reduced_stream.json into chapter-level streams using numeric naming:
-workspace/chapters/{index:02d}_{slug}.json.
-Preamble & TOC Invariant: Any segments before the first detected chapter heading are partitioned into 00_toc.json (Table of Contents).
-Emits workspace/chapters_manifest.json.
+Partitions the monolithic reduced_stream.json into clean chapter-level streams:
+1. Preamble & Front Matter: all nodes prior to Table of Contents -> 00_preface.json.
+2. Table of Contents & Lists: all TOC, figures, and tables lists -> 00_toc.json.
+3. Real Chapters: welds chapter numbers and titles (e.g. "Chapter 1" + "INTRODUCTION")
+   into unified chapter streams (e.g. 01_chapter_1_introduction.json).
+4. Subsections within chapters remain inside their respective chapter stream.
+5. Emits workspace/05_chapters_raw/*.json and workspace/chapters_manifest.json.
 """
 
 import argparse
@@ -15,10 +18,40 @@ from pathlib import Path
 import yaml
 
 
+def clean_typography_typos(text: str) -> str:
+    """
+    Cleans common OCR and kerning glitches (e.g. wide-spaced capital ligatures).
+    """
+    cleaned = text
+    cleaned = re.sub(r"\bHARDW\s+ARE\b", "HARDWARE", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bINTER\s+FACE\b", "INTERFACE", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bOfTStFACB\b", "INTERFACE", cleaned)
+    cleaned = re.sub(r"\bJOY\s+(\d)\s+DAT\b", r"JOY\1DAT", cleaned)
+    cleaned = re.sub(r"\bJOYODATand\b", "JOY0DAT and", cleaned)
+    cleaned = re.sub(r"\u2019", "'", cleaned)
+    cleaned = re.sub(r"[ \t]+", " ", cleaned).strip()
+    return cleaned
+
+
 def generate_slug(text: str) -> str:
-    cleaned = text.lower()
+    cleaned = clean_typography_typos(text).lower()
     cleaned = re.sub(r"[^a-z0-9]+", "_", cleaned).strip("_")
     return cleaned[:40] if cleaned else "section"
+
+
+def is_major_chapter_start(node: dict) -> bool:
+    """
+    Determines if a node is the start of a major chapter/appendix boundary.
+    """
+    if node.get("type") != "heading":
+        return False
+    raw = node.get("raw_text", "").strip()
+    # Matches "Chapter 1", "Chapter 2", "Appendix A", etc.
+    if re.match(r"^Chapter\s+(\d+|[A-Z]+)\b", raw, re.IGNORECASE):
+        return True
+    if re.match(r"^Appendix\s+[A-Z]\b", raw, re.IGNORECASE):
+        return True
+    return False
 
 
 def partition_chapters(workspace_dir: Path, config: dict):
@@ -40,75 +73,129 @@ def partition_chapters(workspace_dir: Path, config: dict):
 
     print(f"[*] Partitioning {len(nodes)} nodes into chapter streams...")
 
-    # Identify partition boundary points
-    partitions = []
-    current_nodes = []
-    current_title = "preliminary"
-    current_slug = "preliminary"
-    has_found_first_heading = False
-
     # Clean prior chapter json files
     for f in chapters_raw_dir.glob("*.json"):
         f.unlink()
     for f in chapters_legacy_dir.glob("*.json"):
         f.unlink()
 
-    for node in nodes:
-        is_heading_1 = (node.get("type") == "heading" and node.get("heading_level") == 1)
+    # Find boundaries for Front Matter and Table of Contents
+    first_toc_idx = None
+    first_chapter_idx = None
 
-        # Check for chapter boundary
-        if is_heading_1:
-            title_text = node.get("raw_text", "").splitlines()[0].strip()
-            slug = generate_slug(title_text)
+    for idx, node in enumerate(nodes):
+        n_type = node.get("type")
+        raw = node.get("raw_text", "").strip()
 
-            if not has_found_first_heading:
-                # First chapter encountered!
-                # All segments before the first chapter are partitioned into TOC (Table of Contents)
-                has_found_first_heading = True
-                if current_nodes:
-                    partitions.append({
-                        "title": "Table of Contents",
-                        "slug": "toc",
-                        "nodes": current_nodes
-                    })
-                current_title = title_text
-                current_slug = slug
-                current_nodes = [node]
-            else:
-                # Save previous partition
-                if current_nodes:
-                    partitions.append({
-                        "title": current_title,
-                        "slug": current_slug,
-                        "nodes": current_nodes
-                    })
-                current_title = title_text
-                current_slug = slug
-                current_nodes = [node]
-        else:
-            current_nodes.append(node)
+        # Detect TOC start
+        if first_toc_idx is None:
+            if n_type == "toc_header" or n_type == "toc" or (n_type == "heading" and "table of contents" in raw.lower()):
+                first_toc_idx = idx
 
-    # Append trailing partition
-    if current_nodes:
+        # Detect First Chapter start (must be after TOC or standalone)
+        if first_chapter_idx is None and first_toc_idx is not None and idx > first_toc_idx:
+            if is_major_chapter_start(node):
+                first_chapter_idx = idx
+
+    # Fallback if TOC markers were not present
+    if first_chapter_idx is None:
+        for idx, node in enumerate(nodes):
+            if is_major_chapter_start(node):
+                first_chapter_idx = idx
+                break
+
+    partitions = []
+
+    # 1. Front Matter / Preface (All nodes prior to TOC)
+    if first_toc_idx is not None and first_toc_idx > 0:
+        front_matter_nodes = nodes[:first_toc_idx]
         partitions.append({
-            "title": current_title,
-            "slug": current_slug,
-            "nodes": current_nodes
+            "index": 0,
+            "title": "Preface & Front Matter",
+            "slug": "preface",
+            "nodes": front_matter_nodes
         })
 
-    # If no major headings were detected, keep everything in 01_document
+    # 2. Table of Contents & Lists (From first TOC node up to first Chapter)
+    if first_toc_idx is not None:
+        toc_end_idx = first_chapter_idx if first_chapter_idx is not None else len(nodes)
+        toc_nodes = nodes[first_toc_idx:toc_end_idx]
+        if toc_nodes:
+            partitions.append({
+                "index": 0,
+                "title": "Table of Contents",
+                "slug": "toc",
+                "nodes": toc_nodes
+            })
+
+    # 3. Chapters (Starting at first_chapter_idx)
+    chapter_nodes = nodes[first_chapter_idx:] if first_chapter_idx is not None else (nodes if first_toc_idx is None else [])
+
+    chapter_counter = 1
+    current_chapter_nodes = []
+    current_chapter_title = ""
+
+    i = 0
+    while i < len(chapter_nodes):
+        node = chapter_nodes[i]
+
+        if is_major_chapter_start(node):
+            # Save previous chapter if active
+            if current_chapter_nodes:
+                partitions.append({
+                    "index": chapter_counter,
+                    "title": clean_typography_typos(current_chapter_title),
+                    "slug": generate_slug(current_chapter_title),
+                    "nodes": current_chapter_nodes
+                })
+                chapter_counter += 1
+
+            # Check if next node on the same page is a heading subtitle (e.g. "INTRODUCTION")
+            raw_title = node.get("raw_text", "").strip()
+            current_chapter_nodes = [node]
+
+            if i + 1 < len(chapter_nodes):
+                next_node = chapter_nodes[i + 1]
+                if next_node.get("page") == node.get("page") and next_node.get("type") == "heading":
+                    subtitle = next_node.get("raw_text", "").strip()
+                    current_chapter_title = f"{raw_title}: {subtitle}"
+                    current_chapter_nodes.append(next_node)
+                    i += 1
+                else:
+                    current_chapter_title = raw_title
+            else:
+                current_chapter_title = raw_title
+        else:
+            if current_chapter_nodes:
+                current_chapter_nodes.append(node)
+            else:
+                # Trailing or orphaned node before first chapter
+                current_chapter_nodes = [node]
+                current_chapter_title = "Introduction"
+
+        i += 1
+
+    # Save final chapter
+    if current_chapter_nodes:
+        partitions.append({
+            "index": chapter_counter,
+            "title": clean_typography_typos(current_chapter_title),
+            "slug": generate_slug(current_chapter_title),
+            "nodes": current_chapter_nodes
+        })
+
+    # If no partitions formed, default fallback
     if not partitions:
         partitions = [{
+            "index": 1,
             "title": "Document",
             "slug": "document",
             "nodes": nodes
         }]
 
-    # Write per-chapter JSON files with clean numeric prefixes
-    # If the first partition is TOC, start numbering at 0 so Chapter 1 is 01
-    start_idx = 0 if partitions and partitions[0]["slug"] == "toc" else 1
     manifest = []
-    for idx, part in enumerate(partitions, start=start_idx):
+    for part in partitions:
+        idx = part["index"]
         file_slug = f"{idx:02d}_{part['slug']}"
         file_name = f"{file_slug}.json"
         target_path = chapters_raw_dir / file_name
@@ -133,7 +220,7 @@ def partition_chapters(workspace_dir: Path, config: dict):
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
-    print(f"[+] Stage 05 complete. {len(partitions)} chapters partitioned into {chapters_raw_dir}")
+    print(f"[+] Stage 05 complete. {len(partitions)} clean chapter streams emitted to {chapters_raw_dir}")
 
 
 def main():
