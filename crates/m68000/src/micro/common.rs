@@ -5,7 +5,7 @@
 
 use super::types::MicroStep;
 use crate::core::Cpu;
-use crate::state::CpuState;
+use crate::state::{vector, CpuState, SR_T};
 
 // ============================================================================
 // 2-Clock Micro-Step Building Blocks (1 CCK = 2 CPU Clocks)
@@ -198,7 +198,7 @@ pub const READ_VECTOR_LOW_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_read_
 // ============================================================================
 
 /// Exception Vector 3 address ($00000C) for Group 0 Address Error
-pub const VECTOR_ADDRESS_ERROR: u32 = 0x0000_000C;
+pub const VECTOR_ADDRESS_ERROR: u32 = vector::addr(vector::ADDRESS_ERROR);
 
 /// Initial setup for Address Error exception:
 /// Sets supervisor mode (S=1, T=0), checks for double-bus fault,
@@ -206,7 +206,7 @@ pub const VECTOR_ADDRESS_ERROR: u32 = 0x0000_000C;
 pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let old_sr = state.sr;
     state.set_supervisor(true);
-    state.sr &= !0x8000;
+    state.sr &= !SR_T;
 
     let ssp = state.read_a(7);
     if (ssp & 1) != 0 {
@@ -355,11 +355,11 @@ pub const POP_STACK_CCR_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_sta
 
 /// Initial setup for Privilege Violation exception: saves old SR, switches to supervisor
 pub fn alu_privilege_violation_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let vector_addr = 0x0000_0020;
+    let vector_addr = vector::addr(vector::PRIVILEGE_VIOLATION);
     let return_pc = state.instruction_pc;
     let old_sr = state.sr;
     state.set_supervisor(true);
-    state.sr &= !0x8000;
+    state.sr &= !SR_T;
     state.micro.source = return_pc;
     state.micro.destination = old_sr as u32;
     state.micro.ea_addr = vector_addr;
@@ -421,11 +421,11 @@ pub fn trigger_divide_by_zero(state: &mut CpuState) {
     let updated_sr = old_sr & !0x000F;
     state.sr = updated_sr;
     state.set_supervisor(true);
-    state.sr &= !0x8000;
+    state.sr &= !SR_T;
 
     state.micro.source = state.instruction_pc;
     state.micro.destination = updated_sr as u32;
-    state.micro.ea_addr = 0x0000_0014; // Vector 5 (address 20)
+    state.micro.ea_addr = vector::addr(vector::ZERO_DIVIDE);
     state.micro.current_steps = &STEPS_DIV_ZERO;
     state.micro.micro_step = 0;
     state.micro.clocks_remaining = 0;
@@ -440,11 +440,11 @@ pub fn trigger_divide_by_zero(state: &mut CpuState) {
 /// - Determines return PC (current `state.pc` if waking from STOP, otherwise `state.instruction_pc`).
 /// - Stashes return PC in `source`, old SR in `destination`.
 /// - Switches to supervisor mode, clears trace bit, and raises interrupt mask to `level`.
-/// - Computes autovector address: `((24 + level) as u32) * 4`.
+/// - Computes autovector address: `vector::addr(vector::AUTOVECTOR_BASE + level as u32)`.
 /// - Clears stopped flag.
 pub fn alu_interrupt_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let level = state.ipl.clamp(1, 7);
-    let vector_addr = ((24 + level) as u32) * 4;
+    let vector_addr = vector::addr(vector::AUTOVECTOR_BASE + level as u32);
     let return_pc = if state.stopped {
         state.pc
     } else {
@@ -453,7 +453,7 @@ pub fn alu_interrupt_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let old_sr = state.sr;
 
     state.set_supervisor(true);
-    state.sr &= !0x8000;
+    state.sr &= !SR_T;
     state.set_interrupt_mask(level);
 
     state.micro.source = return_pc;

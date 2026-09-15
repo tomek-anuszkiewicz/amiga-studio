@@ -216,3 +216,19 @@ fn test_dma_is_in_ddf_window_block_boundary() {
     // Block 3 (120..127): block_start = 120 > ddfstop (112), so outside
     assert!(!dma.is_in_ddf_window(120));
 }
+
+#[test]
+fn test_dma_canonical_constants() {
+    assert_eq!(dma::HPOS_REFRESH_START, 0);
+    assert_eq!(dma::HPOS_REFRESH_END, 3);
+    assert_eq!(dma::HPOS_DISK, 4);
+    assert_eq!(dma::HPOS_AUDIO_START, 5);
+    assert_eq!(dma::HPOS_AUDIO_END, 8);
+    assert_eq!(dma::HPOS_SPRITE_START, 12);
+    assert_eq!(dma::HPOS_SPRITE_END, 27);
+    assert_eq!(dma::BLITTER_STARVATION_YIELD_CYCLES, 3);
+    assert_eq!(dma::DDFSTRT_DEFAULT, 0x0038);
+    assert_eq!(dma::DDFSTOP_DEFAULT, 0x00D0);
+    assert_eq!(dma::DIWSTRT_DEFAULT, 0x2C81);
+    assert_eq!(dma::DIWSTOP_DEFAULT, 0xF4C1);
+}

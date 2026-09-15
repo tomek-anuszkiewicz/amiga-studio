@@ -5,7 +5,28 @@
 //! 8-tier priority arbitration, Blitter Nasty vs Normal mode with 3-cycle CPU starvation yield,
 //! and Chip RAM bus contention against the CPU.
 
+use config::mask::{bplcon0, dmacon};
 use serde::{Deserialize, Serialize};
+
+/// CCK ranges for fixed DMA slots on each horizontal scanline
+pub const HPOS_REFRESH_START: u16 = 0;
+pub const HPOS_REFRESH_END: u16 = 3;
+pub const HPOS_DISK: u16 = 4;
+pub const HPOS_AUDIO_START: u16 = 5;
+pub const HPOS_AUDIO_END: u16 = 8;
+pub const HPOS_SPRITE_START: u16 = 12;
+pub const HPOS_SPRITE_END: u16 = 27;
+
+/// Normal Blitter mode (BLTPRI = 0) yields to CPU after 3 consecutive memory cycles of CPU starvation
+pub const BLITTER_STARVATION_YIELD_CYCLES: u8 = 3;
+
+/// Default display data fetch boundaries for OCS standard Low-Resolution screen
+pub const DDFSTRT_DEFAULT: u16 = 0x0038;
+pub const DDFSTOP_DEFAULT: u16 = 0x00D0;
+
+/// Default display window coordinates (PAL Standard top-left $2C81, bottom-right $F4C1)
+pub const DIWSTRT_DEFAULT: u16 = 0x2C81;
+pub const DIWSTOP_DEFAULT: u16 = 0xF4C1;
 
 /// Custom chip DMA channels in strict priority order
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,10 +79,10 @@ impl Default for DmaScheduler {
         Self {
             dmacon: 0,
             bplcon0: 0,
-            ddfstrt: 0x0038,
-            ddfstop: 0x00D0,
-            diwstrt: 0x2C81,
-            diwstop: 0xF4C1,
+            ddfstrt: DDFSTRT_DEFAULT,
+            ddfstop: DDFSTOP_DEFAULT,
+            diwstrt: DIWSTRT_DEFAULT,
+            diwstop: DIWSTOP_DEFAULT,
             cpu_starvation_counter: 0,
             current_owner: DmaChannel::Cpu,
             chip_ram_blocked: false,
@@ -79,10 +100,10 @@ impl DmaScheduler {
     pub fn reset(&mut self) {
         self.dmacon = 0;
         self.bplcon0 = 0;
-        self.ddfstrt = 0x0038;
-        self.ddfstop = 0x00D0;
-        self.diwstrt = 0x2C81;
-        self.diwstop = 0xF4C1;
+        self.ddfstrt = DDFSTRT_DEFAULT;
+        self.ddfstop = DDFSTOP_DEFAULT;
+        self.diwstrt = DIWSTRT_DEFAULT;
+        self.diwstop = DIWSTOP_DEFAULT;
         self.cpu_starvation_counter = 0;
         self.current_owner = DmaChannel::Cpu;
         self.chip_ram_blocked = false;
@@ -127,7 +148,7 @@ impl DmaScheduler {
     /// Returns true if High-Resolution mode (BPLCON0 bit 15) is active
     #[inline]
     pub fn is_hires(&self) -> bool {
-        (self.bplcon0 & 0x8000) != 0
+        (self.bplcon0 & bplcon0::HIRES) != 0
     }
 
     /// Returns true if the horizontal position is inside the Display Data Fetch window
@@ -178,25 +199,25 @@ impl DmaScheduler {
 
     /// Updates DMACON register following SET/CLR bit 15 logic
     pub fn write_dmacon(&mut self, val: u16) {
-        if (val & 0x8000) != 0 {
+        if (val & dmacon::SET_CLR) != 0 {
             // SET bits
-            self.dmacon |= val & 0x7FFF;
+            self.dmacon |= val & !dmacon::SET_CLR;
         } else {
             // CLR bits
-            self.dmacon &= !(val & 0x7FFF);
+            self.dmacon &= !(val & !dmacon::SET_CLR);
         }
     }
 
     /// Returns true if the master DMA enable bit (DMAEN, bit 9) is asserted
     #[inline]
     pub fn is_dma_enabled(&self) -> bool {
-        (self.dmacon & 0x0200) != 0
+        (self.dmacon & dmacon::DMAEN) != 0
     }
 
     /// Returns true if Blitter Nasty mode (BLTPRI, bit 10) is active
     #[inline]
     pub fn is_blitter_nasty(&self) -> bool {
-        (self.dmacon & 0x0400) != 0
+        (self.dmacon & dmacon::BLTPRI) != 0
     }
 
     /// Checks whether a specific DMA channel is enabled in DMACON
@@ -206,12 +227,12 @@ impl DmaScheduler {
         }
         match channel {
             DmaChannel::Refresh => true,
-            DmaChannel::Disk => (self.dmacon & 0x0010) != 0,
+            DmaChannel::Disk => (self.dmacon & dmacon::DSKEN) != 0,
             DmaChannel::Audio(ch) => (self.dmacon & (1 << (ch.min(3)))) != 0,
-            DmaChannel::Sprite(_) => (self.dmacon & 0x0020) != 0,
-            DmaChannel::Bitplane(_) => (self.dmacon & 0x0100) != 0,
-            DmaChannel::Copper => (self.dmacon & 0x0080) != 0,
-            DmaChannel::Blitter => (self.dmacon & 0x0040) != 0,
+            DmaChannel::Sprite(_) => (self.dmacon & dmacon::SPREN) != 0,
+            DmaChannel::Bitplane(_) => (self.dmacon & dmacon::BPLEN) != 0,
+            DmaChannel::Copper => (self.dmacon & dmacon::COPEN) != 0,
+            DmaChannel::Blitter => (self.dmacon & dmacon::BLTEN) != 0,
             DmaChannel::Cpu | DmaChannel::None => true,
         }
     }
@@ -219,14 +240,14 @@ impl DmaScheduler {
     /// Returns the fixed DMA channel mapped to a horizontal Color Clock slot (HPOS)
     pub fn fixed_slot_for_hpos(hpos: u16) -> Option<DmaChannel> {
         match hpos {
-            0..=3 => Some(DmaChannel::Refresh),
-            4 => Some(DmaChannel::Disk),
-            5 => Some(DmaChannel::Audio(0)),
+            HPOS_REFRESH_START..=HPOS_REFRESH_END => Some(DmaChannel::Refresh),
+            HPOS_DISK => Some(DmaChannel::Disk),
+            HPOS_AUDIO_START => Some(DmaChannel::Audio(0)),
             6 => Some(DmaChannel::Audio(1)),
             7 => Some(DmaChannel::Audio(2)),
-            8 => Some(DmaChannel::Audio(3)),
-            12..=27 => {
-                let sprite_num = ((hpos - 12) / 2) as u8;
+            HPOS_AUDIO_END => Some(DmaChannel::Audio(3)),
+            HPOS_SPRITE_START..=HPOS_SPRITE_END => {
+                let sprite_num = ((hpos - HPOS_SPRITE_START) / 2) as u8;
                 Some(DmaChannel::Sprite(sprite_num))
             }
             _ => None,
@@ -303,22 +324,22 @@ impl DmaScheduler {
         cpu_wants_bus: bool,
     ) -> DmaChannel {
         // Priority 1: DRAM Refresh (CCK 0..3) - Unconditional
-        if hpos <= 3 {
+        if hpos <= HPOS_REFRESH_END {
             self.current_owner = DmaChannel::Refresh;
             self.chip_ram_blocked = true;
             return DmaChannel::Refresh;
         }
 
         // Priority 2: Floppy Disk DMA (CCK 4)
-        if hpos == 4 && disk_active && self.is_channel_enabled(DmaChannel::Disk) {
+        if hpos == HPOS_DISK && disk_active && self.is_channel_enabled(DmaChannel::Disk) {
             self.current_owner = DmaChannel::Disk;
             self.chip_ram_blocked = true;
             return DmaChannel::Disk;
         }
 
         // Priority 3: Audio DMA Channels 0..3 (CCK 5..8)
-        if (5..=8).contains(&hpos) {
-            let ch = (hpos - 5) as u8;
+        if (HPOS_AUDIO_START..=HPOS_AUDIO_END).contains(&hpos) {
+            let ch = (hpos - HPOS_AUDIO_START) as u8;
             if audio_active[ch as usize] && self.is_channel_enabled(DmaChannel::Audio(ch)) {
                 self.current_owner = DmaChannel::Audio(ch);
                 self.chip_ram_blocked = true;
@@ -334,8 +355,10 @@ impl DmaScheduler {
         }
 
         // Priority 5: Hardware Sprite DMA Pairs (CCK 12..27)
-        if (12..=27).contains(&hpos) && self.is_channel_enabled(DmaChannel::Sprite(0)) {
-            let sprite_num = ((hpos - 12) / 2) as u8;
+        if (HPOS_SPRITE_START..=HPOS_SPRITE_END).contains(&hpos)
+            && self.is_channel_enabled(DmaChannel::Sprite(0))
+        {
+            let sprite_num = ((hpos - HPOS_SPRITE_START) / 2) as u8;
             self.current_owner = DmaChannel::Sprite(sprite_num);
             self.chip_ram_blocked = true;
             return DmaChannel::Sprite(sprite_num);
@@ -359,7 +382,7 @@ impl DmaScheduler {
 
             // Normal Blitter mode (BLTPRI == 0): Agnus CPU starvation yield logic
             if cpu_wants_bus {
-                if self.cpu_starvation_counter >= 3 {
+                if self.cpu_starvation_counter >= BLITTER_STARVATION_YIELD_CYCLES {
                     // Starved for 3 consecutive memory cycles: Blitter yields 1 cycle to CPU!
                     self.cpu_starvation_counter = 0;
                     self.current_owner = DmaChannel::Cpu;
@@ -390,7 +413,7 @@ impl DmaScheduler {
     #[inline]
     pub fn is_chip_ram_blocked(&self, hpos: u16, blitter_busy: bool) -> bool {
         // DRAM Refresh is unconditional
-        if hpos <= 3 {
+        if hpos <= HPOS_REFRESH_END {
             return true;
         }
         if !self.is_dma_enabled() {

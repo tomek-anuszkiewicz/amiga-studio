@@ -134,3 +134,21 @@ fn test_vposr_and_vhposr_unified_pipeline_lead() {
     let vposr_256 = agnus.vposr();
     assert_eq!(vposr_256 & 0x0001, 1);
 }
+
+#[test]
+fn test_agnus_canonical_register_constants() {
+    use config::custom_reg;
+    use config::mask::dmacon;
+
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    // Verify write_register works with canonical constants
+    agnus.commit_register_write(
+        custom_reg::DMACON,
+        dmacon::SET_CLR | dmacon::DMAEN | dmacon::COPEN,
+    );
+    assert!(agnus.is_dma_enabled(dmacon::COPEN));
+    assert_eq!(
+        agnus.read_register(custom_reg::DMACONR) & dmacon::DMAEN,
+        dmacon::DMAEN
+    );
+}

@@ -7,6 +7,8 @@ pub use blitter;
 pub use copper;
 pub use dma;
 
+use config::custom_reg;
+use config::mask::dmacon;
 pub use config::AgnusModel;
 use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
@@ -380,10 +382,10 @@ impl Agnus {
     pub fn read_dmaconr(&self) -> u16 {
         let mut val = self.dmacon & 0x07FF;
         if self.blitter.is_busy {
-            val |= 0x4000; // BBUSY (bit 14)
+            val |= dmacon::BBUSY;
         }
         if self.blitter.is_zero {
-            val |= 0x2000; // BZERO (bit 13)
+            val |= dmacon::BZERO;
         }
         val
     }
@@ -393,9 +395,9 @@ impl Agnus {
     #[inline]
     pub fn read_register(&self, offset: u16) -> u16 {
         match offset & 0x1FE {
-            0x002 => self.read_dmaconr(),
-            0x004 => self.vposr(),
-            0x006 => self.vhposr(),
+            custom_reg::DMACONR => self.read_dmaconr(),
+            custom_reg::VPOSR => self.vposr(),
+            custom_reg::VHPOSR => self.vhposr(),
             _ => 0xFFFF,
         }
     }
@@ -406,23 +408,28 @@ impl Agnus {
     pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {
         let offset = offset & 0x1FE;
         let (delay, mode) = match offset {
-            0x096 => (2, MutationMode::OverwritePending), // DMACON
-            0x088 | 0x08A => (1, MutationMode::OverwritePending), // COPJMP1, COPJMP2
-            0x058 => (1, MutationMode::OverwritePending), // BLTSIZE
-            0x100 => (4, MutationMode::OverwritePending), // BPLCON0 (Agnus DMA allocation)
-            0x08E | 0x090 => (4, MutationMode::OverwritePending), // DIWSTRT, DIWSTOP
-            0x092 | 0x094 => (4, MutationMode::OverwritePending), // DDFSTRT, DDFSTOP
-            0x108 | 0x10A => (2, MutationMode::OverwritePending), // BPL1MOD, BPL2MOD
-            0x040..=0x056 => (2, MutationMode::OverwritePending), // BLTCON0..BLTDPTH/L
-            0x060..=0x066 => (2, MutationMode::OverwritePending), // BLTCMOD..BLTDMOD
-            0x070..=0x074 => (1, MutationMode::Pipeline), // BLTCDAT..BLTADAT
-            0x080..=0x086 => (2, MutationMode::OverwritePending), // COP1LC, COP2LC
-            0x0E0..=0x0F6 => (2, MutationMode::OverwritePending), // BPLxPTH/L
-            0x120..=0x13E => (2, MutationMode::OverwritePending), // SPRxPTH/L
-            0x020 | 0x022 => (2, MutationMode::OverwritePending), // DSKPTH, DSKPTL
-            0x0A0 | 0x0A2 | 0x0B0 | 0x0B2 | 0x0C0 | 0x0C2 | 0x0D0 | 0x0D2 => {
-                (2, MutationMode::OverwritePending)
-            } // AUDxLCH, AUDxLCL
+            custom_reg::DMACON => (2, MutationMode::OverwritePending),
+            custom_reg::COPJMP1 | custom_reg::COPJMP2 => (1, MutationMode::OverwritePending),
+            custom_reg::BLTSIZE => (1, MutationMode::OverwritePending),
+            custom_reg::BPLCON0 => (4, MutationMode::OverwritePending), // BPLCON0 (Agnus DMA allocation)
+            custom_reg::DIWSTRT | custom_reg::DIWSTOP => (4, MutationMode::OverwritePending),
+            custom_reg::DDFSTRT | custom_reg::DDFSTOP => (4, MutationMode::OverwritePending),
+            custom_reg::BPL1MOD | custom_reg::BPL2MOD => (2, MutationMode::OverwritePending),
+            custom_reg::BLTCON0..=custom_reg::BLTDPTL => (2, MutationMode::OverwritePending),
+            custom_reg::BLTCMOD..=custom_reg::BLTDMOD => (2, MutationMode::OverwritePending),
+            custom_reg::BLTCDAT..=custom_reg::BLTADAT => (1, MutationMode::Pipeline),
+            custom_reg::COP1LCH..=custom_reg::COP2LCL => (2, MutationMode::OverwritePending),
+            custom_reg::BPL1PTH..=custom_reg::BPL6PTL => (2, MutationMode::OverwritePending),
+            custom_reg::SPR0PTH..=custom_reg::SPR7PTL => (2, MutationMode::OverwritePending),
+            custom_reg::DSKPTH | custom_reg::DSKPTL => (2, MutationMode::OverwritePending),
+            custom_reg::AUD0LCH
+            | custom_reg::AUD0LCL
+            | custom_reg::AUD1LCH
+            | custom_reg::AUD1LCL
+            | custom_reg::AUD2LCH
+            | custom_reg::AUD2LCL
+            | custom_reg::AUD3LCH
+            | custom_reg::AUD3LCL => (2, MutationMode::OverwritePending),
             _ => (2, MutationMode::OverwritePending),
         };
 
@@ -437,98 +444,99 @@ impl Agnus {
     /// Commits a register write directly into active Agnus silicon state
     pub fn commit_register_write(&mut self, offset: u16, val: u16) {
         match offset & 0x1FE {
-            0x096 => {
+            custom_reg::DMACON => {
                 // DMACON SET/CLR logic
-                if (val & 0x8000) != 0 {
+                if (val & dmacon::SET_CLR) != 0 {
                     self.dmacon |= val & 0x7FFF;
                 } else {
                     self.dmacon &= !(val & 0x7FFF);
                 }
                 self.dma.write_dmacon(val);
-                let dma_en = self.is_dma_enabled(0x0040);
+                let dma_en = self.is_dma_enabled(dmacon::BLTEN);
                 self.blitter.set_dma_enabled(dma_en);
                 self.blitter.set_bltpri(self.is_blitter_nasty());
-                self.copper.set_dma_enabled(self.is_dma_enabled(0x0080));
+                self.copper
+                    .set_dma_enabled(self.is_dma_enabled(dmacon::COPEN));
             }
-            0x02E => self.copper.set_copcon(val),
-            0x080 => {
+            custom_reg::COPCON => self.copper.set_copcon(val),
+            custom_reg::COP1LCH => {
                 self.copper.cop1lc =
                     (self.copper.cop1lc & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
             }
-            0x082 => {
+            custom_reg::COP1LCL => {
                 self.copper.cop1lc = (self.copper.cop1lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
             }
-            0x084 => {
+            custom_reg::COP2LCH => {
                 self.copper.cop2lc =
                     (self.copper.cop2lc & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
             }
-            0x086 => {
+            custom_reg::COP2LCL => {
                 self.copper.cop2lc = (self.copper.cop2lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
             }
-            0x088 => self.copper.restart_list1(),
-            0x08A => self.copper.restart_list2(),
-            0x08E => {
+            custom_reg::COPJMP1 => self.copper.restart_list1(),
+            custom_reg::COPJMP2 => self.copper.restart_list2(),
+            custom_reg::DIWSTRT => {
                 self.diwstrt = val;
                 self.dma.set_diwstrt(val);
             }
-            0x090 => {
+            custom_reg::DIWSTOP => {
                 self.diwstop = val;
                 self.dma.set_diwstop(val);
             }
-            0x092 => {
+            custom_reg::DDFSTRT => {
                 self.ddfstrt = val & 0x00FC;
                 self.dma.set_ddfstrt(val & 0x00FC);
             }
-            0x094 => {
+            custom_reg::DDFSTOP => {
                 self.ddfstop = val & 0x00FC;
                 self.dma.set_ddfstop(val & 0x00FC);
             }
-            0x100 => self.set_bplcon0(val),
-            0x102 => self.bplcon1 = val,
-            0x108 => self.bpl1mod = val as i16,
-            0x10A => self.bpl2mod = val as i16,
+            custom_reg::BPLCON0 => self.set_bplcon0(val),
+            custom_reg::BPLCON1 => self.bplcon1 = val,
+            custom_reg::BPL1MOD => self.bpl1mod = val as i16,
+            custom_reg::BPL2MOD => self.bpl2mod = val as i16,
 
             // Blitter registers
-            0x040 => self.blitter.bltcon0 = val,
-            0x042 => self.blitter.bltcon1 = val,
-            0x044 => self.blitter.bltafwm = val,
-            0x046 => self.blitter.bltalwm = val,
-            0x048 => {
+            custom_reg::BLTCON0 => self.blitter.bltcon0 = val,
+            custom_reg::BLTCON1 => self.blitter.bltcon1 = val,
+            custom_reg::BLTAFWM => self.blitter.bltafwm = val,
+            custom_reg::BLTALWM => self.blitter.bltalwm = val,
+            custom_reg::BLTCPTH => {
                 self.blitter.bltcpt =
                     (self.blitter.bltcpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
             }
-            0x04A => {
+            custom_reg::BLTCPTL => {
                 self.blitter.bltcpt = (self.blitter.bltcpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
             }
-            0x04C => {
+            custom_reg::BLTBPTH => {
                 self.blitter.bltbpt =
                     (self.blitter.bltbpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
             }
-            0x04E => {
+            custom_reg::BLTBPTL => {
                 self.blitter.bltbpt = (self.blitter.bltbpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
             }
-            0x050 => {
+            custom_reg::BLTAPTH => {
                 self.blitter.bltapt =
                     (self.blitter.bltapt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
             }
-            0x052 => {
+            custom_reg::BLTAPTL => {
                 self.blitter.bltapt = (self.blitter.bltapt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
             }
-            0x054 => {
+            custom_reg::BLTDPTH => {
                 self.blitter.bltdpt =
                     (self.blitter.bltdpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16)
             }
-            0x056 => {
+            custom_reg::BLTDPTL => {
                 self.blitter.bltdpt = (self.blitter.bltdpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
             }
-            0x058 => self.blitter.trigger_blit(val),
-            0x060 => self.blitter.bltcmod = val as i16,
-            0x062 => self.blitter.bltbmod = val as i16,
-            0x064 => self.blitter.bltamod = val as i16,
-            0x066 => self.blitter.bltdmod = val as i16,
-            0x070 => self.blitter.bltcdat = val,
-            0x072 => self.blitter.bltbdat = val,
-            0x074 => self.blitter.bltadat = val,
+            custom_reg::BLTSIZE => self.blitter.trigger_blit(val),
+            custom_reg::BLTCMOD => self.blitter.bltcmod = val as i16,
+            custom_reg::BLTBMOD => self.blitter.bltbmod = val as i16,
+            custom_reg::BLTAMOD => self.blitter.bltamod = val as i16,
+            custom_reg::BLTDMOD => self.blitter.bltdmod = val as i16,
+            custom_reg::BLTCDAT => self.blitter.bltcdat = val,
+            custom_reg::BLTBDAT => self.blitter.bltbdat = val,
+            custom_reg::BLTADAT => self.blitter.bltadat = val,
 
             // Bitplane pointers
             0x0E0..=0x0F6 => {
@@ -561,10 +569,10 @@ impl Agnus {
             }
 
             // Floppy Disk DMA pointer
-            0x020 => {
+            custom_reg::DSKPTH => {
                 self.dskpt = (self.dskpt & 0x0000_FFFF) | (((val & 0x001F) as u32) << 16);
             }
-            0x022 => {
+            custom_reg::DSKPTL => {
                 self.dskpt = (self.dskpt & 0xFFFF_0000) | ((val & 0xFFFE) as u32);
             }
 
@@ -619,12 +627,12 @@ impl Agnus {
     #[inline]
     pub fn is_dma_enabled(&self, mask: u16) -> bool {
         // Master DMAEN (bit 9) must be set
-        (self.dmacon & 0x0200) != 0 && (self.dmacon & mask) != 0
+        (self.dmacon & dmacon::DMAEN) != 0 && (self.dmacon & mask) != 0
     }
 
     /// Returns true if Blitter Nasty (BLTPRI, bit 10) is enabled
     #[inline]
     pub fn is_blitter_nasty(&self) -> bool {
-        (self.dmacon & 0x0400) != 0
+        (self.dmacon & dmacon::BLTPRI) != 0
     }
 }

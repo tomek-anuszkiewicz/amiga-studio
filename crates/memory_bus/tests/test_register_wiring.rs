@@ -225,3 +225,21 @@ fn test_dmacon_routing_to_denise_sprites() {
     // Verify Sprite DMA was disabled in Denise
     assert!(!mb.denise.sprites.dma_enabled);
 }
+
+#[test]
+fn test_memory_bus_canonical_constants() {
+    assert_eq!(memory_bus::BANK_CUSTOM, 0xDF);
+    assert_eq!(memory_bus::BANK_CIA, 0xBF);
+    assert_eq!(memory_bus::BANK_RTC, 0xDC);
+    assert_eq!(memory_bus::CIA_A_START, 0xBFE001);
+    assert_eq!(memory_bus::CIA_A_END, 0xBFEF01);
+    assert_eq!(memory_bus::CIA_B_START, 0xBFD000);
+    assert_eq!(memory_bus::CIA_B_END, 0xBFDF00);
+    assert_eq!(memory_bus::RTC_START, 0xDC0000);
+    assert_eq!(memory_bus::RTC_END, 0xDC003F);
+    assert_eq!(memory_bus::CUSTOM_REG_OFFSET_MASK, 0x01FE);
+    assert_eq!(memory_bus::DSKBYTR_DMAON, 0x4000);
+    assert_eq!(memory_bus::DSKBYTR_DISKWRITE, 0x2000);
+    assert_eq!(memory_bus::DSKBYTR_DATA_MASK, 0x90FF);
+    assert_eq!(memory_bus::DSKLEN_WRITE_FLAG, 0x4000);
+}

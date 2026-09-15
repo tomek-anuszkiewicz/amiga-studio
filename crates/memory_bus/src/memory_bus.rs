@@ -6,6 +6,8 @@
 
 use agnus::Agnus;
 use cia::{Cia, CiaId};
+use config::custom_reg;
+use config::mask::dmacon;
 use denise::Denise;
 use floppy::FloppyController;
 use paula::Paula;
@@ -13,6 +15,27 @@ use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 use rtc::RtcMsm6242b;
 
 pub use physical_memory;
+
+/// Physical memory map constants decoded by Gary logic
+pub const BANK_CIA: u8 = 0xBF;
+pub const BANK_RTC: u8 = 0xDC;
+pub const BANK_CUSTOM: u8 = 0xDF;
+
+pub const CIA_B_START: u32 = 0xBFD000;
+pub const CIA_B_END: u32 = 0xBFDF00;
+pub const CIA_A_START: u32 = 0xBFE001;
+pub const CIA_A_END: u32 = 0xBFEF01;
+
+pub const RTC_START: u32 = 0xDC0000;
+pub const RTC_END: u32 = 0xDC003F;
+
+pub const CUSTOM_REG_OFFSET_MASK: u16 = 0x01FE;
+
+/// Composite DSKBYTR status masks
+pub const DSKBYTR_DMAON: u16 = 0x4000;
+pub const DSKBYTR_DISKWRITE: u16 = 0x2000;
+pub const DSKBYTR_DATA_MASK: u16 = 0x90FF;
+pub const DSKLEN_WRITE_FLAG: u16 = 0x4000;
 
 /// Zero-cost stack-allocated router implementing `AddressBus` across all subsystems
 pub struct MemoryBus<'a> {
@@ -31,77 +54,79 @@ impl<'a> MemoryBus<'a> {
     /// atomically clearing bit 15 (`DSKBYT`) per Clear-on-Read hardware semantics.
     pub fn read_dskbytr(&mut self) -> u16 {
         let floppy_val = self.floppy.read_dskbytr();
-        let dmaon = if (self.agnus.dmacon & 0x0210) == 0x0210 {
-            0x4000
+        let dma_active = dmacon::DMAEN | dmacon::DSKEN;
+        let dmaon = if (self.agnus.dmacon & dma_active) == dma_active {
+            DSKBYTR_DMAON
         } else {
             0
         };
-        let diskwrite = if (self.paula.dsklen & 0x4000) != 0 {
-            0x2000
+        let diskwrite = if (self.paula.dsklen & DSKLEN_WRITE_FLAG) != 0 {
+            DSKBYTR_DISKWRITE
         } else {
             0
         };
-        (floppy_val & 0x90FF) | dmaon | diskwrite
+        (floppy_val & DSKBYTR_DATA_MASK) | dmaon | diskwrite
     }
 
     /// Peeks composite live DSKBYTR status without clearing bit 15
     pub fn peek_dskbytr(&self) -> u16 {
         let floppy_val = self.floppy.peek_dskbytr();
-        let dmaon = if (self.agnus.dmacon & 0x0210) == 0x0210 {
-            0x4000
+        let dma_active = dmacon::DMAEN | dmacon::DSKEN;
+        let dmaon = if (self.agnus.dmacon & dma_active) == dma_active {
+            DSKBYTR_DMAON
         } else {
             0
         };
-        let diskwrite = if (self.paula.dsklen & 0x4000) != 0 {
-            0x2000
+        let diskwrite = if (self.paula.dsklen & DSKLEN_WRITE_FLAG) != 0 {
+            DSKBYTR_DISKWRITE
         } else {
             0
         };
-        (floppy_val & 0x90FF) | dmaon | diskwrite
+        (floppy_val & DSKBYTR_DATA_MASK) | dmaon | diskwrite
     }
 
     /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT, DSKBYTR)
     pub fn read_custom_word(&mut self, offset: u16) -> u16 {
-        let offset = offset & 0x1FE;
+        let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            0x000 => self.agnus.read_register(0x000),
-            0x002 => self.agnus.read_dmaconr(),
-            0x004 => self.agnus.vposr(),
-            0x006 => self.agnus.vhposr(),
-            0x00A => self.denise.joy0dat,
-            0x00C => self.denise.joy1dat,
-            0x00E => self.denise.read_clxdat(),
-            0x010 => self.paula.adkcon,
-            0x012 => self.paula.pot0dat,
-            0x014 => self.paula.pot1dat,
-            0x016 => self.paula.potgor,
-            0x018 => self.paula.serial_port.serdatr,
-            0x01A => self.read_dskbytr(),
-            0x01C => self.paula.intena,
-            0x01E => self.paula.intreq,
+            custom_reg::BLTDDAT => self.agnus.read_register(custom_reg::BLTDDAT),
+            custom_reg::DMACONR => self.agnus.read_dmaconr(),
+            custom_reg::VPOSR => self.agnus.vposr(),
+            custom_reg::VHPOSR => self.agnus.vhposr(),
+            custom_reg::JOY0DAT => self.denise.joy0dat,
+            custom_reg::JOY1DAT => self.denise.joy1dat,
+            custom_reg::CLXDAT => self.denise.read_clxdat(),
+            custom_reg::ADKCONR => self.paula.adkcon,
+            custom_reg::POT0DAT => self.paula.pot0dat,
+            custom_reg::POT1DAT => self.paula.pot1dat,
+            custom_reg::POTGOR => self.paula.potgor,
+            custom_reg::SERDATR => self.paula.serial_port.serdatr,
+            custom_reg::DSKBYTR => self.read_dskbytr(),
+            custom_reg::INTENAR => self.paula.intena,
+            custom_reg::INTREQR => self.paula.intreq,
             _ => 0xFFFF,
         }
     }
 
     /// Reads a 16-bit custom register without side-effects for debugging inspection
     pub fn peek_custom_word(&self, offset: u16) -> u16 {
-        let offset = offset & 0x1FE;
+        let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            0x000 => self.agnus.read_register(0x000),
-            0x002 => self.agnus.read_dmaconr(),
-            0x004 => self.agnus.vposr(),
-            0x006 => self.agnus.vhposr(),
-            0x00A => self.denise.joy0dat,
-            0x00C => self.denise.joy1dat,
-            0x00E => self.denise.clxdat,
-            0x010 => self.paula.adkcon,
-            0x012 => self.paula.pot0dat,
-            0x014 => self.paula.pot1dat,
-            0x016 => self.paula.potgor,
-            0x018 => self.paula.serial_port.serdatr,
-            0x01A => self.peek_dskbytr(),
-            0x01C => self.paula.intena,
-            0x01E => self.paula.intreq,
+            custom_reg::BLTDDAT => self.agnus.read_register(custom_reg::BLTDDAT),
+            custom_reg::DMACONR => self.agnus.read_dmaconr(),
+            custom_reg::VPOSR => self.agnus.vposr(),
+            custom_reg::VHPOSR => self.agnus.vhposr(),
+            custom_reg::JOY0DAT => self.denise.joy0dat,
+            custom_reg::JOY1DAT => self.denise.joy1dat,
+            custom_reg::CLXDAT => self.denise.clxdat,
+            custom_reg::ADKCONR => self.paula.adkcon,
+            custom_reg::POT0DAT => self.paula.pot0dat,
+            custom_reg::POT1DAT => self.paula.pot1dat,
+            custom_reg::POTGOR => self.paula.potgor,
+            custom_reg::SERDATR => self.paula.serial_port.serdatr,
+            custom_reg::DSKBYTR => self.peek_dskbytr(),
+            custom_reg::INTENAR => self.paula.intena,
+            custom_reg::INTREQR => self.paula.intreq,
             _ => 0xFFFF,
         }
     }
@@ -109,7 +134,7 @@ impl<'a> MemoryBus<'a> {
     /// Reads an 8-bit byte from CIA register space ($BF0000..$BFFFFF)
     pub fn read_cia_byte(&mut self, addr: u32) -> u8 {
         // CIA-B ($BFD000-$BFDF00): Even byte addresses (A0 = 0)
-        if (0xBFD000..=0xBFDF00).contains(&addr) {
+        if (CIA_B_START..=CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 return self.cia_b.read_register(reg);
@@ -117,7 +142,7 @@ impl<'a> MemoryBus<'a> {
             return 0xFF;
         }
         // CIA-A ($BFE001-$BFEF01): Odd byte addresses (A0 = 1)
-        if (0xBFE001..=0xBFEF01).contains(&addr) {
+        if (CIA_A_START..=CIA_A_END).contains(&addr) {
             if (addr & 1) == 1 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 return self.cia_a.read_register(reg);
@@ -129,14 +154,14 @@ impl<'a> MemoryBus<'a> {
 
     /// Peeks an 8-bit byte from CIA register space without side-effects
     pub fn peek_cia_byte(&self, addr: u32) -> u8 {
-        if (0xBFD000..=0xBFDF00).contains(&addr) {
+        if (CIA_B_START..=CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 return self.cia_b.peek_register(reg);
             }
             return 0xFF;
         }
-        if (0xBFE001..=0xBFEF01).contains(&addr) {
+        if (CIA_A_START..=CIA_A_END).contains(&addr) {
             if (addr & 1) == 1 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 return self.cia_a.peek_register(reg);
@@ -149,7 +174,7 @@ impl<'a> MemoryBus<'a> {
     /// Writes an 8-bit byte to CIA register space ($BF0000..$BFFFFF)
     pub fn write_cia_byte(&mut self, addr: u32, val: u8) {
         // CIA-B ($BFD000-$BFDF00)
-        if (0xBFD000..=0xBFDF00).contains(&addr) {
+        if (CIA_B_START..=CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 if let Some((r, v)) = self.cia_b.write_register(reg, val) {
@@ -159,7 +184,7 @@ impl<'a> MemoryBus<'a> {
             return;
         }
         // CIA-A ($BFE001-$BFEF01)
-        if (0xBFE001..=0xBFEF01).contains(&addr) && (addr & 1) == 1 {
+        if (CIA_A_START..=CIA_A_END).contains(&addr) && (addr & 1) == 1 {
             let reg = ((addr >> 8) & 0x0F) as u8;
             if let Some((r, v)) = self.cia_a.write_register(reg, val) {
                 self.dispatch_cia_action(CiaId::A, r, v);
@@ -177,34 +202,34 @@ impl<'a> MemoryBus<'a> {
 
     /// Dispatches a custom register bus write to the target chip(s) with physical propagation delay.
     pub fn dispatch_custom_write(&mut self, offset: u16, val: u16) {
-        let offset = offset & 0x1FE;
+        let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
             // Master DMA control: staged in Agnus, broadcasts to all chips on commit
-            0x096 => {
-                if let Some((r, v)) = self.agnus.write_register(0x096, val) {
+            custom_reg::DMACON => {
+                if let Some((r, v)) = self.agnus.write_register(custom_reg::DMACON, val) {
                     self.dispatch_agnus_action(r, v);
                 }
             }
             // Shared / Broadcast: BPLCON0 ($100) -> Denise (1 CCK) & Agnus (4 CCK)
-            0x100 => {
-                if let Some((r, v)) = self.denise.write_register(0x100, val) {
+            custom_reg::BPLCON0 => {
+                if let Some((r, v)) = self.denise.write_register(custom_reg::BPLCON0, val) {
                     self.dispatch_denise_action(r, v);
                 }
-                if let Some((r, v)) = self.agnus.write_register(0x100, val) {
+                if let Some((r, v)) = self.agnus.write_register(custom_reg::BPLCON0, val) {
                     self.dispatch_agnus_action(r, v);
                 }
             }
             // Shared / Broadcast: BPLCON1 ($102) -> Denise & Agnus
-            0x102 => {
-                if let Some((r, v)) = self.denise.write_register(0x102, val) {
+            custom_reg::BPLCON1 => {
+                if let Some((r, v)) = self.denise.write_register(custom_reg::BPLCON1, val) {
                     self.dispatch_denise_action(r, v);
                 }
-                if let Some((r, v)) = self.agnus.write_register(0x102, val) {
+                if let Some((r, v)) = self.agnus.write_register(custom_reg::BPLCON1, val) {
                     self.dispatch_agnus_action(r, v);
                 }
             }
             // Shared / Broadcast: DIWSTRT ($08E) & DIWSTOP ($090) -> Denise & Agnus
-            0x08E | 0x090 => {
+            custom_reg::DIWSTRT | custom_reg::DIWSTOP => {
                 if let Some((r, v)) = self.denise.write_register(offset, val) {
                     self.dispatch_denise_action(r, v);
                 }
@@ -213,37 +238,41 @@ impl<'a> MemoryBus<'a> {
                 }
             }
             // Denise-specific registers (CLXCON, BPLCON2/3, BPLDAT, SPRITES, COLORS, JOYTEST)
-            0x098 | 0x104 | 0x106 | 0x110..=0x11A | 0x140..=0x17E | 0x180..=0x1BE | 0x036 => {
+            custom_reg::CLXCON
+            | custom_reg::BPLCON2
+            | custom_reg::BPLCON3
+            | custom_reg::BPL1DAT..=custom_reg::BPL6DAT
+            | custom_reg::SPR0POS..=custom_reg::SPR7DATB
+            | custom_reg::COLOR00..=custom_reg::COLOR31
+            | custom_reg::JOYTEST => {
                 if let Some((r, v)) = self.denise.write_register(offset, val) {
                     self.dispatch_denise_action(r, v);
                 }
             }
             // Paula-specific registers (INTENA, INTREQ, ADKCON, UART, DSKLEN/SYNC, AUDIO length/period/volume/data)
-            0x09A
-            | 0x09C
-            | 0x09E
-            | 0x018
-            | 0x01A
-            | 0x024
-            | 0x026
-            | 0x030..=0x034
-            | 0x07E
-            | 0x0A4
-            | 0x0A6
-            | 0x0A8
-            | 0x0AA
-            | 0x0B4
-            | 0x0B6
-            | 0x0B8
-            | 0x0BA
-            | 0x0C4
-            | 0x0C6
-            | 0x0C8
-            | 0x0CA
-            | 0x0D4
-            | 0x0D6
-            | 0x0D8
-            | 0x0DA => {
+            custom_reg::INTENA
+            | custom_reg::INTREQ
+            | custom_reg::ADKCON
+            | custom_reg::DSKDAT
+            | custom_reg::DSKLEN
+            | custom_reg::DSKSYNC
+            | custom_reg::SERDAT..=custom_reg::POTGO
+            | custom_reg::AUD0LEN
+            | custom_reg::AUD0PER
+            | custom_reg::AUD0VOL
+            | custom_reg::AUD0DAT
+            | custom_reg::AUD1LEN
+            | custom_reg::AUD1PER
+            | custom_reg::AUD1VOL
+            | custom_reg::AUD1DAT
+            | custom_reg::AUD2LEN
+            | custom_reg::AUD2PER
+            | custom_reg::AUD2VOL
+            | custom_reg::AUD2DAT
+            | custom_reg::AUD3LEN
+            | custom_reg::AUD3PER
+            | custom_reg::AUD3VOL
+            | custom_reg::AUD3DAT => {
                 if let Some((r, v)) = self.paula.write_register(offset, val) {
                     self.dispatch_paula_action(r, v);
                 }
@@ -259,58 +288,58 @@ impl<'a> MemoryBus<'a> {
 
     /// Action method dispatch for committed Agnus registers
     pub fn dispatch_agnus_action(&mut self, reg: u16, val: u16) {
-        match reg & 0x1FE {
-            0x096 => {
+        match reg & CUSTOM_REG_OFFSET_MASK {
+            custom_reg::DMACON => {
                 self.agnus.dma.write_dmacon(val);
                 // Broadcast to Paula's dma_enables
-                if (val & 0x8000) != 0 {
-                    self.paula.dma_enables |= val & 0x001F;
+                if (val & dmacon::SET_CLR) != 0 {
+                    self.paula.dma_enables |= val & (dmacon::AUD_ALL | dmacon::DSKEN);
                 } else {
-                    self.paula.dma_enables &= !(val & 0x001F);
+                    self.paula.dma_enables &= !(val & (dmacon::AUD_ALL | dmacon::DSKEN));
                 }
-                let dmaen = (self.agnus.dmacon & 0x0200) != 0;
+                let dmaen = (self.agnus.dmacon & dmacon::DMAEN) != 0;
                 self.paula
                     .audio
-                    .set_dma_enables((self.agnus.dmacon & 0x000F) as u8, dmaen);
+                    .set_dma_enables((self.agnus.dmacon & dmacon::AUD_ALL) as u8, dmaen);
                 self.floppy
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0010) != 0);
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::DSKEN) != 0);
                 self.denise
                     .sprites
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0020) != 0);
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::SPREN) != 0);
                 self.agnus
                     .blitter
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0040) != 0);
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::BLTEN) != 0);
                 self.agnus
                     .blitter
-                    .set_bltpri((self.agnus.dmacon & 0x0400) != 0);
+                    .set_bltpri((self.agnus.dmacon & dmacon::BLTPRI) != 0);
                 self.agnus
                     .copper
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0080) != 0);
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::COPEN) != 0);
                 self.denise
                     .frame_builder
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0100) != 0);
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::BPLEN) != 0);
                 self.denise
                     .sprites
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & 0x0020) != 0);
+                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::SPREN) != 0);
             }
-            0x020 | 0x022 => {
+            custom_reg::DSKPTH | custom_reg::DSKPTL => {
                 self.floppy.set_dskpt(self.agnus.dskpt);
             }
-            0x100 => {
+            custom_reg::BPLCON0 => {
                 self.agnus.set_bplcon0(val);
             }
-            0x088 => {
+            custom_reg::COPJMP1 => {
                 let cop1lc = self.agnus.copper.cop1lc;
                 self.agnus.copper.strobe_jump1(cop1lc);
             }
-            0x08A => {
+            custom_reg::COPJMP2 => {
                 let cop2lc = self.agnus.copper.cop2lc;
                 self.agnus.copper.strobe_jump2(cop2lc);
             }
-            0x058 => {
+            custom_reg::BLTSIZE => {
                 self.agnus.blitter.trigger_blit(val);
             }
-            0x08E | 0x090 => {
+            custom_reg::DIWSTRT | custom_reg::DIWSTOP => {
                 self.denise.set_diw(self.agnus.diwstrt, self.agnus.diwstop);
             }
             _ => {}
@@ -319,25 +348,25 @@ impl<'a> MemoryBus<'a> {
 
     /// Action method dispatch for committed Paula registers
     pub fn dispatch_paula_action(&mut self, reg: u16, val: u16) {
-        match reg & 0x1FE {
-            0x024 => self.floppy.set_dsklen(val),
-            0x07E => self.floppy.set_dsksyn(val),
-            0x09E => self.floppy.set_adkcon(self.paula.adkcon),
+        match reg & CUSTOM_REG_OFFSET_MASK {
+            custom_reg::DSKLEN => self.floppy.set_dsklen(val),
+            custom_reg::DSKSYNC => self.floppy.set_dsksyn(val),
+            custom_reg::ADKCON => self.floppy.set_adkcon(self.paula.adkcon),
             _ => {}
         }
     }
 
     /// Action method dispatch for committed Denise registers
     pub fn dispatch_denise_action(&mut self, reg: u16, val: u16) {
-        match reg & 0x1FE {
-            0x100 => self.denise.set_bplcon0(val),
-            0x102 => self.denise.set_bplcon1(val),
-            0x104 => self.denise.set_bplcon2(val),
-            0x180..=0x1BE => {
-                let idx = ((reg - 0x180) / 2) as usize;
+        match reg & CUSTOM_REG_OFFSET_MASK {
+            custom_reg::BPLCON0 => self.denise.set_bplcon0(val),
+            custom_reg::BPLCON1 => self.denise.set_bplcon1(val),
+            custom_reg::BPLCON2 => self.denise.set_bplcon2(val),
+            custom_reg::COLOR00..=custom_reg::COLOR31 => {
+                let idx = ((reg - custom_reg::COLOR00) / 2) as usize;
                 self.denise.set_color(idx, val);
             }
-            0x08E | 0x090 => {
+            custom_reg::DIWSTRT | custom_reg::DIWSTOP => {
                 self.denise
                     .set_diw(self.denise.diwstrt, self.denise.diwstop);
             }
@@ -359,8 +388,8 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            0xDF => {
-                let word = self.read_custom_word((addr & 0x1FE) as u16);
+            BANK_CUSTOM => {
+                let word = self.read_custom_word((addr & CUSTOM_REG_OFFSET_MASK as u32) as u16);
                 let byte = if (addr & 1) == 0 {
                     (word >> 8) as u8
                 } else {
@@ -368,9 +397,9 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 };
                 BusResult::Ready(byte)
             }
-            0xBF => BusResult::Ready(self.read_cia_byte(addr)),
-            0xDC => {
-                if (0xDC0000..=0xDC003F).contains(&addr) {
+            BANK_CIA => BusResult::Ready(self.read_cia_byte(addr)),
+            BANK_RTC => {
+                if (RTC_START..=RTC_END).contains(&addr) {
                     BusResult::Ready(self.rtc.read_byte(addr))
                 } else {
                     BusResult::Ready(self.mem.unmapped_byte())
@@ -385,20 +414,22 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            0xDF => BusResult::Ready(self.read_custom_word((addr & 0x1FE) as u16)),
-            0xBF => {
+            BANK_CUSTOM => BusResult::Ready(
+                self.read_custom_word((addr & CUSTOM_REG_OFFSET_MASK as u32) as u16),
+            ),
+            BANK_CIA => {
                 let b0 = self.read_cia_byte(addr);
                 let b1 = self.read_cia_byte(addr.wrapping_add(1));
                 BusResult::Ready(u16::from_be_bytes([b0, b1]))
             }
-            0xDC => {
-                let b0 = if (0xDC0000..=0xDC003F).contains(&addr) {
+            BANK_RTC => {
+                let b0 = if (RTC_START..=RTC_END).contains(&addr) {
                     self.rtc.read_byte(addr)
                 } else {
                     self.mem.unmapped_byte()
                 };
                 let next_addr = addr.wrapping_add(1);
-                let b1 = if (0xDC0000..=0xDC003F).contains(&next_addr) {
+                let b1 = if (RTC_START..=RTC_END).contains(&next_addr) {
                     self.rtc.read_byte(next_addr)
                 } else {
                     self.mem.unmapped_byte()
@@ -414,8 +445,8 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            0xDF => {
-                let offset = (addr & 0x1FE) as u16;
+            BANK_CUSTOM => {
+                let offset = (addr & CUSTOM_REG_OFFSET_MASK as u32) as u16;
                 let word_val = if (addr & 1) == 0 {
                     (val as u16) << 8
                 } else {
@@ -424,12 +455,12 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 self.dispatch_custom_write(offset, word_val);
                 BusResult::Ready(())
             }
-            0xBF => {
+            BANK_CIA => {
                 self.write_cia_byte(addr, val);
                 BusResult::Ready(())
             }
-            0xDC => {
-                if (0xDC0000..=0xDC003F).contains(&addr) {
+            BANK_RTC => {
+                if (RTC_START..=RTC_END).contains(&addr) {
                     self.rtc.write_byte(addr, val);
                 }
                 BusResult::Ready(())
@@ -443,24 +474,24 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            0xDF => {
-                let offset = (addr & 0x1FE) as u16;
+            BANK_CUSTOM => {
+                let offset = (addr & CUSTOM_REG_OFFSET_MASK as u32) as u16;
                 self.dispatch_custom_write(offset, val);
                 BusResult::Ready(())
             }
-            0xBF => {
+            BANK_CIA => {
                 let bytes = val.to_be_bytes();
                 self.write_cia_byte(addr, bytes[0]);
                 self.write_cia_byte(addr.wrapping_add(1), bytes[1]);
                 BusResult::Ready(())
             }
-            0xDC => {
+            BANK_RTC => {
                 let bytes = val.to_be_bytes();
-                if (0xDC0000..=0xDC003F).contains(&addr) {
+                if (RTC_START..=RTC_END).contains(&addr) {
                     self.rtc.write_byte(addr, bytes[0]);
                 }
                 let next_addr = addr.wrapping_add(1);
-                if (0xDC0000..=0xDC003F).contains(&next_addr) {
+                if (RTC_START..=RTC_END).contains(&next_addr) {
                     self.rtc.write_byte(next_addr, bytes[1]);
                 }
                 BusResult::Ready(())
@@ -474,20 +505,20 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            0xDF => self.peek_custom_word((addr & 0x1FE) as u16),
-            0xBF => {
+            BANK_CUSTOM => self.peek_custom_word((addr & CUSTOM_REG_OFFSET_MASK as u32) as u16),
+            BANK_CIA => {
                 let b0 = self.peek_cia_byte(addr);
                 let b1 = self.peek_cia_byte(addr.wrapping_add(1));
                 u16::from_be_bytes([b0, b1])
             }
-            0xDC => {
-                let b0 = if (0xDC0000..=0xDC003F).contains(&addr) {
+            BANK_RTC => {
+                let b0 = if (RTC_START..=RTC_END).contains(&addr) {
                     self.rtc.read_byte(addr)
                 } else {
                     self.mem.unmapped_byte()
                 };
                 let next_addr = addr.wrapping_add(1);
-                let b1 = if (0xDC0000..=0xDC003F).contains(&next_addr) {
+                let b1 = if (RTC_START..=RTC_END).contains(&next_addr) {
                     self.rtc.read_byte(next_addr)
                 } else {
                     self.mem.unmapped_byte()

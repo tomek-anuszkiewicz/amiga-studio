@@ -980,6 +980,7 @@ dependencies = [
 name = "dma"
 version = "0.1.0"
 dependencies = [
+ "config",
  "serde",
 ]
 

@@ -312,3 +312,25 @@ fn test_copper_dma_denied_at_cycle_e0() {
     cop.step_cck(beam_e1, false, &ram);
     assert_eq!(cop.state, CopperState::FetchIR1(1));
 }
+
+#[test]
+fn test_copper_canonical_constants() {
+    use copper::{
+        COPPER_ADDRESS_MASK_512K, COPPER_BFD_MASK, COPPER_CDANG_REGISTER_LIMIT,
+        COPPER_CYCLE_E0_DMA_LOCKOUT, COPPER_HPOS_COMPARE_MASK, COPPER_INSTR_TYPE_MASK,
+        COPPER_MOVE_REG_MASK, COPPER_OCS_MIN_REGISTER_LIMIT, COPPER_VPOS_FORCE_BIT7,
+        COPPER_WAIT_SKIP_MASK, COPPER_WAKEUP_HPOS_LEAD,
+    };
+
+    assert_eq!(COPPER_INSTR_TYPE_MASK, 0x0001);
+    assert_eq!(COPPER_WAIT_SKIP_MASK, 0x0001);
+    assert_eq!(COPPER_BFD_MASK, 0x8000);
+    assert_eq!(COPPER_VPOS_FORCE_BIT7, 0x0080);
+    assert_eq!(COPPER_HPOS_COMPARE_MASK, 0x00FE);
+    assert_eq!(COPPER_MOVE_REG_MASK, 0x01FE);
+    assert_eq!(COPPER_CYCLE_E0_DMA_LOCKOUT, 0x00E0);
+    assert_eq!(COPPER_WAKEUP_HPOS_LEAD, 2);
+    assert_eq!(COPPER_CDANG_REGISTER_LIMIT, 0x0080);
+    assert_eq!(COPPER_OCS_MIN_REGISTER_LIMIT, 0x0040);
+    assert_eq!(COPPER_ADDRESS_MASK_512K, 0x0007_FFFE);
+}

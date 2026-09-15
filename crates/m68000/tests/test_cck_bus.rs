@@ -151,3 +151,44 @@ fn test_cycle_counter_monotonic_accumulation() {
     assert_eq!(cpu.state.cycle_counter, 0);
     assert_eq!(cpu.cycle_counter(), 0);
 }
+
+#[test]
+fn test_cpu_reset_status_and_vectors() {
+    let mut bus = MemoryBus::new();
+    bus.map_chip_ram_to_low_memory();
+
+    // Setup initial SSP = $0007_0000 and PC = $0000_1000
+    bus.write_word_debug(m68000::vector::addr(m68000::vector::RESET_SSP), 0x0007);
+    bus.write_word_debug(m68000::vector::addr(m68000::vector::RESET_SSP) + 2, 0x0000);
+    bus.write_word_debug(m68000::vector::addr(m68000::vector::RESET_PC), 0x0000);
+    bus.write_word_debug(m68000::vector::addr(m68000::vector::RESET_PC) + 2, 0x1000);
+
+    let mut cpu = Cpu::new();
+    cpu.reset(&mut bus);
+
+    assert_eq!(cpu.state.sr, m68000::SR_RESET_DEFAULT);
+    assert_eq!(cpu.state.sr, 0x2700);
+    assert!(cpu.state.is_supervisor());
+    assert_eq!(cpu.state.interrupt_mask(), 7);
+    assert_eq!(cpu.state.ssp, 0x0007_0000);
+    assert_eq!(cpu.state.instruction_pc, 0x0000_1000);
+    assert_eq!(cpu.state.pc, 0x0000_1004); // Prefetch pipeline primed 2 words forward
+
+    // Vector addresses calculation
+    assert_eq!(m68000::vector::addr(m68000::vector::RESET_SSP), 0x00);
+    assert_eq!(m68000::vector::addr(m68000::vector::RESET_PC), 0x04);
+    assert_eq!(m68000::vector::addr(m68000::vector::BUS_ERROR), 0x08);
+    assert_eq!(m68000::vector::addr(m68000::vector::ADDRESS_ERROR), 0x0C);
+    assert_eq!(m68000::vector::addr(m68000::vector::ZERO_DIVIDE), 0x14);
+    assert_eq!(m68000::vector::addr(m68000::vector::CHK), 0x18);
+    assert_eq!(m68000::vector::addr(m68000::vector::TRAPV), 0x1C);
+    assert_eq!(
+        m68000::vector::addr(m68000::vector::PRIVILEGE_VIOLATION),
+        0x20
+    );
+    assert_eq!(
+        m68000::vector::addr(m68000::vector::AUTOVECTOR_BASE + 1),
+        0x64
+    );
+    assert_eq!(m68000::vector::addr(m68000::vector::TRAP_BASE), 0x80);
+}

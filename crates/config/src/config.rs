@@ -5,8 +5,10 @@
 
 pub mod big_array;
 pub mod mutation;
+pub mod registers;
 
 pub use mutation::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
+pub use registers::*;
 
 use serde::{Deserialize, Serialize};
 

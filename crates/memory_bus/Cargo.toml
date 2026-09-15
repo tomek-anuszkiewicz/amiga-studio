@@ -16,6 +16,4 @@ paula = { workspace = true }
 cia = { workspace = true }
 rtc = { workspace = true }
 floppy = { workspace = true }
-
-[dev-dependencies]
 config = { workspace = true }

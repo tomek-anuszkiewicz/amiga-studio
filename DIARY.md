@@ -4069,25 +4069,27 @@ Every future modification or implementation task must append an entry following 
 
 ---
 
-### [2026-09-15 23:35 CEST] — Agnus VHPOSR & VPOSR Beam Pipeline Unification & Named Timing Constants
+### [2026-09-16 00:20 CEST] — Universal Custom Register Catalog & Global Magic Number Elimination
 - **Affected Subsystems**:
-  - `crates/agnus/src/agnus.rs`
-  - `crates/agnus/tests/test_agnus_registers.rs`
+  - `crates/config/src/registers.rs` (new), `crates/config/src/config.rs`, `crates/config/tests/test_registers.rs` (new)
+  - `crates/copper/src/copper.rs`, `crates/copper/tests/test_copper.rs`
+  - `crates/agnus/src/agnus.rs`, `crates/agnus/tests/test_agnus_registers.rs`
+  - `crates/dma/src/dma.rs`, `crates/dma/tests/test_dma.rs`, `crates/dma/Cargo.toml`
+  - `crates/memory_bus/src/memory_bus.rs`, `crates/memory_bus/tests/test_register_wiring.rs`, `crates/memory_bus/Cargo.toml`
+  - `crates/m68000/src/state.rs`, `crates/m68000/src/core.rs`, `crates/m68000/src/m68000.rs`, `crates/m68000/src/micro/common.rs`, `crates/m68000/src/instructions/trap.rs`, `crates/m68000/src/instructions/trapv.rs`, `crates/m68000/tests/test_cck_bus.rs`
 - **What Was Changed (The Concrete Reality)**:
-  - Extracted shared helper method `pipelined_beam_readout(&self) -> (u16, u16)` in `crates/agnus/src/agnus.rs`.
-  - Unified `vposr()` to sample the exact same internal pipeline lead (`VHPOSR_PIPELINE_LEAD_CCKS = 5`) as `vhposr()`, resolving an accidental divergence where `vposr` used `+ 4` while `vhposr` used `+ 5`.
-  - Replaced naked literals with canonical named constants:
-    - `VHPOSR_PIPELINE_LEAD_CCKS: u16 = 5` (Agnus master counter lead time relative to Denise CRT display raster).
-    - `VHPOSR_VERTICAL_SETTLE_CCKS: u16 = 1` (Vertical ripple counter propagation delay across scanline rollover).
-    - `NTSC_SHORT_LINE_CCKS: u16 = 227` and `NTSC_LONG_LINE_CCKS: u16 = 228` (NTSC line length differentiation when `lol` is active).
-  - Added unit test `test_vposr_and_vhposr_unified_pipeline_lead` in `crates/agnus/tests/test_agnus_registers.rs` verifying that both registers consistently sample the pipelined beam position and advance high vertical bits at line 256.
+  - **Phase 1 (Universal Register & Bitmask Catalog):** Authored `crates/config/src/registers.rs` defining official Commodore Amiga custom register offsets ($000..$1FE in `custom_reg::*`) and bitfield masks (`mask::dmacon`, `mask::intreq`, `mask::bplcon0`, `mask::copcon`, `mask::bltcon`, etc.) with comprehensive hardware docstrings.
+  - **Phase 2 (Copper Constants):** Replaced raw literals in `copper.rs` with `COPPER_INSTR_TYPE_MASK`, `COPPER_WAIT_SKIP_MASK`, `COPPER_BFD_MASK`, `COPPER_VPOS_FORCE_BIT7`, `COPPER_HPOS_COMPARE_MASK`, `COPPER_MOVE_REG_MASK`, `COPPER_CYCLE_E0_DMA_LOCKOUT`, `COPPER_WAKEUP_HPOS_LEAD`, `COPPER_CDANG_REGISTER_LIMIT`, and `COPPER_ADDRESS_MASK_512K`.
+  - **Phase 3 (Agnus & DMA Arbitration):** Replaced magic literals in Agnus and DMA scheduler with `custom_reg::*`, `dmacon::*`, fixed HPOS scanline slots (`HPOS_REFRESH_START..=END`, `HPOS_DISK`, `HPOS_AUDIO_START..=END`, `HPOS_SPRITE_START..=END`), `BLITTER_STARVATION_YIELD_CYCLES`, and default display geometry (`DDFSTRT_DEFAULT`, `DDFSTOP_DEFAULT`, `DIWSTRT_DEFAULT`, `DIWSTOP_DEFAULT`).
+  - **Phase 4 (Motherboard Memory Bus & Gary Routing):** Replaced raw literals in `memory_bus.rs` with Gary 24-bit physical decoding constants (`BANK_CUSTOM = 0xDF`, `BANK_CIA = 0xBF`, `BANK_RTC = 0xDC`), address ranges (`CIA_A_START/END`, `CIA_B_START/END`, `RTC_START/END`), composite DSKBYTR status masks (`DSKBYTR_DMAON`, `DSKBYTR_DISKWRITE`, `DSKBYTR_DATA_MASK`, `DSKLEN_WRITE_FLAG`), and `custom_reg::*` dispatch arms.
+  - **Phase 5 (Motorola 68000 CPU State & Vectors):** Replaced `self.state.sr = 0x2700;` with `self.state.sr = SR_RESET_DEFAULT;` (`SR_S | SR_I_MASK`). Introduced canonical `vector` module in `state.rs` (`RESET_SSP`, `RESET_PC`, `BUS_ERROR`, `ADDRESS_ERROR`, `ZERO_DIVIDE`, `CHK`, `TRAPV`, `PRIVILEGE_VIOLATION`, `AUTOVECTOR_BASE`, `TRAP_BASE`) and helper `vector::addr(vec) -> u32`. Re-exported in `m68000.rs`.
 - **Architectural Rationale & Trade-Offs**:
-  - *Hardware Cohesion:* Both VHPOSR ($DFF006) and VPOSR ($DFF004) read from the exact same physical beam counter flip-flops in Agnus silicon. Unifying their readout logic eliminates inconsistent pipeline offsets and eliminates duplicated wrap/modulo calculations.
-  - *Self-Documenting Constants:* Replaces mysterious naked numbers with descriptive constants explaining the physical pipeline relationships.
+  - *Zero Symbol Spaghetti on ALU Idioms:* Standard bitwise idioms (`& 0xFF`, `& 0x80`, BCD math `+ 6`) remain standard Rust idioms with PRM algorithmic doc comments to prevent symbol indirection clutter.
+  - *Self-Documenting Code:* Code now reads like official Commodore hardware specifications and Motorola PRM documentation, drastically improving maintainability and IDE navigation.
 - **Verification & Test Results**:
-  - `cargo test -p agnus`: All 15 tests passed cleanly (0.04s).
-  - `cargo test -p test_runner --test test_vamiga_blitter`: Both `sblit0` and `bbusy0` passed.
-  - `python tools/harness/pre_flight.py`: 100% compliant across formatting, attractors, AGENTS.md limits, test coupling, API coverage, and all 20 architecture tests.
+  - `python tools/harness/run_tests.py --unit`: 100% passed across all 23 crates and test runner suites (5.35s).
+  - `cargo test -p test_runner --test test_architecture_rules`: All 20 architecture tests passed cleanly (8.34s).
+  - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly (formatting, attractors, AGENTS.md ceiling, test coupling, API coverage, architecture rules).
 
 
 

@@ -13,6 +13,35 @@ pub const CCR_C: u16 = 0x0001;
 pub const CCR_ALL: u16 = 0x001F;
 pub const SR_MASK: u16 = SR_T | SR_S | SR_I_MASK | CCR_ALL;
 
+/// Default Status Register on CPU Reset (Supervisor bit set, Interrupt Priority Mask Level 7)
+pub const SR_RESET_DEFAULT: u16 = SR_S | SR_I_MASK; // 0x2700
+
+/// Standard Motorola 68000 exception vector numbers (each vector occupies 4 bytes at vector * 4)
+pub mod vector {
+    pub const RESET_SSP: u32 = 0;
+    pub const RESET_PC: u32 = 1;
+    pub const BUS_ERROR: u32 = 2;
+    pub const ADDRESS_ERROR: u32 = 3;
+    pub const ILLEGAL_INSTRUCTION: u32 = 4;
+    pub const ZERO_DIVIDE: u32 = 5;
+    pub const CHK: u32 = 6;
+    pub const TRAPV: u32 = 7;
+    pub const PRIVILEGE_VIOLATION: u32 = 8;
+    pub const TRACE: u32 = 9;
+    pub const LINE_1010: u32 = 10;
+    pub const LINE_1111: u32 = 11;
+    pub const UNINITIALIZED_INTERRUPT: u32 = 15;
+    pub const SPURIOUS_INTERRUPT: u32 = 24;
+    pub const AUTOVECTOR_BASE: u32 = 24;
+    pub const TRAP_BASE: u32 = 32;
+
+    /// Converts an exception vector number to its 24-bit physical vector table address
+    #[inline(always)]
+    pub const fn addr(vec: u32) -> u32 {
+        vec * 4
+    }
+}
+
 /// Complete register set and state snapshot for the Motorola 68000 CPU
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CpuState {
@@ -39,29 +68,31 @@ pub struct CpuState {
     /// Internal Prefetch Queue [IRC (Capture), IRD (Decode)]
     pub prefetch: [u16; 2],
 
-    /// Current Instruction Register (holds opcode being decoded/executed)
+    /// Instruction Register (active 16-bit instruction being executed)
     pub ir: u16,
 
-    /// Sampled Interrupt Priority Level (0..7) driven from outside
+    /// Interrupt Priority Level pending from motherboard/custom chips (IPL 1-6)
     pub ipl: u8,
 
-    /// Program Counter at the start of current instruction + 2 (used for exception stack frames)
+    /// Program counter at the start of the current instruction (used for PC-relative EA & exceptions)
     #[serde(default)]
     pub instruction_pc: u32,
 
-    /// Execution control flags
+    /// CPU Stopped state (halted until higher interrupt arrives)
     pub stopped: bool,
+
+    /// CPU Halted state (fatal double bus fault or physical HALT line)
     pub halted: bool,
 
-    /// Asserted when the privileged RESET instruction is executed, pulsing external _RESET line
+    /// Hardware RESET pin active state
     #[serde(default)]
     pub reset_line_asserted: bool,
 
-    /// Sub-cycle execution micro-state (atomic micro-steps and in-flight bus cycles)
+    /// Cycle-exact micro-operation engine state (not saved in basic snapshot)
     #[serde(default)]
     pub micro: crate::micro::CpuMicroState,
 
-    /// Monotonically increasing CPU clock cycle counter since reset (incremented by 2 per CCK micro-step)
+    /// Master cycle counter
     #[serde(default)]
     pub cycle_counter: u64,
 }
@@ -74,7 +105,7 @@ impl Default for CpuState {
             usp: 0,
             ssp: 0,
             pc: 0,
-            sr: 0x2700, // Supervisor mode, Interrupt mask 7
+            sr: SR_RESET_DEFAULT,
             prefetch: [0; 2],
             ir: 0,
             ipl: 0,
