@@ -15,8 +15,7 @@ import yaml
 
 
 STAGE_DEFINITIONS = [
-    ("01", "01_preprocess", "preprocess.py", "Deconstruct PDF into pages, PNGs, and text blocks"),
-    ("01b", "01b_ocr", "detect_and_ocr.py", "Detect scan/empty pages and extract OCR blocks via Gemini Vision"),
+    ("01", "01_preprocess", "preprocess.py", "Deconstruct PDF into pages, PNGs, and text blocks (with auto-OCR)"),
     ("02", "02_page_segmentation", "segment_page.py", "Vertical banding & zone classification"),
     ("03", "03_build_raw_stream", "build_stream.py", "Build raw stream & extract initial assets"),
     ("04", "04_stream_reduction", "reduce_stream.py", "Normalize stream: weld prose & de-hyphenate"),
@@ -140,9 +139,8 @@ def run_stage(
     ]
 
     # Add stage-specific flags if needed
-    if stage_num in ("01", "01b"):
-        if stage_num == "01":
-            cmd.extend(["--pdf", str(pdf_path)])
+    if stage_num == "01":
+        cmd.extend(["--pdf", str(pdf_path)])
         if page_range:
             cmd.extend(["--page-range", str(page_range)])
         elif start_page or end_page:
@@ -242,72 +240,33 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     print("         PDF-to-Markdown Pipeline Status          ")
     print("==================================================")
 
-    # 1. 01_preprocess (01)
-    p1 = workspace_dir / "01_preprocess"
-    p1_count = len(list(p1.glob("page_*.png"))) if p1.exists() else 0
-    print(f"[*] 01_preprocess                 : {p1_count} rendered PNGs")
+    inspectors = [
+        ("01_preprocess", "*.png", "rendered PNGs"),
+        ("02_page_segmentation", "page_*_segments.json", "segment JSON files"),
+        ("03_build_raw_stream", "raw_stream.json", "stream file"),
+        ("04_stream_reduction", "reduced_stream.json", "stream file"),
+        ("05_chapter_partition", "*.json", "chapter stream files"),
+        ("06_detect_continuations", "*.json", "chapter stream files"),
+        ("07_transform_tables", "*.json", "chapter stream files"),
+        ("08_transform_graphics", "*.json", "chapter stream files"),
+        ("09_transform_prose", "*.json", "chapter stream files"),
+        ("10_proofread_stream", "*.json", "chapter stream files"),
+        ("11_emit_markdown", "*.md", "Markdown files"),
+        ("12_refine_first_chapter_name", "*.md", "Markdown files"),
+        ("13_link_toc", "*.md", "Markdown files"),
+    ]
 
-    # 1b. 01b_ocr (01b)
-    p1_json_count = len(list(p1.glob("page_*.json"))) if p1.exists() else 0
-    print(f"[*] 01b_ocr                       : {p1_json_count} page JSON text streams inspected")
-
-    # 2. 02_page_segmentation (02)
-    p2 = workspace_dir / "02_page_segmentation"
-    p2_count = len(list(p2.glob("page_*_segments.json"))) if p2.exists() else 0
-    print(f"[*] 02_page_segmentation          : {p2_count} segment JSON files")
-
-    # 3. 03_build_raw_stream (03)
-    p3 = workspace_dir / "03_build_raw_stream" / "raw_stream.json"
-    print(f"[*] 03_build_raw_stream           : {'OK (' + str(p3.stat().st_size) + ' B)' if p3.exists() else 'Missing'}")
-
-    # 4. 04_stream_reduction (04)
-    p4 = workspace_dir / "04_stream_reduction" / "reduced_stream.json"
-    print(f"[*] 04_stream_reduction           : {'OK (' + str(p4.stat().st_size) + ' B)' if p4.exists() else 'Missing'}")
-
-    # 5. 05_chapter_partition (05)
-    p5 = workspace_dir / "05_chapter_partition"
-    p5_count = len(list(p5.glob("*.json"))) if p5.exists() else 0
-    print(f"[*] 05_chapter_partition          : {p5_count} chapter stream files")
-
-    # 6. 06_detect_continuations (06)
-    p6 = workspace_dir / "06_detect_continuations"
-    p6_count = len(list(p6.glob("*.json"))) if p6.exists() else 0
-    print(f"[*] 06_detect_continuations       : {p6_count} chapter stream files")
-
-    # 7. 07_transform_tables (07)
-    p7 = workspace_dir / "07_transform_tables"
-    p7_count = len(list(p7.glob("*.json"))) if p7.exists() else 0
-    print(f"[*] 07_transform_tables           : {p7_count} chapter stream files")
-
-    # 8. 08_transform_graphics (08)
-    p8 = workspace_dir / "08_transform_graphics"
-    p8_count = len(list(p8.glob("*.json"))) if p8.exists() else 0
-    print(f"[*] 08_transform_graphics         : {p8_count} chapter stream files")
-
-    # 9. 09_transform_prose (09)
-    p9 = workspace_dir / "09_transform_prose"
-    p9_count = len(list(p9.glob("*.json"))) if p9.exists() else 0
-    print(f"[*] 09_transform_prose            : {p9_count} chapter stream files")
-
-    # 10. 10_proofread_stream (10)
-    p10 = workspace_dir / "10_proofread_stream"
-    p10_count = len(list(p10.glob("*.json"))) if p10.exists() else 0
-    print(f"[*] 10_proofread_stream           : {p10_count} chapter stream files")
-
-    # 11. 11_emit_markdown (11)
-    p11 = workspace_dir / "11_emit_markdown"
-    p11_count = len(list(p11.glob("*.md"))) if p11.exists() else 0
-    print(f"[*] 11_emit_markdown              : {p11_count} files")
-
-    # 12. 12_refine_first_chapter_name (12)
-    p12 = workspace_dir / "12_refine_first_chapter_name"
-    p12_count = len(list(p12.glob("*.md"))) if p12.exists() else 0
-    print(f"[*] 12_refine_first_chapter_name  : {p12_count} files")
-
-    # 13. 13_link_toc (13)
-    p13 = workspace_dir / "13_link_toc"
-    p13_count = len(list(p13.glob("*.md"))) if p13.exists() else 0
-    print(f"[*] 13_link_toc                   : {p13_count} files")
+    for dir_name, pattern, label in inspectors:
+        target = workspace_dir / dir_name
+        if "*" in pattern:
+            count = len(list(target.glob(pattern))) if target.exists() else 0
+            print(f"[*] {dir_name:<30}: {count} {label}")
+        else:
+            file_path = target / pattern
+            if file_path.exists():
+                print(f"[*] {dir_name:<30}: OK ({file_path.stat().st_size} B)")
+            else:
+                print(f"[*] {dir_name:<30}: Missing")
 
     # Final Output Markdown (if custom output_dir used)
     if output_dir:
@@ -344,7 +303,6 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
 
 STAGE_OUTPUT_TARGETS = {
     "01": ["01_preprocess", "pages_manifest.json"],
-    "01b": [],
     "02": ["02_page_segmentation"],
     "03": ["03_build_raw_stream"],
     "04": ["04_stream_reduction"],
@@ -511,7 +469,7 @@ def main():
 
     # Determine stages to run (as list of 0-based indices into STAGE_DEFINITIONS)
     if args.run_deterministic:
-        stages_to_run = [i for i, s in enumerate(STAGE_DEFINITIONS) if s[0] in ("01", "01b", "03", "04", "05", "10", "11")]
+        stages_to_run = [i for i, s in enumerate(STAGE_DEFINITIONS) if s[0] in ("01", "03", "04", "05", "10", "11")]
     elif args.stage:
         target_idx = resolve_stage_idx(args.stage)
         if target_idx is None:

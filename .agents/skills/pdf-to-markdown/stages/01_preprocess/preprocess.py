@@ -12,19 +12,29 @@ import argparse
 import json
 import os
 import sys
+from typing import Optional, List
 from pathlib import Path
 import pymupdf
 import yaml
+
+try:
+    from .detect_and_ocr import detect_and_ocr_pages
+except ImportError:
+    from detect_and_ocr import detect_and_ocr_pages
 
 
 def preprocess_pdf(
     pdf_path: Path,
     workspace_dir: Path,
     dpi: int = 300,
-    max_pages: int = None,
+    max_pages: Optional[int] = None,
     start_page: int = 1,
-    end_page: int = None,
-    pages_list: list = None,
+    end_page: Optional[int] = None,
+    pages_list: Optional[List[int]] = None,
+    auto_ocr: bool = True,
+    force_ocr: bool = False,
+    ocr_threshold: int = 20,
+    config_path: Optional[Path] = None,
 ) -> dict:
     if not pdf_path.exists():
         raise FileNotFoundError(f"Source PDF does not exist: {pdf_path}")
@@ -126,12 +136,56 @@ def preprocess_pdf(
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
+    # 4. Check for scanned or low-text pages and trigger Gemini Vision OCR
+    if auto_ocr:
+        scanned_pages_detected = False
+        for p_info in manifest["pages"]:
+            jf = workspace_dir / p_info["json_file"]
+            if jf.exists():
+                try:
+                    with open(jf, "r", encoding="utf-8") as f:
+                        p_data = json.load(f)
+                    b_list = p_data.get("blocks", [])
+                    total_chars = sum(len(b.get("text", "").strip()) for b in b_list if isinstance(b, dict))
+                    if len(b_list) == 0 or total_chars < ocr_threshold:
+                        scanned_pages_detected = True
+                        break
+                except Exception:
+                    pass
+
+        if scanned_pages_detected or force_ocr:
+            print(f"\n[*] Scanned or low-text pages detected (threshold: {ocr_threshold} chars). Initiating Gemini Vision OCR pass...")
+            ocr_success = detect_and_ocr_pages(
+                workspace_dir=workspace_dir,
+                config_path=config_path,
+                page_range=",".join(str(p) for p in pages_to_process),
+                force=force_ocr,
+                threshold=ocr_threshold,
+            )
+            if ocr_success:
+                # Refresh block_count and page_type in manifest
+                for p_info in manifest["pages"]:
+                    jf = workspace_dir / p_info["json_file"]
+                    if jf.exists():
+                        try:
+                            with open(jf, "r", encoding="utf-8") as f:
+                                p_data = json.load(f)
+                            p_info["block_count"] = len(p_data.get("blocks", []))
+                            if "page_type" in p_data:
+                                p_info["page_type"] = p_data["page_type"]
+                        except Exception:
+                            pass
+                with open(manifest_path, "w", encoding="utf-8") as f:
+                    json.dump(manifest, f, indent=2)
+            else:
+                print("[!] Warning: OCR pass completed with errors or was skipped.", file=sys.stderr)
+
     print(f"[+] Stage 01 complete. Manifest saved to {manifest_path}")
     return manifest
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 01: Preprocess PDF into atomic per-page assets")
+    parser = argparse.ArgumentParser(description="Stage 01: Preprocess PDF into atomic per-page assets (with auto-OCR)")
     parser.add_argument("--pdf", type=str, required=True, help="Input PDF document")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
@@ -140,6 +194,9 @@ def main():
     parser.add_argument("--pages", dest="pages_alt", type=str, default=None, help="Alias for --page-range")
     parser.add_argument("--start-page", type=int, default=1, help="Start page number (1-indexed)")
     parser.add_argument("--end-page", type=int, default=None, help="End page number (1-indexed)")
+    parser.add_argument("--no-ocr", action="store_true", help="Disable automatic scan detection and OCR")
+    parser.add_argument("--force-ocr", action="store_true", help="Force OCR on all pages even if native text is present")
+    parser.add_argument("--ocr-threshold", type=int, default=20, help="Character threshold below which a page is considered a scan (default: 20)")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
@@ -147,10 +204,14 @@ def main():
 
     dpi = 300
     config_path = Path(args.config)
+    ocr_threshold = args.ocr_threshold
     if config_path.exists():
         with open(config_path, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
             dpi = cfg.get("render", {}).get("dpi", 300)
+            ocr_cfg = cfg.get("ocr", {})
+            if "threshold" in ocr_cfg:
+                ocr_threshold = ocr_cfg["threshold"]
 
     start_page = args.start_page
     end_page = args.end_page
@@ -174,7 +235,19 @@ def main():
             else:
                 pages_list.append(int(segment))
 
-    preprocess_pdf(pdf_path, workspace_dir, dpi=dpi, max_pages=args.max_pages, start_page=start_page, end_page=end_page, pages_list=pages_list)
+    preprocess_pdf(
+        pdf_path,
+        workspace_dir,
+        dpi=dpi,
+        max_pages=args.max_pages,
+        start_page=start_page,
+        end_page=end_page,
+        pages_list=pages_list,
+        auto_ocr=not args.no_ocr,
+        force_ocr=args.force_ocr,
+        ocr_threshold=ocr_threshold,
+        config_path=config_path if config_path.exists() else None,
+    )
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-stages/01b_ocr/detect_and_ocr.py:
-Dedicated scan detection and Gemini Vision OCR step.
-Inspects the output of Stage 01 (01_preprocess).
+stages/01_preprocess/detect_and_ocr.py:
+Gemini Vision OCR worker for Stage 01 (Preprocess).
+Can be called directly or invoked automatically by preprocess.py.
 - If pages contain native text blocks (born-digital PDF), it passes through (0 API calls).
 - If pages lack text (scans or scanned book covers), it uses Gemini Vision OCR
   to extract text blocks and normalized bounding boxes into page_XXXX.json.
@@ -87,7 +87,7 @@ def parse_ocr_bounding_box(item: dict) -> tuple[float, float, float, float]:
 
 def detect_and_ocr_pages(
     workspace_dir: Path,
-    config_path: Path,
+    config_path: Optional[Path] = None,
     page_range: Optional[str] = None,
     start_page: Optional[int] = None,
     end_page: Optional[int] = None,
@@ -245,17 +245,17 @@ def detect_and_ocr_pages(
         except Exception as err:
             print(f"[!] Error writing {jf.name}: {err}", file=sys.stderr)
 
-    print("\n---------------- Stage 01b Summary ----------------")
+    print("\n---------------- Stage 01 OCR Summary ----------------")
     print(f"Total Pages Inspected : {len(json_files)}")
     print(f"Digital Pass-Through  : {skipped_count}")
     print(f"Scanned Pages OCR'd   : {scanned_count}")
     print(f"Total OCR Blocks Added: {total_ocr_blocks}")
-    print("---------------------------------------------------\n")
+    print("------------------------------------------------------\n")
     return True
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 01b: Scan Detection & Gemini Vision OCR")
+    parser = argparse.ArgumentParser(description="Stage 01: Scan Detection & Gemini Vision OCR Worker")
     parser.add_argument("--workspace", required=True, help="Path to pipeline workspace directory")
     parser.add_argument("--config", default="config.yaml", help="Path to config.yaml")
     parser.add_argument("--page-range", help="Page range to process (e.g. 1-10 or 1,3,5)")
@@ -267,7 +267,7 @@ def main():
     args = parser.parse_args()
 
     workspace_dir = Path(args.workspace).resolve()
-    config_path = Path(args.config).resolve()
+    config_path = Path(args.config).resolve() if args.config else None
 
     success = detect_and_ocr_pages(
         workspace_dir=workspace_dir,

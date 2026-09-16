@@ -4314,6 +4314,25 @@ Every future modification or implementation task must append an entry following 
   - Purged every legacy folder fallback across all 15 Python files and configuration files, guaranteeing unambiguous, deterministic 1:1 stage contracts.
 - **Verification & Test Results**:
   - Full Python compilation verification: all modified `.py` scripts compiled cleanly via `python -m py_compile`.
+
+---
+
+### [2026-09-16 13:30 CEST] — PDF-to-Markdown: Consolidate Stage 01b OCR into Stage 01 Preprocess
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/01_preprocess/detect_and_ocr.py`: Moved Gemini Vision OCR worker from `01b_ocr` to `01_preprocess`, exposing `detect_and_ocr_pages(...)` as a direct module function.
+  - `.agents/skills/pdf-to-markdown/stages/01_preprocess/prompt_ocr.md`: Moved 3-way triage & OCR prompt into `01_preprocess`.
+  - `.agents/skills/pdf-to-markdown/stages/01_preprocess/preprocess.py`: Added post-extraction text density inspection (`blocks == 0` or `total_chars < ocr_threshold`, default 20 chars). Automatically runs OCR on scanned/empty pages and updates `pages_manifest.json` in place. Added `--no-ocr`, `--force-ocr`, `--ocr-threshold` CLI options.
+  - `.agents/skills/pdf-to-markdown/stages/01_preprocess/README.md`: Documented dual extraction pathways (Born-Digital Direct vs Scanned Vision OCR) and the uniform artifact contracts.
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/`: Completely removed obsolete stage directory and files.
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Removed `01b` from `STAGE_DEFINITIONS`, `STAGE_OUTPUT_TARGETS`, runner, and status printer. Replaced hardcoded status checks with a concise declarative loop.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed root cause: Stage 01b was an awkward intermediate shim that inspected the outputs of Stage 01 and wrote back into `workspace/01_preprocess/`.
+  - Merged scan detection and Gemini Vision OCR directly into Stage 01: `preprocess.py` extracts vector PDF, 300 DPI PNG, and initial text blocks. At the end of the pass, it detects whether pages lack healthy text; if so, it invokes `detect_and_ocr_pages(...)`.
+  - Both born-digital and scanned documents produce the exact same uniform artifact contracts (`page_XXXX.pdf`, `page_XXXX.png`, `page_XXXX.json`, `pages_manifest.json`) in `workspace/01_preprocess/`.
+  - Cleaned up the master pipeline orchestrator to a strict linear 13-stage sequence (`01` through `13`).
+- **Verification & Test Results**:
+  - Python compilation: `python -m py_compile` cleanly compiled `pipeline.py`, `preprocess.py`, and `detect_and_ocr.py`.
+  - Pipeline status test: Verified `pipeline.py --status` renders a clean 13-stage output with zero `01b` references.
   - `python tools/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting 100% compliant, 0 attractors, AGENTS.md <= 14,000 bytes, 18/18 architecture rules).
 
 
