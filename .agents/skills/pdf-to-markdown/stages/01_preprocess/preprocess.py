@@ -136,49 +136,15 @@ def preprocess_pdf(
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
-    # 4. Check for scanned or low-text pages and trigger Gemini Vision OCR
-    if auto_ocr:
-        scanned_pages_detected = False
-        for p_info in manifest["pages"]:
-            jf = workspace_dir / p_info["json_file"]
-            if jf.exists():
-                try:
-                    with open(jf, "r", encoding="utf-8") as f:
-                        p_data = json.load(f)
-                    b_list = p_data.get("blocks", [])
-                    total_chars = sum(len(b.get("text", "").strip()) for b in b_list if isinstance(b, dict))
-                    if len(b_list) == 0 or total_chars < ocr_threshold:
-                        scanned_pages_detected = True
-                        break
-                except Exception:
-                    pass
-
-        if scanned_pages_detected or force_ocr:
-            print(f"\n[*] Scanned or low-text pages detected (threshold: {ocr_threshold} chars). Initiating Gemini Vision OCR pass...")
-            ocr_success = detect_and_ocr_pages(
-                workspace_dir=workspace_dir,
-                config_path=config_path,
-                page_range=",".join(str(p) for p in pages_to_process),
-                force=force_ocr,
-                threshold=ocr_threshold,
-            )
-            if ocr_success:
-                # Refresh block_count and page_type in manifest
-                for p_info in manifest["pages"]:
-                    jf = workspace_dir / p_info["json_file"]
-                    if jf.exists():
-                        try:
-                            with open(jf, "r", encoding="utf-8") as f:
-                                p_data = json.load(f)
-                            p_info["block_count"] = len(p_data.get("blocks", []))
-                            if "page_type" in p_data:
-                                p_info["page_type"] = p_data["page_type"]
-                        except Exception:
-                            pass
-                with open(manifest_path, "w", encoding="utf-8") as f:
-                    json.dump(manifest, f, indent=2)
-            else:
-                print("[!] Warning: OCR pass completed with errors or was skipped.", file=sys.stderr)
+    # 4. Run scan detection & Gemini Vision OCR if enabled
+    if auto_ocr or force_ocr:
+        detect_and_ocr_pages(
+            workspace_dir=workspace_dir,
+            config_path=config_path,
+            page_range=",".join(str(p) for p in pages_to_process),
+            force=force_ocr,
+            threshold=ocr_threshold,
+        )
 
     print(f"[+] Stage 01 complete. Manifest saved to {manifest_path}")
     return manifest

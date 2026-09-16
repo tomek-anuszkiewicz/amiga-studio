@@ -243,6 +243,26 @@ def detect_and_ocr_pages(
         except Exception as err:
             print(f"[!] Error writing {jf.name}: {err}", file=sys.stderr)
 
+    # Refresh pages_manifest.json if any pages were modified by OCR
+    if scanned_count > 0:
+        manifest_path = workspace_dir / "pages_manifest.json"
+        if manifest_path.exists():
+            try:
+                with open(manifest_path, "r", encoding="utf-8") as f:
+                    manifest = json.load(f)
+                for p_info in manifest.get("pages", []):
+                    jf_path = workspace_dir / p_info.get("json_file", "")
+                    if jf_path.exists():
+                        with open(jf_path, "r", encoding="utf-8") as f:
+                            p_data = json.load(f)
+                        p_info["block_count"] = len(p_data.get("blocks", []))
+                        if "page_type" in p_data:
+                            p_info["page_type"] = p_data["page_type"]
+                with open(manifest_path, "w", encoding="utf-8") as f:
+                    json.dump(manifest, f, indent=2)
+            except Exception:
+                pass
+
     print("\n---------------- Stage 01 OCR Summary ----------------")
     print(f"Total Pages Inspected : {len(json_files)}")
     print(f"Digital Pass-Through  : {skipped_count}")

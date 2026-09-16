@@ -4360,6 +4360,18 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python -m py_compile`: Clean compilation of `detect_and_ocr.py` and `preprocess.py`.
   - Verified `python stages/01_preprocess/preprocess.py --help`.
+
+---
+
+### [2026-09-16 13:45 CEST] — PDF-to-Markdown: Elimination of Duplicate Scan Inspection Logic in Preprocess
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/01_preprocess/preprocess.py`: Eliminated 40 lines of redundant pre-inspection loops and manifest re-loading. Directly delegates OCR processing to `detect_and_ocr_pages(...)`.
+  - `.agents/skills/pdf-to-markdown/stages/01_preprocess/detect_and_ocr.py`: Encapsulated `pages_manifest.json` block count and `page_type` updates directly within `detect_and_ocr_pages(...)` when scanned pages are modified.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed code duplication: `detect_and_ocr_pages(...)` already implements fast pass-through evaluation (`total_chars < threshold`) per page. Pre-scanning all pages in `preprocess.py` before calling it was completely redundant boilerplate.
+  - Reduced OCR invocation in `preprocess.py` to a clean 6-line delegation block.
+- **Verification & Test Results**:
+  - Clean Python compilation: `python -m py_compile` on both scripts.
   - `python tools/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting 100% compliant, 0 attractors, AGENTS.md <= 14,000 bytes, 18/18 architecture rules).
 
 
