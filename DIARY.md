@@ -3917,3 +3917,23 @@ Every future modification or implementation task must append an entry following 
   - Page 156 test (text-only): Verified that `workspace/13_proofread_markdown/` contains only `01_limitations_on_selection_of_sampling_period.md` and 0 subdirectories (no `assets/` folder).
   - Page 1 test (with cover graphic): Verified that `workspace/13_proofread_markdown/assets/` is properly created and contains `asset_node_00001.png` and its sidecar.
   - Pre-flight quality gates passed: formatting, attractor linter (362 clean), and 18/18 architecture tests.
+
+---
+
+### [2026-09-16 03:50 CEST] — PDF-to-Markdown: Externalized All Embedded Prompts to Dedicated Markdown Files
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/segment_page.py`: Externalized inline `vision_prompt` and block classification `prompt` into separate markdown files.
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/prompt_empty_page.md`: New dedicated prompt file for visual inspection of text-empty pages.
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/prompt.md`: Updated comprehensive prompt file for semantic text block classification.
+  - `.agents/skills/pdf-to-markdown/stages/08_transform_graphics/transform_graphics.py`: Externalized inline `triage_prompt` into a dedicated markdown file.
+  - `.agents/skills/pdf-to-markdown/stages/08_transform_graphics/prompt_triage.md`: New dedicated triage prompt file for classifying graphics into Mermaid or schematic/photo assets.
+- **What Was Changed (The Concrete Reality)**:
+  - Audited all 16 Python scripts across `.agents/skills/pdf-to-markdown/` for embedded LLM prompts.
+  - Verified that stages 04, 06, 07, 09, 12, and 13 were already loading prompts from markdown files (`prompt_seam.md`, `prompt_graphics_union.md`, `prompt_continuation.md`, `prompt_markdown_table.md`, `prompt.md`, `prompt_proofread.md`).
+  - Identified and resolved the only two remaining scripts containing hardcoded prompts: `segment_page.py` (Stage 02) and `transform_graphics.py` (Stage 08).
+  - Extracted all prompts into cleanly formatted markdown files co-located in the respective stage directories and updated Python scripts to read them with `read_text(encoding="utf-8")`.
+- **Verification & Test Results**:
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed cleanly across 364 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean code formatting across workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed in 0.83s.
+

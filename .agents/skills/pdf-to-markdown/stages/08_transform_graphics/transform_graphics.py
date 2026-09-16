@@ -86,6 +86,9 @@ def process_graphics(workspace_dir: Path, config: dict):
     if not gemini or not gemini.is_available():
         raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 08 graphics transformation.")
 
+    triage_prompt_path = Path(__file__).resolve().parent / "prompt_triage.md"
+    triage_prompt = triage_prompt_path.read_text(encoding="utf-8") if triage_prompt_path.exists() else ""
+
     mermaid_prompt_path = Path(__file__).resolve().parent / "prompt_mermaid.md"
     mermaid_prompt = mermaid_prompt_path.read_text(encoding="utf-8") if mermaid_prompt_path.exists() else ""
 
@@ -118,13 +121,7 @@ def process_graphics(workspace_dir: Path, config: dict):
             png_path = workspace_dir / png_rel if png_rel else None
 
             # First, classify with Gemini if this is a flowchart/state machine or circuit schematic
-            triage_prompt = (
-                "Analyze this technical graphic. Is it a flowchart, state diagram, or structural block chart "
-                "that should be converted to Mermaid code? Or is it a detailed circuit schematic, timing waveform, "
-                "IC pinout, or photographic illustration that must be preserved as an image? "
-                "Return a strict JSON object: {\"type\": \"mermaid\" | \"schematic\", \"caption\": \"Short descriptive title\"}"
-            )
-            triage = gemini.generate_json(triage_prompt, image_path=png_path) if png_path and png_path.exists() else {}
+            triage = gemini.generate_json(triage_prompt, image_path=png_path) if png_path and png_path.exists() and triage_prompt else {}
             graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
             # Prioritize genuine figure caption from raw_text over LLM-generated title
             fig_match = re.search(r"(Figure\s+\d+[\-\.]\d+[:\s][^\n\r]+)", raw_text, re.IGNORECASE)

@@ -61,16 +61,8 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
     if not blocks_summary:
         # Check if this text-empty page contains a visual graphic (e.g. book cover, full-page illustration/schematic)
         if gemini and gemini.is_available() and png_path and png_path.exists():
-            vision_prompt = (
-                "You are an expert technical document layout analyzer. "
-                "The current page has no digital text blocks extracted by PDF tools. "
-                "Inspect the attached 300 DPI page image to determine if it is completely blank white, "
-                "or if it contains a visual graphic (such as a book cover illustration, full-page diagram, schematic, or photo).\n"
-                "Return a strict JSON object:\n"
-                '{"is_blank": false, "type": "graphic", "graphic_bbox_norm": [0.0, 0.0, 1.0, 1.0], "caption": "..."}\n'
-                "If the page is truly empty or blank white, return:\n"
-                '{"is_blank": true}'
-            )
+            empty_prompt_file = Path(__file__).resolve().parent / "prompt_empty_page.md"
+            vision_prompt = empty_prompt_file.read_text(encoding="utf-8") if empty_prompt_file.exists() else ""
             res = gemini.generate_json(vision_prompt, image_path=png_path)
             if isinstance(res, dict) and not res.get("is_blank", False):
                 g_bbox_norm = res.get("graphic_bbox_norm") or [0.0, 0.0, 1.0, 1.0]
@@ -92,23 +84,10 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
                 }]
         return []
 
+    prompt_file = Path(__file__).resolve().parent / "prompt.md"
+    base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
     prompt = (
-        "You are an expert technical document layout and typography analyzer for computer manuals. "
-        "Inspect the attached 300 DPI high-resolution page image alongside the extracted text block bounding boxes. "
-        "Classify each of the extracted text blocks into exactly ONE semantic type based on its visual appearance and position:\n"
-        "- header: Running top-margin document header or chapter title rule at the very top of the page.\n"
-        "- footer: Running bottom-margin footer or page number at the very bottom of the page.\n"
-        "- toc_header: Prominent Table of Contents title banner (e.g. 'Contents', 'Table of Contents').\n"
-        "- toc: Table of contents entries, chapter listings, and page number entries.\n"
-        "- chapter: A new chapter start. The opening segment on a page indicating a new chapter (e.g. 'Chapter 1', 'Chapter 2', 'Appendix A', or major standalone chapter opening banner). It is the first segment on a page indicating a new chapter.\n"
-        "- heading: Section headings, subheadings, topic titles, and data block titles within an ongoing chapter (e.g. 'Copper Instruction Summary', 'Register Map', '256 Byte Sample', '128 Byte Sample'). Do NOT classify standalone subsection titles as table captions unless it is a formal table title starting with 'Table X-Y:'. Use heading_level=1 for major sections, 2 for subsections, 3 for sub-headers.\n"
-        "- prose: Standard narrative prose body paragraphs.\n"
-        "- code_block: Monospace code listings, assembly language, memory hex dumps, or preformatted numeric waveform/sample data arrays (e.g. 16 values per row).\n"
-        "- table: Formal tabular data grids, multi-column register bit assignments, and structured parameter lists. Do NOT classify formal table caption lines (e.g. 'Table 5-8: Five Octave Even-tempered Scale') as table—classify the title line separately as caption.\n"
-        "- graphic: Circuit schematics, timing waveforms, block diagrams, IC pinouts, photographs, and diagram artwork. NEVER classify tables, table titles, or figure captions as graphic. For any block categorized as graphic, specify 'graphic_bbox_norm': [x0, y0, x1, y1] in normalized coordinates (0.0 to 1.0) enclosing ONLY the visual artwork/diagram area on the page (the schematic drawing, plots, state circles, waveforms), EXCLUDING any textual figure caption line (which must be classified separately as caption). For all other block types, graphic_bbox_norm must be null.\n"
-        "- caption: Formal caption or title lines for figures or tables (e.g. 'Figure 5-2: Digitized Amplitude Values', 'Table 5-8: Five Octave Even-tempered Scale'). NEVER classify captions as graphic or table—classify the caption line itself as caption.\n\n"
-        "Return a strict JSON array of objects with fields:\n"
-        '[{"idx": 0, "type": "prose", "heading_level": null, "graphic_bbox_norm": null}, {"idx": 3, "type": "graphic", "heading_level": null, "graphic_bbox_norm": [x0, y0, x1, y1]}, ...]\n\n'
+        f"{base_prompt}\n\n"
         f"Page {page_num} Text Blocks:\n"
         f"{json.dumps(blocks_summary, indent=2)}"
     )
