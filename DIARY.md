@@ -4177,7 +4177,24 @@ Every future modification or implementation task must append an entry following 
     - Stage 10 proofread 4 partitions in 6.7s; corrected `title: "Chapter 2: COPROCESSOR HARDWARE"` and heading `# COPROCESSOR HARDWARE`.
     - Stage 11 emitted `02_chapter_2_coprocessor_hardware.md` with clean Line 1 YAML properties.
     - Stage 13 converted 10 TOC blocks in `00_toc.md`, directly referencing `[[02_chapter_2_coprocessor_hardware#...]]`.
-  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 366 files (0 violations).
-  - `cargo fmt --all -- --check`: Clean formatting across workspace.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+---
+
+### [2026-09-16 07:10 CEST] — Universal Invariant: Structural Root-Cause Resolution Rule (Zero Local Symptom Patches)
+- **Affected Subsystems**:
+  - `.agents/rules/structural-root-cause.md`: Created new universal constitutional rule mandating structural upstream resolution and forbidding local symptom patches (pixel/cycle nudging, ad-hoc regexes, isolated special cases).
+  - `AGENTS.md`: Added Section 1 pointer to `structural-root-cause.md` under Universal Invariants (`trigger: always_on`).
+  - `.agents/rules/repro-first.md`: Reinforced Section 2.3 to explicitly cross-reference `structural-root-cause.md` in defect resolution workflows.
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the principle that defects and discrepancies—whether surfaced by automated tests (e.g. vAmiga hardware comparisons, SingleStepTests, visual diffs) or user requests (e.g. OCR typos, formatting errors)—must never be patched with surface-level tweaks ("pixel left, pixel right", ad-hoc regexes like `re.sub(r"HARDW\s+ARE", ...)`).
+  - Established the "Assume Systematic Scope" invariant: when an anomaly is observed, assume it is an indicator of an upstream structural defect rather than an isolated one-off.
+  - Mandated upstream lifecycle analysis: agents must trace why dirty or offset state reached the point of observation and resolve the issue upstream in the pipeline order or state machine timing.
+- **Verification & Test Results**:
+  - `python tools/pre_flight.py`: All gates passed cleanly:
+    - Formatting: 100% compliant.
+    - Attractor discipline: 367 files clean (0 violations).
+    - `AGENTS.md` ceiling: 13,831 bytes (<= 14,000 bytes limit).
+    - Architecture rules: 18/18 passed in 1.01s.
+
 

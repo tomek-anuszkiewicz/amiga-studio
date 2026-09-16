@@ -20,6 +20,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Attractor & Vocabulary Discipline** ([`attractor-discipline.md`](.agents/rules/attractor-discipline.md)): Strict prevention of synthetic academic jargon monoculture and leaked hardware buzzwords.
 - **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for functional/utility logic and public APIs; dedicated `tests/` directories with zero inline tests in `src/`.
 - **Immediate Atomic Commits** ([`git-commits.md`](.agents/rules/git-commits.md)): Mandatory atomic commit after every completed task or refactoring; zero uncommitted changes left across turns; Conventional Commits and pre-commit test gates.
+- **Structural Root-Cause Resolution** ([`structural-root-cause.md`](.agents/rules/structural-root-cause.md)): Mandatory structural upstream fixes; strict prohibition of local symptom patches (pixel/timing nudges, ad-hoc regexes, special-case branches).
 
 ### B. Domain-Specific Rules (`trigger: model_decision`)
 - **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Strict English for all agent responses, plans, artifacts, source code, and commit messages.
