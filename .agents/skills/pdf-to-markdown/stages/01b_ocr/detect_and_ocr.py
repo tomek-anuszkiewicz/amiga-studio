@@ -136,52 +136,79 @@ def detect_and_ocr_pages(
                 return False
 
         ocr_response = gemini.generate_json(prompt_text, image_path=png_path)
-        if not isinstance(ocr_response, list):
-            print(f"  [!] Page {page_num:04d}: Gemini OCR did not return a list of blocks, skipping")
+        page_type = "text_page"
+        caption = None
+        blocks_data = []
+
+        if isinstance(ocr_response, dict):
+            page_type = ocr_response.get("page_type", "text_page")
+            caption = ocr_response.get("caption")
+            blocks_data = ocr_response.get("blocks", [])
+        elif isinstance(ocr_response, list):
+            blocks_data = ocr_response
+        else:
+            print(f"  [!] Page {page_num:04d}: Gemini OCR did not return expected JSON, skipping")
             continue
 
         page_w = float(page_data.get("width", 612.0))
         page_h = float(page_data.get("height", 792.0))
         new_blocks = []
 
-        for idx, item in enumerate(ocr_response):
-            if not isinstance(item, dict):
-                continue
-            text = item.get("text", "").strip()
-            if not text:
-                continue
+        if page_type == "blank":
+            print(f"  [BLANK] Page {page_num:04d}: Classified as blank page -> 0 text blocks")
+            page_data["blocks"] = []
+            page_data["page_type"] = "blank"
+        elif page_type == "pure_graphic":
+            cap_str = f" ({caption})" if caption else ""
+            print(f"  [GRAPHIC] Page {page_num:04d}: Classified as pure artwork/diagram{cap_str} -> Preserving as visual asset")
+            page_data["blocks"] = []
+            page_data["page_type"] = "pure_graphic"
+            if caption:
+                page_data["caption"] = caption
+        else:
+            for idx, item in enumerate(blocks_data):
+                if not isinstance(item, dict):
+                    continue
+                text = item.get("text", "").strip()
+                if not text:
+                    continue
 
-            bnorm = item.get("bbox_norm", [0.0, 0.0, 1.0, 1.0])
-            if not (isinstance(bnorm, list) and len(bnorm) == 4):
-                bnorm = [0.0, 0.0, 1.0, 1.0]
+                bnorm = item.get("bbox_norm", [0.0, 0.0, 1.0, 1.0])
+                if not (isinstance(bnorm, list) and len(bnorm) == 4):
+                    bnorm = [0.0, 0.0, 1.0, 1.0]
 
-            x0 = max(0.0, min(1.0, float(bnorm[0])))
-            y0 = max(0.0, min(1.0, float(bnorm[1])))
-            x1 = max(0.0, min(1.0, float(bnorm[2])))
-            y1 = max(0.0, min(1.0, float(bnorm[3])))
+                x0 = max(0.0, min(1.0, float(bnorm[0])))
+                y0 = max(0.0, min(1.0, float(bnorm[1])))
+                x1 = max(0.0, min(1.0, float(bnorm[2])))
+                y1 = max(0.0, min(1.0, float(bnorm[3])))
 
-            bbox = [
-                round(x0 * page_w, 2),
-                round(y0 * page_h, 2),
-                round(x1 * page_w, 2),
-                round(y1 * page_h, 2),
-            ]
+                bbox = [
+                    round(x0 * page_w, 2),
+                    round(y0 * page_h, 2),
+                    round(x1 * page_w, 2),
+                    round(y1 * page_h, 2),
+                ]
 
-            new_blocks.append({
-                "bbox": bbox,
-                "text": text + "\n",
-                "block_id": idx,
-                "type": 0,
-                "bbox_norm": [round(x0, 4), round(y0, 4), round(x1, 4), round(y1, 4)],
-            })
+                new_blocks.append({
+                    "bbox": bbox,
+                    "text": text + "\n",
+                    "block_id": idx,
+                    "type": 0,
+                    "bbox_norm": [round(x0, 4), round(y0, 4), round(x1, 4), round(y1, 4)],
+                })
 
-        page_data["blocks"] = new_blocks
+            page_data["blocks"] = new_blocks
+            page_data["page_type"] = "text_page"
+
         try:
             with open(jf, "w", encoding="utf-8") as f:
                 json.dump(page_data, f, indent=2)
             scanned_count += 1
             total_ocr_blocks += len(new_blocks)
-            print(f"  [+] Page {page_num:04d}: OCR populated {len(new_blocks)} text blocks -> Saved {jf.name}")
+            if page_type == "text_page":
+                print(f"  [+] Page {page_num:04d}: OCR populated {len(new_blocks)} text blocks -> Saved {jf.name}")
+            else:
+                print(f"  [+] Page {page_num:04d}: Marked as {page_type} -> Saved {jf.name}")
         except Exception as err:
             print(f"[!] Error writing {jf.name}: {err}", file=sys.stderr)
 

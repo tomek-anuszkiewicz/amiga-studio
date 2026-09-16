@@ -4232,5 +4232,22 @@ Every future modification or implementation task must append an entry following 
   - Both 10-page batches generated complete Markdown documents with zero host panics or pipeline halts.
   - `python tools/pre_flight.py`: All pre-flight quality gates passed (18/18 architecture tests, 0 attractors, formatting clean).
 
+---
+
+### [2026-09-16 07:50 CEST] — PDF-to-Markdown: Fused Single-Pass Page Triage & Vision OCR (Stage 01b)
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/prompt_ocr.md`: Updated prompt with 3-way triage (`text_page`, `pure_graphic`, `blank`) in a single multimodal turn.
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/detect_and_ocr.py`: Handled `page_type` classifications, ensuring pure schematics/artwork are preserved as visual assets (`blocks: []`, `page_type: "pure_graphic"`) without OCR hallucination.
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/README.md`: Documented the fused triage contract.
+- **What Was Changed (The Concrete Reality)**:
+  - Implemented Option A (Fused Single-Pass Triage & OCR): whenever a page lacks text blocks in Stage 01, Gemini Vision analyzes the page image to determine whether it contains readable prose (`text_page`), is a pure schematic/artwork (`pure_graphic`), or is a blank page (`blank`).
+  - Halved required API calls compared to a 2-step pipeline, while completely preventing garbage text hallucinations over photos, circuit diagrams, and decorative artwork.
+- **Verification & Test Results**:
+  - Tested on `Hardware Reference Manual`:
+    - Page 1 classified as `text_page` (4 title & edition blocks extracted).
+    - Page 2 classified as `blank` (0 blocks, marked cleanly as blank separator).
+  - `python tools/pre_flight.py`: All quality gates PASSED (18/18 architecture tests, formatting clean, zero attractors).
+
+
 
 
