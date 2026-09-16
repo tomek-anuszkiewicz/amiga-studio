@@ -119,16 +119,6 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
 
         seg_type, heading_lvl, g_bbox_norm = type_map.get(i, ("prose", None, None))
 
-        # Safeguard: if classified as heading but text contains a run-in heading followed by body prose, treat as prose
-        cleaned_text = re.sub(r"\s+", " ", text).strip()
-        run_in_match = re.match(r"^(\d+(?:\.\d+)*\s+[A-Z0-9\-_/\s]+[\.:])\s+([A-Z].+)$", cleaned_text)
-        if seg_type in ("heading", "chapter") and (
-            (run_in_match and len(run_in_match.group(2)) > 30) or
-            (len(cleaned_text) > 120 and re.search(r"\.\s+[A-Z]", cleaned_text))
-        ):
-            seg_type = "prose"
-            heading_lvl = None
-
         if seg_type == "graphic" and g_bbox_norm and len(g_bbox_norm) == 4:
             # Expand bounding box to encompass the full visual diagram detected by Vision
             bbox_norm = [round(c, 4) for c in g_bbox_norm]

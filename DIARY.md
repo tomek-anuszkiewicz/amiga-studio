@@ -4013,3 +4013,18 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 365 files clean.
   - `cargo fmt --all -- --check`: Clean.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+---
+
+### [2026-09-16 05:10 CEST] — PDF-to-Markdown: Removal of Programmatic Heuristic Safeguards
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/segment_page.py`: Removed programmatic regex heuristic overriding headings to prose.
+  - `.agents/skills/pdf-to-markdown/stages/09_transform_prose/format_prose.py`: Removed programmatic heading reclassification and regex fallback, relying fully on Gemini model intelligence and prompt directives.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user directive to remove artificial programmatic `# Safeguard:` regex patches and assume Gemini consistently performs semantic classification and prose formatting based on prompt guidelines.
+  - Retained explicit prompt rules in `stages/02_page_segmentation/prompt.md` and `stages/09_transform_prose/prompt.md`.
+- **Verification & Test Results**:
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 365 files clean.
+  - `cargo fmt --all -- --check`: Clean.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
