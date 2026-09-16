@@ -60,11 +60,18 @@ def build_raw_stream(workspace_dir: Path, config: dict):
             all_nodes.append(node)
             global_node_counter += 1
 
-    padding = config.get("render", {}).get("padding_margin_ratio", 0.10)
-    all_nodes = extract_assets_for_nodes(workspace_dir, all_nodes, padding_ratio=padding)
-
     raw_dir = workspace_dir / "03_raw_stream"
     raw_dir.mkdir(parents=True, exist_ok=True)
+    raw_assets_dir = raw_dir / "assets"
+    raw_assets_dir.mkdir(parents=True, exist_ok=True)
+    for old_file in raw_assets_dir.glob("asset_*"):
+        try:
+            old_file.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    padding = config.get("render", {}).get("padding_margin_ratio", 0.10)
+    all_nodes = extract_assets_for_nodes(workspace_dir, all_nodes, padding_ratio=padding, assets_dir=raw_assets_dir)
     raw_stream_path = raw_dir / "raw_stream.json"
     with open(raw_stream_path, "w", encoding="utf-8") as f:
         json.dump(all_nodes, f, indent=2)

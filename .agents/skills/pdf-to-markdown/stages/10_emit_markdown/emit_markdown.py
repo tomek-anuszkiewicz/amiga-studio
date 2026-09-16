@@ -12,6 +12,7 @@ Serializes partitioned chapter node streams into final Markdown documents:
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -57,8 +58,30 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
         old_md.unlink()
     out_assets_dir = output_dir / "assets"
     out_assets_dir.mkdir(parents=True, exist_ok=True)
+    for old_asset in out_assets_dir.glob("*"):
+        if old_asset.is_file():
+            old_asset.unlink(missing_ok=True)
 
-    # 1. Synchronize assets from latest stage
+    # Collect active node IDs from chapters
+    active_node_ids = set()
+    for entry in manifest:
+        idx = entry["index"]
+        slug = entry["slug"]
+        c_path = chapters_dir / f"{idx:02d}_{slug}.json"
+        if not c_path.exists():
+            c_path = workspace_dir / entry.get("json_file", "")
+        if c_path.exists():
+            try:
+                with open(c_path, "r", encoding="utf-8") as f:
+                    c_nodes = json.load(f)
+                for cn in c_nodes:
+                    nid = cn.get("node_id")
+                    if nid:
+                        active_node_ids.add(nid)
+            except Exception:
+                pass
+
+    # 1. Synchronize assets from latest stage (only active assets)
     asset_candidates = [
         workspace_dir / "08_chapters_graphics" / "assets",
         workspace_dir / "04_reduced_stream" / "assets",
@@ -69,8 +92,10 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
     if src_assets_dir and src_assets_dir.exists():
         for asset_file in src_assets_dir.glob("*"):
             if asset_file.is_file():
-                shutil.copy2(asset_file, out_assets_dir / asset_file.name)
-        print(f"[*] Synchronized assets from {src_assets_dir} to {out_assets_dir}")
+                m = re.match(r"asset_(node_\d+)", asset_file.name)
+                if not m or m.group(1) in active_node_ids:
+                    shutil.copy2(asset_file, out_assets_dir / asset_file.name)
+        print(f"[*] Synchronized active assets from {src_assets_dir} to {out_assets_dir}")
 
     print(f"[*] Emitting {len(manifest)} Markdown files from {chapters_dir.name} to {output_dir}...")
 

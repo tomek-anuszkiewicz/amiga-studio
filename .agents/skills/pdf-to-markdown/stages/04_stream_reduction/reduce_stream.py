@@ -432,6 +432,19 @@ def reduce_stream(workspace_dir: Path, config: dict):
 
     out_dir = workspace_dir / "04_reduced_stream"
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Prune orphaned asset files that do not belong to any active node in final_nodes
+    reduced_assets_dir = out_dir / "assets"
+    if reduced_assets_dir.exists():
+        active_node_ids = {n["node_id"] for n in final_nodes}
+        for f in list(reduced_assets_dir.glob("asset_*")):
+            m = re.match(r"asset_(node_\d+)", f.name)
+            if m and m.group(1) not in active_node_ids:
+                try:
+                    f.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
     reduced_stream_path = out_dir / "reduced_stream.json"
     with open(reduced_stream_path, "w", encoding="utf-8") as f:
         json.dump(final_nodes, f, indent=2)
