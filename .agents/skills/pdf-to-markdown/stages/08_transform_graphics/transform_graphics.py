@@ -104,7 +104,15 @@ def process_graphics(workspace_dir: Path, config: dict):
             )
             triage = gemini.generate_json(triage_prompt, image_path=png_path) if png_path and png_path.exists() else {}
             graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
-            caption = (triage.get("caption") if isinstance(triage, dict) else None) or (raw_text.splitlines()[0].strip() if raw_text.strip() else f"Figure on page {page_num}")
+            # Prioritize genuine figure caption from raw_text over LLM-generated title
+            fig_match = re.search(r"(Figure\s+\d+[\-\.]\d+[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
+            if fig_match:
+                caption = fig_match.group(1).strip()
+            elif raw_text.strip():
+                fig_lines = [l.strip() for l in raw_text.splitlines() if l.strip().lower().startswith("figure")]
+                caption = fig_lines[0] if fig_lines else ((triage.get("caption") if isinstance(triage, dict) else None) or raw_text.splitlines()[0].strip())
+            else:
+                caption = (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
             caption = re.sub(r"[\[\]|]", "", caption)
 
             if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:

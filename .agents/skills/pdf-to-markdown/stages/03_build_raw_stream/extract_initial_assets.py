@@ -55,17 +55,31 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
             # Calculate padded bounding box
             w = bbox[2] - bbox[0]
             h = bbox[3] - bbox[1]
-            pad_x = w * padding_ratio
-            pad_y = h * padding_ratio
+            if node.get("type") == "graphic":
+                # Graphic bounding boxes are already measured to artwork edges; apply minimal padding
+                pad_x = min(w * 0.02, 6.0)
+                pad_y = min(h * 0.02, 6.0)
+            else:
+                pad_x = w * padding_ratio
+                pad_y = h * padding_ratio
 
             padded_bbox = [
                 max(0.0, bbox[0] - pad_x),
                 max(0.0, bbox[1] - pad_y),
-                (page.rect.width if page else bbox[2] + pad_x),
-                (page.rect.height if page else bbox[3] + pad_y),
+                min(page.rect.width if page else 9999.0, bbox[2] + pad_x),
+                min(page.rect.height if page else 9999.0, bbox[3] + pad_y),
             ]
-            padded_bbox[2] = min(page.rect.width if page else 9999.0, bbox[2] + pad_x)
-            padded_bbox[3] = min(page.rect.height if page else 9999.0, bbox[3] + pad_y)
+
+            # Clamp padding so it never expands into other nodes on the same page
+            other_nodes = [n for n in nodes if n.get("page") == page_num and n.get("node_id") != node_id and n.get("bbox")]
+            for other in other_nodes:
+                ob = other["bbox"]
+                # If other is vertically below this node, do not expand bottom into it
+                if ob[1] >= bbox[3] - 1.0:
+                    padded_bbox[3] = min(padded_bbox[3], max(bbox[3], ob[1] - 1.0))
+                # If other is vertically above this node, do not expand top into it
+                if ob[3] <= bbox[1] + 1.0:
+                    padded_bbox[1] = max(padded_bbox[1], min(bbox[1], ob[3] + 1.0))
 
             # 1. Extract Raw PDF Text Asset within the bounding box
             txt_filename = f"asset_{node_id}.txt"
