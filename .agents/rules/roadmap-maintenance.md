@@ -5,7 +5,7 @@ description: Mandatory updating and pruning of ROADMAP.md whenever an active mil
 
 # Roadmap Maintenance & Milestone Completion Rule (`ROADMAP.md`)
 
-This rule governs the continuous synchronization, pruning, and milestone completion workflow for [`ROADMAP.md`](../../ROADMAP.md).
+This rule governs the continuous synchronization, pruning, substrate-first ordering, and milestone completion workflow for [`ROADMAP.md`](../../ROADMAP.md).
 
 ---
 
@@ -31,3 +31,29 @@ Whenever completing a major milestone (e.g. completing an entire phase or major 
    - Invoke the `prune-dead-code` skill ([`.agents/skills/prune-dead-code/`](../skills/prune-dead-code/SKILL.md)) to audit and eliminate unreferenced functions, obsolete constants, unused imports, and superseded scaffolding across workspace crates.
 3. **Milestone Review Protocol (`/code-review`):**
    - Run the `/code-review` workflow to audit the diff with a clean context before final user hand-off.
+
+---
+
+## 3. The Substrate-First Invariant in Planning & Roadmaps
+
+When planning new features, decomposing verification test suites, or structuring roadmap milestones:
+- **Strict Prohibition of Folder-Tree Taxonomic Bias:** Never order tasks or test suites based on naive filesystem directory listings (e.g. alphabetical order of test folders in `ref_src/vAmigaTS/`).
+- **Physical Electronic Causality (Substrate-First Invariant):** Tasks and milestones must strictly follow the physical hardware causality chain:
+  1. **Layer 0: Bus Arbitration & Clock Synchronization:** CCK phase timing (`CCK1`/`CCK2`), even/odd slot allocation, DRAM refresh, DMA arbitration, wait-state assertions, and open bus.
+  2. **Layer 1: Autonomous Coprocessors & DMA Masters:** Agnus Copper & Blitter engines (which request and consume bus slots).
+  3. **Layer 2: Video Serializer & Display Pipeline:** Denise bitplane shifters, DIW/DDF window clipping, sprite multiplexing, and color DACs.
+  4. **Layer 3: Peripheral Controllers & External I/O:** Paula audio/floppy/UART, CIAs (timers, ICR, TOD), keyboard, joystick/mouse ports.
+  5. **Layer 4: System Integration & Firmware Exec:** Kickstart ROM bootblock, Exec library, autovectors, and OS intuition.
+- **Rationale:** Debugging higher-level coprocessors (Layer 1/2) while the underlying bus arbiter (Layer 0) has cycle allocation defects creates phantom anomalies and circular debugging churn.
+
+---
+
+## 4. Verification Scorecard Synchronization Protocol
+
+To maintain continuous ground-truth visibility without polluting `ROADMAP.md` or git history with transient pass rates:
+- Ground-truth pass rates for regression test suites (vAmigaTS) are maintained in [`Obsidian/Amiga/Design/vAmigaTS Verification Scorecard.md`](../../Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md).
+- **Mandatory Refresh Triggers:** The scorecard must be refreshed only upon:
+  1. Completion of any roadmap sub-suite step (e.g., finishing Step 2.1, 2.2, etc.).
+  2. Merging a major cross-subsystem timing fix that alters global pass rates.
+  3. Explicit user instruction to audit current verification status.
+- Never record transient, intermediate debug run pass rates into `ROADMAP.md`.

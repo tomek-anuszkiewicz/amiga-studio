@@ -90,14 +90,15 @@ This document outlines the phased development plan, hardware milestones, verific
   - *AmigaOS Floppy MFM Bootblock Gate (7 tests deferred to Step 6 Floppy MFM & Full OS Boot):* Non-standard bootblock tests requiring genuine floppy track MFM streaming and `dos.library` initialization (`diwvmras`, `btst_ipl`, `overscan2`, `bplcon_rmb`, `sprxpos`, `memspeed1`, `memspeed2`).
   - *Non-Visual Register Assertion Gate (193 tests deferred to Step 2.7):* Peripheral tests (CIA, UART, joystick) lacking 24-bit RGB `.raw` frame captures (providing only CRT camera photographs `.JPG`).
 - **Targeted Subsystem Verification Sub-Suites Execution Track (1,468 Active Baseline Tests):**
-  - Execute category-by-category using `cargo run -p test_runner -- vamiga -c <CAT>`, diagnosing and resolving emulation discrepancies:
-    - *Sub-Suite 2.1: Agnus Copper Coprocessor Engine (114 tests):* `Agnus/Copper/` (`Wait/`, `Skip/`, `coptim/`, `coprace/`, `copvbl/`), verifying 4-CCK instruction cycle timing, beam wake-up latency, and `CDANG` danger mode.
-    - *Sub-Suite 2.2: Agnus 4-Channel DMA Blitter Engine (250 tests):* `Agnus/Blitter/` (`line/`, `fill/`, `timing/`, `bbusy/`, `bltint/`), verifying 256-minterm Boolean ALU, barrel shifts, modulos, and `_BLITINT` generation.
-    - *Sub-Suite 2.3: Denise Video, Bitplanes & Sprites (210 tests):* `Denise/` (`Registers/`, `Modes/`, `DIW/`, `Sprites/`), verifying pixel serialization, palette translation, display window clipping, and sprite multiplexing.
-    - *Sub-Suite 2.4: Paula Audio & Interrupts (107 tests):* `Paula/` (`Audio/`, `Interrupts/basicint/`), verifying PCM sample streaming, period clock division, and Level 1–4 interrupt requests.
-    - *Sub-Suite 2.5: M68000 CPU Instruction & Exception Pipeline (503 tests):* `CPU/` (ALU, bitwise, shifts, exceptions, traps, IPL autovectors).
-    - *Sub-Suite 2.6: Agnus Master DMA Contention & CPU Stealing (225 tests):* `Agnus/` (`DMACON/`, `BplDma/`, `DIW/`, `DDF/`, `bususage/`), verifying cycle-exact CPU wait-state stalling under heavy DMA and Blitter Nasty.
-    - *Sub-Suite 2.7: Mainboard & Memory Addressing (58 tests):* `Mainboard/`, `Memory/`, `Misc/`, verifying address decoding, port registers, and RAM expansion configurations.
+  - Tracked authoritatively in [vAmigaTS Verification Scorecard](Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md).
+  - Executed in strict **Substrate-First Order** (physical electronic causality: Layer 0 $\to$ Layer 4):
+    - *Sub-Suite 2.1: Agnus Master DMA Contention & Bus Arbitration (Layer 0 Substrate, 225 tests):* `Agnus/` (`DMACON/`, `BplDma/`, `DIW/`, `DDF/`, `bususage/`), verifying Color Clock phase allocation (odd/even), refresh cycles, CPU wait-state generation, and Blitter Nasty (`BLTPRI`).
+    - *Sub-Suite 2.2: Agnus Blitter & Copper Coprocessor Engines (Layer 1 Coprocessors, 364 tests):* `Agnus/Blitter/` (250 tests: `line/`, `fill/`, `sblit/`, `timing/`, `bbusy/`, `bltint/`) and `Agnus/Copper/` (114 tests: `Wait/`, `Skip/`, `coptim/`, `coprace/`, `copvbl/`), verifying autonomous bus master operations, 256-minterm ALU, barrel shifts, modulos, and Copper 4-CCK timing.
+    - *Sub-Suite 2.3: Denise Video, Bitplanes & Sprites (Layer 2 Video Serializer, 210 tests):* `Denise/` (`Registers/`, `Modes/`, `DIW/`, `Sprites/`), verifying pixel serialization, palette translation, display window clipping, and sprite multiplexing.
+    - *Sub-Suite 2.4: Paula Audio & Floppy Subsystem (Layer 3 Peripherals, 107 tests):* `Paula/` (`Audio/`, `Interrupts/basicint/`), verifying PCM sample streaming, period clock division, and Level 1–4 interrupt requests.
+    - *Sub-Suite 2.5: Complex CIA-A / CIA-B & Timers (Layer 3 Peripherals):* Timers A & B, TOD clock 50/60 Hz synchronization, serial shift register (SDR), and port handshake lines.
+    - *Sub-Suite 2.6: Mainboard, Memory & Peripheral Assertions (Layer 4 System, 58 visual + 193 non-visual tests):* `Mainboard/`, `Memory/`, `Misc/`, verifying address decoding, port registers, and RAM expansion configurations.
+    - *Sub-Suite 2.7: M68000 CPU Silicon Pipeline (Layer 4 System Integration, 503 tests):* `CPU/` (ALU, bitwise, shifts, exceptions, traps, IPL autovectors).
 - **Deferred Pinpoint Optimization: Dynamic Agnus DMA Slot Arbitration (26.3% Profile Bottleneck):**
   - Pinpoint optimization localized entirely within the Agnus DMA scheduler (`crates/dma/` / `crates/agnus/src/dma/`) to do later.
   - Optimize the dynamic per-CCK DMA slot priority evaluation into a clean, pre-computed scanline slot lookup table (`[DmaSlot; 227]`).

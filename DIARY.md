@@ -4209,3 +4209,27 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p blitter`: All 22 Blitter unit tests passed.
   - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly.
 
+---
+
+### [2026-09-16 13:10 CEST] — Codification of Substrate-First Invariant, Roadmap Reordering & Persistent Verification Scorecard
+- **Affected Subsystems**:
+  - `AGENTS.md` (codified Substrate-First Invariant into Core Architectural Principles, tightened Section 4/5 wording to maintain $\le 14,000$ byte constitutional limit)
+  - `.agents/rules/roadmap-maintenance.md` (added Section 3 *The Substrate-First Invariant in Planning & Roadmaps* and Section 4 *Verification Scorecard Synchronization Protocol*)
+  - `.agents/skills/roadmap-maintenance/SKILL.md` (incorporated substrate-first causality ordering and scorecard synchronization into maintenance workflow)
+  - `ROADMAP.md` (reordered Step 2 sub-suites strictly by hardware electronic causality: Layer 0 DMA Bus Arbitration $\to$ Layer 1 DMA Coprocessors $\to$ Layer 2 Video Serializer $\to$ Layer 3 Peripherals $\to$ Layer 4 System Integration; linked persistent scorecard)
+  - `Obsidian/Amiga/Design/vAmigaTS Verification Scorecard.md` (new persistent ground-truth scorecard documenting 1,468 active baseline tests, 609 deferred tests across 5 gates, and 77+ verified passing tests with zero mismatches)
+- **What Was Changed (The Concrete Reality)**:
+  - **The Substrate-First Architectural Invariant:**
+    - Addressed the systemic root cause of planning divergence: *Folder-Tree Taxonomic Bias*, where test suites were ordered naively by filesystem directory names (`Agnus/Blitter`, `Agnus/Copper`, `Denise`, `Paula`, `CPU`, `Agnus/DMACON`) rather than physical electronic dependencies.
+    - In physical Amiga silicon, Agnus master DMA bus arbitration (even/odd cycle allocation, refresh slots, wait-state assertions) is Layer 0 upon which all DMA clients (Copper, Blitter, Denise, Audio, Disk) depend. Debugging higher-level coprocessors while cycle arbitration has flaws creates phantom anomalies.
+    - Codified the invariant across `AGENTS.md`, `.agents/rules/roadmap-maintenance.md`, and `.agents/skills/roadmap-maintenance/SKILL.md`.
+  - **Persistent Verification Scorecard & Decoupled Roadmaps:**
+    - Authoritative test pass counts and regression metrics now live in `Obsidian/Amiga/Design/vAmigaTS Verification Scorecard.md`.
+    - Defined 3 explicit refresh triggers (milestone completion, global timing changes, explicit user audit) to eliminate transient test churn from `ROADMAP.md` and git commits.
+- **Architectural Rationale & Trade-Offs**:
+  - *Electronic Causality vs Directory Taxonomy:* Enforcing physical dependency ordering guarantees that foundational bus cycle mechanics are validated before tackling complex coprocessor interactions, preventing circular debugging churn.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 20 tests passed (including `test_rule_files_size_limit_and_truncation_safety` with `AGENTS.md` at 13,759 bytes and `test_obsidian_design_docs_links_integrity`).
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 386 files (0 violations).
+  - `python tools/harness/check_test_coupling.py --staged`: Passed.
+

@@ -53,11 +53,22 @@ If the completed work represents an architectural milestone or major subsystem c
 2. Add or update a concise baseline bullet summarizing the deliverable and key verified capabilities (e.g., supported modes, test coverage).
 3. Keep baseline entries concise and high-level—avoid pasting verbose task breakdowns.
 
-### Step 4: Renumber & Reorder Remaining Steps
-1. Renumber remaining steps and sub-steps in Section 2 so that numbering remains contiguous (e.g., if Step 2.1 is removed, Step 2.2 becomes Step 2.1, or remaining steps are sequentially ordered).
-2. Ensure the step marked `[Active Focus]` accurately reflects the immediate next task.
+### Step 4: Renumber & Reorder Remaining Steps (Substrate-First Invariant)
+1. Renumber remaining steps and sub-steps in Section 2 so that numbering remains contiguous.
+2. **Apply the Substrate-First Invariant:** Ensure remaining tasks strictly follow physical hardware causality rather than folder taxonomy:
+   - Layer 0: Bus Arbitration, Clock Phases, Refresh, Contention & Stalls
+   - Layer 1: Autonomous Coprocessors & DMA Channels (Copper, Blitter)
+   - Layer 2: Video Serializer & Display Pipeline (Denise, DIW/DDF, Sprites)
+   - Layer 3: Peripherals & External I/O (Paula Audio/Floppy, CIAs, Ports)
+   - Layer 4: System Integration & Firmware Exec
+3. Ensure the step marked `[Active Focus]` accurately reflects the immediate next task.
 
-### Step 5: Verify Cleanliness & Attractor Discipline
+### Step 5: Synchronize Verification Scorecard (If Applicable)
+If a sub-suite milestone was finished or global timing changed:
+1. Update [`Obsidian/Amiga/Design/vAmigaTS Verification Scorecard.md`](../../../Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md) with updated test counts and pass rates.
+2. Ensure `ROADMAP.md` only links to the scorecard rather than containing transient test run percentages.
+
+### Step 6: Verify Cleanliness & Attractor Discipline
 1. Search [`ROADMAP.md`](../../../ROADMAP.md) for any stray occurrences of `COMPLETED` or `Completed:` in Section 2:
    Ensure zero matches in the active backlog.
 2. Run the attractor linter:

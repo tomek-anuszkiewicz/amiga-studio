@@ -76,10 +76,13 @@ def check_agents_md():
 TEST_COUPLING_SCRIPT = Path(__file__).resolve().parent / "check_test_coupling.py"
 API_COVERAGE_SCRIPT = Path(__file__).resolve().parent / "audit_api_coverage.py"
 
-def check_test_coupling():
+def check_test_coupling(staged=False):
     if not TEST_COUPLING_SCRIPT.exists():
         return False, f"Test coupling script not found at {TEST_COUPLING_SCRIPT}", 0.0
-    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(TEST_COUPLING_SCRIPT)])
+    cmd = [sys.executable, str(TEST_COUPLING_SCRIPT)]
+    if staged:
+        cmd.append("--staged")
+    code, stdout, stderr, elapsed = run_cmd(cmd)
     if code != 0:
         output = stdout.strip() or stderr.strip()
         return False, f"Test coupling check failed:\n{output}", elapsed
@@ -111,13 +114,14 @@ def check_architecture_rules():
 
 def main():
     quick_mode = "--quick" in sys.argv
+    staged_mode = "--staged" in sys.argv or quick_mode
     print(f">> Running {'Quick ' if quick_mode else ''}Pre-Flight Quality Gates...")
     
     gates = [
         ("Formatting", check_formatting),
         ("Attractor Discipline", check_attractors),
         ("AGENTS.md Ceiling", check_agents_md),
-        ("Test Coupling", check_test_coupling),
+        ("Test Coupling", lambda: check_test_coupling(staged=staged_mode)),
         ("API Coverage", check_api_coverage),
     ]
     
