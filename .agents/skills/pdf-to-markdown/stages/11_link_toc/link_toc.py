@@ -131,9 +131,12 @@ def link_toc_in_file(md_path: Path, catalog: list) -> bool:
     return True
 
 
-def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path):
+def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, config: dict = None):
     if not input_dir.exists():
         raise FileNotFoundError(f"Input directory does not exist: {input_dir}")
+
+    start_marker = (config or {}).get("markers", {}).get("toc_start", TOC_START_MARKER) if config else TOC_START_MARKER
+    end_marker = (config or {}).get("markers", {}).get("toc_end", TOC_END_MARKER) if config else TOC_END_MARKER
 
     output_dir.mkdir(parents=True, exist_ok=True)
     for old_md in output_dir.glob("*.md"):
@@ -159,7 +162,8 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path):
         with open(md_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        match = re.search(r"<!-- TOC34534 -->\n(.*?)\n<!-- /TOC34534 -->", content, re.DOTALL)
+        toc_pattern = rf"{re.escape(start_marker)}\n(.*?)\n{re.escape(end_marker)}"
+        match = re.search(toc_pattern, content, re.DOTALL)
         if match:
             toc_lines = match.group(1).splitlines()
             linked_lines = []
@@ -213,9 +217,13 @@ def main():
     if not input_dir:
         raise FileNotFoundError("No input markdown files found for Stage 11")
 
-    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "11_link_toc")
+    config_path = Path(args.config)
+    config = {}
+    if config_path.exists():
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
 
-    process_toc_linking(input_dir, output_dir, workspace_dir)
+    process_toc_linking(input_dir, output_dir, workspace_dir, config=config)
 
 
 if __name__ == "__main__":

@@ -4079,3 +4079,18 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
 
+---
+
+### [2026-09-16 06:05 CEST] — PDF-to-Markdown: Parameterized TOC Marker Regex in link_toc.py
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py`: Refactored hardcoded TOC delimiter regex in `process_toc_linking` to use `TOC_START_MARKER` and `TOC_END_MARKER` constants, with optional override support from `config.yaml` (`markers.toc_start` / `markers.toc_end`).
+- **What Was Changed (The Concrete Reality)**:
+  - Replaced inline hardcoded literal `re.search(r"<!-- TOC34534 -->\n(.*?)\n<!-- /TOC34534 -->", ...)` with parameterized `re.search(rf"{re.escape(start_marker)}\n(.*?)\n{re.escape(end_marker)}", content, re.DOTALL)`.
+  - Wired `config` dictionary from CLI `args.config` to `process_toc_linking`.
+- **Verification & Test Results**:
+  - `python -m py_compile .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py`: Passed cleanly.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 366 files clean.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+
