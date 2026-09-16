@@ -4374,4 +4374,18 @@ Every future modification or implementation task must append an entry following 
   - Clean Python compilation: `python -m py_compile` on both scripts.
   - `python tools/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting 100% compliant, 0 attractors, AGENTS.md <= 14,000 bytes, 18/18 architecture rules).
 
+---
+
+### [2026-09-16 20:10 CEST] — PDF-to-Markdown: Higher Thinking Budget (4096 Tokens) for Stage 08 Graphic Layout
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/config.yaml`: Increased `stages_thinking_budget.08_transform_graphics` from `1536` to `4096` tokens.
+- **What Was Changed (The Concrete Reality)**:
+  - Complex spatial diagrams (such as the 94/96-key Amiga 500/2000 keyboard layout with international shaded keys) require extensive character grid counting, cluster alignment, and row spacing calculations.
+  - Raising the Gemini thinking budget to 4096 tokens gave the model sufficient reasoning capacity (75.64s deliberate reasoning phase) to construct an aligned, balanced ASCII art keyboard matrix and a comprehensive, key-by-key hexadecimal breakdown in the collapsible callout note.
+- **Verification & Test Results**:
+  - Executed pipeline stages 08 through 13 on page 5 of the Commodore Amiga A500/A2000 Technical Reference Manual.
+  - Verified generated output in `output_markdown/01_keyboard_hardware_and_raw_key_codes.md` containing the reconstructed ASCII keyboard layout (function rows, alphanumeric matrix, editing cluster, numeric keypad, and international shaded key indicators `*2B*` and `*30*`).
+  - Pre-flight quality gates passed cleanly (`python tools/pre_flight.py`).
+
+
 
