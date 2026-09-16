@@ -94,7 +94,6 @@ def process_proofreading(
 ):
     output_dir.mkdir(parents=True, exist_ok=True)
     out_assets = output_dir / "assets"
-    out_assets.mkdir(parents=True, exist_ok=True)
 
     # 1. Clean previous stage outputs
     for old_f in output_dir.glob("*.md"):
@@ -102,6 +101,13 @@ def process_proofreading(
             old_f.unlink()
         except Exception:
             pass
+    if out_assets.exists():
+        for old_asset in out_assets.glob("*"):
+            if old_asset.is_file():
+                try:
+                    old_asset.unlink()
+                except Exception:
+                    pass
 
     # 2. Locate Markdown files
     if not input_dir.exists():
@@ -123,7 +129,7 @@ def process_proofreading(
         print("[!] No Markdown files found to proofread.")
         return
 
-    # 3. Synchronize assets from input_dir to output_dir
+    # 3. Synchronize assets from input_dir to output_dir (only create out_assets if there are files)
     src_assets = input_dir / "assets"
     if not src_assets.exists():
         for cand in [
@@ -140,10 +146,21 @@ def process_proofreading(
                 src_assets = cand
                 break
 
+    copied_assets = 0
     if src_assets and src_assets.exists():
         for asset_f in src_assets.glob("*"):
             if asset_f.is_file():
+                if copied_assets == 0:
+                    out_assets.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(asset_f, out_assets / asset_f.name)
+                copied_assets += 1
+
+    # If out_assets exists but is empty, remove it so no empty directory remains
+    if out_assets.exists() and not any(out_assets.iterdir()):
+        try:
+            out_assets.rmdir()
+        except Exception:
+            pass
 
     # 4. Initialize Gemini Client
     gemini = None
@@ -190,6 +207,13 @@ def process_proofreading(
             f.write(full_doc)
 
         print(f"    Proofread: {md_file.name}")
+
+    # Final check: Ensure no empty assets/ directory is left in output_dir
+    if out_assets.exists() and not any(out_assets.iterdir()):
+        try:
+            out_assets.rmdir()
+        except Exception:
+            pass
 
     print(f"[+] Stage 13 complete. Proofread documents saved in {output_dir}.")
 
