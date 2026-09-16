@@ -4,7 +4,10 @@ llm_client.py: Unified Gemini LLM client for pdf-to-markdown stages.
 Uses google.genai SDK with gemini-3.8-flash and thinking_level='medium'.
 """
 
+import atexit
+import json
 import os
+import threading
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
@@ -14,6 +17,58 @@ for p in [Path.cwd() / ".env", Path(__file__).resolve().parents[3] / ".env"]:
     if p.exists():
         load_dotenv(p)
         break
+
+_call_lock = threading.Lock()
+_stage_call_count = 0
+
+
+def _init_call_count():
+    global _stage_call_count
+    metrics_file = os.getenv("LLM_STAGE_METRICS_FILE")
+    if metrics_file:
+        try:
+            p = Path(metrics_file)
+            if p.exists():
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    _stage_call_count = int(data.get("llm_calls", 0))
+        except Exception:
+            pass
+
+
+_init_call_count()
+
+
+def _record_call():
+    global _stage_call_count
+    with _call_lock:
+        _stage_call_count += 1
+        metrics_file = os.getenv("LLM_STAGE_METRICS_FILE")
+        if metrics_file:
+            try:
+                p = Path(metrics_file)
+                p.parent.mkdir(parents=True, exist_ok=True)
+                with open(p, "w", encoding="utf-8") as f:
+                    json.dump({"llm_calls": _stage_call_count}, f)
+            except Exception:
+                pass
+
+
+def _dump_metrics():
+    metrics_file = os.getenv("LLM_STAGE_METRICS_FILE")
+    if metrics_file:
+        try:
+            p = Path(metrics_file)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            with _call_lock:
+                count = _stage_call_count
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump({"llm_calls": count}, f)
+        except Exception:
+            pass
+
+
+atexit.register(_dump_metrics)
 
 
 class GeminiClient:
@@ -26,6 +81,22 @@ class GeminiClient:
         self.temperature = self.config.get("temperature", 0.1)
         self.client = None
         self._init_client()
+
+    @property
+    def call_count(self) -> int:
+        with _call_lock:
+            return _stage_call_count
+
+    @classmethod
+    def get_total_calls(cls) -> int:
+        with _call_lock:
+            return _stage_call_count
+
+    @classmethod
+    def reset_call_count(cls):
+        global _stage_call_count
+        with _call_lock:
+            _stage_call_count = 0
 
     def _init_client(self):
         if not self.api_key:
@@ -55,6 +126,7 @@ class GeminiClient:
         for m in models_to_try:
             for attempt in range(4):
                 try:
+                    _record_call()
                     config = types.GenerateContentConfig(
                         temperature=self.temperature,
                     )
@@ -101,6 +173,7 @@ class GeminiClient:
         for m in models_to_try:
             for attempt in range(4):
                 try:
+                    _record_call()
                     config = types.GenerateContentConfig(
                         temperature=self.temperature,
                     )

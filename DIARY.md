@@ -4117,6 +4117,21 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
 
+---
 
-
-
+### [2026-09-16 06:15 CEST] — PDF-to-Markdown: Stage Duration & Gemini Call Metrics Tracking in stage_status.json
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/llm_client.py`: Implemented thread-safe `_record_call()` and `_dump_metrics()` writing to `LLM_STAGE_METRICS_FILE`, exposed `call_count` property and `get_total_calls()` / `reset_call_count()`.
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Added wall-clock timing (`duration_seconds`) and subprocess LLM call aggregation via `LLM_STAGE_METRICS_FILE` into `stage_status.json`. Enhanced `update_status()`, `clean_downstream_stages()`, and `print_pipeline_status()`.
+- **What Was Changed (The Concrete Reality)**:
+  - Added stage-level performance and cost observability to the PDF-to-Markdown processing pipeline.
+  - Subprocess stage executions now export exact network calls made to Gemini (`generate_text`, `generate_vision`, and `generate_json`) via a thread-safe atomic counter and temporary per-stage metrics file (`.stage_{stage}_metrics.json`).
+  - Recorded metrics (`duration_seconds` and `llm_calls`) are persisted into `stage_status.json` on both stage success and failure.
+  - Enhanced `pipeline.py --status` with a comprehensive Stage Statistics summary table displaying status, elapsed time in seconds, and LLM call counts per stage alongside totals.
+- **Verification & Test Results**:
+  - Validated live execution of Stage 11 (0.24s, 0 LLM calls), Stage 12 (9.75s, 1 LLM call), and Stage 13 (79.22s, 21 LLM calls).
+  - Verified `workspace/stage_status.json` correctly stores `duration_seconds` and `llm_calls`.
+  - Verified `pipeline.py --status` renders formatted stage statistics table with total measured time (1292.21s) and total LLM calls (319).
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean (0 violations across 366 files).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed in 1.11s.

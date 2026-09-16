@@ -8,7 +8,9 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
+from typing import Optional
 import yaml
 
 
@@ -36,7 +38,14 @@ def load_config(config_path: Path) -> dict:
     return {}
 
 
-def update_status(status_file: Path, stage_num: str, status: str, details: str = ""):
+def update_status(
+    status_file: Path,
+    stage_num: str,
+    status: str,
+    details: str = "",
+    duration_seconds: Optional[float] = None,
+    llm_calls: Optional[int] = None,
+):
     data = {}
     if status_file.exists():
         try:
@@ -44,7 +53,23 @@ def update_status(status_file: Path, stage_num: str, status: str, details: str =
                 data = json.load(f)
         except Exception:
             data = {}
-    data[stage_num] = {"status": status, "details": details}
+
+    entry = data.get(stage_num, {})
+    entry["status"] = status
+    if details or "details" not in entry:
+        entry["details"] = details
+
+    if duration_seconds is not None:
+        entry["duration_seconds"] = duration_seconds
+    elif "duration_seconds" not in entry:
+        entry["duration_seconds"] = None
+
+    if llm_calls is not None:
+        entry["llm_calls"] = llm_calls
+    elif "llm_calls" not in entry:
+        entry["llm_calls"] = 0
+
+    data[stage_num] = entry
     status_file.parent.mkdir(parents=True, exist_ok=True)
     with open(status_file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
@@ -129,19 +154,51 @@ def run_stage(
         print(f"[CMD] {' '.join(cmd)}")
 
     status_file = workspace_dir / "stage_status.json"
+    stage_metrics_file = workspace_dir / f".stage_{stage_num}_metrics.json"
+
+    # Reset metrics file for this stage run
+    try:
+        if stage_metrics_file.exists():
+            stage_metrics_file.unlink()
+        stage_metrics_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(stage_metrics_file, "w", encoding="utf-8") as f:
+            json.dump({"llm_calls": 0}, f)
+    except Exception:
+        pass
+
+    env = os.environ.copy()
+    env["LLM_STAGE_METRICS_FILE"] = str(stage_metrics_file)
+
+    def read_llm_calls() -> int:
+        if stage_metrics_file.exists():
+            try:
+                with open(stage_metrics_file, "r", encoding="utf-8") as f:
+                    return json.load(f).get("llm_calls", 0)
+            except Exception:
+                return 0
+        return 0
+
     update_status(status_file, stage_num, "running")
 
+    start_time = time.time()
     try:
-        result = subprocess.run(cmd, check=True)
-        update_status(status_file, stage_num, "success")
+        result = subprocess.run(cmd, env=env, check=True)
+        duration = round(time.time() - start_time, 2)
+        calls = read_llm_calls()
+        update_status(status_file, stage_num, "success", duration_seconds=duration, llm_calls=calls)
+        print(f"[*] Stage {stage_num} finished in {duration:.2f}s with {calls} LLM call(s).")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"[!] Stage {stage_num} failed with return code {e.returncode}", file=sys.stderr)
-        update_status(status_file, stage_num, "failed", f"Exit code {e.returncode}")
+        duration = round(time.time() - start_time, 2)
+        calls = read_llm_calls()
+        print(f"[!] Stage {stage_num} failed with return code {e.returncode} ({duration:.2f}s, {calls} LLM calls)", file=sys.stderr)
+        update_status(status_file, stage_num, "failed", f"Exit code {e.returncode}", duration_seconds=duration, llm_calls=calls)
         return False
     except Exception as e:
-        print(f"[!] Stage {stage_num} encountered exception: {e}", file=sys.stderr)
-        update_status(status_file, stage_num, "failed", str(e))
+        duration = round(time.time() - start_time, 2)
+        calls = read_llm_calls()
+        print(f"[!] Stage {stage_num} encountered exception: {e} ({duration:.2f}s, {calls} LLM calls)", file=sys.stderr)
+        update_status(status_file, stage_num, "failed", str(e), duration_seconds=duration, llm_calls=calls)
         return False
 
 
@@ -217,6 +274,32 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     if output_dir:
         md_count = len(list(output_dir.glob("*.md"))) if output_dir.exists() else 0
         print(f"[*] Custom Output Dir             : {md_count} files in {output_dir.name}/")
+
+    status_file = workspace_dir / "stage_status.json"
+    if status_file.exists():
+        try:
+            with open(status_file, "r", encoding="utf-8") as f:
+                status_data = json.load(f)
+            if status_data:
+                print("\n---------------- Stage Statistics ----------------")
+                total_duration = 0.0
+                total_calls = 0
+                for num, name, _, _ in STAGE_DEFINITIONS:
+                    if num in status_data:
+                        st = status_data[num]
+                        status = st.get("status", "unknown")
+                        dur = st.get("duration_seconds")
+                        dur_str = f"{dur:.2f}s" if dur is not None else "-"
+                        if dur is not None:
+                            total_duration += dur
+                        calls = st.get("llm_calls", 0)
+                        total_calls += calls
+                        print(f"Stage {num} ({name:<28}): {status:<8} | Time: {dur_str:>8} | LLM: {calls:>4} call(s)")
+                print(f"Total Measured Time: {total_duration:.2f}s | Total LLM Calls: {total_calls}")
+                print("--------------------------------------------------")
+        except Exception:
+            pass
+
     print("==================================================\n")
 
 
@@ -245,6 +328,12 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_stage: 
     import shutil
     print(f"[*] Invalidation: Wiping intermediate and output artifacts for stages {start_stage:02d} to 13...")
     for s in range(start_stage, 14):
+        m_file = workspace_dir / f".stage_{s:02d}_metrics.json"
+        if m_file.exists():
+            try:
+                m_file.unlink()
+            except Exception:
+                pass
         targets = STAGE_OUTPUT_TARGETS.get(s, [])
         for target in targets:
             if target == "__OUTPUT_DIR__":
