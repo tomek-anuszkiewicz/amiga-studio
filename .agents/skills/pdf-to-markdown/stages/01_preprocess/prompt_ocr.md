@@ -5,7 +5,7 @@ Your task is to analyze the provided page image, classify its content type, and 
 Examine the image and classify it into one of the following categories:
 1. **`"text_page"`**: The page contains book text, headings, paragraphs, tables, or technical prose that should be transcribed into Markdown.
 2. **`"pure_graphic"`**: The page is a full-page photo, continuous illustration, book cover artwork, or decorative visual with NO meaningful technical prose to transcribe. (Do NOT attempt to OCR decorative borders or photo textures into hallucinated text).
-3. **`"schematic"`** / **`"diagram"`**: The page contains technical schematics, circuit diagrams, timing waveforms, block diagrams, graphs, charts, or tables. Transcribe its title/caption if present and capture the visual structure.
+3. **`"schematic"`** / **`"diagram"`**: The page contains technical schematics, circuit diagrams, timing waveforms, block diagrams, graphs, charts, or tables. Provide bounding boxes and in the text field transcribe the maximum amount of text found on the image—everything that can be read.
 4. **`"blank"`**: The page is completely blank white or an empty separator page.
 
 ### Step 2: Guidelines for `"text_page"`
@@ -40,15 +40,6 @@ Return ONLY a valid JSON object:
       "text": "Transcribed text of the block with linebreaks preserved\n"
     }
   ]
-}
-```
-
-For `"schematic"` or `"diagram"`:
-```json
-{
-  "page_type": "schematic",
-  "caption": "Full-page circuit schematic or timing diagram",
-  "blocks": []
 }
 ```
 
