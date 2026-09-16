@@ -54,24 +54,55 @@ def catalog_headers_across_documents(output_dir: Path) -> list:
     return header_catalog
 
 
-def find_best_header_match(query: str, catalog: list, cutoff: float = 0.5) -> dict:
+def find_best_header_match(
+    query: str,
+    catalog: list,
+    used_headers: set = None,
+    preferred_stem: str = None,
+    cutoff: float = 0.75
+) -> dict:
     """
     Performs fuzzy matching of query string against cataloged headers.
+    Ensures that headers in used_headers are NEVER matched a second time.
+    If preferred_stem is provided, only considers headers from that document.
     """
-    cleaned_query = re.sub(r"^[-*\d.\s]+", "", query).strip().lower()
+    cleaned_query = re.sub(r"^[-*\d.\s]+", "", query).strip()
     if not cleaned_query:
+        return None
+
+    def norm(s: str) -> str:
+        return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
+
+    norm_q = norm(cleaned_query)
+    if not norm_q:
         return None
 
     best_entry = None
     best_score = 0.0
 
     for entry in catalog:
-        candidate = entry["header"].lower()
-        score = difflib.SequenceMatcher(None, cleaned_query, candidate).ratio()
+        key = (entry["stem"], entry["header"])
+        if used_headers is not None and key in used_headers:
+            continue
 
-        # Bonus if query is exact substring
-        if cleaned_query in candidate or candidate in cleaned_query:
-            score = max(score, 0.85)
+        if preferred_stem is not None and entry["stem"] != preferred_stem:
+            continue
+
+        cand_raw = entry["header"]
+        norm_c = norm(cand_raw)
+        if not norm_c:
+            continue
+
+        if norm_q == norm_c:
+            score = 1.0
+        else:
+            score = difflib.SequenceMatcher(None, norm_q, norm_c).ratio()
+            # Only award substring bonus if query and candidate are closely sized and meaningful
+            if len(norm_q) >= 6 and len(norm_c) >= 6:
+                if norm_q in norm_c or norm_c in norm_q:
+                    len_ratio = min(len(norm_q), len(norm_c)) / max(len(norm_q), len(norm_c))
+                    if len_ratio >= 0.75:
+                        score = max(score, 0.85)
 
         if score > best_score and score >= cutoff:
             best_score = score
@@ -164,27 +195,88 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
 
         toc_pattern = rf"{re.escape(start_marker)}[ \t]*\r?\n(.*?)\r?\n[ \t]*{re.escape(end_marker)}"
         file_matched_blocks = 0
+        used_headers = set()
+        current_chapter_stem = None
 
         def _replace_toc_block(m):
-            nonlocal file_matched_blocks
+            nonlocal file_matched_blocks, current_chapter_stem
             file_matched_blocks += 1
             toc_lines = m.group(1).splitlines()
             linked_lines = []
+
             for line in toc_lines:
-                m_bullet = re.match(r"^(\s*[-*]\s*)(.+)$", line)
-                if m_bullet:
-                    prefix = m_bullet.group(1)
-                    title = m_bullet.group(2).strip()
-                    best_match = find_best_header_match(title, catalog)
-                    if best_match:
-                        target_file = best_match["stem"]
-                        target_header = best_match["header"]
-                        wikilink = f"[[{target_file}#{target_header}|{title}]]"
-                        linked_lines.append(f"{prefix}{wikilink}")
-                    else:
-                        linked_lines.append(line)
-                else:
+                m_bullet = re.match(r"^(\s*)([-*]\s*)(.+)$", line)
+                if not m_bullet:
                     linked_lines.append(line)
+                    continue
+
+                indent = m_bullet.group(1)
+                bullet = m_bullet.group(2)
+                title = m_bullet.group(3).strip()
+
+                # Top-level item in TOC (no indentation): represents a Chapter / Section title
+                if len(indent) == 0:
+                    m_ch = re.search(r"Chapter\s+(\d+)", title, re.IGNORECASE)
+                    stem_cand = None
+                    if m_ch:
+                        ch_prefix = f"{int(m_ch.group(1)):02d}_"
+                        for e in catalog:
+                            if e["stem"].startswith(ch_prefix):
+                                stem_cand = e["stem"]
+                                break
+
+                    if stem_cand:
+                        current_chapter_stem = stem_cand
+                        first_h = next(
+                            (e for e in catalog if e["stem"] == stem_cand and e["level"] == 1 and (stem_cand, e["header"]) not in used_headers),
+                            None
+                        )
+                        if first_h:
+                            used_headers.add((stem_cand, first_h["header"]))
+                            wikilink = f"[[{stem_cand}#{first_h['header']}|{title}]]"
+                            linked_lines.append(f"{indent}{bullet}{wikilink}")
+                        else:
+                            linked_lines.append(line)
+                    else:
+                        match_entry = find_best_header_match(
+                            title,
+                            catalog,
+                            used_headers=used_headers,
+                            preferred_stem=None,
+                            cutoff=0.75
+                        )
+                        if match_entry:
+                            current_chapter_stem = match_entry["stem"]
+                            target_file = match_entry["stem"]
+                            target_header = match_entry["header"]
+                            used_headers.add((target_file, target_header))
+                            wikilink = f"[[{target_file}#{target_header}|{title}]]"
+                            linked_lines.append(f"{indent}{bullet}{wikilink}")
+                        else:
+                            current_chapter_stem = None
+                            linked_lines.append(line)
+                else:
+                    # Sub-bullet within a chapter: match strictly within current_chapter_stem
+                    if current_chapter_stem is not None:
+                        match_entry = find_best_header_match(
+                            title,
+                            catalog,
+                            used_headers=used_headers,
+                            preferred_stem=current_chapter_stem,
+                            cutoff=0.75
+                        )
+                        if match_entry:
+                            target_file = match_entry["stem"]
+                            target_header = match_entry["header"]
+                            used_headers.add((target_file, target_header))
+                            wikilink = f"[[{target_file}#{target_header}|{title}]]"
+                            linked_lines.append(f"{indent}{bullet}{wikilink}")
+                        else:
+                            linked_lines.append(line)
+                    else:
+                        # Chapter does not exist in catalog: retain clean text bullet
+                        linked_lines.append(line)
+
             return "\n".join(linked_lines)
 
         updated_content = re.sub(toc_pattern, _replace_toc_block, content, flags=re.DOTALL)

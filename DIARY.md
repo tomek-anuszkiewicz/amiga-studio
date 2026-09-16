@@ -4096,5 +4096,27 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
 
+---
+
+### [2026-09-16 06:12 CEST] — PDF-to-Markdown: Single-Use Header Invariant & Chapter Scoping in link_toc.py
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py`: Implemented single-use header invariant (`used_headers` tracking), chapter scoping (`current_chapter_stem` / `preferred_stem`), and tightened fuzzy matching threshold (`cutoff=0.75`).
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed defect where common/recurrent headings (e.g. `Using the Copper Registers`, `Introduction`, `ABOUT THIS CHAPTER`) were repeatedly bound to multiple distinct TOC lines, and unrendered future chapters (Chapter 3) erroneously stole links to Chapter 1 and Chapter 2 headings.
+  - Enforced single-use constraint: once a document heading `(stem, header)` is bound to a TOC entry, it is added to `used_headers` and cannot be claimed by any subsequent TOC line.
+  - Enforced chapter scoping: sub-bullets within a chapter are strictly matched against headings belonging to that specific chapter's document. If a chapter document does not exist in the catalog (e.g. unrendered chapters 3–8), all its sub-bullets remain clean, unlinked text bullets.
+  - Raised fuzzy cutoff to 0.75 and restricted substring matching to prevent false positive collisions between unrelated headings.
+- **Verification & Test Results**:
+  - Re-executed Stage 11, 12, and 13 on HRM workspace:
+    - Chapter 2 headings (`Introduction`, `About This Chapter`, `The MOVE Instruction`, `The WAIT Instruction`, `Location Registers`, `Jump Strobe Address`, `Control Register`) link 1:1 to their own genuine headings.
+    - Unrendered headings in Chapter 2 (`Complete Sample Copper List`, `Loops and Branches`, `Starting and Stopping the Copper`, `Advanced Topics`) remain clean plain text without false link assignments.
+    - Chapter 3 and subsequent chapters remain clean plain text without stealing any links from Chapter 1 or Chapter 2.
+    - Zero duplicate header links across `00_toc.md`.
+  - `python -m py_compile .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py`: Clean.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 366 files clean.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+
 
 
