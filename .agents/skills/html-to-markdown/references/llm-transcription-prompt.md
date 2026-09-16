@@ -167,16 +167,16 @@ In Motorola 68000 assembly and Amiga hardware manuals, hexadecimal addresses and
 
 ---
 
-## 8. Obsidian Callouts (Notes, Warnings, and Tips)
+## 8. Obsidian Callouts (Notes, Warnings, and Advisories)
 
-Convert all advisory text, boxed notes, and warning markers into native Obsidian callouts:
+Obsidian supports rich native callouts (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`).
+When text represents an advisory note, informational aside, practical tip, mandatory prerequisite, or warning/hazard, format it as an appropriate native Obsidian callout rather than plain text.
 
-| Source Document Styling / Marker | Obsidian Callout Target | Semantic Role |
-| :--- | :--- | :--- |
-| `Note:`, `Notice:`, `Info:` | `> [!NOTE]` or `> [!INFO]` | General technical notes, secondary explanations |
-| `Tip:`, `Hint:` | `> [!TIP]` | Performance suggestions, coding tricks |
-| `Important:`, `Attention:` | `> [!IMPORTANT]` | Prerequisites, mandatory register requirements |
-| `Warning:`, `Caution:` | `> [!WARNING]` or `> [!CAUTION]` | Hardware risks, bus contention hazards |
-| `Error:`, `Danger:` | `> [!DANGER]` or `> [!ERROR]` | Destructive operations, CPU exceptions, bus lockups |
+Choose the callout type semantically to match the nature and gravity of the advisory:
+- `> [!NOTE]` or `> [!INFO]`: General technical notes, secondary explanations, and informative asides.
+- `> [!TIP]`: Performance suggestions, practical recommendations, and coding tricks.
+- `> [!IMPORTANT]`: Prerequisites, mandatory register constraints, and critical requirements.
+- `> [!WARNING]` or `> [!CAUTION]`: Hardware risks, bus contention hazards, and destructive pitfalls.
+- `> [!DANGER]` or `> [!ERROR]`: Fatal conditions, CPU traps, or bus lockups.
 
-Retain 100% of the original text. Prefix every line of the callout with `>`.
+Retain 100% of the original text content. Prefix every line of the callout with `>`.

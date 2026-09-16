@@ -33,5 +33,15 @@ You are given:
    - When a prose paragraph starts with a run-in section title (e.g. a section number and all-caps title ending in a period or colon, such as `1.2.3.4 ACCRUED EXCEPTION BYTE.` or `1.2.3.2 QUOTIENT BYTE.`), format ONLY the title prefix in bold up to the period/colon (e.g. `**1.2.3.4 ACCRUED EXCEPTION BYTE.** The AEXC byte contains...`).
    - NEVER format the entire paragraph as bold or as a markdown heading tag (`#`, `##`, `###`).
 
+7. **Obsidian Callouts for Advisories, Asides, and Warnings**:
+   - Obsidian supports rich native callouts (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`).
+   - When a paragraph or block represents an advisory note, informational aside, coding tip, mandatory prerequisite, or hardware warning/hazard, format it as an appropriate native Obsidian callout rather than plain text.
+   - Select the callout type semantically to match the gravity and intent of the advisory:
+     - `> [!NOTE]` or `> [!INFO]` for general informational notes, supplementary explanations, and technical remarks.
+     - `> [!TIP]` for practical advice, optimizations, or programming tricks.
+     - `> [!IMPORTANT]` for essential prerequisites, required steps, and mandatory hardware rules.
+     - `> [!WARNING]` or `> [!CAUTION]` for operational hazards, bus contention risks, or destructive pitfalls.
+   - Retain 100% of the original text content. Prefix every line of the callout with `>`.
+
 ## Output Format:
 Return strictly the formatted Markdown text for the node.
