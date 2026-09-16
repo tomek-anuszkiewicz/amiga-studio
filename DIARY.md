@@ -3956,4 +3956,24 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: Clean.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
 
+---
+
+### [2026-09-16 04:15 CEST] — PDF-to-Markdown: 3-Way Graphic Triage & ASCII Art Conversion for Register Bitfields
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/08_transform_graphics/prompt_triage.md`: Expanded graphic classification to 3 pathways (`mermaid` | `ascii_art` | `schematic`).
+  - `.agents/skills/pdf-to-markdown/stages/08_transform_graphics/prompt_ascii_art.md`: New dedicated prompt instructing the LLM to convert register bitfields, memory maps, and packet layouts into publication-grade ASCII art with layout flexibility and 100% strict content invariance.
+  - `.agents/skills/pdf-to-markdown/stages/08_transform_graphics/transform_graphics.py`: Implemented `ascii_art` processing branch; prunes image assets upon successful conversion to keep the vault clean and text-focused.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user request to convert register diagrams and bitfield layouts into ASCII art where possible, allowing layout adaptation for terminal readability while strictly preserving all bit numbers, mnemonics, and definitions.
+  - Automated image pruning for `ascii_art` conversions: when graphics are converted to text/ASCII blocks, redundant image crops are purged from the assets directory, leaving zero orphaned files.
+  - Tested on Pages 16 and 17 of `M68000PRM.pdf`: successfully converted 4 register diagrams (`Figure 1-3. FPCR`, `Figure 1-4. FPSR Condition Code Byte`, `Figure 1-5. FPSR Quotient Byte`, `Figure 1-6. FPSR Exception Status Byte`) into clean ASCII bit boxes accompanied by structured field description tables.
+  - Verified that `assets/` directory was completely empty and cleanly unlinked, producing pure Markdown in `01_floating_point_control_and_status_registers.md`.
+- **Verification & Test Results**:
+  - Pipeline for Pages 16–17 passed with exit code 0.
+  - `workspace/13_proofread_markdown/01_floating_point_control_and_status_registers.md`: verified 4 clean ASCII bit boxes and description tables.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 365 files clean.
+  - `cargo fmt --all -- --check`: Clean.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+
 

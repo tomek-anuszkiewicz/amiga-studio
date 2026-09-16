@@ -92,6 +92,9 @@ def process_graphics(workspace_dir: Path, config: dict):
     mermaid_prompt_path = Path(__file__).resolve().parent / "prompt_mermaid.md"
     mermaid_prompt = mermaid_prompt_path.read_text(encoding="utf-8") if mermaid_prompt_path.exists() else ""
 
+    ascii_prompt_path = Path(__file__).resolve().parent / "prompt_ascii_art.md"
+    ascii_prompt = ascii_prompt_path.read_text(encoding="utf-8") if ascii_prompt_path.exists() else ""
+
     sidecar_prompt_path = Path(__file__).resolve().parent / "prompt_rag_sidecar.md"
     sidecar_prompt = sidecar_prompt_path.read_text(encoding="utf-8") if sidecar_prompt_path.exists() else ""
 
@@ -120,10 +123,12 @@ def process_graphics(workspace_dir: Path, config: dict):
             asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
             png_path = workspace_dir / png_rel if png_rel else None
 
-            # First, classify with Gemini if this is a flowchart/state machine or circuit schematic
+            # First, classify with Gemini if this is a flowchart, ascii_art (register/bitfield), or circuit schematic
             triage = gemini.generate_json(triage_prompt, image_path=png_path) if png_path and png_path.exists() and triage_prompt else {}
             graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
+
             # Check for genuine figure caption from raw_text or separate caption nodes
+            has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
             fig_match = re.search(r"(Figure\s+\d+[\-\.]\d+[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
             genuine_caption = fig_match.group(1).strip() if fig_match else None
             if not genuine_caption and raw_text.strip():
@@ -153,8 +158,29 @@ def process_graphics(workspace_dir: Path, config: dict):
                     transformed_count += 1
                     continue
 
+            if graphic_type == "ascii_art" and png_path and png_path.exists() and ascii_prompt:
+                caption_hint = (
+                    "A dedicated caption node already exists in the document text, do not output any caption line."
+                    if has_dedicated_caption else
+                    (f"Include the genuine figure caption below the ASCII diagram: *{genuine_caption}*" if genuine_caption else "No caption line was printed in the book, do not output any caption.")
+                )
+                full_ascii_prompt = f"{ascii_prompt}\n\nCaption Guideline: {caption_hint}\n\nExtracted Labels:\n{raw_text}"
+                ascii_res = gemini.generate_vision(full_ascii_prompt, png_path)
+                if ascii_res:
+                    node["rendered_markdown"] = ascii_res.strip() + "\n\n"
+                    # Converted to ASCII art: prune image from assets
+                    for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
+                        try:
+                            asset_f.unlink()
+                        except Exception:
+                            pass
+                    node["png_path"] = None
+                    node["svg_path"] = None
+                    node["sidecar_path"] = None
+                    transformed_count += 1
+                    continue
+
             # Fallback to Obsidian image embed + RAG sidecar
-            has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
             if genuine_caption:
                 if has_dedicated_caption:
                     node["rendered_markdown"] = f"![[{asset_file}|{genuine_caption}]]\n\n"
@@ -355,7 +381,7 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
             if n_id in rendered_by_node:
                 content = rendered_by_node[n_id]
                 node["rendered_markdown"] = content
-                if "```mermaid" in content:
+                if "```mermaid" in content or f"asset_{n_id}" not in content:
                     for asset_f in out_assets_dir.glob(f"asset_{n_id}.*"):
                         try:
                             asset_f.unlink()
