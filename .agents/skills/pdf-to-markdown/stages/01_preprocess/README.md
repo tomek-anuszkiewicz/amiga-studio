@@ -43,19 +43,17 @@ stages/01_preprocess/
 
 ---
 
-## Standalone Invocation
+## Invocation (via Pipeline Orchestrator)
+
+> [!IMPORTANT]
+> Always invoke Stage 01 through the main orchestrator (`pipeline.py`) rather than calling `preprocess.py` directly.
 
 ### Standard Preprocessing (with automatic scan detection & OCR):
 ```powershell
-python stages/01_preprocess/preprocess.py --pdf "path/to/manual.pdf" --workspace "workspace"
+python .agents/skills/pdf-to-markdown/pipeline.py --pdf "path/to/manual.pdf" --workspace "workspace" --from-stage 01 --to-stage 01
 ```
 
-### Born-Digital Only (disabling OCR):
+### Targeted Pages or Page Ranges:
 ```powershell
-python stages/01_preprocess/preprocess.py --pdf "path/to/manual.pdf" --workspace "workspace" --no-ocr
-```
-
-### Force OCR on All Pages:
-```powershell
-python stages/01_preprocess/preprocess.py --pdf "path/to/manual.pdf" --workspace "workspace" --force-ocr
+python .agents/skills/pdf-to-markdown/pipeline.py --pdf "path/to/manual.pdf" --workspace "workspace" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01
 ```
