@@ -24,10 +24,10 @@ STAGE_DEFINITIONS = [
     ("07", "07_transform_tables", "transform_tables.py", "Transform table nodes (GFM vs HTML table)"),
     ("08", "08_transform_graphics", "transform_graphics.py", "Transform graphics (Mermaid vs SVG + RAG sidecars)"),
     ("09", "09_transform_prose", "format_prose.py", "Format prose/code and tag TOC with TOC34534"),
-    ("10", "10_emit_markdown", "emit_markdown.py", "Emit per-section Markdown files (suppressing toc_header)"),
-    ("11", "11_link_toc", "link_toc.py", "Fuzzy header matching & TOC wikilink conversion"),
+    ("10", "10_proofread_stream", "proofread_stream.py", "Proofread chapter streams & manifest with LLM"),
+    ("11", "11_emit_markdown", "emit_markdown.py", "Emit per-section Markdown files (suppressing toc_header)"),
     ("12", "12_refine_first_chapter_name", "refine_name.py", "Refine canonical name of first chapter"),
-    ("13", "13_proofread_markdown", "proofread_markdown.py", "Proofread Markdown for OCR glitches & typos"),
+    ("13", "13_link_toc", "link_toc.py", "Fuzzy header matching & TOC wikilink conversion"),
 ]
 
 
@@ -132,19 +132,19 @@ def run_stage(
         elif max_pages:
             cmd.extend(["--max-pages", str(max_pages)])
     elif stage_num == "10":
-        cmd.extend(["--output-dir", str(workspace_dir / "10_emit_markdown")])
-    elif stage_num == "11":
         cmd.extend([
-            "--input-dir", str(workspace_dir / "10_emit_markdown"),
-            "--output-dir", str(workspace_dir / "11_link_toc"),
+            "--input-dir", str(workspace_dir / "09_transform_prose"),
+            "--output-dir", str(workspace_dir / "10_proofread_stream"),
         ])
+    elif stage_num == "11":
+        cmd.extend(["--output-dir", str(workspace_dir / "11_emit_markdown")])
     elif stage_num == "12":
         cmd.extend([
-            "--input-dir", str(workspace_dir / "11_link_toc"),
+            "--input-dir", str(workspace_dir / "11_emit_markdown"),
             "--output-dir", str(workspace_dir / "12_refine_first_chapter_name"),
         ])
     elif stage_num == "13":
-        dest_dir = output_dir if output_dir else (workspace_dir / "13_proofread_markdown")
+        dest_dir = output_dir if output_dir else (workspace_dir / "13_link_toc")
         cmd.extend([
             "--input-dir", str(workspace_dir / "12_refine_first_chapter_name"),
             "--output-dir", str(dest_dir),
@@ -250,25 +250,25 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     p9_count = len(list(p9.glob("*.json"))) if p9.exists() else 0
     print(f"[*] 09_transform_prose            : {p9_count} chapter stream files")
 
-    # 10. 10_emit_markdown (10)
-    p10 = workspace_dir / "10_emit_markdown" if (workspace_dir / "10_emit_markdown").exists() else (workspace_dir / "10_markdown_raw")
-    p10_count = len(list(p10.glob("*.md"))) if p10.exists() else 0
-    print(f"[*] 10_emit_markdown              : {p10_count} files")
+    # 10. 10_proofread_stream (10)
+    p10 = workspace_dir / "10_proofread_stream"
+    p10_count = len(list(p10.glob("*.json"))) if p10.exists() else 0
+    print(f"[*] 10_proofread_stream           : {p10_count} chapter stream files")
 
-    # 11. 11_link_toc (11)
-    p11 = workspace_dir / "11_link_toc" if (workspace_dir / "11_link_toc").exists() else (workspace_dir / "11_markdown_linked")
+    # 11. 11_emit_markdown (11)
+    p11 = workspace_dir / "11_emit_markdown" if (workspace_dir / "11_emit_markdown").exists() else (workspace_dir / "10_emit_markdown")
     p11_count = len(list(p11.glob("*.md"))) if p11.exists() else 0
-    print(f"[*] 11_link_toc                   : {p11_count} files")
+    print(f"[*] 11_emit_markdown              : {p11_count} files")
 
     # 12. 12_refine_first_chapter_name (12)
     p12 = workspace_dir / "12_refine_first_chapter_name" if (workspace_dir / "12_refine_first_chapter_name").exists() else (workspace_dir / "12_canonical_markdown")
     p12_count = len(list(p12.glob("*.md"))) if p12.exists() else 0
     print(f"[*] 12_refine_first_chapter_name  : {p12_count} files")
 
-    # 13. 13_proofread_markdown (13)
-    p13 = workspace_dir / "13_proofread_markdown"
+    # 13. 13_link_toc (13)
+    p13 = workspace_dir / "13_link_toc" if (workspace_dir / "13_link_toc").exists() else (workspace_dir / "11_link_toc")
     p13_count = len(list(p13.glob("*.md"))) if p13.exists() else 0
-    print(f"[*] 13_proofread_markdown         : {p13_count} files")
+    print(f"[*] 13_link_toc                   : {p13_count} files")
 
     # Final Output Markdown (if custom output_dir used)
     if output_dir:
@@ -313,10 +313,10 @@ STAGE_OUTPUT_TARGETS = {
     7: ["07_transform_tables", "07_chapters_tables", "tasks/tables"],
     8: ["08_transform_graphics", "08_chapters_graphics", "tasks/graphics", "__ASSETS_SIDECARS__"],
     9: ["09_transform_prose", "09_chapters_formatted", "tasks/prose"],
-    10: ["10_emit_markdown", "10_markdown_raw"],
-    11: ["11_link_toc", "11_markdown_linked"],
+    10: ["10_proofread_stream"],
+    11: ["11_emit_markdown", "10_emit_markdown", "10_markdown_raw"],
     12: ["12_refine_first_chapter_name", "12_canonical_markdown"],
-    13: ["13_proofread_markdown"],
+    13: ["13_link_toc", "11_link_toc", "13_proofread_markdown", "__OUTPUT_DIR__"],
 }
 
 

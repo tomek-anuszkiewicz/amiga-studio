@@ -1,4 +1,4 @@
-# Stage 10: Emit Markdown
+# Stage 11: Emit Markdown
 
 ## Objective
 Serializes chapter streams into standalone, publication-grade Markdown files formatted as `<output_dir>/{index:02d}_{slug}.md`:
@@ -8,8 +8,8 @@ Serializes chapter streams into standalone, publication-grade Markdown files for
 4. Synchronizes visual assets and RAG sidecars into `<output_dir>/assets/`.
 
 ## Inputs
-- `workspace/chapters_manifest.json`: Section manifest.
-- `workspace/chapters/{index:02d}_{slug}.json`: Partitioned section streams.
+- `workspace/chapters_manifest.json`: Section manifest (proofread from Stage 10).
+- `workspace/10_proofread_stream/{index:02d}_{slug}.json`: Proofread chapter streams.
 - `workspace/assets/`: Visual crops and text sidecars.
 
 ## Outputs
@@ -18,5 +18,5 @@ Serializes chapter streams into standalone, publication-grade Markdown files for
 
 ## Standalone Invocation
 ```powershell
-python stages/10_emit_markdown/emit_markdown.py --workspace "workspace" --output-dir "workspace/10_emit_markdown"
+python stages/11_emit_markdown/emit_markdown.py --workspace "workspace" --output-dir "workspace/11_emit_markdown"
 ```

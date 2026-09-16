@@ -1,4 +1,4 @@
-# Stage 11: Link Table of Contents
+# Stage 13: Link Table of Contents
 
 ## Objective
 Dedicated cross-document wikilink resolution worker:
@@ -10,12 +10,12 @@ Dedicated cross-document wikilink resolution worker:
 5. Completely strips the temporary `<!-- TOC34534 -->` and `<!-- /TOC34534 -->` delimiters upon completion.
 
 ## Inputs
-- `<output_dir>/*.md`: Emitted Markdown documents.
+- `<output_dir>/*.md`: Emitted Markdown documents (from Stage 12).
 
 ## Outputs
 - Updated Markdown documents in `<output_dir>` with active cross-file wikilinks and zero leftover marker tags.
 
 ## Standalone Invocation
 ```powershell
-python stages/11_link_toc/link_toc.py --output-dir "output_markdown" --workspace "workspace"
+python stages/13_link_toc/link_toc.py --output-dir "output_markdown" --workspace "workspace"
 ```

@@ -299,10 +299,10 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 11: Fuzzy cross-document Table of Contents linker")
+    parser = argparse.ArgumentParser(description="Stage 13: Fuzzy cross-document Table of Contents linker")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
-    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/10_emit_markdown)")
-    parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/11_link_toc)")
+    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/12_refine_first_chapter_name)")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/13_link_toc)")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
 
     args = parser.parse_args()
@@ -310,15 +310,16 @@ def main():
 
     input_candidates = [
         Path(args.input_dir) if args.input_dir else None,
+        workspace_dir / "12_refine_first_chapter_name",
+        workspace_dir / "11_emit_markdown",
         workspace_dir / "10_emit_markdown",
-        workspace_dir / "10_markdown_raw",
         Path("output_markdown")
     ]
     input_dir = next((p for p in input_candidates if p and p.exists() and list(p.glob("*.md"))), None)
     if not input_dir:
-        raise FileNotFoundError("No input markdown files found for Stage 11")
+        raise FileNotFoundError("No input markdown files found for Stage 13")
 
-    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "11_link_toc")
+    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "13_link_toc")
 
     config_path = Path(args.config)
     config = {}

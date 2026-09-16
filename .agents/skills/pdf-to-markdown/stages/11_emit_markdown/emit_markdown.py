@@ -36,6 +36,7 @@ def build_frontmatter(title: str, section_idx: int) -> str:
 
 def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
     input_candidates = [
+        workspace_dir / "10_proofread_stream",
         workspace_dir / "09_transform_prose",
         workspace_dir / "09_chapters_formatted",
         workspace_dir / "08_transform_graphics",
@@ -88,6 +89,7 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
 
     # 1. Synchronize assets from latest stage (only active, referenced assets)
     asset_candidates = [
+        workspace_dir / "10_proofread_stream" / "assets",
         workspace_dir / "08_transform_graphics" / "assets",
         workspace_dir / "08_chapters_graphics" / "assets",
         workspace_dir / "07_transform_tables" / "assets",

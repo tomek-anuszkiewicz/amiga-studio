@@ -4154,3 +4154,30 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean (0 violations across 366 files).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+---
+
+### [2026-09-16 06:58 CEST] — PDF-to-Markdown: Restructured Pipeline Order (Proofread Stream Before Emit Markdown)
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/10_proofread_stream/proofread_stream.py`: Created new Stage 10 to proofread and correct `chapters_manifest.json` titles and slugs with Gemini LLM, harmonizing primary heading nodes and chapter JSON streams before Markdown emission.
+  - `.agents/skills/pdf-to-markdown/stages/11_emit_markdown/`: Re-indexed Emit Markdown to Stage 11, emitting clean `.md` files directly from proofread manifest and streams.
+  - `.agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/`: Updated input candidates to consume from Stage 11.
+  - `.agents/skills/pdf-to-markdown/stages/13_link_toc/`: Re-indexed TOC Wikilinking to Stage 13 as the final linking pass, resolving TOC items directly to clean, proofread target filenames with zero post-link file renaming.
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Updated `STAGE_DEFINITIONS`, execution flags, status reporting, and downstream artifact invalidation targets.
+  - `.agents/skills/pdf-to-markdown/SKILL.md`: Updated pipeline architecture tree, phase descriptions, and CLI instructions.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated the backwards dependency where Markdown was emitted with un-proofread OCR titles and linked before proofreading took place.
+  - Implemented forward-flowing linear pipeline:
+    1. Stage 10 (`10_proofread_stream`): Proofreads `chapters_manifest.json` titles and streams via Gemini LLM, fixing split words (`HARDW ARE -> HARDWARE`) and updating slugs (`chapter_2_coprocessor_hardware`).
+    2. Stage 11 (`11_emit_markdown`): Emits `.md` files with clean frontmatter properties and filenames directly.
+    3. Stage 12 (`12_refine_first_chapter_name`): Resolves canonical first chapter name (`00_preface.md` / `00_toc.md`).
+    4. Stage 13 (`13_link_toc`): Converts TOC items directly into Obsidian wikilinks (`[[02_chapter_2_coprocessor_hardware#...]]`) targeting already-proofread filenames.
+- **Verification & Test Results**:
+  - Executed Stages 10 through 13 on the Hardware Reference Manual test workspace:
+    - Stage 10 proofread 4 partitions in 6.7s; corrected `title: "Chapter 2: COPROCESSOR HARDWARE"` and heading `# COPROCESSOR HARDWARE`.
+    - Stage 11 emitted `02_chapter_2_coprocessor_hardware.md` with clean Line 1 YAML properties.
+    - Stage 13 converted 10 TOC blocks in `00_toc.md`, directly referencing `[[02_chapter_2_coprocessor_hardware#...]]`.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean across 366 files (0 violations).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+

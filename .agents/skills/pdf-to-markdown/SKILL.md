@@ -67,12 +67,13 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │   ├── prompt.md                        # Structural Markdown formatting rules
     │   └── README.md
     │
-    ├── 10_emit_markdown/
-    │   ├── emit_markdown.py                 # Emits one .md file per partition ({index:02d}_{slug}.md); ignores toc_header
+    ├── 10_proofread_stream/
+    │   ├── proofread_stream.py              # Proofreads manifest titles, slugs & streams with LLM
+    │   ├── prompt.md                        # Technical proofreading guidelines (strict anti-hallucination rules)
     │   └── README.md
     │
-    ├── 11_link_toc/
-    │   ├── link_toc.py                      # Fuzzy header matcher across all .md files; converts TOC lines to wikilinks; strips markers
+    ├── 11_emit_markdown/
+    │   ├── emit_markdown.py                 # Emits one .md file per partition ({index:02d}_{slug}.md); ignores toc_header
     │   └── README.md
     │
     ├── 12_refine_first_chapter_name/
@@ -80,9 +81,8 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │   ├── prompt.md                        # Evaluation guidelines for opening sections
     │   └── README.md
     │
-    └── 13_proofread_markdown/
-        ├── proofread_markdown.py            # Global OCR proofreading pass and typo fixing in workspace/13_proofread_markdown/
-        ├── prompt_proofread.md              # Technical proofreading guidelines (strict anti-hallucination rules)
+    └── 13_link_toc/
+        ├── link_toc.py                      # Fuzzy header matcher across all .md files; converts TOC lines to wikilinks; strips markers
         └── README.md
 ```
 
@@ -101,30 +101,23 @@ python .agents/skills/pdf-to-markdown/stages/01_preprocess/preprocess.py --pdf "
 # 2. Generate initial segments
 python .agents/skills/pdf-to-markdown/stages/02_page_segmentation/segment_page.py --workspace workspace
 
-# 3. Build raw stream and extract assets (SVG/PNG with 10% margin and raw text files)
+# 3. Build raw stream & extract visual bounding boxes
 python .agents/skills/pdf-to-markdown/stages/03_build_raw_stream/build_stream.py --workspace workspace
-python .agents/skills/pdf-to-markdown/stages/03_build_raw_stream/extract_initial_assets.py --workspace workspace
 
-# 4. Stream reduction (suppress headers/footers, unify contiguous graphics, weld prose, de-hyphenate)
+# 4. Stream reduction (welding prose & hyphen stripping across page boundaries)
 python .agents/skills/pdf-to-markdown/stages/04_stream_reduction/reduce_stream.py --workspace workspace
 
-# 5. Chapter partition (splits into chapters, partitions front matter into 00_toc.json)
+# 5. Partition stream into numbered section streams
 python .agents/skills/pdf-to-markdown/stages/05_chapter_partition/partition_chapters.py --workspace workspace
 ```
 
-### Phase B: Continuation Verification (Stage 06)
+### Phase B: Continuation Detection (Stage 06)
 ```powershell
-# Prepare continuation candidates for review
-python .agents/skills/pdf-to-markdown/pipeline.py --prepare-stage 06
-```
-1. Inspect `workspace/tasks/continuations/candidates.json` using `view_file`.
-2. Confirm or adjust `is_continuation: true/false`.
-3. Apply confirmed continuations back to chapter streams:
-```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --apply-stage 06
+# Detect multi-page table and graphic continuations
+python .agents/skills/pdf-to-markdown/stages/06_detect_continuations/detect_continuations.py --workspace workspace
 ```
 
-### Phase C: Cognitive Transformations (Stages 07 – 09)
+### Phase C: Structural Node Transformation (Stages 07 – 09)
 
 #### 1. Tables (Stage 07)
 ```powershell
@@ -157,25 +150,25 @@ python .agents/skills/pdf-to-markdown/pipeline.py --apply-stage 08
 python .agents/skills/pdf-to-markdown/stages/09_transform_prose/format_prose.py --workspace workspace
 ```
 
-### Phase D: Emission & TOC Wikilinking (Stages 10 – 11)
+### Phase D: Stream Proofreading & Manifest Normalization (Stage 10)
 ```powershell
-# 10. Emit Markdown per chapter (suppressing toc_header)
-python .agents/skills/pdf-to-markdown/stages/10_emit_markdown/emit_markdown.py --workspace workspace --output-dir workspace/10_emit_markdown
-
-# 11. Cross-file fuzzy TOC linking (converts TOC34534 to Obsidian wikilinks and removes delimiters)
-python .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py --input-dir workspace/10_emit_markdown --output-dir workspace/11_link_toc
+# Proofread chapter titles, slugs, and streams with LLM
+python .agents/skills/pdf-to-markdown/stages/10_proofread_stream/proofread_stream.py --workspace workspace
 ```
 
-### Phase E: Opening Section Title Refinement (Stage 12)
+### Phase E: Markdown Emission & First Chapter Refinement (Stages 11 – 12)
 ```powershell
-# Refine canonical chapter name and slug into workspace/12_refine_first_chapter_name
-python .agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py --workspace workspace --input-dir workspace/11_link_toc --output-dir workspace/12_refine_first_chapter_name
+# 11. Emit Markdown per chapter (using clean, proofread titles and slugs)
+python .agents/skills/pdf-to-markdown/stages/11_emit_markdown/emit_markdown.py --workspace workspace --output-dir workspace/11_emit_markdown
+
+# 12. Refine canonical chapter name and slug into workspace/12_refine_first_chapter_name
+python .agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py --workspace workspace --input-dir workspace/11_emit_markdown --output-dir workspace/12_refine_first_chapter_name
 ```
 
-### Phase F: Final OCR Proofreading (Stage 13)
+### Phase F: Final TOC Wikilinking (Stage 13)
 ```powershell
-# Proofread Markdown files for OCR errors into workspace/13_proofread_markdown/
-python .agents/skills/pdf-to-markdown/stages/13_proofread_markdown/proofread_markdown.py --workspace workspace --input-dir workspace/12_refine_first_chapter_name --output-dir workspace/13_proofread_markdown
+# 13. Cross-file fuzzy TOC linking (converts TOC34534 to Obsidian wikilinks targeting clean, proofread filenames)
+python .agents/skills/pdf-to-markdown/stages/13_link_toc/link_toc.py --input-dir workspace/12_refine_first_chapter_name --output-dir output_markdown
 ```
 
 ---
