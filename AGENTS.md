@@ -37,7 +37,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Mandatory AST query before file inspection; scoped incremental updates for `crates/` and `ref_src/`.
 - **Asset Descriptions & Sidecars** ([`asset-descriptions.md`](.agents/rules/asset-descriptions.md)): Git-tracked `<image_path>.txt` technical sidecars for circuit and timing schematics.
 - **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing, and multi-agent workflows.
-- **Information Hierarchy** ([`information-hierarchy.md`](.agents/rules/information-hierarchy.md)): Inverted pyramid model and top-down cognitive progression.
+- **Information Hierarchy** ([`information-hierarchy.md`](.agents/rules/information-hierarchy.md)): Inverted pyramid model, putting key architectural conclusions first.
 - **Practitioner Voice & Tone** ([`practitioner-voice-and-tone.md`](.agents/rules/practitioner-voice-and-tone.md)): Hands-on lead architect persona, tech blog standard, and zero academic jargon.
 
 ---

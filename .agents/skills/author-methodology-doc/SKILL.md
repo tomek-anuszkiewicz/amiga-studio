@@ -5,7 +5,7 @@ description: Author, audit, or restructure narrative articles, methodology docum
 
 # Recipe: Authoring & Restructuring Narrative Documents (Inverted Pyramid Model)
 
-This skill provides a systematic procedure for authoring, evaluating, and restructuring narrative articles, methodology papers, retrospective devlogs, and architectural case studies (such as [`docs/how_this_emulator_was_written.md`](../../../docs/how_this_emulator_was_written.md)) according to the **Inverted Pyramid model** and **top-down cognitive progression**.
+This skill provides a systematic procedure for authoring, evaluating, and restructuring narrative articles, methodology papers, retrospective devlogs, and architectural case studies (such as [`docs/how_this_emulator_was_written.md`](../../../docs/how_this_emulator_was_written.md)) according to the **Inverted Pyramid model** (leading with core conclusions and architecture).
 
 ---
 
@@ -34,13 +34,13 @@ When executing this skill:
 
 ## 3. The 6-Layer Inverted Pyramid Architecture
 
-Readers absorb information in a top-down narrative. When opening a document, reader attention and cognitive energy are at their peak. Content must progress from high-impact paradigm shifts down to granular execution details:
+Readers start at the top and want the core takeaway immediately. Content must progress from central architectural decisions down to granular execution details:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ 1. THE HOOK & CORE THESIS                                   │
-│    The bold paradigm shift, economic inversion, or          │
-│    decisive architectural conclusion (opening 20–50 lines). │
+│ 1. CORE TAKEAWAYS & ARCHITECTURAL DECISIONS                 │
+│    The decisive architectural conclusion, key invariants,   │
+│    or primary design choices (opening 20–50 lines).         │
 ├─────────────────────────────────────────────────────────────┤
 │ 2. STRATEGIC & HUMAN DIMENSIONS                             │
 │    Root problems, human bottlenecks, systemic traps         │

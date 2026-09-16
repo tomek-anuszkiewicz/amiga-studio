@@ -4282,5 +4282,26 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 9.08s (including `test_rule_files_size_limit_and_truncation_safety` and `test_obsidian_design_docs_links_integrity`).
   - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed cleanly.
 
+---
+
+### [2026-09-16 14:48 CEST] — Purged "Maximum Signal" and "Cognitive Clarity" Jargon Across Agent Rules & Skills
+- **Affected Subsystems**:
+  - `.agents/rules/vault-linking-and-graph-integrity.md` (purged *"To ensure maximum signal and top-down cognitive clarity"* in favor of direct practitioner explanation)
+  - `.agents/rules/information-hierarchy.md` (rewrote template text to eliminate *"top-down cognitive progression"*, *"cognitive energy"*, *"paradigm shifts"*, and *"hook & core thesis"*)
+  - `AGENTS.md` (updated Section 1.B pointer to remove *"top-down cognitive progression"*)
+  - `.agents/skills/author-methodology-doc/SKILL.md` (removed *"top-down cognitive progression"* and *"cognitive energy"*)
+  - `docs/ai_agents.md` (updated guardrails list to remove cognitive jargon)
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user feedback regarding pretentious, inflated phrasing (*"maximum signal"*, *"top-down cognitive clarity"*).
+  - Traced the origin to legacy wording in `vault-linking-and-graph-integrity.md` and the newly imported external template `information-hierarchy.md`.
+  - Rewrote these sections into plain, direct practitioner language: putting decisive conclusions and architecture first, followed by implementation details.
+- **Architectural Rationale & Trade-Offs**:
+  - *Zero Self-Exemptions for Rules:* Rules that mandate practitioner voice must themselves embody the practitioner voice standard. Having rules policing academic jargon while using words like "cognitive clarity" and "maximum signal" is hypocritical and confusing to models.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: Clean formatting across the workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 9.52s.
+  - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed cleanly.
+
+
 
 
