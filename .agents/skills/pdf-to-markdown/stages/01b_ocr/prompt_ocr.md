@@ -15,13 +15,14 @@ Examine the image and classify it into one of three categories:
 2. **Reading Order**:
    - Return blocks in natural reading order: top-to-bottom.
    - For multi-column pages, follow the column flow (left column top-to-bottom, then right column).
-3. **Bounding Boxes (`bbox_norm`)**:
-   - For each block, provide `bbox_norm` as `[x0, y0, x1, y1]`.
-   - Coordinates MUST be normalized floats between `0.0` and `1.0` relative to the image dimensions:
-     - `x0`: Left boundary (0.0 = leftmost edge, 1.0 = rightmost edge)
-     - `y0`: Top boundary (0.0 = topmost edge, 1.0 = bottommost edge)
-     - `x1`: Right boundary
-     - `y1`: Bottom boundary
+3. **Bounding Boxes (`box_2d`)**:
+   - For each block, provide `box_2d` as `[ymin, xmin, ymax, xmax]`.
+   - Coordinates MUST be integers between `0` and `1000` normalized to a 1000x1000 grid:
+     - `ymin`: Top boundary (0 = topmost edge, 1000 = bottommost edge)
+     - `xmin`: Left boundary (0 = leftmost edge, 1000 = rightmost edge)
+     - `ymax`: Bottom boundary
+     - `xmax`: Right boundary
+   - IMPORTANT: Always use integers (0 to 1000). Never emit floating-point decimals or percentages. For example, a 6.5% top margin is `65`, not `0.065` or `0.65`.
 4. **Accuracy & Fidelity**:
    - Transcribe technical terms, punctuation, registers, and code accurately.
    - If the page is a book cover with readable titles and author names, classify as `"text_page"` and transcribe title, author, publisher, and edition.
@@ -34,7 +35,7 @@ Return ONLY a valid JSON object:
   "caption": null,
   "blocks": [
     {
-      "bbox_norm": [0.12, 0.08, 0.88, 0.15],
+      "box_2d": [80, 120, 150, 880],
       "text": "Transcribed text of the block with linebreaks preserved\n"
     }
   ]

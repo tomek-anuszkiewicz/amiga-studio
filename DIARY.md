@@ -4261,3 +4261,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Verified `workspace/` content: reduced from 31 files down to strictly the 13 stage directories and 3 manifest files (`chapters_manifest.json`, `pages_manifest.json`, `stage_status.json`).
   - `python tools/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting 100% compliant, 0 attractors, AGENTS.md <= 14,000 bytes, 18/18 architecture rules).
+
+---
+
+### [2026-09-16 12:53 CEST] — PDF-to-Markdown: Integer Millirange `box_2d` OCR Coordinates Migration
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/prompt_ocr.md`: Migrated bounding box format from floating-point `bbox_norm` [0.0..1.0] to Gemini-native integer millirange `box_2d` [ymin, xmin, ymax, xmax] on a [0..1000] grid.
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/detect_and_ocr.py`: Added `parse_ocr_bounding_box()` helper parsing `box_2d` integers (scaling by 1000.0) with coordinate ordering and [0.0..1.0] sanity clamping, maintaining backward compatibility for `bbox_norm`.
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/README.md`: Updated Stage 01b documentation reflecting integer millirange coordinates.
+- **What Was Changed (The Concrete Reality)**:
+  - Root cause resolved: floating-point LLM generations frequently suffer from dropped decimal zeroes (e.g. 6.5% top margin emitted as `0.65` instead of `0.065`, displacing top headers to the bottom of the page).
+  - Adopted standard Gemini integer millirange format `[ymin, xmin, ymax, xmax]` in range `[0..1000]`, where 6.5% is unambiguously emitted as integer `65`.
+  - Added coordinate sanity validation in `detect_and_ocr.py` ensuring coordinates are correctly sorted (`x0 <= x1`, `y0 <= y1`) and clamped.
+- **Verification & Test Results**:
+  - Unit test assertion verified `parse_ocr_bounding_box()` on `[65, 797, 90, 941]` -> `(0.797, 0.065, 0.941, 0.09)`.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed (369 files scanned, 0 attractors).
+  - `cargo test -p test_runner --test test_architecture_rules`: Passed (18/18 tests).
+

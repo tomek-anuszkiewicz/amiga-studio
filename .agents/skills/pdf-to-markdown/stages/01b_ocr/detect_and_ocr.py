@@ -40,6 +40,51 @@ def parse_page_range(range_str: str) -> List[int]:
     return sorted(list(pages))
 
 
+def parse_ocr_bounding_box(item: dict) -> tuple[float, float, float, float]:
+    """
+    Parses normalized bounding box coordinates [x0, y0, x1, y1] in range [0.0, 1.0].
+    Supports:
+    1. Gemini native integer 'box_2d': [ymin, xmin, ymax, xmax] in [0..1000]
+    2. Fallback 'bbox_norm': [x0, y0, x1, y1] (floats [0.0..1.0] or ints [0..1000])
+    Enforces coordinate sanity validation and ordering.
+    """
+    x0, y0, x1, y1 = 0.0, 0.0, 1.0, 1.0
+    if "box_2d" in item and isinstance(item["box_2d"], list) and len(item["box_2d"]) == 4:
+        try:
+            ymin, xmin, ymax, xmax = [float(v) for v in item["box_2d"]]
+            scale = 1000.0 if any(v > 1.0 for v in (ymin, xmin, ymax, xmax)) else 1.0
+            x0 = xmin / scale
+            y0 = ymin / scale
+            x1 = xmax / scale
+            y1 = ymax / scale
+        except (ValueError, TypeError):
+            pass
+    elif "bbox_norm" in item and isinstance(item["bbox_norm"], list) and len(item["bbox_norm"]) == 4:
+        try:
+            c0, c1, c2, c3 = [float(v) for v in item["bbox_norm"]]
+            scale = 1000.0 if any(v > 1.0 for v in (c0, c1, c2, c3)) else 1.0
+            x0 = c0 / scale
+            y0 = c1 / scale
+            x1 = c2 / scale
+            y1 = c3 / scale
+        except (ValueError, TypeError):
+            pass
+
+    # Sanity validation: clamp to [0.0, 1.0]
+    x0 = max(0.0, min(1.0, x0))
+    y0 = max(0.0, min(1.0, y0))
+    x1 = max(0.0, min(1.0, x1))
+    y1 = max(0.0, min(1.0, y1))
+
+    # Ensure valid ordering
+    if x0 > x1:
+        x0, x1 = x1, x0
+    if y0 > y1:
+        y0, y1 = y1, y0
+
+    return x0, y0, x1, y1
+
+
 def detect_and_ocr_pages(
     workspace_dir: Path,
     config_path: Path,
@@ -173,14 +218,7 @@ def detect_and_ocr_pages(
                 if not text:
                     continue
 
-                bnorm = item.get("bbox_norm", [0.0, 0.0, 1.0, 1.0])
-                if not (isinstance(bnorm, list) and len(bnorm) == 4):
-                    bnorm = [0.0, 0.0, 1.0, 1.0]
-
-                x0 = max(0.0, min(1.0, float(bnorm[0])))
-                y0 = max(0.0, min(1.0, float(bnorm[1])))
-                x1 = max(0.0, min(1.0, float(bnorm[2])))
-                y1 = max(0.0, min(1.0, float(bnorm[3])))
+                x0, y0, x1, y1 = parse_ocr_bounding_box(item)
 
                 bbox = [
                     round(x0 * page_w, 2),
