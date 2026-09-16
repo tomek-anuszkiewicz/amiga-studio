@@ -39,7 +39,7 @@ llm:
     01_preprocess: 0           # Fast OCR text detection, zero reasoning overhead
     02_page_segmentation: 0    # Fast zone classification
     07_transform_tables: 512   # Structural table layout reasoning
-    08_transform_graphics: 1536 # Deep spatial reasoning for ASCII art & column alignment
+    08_transform_graphics: 4096 # Deep spatial reasoning for ASCII art & column alignment
     09_transform_prose: 0      # Fast markdown formatting
     10_proofread_stream: 0     # Instant typo correction
     12_refine_chapter: 0       # Fast title extraction
