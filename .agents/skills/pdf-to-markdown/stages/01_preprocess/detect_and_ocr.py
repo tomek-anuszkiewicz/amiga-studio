@@ -8,6 +8,7 @@ Called by preprocess.py when scanned or text-deficient pages are detected:
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Optional, List
@@ -24,17 +25,26 @@ except ImportError:
     GeminiClient = None
 
 
-def parse_page_range(range_str: str) -> List[int]:
+def parse_page_ranges(range_str: str) -> List[int]:
+    if not range_str:
+        return []
     pages = set()
-    for part in range_str.split(","):
+    cleaned = re.sub(r"[,;]+", ",", range_str)
+    for part in cleaned.split(","):
         part = part.strip()
         if not part:
             continue
-        if "-" in part:
-            start, end = part.split("-", 1)
-            pages.update(range(int(start), int(end) + 1))
-        else:
-            pages.add(int(part))
+        tokens = part.split() if not re.search(r"^\d+\s*(?:-|(?:\.\.)|:)\s*\d+$", part) else [part]
+        for token in tokens:
+            token = token.strip()
+            if not token:
+                continue
+            range_match = re.match(r"^(\d+)\s*(?:-|(?:\.\.)|:)\s*(\d+)$", token)
+            if range_match:
+                s, e = int(range_match.group(1)), int(range_match.group(2))
+                pages.update(range(min(s, e), max(s, e) + 1))
+            elif token.isdigit():
+                pages.add(int(token))
     return sorted(list(pages))
 
 
@@ -86,10 +96,7 @@ def parse_ocr_bounding_box(item: dict) -> tuple[float, float, float, float]:
 def detect_and_ocr_pages(
     workspace_dir: Path,
     config_path: Optional[Path] = None,
-    page_range: Optional[str] = None,
-    start_page: Optional[int] = None,
-    end_page: Optional[int] = None,
-    max_pages: Optional[int] = None,
+    page_ranges: Optional[str] = None,
     threshold: int = 20,
 ) -> bool:
     pages_dir = workspace_dir / "01_preprocess"
@@ -110,13 +117,7 @@ def detect_and_ocr_pages(
         return True
 
     # Filter target pages
-    target_pages = None
-    if page_range:
-        target_pages = parse_page_range(page_range)
-    elif start_page or end_page or max_pages:
-        s = start_page or 1
-        e = end_page or (s + max_pages - 1 if max_pages else 999999)
-        target_pages = list(range(s, e + 1))
+    target_pages = parse_page_ranges(page_ranges) if page_ranges else None
 
     gemini = None
     scanned_count = 0

@@ -200,10 +200,7 @@ def run_stage(
     output_dir: Optional[Path],
     config_path: Path,
     verbose: bool = False,
-    max_pages: Optional[int] = None,
-    page_range: Optional[str] = None,
-    start_page: Optional[int] = None,
-    end_page: Optional[int] = None,
+    page_ranges: Optional[str] = None,
 ) -> bool:
     stage_num = stage_info["id"]
     stage_dir_name = stage_info["dir"]
@@ -227,15 +224,8 @@ def run_stage(
     # Stage-specific standard parameter injection
     if stage_num == "01":
         cmd.extend(["--pdf", str(pdf_path)])
-        if page_range:
-            cmd.extend(["--page-range", str(page_range)])
-        elif start_page or end_page:
-            if start_page:
-                cmd.extend(["--start-page", str(start_page)])
-            if end_page:
-                cmd.extend(["--end-page", str(end_page)])
-        elif max_pages:
-            cmd.extend(["--max-pages", str(max_pages)])
+        if page_ranges:
+            cmd.extend(["--page-ranges", str(page_ranges)])
     elif stage_num == "11":
         cmd.extend(["--output-dir", str(workspace_dir / "11_emit_markdown")])
     elif stage_num == "13" and output_dir:
@@ -386,14 +376,9 @@ def main():
     parser.add_argument("--workspace", type=str, default=None, help="Workspace directory for intermediate data")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory for generated Markdown files")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
-    parser.add_argument("--stage", type=str, help="Run single stage by number (e.g. 01, 06)")
     parser.add_argument("--from-stage", type=str, help="Start pipeline from stage number (e.g. 03)")
     parser.add_argument("--to-stage", type=str, help="End pipeline at stage number (e.g. 08)")
-    parser.add_argument("--max-pages", type=int, help="Limit number of pages processed in Stage 01")
-    parser.add_argument("--page-range", type=str, help="Page range to process in Stage 01 (e.g. 173-178 or 173..178)")
-    parser.add_argument("--pages", dest="pages_alt", type=str, default=None, help="Discrete pages or ranges (e.g. '16,17,18, 32,37,50,73')")
-    parser.add_argument("--start-page", type=int, help="Start page number for Stage 01 (1-indexed)")
-    parser.add_argument("--end-page", type=int, help="End page number for Stage 01 (1-indexed)")
+    parser.add_argument("--page-ranges", type=str, default=None, help="Page ranges or discrete pages to process in Stage 01 (e.g. '1-5, 7, 8, 10-15' or '1..5')")
     parser.add_argument("--resume", action="store_true", help="Resume from last successfully completed stage")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose command printing")
     parser.add_argument("--status", action="store_true", help="Display summary status of workspace and task items")
@@ -447,12 +432,6 @@ def main():
 
     if args.run_deterministic:
         stages_to_run = [i for i, s in enumerate(STAGE_REGISTRY) if s["id"] in ("01", "03", "04", "05", "10", "11")]
-    elif args.stage:
-        target_idx = resolve_stage_idx(args.stage)
-        if target_idx is None:
-            print(f"[!] Unknown stage: {args.stage}", file=sys.stderr)
-            sys.exit(1)
-        stages_to_run = [target_idx]
     elif args.from_stage or args.to_stage:
         s_start = resolve_stage_idx(args.from_stage) if args.from_stage else 0
         s_end = resolve_stage_idx(args.to_stage) if args.to_stage else (len(STAGE_REGISTRY) - 1)
@@ -498,10 +477,7 @@ def main():
             output_dir=output_dir,
             config_path=config_path,
             verbose=args.verbose,
-            max_pages=args.max_pages,
-            page_range=args.page_range or args.pages_alt,
-            start_page=args.start_page,
-            end_page=args.end_page,
+            page_ranges=args.page_ranges,
         )
         if not success:
             print(f"\n[!] Pipeline halted at Stage {s_info['id']} due to failure.", file=sys.stderr)

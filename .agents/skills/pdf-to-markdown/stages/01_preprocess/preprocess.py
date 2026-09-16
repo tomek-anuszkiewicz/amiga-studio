@@ -18,19 +18,16 @@ import pymupdf
 import yaml
 
 try:
-    from .detect_and_ocr import detect_and_ocr_pages
+    from .detect_and_ocr import detect_and_ocr_pages, parse_page_ranges
 except ImportError:
-    from detect_and_ocr import detect_and_ocr_pages
+    from detect_and_ocr import detect_and_ocr_pages, parse_page_ranges
 
 
 def preprocess_pdf(
     pdf_path: Path,
     workspace_dir: Path,
     dpi: int = 300,
-    max_pages: Optional[int] = None,
-    start_page: int = 1,
-    end_page: Optional[int] = None,
-    pages_list: Optional[List[int]] = None,
+    page_ranges: Optional[str] = None,
     auto_ocr: bool = True,
     ocr_threshold: int = 20,
     config_path: Optional[Path] = None,
@@ -45,22 +42,17 @@ def preprocess_pdf(
     doc = pymupdf.open(str(pdf_path))
     doc_len = len(doc)
 
-    if pages_list:
-        pages_to_process = [p for p in sorted(list(set(pages_list))) if 1 <= p <= doc_len]
+    if page_ranges:
+        target_pages = parse_page_ranges(page_ranges)
+        pages_to_process = [p for p in target_pages if 1 <= p <= doc_len]
         start_page = pages_to_process[0] if pages_to_process else 1
         end_page = pages_to_process[-1] if pages_to_process else doc_len
         print(f"[*] Processing {len(pages_to_process)} discrete pages: {pages_to_process} (of {doc_len} in doc), Rendering at {dpi} DPI")
     else:
-        if start_page is None or start_page < 1:
-            start_page = 1
-        if end_page is not None:
-            end_page = min(doc_len, end_page)
-        elif max_pages is not None and max_pages > 0:
-            end_page = min(doc_len, start_page + max_pages - 1)
-        else:
-            end_page = doc_len
-        pages_to_process = list(range(start_page, end_page + 1))
-        print(f"[*] Processing pages {start_page} to {end_page} (of {doc_len} in doc), Rendering at {dpi} DPI")
+        start_page = 1
+        end_page = doc_len
+        pages_to_process = list(range(1, doc_len + 1))
+        print(f"[*] Processing pages 1 to {doc_len} (all {doc_len} in doc), Rendering at {dpi} DPI")
 
     # Clean existing stage artifacts for targeted pages to guarantee a fresh, idempotent start
     (pages_dir / ".metrics.json").unlink(missing_ok=True)
@@ -148,7 +140,7 @@ def preprocess_pdf(
         detect_and_ocr_pages(
             workspace_dir=workspace_dir,
             config_path=config_path,
-            page_range=",".join(str(p) for p in pages_to_process),
+            page_ranges=page_ranges,
             threshold=ocr_threshold,
         )
 
@@ -161,11 +153,7 @@ def main():
     parser.add_argument("--pdf", type=str, required=True, help="Input PDF document")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
-    parser.add_argument("--max-pages", type=int, default=None, help="Maximum number of pages to process")
-    parser.add_argument("--page-range", type=str, default=None, help="Page range or list (e.g. '16,17,18, 32,37,50,73' or '173-178')")
-    parser.add_argument("--pages", dest="pages_alt", type=str, default=None, help="Alias for --page-range")
-    parser.add_argument("--start-page", type=int, default=1, help="Start page number (1-indexed)")
-    parser.add_argument("--end-page", type=int, default=None, help="End page number (1-indexed)")
+    parser.add_argument("--page-ranges", type=str, default=None, help="Pages or ranges to process (e.g. '1-5, 7, 8, 10-15' or '1..5')")
     parser.add_argument("--no-ocr", action="store_true", help="Disable automatic scan detection and OCR")
     parser.add_argument("--ocr-threshold", type=int, default=20, help="Character threshold below which a page is considered a scan (default: 20)")
 
@@ -184,36 +172,11 @@ def main():
             if "threshold" in ocr_cfg:
                 ocr_threshold = ocr_cfg["threshold"]
 
-    start_page = args.start_page
-    end_page = args.end_page
-    pages_list = None
-    spec = args.page_range or args.pages_alt
-    if spec:
-        pages_list = []
-        for segment in spec.split(","):
-            segment = segment.strip()
-            if not segment:
-                continue
-            if "-" in segment:
-                s, e = segment.split("-", 1)
-                pages_list.extend(range(int(s.strip()), int(e.strip()) + 1))
-            elif ".." in segment:
-                s, e = segment.split("..", 1)
-                pages_list.extend(range(int(s.strip()), int(e.strip()) + 1))
-            elif ":" in segment:
-                s, e = segment.split(":", 1)
-                pages_list.extend(range(int(s.strip()), int(e.strip()) + 1))
-            else:
-                pages_list.append(int(segment))
-
     preprocess_pdf(
         pdf_path,
         workspace_dir,
         dpi=dpi,
-        max_pages=args.max_pages,
-        start_page=start_page,
-        end_page=end_page,
-        pages_list=pages_list,
+        page_ranges=args.page_ranges,
         auto_ocr=not args.no_ocr,
         ocr_threshold=ocr_threshold,
         config_path=config_path if config_path.exists() else None,
