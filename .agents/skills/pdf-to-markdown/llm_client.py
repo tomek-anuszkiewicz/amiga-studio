@@ -40,7 +40,7 @@ class GeminiClient:
     def is_available(self) -> bool:
         return self.client is not None and bool(self.api_key)
 
-    def generate_text(self, prompt: str, model: str = None) -> Optional[str]:
+    def generate_text(self, prompt: str, model: str = None) -> str:
         if not self.is_available():
             raise RuntimeError("GEMINI_API_KEY environment variable is required for pipeline inference.")
         import time
@@ -51,6 +51,7 @@ class GeminiClient:
         if "gemini-3.6-flash" not in models_to_try:
             models_to_try.append("gemini-3.6-flash")
 
+        last_error = None
         for m in models_to_try:
             for attempt in range(4):
                 try:
@@ -65,6 +66,7 @@ class GeminiClient:
                     if response and response.text:
                         return response.text
                 except Exception as e:
+                    last_error = e
                     err_str = str(e)
                     if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
                         delay_match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str)
@@ -74,13 +76,17 @@ class GeminiClient:
                         continue
                     print(f"[!] Warning: LLM generate_text on model {m} failed: {e}")
                     break
-        return None
 
-    def generate_vision(self, prompt: str, image_path: Path, model: str = None) -> Optional[str]:
+        raise RuntimeError(
+            f"Fatal: LLM generate_text failed across all models ({models_to_try}) and retry attempts. "
+            f"Last error: {last_error}"
+        )
+
+    def generate_vision(self, prompt: str, image_path: Path, model: str = None) -> str:
         if not self.is_available():
             raise RuntimeError("GEMINI_API_KEY environment variable is required for pipeline inference.")
         if not image_path.exists():
-            return None
+            raise FileNotFoundError(f"Image not found for vision generation: {image_path}")
         import time
         import re
         from google.genai import types
@@ -91,6 +97,7 @@ class GeminiClient:
             models_to_try.append("gemini-3.6-flash")
 
         image = Image.open(image_path)
+        last_error = None
         for m in models_to_try:
             for attempt in range(4):
                 try:
@@ -105,6 +112,7 @@ class GeminiClient:
                     if response and response.text:
                         return response.text
                 except Exception as e:
+                    last_error = e
                     err_str = str(e)
                     if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
                         delay_match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str)
@@ -114,7 +122,11 @@ class GeminiClient:
                         continue
                     print(f"[!] Warning: LLM generate_vision on model {m} failed: {e}")
                     break
-        return None
+
+        raise RuntimeError(
+            f"Fatal: LLM generate_vision failed across all models ({models_to_try}) and retry attempts for {image_path}. "
+            f"Last error: {last_error}"
+        )
 
     def generate_json(self, prompt: str, image_path: Optional[Path] = None, model: str = None):
         import json
@@ -122,7 +134,7 @@ class GeminiClient:
 
         raw = self.generate_vision(prompt, image_path, model=model) if image_path else self.generate_text(prompt, model=model)
         if not raw:
-            return None
+            raise RuntimeError("Fatal: LLM returned empty response for generate_json.")
 
         # Clean markdown fences if present
         text = raw.strip()
@@ -142,5 +154,6 @@ class GeminiClient:
             try:
                 return json.loads(bracket_match.group(1))
             except Exception as e:
-                print(f"[!] Warning: JSON parse failed: {e}")
-        return None
+                raise RuntimeError(f"Fatal: JSON parse failed: {e}\nRaw response:\n{text[:500]}")
+
+        raise RuntimeError(f"Fatal: No valid JSON object or array found in LLM response:\n{text[:500]}")

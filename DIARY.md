@@ -4028,3 +4028,15 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: Clean.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
 
+---
+
+### [2026-09-16 05:15 CEST] — PDF-to-Markdown: Fail-Fast RuntimeError on LLM Failure
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/llm_client.py`: Updated `generate_text()`, `generate_vision()`, and `generate_json()` to raise a fatal `RuntimeError` if all retry attempts and fallback models are exhausted, or if JSON parsing fails.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated silent degradation where failed inference returned `None`, which caused downstream stages to silently misclassify nodes or emit unformatted text without error indication.
+  - The pipeline now fails fast and loud on API failure, network loss, or invalid JSON, halting pipeline execution immediately with a non-zero exit code to prevent corrupting intermediate artifacts.
+- **Verification & Test Results**:
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 365 files clean.
+  - `cargo fmt --all -- --check`: Clean.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
