@@ -3975,5 +3975,26 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: Clean.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
 
+---
+
+### [2026-09-16 04:35 CEST] — PDF-to-Markdown: Arbitrary Discrete Page List Processing & Strict Active Asset Filtering
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/01_preprocess/preprocess.py`: Added support for arbitrary comma-separated page lists and ranges (`--pages "16,17,18, 32,37,50,73,174,338"` or `--page-range`).
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Added `--pages` argument and wired discrete page selection through Stage 01.
+  - `.agents/skills/pdf-to-markdown/stages/10_emit_markdown/emit_markdown.py`: Changed `referenced_assets` collection to strictly inspect actual asset occurrences in `rendered_markdown`, preventing unreferenced code block or table visual crops from being copied as zombie assets.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user request to render a non-contiguous list of pages (`16, 17, 18, 32, 37, 50, 73, 174, 338`) from `M68000PRM.pdf`.
+  - Upgraded Stage 01 parsing to handle any mix of single pages and ranges (e.g. `16-18, 32, 50`).
+  - Fixed an asset leakage in Stage 10 where intermediate vision crops (such as code blocks) whose nodes still had `png_path` set were erroneously copied even when rendered as pure text code blocks.
+  - Processed all 9 requested pages: emitted comprehensive Markdown with register bit boxes, addressing mode summation logic, notational convention tables, and instruction specifications. Verified that `workspace/13_proofread_markdown/assets/` was completely absent (zero orphaned assets).
+- **Verification & Test Results**:
+  - Full pipeline run across 9 discrete pages finished with exit code 0.
+  - Verified `workspace/13_proofread_markdown/01_floating_point_control_and_status_registers.md` (488 lines, 26 KB).
+  - Verified `Test-Path .../workspace/13_proofread_markdown/assets` returned `False` (zero orphan files).
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 365 files clean.
+  - `cargo fmt --all -- --check`: Clean.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+
 
 

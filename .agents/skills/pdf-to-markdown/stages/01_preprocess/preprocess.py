@@ -23,7 +23,8 @@ def preprocess_pdf(
     dpi: int = 300,
     max_pages: int = None,
     start_page: int = 1,
-    end_page: int = None
+    end_page: int = None,
+    pages_list: list = None,
 ) -> dict:
     if not pdf_path.exists():
         raise FileNotFoundError(f"Source PDF does not exist: {pdf_path}")
@@ -35,17 +36,22 @@ def preprocess_pdf(
     doc = pymupdf.open(str(pdf_path))
     doc_len = len(doc)
 
-    if start_page is None or start_page < 1:
-        start_page = 1
-    if end_page is not None:
-        end_page = min(doc_len, end_page)
-    elif max_pages is not None and max_pages > 0:
-        end_page = min(doc_len, start_page + max_pages - 1)
+    if pages_list:
+        pages_to_process = [p for p in sorted(list(set(pages_list))) if 1 <= p <= doc_len]
+        start_page = pages_to_process[0] if pages_to_process else 1
+        end_page = pages_to_process[-1] if pages_to_process else doc_len
+        print(f"[*] Processing {len(pages_to_process)} discrete pages: {pages_to_process} (of {doc_len} in doc), Rendering at {dpi} DPI")
     else:
-        end_page = doc_len
-
-    pages_to_process = list(range(start_page, end_page + 1))
-    print(f"[*] Pages to process: {start_page}..{end_page} ({len(pages_to_process)} pages of {doc_len} in doc), Rendering at {dpi} DPI")
+        if start_page is None or start_page < 1:
+            start_page = 1
+        if end_page is not None:
+            end_page = min(doc_len, end_page)
+        elif max_pages is not None and max_pages > 0:
+            end_page = min(doc_len, start_page + max_pages - 1)
+        else:
+            end_page = doc_len
+        pages_to_process = list(range(start_page, end_page + 1))
+        print(f"[*] Pages to process: {start_page}..{end_page} ({len(pages_to_process)} pages of {doc_len} in doc), Rendering at {dpi} DPI")
 
     manifest = {
         "source_pdf": str(pdf_path),
@@ -130,7 +136,8 @@ def main():
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
     parser.add_argument("--max-pages", type=int, default=None, help="Maximum number of pages to process")
-    parser.add_argument("--page-range", type=str, default=None, help="Page range to process (e.g. 173-178 or 173..178)")
+    parser.add_argument("--page-range", type=str, default=None, help="Page range or list (e.g. '16,17,18, 32,37,50,73' or '173-178')")
+    parser.add_argument("--pages", dest="pages_alt", type=str, default=None, help="Alias for --page-range")
     parser.add_argument("--start-page", type=int, default=1, help="Start page number (1-indexed)")
     parser.add_argument("--end-page", type=int, default=None, help="End page number (1-indexed)")
 
@@ -147,17 +154,27 @@ def main():
 
     start_page = args.start_page
     end_page = args.end_page
-    if args.page_range:
-        import re
-        parts = [p.strip() for p in re.split(r"[-..:]+", args.page_range) if p.strip()]
-        if len(parts) >= 2:
-            start_page = int(parts[0])
-            end_page = int(parts[1])
-        elif len(parts) == 1:
-            start_page = int(parts[0])
-            end_page = int(parts[0])
+    pages_list = None
+    spec = args.page_range or args.pages_alt
+    if spec:
+        pages_list = []
+        for segment in spec.split(","):
+            segment = segment.strip()
+            if not segment:
+                continue
+            if "-" in segment:
+                s, e = segment.split("-", 1)
+                pages_list.extend(range(int(s.strip()), int(e.strip()) + 1))
+            elif ".." in segment:
+                s, e = segment.split("..", 1)
+                pages_list.extend(range(int(s.strip()), int(e.strip()) + 1))
+            elif ":" in segment:
+                s, e = segment.split(":", 1)
+                pages_list.extend(range(int(s.strip()), int(e.strip()) + 1))
+            else:
+                pages_list.append(int(segment))
 
-    preprocess_pdf(pdf_path, workspace_dir, dpi=dpi, max_pages=args.max_pages, start_page=start_page, end_page=end_page)
+    preprocess_pdf(pdf_path, workspace_dir, dpi=dpi, max_pages=args.max_pages, start_page=start_page, end_page=end_page, pages_list=pages_list)
 
 
 if __name__ == "__main__":

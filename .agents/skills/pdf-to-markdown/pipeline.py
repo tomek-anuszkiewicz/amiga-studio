@@ -298,6 +298,7 @@ def main():
     parser.add_argument("--to-stage", type=str, help="End pipeline at stage number (e.g. 08)")
     parser.add_argument("--max-pages", type=int, help="Limit number of pages processed in Stage 01")
     parser.add_argument("--page-range", type=str, help="Page range to process in Stage 01 (e.g. 173-178 or 173..178)")
+    parser.add_argument("--pages", dest="pages_alt", type=str, default=None, help="Discrete pages or ranges (e.g. '16,17,18, 32,37,50,73')")
     parser.add_argument("--start-page", type=int, help="Start page number for Stage 01 (1-indexed)")
     parser.add_argument("--end-page", type=int, help="End page number for Stage 01 (1-indexed)")
     parser.add_argument("--resume", action="store_true", help="Resume from last successfully completed stage")
@@ -416,7 +417,7 @@ def main():
             config_path=config_path,
             verbose=args.verbose,
             max_pages=args.max_pages,
-            page_range=args.page_range,
+            page_range=args.page_range or args.pages_alt,
             start_page=args.start_page,
             end_page=args.end_page,
         )

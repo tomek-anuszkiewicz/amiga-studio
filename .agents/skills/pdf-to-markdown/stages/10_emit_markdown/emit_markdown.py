@@ -67,7 +67,7 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
         if old_asset.is_file():
             old_asset.unlink(missing_ok=True)
 
-    # Collect active node IDs and explicitly referenced asset filenames from chapters
+    # Collect explicitly referenced asset filenames from rendered markdown
     referenced_assets = set()
     for entry in manifest:
         idx = entry["index"]
@@ -80,10 +80,6 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
                 with open(c_path, "r", encoding="utf-8") as f:
                     c_nodes = json.load(f)
                 for cn in c_nodes:
-                    for key in ["png_path", "svg_path", "sidecar_path"]:
-                        val = cn.get(key)
-                        if val:
-                            referenced_assets.add(Path(val).name)
                     rendered = cn.get("rendered_markdown", "")
                     for m in re.finditer(r"asset_node_\d+\.[a-zA-Z0-9]+", rendered):
                         referenced_assets.add(m.group(0))
@@ -113,7 +109,13 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
                 base_name = re.sub(r"\.txt$", "", asset_file.name)
                 if asset_file.name in referenced_assets or base_name in referenced_assets:
                     shutil.copy2(asset_file, out_assets_dir / asset_file.name)
-        print(f"[*] Synchronized active assets from {src_assets_dir} to {out_assets_dir}")
+        if any(out_assets_dir.iterdir()):
+            print(f"[*] Synchronized active assets from {src_assets_dir} to {out_assets_dir}")
+        else:
+            try:
+                out_assets_dir.rmdir()
+            except Exception:
+                pass
 
     print(f"[*] Emitting {len(manifest)} Markdown files from {chapters_dir.name} to {output_dir}...")
 
