@@ -4135,3 +4135,22 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean (0 violations across 366 files).
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed in 1.11s.
+
+---
+
+### [2026-09-16 06:30 CEST] — PDF-to-Markdown: Stage 09 Page-Level TOC Batching & Call Reduction
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/09_transform_prose/format_prose.py`: Implemented page-level consecutive node batching for `toc` and `prose` nodes, aggregating segmented micro-nodes into cohesive page chunks.
+  - `.agents/skills/pdf-to-markdown/stages/10_emit_markdown/emit_markdown.py`: Hardened `rendered_markdown` checking to guarantee continuation nodes with empty rendered text never fall back to appending raw unformatted text.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated high-redundancy LLM query dispatch in Stage 09 (`09_transform_prose`). Previously, every single TOC line segment (52 micro-nodes in `00_toc.json`) was dispatched as an isolated Gemini API query, accounting for 50% of all Stage 09 requests.
+  - Implemented consecutive page-level batching: grouped consecutive TOC nodes on the same page into structured page blocks (up to 6,000 characters).
+  - First node receives formatted Markdown list while continuation child nodes receive empty rendered strings and `continuation_status = "continuation"`.
+- **Verification & Test Results**:
+  - Stage 09 LLM calls dropped from 104 calls down to 62 calls (40% query reduction / 42 calls saved).
+  - Downstream Stages 10, 11, 12, and 13 executed successfully:
+    - Stage 11 processed 10 unified TOC blocks (down from 52 micro-blocks).
+    - `output_markdown/00_toc.md` generated with clean, complete Wikilinks.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean (0 violations across 366 files).
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.

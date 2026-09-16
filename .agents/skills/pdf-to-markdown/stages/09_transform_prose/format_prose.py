@@ -74,7 +74,7 @@ def process_prose(workspace_dir: Path, config: dict):
     formatted_count = 0
 
     def _format_prose_task(task):
-        idx, n_type, raw_text, png_path = task
+        group_indices, n_type, raw_text, png_path = task
         full_prompt = (
             f"{base_prompt}\n\n"
             f"## Node Type: {n_type}\n"
@@ -89,18 +89,21 @@ def process_prose(workspace_dir: Path, config: dict):
             rendered_text = rendered.strip()
             if n_type == "toc" and TOC_START_MARKER not in rendered_text:
                 rendered_text = f"{TOC_START_MARKER}\n{rendered_text}\n{TOC_END_MARKER}"
-            return idx, rendered_text + "\n\n"
+            return group_indices, rendered_text + "\n\n"
         else:
-            return idx, raw_text + "\n\n"
+            return group_indices, raw_text + "\n\n"
 
     for c_file in chapter_files:
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
         llm_tasks = []
-        for idx, node in enumerate(nodes):
+        i = 0
+        while i < len(nodes):
+            node = nodes[i]
             # Don't overwrite if already rendered (e.g. table or graphic)
             if node.get("rendered_markdown"):
+                i += 1
                 continue
 
             n_type = node.get("type")
@@ -110,24 +113,85 @@ def process_prose(workspace_dir: Path, config: dict):
                 lvl = 1 if n_type == "chapter" else (node.get("heading_level") or 2)
                 node["rendered_markdown"] = format_heading(raw_text, level=lvl)
                 formatted_count += 1
+                i += 1
             elif n_type == "toc_header":
                 node["rendered_markdown"] = ""
+                i += 1
             elif n_type == "caption":
                 clean_cap = " ".join(raw_text.strip().split())
                 node["rendered_markdown"] = f"*{clean_cap}*\n\n"
                 formatted_count += 1
-            elif n_type in ("prose", "code_block", "toc"):
+                i += 1
+            elif n_type == "toc":
+                # Batch consecutive TOC nodes on the same page (up to 6000 chars)
+                group_indices = [i]
+                group_text_parts = [raw_text]
+                group_len = len(raw_text)
+                cur_page = node.get("page")
+                j = i + 1
+                while j < len(nodes):
+                    next_node = nodes[j]
+                    if (
+                        next_node.get("type") == "toc"
+                        and not next_node.get("rendered_markdown")
+                        and next_node.get("page") == cur_page
+                        and (group_len + len(next_node.get("raw_text", ""))) < 6000
+                    ):
+                        group_indices.append(j)
+                        t = next_node.get("raw_text", "")
+                        group_text_parts.append(t)
+                        group_len += len(t)
+                        j += 1
+                    else:
+                        break
+                combined_raw = "\n\n".join(group_text_parts)
+                llm_tasks.append((group_indices, "toc", combined_raw, None))
+                i = j
+            elif n_type == "code_block":
                 png_rel = node.get("png_path")
                 png_path = workspace_dir / png_rel if png_rel else None
-                llm_tasks.append((idx, n_type, raw_text, png_path))
+                llm_tasks.append(([i], "code_block", raw_text, png_path))
+                i += 1
+            elif n_type == "prose":
+                # Batch consecutive prose nodes on the same page up to 4000 chars if no other types intervene
+                group_indices = [i]
+                group_text_parts = [raw_text]
+                group_len = len(raw_text)
+                cur_page = node.get("page")
+                j = i + 1
+                while j < len(nodes):
+                    next_node = nodes[j]
+                    if (
+                        next_node.get("type") == "prose"
+                        and not next_node.get("rendered_markdown")
+                        and next_node.get("page") == cur_page
+                        and (group_len + len(next_node.get("raw_text", ""))) < 4000
+                    ):
+                        group_indices.append(j)
+                        t = next_node.get("raw_text", "")
+                        group_text_parts.append(t)
+                        group_len += len(t)
+                        j += 1
+                    else:
+                        break
+                combined_raw = "\n\n".join(group_text_parts)
+                llm_tasks.append((group_indices, "prose", combined_raw, None))
+                i = j
+            else:
+                i += 1
 
         if llm_tasks:
             with ThreadPoolExecutor(max_workers=min(len(llm_tasks), concurrency)) as executor:
                 results = list(executor.map(_format_prose_task, llm_tasks))
 
-            for idx, rendered_md in results:
-                nodes[idx]["rendered_markdown"] = rendered_md
+            for group_indices, rendered_md in results:
+                head_idx = group_indices[0]
+                nodes[head_idx]["rendered_markdown"] = rendered_md
                 formatted_count += 1
+                for sub_idx in group_indices[1:]:
+                    nodes[sub_idx]["rendered_markdown"] = ""
+                    nodes[sub_idx]["continuation_status"] = "continuation"
+                    formatted_count += 1
 
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:

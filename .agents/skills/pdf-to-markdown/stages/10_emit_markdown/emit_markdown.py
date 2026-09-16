@@ -150,9 +150,10 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
             if node.get("continuation_status") == "continuation":
                 continue
 
-            rendered = node.get("rendered_markdown")
-            if rendered is not None and rendered.strip():
-                content_parts.append(rendered.rstrip() + "\n\n")
+            if "rendered_markdown" in node:
+                rendered = node.get("rendered_markdown")
+                if rendered and rendered.strip():
+                    content_parts.append(rendered.rstrip() + "\n\n")
             elif node.get("raw_text"):
                 content_parts.append(node["raw_text"].rstrip() + "\n\n")
 
