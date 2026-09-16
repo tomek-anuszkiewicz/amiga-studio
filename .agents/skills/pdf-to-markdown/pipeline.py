@@ -204,6 +204,7 @@ def run_stage(
     page_range: Optional[str] = None,
     start_page: Optional[int] = None,
     end_page: Optional[int] = None,
+    force_ocr: bool = False,
 ) -> bool:
     stage_num = stage_info["id"]
     stage_dir_name = stage_info["dir"]
@@ -236,6 +237,8 @@ def run_stage(
                 cmd.extend(["--end-page", str(end_page)])
         elif max_pages:
             cmd.extend(["--max-pages", str(max_pages)])
+        if force_ocr:
+            cmd.append("--force-ocr")
     elif stage_num == "11":
         cmd.extend(["--output-dir", str(workspace_dir / "11_emit_markdown")])
     elif stage_num == "13" and output_dir:
@@ -399,6 +402,7 @@ def main():
     parser.add_argument("--status", action="store_true", help="Display summary status of workspace and task items")
     parser.add_argument("--prepare-stage", type=str, help="Prepare task items for cognitive stage (06, 07, 08, 09)")
     parser.add_argument("--apply-stage", type=str, help="Apply Agent's edited task items for cognitive stage (06, 07, 08, 09)")
+    parser.add_argument("--force-ocr", action="store_true", help="Force Gemini Vision OCR on all pages in Stage 01")
     parser.add_argument("--run-deterministic", action="store_true", help="Run deterministic stages (01, 03, 04, 05, 10, 11)")
 
     args = parser.parse_args()
@@ -502,6 +506,7 @@ def main():
             page_range=args.page_range or args.pages_alt,
             start_page=args.start_page,
             end_page=args.end_page,
+            force_ocr=args.force_ocr,
         )
         if not success:
             print(f"\n[!] Pipeline halted at Stage {s_info['id']} due to failure.", file=sys.stderr)
