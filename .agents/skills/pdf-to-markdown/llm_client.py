@@ -111,7 +111,7 @@ class GeminiClient:
     def is_available(self) -> bool:
         return self.client is not None and bool(self.api_key)
 
-    def generate_text(self, prompt: str, model: str = None, response_mime_type: Optional[str] = None) -> str:
+    def generate_text(self, prompt: str, model: str = None) -> str:
         if not self.is_available():
             raise RuntimeError("GEMINI_API_KEY environment variable is required for pipeline inference.")
         import time
@@ -127,10 +127,9 @@ class GeminiClient:
             for attempt in range(4):
                 try:
                     _record_call()
-                    config_kwargs = {"temperature": self.temperature}
-                    if response_mime_type:
-                        config_kwargs["response_mime_type"] = response_mime_type
-                    config = types.GenerateContentConfig(**config_kwargs)
+                    config = types.GenerateContentConfig(
+                        temperature=self.temperature,
+                    )
                     response = self.client.models.generate_content(
                         model=m,
                         contents=prompt,
@@ -155,7 +154,7 @@ class GeminiClient:
             f"Last error: {last_error}"
         )
 
-    def generate_vision(self, prompt: str, image_path: Path, model: str = None, response_mime_type: Optional[str] = None) -> str:
+    def generate_vision(self, prompt: str, image_path: Path, model: str = None) -> str:
         if not self.is_available():
             raise RuntimeError("GEMINI_API_KEY environment variable is required for pipeline inference.")
         if not image_path.exists():
@@ -175,10 +174,9 @@ class GeminiClient:
             for attempt in range(4):
                 try:
                     _record_call()
-                    config_kwargs = {"temperature": self.temperature}
-                    if response_mime_type:
-                        config_kwargs["response_mime_type"] = response_mime_type
-                    config = types.GenerateContentConfig(**config_kwargs)
+                    config = types.GenerateContentConfig(
+                        temperature=self.temperature,
+                    )
                     response = self.client.models.generate_content(
                         model=m,
                         contents=[image, prompt],
@@ -207,11 +205,7 @@ class GeminiClient:
         import json
         import re
 
-        raw = (
-            self.generate_vision(prompt, image_path, model=model, response_mime_type="application/json")
-            if image_path
-            else self.generate_text(prompt, model=model, response_mime_type="application/json")
-        )
+        raw = self.generate_vision(prompt, image_path, model=model) if image_path else self.generate_text(prompt, model=model)
         if not raw:
             raise RuntimeError("Fatal: LLM returned empty response for generate_json.")
 
@@ -221,9 +215,9 @@ class GeminiClient:
         if fence_match:
             text = fence_match.group(1).strip()
 
-        # Try parsing full text with strict=False
+        # Try parsing full text
         try:
-            return json.loads(text, strict=False)
+            return json.loads(text)
         except Exception:
             pass
 
@@ -231,7 +225,7 @@ class GeminiClient:
         bracket_match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", text)
         if bracket_match:
             try:
-                return json.loads(bracket_match.group(1), strict=False)
+                return json.loads(bracket_match.group(1))
             except Exception as e:
                 raise RuntimeError(f"Fatal: JSON parse failed: {e}\nRaw response:\n{text[:500]}")
 
