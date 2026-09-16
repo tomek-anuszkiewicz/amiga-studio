@@ -162,10 +162,13 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
         with open(md_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        toc_pattern = rf"{re.escape(start_marker)}\n(.*?)\n{re.escape(end_marker)}"
-        match = re.search(toc_pattern, content, re.DOTALL)
-        if match:
-            toc_lines = match.group(1).splitlines()
+        toc_pattern = rf"{re.escape(start_marker)}[ \t]*\r?\n(.*?)\r?\n[ \t]*{re.escape(end_marker)}"
+        file_matched_blocks = 0
+
+        def _replace_toc_block(m):
+            nonlocal file_matched_blocks
+            file_matched_blocks += 1
+            toc_lines = m.group(1).splitlines()
             linked_lines = []
             for line in toc_lines:
                 m_bullet = re.match(r"^(\s*[-*]\s*)(.+)$", line)
@@ -182,13 +185,19 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
                         linked_lines.append(line)
                 else:
                     linked_lines.append(line)
+            return "\n".join(linked_lines)
 
-            new_toc_block = "\n".join(linked_lines)
-            updated_content = content[:match.start()] + new_toc_block + content[match.end():]
-            linked_count += 1
-            print(f"[+] Converted TOC wikilinks and removed markers in {md_path.name}")
-        else:
-            updated_content = content
+        updated_content = re.sub(toc_pattern, _replace_toc_block, content, flags=re.DOTALL)
+
+        # Ensure any residual stray markers are removed
+        if start_marker in updated_content:
+            updated_content = updated_content.replace(start_marker, "")
+        if end_marker in updated_content:
+            updated_content = updated_content.replace(end_marker, "")
+
+        if file_matched_blocks > 0:
+            linked_count += file_matched_blocks
+            print(f"[+] Converted {file_matched_blocks} TOC block(s) and removed markers in {md_path.name}")
 
         target_file = output_dir / md_path.name
         with open(target_file, "w", encoding="utf-8") as f:
@@ -216,6 +225,8 @@ def main():
     input_dir = next((p for p in input_candidates if p and p.exists() and list(p.glob("*.md"))), None)
     if not input_dir:
         raise FileNotFoundError("No input markdown files found for Stage 11")
+
+    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "11_link_toc")
 
     config_path = Path(args.config)
     config = {}

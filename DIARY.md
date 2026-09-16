@@ -4081,16 +4081,20 @@ Every future modification or implementation task must append an entry following 
 
 ---
 
-### [2026-09-16 06:05 CEST] — PDF-to-Markdown: Parameterized TOC Marker Regex in link_toc.py
+### [2026-09-16 06:05 CEST] — PDF-to-Markdown: Multi-Block TOC Processing & Marker Stripping in link_toc.py
 - **Affected Subsystems**:
-  - `.agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py`: Refactored hardcoded TOC delimiter regex in `process_toc_linking` to use `TOC_START_MARKER` and `TOC_END_MARKER` constants, with optional override support from `config.yaml` (`markers.toc_start` / `markers.toc_end`).
+  - `.agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py`: Replaced single `re.search` with global `re.sub` loop over all `<!-- TOC34534 -->` blocks, parameterized markers using `TOC_START_MARKER` / `TOC_END_MARKER`, and ensured clean delimiter stripping across every TOC section.
 - **What Was Changed (The Concrete Reality)**:
-  - Replaced inline hardcoded literal `re.search(r"<!-- TOC34534 -->\n(.*?)\n<!-- /TOC34534 -->", ...)` with parameterized `re.search(rf"{re.escape(start_marker)}\n(.*?)\n{re.escape(end_marker)}", content, re.DOTALL)`.
-  - Wired `config` dictionary from CLI `args.config` to `process_toc_linking`.
+  - Addressed defect where `re.search` only matched and processed the first TOC block (Chapter 1), leaving all subsequent chapter TOC blocks (Chapter 2 through Chapter 8, Appendices) wrapped in unparsed `<!-- TOC34534 -->` and `<!-- /TOC34534 -->` comments.
+  - Implemented `re.sub` callback replacing every TOC block across the file. For headers existing in the catalog (e.g. Chapter 1 and Chapter 2), converts them to Obsidian wikilinks (`[[file#header|title]]`). For unrendered chapters without catalog matches, preserves clean Markdown text bullets while completely stripping the delimiters.
+  - Added safeguard cleanup stripping any stray residual delimiter comments from the final output.
 - **Verification & Test Results**:
-  - `python -m py_compile .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py`: Passed cleanly.
+  - Executed Stage 11 on HRM workspace: `52 TOC block(s)` successfully converted and stripped across `00_toc.md`.
+  - Inspected `workspace/11_link_toc/00_toc.md` and `workspace/13_proofread_markdown/00_toc.md`: Chapter 2 entries now link to `[[02_chapter_2_coprocessor_hardw_are#...]]` and all `<!-- TOC34534 -->` comments are completely removed.
+  - `python -m py_compile .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py`: Clean compilation.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 366 files clean.
   - `cargo fmt --all -- --check`: Clean formatting across workspace.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
 
 
