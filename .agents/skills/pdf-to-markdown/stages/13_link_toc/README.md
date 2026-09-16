@@ -13,7 +13,7 @@ Dedicated cross-document wikilink resolution worker:
 - `<output_dir>/*.md`: Emitted Markdown documents (from Stage 12).
 
 ## Outputs
-- Updated Markdown documents in `<output_dir>` with active cross-file wikilinks and zero leftover marker tags.
+- `<output_dir>/*.md`: Finalized Markdown documents with active cross-file wikilinks and zero leftover marker tags.
 
 ## Standalone Invocation
 ```powershell

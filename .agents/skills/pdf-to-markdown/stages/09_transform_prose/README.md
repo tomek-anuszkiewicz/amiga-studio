@@ -14,11 +14,11 @@ Formats narrative body text, programming code listings, section headings, and ta
 5. Preserves explicit node types (`prose`, `code_block`, `toc`) in the JSON stream.
 
 ## Inputs
-- `workspace/chapters/*.json`: Partitioned section stream files.
-- `stages/09_transform_prose/prompt.md`: Formatting instructions.
+- `workspace/08_transform_graphics/{index:02d}_{slug}.json`: Chapter streams from Stage 08.
+- `stages/09_transform_prose/prompt.md`: Formatting instructions and code/register rules.
 
 ## Outputs
-- Updated `workspace/chapters/*.json` with formatted markup in `node.rendered_markdown`.
+- `workspace/09_transform_prose/{index:02d}_{slug}.json`: Formatted chapter streams with `node.rendered_markdown`.
 
 ## Standalone Invocation
 ```powershell

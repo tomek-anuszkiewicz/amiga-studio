@@ -1,19 +1,20 @@
 # Stage 01b: Scan Detection & Gemini Vision OCR
 
-## Role & Architecture
-Stage `01b_ocr` acts as an intelligent, conditional bridge between **Stage 01** (`01_preprocess`) and **Stage 02** (`02_page_segmentation`).
+## Objective
+Intelligent inspection step between Stage 01 and Stage 02:
+- **Born-Digital Pages:** Executes immediate pass-through (0 API calls) if healthy text blocks are present (`total_chars >= threshold`, default 20).
+- **Scanned Pages / Covers:** Activates Gemini Vision OCR on `page_XXXX.png` using a fused single-pass triage prompt (`text_page`, `pure_graphic`, `blank`).
+- Enriches `page_XXXX.json` in place with integer millirange `box_2d` and normalized `bbox_norm` bounding boxes matching the Stage 02 contract.
 
-In the pipeline:
-1. Stage `01_preprocess` runs first, extracting per-page vector PDFs, 300 DPI PNGs, and any native text blocks present in the PDF via PyMuPDF.
-2. Stage `01b_ocr` inspects the resulting `page_XXXX.json` files:
-   - **Born-Digital Pages:** If a page contains healthy text blocks (`total_chars >= threshold`, default 20), Stage 01b executes an immediate pass-through (0 API calls, 0.0s).
-   - **Scanned Pages / Covers:** If a page contains 0 blocks or empty text, Stage 01b automatically activates **Gemini Vision OCR** on `page_XXXX.png` using a fused single-pass triage prompt:
-     - **`text_page`**: Scanned text, headings, paragraphs, and tables are extracted into integer millirange bounding boxes (`box_2d` [0..1000]) and normalized text blocks (`bbox_norm`).
-     - **`pure_graphic`**: Full-page illustrations, schematics, and photos are classified as visual assets without hallucinating garbage text on circuit traces or artwork.
-     - **`blank`**: Blank separator pages are marked with 0 text blocks.
-3. It updates `page_XXXX.json` in place, satisfying the exact data contract expected by Stage 02.
+## Inputs
+- `workspace/01_preprocess/page_XXXX.json`: Text blocks and page dimensions from Stage 01.
+- `workspace/01_preprocess/page_XXXX.png`: 300 DPI raster page render (used if OCR is triggered).
+- `stages/01b_ocr/prompt_ocr.md`: Fused triage and OCR vision prompt.
 
-## CLI Usage
+## Outputs
+- `workspace/01_preprocess/page_XXXX.json`: In-place enriched text blocks with normalized `box_2d` and `bbox_norm` bounding boxes and `page_type`.
+
+## Standalone Invocation
 ```powershell
-python stages/01b_ocr/detect_and_ocr.py --workspace <WORKSPACE_DIR> [--force] [--threshold 20]
+python stages/01b_ocr/detect_and_ocr.py --workspace "workspace" [--force] [--threshold 20]
 ```

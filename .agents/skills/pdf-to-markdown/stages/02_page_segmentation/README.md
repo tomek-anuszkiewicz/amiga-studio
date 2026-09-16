@@ -13,12 +13,13 @@ Analyzes each page vertically from top to bottom, classifying bands into explici
 - `graphic`: Circuit schematics, flowcharts, waveforms, photos.
 
 ## Inputs
-- `workspace/pages/page_XXXX.png`: 300 DPI page render.
-- `workspace/pages/page_XXXX.json`: Text geometry blocks.
-- `stages/02_page_segmentation/prompt.md`: Vision prompt.
+- `workspace/01_preprocess/page_XXXX.png`: 300 DPI high-resolution page render.
+- `workspace/01_preprocess/page_XXXX.json`: Text geometry blocks and normalized coordinates.
+- `stages/02_page_segmentation/prompt.md`: Vision segmentation prompt.
+- `stages/02_page_segmentation/prompt_empty_page.md`: Vision prompt for empty/unsegmented pages.
 
 ## Outputs
-- `workspace/segments/page_XXXX_segments.json`: Segment list with coordinates, text, and types.
+- `workspace/02_page_segmentation/page_XXXX_segments.json`: Segment list with coordinates, text, and classified types.
 
 ## Standalone Invocation
 ```powershell

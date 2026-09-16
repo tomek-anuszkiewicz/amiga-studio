@@ -7,13 +7,14 @@ Specialized worker for technical schematics, flowcharts, block diagrams, and ill
 3. Generates comprehensive technical sidecars (`assets/{id}.png.txt`) containing signal names, timing equations, and register definitions for offline vector RAG search.
 
 ## Inputs
-- `workspace/chapters/*.json`: Partitioned section stream files.
+- `workspace/07_transform_tables/{index:02d}_{slug}.json`: Chapter streams from Stage 07.
+- `workspace/assets/`: Visual crops (`.svg`, `.png`).
 - `stages/08_transform_graphics/prompt_mermaid.md`: Diagram-to-Mermaid prompt.
 - `stages/08_transform_graphics/prompt_rag_sidecar.md`: RAG technical sidecar prompt.
 
 ## Outputs
-- Updated `workspace/chapters/*.json` with rendered diagram markup in `node.rendered_markdown`.
-- `workspace/assets/{id}.png.txt`: Vector search technical sidecars.
+- `workspace/08_transform_graphics/{index:02d}_{slug}.json`: Chapter streams with rendered diagram markup in `node.rendered_markdown`.
+- `workspace/08_transform_graphics/assets/{id}.png.txt`: Vector search technical sidecars.
 
 ## Standalone Invocation
 ```powershell

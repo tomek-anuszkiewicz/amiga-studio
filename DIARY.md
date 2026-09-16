@@ -4281,3 +4281,18 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed (369 files scanned, 0 attractors).
   - `cargo test -p test_runner --test test_architecture_rules`: Passed (18/18 tests).
 
+---
+
+### [2026-09-16 13:08 CEST] — PDF-to-Markdown: Standardized Inputs and Outputs Specification Across All Stages
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/*/README.md`: Standardized `## Inputs` and `## Outputs` sections across all 14 pipeline stages (`01_preprocess` through `13_link_toc`).
+  - `.agents/skills/pdf-to-markdown/stages/13_proofread_markdown/`: Removed empty/orphaned stage directory.
+- **What Was Changed (The Concrete Reality)**:
+  - Unified all stage documentation with explicit, consistent `## Inputs` and `## Outputs` contracts.
+  - Updated paths to accurately reflect active directory structures (`workspace/01_preprocess`, `workspace/02_page_segmentation`, `workspace/03_build_raw_stream`, `workspace/04_stream_reduction`, `workspace/05_chapter_partition`, etc.) replacing stale legacy paths (`01_pages`, `02_segments`, `chapters/`).
+  - Standardized standalone CLI invocation commands across all stages.
+- **Verification & Test Results**:
+  - Automated PowerShell verification confirmed all 14 stage READMEs contain both `## Inputs` and `## Outputs`.
+  - `python tools/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting 100% compliant, 0 attractors, AGENTS.md <= 14,000 bytes, 18/18 architecture rules).
+
+

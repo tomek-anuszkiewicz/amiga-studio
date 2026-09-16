@@ -5,11 +5,11 @@ Identifies adjacent content blocks across page boundaries (primarily tables, opt
 Links head nodes and continuation nodes via explicit JSON metadata (`continuation_status`, `continuation_group_id`, `continued_from`, `merged_assets`), allowing Stage 07 to synthesize unified tables without fragmentation.
 
 ## Inputs
-- `workspace/chapters/*.json`: Partitioned section stream files.
+- `workspace/05_chapter_partition/{index:02d}_{slug}.json`: Partitioned section stream files from Stage 05.
 - `stages/06_detect_continuations/prompt_continuation.md`: LLM prompt for continuation verification.
 
 ## Outputs
-- Updated `workspace/chapters/*.json` with continuation relationships annotated on nodes.
+- `workspace/06_detect_continuations/{index:02d}_{slug}.json`: Chapter streams with continuation relationships annotated on nodes.
 
 ## Standalone Invocation
 ```powershell

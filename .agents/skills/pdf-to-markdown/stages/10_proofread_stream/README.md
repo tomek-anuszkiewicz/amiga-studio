@@ -9,8 +9,9 @@ Proofreads chapter streams and manifest metadata prior to Markdown serialization
 5. Emits normalized chapter streams to `workspace/10_proofread_stream/{index:02d}_{slug}.json` and updates `workspace/chapters_manifest.json`.
 
 ## Inputs
-- `workspace/chapters_manifest.json`
-- `workspace/09_transform_prose/*.json` (or latest formatted chapter streams)
+- `workspace/chapters_manifest.json`: Initial document manifest from Stage 05.
+- `workspace/09_transform_prose/{index:02d}_{slug}.json`: Formatted chapter streams from Stage 09.
+- `stages/10_proofread_stream/prompt_proofread.md`: Proofreading prompt for stream nodes and manifest.
 
 ## Outputs
 - `workspace/10_proofread_stream/{index:02d}_{slug}.json`: Proofread chapter streams.
