@@ -375,7 +375,7 @@ def main():
     parser.add_argument("--pdf", type=str, help="Path to input technical PDF document")
     parser.add_argument("--workspace", type=str, default=None, help="Workspace directory for intermediate data")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory for generated Markdown files")
-    parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--config", type=str, required=True, help="Path to YAML configuration file")
     parser.add_argument("--from-stage", type=str, help="Start pipeline from stage number (e.g. 03)")
     parser.add_argument("--to-stage", type=str, help="End pipeline at stage number (e.g. 08)")
     parser.add_argument("--page-ranges", type=str, default=None, help="Page ranges or discrete pages to process in Stage 01 (e.g. '1-5, 7, 8, 10-15' or '1..5')")
@@ -389,18 +389,58 @@ def main():
     args = parser.parse_args()
 
     skill_dir = Path(__file__).resolve().parent
-    config_path = Path(args.config)
-    if not config_path.is_absolute():
-        config_path = skill_dir / config_path
+    config_source_path = Path(args.config)
+    if not config_source_path.is_absolute():
+        if not config_source_path.exists():
+            skill_relative = skill_dir / config_source_path
+            if skill_relative.exists():
+                config_source_path = skill_relative
+
+    if not config_source_path.is_file():
+        print(f"[!] Error: Config file not found: {config_source_path}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        with open(config_source_path, "r", encoding="utf-8") as f:
+            raw_config = yaml.safe_load(f)
+        if not raw_config or not isinstance(raw_config, dict):
+            print(f"[!] Error: Config file is empty or invalid YAML: {config_source_path}", file=sys.stderr)
+            sys.exit(1)
+    except Exception as e:
+        print(f"[!] Error reading config file {config_source_path}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     pdf_path = Path(args.pdf).resolve() if args.pdf else None
-    book_dir = pdf_path.parent if pdf_path else None
+    if pdf_path and not pdf_path.is_file():
+        if pdf_path.is_dir():
+            book_dir = pdf_path
+            candidates = list(pdf_path.glob("*.pdf"))
+            if len(candidates) == 1:
+                pdf_path = candidates[0]
+        elif pdf_path.parent.is_dir():
+            book_dir = pdf_path.parent
+            candidates = list(pdf_path.parent.glob("*.pdf"))
+            if len(candidates) == 1:
+                pdf_path = candidates[0]
+        else:
+            book_dir = None
+    else:
+        book_dir = pdf_path.parent if pdf_path else None
 
     if args.workspace:
         workspace_dir = Path(args.workspace).resolve()
     else:
         workspace_dir = (book_dir / "workspace") if book_dir else (Path.cwd() / "workspace")
     workspace_dir.mkdir(parents=True, exist_ok=True)
+
+    # Snapshot config into workspace
+    workspace_config_path = workspace_dir / "config.yaml"
+    try:
+        shutil.copyfile(config_source_path, workspace_config_path)
+    except Exception as e:
+        print(f"[!] Error snapshotting config to workspace {workspace_config_path}: {e}", file=sys.stderr)
+        sys.exit(1)
+    config_path = workspace_config_path
 
     output_dir = None
     if args.output_dir:

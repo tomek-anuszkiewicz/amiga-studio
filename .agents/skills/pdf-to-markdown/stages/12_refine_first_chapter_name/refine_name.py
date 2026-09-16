@@ -119,13 +119,12 @@ def process_first_chapter_refinement(
     new_slug = override_slug
 
     if not new_title or not new_slug:
-        config = {}
-        if config_path and config_path.exists():
-            try:
-                with open(config_path, "r", encoding="utf-8") as f:
-                    config = yaml.safe_load(f) or {}
-            except Exception:
-                config = {}
+        if not config_path or not config_path.is_file():
+            raise FileNotFoundError(f"Stage 12: Config file not found: {config_path}")
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        if not config or not isinstance(config, dict):
+            raise ValueError(f"Stage 12: Config file is empty or invalid: {config_path}")
 
         gemini = GeminiClient(config) if GeminiClient else None
         if not gemini or not gemini.is_available():
@@ -206,7 +205,7 @@ def main():
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/11_link_toc)")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/12_refine_first_chapter_name)")
-    parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
     parser.add_argument("--inspect", action="store_true", help="Inspect opening chapter excerpt and suggested titles")
     parser.add_argument("--title", type=str, default=None, help="Explicit canonical title")
     parser.add_argument("--slug", type=str, default=None, help="Explicit canonical slug")
@@ -215,12 +214,15 @@ def main():
     workspace_dir = Path(args.workspace)
     output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "12_refine_first_chapter_name")
     input_dir = Path(args.input_dir) if args.input_dir else None
+    config_path = Path(args.config)
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Stage 12: Config file not found: {config_path}")
 
     process_first_chapter_refinement(
         output_dir,
         workspace_dir,
         input_dir=input_dir,
-        config_path=Path(args.config),
+        config_path=config_path,
         inspect_only=args.inspect,
         override_title=args.title,
         override_slug=args.slug

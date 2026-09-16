@@ -243,7 +243,7 @@ def main():
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/09_transform_prose)")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/10_proofread_stream)")
-    parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
     parser.add_argument("--skip-llm", action="store_true", help="Skip LLM proofreading and normalize streams directly")
 
     args = parser.parse_args()
@@ -252,13 +252,13 @@ def main():
     output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "10_proofread_stream")
 
     config_path = Path(args.config)
-    config = {}
-    if config_path.exists():
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f) or {}
-        except Exception:
-            config = {}
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Stage 10: Config file not found: {config_path}")
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    if not config or not isinstance(config, dict):
+        raise ValueError(f"Stage 10: Config file is empty or invalid: {config_path}")
 
     process_proofread_stream(
         workspace_dir,

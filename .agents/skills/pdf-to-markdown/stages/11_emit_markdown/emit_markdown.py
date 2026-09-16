@@ -157,19 +157,22 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 10: Emit per-section Markdown files with Line 1 YAML")
+    parser = argparse.ArgumentParser(description="Stage 11: Emit per-section Markdown files with Line 1 YAML")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--output-dir", type=str, default="output_markdown", help="Target output directory")
-    parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     output_dir = Path(args.output_dir)
     config_path = Path(args.config)
-    config = {}
-    if config_path.exists():
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f) or {}
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Stage 11: Config file not found: {config_path}")
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    if not config or not isinstance(config, dict):
+        raise ValueError(f"Stage 11: Config file is empty or invalid: {config_path}")
 
     emit_markdown(workspace_dir, output_dir, config)
 

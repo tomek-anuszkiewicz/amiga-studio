@@ -186,15 +186,18 @@ def partition_chapters(workspace_dir: Path, config: dict):
 def main():
     parser = argparse.ArgumentParser(description="Stage 05: Partition stream into numbered section files")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
-    parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     config_path = Path(args.config)
-    config = {}
-    if config_path.exists():
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f) or {}
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Stage 05: Config file not found: {config_path}")
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    if not config or not isinstance(config, dict):
+        raise ValueError(f"Stage 05: Config file is empty or invalid: {config_path}")
 
     partition_chapters(workspace_dir, config)
 

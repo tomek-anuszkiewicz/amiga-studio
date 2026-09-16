@@ -150,7 +150,7 @@ def main():
     parser = argparse.ArgumentParser(description="Stage 01: Preprocess PDF into atomic per-page assets")
     parser.add_argument("--pdf", type=str, required=True, help="Input PDF document")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
-    parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
     parser.add_argument("--page-ranges", type=str, default=None, help="Pages or ranges to process (e.g. '1-5, 7, 8, 10-15' or '1..5')")
     parser.add_argument("--ocr-threshold", type=int, default=20, help="Character threshold below which a page is considered a scan (default: 20)")
 
@@ -158,16 +158,20 @@ def main():
     workspace_dir = Path(args.workspace)
     pdf_path = Path(args.pdf)
 
-    dpi = 300
     config_path = Path(args.config)
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Stage 01: Config file not found: {config_path}")
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    if not cfg or not isinstance(cfg, dict):
+        raise ValueError(f"Stage 01: Config file is empty or invalid: {config_path}")
+
+    dpi = cfg.get("render", {}).get("dpi", 300)
     ocr_threshold = args.ocr_threshold
-    if config_path.exists():
-        with open(config_path, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-            dpi = cfg.get("render", {}).get("dpi", 300)
-            ocr_cfg = cfg.get("ocr", {})
-            if "threshold" in ocr_cfg:
-                ocr_threshold = ocr_cfg["threshold"]
+    ocr_cfg = cfg.get("ocr", {})
+    if "threshold" in ocr_cfg:
+        ocr_threshold = ocr_cfg["threshold"]
 
     preprocess_pdf(
         pdf_path,
@@ -175,7 +179,7 @@ def main():
         dpi=dpi,
         page_ranges=args.page_ranges,
         ocr_threshold=ocr_threshold,
-        config_path=config_path if config_path.exists() else None,
+        config_path=config_path,
     )
 
 

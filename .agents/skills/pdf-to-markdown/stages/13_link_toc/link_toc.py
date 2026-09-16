@@ -303,10 +303,19 @@ def main():
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/12_refine_first_chapter_name)")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/13_link_toc)")
-    parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
+
+    config_path = Path(args.config)
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Stage 13: Config file not found: {config_path}")
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    if not config or not isinstance(config, dict):
+        raise ValueError(f"Stage 13: Config file is empty or invalid: {config_path}")
 
     input_candidates = [
         Path(args.input_dir) if args.input_dir else None,
@@ -319,12 +328,6 @@ def main():
         raise FileNotFoundError("No input markdown files found for Stage 13")
 
     output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "13_link_toc")
-
-    config_path = Path(args.config)
-    config = {}
-    if config_path.exists():
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f) or {}
 
     process_toc_linking(input_dir, output_dir, workspace_dir, config=config)
 

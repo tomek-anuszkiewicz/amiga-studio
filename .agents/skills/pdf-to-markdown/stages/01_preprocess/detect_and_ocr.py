@@ -168,7 +168,17 @@ def detect_and_ocr_pages(
             if GeminiClient is None:
                 print("[!] Error: GeminiClient unavailable. Check llm_client.py dependencies.", file=sys.stderr)
                 return False
-            gemini = GeminiClient()
+            cfg_dict = {}
+            if config_path and Path(config_path).is_file():
+                try:
+                    with open(config_path, "r", encoding="utf-8") as f:
+                        cfg_dict = yaml.safe_load(f) or {}
+                except Exception as e:
+                    print(f"[!] Error loading config at {config_path}: {e}", file=sys.stderr)
+            if not cfg_dict or "llm" not in cfg_dict:
+                print(f"[!] Error: Valid configuration with 'llm' section required for OCR at {config_path}", file=sys.stderr)
+                return False
+            gemini = GeminiClient(cfg_dict)
             if not gemini.is_available():
                 print("[!] Error: Gemini API key not configured or client offline.", file=sys.stderr)
                 return False

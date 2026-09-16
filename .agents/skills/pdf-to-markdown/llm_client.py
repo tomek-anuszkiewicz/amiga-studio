@@ -85,8 +85,12 @@ def _next_call_id() -> int:
 
 
 class GeminiClient:
-    def __init__(self, config: dict = None):
-        self.config = (config or {}).get("llm", {})
+    def __init__(self, config: dict):
+        if not config or not isinstance(config, dict) or "llm" not in config:
+            raise ValueError(
+                "GeminiClient requires an explicit, non-empty configuration dictionary containing an 'llm' section."
+            )
+        self.config = config["llm"]
         self.api_key = os.getenv("GEMINI_API_KEY")
         self.default_model = self.config.get("model_prose", "gemini-3.8-flash")
         self.vision_model = self.config.get("model_vision", "gemini-3.8-flash")

@@ -99,19 +99,20 @@ It is architected around an **Agent-Driven Hybrid Model**:
 > 2. LLM call metrics logging in `.metrics.json`
 > 3. Automatic downstream stage invalidation and cache cleanup
 > 4. Standard argument and path normalization (`--workspace`, `--output-dir`, `--config`)
+> 5. Hermetic configuration snapshotting to `<WORKSPACE>/config.yaml`
 >
 > ### Execution Rules:
-> - **Full pipeline**: `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>"`
-> - **Stage interval**: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 03 --to-stage 05`
+> - **Full pipeline**: `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>"`
+> - **Stage interval**: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 05`
 > - **Single stage**: Set `--from-stage` and `--to-stage` to the exact same stage number:
->   `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 02 --to-stage 02`
+>   `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02`
 > - **Stage 01 with specific pages**:
->   `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01`
+>   `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01`
 > - **Deterministic batch (01, 03, 04, 05, 10, 11)**:
->   `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --run-deterministic`
+>   `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --run-deterministic`
 > - **Cognitive review stages (06, 07, 08, 09)**:
->   - Prepare task items: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --prepare-stage 07`
->   - Apply edited task items: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 07`
+>   - Prepare task items: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07`
+>   - Apply edited task items: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --apply-stage 07`
 
 ---
 
@@ -123,16 +124,16 @@ When running a conversion task, the Agent executes the pipeline through 6 distin
 Run deterministic ingestion through the orchestrator:
 ```powershell
 # Run Stages 01 to 05:
-python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --from-stage 01 --to-stage 05
+python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 01 --to-stage 05
 
 # Or test a single stage / specific page ranges in Stage 01:
-python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01
+python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01
 ```
 
 ### Phase B: Continuation Detection (Stage 06)
 ```powershell
 # Detect multi-page table and graphic continuations
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 06 --to-stage 06
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 06 --to-stage 06
 ```
 
 ### Phase C: Structural Node Transformation (Stages 07 – 09)
