@@ -15,14 +15,19 @@ from PIL import Image
 
 def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: float = 0.10, assets_dir: Path = None, rel_prefix: str = None) -> list:
     if assets_dir is None:
-        assets_dir = workspace_dir / "03_raw_stream" / "assets"
+        assets_dir = workspace_dir / "03_build_raw_stream" / "assets"
     if rel_prefix is None:
         try:
             rel_prefix = assets_dir.relative_to(workspace_dir).as_posix()
         except Exception:
             rel_prefix = assets_dir.name
 
-    pages_dir = workspace_dir / "01_pages" if (workspace_dir / "01_pages").exists() else (workspace_dir / "pages")
+    if (workspace_dir / "01_preprocess").exists():
+        pages_dir = workspace_dir / "01_preprocess"
+    elif (workspace_dir / "01_pages").exists():
+        pages_dir = workspace_dir / "01_pages"
+    else:
+        pages_dir = workspace_dir / "pages"
     assets_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[*] Extracting visual and text assets for tables & graphics (padding: {int(padding_ratio*100)}%)...")

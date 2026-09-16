@@ -83,7 +83,9 @@ def process_first_chapter_refinement(
 
     if not input_dir:
         candidates = [
+            workspace_dir / "11_link_toc",
             workspace_dir / "11_markdown_linked",
+            workspace_dir / "10_emit_markdown",
             workspace_dir / "10_markdown_raw",
             output_dir
         ]
@@ -205,8 +207,8 @@ def process_first_chapter_refinement(
 def main():
     parser = argparse.ArgumentParser(description="Stage 12: Refine first chapter name and slug")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
-    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/11_markdown_linked)")
-    parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/12_canonical_markdown)")
+    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/11_link_toc)")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/12_refine_first_chapter_name)")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
     parser.add_argument("--inspect", action="store_true", help="Inspect opening chapter excerpt and suggested titles")
     parser.add_argument("--title", type=str, default=None, help="Explicit canonical title")
@@ -214,7 +216,7 @@ def main():
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
-    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "12_canonical_markdown")
+    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "12_refine_first_chapter_name")
     input_dir = Path(args.input_dir) if args.input_dir else None
 
     process_first_chapter_refinement(

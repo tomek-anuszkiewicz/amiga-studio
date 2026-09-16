@@ -18,5 +18,5 @@ Serializes chapter streams into standalone, publication-grade Markdown files for
 
 ## Standalone Invocation
 ```powershell
-python stages/10_emit_markdown/emit_markdown.py --workspace "workspace" --output-dir "workspace/10_markdown_raw"
+python stages/10_emit_markdown/emit_markdown.py --workspace "workspace" --output-dir "workspace/10_emit_markdown"
 ```

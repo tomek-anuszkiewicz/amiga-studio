@@ -63,11 +63,16 @@ def check_continuation_with_gemini(node_a: dict, node_b: dict, gemini: Optional[
 
 
 def process_chapter_continuations(workspace_dir: Path, config: dict):
-    input_dir = workspace_dir / "05_chapters_raw"
+    if (workspace_dir / "05_chapter_partition").exists():
+        input_dir = workspace_dir / "05_chapter_partition"
+    elif (workspace_dir / "05_chapters_raw").exists():
+        input_dir = workspace_dir / "05_chapters_raw"
+    else:
+        input_dir = workspace_dir / "05_chapter_partition"
     if not input_dir.exists():
         raise FileNotFoundError(f"Input chapters directory missing: {input_dir}")
 
-    out_dir = workspace_dir / "06_chapters_continuations"
+    out_dir = workspace_dir / "06_detect_continuations"
     out_dir.mkdir(parents=True, exist_ok=True)
     for f in out_dir.glob("*.json"):
         f.unlink()
@@ -146,7 +151,12 @@ def prepare_continuation_tasks(workspace_dir: Path) -> int:
     Extracts candidate multi-page table/graphic continuations into
     workspace/tasks/continuations/candidates.json for Agent review.
     """
-    chapters_dir = workspace_dir / "05_chapters_raw"
+    if (workspace_dir / "05_chapter_partition").exists():
+        chapters_dir = workspace_dir / "05_chapter_partition"
+    elif (workspace_dir / "05_chapters_raw").exists():
+        chapters_dir = workspace_dir / "05_chapters_raw"
+    else:
+        chapters_dir = workspace_dir / "05_chapter_partition"
     if not chapters_dir.exists():
         raise FileNotFoundError(f"Chapters directory missing: {chapters_dir}")
 
@@ -203,8 +213,13 @@ def apply_continuation_tasks(workspace_dir: Path) -> int:
     with open(cand_file, "r", encoding="utf-8") as f:
         candidates = json.load(f)
 
-    input_dir = workspace_dir / "05_chapters_raw"
-    out_dir = workspace_dir / "06_chapters_continuations"
+    if (workspace_dir / "05_chapter_partition").exists():
+        input_dir = workspace_dir / "05_chapter_partition"
+    elif (workspace_dir / "05_chapters_raw").exists():
+        input_dir = workspace_dir / "05_chapters_raw"
+    else:
+        input_dir = workspace_dir / "05_chapter_partition"
+    out_dir = workspace_dir / "06_detect_continuations"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     applied_count = 0

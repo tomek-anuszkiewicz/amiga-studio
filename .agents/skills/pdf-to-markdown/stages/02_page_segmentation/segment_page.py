@@ -35,8 +35,6 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
     page_w = page_data.get("width", 612.0)
     page_h = page_data.get("height", 792.0)
     blocks = page_data.get("blocks", [])
-    if not blocks:
-        return []
 
     # Sort blocks top-to-bottom
     sorted_blocks = sorted(blocks, key=lambda b: (b["bbox"][1], b["bbox"][0]))
@@ -61,6 +59,37 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
         })
 
     if not blocks_summary:
+        # Check if this text-empty page contains a visual graphic (e.g. book cover, full-page illustration/schematic)
+        if gemini and gemini.is_available() and png_path and png_path.exists():
+            vision_prompt = (
+                "You are an expert technical document layout analyzer. "
+                "The current page has no digital text blocks extracted by PDF tools. "
+                "Inspect the attached 300 DPI page image to determine if it is completely blank white, "
+                "or if it contains a visual graphic (such as a book cover illustration, full-page diagram, schematic, or photo).\n"
+                "Return a strict JSON object:\n"
+                '{"is_blank": false, "type": "graphic", "graphic_bbox_norm": [0.0, 0.0, 1.0, 1.0], "caption": "..."}\n'
+                "If the page is truly empty or blank white, return:\n"
+                '{"is_blank": true}'
+            )
+            res = gemini.generate_json(vision_prompt, image_path=png_path)
+            if isinstance(res, dict) and not res.get("is_blank", False):
+                g_bbox_norm = res.get("graphic_bbox_norm") or [0.0, 0.0, 1.0, 1.0]
+                caption = res.get("caption") or f"Graphic on page {page_num}"
+                bbox = [
+                    round(g_bbox_norm[0] * page_w, 2),
+                    round(g_bbox_norm[1] * page_h, 2),
+                    round(g_bbox_norm[2] * page_w, 2),
+                    round(g_bbox_norm[3] * page_h, 2),
+                ]
+                return [{
+                    "segment_id": f"page_{page_num:04d}_seg_001",
+                    "page": page_num,
+                    "type": "graphic",
+                    "bbox": bbox,
+                    "bbox_norm": g_bbox_norm,
+                    "heading_level": None,
+                    "raw_text": caption
+                }]
         return []
 
     prompt = (
@@ -136,8 +165,14 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
 
 
 def process_segmentation(workspace_dir: Path, config: dict):
-    pages_dir = workspace_dir / "01_pages" if (workspace_dir / "01_pages").exists() else (workspace_dir / "pages")
-    segments_dir = workspace_dir / "02_segments"
+    if (workspace_dir / "01_preprocess").exists():
+        pages_dir = workspace_dir / "01_preprocess"
+    elif (workspace_dir / "01_pages").exists():
+        pages_dir = workspace_dir / "01_pages"
+    else:
+        pages_dir = workspace_dir / "pages"
+
+    segments_dir = workspace_dir / "02_page_segmentation"
     segments_dir.mkdir(parents=True, exist_ok=True)
     for f in segments_dir.glob("*.json"):
         f.unlink()
@@ -162,7 +197,7 @@ def process_segmentation(workspace_dir: Path, config: dict):
         page_num = page_entry["page"]
         page_str = f"page_{page_num:04d}"
         json_file = workspace_dir / page_entry["json_file"]
-        png_file = workspace_dir / page_entry.get("png_file", f"01_pages/{page_str}.png")
+        png_file = workspace_dir / page_entry.get("png_file", f"01_preprocess/{page_str}.png")
 
         if not json_file.exists():
             continue

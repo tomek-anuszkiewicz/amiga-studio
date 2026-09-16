@@ -36,11 +36,16 @@ def build_frontmatter(title: str, section_idx: int) -> str:
 
 def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
     input_candidates = [
+        workspace_dir / "09_transform_prose",
         workspace_dir / "09_chapters_formatted",
+        workspace_dir / "08_transform_graphics",
         workspace_dir / "08_chapters_graphics",
+        workspace_dir / "07_transform_tables",
         workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_detect_continuations",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw"
+        workspace_dir / "05_chapter_partition",
+        workspace_dir / "05_chapters_raw",
     ]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:
@@ -87,9 +92,17 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
 
     # 1. Synchronize assets from latest stage (only active, referenced assets)
     asset_candidates = [
+        workspace_dir / "08_transform_graphics" / "assets",
         workspace_dir / "08_chapters_graphics" / "assets",
+        workspace_dir / "07_transform_tables" / "assets",
         workspace_dir / "07_chapters_tables" / "assets",
+        workspace_dir / "06_detect_continuations" / "assets",
+        workspace_dir / "06_chapters_continuations" / "assets",
+        workspace_dir / "05_chapter_partition" / "assets",
+        workspace_dir / "05_chapters_raw" / "assets",
+        workspace_dir / "04_stream_reduction" / "assets",
         workspace_dir / "04_reduced_stream" / "assets",
+        workspace_dir / "03_build_raw_stream" / "assets",
         workspace_dir / "03_raw_stream" / "assets",
         workspace_dir / "assets",
     ]

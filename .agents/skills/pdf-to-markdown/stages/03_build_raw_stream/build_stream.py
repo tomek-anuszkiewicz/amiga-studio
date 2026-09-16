@@ -20,7 +20,12 @@ from extract_initial_assets import extract_assets_for_nodes
 
 
 def build_raw_stream(workspace_dir: Path, config: dict):
-    segments_dir = workspace_dir / "02_segments" if (workspace_dir / "02_segments").exists() else (workspace_dir / "segments")
+    if (workspace_dir / "02_page_segmentation").exists():
+        segments_dir = workspace_dir / "02_page_segmentation"
+    elif (workspace_dir / "02_segments").exists():
+        segments_dir = workspace_dir / "02_segments"
+    else:
+        segments_dir = workspace_dir / "segments"
     if not segments_dir.exists():
         raise FileNotFoundError(f"Segments directory not found: {segments_dir}")
 
@@ -60,7 +65,7 @@ def build_raw_stream(workspace_dir: Path, config: dict):
             all_nodes.append(node)
             global_node_counter += 1
 
-    raw_dir = workspace_dir / "03_raw_stream"
+    raw_dir = workspace_dir / "03_build_raw_stream"
     raw_dir.mkdir(parents=True, exist_ok=True)
     raw_assets_dir = raw_dir / "assets"
     raw_assets_dir.mkdir(parents=True, exist_ok=True)

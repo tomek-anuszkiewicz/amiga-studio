@@ -107,21 +107,21 @@ def run_stage(
         elif max_pages:
             cmd.extend(["--max-pages", str(max_pages)])
     elif stage_num == "10":
-        cmd.extend(["--output-dir", str(workspace_dir / "10_markdown_raw")])
+        cmd.extend(["--output-dir", str(workspace_dir / "10_emit_markdown")])
     elif stage_num == "11":
         cmd.extend([
-            "--input-dir", str(workspace_dir / "10_markdown_raw"),
-            "--output-dir", str(workspace_dir / "11_markdown_linked"),
+            "--input-dir", str(workspace_dir / "10_emit_markdown"),
+            "--output-dir", str(workspace_dir / "11_link_toc"),
         ])
     elif stage_num == "12":
         cmd.extend([
-            "--input-dir", str(workspace_dir / "11_markdown_linked"),
-            "--output-dir", str(workspace_dir / "12_canonical_markdown"),
+            "--input-dir", str(workspace_dir / "11_link_toc"),
+            "--output-dir", str(workspace_dir / "12_refine_first_chapter_name"),
         ])
     elif stage_num == "13":
         dest_dir = output_dir if output_dir else (workspace_dir / "13_proofread_markdown")
         cmd.extend([
-            "--input-dir", str(workspace_dir / "12_canonical_markdown"),
+            "--input-dir", str(workspace_dir / "12_refine_first_chapter_name"),
             "--output-dir", str(dest_dir),
         ])
 
@@ -150,68 +150,68 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     print("         PDF-to-Markdown Pipeline Status          ")
     print("==================================================")
 
-    # 1. Pages (01)
-    pages_dir = workspace_dir / "01_pages" if (workspace_dir / "01_pages").exists() else (workspace_dir / "pages")
-    pages_count = len(list(pages_dir.glob("page_*.png"))) if pages_dir.exists() else 0
-    print(f"[*] 01_pages                      : {pages_count} rendered PNGs")
+    # 1. 01_preprocess (01)
+    p1 = workspace_dir / "01_preprocess" if (workspace_dir / "01_preprocess").exists() else (workspace_dir / "01_pages")
+    p1_count = len(list(p1.glob("page_*.png"))) if p1.exists() else 0
+    print(f"[*] 01_preprocess                 : {p1_count} rendered PNGs")
 
-    # 2. Segments (02)
-    segments_dir = workspace_dir / "02_segments" if (workspace_dir / "02_segments").exists() else (workspace_dir / "segments")
-    seg_count = len(list(segments_dir.glob("page_*_segments.json"))) if segments_dir.exists() else 0
-    print(f"[*] 02_segments                   : {seg_count} segment JSON files")
+    # 2. 02_page_segmentation (02)
+    p2 = workspace_dir / "02_page_segmentation" if (workspace_dir / "02_page_segmentation").exists() else (workspace_dir / "02_segments")
+    p2_count = len(list(p2.glob("page_*_segments.json"))) if p2.exists() else 0
+    print(f"[*] 02_page_segmentation          : {p2_count} segment JSON files")
 
-    # 3. Raw Stream (03)
-    raw_path = workspace_dir / "03_raw_stream" / "raw_stream.json"
-    print(f"[*] 03_raw_stream                 : {'OK (' + str(raw_path.stat().st_size) + ' B)' if raw_path.exists() else 'Missing'}")
+    # 3. 03_build_raw_stream (03)
+    p3 = (workspace_dir / "03_build_raw_stream" / "raw_stream.json") if (workspace_dir / "03_build_raw_stream").exists() else (workspace_dir / "03_raw_stream" / "raw_stream.json")
+    print(f"[*] 03_build_raw_stream           : {'OK (' + str(p3.stat().st_size) + ' B)' if p3.exists() else 'Missing'}")
 
-    # 4. Reduced Stream (04)
-    red_path = workspace_dir / "04_reduced_stream" / "reduced_stream.json"
-    print(f"[*] 04_reduced_stream             : {'OK (' + str(red_path.stat().st_size) + ' B)' if red_path.exists() else 'Missing'}")
+    # 4. 04_stream_reduction (04)
+    p4 = (workspace_dir / "04_stream_reduction" / "reduced_stream.json") if (workspace_dir / "04_stream_reduction").exists() else (workspace_dir / "04_reduced_stream" / "reduced_stream.json")
+    print(f"[*] 04_stream_reduction           : {'OK (' + str(p4.stat().st_size) + ' B)' if p4.exists() else 'Missing'}")
 
-    # 5. Chapters Raw (05)
-    ch_raw = workspace_dir / "05_chapters_raw"
-    ch_raw_count = len(list(ch_raw.glob("*.json"))) if ch_raw.exists() else 0
-    print(f"[*] 05_chapters_raw               : {ch_raw_count} chapter stream files")
+    # 5. 05_chapter_partition (05)
+    p5 = workspace_dir / "05_chapter_partition" if (workspace_dir / "05_chapter_partition").exists() else (workspace_dir / "05_chapters_raw")
+    p5_count = len(list(p5.glob("*.json"))) if p5.exists() else 0
+    print(f"[*] 05_chapter_partition          : {p5_count} chapter stream files")
 
-    # 6. Chapters Continuations (06)
-    ch_cont = workspace_dir / "06_chapters_continuations"
-    ch_cont_count = len(list(ch_cont.glob("*.json"))) if ch_cont.exists() else 0
-    print(f"[*] 06_chapters_continuations     : {ch_cont_count} chapter stream files")
+    # 6. 06_detect_continuations (06)
+    p6 = workspace_dir / "06_detect_continuations" if (workspace_dir / "06_detect_continuations").exists() else (workspace_dir / "06_chapters_continuations")
+    p6_count = len(list(p6.glob("*.json"))) if p6.exists() else 0
+    print(f"[*] 06_detect_continuations       : {p6_count} chapter stream files")
 
-    # 7. Chapters Tables (07)
-    ch_tbl = workspace_dir / "07_chapters_tables"
-    ch_tbl_count = len(list(ch_tbl.glob("*.json"))) if ch_tbl.exists() else 0
-    print(f"[*] 07_chapters_tables            : {ch_tbl_count} chapter stream files")
+    # 7. 07_transform_tables (07)
+    p7 = workspace_dir / "07_transform_tables" if (workspace_dir / "07_transform_tables").exists() else (workspace_dir / "07_chapters_tables")
+    p7_count = len(list(p7.glob("*.json"))) if p7.exists() else 0
+    print(f"[*] 07_transform_tables           : {p7_count} chapter stream files")
 
-    # 8. Chapters Graphics (08)
-    ch_gfx = workspace_dir / "08_chapters_graphics"
-    ch_gfx_count = len(list(ch_gfx.glob("*.json"))) if ch_gfx.exists() else 0
-    print(f"[*] 08_chapters_graphics          : {ch_gfx_count} chapter stream files")
+    # 8. 08_transform_graphics (08)
+    p8 = workspace_dir / "08_transform_graphics" if (workspace_dir / "08_transform_graphics").exists() else (workspace_dir / "08_chapters_graphics")
+    p8_count = len(list(p8.glob("*.json"))) if p8.exists() else 0
+    print(f"[*] 08_transform_graphics         : {p8_count} chapter stream files")
 
-    # 9. Chapters Formatted (09)
-    ch_fmt = workspace_dir / "09_chapters_formatted"
-    ch_fmt_count = len(list(ch_fmt.glob("*.json"))) if ch_fmt.exists() else 0
-    print(f"[*] 09_chapters_formatted         : {ch_fmt_count} chapter stream files")
+    # 9. 09_transform_prose (09)
+    p9 = workspace_dir / "09_transform_prose" if (workspace_dir / "09_transform_prose").exists() else (workspace_dir / "09_chapters_formatted")
+    p9_count = len(list(p9.glob("*.json"))) if p9.exists() else 0
+    print(f"[*] 09_transform_prose            : {p9_count} chapter stream files")
 
-    # 10. Markdown Raw (10)
-    md_raw = workspace_dir / "10_markdown_raw"
-    md_raw_count = len(list(md_raw.glob("*.md"))) if md_raw.exists() else 0
-    print(f"[*] 10_markdown_raw               : {md_raw_count} files")
+    # 10. 10_emit_markdown (10)
+    p10 = workspace_dir / "10_emit_markdown" if (workspace_dir / "10_emit_markdown").exists() else (workspace_dir / "10_markdown_raw")
+    p10_count = len(list(p10.glob("*.md"))) if p10.exists() else 0
+    print(f"[*] 10_emit_markdown              : {p10_count} files")
 
-    # 11. Markdown Linked (11)
-    md_linked = workspace_dir / "11_markdown_linked"
-    md_linked_count = len(list(md_linked.glob("*.md"))) if md_linked.exists() else 0
-    print(f"[*] 11_markdown_linked            : {md_linked_count} files")
+    # 11. 11_link_toc (11)
+    p11 = workspace_dir / "11_link_toc" if (workspace_dir / "11_link_toc").exists() else (workspace_dir / "11_markdown_linked")
+    p11_count = len(list(p11.glob("*.md"))) if p11.exists() else 0
+    print(f"[*] 11_link_toc                   : {p11_count} files")
 
-    # 12. Canonical Markdown (12)
-    md_canon = workspace_dir / "12_canonical_markdown"
-    md_canon_count = len(list(md_canon.glob("*.md"))) if md_canon.exists() else 0
-    print(f"[*] 12_canonical_markdown         : {md_canon_count} files")
+    # 12. 12_refine_first_chapter_name (12)
+    p12 = workspace_dir / "12_refine_first_chapter_name" if (workspace_dir / "12_refine_first_chapter_name").exists() else (workspace_dir / "12_canonical_markdown")
+    p12_count = len(list(p12.glob("*.md"))) if p12.exists() else 0
+    print(f"[*] 12_refine_first_chapter_name  : {p12_count} files")
 
-    # 13. Proofread Markdown (13)
-    md_proof = workspace_dir / "13_proofread_markdown"
-    md_proof_count = len(list(md_proof.glob("*.md"))) if md_proof.exists() else 0
-    print(f"[*] 13_proofread_markdown         : {md_proof_count} files")
+    # 13. 13_proofread_markdown (13)
+    p13 = workspace_dir / "13_proofread_markdown"
+    p13_count = len(list(p13.glob("*.md"))) if p13.exists() else 0
+    print(f"[*] 13_proofread_markdown         : {p13_count} files")
 
     # Final Output Markdown (if custom output_dir used)
     if output_dir:
@@ -221,18 +221,18 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
 
 
 STAGE_OUTPUT_TARGETS = {
-    1: ["01_pages", "pages", "pages_manifest.json", "manifest.json"],
-    2: ["02_segments", "segments"],
-    3: ["03_raw_stream", "raw_stream.json", "assets"],
-    4: ["04_reduced_stream", "reduced_stream.json"],
-    5: ["05_chapters_raw", "chapters", "chapters_manifest.json"],
-    6: ["06_chapters_continuations", "tasks/continuations"],
-    7: ["07_chapters_tables", "tasks/tables"],
-    8: ["08_chapters_graphics", "tasks/graphics", "__ASSETS_SIDECARS__"],
-    9: ["09_chapters_formatted", "tasks/prose"],
-    10: ["10_markdown_raw"],
-    11: ["11_markdown_linked"],
-    12: ["12_canonical_markdown"],
+    1: ["01_preprocess", "01_pages", "pages", "pages_manifest.json", "manifest.json"],
+    2: ["02_page_segmentation", "02_segments", "segments"],
+    3: ["03_build_raw_stream", "03_raw_stream", "raw_stream.json", "assets"],
+    4: ["04_stream_reduction", "04_reduced_stream", "reduced_stream.json"],
+    5: ["05_chapter_partition", "05_chapters_raw", "chapters", "chapters_manifest.json"],
+    6: ["06_detect_continuations", "06_chapters_continuations", "tasks/continuations"],
+    7: ["07_transform_tables", "07_chapters_tables", "tasks/tables"],
+    8: ["08_transform_graphics", "08_chapters_graphics", "tasks/graphics", "__ASSETS_SIDECARS__"],
+    9: ["09_transform_prose", "09_chapters_formatted", "tasks/prose"],
+    10: ["10_emit_markdown", "10_markdown_raw"],
+    11: ["11_link_toc", "11_markdown_linked"],
+    12: ["12_refine_first_chapter_name", "12_canonical_markdown"],
     13: ["13_proofread_markdown"],
 }
 

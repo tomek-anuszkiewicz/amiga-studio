@@ -25,14 +25,20 @@ def generate_slug(text: str) -> str:
 
 
 def partition_chapters(workspace_dir: Path, config: dict):
-    reduced_stream_path = workspace_dir / "04_reduced_stream" / "reduced_stream.json"
+    if (workspace_dir / "04_stream_reduction" / "reduced_stream.json").exists():
+        reduced_stream_path = workspace_dir / "04_stream_reduction" / "reduced_stream.json"
+    elif (workspace_dir / "04_reduced_stream" / "reduced_stream.json").exists():
+        reduced_stream_path = workspace_dir / "04_reduced_stream" / "reduced_stream.json"
+    else:
+        reduced_stream_path = workspace_dir / "04_stream_reduction" / "reduced_stream.json"
+
     if not reduced_stream_path.exists():
-        raise FileNotFoundError(f"Missing reduced_stream.json in {workspace_dir / '04_reduced_stream'}")
+        raise FileNotFoundError(f"Missing reduced_stream.json in {reduced_stream_path.parent}")
 
     with open(reduced_stream_path, "r", encoding="utf-8") as f:
         nodes = json.load(f)
 
-    chapters_raw_dir = workspace_dir / "05_chapters_raw"
+    chapters_raw_dir = workspace_dir / "05_chapter_partition"
     chapters_raw_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[*] Partitioning {len(nodes)} nodes into chapter streams...")
@@ -169,7 +175,7 @@ def partition_chapters(workspace_dir: Path, config: dict):
             "index": idx,
             "slug": part["slug"],
             "title": part["title"],
-            "json_file": f"05_chapters_raw/{file_name}",
+            "json_file": f"05_chapter_partition/{file_name}",
             "target_md_file": f"{file_slug}.md",
             "node_count": len(part["nodes"])
         })

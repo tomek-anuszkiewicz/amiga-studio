@@ -106,8 +106,11 @@ def process_proofreading(
     # 2. Locate Markdown files
     if not input_dir.exists():
         candidates = [
+            workspace_dir / "12_refine_first_chapter_name",
             workspace_dir / "12_canonical_markdown",
+            workspace_dir / "11_link_toc",
             workspace_dir / "11_markdown_linked",
+            workspace_dir / "10_emit_markdown",
             workspace_dir / "10_markdown_raw",
         ]
         input_dir = next((p for p in candidates if p.exists() and list(p.glob("*.md"))), None)
@@ -124,8 +127,13 @@ def process_proofreading(
     src_assets = input_dir / "assets"
     if not src_assets.exists():
         for cand in [
+            workspace_dir / "12_refine_first_chapter_name" / "assets",
+            workspace_dir / "12_canonical_markdown" / "assets",
+            workspace_dir / "11_link_toc" / "assets",
             workspace_dir / "11_markdown_linked" / "assets",
+            workspace_dir / "10_emit_markdown" / "assets",
             workspace_dir / "10_markdown_raw" / "assets",
+            workspace_dir / "04_stream_reduction" / "assets",
             workspace_dir / "04_reduced_stream" / "assets"
         ]:
             if cand.exists():
@@ -189,14 +197,19 @@ def process_proofreading(
 def main():
     parser = argparse.ArgumentParser(description="Stage 13: Final OCR proofreading pass")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
-    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/12_canonical_markdown)")
+    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/12_refine_first_chapter_name)")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/13_proofread_markdown)")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
     parser.add_argument("--skip-llm", action="store_true", help="Skip LLM proofreading and copy directly")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
-    input_dir = Path(args.input_dir) if args.input_dir else (workspace_dir / "12_canonical_markdown")
+    if args.input_dir:
+        input_dir = Path(args.input_dir)
+    elif (workspace_dir / "12_refine_first_chapter_name").exists():
+        input_dir = workspace_dir / "12_refine_first_chapter_name"
+    else:
+        input_dir = workspace_dir / "12_canonical_markdown"
     output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "13_proofread_markdown")
 
     config_path = Path(args.config)

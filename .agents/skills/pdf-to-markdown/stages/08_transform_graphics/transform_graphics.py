@@ -39,15 +39,18 @@ def generate_default_sidecar(node_id: str, raw_text: str, page_num: int) -> str:
 
 def process_graphics(workspace_dir: Path, config: dict):
     input_candidates = [
+        workspace_dir / "07_transform_tables",
         workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_detect_continuations",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw"
+        workspace_dir / "05_chapter_partition",
+        workspace_dir / "05_chapters_raw",
     ]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
 
-    out_dir = workspace_dir / "08_chapters_graphics"
+    out_dir = workspace_dir / "08_transform_graphics"
     out_dir.mkdir(parents=True, exist_ok=True)
     for f in out_dir.glob("*.json"):
         f.unlink()
@@ -61,9 +64,15 @@ def process_graphics(workspace_dir: Path, config: dict):
             pass
 
     asset_candidates = [
+        workspace_dir / "07_transform_tables" / "assets",
         workspace_dir / "07_chapters_tables" / "assets",
+        workspace_dir / "06_detect_continuations" / "assets",
         workspace_dir / "06_chapters_continuations" / "assets",
+        workspace_dir / "05_chapter_partition" / "assets",
+        workspace_dir / "05_chapters_raw" / "assets",
+        workspace_dir / "04_stream_reduction" / "assets",
         workspace_dir / "04_reduced_stream" / "assets",
+        workspace_dir / "03_build_raw_stream" / "assets",
         workspace_dir / "03_raw_stream" / "assets",
     ]
     src_assets = next((p for p in asset_candidates if p.exists()), None)
@@ -184,9 +193,12 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
     for the Agent to inspect image assets and author Mermaid or sidecars.
     """
     input_candidates = [
+        workspace_dir / "07_transform_tables",
         workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_detect_continuations",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw"
+        workspace_dir / "05_chapter_partition",
+        workspace_dir / "05_chapters_raw",
     ]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:
@@ -251,18 +263,24 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
 def apply_graphics_tasks(workspace_dir: Path) -> int:
     """
     Reads workspace/tasks/graphics/{node_id}.md and sidecars,
-    updating workspace/08_chapters_graphics/ and workspace/08_chapters_graphics/assets/.
+    updating workspace/08_transform_graphics/ and workspace/08_transform_graphics/assets/.
     """
     tasks_dir = workspace_dir / "tasks" / "graphics"
-    out_dir = workspace_dir / "08_chapters_graphics"
+    out_dir = workspace_dir / "08_transform_graphics"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_assets_dir = out_dir / "assets"
     out_assets_dir.mkdir(parents=True, exist_ok=True)
 
     asset_candidates = [
+        workspace_dir / "07_transform_tables" / "assets",
         workspace_dir / "07_chapters_tables" / "assets",
+        workspace_dir / "06_detect_continuations" / "assets",
         workspace_dir / "06_chapters_continuations" / "assets",
+        workspace_dir / "05_chapter_partition" / "assets",
+        workspace_dir / "05_chapters_raw" / "assets",
+        workspace_dir / "04_stream_reduction" / "assets",
         workspace_dir / "04_reduced_stream" / "assets",
+        workspace_dir / "03_build_raw_stream" / "assets",
         workspace_dir / "03_raw_stream" / "assets",
     ]
     src_assets = next((p for p in asset_candidates if p.exists()), None)
@@ -277,9 +295,12 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
         return 0
 
     input_candidates = [
+        workspace_dir / "07_transform_tables",
         workspace_dir / "07_chapters_tables",
+        workspace_dir / "06_detect_continuations",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw"
+        workspace_dir / "05_chapter_partition",
+        workspace_dir / "05_chapters_raw",
     ]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:

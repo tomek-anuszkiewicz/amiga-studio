@@ -30,19 +30,21 @@ except ImportError:
 
 def process_tables(workspace_dir: Path, config: dict):
     input_candidates = [
+        workspace_dir / "06_detect_continuations",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw"
+        workspace_dir / "05_chapter_partition",
+        workspace_dir / "05_chapters_raw",
     ]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
 
-    out_dir = workspace_dir / "07_chapters_tables"
+    out_dir = workspace_dir / "07_transform_tables"
     out_dir.mkdir(parents=True, exist_ok=True)
     for f in out_dir.glob("*.json"):
         f.unlink()
 
-    # Setup 07_chapters_tables/assets and synchronize upstream assets
+    # Setup 07_transform_tables/assets and synchronize upstream assets
     out_assets_dir = out_dir / "assets"
     out_assets_dir.mkdir(parents=True, exist_ok=True)
     for f in out_assets_dir.glob("*"):
@@ -52,9 +54,13 @@ def process_tables(workspace_dir: Path, config: dict):
             pass
 
     asset_candidates = [
+        workspace_dir / "06_detect_continuations" / "assets",
         workspace_dir / "06_chapters_continuations" / "assets",
+        workspace_dir / "05_chapter_partition" / "assets",
         workspace_dir / "05_chapters_raw" / "assets",
+        workspace_dir / "04_stream_reduction" / "assets",
         workspace_dir / "04_reduced_stream" / "assets",
+        workspace_dir / "03_build_raw_stream" / "assets",
         workspace_dir / "03_raw_stream" / "assets",
         workspace_dir / "assets",
     ]
@@ -146,8 +152,10 @@ def prepare_table_tasks(workspace_dir: Path) -> int:
     for the Agent to inspect and transform.
     """
     input_candidates = [
+        workspace_dir / "06_detect_continuations",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw"
+        workspace_dir / "05_chapter_partition",
+        workspace_dir / "05_chapters_raw",
     ]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:
@@ -221,23 +229,29 @@ def apply_table_tasks(workspace_dir: Path) -> int:
         return 0
 
     input_candidates = [
+        workspace_dir / "06_detect_continuations",
         workspace_dir / "06_chapters_continuations",
-        workspace_dir / "05_chapters_raw"
+        workspace_dir / "05_chapter_partition",
+        workspace_dir / "05_chapters_raw",
     ]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
 
-    out_dir = workspace_dir / "07_chapters_tables"
+    out_dir = workspace_dir / "07_transform_tables"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_assets_dir = out_dir / "assets"
     out_assets_dir.mkdir(parents=True, exist_ok=True)
 
     # Synchronize upstream assets
     asset_candidates = [
+        workspace_dir / "06_detect_continuations" / "assets",
         workspace_dir / "06_chapters_continuations" / "assets",
+        workspace_dir / "05_chapter_partition" / "assets",
         workspace_dir / "05_chapters_raw" / "assets",
+        workspace_dir / "04_stream_reduction" / "assets",
         workspace_dir / "04_reduced_stream" / "assets",
+        workspace_dir / "03_build_raw_stream" / "assets",
         workspace_dir / "03_raw_stream" / "assets",
         workspace_dir / "assets",
     ]

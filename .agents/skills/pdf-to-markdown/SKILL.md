@@ -160,22 +160,22 @@ python .agents/skills/pdf-to-markdown/stages/09_transform_prose/format_prose.py 
 ### Phase D: Emission & TOC Wikilinking (Stages 10 – 11)
 ```powershell
 # 10. Emit Markdown per chapter (suppressing toc_header)
-python .agents/skills/pdf-to-markdown/stages/10_emit_markdown/emit_markdown.py --workspace workspace --output-dir workspace/10_markdown_raw
+python .agents/skills/pdf-to-markdown/stages/10_emit_markdown/emit_markdown.py --workspace workspace --output-dir workspace/10_emit_markdown
 
 # 11. Cross-file fuzzy TOC linking (converts TOC34534 to Obsidian wikilinks and removes delimiters)
-python .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py --input-dir workspace/10_markdown_raw --output-dir workspace/11_markdown_linked
+python .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py --input-dir workspace/10_emit_markdown --output-dir workspace/11_link_toc
 ```
 
 ### Phase E: Opening Section Title Refinement (Stage 12)
 ```powershell
-# Refine canonical chapter name and slug into workspace/12_canonical_markdown
-python .agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py --workspace workspace
+# Refine canonical chapter name and slug into workspace/12_refine_first_chapter_name
+python .agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py --workspace workspace --input-dir workspace/11_link_toc --output-dir workspace/12_refine_first_chapter_name
 ```
 
 ### Phase F: Final OCR Proofreading (Stage 13)
 ```powershell
 # Proofread Markdown files for OCR errors into workspace/13_proofread_markdown/
-python .agents/skills/pdf-to-markdown/stages/13_proofread_markdown/proofread_markdown.py --workspace workspace
+python .agents/skills/pdf-to-markdown/stages/13_proofread_markdown/proofread_markdown.py --workspace workspace --input-dir workspace/12_refine_first_chapter_name --output-dir workspace/13_proofread_markdown
 ```
 
 ---

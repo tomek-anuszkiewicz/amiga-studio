@@ -78,9 +78,14 @@ def reduce_contiguous_graphics(
       2. Crops a single unified asset (PNG/SVG) with 10% safety margin into 04_reduced_stream/assets/.
       3. Replaces the entire sequence of old nodes with a single unified graphic node.
     """
-    pages_dir = workspace_dir / "01_pages" if (workspace_dir / "01_pages").exists() else (workspace_dir / "pages")
+    if (workspace_dir / "01_preprocess").exists():
+        pages_dir = workspace_dir / "01_preprocess"
+    elif (workspace_dir / "01_pages").exists():
+        pages_dir = workspace_dir / "01_pages"
+    else:
+        pages_dir = workspace_dir / "pages"
     if reduced_assets_dir is None:
-        reduced_assets_dir = workspace_dir / "04_reduced_stream" / "assets"
+        reduced_assets_dir = workspace_dir / "04_stream_reduction" / "assets"
     reduced_assets_dir.mkdir(parents=True, exist_ok=True)
 
     reduced_nodes = []
@@ -178,7 +183,7 @@ def reduce_contiguous_graphics(
                             [unified_node],
                             padding_ratio=padding_ratio,
                             assets_dir=reduced_assets_dir,
-                            rel_prefix="04_reduced_stream/assets"
+                            rel_prefix="04_stream_reduction/assets"
                         )
 
                     print(f"    [+] Unified {len(run)} graphic nodes on page {page_num} into {unified_node['node_id']}: '{title}'")
@@ -215,7 +220,7 @@ def reduce_contiguous_tables(
     a single unified crop asset.
     """
     if reduced_assets_dir is None:
-        reduced_assets_dir = workspace_dir / "04_reduced_stream" / "assets"
+        reduced_assets_dir = workspace_dir / "04_stream_reduction" / "assets"
     reduced_assets_dir.mkdir(parents=True, exist_ok=True)
 
     reduced_nodes = []
@@ -290,7 +295,7 @@ def reduce_contiguous_tables(
                         [unified_node],
                         padding_ratio=padding_ratio,
                         assets_dir=reduced_assets_dir,
-                        rel_prefix="04_reduced_stream/assets"
+                        rel_prefix="04_stream_reduction/assets"
                     )
 
                 print(f"    [+] Unified {len(run)} table nodes on page {page_num} into {unified_node['node_id']}")
@@ -309,9 +314,15 @@ def reduce_contiguous_tables(
 
 
 def reduce_stream(workspace_dir: Path, config: dict):
-    raw_stream_path = workspace_dir / "03_raw_stream" / "raw_stream.json"
+    if (workspace_dir / "03_build_raw_stream" / "raw_stream.json").exists():
+        raw_stream_path = workspace_dir / "03_build_raw_stream" / "raw_stream.json"
+    elif (workspace_dir / "03_raw_stream" / "raw_stream.json").exists():
+        raw_stream_path = workspace_dir / "03_raw_stream" / "raw_stream.json"
+    else:
+        raw_stream_path = workspace_dir / "03_build_raw_stream" / "raw_stream.json"
+
     if not raw_stream_path.exists():
-        raise FileNotFoundError(f"Missing raw_stream.json in {workspace_dir / '03_raw_stream'}")
+        raise FileNotFoundError(f"Missing raw_stream.json in {raw_stream_path.parent}")
 
     seam_prompt_path = Path(__file__).resolve().parent / "prompt_seam.md"
     seam_prompt_template = seam_prompt_path.read_text(encoding="utf-8") if seam_prompt_path.exists() else ""
@@ -341,11 +352,13 @@ def reduce_stream(workspace_dir: Path, config: dict):
 
     # Prepare Stage 04 assets directory by synchronizing from Stage 03
     import shutil
-    out_dir = workspace_dir / "04_reduced_stream"
+    out_dir = workspace_dir / "04_stream_reduction"
     out_dir.mkdir(parents=True, exist_ok=True)
     reduced_assets_dir = out_dir / "assets"
     reduced_assets_dir.mkdir(parents=True, exist_ok=True)
-    raw_assets_dir = workspace_dir / "03_raw_stream" / "assets"
+    raw_assets_dir = workspace_dir / "03_build_raw_stream" / "assets"
+    if not raw_assets_dir.exists():
+        raw_assets_dir = workspace_dir / "03_raw_stream" / "assets"
 
     for old_f in reduced_assets_dir.glob("*"):
         if old_f.is_file():
@@ -358,10 +371,12 @@ def reduce_stream(workspace_dir: Path, config: dict):
     for n in active_nodes:
         for k in ("png_path", "svg_path", "raw_text_path"):
             val = n.get(k)
-            if val and "03_raw_stream/assets" in val:
-                n[k] = val.replace("03_raw_stream/assets", "04_reduced_stream/assets")
+            if val and "03_build_raw_stream/assets" in val:
+                n[k] = val.replace("03_build_raw_stream/assets", "04_stream_reduction/assets")
+            elif val and "03_raw_stream/assets" in val:
+                n[k] = val.replace("03_raw_stream/assets", "04_stream_reduction/assets")
             elif val and val.startswith("assets/"):
-                n[k] = f"04_reduced_stream/{val}"
+                n[k] = f"04_stream_reduction/{val}"
 
     # Step 2: Unify contiguous graphic nodes on identical pages
     padding = config.get("render", {}).get("padding_margin_ratio", 0.10)
@@ -430,7 +445,7 @@ def reduce_stream(workspace_dir: Path, config: dict):
     if welded_code_count > 0:
         print(f"[*] Code Welding: Welded {welded_code_count} consecutive code block segments.")
 
-    out_dir = workspace_dir / "04_reduced_stream"
+    out_dir = workspace_dir / "04_stream_reduction"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Prune orphaned asset files that do not belong to any active node in final_nodes
