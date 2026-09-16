@@ -175,7 +175,11 @@ def run_stage(
         print(f"[CMD] {' '.join(cmd)}")
 
     status_file = workspace_dir / "stage_status.json"
-    stage_metrics_file = workspace_dir / f".stage_{stage_num}_metrics.json"
+    stage_info = next((s for s in STAGE_DEFINITIONS if s[0] == stage_num), None)
+    stage_dir_name = stage_info[1] if stage_info else f"stage_{stage_num}"
+    stage_dir = workspace_dir / stage_dir_name
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    stage_metrics_file = stage_dir / ".metrics.json"
 
     # Reset metrics file for this stage run
     try:
@@ -199,6 +203,13 @@ def run_stage(
                 return 0
         return 0
 
+    def cleanup_metrics():
+        if stage_metrics_file.exists():
+            try:
+                stage_metrics_file.unlink()
+            except Exception:
+                pass
+
     update_status(status_file, stage_num, "running")
 
     start_time = time.time()
@@ -206,18 +217,21 @@ def run_stage(
         result = subprocess.run(cmd, env=env, check=True)
         duration = round(time.time() - start_time, 2)
         calls = read_llm_calls()
+        cleanup_metrics()
         update_status(status_file, stage_num, "success", duration_seconds=duration, llm_calls=calls)
         print(f"[*] Stage {stage_num} finished in {duration:.2f}s with {calls} LLM call(s).")
         return True
     except subprocess.CalledProcessError as e:
         duration = round(time.time() - start_time, 2)
         calls = read_llm_calls()
+        cleanup_metrics()
         print(f"[!] Stage {stage_num} failed with return code {e.returncode} ({duration:.2f}s, {calls} LLM calls)", file=sys.stderr)
         update_status(status_file, stage_num, "failed", f"Exit code {e.returncode}", duration_seconds=duration, llm_calls=calls)
         return False
     except Exception as e:
         duration = round(time.time() - start_time, 2)
         calls = read_llm_calls()
+        cleanup_metrics()
         print(f"[!] Stage {stage_num} encountered exception: {e} ({duration:.2f}s, {calls} LLM calls)", file=sys.stderr)
         update_status(status_file, stage_num, "failed", str(e), duration_seconds=duration, llm_calls=calls)
         return False
@@ -356,6 +370,14 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_idx: in
     stages_to_clean = [s[0] for s in STAGE_DEFINITIONS[start_idx:]]
     print(f"[*] Invalidation: Wiping intermediate and output artifacts from Stage {start_info[0]} onwards...")
     for s_id in stages_to_clean:
+        s_info = next((s for s in STAGE_DEFINITIONS if s[0] == s_id), None)
+        if s_info:
+            m_stage = workspace_dir / s_info[1] / ".metrics.json"
+            if m_stage.exists():
+                try:
+                    m_stage.unlink()
+                except Exception:
+                    pass
         m_file = workspace_dir / f".stage_{s_id}_metrics.json"
         if m_file.exists():
             try:

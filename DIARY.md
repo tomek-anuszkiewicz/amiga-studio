@@ -4248,6 +4248,16 @@ Every future modification or implementation task must append an entry following 
     - Page 2 classified as `blank` (0 blocks, marked cleanly as blank separator).
   - `python tools/pre_flight.py`: All quality gates PASSED (18/18 architecture tests, formatting clean, zero attractors).
 
+---
 
-
-
+### [2026-09-16 12:28 CEST] — PDF-to-Markdown: Scoped Subdirectory Metrics & Workspace Root Cleanup
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Re-scoped temporary IPC stage metrics file from workspace root (`workspace/.stage_{num}_metrics.json`) into the stage's own subdirectory (`workspace/{stage_dir}/.metrics.json`), added automated deletion upon recording into `stage_status.json`, and enhanced downstream invalidation cleanup.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated clutter in the workspace root: previously, 14 temporary `.stage_*_metrics.json` counter files accumulated in `workspace/` alongside the primary manifests.
+  - While running, stage metrics now reside inside their dedicated stage directory (`workspace/{stage_dir}/.metrics.json`), preventing pollution of the top-level directory.
+  - Added an automatic `cleanup_metrics()` hook on stage completion (for all exit states: success, failure, and exception) that immediately unlinks the temporary file once its call count is committed to `stage_status.json`.
+  - Wiped all 28 legacy `.stage_*_metrics.json` artifacts across both reference manual workspaces.
+- **Verification & Test Results**:
+  - Verified `workspace/` content: reduced from 31 files down to strictly the 13 stage directories and 3 manifest files (`chapters_manifest.json`, `pages_manifest.json`, `stage_status.json`).
+  - `python tools/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting 100% compliant, 0 attractors, AGENTS.md <= 14,000 bytes, 18/18 architecture rules).
