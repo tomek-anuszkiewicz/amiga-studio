@@ -162,6 +162,9 @@ pub struct Denise {
     pub bpl_armed: bool,
     /// Last held color for HAM6 mode
     pub last_ham_rgb: u16,
+    /// Pipeline delayed pixels (2 hires pixels hardware latency)
+    pub pipeline_pixels: [u32; 2],
+    pub pipeline_pixels_valid: [bool; 2],
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
@@ -198,6 +201,8 @@ impl Denise {
             shifters: [0; 6],
             bpl_armed: false,
             last_ham_rgb: 0,
+            pipeline_pixels: [0; 2],
+            pipeline_pixels_valid: [false; 2],
             mutations: [None; DENISE_MUTATION_CAPACITY],
         }
     }
@@ -229,6 +234,8 @@ impl Denise {
         self.shifters.fill(0);
         self.bpl_armed = false;
         self.last_ham_rgb = 0;
+        self.pipeline_pixels = [0; 2];
+        self.pipeline_pixels_valid = [false; 2];
         self.mutations = [None; DENISE_MUTATION_CAPACITY];
     }
 
@@ -240,6 +247,8 @@ impl Denise {
             self.last_ham_rgb = self.color[0];
             self.bpl_armed = false;
             self.shifters = [0; 6];
+            self.pipeline_pixels = [0; 2];
+            self.pipeline_pixels_valid = [false; 2];
         }
 
         self.sprites.step_cck(beam);
@@ -309,69 +318,124 @@ impl Denise {
             }
         } else {
             let plane_count = self.bitplane_count();
-            if self.frame_builder.dma_enabled && plane_count > 0 {
+            let backdrop = frame_builder::rgb444_to_argb32(self.color[0]);
+            let y = beam.vpos as usize;
+            let cck_base_x = (beam.hpos as usize) * 4;
+
+            if self.frame_builder.dma_enabled && plane_count > 0 && self.bpl_armed {
                 let hires = self.is_hires();
-                let pf_delay = ((self.bplcon1 & 0x0F) as usize) * 2;
-                // Physical Denise serializer has a 2-hires-pixel hardware pipeline output latency
-                let base_x = (beam.hpos as usize) * 4 + pf_delay + 2;
-                let backdrop = frame_builder::rgb444_to_argb32(self.color[0]);
                 if hires {
-                    for px in 0..4 {
-                        let p = self.shift_pixel();
-                        let in_diw_px = if px < 2 { in_diw0 } else { in_diw1 };
-                        let argb = if in_diw_px && self.bpl_armed {
-                            let rgb = self.decode_pixel(p);
-                            frame_builder::rgb444_to_argb32(rgb)
-                        } else {
-                            backdrop
-                        };
-                        self.frame_builder
-                            .set_pixel(base_x + px, beam.vpos as usize, argb);
-                    }
-                } else {
-                    // Low-res: 2 pixels per CCK, each spanning 2 frame buffer pixels
                     let p0 = self.shift_pixel();
-                    let argb0 = if in_diw0 && self.bpl_armed {
-                        let rgb0 = self.decode_pixel(p0);
+                    let p1 = self.shift_pixel();
+                    let p2 = self.shift_pixel();
+                    let p3 = self.shift_pixel();
+
+                    let px0 = if self.pipeline_pixels_valid[0] {
+                        self.pipeline_pixels[0]
+                    } else {
+                        backdrop
+                    };
+                    let px1 = if self.pipeline_pixels_valid[1] {
+                        self.pipeline_pixels[1]
+                    } else {
+                        backdrop
+                    };
+
+                    let rgb0 = if in_diw0 { self.decode_pixel(p0) } else { 0 };
+                    let px2 = if in_diw0 && p0 != 0 {
                         frame_builder::rgb444_to_argb32(rgb0)
                     } else {
                         backdrop
                     };
 
-                    let p1 = self.shift_pixel();
-                    let argb1 = if in_diw1 && self.bpl_armed {
-                        let rgb1 = self.decode_pixel(p1);
+                    let rgb1 = if in_diw0 { self.decode_pixel(p1) } else { 0 };
+                    let px3 = if in_diw0 && p1 != 0 {
                         frame_builder::rgb444_to_argb32(rgb1)
                     } else {
                         backdrop
                     };
 
-                    let y = beam.vpos as usize;
-                    self.frame_builder.set_pixel(base_x, y, argb0);
-                    self.frame_builder.set_pixel(base_x + 1, y, argb0);
-                    self.frame_builder.set_pixel(base_x + 2, y, argb1);
-                    self.frame_builder.set_pixel(base_x + 3, y, argb1);
-                }
+                    self.frame_builder.set_pixel(cck_base_x, y, px0);
+                    self.frame_builder.set_pixel(cck_base_x + 1, y, px1);
+                    self.frame_builder.set_pixel(cck_base_x + 2, y, px2);
+                    self.frame_builder.set_pixel(cck_base_x + 3, y, px3);
 
-                if beam.hpos == 226 {
-                    let y = beam.vpos as usize;
-                    let p2 = self.shift_pixel();
-                    let argb2 = if in_diw1 && self.bpl_armed {
-                        let rgb2 = self.decode_pixel(p2);
-                        frame_builder::rgb444_to_argb32(rgb2)
+                    let rgb2 = if in_diw1 { self.decode_pixel(p2) } else { 0 };
+                    if in_diw1 && p2 != 0 {
+                        self.pipeline_pixels[0] = frame_builder::rgb444_to_argb32(rgb2);
+                        self.pipeline_pixels_valid[0] = true;
+                    } else {
+                        self.pipeline_pixels_valid[0] = false;
+                    }
+
+                    let rgb3 = if in_diw1 { self.decode_pixel(p3) } else { 0 };
+                    if in_diw1 && p3 != 0 {
+                        self.pipeline_pixels[1] = frame_builder::rgb444_to_argb32(rgb3);
+                        self.pipeline_pixels_valid[1] = true;
+                    } else {
+                        self.pipeline_pixels_valid[1] = false;
+                    }
+                } else {
+                    // Low-res: 2 pixels per CCK, each spanning 2 frame buffer pixels
+                    let p0 = self.shift_pixel();
+                    let p1 = self.shift_pixel();
+
+                    let px0 = if self.pipeline_pixels_valid[0] {
+                        self.pipeline_pixels[0]
                     } else {
                         backdrop
                     };
-                    self.frame_builder.set_pixel(base_x + 4, y, argb2);
-                    self.frame_builder.set_pixel(base_x + 5, y, argb2);
+                    let px1 = if self.pipeline_pixels_valid[1] {
+                        self.pipeline_pixels[1]
+                    } else {
+                        backdrop
+                    };
+
+                    let rgb0 = if in_diw0 { self.decode_pixel(p0) } else { 0 };
+                    let px2 = if in_diw0 && p0 != 0 {
+                        frame_builder::rgb444_to_argb32(rgb0)
+                    } else {
+                        backdrop
+                    };
+                    let px3 = px2;
+
+                    self.frame_builder.set_pixel(cck_base_x, y, px0);
+                    self.frame_builder.set_pixel(cck_base_x + 1, y, px1);
+                    self.frame_builder.set_pixel(cck_base_x + 2, y, px2);
+                    self.frame_builder.set_pixel(cck_base_x + 3, y, px3);
+
+                    let rgb1 = if in_diw1 { self.decode_pixel(p1) } else { 0 };
+                    if in_diw1 && p1 != 0 {
+                        let argb = frame_builder::rgb444_to_argb32(rgb1);
+                        self.pipeline_pixels[0] = argb;
+                        self.pipeline_pixels[1] = argb;
+                        self.pipeline_pixels_valid = [true, true];
+                    } else {
+                        self.pipeline_pixels_valid = [false, false];
+                    }
+                }
+
+                if beam.hpos == 226 {
+                    let px4 = if self.pipeline_pixels_valid[0] {
+                        self.pipeline_pixels[0]
+                    } else {
+                        backdrop
+                    };
+                    let px5 = if self.pipeline_pixels_valid[1] {
+                        self.pipeline_pixels[1]
+                    } else {
+                        backdrop
+                    };
+                    self.frame_builder.set_pixel(cck_base_x + 4, y, px4);
+                    self.frame_builder.set_pixel(cck_base_x + 5, y, px5);
+                    self.pipeline_pixels_valid = [false, false];
                 }
             } else {
-                let backdrop_argb = frame_builder::rgb444_to_argb32(self.color[0]);
+                self.pipeline_pixels_valid = [false, false];
                 self.frame_builder
-                    .set_cck_pixels(beam.hpos, beam.vpos, backdrop_argb);
+                    .set_cck_pixels(beam.hpos, beam.vpos, backdrop);
                 if beam.hpos == 226 {
-                    self.frame_builder
-                        .set_cck_pixels(227, beam.vpos, backdrop_argb);
+                    self.frame_builder.set_cck_pixels(227, beam.vpos, backdrop);
                 }
             }
         }

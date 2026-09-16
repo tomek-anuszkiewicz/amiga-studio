@@ -196,3 +196,84 @@ fn test_render_scanline_with_fine_scrolling() {
         assert_eq!(denise.frame_builder.get_pixel(x, 100), 0xFFF0_F0F0);
     }
 }
+
+#[test]
+fn test_pipeline_pixels_latency_and_backdrop_immediacy() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.set_bplcon0(0x1200); // 1 bitplane, low-res
+    denise.set_color(0, 0xF00); // Red backdrop
+    denise.set_color(1, 0x0F0); // Green foreground
+    denise.frame_builder.dma_enabled = true;
+    denise.set_diw(0x2C81, 0x2CC1); // Standard PAL display window
+
+    // When bpl_armed is false: all 4 pixels of CCK receive backdrop immediately
+    let beam = config::BeamPosition::new(50, 100, false);
+    denise.step_cck(beam);
+    let red_argb = frame_builder::rgb444_to_argb32(0xF00);
+    let green_argb = frame_builder::rgb444_to_argb32(0x0F0);
+
+    for px in 0..4 {
+        assert_eq!(
+            denise.frame_builder.get_pixel(50 * 4 + px, 100),
+            red_argb,
+            "Pixel at offset {} should be immediate red backdrop when bpl_armed is false",
+            px
+        );
+    }
+
+    // Arm bitplanes by writing BPL1DAT: $C000 (two 1s followed by zeroes)
+    denise.write_bpldat(0, 0xC000);
+    assert!(denise.bpl_armed);
+
+    // Step across HSTART (hstrt = 129, triggered at CCK 63: c1 = 63*2+3 = 129)
+    for h in 62..64 {
+        let b = config::BeamPosition::new(h, 100, false);
+        denise.step_cck(b);
+    }
+    assert!(denise.hflop);
+
+    // In Low-Res, CCK 64 (inside DIW, and 64 % 8 == 0 for shifter reload):
+    // p0 = 1 (Green), p1 = 1 (Green).
+    // Due to 2-hires-pixel latency:
+    // px0, px1 receive previous pipeline (red backdrop)
+    // px2, px3 receive p0 (Green foreground)
+    // p1 is staged in pipeline_pixels for the next CCK
+    let beam2 = config::BeamPosition::new(64, 100, false);
+    denise.step_cck(beam2);
+
+    assert_eq!(
+        denise.frame_builder.get_pixel(64 * 4 + 0, 100),
+        red_argb,
+        "px0 should be un-delayed backdrop before pipeline flush"
+    );
+    assert_eq!(
+        denise.frame_builder.get_pixel(64 * 4 + 1, 100),
+        red_argb,
+        "px1 should be un-delayed backdrop before pipeline flush"
+    );
+    assert_eq!(
+        denise.frame_builder.get_pixel(64 * 4 + 2, 100),
+        green_argb,
+        "px2 should be delayed foreground pixel"
+    );
+    assert_eq!(
+        denise.frame_builder.get_pixel(64 * 4 + 3, 100),
+        green_argb,
+        "px3 should be delayed foreground pixel"
+    );
+
+    // Next CCK 65: receives staged p1 in px0, px1
+    let beam3 = config::BeamPosition::new(65, 100, false);
+    denise.step_cck(beam3);
+
+    assert_eq!(
+        denise.frame_builder.get_pixel(65 * 4 + 0, 100),
+        green_argb,
+        "px0 of subsequent CCK should receive staged trailing foreground pixel"
+    );
+    assert_eq!(
+        denise.frame_builder.get_pixel(65 * 4 + 1, 100),
+        green_argb,
+        "px1 of subsequent CCK should receive staged trailing foreground pixel"
+    );
+}

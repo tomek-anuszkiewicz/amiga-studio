@@ -4146,3 +4146,31 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p blitter`: All unit tests passed including new latch tests.
   - `cargo test -p test_runner --test test_architecture_rules`: All 20 architecture tests passed.
   - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly.
+
+---
+
+### [2026-09-16 03:12 CEST] — Denise Pixel Pipeline Latency Alignment & 100% Pass on Blitter Fill Suite (fill0..fill7)
+- **Affected Subsystems**:
+  - `crates/denise/src/denise.rs` (implemented hardware pipeline delayed bitplane output with zero-delay backdrop palette changes)
+  - `crates/test_runner/src/vamiga/injector.rs` (initialized standard Kickstart OS display window defaults `DIWSTRT = 0x2C81`, `DIWSTOP = 0x2CC1`)
+  - `crates/test_runner/tests/test_vamiga_blitter.rs` (added `test_vamiga_blitter_fill0_execution` and `test_vamiga_blitter_fill_suite_execution`)
+- **What Was Changed (The Concrete Reality)**:
+  - **Kickstart OS Display Window Calibration:**
+    - Diagnosed that tests using `ministartup.i` rely on `graphics.library` initializing standard PAL display window geometry (`DIWSTRT = 0x2C81`, `DIWSTOP = 0x2CC1`).
+    - With zero-initialized DIW registers in direct injection, horizontal display window comparator never matched `c0`/`c1` ($\ge 2$), leaving `hflop = false` and blacking out all 78 rows of bitplane patterns.
+    - Initialized Kickstart OS defaults in `inject_vamiga_test`, cutting `fill0` pixel mismatches from 3,560 (1.74%) down to 80 pixels (0.039%).
+  - **Silicon Reality of Copper COLOR00 Rulers vs Bitplane Pipeline Latency:**
+    - Isolated the remaining 80 mismatched pixels to scanline 131 (viewport y=105), which displays Copper ruler bars (alternating `COLOR00` writes every 4 CCKs).
+    - In physical silicon, palette register writes (`COLOR00`) affect DAC outputs immediately at CCK boundaries (`4 * hpos`), whereas bitplane serializer shift registers incur a 2-hires-pixel output pipeline delay.
+    - Previously, Denise applied `base_x = 4 * hpos + 2` indiscriminately to both bitplanes and backdrop (`COLOR00`) whenever `plane_count > 0`, shifting ruler stripes by 2 pixels to the right and dropping the first 2 pixels when bitplanes armed.
+    - Restructured `Denise::step_cck()` with `pipeline_pixels: [u32; 2]` and `pipeline_pixels_valid: [bool; 2]`:
+      - Backdrop (`COLOR00`) writes immediately at `cck_base_x = 4 * hpos` with zero pipeline delay.
+      - Bitplane foreground pixels output with physical 2-hires-pixel pipeline delay, staging the trailing pixel across CCK boundaries into `pipeline_pixels`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Decoupled Background & Foreground Execution:* Respecting physical hardware reality—that color palette registers change DAC output immediately while bitplane data travels through multi-stage shift registers—eliminated the scanline 131 phase shift cleanly without arbitrary per-suite hacks or golden hash adjustments.
+- **Verification & Test Results**:
+  - `fill0` through `fill7`: **8/8 (100.0%) PASS** with 0 mismatched pixels across all 8 tests (204,060/204,060 pixels per test).
+  - `sblit0`, `sblit1`, `sblit3`, `sblit9`: Confirmed non-regression (100% pass, 0 mismatches).
+  - `cargo test -p test_runner --test test_vamiga_blitter`: All 7 blitter verification tests passed in 8.34s.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 20 architecture tests passed.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 385 files.

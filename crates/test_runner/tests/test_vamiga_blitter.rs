@@ -236,3 +236,75 @@ fn test_vamiga_blitter_sblit9_execution() {
 
     assert_eq!(result.mismatched_pixels, 0, "sblit9 pixel mismatch");
 }
+
+#[test]
+fn test_vamiga_blitter_fill0_execution() {
+    let base = if Path::new("ref_src").exists() {
+        PathBuf::from("ref_src")
+    } else {
+        PathBuf::from("../../ref_src")
+    };
+    let test_dir = base.join("vAmigaTS/Agnus/Blitter/fill/fill0");
+    if !test_dir.exists() {
+        eprintln!("vAmigaTS test directory not present: {:?}", test_dir);
+        return;
+    }
+
+    let config = VamigaRunConfig {
+        frames_to_run: 8,
+        ..Default::default()
+    };
+
+    let result = run_vamiga_test_from_dir(&test_dir, "fill0", &config)
+        .expect("fill0 execution failed to run");
+
+    println!(
+        "fill0 result: passed={}, mismatched_pixels={}/{}",
+        result.passed, result.mismatched_pixels, result.total_pixels
+    );
+    if let Some(diff) = &result.first_mismatch {
+        println!(
+            "First mismatch at ({}, {}): actual={:?}, expected={:?}",
+            diff.x, diff.y, diff.actual, diff.expected
+        );
+    }
+
+    assert!(
+        result.passed,
+        "fill0 should achieve 100% pixel match, got {} mismatches",
+        result.mismatched_pixels
+    );
+    assert_eq!(result.mismatched_pixels, 0);
+}
+
+#[test]
+fn test_vamiga_blitter_fill_suite_execution() {
+    let base = if Path::new("ref_src").exists() {
+        PathBuf::from("ref_src")
+    } else {
+        PathBuf::from("../../ref_src")
+    };
+
+    let config = VamigaRunConfig {
+        frames_to_run: 8,
+        ..Default::default()
+    };
+
+    for i in 0..=7 {
+        let name = format!("fill{}", i);
+        let test_dir = base.join(format!("vAmigaTS/Agnus/Blitter/fill/{}", name));
+        if !test_dir.exists() {
+            continue;
+        }
+
+        let result = run_vamiga_test_from_dir(&test_dir, &name, &config)
+            .unwrap_or_else(|e| panic!("{} execution failed to run: {}", name, e));
+
+        assert!(
+            result.passed,
+            "{} should achieve 100% pixel match, got {} mismatches",
+            name, result.mismatched_pixels
+        );
+        assert_eq!(result.mismatched_pixels, 0);
+    }
+}
