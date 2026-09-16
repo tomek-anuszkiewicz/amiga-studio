@@ -85,9 +85,9 @@ def process_tables(workspace_dir: Path, config: dict):
         idx, raw_text, png_path = task
         full_prompt = f"{base_prompt}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
         if png_path and png_path.exists():
-            rendered = gemini.generate_vision(full_prompt, image_path=png_path)
+            rendered = gemini.generate_vision(full_prompt, image_path=png_path, stage="07_transform_tables")
         else:
-            rendered = gemini.generate_text(full_prompt)
+            rendered = gemini.generate_text(full_prompt, stage="07_transform_tables")
         return idx, rendered
 
     for c_file in chapter_files:

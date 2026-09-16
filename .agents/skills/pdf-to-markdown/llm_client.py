@@ -71,13 +71,27 @@ def _dump_metrics():
 atexit.register(_dump_metrics)
 
 
+from datetime import datetime
+
+_call_counter = 0
+_call_counter_lock = threading.Lock()
+
+
+def _next_call_id() -> int:
+    global _call_counter
+    with _call_counter_lock:
+        _call_counter += 1
+        return _call_counter
+
+
 class GeminiClient:
     def __init__(self, config: dict = None):
         self.config = (config or {}).get("llm", {})
         self.api_key = os.getenv("GEMINI_API_KEY")
         self.default_model = self.config.get("model_prose", "gemini-3.8-flash")
         self.vision_model = self.config.get("model_vision", "gemini-3.8-flash")
-        self.thinking_level = self.config.get("thinking_level", "medium")
+        self.default_thinking_budget = self.config.get("default_thinking_budget", 0)
+        self.stages_thinking_budget = self.config.get("stages_thinking_budget", {})
         self.temperature = self.config.get("temperature", 0.1)
         self.client = None
         self._init_client()
@@ -111,30 +125,60 @@ class GeminiClient:
     def is_available(self) -> bool:
         return self.client is not None and bool(self.api_key)
 
-    def generate_text(self, prompt: str, model: str = None) -> str:
+    def resolve_thinking_budget(self, stage: Optional[str] = None, thinking_budget: Optional[int] = None) -> Optional[int]:
+        if thinking_budget is not None:
+            return thinking_budget
+        if stage and stage in self.stages_thinking_budget:
+            return self.stages_thinking_budget[stage]
+        return self.default_thinking_budget
+
+    def _build_config(self, stage: Optional[str] = None, thinking_budget: Optional[int] = None, response_mime_type: Optional[str] = None):
+        from google.genai import types
+        budget = self.resolve_thinking_budget(stage=stage, thinking_budget=thinking_budget)
+        thinking_config = None
+        if budget is not None:
+            thinking_config = types.ThinkingConfig(thinking_budget=budget)
+
+        cfg = types.GenerateContentConfig(
+            temperature=self.temperature,
+            thinking_config=thinking_config,
+            response_mime_type=response_mime_type,
+        )
+        return cfg, budget
+
+    def generate_text(self, prompt: str, model: str = None, stage: Optional[str] = None, thinking_budget: Optional[int] = None, response_mime_type: Optional[str] = None) -> str:
         if not self.is_available():
             raise RuntimeError("GEMINI_API_KEY environment variable is required for pipeline inference.")
         import time
         import re
-        from google.genai import types
 
         models_to_try = [model or self.default_model]
         if "gemini-3.6-flash" not in models_to_try:
             models_to_try.append("gemini-3.6-flash")
+
+        config, budget = self._build_config(stage=stage, thinking_budget=thinking_budget, response_mime_type=response_mime_type)
+        cid = _next_call_id()
 
         last_error = None
         for m in models_to_try:
             for attempt in range(4):
                 try:
                     _record_call()
-                    config = types.GenerateContentConfig(
-                        temperature=self.temperature,
-                    )
+                    ts_start = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                    b_str = f"thinking={budget}" if budget is not None else "thinking=auto"
+                    s_str = f" stage={stage}" if stage else ""
+                    print(f"[{ts_start}] [LLM START #{cid}] model={m}{s_str} {b_str}...")
+                    t0 = time.perf_counter()
+
                     response = self.client.models.generate_content(
                         model=m,
                         contents=prompt,
                         config=config,
                     )
+                    elapsed = time.perf_counter() - t0
+                    ts_done = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                    print(f"[{ts_done}] [LLM DONE  #{cid}] elapsed={elapsed:.2f}s")
+
                     if response and response.text:
                         return response.text
                 except Exception as e:
@@ -154,14 +198,13 @@ class GeminiClient:
             f"Last error: {last_error}"
         )
 
-    def generate_vision(self, prompt: str, image_path: Path, model: str = None) -> str:
+    def generate_vision(self, prompt: str, image_path: Path, model: str = None, stage: Optional[str] = None, thinking_budget: Optional[int] = None, response_mime_type: Optional[str] = None) -> str:
         if not self.is_available():
             raise RuntimeError("GEMINI_API_KEY environment variable is required for pipeline inference.")
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found for vision generation: {image_path}")
         import time
         import re
-        from google.genai import types
         from PIL import Image
 
         models_to_try = [model or self.vision_model]
@@ -169,19 +212,29 @@ class GeminiClient:
             models_to_try.append("gemini-3.6-flash")
 
         image = Image.open(image_path)
+        config, budget = self._build_config(stage=stage, thinking_budget=thinking_budget, response_mime_type=response_mime_type)
+        cid = _next_call_id()
+
         last_error = None
         for m in models_to_try:
             for attempt in range(4):
                 try:
                     _record_call()
-                    config = types.GenerateContentConfig(
-                        temperature=self.temperature,
-                    )
+                    ts_start = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                    b_str = f"thinking={budget}" if budget is not None else "thinking=auto"
+                    s_str = f" stage={stage}" if stage else ""
+                    print(f"[{ts_start}] [LLM START #{cid}] model={m}{s_str} {b_str} img={image_path.name}...")
+                    t0 = time.perf_counter()
+
                     response = self.client.models.generate_content(
                         model=m,
                         contents=[image, prompt],
                         config=config,
                     )
+                    elapsed = time.perf_counter() - t0
+                    ts_done = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                    print(f"[{ts_done}] [LLM DONE  #{cid}] elapsed={elapsed:.2f}s")
+
                     if response and response.text:
                         return response.text
                 except Exception as e:
@@ -201,32 +254,66 @@ class GeminiClient:
             f"Last error: {last_error}"
         )
 
-    def generate_json(self, prompt: str, image_path: Optional[Path] = None, model: str = None):
+    def generate_json(self, prompt: str, image_path: Optional[Path] = None, model: str = None, stage: Optional[str] = None, thinking_budget: Optional[int] = None):
         import json
         import re
 
-        raw = self.generate_vision(prompt, image_path, model=model) if image_path else self.generate_text(prompt, model=model)
-        if not raw:
-            raise RuntimeError("Fatal: LLM returned empty response for generate_json.")
+        def _clean_and_parse(raw_text: str):
+            text = raw_text.strip()
+            fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+            if fence_match:
+                text = fence_match.group(1).strip()
 
-        # Clean markdown fences if present
-        text = raw.strip()
-        fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
-        if fence_match:
-            text = fence_match.group(1).strip()
-
-        # Try parsing full text
-        try:
-            return json.loads(text)
-        except Exception:
-            pass
-
-        # Try finding JSON object or array
-        bracket_match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", text)
-        if bracket_match:
+            # 1. Direct parse with strict=False (allows control chars)
             try:
-                return json.loads(bracket_match.group(1))
-            except Exception as e:
-                raise RuntimeError(f"Fatal: JSON parse failed: {e}\nRaw response:\n{text[:500]}")
+                return json.loads(text, strict=False)
+            except Exception:
+                pass
 
-        raise RuntimeError(f"Fatal: No valid JSON object or array found in LLM response:\n{text[:500]}")
+            # 2. Repair naked unescaped backslashes (e.g. \a, \alpha, \ ) common in math/OCR
+            repaired = re.sub(r'\\([^"\\/bfnrtu])', r'\\\\\1', text)
+            try:
+                return json.loads(repaired, strict=False)
+            except Exception:
+                pass
+
+            # 3. Bracket extraction with repair
+            bracket_match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", text)
+            if bracket_match:
+                cand = bracket_match.group(1)
+                try:
+                    return json.loads(cand, strict=False)
+                except Exception:
+                    repaired_cand = re.sub(r'\\([^"\\/bfnrtu])', r'\\\\\1', cand)
+                    return json.loads(repaired_cand, strict=False)
+
+            raise ValueError(f"No valid JSON found in response:\n{text[:400]}")
+
+        # Try with response_mime_type="application/json", retrying up to 2 times on parsing failure
+        last_parse_error = None
+        for attempt in range(2):
+            raw = (
+                self.generate_vision(prompt, image_path, model=model, stage=stage, thinking_budget=thinking_budget, response_mime_type="application/json")
+                if image_path else
+                self.generate_text(prompt, model=model, stage=stage, thinking_budget=thinking_budget, response_mime_type="application/json")
+            )
+            if not raw:
+                raise RuntimeError("Fatal: LLM returned empty response for generate_json.")
+
+            try:
+                return _clean_and_parse(raw)
+            except Exception as e:
+                last_parse_error = e
+                print(f"[!] Warning: JSON parse failed (attempt {attempt+1}/2): {e}. Retrying with plain text mode...")
+                # Second attempt fallback to unconstrained text mode
+                try:
+                    raw_fallback = (
+                        self.generate_vision(prompt, image_path, model=model, stage=stage, thinking_budget=thinking_budget)
+                        if image_path else
+                        self.generate_text(prompt, model=model, stage=stage, thinking_budget=thinking_budget)
+                    )
+                    return _clean_and_parse(raw_fallback)
+                except Exception as e2:
+                    last_parse_error = e2
+
+        raise RuntimeError(f"Fatal: JSON parse failed across all retry attempts: {last_parse_error}")

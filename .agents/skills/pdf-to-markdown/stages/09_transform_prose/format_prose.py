@@ -77,9 +77,9 @@ def process_prose(workspace_dir: Path, config: dict):
             f"## Raw Text:\n```text\n{raw_text}\n```\n"
         )
         if n_type == "code_block" and png_path and png_path.exists():
-            rendered = gemini.generate_vision(full_prompt, image_path=png_path)
+            rendered = gemini.generate_vision(full_prompt, image_path=png_path, stage="09_transform_prose")
         else:
-            rendered = gemini.generate_text(full_prompt)
+            rendered = gemini.generate_text(full_prompt, stage="09_transform_prose")
 
         if rendered:
             rendered_text = rendered.strip()

@@ -113,7 +113,7 @@ def process_graphics(workspace_dir: Path, config: dict):
         png_path = workspace_dir / png_rel if png_rel else None
 
         # First, classify with Gemini if this is a flowchart, ascii_art (register/bitfield), or circuit schematic
-        triage = gemini.generate_json(triage_prompt, image_path=png_path) if png_path and png_path.exists() and triage_prompt else {}
+        triage = gemini.generate_json(triage_prompt, image_path=png_path, stage="08_transform_graphics") if png_path and png_path.exists() and triage_prompt else {}
         graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
 
         # Check for genuine figure caption from raw_text or separate caption nodes
@@ -131,7 +131,7 @@ def process_graphics(workspace_dir: Path, config: dict):
         sidecar_title = re.sub(r"[\[\]|]", "", sidecar_title)
 
         if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:
-            mermaid_res = gemini.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path)
+            mermaid_res = gemini.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path, stage="08_transform_graphics")
             if mermaid_res:
                 return idx, {
                     "rendered_markdown": mermaid_res.strip() + "\n\n",
@@ -147,7 +147,7 @@ def process_graphics(workspace_dir: Path, config: dict):
                 (f"Include the genuine figure caption below the ASCII diagram: *{genuine_caption}*" if genuine_caption else "No caption line was printed in the book, do not output any caption.")
             )
             full_ascii_prompt = f"{ascii_prompt}\n\nCaption Guideline: {caption_hint}\n\nExtracted Labels:\n{raw_text}"
-            ascii_res = gemini.generate_vision(full_ascii_prompt, png_path)
+            ascii_res = gemini.generate_vision(full_ascii_prompt, png_path, stage="08_transform_graphics")
             if ascii_res:
                 return idx, {
                     "rendered_markdown": ascii_res.strip() + "\n\n",
@@ -170,7 +170,7 @@ def process_graphics(workspace_dir: Path, config: dict):
         sidecar_name = f"{asset_file}.txt"
         sidecar_text = None
         if png_path and png_path.exists() and sidecar_prompt:
-            sidecar_text = gemini.generate_vision(f"{sidecar_prompt}\n\nExtracted Labels:\n{raw_text}", png_path)
+            sidecar_text = gemini.generate_vision(f"{sidecar_prompt}\n\nExtracted Labels:\n{raw_text}", png_path, stage="08_transform_graphics")
 
         if not sidecar_text:
             sidecar_text = (

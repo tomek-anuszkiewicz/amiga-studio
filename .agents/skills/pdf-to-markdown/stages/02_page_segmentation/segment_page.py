@@ -92,7 +92,7 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
         f"{json.dumps(blocks_summary, indent=2)}"
     )
 
-    classifications = gemini.generate_json(prompt, image_path=png_path if png_path and png_path.exists() else None)
+    classifications = gemini.generate_json(prompt, image_path=png_path if png_path and png_path.exists() else None, stage="02_page_segmentation")
     type_map = {}
     if isinstance(classifications, list):
         for item in classifications:

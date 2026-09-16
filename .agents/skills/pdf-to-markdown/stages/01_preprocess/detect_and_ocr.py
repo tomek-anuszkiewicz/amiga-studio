@@ -173,7 +173,17 @@ def detect_and_ocr_pages(
                 print("[!] Error: Gemini API key not configured or client offline.", file=sys.stderr)
                 return False
 
-        ocr_response = gemini.generate_json(prompt_text, image_path=png_path)
+        try:
+            ocr_response = gemini.generate_json(prompt_text, image_path=png_path, stage="01_preprocess")
+        except Exception as e:
+            print(f"  [!] Page {page_num:04d}: Gemini OCR extraction failed: {e}. Preserving as visual fallback.", file=sys.stderr)
+            page_data["blocks"] = []
+            page_data["page_type"] = "pure_graphic"
+            page_data["caption"] = f"Page {page_num} (Visual fallback)"
+            with open(page_json_path, "w", encoding="utf-8") as f:
+                json.dump(page_data, f, indent=2)
+            continue
+
         page_type = "text_page"
         caption = None
         blocks_data = []

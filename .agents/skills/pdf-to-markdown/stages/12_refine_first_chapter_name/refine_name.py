@@ -139,7 +139,7 @@ def process_first_chapter_refinement(
             f"Preliminary File Name: {first_file.name}\n\n"
             f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
         )
-        parsed = gemini.generate_json(full_prompt)
+        parsed = gemini.generate_json(full_prompt, stage="12_refine_chapter")
         if isinstance(parsed, dict):
             new_title = parsed.get("title")
             new_slug = parsed.get("slug")

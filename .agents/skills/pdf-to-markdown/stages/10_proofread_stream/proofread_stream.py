@@ -45,7 +45,7 @@ def proofread_title_llm(raw_title: str, gemini: GeminiClient) -> str:
         f"{raw_title}"
     )
     try:
-        c_title = gemini.generate_text(prompt).strip().strip('"').strip("'")
+        c_title = gemini.generate_text(prompt, stage="10_proofread_stream").strip().strip('"').strip("'")
         if c_title and len(c_title) < len(raw_title) * 2:
             return c_title
     except Exception as e:
@@ -59,7 +59,7 @@ def proofread_node_text(text: str, gemini: GeminiClient, base_prompt: str) -> st
     # Only invoke LLM on blocks with substantial text or suspicious split words / punctuation
     prompt = f"{base_prompt}\n\n## Content to Proofread:\n\n{text}"
     try:
-        corrected = gemini.generate_text(prompt).strip()
+        corrected = gemini.generate_text(prompt, stage="10_proofread_stream").strip()
         if corrected:
             return corrected
     except Exception as e:
