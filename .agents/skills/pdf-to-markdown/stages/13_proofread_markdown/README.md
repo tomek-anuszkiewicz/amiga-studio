@@ -10,5 +10,4 @@ Performs a global, section-by-section proofreading pass on canonical Markdown fi
 ## Output
 - `workspace/13_proofread_markdown/*.md`
 - `workspace/13_proofread_markdown/assets/*`
-- `<output_dir>/*.md`
-- `<output_dir>/assets/*`
+

@@ -6,8 +6,7 @@ Final proofreading and OCR glitch correction pass for assembled Markdown documen
 2. Preserves Line 1 YAML frontmatter intact.
 3. Chunks document sections by headings (## / ###) to prevent LLM truncation.
 4. Corrects OCR typos, misread punctuation, and register names using Gemini LLM.
-5. Emits proofread Markdown files to workspace/13_proofread_markdown/*.md.
-6. Synchronizes assets and finalizes output to <output_dir> (output_markdown/).
+5. Emits proofread Markdown files and synchronized assets directly to workspace/13_proofread_markdown/*.md.
 """
 
 import argparse
@@ -93,20 +92,16 @@ def process_proofreading(
     config: dict,
     skip_llm: bool = False
 ):
-    out_stage_dir = workspace_dir / "13_proofread_markdown"
-    out_stage_dir.mkdir(parents=True, exist_ok=True)
-    out_stage_assets = out_stage_dir / "assets"
-    out_stage_assets.mkdir(parents=True, exist_ok=True)
-
     output_dir.mkdir(parents=True, exist_ok=True)
-    out_final_assets = output_dir / "assets"
-    out_final_assets.mkdir(parents=True, exist_ok=True)
+    out_assets = output_dir / "assets"
+    out_assets.mkdir(parents=True, exist_ok=True)
 
     # 1. Clean previous stage outputs
-    for old_f in out_stage_dir.glob("*.md"):
-        old_f.unlink()
     for old_f in output_dir.glob("*.md"):
-        old_f.unlink()
+        try:
+            old_f.unlink()
+        except Exception:
+            pass
 
     # 2. Locate Markdown files
     if not input_dir.exists():
@@ -125,7 +120,7 @@ def process_proofreading(
         print("[!] No Markdown files found to proofread.")
         return
 
-    # 3. Synchronize assets from input_dir to out_stage_dir and output_dir
+    # 3. Synchronize assets from input_dir to output_dir
     src_assets = input_dir / "assets"
     if not src_assets.exists():
         for cand in [
@@ -140,8 +135,7 @@ def process_proofreading(
     if src_assets and src_assets.exists():
         for asset_f in src_assets.glob("*"):
             if asset_f.is_file():
-                shutil.copy2(asset_f, out_stage_assets / asset_f.name)
-                shutil.copy2(asset_f, out_final_assets / asset_f.name)
+                shutil.copy2(asset_f, out_assets / asset_f.name)
 
     # 4. Initialize Gemini Client
     gemini = None
@@ -182,33 +176,28 @@ def process_proofreading(
 
         full_doc = f"{frontmatter}{final_body}"
 
-        # Write to 13_proofread_markdown
-        stage_target = out_stage_dir / md_file.name
-        with open(stage_target, "w", encoding="utf-8") as f:
-            f.write(full_doc)
-
-        # Finalize to output_dir
-        final_target = output_dir / md_file.name
-        with open(final_target, "w", encoding="utf-8") as f:
+        # Write to output_dir
+        target_file = output_dir / md_file.name
+        with open(target_file, "w", encoding="utf-8") as f:
             f.write(full_doc)
 
         print(f"    Proofread: {md_file.name}")
 
-    print(f"[+] Stage 13 complete. Final documents published to {output_dir}.")
+    print(f"[+] Stage 13 complete. Proofread documents saved in {output_dir}.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 13: Final OCR proofreading pass and output publishing")
+    parser = argparse.ArgumentParser(description="Stage 13: Final OCR proofreading pass")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/12_canonical_markdown)")
-    parser.add_argument("--output-dir", type=str, default="output_markdown", help="Output directory")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/13_proofread_markdown)")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
     parser.add_argument("--skip-llm", action="store_true", help="Skip LLM proofreading and copy directly")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
-    output_dir = Path(args.output_dir)
     input_dir = Path(args.input_dir) if args.input_dir else (workspace_dir / "12_canonical_markdown")
+    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "13_proofread_markdown")
 
     config_path = Path(args.config)
     config = {}

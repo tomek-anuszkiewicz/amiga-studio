@@ -81,7 +81,7 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │   └── README.md
     │
     └── 13_proofread_markdown/
-        ├── proofread_markdown.py            # Global OCR proofreading pass, typo fixing, and publication to output_markdown/
+        ├── proofread_markdown.py            # Global OCR proofreading pass and typo fixing in workspace/13_proofread_markdown/
         ├── prompt_proofread.md              # Technical proofreading guidelines (strict anti-hallucination rules)
         └── README.md
 ```
@@ -172,10 +172,10 @@ python .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py --input-dir
 python .agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py --workspace workspace
 ```
 
-### Phase F: Final OCR Proofreading & Publication (Stage 13)
+### Phase F: Final OCR Proofreading (Stage 13)
 ```powershell
-# Proofread Markdown files for OCR errors and finalize publication into <OUTPUT_DIR>
-python .agents/skills/pdf-to-markdown/stages/13_proofread_markdown/proofread_markdown.py --workspace workspace --output-dir "<OUTPUT_DIR>"
+# Proofread Markdown files for OCR errors into workspace/13_proofread_markdown/
+python .agents/skills/pdf-to-markdown/stages/13_proofread_markdown/proofread_markdown.py --workspace workspace
 ```
 
 ---

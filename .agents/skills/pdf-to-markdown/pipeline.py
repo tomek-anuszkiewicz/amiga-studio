@@ -119,9 +119,10 @@ def run_stage(
             "--output-dir", str(workspace_dir / "12_canonical_markdown"),
         ])
     elif stage_num == "13":
+        dest_dir = output_dir if output_dir else (workspace_dir / "13_proofread_markdown")
         cmd.extend([
             "--input-dir", str(workspace_dir / "12_canonical_markdown"),
-            "--output-dir", str(output_dir),
+            "--output-dir", str(dest_dir),
         ])
 
     if verbose:
@@ -212,9 +213,10 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     md_proof_count = len(list(md_proof.glob("*.md"))) if md_proof.exists() else 0
     print(f"[*] 13_proofread_markdown         : {md_proof_count} files")
 
-    # Final Output Markdown
-    md_count = len(list(output_dir.glob("*.md"))) if output_dir.exists() else 0
-    print(f"[*] Final Output                  : {md_count} files in {output_dir.name}/")
+    # Final Output Markdown (if custom output_dir used)
+    if output_dir:
+        md_count = len(list(output_dir.glob("*.md"))) if output_dir.exists() else 0
+        print(f"[*] Custom Output Dir             : {md_count} files in {output_dir.name}/")
     print("==================================================\n")
 
 
@@ -231,7 +233,7 @@ STAGE_OUTPUT_TARGETS = {
     10: ["10_markdown_raw"],
     11: ["11_markdown_linked"],
     12: ["12_canonical_markdown"],
-    13: ["13_proofread_markdown", "__OUTPUT_DIR__"],
+    13: ["13_proofread_markdown"],
 }
 
 
@@ -246,7 +248,7 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_stage: 
         targets = STAGE_OUTPUT_TARGETS.get(s, [])
         for target in targets:
             if target == "__OUTPUT_DIR__":
-                if output_dir.exists():
+                if output_dir and output_dir.exists():
                     for f in output_dir.glob("*.md"):
                         try:
                             f.unlink()
@@ -328,13 +330,12 @@ def main():
         workspace_dir = (book_dir / "workspace") if book_dir else (Path.cwd() / "workspace")
     workspace_dir.mkdir(parents=True, exist_ok=True)
 
+    output_dir = None
     if args.output_dir:
         output_dir = Path(args.output_dir)
         if not output_dir.is_absolute():
             output_dir = Path.cwd() / output_dir
-    else:
-        output_dir = (book_dir / "output_markdown") if book_dir else (Path.cwd() / "output_markdown")
-    output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.status:
         print_pipeline_status(workspace_dir, output_dir)
@@ -396,7 +397,8 @@ def main():
 
     print(f"[*] PDF-to-Markdown Pipeline executing stages: {[f'{s:02d}' for s in stages_to_run]}")
     print(f"    Workspace  : {workspace_dir}")
-    print(f"    Output Dir : {output_dir}")
+    if output_dir:
+        print(f"    Output Dir : {output_dir}")
     if pdf_path:
         print(f"    Source PDF : {pdf_path}")
 
