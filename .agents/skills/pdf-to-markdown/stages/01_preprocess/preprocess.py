@@ -28,7 +28,6 @@ def preprocess_pdf(
     workspace_dir: Path,
     dpi: int = 300,
     page_ranges: Optional[str] = None,
-    auto_ocr: bool = True,
     ocr_threshold: int = 20,
     config_path: Optional[Path] = None,
 ) -> dict:
@@ -135,26 +134,24 @@ def preprocess_pdf(
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
-    # 4. Run scan detection & Gemini Vision OCR if enabled
-    if auto_ocr:
-        detect_and_ocr_pages(
-            workspace_dir=workspace_dir,
-            config_path=config_path,
-            page_ranges=page_ranges,
-            threshold=ocr_threshold,
-        )
+    # 4. Run scan detection & Gemini Vision OCR
+    detect_and_ocr_pages(
+        workspace_dir=workspace_dir,
+        config_path=config_path,
+        page_ranges=page_ranges,
+        threshold=ocr_threshold,
+    )
 
     print(f"[+] Stage 01 complete. Manifest saved to {manifest_path}")
     return manifest
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 01: Preprocess PDF into atomic per-page assets (with auto-OCR)")
+    parser = argparse.ArgumentParser(description="Stage 01: Preprocess PDF into atomic per-page assets")
     parser.add_argument("--pdf", type=str, required=True, help="Input PDF document")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
     parser.add_argument("--page-ranges", type=str, default=None, help="Pages or ranges to process (e.g. '1-5, 7, 8, 10-15' or '1..5')")
-    parser.add_argument("--no-ocr", action="store_true", help="Disable automatic scan detection and OCR")
     parser.add_argument("--ocr-threshold", type=int, default=20, help="Character threshold below which a page is considered a scan (default: 20)")
 
     args = parser.parse_args()
@@ -177,7 +174,6 @@ def main():
         workspace_dir,
         dpi=dpi,
         page_ranges=args.page_ranges,
-        auto_ocr=not args.no_ocr,
         ocr_threshold=ocr_threshold,
         config_path=config_path if config_path.exists() else None,
     )
