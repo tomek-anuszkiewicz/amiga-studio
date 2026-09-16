@@ -1,34 +1,128 @@
 #!/usr/bin/env python3
 """
-pipeline.py: Master CLI Orchestrator for the 12-Stage PDF-to-Markdown Pipeline.
+pipeline.py: Master CLI Orchestrator for the 13-Stage PDF-to-Markdown Pipeline.
 """
 
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import yaml
 
-
-STAGE_DEFINITIONS = [
-    ("01", "01_preprocess", "preprocess.py", "Deconstruct PDF into pages, PNGs, and text blocks (with auto-OCR)"),
-    ("02", "02_page_segmentation", "segment_page.py", "Vertical banding & zone classification"),
-    ("03", "03_build_raw_stream", "build_stream.py", "Build raw stream & extract initial assets"),
-    ("04", "04_stream_reduction", "reduce_stream.py", "Normalize stream: weld prose & de-hyphenate"),
-    ("05", "05_chapter_partition", "partition_chapters.py", "Partition stream into numbered sections"),
-    ("06", "06_detect_continuations", "detect_continuations.py", "Detect multi-page table/graphic continuations"),
-    ("07", "07_transform_tables", "transform_tables.py", "Transform table nodes (GFM vs HTML table)"),
-    ("08", "08_transform_graphics", "transform_graphics.py", "Transform graphics (Mermaid vs SVG + RAG sidecars)"),
-    ("09", "09_transform_prose", "format_prose.py", "Format prose/code and tag TOC with TOC34534"),
-    ("10", "10_proofread_stream", "proofread_stream.py", "Proofread chapter streams & manifest with LLM"),
-    ("11", "11_emit_markdown", "emit_markdown.py", "Emit per-section Markdown files (suppressing toc_header)"),
-    ("12", "12_refine_first_chapter_name", "refine_name.py", "Refine canonical name of first chapter"),
-    ("13", "13_link_toc", "link_toc.py", "Fuzzy header matching & TOC wikilink conversion"),
+STAGE_REGISTRY: List[Dict[str, Any]] = [
+    {
+        "id": "01",
+        "dir": "01_preprocess",
+        "script": "preprocess.py",
+        "desc": "Deconstruct PDF into pages, PNGs, and text blocks (with auto-OCR)",
+        "targets": ["01_preprocess", "pages_manifest.json"],
+        "inspect": ("*.png", "rendered PNGs"),
+    },
+    {
+        "id": "02",
+        "dir": "02_page_segmentation",
+        "script": "segment_page.py",
+        "desc": "Vertical banding & zone classification",
+        "targets": ["02_page_segmentation"],
+        "inspect": ("page_*_segments.json", "segment JSON files"),
+    },
+    {
+        "id": "03",
+        "dir": "03_build_raw_stream",
+        "script": "build_stream.py",
+        "desc": "Build raw stream & extract initial assets",
+        "targets": ["03_build_raw_stream"],
+        "inspect": ("raw_stream.json", "stream file"),
+    },
+    {
+        "id": "04",
+        "dir": "04_stream_reduction",
+        "script": "reduce_stream.py",
+        "desc": "Normalize stream: weld prose & de-hyphenate",
+        "targets": ["04_stream_reduction"],
+        "inspect": ("reduced_stream.json", "stream file"),
+    },
+    {
+        "id": "05",
+        "dir": "05_chapter_partition",
+        "script": "partition_chapters.py",
+        "desc": "Partition stream into numbered sections",
+        "targets": ["05_chapter_partition", "chapters_manifest.json"],
+        "inspect": ("*.json", "chapter stream files"),
+    },
+    {
+        "id": "06",
+        "dir": "06_detect_continuations",
+        "script": "detect_continuations.py",
+        "desc": "Detect multi-page table/graphic continuations",
+        "targets": ["06_detect_continuations"],
+        "inspect": ("*.json", "chapter stream files"),
+    },
+    {
+        "id": "07",
+        "dir": "07_transform_tables",
+        "script": "transform_tables.py",
+        "desc": "Transform table nodes (GFM vs HTML table)",
+        "targets": ["07_transform_tables"],
+        "inspect": ("*.json", "chapter stream files"),
+    },
+    {
+        "id": "08",
+        "dir": "08_transform_graphics",
+        "script": "transform_graphics.py",
+        "desc": "Transform graphics (Mermaid vs SVG + RAG sidecars)",
+        "targets": ["08_transform_graphics", "__ASSETS_SIDECARS__"],
+        "inspect": ("*.json", "chapter stream files"),
+    },
+    {
+        "id": "09",
+        "dir": "09_transform_prose",
+        "script": "format_prose.py",
+        "desc": "Format prose/code and tag TOC with TOC34534",
+        "targets": ["09_transform_prose"],
+        "inspect": ("*.json", "chapter stream files"),
+    },
+    {
+        "id": "10",
+        "dir": "10_proofread_stream",
+        "script": "proofread_stream.py",
+        "desc": "Proofread chapter streams & manifest with LLM",
+        "targets": ["10_proofread_stream"],
+        "inspect": ("*.json", "chapter stream files"),
+    },
+    {
+        "id": "11",
+        "dir": "11_emit_markdown",
+        "script": "emit_markdown.py",
+        "desc": "Emit per-section Markdown files (suppressing toc_header)",
+        "targets": ["11_emit_markdown"],
+        "inspect": ("*.md", "Markdown files"),
+    },
+    {
+        "id": "12",
+        "dir": "12_refine_first_chapter_name",
+        "script": "refine_name.py",
+        "desc": "Refine canonical name of first chapter",
+        "targets": ["12_refine_first_chapter_name"],
+        "inspect": ("*.md", "Markdown files"),
+    },
+    {
+        "id": "13",
+        "dir": "13_link_toc",
+        "script": "link_toc.py",
+        "desc": "Fuzzy header matching & TOC wikilink conversion",
+        "targets": ["13_link_toc", "__OUTPUT_DIR__"],
+        "inspect": ("*.md", "Markdown files"),
+    },
 ]
+
+STAGE_DEFINITIONS = [(s["id"], s["dir"], s["script"], s["desc"]) for s in STAGE_REGISTRY]
+STAGE_OUTPUT_TARGETS = {s["id"]: s["targets"] for s in STAGE_REGISTRY}
 
 
 def load_config(config_path: Path) -> dict:
@@ -52,24 +146,16 @@ def update_status(
             with open(status_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except Exception:
-            data = {}
-
-    entry = data.get(stage_num, {})
+            pass
+    entry = data.setdefault(stage_num, {})
     entry["status"] = status
     if details or "details" not in entry:
         entry["details"] = details
-
-    if duration_seconds is not None:
+    if duration_seconds is not None or "duration_seconds" not in entry:
         entry["duration_seconds"] = duration_seconds
-    elif "duration_seconds" not in entry:
-        entry["duration_seconds"] = None
+    if llm_calls is not None or "llm_calls" not in entry:
+        entry["llm_calls"] = llm_calls if llm_calls is not None else 0
 
-    if llm_calls is not None:
-        entry["llm_calls"] = llm_calls
-    elif "llm_calls" not in entry:
-        entry["llm_calls"] = 0
-
-    data[stage_num] = entry
     status_file.parent.mkdir(parents=True, exist_ok=True)
     with open(status_file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
@@ -82,8 +168,8 @@ def get_last_completed_stage_idx(status_file: Path) -> int:
         with open(status_file, "r", encoding="utf-8") as f:
             data = json.load(f)
         last_idx = -1
-        for idx, (s_id, _, _, _) in enumerate(STAGE_DEFINITIONS):
-            if data.get(s_id, {}).get("status") == "success":
+        for idx, s in enumerate(STAGE_REGISTRY):
+            if data.get(s["id"], {}).get("status") == "success":
                 last_idx = idx
             else:
                 break
@@ -96,35 +182,35 @@ def resolve_stage_idx(arg_val: str) -> Optional[int]:
     if not arg_val:
         return None
     val = str(arg_val).strip().lower()
-    for idx, (s_id, s_dir, _, _) in enumerate(STAGE_DEFINITIONS):
-        if val == s_id.lower() or val == s_dir.lower():
+    for idx, s in enumerate(STAGE_REGISTRY):
+        s_id = s["id"].lower()
+        s_dir = s["dir"].lower()
+        if val in (s_id, s_dir, s_id.lstrip("0")):
             return idx
-        if val.isdigit() and s_id.isdigit() and int(val) == int(s_id):
-            return idx
-        if val in (s_id.lstrip('0').lower(), f"{s_id.lstrip('0')}b"):
+        if val.isdigit() and int(val) == int(s["id"]):
             return idx
     return None
 
 
 def run_stage(
-    stage_idx: int,
-    stage_info: tuple,
+    stage_info: dict,
     skill_dir: Path,
     workspace_dir: Path,
-    pdf_path: Path,
-    output_dir: Path,
+    pdf_path: Optional[Path],
+    output_dir: Optional[Path],
     config_path: Path,
-    verbose: bool,
-    max_pages: int = None,
-    page_range: str = None,
-    start_page: int = None,
-    end_page: int = None,
+    verbose: bool = False,
+    max_pages: Optional[int] = None,
+    page_range: Optional[str] = None,
+    start_page: Optional[int] = None,
+    end_page: Optional[int] = None,
 ) -> bool:
-    stage_num, stage_dir_name, script_name, desc = stage_info
-    script_path = skill_dir / "stages" / stage_dir_name / script_name
+    stage_num = stage_info["id"]
+    stage_dir_name = stage_info["dir"]
+    script_path = skill_dir / "stages" / stage_dir_name / stage_info["script"]
 
     print(f"\n==================================================")
-    print(f"[*] Stage {stage_num}: {stage_dir_name} ({desc})")
+    print(f"[*] Stage {stage_num}: {stage_dir_name} ({stage_info['desc']})")
     print(f"==================================================")
 
     if not script_path.exists():
@@ -138,7 +224,7 @@ def run_stage(
         "--config", str(config_path),
     ]
 
-    # Add stage-specific flags if needed
+    # Stage-specific standard parameter injection
     if stage_num == "01":
         cmd.extend(["--pdf", str(pdf_path)])
         if page_range:
@@ -150,40 +236,21 @@ def run_stage(
                 cmd.extend(["--end-page", str(end_page)])
         elif max_pages:
             cmd.extend(["--max-pages", str(max_pages)])
-    elif stage_num == "10":
-        cmd.extend([
-            "--input-dir", str(workspace_dir / "09_transform_prose"),
-            "--output-dir", str(workspace_dir / "10_proofread_stream"),
-        ])
     elif stage_num == "11":
         cmd.extend(["--output-dir", str(workspace_dir / "11_emit_markdown")])
-    elif stage_num == "12":
-        cmd.extend([
-            "--input-dir", str(workspace_dir / "11_emit_markdown"),
-            "--output-dir", str(workspace_dir / "12_refine_first_chapter_name"),
-        ])
-    elif stage_num == "13":
-        dest_dir = output_dir if output_dir else (workspace_dir / "13_link_toc")
-        cmd.extend([
-            "--input-dir", str(workspace_dir / "12_refine_first_chapter_name"),
-            "--output-dir", str(dest_dir),
-        ])
+    elif stage_num == "13" and output_dir:
+        cmd.extend(["--output-dir", str(output_dir)])
 
     if verbose:
         print(f"[CMD] {' '.join(cmd)}")
 
     status_file = workspace_dir / "stage_status.json"
-    stage_info = next((s for s in STAGE_DEFINITIONS if s[0] == stage_num), None)
-    stage_dir_name = stage_info[1] if stage_info else f"stage_{stage_num}"
     stage_dir = workspace_dir / stage_dir_name
     stage_dir.mkdir(parents=True, exist_ok=True)
     stage_metrics_file = stage_dir / ".metrics.json"
 
-    # Reset metrics file for this stage run
     try:
-        if stage_metrics_file.exists():
-            stage_metrics_file.unlink()
-        stage_metrics_file.parent.mkdir(parents=True, exist_ok=True)
+        stage_metrics_file.unlink(missing_ok=True)
         with open(stage_metrics_file, "w", encoding="utf-8") as f:
             json.dump({"llm_calls": 0}, f)
     except Exception:
@@ -192,71 +259,48 @@ def run_stage(
     env = os.environ.copy()
     env["LLM_STAGE_METRICS_FILE"] = str(stage_metrics_file)
 
-    def read_llm_calls() -> int:
+    def read_and_clean_metrics() -> int:
+        calls = 0
         if stage_metrics_file.exists():
             try:
                 with open(stage_metrics_file, "r", encoding="utf-8") as f:
-                    return json.load(f).get("llm_calls", 0)
-            except Exception:
-                return 0
-        return 0
-
-    def cleanup_metrics():
-        if stage_metrics_file.exists():
-            try:
-                stage_metrics_file.unlink()
+                    calls = json.load(f).get("llm_calls", 0)
+                stage_metrics_file.unlink(missing_ok=True)
             except Exception:
                 pass
+        return calls
 
     update_status(status_file, stage_num, "running")
-
     start_time = time.time()
     try:
-        result = subprocess.run(cmd, env=env, check=True)
+        subprocess.run(cmd, env=env, check=True)
         duration = round(time.time() - start_time, 2)
-        calls = read_llm_calls()
-        cleanup_metrics()
+        calls = read_and_clean_metrics()
         update_status(status_file, stage_num, "success", duration_seconds=duration, llm_calls=calls)
         print(f"[*] Stage {stage_num} finished in {duration:.2f}s with {calls} LLM call(s).")
         return True
     except subprocess.CalledProcessError as e:
         duration = round(time.time() - start_time, 2)
-        calls = read_llm_calls()
-        cleanup_metrics()
+        calls = read_and_clean_metrics()
         print(f"[!] Stage {stage_num} failed with return code {e.returncode} ({duration:.2f}s, {calls} LLM calls)", file=sys.stderr)
         update_status(status_file, stage_num, "failed", f"Exit code {e.returncode}", duration_seconds=duration, llm_calls=calls)
         return False
     except Exception as e:
         duration = round(time.time() - start_time, 2)
-        calls = read_llm_calls()
-        cleanup_metrics()
+        calls = read_and_clean_metrics()
         print(f"[!] Stage {stage_num} encountered exception: {e} ({duration:.2f}s, {calls} LLM calls)", file=sys.stderr)
         update_status(status_file, stage_num, "failed", str(e), duration_seconds=duration, llm_calls=calls)
         return False
 
 
-def print_pipeline_status(workspace_dir: Path, output_dir: Path):
+def print_pipeline_status(workspace_dir: Path, output_dir: Optional[Path]):
     print("\n==================================================")
     print("         PDF-to-Markdown Pipeline Status          ")
     print("==================================================")
 
-    inspectors = [
-        ("01_preprocess", "*.png", "rendered PNGs"),
-        ("02_page_segmentation", "page_*_segments.json", "segment JSON files"),
-        ("03_build_raw_stream", "raw_stream.json", "stream file"),
-        ("04_stream_reduction", "reduced_stream.json", "stream file"),
-        ("05_chapter_partition", "*.json", "chapter stream files"),
-        ("06_detect_continuations", "*.json", "chapter stream files"),
-        ("07_transform_tables", "*.json", "chapter stream files"),
-        ("08_transform_graphics", "*.json", "chapter stream files"),
-        ("09_transform_prose", "*.json", "chapter stream files"),
-        ("10_proofread_stream", "*.json", "chapter stream files"),
-        ("11_emit_markdown", "*.md", "Markdown files"),
-        ("12_refine_first_chapter_name", "*.md", "Markdown files"),
-        ("13_link_toc", "*.md", "Markdown files"),
-    ]
-
-    for dir_name, pattern, label in inspectors:
+    for s in STAGE_REGISTRY:
+        dir_name = s["dir"]
+        pattern, label = s["inspect"]
         target = workspace_dir / dir_name
         if "*" in pattern:
             count = len(list(target.glob(pattern))) if target.exists() else 0
@@ -268,7 +312,6 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
             else:
                 print(f"[*] {dir_name:<30}: Missing")
 
-    # Final Output Markdown (if custom output_dir used)
     if output_dir:
         md_count = len(list(output_dir.glob("*.md"))) if output_dir.exists() else 0
         print(f"[*] Custom Output Dir             : {md_count} files in {output_dir.name}/")
@@ -280,9 +323,9 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
                 status_data = json.load(f)
             if status_data:
                 print("\n---------------- Stage Statistics ----------------")
-                total_duration = 0.0
-                total_calls = 0
-                for num, name, _, _ in STAGE_DEFINITIONS:
+                total_duration, total_calls = 0.0, 0
+                for s in STAGE_REGISTRY:
+                    num = s["id"]
                     if num in status_data:
                         st = status_data[num]
                         status = st.get("status", "unknown")
@@ -292,7 +335,7 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
                             total_duration += dur
                         calls = st.get("llm_calls", 0)
                         total_calls += calls
-                        print(f"Stage {num} ({name:<28}): {status:<8} | Time: {dur_str:>8} | LLM: {calls:>4} call(s)")
+                        print(f"Stage {num} ({s['dir']:<28}): {status:<8} | Time: {dur_str:>8} | LLM: {calls:>4} call(s)")
                 print(f"Total Measured Time: {total_duration:.2f}s | Total LLM Calls: {total_calls}")
                 print("--------------------------------------------------")
         except Exception:
@@ -301,78 +344,31 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     print("==================================================\n")
 
 
-STAGE_OUTPUT_TARGETS = {
-    "01": ["01_preprocess", "pages_manifest.json"],
-    "02": ["02_page_segmentation"],
-    "03": ["03_build_raw_stream"],
-    "04": ["04_stream_reduction"],
-    "05": ["05_chapter_partition", "chapters_manifest.json"],
-    "06": ["06_detect_continuations"],
-    "07": ["07_transform_tables"],
-    "08": ["08_transform_graphics", "__ASSETS_SIDECARS__"],
-    "09": ["09_transform_prose"],
-    "10": ["10_proofread_stream"],
-    "11": ["11_emit_markdown"],
-    "12": ["12_refine_first_chapter_name"],
-    "13": ["13_link_toc", "__OUTPUT_DIR__"],
-}
-
-
-def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_idx: int, status_file: Path):
-    """
-    Cleans all intermediate artifacts and output directories for all stages >= start_idx.
-    Guarantees that re-running from stage N starts completely fresh without stale downstream files.
-    """
-    import shutil
-    start_info = STAGE_DEFINITIONS[start_idx]
-    stages_to_clean = [s[0] for s in STAGE_DEFINITIONS[start_idx:]]
-    print(f"[*] Invalidation: Wiping intermediate and output artifacts from Stage {start_info[0]} onwards...")
-    for s_id in stages_to_clean:
-        s_info = next((s for s in STAGE_DEFINITIONS if s[0] == s_id), None)
-        if s_info:
-            m_stage = workspace_dir / s_info[1] / ".metrics.json"
-            if m_stage.exists():
-                try:
-                    m_stage.unlink()
-                except Exception:
-                    pass
-        m_file = workspace_dir / f".stage_{s_id}_metrics.json"
-        if m_file.exists():
-            try:
-                m_file.unlink()
-            except Exception:
-                pass
-        targets = STAGE_OUTPUT_TARGETS.get(s_id, [])
-        for target in targets:
+def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], start_idx: int, status_file: Path):
+    stages_to_clean = [s["id"] for s in STAGE_REGISTRY[start_idx:]]
+    print(f"[*] Invalidation: Wiping intermediate and output artifacts from Stage {stages_to_clean[0]} onwards...")
+    for s in STAGE_REGISTRY[start_idx:]:
+        s_id = s["id"]
+        (workspace_dir / s["dir"] / ".metrics.json").unlink(missing_ok=True)
+        (workspace_dir / f".stage_{s_id}_metrics.json").unlink(missing_ok=True)
+        for target in s["targets"]:
             if target == "__OUTPUT_DIR__":
                 if output_dir and output_dir.exists():
                     for f in output_dir.glob("*.md"):
-                        try:
-                            f.unlink()
-                        except Exception:
-                            pass
-                    assets = output_dir / "assets"
-                    if assets.exists():
-                        shutil.rmtree(assets, ignore_errors=True)
+                        f.unlink(missing_ok=True)
+                    shutil.rmtree(output_dir / "assets", ignore_errors=True)
             elif target == "__ASSETS_SIDECARS__":
                 for a_dir in [workspace_dir / "08_transform_graphics" / "assets", workspace_dir / "04_stream_reduction" / "assets", workspace_dir / "assets"]:
                     if a_dir.exists():
                         for txt_file in a_dir.glob("*.png.txt"):
-                            try:
-                                txt_file.unlink()
-                            except Exception:
-                                pass
+                            txt_file.unlink(missing_ok=True)
             else:
                 p = workspace_dir / target
                 if p.is_dir():
                     shutil.rmtree(p, ignore_errors=True)
                 elif p.is_file():
-                    try:
-                        p.unlink(missing_ok=True)
-                    except Exception:
-                        pass
+                    p.unlink(missing_ok=True)
 
-    # Reset stage status entries for stages being cleaned
     if status_file.exists():
         try:
             with open(status_file, "r", encoding="utf-8") as f:
@@ -385,10 +381,10 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_idx: in
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Master 12-Stage PDF-to-Markdown Pipeline Orchestrator")
+    parser = argparse.ArgumentParser(description="Master 13-Stage PDF-to-Markdown Pipeline Orchestrator")
     parser.add_argument("--pdf", type=str, help="Path to input technical PDF document")
-    parser.add_argument("--workspace", type=str, default=None, help="Workspace directory for intermediate data (defaults to <book_dir>/workspace)")
-    parser.add_argument("--output-dir", type=str, default=None, help="Output directory for generated Markdown files (defaults to <book_dir>/output_markdown)")
+    parser.add_argument("--workspace", type=str, default=None, help="Workspace directory for intermediate data")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory for generated Markdown files")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to config.yaml")
     parser.add_argument("--stage", type=str, help="Run single stage by number (e.g. 01, 06)")
     parser.add_argument("--from-stage", type=str, help="Start pipeline from stage number (e.g. 03)")
@@ -412,30 +408,21 @@ def main():
     if not config_path.is_absolute():
         config_path = skill_dir / config_path
 
-    config = load_config(config_path)
-
-    pdf_path = Path(args.pdf) if args.pdf else None
-    if pdf_path and not pdf_path.is_absolute():
-        pdf_path = Path.cwd() / pdf_path
+    pdf_path = Path(args.pdf).resolve() if args.pdf else None
     book_dir = pdf_path.parent if pdf_path else None
 
-    # Default workspace and output directories to the book's directory if PDF is provided
     if args.workspace:
-        workspace_dir = Path(args.workspace)
-        if not workspace_dir.is_absolute():
-            workspace_dir = Path.cwd() / workspace_dir
+        workspace_dir = Path(args.workspace).resolve()
     else:
         workspace_dir = (book_dir / "workspace") if book_dir else (Path.cwd() / "workspace")
     workspace_dir.mkdir(parents=True, exist_ok=True)
 
     output_dir = None
     if args.output_dir:
-        output_dir = Path(args.output_dir)
-        if not output_dir.is_absolute():
-            output_dir = Path.cwd() / output_dir
+        output_dir = Path(args.output_dir).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
     elif book_dir:
-        output_dir = book_dir / "output_markdown"
+        output_dir = (book_dir / "output_markdown").resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.status:
@@ -443,33 +430,23 @@ def main():
         return
 
     # Handle prepare / apply stage shortcuts
-    if args.prepare_stage:
-        target_idx = resolve_stage_idx(args.prepare_stage)
-        target_info = STAGE_DEFINITIONS[target_idx] if target_idx is not None else None
-        if not target_info:
-            print(f"[!] Unknown stage: {args.prepare_stage}", file=sys.stderr)
+    if args.prepare_stage or args.apply_stage:
+        stage_arg = args.prepare_stage or args.apply_stage
+        target_idx = resolve_stage_idx(stage_arg)
+        if target_idx is None:
+            print(f"[!] Unknown stage: {stage_arg}", file=sys.stderr)
             sys.exit(1)
-        script = skill_dir / "stages" / target_info[1] / target_info[2]
-        cmd = [sys.executable, str(script), "--workspace", str(workspace_dir), "--config", str(config_path), "--prepare"]
-        subprocess.run(cmd, check=True)
-        return
-
-    if args.apply_stage:
-        target_idx = resolve_stage_idx(args.apply_stage)
-        target_info = STAGE_DEFINITIONS[target_idx] if target_idx is not None else None
-        if not target_info:
-            print(f"[!] Unknown stage: {args.apply_stage}", file=sys.stderr)
-            sys.exit(1)
-        script = skill_dir / "stages" / target_info[1] / target_info[2]
-        cmd = [sys.executable, str(script), "--workspace", str(workspace_dir), "--config", str(config_path), "--apply"]
+        s = STAGE_REGISTRY[target_idx]
+        mode_flag = "--prepare" if args.prepare_stage else "--apply"
+        script = skill_dir / "stages" / s["dir"] / s["script"]
+        cmd = [sys.executable, str(script), "--workspace", str(workspace_dir), "--config", str(config_path), mode_flag]
         subprocess.run(cmd, check=True)
         return
 
     status_file = workspace_dir / "stage_status.json"
 
-    # Determine stages to run (as list of 0-based indices into STAGE_DEFINITIONS)
     if args.run_deterministic:
-        stages_to_run = [i for i, s in enumerate(STAGE_DEFINITIONS) if s[0] in ("01", "03", "04", "05", "10", "11")]
+        stages_to_run = [i for i, s in enumerate(STAGE_REGISTRY) if s["id"] in ("01", "03", "04", "05", "10", "11")]
     elif args.stage:
         target_idx = resolve_stage_idx(args.stage)
         if target_idx is None:
@@ -478,7 +455,7 @@ def main():
         stages_to_run = [target_idx]
     elif args.from_stage or args.to_stage:
         s_start = resolve_stage_idx(args.from_stage) if args.from_stage else 0
-        s_end = resolve_stage_idx(args.to_stage) if args.to_stage else (len(STAGE_DEFINITIONS) - 1)
+        s_end = resolve_stage_idx(args.to_stage) if args.to_stage else (len(STAGE_REGISTRY) - 1)
         if s_start is None or s_end is None:
             print(f"[!] Invalid stage range: {args.from_stage} to {args.to_stage}", file=sys.stderr)
             sys.exit(1)
@@ -486,19 +463,17 @@ def main():
     elif args.resume:
         last_completed_idx = get_last_completed_stage_idx(status_file)
         start_idx = last_completed_idx + 1
-        if start_idx >= len(STAGE_DEFINITIONS):
+        if start_idx >= len(STAGE_REGISTRY):
             print("[*] All pipeline stages are already completed successfully.")
             return
-        stages_to_run = list(range(start_idx, len(STAGE_DEFINITIONS)))
-        print(f"[*] Resuming from Stage {STAGE_DEFINITIONS[start_idx][0]} ({STAGE_DEFINITIONS[start_idx][1]})")
+        stages_to_run = list(range(start_idx, len(STAGE_REGISTRY)))
+        print(f"[*] Resuming from Stage {STAGE_REGISTRY[start_idx]['id']} ({STAGE_REGISTRY[start_idx]['dir']})")
     else:
-        stages_to_run = list(range(len(STAGE_DEFINITIONS)))
+        stages_to_run = list(range(len(STAGE_REGISTRY)))
 
-    # Clean and invalidate all downstream intermediate and output stages from stages_to_run[0] onwards
     clean_downstream_stages(workspace_dir, output_dir, stages_to_run[0], status_file)
 
     if 0 in stages_to_run and not pdf_path:
-        # Check if pages already exist
         pages_exist = bool(list((workspace_dir / "01_preprocess").glob("page_*.png")))
         if not pages_exist:
             print("[!] Error: --pdf is required when running Stage 01 without existing preprocessed pages.", file=sys.stderr)
@@ -506,7 +481,7 @@ def main():
         else:
             print("[*] Note: Existing preprocessed pages found in workspace.")
 
-    print(f"[*] PDF-to-Markdown Pipeline executing stages: {[STAGE_DEFINITIONS[i][0] for i in stages_to_run]}")
+    print(f"[*] PDF-to-Markdown Pipeline executing stages: {[STAGE_REGISTRY[i]['id'] for i in stages_to_run]}")
     print(f"    Workspace  : {workspace_dir}")
     if output_dir:
         print(f"    Output Dir : {output_dir}")
@@ -514,10 +489,9 @@ def main():
         print(f"    Source PDF : {pdf_path}")
 
     for idx in stages_to_run:
-        stage_info = STAGE_DEFINITIONS[idx]
+        s_info = STAGE_REGISTRY[idx]
         success = run_stage(
-            stage_idx=idx + 1,
-            stage_info=stage_info,
+            stage_info=s_info,
             skill_dir=skill_dir,
             workspace_dir=workspace_dir,
             pdf_path=pdf_path,
@@ -529,9 +503,8 @@ def main():
             start_page=args.start_page,
             end_page=args.end_page,
         )
-
         if not success:
-            print(f"\n[!] Pipeline halted at Stage {stage_info[0]} due to failure.", file=sys.stderr)
+            print(f"\n[!] Pipeline halted at Stage {s_info['id']} due to failure.", file=sys.stderr)
             sys.exit(1)
 
     print("\n[+] Selected pipeline stages completed successfully!")

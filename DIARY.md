@@ -4333,6 +4333,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Python compilation: `python -m py_compile` cleanly compiled `pipeline.py`, `preprocess.py`, and `detect_and_ocr.py`.
   - Pipeline status test: Verified `pipeline.py --status` renders a clean 13-stage output with zero `01b` references.
+
+---
+
+### [2026-09-16 13:35 CEST] — PDF-to-Markdown: Table-Driven Architecture for Master Pipeline Orchestrator
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Replaced disparate metadata structures (`STAGE_DEFINITIONS`, `STAGE_OUTPUT_TARGETS`, status printers) with a unified, declarative `STAGE_REGISTRY` mapping each stage's ID, directory, script, description, output targets, and status inspection patterns.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated hardcoded stage parameters: standardized intermediate workspace directories and made stage resolution completely table-driven.
+  - Streamlined `print_pipeline_status()`: replaced repetitive procedural directory globbing blocks with a concise loop iterating directly over `STAGE_REGISTRY`.
+  - Refactored `clean_downstream_stages()`: simplified invalidation logic using declarative targets from the registry.
+  - Retained clean backward compatibility for `STAGE_DEFINITIONS` and `STAGE_OUTPUT_TARGETS` while reducing boilerplate.
+- **Verification & Test Results**:
+  - `python -m py_compile .agents/skills/pdf-to-markdown/pipeline.py`: Compiled cleanly with 0 errors.
+  - Verified `python pipeline.py --status`: Printed all 13 stages with identical accuracy and zero regressions.
   - `python tools/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting 100% compliant, 0 attractors, AGENTS.md <= 14,000 bytes, 18/18 architecture rules).
 
 
