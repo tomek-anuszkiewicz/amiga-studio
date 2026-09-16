@@ -135,7 +135,13 @@ When encountering diagrams, code, tables, and visual figures, apply this strict 
   - **No Jagged Staggered Dividers:** NEVER try to merge staggered rows into a single chaotic shared divider line (e.g. avoid `+----+--+-+--+`). Separate staggered rows with individual top/bottom borders or use a strict proportional unit system so row widths sum to the identical total length.
   - **Cluster Gap Invariance:** Gaps between separated clusters or blocks must maintain an identical whitespace count on every row without horizontal drift.
   - **Length Invariance Assertion:** Verify that all full-width rows inside the ASCII block have the exact same character length (`len(row_i) == total_width`).
-- **Collapsible Breakdown:** Wrap any accompanying leader-line decodes, signal descriptions, or detailed key breakdowns below the diagram in an Obsidian collapsible callout folded by default (`> [!NOTE]- <Title>`).
+- **Collapsible Breakdown (Obsidian Folded Callout):**
+  - Wrap any accompanying leader-line decodes, signal descriptions, or detailed key breakdowns below the diagram in an Obsidian **collapsible callout** folded by default using `> [!NOTE]- <Title>`:
+    ```markdown
+    > [!NOTE]- Decoded Fields & Signal Descriptions
+    > - **Bit 15 (`BSUN`)**: Branch / Set on Unordered
+    > - **Bit 14 (`SNAN`)**: Signaling Not a Number
+    ```
 
 ### Priority 7: Image Placeholders (Only When Mermaid Cannot Model)
 - **Only** use image placeholders for complex analog waveforms, physical IC pinouts, dense electrical schematics, or photographs that cannot be cleanly modeled in Mermaid:

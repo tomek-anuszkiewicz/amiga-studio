@@ -33,7 +33,17 @@ Convert the attached technical diagram (such as a register bitfield, memory map,
 - Organize the output so it is immediately legible, clean, and intuitive.
 
 ## 4. Output Formatting & Collapsible Callouts
-- Enclose the ASCII box drawing strictly within a fenced code block (` ```text `).
-- If the diagram includes a genuine figure caption (e.g., `Figure 1-3. Floating-Point Control Register`), place it right below the ASCII block as italicized text (`*Figure ...*`).
-- Wrap any decoded field breakdown, signal list, or keycode descriptions below the figure caption in an Obsidian collapsible callout folded by default (`> [!NOTE]- <Title>`).
-- Output ONLY the pure Markdown/ASCII content without conversational commentary or wrapper text.
+1. **ASCII Box Block:**
+   - Enclose the ASCII drawing strictly within a fenced code block (` ```text `).
+2. **Figure Caption Placement:**
+   - Place the genuine figure caption directly below the code block as italicized text (`*Figure ...*`).
+3. **Collapsible Breakdown (Obsidian Folded Callout):**
+   - Wrap the entire decoded field breakdown, signal list, or keycode description inside an Obsidian **collapsible callout** folded by default using `> [!NOTE]- <Title>`:
+     ```markdown
+     > [!NOTE]- Decoded Fields & Key Descriptions
+     > - **`45`**: Escape (Esc)
+     > - **`50` - `54`**: Function keys F1 - F5
+     ```
+   - This ensures detailed transcriptions remain accessible without breaking the reading flow of the main page.
+4. **Strict Pure Output:**
+   - Output ONLY the pure Markdown/ASCII content without conversational commentary or wrapper text.
