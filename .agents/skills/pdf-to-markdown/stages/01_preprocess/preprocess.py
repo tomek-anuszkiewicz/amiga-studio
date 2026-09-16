@@ -63,6 +63,8 @@ def preprocess_pdf(
         print(f"[*] Processing pages {start_page} to {end_page} (of {doc_len} in doc), Rendering at {dpi} DPI")
 
     # Clean existing stage artifacts for targeted pages to guarantee a fresh, idempotent start
+    (pages_dir / ".metrics.json").unlink(missing_ok=True)
+    (workspace_dir / ".stage_01_metrics.json").unlink(missing_ok=True)
     for p in pages_to_process:
         p_str = f"page_{p:04d}"
         for old_file in pages_dir.glob(f"{p_str}.*"):
