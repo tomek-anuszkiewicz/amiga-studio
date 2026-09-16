@@ -5,7 +5,7 @@ Your task is to analyze the provided page image, classify its content type, and 
 Examine the image and classify it into one of the following categories:
 1. **`"text_page"`**: The page contains book text, headings, paragraphs, tables, or technical prose that should be transcribed into Markdown.
 2. **`"pure_graphic"`**: The page is a full-page photo, continuous illustration, book cover artwork, or decorative visual with NO meaningful technical prose to transcribe. (Do NOT attempt to OCR decorative borders or photo textures into hallucinated text).
-3. **`"schematic"`** / **`"diagram"`**: The page contains technical schematics, circuit diagrams, timing waveforms, block diagrams, graphs, charts, tables, or physical hardware and keyboard layouts. Transcribe its title/caption if present and capture the visual structure.
+3. **`"schematic"`** / **`"diagram"`**: The page contains technical schematics, circuit diagrams, timing waveforms, block diagrams, graphs, charts, or tables. Transcribe its title/caption if present and capture the visual structure.
 4. **`"blank"`**: The page is completely blank white or an empty separator page.
 
 ### Step 2: Guidelines for `"text_page"`
@@ -27,8 +27,8 @@ Examine the image and classify it into one of the following categories:
 4. **Accuracy & Fidelity**:
    - Transcribe technical terms, punctuation, registers, and code accurately.
    - If the page is a book cover with readable titles and author names, classify as `"text_page"` and transcribe title, author, publisher, and edition.
-5. **Visual Diagrams, Schematics & Layouts**:
-   - If the page contains a visual diagram, circuit schematic, waveform, drawing, or keyboard layout alongside text, emit a dedicated block with `box_2d` enclosing the entire visual drawing area, and `text` set to its title, caption, or description (e.g., `"[Figure 1.1: Keyboard Layout Showing Raw Key Codes]\n"`). Do NOT ignore visual diagrams or treat them as blank space.
+5. **Visual Diagrams & Schematics**:
+   - If the page contains a visual diagram, circuit schematic, waveform, or drawing alongside text, emit a dedicated block with `box_2d` enclosing the entire visual drawing area, and `text` set to its title, caption, or description (e.g., `"[Figure/Diagram: <title or caption>]\\n"`). Do NOT ignore visual diagrams or treat them as blank space.
 
 ### Output Format:
 Return ONLY a valid JSON object:
@@ -49,7 +49,7 @@ For `"schematic"` or `"diagram"`:
 ```json
 {
   "page_type": "schematic",
-  "caption": "Figure 1.1 Key Codes: Keyboard Layout Showing Raw Key Codes",
+  "caption": "Full-page circuit schematic or timing diagram",
   "blocks": []
 }
 ```
