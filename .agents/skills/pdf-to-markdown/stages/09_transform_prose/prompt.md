@@ -29,6 +29,9 @@ You are given:
        - Subsection Title
      <!-- /TOC34534 -->
      ```
+6. **Run-in Paragraph Headings**:
+   - When a prose paragraph starts with a run-in section title (e.g. a section number and all-caps title ending in a period or colon, such as `1.2.3.4 ACCRUED EXCEPTION BYTE.` or `1.2.3.2 QUOTIENT BYTE.`), format ONLY the title prefix in bold up to the period/colon (e.g. `**1.2.3.4 ACCRUED EXCEPTION BYTE.** The AEXC byte contains...`).
+   - NEVER format the entire paragraph as bold or as a markdown heading tag (`#`, `##`, `###`).
 
 ## Output Format:
 Return strictly the formatted Markdown text for the node.

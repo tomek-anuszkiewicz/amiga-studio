@@ -3995,6 +3995,21 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: Clean.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
 
+---
 
-
-
+### [2026-09-16 04:55 CEST] — PDF-to-Markdown: Inline Run-in Heading Disambiguation & Safeguards
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/prompt.md`: Clarified semantic classification rule for run-in paragraph headings (e.g. `1.2.3.4 ACCRUED EXCEPTION BYTE. The AEXC byte contains...`), instructing the model to classify blocks containing inline body text as `prose` rather than `heading`.
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/segment_page.py`: Added programmatic safeguard overriding `heading` to `prose` if the text contains a run-in heading prefix followed by substantive body prose sentences.
+  - `.agents/skills/pdf-to-markdown/stages/09_transform_prose/prompt.md`: Added rule 6 explicitly instructing the LLM to format run-in section headers as inline bold (`**1.2.3.4 ACCRUED EXCEPTION BYTE.**`) up to the period/colon rather than converting the entire paragraph into a Markdown heading tag.
+  - `.agents/skills/pdf-to-markdown/stages/09_transform_prose/format_prose.py`: Added defensive run-in heading reclassification and bold-prefix offline fallback.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user feedback regarding Page 18 where `1.2.3.4 ACCRUED EXCEPTION BYTE.` at the top of the page was misclassified by Stage 02 as a `heading` block, causing Stage 09 to format the entire 400-character paragraph as a level-3 Markdown heading (`### 1.2.3.4 ACCRUED EXCEPTION BYTE. The AEXC byte contains...`).
+  - Added multi-tier safeguards in Stage 02 (prompt + regex fallback) and Stage 09 (prompt + defensive reclassification) to ensure paragraphs with run-in titles are consistently styled as `prose` with only the prefix bolded.
+  - Reprocessed the pipeline from Stage 02: verified that line 113 of `workspace/13_proofread_markdown/01_floating_point_control_and_status_registers.md` now renders cleanly as `**1.2.3.4 ACCRUED EXCEPTION BYTE.** The AEXC byte contains...`, perfectly matching the sibling sections (`1.2.3.2` and `1.2.3.3`) on previous pages.
+- **Verification & Test Results**:
+  - Pipeline rerun from Stage 02 exited with code 0.
+  - Verified `01_floating_point_control_and_status_registers.md` lines 112–115: run-in heading rendered as bold prefix followed by prose paragraph.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 365 files clean.
+  - `cargo fmt --all -- --check`: Clean.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.

@@ -82,6 +82,16 @@ def process_prose(workspace_dir: Path, config: dict):
             if node.get("rendered_markdown"):
                 continue
 
+            # Safeguard: reclassify run-in heading misclassified as heading/chapter to prose
+            cleaned_text = re.sub(r"\s+", " ", raw_text).strip()
+            run_in_match = re.match(r"^(\d+(?:\.\d+)*\s+[A-Z0-9\-_/\s]+[\.:])\s+([A-Z].+)$", cleaned_text)
+            if n_type in ("heading", "chapter") and (
+                (run_in_match and len(run_in_match.group(2)) > 30) or
+                (len(cleaned_text) > 120 and re.search(r"\.\s+[A-Z]", cleaned_text))
+            ):
+                n_type = "prose"
+                node["type"] = "prose"
+
             if n_type in ("heading", "chapter"):
                 lvl = 1 if n_type == "chapter" else (node.get("heading_level") or 2)
                 node["rendered_markdown"] = format_heading(raw_text, level=lvl)
@@ -112,7 +122,10 @@ def process_prose(workspace_dir: Path, config: dict):
                         rendered_text = f"{TOC_START_MARKER}\n{rendered_text}\n{TOC_END_MARKER}"
                     node["rendered_markdown"] = rendered_text + "\n\n"
                 else:
-                    node["rendered_markdown"] = raw_text + "\n\n"
+                    if run_in_match:
+                        node["rendered_markdown"] = f"**{run_in_match.group(1)}** {run_in_match.group(2)}\n\n"
+                    else:
+                        node["rendered_markdown"] = raw_text + "\n\n"
                 formatted_count += 1
 
         target_file = out_dir / c_file.name
