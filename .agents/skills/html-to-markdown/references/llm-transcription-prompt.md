@@ -129,7 +129,13 @@ When encountering diagrams, code, tables, and visual figures, apply this strict 
   ```
 
 ### Priority 6: ASCII Art (Only if Strictly Readable)
-- Monospace diagrams for simple register bitfield layouts *only if strictly aligned and immediately readable*. If unaligned across varying fonts or screen sizes, convert to a Markdown table or cropped image.
+- Monospace diagrams for simple register bitfield layouts, memory frames, or structural layouts *only if strictly aligned and immediately readable*. If unaligned across varying fonts or screen sizes, convert to a Markdown table or cropped image.
+- **Strict Monospace Column & Vertical Line Discipline:**
+  - **Rigid Character Grid & Uniform Unit Width:** Define a fixed character width for repeating elements (e.g., standard bit/cell = exactly 5 or 6 characters). Every vertical border line (`|`) and junction (`+`) belonging to the same column MUST align at the exact same horizontal character index across all rows.
+  - **No Jagged Staggered Dividers:** NEVER try to merge staggered rows into a single chaotic shared divider line (e.g. avoid `+----+--+-+--+`). Separate staggered rows with individual top/bottom borders or use a strict proportional unit system so row widths sum to the identical total length.
+  - **Cluster Gap Invariance:** Gaps between separated clusters or blocks must maintain an identical whitespace count on every row without horizontal drift.
+  - **Length Invariance Assertion:** Verify that all full-width rows inside the ASCII block have the exact same character length (`len(row_i) == total_width`).
+- **Collapsible Breakdown:** Wrap any accompanying leader-line decodes, signal descriptions, or detailed key breakdowns below the diagram in an Obsidian collapsible callout folded by default (`> [!NOTE]- <Title>`).
 
 ### Priority 7: Image Placeholders (Only When Mermaid Cannot Model)
 - **Only** use image placeholders for complex analog waveforms, physical IC pinouts, dense electrical schematics, or photographs that cannot be cleanly modeled in Mermaid:
