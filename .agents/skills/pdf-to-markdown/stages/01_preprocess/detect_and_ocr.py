@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
 stages/01_preprocess/detect_and_ocr.py:
-Gemini Vision OCR worker for Stage 01 (Preprocess).
-Can be called directly or invoked automatically by preprocess.py.
-- If pages contain native text blocks (born-digital PDF), it passes through (0 API calls).
-- If pages lack text (scans or scanned book covers), it uses Gemini Vision OCR
-  to extract text blocks and normalized bounding boxes into page_XXXX.json.
+Gemini Vision OCR helper module for Stage 01 (Preprocess).
+Called by preprocess.py when scanned or text-deficient pages are detected:
+- Scans pages lacking healthy text (total_chars < threshold or 0 text blocks).
+- Uses Gemini Vision OCR to extract text blocks and normalized bounding boxes into page_XXXX.json.
 """
 
-import argparse
 import json
 import sys
 from pathlib import Path
@@ -252,35 +250,3 @@ def detect_and_ocr_pages(
     print(f"Total OCR Blocks Added: {total_ocr_blocks}")
     print("------------------------------------------------------\n")
     return True
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Stage 01: Scan Detection & Gemini Vision OCR Worker")
-    parser.add_argument("--workspace", required=True, help="Path to pipeline workspace directory")
-    parser.add_argument("--config", default="config.yaml", help="Path to config.yaml")
-    parser.add_argument("--page-range", help="Page range to process (e.g. 1-10 or 1,3,5)")
-    parser.add_argument("--start-page", type=int, help="Start page")
-    parser.add_argument("--end-page", type=int, help="End page")
-    parser.add_argument("--max-pages", type=int, help="Maximum pages to process")
-    parser.add_argument("--force", action="store_true", help="Force OCR even on digital pages")
-    parser.add_argument("--threshold", type=int, default=20, help="Character threshold for scan detection (default: 20)")
-    args = parser.parse_args()
-
-    workspace_dir = Path(args.workspace).resolve()
-    config_path = Path(args.config).resolve() if args.config else None
-
-    success = detect_and_ocr_pages(
-        workspace_dir=workspace_dir,
-        config_path=config_path,
-        page_range=args.page_range,
-        start_page=args.start_page,
-        end_page=args.end_page,
-        max_pages=args.max_pages,
-        force=args.force,
-        threshold=args.threshold,
-    )
-    sys.exit(0 if success else 1)
-
-
-if __name__ == "__main__":
-    main()

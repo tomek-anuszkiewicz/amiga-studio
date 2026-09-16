@@ -4347,6 +4347,19 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python -m py_compile .agents/skills/pdf-to-markdown/pipeline.py`: Compiled cleanly with 0 errors.
   - Verified `python pipeline.py --status`: Printed all 13 stages with identical accuracy and zero regressions.
+
+---
+
+### [2026-09-16 13:40 CEST] — PDF-to-Markdown: Pure Library Architecture for Stage 01 OCR Helper
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/01_preprocess/detect_and_ocr.py`: Removed `argparse`, `main()`, and CLI execution block. Refactored into a pure helper module (`detect_and_ocr_pages(...)`) invoked directly by `preprocess.py`.
+  - `.agents/skills/pdf-to-markdown/stages/01_preprocess/README.md`: Updated documentation and file structure diagram to clarify `preprocess.py` as the single authoritative CLI entry point for Stage 01.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed architecture defect: `detect_and_ocr.py` retained a vestigial CLI `main()` function from when it was Stage 01b.
+  - Eliminated redundant argument parsing; `preprocess.py` now directly manages CLI arguments (`--no-ocr`, `--force-ocr`, `--ocr-threshold`) and invokes `detect_and_ocr_pages(...)` internally when scanned pages are detected.
+- **Verification & Test Results**:
+  - `python -m py_compile`: Clean compilation of `detect_and_ocr.py` and `preprocess.py`.
+  - Verified `python stages/01_preprocess/preprocess.py --help`.
   - `python tools/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting 100% compliant, 0 attractors, AGENTS.md <= 14,000 bytes, 18/18 architecture rules).
 
 

@@ -23,7 +23,7 @@ Stage 01 handles both digital and physical documents through two unified process
 ```text
 stages/01_preprocess/
 ├── preprocess.py          # Main entry point: deconstruction, page extraction, and auto-OCR orchestration
-├── detect_and_ocr.py      # Vision OCR worker: scan detection, LLM triage, and box_2d parsing
+├── detect_and_ocr.py      # Internal OCR helper: detect_and_ocr_pages() called by preprocess.py
 ├── prompt_ocr.md          # Multimodal triage & OCR prompt
 └── README.md              # Stage documentation and contracts
 ```
@@ -58,9 +58,4 @@ python stages/01_preprocess/preprocess.py --pdf "path/to/manual.pdf" --workspace
 ### Force OCR on All Pages:
 ```powershell
 python stages/01_preprocess/preprocess.py --pdf "path/to/manual.pdf" --workspace "workspace" --force-ocr
-```
-
-### Standalone OCR Worker Invocation:
-```powershell
-python stages/01_preprocess/detect_and_ocr.py --workspace "workspace" [--force] [--threshold 20]
 ```
