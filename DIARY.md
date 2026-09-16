@@ -4302,6 +4302,25 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 9.52s.
   - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed cleanly.
 
+---
+
+### [2026-09-16 14:52 CEST] — Hardened Practitioner Voice Rule with Explicit Buzzword Blacklist & Self-Audit Gate
+- **Affected Subsystems**:
+  - `.agents/rules/practitioner-voice-and-tone.md` (universal rule scope, explicit banned vocabulary blacklist table, contrastive before/after examples, and pre-output smell test)
+- **What Was Changed (The Concrete Reality)**:
+  - Upgraded `.agents/rules/practitioner-voice-and-tone.md` beyond high-level stylistic advice by adding concrete negative constraints and hard guardrails against pseudo-intellectual / corporate-academic "szur".
+  - Defined universal scope with zero meta-exemptions: the practitioner tone applies equally to agent rules, skill instructions, prompts, and plans. Rules can never justify themselves with the very jargon they forbid.
+  - Added an explicit blacklist table mapping banned buzzwords (*"maximum signal"*, *"cognitive clarity"*, *"cognitive load/bandwidth/energy"*, *"cognitive progression"*, *"paradigm shift"*, *"core thesis"*, *"epistemic"*, *"teleological"*, *"holistic"*, *"nexus"*, *"desiderata"*) directly to mandatory plain-English equivalents (*"clear takeaways"*, *"readability"*, *"mental effort"*, *"major architectural change"*, etc.).
+  - Added concrete before/after contrastive examples, including the exact user case (*"To ensure maximum signal and top-down cognitive clarity..."* vs *"Put decisive architectural conclusions and key trade-offs at the top..."*).
+  - Added Section 9 ("Mandatory Pre-Output Self-Audit"): a pre-output smell test scanning for trigger words (`cognitive`, `signal` outside hardware, `paradigm`, `thesis`, `epistemic`, `teleological`, `holistic`) before finalizing turns.
+- **Architectural Rationale & Trade-Offs**:
+  - Frontier LLMs have an attractor toward academic-consulting jargon when asked to structure, summarize, or justify rules. High-level rules like "be practical" are insufficient; explicit negative blacklists and concrete before/after pairs directly counteract this generative bias.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: Clean formatting across the workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 9.14s.
+  - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed cleanly.
+
+
 
 
 
