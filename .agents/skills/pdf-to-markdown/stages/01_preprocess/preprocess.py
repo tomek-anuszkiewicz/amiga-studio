@@ -32,7 +32,6 @@ def preprocess_pdf(
     end_page: Optional[int] = None,
     pages_list: Optional[List[int]] = None,
     auto_ocr: bool = True,
-    force_ocr: bool = False,
     ocr_threshold: int = 20,
     config_path: Optional[Path] = None,
 ) -> dict:
@@ -61,7 +60,13 @@ def preprocess_pdf(
         else:
             end_page = doc_len
         pages_to_process = list(range(start_page, end_page + 1))
-        print(f"[*] Pages to process: {start_page}..{end_page} ({len(pages_to_process)} pages of {doc_len} in doc), Rendering at {dpi} DPI")
+        print(f"[*] Processing pages {start_page} to {end_page} (of {doc_len} in doc), Rendering at {dpi} DPI")
+
+    # Clean existing stage artifacts for targeted pages to guarantee a fresh, idempotent start
+    for p in pages_to_process:
+        p_str = f"page_{p:04d}"
+        for old_file in pages_dir.glob(f"{p_str}.*"):
+            old_file.unlink(missing_ok=True)
 
     manifest = {
         "source_pdf": str(pdf_path),
@@ -137,12 +142,11 @@ def preprocess_pdf(
         json.dump(manifest, f, indent=2)
 
     # 4. Run scan detection & Gemini Vision OCR if enabled
-    if auto_ocr or force_ocr:
+    if auto_ocr:
         detect_and_ocr_pages(
             workspace_dir=workspace_dir,
             config_path=config_path,
             page_range=",".join(str(p) for p in pages_to_process),
-            force=force_ocr,
             threshold=ocr_threshold,
         )
 
@@ -161,7 +165,6 @@ def main():
     parser.add_argument("--start-page", type=int, default=1, help="Start page number (1-indexed)")
     parser.add_argument("--end-page", type=int, default=None, help="End page number (1-indexed)")
     parser.add_argument("--no-ocr", action="store_true", help="Disable automatic scan detection and OCR")
-    parser.add_argument("--force-ocr", action="store_true", help="Force OCR on all pages even if native text is present")
     parser.add_argument("--ocr-threshold", type=int, default=20, help="Character threshold below which a page is considered a scan (default: 20)")
 
     args = parser.parse_args()
@@ -210,7 +213,6 @@ def main():
         end_page=end_page,
         pages_list=pages_list,
         auto_ocr=not args.no_ocr,
-        force_ocr=args.force_ocr,
         ocr_threshold=ocr_threshold,
         config_path=config_path if config_path.exists() else None,
     )

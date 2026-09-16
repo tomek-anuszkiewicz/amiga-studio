@@ -90,7 +90,6 @@ def detect_and_ocr_pages(
     start_page: Optional[int] = None,
     end_page: Optional[int] = None,
     max_pages: Optional[int] = None,
-    force: bool = False,
     threshold: int = 20,
 ) -> bool:
     pages_dir = workspace_dir / "01_preprocess"
@@ -148,7 +147,7 @@ def detect_and_ocr_pages(
         total_chars = sum(len(b.get("text", "").strip()) for b in blocks if isinstance(b, dict))
 
         # Check if page is considered digital or scan
-        is_scanned = (len(blocks) == 0 or total_chars < threshold) or force
+        is_scanned = len(blocks) == 0 or total_chars < threshold
 
         if not is_scanned:
             skipped_count += 1
