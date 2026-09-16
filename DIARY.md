@@ -3903,3 +3903,17 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 362 files scanned, 0 attractors found.
   - `cargo fmt --all -- --check`: 100% compliant.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+---
+
+### [2026-09-16 03:45 CEST] — PDF-to-Markdown: Zero Empty Assets Directory Creation in Stage 13
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/13_proofread_markdown/proofread_markdown.py`: Only creates `assets/` directory on-demand when active asset files are copied; prunes empty directory via `rmdir` if no assets exist.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user feedback to prevent creating an empty `assets/` directory in the final publication vault (`workspace/13_proofread_markdown/`) when a document contains no graphics or images.
+  - Removed unconditional `out_assets.mkdir()` upfront in Stage 13. Assets folder is now created strictly on-demand during file copy.
+  - Added safety cleanup (`out_assets.rmdir()`) ensuring zero empty directories are left behind when converting text-only documents.
+- **Verification & Test Results**:
+  - Page 156 test (text-only): Verified that `workspace/13_proofread_markdown/` contains only `01_limitations_on_selection_of_sampling_period.md` and 0 subdirectories (no `assets/` folder).
+  - Page 1 test (with cover graphic): Verified that `workspace/13_proofread_markdown/assets/` is properly created and contains `asset_node_00001.png` and its sidecar.
+  - Pre-flight quality gates passed: formatting, attractor linter (362 clean), and 18/18 architecture tests.
