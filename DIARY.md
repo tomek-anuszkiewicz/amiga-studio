@@ -3882,7 +3882,24 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/pdf-to-markdown/pipeline.py --start-page 180 --end-page 180`: Pipeline completed with exit code 0.
   - `output_markdown/01_audio_state_machine.md`: Clean output with signal table, Mermaid diagram, ASCII diagram, and RAG sidecar.
   - `output_markdown/assets/asset_node_00004.png`: Verified full crop size `(2326, 2402)` pixels.
-  - `python tools/pre_flight.py`: 100% PASS across formatting, attractors, AGENTS.md, and architecture tests.
+---
 
-
-
+### [2026-09-16 03:40 CEST] — PDF-to-Markdown: 1:1 Stage-Workspace Directory Harmonization & Visual Graphic Detection on Text-Empty Pages
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/segment_page.py`: Removed premature empty blocks return; added Gemini Vision check for text-empty pages to detect book covers and full-page illustrations.
+  - `.agents/skills/pdf-to-markdown/stages/`: Harmonized all 13 intermediate workspace directory names to strictly match stage folder names 1:1 (`workspace/{NN}_{stage_name}`).
+  - `.agents/skills/pdf-to-markdown/stages/07_transform_tables/transform_tables.py` & `stages/08_transform_graphics/transform_graphics.py`: Fixed asset candidate resolution so legitimately emptied upstream asset folders are respected rather than falling back to older stages.
+  - `.agents/skills/pdf-to-markdown/stages/10_emit_markdown/emit_markdown.py`: Enforced active reference filter when copying assets to output markdown, guaranteeing zero zombie/orphaned assets.
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Updated all stage invocation subcommands, status checks, and cache invalidation targets to use the unified 1:1 directories.
+  - `.agents/skills/pdf-to-markdown/config.yaml`, `SKILL.md`, and stage `README.md` files: Synchronized path documentation.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user feedback regarding text-empty pages (e.g. Page 1 book cover): previously returned `[]` if PyMuPDF extracted zero text blocks. Now invokes Gemini Vision to inspect the 300 DPI raster render; classifies full-page graphics with normalized bounding box `[0.0, 0.0, 1.0, 1.0]` and synthesized caption.
+  - Resolved workspace naming discrepancy where intermediate directories used ad-hoc names (e.g. `05_chapters_raw`, `10_markdown_raw`, `12_canonical_markdown`) instead of matching their corresponding stage folders. Harmonized all 13 stages across the pipeline.
+  - Fixed an asset resurrection trap where checking `any(p.glob("*"))` on upstream asset folders caused stages to skip legitimately emptied asset folders (after text table conversion) and fall back to `04_stream_reduction`, re-introducing deleted table crops.
+  - Executed end-to-end pipeline verification on Page 156: all 13 stages completed with exit code 0, producing clean GFM table formatting and an empty `assets/` directory (zero orphaned assets).
+- **Verification & Test Results**:
+  - Page 1 cover test: Generated `page_0001_segments.json` with `type: "graphic"` and extracted `asset_node_00001.png` (3 MB 300 DPI full cover).
+  - Page 156 end-to-end test: All 13 stages passed; `01_limitations_on_selection_of_sampling_period.md` generated in `workspace/13_proofread_markdown/` with 0 orphaned assets.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 362 files scanned, 0 attractors found.
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
