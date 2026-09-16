@@ -84,3 +84,155 @@ fn test_vamiga_blitter_sblit0_execution() {
     );
     assert_eq!(result.mismatched_pixels, 0);
 }
+
+#[test]
+fn test_vamiga_blitter_sblit1_execution() {
+    let base = if Path::new("ref_src").exists() {
+        PathBuf::from("ref_src")
+    } else {
+        PathBuf::from("../../ref_src")
+    };
+    let test_dir = base.join("vAmigaTS/Agnus/Blitter/sblit/sblit1");
+    if !test_dir.exists() {
+        eprintln!("vAmigaTS test directory not present: {:?}", test_dir);
+        return;
+    }
+
+    let config = VamigaRunConfig {
+        frames_to_run: 8,
+        ..Default::default()
+    };
+
+    let result = run_vamiga_test_from_dir(&test_dir, "sblit1", &config)
+        .expect("sblit1 execution failed to run");
+
+    println!(
+        "sblit1 result: passed={}, mismatched_pixels={}/{}",
+        result.passed, result.mismatched_pixels, result.total_pixels
+    );
+    if let Some(diff) = &result.first_mismatch {
+        println!(
+            "First mismatch at ({}, {}): actual={:?}, expected={:?}",
+            diff.x, diff.y, diff.actual, diff.expected
+        );
+    }
+
+    println!("Total diffs recorded: {}", result.diffs.len());
+    for diff in result.diffs.iter().take(15) {
+        println!(
+            "  diff at ({}, {}): actual={:?}, exp={:?}",
+            diff.x, diff.y, diff.actual, diff.expected
+        );
+    }
+
+    let mut machine = machine_loop::A500Machine::new(config.machine_config.clone());
+    let adf_bytes = std::fs::read(test_dir.join("sblit1.adf")).unwrap();
+    test_runner::inject_vamiga_test(&mut machine, &adf_bytes).unwrap();
+    for _ in 0..8 {
+        machine.step_frame();
+    }
+    let mut actual_raw = [0u8; test_runner::VAMIGA_RAW_BYTE_SIZE];
+    machine
+        .denise
+        .frame_builder
+        .extract_vamiga_raw_viewport(&mut actual_raw);
+    let _ = std::fs::write("target/actual_sblit1.raw", &actual_raw);
+
+    assert_eq!(result.mismatched_pixels, 0, "sblit1 pixel mismatch");
+}
+
+#[test]
+fn test_vamiga_blitter_sblit3_execution() {
+    let base = if Path::new("ref_src").exists() {
+        PathBuf::from("ref_src")
+    } else {
+        PathBuf::from("../../ref_src")
+    };
+    let test_dir = base.join("vAmigaTS/Agnus/Blitter/sblit/sblit3");
+    if !test_dir.exists() {
+        eprintln!("vAmigaTS test directory not present: {:?}", test_dir);
+        return;
+    }
+
+    let config = VamigaRunConfig {
+        frames_to_run: 8,
+        ..Default::default()
+    };
+
+    let result = run_vamiga_test_from_dir(&test_dir, "sblit3", &config)
+        .expect("sblit3 execution failed to run");
+
+    println!(
+        "sblit3 result: passed={}, mismatched_pixels={}/{}",
+        result.passed, result.mismatched_pixels, result.total_pixels
+    );
+    if let Some(diff) = &result.first_mismatch {
+        println!(
+            "First mismatch at ({}, {}): actual={:?}, expected={:?}",
+            diff.x, diff.y, diff.actual, diff.expected
+        );
+    }
+
+    let mut machine = machine_loop::A500Machine::new(config.machine_config.clone());
+    let adf_bytes = std::fs::read(test_dir.join("sblit3.adf")).unwrap();
+    test_runner::inject_vamiga_test(&mut machine, &adf_bytes).unwrap();
+    for _ in 0..8 {
+        machine.step_frame();
+    }
+    let mut actual_raw = [0u8; test_runner::VAMIGA_RAW_BYTE_SIZE];
+    machine
+        .denise
+        .frame_builder
+        .extract_vamiga_raw_viewport(&mut actual_raw);
+    let _ = std::fs::write("target/actual_sblit3.raw", &actual_raw);
+
+    assert_eq!(result.mismatched_pixels, 0, "sblit3 pixel mismatch");
+}
+
+#[test]
+fn test_vamiga_blitter_sblit9_execution() {
+    let base = if Path::new("ref_src").exists() {
+        PathBuf::from("ref_src")
+    } else {
+        PathBuf::from("../../ref_src")
+    };
+    let test_dir = base.join("vAmigaTS/Agnus/Blitter/sblit/sblit9");
+    if !test_dir.exists() {
+        eprintln!("vAmigaTS test directory not present: {:?}", test_dir);
+        return;
+    }
+
+    let config = VamigaRunConfig {
+        frames_to_run: 8,
+        ..Default::default()
+    };
+
+    let result = run_vamiga_test_from_dir(&test_dir, "sblit9", &config)
+        .expect("sblit9 execution failed to run");
+
+    println!(
+        "sblit9 result: passed={}, mismatched_pixels={}/{}",
+        result.passed, result.mismatched_pixels, result.total_pixels
+    );
+    if let Some(diff) = &result.first_mismatch {
+        println!(
+            "First mismatch at ({}, {}): actual={:?}, expected={:?}",
+            diff.x, diff.y, diff.actual, diff.expected
+        );
+    }
+
+    let mut machine = machine_loop::A500Machine::new(config.machine_config.clone());
+    let adf_bytes = std::fs::read(test_dir.join("sblit9.adf")).unwrap();
+    test_runner::inject_vamiga_test(&mut machine, &adf_bytes).unwrap();
+    for _ in 0..8 {
+        machine.step_frame();
+    }
+    let mut actual_raw = [0u8; test_runner::VAMIGA_RAW_BYTE_SIZE];
+    machine
+        .denise
+        .frame_builder
+        .extract_vamiga_raw_viewport(&mut actual_raw);
+    let _ = std::fs::write("target/actual_sblit9.raw", &actual_raw);
+
+    assert_eq!(result.mismatched_pixels, 0, "sblit9 pixel mismatch");
+}

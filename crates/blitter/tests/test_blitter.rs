@@ -305,3 +305,53 @@ fn test_cycle_by_cycle_stepping() {
     // Verify copied word
     assert_eq!(u16::from_be_bytes([ram[0x40], ram[0x41]]), 0xBEEF);
 }
+
+#[test]
+fn test_blitter_unconnected_channel_latch_defaults() {
+    let mut blit = Blitter::new();
+    assert_eq!(blit.bltadat, 0xAAAA);
+    assert_eq!(blit.bltbdat, 0xAAAA);
+    assert_eq!(blit.bltcdat, 0x5555);
+    assert_eq!(blit.anew, 0xAAAA);
+    assert_eq!(blit.bnew, 0xAAAA);
+    assert_eq!(blit.ahold, 0xAAAA);
+    assert_eq!(blit.bhold, 0xAAAA);
+    assert_eq!(blit.chold, 0x5555);
+
+    blit.bltadat = 0x1234;
+    blit.bltbdat = 0x5678;
+    blit.bltcdat = 0x9ABC;
+    blit.reset();
+
+    assert_eq!(blit.bltadat, 0xAAAA);
+    assert_eq!(blit.bltbdat, 0xAAAA);
+    assert_eq!(blit.bltcdat, 0x5555);
+    assert_eq!(blit.chold, 0x5555);
+}
+
+#[test]
+fn test_blitter_unconnected_channels_cookie_cut() {
+    let mut blit = Blitter::new();
+    let mut ram = vec![0u8; 1024];
+
+    // sblit1 (D only, LF=$CA):
+    // When A, B, C are disabled, A=0xAAAA, B=0xAAAA, C=0x5555
+    // D = (A & B) | (!A & C) = (0xAAAA & 0xAAAA) | (0x5555 & 0x5555) = 0xAAAA | 0x5555 = 0xFFFF
+    blit.set_dma_enabled(true);
+    blit.bltcon0 = 0x01CA; // USED only, LF=$CA
+    blit.bltafwm = 0xFFFF;
+    blit.bltalwm = 0xFFFF;
+    blit.bltdpt = 0x20;
+
+    blit.start_blit((1 << 6) | 1);
+    // Startup
+    blit.step_cck_ram(&mut ram);
+    // Phase 0: BusIdle
+    blit.step_cck_ram(&mut ram);
+    // Phase 1: WriteD
+    blit.step_cck_ram(&mut ram);
+    assert!(!blit.is_busy);
+
+    let written = u16::from_be_bytes([ram[0x20], ram[0x21]]);
+    assert_eq!(written, 0xFFFF);
+}

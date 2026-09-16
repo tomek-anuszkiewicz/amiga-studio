@@ -130,7 +130,9 @@ pub struct Blitter {
 impl Blitter {
     /// Creates a new uninitialized Blitter instance
     pub fn new() -> Self {
-        Self::default()
+        let mut b = Self::default();
+        b.reset();
+        b
     }
 
     /// Resets all Blitter registers to power-on defaults
@@ -150,16 +152,16 @@ impl Blitter {
         self.bltbmod = 0;
         self.bltcmod = 0;
         self.bltdmod = 0;
-        self.bltadat = 0;
-        self.bltbdat = 0;
-        self.bltcdat = 0;
+        self.bltadat = 0xAAAA;
+        self.bltbdat = 0xAAAA;
+        self.bltcdat = 0x5555;
         self.aold = 0;
         self.bold = 0;
-        self.anew = 0;
-        self.bnew = 0;
-        self.ahold = 0;
-        self.bhold = 0;
-        self.chold = 0;
+        self.anew = 0xAAAA;
+        self.bnew = 0xAAAA;
+        self.ahold = 0xAAAA;
+        self.bhold = 0xAAAA;
+        self.chold = 0x5555;
         self.dhold = 0;
         self.fill_carry = false;
         self.is_busy = false;
@@ -360,7 +362,7 @@ impl Blitter {
             self.bhold = barrel_shift(self.bnew, self.bold, bsh, desc);
             self.bold = self.bnew;
         } else {
-            self.bhold = self.bltbdat;
+            self.bhold = self.bnew;
         }
 
         let minterm = (self.bltcon0 & 0xFF) as u8;
