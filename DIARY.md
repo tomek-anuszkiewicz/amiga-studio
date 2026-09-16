@@ -4275,6 +4275,9 @@ Every future modification or implementation task must append an entry following 
   - Added coordinate sanity validation in `detect_and_ocr.py` ensuring coordinates are correctly sorted (`x0 <= x1`, `y0 <= y1`) and clamped.
 - **Verification & Test Results**:
   - Unit test assertion verified `parse_ocr_bounding_box()` on `[65, 797, 90, 941]` -> `(0.797, 0.065, 0.941, 0.09)`.
+  - Executed full 10-page pipeline regeneration on `Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf`:
+    - Page 4: "Section 1" bounding box regenerated from previous faulty `bbox_norm: [0.797, 0.65, 0.941, 0.9]` (bottom margin) to accurate `bbox_norm: [0.799, 0.064, 0.943, 0.089]` ($y = 6.4\% \dots 8.9\%$ top-right header).
+    - Stage 10/11 accurately recognized the heading hierarchy and emitted `01_chapter_1_section_1_summary_of_differences.md` with correct `# Section 1` and `# Summary of Differences` structure.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Passed (369 files scanned, 0 attractors).
   - `cargo test -p test_runner --test test_architecture_rules`: Passed (18/18 tests).
 
