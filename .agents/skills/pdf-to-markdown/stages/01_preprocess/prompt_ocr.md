@@ -26,6 +26,8 @@ Examine the image and classify it into one of three categories:
 4. **Accuracy & Fidelity**:
    - Transcribe technical terms, punctuation, registers, and code accurately.
    - If the page is a book cover with readable titles and author names, classify as `"text_page"` and transcribe title, author, publisher, and edition.
+5. **Visual Diagrams, Schematics & Layouts**:
+   - If the page contains a visual diagram, circuit schematic, waveform, drawing, or keyboard layout alongside text, emit a dedicated block with `box_2d` enclosing the entire visual drawing area, and `text` set to its title, caption, or description (e.g., `"[Figure 1.1: Keyboard Layout Showing Raw Key Codes]\n"`). Do NOT ignore visual diagrams or treat them as blank space.
 
 ### Output Format:
 Return ONLY a valid JSON object:
