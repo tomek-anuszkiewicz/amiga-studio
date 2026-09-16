@@ -123,7 +123,11 @@ def process_graphics(workspace_dir: Path, config: dict):
                     continue
 
             # Fallback to Obsidian image embed + RAG sidecar
-            node["rendered_markdown"] = f"![[{asset_file}|{caption}]]\n\n*{caption}*\n\n"
+            has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
+            if has_dedicated_caption:
+                node["rendered_markdown"] = f"![[{asset_file}|{caption}]]\n\n"
+            else:
+                node["rendered_markdown"] = f"![[{asset_file}|{caption}]]\n\n*{caption}*\n\n"
             transformed_count += 1
 
             # Generate technical engineering sidecar via Gemini Vision

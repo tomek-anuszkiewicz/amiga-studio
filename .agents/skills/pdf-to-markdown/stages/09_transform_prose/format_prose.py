@@ -84,6 +84,10 @@ def process_prose(workspace_dir: Path, config: dict):
                 formatted_count += 1
             elif n_type == "toc_header":
                 node["rendered_markdown"] = ""
+            elif n_type == "caption":
+                clean_cap = " ".join(raw_text.strip().split())
+                node["rendered_markdown"] = f"*{clean_cap}*\n\n"
+                formatted_count += 1
             elif n_type in ("prose", "code_block", "toc"):
                 full_prompt = (
                     f"{base_prompt}\n\n"
