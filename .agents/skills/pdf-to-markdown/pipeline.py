@@ -394,6 +394,16 @@ def main():
         config_path = skill_dir / config_path
 
     pdf_path = Path(args.pdf).resolve() if args.pdf else None
+    if pdf_path and not pdf_path.is_file():
+        if pdf_path.is_dir():
+            candidates = list(pdf_path.glob("*.pdf"))
+            if len(candidates) == 1:
+                pdf_path = candidates[0]
+        elif pdf_path.parent.is_dir():
+            candidates = list(pdf_path.parent.glob("*.pdf"))
+            if len(candidates) == 1:
+                pdf_path = candidates[0]
+
     book_dir = pdf_path.parent if pdf_path else None
 
     if args.workspace:
