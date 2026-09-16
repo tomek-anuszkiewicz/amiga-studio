@@ -61,8 +61,6 @@ Analyze all modified and added files using `git diff`:
 13. **Language Policy & English Purity**:
    - Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, or inline comments (per `language-policy.md`).
    - Quoting Polish prompt phrases or metaphors in comments—even parenthetically or in quotation marks—is strictly prohibited; all concepts must be translated into idiomatic English before writing to code.
-14. **Linguistic Attractor & Vocabulary Discipline**:
-   - Run the attractor linter (`python .agents/skills/attractor-discipline/scripts/lint_attractors.py` or [`attractor-discipline`](../attractor-discipline/SKILL.md)) to confirm zero synthetic academic jargon, theatrical testing phrasing, or heading slogans.
 
 ### Step 3: Living Documentation & Defect Retrospection Audit
 1. **Defect Retrospection (if bug fix / refactor)**: Did the author perform root-cause analysis ("Why did this happen?")? Are dedicated regression tests in place covering edge cases? Were systemic safeguards (architectural rules, lints, or DoD criteria) added to ensure this class of defect never recurs?
@@ -93,7 +91,6 @@ Provide the audit report using the following standard template:
 - [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, completed roadmap steps deleted (zero `[COMPLETED]` markers in Section 2), and `DIARY.md` chronological changelog updated.
 - [ ] **Path Privacy:** Zero external host paths.
 - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
-- [ ] **Attractor & Vocabulary Discipline:** `python .agents/skills/attractor-discipline/scripts/lint_attractors.py` passed cleanly (zero quarantined terms).
 - [ ] **Test Coverage:** All workspace tests pass 100% green (`cargo test`).
 
 **Verdict:** [APPROVED | CHANGES REQUESTED]
@@ -114,12 +111,11 @@ Provide the audit report using the following standard template:
     ```markdown
     Conduct an adversarial code and architecture audit of the recent changes.
     Follow .agents/skills/code-review/SKILL.md:
-    1. Check git diff against all 18 constitutional gates.
+    1. Check git diff against all constitutional gates.
     2. Ensure zero inline tests in `crates/*/src/` (tests must be in dedicated `crates/*/tests/`).
-    3. Run `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`.
-    4. Run `cargo test -p test_runner --test test_architecture_rules`.
-    5. Check file size limits (<= 800 lines) and AGENTS.md ceiling (<= 14,000 bytes).
-    6. Return strictly the formal Code Review Audit Report below.
+    3. Run `cargo test -p test_runner --test test_architecture_rules`.
+    4. Check file size limits (<= 800 lines) and AGENTS.md ceiling (<= 14,000 bytes).
+    5. Return strictly the formal Code Review Audit Report below.
     ```
 - **Return Contract (Mandatory Structured Output):**
   The subagent must conclude with the standard `### 🛡️ Code & Architecture Compliance Review` report containing:

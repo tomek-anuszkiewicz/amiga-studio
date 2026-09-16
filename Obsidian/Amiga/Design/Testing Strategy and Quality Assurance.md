@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-09-15
+updated: 2026-09-16
 related: ["[General Architecture.md](General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 ---
 
@@ -259,7 +259,7 @@ When an autonomous AI agent builds, extends, or refactors any part of the emulat
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
 | [`tools/harness/run_tests.py`](../../../tools/harness/run_tests.py) | CLI runner for Tier 1 (`--unit`), Tier 2 (`--integration`), and Tier 3 (`--harness`). | Developer workflow & CI |
-| [`tools/harness/pre_flight.py`](../../../tools/harness/pre_flight.py) | Master 4-gate pre-commit quality checker (Formatting, Attractors, AGENTS.md size, Architecture tests). | Git pre-commit hook & CI |
+| [`tools/harness/pre_flight.py`](../../../tools/harness/pre_flight.py) | Master pre-commit quality checker (Formatting, AGENTS.md size, Test Coupling, API Coverage, Architecture rules). | Git pre-commit hook & CI |
 | [`tools/harness/check_test_coupling.py`](../../../tools/harness/check_test_coupling.py) | Verifies that changes to `crates/<crate>/src/` are coupled with changes to `crates/<crate>/tests/`. | Git pre-commit hook |
 | [`tools/harness/audit_api_coverage.py`](../../../tools/harness/audit_api_coverage.py) | Statically verifies that public functions (`pub fn`) are referenced and tested in unit/integration suites. | Pre-flight gate (`--strict`) |
 | [`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs) | 20 automated tests validating architectural rules, test naming, and multi-module parity. | `cargo test` & pre-flight gate |

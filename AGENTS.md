@@ -17,7 +17,6 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Hardware Efficiency & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros, zero const-generics, contiguous execution, and zero runtime heap allocations in hot paths.
 - **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Pre-task conceptual retrieval, CLI vector search (`tools/harness/rag_search.py`), and reference reindexing.
 - **AGENTS.md Size & Limits** ([`agents-md-limits.md`](.agents/rules/agents-md-limits.md)): Strict constitutional size ceiling ($\le 14,000$ bytes) and non-redundancy policy.
-- **Attractor & Vocabulary Discipline** ([`attractor-discipline.md`](.agents/rules/attractor-discipline.md)): Strict prevention of synthetic academic jargon monoculture and leaked hardware buzzwords.
 - **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for functional/utility logic and public APIs; dedicated `tests/` directories with zero inline tests in `src/`.
 - **Immediate Atomic Commits** ([`git-commits.md`](.agents/rules/git-commits.md)): Mandatory atomic commit after every completed task or refactoring; zero uncommitted changes left across turns; Conventional Commits and pre-commit test gates.
 
@@ -96,7 +95,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 ## 4. Quality Assurance & Definition of Done
 
 - **Mandatory Formatting:** `cargo fmt --all -- --check`.
-- **Pre-Flight Gate:** Run `python tools/harness/pre_flight.py` (checks formatting, attractors, size, and architecture rules).
+- **Pre-Flight Gate:** Run `python tools/harness/pre_flight.py` (checks formatting, size, and architecture rules).
 - **Automated Architecture Tests:** Pass `cargo test -p test_runner --test test_architecture_rules` (validates file sizes, zero panics/macros/generics, canonical IDLE, zero inline tests, path privacy, inlining, links).
 - **Single-Step CPU Validation:** Run `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep` on any `crates/m68000` changes.
 - **Cartesian DMA Contention:** Run `cargo test -p test_runner --test test_dma_cartesian` on CPU/bus changes (validates cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity).

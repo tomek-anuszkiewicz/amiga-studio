@@ -4233,3 +4233,29 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 386 files (0 violations).
   - `python tools/harness/check_test_coupling.py --staged`: Passed.
 
+---
+
+### [2026-09-16 13:35 CEST] — Removal of Attractor Discipline Rule, Skill, Linter & CI Test Gate
+- **Affected Subsystems**:
+  - `.agents/rules/attractor-discipline.md` (deleted rule file)
+  - `.agents/skills/attractor-discipline/` (deleted skill directory, `SKILL.md`, and `lint_attractors.py`)
+  - `crates/test_runner/tests/test_architecture_rules.rs` (removed `test_zero_synthetic_attractors` test function)
+  - `tools/harness/pre_flight.py` (removed attractor discipline linter gate and script references)
+  - `AGENTS.md` (removed Section 1.A bullet pointer and updated Section 4 Definition of Done)
+  - `.agents/rules/git-commits.md`, `.agents/rules/parallel-execution.md` (removed attractor discipline from verification checklists)
+  - `.agents/skills/roadmap-maintenance/SKILL.md`, `.agents/skills/code-review/SKILL.md` (removed attractor linter and review checklist items)
+  - `docs/ai_agents.md` (removed attractor discipline rule and skill references)
+  - `Obsidian/Amiga/Design/Testing Strategy and Quality Assurance.md` (updated pre-flight gate descriptions and bumped frontmatter timestamp)
+- **What Was Changed (The Concrete Reality)**:
+  - Per user directive ("Usuń attractor discipline"), completely removed the `attractor-discipline` rule, skill, and Python scanner script.
+  - Eliminated `test_zero_synthetic_attractors` from `crates/test_runner/tests/test_architecture_rules.rs`.
+  - Removed the attractor linter check from `tools/harness/pre_flight.py`.
+  - Cleaned up all pointers, references, and verification steps in `AGENTS.md`, `.agents/rules/`, `.agents/skills/`, and project documentation.
+- **Architectural Rationale & Trade-Offs**:
+  - *Rule Minimization:* Streamlining repository rules and removing synthetic vocabulary policing simplifies the prompt overhead and reduces CI execution steps.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: Clean formatting across the workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 0.55s.
+  - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed cleanly.
+
+

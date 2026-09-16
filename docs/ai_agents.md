@@ -15,7 +15,6 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **Strict Path Privacy (`no-external-paths.md`):** Zero external host paths in committed files; use generic placeholders.
 - **Zero Host Panics (`performance-and-readability.md`):** No `.unwrap()` or `.expect()` in runtime emulation hot paths.
 - **Hardware Efficiency & Readability:** Zero custom macros (`macro_rules!`), zero const-generic instruction handlers, contiguous memory layouts, and zero heap allocations in execution loops.
-- **Attractor Discipline (`attractor-discipline.md`):** Zero synthetic academic jargon, theatrical testing metaphors, or heading slogans.
 - **Amiga RAG Knowledge Base (`amiga-rag.md`):** Mandatory pre-task conceptual retrieval and automated reindexing on documentation changes.
 - **Graphify AST Knowledge Graph (`graphify.md`):** Consult the code knowledge graph for AST queries and adhere to scoped subtree re-indexing (`crates/` vs `ref_src/`).
 
@@ -62,7 +61,6 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 
 ### B. Quality Assurance & Code Hygiene
 - [`code-review`](../.agents/skills/code-review/SKILL.md): Comprehensive 14-point audit checklist for code quality, file sizes ($\le 800$ lines), inlining, zero runtime panics, and spec compliance.
-- [`attractor-discipline`](../.agents/skills/attractor-discipline/SKILL.md): Automated linter script and guidelines for detecting and cleaning quarantined linguistic attractors, theatrical metaphors, and heading slogans.
 - [`prune-dead-code`](../.agents/skills/prune-dead-code/SKILL.md): Systematic procedure for identifying and safely eliminating dead code, unused functions, obsolete constants, and unreferenced crate exports upon milestone completion.
 - [`egui-vision-debugger`](../.agents/skills/egui-vision-debugger/SKILL.md): Headless visual inspection and autonomous self-healing skill for the `egui` frontend using `gui-inspector` (`egui_kittest` + `wgpu`) and Agent Multimodal Vision to diagnose layout squishing, splitter contention, and focus lifecycles.
 

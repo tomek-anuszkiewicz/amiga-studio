@@ -21,7 +21,6 @@ if hasattr(sys.stdout, "reconfigure"):
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AGENTS_MD_PATH = REPO_ROOT / "AGENTS.md"
 MAX_AGENTS_MD_BYTES = 14000
-LINTER_SCRIPT = REPO_ROOT / ".agents" / "skills" / "attractor-discipline" / "scripts" / "lint_attractors.py"
 
 def run_cmd(cmd, cwd=REPO_ROOT):
     start = time.time()
@@ -43,25 +42,6 @@ def check_formatting():
         output = stdout.strip() or stderr.strip()
         return False, f"Code formatting check failed:\n{output}", elapsed
     return True, "100% compliant", elapsed
-
-def check_attractors():
-    if not LINTER_SCRIPT.exists():
-        return False, f"Linter script not found at {LINTER_SCRIPT}", 0.0
-    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(LINTER_SCRIPT)])
-    if code != 0:
-        output = stdout.strip() or stderr.strip()
-        return False, f"Attractor discipline linter failed:\n{output}", elapsed
-    
-    count = 0
-    for line in stdout.splitlines():
-        if "Scanned" in line and "files" in line:
-            parts = line.split()
-            for p in parts:
-                if p.isdigit():
-                    count = int(p)
-                    break
-    msg = f"{count} files clean (0 violations)" if count else "Clean (0 violations)"
-    return True, msg, elapsed
 
 def check_agents_md():
     start = time.time()
@@ -119,7 +99,6 @@ def main():
     
     gates = [
         ("Formatting", check_formatting),
-        ("Attractor Discipline", check_attractors),
         ("AGENTS.md Ceiling", check_agents_md),
         ("Test Coupling", lambda: check_test_coupling(staged=staged_mode)),
         ("API Coverage", check_api_coverage),

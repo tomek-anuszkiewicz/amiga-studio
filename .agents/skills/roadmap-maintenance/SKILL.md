@@ -68,10 +68,6 @@ If a sub-suite milestone was finished or global timing changed:
 1. Update [`Obsidian/Amiga/Design/vAmigaTS Verification Scorecard.md`](../../../Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md) with updated test counts and pass rates.
 2. Ensure `ROADMAP.md` only links to the scorecard rather than containing transient test run percentages.
 
-### Step 6: Verify Cleanliness & Attractor Discipline
+### Step 6: Verify Cleanliness
 1. Search [`ROADMAP.md`](../../../ROADMAP.md) for any stray occurrences of `COMPLETED` or `Completed:` in Section 2:
    Ensure zero matches in the active backlog.
-2. Run the attractor linter:
-   ```powershell
-   python .agents/skills/attractor-discipline/scripts/lint_attractors.py
-   ```
