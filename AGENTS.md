@@ -16,7 +16,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user conflict escalation before code changes.
 - **Hardware Efficiency & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros, zero const-generics, contiguous execution, and zero runtime heap allocations in hot paths.
 - **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Pre-task conceptual retrieval, CLI vector search (`tools/harness/rag_search.py`), and reference reindexing.
-- **AGENTS.md Size & Limits** ([`agents-md-limits.md`](.agents/rules/agents-md-limits.md)): Strict constitutional size ceiling ($\le 14,000$ bytes) and non-redundancy policy.
+- **Information Hierarchy & Limits** ([`information-hierarchy.md`](.agents/rules/information-hierarchy.md)): Inverted pyramid model, constitutional AGENTS.md ceiling ($\le 14,000$ bytes), and non-redundancy.
 - **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for functional/utility logic and public APIs; dedicated `tests/` directories with zero inline tests in `src/`.
 - **Immediate Atomic Commits** ([`git-commits.md`](.agents/rules/git-commits.md)): Mandatory atomic commit after every completed task or refactoring; zero uncommitted changes left across turns; Conventional Commits and pre-commit test gates.
 
@@ -37,7 +37,6 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Mandatory AST query before file inspection; scoped incremental updates for `crates/` and `ref_src/`.
 - **Asset Descriptions & Sidecars** ([`asset-descriptions.md`](.agents/rules/asset-descriptions.md)): Git-tracked `<image_path>.txt` technical sidecars for circuit and timing schematics.
 - **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing, and multi-agent workflows.
-- **Information Hierarchy** ([`information-hierarchy.md`](.agents/rules/information-hierarchy.md)): Inverted pyramid model, putting key architectural conclusions first.
 - **Practitioner Voice & Tone** ([`practitioner-voice-and-tone.md`](.agents/rules/practitioner-voice-and-tone.md)): Hands-on lead architect persona, tech blog standard, and zero academic jargon.
 
 ---

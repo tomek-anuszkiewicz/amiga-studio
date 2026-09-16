@@ -4320,6 +4320,27 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 9.14s.
   - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed cleanly.
 
+---
+
+### [2026-09-16 14:57 CEST] — Merged AGENTS.md Size Limits and Information Hierarchy into Unified Rule
+- **Affected Subsystems**:
+  - `.agents/rules/information-hierarchy.md` (absorbed `agents-md-limits.md`, promoted to `trigger: always_on`)
+  - `.agents/rules/agents-md-limits.md` (deleted via `git rm` to eliminate rule fragmentation)
+  - `AGENTS.md` (updated Section 1.A pointer to `Information Hierarchy & Limits`, removed separate Section 1.B entry, keeping constitutional size at 13,546 bytes $\le 14,000$)
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user directive to merge `agents-md-limits.md` and `information-hierarchy.md`.
+  - Unified the two complementary aspects of top-down structuring and anti-bloat into a single cohesive rule:
+    1. Constitutional limits, index role, and strict 14k-byte ceiling for `AGENTS.md` (automated CI enforcement).
+    2. The universal Inverted Pyramid architecture (opening 20-50 lines leading with core decisions), non-redundancy, and elimination of the bottom-heavy accumulation trap for architectural specifications.
+  - Promoted the combined rule to `trigger: always_on` in Section 1.A so that both the constitutional byte ceiling and the inverted pyramid anti-bloat discipline remain active invariants across all agent turns.
+- **Architectural Rationale & Trade-Offs**:
+  - Rather than fragmenting size limits and top-down document hierarchy across two tiny separate rules, unifying them under `information-hierarchy.md` clarifies that `AGENTS.md` size caps and note inverted pyramids stem from the same core principle: putting concise high-level architecture/indices first and eliminating redundant, bottom-heavy bloat.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: Clean formatting across the workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 10.50s.
+  - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed cleanly (AGENTS.md at 13,546 bytes $\le 14,000$ limit).
+
+
 
 
 

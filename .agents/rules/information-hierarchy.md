@@ -1,17 +1,40 @@
 ---
-trigger: model_decision
-description: Inverted pyramid structure, putting key architectural conclusions first, and eliminating bottom-heavy accumulation.
+trigger: always_on
+description: Information hierarchy, inverted pyramid structure, constitutional AGENTS.md size ceiling (<= 14,000 bytes), and non-redundancy policy.
 ---
 
-# Information Hierarchy & Inverted Pyramid Rule
+# Information Hierarchy, Inverted Pyramid & Document Limits Rule
 
-Whenever creating, modifying, updating, or refactoring notes and architectural documentation in this repository, the agent must strictly structure content according to the **Inverted Pyramid model**. This ensures that the most important conclusions, decisions, and system architecture lead the document rather than being buried at the bottom.
+This rule governs how information, architecture guidelines, specifications, and central constitutions are structured, prioritized, and bounded across this repository to eliminate bottom-heavy bloat, duplicate sprawl, and context truncation.
 
 ---
 
-## Core Architecture: The Inverted Pyramid
+## 1. Constitutional Role of AGENTS.md & Size Limits
 
-Readers start at the top and want the core takeaway immediately. Content must progress from central architectural decisions down to granular implementation details:
+[`AGENTS.md`](../../AGENTS.md) is the central architectural constitution for the emulator. It is injected into every agent prompt session. Its responsibilities are strictly limited to:
+
+1. **Section 1 (Rules Index):** Concise, 1-line pointers linking to modularized operating rules under `.agents/rules/*.md`.
+2. **Section 2 (Core Architectural Principles):** Target platforms, color clock execution model (`CCK1`/`CCK2`), decoupled ownership without circular references, and hardware circuit simulation.
+3. **Section 3 (Machine Systems Invariants):** Guest vs host Big-Endianness, zero panics on guest code, wrapping arithmetic, zero runtime heap allocations in hot paths, and pointers to modular subsystem guidelines.
+4. **Section 4 (Definition of Done):** Lean checklist pointing to rules and workflows.
+5. **Section 5 (Knowledge Base):** Pointers to specifications, manuals, and test vectors.
+
+### Strict Prohibition of Content Duplication
+- **Zero Rule Re-Implementation:** `AGENTS.md` must **never duplicate** verbose operational rules, full skill procedures, code-level examples, or extensive checklists that are already modularized under `.agents/rules/*.md`.
+- **Reference by Pointer Only:** Whenever a new operational rule is added, add only a single 1-line bullet in Section 1 pointing to the respective `.agents/rules/<rule>.md` file. Never paste the rule's body into `AGENTS.md`.
+
+### Byte Budget & Automated CI Enforcement
+- **Strict Size Ceiling:** `AGENTS.md` must strictly remain $\le 14,000$ bytes on disk.
+- **Rationale:** Antigravity silently truncates rule files exceeding ~24,000 bytes. Keeping `AGENTS.md` under 14,000 bytes prevents prompt bloat, conserves context token budget, and eliminates truncation risk.
+- **Automated Verification Gate:** Enforced on every build via `check_agents_md()` in `tools/harness/pre_flight.py` and `test_rule_files_size_limit_and_truncation_safety` in `crates/test_runner/tests/test_architecture_rules.rs`.
+
+---
+
+## 2. The Inverted Pyramid Model (Specifications & Notes)
+
+Whenever creating, modifying, updating, or refactoring notes and architectural documentation in this repository, the agent must strictly structure content according to the **Inverted Pyramid model**. Readers start at the top and want the decisive conclusions and architecture immediately, rather than having them buried at the bottom.
+
+### The Inverted Pyramid Architecture
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -42,7 +65,7 @@ Readers start at the top and want the core takeaway immediately. Content must pr
 
 ---
 
-## Core Operating Principles
+## 3. Core Hierarchy & Non-Redundancy Principles
 
 1. **Lead with Core Decisions & Key Invariants**:
    - The opening 20–50 lines of every note must deliver the most decisive conclusions and architectural choices.
@@ -71,7 +94,7 @@ Readers start at the top and want the core takeaway immediately. Content must pr
 
 ---
 
-## Practical Note Auditing & Restructuring Workflow
+## 4. Practical Note Auditing & Restructuring Workflow
 
 When reviewing or refactoring an existing note for information hierarchy:
 
