@@ -4387,5 +4387,26 @@ Every future modification or implementation task must append an entry following 
   - Verified generated output in `output_markdown/01_keyboard_hardware_and_raw_key_codes.md` containing the reconstructed ASCII keyboard layout (function rows, alphanumeric matrix, editing cluster, numeric keypad, and international shaded key indicators `*2B*` and `*30*`).
   - Pre-flight quality gates passed cleanly (`python tools/pre_flight.py`).
 
+---
+
+### [2026-09-16 20:50 CEST] — PDF-to-Markdown: Strict Fail-Fast Configuration Architecture & Workspace Snapshotting
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Made `--config` mandatory in CLI parser. Validates file existence and YAML validity upfront. Automatically snapshots the configuration to `<workspace>/config.yaml` and passes it to all sub-stages.
+  - `.agents/skills/pdf-to-markdown/llm_client.py`: Enforced non-empty configuration dictionary with `'llm'` section in `GeminiClient.__init__`. Removed default fallback `{}`. Raises `ValueError` on missing or invalid config.
+  - `.agents/skills/pdf-to-markdown/stages/*/*.py` (Stages 01 through 13): Removed `default="config.yaml"` across all stage CLI parsers. Added upfront validation raising `FileNotFoundError` or `ValueError` if configuration is missing or invalid.
+  - `.agents/skills/pdf-to-markdown/SKILL.md`: Documented mandatory `--config` argument and the hermetic workspace snapshot invariant.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated hidden fallbacks: Previously, omitting `--config` silently caused scripts and `GeminiClient` to fall back to empty dictionaries, discarding tuned per-stage thinking budgets and model selections.
+  - Implemented fail-fast architecture: Any missing configuration file now halts execution immediately upfront with clear, actionable diagnostics.
+  - Ensured hermetic reproducibility: Every pipeline run captures its exact configuration in `<workspace>/config.yaml`, and downstream stages consume strictly this frozen snapshot.
+- **Verification & Test Results**:
+  - Automated test gates: Verified `pipeline.py` rejects missing `--config` with `error: the following arguments are required: --config`.
+  - Missing file gate: Verified `pipeline.py --config nonexistent.yaml` halts immediately with `Config file not found`.
+  - Sub-stage gates: Verified sub-stages fail fast when `--config` is missing or points to a non-existent file (`FileNotFoundError`).
+  - Client validation gate: Verified `GeminiClient(None)` and `GeminiClient({})` raise `ValueError`.
+  - Workspace snapshot test: Verified `workspace/config.yaml` is created and matches source config.
+  - Pre-flight quality gates passed cleanly (`python tools/pre_flight.py`).
+
+
 
 
