@@ -80,7 +80,7 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
                     "bbox": bbox,
                     "bbox_norm": g_bbox_norm,
                     "heading_level": None,
-                    "raw_text": caption
+                    "raw_text": ""
                 }]
         return []
 

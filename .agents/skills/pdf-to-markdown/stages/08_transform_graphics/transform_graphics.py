@@ -123,16 +123,19 @@ def process_graphics(workspace_dir: Path, config: dict):
             # First, classify with Gemini if this is a flowchart/state machine or circuit schematic
             triage = gemini.generate_json(triage_prompt, image_path=png_path) if png_path and png_path.exists() and triage_prompt else {}
             graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
-            # Prioritize genuine figure caption from raw_text over LLM-generated title
+            # Check for genuine figure caption from raw_text or separate caption nodes
             fig_match = re.search(r"(Figure\s+\d+[\-\.]\d+[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
-            if fig_match:
-                caption = fig_match.group(1).strip()
-            elif raw_text.strip():
+            genuine_caption = fig_match.group(1).strip() if fig_match else None
+            if not genuine_caption and raw_text.strip():
                 fig_lines = [l.strip() for l in raw_text.splitlines() if l.strip().lower().startswith("figure")]
-                caption = fig_lines[0] if fig_lines else ((triage.get("caption") if isinstance(triage, dict) else None) or raw_text.splitlines()[0].strip())
-            else:
-                caption = (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
-            caption = re.sub(r"[\[\]|]", "", caption)
+                if fig_lines:
+                    genuine_caption = fig_lines[0]
+            if genuine_caption:
+                genuine_caption = re.sub(r"[\[\]|]", "", genuine_caption)
+
+            # Metadata title strictly for RAG sidecar (never injected as visible body text if absent from book)
+            sidecar_title = genuine_caption or (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
+            sidecar_title = re.sub(r"[\[\]|]", "", sidecar_title)
 
             if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:
                 mermaid_res = gemini.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path)
@@ -152,10 +155,14 @@ def process_graphics(workspace_dir: Path, config: dict):
 
             # Fallback to Obsidian image embed + RAG sidecar
             has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
-            if has_dedicated_caption:
-                node["rendered_markdown"] = f"![[{asset_file}|{caption}]]\n\n"
+            if genuine_caption:
+                if has_dedicated_caption:
+                    node["rendered_markdown"] = f"![[{asset_file}|{genuine_caption}]]\n\n"
+                else:
+                    node["rendered_markdown"] = f"![[{asset_file}|{genuine_caption}]]\n\n*{genuine_caption}*\n\n"
             else:
-                node["rendered_markdown"] = f"![[{asset_file}|{caption}]]\n\n*{caption}*\n\n"
+                # No genuine caption in book: emit clean embed with zero artificial caption
+                node["rendered_markdown"] = f"![[{asset_file}]]\n\n"
             transformed_count += 1
 
             # Generate technical engineering sidecar via Gemini Vision
@@ -167,7 +174,7 @@ def process_graphics(workspace_dir: Path, config: dict):
 
             if not sidecar_text:
                 sidecar_text = (
-                    f"Title: {caption}\n"
+                    f"Title: {sidecar_title}\n"
                     f"Page: {page_num}\n"
                     f"Labels:\n{raw_text}\n"
                 )
@@ -221,9 +228,23 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
             png_rel = node.get("png_path")
             asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
 
-            caption = raw_text.splitlines()[0].strip() if raw_text.strip() else f"Figure on page {page_num}"
-            caption = re.sub(r"[\[\]|]", "", caption)
-            draft_md = f"![[{asset_file}|{caption}]]\n\n*{caption}*\n"
+            fig_match = re.search(r"(Figure\s+\d+[\-\.]\d+[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
+            genuine_caption = fig_match.group(1).strip() if fig_match else None
+            if not genuine_caption and raw_text.strip():
+                fig_lines = [l.strip() for l in raw_text.splitlines() if l.strip().lower().startswith("figure")]
+                if fig_lines:
+                    genuine_caption = fig_lines[0]
+            if genuine_caption:
+                genuine_caption = re.sub(r"[\[\]|]", "", genuine_caption)
+
+            has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
+            if genuine_caption:
+                if has_dedicated_caption:
+                    draft_md = f"![[{asset_file}|{genuine_caption}]]\n"
+                else:
+                    draft_md = f"![[{asset_file}|{genuine_caption}]]\n\n*{genuine_caption}*\n"
+            else:
+                draft_md = f"![[{asset_file}]]\n"
             draft_sidecar = generate_default_sidecar(node_id, raw_text, page_num)
 
             task_meta = {

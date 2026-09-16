@@ -3937,3 +3937,23 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: Clean code formatting across workspace.
   - `cargo test -p test_runner --test test_architecture_rules`: All 18 architecture tests passed in 0.83s.
 
+---
+
+### [2026-09-16 03:55 CEST] — PDF-to-Markdown: Elimination of Synthetic Image Captions & Source Fidelity Enforcement
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/segment_page.py`: Set `raw_text: ""` for text-empty graphic pages rather than copying synthesized caption into raw text.
+  - `.agents/skills/pdf-to-markdown/stages/08_transform_graphics/transform_graphics.py`: Removed artificial italicized `*{caption}*` generation when no genuine caption was printed in the source book; emit clean `![[asset_node_XXXXX.png]]` without fabricated alt text for uncaptioned art.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user feedback regarding fabricated visible captions (e.g. `*Amiga Hardware Reference Manual cover*` appearing in `01_cover.md` when the original book had no caption printed under the cover artwork).
+  - Refactored caption resolution in Stage 08: only formats visible caption text if a genuine figure caption (`Figure X-Y: ...`) exists in the book's text stream.
+  - Preserved rich technical summaries and diagram analysis strictly within the RAG sidecar (`asset_node_XXXXX.png.txt`) for vector search, keeping the user-facing markdown text 100% faithful to the printed manual.
+  - Tested on Page 1: generated `01_cover.md` containing only `![[asset_node_00001.png]]` with zero artificial captions, while retaining full technical description in `asset_node_00001.png.txt`.
+- **Verification & Test Results**:
+  - Full pipeline run for Page 1 exited with code 0.
+  - Verified `workspace/13_proofread_markdown/01_cover.md`: clean embed with zero artificial caption text.
+  - Verified `workspace/13_proofread_markdown/assets/asset_node_00001.png.txt`: 24-line comprehensive RAG description intact.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 364 files clean.
+  - `cargo fmt --all -- --check`: Clean.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+
