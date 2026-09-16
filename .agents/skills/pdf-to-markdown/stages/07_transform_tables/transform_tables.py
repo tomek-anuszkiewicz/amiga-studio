@@ -12,6 +12,7 @@ Worker for table nodes in chapter streams:
 import argparse
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 import yaml
@@ -40,6 +41,28 @@ def process_tables(workspace_dir: Path, config: dict):
     out_dir.mkdir(parents=True, exist_ok=True)
     for f in out_dir.glob("*.json"):
         f.unlink()
+
+    # Setup 07_chapters_tables/assets and synchronize upstream assets
+    out_assets_dir = out_dir / "assets"
+    out_assets_dir.mkdir(parents=True, exist_ok=True)
+    for f in out_assets_dir.glob("*"):
+        try:
+            f.unlink()
+        except Exception:
+            pass
+
+    asset_candidates = [
+        workspace_dir / "06_chapters_continuations" / "assets",
+        workspace_dir / "05_chapters_raw" / "assets",
+        workspace_dir / "04_reduced_stream" / "assets",
+        workspace_dir / "03_raw_stream" / "assets",
+        workspace_dir / "assets",
+    ]
+    src_assets = next((p for p in asset_candidates if p.exists()), None)
+    if src_assets:
+        for f in src_assets.glob("*"):
+            if f.is_file():
+                shutil.copy2(f, out_assets_dir / f.name)
 
     prompt_path = Path(__file__).resolve().parent / "prompt_markdown_table.md"
     base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
@@ -86,6 +109,24 @@ def process_tables(workspace_dir: Path, config: dict):
 
             if rendered:
                 node["rendered_markdown"] = rendered.strip() + "\n"
+                # Successfully converted image to text table. Prune image and text sidecars from assets
+                node_id = node.get("node_id")
+                if node_id:
+                    for asset_file in out_assets_dir.glob(f"asset_{node_id}.*"):
+                        try:
+                            asset_file.unlink()
+                        except Exception:
+                            pass
+                if "merged_nodes" in node:
+                    for m_id in node["merged_nodes"]:
+                        for asset_file in out_assets_dir.glob(f"asset_{m_id}.*"):
+                            try:
+                                asset_file.unlink()
+                            except Exception:
+                                pass
+                node["png_path"] = None
+                node["svg_path"] = None
+                node["raw_text_path"] = None
             else:
                 asset_ref = node.get("svg_path") or node.get("png_path") or ""
                 node["rendered_markdown"] = f"![Table]({asset_ref})\n"
@@ -189,6 +230,22 @@ def apply_table_tasks(workspace_dir: Path) -> int:
 
     out_dir = workspace_dir / "07_chapters_tables"
     out_dir.mkdir(parents=True, exist_ok=True)
+    out_assets_dir = out_dir / "assets"
+    out_assets_dir.mkdir(parents=True, exist_ok=True)
+
+    # Synchronize upstream assets
+    asset_candidates = [
+        workspace_dir / "06_chapters_continuations" / "assets",
+        workspace_dir / "05_chapters_raw" / "assets",
+        workspace_dir / "04_reduced_stream" / "assets",
+        workspace_dir / "03_raw_stream" / "assets",
+        workspace_dir / "assets",
+    ]
+    src_assets = next((p for p in asset_candidates if p.exists()), None)
+    if src_assets:
+        for f in src_assets.glob("*"):
+            if f.is_file():
+                shutil.copy2(f, out_assets_dir / f.name)
 
     # Collect rendered markdown for all tasks
     rendered_by_node = {}
@@ -209,8 +266,25 @@ def apply_table_tasks(workspace_dir: Path) -> int:
         for node in nodes:
             n_id = node.get("node_id")
             if n_id in rendered_by_node:
-                node["rendered_markdown"] = rendered_by_node[n_id]
+                text_table = rendered_by_node[n_id]
+                node["rendered_markdown"] = text_table
                 applied_count += 1
+                if not re.search(r"!\[.*?\]\(.*?\)", text_table):
+                    for asset_file in out_assets_dir.glob(f"asset_{n_id}.*"):
+                        try:
+                            asset_file.unlink()
+                        except Exception:
+                            pass
+                    if "merged_nodes" in node:
+                        for m_id in node["merged_nodes"]:
+                            for asset_file in out_assets_dir.glob(f"asset_{m_id}.*"):
+                                try:
+                                    asset_file.unlink()
+                                except Exception:
+                                    pass
+                    node["png_path"] = None
+                    node["svg_path"] = None
+                    node["raw_text_path"] = None
 
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:

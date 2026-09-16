@@ -62,8 +62,8 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
         if old_asset.is_file():
             old_asset.unlink(missing_ok=True)
 
-    # Collect active node IDs from chapters
-    active_node_ids = set()
+    # Collect active node IDs and explicitly referenced asset filenames from chapters
+    referenced_assets = set()
     for entry in manifest:
         idx = entry["index"]
         slug = entry["slug"]
@@ -75,15 +75,20 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
                 with open(c_path, "r", encoding="utf-8") as f:
                     c_nodes = json.load(f)
                 for cn in c_nodes:
-                    nid = cn.get("node_id")
-                    if nid:
-                        active_node_ids.add(nid)
+                    for key in ["png_path", "svg_path", "sidecar_path"]:
+                        val = cn.get(key)
+                        if val:
+                            referenced_assets.add(Path(val).name)
+                    rendered = cn.get("rendered_markdown", "")
+                    for m in re.finditer(r"asset_node_\d+\.[a-zA-Z0-9]+", rendered):
+                        referenced_assets.add(m.group(0))
             except Exception:
                 pass
 
-    # 1. Synchronize assets from latest stage (only active assets)
+    # 1. Synchronize assets from latest stage (only active, referenced assets)
     asset_candidates = [
         workspace_dir / "08_chapters_graphics" / "assets",
+        workspace_dir / "07_chapters_tables" / "assets",
         workspace_dir / "04_reduced_stream" / "assets",
         workspace_dir / "03_raw_stream" / "assets",
         workspace_dir / "assets",
@@ -92,8 +97,8 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
     if src_assets_dir and src_assets_dir.exists():
         for asset_file in src_assets_dir.glob("*"):
             if asset_file.is_file():
-                m = re.match(r"asset_(node_\d+)", asset_file.name)
-                if not m or m.group(1) in active_node_ids:
+                base_name = re.sub(r"\.txt$", "", asset_file.name)
+                if asset_file.name in referenced_assets or base_name in referenced_assets:
                     shutil.copy2(asset_file, out_assets_dir / asset_file.name)
         print(f"[*] Synchronized active assets from {src_assets_dir} to {out_assets_dir}")
 

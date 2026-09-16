@@ -11,6 +11,7 @@ Worker for graphic nodes across chapter streams:
 import argparse
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 import yaml
@@ -28,14 +29,11 @@ except ImportError:
 
 def generate_default_sidecar(node_id: str, raw_text: str, page_num: int) -> str:
     lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
-    title = lines[0] if lines else f"Technical Diagram on Page {page_num}"
-    body = "\n".join(lines[1:]) if len(lines) > 1 else raw_text
-
+    labels = "\n".join(f"- {l}" for l in lines) if lines else "- (No OCR labels detected)"
     return (
-        f"Identifier: {node_id}\n"
-        f"Title: {title}\n"
-        f"Page: {page_num}\n"
-        f"Extracted Labels & Details:\n{body}\n"
+        f"Title: Technical Schematic / Circuit Diagram (node_{node_id})\n"
+        f"Source Page: {page_num}\n"
+        f"Labels & Text Elements:\n{labels}\n"
     )
 
 
@@ -53,12 +51,27 @@ def process_graphics(workspace_dir: Path, config: dict):
     out_dir.mkdir(parents=True, exist_ok=True)
     for f in out_dir.glob("*.json"):
         f.unlink()
+
+    out_assets_dir = out_dir / "assets"
+    out_assets_dir.mkdir(parents=True, exist_ok=True)
+    for f in out_assets_dir.glob("*"):
+        try:
+            f.unlink()
+        except Exception:
+            pass
+
     asset_candidates = [
+        workspace_dir / "07_chapters_tables" / "assets",
+        workspace_dir / "06_chapters_continuations" / "assets",
         workspace_dir / "04_reduced_stream" / "assets",
         workspace_dir / "03_raw_stream" / "assets",
     ]
-    assets_dir = next((p for p in asset_candidates if p.exists()), workspace_dir / "04_reduced_stream" / "assets")
-    assets_dir.mkdir(parents=True, exist_ok=True)
+    src_assets = next((p for p in asset_candidates if p.exists()), None)
+    if src_assets:
+        for f in src_assets.glob("*"):
+            if f.is_file():
+                shutil.copy2(f, out_assets_dir / f.name)
+    assets_dir = out_assets_dir
 
     gemini = GeminiClient(config) if GeminiClient else None
     if not gemini or not gemini.is_available():
@@ -119,6 +132,15 @@ def process_graphics(workspace_dir: Path, config: dict):
                 mermaid_res = gemini.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path)
                 if mermaid_res:
                     node["rendered_markdown"] = mermaid_res.strip() + "\n\n"
+                    # Converted to Mermaid diagram: prune image from assets
+                    for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
+                        try:
+                            asset_f.unlink()
+                        except Exception:
+                            pass
+                    node["png_path"] = None
+                    node["svg_path"] = None
+                    node["sidecar_path"] = None
                     transformed_count += 1
                     continue
 
@@ -229,15 +251,26 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
 def apply_graphics_tasks(workspace_dir: Path) -> int:
     """
     Reads workspace/tasks/graphics/{node_id}.md and sidecars,
-    updating workspace/08_chapters_graphics/ and workspace/assets/.
+    updating workspace/08_chapters_graphics/ and workspace/08_chapters_graphics/assets/.
     """
     tasks_dir = workspace_dir / "tasks" / "graphics"
+    out_dir = workspace_dir / "08_chapters_graphics"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_assets_dir = out_dir / "assets"
+    out_assets_dir.mkdir(parents=True, exist_ok=True)
+
     asset_candidates = [
+        workspace_dir / "07_chapters_tables" / "assets",
+        workspace_dir / "06_chapters_continuations" / "assets",
         workspace_dir / "04_reduced_stream" / "assets",
         workspace_dir / "03_raw_stream" / "assets",
     ]
-    assets_dir = next((p for p in asset_candidates if p.exists()), workspace_dir / "04_reduced_stream" / "assets")
-    assets_dir.mkdir(parents=True, exist_ok=True)
+    src_assets = next((p for p in asset_candidates if p.exists()), None)
+    if src_assets:
+        for f in src_assets.glob("*"):
+            if f.is_file():
+                shutil.copy2(f, out_assets_dir / f.name)
+    assets_dir = out_assets_dir
 
     if not tasks_dir.exists():
         print(f"[!] No graphic tasks directory found at {tasks_dir}")
@@ -251,9 +284,6 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
         raise FileNotFoundError(f"Missing input chapters directory in {workspace_dir}")
-
-    out_dir = workspace_dir / "08_chapters_graphics"
-    out_dir.mkdir(parents=True, exist_ok=True)
 
     # Collect rendered markdown and sidecars
     rendered_by_node = {}
@@ -284,9 +314,20 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
         for node in nodes:
             n_id = node.get("node_id")
             if n_id in rendered_by_node:
-                node["rendered_markdown"] = rendered_by_node[n_id]
-                asset_f = meta.get("asset_file", f"asset_{n_id}.png")
-                node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{asset_f}.txt"
+                content = rendered_by_node[n_id]
+                node["rendered_markdown"] = content
+                if "```mermaid" in content:
+                    for asset_f in out_assets_dir.glob(f"asset_{n_id}.*"):
+                        try:
+                            asset_f.unlink()
+                        except Exception:
+                            pass
+                    node["png_path"] = None
+                    node["svg_path"] = None
+                    node["sidecar_path"] = None
+                else:
+                    asset_f = meta.get("asset_file", f"asset_{n_id}.png")
+                    node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{asset_f}.txt"
                 applied_count += 1
 
         target_file = out_dir / c_file.name
