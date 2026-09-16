@@ -21,6 +21,8 @@ pub struct VamigaScript {
     pub wait_frames: Option<u32>,
     /// Screenshot save target identifier
     pub screenshot_name: Option<String>,
+    /// Cutout window `(x1, y1, x2, y2)` if configured via `screenshot set cutout`
+    pub cutout: Option<(isize, isize, isize, isize)>,
 }
 
 impl Default for VamigaScript {
@@ -32,6 +34,7 @@ impl Default for VamigaScript {
             wait_seconds: Some(9),
             wait_frames: None,
             screenshot_name: None,
+            cutout: None,
         }
     }
 }
@@ -76,6 +79,31 @@ impl VamigaScript {
                 }
                 "screenshot" if tokens.len() >= 3 && tokens[1].eq_ignore_ascii_case("save") => {
                     script.screenshot_name = Some(tokens[2].to_string());
+                }
+                "screenshot"
+                    if tokens.len() >= 4
+                        && tokens[1].eq_ignore_ascii_case("set")
+                        && tokens[2].eq_ignore_ascii_case("cutout") =>
+                {
+                    let mut x1: Option<isize> = None;
+                    let mut y1: Option<isize> = None;
+                    let mut x2: Option<isize> = None;
+                    let mut y2: Option<isize> = None;
+                    for token in &tokens[3..] {
+                        if let Some((k, v)) = token.split_once('=') {
+                            let val = v.parse::<isize>().ok();
+                            match k.to_ascii_lowercase().as_str() {
+                                "x1" => x1 = val,
+                                "y1" => y1 = val,
+                                "x2" => x2 = val,
+                                "y2" => y2 = val,
+                                _ => {}
+                            }
+                        }
+                    }
+                    if let (Some(x1), Some(y1), Some(x2), Some(y2)) = (x1, y1, x2, y2) {
+                        script.cutout = Some((x1, y1, x2, y2));
+                    }
                 }
                 _ => {}
             }

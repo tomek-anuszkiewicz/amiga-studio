@@ -141,6 +141,13 @@ screenshot save Copper_Wait_copwait1_ocs
     let frames_script = VamigaScript::parse(frames_script_content);
     assert_eq!(frames_script.wait_frames, Some(300));
     assert_eq!(frames_script.effective_frames(12), 300);
+
+    // Test with cutout window
+    let cutout_script_content =
+        "screenshot set cutout x1=196 y1=36 x2=908 y2=314\nscreenshot save foo\n";
+    let cutout_script = VamigaScript::parse(cutout_script_content);
+    assert_eq!(cutout_script.cutout, Some((196, 36, 908, 314)));
+    assert_eq!(cutout_script.screenshot_name.as_deref(), Some("foo"));
 }
 
 #[test]

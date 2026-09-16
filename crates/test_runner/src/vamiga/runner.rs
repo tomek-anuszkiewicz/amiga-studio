@@ -140,13 +140,28 @@ impl VamigaSuiteSummary {
 }
 
 /// Executes a test directly from memory buffers for ADF and expected RAW reference.
-/// Executes a test directly from memory buffers for ADF and expected RAW reference.
-/// Executes a test directly from memory buffers for ADF and expected RAW reference.
 pub fn run_vamiga_test_buffers(
     adf_bytes: &[u8],
     expected_raw_bytes: &[u8],
     frames_to_run: u32,
     machine_config: &A500Config,
+) -> Result<VamigaTestResult, String> {
+    run_vamiga_test_buffers_with_cutout(
+        adf_bytes,
+        expected_raw_bytes,
+        frames_to_run,
+        machine_config,
+        None,
+    )
+}
+
+/// Executes a test directly from memory buffers with optional viewport cutout window.
+pub fn run_vamiga_test_buffers_with_cutout(
+    adf_bytes: &[u8],
+    expected_raw_bytes: &[u8],
+    frames_to_run: u32,
+    machine_config: &A500Config,
+    cutout: Option<(isize, isize, isize, isize)>,
 ) -> Result<VamigaTestResult, String> {
     let mut machine = A500Machine::new(machine_config.clone());
     inject_vamiga_test(&mut machine, adf_bytes)?;
@@ -155,12 +170,12 @@ pub fn run_vamiga_test_buffers(
         machine.step_frame();
     }
 
-    // Extract rendered 716 x 285 RGB24 viewport
+    // Extract rendered 716 x 285 RGB24 viewport (with optional cutout)
     let mut actual_raw = [0u8; VAMIGA_RAW_BYTE_SIZE];
     machine
         .denise
         .frame_builder
-        .extract_vamiga_raw_viewport(&mut actual_raw);
+        .extract_vamiga_raw_viewport_with_cutout(&mut actual_raw, cutout);
 
     // Compare with expected reference
     compare_raw_frames(&actual_raw, expected_raw_bytes)
@@ -188,18 +203,24 @@ pub fn run_vamiga_test(
     let raw_bytes =
         fs::read(raw_path).map_err(|e| format!("Failed to read RAW {:?}: {}", raw_path, e))?;
 
-    // Determine frame count from script if available
-    let frames = if let Some(retrosh_path) = &desc.retrosh_path {
+    // Determine frame count and cutout from script if available
+    let (frames, cutout) = if let Some(retrosh_path) = &desc.retrosh_path {
         if let Ok(script) = VamigaScript::load_from_file(retrosh_path) {
-            script.effective_frames(config.frames_to_run)
+            (script.effective_frames(config.frames_to_run), script.cutout)
         } else {
-            config.frames_to_run
+            (config.frames_to_run, None)
         }
     } else {
-        config.frames_to_run
+        (config.frames_to_run, None)
     };
 
-    run_vamiga_test_buffers(&adf_bytes, &raw_bytes, frames, &config.machine_config)
+    run_vamiga_test_buffers_with_cutout(
+        &adf_bytes,
+        &raw_bytes,
+        frames,
+        &config.machine_config,
+        cutout,
+    )
 }
 
 /// Executes a test given a test directory path and test name.
@@ -234,11 +255,24 @@ pub fn run_vamiga_test_from_dir(
     let raw_bytes = fs::read(&raw_path)
         .map_err(|e| format!("Failed to read reference raw file {:?}: {}", raw_path, e))?;
 
-    run_vamiga_test_buffers(
+    // Determine frame count and cutout from script if available
+    let retrosh_path = test_dir.join(format!("{}.retrosh", test_name));
+    let (frames, cutout) = if retrosh_path.exists() {
+        if let Ok(script) = VamigaScript::load_from_file(&retrosh_path) {
+            (script.effective_frames(config.frames_to_run), script.cutout)
+        } else {
+            (config.frames_to_run, None)
+        }
+    } else {
+        (config.frames_to_run, None)
+    };
+
+    run_vamiga_test_buffers_with_cutout(
         &adf_bytes,
         &raw_bytes,
-        config.frames_to_run,
+        frames,
         &config.machine_config,
+        cutout,
     )
 }
 

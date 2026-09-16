@@ -308,3 +308,36 @@ fn test_vamiga_blitter_fill_suite_execution() {
         assert_eq!(result.mismatched_pixels, 0);
     }
 }
+
+#[test]
+fn test_vamiga_blitter_zero1_execution() {
+    let base = if Path::new("ref_src").exists() {
+        PathBuf::from("ref_src")
+    } else {
+        PathBuf::from("../../ref_src")
+    };
+
+    let test_dir = base.join("vAmigaTS/Agnus/Blitter/line/zero1");
+    if !test_dir.exists() {
+        return;
+    }
+
+    let config = VamigaRunConfig {
+        frames_to_run: 12,
+        ..Default::default()
+    };
+
+    let result = run_vamiga_test_from_dir(&test_dir, "zero1", &config)
+        .expect("zero1 execution failed to run");
+
+    println!(
+        "zero1 result: passed={}, mismatches={}/{}",
+        result.passed, result.mismatched_pixels, result.total_pixels
+    );
+    assert!(
+        result.passed,
+        "zero1 should pass with 0 mismatches, got {}",
+        result.mismatched_pixels
+    );
+    assert_eq!(result.mismatched_pixels, 0);
+}

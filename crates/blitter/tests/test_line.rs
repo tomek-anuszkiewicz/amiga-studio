@@ -125,3 +125,26 @@ fn test_blitter_line_mode_execution() {
     assert!(!blit.is_busy);
     assert!(blit.poll_blit_irq());
 }
+
+#[test]
+fn test_line_mode_channel_c_disabled_preserves_chold() {
+    let mut blit = Blitter::new();
+    let mut ram = vec![0u8; 1024];
+
+    // Set initial chold
+    blit.chold = 0x1234;
+    blit.bltcdat = 0x5555;
+
+    // Line mode blit without channel C (USEC=0): BLTCON0 has USEA, USED, minterm 0x00
+    blit.bltcon0 = 0x0900; // Bit 11 (USEA), Bit 8 (USED), USEC=0
+    blit.bltcon1 = 0x0001; // LINE=1
+    blit.bltbdat = 0xFFFF;
+    blit.bltcpt = 0x0020;
+    blit.bltdpt = 0x0020;
+
+    blit.start_blit((4 << 6) | 2);
+    blit.execute_line_blit(&mut ram);
+
+    // When channel C is disabled, chold must retain its preserved value (0x1234), NOT overwritten with bltcdat
+    assert_eq!(blit.chold, 0x1234);
+}

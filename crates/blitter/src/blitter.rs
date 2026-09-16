@@ -496,8 +496,6 @@ impl Blitter {
 
         if use_c {
             self.chold = read_chip_ram_u16(chip_ram, self.bltcpt);
-        } else {
-            self.chold = self.bltcdat;
         }
 
         let ash = (self.bltcon0 >> 12) & 0xF;

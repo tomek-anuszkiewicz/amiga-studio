@@ -182,3 +182,34 @@ fn test_frame_builder_default_and_equality() {
     let fb2 = FrameBuilder::new();
     assert_eq!(fb1, fb2);
 }
+
+#[test]
+fn test_extract_vamiga_raw_viewport_with_cutout() {
+    let mut fb = FrameBuilder::new();
+    // Set a pixel inside the cutout window: x=200, y=50
+    fb.set_pixel(200, 50, 0xFF112233);
+    // Set a pixel outside the cutout window: x=196, y=26
+    fb.set_pixel(196, 26, 0xFF445566);
+
+    let mut out = [0u8; 612_180];
+    // Cutout: [200, 50, 900, 300)
+    fb.extract_vamiga_raw_viewport_with_cutout(&mut out, Some((200, 50, 900, 300)));
+
+    // Pixel at (196, 26) is outside cutout (y=26 < 50, x=196 < 200).
+    // It should receive the checkerboard pattern:
+    // y=26: (26 >> 3) & 1 = 3 & 1 = 1
+    // x=196: (196 >> 3) & 1 = 24 & 1 = 0
+    // 1 != 0 -> 0x44
+    assert_eq!(out[0], 0x44);
+    assert_eq!(out[1], 0x44);
+    assert_eq!(out[2], 0x44);
+
+    // Pixel at (200, 50):
+    // Offset in 716 x 285 viewport:
+    // row = 50 - 26 = 24
+    // col = 200 - 196 = 4
+    let idx = (24 * 716 + 4) * 3;
+    assert_eq!(out[idx], 0x11);
+    assert_eq!(out[idx + 1], 0x22);
+    assert_eq!(out[idx + 2], 0x33);
+}

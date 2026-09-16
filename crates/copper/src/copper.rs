@@ -53,6 +53,8 @@ pub enum CopperState {
     Waiting,
     /// 2-CCK wake-up latency before fetching next instruction
     Wakeup(u8),
+    /// Pipeline latency cycles before beam comparator becomes active on WAIT (4 CCKs = 2 bus cycles)
+    WaitPipeline(u8),
 }
 
 /// Agnus Copper coprocessor state and execution engine
@@ -246,19 +248,14 @@ impl Copper {
                 None
             } else {
                 self.is_waiting = true;
-                if beam.hpos % 2 == 0 && self.eval_comparator(beam, blitter_busy) {
-                    self.is_waiting = false;
-                    self.state = CopperState::FetchIR1(2);
-                } else {
-                    self.state = CopperState::Waiting;
-                }
+                self.state = CopperState::WaitPipeline(4);
                 None
             }
         } else {
-            // SKIP instruction:
-            self.is_waiting = false;
-            if self.eval_comparator(beam, blitter_busy) {
-                // Condition met: skip subsequent 32-bit instruction word pair
+            // SKIP instruction (Bit 0 of IR2 = 1)
+            let skip_condition_met = self.eval_comparator(beam, blitter_busy);
+            if skip_condition_met {
+                // Skip the next 4-byte instruction by advancing cop_pc by 4
                 self.cop_pc = self.cop_pc.wrapping_add(4) & COPPER_ADDRESS_MASK_512K;
             }
             self.state = CopperState::FetchIR1(2);
@@ -313,6 +310,19 @@ impl Copper {
                     self.state = CopperState::FetchIR2(cck_left.wrapping_sub(1));
                     None
                 }
+            }
+            CopperState::WaitPipeline(cck_left) => {
+                self.is_waiting = true;
+                if cck_left <= 1 {
+                    self.state = CopperState::Waiting;
+                    if beam.hpos % 2 == 0 && self.eval_comparator(beam, blitter_busy) {
+                        self.is_waiting = false;
+                        self.state = CopperState::FetchIR1(2);
+                    }
+                } else {
+                    self.state = CopperState::WaitPipeline(cck_left.wrapping_sub(1));
+                }
+                None
             }
             CopperState::Waiting => {
                 self.is_waiting = true;

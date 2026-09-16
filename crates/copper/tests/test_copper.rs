@@ -121,9 +121,9 @@ fn test_copper_wait_beam_position() {
     ram[base..base + 4].copy_from_slice(&[0x14, 0x3D, 0xFF, 0xFE]);
     ram[base + 4..base + 8].copy_from_slice(&[0x01, 0x80, 0x0F, 0xFF]);
 
-    // Fetch WAIT instruction across 4 CCKs at line 10, HPOS 0
+    // Fetch WAIT instruction and complete 4-CCK pipeline latency (total 8 CCKs) at line 10, HPOS 0
     let mut beam = BeamPosition::new(0, 10, false);
-    for _ in 0..4 {
+    for _ in 0..8 {
         cop.step_cck(beam, false, &ram);
     }
     // Now Copper should be in Waiting state
@@ -170,11 +170,12 @@ fn test_copper_wait_bfd_blitter_busy() {
 
     let beam = BeamPosition::new(0, 10, false);
 
-    // Fetch the instruction (4 CCKs)
-    for _ in 0..4 {
+    // Fetch the instruction and step through 4-CCK pipeline latency (total 8 CCKs)
+    for _ in 0..8 {
         cop.step_cck(beam, true, &ram);
     }
     assert!(cop.is_waiting);
+    assert_eq!(cop.state, CopperState::Waiting);
 
     // Beam is at line 10, but Blitter is busy: must continue waiting!
     cop.step_cck(beam, true, &ram);
@@ -275,7 +276,7 @@ fn test_copper_wait_vertical_boundary_cross_above_line_128() {
 
     // Beam at line 127, hpos 222: must NOT wake up (bit 7 of vertical mask must be forced on)
     let beam_127 = BeamPosition::new(222, 127, false);
-    for _ in 0..4 {
+    for _ in 0..8 {
         cop.step_cck(beam_127, false, &ram);
     }
     assert_eq!(cop.state, CopperState::Waiting);

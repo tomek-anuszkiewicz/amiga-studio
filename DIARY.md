@@ -4174,3 +4174,38 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_vamiga_blitter`: All 7 blitter verification tests passed in 8.34s.
   - `cargo test -p test_runner --test test_architecture_rules`: All 20 architecture tests passed.
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: Clean pass across 385 files.
+
+---
+
+### [2026-09-16 03:30 CEST] — RetroShell Cutout Checkerboard, Line Mode chold Invariance, Copper 4-CCK WAIT Pipeline & 100% Pass on Blitter Line Suite (29/29)
+- **Affected Subsystems**:
+  - `crates/frame_builder/src/frame_builder.rs` (implemented `extract_vamiga_raw_viewport_with_cutout` rendering standard vAmiga 8x8 checkerboard `0x22`/`0x44` outside cutout window)
+  - `crates/frame_builder/tests/test_frame_builder.rs` (added unit test `test_extract_vamiga_raw_viewport_with_cutout`)
+  - `crates/test_runner/src/vamiga/script.rs` (parsed `screenshot set cutout x1=... y1=... x2=... y2=...`)
+  - `crates/test_runner/src/vamiga/runner.rs` (wired script cutout parameter into test runner comparisons)
+  - `crates/test_runner/tests/test_vamiga_runner.rs` (added unit test for cutout directive parsing)
+  - `crates/blitter/src/blitter.rs` (preserved `chold` across line blits when channel C disabled `!use_c`)
+  - `crates/blitter/tests/test_line.rs` (added unit test `test_line_mode_channel_c_disabled_preserves_chold`)
+  - `crates/copper/src/copper.rs` (implemented physical 4-CCK `WaitPipeline(4)` hardware latency for WAIT instructions before beam comparator activation)
+  - `crates/copper/tests/test_copper.rs` (calibrated Copper unit tests for 4-CCK WAIT pipeline latency)
+  - `crates/test_runner/tests/test_vamiga_blitter.rs` (added `test_vamiga_blitter_zero1_execution`)
+- **What Was Changed (The Concrete Reality)**:
+  - **RetroShell Viewport Cutout & Checkerboard Synthesis:**
+    - vAmigaTS tests frequently declare `screenshot set cutout x1=... y1=... x2=... y2=...` in `.retrosh` scripts to restrict visual comparisons to an active display region.
+    - Outside the cutout bounding box, vAmiga renders a standard 8x8 diagnostic checkerboard with alternating RGB values `0x22` and `0x44` (`((y >> 3) & 1) == ((x >> 3) & 1) ? 0x22 : 0x44`).
+    - Without cutout support, 24 line tests had 8,260 border pixel mismatches. With cutout rendering implemented in `frame_builder`, 24 tests immediately turned into 100% PASS with 0 mismatches.
+  - **Line Mode Channel C Preserved Holding Register (`chold`):**
+    - Diagnosed `zero1` failure: when line mode executes without channel C (`USEC=0`), physical hardware preserves the previous `chold` contents rather than overwriting it with `bltcdat`.
+    - In `blitter.rs`, removed `else { self.chold = self.bltcdat; }` in `step_line_cycle`, preserving `chold` across blits. This reduced `zero1` mismatches from 18,548 down to 5,732.
+  - **Copper 4-CCK Hardware WAIT Pipeline & Scanline Boundary Crossing ($FFDF):**
+    - The remaining 5,732 mismatches in `zero1` occurred because a Copper WAIT for line 8 (`$0839, $FFFE`) following a vertical boundary crossing wait (`$FFDF, $FFFE`) on line 255 was evaluating its comparator on cycle 226 of line 255. Because $255 \ge 8$, it triggered immediately on scanline 255, turning lines 256..264 black.
+    - On physical silicon (and vAmiga reference `CopperEvents.cpp`), WAIT instructions require 2 bus cycles (4 CCKs: `COP_WAIT1` and `COP_WAIT2`) of pipeline delay after fetching IR2 before the beam comparator becomes active.
+    - Added `CopperState::WaitPipeline(4)` to `crates/copper`. This 4-CCK latency pushes comparator evaluation of `$0839` across cycle 227 (end of scanline 255) into scanline 256, where $0 \ge 8$ evaluates to false, causing the Copper to correctly wait for scanline 264.
+- **Architectural Rationale & Trade-Offs**:
+  - *Zero Ad-Hoc Test Hacks:* Every fix models authentic hardware and test runner mechanics: proper RetroShell script cutout parsing, authentic channel C holding register behavior, and physical Copper instruction pipeline stages.
+- **Verification & Test Results**:
+  - `Agnus/Blitter/line/` suite: **29/29 (100.0%) PASS** with 0 mismatched pixels across every test (`line1`..`line13`, `bsh1`..`bsh4`, `channels1`..`channels4`, `combined1`..`combined2`, `mask1`..`mask3`, `start1`..`start2`, `zero1`).
+  - `cargo test -p copper`: All 10 Copper unit tests passed.
+  - `cargo test -p blitter`: All 22 Blitter unit tests passed.
+  - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly.
+
