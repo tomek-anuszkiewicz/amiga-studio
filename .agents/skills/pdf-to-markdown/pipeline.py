@@ -25,6 +25,7 @@ STAGE_DEFINITIONS = [
     ("10", "10_emit_markdown", "emit_markdown.py", "Emit per-section Markdown files (suppressing toc_header)"),
     ("11", "11_link_toc", "link_toc.py", "Fuzzy header matching & TOC wikilink conversion"),
     ("12", "12_refine_first_chapter_name", "refine_name.py", "Refine canonical name of first chapter"),
+    ("13", "13_proofread_markdown", "proofread_markdown.py", "Proofread Markdown for OCR glitches & typos"),
 ]
 
 
@@ -115,6 +116,11 @@ def run_stage(
     elif stage_num == "12":
         cmd.extend([
             "--input-dir", str(workspace_dir / "11_markdown_linked"),
+            "--output-dir", str(workspace_dir / "12_canonical_markdown"),
+        ])
+    elif stage_num == "13":
+        cmd.extend([
+            "--input-dir", str(workspace_dir / "12_canonical_markdown"),
             "--output-dir", str(output_dir),
         ])
 
@@ -196,9 +202,19 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     md_linked_count = len(list(md_linked.glob("*.md"))) if md_linked.exists() else 0
     print(f"[*] 11_markdown_linked            : {md_linked_count} files")
 
-    # 12. Final Output Markdown (12)
+    # 12. Canonical Markdown (12)
+    md_canon = workspace_dir / "12_canonical_markdown"
+    md_canon_count = len(list(md_canon.glob("*.md"))) if md_canon.exists() else 0
+    print(f"[*] 12_canonical_markdown         : {md_canon_count} files")
+
+    # 13. Proofread Markdown (13)
+    md_proof = workspace_dir / "13_proofread_markdown"
+    md_proof_count = len(list(md_proof.glob("*.md"))) if md_proof.exists() else 0
+    print(f"[*] 13_proofread_markdown         : {md_proof_count} files")
+
+    # Final Output Markdown
     md_count = len(list(output_dir.glob("*.md"))) if output_dir.exists() else 0
-    print(f"[*] 12_final_output               : {md_count} files in {output_dir.name}/")
+    print(f"[*] Final Output                  : {md_count} files in {output_dir.name}/")
     print("==================================================\n")
 
 
@@ -214,7 +230,8 @@ STAGE_OUTPUT_TARGETS = {
     9: ["09_chapters_formatted", "tasks/prose"],
     10: ["10_markdown_raw"],
     11: ["11_markdown_linked"],
-    12: ["__OUTPUT_DIR__"],
+    12: ["12_canonical_markdown"],
+    13: ["13_proofread_markdown", "__OUTPUT_DIR__"],
 }
 
 
@@ -224,8 +241,8 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_stage: 
     Guarantees that re-running from stage N starts completely fresh without stale downstream files.
     """
     import shutil
-    print(f"[*] Invalidation: Wiping intermediate and output artifacts for stages {start_stage:02d} to 12...")
-    for s in range(start_stage, 13):
+    print(f"[*] Invalidation: Wiping intermediate and output artifacts for stages {start_stage:02d} to 13...")
+    for s in range(start_stage, 14):
         targets = STAGE_OUTPUT_TARGETS.get(s, [])
         for target in targets:
             if target == "__OUTPUT_DIR__":

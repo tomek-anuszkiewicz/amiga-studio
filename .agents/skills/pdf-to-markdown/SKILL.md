@@ -75,9 +75,14 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │   ├── link_toc.py                      # Fuzzy header matcher across all .md files; converts TOC lines to wikilinks; strips markers
     │   └── README.md
     │
-    └── 12_refine_first_chapter_name/
-        ├── refine_name.py                   # Inspects first chapter content & sets canonical title/slug
-        ├── prompt.md                        # Evaluation guidelines for opening sections
+    ├── 12_refine_first_chapter_name/
+    │   ├── refine_name.py                   # Inspects first chapter content & sets canonical title/slug
+    │   ├── prompt.md                        # Evaluation guidelines for opening sections
+    │   └── README.md
+    │
+    └── 13_proofread_markdown/
+        ├── proofread_markdown.py            # Global OCR proofreading pass, typo fixing, and publication to output_markdown/
+        ├── prompt_proofread.md              # Technical proofreading guidelines (strict anti-hallucination rules)
         └── README.md
 ```
 
@@ -85,7 +90,7 @@ It is architected around an **Agent-Driven Hybrid Model**:
 
 ## 2. Agent Execution Workflow
 
-When running a conversion task, the Agent executes the pipeline through 5 distinct phases:
+When running a conversion task, the Agent executes the pipeline through 6 distinct phases:
 
 ### Phase A: Ingestion & Mechanical Stream Building (Stages 01 – 05)
 Run the deterministic pipeline steps:
@@ -155,19 +160,22 @@ python .agents/skills/pdf-to-markdown/stages/09_transform_prose/format_prose.py 
 ### Phase D: Emission & TOC Wikilinking (Stages 10 – 11)
 ```powershell
 # 10. Emit Markdown per chapter (suppressing toc_header)
-python .agents/skills/pdf-to-markdown/stages/10_emit_markdown/emit_markdown.py --workspace workspace --output-dir "<OUTPUT_DIR>"
+python .agents/skills/pdf-to-markdown/stages/10_emit_markdown/emit_markdown.py --workspace workspace --output-dir workspace/10_markdown_raw
 
 # 11. Cross-file fuzzy TOC linking (converts TOC34534 to Obsidian wikilinks and removes delimiters)
-python .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py --output-dir "<OUTPUT_DIR>"
+python .agents/skills/pdf-to-markdown/stages/11_link_toc/link_toc.py --input-dir workspace/10_markdown_raw --output-dir workspace/11_markdown_linked
 ```
 
 ### Phase E: Opening Section Title Refinement (Stage 12)
 ```powershell
-# Inspect opening chapter preview and suggested title
-python .agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py --output-dir "<OUTPUT_DIR>" --inspect
+# Refine canonical chapter name and slug into workspace/12_canonical_markdown
+python .agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py --workspace workspace
+```
 
-# Apply canonical title and slug (e.g. Table of Contents)
-python .agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py --output-dir "<OUTPUT_DIR>" --title "Table of Contents" --slug "table_of_contents"
+### Phase F: Final OCR Proofreading & Publication (Stage 13)
+```powershell
+# Proofread Markdown files for OCR errors and finalize publication into <OUTPUT_DIR>
+python .agents/skills/pdf-to-markdown/stages/13_proofread_markdown/proofread_markdown.py --workspace workspace --output-dir "<OUTPUT_DIR>"
 ```
 
 ---
