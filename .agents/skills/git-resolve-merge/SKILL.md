@@ -83,7 +83,7 @@ Verification:
 
 ### Step 6: Worktree Teardown & Cleanup (If Using Worktrees)
 If the branch was developed in an isolated worktree:
-1. Safely teardown the worktree using the automated script (safely unlinks NTFS junctions before removal):
+1. Teardown the worktree using the automated script:
    ```powershell
    .\tools\git\worktree.ps1 remove <branch-name>
    ```

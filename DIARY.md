@@ -6092,3 +6092,21 @@ Every future modification or implementation task must append an entry following 
   - User Manual
   - A500/A2000 TRM
   - HRM).
+
+---
+
+### [2026-09-17 00:08 CEST] — Tooling & Architecture: Zero-Junction Invariant & Full Worktree Storage Isolation
+- **Affected Subsystems**:
+  - `tools/git/worktree.ps1`: Completely eliminated `New-Item -ItemType Junction`. Replaced `Link-WorktreeAssets` with `Copy-WorktreeAssets` performing multi-threaded physical copies of test fixtures and assets. Excluded `graphify-out` from automated propagation to keep AST code intelligence strictly authentic to each branch's code. Removed junction unlinking logic (`Safe-RemoveJunctions`).
+  - `.agents/rules/git-merge-commits.md`: Enshrined the **Strict Worktree Isolation & Zero-Junction Invariant**, strictly prohibiting NTFS directory junctions (`New-Item -ItemType Junction`, `mklink /J`) or symbolic links across worktrees and repositories.
+  - `.agents/skills/git-worktree/SKILL.md`: Updated operational procedures and invariants to enforce standalone physical directory copies and zero junctions.
+  - `.agents/skills/git-resolve-merge/SKILL.md`: Removed obsolete junction teardown steps.
+  - Active Worktrees (`amiga-bootstrap` & `Amiga-OCS`): Migrated all existing junction reparse points (`ref_src`, `tests/singlestep`, `tools/AmigaTestKit`, `tests/benchmarks/*`, etc.) to fully independent, standalone physical directories.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed human architectural feedback: directory junctions create cross-portal state sharing between worktrees, which risks accidental cross-contamination of AST graphs, test artifacts, or uncommitted edits.
+  - Replaced all shared directory portals with 100% physically isolated directories in each worktree branch.
+  - Asserted `LinkType` is empty ($null) across all directories in all active worktrees.
+- **Verification & Test Results**:
+  - Junction audit script verified `LinkType=''` across all asset paths in `Amiga`, `amiga-bootstrap`, and `Amiga-OCS`.
+  - Quality gates passed cleanly: `python tools/harness/pre_flight.py` (Formatting, AGENTS.md size limit, API coverage, architecture rules).
+  - CPU test suite passed: `cargo test -p m68000` (100% pass).

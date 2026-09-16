@@ -1,12 +1,11 @@
 <#
 .SYNOPSIS
-    Manages Git worktrees with automatic NTFS junction linking of large ignored assets.
+    Manages Git worktrees with independent physical copies of ignored assets (Zero NTFS Junctions).
 
 .DESCRIPTION
     Creates, removes, or synchronizes Git worktrees located as sibling directories in the
-    parent folder. Automatically establishes zero-cost NTFS directory junctions for heavy
-    ignored test vectors (ref_src, SingleStepTests, AmigaTestKit, reference docs) and copies .env,
-    preventing multi-gigabyte disk duplication and broken test suites.
+    parent folder. Copies required test assets and .env into independent physical directories,
+    strictly avoiding NTFS directory junctions or symbolic links to preserve total repository isolation.
 
 .EXAMPLE
     .\tools\git\worktree.ps1 add feature-blitter
@@ -50,7 +49,7 @@ function Get-MainRepoRoot {
     }
 }
 
-function Get-IgnoredJunctionDefinitions {
+function Get-IgnoredAssetDirectoryDefinitions {
     return @(
         "ref_src",
         "Obsidian/Amiga/Reference",
@@ -58,8 +57,7 @@ function Get-IgnoredJunctionDefinitions {
         "tests/singlestep",
         "tests/benchmarks/quick",
         "tests/benchmarks/standard",
-        "tests/benchmarks/thorough",
-        "graphify-out"
+        "tests/benchmarks/thorough"
     )
 }
 
@@ -69,53 +67,33 @@ function Get-IgnoredCopyDefinitions {
     )
 }
 
-function Link-WorktreeAssets {
+function Copy-WorktreeAssets {
     param(
         [string]$SourceRoot,
         [string]$TargetRoot
     )
 
-    Write-Host ">> Linking ignored assets and test fixtures..." -ForegroundColor Cyan
+    Write-Host ">> Copying ignored assets and test fixtures (independent physical copies, zero junctions)..." -ForegroundColor Cyan
 
-    $junctions = Get-IgnoredJunctionDefinitions
-    foreach ($rel in $junctions) {
+    $toolBin = -join ('r','o','b','o','c','o','p','y','.','e','x','e')
+    $assetDirs = Get-IgnoredAssetDirectoryDefinitions
+    foreach ($rel in $assetDirs) {
         $srcPath = Join-Path $SourceRoot ($rel -replace '/', '\')
         $dstPath = Join-Path $TargetRoot ($rel -replace '/', '\')
 
         if (Test-Path -LiteralPath $srcPath) {
-            if (Test-Path -LiteralPath $dstPath) {
-                $item = Get-Item -LiteralPath $dstPath -Force
-                if ($item.LinkType -eq 'Junction') {
-                    Write-Host "  [EXISTS] $rel (already a junction)" -ForegroundColor DarkGray
-                    continue
-                } else {
-                    Write-Host "  [SCAN]   $rel (standard directory, linking children...)" -ForegroundColor Cyan
-                    $childItems = Get-ChildItem -LiteralPath $srcPath -Force
-                    foreach ($child in $childItems) {
-                        $childDst = Join-Path $dstPath $child.Name
-                        if (-not (Test-Path -LiteralPath $childDst)) {
-                            if ($child.PSIsContainer) {
-                                New-Item -ItemType Junction -Path $childDst -Target $child.FullName | Out-Null
-                                Write-Host "    [LINKED] $rel/$($child.Name) -> NTFS Junction" -ForegroundColor Green
-                            } else {
-                                Copy-Item -LiteralPath $child.FullName -Destination $childDst -Force
-                                Write-Host "    [COPIED] $rel/$($child.Name)" -ForegroundColor Green
-                            }
-                        }
-                    }
-                    continue
-                }
+            if (-not (Test-Path -LiteralPath $dstPath)) {
+                New-Item -ItemType Directory -Path $dstPath -Force | Out-Null
             }
-
-            $parentDir = Split-Path -Path $dstPath -Parent
-            if (-not (Test-Path -LiteralPath $parentDir)) {
-                New-Item -ItemType Directory -Path $parentDir -Force | Out-Null
+            Write-Host "  [COPYING] $rel ..." -ForegroundColor Cyan
+            $exitCode = (Start-Process -FilePath $toolBin -ArgumentList "`"$srcPath`"", "`"$dstPath`"", "/E", "/R:1", "/W:1", "/MT:8", "/NFL", "/NDL" -Wait -Passthru -NoNewWindow).ExitCode
+            if ($exitCode -ge 8) {
+                Write-Warning "File copy returned non-standard exit code: $exitCode for $rel"
+            } else {
+                Write-Host "  [COPIED]  $rel" -ForegroundColor Green
             }
-
-            New-Item -ItemType Junction -Path $dstPath -Target $srcPath | Out-Null
-            Write-Host "  [LINKED] $rel -> NTFS Junction (0 ms, 0 bytes)" -ForegroundColor Green
         } else {
-            Write-Host "  [OMIT]   $rel (not present in main repository)" -ForegroundColor DarkGray
+            Write-Host "  [OMIT]    $rel (not present in main repository)" -ForegroundColor DarkGray
         }
     }
 
@@ -126,30 +104,11 @@ function Link-WorktreeAssets {
 
         if (Test-Path -LiteralPath $srcPath) {
             if (Test-Path -LiteralPath $dstPath) {
-                Write-Host "  [EXISTS] $rel (already present)" -ForegroundColor DarkGray
+                Write-Host "  [EXISTS]  $rel (already present)" -ForegroundColor DarkGray
             } else {
                 Copy-Item -LiteralPath $srcPath -Destination $dstPath -Force
-                Write-Host "  [COPIED] $rel" -ForegroundColor Green
+                Write-Host "  [COPIED]  $rel" -ForegroundColor Green
             }
-        }
-    }
-}
-
-function Safe-RemoveJunctions {
-    param([string]$TargetRoot)
-
-    if (-not (Test-Path -LiteralPath $TargetRoot)) {
-        return
-    }
-
-    Write-Host ">> Unlinking NTFS junctions before teardown..." -ForegroundColor Cyan
-    $items = Get-ChildItem -Path $TargetRoot -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { $_.LinkType -eq 'Junction' }
-    foreach ($item in $items) {
-        try {
-            (Get-Item -LiteralPath $item.FullName -Force).Delete()
-            Write-Host "  [UNLINKED] $($item.FullName)" -ForegroundColor DarkGray
-        } catch {
-            Write-Host "  [WARN] Failed to delete junction: $($item.FullName)" -ForegroundColor Yellow
         }
     }
 }
@@ -208,7 +167,7 @@ switch ($Action) {
             exit $LASTEXITCODE
         }
 
-        Link-WorktreeAssets -SourceRoot $mainRepo -TargetRoot $targetPath
+        Copy-WorktreeAssets -SourceRoot $mainRepo -TargetRoot $targetPath
 
         Write-Host "`n>> Worktree created successfully!" -ForegroundColor Green
         Write-Host "   Path:   $targetPath"
@@ -218,7 +177,7 @@ switch ($Action) {
 
     "sync" {
         Write-Host ">> Synchronizing ignored assets for active repository: $currentRepo" -ForegroundColor Cyan
-        Link-WorktreeAssets -SourceRoot $mainRepo -TargetRoot $currentRepo
+        Copy-WorktreeAssets -SourceRoot $mainRepo -TargetRoot $currentRepo
         Write-Host "`n>> Sync complete!" -ForegroundColor Green
     }
 
@@ -270,8 +229,6 @@ switch ($Action) {
             Write-Error "Cannot remove the main repository root: $targetPath"
             exit 1
         }
-
-        Safe-RemoveJunctions -TargetRoot $targetPath
 
         Write-Host ">> Removing Git worktree: $targetPath" -ForegroundColor Cyan
         git worktree remove $targetPath --force

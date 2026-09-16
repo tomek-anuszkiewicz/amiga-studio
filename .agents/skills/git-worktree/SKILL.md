@@ -1,11 +1,11 @@
 ---
 name: git-worktree
-description: Create, synchronize, and tear down isolated Git worktrees with automatic NTFS junction linking of ignored test assets and .env.
+description: Create, synchronize, and tear down isolated Git worktrees with automatic physical copying of ignored test assets and .env (Zero NTFS Junctions).
 ---
 
-# Recipe: Isolated Git Worktree Lifecycle & Asset Linking
+# Recipe: Isolated Git Worktree Lifecycle & Physical Asset Isolation
 
-This skill defines the operational procedure for managing Git worktrees, ensuring that large ignored test suites, reference documentation, and configuration files are instantly linked via zero-cost NTFS directory junctions.
+This skill defines the operational procedure for managing Git worktrees, ensuring that large ignored test suites, reference documentation, and configuration files are physically copied to maintain complete repository isolation (zero NTFS junctions).
 
 ---
 
@@ -25,19 +25,19 @@ Activate this skill whenever:
    - **Zero Prompts to User:** Never ask the user where to place the worktree. Sibling placement in the parent folder is the standard invariant.
    - **No Internal Worktree Nesting:** Never create worktrees inside the repository (e.g., `.worktrees/` is deprecated).
 
-2. **Automated Ignored Assets Linking:**
-   - The test suite and documentation rely on files excluded by `.gitignore`:
-     - `ref_src/` (6.5 GB, ~20,000 files of CPU test vectors and reference emulators)
+2. **Strict Worktree Isolation & Zero-Junction Invariant:**
+   - **Strict Prohibition of NTFS Junctions and Directory Links:** Never use NTFS directory junctions (`New-Item -ItemType Junction`, `mklink /J`) or symbolic links across worktrees or repositories. Every worktree must remain 100% self-contained with independent physical storage.
+   - **Independent Physical Copies:** The test suite and documentation rely on files excluded by `.gitignore`:
+     - `ref_src/` (CPU test vectors and reference emulators)
      - `Obsidian/Amiga/Reference/` (Commodore hardware manuals)
      - `tools/AmigaTestKit/` (test floppy ADFs)
      - `tests/singlestep/` & `tests/benchmarks/` (test baseline outputs)
-     - `graphify-out/` (knowledge graph AST indices)
      - `.env` (environment configuration, `RAG_CACHE_FILE`)
-   - **Mandatory Script Use:** Always use `.\tools\git\worktree.ps1` to create and tear down worktrees. The script automatically establishes NTFS directory junctions (`New-Item -ItemType Junction`), creating instant (0 ms), zero-byte links with zero administrator privileges on Windows.
-   - **Zero Multi-Gigabyte Copies:** Never attempt raw file copies (`Copy-Item -Recurse`) of `ref_src/`.
+   - **Local Knowledge Graphs:** `graphify-out` is strictly local to each repository and must never be linked or copied across worktrees.
+   - **Mandatory Script Use:** Always use `.\tools\git\worktree.ps1` to create and tear down worktrees. The script automatically executes multi-threaded physical copying of necessary test assets into standalone directories.
 
 3. **Isolated Cargo Build Cache:**
-   - `target/` is deliberately **not** linked. Each worktree maintains an independent Cargo build cache to prevent concurrent compiler database lock contention.
+   - `target/` is deliberately **not** linked or copied. Each worktree maintains an independent Cargo build cache to prevent concurrent compiler database lock contention.
 
 ---
 
@@ -56,7 +56,7 @@ To branch from a specific base branch:
 The script will:
 1. Determine the main repository root.
 2. Create the worktree at the sibling path `../<repo_name>-<branch_name>`.
-3. Create NTFS junctions for all large ignored directories.
+3. Copy test fixtures into independent physical directories.
 4. Copy `.env`.
 
 ### Step 2: Working Within the Worktree
@@ -76,7 +76,7 @@ Once the worktree branch has been merged into `master` or is no longer needed:
 ```powershell
 .\tools\git\worktree.ps1 remove <branch_name>
 ```
-The script safely deletes the junction reparse points first (guaranteeing the referenced target files are never deleted) before invoking `git worktree remove` and `git worktree prune`.
+The script removes the worktree via `git worktree remove --force` and prunes stale worktree registrations.
 
 ---
 

@@ -69,14 +69,16 @@ Whenever creating isolated worktrees for feature branches or subagent parallel t
    - Worktrees must **always** be placed as sibling directories in the parent directory (`../<repo_name>-<branch_name>`).
    - Never nest worktrees inside the repository (e.g. `.worktrees/` is prohibited).
    - Never prompt the user asking where to place the worktree; follow the sibling convention automatically.
-2. **Automated Ignored Assets Linking:**
-   - Large ignored test suites (`ref_src/` at 6.5 GB, `tools/AmigaTestKit/`, `Obsidian/Amiga/Reference/`, `tests/singlestep/`, `tests/benchmarks/`) and `.env` must be linked via NTFS directory junctions.
+2. **Strict Worktree Isolation & Zero-Junction Invariant:**
+   - **Strict Prohibition of NTFS Junctions and Directory Links:** Never use NTFS directory junctions (`New-Item -ItemType Junction`, `mklink /J`) or symbolic links across worktrees or repositories. Every worktree must remain 100% self-contained with independent physical storage. Shared directory portals risk cross-branch contamination of AST caches (`graphify-out`), test fixtures, or concurrent edits.
+   - **Independent Physical Copies:** Ignored test suites (`ref_src/`, `tools/AmigaTestKit/`, `Obsidian/Amiga/Reference/`, `tests/singlestep/`, `tests/benchmarks/`) and `.env` are physically copied into independent directories.
+   - **Local Knowledge Graphs:** `graphify-out` must never be linked or shared across worktrees; each branch maintains its own local AST knowledge graph authentic to its code.
    - Always invoke the automated tool:
      ```powershell
      .\tools\git\worktree.ps1 add <branch-name>
      ```
 3. **Safe Teardown:**
-   - Clean up worktrees safely using `worktree.ps1` (which unlinks junctions before deletion, ensuring target files are never deleted):
+   - Clean up worktrees using `worktree.ps1`:
      ```powershell
      .\tools\git\worktree.ps1 remove <branch-name>
      ```
