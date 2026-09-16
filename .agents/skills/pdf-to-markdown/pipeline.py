@@ -454,6 +454,9 @@ def main():
         if not output_dir.is_absolute():
             output_dir = Path.cwd() / output_dir
         output_dir.mkdir(parents=True, exist_ok=True)
+    elif book_dir:
+        output_dir = book_dir / "output_markdown"
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.status:
         print_pipeline_status(workspace_dir, output_dir)

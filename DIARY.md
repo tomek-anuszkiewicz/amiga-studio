@@ -4211,8 +4211,26 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Tested on `Hardware Reference Manual`:
     - `page_0001.json` (previously empty scanned cover): Gemini Vision OCR detected 4 text blocks (`AMIGA HARDWARE REFERENCE MANUAL`, `REVISED & UPDATED`, `AMIGA®`, `COMMODORE-AMIGA, INCORPORATED`) with normalized coordinates.
-    - `page_0003.json` (born-digital text page): Stage 01b detected 7 native text blocks and passed through with 0 LLM calls.
   - `python tools/pre_flight.py`: All quality gates PASSED (formatting, attractor discipline, AGENTS.md size, 18/18 architecture rules).
+
+---
+
+### [2026-09-16 07:44 CEST] — PDF-to-Markdown: 10-Page Conversion Verification & Stage 03 Asset Crop Boundary Hardening
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/03_build_raw_stream/extract_initial_assets.py`: Normalized `clip_rect`, added boundary intersection with `page.rect`, and guarded against degenerate 0-dimension pixmap rendering and cropping errors.
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Set default `output_dir` to `<book_dir>/output_markdown` when `--output-dir` is not explicitly passed.
+- **What Was Changed (The Concrete Reality)**:
+  - Fixed a MuPDF bandwriter crash (`FzErrorArgument: code=4: Invalid bandwriter header dimensions/setup`) in Stage 03 caused when padded bounding boxes touch or overlap sibling nodes, resulting in zero-dimension clip rectangles. Normalized and validated all clip rectangles before attempting rasterization.
+  - Executed end-to-end 10-page conversions across both reference manuals:
+    1. `Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf` (100% scanned PDF, 0 native text blocks):
+       - Stage 01b OCR extracted 105 text blocks across 10 scanned pages.
+       - Stages 02 through 13 completed automatically in 105s, yielding clean Markdown files with tables and Line 1 YAML properties (`00_front_matter.md`, `00_toc.md`, `01_chapter_1_section_1_kickstart_in_rom.md`).
+    2. `Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf` (hybrid scanned cover / digital text):
+       - Stage 01b OCR extracted cover text while passing through digital pages.
+       - Stages 02 through 13 completed cleanly (`00_preface_and_front_matter.md`, `01_chapter_1_preface.md`).
+- **Verification & Test Results**:
+  - Both 10-page batches generated complete Markdown documents with zero host panics or pipeline halts.
+  - `python tools/pre_flight.py`: All pre-flight quality gates passed (18/18 architecture tests, 0 attractors, formatting clean).
 
 
 

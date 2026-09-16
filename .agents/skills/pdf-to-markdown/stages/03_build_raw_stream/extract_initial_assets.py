@@ -90,9 +90,14 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
             txt_filename = f"asset_{node_id}.txt"
             txt_path = assets_dir / txt_filename
             extracted_text = ""
+            clip_rect = pymupdf.Rect(*padded_bbox).normalize()
             if page:
-                clip_rect = pymupdf.Rect(*padded_bbox)
-                extracted_text = page.get_text("text", clip=clip_rect)
+                clip_rect = clip_rect.intersect(page.rect)
+                if not clip_rect.is_empty and clip_rect.width > 0 and clip_rect.height > 0:
+                    try:
+                        extracted_text = page.get_text("text", clip=clip_rect)
+                    except Exception:
+                        extracted_text = ""
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write(extracted_text.strip() + "\n")
             node["raw_text_path"] = f"{rel_prefix}/{txt_filename}"
@@ -101,9 +106,8 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
             svg_filename = f"asset_{node_id}.svg"
             svg_path = assets_dir / svg_filename
             has_vector = False
-            if page:
+            if page and not clip_rect.is_empty and clip_rect.width > 0 and clip_rect.height > 0:
                 try:
-                    clip_rect = pymupdf.Rect(*padded_bbox)
                     svg_data = page.get_svg_image(clip=clip_rect)
                     if svg_data and len(svg_data) > 200:
                         with open(svg_path, "w", encoding="utf-8") as f:
@@ -113,27 +117,32 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
                 except Exception:
                     has_vector = False
 
-            # 3. Extract Raster PNG Clip (at 300 DPI) with 10% safety margin
+            # 3. Extract Raster PNG Clip (at 300 DPI) with safety margin
             png_filename = f"asset_{node_id}.png"
             png_path = assets_dir / png_filename
-            if page:
-                clip_rect = pymupdf.Rect(*padded_bbox)
-                clip_pix = page.get_pixmap(dpi=300, clip=clip_rect)
-                clip_pix.save(str(png_path))
-                node["png_path"] = f"{rel_prefix}/{png_filename}"
+            if page and not clip_rect.is_empty and clip_rect.width > 2 and clip_rect.height > 2:
+                try:
+                    clip_pix = page.get_pixmap(dpi=300, clip=clip_rect)
+                    if clip_pix.width > 0 and clip_pix.height > 0:
+                        clip_pix.save(str(png_path))
+                        node["png_path"] = f"{rel_prefix}/{png_filename}"
+                except Exception as err:
+                    print(f"  [!] Warning: Could not save pixmap for node {node_id}: {err}")
             elif page_pixmap:
                 # Fallback to cropping raster image
                 pw, ph = page_pixmap.size
                 norm = node.get("bbox_norm", [0, 0, 1, 1])
-                crop_box = (
-                    int(max(0.0, norm[0] - padding_ratio) * pw),
-                    int(max(0.0, norm[1] - padding_ratio) * ph),
-                    int(min(1.0, norm[2] + padding_ratio) * pw),
-                    int(min(1.0, norm[3] + padding_ratio) * ph),
-                )
-                cropped_img = page_pixmap.crop(crop_box)
-                cropped_img.save(png_path)
-                node["png_path"] = f"{rel_prefix}/{png_filename}"
+                x0 = int(max(0.0, norm[0] - padding_ratio) * pw)
+                y0 = int(max(0.0, norm[1] - padding_ratio) * ph)
+                x1 = int(min(1.0, norm[2] + padding_ratio) * pw)
+                y1 = int(min(1.0, norm[3] + padding_ratio) * ph)
+                if x1 > x0 and y1 > y0:
+                    try:
+                        cropped_img = page_pixmap.crop((x0, y0, x1, y1))
+                        cropped_img.save(png_path)
+                        node["png_path"] = f"{rel_prefix}/{png_filename}"
+                    except Exception as err:
+                        print(f"  [!] Warning: Could not crop PIL image for node {node_id}: {err}")
 
         if doc:
             doc.close()
