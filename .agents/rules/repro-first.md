@@ -49,8 +49,8 @@ flowchart LR
    - Per [`unit-testing-policy.md`](unit-testing-policy.md), reproduction tests must **never** be placed inside `crates/*/src/`. All tests reside exclusively in `crates/*/tests/`.
 2. **Zero Blind Golden Hash or Vector Updates:**
    - Per [`spec-compliance.md`](spec-compliance.md), modifying golden master hashes, cycle totals, or reference vectors to silence a failing reproduction test is strictly forbidden.
-3. **Root-Cause Resolution Over Heuristics:**
-   - Do not apply surface-level patches that mask symptoms. Identify the specific cycle, register bit, or state machine phase responsible for the divergence.
+3. **Root-Cause Resolution Over Heuristics (Zero Local Symptom Patches):**
+   - Per [`structural-root-cause.md`](structural-root-cause.md), do not apply surface-level patches that mask symptoms (e.g. nudging beam coordinates/offsets by $\pm 1$ or adding ad-hoc special cases). Identify the specific cycle, register bit, or state machine phase responsible for the divergence upstream.
 
 ---
 

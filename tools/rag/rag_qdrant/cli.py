@@ -279,9 +279,31 @@ def main():
         console.print(f"  • Qdrant URL:             {QDRANT_URL}")
         console.print(f"  • Qdrant Collection:      [bold]{COLLECTION_NAME}[/bold]")
         console.print(f"  • Hash Cache File:        [bold magenta]{CACHE_FILE}[/bold magenta]")
-        console.print(f"  • Planned Workers:        [bold yellow]{NUM_WORKERS} CPU threads[/bold yellow] (FastEmbed & hashing)")
+        provider_style = "bold green" if indexer.active_provider == "CUDA" else "bold yellow"
+        console.print(f"  • Embedder Engine:        [{provider_style}]{indexer.active_provider}[/{provider_style}] (Batch Size: {indexer.active_batch_size})")
+        console.print(f"  • Hashing & Chunks:       [bold yellow]{NUM_WORKERS} CPU threads[/bold yellow]")
         console.print(f"  • Diagram Vision:         [bold green]Offline Sidecar Loader (<image>.txt)[/bold green]")
         console.print(f"[bold cyan]──────────────────────────────────────────────────────────[/bold cyan]\n")
+
+        if indexer.active_provider != "CUDA":
+            from rich.panel import Panel
+            advisory_lines = []
+            host_gpu = getattr(indexer, "host_gpu", None)
+            if host_gpu:
+                advisory_lines.append(f"  [bold green]Discrete GPU Detected:[/bold green] {host_gpu}")
+                advisory_lines.append(f"  [yellow]Status:[/yellow] Running on CPU because ONNX CUDA runtime libraries (cublasLt64) were not loaded.")
+                advisory_lines.append(f"  [bold cyan]To unlock 5-10x faster RTX acceleration (installs missing cublasLt64 DLL):[/bold cyan]")
+                advisory_lines.append(f"    [white]pip install nvidia-cublas-cu12[/white]")
+            else:
+                advisory_lines.append(f"  [bold yellow]No discrete NVIDIA GPU detected.[/bold yellow] Running on multi-core CPU ({NUM_WORKERS} threads).")
+
+            advisory_lines.append("")
+            advisory_lines.append(f"  [bold magenta]Cloud API Alternative:[/bold magenta]")
+            advisory_lines.append(f"    Have high API token quotas? Cloud embeddings can be enabled via GEMINI_API_KEY in .env.")
+
+            console.print(Panel("\n".join(advisory_lines), title="[bold yellow]💡 Compute Acceleration Advisory[/bold yellow]", border_style="yellow"))
+            console.print()
+
         if args.reindex:
             console.print("[yellow]Forced re-indexing enabled (cache ignored).[/yellow]\n")
 
@@ -296,7 +318,8 @@ def main():
             console.print(f"  • Total Scanned:         {plan['scanned_files']} files ({format_bytes(plan['scanned_bytes'])})")
             console.print(f"  • Files to Index/Update: [bold green]{plan['to_index_files']}[/bold green] files ([bold green]{format_bytes(plan['to_index_bytes'])}[/bold green])")
             console.print(f"  • Files Unchanged:       {plan['skipped_files']} files ({format_bytes(plan['skipped_bytes'])})")
-            console.print(f"  • Active Workers:        [bold yellow]{plan['cpu_workers']} CPU threads[/bold yellow], [bold green]Offline Sidecar Vision[/bold green]")
+            engine_style = "bold green" if indexer.active_provider == "CUDA" else "bold yellow"
+            console.print(f"  • Compute Engine:        [{engine_style}]{indexer.active_provider}[/{engine_style}] (Batch Size: {indexer.active_batch_size}), [bold yellow]{plan['cpu_workers']} CPU threads[/bold yellow] for chunking")
             console.print("[bold cyan]────────────────────────────────────────────────────────────[/bold cyan]\n")
             sys.stdout.flush()
 

@@ -82,16 +82,12 @@ Verification:
 ```
 
 ### Step 6: Worktree Teardown & Cleanup (If Using Worktrees)
-If the branch was developed in an external worktree:
-1. Remove the secondary worktree:
+If the branch was developed in an isolated worktree:
+1. Safely teardown the worktree using the automated script (safely unlinks NTFS junctions before removal):
    ```powershell
-   git worktree remove <worktree-path> --force
+   .\tools\git\worktree.ps1 remove <branch-name>
    ```
-2. Prune stale worktree metadata:
-   ```powershell
-   git worktree prune
-   ```
-3. Delete the merged feature branch:
+2. Delete the merged feature branch (if not deleted by worktree remove):
    ```powershell
    git branch -d <source-branch>
    ```
@@ -105,17 +101,17 @@ If the branch was developed in an external worktree:
 - **Context Savings:** Isolates raw `diff3` conflict markers, multi-file conflict churn, and worktree git status commands from the main pair-programming context.
 - **Subagent Task Template:**
   - `TaskName`: "Git Merge & Conflict Resolution: <branch_name>"
-  - `TaskSummary`: "Creates isolated worktree, resolves 3-way conflicts holistically, verifies tests, and creates structured merge commit."
+  - `TaskSummary`: "Creates isolated worktree via worktree.ps1, resolves 3-way conflicts holistically, verifies tests, and creates structured merge commit."
   - `Prompt`:
     ```markdown
     Merge branch `<SOURCE_BRANCH>` into `<TARGET_BRANCH>` using isolated worktree.
     Follow .agents/skills/git-resolve-merge/SKILL.md:
-    1. Create isolated worktree at `.worktrees/merge-<branch>`.
+    1. Create isolated sibling worktree via `.\tools\git\worktree.ps1 add merge-<branch>`.
     2. Attempt merge: `git merge --no-ff <source_branch>`.
     3. If conflicts occur, analyze intent of both sides and preserve all non-conflicting features.
     4. Run `cargo test` and `test_architecture_rules`.
     5. Commit with standardized merge commit message.
-    6. Clean up worktree.
+    6. Clean up worktree via `.\tools\git\worktree.ps1 remove merge-<branch>`.
     7. Return strictly the Conflict Resolution Report below.
     ```
 - **Return Contract (Mandatory Structured Output):**

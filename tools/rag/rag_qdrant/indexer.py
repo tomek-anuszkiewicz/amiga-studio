@@ -3,6 +3,7 @@ import json
 import uuid
 import hashlib
 import fnmatch
+import atexit
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -22,11 +23,53 @@ from .config import (
     GEMINI_API_KEY,
     NUM_WORKERS,
     VISION_MAX_WORKERS,
-    EMBEDDING_BATCH_SIZE,
+    GPU_EMBEDDING_BATCH_SIZE,
+    CPU_EMBEDDING_BATCH_SIZE,
+    DEFAULT_EMBEDDING_BATCH_SIZE,
     UPSERT_BATCH_SIZE,
+    CACHE_FLUSH_INTERVAL_FILES,
+    CACHE_FLUSH_INTERVAL_CHUNKS,
 )
 from .chunker import MarkdownChunker
 from .vision import VisionAnalyzer
+
+
+def _setup_cuda_dll_paths():
+    """Discovers NVIDIA CUDA and cuDNN DLL directories and registers them with Windows DLL search path."""
+    import sys
+    if sys.platform != "win32":
+        return
+    import site
+    search_dirs = []
+    try:
+        site_dirs = list(site.getsitepackages())
+        user_site = site.getusersitepackages()
+        if isinstance(user_site, str):
+            site_dirs.append(user_site)
+        for base in site_dirs:
+            nv_dir = Path(base) / "nvidia"
+            if nv_dir.is_dir():
+                for bin_dir in nv_dir.glob("*/bin"):
+                    if bin_dir.is_dir():
+                        search_dirs.append(bin_dir)
+    except Exception:
+        pass
+
+    cuda_path = os.environ.get("CUDA_PATH")
+    if cuda_path:
+        p = Path(cuda_path) / "bin"
+        if p.is_dir():
+            search_dirs.append(p)
+
+    for d in search_dirs:
+        try:
+            os.add_dll_directory(str(d))
+            os.environ["PATH"] = str(d) + os.pathsep + os.environ.get("PATH", "")
+        except Exception:
+            pass
+
+
+_setup_cuda_dll_paths()
 
 
 class KnowledgeIndexer:
@@ -34,19 +77,72 @@ class KnowledgeIndexer:
         self.client = QdrantClient(url=QDRANT_URL, timeout=QDRANT_TIMEOUT)
         self.chunker = MarkdownChunker()
         self.cache = self._load_cache()
+        self.dirty_cache = False
+        atexit.register(self.flush_cache)
         self.vision = VisionAnalyzer(self.cache.setdefault("image_descriptions", {}))
+        self.host_gpu = self.detect_host_gpu()
         self.fastembed_model = None
+        self.active_provider = "CPU"
+        self.active_batch_size = CPU_EMBEDDING_BATCH_SIZE
         self._init_embedder()
 
+    @staticmethod
+    def detect_host_gpu() -> Optional[str]:
+        """Probes nvidia-smi for discrete GPU details (sub-millisecond)."""
+        try:
+            import subprocess
+            res = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
+                capture_output=True, text=True, timeout=1.0
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip().split("\n")[0]
+        except Exception:
+            pass
+        return None
+
     def _init_embedder(self):
+        # 1. Attempt CUDA first
+        try:
+            import onnxruntime as ort
+            if "CUDAExecutionProvider" in ort.get_available_providers():
+                from fastembed import TextEmbedding
+                model = TextEmbedding(
+                    model_name=EMBEDDING_MODEL,
+                    providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
+                )
+                # Verify forward pass on tiny probe
+                list(model.embed(["probe"], batch_size=1))
+
+                # Check if CUDAExecutionProvider was actually activated
+                active_providers = []
+                if hasattr(model, "model") and hasattr(model.model, "model") and hasattr(model.model.model, "get_providers"):
+                    active_providers = model.model.model.get_providers()
+                elif hasattr(model, "model") and hasattr(model.model, "providers"):
+                    active_providers = model.model.providers
+
+                if "CUDAExecutionProvider" in active_providers:
+                    self.fastembed_model = model
+                    self.active_provider = "CUDA"
+                    self.active_batch_size = GPU_EMBEDDING_BATCH_SIZE
+                    return
+        except Exception:
+            pass
+
+        # 2. Fallback to CPU
         try:
             from fastembed import TextEmbedding
             self.fastembed_model = TextEmbedding(
                 model_name=EMBEDDING_MODEL,
-                threads=NUM_WORKERS
+                threads=NUM_WORKERS,
+                providers=["CPUExecutionProvider"]
             )
+            self.active_provider = "CPU"
+            self.active_batch_size = CPU_EMBEDDING_BATCH_SIZE
         except Exception as e:
             print(f"[Warning] Failed to load FastEmbed model: {e}")
+            self.active_provider = "None"
+            self.active_batch_size = CPU_EMBEDDING_BATCH_SIZE
 
     def _load_cache(self) -> Dict[str, Any]:
         if CACHE_FILE.is_file():
@@ -57,10 +153,19 @@ class KnowledgeIndexer:
                 pass
         return {"sources": {}, "image_descriptions": {}}
 
-    def _save_cache(self):
-        CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(self.cache, f, indent=2, ensure_ascii=False)
+    def flush_cache(self):
+        """Flushes dirty cache to disk (atomic checkpointing)."""
+        if getattr(self, "dirty_cache", False):
+            CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump(self.cache, f, indent=2, ensure_ascii=False)
+            self.dirty_cache = False
+
+    def _save_cache(self, force: bool = False):
+        """Marks cache dirty and flushes if forced."""
+        self.dirty_cache = True
+        if force:
+            self.flush_cache()
 
     def _file_hash(self, file_path: Path) -> str:
         hasher = hashlib.sha256()
@@ -96,18 +201,17 @@ class KnowledgeIndexer:
             )
 
     def get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Fetch embeddings via CPU-based FastEmbed (multi-core local)."""
+        """Fetch embeddings via FastEmbed (CUDA GPU or multi-core CPU)."""
         if not texts:
             return []
 
         if not self.fastembed_model:
             raise RuntimeError("FastEmbed model failed to initialize or is unavailable.")
 
-        # FastEmbed local multi-threaded inference via ONNX Runtime C++ engine (threads=NUM_WORKERS)
         embeddings = [
             v.tolist() for v in self.fastembed_model.embed(
                 texts,
-                batch_size=EMBEDDING_BATCH_SIZE,
+                batch_size=self.active_batch_size,
                 parallel=None
             )
         ]
@@ -338,7 +442,7 @@ class KnowledgeIndexer:
             stats["images_analyzed"] = len(self.cache.get("image_descriptions", {}))
             self._save_cache()
 
-        # 5. Incremental File-by-File Embedding, Upserting & Immediate Cache Checkpointing
+        # 5. High-Throughput Batched Embedding, Bulk Upserting & Deferred Cache Flushing
         total_chunks_to_index = sum(len(chunks) for _, _, _, _, chunks in chunked_results)
         total_files_to_index = len(chunked_results)
         completed_chunks = 0
@@ -349,8 +453,14 @@ class KnowledgeIndexer:
         if progress_cb and total_chunks_to_index > 0:
             progress_cb(0, total_chunks_to_index, f"Starting incremental indexing across {total_files_to_index} files...", "indexing", False, f"({0:>{f_digits}}/{total_files_to_index})")
 
+        # Track chunk counts per file to know when each file is fully embedded
+        file_chunk_counts: Dict[str, int] = {}
+        file_points_accum: Dict[str, int] = {}
+        file_meta: Dict[str, tuple] = {}  # p_str -> (file_p, h, is_upd)
+
+        all_chunk_items = []
         for file_p, p_str, h, is_upd, chunks in chunked_results:
-            completed_files += 1
+            file_meta[p_str] = (file_p, h, is_upd)
             if not chunks:
                 source_cache[p_str] = {
                     "hash": h,
@@ -358,14 +468,20 @@ class KnowledgeIndexer:
                     "last_indexed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 self._save_cache()
+                completed_files += 1
                 stats["skipped"] += 1
                 if progress_cb:
                     count_tag = f"({completed_files:>{f_digits}}/{total_files_to_index})"
                     progress_cb(completed_chunks, total_chunks_to_index, file_p.name, "skipped", False, count_tag)
                 continue
 
-            file_point_tuples = []
-            file_texts = []
+            # Delete old points for this file if it was an update
+            if is_upd:
+                self.delete_file_points(p_str)
+
+            file_chunk_counts[p_str] = len(chunks)
+            file_points_accum[p_str] = 0
+
             for chunk in chunks:
                 chunk_text = chunk["content"]
                 img_desc_list = []
@@ -389,47 +505,86 @@ class KnowledgeIndexer:
                     "images": chunk["images"],
                     "chunk_id": chunk["chunk_id"]
                 }
-                file_texts.append(full_embed_text)
-                file_point_tuples.append((point_id, payload))
+                all_chunk_items.append((p_str, point_id, full_embed_text, payload))
 
-            # Compute embeddings for this file's chunks
-            embeddings = self.get_embeddings(file_texts)
+        pending_points: List[models.PointStruct] = []
+        files_completed_since_flush = 0
+        chunks_since_flush = 0
 
-            # Build Qdrant PointStructs
-            file_points = [
-                models.PointStruct(id=pt[0], vector=emb, payload=pt[1])
-                for pt, emb in zip(file_point_tuples, embeddings)
-            ]
+        def _flush_pending_points():
+            nonlocal pending_points
+            if pending_points:
+                for i in range(0, len(pending_points), UPSERT_BATCH_SIZE):
+                    self.client.upsert(
+                        collection_name=COLLECTION_NAME,
+                        points=pending_points[i:i + UPSERT_BATCH_SIZE]
+                    )
+                pending_points = []
 
-            # Delete old points for this file if it was an update
-            if is_upd:
-                self.delete_file_points(p_str)
+        try:
+            for b_idx in range(0, len(all_chunk_items), self.active_batch_size):
+                batch_items = all_chunk_items[b_idx:b_idx + self.active_batch_size]
+                batch_texts = [item[2] for item in batch_items]
+                batch_embeddings = self.get_embeddings(batch_texts)
 
-            # Immediately upsert points for this file to Qdrant
-            for i in range(0, len(file_points), UPSERT_BATCH_SIZE):
-                self.client.upsert(
-                    collection_name=COLLECTION_NAME,
-                    points=file_points[i:i + UPSERT_BATCH_SIZE]
-                )
+                for item, emb in zip(batch_items, batch_embeddings):
+                    p_str, point_id, _, payload = item
+                    pending_points.append(
+                        models.PointStruct(id=point_id, vector=emb, payload=payload)
+                    )
+                    file_points_accum[p_str] += 1
+                    completed_chunks += 1
+                    chunks_since_flush += 1
 
-            # Immediately checkpoint this file to disk!
-            source_cache[p_str] = {
-                "hash": h,
-                "chunks": len(file_points),
-                "last_indexed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-            self._save_cache()
+                    # Check if this file has completed all its chunks
+                    if file_points_accum[p_str] == file_chunk_counts[p_str]:
+                        file_p, h, is_upd = file_meta[p_str]
+                        source_cache[p_str] = {
+                            "hash": h,
+                            "chunks": file_chunk_counts[p_str],
+                            "last_indexed": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                        self._save_cache()
+                        completed_files += 1
+                        files_completed_since_flush += 1
+                        stats["total_points"] += file_chunk_counts[p_str]
+                        if is_upd:
+                            stats["updated"] += 1
+                        else:
+                            stats["indexed"] += 1
 
-            completed_chunks += len(chunks)
-            stats["total_points"] += len(file_points)
-            if is_upd:
-                stats["updated"] += 1
-            else:
-                stats["indexed"] += 1
+                        if progress_cb:
+                            count_tag = f"({completed_files:>{f_digits}}/{total_files_to_index})"
+                            progress_cb(completed_chunks, total_chunks_to_index, file_p.name, "indexing", False, count_tag)
 
-            if progress_cb:
-                count_tag = f"({completed_files:>{f_digits}}/{total_files_to_index})"
-                progress_cb(completed_chunks, total_chunks_to_index, file_p.name, "indexing", False, count_tag)
+                # Bulk upsert to Qdrant if accumulated points >= UPSERT_BATCH_SIZE
+                while len(pending_points) >= UPSERT_BATCH_SIZE:
+                    upsert_chunk = pending_points[:UPSERT_BATCH_SIZE]
+                    self.client.upsert(
+                        collection_name=COLLECTION_NAME,
+                        points=upsert_chunk
+                    )
+                    pending_points = pending_points[UPSERT_BATCH_SIZE:]
+
+                # Periodic checkpoint flush: ensure all points in Qdrant before writing disk cache
+                if (files_completed_since_flush >= CACHE_FLUSH_INTERVAL_FILES or
+                        chunks_since_flush >= CACHE_FLUSH_INTERVAL_CHUNKS):
+                    _flush_pending_points()
+                    self.flush_cache()
+                    files_completed_since_flush = 0
+                    chunks_since_flush = 0
+
+            # Final flush of points and cache
+            _flush_pending_points()
+            self.flush_cache()
+
+        finally:
+            # Ensure pending points and dirty cache are saved on exit or interruption
+            try:
+                _flush_pending_points()
+            except Exception:
+                pass
+            self.flush_cache()
 
         return stats
 

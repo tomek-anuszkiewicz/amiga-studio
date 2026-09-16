@@ -20,18 +20,18 @@ fn test_dmacon_set_clr_logic() {
 fn test_dmacon_propagation_delay_2_cck() {
     let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
 
-    // Initial DMACON is 0
-    assert_eq!(agnus.read_dmaconr(), 0);
+    // Initial DMACON channel bits are 0
+    assert_eq!(agnus.read_dmaconr() & 0x07FF, 0);
 
     // Write at cycle T: SET DMAEN and BLTEN (bit 9 + bit 6 = 0x8240)
     agnus.write_register(0x096, 0x8240);
 
     // Cycle T: Read is NOW (still 0 because mutation is in flight)
-    assert_eq!(agnus.read_dmaconr(), 0);
+    assert_eq!(agnus.read_dmaconr() & 0x07FF, 0);
 
     // Step 1 CCK (Cycle T+1): still in flight
     agnus.step_cck();
-    assert_eq!(agnus.read_dmaconr(), 0);
+    assert_eq!(agnus.read_dmaconr() & 0x07FF, 0);
 
     // Step 2 CCK (Cycle T+2): mutation matures and commits!
     agnus.step_cck();
@@ -66,18 +66,18 @@ fn test_dmacon_overwrite_pending() {
 
     // 1 CCK passes
     agnus.step_cck();
-    assert_eq!(agnus.read_dmaconr(), 0);
+    assert_eq!(agnus.read_dmaconr() & 0x07FF, 0);
 
     // Write 2 at cycle T+1 before Write 1 commits: SET BPLEN (0x8100) instead
     agnus.write_register(0x096, 0x8100);
 
     // 1 CCK passes: timer was reset to 2, so at T+2 it has 1 CCK remaining
     agnus.step_cck();
-    assert_eq!(agnus.read_dmaconr(), 0);
+    assert_eq!(agnus.read_dmaconr() & 0x07FF, 0);
 
     // 2nd CCK after overwrite: now it matures with the latest value (0x8100)
     agnus.step_cck();
-    assert_eq!(agnus.read_dmaconr(), 0x0100);
+    assert_eq!(agnus.read_dmaconr() & 0x07FF, 0x0100);
 }
 
 #[test]

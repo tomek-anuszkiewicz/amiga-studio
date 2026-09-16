@@ -61,26 +61,30 @@ Verification:
 
 ---
 
-## 4. Git Worktree Teardown & Lifecycle
+## 4. Git Worktree Placement & Lifecycle Management
 
-Once the merge commit is safely recorded on `master` and verified:
+Whenever creating isolated worktrees for feature branches or subagent parallel tasks:
 
-1. **Remove Secondary Worktree:**
-   From the primary repository root:
-   ```powershell
-   git worktree remove <worktree-path> --force
-   ```
-2. **Prune Stale Metadata:**
-   ```powershell
-   git worktree prune
-   ```
-3. **Delete Merged Branch (Optional):**
-   ```powershell
-   git branch -d <source-branch>
-   ```
+1. **Sibling Placement Invariant:**
+   - Worktrees must **always** be placed as sibling directories in the parent directory (`../<repo_name>-<branch_name>`).
+   - Never nest worktrees inside the repository (e.g. `.worktrees/` is prohibited).
+   - Never prompt the user asking where to place the worktree; follow the sibling convention automatically.
+2. **Automated Ignored Assets Linking:**
+   - Large ignored test suites (`ref_src/` at 6.5 GB, `tools/AmigaTestKit/`, `Obsidian/Amiga/Reference/`, `tests/singlestep/`, `tests/benchmarks/`) and `.env` must be linked via NTFS directory junctions.
+   - Always invoke the automated tool:
+     ```powershell
+     .\tools\git\worktree.ps1 add <branch-name>
+     ```
+3. **Safe Teardown:**
+   - Clean up worktrees safely using `worktree.ps1` (which unlinks junctions before deletion, ensuring target files are never deleted):
+     ```powershell
+     .\tools\git\worktree.ps1 remove <branch-name>
+     ```
 
 ---
 
-## 5. Execution Skill: `git-resolve-merge`
+## 5. Execution Skills
 
-Follow the operational runbook in [`git-resolve-merge`](../skills/git-resolve-merge/SKILL.md) for step-by-step branch reintegration, isolated worktree lifecycles, holistic conflict resolution without feature loss, and verification gates.
+- **Worktree Management:** Follow [`git-worktree`](../skills/git-worktree/SKILL.md) for creating, linking, and managing isolated worktrees.
+- **Branch Reintegration & Conflicts:** Follow [`git-resolve-merge`](../skills/git-resolve-merge/SKILL.md) for step-by-step branch reintegration, holistic conflict resolution, and verification gates.
+

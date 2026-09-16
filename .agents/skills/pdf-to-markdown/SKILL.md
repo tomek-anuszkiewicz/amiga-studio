@@ -1,263 +1,193 @@
 ---
 name: pdf-to-markdown
-description: Convert technical reference PDF manuals into modular Obsidian Markdown with extracted figures and link validation.
+description: Convert technical PDF manuals and reference books into publication-grade Obsidian Markdown using a modular 12-stage stream-based pipeline driven by the Agent.
 ---
 
-# Recipe: Converting Technical PDF Manuals to Markdown
+# Recipe: Modular PDF-to-Markdown Conversion Pipeline (Agent-Driven)
 
-This skill provides a standardized, battle-tested procedure for converting complex technical PDF books, architecture manuals, and hardware guides into publication-quality Markdown documents optimized for Obsidian vaults and GitHub documentation.
+This skill converts complex technical PDF documents (such as Amiga hardware reference manuals, hardware schematics, and Motorola 68000 PRMs) into publication-grade Obsidian Markdown.
+
+It is architected around an **Agent-Driven Hybrid Model**:
+- **Deterministic Python Scripts** handle mechanical tasks (page extraction, 300 DPI rendering, text geometry, asset slicing with 10% margins, stream stitching, chapter partitioning, Markdown emission, and TOC link resolution).
+- **The Agent** acts as the cognitive engine and orchestrator (segmentation validation, multi-page continuation reasoning, table formatting, flowchart-to-Mermaid transcription, RAG sidecar authorship, prose polish, and opening title refinement), eliminating any requirement for external API keys (`GEMINI_API_KEY`).
 
 ---
 
-## 1. Toolchain & Directory Structure
-
-All conversion scripts and references reside inside this skill directory:
+## 1. Directory Structure
 
 ```text
 .agents/skills/pdf-to-markdown/
-├── SKILL.md                               # This workflow recipe
-├── scripts/
-│   ├── pdf_to_pages.py                    # PyMuPDF-based PDF chapter splitter & page-to-PNG renderer
-│   ├── extract_crops.py                   # Figure cropper with safety margins, deduplication, & asset naming
-│   ├── merge_chapters.py                  # Page-to-chapter compiler, header/footer stripper, & navigation injector
-│   ├── png_to_svg_helper.py               # Vectorization helper & SVG viewBox/clipPath safety auditor
-│   └── verify_page_vision.py              # Visual double-check tool comparing markdown vs original page PNG
-└── references/
-    ├── pdf-conversion-pitfalls.md         # Detailed guide to the 11 known conversion pitfalls & fixes
-    ├── non-text-conversion-hierarchy.md   # Decision matrix: Code vs Table vs Text Block vs HTML vs PNG vs SVG
-    └── table-merging-heuristics.md        # Reference on stitching split tables across page boundaries
+├── SKILL.md                                 # This workflow manual
+├── pipeline.py                              # Master CLI orchestrator & task manager
+├── config.yaml                              # Global configuration (DPI, paths, heuristics)
+└── stages/
+    ├── 01_preprocess/
+    │   ├── preprocess.py                    # Splits PDF -> page_XXXX.pdf, 300 DPI PNG, text blocks JSON
+    │   └── README.md
+    │
+    ├── 02_page_segmentation/
+    │   ├── segment_page.py                  # Vertical banding analysis -> page_XXXX_segments.json
+    │   ├── prompt.md                        # Vision guidelines: header, footer, chapter, heading, prose, code_block, table, graphic, toc, toc_header
+    │   └── README.md
+    │
+    ├── 03_build_raw_stream/
+    │   ├── build_stream.py                  # Merges segmented pages into global raw_stream.json
+    │   ├── extract_initial_assets.py        # Extracts SVG/PNG clips (10% margin) + raw text asset per table/graphic
+    │   └── README.md
+    │
+    ├── 04_stream_reduction/
+    │   ├── reduce_stream.py                 # Normalizes stream: suppresses headers/footers, unifies contiguous graphics, fuses prose
+    │   ├── prompt_seam.md                   # De-hyphenation & paragraph continuation guidelines
+    │   ├── prompt_graphics_union.md         # Vision validation for contiguous graphic fragment union
+    │   └── README.md
+    │
+    ├── 05_chapter_partition/
+    │   ├── partition_chapters.py            # Splits reduced stream into {idx:02d}_{slug}.json; partitions front matter into 00_toc
+    │   └── README.md
+    │
+    ├── 06_detect_continuations/
+    │   ├── detect_continuations.py          # Scans adjacent table/graphic blocks; prepares & applies continuation groups
+    │   ├── prompt_continuation.md           # Continuation evaluation rules
+    │   └── README.md
+    │
+    ├── 07_transform_tables/
+    │   ├── transform_tables.py              # Worker for tables (prepares workspace/tasks/tables/ & applies back)
+    │   ├── prompt_markdown_table.md         # 4-column layout, Unicode arrows, math
+    │   ├── prompt_html_table.md             # Colspan/rowspan tables
+    │   └── README.md
+    │
+    ├── 08_transform_graphics/
+    │   ├── transform_graphics.py            # Worker for graphics (prepares workspace/tasks/graphics/ & applies back)
+    │   ├── prompt_mermaid.md                # Flowcharts & state machines -> Mermaid + ASCII callout
+    │   ├── prompt_rag_sidecar.md            # Technical signal/timing breakdown for RAG (.png.txt)
+    │   └── README.md
+    │
+    ├── 09_transform_prose/
+    │   ├── format_prose.py                  # Worker for prose, code_block, and toc (wraps TOC in TOC34534 delimiters)
+    │   ├── prompt.md                        # Structural Markdown formatting rules
+    │   └── README.md
+    │
+    ├── 10_proofread_stream/
+    │   ├── proofread_stream.py              # Proofreads manifest titles, slugs & streams with LLM
+    │   ├── prompt.md                        # Technical proofreading guidelines (strict anti-hallucination rules)
+    │   └── README.md
+    │
+    ├── 11_emit_markdown/
+    │   ├── emit_markdown.py                 # Emits one .md file per partition ({index:02d}_{slug}.md); ignores toc_header
+    │   └── README.md
+    │
+    ├── 12_refine_first_chapter_name/
+    │   ├── refine_name.py                   # Inspects first chapter content & sets canonical title/slug
+    │   ├── prompt.md                        # Evaluation guidelines for opening sections
+    │   └── README.md
+    │
+    └── 13_link_toc/
+        ├── link_toc.py                      # Fuzzy header matcher across all .md files; converts TOC lines to wikilinks; strips markers
+        └── README.md
 ```
 
 ---
 
-## 2. Cardinal Rule of Conversion
+## 2. Core Execution Invariant: Master Orchestrator Mandate
 
 > [!IMPORTANT]
-> **Content Fidelity & Meaning:**
-> - **You may reformat and polish layout**, typography, indentations, and presentation.
-> - **Preserve 100% of the original content and technical meaning.**
-> - **Do NOT add new content** (no invented text, commentary, or assumed facts).
-> - **Do NOT omit or summarize existing content** (no dropping footnotes, sidebars, or table columns).
+> **NEVER invoke stage worker scripts directly** (e.g. `python stages/01_preprocess/preprocess.py` or `python stages/02_page_segmentation/segment_page.py`).
+>
+> **ALL execution MUST go through `pipeline.py`**.
+> Directly executing sub-scripts bypasses:
+> 1. Status progression tracking in `stage_status.json`
+> 2. LLM call metrics logging in `.metrics.json`
+> 3. Automatic downstream stage invalidation and cache cleanup
+> 4. Standard argument and path normalization (`--workspace`, `--output-dir`, `--config`)
+> 5. Hermetic configuration snapshotting to `<WORKSPACE>/config.yaml`
+>
+> ### Execution Rules:
+> - **Full pipeline**: `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>"`
+> - **Stage interval**: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 03 --to-stage 05`
+> - **Single stage**: Set `--from-stage` and `--to-stage` to the exact same stage number:
+>   `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 02 --to-stage 02`
+> - **Stage 01 with specific pages**:
+>   `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01`
+> - **Deterministic batch (01, 03, 04, 05, 10, 11)**:
+>   `python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --run-deterministic`
+> - **Cognitive review stages (06, 07, 08, 09)**:
+>   - Prepare task items: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --prepare-stage 07`
+>   - Apply edited task items: `python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --apply-stage 07`
 
 ---
 
-## 3. Non-Text & Formatted Content Conversion Hierarchy
+## 3. Agent Execution Workflow
 
-When encountering diagrams, code, tables, and visual figures in the PDF, apply this strict priority ladder:
+When running a conversion task, the Agent executes the pipeline through 6 distinct phases via `pipeline.py`:
 
-1. **Priority 1: Code Blocks (` ```c `, ` ```m68k `, ` ```asm `)**:
-   - For all programming code listings.
-   - Enforce explicit language tags.
-   - Standardize OCR indentations (2 or 4 spaces) and align assembly columns (`Label:    Mnemonic    Operands    ; Comments`).
-2. **Priority 2: Standard Markdown Tables**:
-   - First choice for structured tabular data: pinout tables, register lists, sector layouts, memory maps.
-3. **Priority 3: Monotone Text Blocks (` ```text `)**:
-   - Monospace blocks for content requiring strict fixed-width alignment where table syntax is unsuitable:
-     - Memory dumps (hex addresses with ASCII sidebar)
-     - Interactive terminal / CLI transcripts
-     - Raw binary or data packet layouts
-4. **Priority 4: ASCII Art (Only if Strictly Readable)**:
-   - Monospace diagrams for simple register bitfield layouts *only if strictly aligned and immediately readable*. If unaligned across varying fonts or screen sizes, convert to a Markdown table or cropped image.
-5. **Priority 5: HTML Tables**:
-   - When complex cell spans (`colspan`, `rowspan`), multi-line cell entries, or nested structures are required.
-   - **Math Rule**: Do not use `$math$` inside `<td>` tags; use pure HTML/Unicode (`2<sup>10</sup>`, `T<sub>CLK</sub>`, `&plusmn;`, `&Omega;`).
-6. **Priority 6: Crop to High-Res PNG**:
-   - For complex physical IC pinouts, oscilloscope waveforms, and dense schematics.
-   - Render at 150-200 DPI with a 10-15% safety padding margin.
-7. **Priority 7: Native Vector Extraction & SVG Optimization**:
-   - For block diagrams, logic schematics, and digital timing charts to ensure crisp, scalable vector graphics in Obsidian.
-   - **Check Source PDF First**: Always inspect the original PDF document to verify if **native non-bitmap content (vector paths, Bézier curves, shapes, and font text)** already exists on the page. If present, extract the native vector graphic directly (via tools like `mutool draw -F svg`, `pdf2svg`, or PyMuPDF) rather than lossy bitmap tracing.
+### Phase A: Ingestion & Mechanical Stream Building (Stages 01 – 05)
+Run deterministic ingestion through the orchestrator:
+```powershell
+# Run Stages 01 to 05:
+python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 01 --to-stage 05
 
----
-
-## 4. The 8-Phase Conversion Pipeline
-
-Follow these phases sequentially when processing a PDF document.
-
-### Phase 1: PDF Analysis & Chapter Mapping
-
-Run `pdf_to_pages.py` to extract bookmarks and map page ranges:
-
-```bash
-python .agents/skills/pdf-to-markdown/scripts/pdf_to_pages.py \
-  "path/to/manual.pdf" \
-  --output-dir "workspace/manual_staging" \
-  --dpi 200
+# Or test a single stage / specific page ranges in Stage 01:
+python .agents/skills/pdf-to-markdown/pipeline.py --pdf "<PATH_TO_PDF>" --workspace "<WORKSPACE>" --config "<CONFIG>" --page-ranges "1-5, 7, 8, 10-15" --from-stage 01 --to-stage 01
 ```
 
-- Renders each page into high-resolution PNGs (`pages/page_001.png`, etc.).
-- Auto-detects chapter page boundaries from PDF bookmarks.
-- Automatically excludes obsolete print matter from chapters:
-  - Alphabetical Index (digital search replaces it)
-  - List of Tables
-  - List of Figures
-- Produces `manifest.json`.
-
----
-
-### Phase 2: Page-by-Page LLM Vision Transcription
-
-Transcribe each page PNG (`page_001.png` $\dots$) into a page-level Markdown file (`page_001.md`).
-
-#### LLM Vision Transcription Guidelines:
-1. **Full Fidelity**: Transcribe every sentence, table cell, and footnote. Do not summarize.
-2. **Motorola Hex Addresses**: **Always enclose in backticks** (`` `$00000004` ``, `` `$DFF000` ``). Never leave bare `$HEX`, as multiple dollar signs corrupt KaTeX math rendering.
-3. **Figure Crops**: Mark every diagram, schematic, or visual waveform with a `<crop>` tag:
-   ```markdown
-   <crop xmin="120" ymin="340" xmax="950" ymax="780" label="Figure 6-2. Fat Agnus Block Diagram" />
-   ```
-4. **Clean Note Separation**: If a diagram has embedded notes or legends, transcribe them into Markdown callouts below the figure rather than keeping text inside the image:
-   ```markdown
-   > [!NOTE] DMA Time Slot Notes
-   > 1. If divide by zero occurs, an exception occurs.
-   ```
-5. **Obsidian Callouts for Notes, Warnings, and Errors**:
-   - Whenever the source page contains an advisory block (e.g. boxed note, shaded warning, margin caution, or text beginning with `Note:`, `Notice:`, `Warning:`, `Caution:`, `Important:`, `Error:`, `Danger:`), convert it into an Obsidian callout rather than leaving it as plain text or an unstyled blockquote:
-     - `Note:` / `Notice:` / `Info:` $\rightarrow$ `> [!NOTE]` or `> [!INFO]`
-     - `Tip:` / `Hint:` $\rightarrow$ `> [!TIP]`
-     - `Important:` / `Attention:` $\rightarrow$ `> [!IMPORTANT]`
-     - `Warning:` / `Caution:` $\rightarrow$ `> [!WARNING]` or `> [!CAUTION]`
-     - `Error:` / `Danger:` / `Bug:` $\rightarrow$ `> [!DANGER]` or `> [!ERROR]`
-   - Example:
-     ```markdown
-     > [!WARNING] Bus Contention Risk
-     > Never access custom chip registers during DMA cycles without asserting the bus grant signal.
-     ```
-
----
-
-### Phase 3: Asset Extraction & Deduplication
-
-Run `extract_crops.py` to crop figures from page PNGs:
-
-```bash
-python .agents/skills/pdf-to-markdown/scripts/extract_crops.py \
-  --markdown-dir "workspace/manual_staging/pages_md" \
-  --pages-dir "workspace/manual_staging/pages" \
-  --assets-dir "Obsidian/Amiga/Reference/ManualName/assets" \
-  --padding 15
+### Phase B: Continuation Detection (Stage 06)
+```powershell
+# Detect multi-page table and graphic continuations
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 06 --to-stage 06
 ```
 
-- Adds a 15px safety padding margin to prevent cut-off borders or truncated pin names.
-- Deduplicates identical images across chapters using image content hashing.
-- Standardizes asset naming: `assets/section_XX_figure_X-Y_<slug>.png`.
-- Replaces `<crop>` tags with standard Markdown image links.
+### Phase C: Structural Node Transformation (Stages 07 – 09)
 
----
-
-### Phase 4: Vector Extraction, SVG Vectorization & Boundary Audit
-
-For block diagrams and timing charts:
-1. **Audit Source PDF for Native Vectors First**:
-   - Check if the source PDF contains native vector primitives and selectable font text rather than a flattened raster scan:
-     ```python
-     import fitz
-     doc = fitz.open("path/to/manual.pdf")
-     page = doc[page_num]
-     drawings = page.get_drawings()  # Native vector paths
-     print(f"Vector paths detected: {len(drawings)}")
-     ```
-   - **If native vectors exist**: Extract the diagram directly as SVG (e.g. via `mutool draw -F svg`, `pdf2svg`, or PyMuPDF's `page.get_svg_image()`). This yields 100% sharp lines and true selectable text without raster degradation.
-   - **If the PDF is purely a scanned bitmap**: Vectorize/trace the cropped high-res PNG.
-2. **Boundary & ViewBox Audit**:
-   - Audit the SVG `viewBox` and `<clipPath>` using `png_to_svg_helper.py`:
-     ```bash
-     python .agents/skills/pdf-to-markdown/scripts/png_to_svg_helper.py \
-       "Obsidian/Amiga/Reference/ManualName/assets" \
-       --padding 20.0 \
-       --apply
-     ```
-   - Ensures `viewBox` has an expanded safety buffer and that outer signal lines, pin labels, and text are not clipped.
-
-
----
-
-### Phase 5: Chapter Merging & Header/Footer Stripping
-
-Compile the page-level Markdowns into cohesive chapter files:
-
-```bash
-python .agents/skills/pdf-to-markdown/scripts/merge_chapters.py \
-  --manifest "workspace/manual_staging/manifest.json" \
-  --pages-md-dir "workspace/manual_staging/pages_md" \
-  --output-dir "Obsidian/Amiga/Reference/ManualName"
+#### 1. Tables (Stage 07)
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --prepare-stage 07
+```
+- For each `{node_id}.json` in `<WORKSPACE>/tasks/tables/`:
+  - Inspect `raw_text` and image preview (`png_path`).
+  - Edit or refine the table in `<WORKSPACE>/tasks/tables/{node_id}.md` (GFM or semantic HTML table).
+- Apply tables:
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 07
 ```
 
-- Strips repeating print running headers, running footers, and page numbers.
-- Detects and stitches multi-page split tables into unified single tables.
-- Injects standardized **Prev | TOC | Next** navigation bars at the top and bottom of every chapter:
-  ```markdown
-  [⬅ Previous: Section 1 - Summary](01%20-%20Section%201%20Summary.md) | [📑 Table of Contents](00%20-%20Table%20of%20Contents%20and%20Front%20Matter.md) | [Next: Section 3 - Architecture ➡](03%20-%20Section%203%20Architecture.md)
-  ---
-  ```
-- Generates `00 - Table of Contents and Front Matter.md` with hierarchical Obsidian links.
-
----
-
-### Phase 6: Visual Double-Check & QA Verification
-
-Audit the compiled output using `verify_page_vision.py`:
-
-```bash
-python .agents/skills/pdf-to-markdown/scripts/verify_page_vision.py \
-  --page-png "workspace/manual_staging/pages/page_042.png" \
-  --markdown "workspace/manual_staging/pages_md/page_042.md"
+#### 2. Graphics (Stage 08)
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --prepare-stage 08
+```
+- For each `{node_id}.json` in `<WORKSPACE>/tasks/graphics/`:
+  - View image using `view_file` on `png_path`.
+  - If it is a flowchart/state machine, write a Mermaid diagram with collapsible ASCII callout in `{node_id}.md`.
+  - If it is a schematic/timing diagram, author a comprehensive technical description in `{node_id}.sidecar.txt` for RAG vector search.
+- Apply graphics:
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 08
 ```
 
-Checklist to verify:
-- [ ] **No Dropped Text**: All footnotes, sub-bullets, fine print, and sidebars present.
-- [ ] **No Cut-Off Graphics**: All 4 borders, IC pin labels, and waveform marks intact.
-- [ ] **No Duplicated Notes**: Explanatory text resides in Markdown, not inside image assets.
-- [ ] **No Broken Tables**: Split multi-page tables cleanly merged without duplicate headers.
-- [ ] **No Bare Hex Addresses**: All `$HEX` enclosed in backticks (` `$000004` `).
-
----
-
-### Phase 7: Obsidian Navigation & Link Validation
-
-Run `validate_links.py` (from `amigaguide-to-markdown/scripts/`) to confirm 100% link resolution:
-
-```bash
-python .agents/skills/amigaguide-to-markdown/scripts/validate_links.py \
-  "Obsidian/Amiga/Reference/ManualName"
+#### 3. Prose & TOC Delimiters (Stage 09)
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 09 --to-stage 09
 ```
 
-Target: **100% PASS (0 broken files, 0 broken anchors, 0 warnings)**.
+### Phase D: Stream Proofreading & Manifest Normalization (Stage 10)
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 10 --to-stage 10
+```
+
+### Phase E: Markdown Emission & First Chapter Refinement (Stages 11 – 12)
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 11 --to-stage 12
+```
+
+### Phase F: Final TOC Wikilinking (Stage 13)
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --output-dir "<OUTPUT_DIR>" --from-stage 13 --to-stage 13
+```
 
 ---
 
-## Execution Mode: Subagent Delegation
+## 4. Monitoring & Status Check
+Check pipeline progress and pending tasks at any time:
+```powershell
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --status
+```
 
-- **Execution Host:** **Isolated Subagent** (child context sandbox).
-- **Model Tier:** `Gemini Flash (Multimodal Vision)`
-- **Context Savings:** Absorbs 50,000+ multimodal vision tokens, 200 DPI raster page PNGs, figure bounding box coordinates, and multi-step chapter stitching from the main conversation.
-- **Subagent Task Template:**
-  - `TaskName`: "PDF Conversion: <manual_name>"
-  - `TaskSummary`: "Executes 7-phase multimodal PDF transcription into Obsidian markdown with figure crops and link validation."
-  - `Prompt`:
-    ```markdown
-    Convert reference manual PDF: <PDF_PATH> into Obsidian Markdown under `Obsidian/Amiga/Reference/<MANUAL_NAME>/`.
-    Follow .agents/skills/pdf-to-markdown/SKILL.md:
-    1. Phase 1: Render 200 DPI pages with `pdf_to_pages.py`.
-    2. Phase 2: Page-by-page LLM vision transcription (`page_XXX.png` -> `page_XXX.md`). Enclose all hex in backticks (`$HEX`).
-    3. Phase 3: Extract figure crops with `extract_crops.py`.
-    4. Phase 4: Vectorize bounding boxes with `png_to_svg_helper.py`.
-    5. Phase 5: Merge chapters and stitch tables with `merge_chapters.py`.
-    6. Phase 6: Run visual QA audits with `verify_page_vision.py`.
-    7. Phase 7: Validate links with `validate_links.py`.
-    8. Return strictly the PDF Conversion Report below.
-    ```
-- **Return Contract (Mandatory Structured Output):**
-  The subagent must conclude with this exact markdown block:
-  ```markdown
-  ### 📄 PDF Reference Manual Conversion Report
-  - **Manual Name:** `<manual_name>`
-  - **Destination Path:** [`Obsidian/Amiga/Reference/<manual_name>/`](file:///d:/Programowanie/Amiga/Obsidian/Amiga/Reference/<manual_name>/)
-  - **Pages Converted:** `<total_pages>` pages across `<total_chapters>` chapters
-  - **Assets Extracted:** `<num_png>` cropped PNG figures, `<num_svg>` vectorized SVGs
-  - **Page Confidence & Anomaly Table:**
-    | Chapter / Page | Quality / Complexity | Notes / Handled Elements |
-    | :--- | :--- | :--- |
-    | Chapter 4 / Page 82 | Complex Waveform | Transcribed split timing table, cropped Fig 4-3 |
-  - **Link Integrity:** `validate_links.py` 100% PASS (0 broken files, 0 broken anchors).
-  ```

@@ -43,6 +43,7 @@ def check_formatting():
         return False, f"Code formatting check failed:\n{output}", elapsed
     return True, "100% compliant", elapsed
 
+
 def check_agents_md():
     start = time.time()
     if not AGENTS_MD_PATH.exists():

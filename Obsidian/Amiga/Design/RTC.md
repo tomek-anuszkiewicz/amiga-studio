@@ -165,4 +165,5 @@ Per [SaveState.md](SaveState.md), RTC state is serialized as an independent, dec
 
 - [A500/A2000 Technical Reference Manual: Section 7.1 Clock Calendar Registers](../Reference/A500%20A2000%20Technical%20Reference%20Manual/13%20-%20Section%207.1%20Clock%20calendar%20registers.md): Official OKI MSM6242B register memory map, Gary address decoding at `$DC0000..$DC003F`, and nibble packing rules.
 - **Amiga Guru Book**: Chapter 9 (Low-Level Architecture): Low-level software access protocols, `setclock` utility detection loops, and hardware battery backup circuitry.
+- **OKI MSM6242B Hardware Data Sheet**: Low-level 4-bit bus timing, 30-second error correction, 12/24-hour mode flags, and test register behavior.
 - [vAmiga RTC Core Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Components/RTC/RTC.cpp): Reference C++ state machine for BCD counter increments, leap-year calculation, and test register latches.

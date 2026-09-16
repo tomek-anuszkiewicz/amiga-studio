@@ -85,7 +85,9 @@ TECHNICAL_WHITELIST = {
     "policy", "rules", "guidelines", "scratch", "tools", "crates", "tests",
     "buffer", "buffers", "cache", "offset", "pointer", "stack", "frame",
     "memory", "register", "instruction", "cycle", "cycles", "clock",
-    "handle", "handler", "state", "target", "source", "dest", "entry"
+    "handle", "handler", "state", "target", "source", "dest", "entry",
+    "cwik", "pasti", "winnicki", "kuba", "gurubook", "babel", "elowar", "aminet",
+    "dpi"
 }
 
 # Curated set of Polish words (including ASCII-transliterated forms without ogonki)
