@@ -16,6 +16,7 @@ import yaml
 
 STAGE_DEFINITIONS = [
     ("01", "01_preprocess", "preprocess.py", "Deconstruct PDF into pages, PNGs, and text blocks"),
+    ("01b", "01b_ocr", "detect_and_ocr.py", "Detect scan/empty pages and extract OCR blocks via Gemini Vision"),
     ("02", "02_page_segmentation", "segment_page.py", "Vertical banding & zone classification"),
     ("03", "03_build_raw_stream", "build_stream.py", "Build raw stream & extract initial assets"),
     ("04", "04_stream_reduction", "reduce_stream.py", "Normalize stream: weld prose & de-hyphenate"),
@@ -75,16 +76,35 @@ def update_status(
         json.dump(data, f, indent=2)
 
 
-def get_last_completed_stage(status_file: Path) -> int:
+def get_last_completed_stage_idx(status_file: Path) -> int:
     if not status_file.exists():
-        return 0
+        return -1
     try:
         with open(status_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-        completed = [int(k) for k, v in data.items() if v.get("status") == "success" and k.isdigit()]
-        return max(completed) if completed else 0
+        last_idx = -1
+        for idx, (s_id, _, _, _) in enumerate(STAGE_DEFINITIONS):
+            if data.get(s_id, {}).get("status") == "success":
+                last_idx = idx
+            else:
+                break
+        return last_idx
     except Exception:
-        return 0
+        return -1
+
+
+def resolve_stage_idx(arg_val: str) -> Optional[int]:
+    if not arg_val:
+        return None
+    val = str(arg_val).strip().lower()
+    for idx, (s_id, s_dir, _, _) in enumerate(STAGE_DEFINITIONS):
+        if val == s_id.lower() or val == s_dir.lower():
+            return idx
+        if val.isdigit() and s_id.isdigit() and int(val) == int(s_id):
+            return idx
+        if val in (s_id.lstrip('0').lower(), f"{s_id.lstrip('0')}b"):
+            return idx
+    return None
 
 
 def run_stage(
@@ -120,8 +140,9 @@ def run_stage(
     ]
 
     # Add stage-specific flags if needed
-    if stage_num == "01":
-        cmd.extend(["--pdf", str(pdf_path)])
+    if stage_num in ("01", "01b"):
+        if stage_num == "01":
+            cmd.extend(["--pdf", str(pdf_path)])
         if page_range:
             cmd.extend(["--page-range", str(page_range)])
         elif start_page or end_page:
@@ -211,6 +232,10 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
     p1 = workspace_dir / "01_preprocess" if (workspace_dir / "01_preprocess").exists() else (workspace_dir / "01_pages")
     p1_count = len(list(p1.glob("page_*.png"))) if p1.exists() else 0
     print(f"[*] 01_preprocess                 : {p1_count} rendered PNGs")
+
+    # 1b. 01b_ocr (01b)
+    p1_json_count = len(list(p1.glob("page_*.json"))) if p1.exists() else 0
+    print(f"[*] 01b_ocr                       : {p1_json_count} page JSON text streams inspected")
 
     # 2. 02_page_segmentation (02)
     p2 = workspace_dir / "02_page_segmentation" if (workspace_dir / "02_page_segmentation").exists() else (workspace_dir / "02_segments")
@@ -304,37 +329,40 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Path):
 
 
 STAGE_OUTPUT_TARGETS = {
-    1: ["01_preprocess", "01_pages", "pages", "pages_manifest.json", "manifest.json"],
-    2: ["02_page_segmentation", "02_segments", "segments"],
-    3: ["03_build_raw_stream", "03_raw_stream", "raw_stream.json", "assets"],
-    4: ["04_stream_reduction", "04_reduced_stream", "reduced_stream.json"],
-    5: ["05_chapter_partition", "05_chapters_raw", "chapters", "chapters_manifest.json"],
-    6: ["06_detect_continuations", "06_chapters_continuations", "tasks/continuations"],
-    7: ["07_transform_tables", "07_chapters_tables", "tasks/tables"],
-    8: ["08_transform_graphics", "08_chapters_graphics", "tasks/graphics", "__ASSETS_SIDECARS__"],
-    9: ["09_transform_prose", "09_chapters_formatted", "tasks/prose"],
-    10: ["10_proofread_stream"],
-    11: ["11_emit_markdown", "10_emit_markdown", "10_markdown_raw"],
-    12: ["12_refine_first_chapter_name", "12_canonical_markdown"],
-    13: ["13_link_toc", "11_link_toc", "13_proofread_markdown", "__OUTPUT_DIR__"],
+    "01": ["01_preprocess", "01_pages", "pages", "pages_manifest.json", "manifest.json"],
+    "01b": [],
+    "02": ["02_page_segmentation", "02_segments", "segments"],
+    "03": ["03_build_raw_stream", "03_raw_stream", "raw_stream.json", "assets"],
+    "04": ["04_stream_reduction", "04_reduced_stream", "reduced_stream.json"],
+    "05": ["05_chapter_partition", "05_chapters_raw", "chapters", "chapters_manifest.json"],
+    "06": ["06_detect_continuations", "06_chapters_continuations", "tasks/continuations"],
+    "07": ["07_transform_tables", "07_chapters_tables", "tasks/tables"],
+    "08": ["08_transform_graphics", "08_chapters_graphics", "tasks/graphics", "__ASSETS_SIDECARS__"],
+    "09": ["09_transform_prose", "09_chapters_formatted", "tasks/prose"],
+    "10": ["10_proofread_stream"],
+    "11": ["11_emit_markdown", "10_emit_markdown", "10_markdown_raw"],
+    "12": ["12_refine_first_chapter_name", "12_canonical_markdown"],
+    "13": ["13_link_toc", "11_link_toc", "13_proofread_markdown", "__OUTPUT_DIR__"],
 }
 
 
-def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_stage: int, status_file: Path):
+def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_idx: int, status_file: Path):
     """
-    Cleans all intermediate artifacts and output directories for all stages >= start_stage.
+    Cleans all intermediate artifacts and output directories for all stages >= start_idx.
     Guarantees that re-running from stage N starts completely fresh without stale downstream files.
     """
     import shutil
-    print(f"[*] Invalidation: Wiping intermediate and output artifacts for stages {start_stage:02d} to 13...")
-    for s in range(start_stage, 14):
-        m_file = workspace_dir / f".stage_{s:02d}_metrics.json"
+    start_info = STAGE_DEFINITIONS[start_idx]
+    stages_to_clean = [s[0] for s in STAGE_DEFINITIONS[start_idx:]]
+    print(f"[*] Invalidation: Wiping intermediate and output artifacts from Stage {start_info[0]} onwards...")
+    for s_id in stages_to_clean:
+        m_file = workspace_dir / f".stage_{s_id}_metrics.json"
         if m_file.exists():
             try:
                 m_file.unlink()
             except Exception:
                 pass
-        targets = STAGE_OUTPUT_TARGETS.get(s, [])
+        targets = STAGE_OUTPUT_TARGETS.get(s_id, [])
         for target in targets:
             if target == "__OUTPUT_DIR__":
                 if output_dir and output_dir.exists():
@@ -364,12 +392,12 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Path, start_stage: 
                     except Exception:
                         pass
 
-    # Reset stage status entries for stages >= start_stage
+    # Reset stage status entries for stages being cleaned
     if status_file.exists():
         try:
             with open(status_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            updated = {k: v for k, v in data.items() if not (k.isdigit() and int(k) >= start_stage)}
+            updated = {k: v for k, v in data.items() if k not in stages_to_clean}
             with open(status_file, "w", encoding="utf-8") as f:
                 json.dump(updated, f, indent=2)
         except Exception:
@@ -433,8 +461,8 @@ def main():
 
     # Handle prepare / apply stage shortcuts
     if args.prepare_stage:
-        stg = f"{int(args.prepare_stage):02d}"
-        target_info = next((s for s in STAGE_DEFINITIONS if s[0] == stg), None)
+        target_idx = resolve_stage_idx(args.prepare_stage)
+        target_info = STAGE_DEFINITIONS[target_idx] if target_idx is not None else None
         if not target_info:
             print(f"[!] Unknown stage: {args.prepare_stage}", file=sys.stderr)
             sys.exit(1)
@@ -444,8 +472,8 @@ def main():
         return
 
     if args.apply_stage:
-        stg = f"{int(args.apply_stage):02d}"
-        target_info = next((s for s in STAGE_DEFINITIONS if s[0] == stg), None)
+        target_idx = resolve_stage_idx(args.apply_stage)
+        target_info = STAGE_DEFINITIONS[target_idx] if target_idx is not None else None
         if not target_info:
             print(f"[!] Unknown stage: {args.apply_stage}", file=sys.stderr)
             sys.exit(1)
@@ -456,48 +484,56 @@ def main():
 
     status_file = workspace_dir / "stage_status.json"
 
-    # Determine stages to run
+    # Determine stages to run (as list of 0-based indices into STAGE_DEFINITIONS)
     if args.run_deterministic:
-        stages_to_run = [1, 3, 4, 5, 10, 11]
+        stages_to_run = [i for i, s in enumerate(STAGE_DEFINITIONS) if s[0] in ("01", "01b", "03", "04", "05", "10", "11")]
     elif args.stage:
-        target = int(args.stage)
-        stages_to_run = [target]
+        target_idx = resolve_stage_idx(args.stage)
+        if target_idx is None:
+            print(f"[!] Unknown stage: {args.stage}", file=sys.stderr)
+            sys.exit(1)
+        stages_to_run = [target_idx]
     elif args.from_stage or args.to_stage:
-        s_start = int(args.from_stage) if args.from_stage else 1
-        s_end = int(args.to_stage) if args.to_stage else len(STAGE_DEFINITIONS)
+        s_start = resolve_stage_idx(args.from_stage) if args.from_stage else 0
+        s_end = resolve_stage_idx(args.to_stage) if args.to_stage else (len(STAGE_DEFINITIONS) - 1)
+        if s_start is None or s_end is None:
+            print(f"[!] Invalid stage range: {args.from_stage} to {args.to_stage}", file=sys.stderr)
+            sys.exit(1)
         stages_to_run = list(range(s_start, s_end + 1))
     elif args.resume:
-        last_completed = get_last_completed_stage(status_file)
-        stages_to_run = list(range(min(last_completed + 1, len(STAGE_DEFINITIONS)), len(STAGE_DEFINITIONS) + 1))
-        print(f"[*] Resuming from Stage {stages_to_run[0]:02d}")
+        last_completed_idx = get_last_completed_stage_idx(status_file)
+        start_idx = last_completed_idx + 1
+        if start_idx >= len(STAGE_DEFINITIONS):
+            print("[*] All pipeline stages are already completed successfully.")
+            return
+        stages_to_run = list(range(start_idx, len(STAGE_DEFINITIONS)))
+        print(f"[*] Resuming from Stage {STAGE_DEFINITIONS[start_idx][0]} ({STAGE_DEFINITIONS[start_idx][1]})")
     else:
-        stages_to_run = list(range(1, len(STAGE_DEFINITIONS) + 1))
+        stages_to_run = list(range(len(STAGE_DEFINITIONS)))
 
-    # Clean and invalidate all downstream intermediate and output stages from min(stages_to_run) onwards
+    # Clean and invalidate all downstream intermediate and output stages from stages_to_run[0] onwards
     clean_downstream_stages(workspace_dir, output_dir, stages_to_run[0], status_file)
 
-    if 1 in stages_to_run and not pdf_path:
+    if 0 in stages_to_run and not pdf_path:
         # Check if pages already exist
-        pages_exist = bool(list((workspace_dir / "01_pages").glob("page_*.png"))) or bool(list((workspace_dir / "pages").glob("page_*.png")))
+        pages_exist = bool(list((workspace_dir / "01_preprocess").glob("page_*.png"))) or bool(list((workspace_dir / "01_pages").glob("page_*.png"))) or bool(list((workspace_dir / "pages").glob("page_*.png")))
         if not pages_exist:
             print("[!] Error: --pdf is required when running Stage 01 without existing preprocessed pages.", file=sys.stderr)
             sys.exit(1)
         else:
             print("[*] Note: Existing preprocessed pages found in workspace.")
 
-    print(f"[*] PDF-to-Markdown Pipeline executing stages: {[f'{s:02d}' for s in stages_to_run]}")
+    print(f"[*] PDF-to-Markdown Pipeline executing stages: {[STAGE_DEFINITIONS[i][0] for i in stages_to_run]}")
     print(f"    Workspace  : {workspace_dir}")
     if output_dir:
         print(f"    Output Dir : {output_dir}")
     if pdf_path:
         print(f"    Source PDF : {pdf_path}")
 
-    for idx, stage_info in enumerate(STAGE_DEFINITIONS, start=1):
-        if idx not in stages_to_run:
-            continue
-
+    for idx in stages_to_run:
+        stage_info = STAGE_DEFINITIONS[idx]
         success = run_stage(
-            stage_idx=idx,
+            stage_idx=idx + 1,
             stage_info=stage_info,
             skill_dir=skill_dir,
             workspace_dir=workspace_dir,

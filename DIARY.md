@@ -4194,7 +4194,25 @@ Every future modification or implementation task must append an entry following 
   - `python tools/pre_flight.py`: All gates passed cleanly:
     - Formatting: 100% compliant.
     - Attractor discipline: 367 files clean (0 violations).
-    - `AGENTS.md` ceiling: 13,831 bytes (<= 14,000 bytes limit).
     - Architecture rules: 18/18 passed in 1.01s.
+
+---
+
+### [2026-09-16 07:31 CEST] — PDF-to-Markdown: Dedicated Scan Detection & Gemini Vision OCR (Stage 01b)
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/detect_and_ocr.py`: Created Stage 01b script that evaluates text density and runs Gemini Vision OCR on scanned/empty pages.
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/prompt_ocr.md`: Authored vision prompt for Gemini to extract paragraphs, headings, headers, footers, tables, and normalized bounding boxes `[x0, y0, x1, y1]`.
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/README.md`: Documented architecture, pass-through criteria, and CLI interface.
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Added `01b` to `STAGE_DEFINITIONS`, updated `resolve_stage_idx`, `clean_downstream_stages`, and status reporting to support string/integer stage references.
+- **What Was Changed (The Concrete Reality)**:
+  - Designed two sequential, mutually exclusive steps for PDF ingestion:
+    1. Traditional Stage 01 (`01_preprocess`): Fast extraction of per-page vector PDFs, 300 DPI PNGs, and native text blocks via PyMuPDF.
+    2. Stage 01b (`01b_ocr`): Intelligent inspection step. If a page already has valid native text (born-digital PDF), it passes through with 0 API calls and 0.0s latency. If a page has 0 blocks or empty text (scanned book pages or covers), it invokes Gemini Vision OCR on `page_XXXX.png` to populate `page_XXXX.json` with structured blocks and bounding boxes matching the exact Stage 02 contract.
+- **Verification & Test Results**:
+  - Tested on `Hardware Reference Manual`:
+    - `page_0001.json` (previously empty scanned cover): Gemini Vision OCR detected 4 text blocks (`AMIGA HARDWARE REFERENCE MANUAL`, `REVISED & UPDATED`, `AMIGA®`, `COMMODORE-AMIGA, INCORPORATED`) with normalized coordinates.
+    - `page_0003.json` (born-digital text page): Stage 01b detected 7 native text blocks and passed through with 0 LLM calls.
+  - `python tools/pre_flight.py`: All quality gates PASSED (formatting, attractor discipline, AGENTS.md size, 18/18 architecture rules).
+
 
 
