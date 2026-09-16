@@ -27,9 +27,12 @@ Examine the image and classify it into one of the following categories:
 4. **Accuracy & Fidelity**:
    - Transcribe technical terms, punctuation, registers, and code accurately.
    - If the page is a book cover with readable titles and author names, classify as `"text_page"` and transcribe title, author, publisher, and edition.
+5. **Whitespace & JSON Escaping**:
+   - All string values in `"text"` MUST be valid JSON strings.
+   - Properly escape all whitespace and control characters (use explicit `\n` for linebreaks, `\t` for tabs) or omit them / replace with regular spaces. Never output raw unescaped newlines or control characters inside string literals.
 
 ### Output Format:
-Return ONLY a valid JSON object:
+Return ONLY a valid, parseable JSON object:
 ```json
 {
   "page_type": "text_page",
