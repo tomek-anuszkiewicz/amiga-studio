@@ -7,7 +7,7 @@ Partitions the monolithic reduced_stream.json into clean chapter-level streams:
 3. Real Chapters: welds chapter numbers and titles (e.g. "Chapter 1" + "INTRODUCTION")
    into unified chapter streams (e.g. 01_chapter_1_introduction.json).
 4. Subsections within chapters remain inside their respective chapter stream.
-5. Emits workspace/05_chapters_raw/*.json and workspace/chapters_manifest.json.
+5. Emits workspace/05_chapter_partition/*.json and workspace/chapters_manifest.json.
 """
 
 import argparse
@@ -25,12 +25,7 @@ def generate_slug(text: str) -> str:
 
 
 def partition_chapters(workspace_dir: Path, config: dict):
-    if (workspace_dir / "04_stream_reduction" / "reduced_stream.json").exists():
-        reduced_stream_path = workspace_dir / "04_stream_reduction" / "reduced_stream.json"
-    elif (workspace_dir / "04_reduced_stream" / "reduced_stream.json").exists():
-        reduced_stream_path = workspace_dir / "04_reduced_stream" / "reduced_stream.json"
-    else:
-        reduced_stream_path = workspace_dir / "04_stream_reduction" / "reduced_stream.json"
+    reduced_stream_path = workspace_dir / "04_stream_reduction" / "reduced_stream.json"
 
     if not reduced_stream_path.exists():
         raise FileNotFoundError(f"Missing reduced_stream.json in {reduced_stream_path.parent}")

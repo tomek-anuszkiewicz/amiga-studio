@@ -312,7 +312,6 @@ def main():
         Path(args.input_dir) if args.input_dir else None,
         workspace_dir / "12_refine_first_chapter_name",
         workspace_dir / "11_emit_markdown",
-        workspace_dir / "10_emit_markdown",
         Path("output_markdown")
     ]
     input_dir = next((p for p in input_candidates if p and p.exists() and list(p.glob("*.md"))), None)

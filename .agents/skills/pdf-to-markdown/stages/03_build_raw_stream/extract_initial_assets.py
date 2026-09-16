@@ -22,12 +22,7 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
         except Exception:
             rel_prefix = assets_dir.name
 
-    if (workspace_dir / "01_preprocess").exists():
-        pages_dir = workspace_dir / "01_preprocess"
-    elif (workspace_dir / "01_pages").exists():
-        pages_dir = workspace_dir / "01_pages"
-    else:
-        pages_dir = workspace_dir / "pages"
+    pages_dir = workspace_dir / "01_preprocess"
     assets_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[*] Extracting visual and text assets for tables & graphics (padding: {int(padding_ratio*100)}%)...")

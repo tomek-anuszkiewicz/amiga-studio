@@ -84,8 +84,6 @@ def process_first_chapter_refinement(
     if not input_dir:
         candidates = [
             workspace_dir / "11_emit_markdown",
-            workspace_dir / "11_link_toc",
-            workspace_dir / "10_emit_markdown",
             output_dir
         ]
         input_dir = next((p for p in candidates if p.exists() and list(p.glob("*.md"))), output_dir)

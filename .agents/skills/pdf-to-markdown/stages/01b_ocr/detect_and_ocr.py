@@ -95,12 +95,7 @@ def detect_and_ocr_pages(
     force: bool = False,
     threshold: int = 20,
 ) -> bool:
-    if (workspace_dir / "01_preprocess").exists():
-        pages_dir = workspace_dir / "01_preprocess"
-    elif (workspace_dir / "01_pages").exists():
-        pages_dir = workspace_dir / "01_pages"
-    else:
-        pages_dir = workspace_dir / "pages"
+    pages_dir = workspace_dir / "01_preprocess"
 
     if not pages_dir.exists():
         print(f"[!] Error: Preprocess directory not found: {pages_dir}", file=sys.stderr)

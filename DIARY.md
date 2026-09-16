@@ -4293,6 +4293,27 @@ Every future modification or implementation task must append an entry following 
   - Standardized standalone CLI invocation commands across all stages.
 - **Verification & Test Results**:
   - Automated PowerShell verification confirmed all 14 stage READMEs contain both `## Inputs` and `## Outputs`.
+
+---
+
+### [2026-09-16 13:20 CEST] — PDF-to-Markdown: Comprehensive Elimination of Legacy Directory Fallbacks & Aliases
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/01b_ocr/detect_and_ocr.py`: Removed fallback checks for `01_pages` and `pages`; strictly resolved `workspace_dir / "01_preprocess"`.
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/segment_page.py`: Removed fallback checks for `01_pages`, `pages`, and `manifest.json`; strictly bound to `01_preprocess` and `pages_manifest.json`.
+  - `.agents/skills/pdf-to-markdown/stages/03_build_raw_stream/`: Replaced all legacy fallback candidate references (`01_pages`, `pages`, `02_segments`, `segments`) with canonical `01_preprocess` and `02_page_segmentation`.
+  - `.agents/skills/pdf-to-markdown/stages/04_stream_reduction/reduce_stream.py`: Removed obsolete fallback candidates (`01_pages`, `03_raw_stream`), unified strictly to `01_preprocess` and `03_build_raw_stream`.
+  - `.agents/skills/pdf-to-markdown/stages/05_chapter_partition/partition_chapters.py`: Cleaned candidate discovery to `04_stream_reduction`.
+  - `.agents/skills/pdf-to-markdown/stages/06_detect_continuations/detect_continuations.py`: Removed all 3 instances of `05_chapters_raw` fallback, binding strictly to `05_chapter_partition`.
+  - `.agents/skills/pdf-to-markdown/stages/07_transform_tables/transform_tables.py`, `.agents/skills/pdf-to-markdown/stages/08_transform_graphics/transform_graphics.py`, `.agents/skills/pdf-to-markdown/stages/09_transform_prose/format_prose.py`: Cleaned candidate directory discovery across all preprocessing, task generation, and application functions, removing all legacy `_chapters_*`, `04_reduced_stream`, and `03_raw_stream` chains.
+  - `.agents/skills/pdf-to-markdown/stages/11_emit_markdown/emit_markdown.py`, `.agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py`, `.agents/skills/pdf-to-markdown/stages/13_link_toc/link_toc.py`: Pruned all obsolete candidate stages (`10_emit_markdown`, `11_link_toc`).
+  - `.agents/skills/pdf-to-markdown/pipeline.py`: Replaced all 13 conditional fallback directory checks in `print_pipeline_status()` with direct canonical paths; pruned obsolete stage target aliases from `STAGE_OUTPUT_TARGETS`; locked `pages_exist` check strictly to `01_preprocess`.
+  - `.agents/skills/pdf-to-markdown/config.yaml`: Updated directory mapping keys and targets to canonical pipeline directories.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed root cause: historical stage names (`pages`, `segments`, `01_pages`, `05_chapters_raw`, `10_markdown_raw`, etc.) had left pervasive 2-way and 3-way `if/elif/else` fallback chains across the entire Python pipeline codebase.
+  - In our architecture, Stage 01 only ever emits `workspace/01_preprocess/`, making those fallback paths dead code and violating the project constitutional rule against backward-compatibility shims.
+  - Purged every legacy folder fallback across all 15 Python files and configuration files, guaranteeing unambiguous, deterministic 1:1 stage contracts.
+- **Verification & Test Results**:
+  - Full Python compilation verification: all modified `.py` scripts compiled cleanly via `python -m py_compile`.
   - `python tools/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting 100% compliant, 0 attractors, AGENTS.md <= 14,000 bytes, 18/18 architecture rules).
 
 

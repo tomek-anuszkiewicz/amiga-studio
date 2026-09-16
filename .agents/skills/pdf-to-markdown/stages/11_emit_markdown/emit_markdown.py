@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-stages/10_emit_markdown/emit_markdown.py:
+stages/11_emit_markdown/emit_markdown.py:
 Serializes partitioned chapter node streams into final Markdown documents:
 1. Emits one file per section: <output_dir>/{index:02d}_{slug}.md.
 2. Injects active Line 1 YAML frontmatter into each file.
@@ -38,15 +38,10 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
     input_candidates = [
         workspace_dir / "10_proofread_stream",
         workspace_dir / "09_transform_prose",
-        workspace_dir / "09_chapters_formatted",
         workspace_dir / "08_transform_graphics",
-        workspace_dir / "08_chapters_graphics",
         workspace_dir / "07_transform_tables",
-        workspace_dir / "07_chapters_tables",
         workspace_dir / "06_detect_continuations",
-        workspace_dir / "06_chapters_continuations",
         workspace_dir / "05_chapter_partition",
-        workspace_dir / "05_chapters_raw",
     ]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:
@@ -91,17 +86,11 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
     asset_candidates = [
         workspace_dir / "10_proofread_stream" / "assets",
         workspace_dir / "08_transform_graphics" / "assets",
-        workspace_dir / "08_chapters_graphics" / "assets",
         workspace_dir / "07_transform_tables" / "assets",
-        workspace_dir / "07_chapters_tables" / "assets",
         workspace_dir / "06_detect_continuations" / "assets",
-        workspace_dir / "06_chapters_continuations" / "assets",
         workspace_dir / "05_chapter_partition" / "assets",
-        workspace_dir / "05_chapters_raw" / "assets",
         workspace_dir / "04_stream_reduction" / "assets",
-        workspace_dir / "04_reduced_stream" / "assets",
         workspace_dir / "03_build_raw_stream" / "assets",
-        workspace_dir / "03_raw_stream" / "assets",
         workspace_dir / "assets",
     ]
     src_assets_dir = next((p for p in asset_candidates if p.exists()), None)

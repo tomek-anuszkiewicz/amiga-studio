@@ -31,9 +31,7 @@ except ImportError:
 def process_tables(workspace_dir: Path, config: dict):
     input_candidates = [
         workspace_dir / "06_detect_continuations",
-        workspace_dir / "06_chapters_continuations",
         workspace_dir / "05_chapter_partition",
-        workspace_dir / "05_chapters_raw",
     ]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
@@ -55,13 +53,9 @@ def process_tables(workspace_dir: Path, config: dict):
 
     asset_candidates = [
         workspace_dir / "06_detect_continuations" / "assets",
-        workspace_dir / "06_chapters_continuations" / "assets",
         workspace_dir / "05_chapter_partition" / "assets",
-        workspace_dir / "05_chapters_raw" / "assets",
         workspace_dir / "04_stream_reduction" / "assets",
-        workspace_dir / "04_reduced_stream" / "assets",
         workspace_dir / "03_build_raw_stream" / "assets",
-        workspace_dir / "03_raw_stream" / "assets",
         workspace_dir / "assets",
     ]
     src_assets = next((p for p in asset_candidates if p.exists()), None)
@@ -164,9 +158,7 @@ def prepare_table_tasks(workspace_dir: Path) -> int:
     """
     input_candidates = [
         workspace_dir / "06_detect_continuations",
-        workspace_dir / "06_chapters_continuations",
         workspace_dir / "05_chapter_partition",
-        workspace_dir / "05_chapters_raw",
     ]
     chapters_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not chapters_dir:
@@ -232,7 +224,7 @@ def prepare_table_tasks(workspace_dir: Path) -> int:
 def apply_table_tasks(workspace_dir: Path) -> int:
     """
     Reads workspace/tasks/tables/{node_id}.md and injects rendered_markdown
-    into workspace/07_chapters_tables/ without mutating prior stages.
+    into workspace/07_transform_tables/ without mutating prior stages.
     """
     tasks_dir = workspace_dir / "tasks" / "tables"
     if not tasks_dir.exists():
@@ -241,9 +233,7 @@ def apply_table_tasks(workspace_dir: Path) -> int:
 
     input_candidates = [
         workspace_dir / "06_detect_continuations",
-        workspace_dir / "06_chapters_continuations",
         workspace_dir / "05_chapter_partition",
-        workspace_dir / "05_chapters_raw",
     ]
     input_dir = next((p for p in input_candidates if p.exists() and list(p.glob("*.json"))), None)
     if not input_dir:
@@ -257,13 +247,9 @@ def apply_table_tasks(workspace_dir: Path) -> int:
     # Synchronize upstream assets
     asset_candidates = [
         workspace_dir / "06_detect_continuations" / "assets",
-        workspace_dir / "06_chapters_continuations" / "assets",
         workspace_dir / "05_chapter_partition" / "assets",
-        workspace_dir / "05_chapters_raw" / "assets",
         workspace_dir / "04_stream_reduction" / "assets",
-        workspace_dir / "04_reduced_stream" / "assets",
         workspace_dir / "03_build_raw_stream" / "assets",
-        workspace_dir / "03_raw_stream" / "assets",
         workspace_dir / "assets",
     ]
     src_assets = next((p for p in asset_candidates if p.exists()), None)

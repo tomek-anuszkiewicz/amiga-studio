@@ -63,12 +63,7 @@ def check_continuation_with_gemini(node_a: dict, node_b: dict, gemini: Optional[
 
 
 def process_chapter_continuations(workspace_dir: Path, config: dict):
-    if (workspace_dir / "05_chapter_partition").exists():
-        input_dir = workspace_dir / "05_chapter_partition"
-    elif (workspace_dir / "05_chapters_raw").exists():
-        input_dir = workspace_dir / "05_chapters_raw"
-    else:
-        input_dir = workspace_dir / "05_chapter_partition"
+    input_dir = workspace_dir / "05_chapter_partition"
     if not input_dir.exists():
         raise FileNotFoundError(f"Input chapters directory missing: {input_dir}")
 
@@ -138,7 +133,7 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
 
             i = j
 
-        # Write immutable output to 06_chapters_continuations
+        # Write immutable output to 06_detect_continuations
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:
             json.dump(nodes, f, indent=2)
@@ -151,12 +146,7 @@ def prepare_continuation_tasks(workspace_dir: Path) -> int:
     Extracts candidate multi-page table/graphic continuations into
     workspace/tasks/continuations/candidates.json for Agent review.
     """
-    if (workspace_dir / "05_chapter_partition").exists():
-        chapters_dir = workspace_dir / "05_chapter_partition"
-    elif (workspace_dir / "05_chapters_raw").exists():
-        chapters_dir = workspace_dir / "05_chapters_raw"
-    else:
-        chapters_dir = workspace_dir / "05_chapter_partition"
+    chapters_dir = workspace_dir / "05_chapter_partition"
     if not chapters_dir.exists():
         raise FileNotFoundError(f"Chapters directory missing: {chapters_dir}")
 
@@ -203,7 +193,7 @@ def prepare_continuation_tasks(workspace_dir: Path) -> int:
 def apply_continuation_tasks(workspace_dir: Path) -> int:
     """
     Applies confirmed continuations from workspace/tasks/continuations/candidates.json
-    into workspace/06_chapters_continuations/ without mutating 05_chapters_raw.
+    into workspace/06_detect_continuations/ without mutating 05_chapter_partition.
     """
     cand_file = workspace_dir / "tasks" / "continuations" / "candidates.json"
     if not cand_file.exists():
@@ -213,12 +203,7 @@ def apply_continuation_tasks(workspace_dir: Path) -> int:
     with open(cand_file, "r", encoding="utf-8") as f:
         candidates = json.load(f)
 
-    if (workspace_dir / "05_chapter_partition").exists():
-        input_dir = workspace_dir / "05_chapter_partition"
-    elif (workspace_dir / "05_chapters_raw").exists():
-        input_dir = workspace_dir / "05_chapters_raw"
-    else:
-        input_dir = workspace_dir / "05_chapter_partition"
+    input_dir = workspace_dir / "05_chapter_partition"
     out_dir = workspace_dir / "06_detect_continuations"
     out_dir.mkdir(parents=True, exist_ok=True)
 

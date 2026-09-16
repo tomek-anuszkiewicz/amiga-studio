@@ -144,12 +144,7 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
 
 
 def process_segmentation(workspace_dir: Path, config: dict):
-    if (workspace_dir / "01_preprocess").exists():
-        pages_dir = workspace_dir / "01_preprocess"
-    elif (workspace_dir / "01_pages").exists():
-        pages_dir = workspace_dir / "01_pages"
-    else:
-        pages_dir = workspace_dir / "pages"
+    pages_dir = workspace_dir / "01_preprocess"
 
     segments_dir = workspace_dir / "02_page_segmentation"
     segments_dir.mkdir(parents=True, exist_ok=True)
@@ -157,8 +152,6 @@ def process_segmentation(workspace_dir: Path, config: dict):
         f.unlink()
 
     manifest_path = workspace_dir / "pages_manifest.json"
-    if not manifest_path.exists():
-        manifest_path = workspace_dir / "manifest.json"
     if not manifest_path.exists():
         raise FileNotFoundError(f"Missing pages_manifest.json in {workspace_dir}")
 

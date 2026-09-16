@@ -5,7 +5,7 @@ Normalizes the sequential node stream:
 1. Suppresses all header and footer nodes.
 2. Identifies and unifies contiguous graphic fragments on the same page into a single diagram asset using Gemini Vision.
 3. Welds consecutive prose nodes across page breaks and performs de-hyphenation.
-4. Emits workspace/04_reduced_stream/reduced_stream.json.
+4. Emits workspace/04_stream_reduction/reduced_stream.json.
 """
 
 import argparse
@@ -74,16 +74,11 @@ def reduce_contiguous_graphics(
     Identifies runs of contiguous graphic nodes on the same page.
     Validates with Vision LLM whether the candidate cluster forms a single unified diagram.
     If verified as a single cohesive graphic:
-      1. Purges obsolete individual asset files from 04_reduced_stream/assets/.
-      2. Crops a single unified asset (PNG/SVG) with 10% safety margin into 04_reduced_stream/assets/.
+      1. Purges obsolete individual asset files from 04_stream_reduction/assets/.
+      2. Crops a single unified asset (PNG/SVG) with 10% safety margin into 04_stream_reduction/assets/.
       3. Replaces the entire sequence of old nodes with a single unified graphic node.
     """
-    if (workspace_dir / "01_preprocess").exists():
-        pages_dir = workspace_dir / "01_preprocess"
-    elif (workspace_dir / "01_pages").exists():
-        pages_dir = workspace_dir / "01_pages"
-    else:
-        pages_dir = workspace_dir / "pages"
+    pages_dir = workspace_dir / "01_preprocess"
     if reduced_assets_dir is None:
         reduced_assets_dir = workspace_dir / "04_stream_reduction" / "assets"
     reduced_assets_dir.mkdir(parents=True, exist_ok=True)
@@ -145,7 +140,7 @@ def reduce_contiguous_graphics(
                     combined_text = "\n".join(labels)
                     full_raw_text = f"{title}\n\n{combined_text}" if title and title not in combined_text else combined_text
 
-                    # 1. Delete old individual asset files in 04_reduced_stream/assets/ (03_raw_stream/assets/ remains untouched!)
+                    # 1. Delete old individual asset files in 04_stream_reduction/assets/ (03_build_raw_stream/assets/ remains untouched!)
                     if reduced_assets_dir.exists():
                         for old_node in run:
                             old_id = old_node.get("node_id")
@@ -176,7 +171,7 @@ def reduce_contiguous_graphics(
                         "welded_nodes": [n["node_id"] for n in run]
                     }
 
-                    # 3. Crop/extract the unified asset with safety margin into 04_reduced_stream/assets/
+                    # 3. Crop/extract the unified asset with safety margin into 04_stream_reduction/assets/
                     if extract_assets_for_nodes:
                         extract_assets_for_nodes(
                             workspace_dir,
@@ -258,7 +253,7 @@ def reduce_contiguous_tables(
                 first_node = run[0]
                 combined_text = "\n\n".join(n.get("raw_text", "").strip() for n in run if n.get("raw_text", "").strip())
 
-                # 1. Delete old individual asset files in 04_reduced_stream/assets/
+                # 1. Delete old individual asset files in 04_stream_reduction/assets/
                 if reduced_assets_dir.exists():
                     for old_node in run:
                         old_id = old_node.get("node_id")
@@ -288,7 +283,7 @@ def reduce_contiguous_tables(
                     "welded_nodes": [n["node_id"] for n in run]
                 }
 
-                # 3. Crop/extract the unified asset with safety margin into 04_reduced_stream/assets/
+                # 3. Crop/extract the unified asset with safety margin into 04_stream_reduction/assets/
                 if extract_assets_for_nodes:
                     extract_assets_for_nodes(
                         workspace_dir,
@@ -314,12 +309,7 @@ def reduce_contiguous_tables(
 
 
 def reduce_stream(workspace_dir: Path, config: dict):
-    if (workspace_dir / "03_build_raw_stream" / "raw_stream.json").exists():
-        raw_stream_path = workspace_dir / "03_build_raw_stream" / "raw_stream.json"
-    elif (workspace_dir / "03_raw_stream" / "raw_stream.json").exists():
-        raw_stream_path = workspace_dir / "03_raw_stream" / "raw_stream.json"
-    else:
-        raw_stream_path = workspace_dir / "03_build_raw_stream" / "raw_stream.json"
+    raw_stream_path = workspace_dir / "03_build_raw_stream" / "raw_stream.json"
 
     if not raw_stream_path.exists():
         raise FileNotFoundError(f"Missing raw_stream.json in {raw_stream_path.parent}")
@@ -357,8 +347,6 @@ def reduce_stream(workspace_dir: Path, config: dict):
     reduced_assets_dir = out_dir / "assets"
     reduced_assets_dir.mkdir(parents=True, exist_ok=True)
     raw_assets_dir = workspace_dir / "03_build_raw_stream" / "assets"
-    if not raw_assets_dir.exists():
-        raw_assets_dir = workspace_dir / "03_raw_stream" / "assets"
 
     for old_f in reduced_assets_dir.glob("*"):
         if old_f.is_file():
@@ -373,8 +361,6 @@ def reduce_stream(workspace_dir: Path, config: dict):
             val = n.get(k)
             if val and "03_build_raw_stream/assets" in val:
                 n[k] = val.replace("03_build_raw_stream/assets", "04_stream_reduction/assets")
-            elif val and "03_raw_stream/assets" in val:
-                n[k] = val.replace("03_raw_stream/assets", "04_stream_reduction/assets")
             elif val and val.startswith("assets/"):
                 n[k] = f"04_stream_reduction/{val}"
 
