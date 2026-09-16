@@ -70,7 +70,9 @@ def process_tables(workspace_dir: Path, config: dict):
             if f.is_file():
                 shutil.copy2(f, out_assets_dir / f.name)
 
-    prompt_path = Path(__file__).resolve().parent / "prompt_markdown_table.md"
+    prompt_path = Path(__file__).resolve().parent / "prompt.md"
+    if not prompt_path.exists():
+        prompt_path = Path(__file__).resolve().parent / "prompt_markdown_table.md"
     base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
 
     gemini = GeminiClient(config) if GeminiClient else None

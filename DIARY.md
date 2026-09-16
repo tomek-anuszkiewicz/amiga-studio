@@ -4040,3 +4040,20 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 365 files clean.
   - `cargo fmt --all -- --check`: Clean.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+---
+
+### [2026-09-16 05:22 CEST] — PDF-to-Markdown: Prioritized HTML Table Formatting for Merged Cells & Spans
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/07_transform_tables/prompt.md`: Created centralized, prioritized table transformation prompt establishing Rule 1 (Highest Priority: tables with `colspan`, `rowspan`, multi-column headers, or complex cell spans must render as semantic HTML `<table>`) and Rule 2 (Second Priority: simple flat rectangular grids render as GFM Markdown tables).
+  - `.agents/skills/pdf-to-markdown/stages/07_transform_tables/transform_tables.py`: Wired `prompt.md` into the table transformation worker.
+  - `.agents/skills/pdf-to-markdown/stages/07_transform_tables/README.md`: Reordered objectives to place complex merged-cell table conversion ahead of simple tabular data.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed user feedback regarding complex multi-span tables (such as the FDIV operation table on Page 338) being erroneously forced into flat GFM Markdown tables with missing or empty cells.
+  - Re-executed Stage 07 through Stage 13 for Page 338: verified that the FDIV operation table now renders as a clean, complete, semantic HTML table with `<th rowspan="2" colspan="2">DESTINATION</th>`, `<th colspan="6">SOURCE<sup>1</sup></th>`, `<td rowspan="2" colspan="2">Divide</td>`, and `<td rowspan="2" colspan="2">NAN<sup>3</sup></td>`.
+- **Verification & Test Results**:
+  - Pipeline execution from Stage 07 exited with code 0.
+  - Inspected `workspace/13_proofread_markdown/01_fdiv.md` lines 36–98: semantic HTML table verified.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 366 files clean.
+  - `cargo fmt --all -- --check`: Clean.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
