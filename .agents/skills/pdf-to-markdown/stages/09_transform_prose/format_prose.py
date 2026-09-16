@@ -65,22 +65,46 @@ def process_prose(workspace_dir: Path, config: dict):
     if not gemini or not gemini.is_available():
         raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 09 prose transformation.")
 
-    print(f"[*] Prose Worker LLM active ({gemini.default_model}). Formatting text...")
+    from concurrent.futures import ThreadPoolExecutor
+
+    concurrency = int(config.get("llm", {}).get("concurrency", 8))
+    print(f"[*] Prose Worker LLM active ({gemini.default_model}). Formatting prose/code (concurrency={concurrency})...")
 
     chapter_files = sorted(list(input_dir.glob("*.json")))
     formatted_count = 0
+
+    def _format_prose_task(task):
+        idx, n_type, raw_text, png_path = task
+        full_prompt = (
+            f"{base_prompt}\n\n"
+            f"## Node Type: {n_type}\n"
+            f"## Raw Text:\n```text\n{raw_text}\n```\n"
+        )
+        if n_type == "code_block" and png_path and png_path.exists():
+            rendered = gemini.generate_vision(full_prompt, image_path=png_path)
+        else:
+            rendered = gemini.generate_text(full_prompt)
+
+        if rendered:
+            rendered_text = rendered.strip()
+            if n_type == "toc" and TOC_START_MARKER not in rendered_text:
+                rendered_text = f"{TOC_START_MARKER}\n{rendered_text}\n{TOC_END_MARKER}"
+            return idx, rendered_text + "\n\n"
+        else:
+            return idx, raw_text + "\n\n"
 
     for c_file in chapter_files:
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        for node in nodes:
-            n_type = node.get("type")
-            raw_text = node.get("raw_text", "")
-
+        llm_tasks = []
+        for idx, node in enumerate(nodes):
             # Don't overwrite if already rendered (e.g. table or graphic)
             if node.get("rendered_markdown"):
                 continue
+
+            n_type = node.get("type")
+            raw_text = node.get("raw_text", "")
 
             if n_type in ("heading", "chapter"):
                 lvl = 1 if n_type == "chapter" else (node.get("heading_level") or 2)
@@ -93,26 +117,16 @@ def process_prose(workspace_dir: Path, config: dict):
                 node["rendered_markdown"] = f"*{clean_cap}*\n\n"
                 formatted_count += 1
             elif n_type in ("prose", "code_block", "toc"):
-                full_prompt = (
-                    f"{base_prompt}\n\n"
-                    f"## Node Type: {n_type}\n"
-                    f"## Raw Text:\n```text\n{raw_text}\n```\n"
-                )
                 png_rel = node.get("png_path")
                 png_path = workspace_dir / png_rel if png_rel else None
+                llm_tasks.append((idx, n_type, raw_text, png_path))
 
-                if n_type == "code_block" and png_path and png_path.exists():
-                    rendered = gemini.generate_vision(full_prompt, image_path=png_path)
-                else:
-                    rendered = gemini.generate_text(full_prompt)
-                if rendered:
-                    rendered_text = rendered.strip()
-                    # Ensure TOC delimiter wrapping if toc
-                    if n_type == "toc" and TOC_START_MARKER not in rendered_text:
-                        rendered_text = f"{TOC_START_MARKER}\n{rendered_text}\n{TOC_END_MARKER}"
-                    node["rendered_markdown"] = rendered_text + "\n\n"
-                else:
-                    node["rendered_markdown"] = raw_text + "\n\n"
+        if llm_tasks:
+            with ThreadPoolExecutor(max_workers=min(len(llm_tasks), concurrency)) as executor:
+                results = list(executor.map(_format_prose_task, llm_tasks))
+
+            for idx, rendered_md in results:
+                nodes[idx]["rendered_markdown"] = rendered_md
                 formatted_count += 1
 
         target_file = out_dir / c_file.name

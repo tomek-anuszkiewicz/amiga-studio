@@ -409,8 +409,15 @@ def reduce_stream(workspace_dir: Path, config: dict):
         n_type = node.get("type")
         if final_nodes and final_nodes[-1]["type"] == "prose" and n_type == "prose":
             prev = final_nodes[-1]
-            prev["raw_text"] = weld_prose_with_gemini(prev["raw_text"], node["raw_text"], gemini, seam_prompt_template)
-            prev["page_end"] = node["page"]
+            prev_page = prev.get("page_end", prev.get("page"))
+            curr_page = node.get("page")
+            if prev_page == curr_page:
+                # Same page consecutive prose segments: join with standard paragraph break without LLM
+                prev["raw_text"] = prev["raw_text"].rstrip() + "\n\n" + node["raw_text"].lstrip()
+            else:
+                # Genuine cross-page seam: evaluate continuation and de-hyphenation with Gemini
+                prev["raw_text"] = weld_prose_with_gemini(prev["raw_text"], node["raw_text"], gemini, seam_prompt_template)
+            prev["page_end"] = curr_page
             if "welded_nodes" not in prev:
                 prev["welded_nodes"] = [prev["node_id"]]
             prev["welded_nodes"].append(node["node_id"])

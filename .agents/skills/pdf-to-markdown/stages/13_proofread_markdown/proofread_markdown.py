@@ -171,8 +171,11 @@ def process_proofreading(
         if prompt_path.exists():
             base_prompt = prompt_path.read_text(encoding="utf-8")
 
+    from concurrent.futures import ThreadPoolExecutor
+
+    concurrency = int(config.get("llm", {}).get("concurrency", 8))
     if gemini and gemini.is_available():
-        print(f"[*] Proofreading LLM active ({gemini.default_model}). Processing {len(md_files)} files...")
+        print(f"[*] Proofreading LLM active ({gemini.default_model}). Processing {len(md_files)} files (concurrency={concurrency})...")
     else:
         print(f"[*] LLM offline or skipped. Copying {len(md_files)} files directly...")
 
@@ -191,10 +194,8 @@ def process_proofreading(
 
         if gemini and gemini.is_available() and base_prompt and not skip_llm:
             sections = split_into_sections(body)
-            proofread_parts = []
-            for sec in sections:
-                p_sec = proofread_section(sec, gemini, base_prompt)
-                proofread_parts.append(p_sec.rstrip())
+            with ThreadPoolExecutor(max_workers=min(max(len(sections), 1), concurrency)) as executor:
+                proofread_parts = list(executor.map(lambda s: proofread_section(s, gemini, base_prompt).rstrip(), sections))
             final_body = "\n\n".join(proofread_parts).strip() + "\n"
         else:
             final_body = body.strip() + "\n"

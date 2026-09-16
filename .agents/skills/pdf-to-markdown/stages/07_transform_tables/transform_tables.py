@@ -79,24 +79,34 @@ def process_tables(workspace_dir: Path, config: dict):
     if not gemini or not gemini.is_available():
         raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 07 table transformation.")
 
-    print(f"[*] Table Worker LLM active ({gemini.default_model}). Transforming tables...")
+    from concurrent.futures import ThreadPoolExecutor
+
+    concurrency = int(config.get("llm", {}).get("concurrency", 8))
+    print(f"[*] Table Worker LLM active ({gemini.default_model}). Transforming tables (concurrency={concurrency})...")
 
     chapter_files = sorted(list(input_dir.glob("*.json")))
     transformed_count = 0
+
+    def _render_table_task(task):
+        idx, raw_text, png_path = task
+        full_prompt = f"{base_prompt}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
+        if png_path and png_path.exists():
+            rendered = gemini.generate_vision(full_prompt, image_path=png_path)
+        else:
+            rendered = gemini.generate_text(full_prompt)
+        return idx, rendered
 
     for c_file in chapter_files:
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        for node in nodes:
+        tasks = []
+        for idx, node in enumerate(nodes):
             if node.get("type") != "table":
                 continue
-
-            # Skip child continuation nodes
             if node.get("continuation_status") == "continuation":
                 continue
 
-            # Gather raw text from this node and any continuations
             raw_text = node.get("raw_text", "")
             if node.get("continuation_status") == "head" and "merged_nodes" in node:
                 child_texts = []
@@ -106,40 +116,39 @@ def process_tables(workspace_dir: Path, config: dict):
                 if child_texts:
                     raw_text = raw_text + "\n" + "\n".join(child_texts)
 
-            full_prompt = f"{base_prompt}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
             png_rel = node.get("png_path")
             png_path = workspace_dir / png_rel if png_rel else None
+            tasks.append((idx, raw_text, png_path))
 
-            if png_path and png_path.exists():
-                rendered = gemini.generate_vision(full_prompt, image_path=png_path)
-            else:
-                rendered = gemini.generate_text(full_prompt)
+        if tasks:
+            with ThreadPoolExecutor(max_workers=min(len(tasks), concurrency)) as executor:
+                results = list(executor.map(_render_table_task, tasks))
 
-            if rendered:
-                node["rendered_markdown"] = rendered.strip() + "\n"
-                # Successfully converted image to text table. Prune image and text sidecars from assets
-                node_id = node.get("node_id")
-                if node_id:
-                    for asset_file in out_assets_dir.glob(f"asset_{node_id}.*"):
-                        try:
-                            asset_file.unlink()
-                        except Exception:
-                            pass
-                if "merged_nodes" in node:
-                    for m_id in node["merged_nodes"]:
-                        for asset_file in out_assets_dir.glob(f"asset_{m_id}.*"):
+            for idx, rendered in results:
+                node = nodes[idx]
+                if rendered:
+                    node["rendered_markdown"] = rendered.strip() + "\n"
+                    node_id = node.get("node_id")
+                    if node_id:
+                        for asset_file in out_assets_dir.glob(f"asset_{node_id}.*"):
                             try:
                                 asset_file.unlink()
                             except Exception:
                                 pass
-                node["png_path"] = None
-                node["svg_path"] = None
-                node["raw_text_path"] = None
-            else:
-                asset_ref = node.get("svg_path") or node.get("png_path") or ""
-                node["rendered_markdown"] = f"![Table]({asset_ref})\n"
-
-            transformed_count += 1
+                    if "merged_nodes" in node:
+                        for m_id in node["merged_nodes"]:
+                            for asset_file in out_assets_dir.glob(f"asset_{m_id}.*"):
+                                try:
+                                    asset_file.unlink()
+                                except Exception:
+                                    pass
+                    node["png_path"] = None
+                    node["svg_path"] = None
+                    node["raw_text_path"] = None
+                else:
+                    asset_ref = node.get("svg_path") or node.get("png_path") or ""
+                    node["rendered_markdown"] = f"![Table]({asset_ref})\n"
+                transformed_count += 1
 
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:

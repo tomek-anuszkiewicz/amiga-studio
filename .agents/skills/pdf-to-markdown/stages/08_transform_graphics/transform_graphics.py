@@ -98,7 +98,10 @@ def process_graphics(workspace_dir: Path, config: dict):
     sidecar_prompt_path = Path(__file__).resolve().parent / "prompt_rag_sidecar.md"
     sidecar_prompt = sidecar_prompt_path.read_text(encoding="utf-8") if sidecar_prompt_path.exists() else ""
 
-    print(f"[*] Graphics Worker LLM active ({gemini.vision_model}). Transforming graphics...")
+    from concurrent.futures import ThreadPoolExecutor
+
+    concurrency = int(config.get("llm", {}).get("concurrency", 8))
+    print(f"[*] Graphics Worker LLM active ({gemini.vision_model}). Transforming graphics (concurrency={concurrency})...")
 
     chapter_files = sorted(list(input_dir.glob("*.json")))
     print(f"[*] Transforming graphics across {len(chapter_files)} chapter files...")
@@ -106,47 +109,111 @@ def process_graphics(workspace_dir: Path, config: dict):
     transformed_count = 0
     sidecar_count = 0
 
+    def _transform_graphic_task(task):
+        idx, node, has_dedicated_caption = task
+        node_id = node.get("node_id", "asset")
+        page_num = node.get("page", 1)
+        raw_text = node.get("raw_text", "")
+
+        svg_rel = node.get("svg_path")
+        png_rel = node.get("png_path")
+        asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
+        png_path = workspace_dir / png_rel if png_rel else None
+
+        # First, classify with Gemini if this is a flowchart, ascii_art (register/bitfield), or circuit schematic
+        triage = gemini.generate_json(triage_prompt, image_path=png_path) if png_path and png_path.exists() and triage_prompt else {}
+        graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
+
+        # Check for genuine figure caption from raw_text or separate caption nodes
+        fig_match = re.search(r"(Figure\s+\d+[\-\.]\d+[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
+        genuine_caption = fig_match.group(1).strip() if fig_match else None
+        if not genuine_caption and raw_text.strip():
+            fig_lines = [l.strip() for l in raw_text.splitlines() if l.strip().lower().startswith("figure")]
+            if fig_lines:
+                genuine_caption = fig_lines[0]
+        if genuine_caption:
+            genuine_caption = re.sub(r"[\[\]|]", "", genuine_caption)
+
+        # Metadata title strictly for RAG sidecar (never injected as visible body text if absent from book)
+        sidecar_title = genuine_caption or (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
+        sidecar_title = re.sub(r"[\[\]|]", "", sidecar_title)
+
+        if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:
+            mermaid_res = gemini.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path)
+            if mermaid_res:
+                return idx, {
+                    "rendered_markdown": mermaid_res.strip() + "\n\n",
+                    "prune_image": True,
+                    "sidecar_name": None,
+                    "sidecar_text": None,
+                }
+
+        if graphic_type == "ascii_art" and png_path and png_path.exists() and ascii_prompt:
+            caption_hint = (
+                "A dedicated caption node already exists in the document text, do not output any caption line."
+                if has_dedicated_caption else
+                (f"Include the genuine figure caption below the ASCII diagram: *{genuine_caption}*" if genuine_caption else "No caption line was printed in the book, do not output any caption.")
+            )
+            full_ascii_prompt = f"{ascii_prompt}\n\nCaption Guideline: {caption_hint}\n\nExtracted Labels:\n{raw_text}"
+            ascii_res = gemini.generate_vision(full_ascii_prompt, png_path)
+            if ascii_res:
+                return idx, {
+                    "rendered_markdown": ascii_res.strip() + "\n\n",
+                    "prune_image": True,
+                    "sidecar_name": None,
+                    "sidecar_text": None,
+                }
+
+        # Fallback to Obsidian image embed + RAG sidecar
+        if genuine_caption:
+            if has_dedicated_caption:
+                rendered_md = f"![[{asset_file}|{genuine_caption}]]\n\n"
+            else:
+                rendered_md = f"![[{asset_file}|{genuine_caption}]]\n\n*{genuine_caption}*\n\n"
+        else:
+            # No genuine caption in book: emit clean embed with zero artificial caption
+            rendered_md = f"![[{asset_file}]]\n\n"
+
+        # Generate technical engineering sidecar via Gemini Vision
+        sidecar_name = f"{asset_file}.txt"
+        sidecar_text = None
+        if png_path and png_path.exists() and sidecar_prompt:
+            sidecar_text = gemini.generate_vision(f"{sidecar_prompt}\n\nExtracted Labels:\n{raw_text}", png_path)
+
+        if not sidecar_text:
+            sidecar_text = (
+                f"Title: {sidecar_title}\n"
+                f"Page: {page_num}\n"
+                f"Labels:\n{raw_text}\n"
+            )
+
+        return idx, {
+            "rendered_markdown": rendered_md,
+            "prune_image": False,
+            "sidecar_name": sidecar_name,
+            "sidecar_text": sidecar_text,
+        }
+
     for c_file in chapter_files:
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        for node in nodes:
+        tasks = []
+        for idx, node in enumerate(nodes):
             if node.get("type") != "graphic":
                 continue
-
-            node_id = node.get("node_id", "asset")
-            page_num = node.get("page", 1)
-            raw_text = node.get("raw_text", "")
-
-            svg_rel = node.get("svg_path")
-            png_rel = node.get("png_path")
-            asset_file = Path(svg_rel).name if svg_rel else (Path(png_rel).name if png_rel else f"asset_{node_id}.png")
-            png_path = workspace_dir / png_rel if png_rel else None
-
-            # First, classify with Gemini if this is a flowchart, ascii_art (register/bitfield), or circuit schematic
-            triage = gemini.generate_json(triage_prompt, image_path=png_path) if png_path and png_path.exists() and triage_prompt else {}
-            graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
-
-            # Check for genuine figure caption from raw_text or separate caption nodes
             has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
-            fig_match = re.search(r"(Figure\s+\d+[\-\.]\d+[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
-            genuine_caption = fig_match.group(1).strip() if fig_match else None
-            if not genuine_caption and raw_text.strip():
-                fig_lines = [l.strip() for l in raw_text.splitlines() if l.strip().lower().startswith("figure")]
-                if fig_lines:
-                    genuine_caption = fig_lines[0]
-            if genuine_caption:
-                genuine_caption = re.sub(r"[\[\]|]", "", genuine_caption)
+            tasks.append((idx, node, has_dedicated_caption))
 
-            # Metadata title strictly for RAG sidecar (never injected as visible body text if absent from book)
-            sidecar_title = genuine_caption or (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
-            sidecar_title = re.sub(r"[\[\]|]", "", sidecar_title)
+        if tasks:
+            with ThreadPoolExecutor(max_workers=min(len(tasks), concurrency)) as executor:
+                results = list(executor.map(_transform_graphic_task, tasks))
 
-            if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:
-                mermaid_res = gemini.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path)
-                if mermaid_res:
-                    node["rendered_markdown"] = mermaid_res.strip() + "\n\n"
-                    # Converted to Mermaid diagram: prune image from assets
+            for idx, res in results:
+                node = nodes[idx]
+                node_id = node.get("node_id", "asset")
+                node["rendered_markdown"] = res["rendered_markdown"]
+                if res["prune_image"]:
                     for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
                         try:
                             asset_f.unlink()
@@ -155,60 +222,15 @@ def process_graphics(workspace_dir: Path, config: dict):
                     node["png_path"] = None
                     node["svg_path"] = None
                     node["sidecar_path"] = None
-                    transformed_count += 1
-                    continue
-
-            if graphic_type == "ascii_art" and png_path and png_path.exists() and ascii_prompt:
-                caption_hint = (
-                    "A dedicated caption node already exists in the document text, do not output any caption line."
-                    if has_dedicated_caption else
-                    (f"Include the genuine figure caption below the ASCII diagram: *{genuine_caption}*" if genuine_caption else "No caption line was printed in the book, do not output any caption.")
-                )
-                full_ascii_prompt = f"{ascii_prompt}\n\nCaption Guideline: {caption_hint}\n\nExtracted Labels:\n{raw_text}"
-                ascii_res = gemini.generate_vision(full_ascii_prompt, png_path)
-                if ascii_res:
-                    node["rendered_markdown"] = ascii_res.strip() + "\n\n"
-                    # Converted to ASCII art: prune image from assets
-                    for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
-                        try:
-                            asset_f.unlink()
-                        except Exception:
-                            pass
-                    node["png_path"] = None
-                    node["svg_path"] = None
-                    node["sidecar_path"] = None
-                    transformed_count += 1
-                    continue
-
-            # Fallback to Obsidian image embed + RAG sidecar
-            if genuine_caption:
-                if has_dedicated_caption:
-                    node["rendered_markdown"] = f"![[{asset_file}|{genuine_caption}]]\n\n"
                 else:
-                    node["rendered_markdown"] = f"![[{asset_file}|{genuine_caption}]]\n\n*{genuine_caption}*\n\n"
-            else:
-                # No genuine caption in book: emit clean embed with zero artificial caption
-                node["rendered_markdown"] = f"![[{asset_file}]]\n\n"
-            transformed_count += 1
-
-            # Generate technical engineering sidecar via Gemini Vision
-            sidecar_name = f"{asset_file}.txt"
-            sidecar_path = assets_dir / sidecar_name
-            sidecar_text = None
-            if png_path and png_path.exists() and sidecar_prompt:
-                sidecar_text = gemini.generate_vision(f"{sidecar_prompt}\n\nExtracted Labels:\n{raw_text}", png_path)
-
-            if not sidecar_text:
-                sidecar_text = (
-                    f"Title: {sidecar_title}\n"
-                    f"Page: {page_num}\n"
-                    f"Labels:\n{raw_text}\n"
-                )
-
-            with open(sidecar_path, "w", encoding="utf-8") as sf:
-                sf.write(sidecar_text)
-            node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{sidecar_name}"
-            sidecar_count += 1
+                    sidecar_name = res["sidecar_name"]
+                    sidecar_text = res["sidecar_text"]
+                    sidecar_path = assets_dir / sidecar_name
+                    with open(sidecar_path, "w", encoding="utf-8") as sf:
+                        sf.write(sidecar_text)
+                    node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{sidecar_name}"
+                    sidecar_count += 1
+                transformed_count += 1
 
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:

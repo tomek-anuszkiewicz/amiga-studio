@@ -170,16 +170,19 @@ def process_segmentation(workspace_dir: Path, config: dict):
     if not gemini or not gemini.is_available():
         raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 02 segmentation.")
 
-    print(f"[*] Vision LLM active ({gemini.vision_model}). Segmenting {total_pages} pages...")
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    for page_entry in manifest["pages"]:
+    concurrency = int(config.get("llm", {}).get("concurrency", 8))
+    print(f"[*] Vision LLM active ({gemini.vision_model}). Segmenting {total_pages} pages (concurrency={concurrency})...")
+
+    def _process_page(page_entry):
         page_num = page_entry["page"]
         page_str = f"page_{page_num:04d}"
         json_file = workspace_dir / page_entry["json_file"]
         png_file = workspace_dir / page_entry.get("png_file", f"01_preprocess/{page_str}.png")
 
         if not json_file.exists():
-            continue
+            return page_num, None
 
         with open(json_file, "r", encoding="utf-8") as f:
             page_data = json.load(f)
@@ -192,6 +195,21 @@ def process_segmentation(workspace_dir: Path, config: dict):
                 "page": page_num,
                 "segments": segments
             }, f, indent=2)
+        return page_num, len(segments)
+
+    completed_count = 0
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+        futures = {executor.submit(_process_page, entry): entry["page"] for entry in manifest["pages"]}
+        for future in as_completed(futures):
+            p_num = futures[future]
+            try:
+                page_num, seg_count = future.result()
+                completed_count += 1
+                if seg_count is not None:
+                    print(f"    [+] Page {page_num:04d} segmented: {seg_count} zones ({completed_count}/{len(manifest['pages'])})")
+            except Exception as e:
+                print(f"[!] Error processing page {p_num}: {e}")
+                raise e
 
     print(f"[+] Stage 02 complete. Segments written to {segments_dir}")
 

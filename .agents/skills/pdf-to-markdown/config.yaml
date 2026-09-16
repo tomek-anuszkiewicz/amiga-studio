@@ -32,6 +32,7 @@ llm:
   thinking_level: "medium"
   timeout_seconds: 60
   temperature: 0.1
+  concurrency: 8
 
 markers:
   toc_start: "<!-- TOC34534 -->"

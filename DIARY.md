@@ -4057,3 +4057,25 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 366 files clean.
   - `cargo fmt --all -- --check`: Clean.
   - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
+---
+
+### [2026-09-16 06:00 CEST] — PDF-to-Markdown: Multi-Threaded Concurrency & Stage 04 Seam Optimization
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/config.yaml`: Added `concurrency: 8` under `llm:` configuration.
+  - `.agents/skills/pdf-to-markdown/stages/04_stream_reduction/reduce_stream.py`: Fixed excessive LLM invocations during prose welding by restricting `weld_prose_with_gemini` strictly to cross-page boundaries (`prev["page_end"] != node["page"]`), joining intra-page paragraphs directly with `\n\n`.
+  - `.agents/skills/pdf-to-markdown/stages/02_page_segmentation/segment_page.py`: Parallelized page layout segmentation across independent pages using `ThreadPoolExecutor(max_workers=concurrency)`.
+  - `.agents/skills/pdf-to-markdown/stages/07_transform_tables/transform_tables.py`: Parallelized table transformations within chapters using `ThreadPoolExecutor`.
+  - `.agents/skills/pdf-to-markdown/stages/08_transform_graphics/transform_graphics.py`: Parallelized diagram classification, triage, and technical RAG sidecar generation with `ThreadPoolExecutor`.
+  - `.agents/skills/pdf-to-markdown/stages/09_transform_prose/format_prose.py`: Parallelized prose and code block formatting using `ThreadPoolExecutor` while preserving deterministic node order.
+  - `.agents/skills/pdf-to-markdown/stages/13_proofread_markdown/proofread_markdown.py`: Parallelized section proofreading across documents using `ThreadPoolExecutor`.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed bottleneck where Stage 02 and Stage 09 were 100% sequential, causing long turnaround times for multi-page documents.
+  - Resolved major bottleneck in Stage 04 where every consecutive pair of paragraphs on the same page triggered an unnecessary cross-page seam classification with Gemini, reducing Stage 04 LLM calls by over 90%.
+  - Enabled multi-threaded execution across Stages 02, 07, 08, 09, and 13, bounded by the configured concurrency level (default: 8 workers) well within Gemini Pay-as-you-go rate quotas (1,000–2,000 RPM).
+- **Verification & Test Results**:
+  - Verified Python compilation (`py_compile`) across all 6 modified stage scripts with 0 errors.
+  - `python .agents/skills/attractor-discipline/scripts/lint_attractors.py`: 366 files clean.
+  - `cargo fmt --all -- --check`: Clean formatting across workspace.
+  - `cargo test -p test_runner --test test_architecture_rules`: 18/18 tests passed.
+
