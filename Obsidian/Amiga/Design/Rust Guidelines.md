@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-10
-updated: 2026-09-12
+updated: 2026-09-16
 related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)"]
 ---
 
@@ -23,7 +23,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guideli
 
 ---
 
-## 1. Core Architectural Philosophies
+## 1. Core Systems Engineering Principles
 
 ### 1.1 Explicitness Over Implicit Magic
 - **No Clever Obscurity:** Favor explicit, self-documenting code over terse, cryptic shortcuts. In an emulator, readability and traceability to hardware specifications are paramount.

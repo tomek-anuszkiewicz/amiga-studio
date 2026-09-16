@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "test_runner"
 status: "active"
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-16
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[General Architecture.md](General%20Architecture.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 ---
 
@@ -20,7 +20,7 @@ related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md
 
 ---
 
-## 1. Executive Summary & Design Principles
+## 1. Core Performance Goals & Architecture
 
 Maintaining cycle-exact hardware fidelity at high execution speeds requires strict performance discipline. However, inserting synthetic timing probes into hot emulation loops distorts host CPU execution pipelines, flushes compiler instruction caches, and introduces artificial timing divergence.
 

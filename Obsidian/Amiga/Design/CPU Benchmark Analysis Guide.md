@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-16
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
 ---
 
@@ -17,7 +17,7 @@ related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md
 - **Companion Specifications:** [CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md) | [CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
 
-This document establishes the official analytical methodology for interpreting M68000 instruction benchmarking datasets (`tests/benchmarks/**/*.csv` and `.json`), detailing the mathematical metrics, hardware-to-host correlation models, and empirical findings from the 108-instruction `--thorough` baseline.
+This document establishes the evaluation guide for interpreting M68000 instruction benchmarking datasets (`tests/benchmarks/**/*.csv` and `.json`), detailing the mathematical metrics, hardware-to-host correlation models, and empirical findings from the 108-instruction `--thorough` baseline.
 
 ---
 
@@ -25,7 +25,7 @@ This document establishes the official analytical methodology for interpreting M
 
 When evaluating emulator performance at the instruction level, raw wall-clock duration (nanoseconds per instruction) can be misleading. A complex instruction requiring 34 Amiga cycles (`TRAP #0`) naturally takes longer than a 4-cycle `MOVE.B`. 
 
-To extract actionable engineering insights, benchmark data is analyzed across **five orthogonal dimensions**:
+To extract actionable engineering insights, benchmark data is analyzed across **five practical dimensions**:
 
 ```mermaid
 flowchart TD

@@ -18,7 +18,7 @@ It provides a single authoritative status reference for hardware verification wi
 
 ---
 
-## 1. Executive Verification Summary (Ground Truth)
+## 1. Verification Summary & Baseline Metrics
 
 | Metric | Count | Percentage of Phase 1 Baseline |
 | :--- | :--- | :--- |
@@ -99,7 +99,7 @@ To prevent documentation decay and eliminate unnecessary git churn:
 
 ## 5. Related Architecture & Design Links
 
-- [Testing Strategy and Quality Assurance.md](Testing%20Strategy%20and%20Quality%20Assurance.md) — Comprehensive testing philosophy and verification taxonomy.
+- [Testing Strategy and Quality Assurance.md](Testing%20Strategy%20and%20Quality%20Assurance.md) — Comprehensive testing strategy and verification architecture.
 - [Agnus.md](Agnus.md) — Agnus master DMA arbiter and Coprocessor architectures.
 - [Denise.md](Denise.md) — Denise pixel serializer and display windowing.
 - [Paula.md](Paula.md) — Paula audio and interrupt escalation pipeline.

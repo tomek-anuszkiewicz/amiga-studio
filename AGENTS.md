@@ -37,6 +37,8 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): Mandatory AST query before file inspection; scoped incremental updates for `crates/` and `ref_src/`.
 - **Asset Descriptions & Sidecars** ([`asset-descriptions.md`](.agents/rules/asset-descriptions.md)): Git-tracked `<image_path>.txt` technical sidecars for circuit and timing schematics.
 - **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing, and multi-agent workflows.
+- **Information Hierarchy** ([`information-hierarchy.md`](.agents/rules/information-hierarchy.md)): Inverted pyramid model and top-down cognitive progression.
+- **Practitioner Voice & Tone** ([`practitioner-voice-and-tone.md`](.agents/rules/practitioner-voice-and-tone.md)): Hands-on lead architect persona, tech blog standard, and zero academic jargon.
 
 ---
 
@@ -96,16 +98,16 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 
 - **Mandatory Formatting:** `cargo fmt --all -- --check`.
 - **Pre-Flight Gate:** Run `python tools/harness/pre_flight.py` (checks formatting, size, and architecture rules).
-- **Automated Architecture Tests:** Pass `cargo test -p test_runner --test test_architecture_rules` (validates file sizes, zero panics/macros/generics, canonical IDLE, zero inline tests, path privacy, inlining, links).
+- **Automated Architecture Tests:** Pass `cargo test -p test_runner --test test_architecture_rules` (file sizes, zero panics/macros/generics, IDLE micro-steps, zero inline tests, inlining, links).
 - **Single-Step CPU Validation:** Run `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep` on any `crates/m68000` changes.
-- **Cartesian DMA Contention:** Run `cargo test -p test_runner --test test_dma_cartesian` on CPU/bus changes (validates cycle invariance $C = C_0 + 2 \times \text{wait\_states}$ and Fast RAM immunity).
+- **Cartesian DMA Contention:** Run `cargo test -p test_runner --test test_dma_cartesian` on CPU/bus changes ($C = C_0 + 2 \times \text{wait\_states}$).
 - **Repro-First Defect Resolution:** Author an isolated failing reproduction test in `tests/` before editing production code per [`repro-first.md`](.agents/rules/repro-first.md).
 - **Unit Testing Policy:** Mandatory unit test coverage for functional/utility logic and headless integration tests for GUI per [`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md).
-- **Obsidian Design Docs:** Update corresponding design documents in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md) and evaluate Line 1 YAML properties per [`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md).
-- **Engineering Diary:** Log actual changes, technical rationale, and test results in [DIARY.md](DIARY.md) (Section 10) per [`diary-maintenance.md`](.agents/rules/diary-maintenance.md).
-- **Roadmap Maintenance:** Prune and remove completed tasks from [ROADMAP.md](ROADMAP.md) (zero `[COMPLETED]` items retained) per [`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md).
-- **Milestone Gates:** Run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) and [`prune-dead-code`](.agents/skills/prune-dead-code/SKILL.md) upon major roadmap milestone completion.
-- **Prohibition of Blind Golden Hash Modifications**: Silently modifying golden hashes or reference constants is forbidden per [`spec-compliance.md`](.agents/rules/spec-compliance.md). Perform root-cause analysis.
+- **Obsidian Design Docs:** Update design documents in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md) and [`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md).
+- **Engineering Diary:** Log changes and rationale in [DIARY.md](DIARY.md) (Section 10) per [`diary-maintenance.md`](.agents/rules/diary-maintenance.md).
+- **Roadmap Maintenance:** Prune completed tasks from [ROADMAP.md](ROADMAP.md) (zero completed items retained) per [`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md).
+- **Milestone Gates:** Run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) and [`prune-dead-code`](.agents/skills/prune-dead-code/SKILL.md) upon major milestone completion.
+- **Prohibition of Blind Golden Hash Modifications**: Zero silent edits to golden hashes/constants per [`spec-compliance.md`](.agents/rules/spec-compliance.md).
 - **Milestone Review:** Run [`/code-review`](.agents/workflows/code-review.md) before declaring roadmap milestones complete.
 
 ---

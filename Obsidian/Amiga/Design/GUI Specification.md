@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-10
-updated: 2026-09-12
+updated: 2026-09-16
 related: ["[GUI.md](GUI.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](General%20Architecture.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
 ---
 
@@ -72,7 +72,7 @@ The physical arrangement on screen strictly maps 1:1 to the Rust source code hie
 
 ---
 
-## 2. Interaction & Execution Paradigm: Synchronous Direct-State Pull
+## 2. Execution Model: Synchronous Direct-State Pull
 
 The GUI and the emulator core interact through a strictly **synchronous, pull-based model**:
 1. **Direct References:** The top-level `EmulatorApp` struct owns `Cpu`, `MemoryBus`, and `Debugger`. During every `egui::App::update` pass, panels read directly from `&self.cpu.state`, `&self.bus`, and `&self.debugger`.

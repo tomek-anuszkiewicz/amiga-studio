@@ -59,7 +59,7 @@ Every design document in `Obsidian/Amiga/Design/` must maintain two distinct, co
 
 ## 3. Inverted Pyramid Information Hierarchy & Structure
 
-To ensure maximum signal and top-down cognitive clarity, all design specifications must adhere to the **Inverted Pyramid model**:
+To ensure maximum signal and top-down cognitive clarity, all design specifications must adhere to the **Inverted Pyramid model** ([`information-hierarchy.md`](information-hierarchy.md)) and maintain a direct, hands-on practitioner tone ([`practitioner-voice-and-tone.md`](practitioner-voice-and-tone.md)):
 
 1. **Top-Down Section Order:**
    - **Document Title & Scope Callout (Lines 1–30):** High-impact summary of subsystem responsibility, hardware chip revision, and note callout linking to master machine coordination and parent guidelines.

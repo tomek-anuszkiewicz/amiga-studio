@@ -4253,9 +4253,34 @@ Every future modification or implementation task must append an entry following 
   - Cleaned up all pointers, references, and verification steps in `AGENTS.md`, `.agents/rules/`, `.agents/skills/`, and project documentation.
 - **Architectural Rationale & Trade-Offs**:
   - *Rule Minimization:* Streamlining repository rules and removing synthetic vocabulary policing simplifies the prompt overhead and reduces CI execution steps.
+### [2026-09-16 13:48 CEST] — Addition of Information Hierarchy & Practitioner Voice Rules, Documentation Audit & Refactoring
+- **Affected Subsystems**:
+  - `.agents/rules/information-hierarchy.md` (added modular rule for Inverted Pyramid and top-down cognitive progression)
+  - `.agents/rules/practitioner-voice-and-tone.md` (added modular rule establishing hands-on lead architect persona, tech blog/video deep-dive standard, and ban on academic/dissertation jargon)
+  - `AGENTS.md` (indexed both rules in Section 1.B while maintaining strict $\le 14,000$ byte limit at 13,673 bytes)
+  - `.agents/rules/vault-linking-and-graph-integrity.md`, `.agents/rules/docs-maintenance.md` (cross-referenced both rules)
+  - `.agents/skills/code-review/SKILL.md` (added practitioner voice and tone audit checks)
+  - `docs/ai_agents.md` (indexed both rules in Section 1)
+  - `Obsidian/Amiga/Design/Testing Strategy and Quality Assurance.md` (purged academic taxonomy, nexus, holistic, and synthesis jargon)
+  - `Obsidian/Amiga/Design/vAmigaTS Verification Scorecard.md` (purged executive summary and verification taxonomy phrasing)
+  - `Obsidian/Amiga/Design/General Architecture.md` (purged testing taxonomy phrasing and bumped timestamp)
+  - `Obsidian/Amiga/Design/CPU Micro-Step State Machine.md` (purged executive summary, philosophy, axioms, and universe jargon)
+  - `Obsidian/Amiga/Design/Rust Guidelines.md` (purged architectural philosophies heading in favor of core engineering principles)
+  - `Obsidian/Amiga/Design/Performance Profiling and Optimization Strategy.md` (purged executive summary heading)
+  - `Obsidian/Amiga/Design/CPU Instruction Benchmarking.md` (purged executive summary and methodology phrasing)
+  - `Obsidian/Amiga/Design/CPU Benchmark Analysis Guide.md` (purged official analytical methodology and orthogonal dimensions phrasing)
+  - `Obsidian/Amiga/Design/egui Guidelines.md`, `Obsidian/Amiga/Design/GUI Specification.md` (purged paradigm and cognitive complexity jargon)
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the universal Inverted Pyramid model in `.agents/rules/information-hierarchy.md`.
+  - Codified the Practitioner Voice & Tone rule in `.agents/rules/practitioner-voice-and-tone.md`, establishing the "Coffee & Tech Talk Test", grounded mechanical explanations over Latinate jargon, and banning dissertation-style thesis headings.
+  - Indexed both rules in Section 1.B of `AGENTS.md`, while pruning redundant verbiage across Section 4 to maintain a comfortable size of 13,673 bytes ($\le 14,000$ limit).
+  - Executed a repository-wide document audit across `Obsidian/Amiga/Design/` and `docs/`, replacing academic and corporate jargon (`taxonomy`, `axiomatic`, `synthesis` as jargon, `paradigm`, `executive summary`, `nexus`, `holistic`, `cognitive complexity`, `orthogonal dimensions`) with direct, concrete engineering explanations.
+- **Architectural Rationale & Trade-Offs**:
+  - *Practitioner Voice vs Academic Obfuscation:* Emulation engineering demands mechanical precision, clear causality, and grounded failure analysis. Phrasing design specifications like academic dissertations obscures concrete runtime behavior and introduces cognitive friction for engineers and LLM agents alike.
 - **Verification & Test Results**:
   - `cargo fmt --all -- --check`: Clean formatting across the workspace.
-  - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 0.55s.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 9.08s (including `test_rule_files_size_limit_and_truncation_safety` and `test_obsidian_design_docs_links_integrity`).
   - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed cleanly.
+
 
 

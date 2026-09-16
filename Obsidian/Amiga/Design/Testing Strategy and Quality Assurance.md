@@ -19,7 +19,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[CPU SingleSt
 
 ## 1. Architectural Purpose & Testing Pyramid
 
-To guarantee hardware fidelity, zero regressions, and complete opcode support, the Amiga 500 emulator enforces a strict **3-Tier Testing Taxonomy** across all 27 workspace crates. Every crate maintains an external `tests/` directory with zero inline tests in `src/`, providing clean separation between runtime production logic and test harnesses:
+To guarantee hardware fidelity, zero regressions, and complete opcode support, the Amiga 500 emulator enforces a strict **3-Tier Testing Architecture** across all 27 workspace crates. Every crate maintains an external `tests/` directory with zero inline tests in `src/`, providing clean separation between runtime production logic and test harnesses:
 
 ```mermaid
 graph TD
@@ -34,7 +34,7 @@ graph TD
     end
 
     subgraph Tier2["Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)"]
-        I1["Machine Loop Nexus<br/><code>crates/machine_loop/tests/</code><br/>(DMA contention, interrupts, reset, save states)"]:::t2
+        I1["Machine Loop Integration<br/><code>crates/machine_loop/tests/</code><br/>(DMA contention, interrupts, reset, save states)"]:::t2
         I2["Debugger & Tooling Orchestration<br/><code>crates/debugger/tests/</code><br/>(Binary execution, temporal rewind, stepping)"]:::t2
         I3["Headless Developer Studio UI<br/><code>crates/gui/tests/test_interactions.rs</code><br/>(Full egui frame passes, keyboard, hex editing)"]:::t2
         I4["Motherboard Bus Routing<br/><code>crates/memory_bus/tests/</code><br/>(Address dispatch & register wiring)"]:::t2
@@ -53,7 +53,7 @@ graph TD
 
 ---
 
-## 2. The 3-Tier Testing Taxonomy
+## 2. The 3-Tier Testing Breakdown
 
 ### Tier 1: Isolated Unit Tests (L1 — Fast, Unit Scope)
 - **Scope**: Single crate, single module in complete isolation. Zero multi-chip machine state.
@@ -156,7 +156,7 @@ graph TD
     I2["<b>Iteration 2: Low-Hanging Systemic Cascades</b><br/>Fix central bus/interrupt/pipeline causes<br/>Verify multi-subsystem pass cascades"]:::step
     I3["<b>Iteration 3: Geometry & Video Convergence</b><br/>Tune DIW/DDF window, bitplanes, and palettes<br/>Strict 2–3 attempt limit per cluster"]:::step
     I4["<b>Iteration 4: Final Validation Sweep</b><br/>Run complete baseline suite<br/>Record pass totals in DIARY.md and commit"]:::step
-    SYNTH["<b>Post-Discovery Architectural Synthesis</b><br/>Diff extraction per subsystem<br/>Eliminate ad-hoc if-statements<br/>Unify into single physical hardware law"]:::synth
+    SYNTH["<b>Post-Discovery Architecture Cleanup</b><br/>Diff extraction per subsystem<br/>Eliminate ad-hoc if-statements<br/>Unify into single physical hardware law"]:::synth
 
     I1 --> I2 --> I3 --> I4 --> SYNTH
 ```
@@ -189,13 +189,13 @@ graph TD
 
 ---
 
-## 4. Post-Discovery Architectural Synthesis (The "Anti-Patchwork" Protocol)
+## 4. Post-Discovery Architecture Cleanup (The "Anti-Patchwork" Protocol)
 
-A critical failure mode in autonomous AI emulation development is **ad-hoc patch creep**: accumulating local `if`-statements, artificial cycle offsets, and special-case branches to force individual tests to pass. This destroys code readability, violates [AGENTS.md](../../../AGENTS.md), degrades host CPU branch predictability, and breaks adjacent test cases.
+A critical failure mode in autonomous AI emulation development is **ad-hoc patch creep**: accumulating local `if`-statements, artificial cycle offsets, and special-case branches to force individual tests to pass. This destroys code readability, degrades host CPU branch predictability, and breaks adjacent test cases.
 
-To ensure pristine architecture, every verification phase must conclude with the **Post-Discovery Architectural Synthesis**:
+To ensure clean, maintainable architecture, every verification phase must conclude with the **Post-Discovery Architecture Cleanup**:
 
-### Step-by-Step Synthesis Workflow:
+### Step-by-Step Cleanup Workflow:
 
 1. **Diff Extraction Across the Sprint**:
    - Extract the full git changeset from the baseline commit before the test sprint:
@@ -209,7 +209,7 @@ To ensure pristine architecture, every verification phase must conclude with the
      - `crates/denise/`: Palette write latency, DIW/DDF window logic, bitplane serialization.
      - `crates/memory_bus/`: Chip RAM contention, wait-states, open bus floating behavior.
 3. **First-Principles Hardware Law Identification**:
-   - Review all modified lines across the diff from a holistic, bird's-eye perspective:
+   - Review all modified lines across the diff from an end-to-end architectural perspective:
      - *Why were these separate adjustments needed?*
      - *Is there a single physical hardware reality (e.g. bus sampling on the falling edge of CCK2, synchronous signal latching, DMA slot parity) that explains all observed discrepancies?*
 4. **Patchwork Elimination & Model Unification**:
@@ -219,9 +219,9 @@ To ensure pristine architecture, every verification phase must conclude with the
 
 ---
 
-## 5. Autonomous Agent Verification Hierarchy (The Self-Building Ladder)
+## 5. The 5-Level Verification Ladder
 
-When an autonomous AI agent builds, extends, or refactors any part of the emulator, it must execute tests along the rigorous 5-rung verification ladder:
+When building, extending, or refactoring any part of the emulator, execute tests along the 5-rung verification ladder:
 
 | Level | Verification Tier | Primary Tool / Command | Pass Criteria |
 | :---: | :--- | :--- | :--- |
@@ -229,7 +229,7 @@ When an autonomous AI agent builds, extends, or refactors any part of the emulat
 | **L2** | **Multi-Crate Integration** | `cargo test -p machine_loop` | 100% pass; 4-question checklist satisfied |
 | **L3** | **Silicon Ground Truth** | `cargo test -p test_runner --test test_singlestep` | Physical silicon opcode match; Cartesian cycle invariance |
 | **L4** | **vAmigaTS Visual Harness** | `target/release/test_runner.exe vamiga --category <cat>` | 4-iteration cascading protocol; RGB24 pixel exact |
-| **L5** | **Architectural Synthesis** | `git diff` review & `python tools/harness/pre_flight.py` | Zero ad-hoc `if` patches; 100% physical hardware model |
+| **L5** | **Architecture Cleanup** | `git diff` review & `python tools/harness/pre_flight.py` | Zero ad-hoc `if` patches; 100% physical hardware model |
 
 ---
 

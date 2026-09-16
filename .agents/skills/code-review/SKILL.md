@@ -61,6 +61,8 @@ Analyze all modified and added files using `git diff`:
 13. **Language Policy & English Purity**:
    - Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, or inline comments (per `language-policy.md`).
    - Quoting Polish prompt phrases or metaphors in comments—even parenthetically or in quotation marks—is strictly prohibited; all concepts must be translated into idiomatic English before writing to code.
+14. **Practitioner Voice & Tone**:
+   - Verify that documentation and comments adhere to `practitioner-voice-and-tone.md`: written from a hands-on lead architect perspective (in-depth tech blog standard) with zero academic dissertation jargon or thesis tags.
 
 ### Step 3: Living Documentation & Defect Retrospection Audit
 1. **Defect Retrospection (if bug fix / refactor)**: Did the author perform root-cause analysis ("Why did this happen?")? Are dedicated regression tests in place covering edge cases? Were systemic safeguards (architectural rules, lints, or DoD criteria) added to ensure this class of defect never recurs?
@@ -91,6 +93,7 @@ Provide the audit report using the following standard template:
 - [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, completed roadmap steps deleted (zero `[COMPLETED]` markers in Section 2), and `DIARY.md` chronological changelog updated.
 - [ ] **Path Privacy:** Zero external host paths.
 - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
+- [ ] **Practitioner Voice & Tone:** Documentation written from hands-on lead architect perspective (tech blog standard), zero academic jargon, and top-down information hierarchy.
 - [ ] **Test Coverage:** All workspace tests pass 100% green (`cargo test`).
 
 **Verdict:** [APPROVED | CHANGES REQUESTED]

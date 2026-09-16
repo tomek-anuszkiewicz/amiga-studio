@@ -41,8 +41,8 @@ Whenever crates or dependencies in `Cargo.toml` (new crates, added/removed inter
 ---
 
 ## 5. Knowledge Graph & Linking Compliance
-
-All modifications to design specifications must adhere strictly to the YAML frontmatter properties, dual-layer linking, and inverted pyramid structure codified in [`.agents/rules/vault-linking-and-graph-integrity.md`](vault-linking-and-graph-integrity.md).
+ 
+All modifications to design specifications must adhere strictly to the YAML frontmatter properties, dual-layer linking, and inverted pyramid structure codified in [`.agents/rules/vault-linking-and-graph-integrity.md`](vault-linking-and-graph-integrity.md) and [`.agents/rules/information-hierarchy.md`](information-hierarchy.md), while maintaining the practitioner voice standard in [`.agents/rules/practitioner-voice-and-tone.md`](practitioner-voice-and-tone.md).
 
 ---
 

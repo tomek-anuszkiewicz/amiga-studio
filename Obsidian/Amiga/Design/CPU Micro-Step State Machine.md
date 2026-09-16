@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-08
-updated: 2026-09-12
+updated: 2026-09-16
 related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 ---
 
@@ -21,7 +21,7 @@ related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU SingleSt
 
 ---
 
-## 1. Executive Summary & Design Philosophy
+## 1. Core Architecture & Execution Model
 
 This document defines the architectural blueprint for the cycle-exact Motorola 68000 CPU emulator core based on the **Micro-Step State Machine Engine**.
 
@@ -29,8 +29,8 @@ The architecture mirrors the physical two-level microcode design of the Motorola
 1. **Instruction Sequencer (Macro-Level / Microrom)**: The 16-bit opcode word (`IR`) selects a static, compile-time blueprint of atomic micro-steps.
 2. **Execution Unit & Bus Controller (Micro-Level / Nanorom)**: Drives the physical bus lines (`_AS`, `_UDS`, `_LDS`), Color Clock phases (**CCK1** and **CCK2**), dynamic ALU calculation delays, memory write decomposition, two-word pipeline refills, and Agnus DMA wait-state contention.
 
-### Core Architectural Axioms
-1. **The 65,536 Static Universe**:
+### Core Architecture Invariants
+1. **The 65,536 Static Table**:
    Because immediate values, displacements, and 32-bit addresses are fetched dynamically from memory during execution, **the micro-step sequence is a pure, immutable function of the 16-bit opcode word (`IR`)**. Exactly 65,536 static entries cover 100% of the instruction set.
 2. **Zero Runtime Heap Allocation**:
    The entire micro-step table is static `const` data embedded in the host binary (`.rodata`). It requires **0 bytes of dynamic heap allocation** (`Vec`, `Box`, `malloc`) during runtime.

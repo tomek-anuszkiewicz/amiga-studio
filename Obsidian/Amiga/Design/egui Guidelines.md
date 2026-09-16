@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-10
-updated: 2026-09-12
+updated: 2026-09-16
 related: ["[GUI Specification.md](GUI%20Specification.md)", "[GUI.md](GUI.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
 ---
 
@@ -23,7 +23,7 @@ related: ["[GUI Specification.md](GUI%20Specification.md)", "[GUI.md](GUI.md)", 
 
 ---
 
-## 1. The Immediate-Mode Paradigm & Lifecycle
+## 1. Immediate-Mode Architecture & Frame Lifecycle
 
 `egui` is an immediate-mode graphical user interface library:
 - **No Retained Widget Tree:** Unlike Qt or React, widgets are not persisted as stateful DOM objects. On every frame, `update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame)` runs from top to bottom, reconstructing the UI layout and issuing drawing commands in real time.
@@ -33,7 +33,7 @@ related: ["[GUI Specification.md](GUI%20Specification.md)", "[GUI.md](GUI.md)", 
 
 ## 2. Synchronous Direct-State Pull (Zero Async / Zero Callbacks)
 
-To prevent cognitive complexity, concurrency bugs, and UI stalls:
+To prevent architectural complexity, concurrency bugs, and UI stalls:
 1. **Direct State Access:** Panels directly query references to emulator state (`&app.cpu.state`, `&app.bus`, `&app.debugger`) during their draw calls.
 2. **No Change Notifications:** The emulator core never fires "events" or sends "messages" when registers or memory change. The GUI simply reads whatever the current state is on every render pass.
 3. **Synchronous Mutations:** User interactions (typing a new hex value into memory, toggling a CCR flag, clicking a breakpoint) execute synchronously against the underlying state in the same frame tick.

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-10
-updated: 2026-09-12
+updated: 2026-09-16
 related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.md)", "[CPU Instruction Benchmark Catalog.md](CPU%20Instruction%20Benchmark%20Catalog.md)", "[CPU Instruction Benchmark Strategies.md](CPU%20Instruction%20Benchmark%20Strategies.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
 ---
 
@@ -24,7 +24,7 @@ related: ["[CPU Benchmark Analysis Guide.md](CPU%20Benchmark%20Analysis%20Guide.
 
 ---
 
-## 1. Executive Summary & Goals
+## 1. Benchmarking Goals & Architecture Overview
 
 The Amiga 500 emulator is a cycle-exact, micro-stepped simulation. While functional correctness is validated against over 1 million test vectors via [SingleStepTests](CPU%20SingleStepTests.md) and [Cartesian DMA Contention](CPU%20Motorola%20M68000.md#6-dma-contention--wait-states), raw correctness does not guarantee optimal host CPU performance or absence of micro-architectural stalls.
 
@@ -496,7 +496,7 @@ To make benchmark data immediately actionable across development cycles:
   - **$\Delta > +7.0\%$:** Failure alert (`🚨 Severe Regression: Blocking merge`).
 - **Environment Metadata Verification:** The diff engine verifies that `host_arch`, `host_cpu`, and `profile` match before issuing regression alerts, ensuring measurements taken on different hardware are never compared directly.
 
-For the comprehensive mathematical and architectural methodology for evaluating benchmark results (Functional Symmetry, Addressing Mode Latency Ladders, Size Scaling, and Normalized Emulation Tax), consult the dedicated [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md).
+For the comprehensive evaluation framework and analysis techniques (Functional Symmetry, Addressing Mode Latency Ladders, Size Scaling, and Normalized Emulation Tax), consult the dedicated [CPU Benchmark Analysis Guide](CPU%20Benchmark%20Analysis%20Guide.md).
 
 ---
 
