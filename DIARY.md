@@ -6077,3 +6077,18 @@ Every future modification or implementation task must append an entry following 
   - Client validation gate: Verified `GeminiClient(None)` and `GeminiClient({})` raise `ValueError`.
   - Workspace snapshot test: Verified `workspace/config.yaml` is created and matches source config.
   - Pre-flight quality gates passed cleanly (`python tools/pre_flight.py`).
+---
+
+### [2026-09-16 23:34 CEST] — Tooling: Link Ignored Child Directories for Standard Target Paths in Worktree Bootstrapper
+- **Affected Subsystems**:
+  - `tools/git/worktree.ps1`
+- **What Was Changed (The Concrete Reality)**:
+  - Enhanced Link-WorktreeAssets in worktree.ps1: when a target path already exists as a standard directory (e.g. Obsidian/Amiga/Reference containing tracked markdown documents)
+  - scan its source children and link un-tracked child directories via NTFS junctions and copy child files.
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid skipping ignored reference manuals and subdirectories when the parent directory is pre-created by Git checkout for tracked files.
+- **Verification & Test Results**:
+  - Verified with worktree sync in Amiga-OCS linking all reference manuals (68000 PRM
+  - User Manual
+  - A500/A2000 TRM
+  - HRM).

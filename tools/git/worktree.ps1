@@ -89,7 +89,20 @@ function Link-WorktreeAssets {
                     Write-Host "  [EXISTS] $rel (already a junction)" -ForegroundColor DarkGray
                     continue
                 } else {
-                    Write-Host "  [SKIP]   $rel (already exists as standard directory)" -ForegroundColor Yellow
+                    Write-Host "  [SCAN]   $rel (standard directory, linking children...)" -ForegroundColor Cyan
+                    $childItems = Get-ChildItem -LiteralPath $srcPath -Force
+                    foreach ($child in $childItems) {
+                        $childDst = Join-Path $dstPath $child.Name
+                        if (-not (Test-Path -LiteralPath $childDst)) {
+                            if ($child.PSIsContainer) {
+                                New-Item -ItemType Junction -Path $childDst -Target $child.FullName | Out-Null
+                                Write-Host "    [LINKED] $rel/$($child.Name) -> NTFS Junction" -ForegroundColor Green
+                            } else {
+                                Copy-Item -LiteralPath $child.FullName -Destination $childDst -Force
+                                Write-Host "    [COPIED] $rel/$($child.Name)" -ForegroundColor Green
+                            }
+                        }
+                    }
                     continue
                 }
             }
