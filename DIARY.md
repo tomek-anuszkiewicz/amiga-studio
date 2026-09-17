@@ -1200,3 +1200,15 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Invariants**:
   - Verified `bootstrap.ps1` syntax and help display.
   - Passed `python tools/harness/pre_flight.py --quick`.
+
+### [2026-09-17 06:44 CEST] — Removal of -AllSources and -AllMirrors from bootstrap.ps1
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap.ps1`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed `-AllSources` switch and its `-AllMirrors` alias from `bootstrap.ps1` (`.PARAMETER`, `param()`, `Show-Usage`, auto-activation of `-Documentation`, and parameter splatting).
+  - Specialized archival mirror redundancy remains accessible directly within `tools/bootstrap/bootstrap_documentation.ps1 -AllSources` without cluttering the primary repository orchestrator.
+- **Architectural Rationale & Trade-Offs**:
+  - Keeps the root `bootstrap.ps1` focused cleanly on the 4 primary tiers (`-Sources`, `-Graphify`, `-Rag`, `-Documentation`) and documentation processing (`-Markdown`).
+- **Verification & Invariants**:
+  - Verified `bootstrap.ps1` usage output.
+  - Passed `python tools/harness/pre_flight.py --quick`.
