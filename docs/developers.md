@@ -14,7 +14,6 @@ This document serves as the primary technical entry point for building, testing,
   - [WebAssembly Browser Canvas (Trunk)](#webassembly-browser-canvas-trunk)
 - [2. External Reference Sources & Verification Testbeds](#2-external-reference-sources-verification-testbeds)
   - [Pinned Upstream Sources Summary](#pinned-upstream-sources-summary)
-  - [Reference Sources Lifecycle & Extraction](#reference-sources-lifecycle-steps)
 - [3. Documentation Architecture & Reference Literature](#3-documentation-architecture-reference-literature)
   - [Why Documentation is Critical (Human, AI & RAG)](#why-documentation-is-critical-human-ai-rag)
   - [In-Repository Specifications (Committed to Git)](#in-repository-specifications-committed-to-git)
@@ -94,18 +93,8 @@ Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed
 | **vAmiga Test Suite (vAmigaTS)** | `ref_src/vAmigaTS/` | [dirkwhoffmann/vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) | **`master`** (2,077 test directories) |
 | **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.20+** (`AmigaTestKit.adf`) |
 
-<a id="reference-sources-lifecycle-steps"></a><a id="automation-lifecycle-steps"></a>
-### Reference Sources Lifecycle & Extraction
-
-When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 -Sources`, the automated bootstrapper executes the following lifecycle steps:
-
-1. **Zip Archive Expansion:** Scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
-2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
-3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
-4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
-
 > [!TIP]
-> Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: Bootstrapping & External Reference Provisioning](#4-bootstrapping-overview-toolsbootstrapbootstrapps1)** (`.\tools\bootstrap\bootstrap.ps1 -Sources`).
+> Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: Bootstrapping & External Reference Provisioning](#sources-provisioning-sources)** (`.\tools\bootstrap\bootstrap.ps1 -Sources`).
 
 ---
 
@@ -227,7 +216,7 @@ To provision every external reference asset, knowledge base, and tooling index i
 
 Each provisioning phase can also be executed independently on demand:
 
-<a id="automated-provisioning-toolsbootstrapbootstrap_sourcesps1"></a><a id="sources-provisioning-sources"></a>
+<a id="automated-provisioning-toolsbootstrapbootstrap_sourcesps1"></a><a id="sources-provisioning-sources"></a><a id="reference-sources-lifecycle-steps"></a><a id="automation-lifecycle-steps"></a>
 #### 1. Verification Testbeds Provisioning (`-Sources`)
 
 Automates downloading, unpacking, decompressing, and validating external test assets and reference code:
@@ -236,11 +225,14 @@ Automates downloading, unpacking, decompressing, and validating external test as
 .\tools\bootstrap\bootstrap.ps1 -Sources
 ```
 
-**What It Does:**
-- Scans and decompresses Tom Harte M68000 silicon vectors (`SingleStepTests-680x0`, 124 test suites) using native .NET `GZipStream`.
-- Canonicalizes decompressed JSON files into `ref_src/SingleStepTests-680x0/68000/v1/`.
-- Verifies the presence of `ref_src/vAmiga/` (C++ reference emulator), `ref_src/vAmigaTS/` (2,077 golden viewport tests), and `tools/AmigaTestKit/AmigaTestKit.adf`.
-- Full details on extraction rules and directory structure are documented in [Chapter 2: Reference Sources Lifecycle & Extraction](#reference-sources-lifecycle-steps).
+##### Automation Lifecycle Steps
+
+When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 -Sources`, the automated bootstrapper executes the following lifecycle steps:
+
+1. **Zip Archive Expansion:** Scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
+2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
+3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
+4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
 
 > [!TIP]
 > **Fine-Grained Execution:** When you need direct execution, testing, or pipeline debugging without invoking the coordinator wrapper, invoke the dedicated sources bootstrapper directly:
