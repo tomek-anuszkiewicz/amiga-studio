@@ -208,7 +208,7 @@ When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 
 > .\tools\bootstrap\bootstrap_sources.ps1
 > ```
 
-<a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a><a id="archival-documentation-provisioning-documentation"></a>
+<a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a><a id="archival-documentation-provisioning-documentation"></a><a id="upstream-archival-reference-documents"></a><a id="multi-source-fallback-matrix-error-resilience"></a><a id="multi-source-fallback-matrix--error-resilience"></a>
 #### 2. Archival Reference Documentation Provisioning (`-Documentation`)
 
 Provisions original PDF scans, OEM technical manuals, and archival web articles for developers inspecting raw schematics or re-running OCR pipelines:
@@ -216,32 +216,6 @@ Provisions original PDF scans, OEM technical manuals, and archival web articles 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Documentation
 ```
-
-<a id="upstream-archival-reference-documents"></a>
-##### Upstream Archival Reference Documents
-
-| Document ID | Reference Asset | Source Format & Details | Upstream Archive |
-| :--- | :--- | :--- | :--- |
-| **`hrm`** | Hardware Reference Manual | 405-page, 600 DPI PDF scan (~30 MB) | Internet Archive (1989 2nd Ed) |
-| **`trm`** | A500 A2000 Technical Reference Manual | 308-page, 200 DPI OEM PDF scan (~30 MB) | Internet Archive (1987 OEM) |
-| **`prm`** | 68000 Programmer's Reference Manual | 646-page vector PDF (~4.5 MB) | Internet Archive / Bitsavers |
-| **`um`** | 68000 User's Manual | 216-page, 601 DPI PDF scan (~10 MB) | Internet Archive / Bitsavers (Rev 8) |
-| **`prefetch`** | Instruction Prefetch on the M68000 | Original HTML article (~20 KB) | Pasti Project / Wayback Machine |
-| **`undocumented`** | Undocumented Features (Achtung! Amiga) | 16-page multi-page HTML crawl | winnicki.net / Wayback Machine |
-
-<a id="multi-source-fallback-matrix-error-resilience"></a><a id="multi-source-fallback-matrix--error-resilience"></a>
-##### Multi-Source Fallback Matrix & Error Resilience
-
-To guarantee download resilience against link rot, server downtime, and rate limits, every reference item is backed by **2–3 independent, verified online mirrors**:
-
-| Document | Primary Mirror (Verified 200 OK) | Secondary Mirror (Verified 200 OK) | Tertiary / Fallback Mirror |
-| :--- | :--- | :--- | :--- |
-| **`Hardware Reference Manual`** | [Internet Archive (1989 2nd Ed OCS PDF, 405p 600 DPI)](https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf) | [Internet Archive (1985 1st Ed PDF)](https://archive.org/download/Amiga_Hardware_Reference_Manual_1985_Commodore/Amiga_Hardware_Reference_Manual_1985_Commodore.pdf) | Manual local file drop |
-| **`A500 A2000 Technical Reference Manual`** | [Internet Archive (1987 OEM Clean Scan PDF, 308p 200 DPI)](https://archive.org/download/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf) | [Internet Archive (1987 OEM Alternate Scan PDF, 309p)](https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual.pdf) | Manual local file drop |
-| **`68000 Programmer's Reference Manual`** | [Internet Archive (M68000PM/AD Rev 1 Vector PDF, 646p)](https://archive.org/download/M68000PRM/M68000PRM.pdf) | [Bitsavers (M68000PM/AD Rev 1 1992 PDF)](https://archive.org/download/bitsavers_motorola68ogrammersReferenceManual1992_2394181/M68000PM_AD_Rev_1_Programmers_Reference_Manual_1992.pdf) | Manual local file drop |
-| **`68000 User's Manual`** | [Internet Archive / Bitsavers (Rev 8 PDF, 601 DPI 216p)](https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive (Rev 8 Alternate Item)](https://archive.org/download/bitsavers_motorola6868000MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive / Bitsavers (Family Reference 1988, 608p)](https://archive.org/download/bitsavers_motorola68rence1988_23248083/M68000_Family_Reference_1988.pdf) |
-| **`Instruction Prefetch`** | [Pasti Project (Original Live Web)](http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2021 Snapshot)](https://web.archive.org/web/20210211153835id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2019 Snapshot)](https://web.archive.org/web/20190317072535id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) |
-| **`Undocumented features`** | [Achtung! Amiga (Original Live Web)](https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2022 Snapshot)](https://web.archive.org/web/20220330190533id_/https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2016 Snapshot)](https://web.archive.org/web/20160410052327id_/http://www.winnicki.net/amiga/achtung/) |
 
 <a id="multi-page-web-crawling-engine"></a>
 ##### Multi-Page Web Crawling Engine
