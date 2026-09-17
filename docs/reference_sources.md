@@ -1,4 +1,4 @@
-# External Sources, Testbeds & Reference Repositories Guide
+# External Reference Sources, Testbeds & Repositories Guide
 
 This document catalogs all external reference source trees, physical hardware silicon test suites, and diagnostic media located under `ref_src/` and `tools/`. It specifies their upstream origins, pinned release versions, directory contents, and how they are provisioned and verified by the automated bootstrapper.
 

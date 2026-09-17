@@ -6426,6 +6426,19 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:07 CEST] — Renamed docs/sources.md to docs/reference_sources.md
+- **Affected Subsystems**:
+  - `docs/reference_sources.md` (renamed from `docs/sources.md` via `git mv`)
+  - `README.md` (updated documentation index link to `docs/reference_sources.md`)
+- **What Was Changed (The Concrete Reality)**:
+  - Renamed `docs/sources.md` to `docs/reference_sources.md` using `git mv`.
+  - Updated document title and root `README.md` link to *External Reference Sources & Testbeds Guide*.
+- **Architectural Rationale & Trade-Offs**:
+  - Forms a symmetrical pair of reference guides: [`docs/reference_documentation.md`](docs/reference_documentation.md) for technical manuals and literature vs [`docs/reference_sources.md`](docs/reference_sources.md) for external source trees, silicon vectors, and test suites.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 
