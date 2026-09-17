@@ -9,6 +9,21 @@ This document records the complete architectural philosophy, evolutionary histor
 
 ---
 
+## Table of Contents
+
+1. [Project Genesis: Groundwork, Reference Ingestion & The Myth vs. Reality of AI Emulation](#1-project-genesis-groundwork-reference-ingestion--the-myth-vs-reality-of-ai-emulation)
+2. [Foundational Architecture: Cycle-Exact Mechanics, Rejecting the "God Bus" & Rust Sympathy](#2-foundational-architecture-cycle-exact-mechanics-rejecting-the-god-bus--rust-sympathy)
+3. [Modular Workspace Architecture & Two-Tier Hardware Decomposition](#3-modular-workspace-architecture--two-tier-hardware-decomposition)
+4. [Physical Circuit Simulation: Standalone BLEP Audio Synthesis](#4-physical-circuit-simulation-standalone-blep-audio-synthesis)
+5. [The 6-Stage Evolution of the M68000 CPU Core](#5-the-6-stage-evolution-of-the-m68000-cpu-core)
+6. [CPU Opcode Benchmarking & Performance Profiling](#6-cpu-opcode-benchmarking--performance-profiling)
+7. [Subsystem Evolution: The Developer Studio GUI & Debugger Engine](#7-subsystem-evolution-the-developer-studio-gui--debugger-engine)
+8. [Architectural Rules, Anti-Tamper Policies & The Living Definition of Done](#8-architectural-rules-anti-tamper-policies--the-living-definition-of-done)
+9. [The Ultimate Goal: The Clean-Room Re-Generation Experiment](#9-the-ultimate-goal-the-clean-room-re-generation-experiment)
+10. [Living Chronological Engineering Log & Evolutionary Change History](#10-living-chronological-engineering-log--evolutionary-change-history)
+
+---
+
 ## 1. Project Genesis: Groundwork, Reference Ingestion & The Myth vs. Reality of AI Emulation
 
 ### The Pre-Rust Phase: Physical Schematics, LTspice & Analog Audio Synthesis (Late August 2026)
