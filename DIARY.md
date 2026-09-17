@@ -6589,6 +6589,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:38 CEST] — Relocated Knowledge Retrieval to docs/developers.md & Removed docs/ai_agents.md
+- **Affected Subsystems**:
+  - `docs/ai_agents.md` (deleted redundant document)
+  - `docs/developers.md` (added Section 4 covering RAG and Graphify knowledge retrieval)
+  - `README.md` (pruned `docs/ai_agents.md` link from Section 3)
+- **What Was Changed (The Concrete Reality)**:
+  - Relocated Section 2 of `ai_agents.md` (Domain Hardware RAG & AST Graphify Knowledge Retrieval) into Section 4 of [`docs/developers.md`](docs/developers.md).
+  - Deleted [`docs/ai_agents.md`](docs/ai_agents.md) via `git rm`, removing redundant descriptions of rules and skills already maintained directly in `.agents/rules/` and `.agents/skills/`.
+  - Pruned the corresponding link from Section 3 in [`README.md`](README.md).
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates duplicate documentation sprawl. Rules and skills are natively defined and indexed under `.agents/` and governed by `AGENTS.md`. Developers searching for RAG and Graphify tooling find them directly in the consolidated developer guide.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates (0 broken links).
+
 
 
 

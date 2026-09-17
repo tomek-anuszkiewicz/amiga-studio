@@ -69,8 +69,7 @@ For compilation instructions, bootstrapping options, test suites, and technical 
 
 ## 3. Documentation Cheat Sheet & Technical Index
 
-Architectural deep dives, research papers, and AI pair-programming specifications:
+Architectural deep dives and engineering methodology specifications:
 
 - [**Core Architecture & Hardware Execution Model**](docs/architecture.md): Color Clock phases (CCK1/CCK2), Gary bus arbitration, Agnus DMA contention, circuit simulation, Big-Endian invariance, and decoupled ownership.
 - [**How This Emulator Was Written: Pair-Programming with an AI Agent**](docs/how_this_emulator_was_written.md): Engineering methodology, zero-code human steering, architectural sparring, minimal frame prototyping, and the evolutionary harness.
-- [**AI Agent Engineering & Pair-Programming Guide**](docs/ai_agents.md): Autonomous AI agent pairing guidelines, rules adherence, RAG knowledge base, Graphify AST, and specialized skills.
