@@ -6123,3 +6123,15 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py --quick` passed cleanly (100% format, AGENTS.md <= 14k, test coupling, API coverage).
   - `cargo test -p test_runner --test test_architecture_rules` passed 19/19 tests (including rule size limits, zero panics, path privacy).
+
+---
+
+### [2026-09-17 19:46 CEST] — Tooling & Verification: Add Test Runner & Automated Regression Diffing Workflow
+- **Affected Subsystems**:
+  - `.agents/skills/test-runner/SKILL.md`: Standardized execution runbook across testing tiers (Tier 1 unit, Tier 2 machine loop, Tier 3 silicon vectors, Tier 4 vAmigaTS), establishing snapshots in `.test_results/` and automated regression diffing (`--diff`, `--summary`).
+  - `.agents/workflows/test-runner.md`: Direct slash-command workflow (`/test-runner`) supporting zero-parameter regression diffing and targeted test execution.
+- **What Was Changed (The Concrete Reality)**:
+  - Created a decoupled testing execution engine separating test running/telemetry from the iterative problem-solving and synthesis logic in `integration-test-sprint`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py --quick` passed cleanly.
+  - Architecture test suite passed cleanly.
