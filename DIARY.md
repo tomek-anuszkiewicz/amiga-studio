@@ -6110,3 +6110,16 @@ Every future modification or implementation task must append an entry following 
   - Junction audit script verified `LinkType=''` across all asset paths in `Amiga`, `amiga-bootstrap`, and `Amiga-OCS`.
   - Quality gates passed cleanly: `python tools/harness/pre_flight.py` (Formatting, AGENTS.md size limit, API coverage, architecture rules).
   - CPU test suite passed: `cargo test -p m68000` (100% pass).
+
+---
+
+### [2026-09-17 19:22 CEST] — Architecture & Testing: Formalize Integration Test Sprint & Anti-Patchwork Protocol
+- **Affected Subsystems**:
+  - `.agents/skills/integration-test-sprint/SKILL.md`: New dedicated skill formalizing the **4-Iteration Cascading Verification Protocol** and the **Post-Discovery Architecture Cleanup ("Anti-Patchwork" Protocol)**. Enforces zero-parameter sprint assessment, test filtering (AGA/ECS, 68020+, analog captures), 2-3 attempt time-boxing per cluster, and git-diff extraction to synthesize changes into a single physical hardware law.
+  - `.agents/workflows/integration-test-sprint.md`: New slash-command workflow (`/integration-test-sprint`) for executing integration sweeps and synthesis directly from the IDE chat UI without arguments.
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the previously Obsidian-only integration testing protocol into actionable agent skills and workflows.
+  - Defined the step-by-step procedure to discover failure clusters, unlock cascading passes, prevent rabbit holes with the 2-3 attempt rule, and eliminate exploratory `if` branches in favor of unified first-principles hardware models.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py --quick` passed cleanly (100% format, AGENTS.md <= 14k, test coupling, API coverage).
+  - `cargo test -p test_runner --test test_architecture_rules` passed 19/19 tests (including rule size limits, zero panics, path privacy).
