@@ -1258,5 +1258,23 @@ Every future modification or implementation task must append an entry following 
   - Successfully compiled all Python scripts with `python -m py_compile`.
   - Verified CLI `--help` output across `pipeline.py`, `generate_properties.py`, `refine_name.py`, and `link_toc.py`.
   - Executed end-to-end unit and integration test in temporary directory verifying property inference, YAML serialization, and asset synchronization.
+### [2026-09-17 15:05 CEST] — Config-Driven Typographic Padding in Asset Extraction (Fixing Table Boundary Defect)
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/03_build_raw_stream/extract_initial_assets.py`
+  - `.agents/skills/pdf-to-markdown/stages/03_build_raw_stream/build_stream.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Replaced relative percentage padding (`pad_y = h * padding_ratio`, which previously inflated tall tables by 30+ points and reached into the preceding table caption text) with an absolute typographic padding derived directly from the configured DPI and physical letter height.
+  - Formulated typographic half-letter height padding:
+    - Typical body font size in technical manuals = 10 pt in standard 72 pt/in PostScript space ($H = \frac{10}{72}\text{ inches}$).
+    - Half-letter padding in pixels at configured DPI: $\text{padding\_px} = \text{round}(0.5 \times \frac{10}{72} \times \text{dpi})$ (21 px at 300 DPI).
+    - Half-letter padding in PDF points: $\text{padding\_pt} = \text{padding\_px} \times \frac{72}{\text{dpi}} \approx 5.04\text{ pt}$.
+  - Applied `padding_pt` symmetrically to both tables and graphics for `fitz.Rect` clip bounding boxes.
+  - Used `padding_px` for PIL fallback cropping and passed configured `dpi` to `page.get_pixmap(dpi=dpi, clip=clip_rect)`.
+  - Updated `build_stream.py` to forward `dpi = config.get("render", {}).get("dpi", 300)` to `extract_assets_for_nodes`.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates the root cause of duplicated table titles where bloated table crops visually captured the printed caption text above the table, triggering Vision LLMs to emit duplicate `<caption>` or `### Table` headers.
+  - Maintains strict visual breathing room (approx half a letter height) around rules and borders without ballooning on large multi-line tables.
+- **Verification & Invariants**:
+  - Tested asset crop extraction on Page 20 (`node_00280`), verifying the crop starts cleanly at the top border rule ($Y \approx 91\text{ pt}$) and completely excludes the Table 1-1 caption text above ($Y \le 90.17\text{ pt}$).
+  - Tested PIL and PyMuPDF import and execution syntax.
   - Passed `python tools/harness/pre_flight.py --quick`.
-

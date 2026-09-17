@@ -13,7 +13,14 @@ import pymupdf
 from PIL import Image
 
 
-def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: float = 0.10, assets_dir: Path = None, rel_prefix: str = None) -> list:
+def extract_assets_for_nodes(
+    workspace_dir: Path,
+    nodes: list,
+    padding_ratio: float = None,
+    assets_dir: Path = None,
+    rel_prefix: str = None,
+    dpi: int = 300,
+) -> list:
     if assets_dir is None:
         assets_dir = workspace_dir / "03_build_raw_stream" / "assets"
     if rel_prefix is None:
@@ -25,7 +32,15 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
     pages_dir = workspace_dir / "01_preprocess"
     assets_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"[*] Extracting visual and text assets for tables & graphics (padding: {int(padding_ratio*100)}%)...")
+    # Typographic padding derivation:
+    # Standard book body text font size is 10 pt in standard 72 pt/inch PostScript space.
+    # Letter height in inches = 10.0 / 72.0 inches.
+    # Half-letter height padding in pixels at configured DPI:
+    letter_height_inches = 10.0 / 72.0
+    padding_px = round(0.5 * letter_height_inches * dpi)  # 21 pixels at 300 DPI
+    padding_pt = padding_px * 72.0 / dpi                   # ~5.04 points at 300 DPI
+
+    print(f"[*] Extracting visual and text assets for tables & graphics (typographic padding: {padding_pt:.2f} pt / {padding_px} px at {dpi} DPI)...")
 
     # Group nodes by page for efficient PDF access
     nodes_by_page = {}
@@ -52,16 +67,9 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
             node_id = node["node_id"]
             bbox = node.get("bbox", [0, 0, 100, 100]) # [x0, y0, x1, y1] in points
 
-            # Calculate padded bounding box
-            w = bbox[2] - bbox[0]
-            h = bbox[3] - bbox[1]
-            if node.get("type") == "graphic":
-                # Graphic bounding boxes are already measured to artwork edges; apply minimal padding
-                pad_x = min(w * 0.02, 6.0)
-                pad_y = min(h * 0.02, 6.0)
-            else:
-                pad_x = w * padding_ratio
-                pad_y = h * padding_ratio
+            # Calculate padded bounding box using absolute typographic half-letter padding
+            pad_x = padding_pt
+            pad_y = padding_pt
 
             padded_bbox = [
                 max(0.0, bbox[0] - pad_x),
@@ -112,25 +120,25 @@ def extract_assets_for_nodes(workspace_dir: Path, nodes: list, padding_ratio: fl
                 except Exception:
                     has_vector = False
 
-            # 3. Extract Raster PNG Clip (at 300 DPI) with safety margin
+            # 3. Extract Raster PNG Clip (at configured DPI) with safety margin
             png_filename = f"asset_{node_id}.png"
             png_path = assets_dir / png_filename
             if page and not clip_rect.is_empty and clip_rect.width > 2 and clip_rect.height > 2:
                 try:
-                    clip_pix = page.get_pixmap(dpi=300, clip=clip_rect)
+                    clip_pix = page.get_pixmap(dpi=dpi, clip=clip_rect)
                     if clip_pix.width > 0 and clip_pix.height > 0:
                         clip_pix.save(str(png_path))
                         node["png_path"] = f"{rel_prefix}/{png_filename}"
                 except Exception as err:
                     print(f"  [!] Warning: Could not save pixmap for node {node_id}: {err}")
             elif page_pixmap:
-                # Fallback to cropping raster image
+                # Fallback to cropping raster image using absolute pixel padding
                 pw, ph = page_pixmap.size
                 norm = node.get("bbox_norm", [0, 0, 1, 1])
-                x0 = int(max(0.0, norm[0] - padding_ratio) * pw)
-                y0 = int(max(0.0, norm[1] - padding_ratio) * ph)
-                x1 = int(min(1.0, norm[2] + padding_ratio) * pw)
-                y1 = int(min(1.0, norm[3] + padding_ratio) * ph)
+                x0 = int(max(0.0, norm[0] * pw - padding_px))
+                y0 = int(max(0.0, norm[1] * ph - padding_px))
+                x1 = int(min(float(pw), norm[2] * pw + padding_px))
+                y1 = int(min(float(ph), norm[3] * ph + padding_px))
                 if x1 > x0 and y1 > y0:
                     try:
                         cropped_img = page_pixmap.crop((x0, y0, x1, y1))
