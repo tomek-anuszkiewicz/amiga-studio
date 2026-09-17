@@ -70,7 +70,7 @@ def process_prose(workspace_dir: Path, config: dict):
     formatted_count = 0
 
     def _format_prose_task(task):
-        group_indices, n_type, raw_text, png_path = task
+        c_file, group_indices, n_type, raw_text, png_path = task
         full_prompt = (
             f"{base_prompt}\n\n"
             f"## Node Type: {n_type}\n"
@@ -88,10 +88,6 @@ def process_prose(workspace_dir: Path, config: dict):
             return c_file, group_indices, rendered_text + "\n\n"
         else:
             return c_file, group_indices, raw_text + "\n\n"
-
-    def _format_prose_task_wrapper(task):
-        c_file, group_indices, n_type, raw_text, png_path = task
-        return _format_prose_task((c_file, group_indices, n_type, raw_text, png_path))
 
     chapters = {}
     all_llm_tasks = []
@@ -186,7 +182,7 @@ def process_prose(workspace_dir: Path, config: dict):
     if all_llm_tasks:
         print(f"[*] Formatting {len(all_llm_tasks)} prose/code/toc batches across {len(chapters)} chapters (concurrency={concurrency})...")
         with ThreadPoolExecutor(max_workers=min(len(all_llm_tasks), concurrency)) as executor:
-            results = list(executor.map(_format_prose_task_wrapper, all_llm_tasks))
+            results = list(executor.map(_format_prose_task, all_llm_tasks))
 
         for c_file, group_indices, rendered_md in results:
             nodes = chapters[c_file]

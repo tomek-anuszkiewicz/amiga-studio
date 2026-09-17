@@ -102,7 +102,7 @@ def process_graphics(workspace_dir: Path, config: dict):
     sidecar_count = 0
 
     def _transform_graphic_task(task):
-        idx, node, has_dedicated_caption = task
+        c_file, idx, node, has_dedicated_caption = task
         node_id = node.get("node_id", "asset")
         page_num = node.get("page", 1)
         raw_text = node.get("raw_text", "")
@@ -133,7 +133,7 @@ def process_graphics(workspace_dir: Path, config: dict):
         if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:
             mermaid_res = gemini.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path, stage="08_transform_graphics")
             if mermaid_res:
-                return idx, {
+                return c_file, idx, {
                     "rendered_markdown": mermaid_res.strip() + "\n\n",
                     "prune_image": True,
                     "sidecar_name": None,
@@ -149,7 +149,7 @@ def process_graphics(workspace_dir: Path, config: dict):
             full_ascii_prompt = f"{ascii_prompt}\n\nCaption Guideline: {caption_hint}\n\nExtracted Labels:\n{raw_text}"
             ascii_res = gemini.generate_vision(full_ascii_prompt, png_path, stage="08_transform_graphics")
             if ascii_res:
-                return idx, {
+                return c_file, idx, {
                     "rendered_markdown": ascii_res.strip() + "\n\n",
                     "prune_image": True,
                     "sidecar_name": None,
