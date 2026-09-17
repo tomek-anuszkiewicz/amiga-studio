@@ -94,14 +94,35 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
 
     classifications = gemini.generate_json(prompt, image_path=png_path if png_path and png_path.exists() else None, stage="02_page_segmentation")
     type_map = {}
-    if isinstance(classifications, list):
-        for item in classifications:
-            if isinstance(item, dict) and "idx" in item:
-                type_map[item["idx"]] = (
-                    item.get("type", "prose"),
-                    item.get("heading_level"),
-                    item.get("graphic_bbox_norm")
-                )
+    
+    # Check if Gemini flagged this entire page as a book cover or full-page illustration with overlaid text
+    if isinstance(classifications, dict):
+        if classifications.get("is_full_page_graphic", False):
+            graphic_caption = classifications.get("graphic_caption") or "Book Cover Illustration"
+            caption_text = f"Figure: {graphic_caption}" if not graphic_caption.lower().startswith("figure") else graphic_caption
+            print(f"[*] Page {page_num}: Detected full-page cover graphic ('{graphic_caption}'). Suppressing individual text blocks.")
+            return [{
+                "segment_id": f"page_{page_num:04d}_seg_001",
+                "page": page_num,
+                "type": "graphic",
+                "bbox": [0.0, 0.0, round(page_w, 2), round(page_h, 2)],
+                "bbox_norm": [0.0, 0.0, 1.0, 1.0],
+                "heading_level": None,
+                "raw_text": caption_text
+            }]
+        items = classifications.get("segments", [])
+    elif isinstance(classifications, list):
+        items = classifications
+    else:
+        items = []
+
+    for item in items:
+        if isinstance(item, dict) and "idx" in item:
+            type_map[item["idx"]] = (
+                item.get("type", "prose"),
+                item.get("heading_level"),
+                item.get("graphic_bbox_norm")
+            )
 
     segments = []
     seg_counter = 1

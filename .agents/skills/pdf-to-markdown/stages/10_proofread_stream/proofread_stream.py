@@ -53,6 +53,26 @@ def proofread_title_llm(raw_title: str, gemini: GeminiClient) -> str:
     return raw_title
 
 
+def determine_section_title_llm(raw_title: str, raw_slug: str, sample_text: str, gemini: GeminiClient) -> str:
+    """Queries Gemini to dynamically determine the canonical, publication-grade title based on section content."""
+    prompt = (
+        "You are an expert technical book editor. Determine the canonical, professional title for this section "
+        "of a technical manual based on its actual content.\n\n"
+        f"Preliminary Title: {raw_title}\n"
+        f"Section Slug: {raw_slug}\n"
+        f"Content Excerpt:\n```markdown\n{sample_text[:1500]}\n```\n\n"
+        "Return ONLY the clean canonical title string (e.g. 'Preface and Front Matter', 'Table of Contents', 'Publication Colophon') "
+        "without quotes, markdown formatting, or explanation:"
+    )
+    try:
+        c_title = gemini.generate_text(prompt, stage="10_proofread_stream").strip().strip('"').strip("'")
+        if c_title and len(c_title) < 100:
+            return c_title
+    except Exception as e:
+        print(f"[!] Warning: LLM title determination failed for '{raw_title}': {e}")
+    return raw_title
+
+
 def proofread_node_text(text: str, gemini: GeminiClient, base_prompt: str) -> str:
     if not text or not text.strip():
         return text
@@ -76,6 +96,7 @@ def process_proofread_stream(
 ):
     output_dir.mkdir(parents=True, exist_ok=True)
     out_assets = output_dir / "assets"
+    out_assets.mkdir(parents=True, exist_ok=True)
 
     # Clean previous outputs in output_dir
     for old_json in output_dir.glob("*.json"):
@@ -122,12 +143,13 @@ def process_proofread_stream(
             workspace_dir / "assets",
         ]:
             if cand.exists():
-        manifest_path = input_dir / "chapters_manifest.json"
+                src_assets = cand
+                break
 
-    manifest = []
-    if manifest_path.exists():
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
+    if src_assets and src_assets.exists():
+        for asset_file in src_assets.glob("*"):
+            if asset_file.is_file():
+                shutil.copy2(asset_file, out_assets / asset_file.name)
 
     gemini = GeminiClient(config)
     prompt_file = Path(__file__).resolve().parent / "prompt.md"
@@ -142,9 +164,28 @@ def process_proofread_stream(
 
         def _proofread_single_title(entry):
             raw_title = entry.get("title", "")
-            if raw_title:
-                return entry["index"], proofread_title_llm(raw_title, gemini)
-            return entry["index"], raw_title
+            raw_slug = entry.get("slug", "")
+            idx = entry.get("index", 0)
+            key = (idx, raw_slug)
+
+            # Sample text from chapter JSON to assist dynamic title determination
+            sample_text = ""
+            json_candidate = input_dir / f"{idx:02d}_{raw_slug}.json"
+            if not json_candidate.exists():
+                json_candidate = workspace_dir / entry.get("json_file", "")
+            if json_candidate.exists():
+                try:
+                    with open(json_candidate, "r", encoding="utf-8") as f:
+                        sample_nodes = json.load(f)
+                    sample_text = " ".join([n.get("raw_text", "") or n.get("rendered_markdown", "") for n in sample_nodes[:10]])
+                except Exception:
+                    pass
+
+            if idx == 0 or raw_slug in ("preface", "toc"):
+                return key, determine_section_title_llm(raw_title, raw_slug, sample_text, gemini)
+            elif raw_title:
+                return key, proofread_title_llm(raw_title, gemini)
+            return key, raw_title
 
         with ThreadPoolExecutor(max_workers=min(len(manifest), concurrency)) as executor:
             title_results = list(executor.map(_proofread_single_title, manifest))
@@ -175,8 +216,8 @@ def process_proofread_stream(
         with open(json_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        # 1. Proofread and correct chapter title
-        corrected_title = title_map.get(idx, raw_title)
+        # 1. Proofread and correct chapter title using composite key
+        corrected_title = title_map.get((idx, raw_slug), raw_title)
 
         # 2. Harmonize with primary heading node and update node rendered_markdown
         ch_sub = re.match(r"^chapter\s+\d+[:\s]+(.*)$", corrected_title, re.IGNORECASE)

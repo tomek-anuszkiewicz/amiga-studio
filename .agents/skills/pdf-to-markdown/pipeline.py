@@ -443,11 +443,12 @@ def main():
 
     # Snapshot config into workspace
     workspace_config_path = workspace_dir / "config.yaml"
-    try:
-        shutil.copyfile(config_source_path, workspace_config_path)
-    except Exception as e:
-        print(f"[!] Error snapshotting config to workspace {workspace_config_path}: {e}", file=sys.stderr)
-        sys.exit(1)
+    if config_source_path.resolve() != workspace_config_path.resolve():
+        try:
+            shutil.copyfile(config_source_path, workspace_config_path)
+        except Exception as e:
+            print(f"[!] Error snapshotting config to workspace {workspace_config_path}: {e}", file=sys.stderr)
+            sys.exit(1)
     config_path = workspace_config_path
 
     output_dir = None

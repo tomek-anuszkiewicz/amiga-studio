@@ -13,7 +13,10 @@ Typical outcomes:
 - If the file primarily contains the Table of Contents:
   - `title`: `"Table of Contents"`
   - `slug`: `"table_of_contents"`
-- If the file contains Preface and Table of Contents:
+- If the file primarily contains book cover illustration, publication notices, copyright colophon, or preface:
+  - `title`: `"Front Matter"` (or `"Preface and Front Matter"`)
+  - `slug`: `"front_matter"`
+- If the file combines Front Matter and Table of Contents:
   - `title`: `"Table of Contents and Front Matter"`
   - `slug`: `"contents_and_front_matter"`
 - If the file is purely an introductory chapter:

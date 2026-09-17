@@ -94,6 +94,12 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
 
     print(f"[*] Emitting {len(manifest)} Markdown files from {chapters_dir.name} to {output_dir}...")
 
+    # Assert uniqueness of target Markdown filenames to prevent silent overwrites
+    target_names = [e.get("target_md_file") for e in manifest if e.get("target_md_file")]
+    if len(target_names) != len(set(target_names)):
+        duplicates = [name for name in target_names if target_names.count(name) > 1]
+        raise ValueError(f"Stage 11 Collision Error: Duplicate target Markdown filenames detected in manifest: {set(duplicates)}")
+
     for entry in manifest:
         idx = entry["index"]
         slug = entry["slug"]

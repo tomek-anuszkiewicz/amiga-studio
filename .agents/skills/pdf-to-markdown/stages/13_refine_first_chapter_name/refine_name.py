@@ -112,36 +112,67 @@ def process_first_chapter_refinement(
         for f in md_files:
             shutil.copy2(f, output_dir / f.name)
 
-    target_first_file = output_dir / first_file.name
-    new_path = output_dir / new_filename
+    # Target opening files (e.g. prefix 00: Front Matter, Table of Contents)
+    all_out_md = sorted(list(output_dir.glob("*.md")))
+    opening_targets = [f for f in all_out_md if re.match(r"^00\b", f.stem)]
+    if not opening_targets and all_out_md:
+        opening_targets = [all_out_md[0]]
 
-    print(f"[*] Analyzing opening chapter: {first_file.name}")
-    print(f"    Resolved canonical title: \"{new_title}\"")
-    print(f"    Resolved canonical slug : \"{new_slug}\" -> {new_filename}")
+    for target_file in opening_targets:
+        old_stem = target_file.stem
+        match_prefix = re.match(r"^(\d+)", old_stem)
+        prefix = match_prefix.group(1) if match_prefix else "00"
 
-    # Update YAML frontmatter
-    updated_content = update_frontmatter_title(content, new_title)
+        with open(target_file, "r", encoding="utf-8") as f:
+            content = f.read()
 
-    if new_path != target_first_file:
-        with open(new_path, "w", encoding="utf-8") as f:
-            f.write(updated_content)
-        if target_first_file.exists():
-            target_first_file.unlink()
-        print(f"[+] Saved canonical file: {new_filename}")
+        full_prompt = (
+            f"{base_prompt}\n\n"
+            f"Preliminary File Name: {target_file.name}\n\n"
+            f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
+        )
 
-        # Update cross-file wikilinks in output_dir
-        new_stem = new_path.stem
-        for other_file in output_dir.glob("*.md"):
-            with open(other_file, "r", encoding="utf-8") as f:
-                txt = f.read()
-            if f"[[{old_stem}" in txt:
-                updated_txt = txt.replace(f"[[{old_stem}", f"[[{new_stem}")
-                with open(other_file, "w", encoding="utf-8") as f:
-                    f.write(updated_txt)
-                print(f"    Updated wikilinks in {other_file.name} to point to {new_stem}")
-    else:
-        with open(target_first_file, "w", encoding="utf-8") as f:
-            f.write(updated_content)
+        parsed = gemini.generate_json(full_prompt, stage="13_refine_chapter")
+        if not isinstance(parsed, dict) or "title" not in parsed or "slug" not in parsed:
+            print(f"[!] Warning: Gemini did not return valid title and slug JSON for {target_file.name}: {parsed}")
+            continue
+
+        new_title = str(parsed["title"]).strip().strip('"')
+        new_slug = str(parsed["slug"]).strip().strip('"')
+
+        clean_title_name = re.sub(r'[:/\\|]', ' - ', new_title)
+        clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
+        clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
+        new_filename = f"{prefix} - {clean_title_name}.md" if clean_title_name else f"{prefix}_{new_slug}.md"
+        new_path = output_dir / new_filename
+
+        print(f"[*] Analyzing opening chapter: {target_file.name}")
+        print(f"    Resolved canonical title: \"{new_title}\"")
+        print(f"    Resolved canonical slug : \"{new_slug}\" -> {new_filename}")
+
+        # Update YAML frontmatter
+        updated_content = update_frontmatter_title(content, new_title)
+
+        if new_path != target_file:
+            with open(new_path, "w", encoding="utf-8") as f:
+                f.write(updated_content)
+            if target_file.exists():
+                target_file.unlink()
+            print(f"[+] Saved canonical file: {new_filename}")
+
+            # Update cross-file wikilinks in output_dir
+            new_stem = new_path.stem
+            for other_file in output_dir.glob("*.md"):
+                with open(other_file, "r", encoding="utf-8") as f:
+                    txt = f.read()
+                if f"[[{old_stem}" in txt:
+                    updated_txt = txt.replace(f"[[{old_stem}", f"[[{new_stem}")
+                    with open(other_file, "w", encoding="utf-8") as f:
+                        f.write(updated_txt)
+                    print(f"    Updated wikilinks in {other_file.name} to point to {new_stem}")
+        else:
+            with open(target_file, "w", encoding="utf-8") as f:
+                f.write(updated_content)
 
     print(f"[+] Stage 13 complete. Output vault finalized in {output_dir}.")
 

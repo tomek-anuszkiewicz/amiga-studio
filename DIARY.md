@@ -1442,3 +1442,26 @@ Every future modification or implementation task must append an entry following 
   - Verified on Section 3 Table 3-1: Pages 73
   - 74
   - and 75 merged into a single 368-line table with only one primary caption and zero redundant continuation headers.
+---
+
+### [2026-09-17 17:21 CEST] — Detect Full-Page Cover Graphics and Resolve Front Matter Collision
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `stages/02_page_segmentation`
+  - `stages/10_proofread_stream`
+  - `stages/11_emit_markdown`
+  - `stages/13_refine_first_chapter_name`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated prompt.md and segment_page.py to support is_full_page_graphic detection, suppressing individual OCR text blocks and emitting a single full-page graphic node for book covers
+  - Keyed title_map in proofread_stream.py by composite (index, slug) tuple to eliminate dictionary collision between preface and toc
+  - Implemented determine_section_title_llm in Stage 10 so Gemini dynamically determines canonical titles from section content (zero hardcoded titles)
+  - Added target_md_file uniqueness assertion check in emit_markdown.py to guard against file overwrite regressions
+  - Enhanced refine_name.py in Stage 13 to refine all opening files (prefix 00) with Gemini
+  - Executed pipeline on M68000PRM.pdf, generating 00 - Front Matter.md (with full-page cover asset and RAG sidecar) alongside 00 - Table of Contents.md
+- **Architectural Rationale & Trade-Offs**:
+  - Previously
+  - pages with overlaid text were only classified into text blocks without recognizing full-page cover artwork
+  - and Stage 10 dictionary key collisions on index 0 caused the TOC to overwrite the front matter
+  - losing pages 1 and 2. Dynamic Gemini title determination and composite keying restore full structural fidelity and preserve complete document history.
+- **Verification & Test Results**:
+  - Pre-flight quick checks passed cleanly. Pipeline executed through Stages 06-14: 00 - Front Matter.md and 00 - Table of Contents.md emitted distinctly without collision. Verified asset_node_00001.png cover artwork and RAG sidecar.

@@ -17,5 +17,23 @@ Classify each of the extracted text blocks into exactly ONE semantic type based 
 - `caption`: Formal caption or title lines for figures or tables (e.g. 'Figure 5-2: Digitized Amplitude Values', 'Table 5-8: Five Octave Even-tempered Scale'). NEVER classify captions as graphic or table—classify the caption line itself as caption.
 - `caption_continuation`: Formal caption or title lines indicating a continuation of a preceding table or figure across a page break (e.g. 'Table 3-1. Notational Conventions (Continued)', 'Table 3-1 (Concluded)', 'Figure 4-2 (Cont.)').
 
-Return a strict JSON array of objects with fields:
-[{"idx": 0, "type": "prose", "heading_level": null, "graphic_bbox_norm": null}, {"idx": 3, "type": "graphic", "heading_level": null, "graphic_bbox_norm": [x0, y0, x1, y1]}, ...]
+## Full-Page Graphic / Book Cover Detection
+Inspect the overall page image:
+- If the ENTIRE page is a book front cover, full-page title artwork, or full-page drawing/schematic where the artwork spans the page with title labels or revision codes overlaid on it:
+  Set `"is_full_page_graphic": true` and provide a concise descriptive `"graphic_caption"` (e.g. "Motorola M68000 Family Programmer's Reference Manual Cover Illustration").
+- For all standard pages (body text, normal chapters, standard tables, or pages with normal inline figures), set `"is_full_page_graphic": false` and `"graphic_caption": null`.
+
+## Output Format
+Return a strict JSON object:
+```json
+{
+  "is_full_page_graphic": false,
+  "graphic_caption": null,
+  "segments": [
+    {"idx": 0, "type": "header", "heading_level": null, "graphic_bbox_norm": null},
+    {"idx": 1, "type": "prose", "heading_level": null, "graphic_bbox_norm": null}
+  ]
+}
+```
+(If `is_full_page_graphic` is true, provide `graphic_caption` describing the cover illustration. The segments array may still classify the overlaid blocks or be empty).
+
