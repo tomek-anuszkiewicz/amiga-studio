@@ -6305,6 +6305,18 @@ Every future modification or implementation task must append an entry following 
   - Tested `tools/bootstrap/bootstrap_documentation.ps1 -List`.
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 03:48 CEST] — Streamlined Reference Library Overview (Pruned Operational Tooling Sections)
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Reference/README.md` (removed Section 2: Automated Reference Bootstrapper and Section 5: Staging Directory Guidelines)
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned Section 2 (PowerShell CLI examples for `bootstrap_documentation.ps1`) and Section 5 (`temp/` staging directory rules) from `Obsidian/Amiga/Reference/README.md`.
+  - Renumbered remaining sections: Section 2 (Multi-Source Fallback Matrix & Error Resilience) and Section 3 (Multi-Page Web Crawling Engine).
+- **Architectural Rationale & Trade-Offs**:
+  - `Obsidian/Amiga/Reference/README.md` is a reference knowledge hub documenting historical manuals, chip specs, and technical papers in the knowledge vault. Operational developer tooling instructions belong in `tools/bootstrap/bootstrap_documentation.ps1` and `Obsidian/Amiga/Design/PowerShell Guidelines.md`. Pruning operational blocks eliminates duplication and keeps the reference library clean and focused on hardware literature.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 

@@ -45,28 +45,7 @@ The repository maintains converted, structured markdown documents for rapid navi
 
 ---
 
-## 2. Automated Reference Bootstrapper (`tools/bootstrap_documentation.ps1`)
-
-To download raw, unprocessed source materials (PDF scans, HTML crawls, and archives) without storing large binary files in Git, use the automated bootstrapper:
-
-```powershell
-# List available reference items and configured mirrors
-.\tools\bootstrap_documentation.ps1 -List
-
-# Download all reference materials (default failover mode: stops after 1st successful mirror)
-.\tools\bootstrap_documentation.ps1 -All
-
-# Download from ALL mirrors & sources simultaneously (redundancy & full testing mode)
-.\tools\bootstrap_documentation.ps1 -All -AllSources
-
-# Or via the main repository bootstrapper
-.\tools\bootstrap.ps1 -Documentation
-.\tools\bootstrap.ps1 -Documentation -AllSources
-```
-
----
-
-## 3. Multi-Source Fallback Matrix & Error Resilience
+## 2. Multi-Source Fallback Matrix & Error Resilience
 
 To protect against dead links, server downtime, and rate limits, every reference item is mapped to **2–3 independent, verified online sources** across archival databases, established Amiga documentation portals (`amigadev.elowar.com`), the worldwide Aminet network, original author websites, and the Wayback Machine:
 
@@ -85,21 +64,8 @@ To protect against dead links, server downtime, and rate limits, every reference
 
 ---
 
-## 4. Multi-Page Web Crawling Engine
+## 3. Multi-Page Web Crawling Engine
 
 For multi-page web publications, the bootstrapper incorporates a recursive crawling engine:
 - **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 16 technical subpages (`Copper.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`, `What_is_this_all_about.html`).
 - If the primary live server at `winnicki.net` is unreachable or blocks requests, the crawler automatically switches to the permanent Wayback Machine snapshot mirror.
-
----
-
-## 5. Staging Directory (`temp/`) Guidelines & Git Visibility
-
-Downloaded raw materials are placed in:
-```
-Obsidian/Amiga/Reference/temp/<Document_Name>/
-```
-
-- **Intentional Git Visibility:** `temp/` is intentionally **NOT** added to `.gitignore`. When files are downloaded, `temp/` appears in `git status` as untracked files. This gives developers immediate visual awareness that temporary raw assets exist locally.
-- **Safe to Delete:** Any file or directory inside `temp/` can be deleted at any time without impacting emulator compilation, unit tests, or CI checks.
-- **Offline & Manual Drop:** If external network access is restricted or a user possesses a physical copy of a document, raw files can be placed directly into `temp/<Document_Name>/` for manual inspection.
