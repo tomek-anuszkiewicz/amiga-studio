@@ -1563,3 +1563,19 @@ Every future modification or implementation task must append an entry following 
   - eliminating the need for local symptom patches and ad-hoc string matching downstream in Stage 10
 - **Verification & Test Results**:
   - Passed python syntax compilation and quick pre-flight quality gates cleanly
+---
+
+### [2026-09-17 21:20 CEST] — PDF-to-Markdown: Filter Navigational Chrome from Section Sample Text & Prevent Manifest Filename Collisions
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `stages/10_proofread_stream`
+- **What Was Changed (The Concrete Reality)**:
+  - Filtered out non-content nodes (thumb_index, header, footer) when extracting sample_text for section title determination in Stage 10
+  - Added preface title guard preventing preface sections from being misidentified as Table of Contents
+  - Added defensive filename deduplication fallback in manifest generation
+- **Architectural Rationale & Trade-Offs**:
+  - Navigational edge tabs (thumb_index) list the entire book's chapter titles. Sampling them as section opening text misled the LLM into identifying front matter as Table of Contents
+  - causing duplicate filename collisions in Stage 11. Excluding chrome preserves genuine substantive content for classification.
+- **Verification & Test Results**:
+  - Batch regeneration of first 50 pages across all 4 reference manuals (68000 PRM, 68000 UM, A500 A2000 TRM, and HRM) completed with 100% success
+  - quick pre-flight quality gates passed.

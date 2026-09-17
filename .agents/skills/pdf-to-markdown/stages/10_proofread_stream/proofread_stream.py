@@ -67,10 +67,12 @@ def determine_section_title_llm(raw_title: str, raw_slug: str, sample_text: str,
     try:
         c_title = gemini.generate_text(prompt, stage="10_proofread_stream").strip().strip('"').strip("'")
         if c_title and len(c_title) < 100:
+            if raw_slug == "preface" and "table of contents" in c_title.lower():
+                return "Front Matter"
             return c_title
     except Exception as e:
         print(f"[!] Warning: LLM title determination failed for '{raw_title}': {e}")
-    return raw_title
+    return raw_title if (raw_slug != "preface" or "table of contents" not in raw_title.lower()) else "Front Matter"
 
 
 def proofread_node_text(text: str, gemini: GeminiClient, base_prompt: str) -> str:
@@ -177,7 +179,10 @@ def process_proofread_stream(
                 try:
                     with open(json_candidate, "r", encoding="utf-8") as f:
                         sample_nodes = json.load(f)
-                    sample_text = " ".join([n.get("raw_text", "") or n.get("rendered_markdown", "") for n in sample_nodes[:10]])
+                    informative_nodes = [n for n in sample_nodes if n.get("type") not in ("thumb_index", "header", "footer")]
+                    if not informative_nodes:
+                        informative_nodes = sample_nodes
+                    sample_text = " ".join([n.get("raw_text", "") or n.get("rendered_markdown", "") for n in informative_nodes[:10]])
                 except Exception:
                     pass
 
@@ -255,6 +260,11 @@ def process_proofread_stream(
         clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
         clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
         target_md_name = f"{idx:02d} - {clean_title_name}.md" if clean_title_name else f"{target_file_slug}.md"
+
+        # Prevent duplicate target filenames across partitions in the manifest
+        existing_targets = [e.get("target_md_file") for e in updated_manifest]
+        if target_md_name in existing_targets:
+            target_md_name = f"{idx:02d} - {new_slug.replace('_', ' ').title()}.md"
 
         # 4. Save proofread nodes to output_dir
         out_json_path = output_dir / out_json_name
