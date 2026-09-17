@@ -14,6 +14,7 @@ This document serves as the primary technical entry point for building, testing,
   - [WebAssembly Browser Canvas (Trunk)](#webassembly-browser-canvas-trunk)
 - [2. External Reference Sources & Verification Testbeds](#2-external-reference-sources-verification-testbeds)
   - [Pinned Upstream Sources Summary](#pinned-upstream-sources-summary)
+  - [Reference Sources Lifecycle & Extraction](#reference-sources-lifecycle-steps)
 - [3. Documentation Architecture & Reference Literature](#3-documentation-architecture-reference-literature)
   - [Why Documentation is Critical (Human, AI & RAG)](#why-documentation-is-critical-human-ai-rag)
   - [In-Repository Specifications (Committed to Git)](#in-repository-specifications-committed-to-git)
@@ -94,6 +95,16 @@ Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed
 | **vAmiga C++ Emulator** | `ref_src/vAmiga/` | [dirkwhoffmann/vAmiga](https://github.com/dirkwhoffmann/vAmiga) | **Release v4.5** |
 | **vAmiga Test Suite (vAmigaTS)** | `ref_src/vAmigaTS/` | [dirkwhoffmann/vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) | **`master`** (2,077 test directories) |
 | **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.20+** (`AmigaTestKit.adf`) |
+
+<a id="reference-sources-lifecycle-steps"></a><a id="automation-lifecycle-steps"></a>
+### Reference Sources Lifecycle & Extraction
+
+When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 -Sources`, the automated bootstrapper executes the following lifecycle steps:
+
+1. **Zip Archive Expansion:** Scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
+2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
+3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
+4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
 
 > [!TIP]
 > Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)** (`.\tools\bootstrap\bootstrap.ps1 -Sources`).
@@ -192,18 +203,13 @@ When new reference manuals or updated editions are retrieved, use specialized ag
 This chapter covers all external data sources, verification testbeds, and archival documentation that reside outside Git history, provisioned automatically via dedicated bootstrap scripts:
 
 <a id="automated-provisioning-toolsbootstrapbootstrap_sourcesps1"></a>
-### Automated Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)
+### Automated Sources Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)
 
-Invoke via the coordinator:
+Automates downloading, unpacking, decompressing, and validating external test assets and reference code according to the [lifecycle steps detailed in Chapter 2](#reference-sources-lifecycle-steps):
+
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Sources
 ```
-
-**Automation Lifecycle Steps:**
-1. **Zip Archive Expansion:** Scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
-2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
-3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
-4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
 
 <a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a>
 ### Bootstrapping Raw Archival Sources (`tools/bootstrap/bootstrap_documentation.ps1`)
