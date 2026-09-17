@@ -1547,3 +1547,19 @@ Every future modification or implementation task must append an entry following 
   - 68000 User's Manual
   - and A500 A2000 Technical Reference Manual). Hardware Reference Manual Chapter 1 and all sub-bullets linked completely and cleanly
   - with zero trailing page numbers leaking into link titles. cargo fmt checked cleanly.
+---
+
+### [2026-09-17 21:04 CEST] — Revert Ad-Hoc Title Heuristics in Stage 10 Proofreading
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `stages/10_proofread_stream`
+- **What Was Changed (The Concrete Reality)**:
+  - Reverted ad-hoc preface title guidance
+  - hardcoded 'Table of Contents' filtering
+  - and duplicate filename fallbacks in proofread_stream.py back to commit 1ebdc219
+- **Architectural Rationale & Trade-Offs**:
+  - Per architectural principles (structural root-cause resolution)
+  - upstream semantic classification in Stage 02 (such as thumb_index recognition) naturally resolves section boundaries and prevents preface misclassification
+  - eliminating the need for local symptom patches and ad-hoc string matching downstream in Stage 10
+- **Verification & Test Results**:
+  - Passed python syntax compilation and quick pre-flight quality gates cleanly
