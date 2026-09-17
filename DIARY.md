@@ -6561,6 +6561,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:33 CEST] — Streamlined Landing Page & Extracted Building and Bootstrapping Guide
+- **Affected Subsystems**:
+  - `README.md` (promoted Developer Studio to prominent player subsection, streamlined Section 2 into clean developer link index, pruned skill links from Section 3)
+  - `docs/build_and_bootstrap.md` (extracted zero-setup compilation and multi-tier bootstrapping suite)
+- **What Was Changed (The Concrete Reality)**:
+  - Extracted verbose build instructions and bootstrapping options from `README.md` into dedicated [`docs/build_and_bootstrap.md`](docs/build_and_bootstrap.md).
+  - Renamed Section 2 to `## 2. For Developers`, consolidating links to developer guides (`build_and_bootstrap.md`, `testing.md`, `reference_sources.md`, `reference_documentation.md`).
+  - Elevated Developer Studio and in-game debugging from a small parenthetical note into a dedicated, prominent subsection under Section 1 with direct pointer to [`docs/debugger.md`](docs/debugger.md).
+  - Cleaned Section 3 (`Documentation Cheat Sheet & Technical Index`) to strictly index architectural deep dives and AI specifications, eliminating non-doc links (`.agents/skills/`) and redundant developer items.
+- **Architectural Rationale & Trade-Offs**:
+  - Keeps the front porch `README.md` lean, approachable, and focused on player experience and high-level navigation, while organizing technical deep dives under standardized `docs/` paths.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates (including 0 broken links in architecture tests).
+
 
 
 

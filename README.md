@@ -48,61 +48,33 @@ trunk serve crates/gui/index.html --open
 | **`F12`** | **Toggle Screen Mode** | Switches between Clean Game Display and the Developer Studio. |
 | **Drag & Drop** | **Insert Floppy (`DF0:`)** | Drag any `.adf` disk image directly onto the window. |
 
-*(For advanced developer controls, instruction stepping, live memory editing, and time-travel rewind, see the [Developer Studio & Debugger Guide](docs/debugger.md).)*
+### Developer Studio & In-Game Debugging
+
+Press **`F12`** at any time to pause emulation and switch into the Developer Studio:
+- **Live State Inspection:** Inspect and live-edit M68000 registers, custom chip states, and Chip RAM in real time.
+- **Time-Travel Rewind:** Step backward through recent execution history using the rolling cycle trace buffer.
+- **Disassembly & Breakpoints:** Set PC breakpoints, memory watchpoints, and patch machine code instructions on the fly.
+
+For the complete controls reference, step-by-step shortcuts, and debugging workflows, see:
+👉 [**Developer Studio & Debugger Guide**](docs/debugger.md)
 
 ---
 
-## 2. For Developers (Build & Bootstrap)
+## 2. For Developers
 
-### Zero-Setup Build & Execution
-A freshly cloned repository is **100% self-contained for compilation and execution** using the standard stable Rust toolchain ([rustup.rs](https://rustup.rs)). No bootstrapping, external downloads, or database services are required to build and run the emulator:
+Guides and technical references for building, testing, and developing the emulator:
 
-```powershell
-# Build entire workspace (debug profile)
-cargo build
-
-# Build optimized native release binary for GUI
-cargo build --release -p gui
-```
-
-### Optional Bootstrapping (`tools/bootstrap/bootstrap.ps1`)
-
-Bootstrapping is **strictly optional** and only needed for specialized development tasks:
-
-| Mode | Switch | When Needed | What It Provisions |
-| :--- | :--- | :--- | :--- |
-| **Verification Testbed** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
-| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
-| **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, technical specs, and design specs |
-| **Reference Scans** | `-Documentation` | External reference scans and manual archives | Provisions raw reference manuals and PDF scans into `temp/` |
-| **Full Setup** | `-All` | Complete initial development setup | Provisions all primary components (sources -> Graphify AST -> RAG documentation) |
-
-```powershell
-# Hardware test vectors verification setup:
-.\tools\bootstrap\bootstrap.ps1 -Sources
-
-# Code AST knowledge graph setup:
-.\tools\bootstrap\bootstrap.ps1 -Graphify
-
-# Documentation & AI pair-programming setup:
-.\tools\bootstrap\bootstrap.ps1 -Rag
-
-# External reference manuals and scans:
-.\tools\bootstrap\bootstrap.ps1 -Documentation
-
-# Complete setup (sources -> Graphify AST -> RAG docs):
-.\tools\bootstrap\bootstrap.ps1 -All
-```
+- [**Building & Bootstrapping Guide**](docs/build_and_bootstrap.md): Zero-setup compilation requirements (`cargo build`), release binaries, and the optional multi-tier bootstrapping suite (`tools/bootstrap/bootstrap.ps1`).
+- [**Test Suite & Verification Framework**](docs/testing.md): Physical hardware single-step test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), vAmigaTS subsystem integration, and CLI regression diagnostics.
+- [**External Reference Sources & Testbeds Guide**](docs/reference_sources.md): Catalog of external repositories (Tom Harte SingleStepTests, vAmiga, vAmigaTS, AmigaTestKit), pinned versions, and automated provisioning.
+- [**Technical Reference Documentation & AI RAG Guide**](docs/reference_documentation.md): Ingested hardware reference manuals, automated reference bootstrapper, raw document conversion toolchain, and local Qdrant RAG search.
 
 ---
 
 ## 3. Documentation Cheat Sheet & Technical Index
 
+Architectural deep dives, research papers, and AI pair-programming specifications:
+
 - [**Core Architecture & Hardware Execution Model**](docs/architecture.md): Color Clock phases (CCK1/CCK2), Gary bus arbitration, Agnus DMA contention, circuit simulation, Big-Endian invariance, and decoupled ownership.
-- [**Developer Studio & Time-Travel Debugger**](docs/debugger.md): Developer controls, time-travel rewind ring buffer, live register inspection, memory hex grid editing, disassembly patching, and breakpoints.
-- [**Test Suite & Verification Framework**](docs/testing.md): Physical hardware single-step test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), and CLI regression diagnostics.
 - [**How This Emulator Was Written: Pair-Programming with an AI Agent**](docs/how_this_emulator_was_written.md): Engineering methodology, zero-code human steering, architectural sparring, minimal frame prototyping, and the evolutionary harness.
 - [**AI Agent Engineering & Pair-Programming Guide**](docs/ai_agents.md): Autonomous AI agent pairing guidelines, rules adherence, RAG knowledge base, Graphify AST, and specialized skills.
-- [**Technical Reference Documentation & AI RAG Guide**](docs/reference_documentation.md): Ingested hardware reference manuals, automated reference bootstrapper, raw document conversion toolchain, and local Qdrant RAG search.
-- [**External Reference Sources & Testbeds Guide**](docs/reference_sources.md): Catalog of external repositories (Tom Harte SingleStepTests, vAmiga, vAmigaTS, AmigaTestKit), pinned versions, and automated provisioning.
-- [**Git Worktree Lifecycle & Asset Linking**](.agents/skills/git-worktree/SKILL.md): Isolated Cargo build caches, sibling directory placement, automated NTFS junction asset linking (`tools/git/worktree.ps1`), and clean teardown.
