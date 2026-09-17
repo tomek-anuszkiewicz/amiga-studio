@@ -215,18 +215,13 @@ To provision every external reference asset, knowledge base, and tooling index i
 
 When invoked with `-All`, the bootstrapper executes all provisioning phases sequentially in their exact causal dependency order:
 
-1. **Sources (`-Sources`):** Downloads and decompresses external test suites, M68000 silicon vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS reference testbeds, and the Amiga Test Kit ADF.
-2. **Documentation (`-Documentation`):** Downloads original archival PDF scans and OEM technical reference manuals (HRM, TRM, PRM, UM, and technical articles).
-3. **RAG Knowledge Base (`-Rag`):** Initializes the local Qdrant vector database (`http://localhost:6333`) and indexes both reference manuals (`Obsidian/Amiga/Reference/`) and architectural design specifications (`Obsidian/Amiga/Design/`) using offline FastEmbed embeddings.
-4. **Code Knowledge Graph (`-Graphify`):** Performs AST analysis across active Rust crates (`crates/`) and reference C++ code (`ref_src/vAmiga`), generating the unified symbol dependency and call-hierarchy graph in `graphify-out/`.
-
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
-| **Full Setup** | `-All` | Complete initial development setup | Provisions all primary components sequentially (Sources $\to$ Documentation $\to$ RAG $\to$ Graphify) |
-| **Verification Testbeds** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing archives in `ref_src/SingleStepTests-680x0/`, 124 suites), vAmiga/vAmigaTS reference suites, and diagnostic disks |
-| **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Provisions raw reference manuals, OEM technical guides, PDF scans, and crawls web articles |
-| **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, technical specs, and design specs |
-| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
+| **Full Setup** | `-All` | Complete initial development setup | Executes all 4 phases sequentially in causal order: **Sources** $\to$ **Documentation** $\to$ **RAG** $\to$ **Graphify** |
+| **Verification Testbeds** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Downloads and decompresses external test suites, M68000 silicon vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS reference testbeds, and the Amiga Test Kit ADF |
+| **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Downloads original archival PDF scans and OEM technical reference manuals (HRM, TRM, PRM, UM, and technical articles) |
+| **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Initializes local Qdrant vector database (`http://localhost:6333`) and indexes reference manuals (`Obsidian/Amiga/Reference/`) and design specs (`Obsidian/Amiga/Design/`) via offline FastEmbed embeddings |
+| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | Performs AST analysis across active Rust crates (`crates/`) and reference C++ code (`ref_src/vAmiga`), generating the unified symbol dependency and call-hierarchy graph in `graphify-out/` |
 
 ---
 
