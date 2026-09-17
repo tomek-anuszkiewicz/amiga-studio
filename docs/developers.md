@@ -213,8 +213,6 @@ To provision every external reference asset, knowledge base, and tooling index i
 .\tools\bootstrap\bootstrap.ps1 -All
 ```
 
-When invoked with `-All`, the bootstrapper executes all provisioning phases sequentially in their exact causal dependency order:
-
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
 | **Full Setup** | `-All` | Complete initial development setup | Executes all 4 phases sequentially in causal order: **Sources** $\to$ **Documentation** $\to$ **RAG** $\to$ **Graphify** |
