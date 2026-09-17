@@ -7,32 +7,33 @@ This document serves as the primary technical entry point for building, testing,
 
 ---
 
+---
+
 ## Table of Contents
 
-- [1. Zero-Setup Build & Execution](#1-zero-setup-build-execution)
-- [2. Optional Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)](#2-optional-bootstrapping-overview)
-  - [Bootstrapper Commands](#bootstrapper-commands)
-- [3. External Reference Sources & Verification Testbeds](#3-external-reference-sources-verification-testbeds)
+- [1. Build & Run](#1-build-run)
+- [2. External Reference Sources & Verification Testbeds](#2-external-reference-sources-verification-testbeds)
   - [Pinned Upstream Sources Summary](#pinned-upstream-sources-summary)
   - [Automated Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)
-- [4. Technical Reference Documentation & Literature](#4-technical-reference-documentation-literature)
+- [3. Technical Reference Documentation & Literature](#3-technical-reference-documentation-literature)
   - [Ingested Reference Documents](#ingested-reference-documents-available-in-repository)
-  - [Bootstrapping Raw Archival Sources](#bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1)
+  - [Bootstrapping Raw Archival Sources (`tools/bootstrap/bootstrap_documentation.ps1`)](#bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1)
   - [Processing Raw Documents into Markdown](#processing-raw-documents-into-markdown)
-- [5. Knowledge Retrieval: AI RAG & Code AST Graph](#5-knowledge-retrieval-ai-rag-code-ast-graph)
-  - [A. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#a-domain-hardware-knowledge-local-vector-rag-amiga-rag)
-  - [B. Code Structure & Relationships: AST Knowledge Graph (`graphify`)](#b-code-structure-relationships-ast-knowledge-graph-graphify)
-- [6. Test Suite & Verification Framework](#6-test-suite-verification-framework)
+- [4. Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)](#4-bootstrapping-overview-toolsbootstrapbootstrapps1)
+  - [Bootstrapper Commands](#bootstrapper-commands)
+- [5. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag)
+- [6. Code Structure & Relationships: Graphify](#6-code-structure-relationships-graphify)
+- [7. Test Suite & Verification Framework](#7-test-suite-verification-framework)
   - [A. M68000 SingleStepTests (Silicon Verification)](#a-m68000-singlesteptests-physical-hardware-silicon-verification)
   - [B. Cartesian DMA Contention Verification](#b-cartesian-dma-contention-verification)
   - [C. Automated Architecture Rules Compliance](#c-automated-architecture-rules-compliance)
   - [D. CLI Diagnostic Tools & Regression Tracking](#d-cli-diagnostic-tools-regression-tracking)
-  - [E. vAmigaTS Subsystem & Whole-Machine Verification](#e-vamigats-subsystem-whole-machine-verification-preview)
+  - [E. vAmigaTS Subsystem & Whole-Machine Verification (Preview)](#e-vamigats-subsystem-whole-machine-verification-preview)
 
 ---
 
-<a id="1-zero-setup-build-execution"></a><a id="1-zero-setup-build--execution"></a>
-## 1. Zero-Setup Build & Execution
+<a id="1-build-run"></a><a id="1-build--run"></a><a id="1-zero-setup-build-execution"></a>
+## 1. Build & Run
 
 A freshly cloned repository is **100% self-contained for compilation and execution** using the standard stable Rust toolchain ([rustup.rs](https://rustup.rs)). No bootstrapping, external downloads, or database services are required to build and run the emulator:
 
@@ -42,47 +43,15 @@ cargo build
 
 # Build optimized native release binary for GUI:
 cargo build --release -p gui
+
+# Run the Developer Studio GUI:
+cargo run -p gui
 ```
 
 ---
 
-<a id="2-optional-bootstrapping-overview"></a><a id="2-optional-bootstrapping-overview-toolsbootstrapbootstrapps1"></a>
-## 2. Optional Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)
-
-Bootstrapping is **strictly optional** and only needed for specialized development tasks:
-
-| Mode | Switch | When Needed | What It Provisions |
-| :--- | :--- | :--- | :--- |
-| **Verification Testbed** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
-| **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Provisions raw reference manuals, OEM technical guides, and PDF scans |
-| **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, technical specs, and design specs |
-| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
-| **Full Setup** | `-All` | Complete initial development setup | Provisions all primary components (sources -> Graphify AST -> RAG documentation) |
-
-<a id="bootstrapper-commands"></a>
-### Bootstrapper Commands
-
-```powershell
-# Hardware test vectors and reference sources setup:
-.\tools\bootstrap\bootstrap.ps1 -Sources
-
-# External reference manuals and PDF scans:
-.\tools\bootstrap\bootstrap.ps1 -Documentation
-
-# Documentation & AI pair-programming (Qdrant RAG) setup:
-.\tools\bootstrap\bootstrap.ps1 -Rag
-
-# Code AST knowledge graph setup:
-.\tools\bootstrap\bootstrap.ps1 -Graphify
-
-# Complete development setup:
-.\tools\bootstrap\bootstrap.ps1 -All
-```
-
----
-
-<a id="3-external-reference-sources-verification-testbeds"></a><a id="3-external-reference-sources--verification-testbeds"></a>
-## 3. External Reference Sources & Verification Testbeds
+<a id="2-external-reference-sources-verification-testbeds"></a><a id="2-external-reference-sources--verification-testbeds"></a><a id="3-external-reference-sources-verification-testbeds"></a>
+## 2. External Reference Sources & Verification Testbeds
 
 The emulator core validates execution against physical hardware silicon vectors, reference C++ emulators, and golden Amiga test suites. Because these test assets contain multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`, managed by automated provisioning scripts.
 
@@ -112,8 +81,8 @@ Invoke via the coordinator:
 
 ---
 
-<a id="4-technical-reference-documentation-literature"></a><a id="4-technical-reference-documentation--literature"></a>
-## 4. Technical Reference Documentation & Literature
+<a id="3-technical-reference-documentation-literature"></a><a id="3-technical-reference-documentation--literature"></a><a id="4-technical-reference-documentation-literature"></a>
+## 3. Technical Reference Documentation & Literature
 
 The repository maintains an authoritative, high-fidelity reference library under `Obsidian/Amiga/Reference/`. All primary reference materials are **already converted into structured Markdown specifications and committed directly to the repository**. Developers and AI agents can read, cross-reference, and semantically search these documents immediately without requiring any external downloads.
 
@@ -205,11 +174,43 @@ When new reference manuals or updated editions are retrieved, use specialized ag
 
 ---
 
-<a id="5-knowledge-retrieval-ai-rag-code-ast-graph"></a><a id="5-knowledge-retrieval-ai-rag--code-ast-graph"></a>
-## 5. Knowledge Retrieval: AI RAG & Code AST Graph
+<a id="4-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="4-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="2-optional-bootstrapping-overview"></a>
+## 4. Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)
 
-<a id="a-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a>
-### A. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
+Bootstrapping is **strictly optional** and only needed for specialized development tasks:
+
+| Mode | Switch | When Needed | What It Provisions |
+| :--- | :--- | :--- | :--- |
+| **Verification Testbed** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
+| **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Provisions raw reference manuals, OEM technical guides, and PDF scans |
+| **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, technical specs, and design specs |
+| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
+| **Full Setup** | `-All` | Complete initial development setup | Provisions all primary components (sources -> Graphify AST -> RAG documentation) |
+
+<a id="bootstrapper-commands"></a>
+### Bootstrapper Commands
+
+```powershell
+# Hardware test vectors and reference sources setup:
+.\tools\bootstrap\bootstrap.ps1 -Sources
+
+# External reference manuals and PDF scans:
+.\tools\bootstrap\bootstrap.ps1 -Documentation
+
+# Documentation & AI pair-programming (Qdrant RAG) setup:
+.\tools\bootstrap\bootstrap.ps1 -Rag
+
+# Code AST knowledge graph setup:
+.\tools\bootstrap\bootstrap.ps1 -Graphify
+
+# Complete development setup:
+.\tools\bootstrap\bootstrap.ps1 -All
+```
+
+---
+
+<a id="5-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a><a id="5-domain-hardware-knowledge--local-vector-rag-amiga-rag"></a><a id="a-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a>
+## 5. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
 - **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `amiga`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
 - **Vector Database Architecture:**
   - Local Qdrant instance on `http://localhost:6333`.
@@ -242,8 +243,10 @@ When new reference manuals or updated editions are retrieved, use specialized ag
     python tools/rag/rag_qdrant/cli.py status
     ```
 
-<a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a><a id="b-code-structure--relationships-ast-knowledge-graph-graphify"></a>
-### B. Code Structure & Relationships: AST Knowledge Graph (`graphify`)
+---
+
+<a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
+## 6. Code Structure & Relationships: Graphify
 - **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:
   - **Active Emulator Crates (`crates/`):** Core Rust workspace (`m68000`, `memory_bus`, `debugger`, `gui`, `config`, `rtc`, `test_runner`).
   - **Reference Emulator Sources (`ref_src/`):** Clean C++ reference implementation (`ref_src/vAmiga`) and external test harnesses.
@@ -258,8 +261,8 @@ When new reference manuals or updated editions are retrieved, use specialized ag
 
 ---
 
-<a id="6-test-suite-verification-framework"></a><a id="6-test-suite--verification-framework"></a>
-## 6. Test Suite & Verification Framework
+<a id="7-test-suite-verification-framework"></a><a id="7-test-suite--verification-framework"></a><a id="6-test-suite-verification-framework"></a>
+## 7. Test Suite & Verification Framework
 
 The emulator relies on a multi-tiered verification framework to guarantee 100% cycle-exact fidelity against real Motorola 68000 silicon and Amiga 500 hardware:
 
@@ -385,4 +388,3 @@ cargo run -p test_runner -- vamiga --list-deferred
 
 > [!TIP]
 > Pass `--help` to the runner (`cargo run -p test_runner -- --help`) or invoke it without parameters to inspect all available options, category filters, and frame limits.
-
