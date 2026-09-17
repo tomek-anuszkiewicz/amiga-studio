@@ -35,10 +35,6 @@
     and multi-page HTML crawls) into Obsidian/Amiga/Reference/temp/. Delegates execution
     to tools/bootstrap_reference.ps1.
 
-.PARAMETER RefItem
-    When using -Ref, targets a specific reference document by name or alias (e.g. "HRM",
-    "Prefetch", "Achtung! Amiga").
-
 .PARAMETER AllSources
     When using -Ref, downloads from ALL configured mirrors for each document rather than
     stopping after the first successful mirror. Useful for archival redundancy.
@@ -64,10 +60,6 @@
     Download all external reference documentation into Obsidian/Amiga/Reference/temp/.
 
 .EXAMPLE
-    .\tools\bootstrap.ps1 -Ref -RefItem "Prefetch"
-    Download Jorge Cwik's microarchitectural prefetch guide.
-
-.EXAMPLE
     .\tools\bootstrap.ps1 -All
     Run all primary bootstrap tiers (tests -> Graphify AST -> RAG documentation).
 #>
@@ -80,7 +72,6 @@ param(
     [Alias("Doc", "Qdrant")]
     [switch]$Rag,
     [switch]$Ref,
-    [string]$RefItem,
     [Alias("AllMirrors")]
     [switch]$AllSources,
     [switch]$All
@@ -101,7 +92,6 @@ function Show-Usage {
     Write-Host "  .\tools\bootstrap.ps1 -Graphify                  : Provision code knowledge graph (Graphify AST extraction)"
     Write-Host "  .\tools\bootstrap.ps1 -Rag                       : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
     Write-Host "  .\tools\bootstrap.ps1 -Ref                       : Provision external reference materials (PDFs, HTML crawls)"
-    Write-Host "  .\tools\bootstrap.ps1 -Ref -RefItem <name>       : Provision a specific reference document"
     Write-Host "  .\tools\bootstrap.ps1 -All                       : Provision all primary tiers (tests -> Graphify -> RAG)"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
@@ -109,13 +99,12 @@ function Show-Usage {
     Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
     Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (aliases: -Doc, -Qdrant)"
     Write-Host "  -Ref                     : Download external reference materials into temp/"
-    Write-Host "  -RefItem <name>          : Target specific document for -Ref (e.g. 'Prefetch', 'HRM')"
     Write-Host "  -AllSources              : Download from all mirrors for -Ref (alias: -AllMirrors)"
     Write-Host "  -All                     : Run all primary tiers (-Test, -Graphify, -Rag)"
     Write-Host ""
 }
 
-if ($RefItem -or $AllSources) { $Ref = $true }
+if ($AllSources) { $Ref = $true }
 
 if (-not $Rag -and -not $Test -and -not $Graphify -and -not $Ref -and -not $All) {
     Show-Usage
@@ -342,12 +331,7 @@ if ($Ref) {
     if (-not (Test-Path $RefScript)) {
         Write-Error "bootstrap_reference.ps1 not found at: $RefScript"
     } else {
-        $RefParams = @{}
-        if ($RefItem) {
-            $RefParams["Item"] = $RefItem
-        } else {
-            $RefParams["All"] = $true
-        }
+        $RefParams = @{ All = $true }
         if ($AllSources) {
             $RefParams["AllSources"] = $true
         }

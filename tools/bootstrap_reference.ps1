@@ -19,9 +19,6 @@
 .PARAMETER All
     Downloads all configured reference materials in the catalog.
 
-.PARAMETER Item
-    Downloads a specific document by name or alias (e.g. "Hardware Reference Manual", "Prefetch", "hrm").
-
 .PARAMETER Destination
     Custom destination directory (defaults to Obsidian/Amiga/Reference/temp).
 
@@ -44,14 +41,6 @@
     Downloads all configured reference materials in failover mode.
 
 .EXAMPLE
-    .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual"
-    Downloads the Commodore Amiga Hardware Reference Manual.
-
-.EXAMPLE
-    .\tools\bootstrap_reference.ps1 -Item "Prefetch" -AllSources
-    Downloads Jorge Cwik's prefetch study from all available mirrors.
-
-.EXAMPLE
     .\tools\bootstrap_reference.ps1 -All -AllSources
     Downloads all reference items from all mirrors for comprehensive redundancy.
 #>
@@ -59,7 +48,6 @@
 [CmdletBinding()]
 param(
     [switch]$All,
-    [string]$Item,
     [string]$Destination,
     [Alias("AllMirrors")]
     [switch]$AllSources,
@@ -272,13 +260,11 @@ function Show-Usage {
     Write-Host "Usage:" -ForegroundColor White
     Write-Host "  .\tools\bootstrap_reference.ps1 -List                    : Show all documents and configured mirrors"
     Write-Host "  .\tools\bootstrap_reference.ps1 -All                     : Download all reference materials (failover mode)"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -Item <name>             : Download a specific document by name or ID"
     Write-Host "  .\tools\bootstrap_reference.ps1 -All -AllSources         : Download from ALL mirrors for each document"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
     Write-Host "  -List                    : Display catalog of reference documents and mirrors"
     Write-Host "  -All                     : Download all reference materials in the catalog"
-    Write-Host "  -Item <name>             : Target specific document (e.g. 'Hardware Reference Manual', 'Prefetch')"
     Write-Host "  -Destination <path>      : Custom destination directory (defaults to temp/)"
     Write-Host "  -AllSources              : Download from all mirrors for redundancy (alias: -AllMirrors)"
     Write-Host "  -Force                   : Re-download even if target file already exists"
@@ -562,34 +548,19 @@ if ($List) {
     exit 0
 }
 
-# Auto-promote -AllSources to -All if no specific -Item is requested
-if ($AllSources -and -not $Item) {
+# Auto-promote -AllSources or -Force to -All
+if ($AllSources -or $Force) {
     $All = $true
 }
 
-if (-not $All -and -not $Item) {
+if (-not $All) {
     Show-Usage
     exit 0
 }
 
 Ensure-StagingReadme -TempDir $Destination
 
-$ItemsToProcess = @()
-if ($All -or ($Item -and ($Item.ToLower() -eq "-all" -or $Item.ToLower() -eq "all"))) {
-    $ItemsToProcess = $Catalog
-} elseif ($Item) {
-    $SearchTerm = $Item.ToLower()
-    $Matched = $Catalog | Where-Object {
-        $_.Id.ToLower() -eq $SearchTerm -or
-        $_.Name.ToLower().Contains($SearchTerm) -or
-        $_.Folder.ToLower().Contains($SearchTerm)
-    }
-    if (-not $Matched) {
-        Write-Error "No catalog entry matching '$Item'. Run with -List to inspect available items."
-        exit 1
-    }
-    $ItemsToProcess = @($Matched)
-}
+$ItemsToProcess = $Catalog
 
 Write-Host ""
 Write-Host "Bootstrapping External Amiga Reference Materials" -ForegroundColor Cyan

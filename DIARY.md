@@ -6208,4 +6208,18 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Validated Markdown structure and links in `Obsidian/Amiga/Design/PowerShell Guidelines.md`.
   - `python tools/harness/pre_flight.py`: Passed 100% across all quality gates.
+### [2026-09-17 03:28 CEST] — Removed Redundant Item Selection Parameters from Reference Bootstrapper
+- **Affected Subsystems**:
+  - `tools/bootstrap_reference.ps1` (removed `$Item` parameter, `.PARAMETER Item`, and search/filtering logic)
+  - `tools/bootstrap.ps1` (removed `$RefItem` parameter, usage rows, and forwarding code)
+  - `Obsidian/Amiga/Design/PowerShell Guidelines.md` (updated examples to reflect living scripts)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed `-Item` from `tools/bootstrap_reference.ps1` and `-RefItem` from `tools/bootstrap.ps1`.
+  - Streamlined `tools/bootstrap_reference.ps1` to directly process the entire reference `$Catalog` when executed, eliminating ~25 lines of fuzzy name/alias filtering logic.
+  - Updated comment-based help and `Show-Usage` across both scripts.
+- **Architectural Rationale & Trade-Offs**:
+  - Reference documentation bootstrapping is an all-or-nothing task. Developers provisioning external manuals need the complete reference set rather than selective single-file downloads. Removing the parameter eliminates unnecessary complexity and user cognitive overhead.
+- **Verification & Test Results**:
+  - Validated syntax and `Show-Usage` on both scripts.
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 

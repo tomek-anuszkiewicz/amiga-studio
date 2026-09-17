@@ -146,7 +146,7 @@ function Show-Usage {
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
     Write-Host "  .\tools\bootstrap.ps1 -Test                      : Provision hardware test vectors (SingleStepTests, vAmiga)"
-    Write-Host "  .\tools\bootstrap.ps1 -Ref -RefItem <name>       : Provision a specific reference document"
+    Write-Host "  .\tools\bootstrap.ps1 -Ref                       : Provision external reference materials (PDFs, HTML crawls)"
     Write-Host "  .\tools\bootstrap.ps1 -All                       : Provision all primary tiers (tests -> Graphify -> RAG)"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
@@ -154,7 +154,6 @@ function Show-Usage {
     Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
     Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (aliases: -Doc, -Qdrant)"
     Write-Host "  -Ref                     : Download external reference materials into temp/"
-    Write-Host "  -RefItem <name>          : Target specific document for -Ref (e.g. 'Prefetch', 'HRM')"
     Write-Host "  -AllSources              : Download from all mirrors for -Ref (alias: -AllMirrors)"
     Write-Host "  -All                     : Run all primary tiers (-Test, -Graphify, -Rag)"
     Write-Host ""
@@ -165,22 +164,22 @@ function Show-Usage {
 
 ## 5. Ergonomic Sub-Flag Auto-Promotion Pattern
 
-CLI scripts frequently have tiered parameters (e.g. parent switch `-Ref` and child parameters `-RefItem <name>` and `-AllSources`).
+CLI scripts frequently have tiered parameters (e.g. parent switch `-Ref` and child modifier `-AllSources`, or `-Force` implying `-All`).
 
 ### 5.1 The Anti-Pattern: Failing on Missing Parent Switches
-Forcing a developer to type `.\tools\bootstrap.ps1 -Ref -RefItem Prefetch` when they already explicitly specified `-RefItem Prefetch` is brittle and frustrating.
+Forcing a developer to type `.\tools\bootstrap.ps1 -Ref -AllSources` when they already explicitly specified `-AllSources` is brittle and frustrating.
 
 ### 5.2 The Solution: Automatic Tier Promotion
 Evaluate child parameter presence and auto-promote parent tier flags before the validation check:
 
 ```powershell
-# Auto-promote parent switch if specific child options are passed
-if ($RefItem -or $AllSources) { 
+# Auto-promote parent switch if specific child modifier is passed
+if ($AllSources) { 
     $Ref = $true 
 }
 
-# Auto-promote -AllSources to -All if no specific -Item is requested
-if ($AllSources -and -not $Item) {
+# Auto-promote -AllSources or -Force to -All in reference bootstrapper
+if ($AllSources -or $Force) {
     $All = $true
 }
 
