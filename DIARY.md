@@ -6177,4 +6177,18 @@ Every future modification or implementation task must append an entry following 
   - Verified `Get-Help .\tools\bootstrap.ps1` and `Get-Help .\tools\bootstrap_reference.ps1` with parameter queries (`-Parameter Test`).
   - Tested interactive execution with no parameters for both scripts, confirming clean `Show-Usage` output.
   - `python tools/harness/pre_flight.py`: Passed 100% across all quality gates.
+### [2026-09-17 03:23 CEST] — Completely Purged Archive Extraction Pipeline & Flags Across Reference Tooling
+- **Affected Subsystems**:
+  - `tools/bootstrap_reference.ps1` (deleted `Expand-ReferenceArchive`, `Expand-DirectoryArchives`, `$AutoExtract` param, `-NoExtract`, `-ExtractOnly`)
+  - `tools/bootstrap.ps1` (removed `-NoExtract` and `-ExtractOnly` flags, usage items, and parameter forwarding)
+- **What Was Changed (The Concrete Reality)**:
+  - Completely purged the archive unpacking pipeline: deleted `Expand-ReferenceArchive` and `Expand-DirectoryArchives` from `tools/bootstrap_reference.ps1`.
+  - Removed `-NoExtract` and `-ExtractOnly` parameters, their `.PARAMETER` documentation, and their examples from both `tools/bootstrap_reference.ps1` and `tools/bootstrap.ps1`.
+  - Simplified `Download-SingleFile`: removed the `$AutoExtract` parameter and inline archive extraction hooks. Reference fetching now strictly provisions direct document formats (PDFs and HTML crawls).
+  - Cleaned up `Ensure-StagingReadme` to eliminate the archive extraction operational guideline.
+- **Architectural Rationale & Trade-Offs**:
+  - All active reference documentation catalog items are either vector/scanned PDF files or multi-page HTML web crawls. Archive extraction was historical dead weight once compressed hypertexts (like AmigaGuide) were retired. Eliminating the archive extraction functions removes ~150 lines of dead code and eliminates redundant flags.
+- **Verification & Test Results**:
+  - Verified `Show-Usage` and `Get-Help` across both `tools/bootstrap.ps1` and `tools/bootstrap_reference.ps1`.
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 

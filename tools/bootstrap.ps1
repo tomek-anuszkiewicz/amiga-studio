@@ -44,12 +44,6 @@
     stopping after the first successful mirror. Useful for archival redundancy.
     Alias: -AllMirrors.
 
-.PARAMETER NoExtract
-    When using -Ref, downloads reference archives without automatically unpacking them.
-
-.PARAMETER ExtractOnly
-    When using -Ref, unpacks existing archives in temp/ without downloading new files.
-
 .PARAMETER All
     Executes all primary bootstrap tiers sequentially (-Test -> -Graphify -> -Rag).
 
@@ -89,8 +83,6 @@ param(
     [string]$RefItem,
     [Alias("AllMirrors")]
     [switch]$AllSources,
-    [switch]$NoExtract,
-    [switch]$ExtractOnly,
     [switch]$All
 )
 
@@ -119,13 +111,11 @@ function Show-Usage {
     Write-Host "  -Ref                     : Download external reference materials into temp/"
     Write-Host "  -RefItem <name>          : Target specific document for -Ref (e.g. 'Prefetch', 'HRM')"
     Write-Host "  -AllSources              : Download from all mirrors for -Ref (alias: -AllMirrors)"
-    Write-Host "  -NoExtract               : Download archives without unpacking them"
-    Write-Host "  -ExtractOnly             : Unpack existing archives in temp/ without downloading"
     Write-Host "  -All                     : Run all primary tiers (-Test, -Graphify, -Rag)"
     Write-Host ""
 }
 
-if ($ExtractOnly -or $RefItem -or $AllSources -or $NoExtract) { $Ref = $true }
+if ($RefItem -or $AllSources) { $Ref = $true }
 
 if (-not $Rag -and -not $Test -and -not $Graphify -and -not $Ref -and -not $All) {
     Show-Usage
@@ -360,12 +350,6 @@ if ($Ref) {
         }
         if ($AllSources) {
             $RefParams["AllSources"] = $true
-        }
-        if ($NoExtract) {
-            $RefParams["NoExtract"] = $true
-        }
-        if ($ExtractOnly) {
-            $RefParams["ExtractOnly"] = $true
         }
         & $RefScript @RefParams
     }
