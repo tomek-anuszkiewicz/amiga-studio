@@ -1,6 +1,6 @@
-# Building & Bootstrapping Guide
+# Developer Guide & Tooling Index
 
-This guide details the compilation process, toolchain prerequisites, and the optional multi-tier bootstrapping suite for the Amiga 500 emulator.
+This document serves as the primary technical entry point for building, testing, verifying, and contributing to the Amiga 500 emulator.
 
 ---
 
@@ -48,3 +48,11 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 # Complete setup (sources -> Graphify AST -> RAG docs):
 .\tools\bootstrap\bootstrap.ps1 -All
 ```
+
+---
+
+## 3. Developer Documentation & Verification Subsystems
+
+- [**Test Suite & Verification Framework**](testing.md): Physical hardware single-step test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), vAmigaTS subsystem integration, and CLI regression diagnostics.
+- [**External Reference Sources & Testbeds Guide**](reference_sources.md): Catalog of external repositories (Tom Harte SingleStepTests, vAmiga, vAmigaTS, AmigaTestKit), pinned versions, and automated provisioning.
+- [**Technical Reference Documentation & AI RAG Guide**](reference_documentation.md): Ingested hardware reference manuals, automated reference bootstrapper, raw document conversion toolchain, and local Qdrant RAG search.

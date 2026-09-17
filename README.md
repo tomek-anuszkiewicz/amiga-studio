@@ -62,12 +62,8 @@ For the complete controls reference, step-by-step shortcuts, and debugging workf
 
 ## 2. For Developers
 
-Guides and technical references for building, testing, and developing the emulator:
-
-- [**Building & Bootstrapping Guide**](docs/build_and_bootstrap.md): Zero-setup compilation requirements (`cargo build`), release binaries, and the optional multi-tier bootstrapping suite (`tools/bootstrap/bootstrap.ps1`).
-- [**Test Suite & Verification Framework**](docs/testing.md): Physical hardware single-step test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), vAmigaTS subsystem integration, and CLI regression diagnostics.
-- [**External Reference Sources & Testbeds Guide**](docs/reference_sources.md): Catalog of external repositories (Tom Harte SingleStepTests, vAmiga, vAmigaTS, AmigaTestKit), pinned versions, and automated provisioning.
-- [**Technical Reference Documentation & AI RAG Guide**](docs/reference_documentation.md): Ingested hardware reference manuals, automated reference bootstrapper, raw document conversion toolchain, and local Qdrant RAG search.
+For compilation instructions, bootstrapping options, test suites, and technical reference guides:
+👉 [**Developer Guide & Technical Index**](docs/developers.md)
 
 ---
 

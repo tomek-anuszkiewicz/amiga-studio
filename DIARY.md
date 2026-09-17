@@ -6575,6 +6575,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates (including 0 broken links in architecture tests).
 
+### [2026-09-17 04:35 CEST] — Consolidated Developer Documentation into docs/developers.md with Single README Link
+- **Affected Subsystems**:
+  - `README.md` (condensed Section 2 into a single pointer to `docs/developers.md`)
+  - `docs/developers.md` (consolidated zero-setup build, multi-tier bootstrapping, and developer guides index)
+  - `docs/build_and_bootstrap.md` (removed in favor of unified `docs/developers.md`)
+- **What Was Changed (The Concrete Reality)**:
+  - Created [`docs/developers.md`](docs/developers.md) consolidating zero-setup build commands, the multi-tier bootstrapping suite (`tools/bootstrap/bootstrap.ps1`), and references to testing/sources/documentation guides.
+  - Replaced the multi-link developer listing in `README.md` Section 2 with a single, clean directional link: `👉 [Developer Guide & Technical Index](docs/developers.md)`.
+  - Removed intermediate `docs/build_and_bootstrap.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - Single-responsibility landing page: `README.md` acts as a pure front-page router, delegating all developer tooling and references to a single dedicated entry point in `docs/developers.md`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
 
 
 
