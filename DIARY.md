@@ -6332,6 +6332,23 @@ Every future modification or implementation task must append an entry following 
   - Tested `tools/bootstrap/bootstrap.ps1` usage display and flag forwarding.
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 03:55 CEST] — Relocated Reference Guide to docs/reference.md & Integrated Bootstrap/RAG Documentation
+- **Affected Subsystems**:
+  - `docs/reference.md` (relocated from `Obsidian/Amiga/Reference/README.md` and expanded)
+  - `README.md` (added link to `docs/reference.md` in repository documentation index)
+- **What Was Changed (The Concrete Reality)**:
+  - Moved `Obsidian/Amiga/Reference/README.md` to `docs/reference.md` via `git mv` to align with standard project documentation alongside `docs/architecture.md`, `docs/debugger.md`, `docs/testing.md`, and `docs/ai_agents.md`.
+  - Added clear status indicators for all cataloged reference documents: explicitly distinguishing materials that are **Already Ingested & Available** in `Obsidian/Amiga/Reference/` (7 core manuals and research papers) versus raw source files **Downloadable via Bootstrap** into `temp/`.
+  - Added dedicated documentation for the reference bootstrapper (`tools/bootstrap/bootstrap_documentation.ps1` and `tools/bootstrap/bootstrap.ps1 -Documentation`), detailing CLI switches, `temp/` staging rules, and multi-mirror failovers.
+  - Added dedicated documentation for the AI RAG knowledge base (`tools/bootstrap/bootstrap_rag.ps1`, `amiga_rag.ps1`, `tools/harness/rag_search.py`, and the FastMCP server), explaining vector indexing into Qdrant (`amiga` collection) and semantic search queries.
+  - Documented the raw document processing toolchain (`pdf-to-markdown` and `html-to-markdown` skills) for transforming future scans/crawls into publication-grade Markdown.
+  - Updated root `README.md` to link to `docs/reference.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - Centralizing developer-facing guides under `docs/` while keeping `Obsidian/Amiga/Reference/` purely dedicated to converted reference texts maintains clean separation of concerns. Developers immediately see what documentation is available offline and how to fetch or re-index raw materials when needed.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 
