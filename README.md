@@ -98,8 +98,6 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 
 ## 3. Documentation Cheat Sheet & Technical Index
 
-### Repository Architecture & Verification Guides (`docs/`)
-
 - [**Core Architecture & Hardware Execution Model**](docs/architecture.md): Color Clock phases (CCK1/CCK2), Gary bus arbitration, Agnus DMA contention, circuit simulation, Big-Endian invariance, and decoupled ownership.
 - [**Developer Studio & Time-Travel Debugger**](docs/debugger.md): Developer controls, time-travel rewind ring buffer, live register inspection, memory hex grid editing, disassembly patching, and breakpoints.
 - [**Test Suite & Verification Framework**](docs/testing.md): Physical hardware single-step test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), and CLI regression diagnostics.
@@ -107,13 +105,3 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 - [**AI Agent Engineering & Pair-Programming Guide**](docs/ai_agents.md): Autonomous AI agent pairing guidelines, rules adherence, RAG knowledge base, Graphify AST, and specialized skills.
 - [**Technical Reference Library & AI RAG Guide**](docs/reference.md): Ingested hardware reference manuals, automated reference bootstrapper, raw document conversion toolchain, and local Qdrant RAG search.
 - [**Git Worktree Lifecycle & Asset Linking**](.agents/skills/git-worktree/SKILL.md): Isolated Cargo build caches, sibling directory placement, automated NTFS junction asset linking (`tools/git/worktree.ps1`), and clean teardown.
-
-### Subsystem Design Specifications (`Obsidian/Amiga/Design/`)
-
-| Category | Component Specifications |
-| :--- | :--- |
-| **System & Bus** | [General Architecture](Obsidian/Amiga/Design/General%20Architecture.md) • [Main Loop (A500)](Obsidian/Amiga/Design/Main%20loop%20A500.md) • [Memory Bus & Gary](Obsidian/Amiga/Design/MemoryBus.md) • [Save States](Obsidian/Amiga/Design/SaveState.md) • [Configuration](Obsidian/Amiga/Design/Configuration.md) |
-| **CPU (M68000)** | [CPU Motorola M68000](Obsidian/Amiga/Design/CPU%20Motorola%20M68000.md) • [Micro-Step State Machine](Obsidian/Amiga/Design/CPU%20Micro-Step%20State%20Machine.md) • [CPU SingleStepTests](Obsidian/Amiga/Design/CPU%20SingleStepTests.md) • [CPU Instruction Benchmarking](Obsidian/Amiga/Design/CPU%20Instruction%20Benchmarking.md) |
-| **Custom Chipset** | [Agnus (Copper & Blitter)](Obsidian/Amiga/Design/Agnus.md) • [Denise (Video & Sprites)](Obsidian/Amiga/Design/Denise.md) • [Paula (Audio & Floppy DMA)](Obsidian/Amiga/Design/Paula.md) • [CIA (Timers & Serial Ports)](Obsidian/Amiga/Design/CIA.md) • [Floppy Disk Controller](Obsidian/Amiga/Design/Floppy.md) |
-| **Peripherals & I/O** | [Keyboard Controller](Obsidian/Amiga/Design/Keyboard.md) • [Mouse Controller](Obsidian/Amiga/Design/Mouse.md) • [Joystick Controller](Obsidian/Amiga/Design/Joystick.md) • [Real-Time Clock (RTC)](Obsidian/Amiga/Design/RTC.md) |
-| **Frontend & UI** | [GUI Specification](Obsidian/Amiga/Design/GUI%20Specification.md) • [GUI Architecture](Obsidian/Amiga/Design/GUI.md) • [Debugger Engine](Obsidian/Amiga/Design/Debugger.md) • [egui Guidelines](Obsidian/Amiga/Design/egui%20Guidelines.md) • [Rust Coding Guidelines](Obsidian/Amiga/Design/Rust%20Guidelines.md) |

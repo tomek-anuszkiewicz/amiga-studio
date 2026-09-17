@@ -6374,6 +6374,17 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 03:59 CEST] — Pruned Subsystem Design Specifications Table from Root README.md
+- **Affected Subsystems**:
+  - `README.md` (removed `### Subsystem Design Specifications (Obsidian/Amiga/Design/)` section and its 5-category component table)
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned the bulky Obsidian design specification table from `README.md`, flattening the documentation index to direct links under `docs/`.
+- **Architectural Rationale & Trade-Offs**:
+  - Keeps root `README.md` lean, clean, and focused on repository-level architecture guides and developer tools. Granular subsystem specifications belong in `Obsidian/Amiga/Design/` and are navigated via the Obsidian vault graph and AI RAG search rather than cluttering the front-page README.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 
