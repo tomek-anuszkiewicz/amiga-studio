@@ -43,6 +43,11 @@
     Alias for -Documentation. Provisions raw external reference documentation into
     Obsidian/Amiga/Reference/.
 
+.PARAMETER Markdown
+    When bootstrapping documentation (-Documentation / -Doc / -Ref), converts downloaded
+    reference scans and crawls into publication-grade Markdown directly within their target
+    directories. Aliases: -Convert, -Process.
+
 .PARAMETER AllSources
     When using -Documentation, downloads from ALL configured mirrors for each document
     rather than stopping after the first successful mirror. Useful for archival redundancy.
@@ -68,6 +73,10 @@
     Download all external reference documentation into Obsidian/Amiga/Reference/.
 
 .EXAMPLE
+    .\tools\bootstrap\bootstrap.ps1 -Documentation -Markdown
+    Download and convert external reference documentation into publication-grade Markdown.
+
+.EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -All
     Run all primary bootstrap tiers (sources -> Graphify AST -> RAG documentation).
 #>
@@ -81,6 +90,8 @@ param(
     [switch]$Rag,
     [Alias("Ref", "Doc")]
     [switch]$Documentation,
+    [Alias("Convert", "Process")]
+    [switch]$Markdown,
     [Alias("AllMirrors")]
     [switch]$AllSources,
     [switch]$All
@@ -108,12 +119,13 @@ function Show-Usage {
     Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
     Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (alias: -Qdrant)"
     Write-Host "  -Documentation           : Download external reference materials into Reference/ (aliases: -Doc, -Ref)"
+    Write-Host "  -Markdown                : Convert downloaded materials into publication-grade Markdown (aliases: -Convert, -Process)"
     Write-Host "  -AllSources              : Download from all mirrors for -Documentation (alias: -AllMirrors)"
     Write-Host "  -All                     : Run all primary tiers (-Sources, -Graphify, -Rag)"
     Write-Host ""
 }
 
-if ($AllSources) { $Documentation = $true }
+if ($AllSources -or $Markdown) { $Documentation = $true }
 
 if (-not $Rag -and -not $Sources -and -not $Graphify -and -not $Documentation -and -not $All) {
     Show-Usage
@@ -194,6 +206,9 @@ if ($Documentation) {
         $DocParams = @{ All = $true }
         if ($AllSources) {
             $DocParams["AllSources"] = $true
+        }
+        if ($Markdown) {
+            $DocParams["Markdown"] = $true
         }
         & $DocScript @DocParams
     }

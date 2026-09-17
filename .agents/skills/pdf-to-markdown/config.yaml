@@ -21,7 +21,7 @@ paths:
   markdown_emit_dir: "workspace/11_emit_markdown"
   canonical_markdown_dir: "workspace/12_refine_first_chapter_name"
   markdown_linked_dir: "workspace/13_link_toc"
-  default_output_dir: "output_markdown"
+  default_output_dir: "."
 
 llm:
   provider: "google-genai"     # google-genai, openai, or mock/offline

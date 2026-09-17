@@ -447,7 +447,7 @@ def main():
         output_dir = Path(args.output_dir).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
     elif book_dir:
-        output_dir = (book_dir / "output_markdown").resolve()
+        output_dir = book_dir.resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.status:

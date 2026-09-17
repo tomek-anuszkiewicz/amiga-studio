@@ -27,8 +27,31 @@
 .PARAMETER Force
     Forces re-download even if target file already exists and byte size matches.
 
-.PARAMETER List
-    Displays the catalog of reference documents and their configured mirrors.
+.PARAMETER Markdown
+    Processes downloaded reference documentation (PDF scans, microarchitectural guides,
+    and HTML crawls) into publication-grade Markdown directly within their target directories.
+    Aliases: -Convert, -Process.
+
+.PARAMETER Hrm
+    Processes only the Commodore Amiga Hardware Reference Manual.
+
+.PARAMETER Trm
+    Processes only the A500 A2000 Technical Reference Manual.
+
+.PARAMETER Prm
+    Processes only the 68000 Programmer's Reference Manual.
+
+.PARAMETER Um
+    Processes only the 68000 User's Manual.
+
+.PARAMETER Prefetch
+    Processes only Jorge Cwik's Instruction Prefetch study.
+
+.PARAMETER Undocumented
+    Processes only Kuba Winnicki's Undocumented Features of OCS, ECS, and AGA.
+
+.PARAMETER Help
+    Displays usage instructions and parameter descriptions. Aliases: -h, -?, --help.
 
 .EXAMPLE
     .\tools\bootstrap_documentation.ps1 -List
@@ -39,8 +62,16 @@
     Downloads all configured reference materials in failover mode.
 
 .EXAMPLE
-    .\tools\bootstrap_documentation.ps1 -All -AllSources
-    Downloads all reference items from all mirrors for comprehensive redundancy.
+    .\tools\bootstrap_documentation.ps1 -All -Markdown
+    Downloads and converts all reference materials into publication-grade Markdown.
+
+.EXAMPLE
+    .\tools\bootstrap_documentation.ps1 -Hrm -Markdown
+    Downloads and converts only the Hardware Reference Manual into Markdown.
+
+.EXAMPLE
+    .\tools\bootstrap_documentation.ps1 -Help
+    Displays available parameters, flags, and usage examples.
 #>
 
 [CmdletBinding()]
@@ -50,7 +81,19 @@ param(
     [Alias("AllMirrors")]
     [switch]$AllSources,
     [switch]$Force,
-    [switch]$List
+    [switch]$List,
+    [Alias("Convert", "Process")]
+    [switch]$Markdown,
+    [switch]$Hrm,
+    [switch]$Trm,
+    [switch]$Prm,
+    [switch]$Um,
+    [switch]$Prefetch,
+    [switch]$Undocumented,
+    [Alias("h", "?")]
+    [switch]$Help,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$RemainingArgs
 )
 
 # -----------------------------------------------------------------------------
@@ -258,14 +301,24 @@ function Show-Usage {
     Write-Host "Usage:" -ForegroundColor White
     Write-Host "  .\tools\bootstrap_documentation.ps1 -List                : Show all documents and configured mirrors"
     Write-Host "  .\tools\bootstrap_documentation.ps1 -All                 : Download all reference materials (failover mode)"
-    Write-Host "  .\tools\bootstrap_documentation.ps1 -All -AllSources     : Download from ALL mirrors for each document"
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -All -Markdown       : Download and convert all materials into Markdown"
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -Hrm -Markdown       : Download and convert only Hardware Reference Manual"
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -Help                : Display this usage and parameter list"
     Write-Host ""
-    Write-Host "Options:" -ForegroundColor White
+    Write-Host "Available Parameters:" -ForegroundColor White
     Write-Host "  -List                    : Display catalog of reference documents and mirrors"
-    Write-Host "  -All                     : Download all reference materials in the catalog"
+    Write-Host "  -All                     : Process all reference materials in the catalog"
+    Write-Host "  -Markdown                : Convert downloaded documents to publication-grade Markdown (aliases: -Convert, -Process)"
+    Write-Host "  -Hrm                     : Process only Hardware Reference Manual"
+    Write-Host "  -Trm                     : Process only A500 A2000 Technical Reference Manual"
+    Write-Host "  -Prm                     : Process only 68000 Programmer's Reference Manual"
+    Write-Host "  -Um                      : Process only 68000 User's Manual"
+    Write-Host "  -Prefetch                : Process only Instruction Prefetch study"
+    Write-Host "  -Undocumented            : Process only Undocumented features of OCS, ECS, AGA"
     Write-Host "  -Destination <path>      : Custom destination directory (defaults to Obsidian/Amiga/Reference)"
     Write-Host "  -AllSources              : Download from all mirrors for redundancy (alias: -AllMirrors)"
     Write-Host "  -Force                   : Re-download even if target file already exists"
+    Write-Host "  -Help                    : Display this usage and parameter list (aliases: -h, -?, --help)"
     Write-Host ""
 }
 
@@ -540,9 +593,109 @@ function Download-CrawlItem {
     return $false
 }
 
+function Convert-ToMarkdown {
+    param(
+        [hashtable]$Item,
+        [string]$TargetDir
+    )
+
+    Write-Host "  Converting '$($Item.Name)' to publication-grade Markdown..." -ForegroundColor Cyan
+    Write-Host "    Target Directory: $TargetDir" -ForegroundColor DarkGray
+
+    $Success = $false
+    if ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.pdf") {
+        $PdfScript = Join-Path $RepoRoot ".agents\skills\pdf-to-markdown\pipeline.py"
+        $PdfConfig = Join-Path $RepoRoot ".agents\skills\pdf-to-markdown\config.yaml"
+        $PdfSource = Join-Path $TargetDir $Item.TargetFile
+        $Workspace = Join-Path $TargetDir "workspace"
+
+        if (-not (Test-Path $PdfSource)) {
+            Write-Error "PDF source not found: $PdfSource"
+            return $false
+        }
+
+        $cmdArgs = @(
+            $PdfScript,
+            "--pdf", $PdfSource,
+            "--workspace", $Workspace,
+            "--output-dir", $TargetDir,
+            "--config", $PdfConfig
+        )
+        try {
+            & python $cmdArgs
+            $Success = ($LASTEXITCODE -eq 0)
+        }
+        catch {
+            Write-Error "Failed to execute pdf-to-markdown pipeline: $_"
+            $Success = $false
+        }
+    }
+    elseif ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.html") {
+        $HtmlScript = Join-Path $RepoRoot ".agents\skills\html-to-markdown\pipeline.py"
+        $HtmlSource = Join-Path $TargetDir $Item.TargetFile
+
+        if (-not (Test-Path $HtmlSource)) {
+            Write-Error "HTML source not found: $HtmlSource"
+            return $false
+        }
+
+        $cmdArgs = @(
+            $HtmlScript,
+            "--input", $HtmlSource,
+            "--output-dir", $TargetDir,
+            "--document-name", $Item.Name
+        )
+        try {
+            & python $cmdArgs
+            $Success = ($LASTEXITCODE -eq 0)
+        }
+        catch {
+            Write-Error "Failed to execute html-to-markdown pipeline: $_"
+            $Success = $false
+        }
+    }
+    elseif ($Item.Type -eq "Crawl") {
+        $HtmlScript = Join-Path $RepoRoot ".agents\skills\html-to-markdown\pipeline.py"
+        $CrawlSource = Join-Path $TargetDir "live"
+        if (-not (Test-Path $CrawlSource)) {
+            $CrawlSource = $TargetDir
+        }
+
+        $cmdArgs = @(
+            $HtmlScript,
+            "--input", $CrawlSource,
+            "--output-dir", $TargetDir,
+            "--document-name", $Item.Name
+        )
+        try {
+            & python $cmdArgs
+            $Success = ($LASTEXITCODE -eq 0)
+        }
+        catch {
+            Write-Error "Failed to execute html-to-markdown pipeline: $_"
+            $Success = $false
+        }
+    }
+
+    if ($Success) {
+        Write-Host "  [OK] Converted successfully: '$($Item.Name)'" -ForegroundColor Green
+    } else {
+        Write-Error "  [FAILED] Markdown conversion failed for: '$($Item.Name)'"
+    }
+
+    return $Success
+}
+
 # -----------------------------------------------------------------------------
 # Main Execution Logic
 # -----------------------------------------------------------------------------
+
+# Handle help request explicitly (-Help, -h, -?, --help)
+$IsHelpRequested = $Help -or ($RemainingArgs -contains "--help") -or ($RemainingArgs -contains "-help") -or ($RemainingArgs -contains "help") -or ($RemainingArgs -contains "-h") -or ($RemainingArgs -contains "-?")
+if ($IsHelpRequested) {
+    Show-Usage
+    exit 0
+}
 
 if ($List) {
     Show-CatalogList
@@ -554,20 +707,41 @@ if ($AllSources -or $Force) {
     $All = $true
 }
 
-if (-not $All) {
+# Determine which documents to process
+$SelectedIds = @()
+if ($Hrm)          { $SelectedIds += "hrm" }
+if ($Trm)          { $SelectedIds += "trm" }
+if ($Prm)          { $SelectedIds += "prm" }
+if ($Um)           { $SelectedIds += "um" }
+if ($Prefetch)     { $SelectedIds += "prefetch" }
+if ($Undocumented) { $SelectedIds += "undocumented" }
+
+$HasExplicitAction = $All -or $Markdown -or ($SelectedIds.Count -gt 0)
+if (-not $HasExplicitAction) {
     Show-Usage
     exit 0
 }
 
 Ensure-StagingReadme -TempDir $Destination
 
-$ItemsToProcess = $Catalog
+$ItemsToProcess = @(
+    if ($SelectedIds.Count -gt 0) {
+        $Catalog | Where-Object { $SelectedIds -contains $_.Id }
+    } else {
+        $Catalog
+    }
+)
 
 Write-Host ""
 Write-Host "Bootstrapping External Amiga Reference Materials" -ForegroundColor Cyan
 Write-Host "Destination : $Destination" -ForegroundColor DarkGray
 Write-Host "Items count : $($ItemsToProcess.Count)" -ForegroundColor DarkGray
 Write-Host "Mode        : $(if ($AllSources) { 'All Mirrors & Sources (Redundancy Mode)' } else { 'Failover Mode (First Success)' })" -ForegroundColor Yellow
+if ($Markdown) {
+    Write-Host "Action      : Download & Convert to Publication-Grade Markdown" -ForegroundColor Green
+} else {
+    Write-Host "Action      : Download Raw Scans & Crawls" -ForegroundColor White
+}
 Write-Host ""
 
 $HasErrors = $false
@@ -581,24 +755,34 @@ foreach ($entry in $ItemsToProcess) {
         New-Item -ItemType Directory -Path $ItemTargetDir -Force | Out-Null
     }
 
-    $Success = $false
+    $DownloadSuccess = $false
     if ($entry.Type -eq "Crawl") {
-        $Success = Download-CrawlItem -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
+        $DownloadSuccess = Download-CrawlItem -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
     } else {
-        $Success = Download-SingleFile -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
+        $DownloadSuccess = Download-SingleFile -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
     }
 
-    if (-not $Success) {
+    if (-not $DownloadSuccess) {
         $HasErrors = $true
+    }
+    elseif ($Markdown) {
+        $ConvertSuccess = Convert-ToMarkdown -Item $entry -TargetDir $ItemTargetDir
+        if (-not $ConvertSuccess) {
+            $HasErrors = $true
+        }
     }
     Write-Host ""
 }
 
 if ($HasErrors) {
-    Write-Error "One or more reference downloads failed. Review warnings and errors above."
+    Write-Error "One or more reference downloads or Markdown conversions failed. Review warnings and errors above."
     exit 1
 } else {
-    Write-Host "All requested reference documentation items provisioned successfully." -ForegroundColor Green
+    if ($Markdown) {
+        Write-Host "All requested reference documentation items provisioned and converted to Markdown successfully." -ForegroundColor Green
+    } else {
+        Write-Host "All requested reference documentation items provisioned successfully." -ForegroundColor Green
+    }
     Write-Host ""
     Write-Host "NOTE: Reference materials provisioned directly into:" -ForegroundColor Yellow
     Write-Host "      Obsidian/Amiga/Reference/" -ForegroundColor White

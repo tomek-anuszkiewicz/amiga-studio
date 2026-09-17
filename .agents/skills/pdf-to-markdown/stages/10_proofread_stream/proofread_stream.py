@@ -218,7 +218,12 @@ def process_proofread_stream(
 
         target_file_slug = f"{idx:02d}_{new_slug}"
         out_json_name = f"{target_file_slug}.json"
-        target_md_name = f"{target_file_slug}.md"
+
+        # Format canonical publication-grade markdown filename matching {idx:02d} - {Title}.md
+        clean_title_name = re.sub(r'[:/\\|]', ' - ', corrected_title)
+        clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
+        clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
+        target_md_name = f"{idx:02d} - {clean_title_name}.md" if clean_title_name else f"{target_file_slug}.md"
 
         # 4. Save proofread nodes to output_dir
         out_json_path = output_dir / out_json_name

@@ -148,7 +148,9 @@ def process_first_chapter_refinement(
         new_title = clean_stem.replace("_", " ").title()
         new_slug = clean_stem
 
-    new_filename = f"{prefix}_{new_slug}.md"
+    clean_title_name = re.sub(r'[:/\\|]', ' - ', new_title)
+    clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name).strip(' -.')
+    new_filename = f"{prefix} - {clean_title_name}.md" if clean_title_name else f"{prefix}_{new_slug}.md"
 
     output_dir.mkdir(parents=True, exist_ok=True)
     out_assets_dir = output_dir / "assets"

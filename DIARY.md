@@ -1162,10 +1162,31 @@ Every future modification or implementation task must append an entry following 
   - Added robust fallback for `$RepoRoot` calculation when `$PSScriptRoot` is empty or invoked across varying PowerShell execution contexts (`Split-Path` or fallback to `Get-Location` verified with `Cargo.toml`).
   - Added `/tools/AmigaTestKit*/` pattern in `.gitignore` to prevent any staging remnants from entering Git tracking.
 - **Architectural Rationale & Trade-Offs**:
-  - Improves CLI ergonomics and discoverability: users executing the script without arguments immediately see available parameters (`-List`, `-Force`, `-SingleStep`, `-AmigaTestKit`, etc.) while retaining default provisioning behavior.
+### [2026-09-17 06:40 CEST] — Documentation Bootstrap Markdown Processing & In-Place Emission
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/bootstrap.ps1`
+  - `.agents/skills/pdf-to-markdown/config.yaml`
+  - `.agents/skills/pdf-to-markdown/pipeline.py`
+  - `.agents/skills/pdf-to-markdown/stages/05_chapter_partition/partition_chapters.py`
+  - `.agents/skills/pdf-to-markdown/stages/10_proofread_stream/proofread_stream.py`
+  - `.agents/skills/pdf-to-markdown/stages/12_refine_first_chapter_name/refine_name.py`
+  - `.agents/skills/html-to-markdown/pipeline.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Added `-Markdown` parameter (aliases: `-Convert`, `-Process`) to `bootstrap_documentation.ps1` and `bootstrap.ps1` to trigger automated conversion of downloaded raw scans/crawls into publication-grade Markdown.
+  - Added discrete document selection switches: `-Hrm`, `-Trm`, `-Prm`, `-Um`, `-Prefetch`, `-Undocumented` alongside `-All` and `-Force`.
+  - Implemented `-Help` (aliases: `-h`, `-?`, `--help`) with clean parameter documentation and usage examples.
+  - Configured in-place Markdown emission: updated `pdf-to-markdown/pipeline.py`, `config.yaml`, and stage scripts to emit Markdown files and `assets/` directly into `Obsidian/Amiga/Reference/<Document_Name>/` rather than nested `output_markdown/` subfolders.
+  - Standardized output Markdown filenames to `{idx:02d} - {Title}.md` (e.g. `00 - Table of Contents.md`, `01 - Chapter 1 - Introduction.md`) matching the canonical naming convention in reference `-old` directories.
+  - Built unified `.agents/skills/html-to-markdown/pipeline.py` orchestrator supporting single HTML files and multi-page web directory crawls, extracting images to `assets/` with `.txt` sidecars and emitting clean Markdown with Line 1 YAML properties and TOC.
+  - Guaranteed zero interference with `*-old` folders, preserving them untouched for user verification.
+- **Architectural Rationale & Trade-Offs**:
+  - Unifies reference documentation downloading and ingestion into a single, cohesive workflow (`bootstrap_documentation.ps1 -Markdown`).
+  - Eliminates auxiliary intermediate folders by writing final Markdown directly into the reference library directories expected by Obsidian design documents.
 - **Verification & Invariants**:
-  - Verified `bootstrap_sources.ps1 --help` and `-Help` display usage and exit immediately with code 0.
-  - Verified `bootstrap_sources.ps1` with zero parameters displays the usage banner, skips already provisioned sources, and displays the summary table with code 0.
-  - Verified `bootstrap.ps1 -Sources` runs cleanly with code 0.
+  - Verified `bootstrap_documentation.ps1 -Help` and `--help` exit cleanly with code 0.
+  - Verified `bootstrap_documentation.ps1 -Prefetch -Markdown` downloads and converts Jorge Cwik's prefetch guide into `Obsidian/Amiga/Reference/Instruction Prefetch on the Motorola 68000 Processor/`.
+  - Verified `bootstrap_documentation.ps1 -Undocumented -Markdown` crawls and consolidates Kuba Winnicki's *Achtung! Amiga* into `Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets/`.
+  - Verified code formatting (`cargo fmt --all -- --check`) and architecture rules (`cargo test -p test_runner --test test_architecture_rules test_file_size_limits`).
 
 
