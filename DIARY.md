@@ -6653,3 +6653,15 @@ Every future modification or implementation task must append an entry following 
   - Keeps the root `README.md` focused on player quick start and compact developer direction, while introducing the unique AI-pair-programming engineering methodology upfront.
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+### [2026-09-17 04:50 CEST] — Consolidated Testing & Verification into docs/developers.mf
+- **Affected Subsystems**:
+  - `docs/developers.md` (expanded Section 6 into comprehensive Test Suite & Verification Framework section)
+  - `docs/testing.md` (deleted via `git rm`)
+- **What Was Changed (The Concrete Reality)**:
+  - Merged the entire `docs/testing.md` document directly into Section 6 of [`docs/developers.md`](docs/developers.md) as a fully elaborated major chapter (covering M68000 SingleStepTests with sampling/exhaustive flags, Cartesian DMA contention math, automated architecture gates, CLI regression diagnostics, and vAmigaTS integration).
+  - Deleted standalone `docs/testing.md` via `git rm`.
+- **Architectural Rationale & Trade-Offs**:
+  - Unifies all developer-facing workflows (building, bootstrapping, reference sources, literature catalog, knowledge retrieval, and exhaustive verification suites) into a single authoritative guide, reducing file fragmentation across `docs/`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates (19/19 architecture rules, zero broken links).

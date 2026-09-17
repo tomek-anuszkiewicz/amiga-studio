@@ -221,7 +221,125 @@ When new reference manuals or updated editions are retrieved, use specialized ag
 
 ---
 
-## 6. Verification & Test Suite
+## 6. Test Suite & Verification Framework
 
-For detailed instructions on running single-step CPU tests, Cartesian DMA contention suites, and regression testing, refer to:
-👉 [**Test Suite & Verification Framework**](testing.md)
+The emulator relies on a multi-tiered verification framework to guarantee 100% cycle-exact fidelity against real Motorola 68000 silicon and Amiga 500 hardware:
+
+### A. M68000 SingleStepTests (Physical Hardware Silicon Verification)
+
+The CPU core is validated against **Tom Harte's `SingleStepTests-680x0`** suite (`ref_src/SingleStepTests-680x0/68000/v1/`), consisting of 124 per-instruction test files and ~1,000,000 randomized test vectors captured directly from physical 68000 silicon pins.
+
+#### Execution Modes
+
+- **Fast Smoke Test (Sampled):** By default, each instruction suite evaluates a sampled subset of 50 test cases (~5 seconds total):
+  ```powershell
+  # Run sampled SingleStepTests across all implemented opcodes:
+  cargo test -p test_runner --test test_singlestep
+
+  # Run tests for a specific instruction or family:
+  cargo test -p test_runner --test test_singlestep test_nop
+  cargo test -p test_runner --test test_singlestep test_add_b
+  cargo test -p test_runner --test test_singlestep test_move_w
+  ```
+
+- **Full Exhaustive Verification (`SINGLESTEP_FULL`):** Setting `SINGLESTEP_FULL=1` disables sampling limits and executes **100% of all ~1,000,000 test vectors** across all 124 suites in parallel (~5–6 seconds total):
+  - **PowerShell (Windows):**
+    ```powershell
+    $env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
+    ```
+  - **Bash / Linux / macOS:**
+    ```bash
+    SINGLESTEP_FULL=1 cargo test -p test_runner --test test_singlestep
+    ```
+
+- **Custom Sample Limit (`SINGLESTEP_LIMIT`):** To evaluate an arbitrary sample size (e.g. 200 or 500 test cases per opcode):
+  ```powershell
+  $env:SINGLESTEP_LIMIT = "500"; cargo test -p test_runner --test test_singlestep
+  ```
+
+- **Automated Archive Decompression (`tools/bootstrap/bootstrap.ps1 -Sources`):**
+  Running `.\tools\bootstrap\bootstrap.ps1 -Sources` automatically scans for compressed archives (`*.json.gz`, `*.gz`, or `.zip`) under `ref_src/SingleStepTests-680x0/` and decompresses them into native `.json` files in `68000/v1/` using native .NET decompression (zero external dependencies).
+
+### B. Cartesian DMA Contention Verification
+
+Validates cycle-exact M68000 micro-stepping and wait-state handling under Agnus DMA bus contention across the full combinatorial Cartesian product:
+
+- **Address Permutations ($2^k$):** Sweeps all role assignments of memory cells touched by the instruction (`ChipRam` vs `FastRam`).
+- **DMA Schedule Permutations ($2^M$):** Sweeps every bit pattern of stalled vs free CCK slots across the execution window.
+- **Asserted State Constraints:**
+  1. *Cycle Invariance:* $C = C_0 + 2 \times \text{wait\_states}$
+  2. *Fast RAM Immunity:* $C = C_0$ with zero wait states when memory addresses point to Fast RAM.
+  3. *State Invariance:* Register values and RAM contents are 100% bit-identical to the uncontended golden run.
+
+```powershell
+# Run full Cartesian DMA contention test suite:
+cargo test -p test_runner --test test_dma_cartesian
+
+# Run specific sub-suite:
+cargo test -p test_runner --test test_dma_cartesian test_dma_cartesian_system_and_traps
+```
+
+### C. Automated Architecture Rules Compliance
+
+Enforces architectural rules defined in [`AGENTS.md`](../AGENTS.md) (code formatting, file size limits $\le 800$ lines, zero runtime panics, zero custom macros, path privacy, and inlining rules):
+```powershell
+cargo test -p test_runner --test test_architecture_rules
+```
+
+### D. CLI Diagnostic Tools & Regression Tracking
+
+The `test_runner` crate provides a standalone CLI tool for inspecting coverage matrices, live failure diagnostics, and detecting regressions:
+
+> [!TIP]
+> Running `cargo run -p test_runner` without arguments (or with `--help`) prints the complete usage manual and available command options.
+
+```powershell
+# Display global pass/fail matrix and coverage summary across all opcodes:
+cargo run -p test_runner -- --summary
+
+# Detect regressions and fixed tests compared to previous run:
+cargo run -p test_runner -- --diff
+
+# Execute a single opcode suite directly with live diagnostic failure output:
+cargo run -p test_runner -- --suite ADD.b
+```
+
+- 🔴 **Regressions:** Tests that previously passed but now fail are highlighted with `⚠️ [REGRESSION DETECTED]`.
+- 🟢 **Improvements:** Tests that previously failed but now pass are highlighted with `🎉 [PROGRESS / FIX]`.
+
+### E. vAmigaTS Subsystem & Whole-Machine Verification (Preview)
+
+While whole-machine integration is part of a subsequent roadmap phase, the repository features an integrated test harness and execution runner for the **vAmiga Test Suite (vAmigaTS)** (`ref_src/vAmigaTS/`), validating custom chipset behavior against golden 716×285 24-bit RGB `.raw` viewport captures.
+
+#### Subsystem Integration Test Suites
+Dedicated Cargo integration tests in `crates/test_runner/tests/` exercise specific custom chip components against targeted vAmigaTS test cases:
+```powershell
+# Verify Copper coprocessor timing:
+cargo test -p test_runner --test test_vamiga_copper
+
+# Verify Blitter DMA and line drawing:
+cargo test -p test_runner --test test_vamiga_blitter
+
+# Verify Denise display window (DIW) clipping:
+cargo test -p test_runner --test test_vamiga_denise
+
+# Verify Paula audio channels and interrupts:
+cargo test -p test_runner --test test_vamiga_paula
+```
+
+#### Interactive CLI Runner
+Execute vAmigaTS tests directly via the test runner CLI:
+```powershell
+# Execute a specific test by name with live pixel diff reporting:
+cargo run -p test_runner -- vamiga --test coptim1
+
+# Filter by custom chip category (e.g. Copper, Blitter, Denise, Paula):
+cargo run -p test_runner -- vamiga --category Copper
+
+# Inspect deferred test suites and roadmap requirements:
+cargo run -p test_runner -- vamiga --list-deferred
+```
+
+> [!TIP]
+> Pass `--help` to the runner (`cargo run -p test_runner -- --help`) or invoke it without parameters to inspect all available options, category filters, and frame limits.
+
