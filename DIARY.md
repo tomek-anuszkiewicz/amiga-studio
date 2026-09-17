@@ -1328,3 +1328,26 @@ Every future modification or implementation task must append an entry following 
   - Passed test_rule_files_size_limit_and_truncation_safety
   - check_polish.py verified clean
   - check_test_coupling passed
+
+---
+
+### [2026-09-17 15:44 CEST] — Flexible Chapter Prefix Matching in Stage 13 & 104-Page PRM Regeneration
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/13_refine_first_chapter_name/refine_name.py`
+  - `Obsidian/Amiga/Reference/68000 Programmer's Reference Manual/`
+- **What Was Changed (The Concrete Reality)**:
+  - Generalized the leading digit prefix extractor in `refine_name.py` from `re.match(r"^(\d+)_", old_stem)` to `re.match(r"^(\d+)", old_stem)`.
+  - Generalized `clean_stem` to strip leading digits regardless of whether the separator is an underscore, space, or hyphen (`re.sub(r"^\d+[\s_-]*", "", ...)`).
+  - Executed the full 14-stage `pdf-to-markdown` pipeline for pages 1–104 of `M68000PRM.pdf` (`--page-ranges "1-104"`), covering Front Matter, Table of Contents, Section 1 Introduction, Section 2 Addressing Capabilities, and Section 3 Instruction Set Summary.
+- **Architectural Rationale & Trade-Offs**:
+  - Stage 11 emits files using human-readable space-hyphen separators (e.g. `00 - Table of Contents.md`). The rigid underscore-only prefix regex in Stage 13 previously failed to match, incorrectly falling back to `01 - Table of Contents.md` and causing a collision with `01 - SECTION 1 INTRODUCTION.md`. Matching leading digits universally preserves the exact chapter index (00).
+- **Verification & Invariants**:
+  - Executed end-to-end pipeline across all 14 stages cleanly in 400.9s.
+  - Verified emitted markdown in `Obsidian/Amiga/Reference/68000 Programmer's Reference Manual/`:
+    - `00 - Table of Contents.md`
+    - `01 - SECTION 1 INTRODUCTION.md`
+    - `02 - SECTION 2 ADDRESSING CAPABILITIES.md`
+    - `03 - SECTION 3 INSTRUCTION SET SUMMARY.md`
+  - Verified Table 2-1 and Table 2-2 in Section 2 render cleanly as semantic HTML tables without enclosing backtick code fences (` ```html `).
+  - Verified Table of Contents links cleanly resolve to generated section headings via Obsidian wikilinks.
+  - Passed `python tools/harness/pre_flight.py --quick`.

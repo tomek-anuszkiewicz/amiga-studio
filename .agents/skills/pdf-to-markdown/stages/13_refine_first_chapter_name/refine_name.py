@@ -50,7 +50,7 @@ def determine_canonical_title_and_slug(content: str, current_name: str) -> tuple
         return "Introduction", "introduction"
 
     # Fallback to current stem
-    clean_stem = re.sub(r"^\d+_", "", Path(current_name).stem)
+    clean_stem = re.sub(r"^\d+[\s_-]*", "", Path(current_name).stem)
     title = clean_stem.replace("_", " ").title()
     return title, clean_stem
 
@@ -99,8 +99,8 @@ def process_first_chapter_refinement(
 
     first_file = md_files[0]
     old_stem = first_file.stem
-    match_prefix = re.match(r"^(\d+)_", old_stem)
-    prefix = match_prefix.group(1) if match_prefix else "01"
+    match_prefix = re.match(r"^(\d+)", old_stem)
+    prefix = match_prefix.group(1) if match_prefix else "00"
 
     with open(first_file, "r", encoding="utf-8") as f:
         content = f.read()
