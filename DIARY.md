@@ -6409,6 +6409,24 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:05 CEST] — Authored docs/sources.md (External Sources & Testbeds Catalog)
+- **Affected Subsystems**:
+  - `docs/sources.md` (new documentation cataloging all external test sources, silicon vectors, and reference emulators)
+  - `README.md` (added link to `docs/sources.md` in repository documentation index)
+- **What Was Changed (The Concrete Reality)**:
+  - Authored comprehensive guide [`docs/sources.md`](docs/sources.md) detailing:
+    1. Upstream repositories and URLs for each external dependency.
+    2. Pinned versions and formats: Tom Harte SingleStepTests (format `68000/v1/`, 124 suites), Dirk W. Hoffmann vAmiga (`v4.5`), vAmigaTS (`master`, 2,077 tests), Keir Fraser Amiga Test Kit (`v1.20+`), and WinUAE sinc tables (`6.0.30`).
+    3. Directory layouts, formats, and contents for each repository under `ref_src/` and `tools/`.
+    4. Integration with automated bootstrapper (`tools/bootstrap/bootstrap_sources.ps1` and coordinator `tools/bootstrap/bootstrap.ps1 -Sources`).
+    5. Git ignore policies (`.gitignore`) and zero-cost NTFS directory junction sharing across worktrees via `tools/git/worktree.ps1`.
+  - Added link to [`docs/sources.md`](docs/sources.md) in root `README.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - Transparently documents provenance and pinned versions of all external test datasets without bloating Git history. Developers and agents understand exactly what data resides in `ref_src/`, where to download it, and how it is consumed by test runners.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 
