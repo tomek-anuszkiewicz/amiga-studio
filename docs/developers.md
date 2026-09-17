@@ -1,6 +1,9 @@
 # Developer Guide & Tooling Index
 
-This document serves as the primary technical entry point for building, testing, verifying, and contributing to the Amiga 500 emulator. It consolidates build workflows, optional bootstrapping, external reference sources, ingested documentation, and knowledge retrieval tools.
+This document serves as the primary technical entry point for building, testing, verifying, and contributing to the Amiga 500 emulator. It consolidates foundational architecture, build workflows, optional bootstrapping, external reference sources, ingested documentation, and knowledge retrieval tools.
+
+> [!IMPORTANT]
+> **Foundational Architecture:** Before modifying or extending emulator subsystems, review the [**Core Architecture & Hardware Execution Model**](architecture.md). It formalizes the cycle-exact Color Clock phases (`CCK1`/`CCK2`), shared bus contention, Gary arbitration, Big-Endian invariance, and decoupled subsystem ownership. Comprehensive silicon specifications, register allocations, and circuit schematics reside in [`Obsidian/Amiga/Design/`](../Obsidian/Amiga/Design/).
 
 ---
 

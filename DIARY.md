@@ -6631,3 +6631,13 @@ Every future modification or implementation task must append an entry following 
   - Eliminates fragment sprawl across `docs/` by consolidating all developer-facing reference catalogs, testbeds, literature specs, and bootstrap orchestrations into a single authoritative guide.
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+### [2026-09-17 04:47 CEST] — Added Foundational Architecture Reference to docs/developers.md
+- **Affected Subsystems**:
+  - `docs/developers.md` (added foundational architecture advanced callout at the top of the guide)
+- **What Was Changed (The Concrete Reality)**:
+  - Added an artifact-grade greeting/advisory callout (`[!IMPORTANT]`) at the very top of [`docs/developers.md`](docs/developers.md) lighting up and linking to [`docs/architecture.md`](docs/architecture.md) and [`Obsidian/Amiga/Design/`](Obsidian/Amiga/Design/).
+- **Architectural Rationale & Trade-Offs**:
+  - Ensures developers contributing to the emulator grasp core clock synchronization (CCK1/CCK2), shared bus contention, and Big-Endian invariance before delving into tooling, suites, or opcodes.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
