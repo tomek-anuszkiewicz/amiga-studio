@@ -63,6 +63,9 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 
 ### B. Quality Assurance & Code Hygiene
 - [`code-review`](../.agents/skills/code-review/SKILL.md): Comprehensive 14-point audit checklist for code quality, file sizes ($\le 800$ lines), inlining, zero runtime panics, and spec compliance.
+- [`test-runner`](../.agents/skills/test-runner/SKILL.md): Standardized test execution across all 4 tiers, `.test_results/` snapshot management, and automated differential regression telemetry.
+- [`integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md): 4-Iteration Cascading Verification Protocol runbook for multi-chip integration test suites, failure clustering, and 2–3 attempt limits.
+- [`synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md): Post-facto root-cause consolidation using the 3-Column Diagnostic Matrix (`[Symptom] | [Location] | [Mechanism]`) to replace scattered local workarounds with a unified upstream hardware model.
 - [`prune-dead-code`](../.agents/skills/prune-dead-code/SKILL.md): Systematic procedure for identifying and safely eliminating dead code, unused functions, obsolete constants, and unreferenced crate exports upon milestone completion.
 - [`egui-vision-debugger`](../.agents/skills/egui-vision-debugger/SKILL.md): Headless visual inspection and autonomous self-healing skill for the `egui` frontend using `gui-inspector` (`egui_kittest` + `wgpu`) and Agent Multimodal Vision to diagnose layout squishing, splitter contention, and focus lifecycles.
 
@@ -74,3 +77,16 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`author-methodology-doc`](../.agents/skills/author-methodology-doc/SKILL.md): Author, audit, or restructure narrative articles, methodology documents, essays, and retrospective devlogs (e.g. `docs/how_this_emulator_was_written.md`) using the 6-layer Inverted Pyramid hierarchy.
 - [`html-to-markdown`](../.agents/skills/html-to-markdown/SKILL.md): Standardized toolchain for converting legacy Word HTML, vintage web documentation, and technical HTML articles into clean, publication-grade Obsidian Markdown with asset extraction, layout unnesting, and anchor link validation.
 - [`graphify`](../.agents/skills/graphify/SKILL.md): Persistent code knowledge graph navigation, call hierarchy tracing, and scoped subtree updates (`crates/` vs `ref_src/`).
+
+---
+
+## 4. Interactive Slash Command Workflows (`.agents/workflows/`)
+
+Developers trigger high-level orchestration directly in the IDE chat UI using slash commands:
+
+| Slash Command | Workflow File | Primary Purpose |
+| :--- | :--- | :--- |
+| **`/code-review`** | [`code-review.md`](../.agents/workflows/code-review.md) | Comprehensive 14-point pre-commit and milestone architectural compliance audit. |
+| **`/test-runner`** | [`test-runner.md`](../.agents/workflows/test-runner.md) | Standardized test suite execution, `.test_results/` snapshot rotation, and automated regression diffing. |
+| **`/integration-test-sprint`** | [`integration-test-sprint.md`](../.agents/workflows/integration-test-sprint.md) | 4-iteration cascading verification sweep, failure clustering, and 2–3 attempt time-boxing. |
+| **`/synthesize-test-fixes`** | [`synthesize-test-fixes.md`](../.agents/workflows/synthesize-test-fixes.md) | Post-facto git diff audit, 3-column diagnostic matrix construction, and root-cause consolidation into upstream substrate crates. |

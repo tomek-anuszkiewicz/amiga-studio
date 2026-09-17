@@ -6147,3 +6147,15 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py --quick` passed cleanly.
   - Architecture test suite passed cleanly.
+
+---
+
+### [2026-09-17 21:22 CEST] — Documentation & Architecture: Synchronize Testing Strategy & AI Workflows
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/Testing Strategy and Quality Assurance.md`: Enriched Section 3 with interactive workflow links (`/integration-test-sprint`, `/test-runner`), updated Section 4 with the **3-Column Diagnostic Matrix** and common denominator synthesis via `/synthesize-test-fixes`, and added all 3 workflows to Section 7 Automated Tooling matrix.
+  - `docs/testing.md`: Added Section 5 ("Autonomous Testing Workflows & Slash Commands") providing developer cheatsheet for `/test-runner`, `/integration-test-sprint`, and `/synthesize-test-fixes`.
+  - `docs/ai_agents.md`: Updated Section 3 with new QA skills and added Section 4 ("Interactive Slash Command Workflows") cataloging all IDE chat slash commands.
+- **What Was Changed (The Concrete Reality)**:
+  - Harmonized developer-facing handbooks (`docs/`) and authoritative Obsidian architectural specifications with the new test runner, sprint, and synthesis workflows.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py` passed cleanly (100% formatting, AGENTS.md <= 14k, API coverage, all 19 architecture tests passed, Obsidian link integrity passed with zero broken links).
