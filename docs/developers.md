@@ -20,17 +20,15 @@ This document serves as the primary technical entry point for building, testing,
   - [In-Repository Specifications (Committed to Git)](#in-repository-specifications-committed-to-git)
   - [External Reference Documentation (Bootstrapped / Git-Ignored)](#external-reference-documentation-bootstrapped-git-ignored)
   - [Processing Raw Documents into Markdown](#processing-raw-documents-into-markdown)
-- [4. External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)
-  - [Automated Sources Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)
-  - [Bootstrapping Raw Archival Sources (`tools/bootstrap/bootstrap_documentation.ps1`)](#bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1)
-  - [Upstream Archival Reference Documents](#upstream-archival-reference-documents)
-  - [Multi-Source Fallback Matrix & Error Resilience](#multi-source-fallback-matrix-error-resilience)
-  - [Multi-Page Web Crawling Engine](#multi-page-web-crawling-engine)
-- [5. Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)](#5-bootstrapping-overview-toolsbootstrapbootstrapps1)
-  - [Bootstrapper Commands](#bootstrapper-commands)
-- [6. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#6-domain-hardware-knowledge-local-vector-rag-amiga-rag)
-- [7. Code Structure & Relationships: Graphify](#7-code-structure-relationships-graphify)
-- [8. Test Suite & Verification Framework](#8-test-suite-verification-framework)
+- [4. Bootstrapping & External Reference Provisioning (`tools/bootstrap/bootstrap.ps1`)](#4-bootstrapping-overview-toolsbootstrapbootstrapps1)
+  - [Complete Development Setup (`-All`)](#full-development-setup-all)
+  - [Verification Testbeds Provisioning (`-Sources`)](#sources-provisioning-sources)
+  - [Archival Reference Documentation Provisioning (`-Documentation`)](#archival-documentation-provisioning-documentation)
+  - [Domain Hardware RAG Setup (`-Rag`)](#domain-hardware-rag-setup-rag)
+  - [Code Knowledge Graph Setup (`-Graphify`)](#code-knowledge-graph-setup-graphify)
+- [5. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag)
+- [6. Code Structure & Relationships: Graphify](#6-code-structure-relationships-graphify)
+- [7. Test Suite & Verification Framework](#7-test-suite-verification-framework)
   - [A. M68000 SingleStepTests (Silicon Verification)](#a-m68000-singlesteptests-physical-hardware-silicon-verification)
   - [B. Cartesian DMA Contention Verification](#b-cartesian-dma-contention-verification)
   - [C. Automated Architecture Rules Compliance](#c-automated-architecture-rules-compliance)
@@ -82,7 +80,7 @@ The emulator core does not rely on guesswork or high-level approximations; it va
 - **Hardware Diagnostics (Amiga Test Kit):** Bootable diagnostic floppy disk image used for end-to-end system loop verification, memory testing, and peripheral validation.
 
 > [!NOTE]
-> **Graphify Code Knowledge Graph Integration:** Downloaded reference source files (specifically `ref_src/vAmiga/` and test harnesses) are parsed and indexed directly into the unified **Graphify graph database** (`graphify-out/`) alongside active Rust crates (`crates/`). This allows developers and AI agents to query cross-codebase symbol definitions, trace call hierarchies, and compare Rust implementations against reference C++ algorithms via `graphify query` (see [Chapter 7: Code Structure & Relationships: Graphify](#7-code-structure-relationships-graphify)).
+> **Graphify Code Knowledge Graph Integration:** Downloaded reference source files (specifically `ref_src/vAmiga/` and test harnesses) are parsed and indexed directly into the unified **Graphify graph database** (`graphify-out/`) alongside active Rust crates (`crates/`). This allows developers and AI agents to query cross-codebase symbol definitions, trace call hierarchies, and compare Rust implementations against reference C++ algorithms via `graphify query` (see [Chapter 6: Code Structure & Relationships: Graphify](#6-code-structure-relationships-graphify)).
 
 Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`.
 
@@ -107,7 +105,7 @@ When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 
 4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
 
 > [!TIP]
-> Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)** (`.\tools\bootstrap\bootstrap.ps1 -Sources`).
+> Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: Bootstrapping & External Reference Provisioning](#4-bootstrapping-overview-toolsbootstrapbootstrapps1)** (`.\tools\bootstrap\bootstrap.ps1 -Sources`).
 
 ---
 
@@ -177,7 +175,7 @@ Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`
    - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
 
 > [!TIP]
-> Information and automated scripts for downloading and bootstrapping these external reference materials (as well as original archival PDF scans) are provided in **[Chapter 4: External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)** (`.\tools\bootstrap\bootstrap.ps1 -Documentation`).
+> Information and automated scripts for downloading and bootstrapping these external reference materials (as well as original archival PDF scans) are provided in **[Chapter 4: Bootstrapping & External Reference Provisioning](#4-bootstrapping-overview-toolsbootstrapbootstrapps1)** (`.\tools\bootstrap\bootstrap.ps1 -Documentation`).
 
 <a id="processing-raw-documents-into-markdown"></a>
 ### Processing Raw Documents into Markdown
@@ -197,31 +195,71 @@ When new reference manuals or updated editions are retrieved, use specialized ag
 
 ---
 
-<a id="4-external-reference-downloads-provisioning"></a><a id="4-external-reference-downloads--provisioning"></a><a id="4-archival-documentation-reference-downloads"></a><a id="4-archival-documentation--reference-downloads"></a>
-## 4. External Reference Downloads & Provisioning
+<a id="4-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="4-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="5-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="5-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="4-external-reference-downloads-provisioning"></a><a id="4-external-reference-downloads--provisioning"></a><a id="4-archival-documentation-reference-downloads"></a><a id="4-archival-documentation--reference-downloads"></a><a id="2-optional-bootstrapping-overview"></a><a id="bootstrapping-overview"></a>
+## 4. Bootstrapping & External Reference Provisioning (`tools/bootstrap/bootstrap.ps1`)
 
-This chapter covers all external data sources, verification testbeds, and archival documentation that reside outside Git history, provisioned automatically via dedicated bootstrap scripts:
+Bootstrapping is **strictly optional**. A freshly cloned repository compiles and runs the standalone desktop GUI or WebAssembly canvas out of the box using only the stable Rust toolchain.
 
-<a id="automated-provisioning-toolsbootstrapbootstrap_sourcesps1"></a>
-### Automated Sources Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)
+However, specialized development and verification workflows—such as running exhaustive 124-suite M68000 silicon tests, validating against golden vAmigaTS visual viewports, querying the offline Qdrant RAG vector database, or exploring cross-codebase call graphs—require external reference assets, technical literature, or tooling services.
 
-Automates downloading, unpacking, decompressing, and validating external test assets and reference code according to the [lifecycle steps detailed in Chapter 2](#reference-sources-lifecycle-steps):
+The centralized bootstrapper (`tools/bootstrap/bootstrap.ps1`) orchestrates all provisioning workflows.
+
+<a id="full-development-setup-all"></a><a id="bootstrapper-commands"></a>
+### Complete Development Setup (`-All`)
+
+To provision every external reference asset, knowledge base, and tooling index in a single run, use the `-All` switch:
+
+```powershell
+.\tools\bootstrap\bootstrap.ps1 -All
+```
+
+When invoked with `-All`, the bootstrapper executes all provisioning phases sequentially in their exact causal dependency order:
+
+1. **Sources (`-Sources`):** Downloads and decompresses external test suites, M68000 silicon vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS reference testbeds, and the Amiga Test Kit ADF.
+2. **Documentation (`-Documentation`):** Downloads original archival PDF scans and OEM technical reference manuals (HRM, TRM, PRM, UM, and technical articles).
+3. **RAG Knowledge Base (`-Rag`):** Initializes the local Qdrant vector database (`http://localhost:6333`) and indexes both reference manuals (`Obsidian/Amiga/Reference/`) and architectural design specifications (`Obsidian/Amiga/Design/`) using offline FastEmbed embeddings.
+4. **Code Knowledge Graph (`-Graphify`):** Performs AST analysis across active Rust crates (`crates/`) and reference C++ code (`ref_src/vAmiga`), generating the unified symbol dependency and call-hierarchy graph in `graphify-out/`.
+
+| Mode | Switch | When Needed | What It Provisions |
+| :--- | :--- | :--- | :--- |
+| **Full Setup** | `-All` | Complete initial development setup | Provisions all primary components sequentially (Sources $\to$ Documentation $\to$ RAG $\to$ Graphify) |
+| **Verification Testbeds** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing archives in `ref_src/SingleStepTests-680x0/`, 124 suites), vAmiga/vAmigaTS reference suites, and diagnostic disks |
+| **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Provisions raw reference manuals, OEM technical guides, PDF scans, and crawls web articles |
+| **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, technical specs, and design specs |
+| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
+
+---
+
+### Granular Provisioning Workflows
+
+Each provisioning phase can also be executed independently on demand:
+
+<a id="automated-provisioning-toolsbootstrapbootstrap_sourcesps1"></a><a id="sources-provisioning-sources"></a>
+#### 1. Verification Testbeds Provisioning (`-Sources`)
+
+Automates downloading, unpacking, decompressing, and validating external test assets and reference code:
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Sources
 ```
 
-<a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a>
-### Bootstrapping Raw Archival Sources (`tools/bootstrap/bootstrap_documentation.ps1`)
+**What It Does:**
+- Scans and decompresses Tom Harte M68000 silicon vectors (`SingleStepTests-680x0`, 124 test suites) using native .NET `GZipStream`.
+- Canonicalizes decompressed JSON files into `ref_src/SingleStepTests-680x0/68000/v1/`.
+- Verifies the presence of `ref_src/vAmiga/` (C++ reference emulator), `ref_src/vAmigaTS/` (2,077 golden viewport tests), and `tools/AmigaTestKit/AmigaTestKit.adf`.
+- Full details on extraction rules and directory structure are documented in [Chapter 2: Reference Sources Lifecycle & Extraction](#reference-sources-lifecycle-steps).
 
-For developers wishing to inspect original PDF scans, verify raw circuit schematics, or re-run the OCR/conversion toolchain, the automated bootstrapper provisions the original archival source materials:
+<a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a><a id="archival-documentation-provisioning-documentation"></a>
+#### 2. Archival Reference Documentation Provisioning (`-Documentation`)
+
+Provisions original PDF scans, OEM technical manuals, and archival web articles for developers inspecting raw schematics or re-running OCR pipelines:
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Documentation
 ```
 
 <a id="upstream-archival-reference-documents"></a>
-### Upstream Archival Reference Documents
+##### Upstream Archival Reference Documents
 
 | Document ID | Reference Asset | Source Format & Details | Upstream Archive |
 | :--- | :--- | :--- | :--- |
@@ -233,7 +271,7 @@ For developers wishing to inspect original PDF scans, verify raw circuit schemat
 | **`undocumented`** | Undocumented Features (Achtung! Amiga) | 16-page multi-page HTML crawl | winnicki.net / Wayback Machine |
 
 <a id="multi-source-fallback-matrix-error-resilience"></a><a id="multi-source-fallback-matrix--error-resilience"></a>
-#### Multi-Source Fallback Matrix & Error Resilience
+##### Multi-Source Fallback Matrix & Error Resilience
 
 To guarantee download resilience against link rot, server downtime, and rate limits, every reference item is backed by **2–3 independent, verified online mirrors**:
 
@@ -247,49 +285,45 @@ To guarantee download resilience against link rot, server downtime, and rate lim
 | **`Undocumented features`** | [Achtung! Amiga (Original Live Web)](https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2022 Snapshot)](https://web.archive.org/web/20220330190533id_/https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2016 Snapshot)](https://web.archive.org/web/20160410052327id_/http://www.winnicki.net/amiga/achtung/) |
 
 <a id="multi-page-web-crawling-engine"></a>
-#### Multi-Page Web Crawling Engine
+##### Multi-Page Web Crawling Engine
 For multi-page web publications, the bootstrapper incorporates an autonomous crawling engine:
 - **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 16 technical subpages (`Copper.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`, `What_is_this_all_about.html`).
 - If the primary live server at `winnicki.net` is unreachable or blocks requests, the crawler automatically switches to the permanent Wayback Machine snapshot mirror.
 
-<a id="5-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="5-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="4-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="4-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="2-optional-bootstrapping-overview"></a>
-## 5. Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)
+<a id="domain-hardware-rag-setup-rag"></a>
+#### 3. Domain Hardware RAG Setup (`-Rag`)
 
-Bootstrapping is **strictly optional** and only needed for specialized development tasks:
-
-| Mode | Switch | When Needed | What It Provisions |
-| :--- | :--- | :--- | :--- |
-| **Full Setup** | `-All` | Complete initial development setup | Provisions all primary components (sources -> Graphify AST -> RAG documentation) |
-| **Verification Testbed** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
-| **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Provisions raw reference manuals, OEM technical guides, and PDF scans |
-| **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, technical specs, and design specs |
-| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
-
-<a id="bootstrapper-commands"></a>
-### Bootstrapper Commands
+Provisions and indexes the local vector database for AI-assisted pair-programming and hardware reference retrieval:
 
 ```powershell
-# Complete development setup:
-.\tools\bootstrap\bootstrap.ps1 -All
-
-# Hardware test vectors and reference sources setup:
-.\tools\bootstrap\bootstrap.ps1 -Sources
-
-# External reference manuals and PDF scans:
-.\tools\bootstrap\bootstrap.ps1 -Documentation
-
-# Documentation & AI pair-programming (Qdrant RAG) setup:
 .\tools\bootstrap\bootstrap.ps1 -Rag
+```
 
-# Code AST knowledge graph setup:
+**What It Does:**
+- Spawns the local Qdrant container on `http://localhost:6333` (via Docker).
+- Uses local FastEmbed (`BAAI/bge-small-en-v1.5`) to embed hardware manuals (`Obsidian/Amiga/Reference/`) and architectural notes (`Obsidian/Amiga/Design/`) into the unified `amiga` collection.
+- Maintains `amiga_rag_cache.json` for fast sub-second incremental reindexing.
+- For query tools, CLI commands, and FastMCP details, see [Chapter 5: Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag).
+
+<a id="code-knowledge-graph-setup-graphify"></a>
+#### 4. Code Knowledge Graph Setup (`-Graphify`)
+
+Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active Rust crates and reference implementations:
+
+```powershell
 .\tools\bootstrap\bootstrap.ps1 -Graphify
 ```
 
+**What It Does:**
+- Parses Rust source code (`crates/`) and reference C++ code (`ref_src/vAmiga`).
+- Maps structs, functions, modules, and cross-codebase dependencies into `graphify-out/`.
+- Enables cross-codebase structural queries, call hierarchies, and architectural validation.
+- For query tools and incremental update commands, see [Chapter 6: Code Structure & Relationships: Graphify](#6-code-structure-relationships-graphify).
 
 ---
 
 <a id="6-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a><a id="6-domain-hardware-knowledge--local-vector-rag-amiga-rag"></a><a id="5-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a><a id="5-domain-hardware-knowledge--local-vector-rag-amiga-rag"></a><a id="a-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a>
-## 6. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
+## 5. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
 - **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `amiga`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
 - **Vector Database Architecture:**
   - Local Qdrant instance on `http://localhost:6333`.
@@ -325,7 +359,7 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 ---
 
 <a id="7-code-structure-relationships-graphify"></a><a id="7-code-structure--relationships-graphify"></a><a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
-## 7. Code Structure & Relationships: Graphify
+## 6. Code Structure & Relationships: Graphify
 - **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:
   - **Active Emulator Crates (`crates/`):** Core Rust workspace (`m68000`, `memory_bus`, `debugger`, `gui`, `config`, `rtc`, `test_runner`).
   - **Reference Emulator Sources (`ref_src/`):** Clean C++ reference implementation (`ref_src/vAmiga`) and external test harnesses.
@@ -341,7 +375,7 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 ---
 
 <a id="8-test-suite-verification-framework"></a><a id="8-test-suite--verification-framework"></a><a id="7-test-suite-verification-framework"></a><a id="7-test-suite--verification-framework"></a><a id="6-test-suite-verification-framework"></a>
-## 8. Test Suite & Verification Framework
+## 7. Test Suite & Verification Framework
 
 The emulator relies on a multi-tiered verification framework to guarantee 100% cycle-exact fidelity against real Motorola 68000 silicon and Amiga 500 hardware:
 
