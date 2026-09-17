@@ -18,7 +18,6 @@ This document serves as the primary technical entry point for building, testing,
   - [Why Documentation is Critical (Human, AI & RAG)](#why-documentation-is-critical-human-ai-rag)
   - [In-Repository Specifications (Committed to Git)](#in-repository-specifications-committed-to-git)
   - [External Reference Documentation (Bootstrapped / Git-Ignored)](#external-reference-documentation-bootstrapped-git-ignored)
-  - [Processing Raw Documents into Markdown](#processing-raw-documents-into-markdown)
 - [4. Bootstrapping & External Reference Provisioning (`tools/bootstrap/bootstrap.ps1`)](#4-bootstrapping-overview-toolsbootstrapbootstrapps1)
   - [Complete Development Setup (`-All`)](#full-development-setup-all)
   - [Verification Testbeds Provisioning (`-Sources`)](#sources-provisioning-sources)
@@ -164,23 +163,7 @@ Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`
    - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
 
 > [!TIP]
-> Information and automated scripts for downloading and bootstrapping these external reference materials (as well as original archival PDF scans) are provided in **[Chapter 4: Bootstrapping & External Reference Provisioning](#4-bootstrapping-overview-toolsbootstrapbootstrapps1)** (`.\tools\bootstrap\bootstrap.ps1 -Documentation`).
-
-<a id="processing-raw-documents-into-markdown"></a>
-### Processing Raw Documents into Markdown
-
-When new reference manuals or updated editions are retrieved, use specialized agent skills to convert them into repository-grade Markdown:
-
-1. **PDF Scans to Markdown ([`pdf-to-markdown`](../.agents/skills/pdf-to-markdown/SKILL.md)):**
-   - Leverages Gemini multimodal reasoning to analyze document structure and partition into logical chapters.
-   - Extracts and crops circuit diagrams, register maps, and waveforms into high-resolution PNG/SVG assets.
-   - Stitches multi-page register tables into GitHub-flavored Markdown tables.
-   - Generates Git-tracked multimodal sidecar text files (`<image>.txt`) describing timing diagrams for offline AI inspection.
-
-2. **Web Crawls to Markdown ([`html-to-markdown`](../.agents/skills/html-to-markdown/SKILL.md)):**
-   - Crawls multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).
-   - Strips legacy table formatting, inline styling, and obsolete navigational chrome.
-   - Normalizes cross-chapter hyperlinks into Obsidian internal vault links (`[[Chapter#Section]]`).
+> Information and automated scripts for downloading, bootstrapping, and converting these external reference materials into Markdown are provided in **[Chapter 4: Archival Reference Documentation Provisioning (`-Documentation`)](#archival-documentation-provisioning-documentation)** (`.\tools\bootstrap\bootstrap.ps1 -Documentation`).
 
 ---
 
@@ -296,6 +279,22 @@ To guarantee download resilience against link rot, server downtime, and rate lim
 For multi-page web publications, the bootstrapper incorporates an autonomous crawling engine:
 - **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 16 technical subpages (`Copper.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`, `What_is_this_all_about.html`).
 - If the primary live server at `winnicki.net` is unreachable or blocks requests, the crawler automatically switches to the permanent Wayback Machine snapshot mirror.
+
+<a id="processing-raw-documents-into-markdown"></a>
+##### Processing Raw Documents into Markdown
+
+When new reference manuals or updated editions are retrieved, use specialized agent skills to convert raw scans and crawled HTML into repository-grade Markdown:
+
+1. **PDF Scans to Markdown ([`pdf-to-markdown`](../.agents/skills/pdf-to-markdown/SKILL.md)):**
+   - Leverages Gemini multimodal reasoning to analyze document structure and partition into logical chapters.
+   - Extracts and crops circuit diagrams, register maps, and waveforms into high-resolution PNG/SVG assets.
+   - Stitches multi-page register tables into GitHub-flavored Markdown tables.
+   - Generates Git-tracked multimodal sidecar text files (`<image>.txt`) describing timing diagrams for offline AI inspection.
+
+2. **Web Crawls to Markdown ([`html-to-markdown`](../.agents/skills/html-to-markdown/SKILL.md)):**
+   - Crawls multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).
+   - Strips legacy table formatting, inline styling, and obsolete navigational chrome.
+   - Normalizes cross-chapter hyperlinks into Obsidian internal vault links (`[[Chapter#Section]]`).
 
 <a id="domain-hardware-rag-setup-rag"></a>
 #### 3. Domain Hardware RAG Setup (`-Rag`)
