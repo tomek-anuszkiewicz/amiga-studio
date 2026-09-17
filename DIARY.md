@@ -1610,3 +1610,22 @@ Every future modification or implementation task must append an entry following 
   - Verified on single-HTML test case 'Instruction Prefetch on the Motorola 68000 Processor' achieving 100% cache hit (0 API calls
   - 1 cache hit
   - 0 token spend)
+---
+
+### [2026-09-17 21:39 CEST] — Support directory inputs and automatic subpage discovery in html-to-markdown pipeline
+- **Affected Subsystems**:
+  - `tools/skills/html-to-markdown`
+  - `Obsidian/Amiga/Reference`
+- **What Was Changed (The Concrete Reality)**:
+  - Enhanced pipeline.py main() to accept directory inputs directly
+  - Added automatic single-HTML detection (delegates to convert_single_html) and live/ crawl subfolder discovery
+  - Made --output-dir optional, defaulting to input directory
+  - Regenerated and verified markdown documents directly inside reference directories with 100% cache hits
+- **Architectural Rationale & Trade-Offs**:
+  - Enables ergonomic execution of /html-to-markdown when user passes reference folder paths directly
+  - Guarantees converted markdown is written directly into the target reference folder and mirrored to Reference root without manual file path specification
+  - Leverages persistent content-addressable cache for 0 token burn
+- **Verification & Test Results**:
+  - Both Instruction Prefetch and Undocumented Features converted with 100% cache hits (0 API calls)
+  - validate_links.py confirmed 0 errors across 43 links
+  - pre_flight.py passed

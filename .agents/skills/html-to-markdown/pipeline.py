@@ -376,25 +376,33 @@ def convert_crawl_directory(input_dir: Path, output_dir: Path, doc_title: str) -
 def main():
     parser = argparse.ArgumentParser(description="HTML-to-Markdown Reference Conversion Pipeline")
     parser.add_argument("--input", "-i", type=str, required=True, help="Input HTML file or crawl directory")
-    parser.add_argument("--output-dir", "-o", type=str, required=True, help="Destination directory for Markdown and assets")
+    parser.add_argument("--output-dir", "-o", type=str, default=None, help="Destination directory for Markdown and assets (defaults to input path)")
     parser.add_argument("--document-name", "-n", type=str, default=None, help="Document title for output filename and metadata")
     parser.add_argument("--force", "-f", action="store_true", help="Force re-conversion even if target file exists")
 
     args = parser.parse_args()
     input_path = Path(args.input).resolve()
-    output_dir = Path(args.output_dir).resolve()
 
     if not input_path.exists():
         print(f"[!] Error: Input path does not exist: {input_path}", file=sys.stderr)
         sys.exit(1)
 
+    output_dir = Path(args.output_dir).resolve() if args.output_dir else (input_path if input_path.is_dir() else input_path.parent)
     output_dir.mkdir(parents=True, exist_ok=True)
-    doc_name = args.document_name or (output_dir.name if output_dir.name else input_path.stem)
+    doc_name = args.document_name or (output_dir.name if output_dir.name and output_dir.name.lower() != "live" else input_path.stem)
 
     if input_path.is_file():
         convert_single_html(input_path, output_dir, doc_name)
     else:
-        convert_crawl_directory(input_path, output_dir, doc_name)
+        # Check if directory has only a single HTML file directly
+        direct_htmls = sorted(list(input_path.glob("*.html")))
+        if len(direct_htmls) == 1:
+            convert_single_html(direct_htmls[0], output_dir, doc_name)
+        else:
+            crawl_dir = input_path
+            if len(direct_htmls) == 0 and (input_path / "live").is_dir():
+                crawl_dir = input_path / "live"
+            convert_crawl_directory(crawl_dir, output_dir, doc_name)
 
     assets_dir = output_dir / "assets"
     if assets_dir.exists() and not any(assets_dir.iterdir()):
