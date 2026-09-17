@@ -15,7 +15,6 @@ You are given:
 
 ## Output Format:
 Return strictly the semantic HTML table block:
-```html
 <table>
   <thead>
     <tr>
@@ -35,4 +34,3 @@ Return strictly the semantic HTML table block:
     <td>Blitter control register 0</td>
   </tr>
 </table>
-```
