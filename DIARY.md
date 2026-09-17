@@ -1645,3 +1645,16 @@ Every future modification or implementation task must append an entry following 
   - generating redundant italicized body text below the image.
 - **Verification & Test Results**:
   - Passed unit tests across all workspace crates (23 crates + 7 runner suites). Clean image embed rendered in 00 - Front Cover.md.
+---
+
+### [2026-09-17 23:27 CEST] — Mandate Collapsible Callouts for Diagram Field Breakdowns in Stage 08
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `skills`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated prompt_ascii_art.md to eliminate unquoted bare tables and mandate enclosing all field breakdowns and register summaries inside Obsidian collapsible callouts (> [!NOTE]-)
+- **Architectural Rationale & Trade-Offs**:
+  - Bare markdown tables and headings emitted alongside ASCII diagrams leaked into the main stream
+  - disrupting heading hierarchy and colliding with genuine chapter sections
+- **Verification & Test Results**:
+  - Pre-flight checks passed cleanly

@@ -40,28 +40,31 @@ Convert the attached technical diagram (such as a register bitfield, memory map,
   - **NEVER** draw downward, upward, or angled leader lines, pipes (`|`), branching stalks, plus-junctions (`+---`), or text labels extending outside the register box.
   - Multi-line ASCII leader lines break vector embeddings, fail during document chunking, and clutter terminal/mobile displays.
 - **Strict Decoded Fields Placement:**
-  - All field expansions, mnemonics, signal meanings, and decoded bit explanations **MUST** reside strictly below the box in a structured Markdown table or list.
+  - All field expansions, mnemonics, signal meanings, decoded bit explanations, and register summaries **MUST** reside strictly below the box enclosed inside an Obsidian collapsible callout (`> [!NOTE]-`).
 
 ## 4. Output Formatting & Collapsible Callouts
 1. **ASCII Box Block:**
    - Enclose the compact ASCII register box strictly within a fenced code block (` ```text `).
 2. **Figure Caption Placement:**
    - Place the genuine figure caption directly below the code block as italicized text (`*Figure ...*`).
-3. **Decoded Fields & Breakdown (Structured Table or Folded Callout):**
-   - Provide a clean Markdown table or an Obsidian collapsible callout (`> [!NOTE]- Decoded Fields & Bit Definitions`) listing every bit range, mnemonic, and full description:
+3. **Decoded Fields & Breakdown (Mandatory Folded Callout):**
+   - All field expansions, mnemonics, signal meanings, decoded bit explanations, and register summaries accompanying the diagram **MUST** be placed strictly inside an Obsidian collapsible callout (`> [!NOTE]- Decoded Fields & Bit Definitions` or `> [!NOTE]- Register Summary & Field Definitions`).
+   - **NEVER** emit bare, unquoted tables, lists, or headers outside the callout frame. Every line of the breakdown must be prefixed with `>` so that the entire description remains contained within the note frame.
+   - Example using a Markdown table inside the callout:
      ```markdown
-     | Bits | Field | Description |
-     | :---: | :---: | :--- |
-     | **23** | `S` | Sign of Quotient |
-     | **22–16** | `QUOTIENT` | Seven Least Significant Bits of Quotient |
+     > [!NOTE]- Decoded Fields & Bit Definitions
+     > | Bits | Field | Description |
+     > | :---: | :---: | :--- |
+     > | **23** | `S` | Sign of Quotient |
+     > | **22–16** | `QUOTIENT` | Seven Least Significant Bits of Quotient |
      ```
-     Or as a structured list inside a callout:
+   - Or as a structured list inside the callout:
      ```markdown
      > [!NOTE]- Decoded Fields & Bit Definitions
      > - **Bit 23 (`S`)**: SIGN OF QUOTIENT
      > - **Bits 22–16 (`QUOTIENT`)**: SEVEN LEAST SIGNIFICANT BITS OF QUOTIENT
      ```
-   - This guarantees 100% information preservation, clean mobile rendering, and optimal vector retrieval for RAG.
+   - This guarantees 100% information preservation, clean mobile rendering, optimal vector retrieval for RAG, and ensures that figure descriptions never bleed into or disrupt the main document flow.
 4. **Strict Pure Output:**
    - Output ONLY the pure Markdown/ASCII content without conversational commentary or wrapper text.
 
