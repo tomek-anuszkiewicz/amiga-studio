@@ -20,7 +20,13 @@ This document records the complete architectural philosophy, evolutionary histor
 7. [Subsystem Evolution: The Developer Studio GUI & Debugger Engine](#7-subsystem-evolution-the-developer-studio-gui--debugger-engine)
 8. [Architectural Rules, Anti-Tamper Policies & The Living Definition of Done](#8-architectural-rules-anti-tamper-policies--the-living-definition-of-done)
 9. [The Ultimate Goal: The Clean-Room Re-Generation Experiment](#9-the-ultimate-goal-the-clean-room-re-generation-experiment)
-10. [Living Chronological Engineering Log & Evolutionary Change History](#10-living-chronological-engineering-log--evolutionary-change-history)
+10. [Repository Bootstrapping, Clean-Room Pipeline & Tooling Ergonomics](#10-repository-bootstrapping-clean-room-pipeline--tooling-ergonomics-september-1217-2026)
+11. [Multi-Tier Testing Infrastructure, Cartesian Contention & Silicon Verification](#11-multi-tier-testing-infrastructure-cartesian-contention--silicon-verification-september-1216-2026)
+12. [Developer Studio GUI, Headless Perception & Debugging Ecosystem](#12-developer-studio-gui-headless-perception--debugging-ecosystem-september-1215-2026)
+13. [Custom Chipset Silicon Architecture & Autonomous DMA Engines](#13-custom-chipset-silicon-architecture--autonomous-dma-engines-september-1216-2026)
+14. [Multimodal Reference Ingestion & PDF-to-Markdown Pipeline](#14-multimodal-reference-ingestion--pdf-to-markdown-pipeline-september-1417-2026)
+15. [Agent Operating System, Architectural Guardrails & Quality Discipline](#15-agent-operating-system-architectural-guardrails--quality-discipline-september-1216-2026)
+16. [Living Chronological Engineering Log & Active Evolutionary History](#16-living-chronological-engineering-log--active-evolutionary-history)
 
 ---
 
@@ -365,15 +371,7 @@ This diary stands as the living record of how those foundations were built.
 
 ---
 
-## 10. Living Chronological Engineering Log & Evolutionary Change History
-
-This section maintains a continuous, granular chronological record of all engineering changes, subsystem modifications, refactorings, and bug fixes across the repository.
-
-Because Git commits are frequently batched, squashed, or merged into higher-level commits during multi-stage worktree development, standard commit messages often do not preserve the full evolutionary context, granular mechanics, or subtle trade-offs considered along the way. This log serves as the authoritative, human-readable chronicle of what was actually built, modified, and verified in each development session.
-
----
-
-### Milestone Digest 1: Repository Bootstrapping, Clean-Room Pipeline & Tooling Ergonomics (September 12–17, 2026)
+## 10. Repository Bootstrapping, Clean-Room Pipeline & Tooling Ergonomics (September 12–17, 2026)
 - **Milestone Scope & Affected Subsystems**:
   - `tools/bootstrap/` (`bootstrap.ps1`, `bootstrap_sources.ps1`, `bootstrap_documentation.ps1`), `BOOTSTRAP.md`, `ROADMAP.md` (Section 3.5), `docs/developers.md`, `docs/reference_sources.md`, `docs/reference_documentation.md`, `tools/git/worktree.ps1`.
 - **Architectural Breakthroughs**:
@@ -392,7 +390,7 @@ Because Git commits are frequently batched, squashed, or merged into higher-leve
 
 ---
 
-### Milestone Digest 2: Multi-Tier Testing Infrastructure, Cartesian Contention & Silicon Verification (September 12–16, 2026)
+## 11. Multi-Tier Testing Infrastructure, Cartesian Contention & Silicon Verification (September 12–16, 2026)
 - **Milestone Scope & Affected Subsystems**:
   - `crates/test_runner/`, `crates/machine_loop/tests/`, `crates/*/tests/`, `tools/harness/`, `tests/singlestep/`, `ref_src/vAmigaTS/`.
 - **Architectural Breakthroughs**:
@@ -414,7 +412,7 @@ Because Git commits are frequently batched, squashed, or merged into higher-leve
 
 ---
 
-### Milestone Digest 3: Developer Studio GUI, Headless Perception & Debugging Ecosystem (September 12–15, 2026)
+## 12. Developer Studio GUI, Headless Perception & Debugging Ecosystem (September 12–15, 2026)
 - **Milestone Scope & Affected Subsystems**:
   - `crates/gui/`, `crates/debugger/`, `crates/disassembler/`.
 - **Architectural Breakthroughs**:
@@ -432,7 +430,7 @@ Because Git commits are frequently batched, squashed, or merged into higher-leve
 
 ---
 
-### Milestone Digest 4: Custom Chipset Silicon Architecture & Autonomous DMA Engines (September 12–16, 2026)
+## 13. Custom Chipset Silicon Architecture & Autonomous DMA Engines (September 12–16, 2026)
 - **Milestone Scope & Affected Subsystems**:
   - `crates/agnus/`, `crates/denise/`, `crates/paula/`, `crates/cia/`, `crates/physical_memory/`, `crates/memory_bus/`, `crates/machine_loop/`.
 - **Architectural Breakthroughs**:
@@ -456,7 +454,7 @@ Because Git commits are frequently batched, squashed, or merged into higher-leve
 
 ---
 
-### Milestone Digest 5: Multimodal Reference Ingestion & PDF-to-Markdown Pipeline (September 14–17, 2026)
+## 14. Multimodal Reference Ingestion & PDF-to-Markdown Pipeline (September 14–17, 2026)
 - **Milestone Scope & Affected Subsystems**:
   - `skills/pdf-to-markdown/`, `tools/rag/`, `Obsidian/Amiga/Reference/`.
 - **Architectural Breakthroughs**:
@@ -475,7 +473,7 @@ Because Git commits are frequently batched, squashed, or merged into higher-leve
 
 ---
 
-### Milestone Digest 6: Agent Operating System, Architectural Guardrails & Quality Discipline (September 12–16, 2026)
+## 15. Agent Operating System, Architectural Guardrails & Quality Discipline (September 12–16, 2026)
 - **Milestone Scope & Affected Subsystems**:
   - `.agents/rules/`, `.agents/skills/`, `.agents/workflows/`, `AGENTS.md`, `crates/test_runner/tests/test_architecture_rules.rs`, `tools/harness/`.
 - **Architectural Breakthroughs**:
@@ -494,16 +492,23 @@ Because Git commits are frequently batched, squashed, or merged into higher-leve
 
 ---
 
-### Active Engineering Log (Granular Chronological Entries)
+## 16. Living Chronological Engineering Log & Active Evolutionary History
 
-Per [`.agents/skills/compact-diary/SKILL.md`](.agents/skills/compact-diary/SKILL.md), active development sprints maintain a full, granular chronological record below.
+This section maintains a continuous, granular chronological record of all engineering changes, subsystem modifications, refactorings, and bug fixes across the repository.
 
-#### Mandatory Entry Schema:
+Because Git commits are frequently batched, squashed, or merged into higher-level commits during multi-stage worktree development, standard commit messages often do not preserve the full evolutionary context, granular mechanics, or subtle trade-offs considered along the way. This log serves as the authoritative, human-readable chronicle of what was actually built, modified, and verified in each development session.
+
+Historical milestone periods (September 12–16, 2026) have been compacted into high-signal architectural digests under Sections 10 through 15 above per [`.agents/skills/compact-diary/SKILL.md`](.agents/skills/compact-diary/SKILL.md). The active development sprint is recorded below in granular detail.
+
+### Mandatory Entry Schema:
+Every future modification or implementation task must append an entry following this structure:
 - **Timestamp & Context**: Date / local time and the active branch / task / PR.
 - **Affected Subsystems**: Specific crates, modules, tools, or configuration affected.
 - **What Was Changed (The Concrete Reality)**: Detailed technical description of changes, data structures, algorithms, or mechanics implemented.
 - **Architectural Rationale & Trade-Offs**: Why this solution was chosen, what alternatives were rejected, and why.
 - **Verification & Invariants**: Test suites executed, assertions checked, and proof of correctness.
+
+---
 
 ### [2026-09-17 00:08 CEST] — Tooling & Architecture: Zero-Junction Invariant & Full Worktree Storage Isolation
 - **Affected Subsystems**:
