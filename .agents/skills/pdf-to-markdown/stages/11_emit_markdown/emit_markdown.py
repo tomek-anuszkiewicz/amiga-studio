@@ -105,9 +105,13 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
         json_file = chapters_dir / file_slug
         if not json_file.exists():
             # Try path from manifest
-            json_file = workspace_dir / entry["json_file"]
+            json_file = workspace_dir / entry.get("json_file", "")
             if not json_file.exists():
-                continue
+                matches = list(chapters_dir.glob(f"{idx:02d}_*.json"))
+                if matches:
+                    json_file = matches[0]
+                else:
+                    continue
 
         with open(json_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)

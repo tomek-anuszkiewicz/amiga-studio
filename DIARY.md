@@ -1425,3 +1425,20 @@ Every future modification or implementation task must append an entry following 
   - introducing layout hacks and degrading RAG retrieval quality. Decoupling ensures pure Mermaid datapaths and clean Markdown tabular data for search
 - **Verification & Test Results**:
   - Passed pre_flight.py --quick cleanly. Verified output format schema.
+---
+
+### [2026-09-17 16:53 CEST] — Support Multi-Page Table Continuation and Caption Purge
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Added caption_continuation semantic block type in Stage 02 segmentation prompt.
+  - Enhanced Stage 06 detect_continuations to forward-scan past caption_continuation nodes and pass the continuation header as context to Gemini.
+  - Updated Stage 07 transform_tables to fuse multi-page tables across multiple image crops and physically purge absorbed continuation captions from the stream.
+  - Enabled multi-image support in llm_client.py generate_vision.
+  - Updated Stage 11 emit_markdown to resolve chapters with prefix glob matching.
+- **Architectural Rationale & Trade-Offs**:
+  - Tables spanning multiple pages in technical manuals repeat captions with (Continued) or (Concluded). Identifying them as dedicated semantic types allows the pipeline to link table fragments without fragile regex heuristics and purge intermediate redundant captions at Stage 07.
+- **Verification & Test Results**:
+  - Verified on Section 3 Table 3-1: Pages 73
+  - 74
+  - and 75 merged into a single 368-line table with only one primary caption and zero redundant continuation headers.

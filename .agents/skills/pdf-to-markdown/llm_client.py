@@ -196,18 +196,28 @@ class GeminiClient:
             f"Last error: {last_error}"
         )
 
-    def generate_vision(self, prompt: str, image_path: Path, model: str = None, stage: Optional[str] = None, thinking_budget: Optional[int] = None, response_mime_type: Optional[str] = None) -> str:
-        if not image_path.exists():
-            raise FileNotFoundError(f"Image not found for vision generation: {image_path}")
+    def generate_vision(self, prompt: str, image_path, model: str = None, stage: Optional[str] = None, thinking_budget: Optional[int] = None, response_mime_type: Optional[str] = None) -> str:
         import time
         import re
         from PIL import Image
+
+        if isinstance(image_path, (list, tuple)):
+            paths = [Path(p) for p in image_path if Path(p).exists()]
+            if not paths:
+                raise FileNotFoundError(f"No valid images found in: {image_path}")
+            images = [Image.open(p) for p in paths]
+            img_desc = f"{len(images)} images: {[p.name for p in paths]}"
+        else:
+            p = Path(image_path)
+            if not p.exists():
+                raise FileNotFoundError(f"Image not found for vision generation: {image_path}")
+            images = [Image.open(p)]
+            img_desc = p.name
 
         models_to_try = [model or self.vision_model]
         if "gemini-3.6-flash" not in models_to_try:
             models_to_try.append("gemini-3.6-flash")
 
-        image = Image.open(image_path)
         config, budget = self._build_config(stage=stage, thinking_budget=thinking_budget, response_mime_type=response_mime_type)
         cid = _next_call_id()
 
@@ -219,12 +229,12 @@ class GeminiClient:
                     ts_start = datetime.now().strftime("%H:%M:%S.%f")[:-3]
                     b_str = f"thinking={budget}" if budget is not None else "thinking=auto"
                     s_str = f" stage={stage}" if stage else ""
-                    print(f"[{ts_start}] [LLM START #{cid}] model={m}{s_str} {b_str} img={image_path.name}...")
+                    print(f"[{ts_start}] [LLM START #{cid}] model={m}{s_str} {b_str} img={img_desc}...")
                     t0 = time.perf_counter()
 
                     response = self.client.models.generate_content(
                         model=m,
-                        contents=[image, prompt],
+                        contents=[*images, prompt],
                         config=config,
                     )
                     elapsed = time.perf_counter() - t0
