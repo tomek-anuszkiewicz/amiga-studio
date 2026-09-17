@@ -84,12 +84,12 @@ Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed
 <a id="pinned-upstream-sources-summary"></a>
 ### Pinned Upstream Sources Summary
 
-| Repository / Asset | Local Path | Upstream Repository & URL | Pinned Version / Release | Primary Role in Emulator |
-| :--- | :--- | :--- | :--- | :--- |
-| **Tom Harte SingleStepTests** | `ref_src/SingleStepTests-680x0/` | [SingleStepTests/680x0](https://github.com/SingleStepTests/680x0) | **Format v1** (`68000/v1/`), 124 opcode suites | Exhaustive M68000 instruction-level verification captured from physical silicon pins (~1M test vectors) |
-| **vAmiga C++ Emulator** | `ref_src/vAmiga/` | [dirkwhoffmann/vAmiga](https://github.com/dirkwhoffmann/vAmiga) | **Release v4.5** | Clean-room C++ reference implementation for custom chipset timing, bus cycles, and register behavior |
-| **vAmiga Test Suite (vAmigaTS)** | `ref_src/vAmigaTS/` | [dirkwhoffmann/vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) | **`master`** (2,077 test directories) | Whole-machine integration testbed with ADF disk images and golden RGB24 viewport captures from real Amigas |
-| **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.20+** (`AmigaTestKit.adf`) | Bootable diagnostic floppy disk for end-to-end machine loop validation and peripheral stress testing |
+| Repository / Asset | Local Path | Upstream Repository & URL | Pinned Version / Release |
+| :--- | :--- | :--- | :--- |
+| **Tom Harte SingleStepTests** | `ref_src/SingleStepTests-680x0/` | [SingleStepTests/680x0](https://github.com/SingleStepTests/680x0) | **Format v1** (`68000/v1/`), 124 opcode suites |
+| **vAmiga C++ Emulator** | `ref_src/vAmiga/` | [dirkwhoffmann/vAmiga](https://github.com/dirkwhoffmann/vAmiga) | **Release v4.5** |
+| **vAmiga Test Suite (vAmigaTS)** | `ref_src/vAmigaTS/` | [dirkwhoffmann/vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) | **`master`** (2,077 test directories) |
+| **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.20+** (`AmigaTestKit.adf`) |
 
 > [!TIP]
 > Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)** (`.\tools\bootstrap\bootstrap.ps1 -Sources`).
