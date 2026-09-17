@@ -6364,6 +6364,17 @@ Every future modification or implementation task must append an entry following 
   - Tested `tools/bootstrap/bootstrap.ps1` usage display with zero errors.
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 03:58 CEST] — Pruned Unit Test Commands from README.md Quickstart
+- **Affected Subsystems**:
+  - `README.md` (removed `cargo test -p m68000` and `cargo test -p memory_bus` from Zero-Setup Build & Execution code block)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed unit test commands from the developer quickstart build block in `README.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - Keeps the zero-setup quickstart block laser-focused on compiling the workspace and native GUI binary. Test running details are thoroughly covered in [docs/testing.md](docs/testing.md).
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 

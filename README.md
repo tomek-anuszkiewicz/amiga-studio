@@ -63,10 +63,6 @@ cargo build
 
 # Build optimized native release binary for GUI
 cargo build --release -p gui
-
-# Run core subsystem unit tests
-cargo test -p m68000
-cargo test -p memory_bus
 ```
 
 ### Optional Bootstrapping (`tools/bootstrap/bootstrap.ps1`)
