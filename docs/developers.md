@@ -17,13 +17,14 @@ This document serves as the primary technical entry point for building, testing,
 - [3. Ingested Reference Documentation (In-Repository)](#3-ingested-reference-documentation-in-repository)
   - [Available Reference Documents](#ingested-reference-documents-available-in-repository)
   - [Processing Raw Documents into Markdown](#processing-raw-documents-into-markdown)
-- [4. Archival Documentation & Reference Downloads](#4-archival-documentation-reference-downloads)
+- [4. External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)
+  - [Automated Sources Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)
+  - [Bootstrapping Raw Archival Sources (`tools/bootstrap/bootstrap_documentation.ps1`)](#bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1)
   - [Upstream Archival Reference Documents](#upstream-archival-reference-documents)
   - [Multi-Source Fallback Matrix & Error Resilience](#multi-source-fallback-matrix-error-resilience)
   - [Multi-Page Web Crawling Engine](#multi-page-web-crawling-engine)
 - [5. Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)](#5-bootstrapping-overview-toolsbootstrapbootstrapps1)
   - [Bootstrapper Commands](#bootstrapper-commands)
-  - [Automated Sources Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)
 - [6. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#6-domain-hardware-knowledge-local-vector-rag-amiga-rag)
 - [7. Code Structure & Relationships: Graphify](#7-code-structure-relationships-graphify)
 - [8. Test Suite & Verification Framework](#8-test-suite-verification-framework)
@@ -70,7 +71,14 @@ trunk serve crates/gui/index.html --open
 <a id="2-external-reference-sources-verification-testbeds"></a><a id="2-external-reference-sources--verification-testbeds"></a><a id="3-external-reference-sources-verification-testbeds"></a>
 ## 2. External Reference Sources & Verification Testbeds
 
-The emulator core validates execution against physical hardware silicon vectors, reference C++ emulators, and golden Amiga test suites. Because these test assets contain multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`, managed by automated provisioning scripts.
+The emulator core does not rely on guesswork or high-level approximations; it validates execution against authoritative external test suites, physical silicon captures, and clean-room reference implementations:
+
+- **M68000 CPU Testing (Tom Harte SingleStepTests):** Used for exhaustive, cycle-exact verification of the Motorola 68000 processor core. Evaluates instruction execution, prefetch queue progression, and Condition Code Register (CCR) flag calculations against ~1,000,000 test vectors captured directly from physical 68000 silicon pins.
+- **Whole-Machine & Chipset Verification (vAmiga Test Suite - vAmigaTS):** Used to test the emulator against golden Amiga 500 hardware behavior. Contains 2,077 test cases validating Copper timing, Blitter DMA, Denise display window clipping, and Paula audio by comparing rendered frames against golden 716×285 24-bit RGB viewport captures recorded from real Amigas.
+- **Clean-Room C++ Reference (vAmiga):** Used as an architectural and algorithmic reference implementation for custom chipset timing, bus arbitration, and register interactions.
+- **Hardware Diagnostics (Amiga Test Kit):** Bootable diagnostic floppy disk image used for end-to-end system loop verification, memory testing, and peripheral validation.
+
+Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`.
 
 <a id="pinned-upstream-sources-summary"></a>
 ### Pinned Upstream Sources Summary
@@ -83,7 +91,7 @@ The emulator core validates execution against physical hardware silicon vectors,
 | **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.20+** (`AmigaTestKit.adf`) | Bootable diagnostic floppy disk for end-to-end machine loop validation and peripheral stress testing |
 
 > [!TIP]
-> To provision, decompress, and validate these reference assets automatically, run `.\tools\bootstrap\bootstrap.ps1 -Sources` (see [Automated Sources Provisioning in Chapter 5](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)).
+> Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)** (`.\tools\bootstrap\bootstrap.ps1 -Sources`).
 
 ---
 
@@ -127,7 +135,7 @@ The following primary technical documentation and microarchitectural papers are 
    - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
 
 > [!TIP]
-> To provision original archival PDF scans and OEM technical manual downloads, run `.\tools\bootstrap\bootstrap.ps1 -Documentation` (see [Archival Documentation & Reference Downloads in Chapter 4](#4-archival-documentation-reference-downloads)).
+> To provision original archival PDF scans and OEM technical manual downloads, run `.\tools\bootstrap\bootstrap.ps1 -Documentation` (see [Chapter 4: External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)).
 
 <a id="processing-raw-documents-into-markdown"></a>
 ### Processing Raw Documents into Markdown
@@ -147,10 +155,27 @@ When new reference manuals or updated editions are retrieved, use specialized ag
 
 ---
 
----
+<a id="4-external-reference-downloads-provisioning"></a><a id="4-external-reference-downloads--provisioning"></a><a id="4-archival-documentation-reference-downloads"></a><a id="4-archival-documentation--reference-downloads"></a>
+## 4. External Reference Downloads & Provisioning
 
-<a id="4-archival-documentation-reference-downloads"></a><a id="4-archival-documentation--reference-downloads"></a><a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a>
-## 4. Archival Documentation & Reference Downloads (`tools/bootstrap/bootstrap_documentation.ps1`)
+This chapter covers all external data sources, verification testbeds, and archival documentation that reside outside Git history, provisioned automatically via dedicated bootstrap scripts:
+
+<a id="automated-provisioning-toolsbootstrapbootstrap_sourcesps1"></a>
+### Automated Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)
+
+Invoke via the coordinator:
+```powershell
+.\tools\bootstrap\bootstrap.ps1 -Sources
+```
+
+**Automation Lifecycle Steps:**
+1. **Zip Archive Expansion:** Scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
+2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
+3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
+4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
+
+<a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a>
+### Bootstrapping Raw Archival Sources (`tools/bootstrap/bootstrap_documentation.ps1`)
 
 For developers wishing to inspect original PDF scans, verify raw circuit schematics, or re-run the OCR/conversion toolchain, the automated bootstrapper provisions the original archival source materials:
 
@@ -223,19 +248,6 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 .\tools\bootstrap\bootstrap.ps1 -All
 ```
 
-<a id="automated-provisioning-toolsbootstrapbootstrap_sourcesps1"></a>
-### Automated Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)
-
-Invoke via the coordinator:
-```powershell
-.\tools\bootstrap\bootstrap.ps1 -Sources
-```
-
-**Automation Lifecycle Steps:**
-1. **Zip Archive Expansion:** Scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
-2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
-3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
-4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
 
 ---
 
