@@ -16,7 +16,6 @@ This document serves as the primary technical entry point for building, testing,
   - [Pinned Upstream Sources Summary](#pinned-upstream-sources-summary)
 - [3. Documentation Architecture & Reference Literature](#3-documentation-architecture-reference-literature)
   - [Why Documentation is Critical (Human, AI & RAG)](#why-documentation-is-critical-human-ai-rag)
-  - [In-Repository Specifications (Committed to Git)](#in-repository-specifications-committed-to-git)
   - [External Reference Documentation (Bootstrapped / Git-Ignored)](#external-reference-documentation-bootstrapped-git-ignored)
 - [4. Bootstrapping & External Reference Provisioning (`tools/bootstrap/bootstrap.ps1`)](#4-bootstrapping-overview-toolsbootstrapbootstrapps1)
   - [Complete Development Setup (`-All`)](#full-development-setup-all)
@@ -114,25 +113,7 @@ The repository maintains an authoritative, high-fidelity documentation library u
    - **Local Vector RAG Retrieval (`amiga-rag`):** The entire reference library (alongside `Obsidian/Amiga/Design/` architectural specs) is indexed in Qdrant. Autonomous agents perform pre-task conceptual queries before touching code, ensuring zero silent divergence from hardware silicon.
    - **Interactive Consultation & Change Review:** Developers can query the RAG system directly through CLI or FastMCP tools (`rag_search`) to clarify complex hardware quirks, verify register behavior, or evaluate architectural changes before editing production code.
 
-<a id="in-repository-specifications-committed-to-git"></a>
-### In-Repository Specifications (Committed to Git)
-
-The following architectural specifications and technical studies are **committed directly to the Git repository** and immediately available upon cloning without external downloads:
-
-1. **Architectural Design Specifications (`Obsidian/Amiga/Design/`):**
-   - 20+ comprehensive architectural specifications covering every major emulator subsystem.
-   - Formulates the M68000 micro-step state machine, Agnus (Copper & Blitter state machines), Denise (bitplanes, sprites, color palette), Paula (audio DMA, floppy disk controller), CIA-A / CIA-B timers, Gary memory bus arbitration, wait state handling, and CPU benchmarking methodologies.
-   - Centralized hardware idiosyncrasies and silicon edge-cases reside in the [Platform Quirks and Invariants Catalog](../Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md).
-
-2. **DIVU & DIVS Cycle-Accurate Timing Analysis (Jorge Cwik / Pasti):**
-   - **Location:** `Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md`
-   - **Scope:** Cycle-exact algorithmic analysis of 68000 non-restoring integer division. Formulates precise cycle calculations verified against physical silicon test vectors.
-
-3. **Core Architectural Guidelines & Specifications:**
-   - [**Core Architecture & Hardware Execution Model**](architecture.md): Formalizes the cycle-exact Color Clock phases (`CCK1`/`CCK2`), shared bus contention, and decoupled ownership.
-   - [**Developer Guide & Tooling Index**](developers.md): Primary technical entry point for building, testing, and tool workflows.
-
-<a id="external-reference-documentation-bootstrapped-git-ignored"></a><a id="ingested-reference-documents-available-in-repository"></a>
+<a id="in-repository-specifications-committed-to-git"></a><a id="external-reference-documentation-bootstrapped-git-ignored"></a><a id="ingested-reference-documents-available-in-repository"></a>
 ### External Reference Documentation (Bootstrapped / Git-Ignored)
 
 Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`), the primary Commodore and Motorola reference manuals are **excluded from Git tracking**. They are converted into structured Markdown format and must be downloaded or linked via bootstrapping:
@@ -158,7 +139,11 @@ Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`
    - **Location:** `Obsidian/Amiga/Reference/Instruction Prefetch on the Motorola 68000 Processor.md`
    - **Scope:** Authoritative microarchitectural prefetch queue study (Version 1.3). Establishes the 68000 two-stage `IR` (Instruction Register) and `IRC` (Instruction Register Capture) pipeline model and timing interactions.
 
-6. **Undocumented Features of OCS, ECS and AGA Chipsets (Kuba Winnicki / Achtung! Amiga, 2002)**
+6. **DIVU & DIVS Cycle-Accurate Timing Analysis (Jorge Cwik / Pasti):**
+   - **Location:** `Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md`
+   - **Scope:** Cycle-exact algorithmic analysis of 68000 non-restoring integer division. Formulates precise cycle calculations verified against physical silicon test vectors.
+
+7. **Undocumented Features of OCS, ECS and AGA Chipsets (Kuba Winnicki / Achtung! Amiga, 2002)**
    - **Location:** `Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets.md`
    - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
 
