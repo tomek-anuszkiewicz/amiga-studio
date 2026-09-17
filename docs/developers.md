@@ -14,16 +14,19 @@ This document serves as the primary technical entry point for building, testing,
   - [WebAssembly Browser Canvas (Trunk)](#webassembly-browser-canvas-trunk)
 - [2. External Reference Sources & Verification Testbeds](#2-external-reference-sources-verification-testbeds)
   - [Pinned Upstream Sources Summary](#pinned-upstream-sources-summary)
-- [3. Technical Reference Documentation & Literature](#3-technical-reference-documentation-literature)
-  - [Ingested Reference Documents](#ingested-reference-documents-available-in-repository)
+- [3. Ingested Reference Documentation (In-Repository)](#3-ingested-reference-documentation-in-repository)
+  - [Available Reference Documents](#ingested-reference-documents-available-in-repository)
   - [Processing Raw Documents into Markdown](#processing-raw-documents-into-markdown)
-- [4. Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)](#4-bootstrapping-overview-toolsbootstrapbootstrapps1)
+- [4. Archival Documentation & Reference Downloads](#4-archival-documentation-reference-downloads)
+  - [Upstream Archival Reference Documents](#upstream-archival-reference-documents)
+  - [Multi-Source Fallback Matrix & Error Resilience](#multi-source-fallback-matrix-error-resilience)
+  - [Multi-Page Web Crawling Engine](#multi-page-web-crawling-engine)
+- [5. Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)](#5-bootstrapping-overview-toolsbootstrapbootstrapps1)
   - [Bootstrapper Commands](#bootstrapper-commands)
   - [Automated Sources Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)
-  - [Bootstrapping Raw Archival Sources (`tools/bootstrap/bootstrap_documentation.ps1`)](#bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1)
-- [5. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag)
-- [6. Code Structure & Relationships: Graphify](#6-code-structure-relationships-graphify)
-- [7. Test Suite & Verification Framework](#7-test-suite-verification-framework)
+- [6. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#6-domain-hardware-knowledge-local-vector-rag-amiga-rag)
+- [7. Code Structure & Relationships: Graphify](#7-code-structure-relationships-graphify)
+- [8. Test Suite & Verification Framework](#8-test-suite-verification-framework)
   - [A. M68000 SingleStepTests (Silicon Verification)](#a-m68000-singlesteptests-physical-hardware-silicon-verification)
   - [B. Cartesian DMA Contention Verification](#b-cartesian-dma-contention-verification)
   - [C. Automated Architecture Rules Compliance](#c-automated-architecture-rules-compliance)
@@ -80,12 +83,12 @@ The emulator core validates execution against physical hardware silicon vectors,
 | **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.20+** (`AmigaTestKit.adf`) | Bootable diagnostic floppy disk for end-to-end machine loop validation and peripheral stress testing |
 
 > [!TIP]
-> To provision, decompress, and validate these reference assets automatically, run `.\tools\bootstrap\bootstrap.ps1 -Sources` (see [Automated Sources Provisioning in Chapter 4](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)).
+> To provision, decompress, and validate these reference assets automatically, run `.\tools\bootstrap\bootstrap.ps1 -Sources` (see [Automated Sources Provisioning in Chapter 5](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)).
 
 ---
 
-<a id="3-technical-reference-documentation-literature"></a><a id="3-technical-reference-documentation--literature"></a><a id="4-technical-reference-documentation-literature"></a>
-## 3. Technical Reference Documentation & Literature
+<a id="3-ingested-reference-documentation-in-repository"></a><a id="3-ingested-reference-documentation--in-repository"></a><a id="3-technical-reference-documentation-literature"></a><a id="3-technical-reference-documentation--literature"></a>
+## 3. Ingested Reference Documentation (In-Repository)
 
 The repository maintains an authoritative, high-fidelity reference library under `Obsidian/Amiga/Reference/`. All primary reference materials are **already converted into structured Markdown specifications and committed directly to the repository**. Developers and AI agents can read, cross-reference, and semantically search these documents immediately without requiring any external downloads.
 
@@ -124,7 +127,7 @@ The following primary technical documentation and microarchitectural papers are 
    - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
 
 > [!TIP]
-> To provision original archival PDF scans and OEM technical manual downloads, run `.\tools\bootstrap\bootstrap.ps1 -Documentation` (see [Bootstrapping Raw Archival Sources in Chapter 4](#bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1)).
+> To provision original archival PDF scans and OEM technical manual downloads, run `.\tools\bootstrap\bootstrap.ps1 -Documentation` (see [Archival Documentation & Reference Downloads in Chapter 4](#4-archival-documentation-reference-downloads)).
 
 <a id="processing-raw-documents-into-markdown"></a>
 ### Processing Raw Documents into Markdown
@@ -144,8 +147,51 @@ When new reference manuals or updated editions are retrieved, use specialized ag
 
 ---
 
-<a id="4-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="4-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="2-optional-bootstrapping-overview"></a>
-## 4. Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)
+---
+
+<a id="4-archival-documentation-reference-downloads"></a><a id="4-archival-documentation--reference-downloads"></a><a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a>
+## 4. Archival Documentation & Reference Downloads (`tools/bootstrap/bootstrap_documentation.ps1`)
+
+For developers wishing to inspect original PDF scans, verify raw circuit schematics, or re-run the OCR/conversion toolchain, the automated bootstrapper provisions the original archival source materials:
+
+```powershell
+.\tools\bootstrap\bootstrap.ps1 -Documentation
+```
+
+<a id="upstream-archival-reference-documents"></a>
+### Upstream Archival Reference Documents
+
+| Document ID | Reference Asset | Source Format & Details | Upstream Archive |
+| :--- | :--- | :--- | :--- |
+| **`hrm`** | Hardware Reference Manual | 405-page, 600 DPI PDF scan (~30 MB) | Internet Archive (1989 2nd Ed) |
+| **`trm`** | A500 A2000 Technical Reference Manual | 308-page, 200 DPI OEM PDF scan (~30 MB) | Internet Archive (1987 OEM) |
+| **`prm`** | 68000 Programmer's Reference Manual | 646-page vector PDF (~4.5 MB) | Internet Archive / Bitsavers |
+| **`um`** | 68000 User's Manual | 216-page, 601 DPI PDF scan (~10 MB) | Internet Archive / Bitsavers (Rev 8) |
+| **`prefetch`** | Instruction Prefetch on the M68000 | Original HTML article (~20 KB) | Pasti Project / Wayback Machine |
+| **`undocumented`** | Undocumented Features (Achtung! Amiga) | 16-page multi-page HTML crawl | winnicki.net / Wayback Machine |
+
+<a id="multi-source-fallback-matrix-error-resilience"></a><a id="multi-source-fallback-matrix--error-resilience"></a>
+#### Multi-Source Fallback Matrix & Error Resilience
+
+To guarantee download resilience against link rot, server downtime, and rate limits, every reference item is backed by **2–3 independent, verified online mirrors**:
+
+| Document | Primary Mirror (Verified 200 OK) | Secondary Mirror (Verified 200 OK) | Tertiary / Fallback Mirror |
+| :--- | :--- | :--- | :--- |
+| **`Hardware Reference Manual`** | [Internet Archive (1989 2nd Ed OCS PDF, 405p 600 DPI)](https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf) | [Internet Archive (1985 1st Ed PDF)](https://archive.org/download/Amiga_Hardware_Reference_Manual_1985_Commodore/Amiga_Hardware_Reference_Manual_1985_Commodore.pdf) | Manual local file drop |
+| **`A500 A2000 Technical Reference Manual`** | [Internet Archive (1987 OEM Clean Scan PDF, 308p 200 DPI)](https://archive.org/download/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf) | [Internet Archive (1987 OEM Alternate Scan PDF, 309p)](https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual.pdf) | Manual local file drop |
+| **`68000 Programmer's Reference Manual`** | [Internet Archive (M68000PM/AD Rev 1 Vector PDF, 646p)](https://archive.org/download/M68000PRM/M68000PRM.pdf) | [Bitsavers (M68000PM/AD Rev 1 1992 PDF)](https://archive.org/download/bitsavers_motorola68ogrammersReferenceManual1992_2394181/M68000PM_AD_Rev_1_Programmers_Reference_Manual_1992.pdf) | Manual local file drop |
+| **`68000 User's Manual`** | [Internet Archive / Bitsavers (Rev 8 PDF, 601 DPI 216p)](https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive (Rev 8 Alternate Item)](https://archive.org/download/bitsavers_motorola6868000MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive / Bitsavers (Family Reference 1988, 608p)](https://archive.org/download/bitsavers_motorola68rence1988_23248083/M68000_Family_Reference_1988.pdf) |
+| **`Instruction Prefetch`** | [Pasti Project (Original Live Web)](http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2021 Snapshot)](https://web.archive.org/web/20210211153835id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2019 Snapshot)](https://web.archive.org/web/20190317072535id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) |
+| **`Undocumented features`** | [Achtung! Amiga (Original Live Web)](https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2022 Snapshot)](https://web.archive.org/web/20220330190533id_/https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2016 Snapshot)](https://web.archive.org/web/20160410052327id_/http://www.winnicki.net/amiga/achtung/) |
+
+<a id="multi-page-web-crawling-engine"></a>
+#### Multi-Page Web Crawling Engine
+For multi-page web publications, the bootstrapper incorporates an autonomous crawling engine:
+- **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 16 technical subpages (`Copper.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`, `What_is_this_all_about.html`).
+- If the primary live server at `winnicki.net` is unreachable or blocks requests, the crawler automatically switches to the permanent Wayback Machine snapshot mirror.
+
+<a id="5-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="5-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="4-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="4-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="2-optional-bootstrapping-overview"></a>
+## 5. Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)
 
 Bootstrapping is **strictly optional** and only needed for specialized development tasks:
 
@@ -191,46 +237,10 @@ Invoke via the coordinator:
 3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
 4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
 
-<a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a>
-### Bootstrapping Raw Archival Sources (`tools/bootstrap/bootstrap_documentation.ps1`)
-
-For developers wishing to inspect original PDF scans, verify raw circuit schematics, or re-run the OCR/conversion toolchain, the automated bootstrapper provisions the original archival source materials:
-
-```powershell
-.\tools\bootstrap\bootstrap.ps1 -Documentation
-```
-
-| Document ID | Reference Asset | Source Format & Details | Upstream Archive |
-| :--- | :--- | :--- | :--- |
-| **`hrm`** | Hardware Reference Manual | 405-page, 600 DPI PDF scan (~30 MB) | Internet Archive (1989 2nd Ed) |
-| **`trm`** | A500 A2000 Technical Reference Manual | 308-page, 200 DPI OEM PDF scan (~30 MB) | Internet Archive (1987 OEM) |
-| **`prm`** | 68000 Programmer's Reference Manual | 646-page vector PDF (~4.5 MB) | Internet Archive / Bitsavers |
-| **`um`** | 68000 User's Manual | 216-page, 601 DPI PDF scan (~10 MB) | Internet Archive / Bitsavers (Rev 8) |
-| **`prefetch`** | Instruction Prefetch on the M68000 | Original HTML article (~20 KB) | Pasti Project / Wayback Machine |
-| **`undocumented`** | Undocumented Features (Achtung! Amiga) | 16-page multi-page HTML crawl | winnicki.net / Wayback Machine |
-
-#### Multi-Source Fallback Matrix & Error Resilience
-
-To guarantee download resilience against link rot, server downtime, and rate limits, every reference item is backed by **2–3 independent, verified online mirrors**:
-
-| Document | Primary Mirror (Verified 200 OK) | Secondary Mirror (Verified 200 OK) | Tertiary / Fallback Mirror |
-| :--- | :--- | :--- | :--- |
-| **`Hardware Reference Manual`** | [Internet Archive (1989 2nd Ed OCS PDF, 405p 600 DPI)](https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf) | [Internet Archive (1985 1st Ed PDF)](https://archive.org/download/Amiga_Hardware_Reference_Manual_1985_Commodore/Amiga_Hardware_Reference_Manual_1985_Commodore.pdf) | Manual local file drop |
-| **`A500 A2000 Technical Reference Manual`** | [Internet Archive (1987 OEM Clean Scan PDF, 308p 200 DPI)](https://archive.org/download/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf) | [Internet Archive (1987 OEM Alternate Scan PDF, 309p)](https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual.pdf) | Manual local file drop |
-| **`68000 Programmer's Reference Manual`** | [Internet Archive (M68000PM/AD Rev 1 Vector PDF, 646p)](https://archive.org/download/M68000PRM/M68000PRM.pdf) | [Bitsavers (M68000PM/AD Rev 1 1992 PDF)](https://archive.org/download/bitsavers_motorola68ogrammersReferenceManual1992_2394181/M68000PM_AD_Rev_1_Programmers_Reference_Manual_1992.pdf) | Manual local file drop |
-| **`68000 User's Manual`** | [Internet Archive / Bitsavers (Rev 8 PDF, 601 DPI 216p)](https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive (Rev 8 Alternate Item)](https://archive.org/download/bitsavers_motorola6868000MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive / Bitsavers (Family Reference 1988, 608p)](https://archive.org/download/bitsavers_motorola68rence1988_23248083/M68000_Family_Reference_1988.pdf) |
-| **`Instruction Prefetch`** | [Pasti Project (Original Live Web)](http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2021 Snapshot)](https://web.archive.org/web/20210211153835id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2019 Snapshot)](https://web.archive.org/web/20190317072535id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) |
-| **`Undocumented features`** | [Achtung! Amiga (Original Live Web)](https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2022 Snapshot)](https://web.archive.org/web/20220330190533id_/https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2016 Snapshot)](https://web.archive.org/web/20160410052327id_/http://www.winnicki.net/amiga/achtung/) |
-
-#### Multi-Page Web Crawling Engine
-For multi-page web publications, the bootstrapper incorporates an autonomous crawling engine:
-- **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 16 technical subpages (`Copper.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`, `What_is_this_all_about.html`).
-- If the primary live server at `winnicki.net` is unreachable or blocks requests, the crawler automatically switches to the permanent Wayback Machine snapshot mirror.
-
 ---
 
-<a id="5-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a><a id="5-domain-hardware-knowledge--local-vector-rag-amiga-rag"></a><a id="a-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a>
-## 5. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
+<a id="6-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a><a id="6-domain-hardware-knowledge--local-vector-rag-amiga-rag"></a><a id="5-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a><a id="5-domain-hardware-knowledge--local-vector-rag-amiga-rag"></a><a id="a-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a>
+## 6. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
 - **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `amiga`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
 - **Vector Database Architecture:**
   - Local Qdrant instance on `http://localhost:6333`.
@@ -265,8 +275,8 @@ For multi-page web publications, the bootstrapper incorporates an autonomous cra
 
 ---
 
-<a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
-## 6. Code Structure & Relationships: Graphify
+<a id="7-code-structure-relationships-graphify"></a><a id="7-code-structure--relationships-graphify"></a><a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
+## 7. Code Structure & Relationships: Graphify
 - **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:
   - **Active Emulator Crates (`crates/`):** Core Rust workspace (`m68000`, `memory_bus`, `debugger`, `gui`, `config`, `rtc`, `test_runner`).
   - **Reference Emulator Sources (`ref_src/`):** Clean C++ reference implementation (`ref_src/vAmiga`) and external test harnesses.
@@ -281,8 +291,8 @@ For multi-page web publications, the bootstrapper incorporates an autonomous cra
 
 ---
 
-<a id="7-test-suite-verification-framework"></a><a id="7-test-suite--verification-framework"></a><a id="6-test-suite-verification-framework"></a>
-## 7. Test Suite & Verification Framework
+<a id="8-test-suite-verification-framework"></a><a id="8-test-suite--verification-framework"></a><a id="7-test-suite-verification-framework"></a><a id="7-test-suite--verification-framework"></a><a id="6-test-suite-verification-framework"></a>
+## 8. Test Suite & Verification Framework
 
 The emulator relies on a multi-tiered verification framework to guarantee 100% cycle-exact fidelity against real Motorola 68000 silicon and Amiga 500 hardware:
 
