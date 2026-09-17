@@ -16,7 +16,6 @@ The emulator core validates execution against physical hardware silicon vectors,
 | **vAmiga C++ Emulator** | `ref_src/vAmiga-4.5/` (or `ref_src/vAmiga/`) | [dirkwhoffmann/vAmiga](https://github.com/dirkwhoffmann/vAmiga) | **Release v4.5** | Clean-room C++ reference implementation for custom chipset timing, bus cycles, and register behavior |
 | **vAmiga Test Suite (vAmigaTS)** | `ref_src/vAmigaTS/` | [dirkwhoffmann/vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) | **`master`** (2,077 test directories) | Whole-machine integration testbed with ADF disk images and golden RGB24 viewport captures from real Amigas |
 | **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.20+** (`AmigaTestKit.adf`) | Bootable diagnostic floppy disk for end-to-end machine loop validation and peripheral stress testing |
-| **WinUAE Audio Sinc Tables** | `ref_src/WinUAE-6030/` | [tonioni/WinUAE](https://github.com/tonioni/WinUAE) | **Release 6.0.30** | Reference windowed-sinc polynomial tables used by `tools/blep_generator` for Paula audio interpolation |
 
 ---
 

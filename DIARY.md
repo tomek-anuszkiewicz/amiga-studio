@@ -6438,6 +6438,17 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:08 CEST] — Pruned WinUAE Audio Sinc Tables from Reference Sources Guide
+- **Affected Subsystems**:
+  - `docs/reference_sources.md` (removed WinUAE audio sinc tables row from Pinned Upstream Sources table)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed `WinUAE Audio Sinc Tables` entry from the upstream sources table in [`docs/reference_sources.md`](docs/reference_sources.md).
+- **Architectural Rationale & Trade-Offs**:
+  - Keeps [`docs/reference_sources.md`](docs/reference_sources.md) focused strictly on primary testing and verification testbeds (SingleStepTests, vAmiga, vAmigaTS, AmigaTestKit) actively provisioned and validated by `bootstrap_sources.ps1`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 
