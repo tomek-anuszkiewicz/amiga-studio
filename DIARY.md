@@ -1410,3 +1410,18 @@ Every future modification or implementation task must append an entry following 
   - Cleaned up Tables 1-4, 1-5, and 1-6 with zero remaining hardcoded borders
   - Pre-flight quick checks passed
   - All 18 core architecture rules tests passed
+---
+
+### [2026-09-17 16:37 CEST] — Harden Graphic Worker Prompt for Diagram Parameter Separation
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `tooling`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated prompt_mermaid.md in Stage 08 to explicitly decouple specification header boxes (e.g. GENERATION, ASSEMBLER SYNTAX, EA fields) from Mermaid datapaths
+  - required rendering them as clean Markdown parameter tables before the flowchart
+  - prohibited dummy subgraphs and layout hack links inside Mermaid
+- **Architectural Rationale & Trade-Offs**:
+  - Staged diagrams containing specification boxes previously forced LLMs to embed parameter text inside Mermaid subgraphs and HTML node labels
+  - introducing layout hacks and degrading RAG retrieval quality. Decoupling ensures pure Mermaid datapaths and clean Markdown tabular data for search
+- **Verification & Test Results**:
+  - Passed pre_flight.py --quick cleanly. Verified output format schema.
