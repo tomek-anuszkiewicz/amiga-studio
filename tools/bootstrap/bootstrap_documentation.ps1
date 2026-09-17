@@ -62,7 +62,7 @@ param(
 # Allow fallback for archival servers with legacy or self-signed certificates
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
-$RepoRoot = Split-Path -Parent $PSScriptRoot
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (-not $Destination) {
     $Destination = Join-Path $RepoRoot "Obsidian\Amiga\Reference\temp"
 }

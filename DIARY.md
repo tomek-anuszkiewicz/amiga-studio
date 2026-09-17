@@ -6281,6 +6281,31 @@ Every future modification or implementation task must append an entry following 
   - Executed `bootstrap.ps1` usage display.
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 03:45 CEST] — Consolidated All Modular Bootstrap Scripts into Dedicated tools/bootstrap/ Directory
+- **Affected Subsystems**:
+  - `tools/bootstrap/` (new dedicated subsystem directory housing all bootstrap tooling)
+  - `tools/bootstrap/bootstrap.ps1` (relocated coordinator with updated 2-level repo root resolution)
+  - `tools/bootstrap/bootstrap_sources.ps1` (relocated test sources bootstrapper)
+  - `tools/bootstrap/bootstrap_graphify.ps1` (relocated AST knowledge graph bootstrapper)
+  - `tools/bootstrap/bootstrap_rag.ps1` (relocated AI Qdrant documentation bootstrapper)
+  - `tools/bootstrap/bootstrap_documentation.ps1` (relocated external reference bootstrapper)
+  - `tools/bootstrap.ps1` (root convenience forwarding wrapper delegating to `tools/bootstrap/bootstrap.ps1`)
+  - `Obsidian/Amiga/Design/PowerShell Guidelines.md` (updated living tooling implementations)
+- **What Was Changed (The Concrete Reality)**:
+  - Created `tools/bootstrap/` directory matching the modular structure of `tools/git/`, `tools/rag/`, and `tools/harness/`.
+  - Moved all 5 bootstrap scripts into `tools/bootstrap/` via `git mv`.
+  - Adjusted `$RepoRoot` calculation across all child scripts to ascend 2 levels (`Split-Path -Parent (Split-Path -Parent $PSScriptRoot)`).
+  - Authored a clean forwarding wrapper at `tools/bootstrap.ps1` that accepts all standard switches and forwards execution directly to `tools/bootstrap/bootstrap.ps1`.
+  - Updated `PowerShell Guidelines.md` living implementations catalog.
+- **Architectural Rationale & Trade-Offs**:
+  - Prevents root `tools/` directory clutter. Co-locating all bootstrap lifecycle scripts inside `tools/bootstrap/` provides modular encapsulation while the thin `tools/bootstrap.ps1` wrapper maintains 100% backward compatibility with existing command lines.
+- **Verification & Test Results**:
+  - Tested `tools/bootstrap.ps1` root forwarder.
+  - Tested `tools/bootstrap/bootstrap_sources.ps1 -NoSmoke`.
+  - Tested `tools/bootstrap/bootstrap_documentation.ps1 -List`.
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 

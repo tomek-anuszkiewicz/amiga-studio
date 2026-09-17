@@ -26,7 +26,7 @@ param(
     [switch]$CheckOnly
 )
 
-$RepoRoot = Split-Path -Parent $PSScriptRoot
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
 function Show-Usage {
     Write-Host ""
