@@ -6448,6 +6448,18 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:10 CEST] — Pruned Redundant Section 2 from Reference Sources Guide
+- **Affected Subsystems**:
+  - `docs/reference_sources.md` (removed Section 2: Directory Contents & Upstream Details; renumbered subsequent sections)
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned verbose Section 2 (directory ASCII trees, per-repository breakdown, and duplicate notes) from `docs/reference_sources.md`.
+  - Retained the concise, high-signal summary table in Section 1 and renumbered Automated Provisioning to Section 2 and Worktree Junctions to Section 3.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates redundant directory listings that duplicate what is already cleanly and concisely stated in the Section 1 overview table. Keeps the documentation lean, direct, and focused.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 
