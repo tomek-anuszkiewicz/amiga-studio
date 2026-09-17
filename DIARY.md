@@ -6191,4 +6191,21 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Verified `Show-Usage` and `Get-Help` across both `tools/bootstrap.ps1` and `tools/bootstrap_reference.ps1`.
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+### [2026-09-17 03:26 CEST] — Codified PowerShell Tooling & Parameterization Guidelines in Obsidian Design Vault
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/PowerShell Guidelines.md` (new specification codifying the Three-Layer Tooling Contract, comment-based help, typed `param(...)` blocks, `Show-Usage`, and auto-promotion)
+  - `Obsidian/Amiga/Design/Rust Guidelines.md` (linked new tooling guidelines in frontmatter and specification index)
+- **What Was Changed (The Concrete Reality)**:
+  - Authored `Obsidian/Amiga/Design/PowerShell Guidelines.md` adhering strictly to Inverted Pyramid structure, Line 1 YAML properties, and Dual-Layer Linking.
+  - Codified the **Three-Layer Tooling Contract**:
+    1. Standard Comment-Based Help (`<# ... #>`) with mandatory `.SYNOPSIS`, `.DESCRIPTION`, dedicated `.PARAMETER <Name>` tags for every parameter, and workflow `.EXAMPLE` blocks.
+    2. Formal typed parameter block (`param(...)`) with mandatory `[CmdletBinding()]`, explicit strongly-typed declarations (`[switch]`, `[string]`), PascalCase variables, and `[Alias("...")]` mappings.
+    3. Interactive Console Usage Display (`function Show-Usage`) with Cyan banner, Yellow developer context, White section labels, and formatted 2-column options table.
+  - Codified the ergonomic **Sub-Flag Auto-Promotion Pattern** (auto-promoting parent switches when sub-options are passed) and pre-commit verification workflows.
+  - Linked the new specification from `Rust Guidelines.md` and related parent notes.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates ad-hoc scripting inconsistencies across developer utilities. Establishes a permanent, reproducible standard ensuring all repository tooling provides identical visual polish, full `Get-Help` introspection, and clean error handling.
+- **Verification & Test Results**:
+  - Validated Markdown structure and links in `Obsidian/Amiga/Design/PowerShell Guidelines.md`.
+  - `python tools/harness/pre_flight.py`: Passed 100% across all quality gates.
 
