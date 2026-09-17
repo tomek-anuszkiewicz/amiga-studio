@@ -55,22 +55,38 @@ def proofread_title_llm(raw_title: str, gemini: GeminiClient) -> str:
 
 def determine_section_title_llm(raw_title: str, raw_slug: str, sample_text: str, gemini: GeminiClient) -> str:
     """Queries Gemini to dynamically determine the canonical, publication-grade title based on section content."""
+    extra_guidance = ""
+    if raw_slug == "preface":
+        extra_guidance = (
+            "\nNote: This is the opening Preface / Front Matter section preceding the Table of Contents "
+            "(it contains cover illustration, title page, copyright/legal notices, colophon, and/or sales offices). "
+            "It is NOT the Table of Contents (which is a separate dedicated section). "
+            "Return a title such as 'Front Matter', 'Preface & Front Matter', or 'Cover Page'. NEVER return 'Table of Contents'."
+        )
+    elif raw_slug == "toc":
+        extra_guidance = (
+            "\nNote: This is the formal Table of Contents section listing chapters, sections, and page references."
+        )
+
     prompt = (
         "You are an expert technical book editor. Determine the canonical, professional title for this section "
         "of a technical manual based on its actual content.\n\n"
         f"Preliminary Title: {raw_title}\n"
         f"Section Slug: {raw_slug}\n"
-        f"Content Excerpt:\n```markdown\n{sample_text[:1500]}\n```\n\n"
-        "Return ONLY the clean canonical title string (e.g. 'Preface and Front Matter', 'Table of Contents', 'Publication Colophon') "
+        f"Content Excerpt:\n```markdown\n{sample_text[:1500]}\n```\n"
+        f"{extra_guidance}\n\n"
+        "Return ONLY the clean canonical title string (e.g. 'Front Matter', 'Table of Contents', 'Publication Colophon') "
         "without quotes, markdown formatting, or explanation:"
     )
     try:
         c_title = gemini.generate_text(prompt, stage="10_proofread_stream").strip().strip('"').strip("'")
         if c_title and len(c_title) < 100:
+            if raw_slug == "preface" and "table of contents" in c_title.lower():
+                return "Front Matter"
             return c_title
     except Exception as e:
         print(f"[!] Warning: LLM title determination failed for '{raw_title}': {e}")
-    return raw_title
+    return raw_title if (raw_slug != "preface" or "table of contents" not in raw_title.lower()) else "Front Matter"
 
 
 def proofread_node_text(text: str, gemini: GeminiClient, base_prompt: str) -> str:
@@ -177,7 +193,10 @@ def process_proofread_stream(
                 try:
                     with open(json_candidate, "r", encoding="utf-8") as f:
                         sample_nodes = json.load(f)
-                    sample_text = " ".join([n.get("raw_text", "") or n.get("rendered_markdown", "") for n in sample_nodes[:10]])
+                    informative_nodes = [n for n in sample_nodes if n.get("type") != "thumb_index"]
+                    if not informative_nodes:
+                        informative_nodes = sample_nodes
+                    sample_text = " ".join([n.get("raw_text", "") or n.get("rendered_markdown", "") for n in informative_nodes[:10]])
                 except Exception:
                     pass
 
@@ -255,6 +274,11 @@ def process_proofread_stream(
         clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
         clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
         target_md_name = f"{idx:02d} - {clean_title_name}.md" if clean_title_name else f"{target_file_slug}.md"
+
+        # Prevent duplicate filenames across partitions
+        existing_targets = [e.get("target_md_file") for e in updated_manifest]
+        if target_md_name in existing_targets:
+            target_md_name = f"{idx:02d} - {new_slug.replace('_', ' ').title()}.md"
 
         # 4. Save proofread nodes to output_dir
         out_json_path = output_dir / out_json_name

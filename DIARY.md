@@ -1503,3 +1503,23 @@ Every future modification or implementation task must append an entry following 
   - Verified with isolated text and vision tests
   - observed 1.1s API latency on cold call drop to 0.005s on cache hit
   - confirmed persistent cross-process disk cache hits and clean metrics aggregation
+---
+
+### [2026-09-17 20:56 CEST] — Add thumb_index Category and Resolve Table of Contents Boundary
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `stages/02_page_segmentation`
+  - `stages/10_proofread_stream`
+- **What Was Changed (The Concrete Reality)**:
+  - Added thumb_index category in Stage 02 prompt.md and README.md for edge tabs and bookmarks
+  - added guidance and collision protection in Stage 10 proofread_stream.py to prevent preface from being misnamed as Table of Contents
+  - filtered thumb_index nodes when sampling section text for LLM title determination
+- **Architectural Rationale & Trade-Offs**:
+  - Edge tabs in technical manuals were previously forced into the toc category
+  - triggering the TOC boundary prematurely on Page 2 and absorbing Front Matter into the TOC. Adding thumb_index ensures accurate classification
+  - allowing TOC detection to start strictly at the genuine Table of Contents on Page 8
+- **Verification & Test Results**:
+  - Reprocessed workspace_50 through Stage 14 cleanly
+  - verified 00 - Table of Contents.md starts directly with Section 1 Overview without thumb tabs
+  - verified 00 - Front Matter.md contains cover, legal, and sales offices
+  - passed pre_flight.py --quick
