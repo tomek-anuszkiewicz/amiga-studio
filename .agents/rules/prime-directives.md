@@ -1,6 +1,6 @@
 ---
 trigger: always_on
-description: Prime Directives on thinking mode and code modifications (invariant modeling over hardcoded fixes, single-point verification, and exhaustive search before declaring).
+description: Prime Directives on thinking mode and code modifications (invariant modeling over hardcoded fixes, explicit request before modification, and exhaustive search before declaring).
 ---
 
 # Prime Directives: Thinking Mode & Code Modifications
@@ -39,3 +39,14 @@ This rule defines foundational engineering invariants governing how all code mod
 ### A. Search Before Declaring
 - **NEVER** introduce a new constant, static, helper function, enum, or struct without first searching the workspace (`rg` / AST).
 - If an equivalent symbol exists, import and reuse it. Never duplicate definitions to satisfy a quick fix.
+
+---
+
+## 4. Explicit Request Before Modification (Zero Unsolicited Code Changes)
+
+### A. Strict Prohibition of Premature or Unsolicited Edits
+- **NEVER begin modifying code, editing files, or executing refactorings unless the USER directly and explicitly asks you to do so.**
+- When the user asks investigatory questions, reports symptoms, discusses ideas, or asks for root-cause explanations:
+  - Confine actions strictly to analysis, inspection, explaining architectural mechanisms, and proposing designs or plans.
+  - Do not jump ahead into modifying source files or applying fixes on your own initiative without explicit user direction.
+

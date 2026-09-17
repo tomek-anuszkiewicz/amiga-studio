@@ -10,7 +10,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
 Operational rules are modularized under `.agents/rules/` with single-responsibility scoping across two tiers:
 
 ### A. Universal Invariants (`trigger: always_on`)
-- **Prime Directives** ([`prime-directives.md`](.agents/rules/prime-directives.md)): Invariant modeling over hardcoded fixes, single-point verification, and exhaustive workspace search.
+- **Prime Directives** ([`prime-directives.md`](.agents/rules/prime-directives.md)): Invariant modeling, explicit request before editing, and exhaustive workspace search.
 - **Audio Voice Transcription** ([`audio-transcription.md`](.agents/rules/audio-transcription.md)): Mandatory spoken language transcript echo before responses.
 - **Dynamic Model Advisory** ([`model-reasoning-advisory.md`](.agents/rules/model-reasoning-advisory.md)): Proactive advice on switching between `Medium` and `High`/`Pro` reasoning.
 - **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
