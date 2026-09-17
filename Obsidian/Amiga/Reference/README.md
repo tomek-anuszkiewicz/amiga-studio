@@ -114,4 +114,4 @@ Obsidian/Amiga/Reference/temp/<Document_Name>/
 
 - **Intentional Git Visibility:** `temp/` is intentionally **NOT** added to `.gitignore`. When files are downloaded, `temp/` appears in `git status` as untracked files. This gives developers immediate visual awareness that temporary raw assets exist locally.
 - **Safe to Delete:** Any file or directory inside `temp/` can be deleted at any time without impacting emulator compilation, unit tests, or CI checks.
-- **Offline & Manual Drop:** If external network access is restricted or a user possesses a physical copy (e.g. Ralph Babel's *Amiga Guru Book*), raw files can be placed directly into `temp/<Document_Name>/` for manual inspection.
+- **Offline & Manual Drop:** If external network access is restricted or a user possesses a physical copy of a document, raw files can be placed directly into `temp/<Document_Name>/` for manual inspection.

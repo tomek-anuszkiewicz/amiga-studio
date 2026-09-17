@@ -6146,5 +6146,17 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Validated Python compilation across all 6 modified stage scripts via `python -m py_compile`.
   - Pre-flight quality gates passed cleanly (`python tools/harness/pre_flight.py`).
-
+### [2026-09-17 03:18 CEST] — Pruned LHA Archive Handling and Obsolete AmigaGuide / Guru Book References
+- **Affected Subsystems**:
+  - `tools/bootstrap_reference.ps1` (removed LHA/LZH extensions from known archives and docstrings)
+  - `Obsidian/Amiga/Reference/README.md` (sanitized manual drop description to remove historical Guru Book reference)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed `.lha` and `.lzh` archive formats from `$KnownArchiveExtensions` and `$ArchiveExtensions` in `tools/bootstrap_reference.ps1`, leaving standard `.zip`, `.tar`, `.gz`, and `.tgz` support.
+  - Purged references to AmigaGuide archives from the script description in `tools/bootstrap_reference.ps1`.
+  - Updated `Obsidian/Amiga/Reference/README.md` to remove the reference to *The Amiga Guru Book* in the manual drop guideline.
+- **Architectural Rationale & Trade-Offs**:
+  - All active reference materials (HRM, TRM, PRM, UM, Jorge Cwik's prefetch guide, Achtung! Amiga) are either vector/scanned PDFs or direct HTML crawls. Since *The Amiga Guru Book* and AmigaGuide format ingestion were retired, LHA extraction logic and guide references represented dead scaffolding.
+- **Verification & Test Results**:
+  - Verified PowerShell syntax of `tools/bootstrap_reference.ps1` using `[scriptblock]::Create()`.
+  - `python tools/harness/pre_flight.py`: Passed 100% across all quality gates.
 

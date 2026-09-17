@@ -3,8 +3,8 @@
     Automated bootstrapper for external Amiga reference documentation.
 
 .DESCRIPTION
-    Fetches raw, unprocessed external reference materials (PDFs, multi-page HTML
-    crawls, and AmigaGuide archives) into:
+    Fetches raw, unprocessed external reference materials (PDFs and multi-page HTML
+    crawls) into:
         Obsidian/Amiga/Reference/temp/<Document_Name>/
 
     Features:
@@ -288,7 +288,7 @@ This directory contains raw, unprocessed external reference materials (PDF scans
 ## Operational Guidelines
 - **Safe to Delete:** You can safely delete this directory or any subfolder at any time. It has zero impact on compiling, testing, or running the emulator.
 - **Git Visibility:** This directory is intentionally **NOT** listed in `.gitignore`. When files are downloaded, it appears in `git status` as untracked files to ensure developers have visual confirmation of temporary downloaded materials.
-- **Archive Extraction:** Archives (`.lha`, `.lzh`, `.zip`, `.tar.gz`) are automatically unpacked into their respective reference directories by `tools/bootstrap_reference.ps1` using native Windows `tar.exe` (bsdtar with libarchive) or `Expand-Archive`.
+- **Archive Extraction:** Archives (`.zip`, `.tar.gz`) are automatically unpacked into their respective reference directories by `tools/bootstrap_reference.ps1` using native Windows `tar.exe` or `Expand-Archive`.
 - **Processing:** Converted markdown specifications live in the parent `Obsidian/Amiga/Reference/` directory and are tracked in Git.
 '@
         Set-Content -Path $ReadmePath -Value $Content -Encoding UTF8
@@ -310,7 +310,7 @@ function Expand-ReferenceArchive {
 
     $FileName = [System.IO.Path]::GetFileName($ArchiveFilePath)
     $Ext = [System.IO.Path]::GetExtension($ArchiveFilePath).ToLower()
-    $KnownArchiveExtensions = @(".lha", ".lzh", ".zip", ".tar", ".gz", ".tgz")
+    $KnownArchiveExtensions = @(".zip", ".tar", ".gz", ".tgz")
 
     if ($Ext -notin $KnownArchiveExtensions) {
         return
@@ -342,7 +342,7 @@ function Expand-ReferenceArchive {
 
     $extracted = $false
 
-    # 1. Primary: Windows native tar.exe (bsdtar with libarchive supports LHA, LZH, ZIP, TAR, GZ, TGZ)
+    # 1. Primary: Windows native tar.exe (bsdtar supports ZIP, TAR, GZ, TGZ)
     if ($tarCmd) {
         try {
             $prevEap = $ErrorActionPreference
@@ -411,7 +411,7 @@ function Expand-DirectoryArchives {
 
     if (-not (Test-Path $TargetDir)) { return }
 
-    $ArchiveExtensions = @("*.lha", "*.lzh", "*.zip", "*.tar", "*.tar.gz", "*.tgz")
+    $ArchiveExtensions = @("*.zip", "*.tar", "*.tar.gz", "*.tgz")
     foreach ($pattern in $ArchiveExtensions) {
         $archives = Get-ChildItem -Path $TargetDir -Filter $pattern -File -ErrorAction SilentlyContinue
         foreach ($archive in $archives) {
