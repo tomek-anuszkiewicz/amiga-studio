@@ -1483,3 +1483,23 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Pre-flight checks passed
   - Verified 0 empty assets directories remaining in Obsidian/Amiga/Reference
+---
+
+### [2026-09-17 17:49 CEST] — Permanent Content-Addressable LLM Cache for PDF and HTML Pipelines
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `html-to-markdown`
+  - `llm_client`
+  - `pipeline`
+- **What Was Changed (The Concrete Reality)**:
+  - Implemented always-on content-addressable disk cache for Gemini API requests in llm_cache.py and llm_client.py targeting Obsidian/Amiga/Reference/.cache/gemini
+  - Added SHA-256 key hashing over model name, prompt, raw image bytes, thinking budget, and MIME type
+  - Integrated hit/call metrics tracking in stage_status.json and pipeline summary reporting
+  - Ignored reference cache directory in .gitignore
+- **Architectural Rationale & Trade-Offs**:
+  - Re-running extraction or post-processing pipelines on large PDF documents with small downstream tweaks previously incurred redundant
+  - expensive Gemini API calls and high latency. Storing exact request/response hashes in local disk CAS enables sub-millisecond pipeline restarts and zero-cost re-runs while guaranteeing bit-for-bit determinism
+- **Verification & Test Results**:
+  - Verified with isolated text and vision tests
+  - observed 1.1s API latency on cold call drop to 0.005s on cache hit
+  - confirmed persistent cross-process disk cache hits and clean metrics aggregation

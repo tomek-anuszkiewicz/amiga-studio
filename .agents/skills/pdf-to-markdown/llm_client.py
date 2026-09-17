@@ -8,9 +8,12 @@ import atexit
 import json
 import os
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
+
+from llm_cache import compute_cache_key, load_from_cache, save_to_cache
 
 # Try loading .env from repo root or working directory
 for p in [Path.cwd() / ".env", Path(__file__).resolve().parents[3] / ".env"]:
@@ -20,10 +23,12 @@ for p in [Path.cwd() / ".env", Path(__file__).resolve().parents[3] / ".env"]:
 
 _call_lock = threading.Lock()
 _stage_call_count = 0
+_stage_cached_call_count = 0
+_stage_time_seconds = 0.0
 
 
 def _init_call_count():
-    global _stage_call_count
+    global _stage_call_count, _stage_cached_call_count, _stage_time_seconds
     metrics_file = os.getenv("LLM_STAGE_METRICS_FILE")
     if metrics_file:
         try:
@@ -32,6 +37,8 @@ def _init_call_count():
                 with open(p, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     _stage_call_count = int(data.get("llm_calls", 0))
+                    _stage_cached_call_count = int(data.get("llm_cached_calls", 0))
+                    _stage_time_seconds = float(data.get("llm_time_seconds", 0.0))
         except Exception:
             pass
 
@@ -39,17 +46,25 @@ def _init_call_count():
 _init_call_count()
 
 
-def _record_call():
-    global _stage_call_count
+def _record_call(is_cached: bool = False, elapsed: float = 0.0):
+    global _stage_call_count, _stage_cached_call_count, _stage_time_seconds
     with _call_lock:
-        _stage_call_count += 1
+        if is_cached:
+            _stage_cached_call_count += 1
+        else:
+            _stage_call_count += 1
+            _stage_time_seconds += elapsed
         metrics_file = os.getenv("LLM_STAGE_METRICS_FILE")
         if metrics_file:
             try:
                 p = Path(metrics_file)
                 p.parent.mkdir(parents=True, exist_ok=True)
                 with open(p, "w", encoding="utf-8") as f:
-                    json.dump({"llm_calls": _stage_call_count}, f)
+                    json.dump({
+                        "llm_calls": _stage_call_count,
+                        "llm_cached_calls": _stage_cached_call_count,
+                        "llm_time_seconds": round(_stage_time_seconds, 2),
+                    }, f)
             except Exception:
                 pass
 
@@ -61,17 +76,21 @@ def _dump_metrics():
             p = Path(metrics_file)
             p.parent.mkdir(parents=True, exist_ok=True)
             with _call_lock:
-                count = _stage_call_count
+                calls = _stage_call_count
+                cached = _stage_cached_call_count
+                sec = _stage_time_seconds
             with open(p, "w", encoding="utf-8") as f:
-                json.dump({"llm_calls": count}, f)
+                json.dump({
+                    "llm_calls": calls,
+                    "llm_cached_calls": cached,
+                    "llm_time_seconds": round(sec, 2),
+                }, f)
         except Exception:
             pass
 
 
 atexit.register(_dump_metrics)
 
-
-from datetime import datetime
 
 _call_counter = 0
 _call_counter_lock = threading.Lock()
@@ -82,6 +101,7 @@ def _next_call_id() -> int:
     with _call_counter_lock:
         _call_counter += 1
         return _call_counter
+
 
 
 class GeminiClient:
@@ -105,16 +125,28 @@ class GeminiClient:
         with _call_lock:
             return _stage_call_count
 
+    @property
+    def cached_call_count(self) -> int:
+        with _call_lock:
+            return _stage_cached_call_count
+
     @classmethod
     def get_total_calls(cls) -> int:
         with _call_lock:
             return _stage_call_count
 
     @classmethod
+    def get_total_cached_calls(cls) -> int:
+        with _call_lock:
+            return _stage_cached_call_count
+
+    @classmethod
     def reset_call_count(cls):
-        global _stage_call_count
+        global _stage_call_count, _stage_cached_call_count, _stage_time_seconds
         with _call_lock:
             _stage_call_count = 0
+            _stage_cached_call_count = 0
+            _stage_time_seconds = 0.0
 
     def _init_client(self):
         if not self.api_key:
@@ -157,11 +189,27 @@ class GeminiClient:
         config, budget = self._build_config(stage=stage, thinking_budget=thinking_budget, response_mime_type=response_mime_type)
         cid = _next_call_id()
 
+        target_model = models_to_try[0]
+        cache_key = compute_cache_key(
+            model=target_model,
+            prompt=prompt,
+            images=None,
+            budget=budget,
+            temperature=self.temperature,
+            response_mime_type=response_mime_type,
+        )
+        cached_val = load_from_cache(cache_key)
+        if cached_val is not None:
+            _record_call(is_cached=True)
+            ts_now = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+            s_str = f" stage={stage}" if stage else ""
+            print(f"[{ts_now}] [LLM CACHE HIT #{cid}] model={target_model}{s_str} (key={cache_key[:12]}...)")
+            return cached_val
+
         last_error = None
         for m in models_to_try:
             for attempt in range(4):
                 try:
-                    _record_call()
                     ts_start = datetime.now().strftime("%H:%M:%S.%f")[:-3]
                     b_str = f"thinking={budget}" if budget is not None else "thinking=auto"
                     s_str = f" stage={stage}" if stage else ""
@@ -178,6 +226,8 @@ class GeminiClient:
                     print(f"[{ts_done}] [LLM DONE  #{cid}] elapsed={elapsed:.2f}s")
 
                     if response and response.text:
+                        _record_call(is_cached=False, elapsed=elapsed)
+                        save_to_cache(cache_key, m, prompt, response.text)
                         return response.text
                 except Exception as e:
                     last_error = e
@@ -221,11 +271,27 @@ class GeminiClient:
         config, budget = self._build_config(stage=stage, thinking_budget=thinking_budget, response_mime_type=response_mime_type)
         cid = _next_call_id()
 
+        target_model = models_to_try[0]
+        cache_key = compute_cache_key(
+            model=target_model,
+            prompt=prompt,
+            images=images,
+            budget=budget,
+            temperature=self.temperature,
+            response_mime_type=response_mime_type,
+        )
+        cached_val = load_from_cache(cache_key)
+        if cached_val is not None:
+            _record_call(is_cached=True)
+            ts_now = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+            s_str = f" stage={stage}" if stage else ""
+            print(f"[{ts_now}] [LLM CACHE HIT #{cid}] model={target_model}{s_str} img={img_desc} (key={cache_key[:12]}...)")
+            return cached_val
+
         last_error = None
         for m in models_to_try:
             for attempt in range(4):
                 try:
-                    _record_call()
                     ts_start = datetime.now().strftime("%H:%M:%S.%f")[:-3]
                     b_str = f"thinking={budget}" if budget is not None else "thinking=auto"
                     s_str = f" stage={stage}" if stage else ""
@@ -242,6 +308,8 @@ class GeminiClient:
                     print(f"[{ts_done}] [LLM DONE  #{cid}] elapsed={elapsed:.2f}s")
 
                     if response and response.text:
+                        _record_call(is_cached=False, elapsed=elapsed)
+                        save_to_cache(cache_key, m, prompt, response.text)
                         return response.text
                 except Exception as e:
                     last_error = e
@@ -259,6 +327,7 @@ class GeminiClient:
             f"Fatal: LLM generate_vision failed across all models ({models_to_try}) and retry attempts for {image_path}. "
             f"Last error: {last_error}"
         )
+
 
     def generate_json(self, prompt: str, image_path: Optional[Path] = None, model: str = None, stage: Optional[str] = None, thinking_budget: Optional[int] = None):
         import json
