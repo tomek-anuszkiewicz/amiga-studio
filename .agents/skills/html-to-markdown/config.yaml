@@ -1,0 +1,9 @@
+# Configuration for the HTML-to-Markdown reference pipeline
+
+llm:
+  provider: "google-genai"
+  model_prose: "gemini-3.8-flash"
+  model_vision: "gemini-3.8-flash"
+  default_thinking_budget: 0
+  temperature: 0.1
+  timeout_seconds: 60

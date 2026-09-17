@@ -25,6 +25,10 @@ All conversion scripts and references reside inside this skill directory:
 ```text
 .agents/skills/html-to-markdown/
 ├── SKILL.md                               # This workflow recipe
+├── config.yaml                            # Skill configuration (models, temperature, budget)
+├── pipeline.py                            # Master conversion orchestrator
+├── llm_cache.py                           # Content-addressable persistent disk cache (.cache/gemini)
+├── llm_client.py                          # Gemini LLM client with automatic cache checking & retry
 ├── scripts/
 │   ├── download_assets.py                 # Scans HTML, copies/downloads images to assets/, creates .txt sidecars
 │   ├── html_to_pages.py                   # Headless Chrome HTML-to-PDF & PyMuPDF page PNG rasterizer

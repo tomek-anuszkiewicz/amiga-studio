@@ -30,15 +30,20 @@ except ImportError:
 SKILL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SKILL_DIR.parents[2]
 
-# Try importing GeminiClient from pdf-to-markdown if available
-PDF_SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "pdf-to-markdown"
-if str(PDF_SKILL_DIR) not in sys.path:
-    sys.path.insert(0, str(PDF_SKILL_DIR))
+# Prioritize local GeminiClient with caching
+if str(SKILL_DIR) not in sys.path:
+    sys.path.insert(0, str(SKILL_DIR))
 
 try:
     from llm_client import GeminiClient
 except ImportError:
-    GeminiClient = None
+    PDF_SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "pdf-to-markdown"
+    if str(PDF_SKILL_DIR) not in sys.path:
+        sys.path.insert(0, str(PDF_SKILL_DIR))
+    try:
+        from llm_client import GeminiClient
+    except ImportError:
+        GeminiClient = None
 
 
 def run_command(cmd: List[str], check: bool = True) -> bool:
@@ -164,7 +169,9 @@ def convert_with_llm(html_content: str, document_title: str, prompt_file: Path) 
         return None
 
     try:
-        config_path = PDF_SKILL_DIR / "config.yaml"
+        config_path = SKILL_DIR / "config.yaml"
+        if not config_path.is_file():
+            config_path = REPO_ROOT / ".agents" / "skills" / "pdf-to-markdown" / "config.yaml"
         config = {}
         if config_path.is_file():
             import yaml
@@ -191,7 +198,13 @@ def convert_with_llm(html_content: str, document_title: str, prompt_file: Path) 
             f"Return ONLY the complete, publication-grade Markdown text."
         )
 
-        return gemini.generate_text(prompt, stage="html_to_markdown")
+        initial_calls = gemini.call_count
+        initial_cached = gemini.cached_call_count
+        result = gemini.generate_text(prompt, stage="html_to_markdown")
+        api_used = gemini.call_count - initial_calls
+        cached_used = gemini.cached_call_count - initial_cached
+        print(f"[*] LLM transcription completed (API calls: {api_used}, Cache hits: {cached_used}).")
+        return result
     except Exception as e:
         print(f"[!] Note: LLM conversion unavailable ({e}). Falling back to deterministic DOM extraction.", file=sys.stderr)
         return None

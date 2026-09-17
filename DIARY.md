@@ -1594,3 +1594,19 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Both HTML references converted with 0 link errors via validate_links.py
   - pre_flight.py passed
+---
+
+### [2026-09-17 21:33 CEST] — Add persistent LLM cache and client to html-to-markdown skill
+- **Affected Subsystems**:
+  - `tools/skills/html-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Created llm_cache.py, llm_client.py, and config.yaml in html-to-markdown skill
+  - Updated pipeline.py to prioritize skill-local GeminiClient and report API call vs cache hit metrics
+  - Updated SKILL.md toolchain layout
+- **Architectural Rationale & Trade-Offs**:
+  - Matches pdf-to-markdown content-addressable cache architecture
+  - Prevents redundant Gemini API calls and token consumption across repetitive conversion runs
+- **Verification & Test Results**:
+  - Verified on single-HTML test case 'Instruction Prefetch on the Motorola 68000 Processor' achieving 100% cache hit (0 API calls
+  - 1 cache hit
+  - 0 token spend)
