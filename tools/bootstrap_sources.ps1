@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Hardware test suite and regression vector bootstrapper for the Amiga 500 emulator.
+    External test sources, hardware vectors, and reference emulator bootstrapper.
 
 .DESCRIPTION
     Verifies, decompresses, and provisions physical silicon SingleStepTests 68000
@@ -22,15 +22,15 @@
     Only executes the SingleStep test runner smoke check without archive inspection or decompression.
 
 .EXAMPLE
-    .\tools\bootstrap_test.ps1
-    Verifies and provisions all test suites and executes the smoke check.
+    .\tools\bootstrap_sources.ps1
+    Verifies and provisions all test sources and executes the smoke check.
 
 .EXAMPLE
-    .\tools\bootstrap_test.ps1 -NoSmoke
+    .\tools\bootstrap_sources.ps1 -NoSmoke
     Decompresses archives and migrates suites without running cargo test.
 
 .EXAMPLE
-    .\tools\bootstrap_test.ps1 -SmokeOnly
+    .\tools\bootstrap_sources.ps1 -SmokeOnly
     Quickly verifies the single-step test runner harness.
 #>
 
@@ -44,13 +44,13 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 
 function Show-Usage {
     Write-Host ""
-    Write-Host "Amiga 500 Test Suites & Regression Bootstrapper" -ForegroundColor Cyan
-    Write-Host "===============================================" -ForegroundColor Cyan
+    Write-Host "Amiga 500 External Sources & Test Suites Bootstrapper" -ForegroundColor Cyan
+    Write-Host "=====================================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap_test.ps1                       : Verify & provision test suites, then run smoke check"
-    Write-Host "  .\tools\bootstrap_test.ps1 -NoSmoke              : Decompress & verify suites without running cargo test"
-    Write-Host "  .\tools\bootstrap_test.ps1 -SmokeOnly            : Only run single-step smoke check"
+    Write-Host "  .\tools\bootstrap_sources.ps1                    : Verify & provision test sources, then run smoke check"
+    Write-Host "  .\tools\bootstrap_sources.ps1 -NoSmoke           : Decompress & verify suites without running cargo test"
+    Write-Host "  .\tools\bootstrap_sources.ps1 -SmokeOnly         : Only run single-step smoke check"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
     Write-Host "  -NoSmoke                 : Skip cargo test single-step smoke check"

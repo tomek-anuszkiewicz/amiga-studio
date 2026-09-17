@@ -6245,4 +6245,22 @@ Every future modification or implementation task must append an entry following 
   - Tested smoke check via `bootstrap_test.ps1` (`cargo test -p test_runner --test test_singlestep test_nop`).
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 03:39 CEST] — Renamed bootstrap_test.ps1 to bootstrap_sources.ps1
+- **Affected Subsystems**:
+  - `tools/bootstrap_sources.ps1` (renamed from `tools/bootstrap_test.ps1`, updated documentation, CLI usage, and branding)
+  - `tools/bootstrap.ps1` (updated Tier 1 to `-Sources` with `-Test` alias, delegating to `bootstrap_sources.ps1`)
+  - `Obsidian/Amiga/Design/PowerShell Guidelines.md` (updated living implementations and references to `bootstrap_sources.ps1`)
+- **What Was Changed (The Concrete Reality)**:
+  - Renamed `tools/bootstrap_test.ps1` to `tools/bootstrap_sources.ps1`.
+  - Updated internal metadata, synopsis, usage banners, and examples to reflect the broader scope (physical test vectors, ADFs, and C++ reference sources).
+  - Updated `tools/bootstrap.ps1` parameter to `-Sources` (with `-Test` retained as an alias for backward compatibility).
+  - Updated design vault documentation in `PowerShell Guidelines.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - The script provisions not only test vectors (SingleStepTests, vAmigaTS), but also external reference emulators (vAmiga) and diagnostic media (AmigaTestKit ADF). Naming it `bootstrap_sources.ps1` accurately describes its responsibility as the external sources & test media provider.
+- **Verification & Test Results**:
+  - Executed `bootstrap_sources.ps1 -NoSmoke`.
+  - Executed `bootstrap.ps1 -Sources` and `bootstrap.ps1 -Test`.
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 

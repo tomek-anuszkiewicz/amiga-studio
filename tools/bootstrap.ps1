@@ -7,7 +7,7 @@
     graphs, local RAG vector documentation, and external reference documentation.
 
     Delegates execution to modular standalone bootstrap scripts:
-    - Tier 1: Hardware Verification & Test Vectors (-Test -> tools/bootstrap_test.ps1)
+    - Tier 1: Hardware Verification & External Sources (-Sources / -Test -> tools/bootstrap_sources.ps1)
     - Tier 2: AST-Level Code Knowledge Graph (-Graphify -> tools/bootstrap_graphify.ps1)
     - Tier 3: AI Knowledge & Qdrant RAG Vector Index (-Rag -> tools/bootstrap_rag.ps1)
     - Tier 4: External Reference Documentation & Scans (-Ref -> tools/bootstrap_reference.ps1)
@@ -15,9 +15,14 @@
     NOTE: Bootstrapping is NOT required to build, test, or run the emulator.
     A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'.
 
+.PARAMETER Sources
+    Verifies and provisions physical silicon SingleStepTests 68000 test vectors,
+    AmigaTestKit ADF, and reference emulators in ref_src/. Delegates to
+    tools/bootstrap_sources.ps1. Alias: -Test.
+
 .PARAMETER Test
-    Verifies and provisions physical silicon SingleStepTests 68000 test vectors
-    and regression media in ref_src/. Delegates to tools/bootstrap_test.ps1.
+    Alias for -Sources. Verifies and provisions physical silicon SingleStepTests
+    68000 test vectors and regression media in ref_src/.
 
 .PARAMETER Graphify
     Generates and updates the AST-level code knowledge graph in graphify-out/ for
@@ -40,11 +45,11 @@
     Alias: -AllMirrors.
 
 .PARAMETER All
-    Executes all primary bootstrap tiers sequentially (-Test -> -Graphify -> -Rag).
+    Executes all primary bootstrap tiers sequentially (-Sources -> -Graphify -> -Rag).
 
 .EXAMPLE
-    .\tools\bootstrap.ps1 -Test
-    Provision hardware test vectors (SingleStepTests, vAmiga, AmigaTestKit).
+    .\tools\bootstrap.ps1 -Sources
+    Provision external hardware test vectors and sources (SingleStepTests, vAmiga).
 
 .EXAMPLE
     .\tools\bootstrap.ps1 -Graphify
@@ -60,12 +65,13 @@
 
 .EXAMPLE
     .\tools\bootstrap.ps1 -All
-    Run all primary bootstrap tiers (tests -> Graphify AST -> RAG documentation).
+    Run all primary bootstrap tiers (sources -> Graphify AST -> RAG documentation).
 #>
 
 [CmdletBinding()]
 param(
-    [switch]$Test,
+    [Alias("Test")]
+    [switch]$Sources,
     [Alias("Graph")]
     [switch]$Graphify,
     [Alias("Doc", "Qdrant")]
@@ -87,50 +93,50 @@ function Show-Usage {
     Write-Host "      A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'."
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap.ps1 -Test                      : Provision hardware test vectors (SingleStepTests, vAmiga)"
+    Write-Host "  .\tools\bootstrap.ps1 -Sources                   : Provision external test sources & vectors (SingleStepTests, vAmiga)"
     Write-Host "  .\tools\bootstrap.ps1 -Graphify                  : Provision code knowledge graph (Graphify AST extraction)"
     Write-Host "  .\tools\bootstrap.ps1 -Rag                       : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
     Write-Host "  .\tools\bootstrap.ps1 -Ref                       : Provision external reference materials (PDFs, HTML crawls)"
-    Write-Host "  .\tools\bootstrap.ps1 -All                       : Provision all primary tiers (tests -> Graphify -> RAG)"
+    Write-Host "  .\tools\bootstrap.ps1 -All                       : Provision all primary tiers (sources -> Graphify -> RAG)"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
-    Write-Host "  -Test                    : Verify & unpack SingleStepTests 68000 test vectors"
+    Write-Host "  -Sources                 : Verify & unpack SingleStepTests 68000 test vectors (alias: -Test)"
     Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
     Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (aliases: -Doc, -Qdrant)"
     Write-Host "  -Ref                     : Download external reference materials into temp/"
     Write-Host "  -AllSources              : Download from all mirrors for -Ref (alias: -AllMirrors)"
-    Write-Host "  -All                     : Run all primary tiers (-Test, -Graphify, -Rag)"
+    Write-Host "  -All                     : Run all primary tiers (-Sources, -Graphify, -Rag)"
     Write-Host ""
 }
 
 if ($AllSources) { $Ref = $true }
 
-if (-not $Rag -and -not $Test -and -not $Graphify -and -not $Ref -and -not $All) {
+if (-not $Rag -and -not $Sources -and -not $Graphify -and -not $Ref -and -not $All) {
     Show-Usage
     exit 0
 }
 
 $TotalSteps = 0
-if ($Test -or $All) { $TotalSteps++ }
+if ($Sources -or $All) { $TotalSteps++ }
 if ($Graphify -or $All) { $TotalSteps++ }
 if ($Rag -or $All) { $TotalSteps++ }
 if ($Ref) { $TotalSteps++ }
 $CurrentStep = 1
 
 # -----------------------------------------------------------------------------
-# Tier 1: Verification & Test Suite Bootstrap (-Test / -All)
+# Tier 1: Verification & External Sources Bootstrap (-Sources / -Test / -All)
 # -----------------------------------------------------------------------------
-if ($Test -or $All) {
+if ($Sources -or $All) {
     Write-Host ""
-    Write-Host "[$CurrentStep/$TotalSteps] Delegating to Test Suite Bootstrapper..." -ForegroundColor Green
-    Write-Host "---------------------------------------------------------" -ForegroundColor DarkGray
+    Write-Host "[$CurrentStep/$TotalSteps] Delegating to External Sources Bootstrapper..." -ForegroundColor Green
+    Write-Host "-------------------------------------------------------------" -ForegroundColor DarkGray
     $CurrentStep++
 
-    $TestScript = Join-Path $PSScriptRoot "bootstrap_test.ps1"
-    if (-not (Test-Path $TestScript)) {
-        Write-Error "bootstrap_test.ps1 not found at: $TestScript"
+    $SourcesScript = Join-Path $PSScriptRoot "bootstrap_sources.ps1"
+    if (-not (Test-Path $SourcesScript)) {
+        Write-Error "bootstrap_sources.ps1 not found at: $SourcesScript"
     } else {
-        & $TestScript
+        & $SourcesScript
     }
 }
 
