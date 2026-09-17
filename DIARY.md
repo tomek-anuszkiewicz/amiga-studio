@@ -6525,6 +6525,16 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:25 CEST] — Documented Gemini Multimodal Reasoning in PDF Conversion Pipeline
+- **Affected Subsystems**:
+  - `docs/reference_documentation.md` (updated PDF-to-Markdown processing pipeline description)
+- **What Was Changed (The Concrete Reality)**:
+  - Replaced the PyMuPDF library detail with explicit reference to Gemini: "Leverages Gemini multimodal reasoning to analyze document structure and partition into logical chapters."
+- **Architectural Rationale & Trade-Offs**:
+  - Accurately reflects the agent-driven architecture defined in `.agents/skills/pdf-to-markdown/SKILL.md`, where Gemini serves as the cognitive reasoning engine for chapter partitioning and document understanding.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
 
 
 

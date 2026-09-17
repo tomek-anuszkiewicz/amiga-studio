@@ -97,7 +97,7 @@ Invoke via the central bootstrap coordinator:
 When new reference manuals or updated editions are retrieved, use specialized agent skills to convert them into repository-grade Markdown:
 
 1. **PDF Scans to Markdown ([`pdf-to-markdown`](../.agents/skills/pdf-to-markdown/SKILL.md)):**
-   - Uses PyMuPDF (`fitz`) to split documents into logical chapters.
+   - Leverages Gemini multimodal reasoning to analyze document structure and partition into logical chapters.
    - Extracts and crops circuit diagrams, register maps, and waveforms into high-resolution PNG/SVG assets.
    - Stitches multi-page register tables into GitHub-flavored Markdown tables.
    - Generates Git-tracked multimodal sidecar text files (`<image>.txt`) describing timing diagrams for offline AI inspection.
