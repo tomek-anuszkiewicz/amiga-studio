@@ -11,25 +11,26 @@ This document records the complete architectural philosophy, evolutionary histor
 
 ## Table of Contents
 
-1. [Project Genesis: Groundwork, Reference Ingestion & The Myth vs. Reality of AI Emulation](#1-project-genesis-groundwork-reference-ingestion--the-myth-vs-reality-of-ai-emulation)
-2. [Foundational Architecture: Cycle-Exact Mechanics, Rejecting the "God Bus" & Rust Sympathy](#2-foundational-architecture-cycle-exact-mechanics-rejecting-the-god-bus--rust-sympathy)
-3. [Modular Workspace Architecture & Two-Tier Hardware Decomposition](#3-modular-workspace-architecture--two-tier-hardware-decomposition)
+1. [Project Genesis: Groundwork, Reference Ingestion & The Myth vs. Reality of AI Emulation](#1-project-genesis-groundwork-reference-ingestion-the-myth-vs-reality-of-ai-emulation)
+2. [Foundational Architecture: Cycle-Exact Mechanics, Rejecting the "God Bus" & Rust Sympathy](#2-foundational-architecture-cycle-exact-mechanics-rejecting-the-god-bus-rust-sympathy)
+3. [Modular Workspace Architecture & Two-Tier Hardware Decomposition](#3-modular-workspace-architecture-two-tier-hardware-decomposition)
 4. [Physical Circuit Simulation: Standalone BLEP Audio Synthesis](#4-physical-circuit-simulation-standalone-blep-audio-synthesis)
 5. [The 6-Stage Evolution of the M68000 CPU Core](#5-the-6-stage-evolution-of-the-m68000-cpu-core)
-6. [CPU Opcode Benchmarking & Performance Profiling](#6-cpu-opcode-benchmarking--performance-profiling)
-7. [Subsystem Evolution: The Developer Studio GUI & Debugger Engine](#7-subsystem-evolution-the-developer-studio-gui--debugger-engine)
-8. [Architectural Rules, Anti-Tamper Policies & The Living Definition of Done](#8-architectural-rules-anti-tamper-policies--the-living-definition-of-done)
+6. [CPU Opcode Benchmarking & Performance Profiling](#6-cpu-opcode-benchmarking-performance-profiling)
+7. [Subsystem Evolution: The Developer Studio GUI & Debugger Engine](#7-subsystem-evolution-the-developer-studio-gui-debugger-engine)
+8. [Architectural Rules, Anti-Tamper Policies & The Living Definition of Done](#8-architectural-rules-anti-tamper-policies-the-living-definition-of-done)
 9. [The Ultimate Goal: The Clean-Room Re-Generation Experiment](#9-the-ultimate-goal-the-clean-room-re-generation-experiment)
-10. [Repository Bootstrapping, Clean-Room Pipeline & Tooling Ergonomics](#10-repository-bootstrapping-clean-room-pipeline--tooling-ergonomics-september-1217-2026)
-11. [Multi-Tier Testing Infrastructure, Cartesian Contention & Silicon Verification](#11-multi-tier-testing-infrastructure-cartesian-contention--silicon-verification-september-1216-2026)
-12. [Developer Studio GUI, Headless Perception & Debugging Ecosystem](#12-developer-studio-gui-headless-perception--debugging-ecosystem-september-1215-2026)
-13. [Custom Chipset Silicon Architecture & Autonomous DMA Engines](#13-custom-chipset-silicon-architecture--autonomous-dma-engines-september-1216-2026)
-14. [Multimodal Reference Ingestion & PDF-to-Markdown Pipeline](#14-multimodal-reference-ingestion--pdf-to-markdown-pipeline-september-1417-2026)
-15. [Agent Operating System, Architectural Guardrails & Quality Discipline](#15-agent-operating-system-architectural-guardrails--quality-discipline-september-1216-2026)
-16. [Living Chronological Engineering Log & Active Evolutionary History](#16-living-chronological-engineering-log--active-evolutionary-history)
+10. [Repository Bootstrapping, Clean-Room Pipeline & Tooling Ergonomics](#10-repository-bootstrapping-clean-room-pipeline-tooling-ergonomics)
+11. [Multi-Tier Testing Infrastructure, Cartesian Contention & Silicon Verification](#11-multi-tier-testing-infrastructure-cartesian-contention-silicon-verification)
+12. [Developer Studio GUI, Headless Perception & Debugging Ecosystem](#12-developer-studio-gui-headless-perception-debugging-ecosystem)
+13. [Custom Chipset Silicon Architecture & Autonomous DMA Engines](#13-custom-chipset-silicon-architecture-autonomous-dma-engines)
+14. [Multimodal Reference Ingestion & PDF-to-Markdown Pipeline](#14-multimodal-reference-ingestion-pdf-to-markdown-pipeline)
+15. [Agent Operating System, Architectural Guardrails & Quality Discipline](#15-agent-operating-system-architectural-guardrails-quality-discipline)
+16. [Living Chronological Engineering Log & Active Evolutionary History](#16-living-chronological-engineering-log-active-evolutionary-history)
 
 ---
 
+<a id="1-project-genesis-groundwork-reference-ingestion-the-myth-vs-reality-of-ai-emulation"></a><a id="1-project-genesis-groundwork-reference-ingestion--the-myth-vs-reality-of-ai-emulation"></a>
 ## 1. Project Genesis: Groundwork, Reference Ingestion & The Myth vs. Reality of AI Emulation
 
 ### The Pre-Rust Phase: Physical Schematics, LTspice & Analog Audio Synthesis (Late August 2026)
@@ -69,6 +70,7 @@ True engineering excellence emerged strictly at the intersection of the human's 
 
 ---
 
+<a id="2-foundational-architecture-cycle-exact-mechanics-rejecting-the-god-bus-rust-sympathy"></a><a id="2-foundational-architecture-cycle-exact-mechanics-rejecting-the-god-bus--rust-sympathy"></a>
 ## 2. Foundational Architecture: Cycle-Exact Mechanics, Rejecting the "God Bus" & Rust Sympathy
 
 Early architectural discussions centered on two core questions:
@@ -101,6 +103,7 @@ Rather than cluttering code with premature bit-twiddling hacks, pointer casting,
 
 ---
 
+<a id="3-modular-workspace-architecture-two-tier-hardware-decomposition"></a><a id="3-modular-workspace-architecture--two-tier-hardware-decomposition"></a>
 ## 3. Modular Workspace Architecture & Two-Tier Hardware Decomposition
 
 From the inception of the codebase on September 6 (`8ed5eaca`), a clean workspace separation was instituted:
@@ -126,6 +129,7 @@ The memory bus (`crates/memory_bus`) underwent a radical performance evolution a
 
 ---
 
+<a id="4-physical-circuit-simulation-standalone-blep-audio-synthesis"></a><a id="4-physical-circuit-simulation-standalone-blep-audio-synthesis"></a>
 ## 4. Physical Circuit Simulation: Standalone BLEP Audio Synthesis
 
 A dedicated engineering effort was devoted to modeling the physical analog sound output of the Amiga Paula chip with pristine accuracy:
@@ -136,6 +140,7 @@ A dedicated engineering effort was devoted to modeling the physical analog sound
 
 ---
 
+<a id="5-the-6-stage-evolution-of-the-m68000-cpu-core"></a><a id="5-the-6-stage-evolution-of-the-m68000-cpu-core"></a>
 ## 5. The 6-Stage Evolution of the M68000 CPU Core
 
 The CPU core (`crates/m68000`) did not emerge in a single iteration. It required six distinct evolutionary stages, documented in commit clusters between September 6 and September 10, 2026, to arrive at its current refined state.
@@ -224,6 +229,7 @@ The final stage arrived once the microcode archetype baseline stabilized, focusi
 
 ---
 
+<a id="6-cpu-opcode-benchmarking-performance-profiling"></a><a id="6-cpu-opcode-benchmarking--performance-profiling"></a>
 ## 6. CPU Opcode Benchmarking & Performance Profiling
 
 Following the stabilization of the CPU core, the human initiated a major engineering milestone: designing and implementing an exhaustive, cycle-exact **M68000 micro-benchmarking engine, anomaly detection framework, and verification suite** (`crates/test_runner/src/benchmark/`).
@@ -305,6 +311,7 @@ A dedicated Python analytics suite processes benchmark datasets to compute linea
 
 ---
 
+<a id="7-subsystem-evolution-the-developer-studio-gui-debugger-engine"></a><a id="7-subsystem-evolution-the-developer-studio-gui--debugger-engine"></a>
 ## 7. Subsystem Evolution: The Developer Studio GUI & Debugger Engine
 
 In parallel with the CPU benchmarking suite, the frontend was developed on the dedicated `feat/gui` worktree (`315c602c`):
@@ -336,6 +343,7 @@ The backend driving the Developer Studio was modularized to strictly adhere to t
 
 ---
 
+<a id="8-architectural-rules-anti-tamper-policies-the-living-definition-of-done"></a><a id="8-architectural-rules-anti-tamper-policies--the-living-definition-of-done"></a>
 ## 8. Architectural Rules, Anti-Tamper Policies & The Living Definition of Done
 
 As the repository expanded to dozens of crates and hundreds of files, the human instituted an automated rule enforcement infrastructure (`.agents/rules/` and `AGENTS.md`):
@@ -354,6 +362,7 @@ As the repository expanded to dozens of crates and hundreds of files, the human 
 
 ---
 
+<a id="9-the-ultimate-goal-the-clean-room-re-generation-experiment"></a><a id="9-the-ultimate-goal-the-clean-room-re-generation-experiment"></a>
 ## 9. The Ultimate Goal: The Clean-Room Re-Generation Experiment
 
 Every bug fix, architectural decision, and hardware quirk in this project has been continuously documented in `Obsidian/Amiga/Design/`.
@@ -371,7 +380,8 @@ This diary stands as the living record of how those foundations were built.
 
 ---
 
-## 10. Repository Bootstrapping, Clean-Room Pipeline & Tooling Ergonomics (September 12–17, 2026)
+<a id="10-repository-bootstrapping-clean-room-pipeline-tooling-ergonomics"></a><a id="10-repository-bootstrapping-clean-room-pipeline--tooling-ergonomics"></a>
+## 10. Repository Bootstrapping, Clean-Room Pipeline & Tooling Ergonomics
 - **Milestone Scope & Affected Subsystems**:
   - `tools/bootstrap/` (`bootstrap.ps1`, `bootstrap_sources.ps1`, `bootstrap_documentation.ps1`), `BOOTSTRAP.md`, `ROADMAP.md` (Section 3.5), `docs/developers.md`, `docs/reference_sources.md`, `docs/reference_documentation.md`, `tools/git/worktree.ps1`.
 - **Architectural Breakthroughs**:
@@ -390,7 +400,8 @@ This diary stands as the living record of how those foundations were built.
 
 ---
 
-## 11. Multi-Tier Testing Infrastructure, Cartesian Contention & Silicon Verification (September 12–16, 2026)
+<a id="11-multi-tier-testing-infrastructure-cartesian-contention-silicon-verification"></a><a id="11-multi-tier-testing-infrastructure-cartesian-contention--silicon-verification"></a>
+## 11. Multi-Tier Testing Infrastructure, Cartesian Contention & Silicon Verification
 - **Milestone Scope & Affected Subsystems**:
   - `crates/test_runner/`, `crates/machine_loop/tests/`, `crates/*/tests/`, `tools/harness/`, `tests/singlestep/`, `ref_src/vAmigaTS/`.
 - **Architectural Breakthroughs**:
@@ -412,7 +423,8 @@ This diary stands as the living record of how those foundations were built.
 
 ---
 
-## 12. Developer Studio GUI, Headless Perception & Debugging Ecosystem (September 12–15, 2026)
+<a id="12-developer-studio-gui-headless-perception-debugging-ecosystem"></a><a id="12-developer-studio-gui-headless-perception--debugging-ecosystem"></a>
+## 12. Developer Studio GUI, Headless Perception & Debugging Ecosystem
 - **Milestone Scope & Affected Subsystems**:
   - `crates/gui/`, `crates/debugger/`, `crates/disassembler/`.
 - **Architectural Breakthroughs**:
@@ -430,7 +442,8 @@ This diary stands as the living record of how those foundations were built.
 
 ---
 
-## 13. Custom Chipset Silicon Architecture & Autonomous DMA Engines (September 12–16, 2026)
+<a id="13-custom-chipset-silicon-architecture-autonomous-dma-engines"></a><a id="13-custom-chipset-silicon-architecture--autonomous-dma-engines"></a>
+## 13. Custom Chipset Silicon Architecture & Autonomous DMA Engines
 - **Milestone Scope & Affected Subsystems**:
   - `crates/agnus/`, `crates/denise/`, `crates/paula/`, `crates/cia/`, `crates/physical_memory/`, `crates/memory_bus/`, `crates/machine_loop/`.
 - **Architectural Breakthroughs**:
@@ -454,7 +467,8 @@ This diary stands as the living record of how those foundations were built.
 
 ---
 
-## 14. Multimodal Reference Ingestion & PDF-to-Markdown Pipeline (September 14–17, 2026)
+<a id="14-multimodal-reference-ingestion-pdf-to-markdown-pipeline"></a><a id="14-multimodal-reference-ingestion--pdf-to-markdown-pipeline"></a>
+## 14. Multimodal Reference Ingestion & PDF-to-Markdown Pipeline
 - **Milestone Scope & Affected Subsystems**:
   - `skills/pdf-to-markdown/`, `tools/rag/`, `Obsidian/Amiga/Reference/`.
 - **Architectural Breakthroughs**:
@@ -473,7 +487,8 @@ This diary stands as the living record of how those foundations were built.
 
 ---
 
-## 15. Agent Operating System, Architectural Guardrails & Quality Discipline (September 12–16, 2026)
+<a id="15-agent-operating-system-architectural-guardrails-quality-discipline"></a><a id="15-agent-operating-system-architectural-guardrails--quality-discipline"></a>
+## 15. Agent Operating System, Architectural Guardrails & Quality Discipline
 - **Milestone Scope & Affected Subsystems**:
   - `.agents/rules/`, `.agents/skills/`, `.agents/workflows/`, `AGENTS.md`, `crates/test_runner/tests/test_architecture_rules.rs`, `tools/harness/`.
 - **Architectural Breakthroughs**:
@@ -492,6 +507,7 @@ This diary stands as the living record of how those foundations were built.
 
 ---
 
+<a id="16-living-chronological-engineering-log-active-evolutionary-history"></a><a id="16-living-chronological-engineering-log--active-evolutionary-history"></a>
 ## 16. Living Chronological Engineering Log & Active Evolutionary History
 
 This section maintains a continuous, granular chronological record of all engineering changes, subsystem modifications, refactorings, and bug fixes across the repository.
