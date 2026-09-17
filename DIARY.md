@@ -1674,3 +1674,19 @@ Every future modification or implementation task must append an entry following 
   - Forcing bitfield definitions into collapsed Obsidian callouts concealed critical diagram information that was plainly visible in the original reference manuals. Rendering decoded tables directly in the primary text flow restores immediate visual parity and readability while preserving clean stalk-free ASCII boxes.
 - **Verification & Test Results**:
   - Pre-flight quality gates passed cleanly
+---
+
+### [2026-09-18 00:53 CEST] — Deterministic Callout Classification and Assembly Pipeline
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `segmentation`
+  - `prose`
+- **What Was Changed (The Concrete Reality)**:
+  - Added callout and callout_text semantic types to 02_page_segmentation/prompt.md
+  - Replaced subjective Rule 7 in 09_transform_prose/prompt.md with strict prohibition of spontaneous callouts
+  - Implemented assemble_callouts in 09_transform_prose/format_prose.py to assemble callout headers and callout_text blocks deterministically and suppress standalone headers
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates LLM hallucination of callouts on regular explanatory prose paragraphs while ensuring multi-paragraph and formatted advisory notes are visually captured at Stage 02 and deterministically formatted
+- **Verification & Test Results**:
+  - py_compile passed cleanly
+  - cargo fmt passed cleanly
