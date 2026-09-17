@@ -1375,3 +1375,20 @@ Every future modification or implementation task must append an entry following 
   - Validated Stage 12, 13, 14 execution on PRM reference manual: processed 4 files in parallel (Stage 12 in 2.78s, Stage 13 in 2.27s, Stage 14 in 0.27s)
   - Pre-flight quality gates passed (python tools/harness/pre_flight.py --quick)
   - Tier 1 unit tests passed (23 crates + 7 test_runner unit suites in 19.06s)
+---
+
+### [2026-09-17 16:16 CEST] — Refine Stage 08 Graphic Triage and Clean ASCII Register Box Discipline
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `stages/08_transform_graphics`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated prompt_triage.md with explicit precedence: Mermaid as default for computation graphs, effective address generation trees, dataflow, and state transitions
+  - ASCII art reserved exclusively for static bitfield register layouts and memory maps.
+  - Updated prompt_ascii_art.md to strictly prohibit leader lines, vertical pipe stalks (|), and pointer art in favor of compact 3-4 line register boxes with all field definitions placed in structured Markdown tables/lists below.
+  - Updated stage 08 README.md and SKILL.md to document the refined graphic classification and clean box discipline standards.
+- **Architectural Rationale & Trade-Offs**:
+  - Prioritizing Mermaid for calculation trees yields interactive vector graphs in Obsidian and coherent relational graph edges for RAG vector search
+  - while eliminating ASCII leader lines removes vector embedding dilution and chunking fragility.
+- **Verification & Test Results**:
+  - Dry-run tested triage on Section 2.2.7 asset (asset_node_01050.png) verifying clean classification to Mermaid
+  - dry-run tested triage and ASCII generation on Figure 1-5 asset (asset_node_00224.png) verifying classification to ascii_art and generating a compact 3-line box with clean Markdown breakdown table. All 18 core architecture rules tests passed.

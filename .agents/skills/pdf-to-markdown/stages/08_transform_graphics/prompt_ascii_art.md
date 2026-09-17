@@ -26,24 +26,42 @@ Convert the attached technical diagram (such as a register bitfield, memory map,
 - **Length Invariance Assertion:**
   - Before outputting, verify that all full-width rows inside the ASCII block have the exact same character length (`len(row_i) == total_width`).
 
-## 3. Freedom of Layout Adaptation
-- You have full freedom to adapt and optimize the visual layout for standard terminal and monospaced Markdown viewing.
-- Use clean ASCII box-drawing characters (`+`, `-`, `|`), aligned bit index headers, and group indicators.
-- Replace awkward angled leader lines with a clean, readable ASCII register box and an accompanying structured breakdown list or table below the diagram.
-- Organize the output so it is immediately legible, clean, and intuitive.
+## 3. Strict Register Box Discipline (Zero Leader Lines)
+- **Compact Enclosed Box ONLY:**
+  - The ASCII art block must contain **ONLY** the bit index header (e.g. `31`, `15`, `0`) and the enclosed register box itself (maximum 3 to 4 lines total height).
+  - Example:
+    ```text
+     23     22                                                  16
+    +-----+-------------------------------------------------------+
+    |  S  |                       QUOTIENT                        |
+    +-----+-------------------------------------------------------+
+    ```
+- **STRICTLY PROHIBITED (Leader Lines & Pointer Stalks):**
+  - **NEVER** draw downward, upward, or angled leader lines, pipes (`|`), branching stalks, plus-junctions (`+---`), or text labels extending outside the register box.
+  - Multi-line ASCII leader lines break vector embeddings, fail during document chunking, and clutter terminal/mobile displays.
+- **Strict Decoded Fields Placement:**
+  - All field expansions, mnemonics, signal meanings, and decoded bit explanations **MUST** reside strictly below the box in a structured Markdown table or list.
 
 ## 4. Output Formatting & Collapsible Callouts
 1. **ASCII Box Block:**
-   - Enclose the ASCII drawing strictly within a fenced code block (` ```text `).
+   - Enclose the compact ASCII register box strictly within a fenced code block (` ```text `).
 2. **Figure Caption Placement:**
    - Place the genuine figure caption directly below the code block as italicized text (`*Figure ...*`).
-3. **Collapsible Breakdown (Obsidian Folded Callout):**
-   - Wrap the entire decoded field breakdown, signal list, or keycode description inside an Obsidian **collapsible callout** folded by default using `> [!NOTE]- <Title>`:
+3. **Decoded Fields & Breakdown (Structured Table or Folded Callout):**
+   - Provide a clean Markdown table or an Obsidian collapsible callout (`> [!NOTE]- Decoded Fields & Bit Definitions`) listing every bit range, mnemonic, and full description:
      ```markdown
-     > [!NOTE]- Decoded Fields & Key Descriptions
-     > - **`45`**: Escape (Esc)
-     > - **`50` - `54`**: Function keys F1 - F5
+     | Bits | Field | Description |
+     | :---: | :---: | :--- |
+     | **23** | `S` | Sign of Quotient |
+     | **22–16** | `QUOTIENT` | Seven Least Significant Bits of Quotient |
      ```
-   - This ensures detailed transcriptions remain accessible without breaking the reading flow of the main page.
+     Or as a structured list inside a callout:
+     ```markdown
+     > [!NOTE]- Decoded Fields & Bit Definitions
+     > - **Bit 23 (`S`)**: SIGN OF QUOTIENT
+     > - **Bits 22–16 (`QUOTIENT`)**: SEVEN LEAST SIGNIFICANT BITS OF QUOTIENT
+     ```
+   - This guarantees 100% information preservation, clean mobile rendering, and optimal vector retrieval for RAG.
 4. **Strict Pure Output:**
    - Output ONLY the pure Markdown/ASCII content without conversational commentary or wrapper text.
+

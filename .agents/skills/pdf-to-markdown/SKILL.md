@@ -57,8 +57,10 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │   └── README.md
     │
     ├── 08_transform_graphics/
-    │   ├── transform_graphics.py            # Worker for graphics (prepares workspace/tasks/graphics/ & applies back)
-    │   ├── prompt_mermaid.md                # Flowcharts & state machines -> Mermaid + ASCII callout
+    │   ├── transform_graphics.py            # Worker for graphics (Mermaid, clean ASCII bitfields, schematics)
+    │   ├── prompt_triage.md                 # Triage classifier (Mermaid precedence vs clean ASCII bitfields vs schematics)
+    │   ├── prompt_mermaid.md                # Dataflow & calculation trees -> Mermaid + collapsible ASCII callout
+    │   ├── prompt_ascii_art.md              # Compact register bitfield boxes (zero leader lines) + structured tables/lists
     │   ├── prompt_rag_sidecar.md            # Technical signal/timing breakdown for RAG (.png.txt)
     │   └── README.md
     │
@@ -161,8 +163,9 @@ python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --pr
 ```
 - For each `{node_id}.json` in `<WORKSPACE>/tasks/graphics/`:
   - View image using `view_file` on `png_path`.
-  - If it is a flowchart/state machine, write a Mermaid diagram with collapsible ASCII callout in `{node_id}.md`.
-  - If it is a schematic/timing diagram, author a comprehensive technical description in `{node_id}.sidecar.txt` for RAG vector search.
+  - If it is a calculation tree, dataflow, address generation graph, or state machine: use Mermaid with collapsible ASCII callout in `{node_id}.md`.
+  - If it is a register bitfield: use a compact 3–4 line ASCII box (zero leader lines) followed by a structured Markdown table or list.
+  - If it is an electrical schematic, waveform, or pinout: author a comprehensive technical description in `{node_id}.sidecar.txt` for RAG vector search and preserve the image embed.
 - Apply graphics:
 ```powershell
 python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 08
