@@ -154,4 +154,4 @@ Whenever refactoring for performance (such as *Dynamic Agnus DMA Slot Arbitratio
 - [CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md): Golden CSV/JSON baseline infrastructure and anomaly detection algorithms.
 - [General Architecture.md](General%20Architecture.md): Physical Color Clock synchronization model ($CCK1/CCK2$).
 - [Main loop A500.md](Main%20loop%20A500.md): Master machine coordination loop and borrow-split dispatch architecture.
-- [vAmiga Core Architecture Reference](../../../ref_src/vAmiga-4.5/Core/VAmiga.cpp): Reference C++ main emulation loop and frame timing model.
+- [vAmiga Core Architecture Reference](../../../ref_src/vAmiga/Core/VAmiga.cpp): Reference C++ main emulation loop and frame timing model.

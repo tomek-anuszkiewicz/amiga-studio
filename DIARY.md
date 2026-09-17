@@ -6603,6 +6603,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates (0 broken links).
 
+### [2026-09-17 04:41 CEST] — Standardized vAmiga Reference Directory Name to ref_src/vAmiga
+- **Affected Subsystems**:
+  - `ref_src/` (renamed directory `vAmiga-4.5` to `vAmiga`)
+  - `docs/reference_sources.md` (updated reference table to canonical `ref_src/vAmiga/`)
+  - `Obsidian/Amiga/Design/*.md` (updated external code references across 16 design specifications)
+- **What Was Changed (The Concrete Reality)**:
+  - Renamed `ref_src/vAmiga-4.5` to canonical version-agnostic `ref_src/vAmiga`.
+  - Updated `docs/reference_sources.md` to reference `ref_src/vAmiga/`.
+  - Updated references across 16 Obsidian design specifications to keep links pointing to the renamed path.
+- **Architectural Rationale & Trade-Offs**:
+  - Version-agnostic paths prevent coupling to transient version numbers, ensuring scripts, tools, and cross-references remain durable.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
 
 
 

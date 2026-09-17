@@ -201,7 +201,7 @@ Notice the split ownership between Agnus and Paula across each audio channel:
 - **Undocumented Chipset Features**:
   - [Undocumented features of OCS, ECS and AGA chipsets.md](../Reference/Undocumented%20features%20of%20OCS,%20ECS%20and%20AGA%20chipsets.md): Definitive compendium of undocumented silicon behavior, floating open bus returns ($FFFF), and split read/write identities.
 - **Silicon Reference Emulators**:
-  - [`vAmiga Reference Source`](../../../ref_src/vAmiga-4.5): Clean-room implementation of custom chip register address mapping and strobe dispatch.
+  - [`vAmiga Reference Source`](../../../ref_src/vAmiga): Clean-room implementation of custom chip register address mapping and strobe dispatch.
   - [`vAmigaTS Test Suite`](../../../ref_src/vAmigaTS): Verification test harness for custom register write side-effects and open-bus floating behavior.
 - **Living Crate Source Files**:
   - [`crates/memory_bus/src/memory_bus.rs`](../../../crates/memory_bus/src/memory_bus.rs): Motherboard address router dispatching custom register reads and writes live to subsystem handles.

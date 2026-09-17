@@ -227,4 +227,4 @@ impl MouseDevice {
 
 - [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): Port 1 optical quadrature signal decoding, pulse trains, and direction counter mechanics.
 - [Amiga Hardware Reference Manual: Appendix E (Interfaces)](../Reference/Hardware%20Reference%20Manual/13%20-%20Appendix%20E%20-%20Interfaces.md): Controller port DB9 pinouts, button lines, and proportional potentiometer circuitry.
-- [vAmiga Mouse Implementation Reference](../../../ref_src/vAmiga-4.5/Core/Peripherals/Mouse/Mouse.h): Reference C++ implementation for mouse quadrature accumulation, host pointer scaling, and middle button support.
+- [vAmiga Mouse Implementation Reference](../../../ref_src/vAmiga/Core/Peripherals/Mouse/Mouse.h): Reference C++ implementation for mouse quadrature accumulation, host pointer scaling, and middle button support.

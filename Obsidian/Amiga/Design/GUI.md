@@ -185,4 +185,4 @@ The UI adapts to host OS and browser appearance preferences:
 - [Debugger Architecture & Inspection Engine](Debugger.md): Breakpoint traps, stepping controls, and disassembler facade.
 - [GUI Crate Implementation](../../../crates/gui/src/gui.rs): Living Rust implementation of eframe app, views, docks, and modals.
 - [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
-- [vAmiga Desktop Reference](../../../ref_src/vAmiga-4.5/): Reference emulator GUI layout and presentation architecture.
+- [vAmiga Desktop Reference](../../../ref_src/vAmiga/): Reference emulator GUI layout and presentation architecture.

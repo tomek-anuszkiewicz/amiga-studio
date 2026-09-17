@@ -91,4 +91,4 @@ Whenever refactoring or optimizing any subsystem:
   - [68000 Programmer's Reference Manual](../Reference/68000%20Programmer's%20Reference%20Manual): Official instruction-level arithmetic, CCR flag truth tables, and exception vectors.
 - **Silicon Test Suites & Reference Emulators**:
   - [`SingleStepTests-680x0`](../../../ref_src/SingleStepTests-680x0/68000/v1): Physical silicon ground truth vectors for all 68000 instructions.
-  - [`vAmiga Reference Source`](../../../ref_src/vAmiga-4.5): Clean-room reference implementation for custom chip and bus timings.
+  - [`vAmiga Reference Source`](../../../ref_src/vAmiga): Clean-room reference implementation for custom chip and bus timings.

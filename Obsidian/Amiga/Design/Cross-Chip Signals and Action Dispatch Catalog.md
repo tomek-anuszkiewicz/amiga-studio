@@ -124,7 +124,7 @@ Target:    Physical DRAM    Floppy     Paula Audio Engine           Denise Video
 - **Undocumented Chipset Features**:
   - [Undocumented features of OCS, ECS and AGA chipsets.md](../Reference/Undocumented%20features%20of%20OCS,%20ECS%20and%20AGA%20chipsets.md): Definitive compendium of undocumented silicon behavior across Agnus, Denise, and Paula.
 - **Silicon Reference Emulators**:
-  - [`vAmiga Reference Source`](../../../ref_src/vAmiga-4.5): Clean-room reference modeling for Agnus DMA slot allocations and cross-chip bus latencies.
+  - [`vAmiga Reference Source`](../../../ref_src/vAmiga): Clean-room reference modeling for Agnus DMA slot allocations and cross-chip bus latencies.
   - [`vAmigaTS Test Suite`](../../../ref_src/vAmigaTS): Comprehensive hardware verification suite covering DMA cycle contention and bus interactions.
 - **Living Crate Source Files**:
   - [`crates/config/src/mutation.rs`](../../../crates/config/src/mutation.rs): Definition of `MutationMode`, `DelayedMutation`, and electronic propagation countdown pipelines.

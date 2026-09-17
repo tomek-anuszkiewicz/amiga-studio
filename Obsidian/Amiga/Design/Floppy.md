@@ -362,7 +362,7 @@ flowchart TD
 
 - [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware - Floppy)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): Low-level MFM encoding format, sector layout, data checksums, and sync word (`$4489`) mechanics.
 - [Amiga Hardware Reference Manual: Appendix I (External Disk Connector Interface Specification)](../Reference/Hardware%20Reference%20Manual/17%20-%20Appendix%20I%20-%20External%20Disk%20Connector%20Interface%20Specification.md): DB23 external drive pinouts, motor control, drive selection logic, and head step timing.
-- [vAmiga Floppy Drive Implementation](../../../ref_src/vAmiga-4.5/Core/Peripherals/Drive/FloppyDrive.cpp): Reference physical drive emulation, revolution timers, track stepping, and ADF image parsing.
+- [vAmiga Floppy Drive Implementation](../../../ref_src/vAmiga/Core/Peripherals/Drive/FloppyDrive.cpp): Reference physical drive emulation, revolution timers, track stepping, and ADF image parsing.
 
 ---
 
