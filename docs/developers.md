@@ -31,7 +31,7 @@ This document serves as the primary technical entry point for building, testing,
   - [B. Cartesian DMA Contention Verification](#b-cartesian-dma-contention-verification)
   - [C. Automated Architecture Rules Compliance](#c-automated-architecture-rules-compliance)
   - [D. CLI Diagnostic Tools & Regression Tracking](#d-cli-diagnostic-tools-regression-tracking)
-  - [E. vAmigaTS Subsystem & Whole-Machine Verification (Preview)](#e-vamigats-subsystem-whole-machine-verification-preview)
+  - [E. vAmigaTS Verification Framework & Golden Viewport Testing](#e-vamigats-verification-framework-golden-viewport-testing)
 
 ---
 
@@ -382,39 +382,83 @@ cargo run -p test_runner -- --suite ADD.b
 - 🔴 **Regressions:** Tests that previously passed but now fail are highlighted with `⚠️ [REGRESSION DETECTED]`.
 - 🟢 **Improvements:** Tests that previously failed but now pass are highlighted with `🎉 [PROGRESS / FIX]`.
 
-<a id="e-vamigats-subsystem-whole-machine-verification-preview"></a><a id="e-vamigats-subsystem--whole-machine-verification-preview"></a>
-### E. vAmigaTS Subsystem & Whole-Machine Verification (Preview)
+<a id="e-vamigats-verification-framework-golden-viewport-testing"></a><a id="e-vamigats-verification-framework--golden-viewport-testing"></a><a id="e-vamigats-subsystem-whole-machine-verification-preview"></a><a id="e-vamigats-subsystem--whole-machine-verification-preview"></a>
+### E. vAmigaTS Verification Framework & Golden Viewport Testing
 
-While whole-machine integration is part of a subsequent roadmap phase, the repository features an integrated test harness and execution runner for the **vAmiga Test Suite (vAmigaTS)** (`ref_src/vAmigaTS/`), validating custom chipset behavior against golden 716×285 24-bit RGB `.raw` viewport captures.
+The emulator features a dedicated verification harness and execution runner for the **vAmiga Test Suite (vAmigaTS)** (`ref_src/vAmigaTS/`, 2,077 test directories), providing cycle-exact chipset verification against golden 716×285 24-bit RGB `.raw` viewport captures recorded from real Amiga 500 hardware.
 
-#### Subsystem Integration Test Suites
-Dedicated Cargo integration tests in `crates/test_runner/tests/` exercise specific custom chip components against targeted vAmigaTS test cases:
+#### 1. How vAmigaTS Verification Works
+Each test under `ref_src/vAmigaTS/<Category>/<Subcategory>/<TestName>/` encapsulates a complete hardware test scenario:
+- **Test Binary / ADF:** A bootable floppy disk image (`.adf`) or raw M68000 binary payload injected into Chip RAM at entry point `$1000`.
+- **Test Script (`test.retrosh`):** Declarative shell script specifying memory configuration, initial register values, frames to simulate, and optional viewport cutouts.
+- **Golden Reference Viewport (`screenshot.raw`):** Exact 24-bit RGB uncompressed pixel capture (716 × 285 pixels = 612,180 bytes) produced by clean silicon.
+- **Verification Pipeline:**
+  1. Sets up minimal OS stub interrupt and library vectors (`ExecBase` at `$0004`, `GfxBase`).
+  2. Steps the machine loop for the scripted number of PAL frames (default: 8–16 frames).
+  3. Extracts Denise's 24-bit RGB frame buffer and compares it pixel-by-pixel against `screenshot.raw`.
+  4. Reports matching pixel count, mismatch coordinates, and actual vs expected RGB values.
+
+#### 2. Provisioning Prerequisite
+Ensure reference assets are extracted prior to running vAmigaTS suites:
 ```powershell
-# Verify Copper coprocessor timing:
+.\tools\bootstrap\bootstrap.ps1 -Sources
+```
+
+#### 3. Subsystem Integration Test Suites (Cargo)
+Dedicated regression tests in `crates/test_runner/tests/` exercise targeted custom chip components:
+```powershell
+# Run general vAmiga test infrastructure & catalog discovery tests:
+cargo test -p test_runner --test test_vamiga_runner
+
+# Run low-level test harness, stub vectors, and raw buffer matcher tests:
+cargo test -p test_runner --test test_vamiga_harness
+
+# Verify Copper coprocessor timing, hazards, and halt clusters:
 cargo test -p test_runner --test test_vamiga_copper
 
-# Verify Blitter DMA and line drawing:
+# Verify Blitter DMA channels, line drawing mode, and minterms:
 cargo test -p test_runner --test test_vamiga_blitter
 
-# Verify Denise display window (DIW) clipping:
+# Verify Denise display window (DIW) clipping and bitplane color decoding:
 cargo test -p test_runner --test test_vamiga_denise
 
-# Verify Paula audio channels and interrupts:
+# Verify Paula audio channels, period division, and interrupt timings:
 cargo test -p test_runner --test test_vamiga_paula
 ```
 
-#### Interactive CLI Runner
-Execute vAmigaTS tests directly via the test runner CLI:
+#### 4. Interactive CLI Runner (`test_runner vamiga`)
+Execute tests with live pixel diff reporting, category filtering, and frame control:
 ```powershell
-# Execute a specific test by name with live pixel diff reporting:
+# Execute a specific test by name with live pixel mismatch reporting:
 cargo run -p test_runner -- vamiga --test coptim1
 
-# Filter by custom chip category (e.g. Copper, Blitter, Denise, Paula):
-cargo run -p test_runner -- vamiga --category Copper
+# Execute a specific test with verbose pixel difference coordinates:
+cargo run -p test_runner -- vamiga --test coptim1 -v
 
-# Inspect deferred test suites and roadmap requirements:
+# Run all runnable tests in a specific custom chip category:
+cargo run -p test_runner -- vamiga --category Copper
+cargo run -p test_runner -- vamiga --category Blitter
+cargo run -p test_runner -- vamiga --category Denise
+cargo run -p test_runner -- vamiga --category Paula
+
+# Override the number of frames simulated (e.g. 16 frames):
+cargo run -p test_runner -- vamiga --test coptim1 --frames 16
+
+# Limit batch execution count during active development:
+cargo run -p test_runner -- vamiga --category Copper --max-tests 5
+
+# Inspect runnable vs deferred test suite breakdown across roadmap phases:
 cargo run -p test_runner -- vamiga --list-deferred
 ```
 
-> [!TIP]
-> Pass `--help` to the runner (`cargo run -p test_runner -- --help`) or invoke it without parameters to inspect all available options, category filters, and frame limits.
+#### 5. Diagnostic Diff Reporting & Root-Cause Guidelines
+When a test fails, the runner outputs a structured mismatch summary:
+```text
+❌ FAIL: 5500/204060 mismatched pixels (2.69%)
+    Mismatch at (128, 42): actual=(0, 0, 0), expected=(255, 128, 0)
+    Mismatch at (129, 42): actual=(0, 0, 0), expected=(255, 128, 0)
+```
+
+> [!IMPORTANT]
+> **Zero Coordinate Nudging:** Per [`.agents/rules/structural-root-cause.md`](../.agents/rules/structural-root-cause.md), never fix pixel mismatches by nudging display coordinates ($\pm 1$ offset hacks). Investigate the underlying silicon timing: Color Clock phase alignment (`CCK1` vs `CCK2`), Copper instruction strobe delay, DMA slot contention, or display window (`DIWSTRT`/`DIWSTOP`) clipping.
+
