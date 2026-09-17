@@ -90,11 +90,6 @@ Invoke via the central bootstrap coordinator:
 .\tools\bootstrap\bootstrap.ps1 -Documentation
 ```
 
-### Staging Directory Policy (`temp/`)
-- Raw downloads are staged into `Obsidian/Amiga/Reference/temp/<Document_Name>/`.
-- The `temp/` folder is intentionally visible in Git status (`.gitignore` intentionally does not hide it) so downloaded binary assets are never forgotten or left as untracked bloat.
-- Once inspected, extracted, or converted to Markdown, temporary raw assets should be cleaned up before committing.
-
 ---
 
 ## 4. Processing Raw Documents into Markdown

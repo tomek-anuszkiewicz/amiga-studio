@@ -6505,6 +6505,16 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:22 CEST] — Pruned Staging Directory Policy (temp/) from Reference Documentation Guide
+- **Affected Subsystems**:
+  - `docs/reference_documentation.md` (removed Staging Directory Policy (`temp/`) subsection)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the `### Staging Directory Policy ('temp/')` subsection and its notes regarding Git status visibility and manual cleanup.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates peripheral staging policy clutter, keeping the reference documentation guide focused on the document catalog, coordinator invocation, and the conversion skills pipeline.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
 
 
 
