@@ -6135,3 +6135,15 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py --quick` passed cleanly.
   - Architecture test suite passed cleanly.
+
+---
+
+### [2026-09-17 19:50 CEST] — Architecture & Testing: Add Synthesize Test Fixes Workflow
+- **Affected Subsystems**:
+  - `.agents/skills/synthesize-test-fixes/SKILL.md`: New skill for post-facto root-cause consolidation across recent test fixes. Analyzes git history/diffs, builds a 3-column diagnostic matrix (`[Symptom] | [Location] | [Mechanism]`), formulates the upstream physical hardware law (common denominator), and eliminates downstream local patches.
+  - `.agents/workflows/synthesize-test-fixes.md`: Direct slash-command workflow (`/synthesize-test-fixes`) supporting zero-parameter git diff inspection and architectural synthesis.
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated the procedure to prevent "local patching trap" accumulation across multi-commit debugging sprints, resolving the structural root cause in central substrate crates.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py --quick` passed cleanly.
+  - Architecture test suite passed cleanly.
