@@ -11,13 +11,13 @@
     1. Expands any SingleStepTests .zip archives into ref_src/SingleStepTests-680x0.
     2. Decompresses .gz test suite archives into .json format.
     3. Migrates test suites from 68000/ into the canonical 68000/v1/ directory.
-    4. Validates AmigaTestKit ADF presence in tools/AmigaTestKit/.
-    5. Validates vAmiga and vAmigaTS reference repositories in ref_src/.
-    6. Executes a single-step test runner smoke check (test_nop).
+    4. Validates that all 124 SingleStepTests test suites are present.
+    5. Validates AmigaTestKit ADF presence in tools/AmigaTestKit/.
+    6. Validates vAmiga and vAmigaTS reference repositories in ref_src/.
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap_sources.ps1
-    Verifies and provisions all test sources and executes the smoke check.
+    Verifies and provisions all external test sources.
 #>
 
 [CmdletBinding()]
@@ -31,7 +31,7 @@ function Show-Usage {
     Write-Host "=====================================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1          : Verify & provision test sources, then run smoke check"
+    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1          : Verify & provision external test sources"
     Write-Host ""
 }
 
@@ -101,10 +101,13 @@ $SingleStepDir = Join-Path $SingleStepBaseDir "68000\v1"
 
     if (Test-Path $SingleStepDir) {
         $JsonCount = (Get-ChildItem -Path $SingleStepDir -Filter "*.json" -ErrorAction SilentlyContinue | Measure-Object).Count
-        if ($JsonCount -gt 0) {
-            Write-Host "[OK] SingleStepTests-680x0 found: $JsonCount test suites in $SingleStepDir." -ForegroundColor Green
+        if ($JsonCount -ge 124) {
+            Write-Host "[OK] SingleStepTests-680x0 found: $JsonCount / 124 test suites in $SingleStepDir." -ForegroundColor Green
+        } elseif ($JsonCount -gt 0) {
+            Write-Warning "SingleStepTests directory exists ($SingleStepDir) but contains only $JsonCount / 124 test suites."
+            Write-Host "Check if test archives (.gz / .zip) were properly unpacked." -ForegroundColor Yellow
         } else {
-            Write-Warning "SingleStepTests directory exists ($SingleStepDir) but contains zero .json test suites."
+            Write-Warning "SingleStepTests directory exists ($SingleStepDir) but contains zero .json test suites (expected 124)."
             Write-Host "Check if test archives (.gz / .zip) were properly unpacked." -ForegroundColor Yellow
         }
     } else {
@@ -140,13 +143,4 @@ $SingleStepDir = Join-Path $SingleStepBaseDir "68000\v1"
     } else {
         Write-Warning "vAmigaTS regression test suite not found: $VAmigaTsDir"
         Write-Host "To populate the custom chipset regression test suite, clone https://github.com/dirkwhoffmann/vAmigaTS into ref_src/vAmigaTS." -ForegroundColor Yellow
-    }
-
-    Write-Host ""
-    Write-Host "Running quick SingleStep test runner smoke check (test_nop)..." -ForegroundColor Cyan
-    cargo test -p test_runner --test test_singlestep test_nop
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Test suite bootstrap verified. Single-step test runner is operational!" -ForegroundColor Green
-    } else {
-        Write-Warning "Single-step test runner smoke check failed. Run 'cargo test -p test_runner --test test_singlestep' for details."
     }

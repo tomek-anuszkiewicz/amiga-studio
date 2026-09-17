@@ -35,8 +35,7 @@ Invoke via the central bootstrap coordinator:
 1. **Zip Archive Expansion:** Automatically scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
 2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
 3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
-4. **Presence Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
-5. **Immediate Smoke Verification:** Automatically runs a quick smoke check (`cargo test -p test_runner --test test_singlestep test_nop`) to ensure the test runner harness is functional.
+4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
 
 ---
 

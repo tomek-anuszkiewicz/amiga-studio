@@ -6469,6 +6469,21 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:14 CEST] — Eliminated Smoke Testing from Bootstrap Sources Provisioning
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap_sources.ps1` (removed `cargo test` smoke check execution and updated 124 suites completeness validation)
+  - `docs/reference_sources.md` (removed step 5: Immediate Smoke Verification from automation lifecycle)
+- **What Was Changed (The Concrete Reality)**:
+  - Completely eliminated `cargo test -p test_runner --test test_singlestep test_nop` from `tools/bootstrap/bootstrap_sources.ps1`.
+  - Replaced smoke testing with strict static completeness verification: asserting that all 124 per-instruction test suites are decompressed and present in `ref_src/SingleStepTests-680x0/68000/v1/`.
+  - Updated lifecycle steps in [`docs/reference_sources.md`](docs/reference_sources.md) to reflect pure provisioning and presence/completeness validation.
+- **Architectural Rationale & Trade-Offs**:
+  - Clear separation of concerns between data provisioning and test execution. Bootstrap scripts strictly download, unpack, and validate asset integrity, leaving all test executions to dedicated testing harnesses (`cargo test`, `tools/harness/run_tests.py`).
+- **Verification & Test Results**:
+  - Ran `.\tools\bootstrap\bootstrap_sources.ps1` directly; confirmed instant verification of 124/124 suites with zero test runs and exit code 0.
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 
