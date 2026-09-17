@@ -1309,3 +1309,22 @@ Every future modification or implementation task must append an entry following 
   - Verified `AGENTS.md` remains strictly within constitutional ceiling at 13,961 bytes ($\le 14,000$ bytes).
 
 
+---
+
+### [2026-09-17 15:42 CEST] — Unify DIARY.md Updates into Cohesive Atomic Commits
+- **Affected Subsystems**:
+  - `rules/git-commits.md`
+  - `rules/diary-maintenance.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated git-commits.md Section 1 and Section 3.B to formalize the 5-step commit pipeline and include DIARY.md in the cohesive unit
+  - Explicitly prohibited orphan trailing docs(diary) commits for standard task logging
+  - Updated diary-maintenance.md Section 2 to specify lifecycle ordering and mandate bundling DIARY.md into the primary atomic commit
+- **Architectural Rationale & Trade-Offs**:
+  - Previously
+  - tasks frequently produced two consecutive Git commits (one for code/rules and one trailing docs(diary) commit) because diary logging requires test results while the zero-dirty-tree rule forced an immediate second commit. Bundling DIARY.md into the primary cohesive unit eliminates commit clutter
+  - halves commit volume
+  - and keeps chronological records tightly bound to the introducing commit
+- **Verification & Test Results**:
+  - Passed test_rule_files_size_limit_and_truncation_safety
+  - check_polish.py verified clean
+  - check_test_coupling passed

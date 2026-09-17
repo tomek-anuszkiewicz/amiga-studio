@@ -18,7 +18,7 @@ This rule governs standard Git commit creation, mandatory immediate commits afte
 
 2. **No Blind Bulk Staging Across Disparate Concerns**:
    - The agent **must never default to blind bulk staging (`git add -A; git commit -m "..."`)** if changes span multiple distinct architectural concerns.
-   - Follow the 4-step pipeline: **Inspect $\to$ Decompose $\to$ Format $\to$ Verify**.
+   - Follow the 5-step pipeline: **Inspect $\to$ Decompose $\to$ Format & Verify $\to$ Log Chronicle $\to$ Commit Cohesive Unit**.
 
 ---
 
@@ -42,6 +42,7 @@ Separate accumulated changes into distinct, focused commits using targeted stagi
 1. **Design Documentation & Knowledge Base:**
    - Changes to `Obsidian/Amiga/Design/*.md` (e.g. frontmatter properties, architectural specs, diagrams).
    - Commit type: `docs(obsidian): ...` or `docs(design): ...`
+   - *Note on `DIARY.md`:* Standalone `docs(diary): ...` commits are strictly reserved for independent chronicle maintenance (e.g. `compact-diary` milestone summaries or retroactive formatting fixes). Routine task logging belongs to the cohesive unit (Section 3.B).
 2. **Agent Rules, Skills & Workflows:**
    - Changes to `.agents/rules/*.md`, `.agents/skills/`, `.agents/workflows/`, or `AGENTS.md`.
    - Commit type: `chore(rules): ...` or `docs(rules): ...`
@@ -52,8 +53,14 @@ Separate accumulated changes into distinct, focused commits using targeted stagi
    - Changes to `crates/test_runner/tests/test_architecture_rules.rs` or shared testing fixtures.
    - Commit type: `test(arch): ...` or `test(<subsystem>): ...`
 
-### B. The Cohesive Unit Exception (Keep Together):
-- When an implementation change, its dedicated unit test, and its corresponding design specification update belong to the **exact same discrete feature or bug fix**, stage and commit them together in a single atomic commit to maintain repository integrity and bisectability.
+### B. The Cohesive Unit Standard (Bundle Implementation, Tests, Specs & Diary):
+- When an implementation change, its dedicated unit test, its corresponding design specification update, and its [DIARY.md](../../DIARY.md) Section 10 log entry belong to the **exact same discrete feature, fix, or refactoring**, stage and commit them together in a single atomic commit to maintain repository integrity, bisectability, and clean history.
+- **Strict Execution Order:**
+  1. **Implement & Test:** Apply code, rule, or documentation changes and their dedicated tests.
+  2. **Format & Verify:** Run pre-commit gates (`cargo fmt`, test runner, pre-flight).
+  3. **Log to DIARY (`tools/harness/log_diary.py`):** Append the verified results to `DIARY.md` before staging.
+  4. **Atomic Commit:** Stage the modified source files, tests, specs, and `DIARY.md` together into one cohesive commit (e.g. `feat(...)`, `fix(...)`, `chore(rules): ...`).
+- **Prohibition of Orphan Diary Commits:** The agent **must never commit code/rules first and then create an isolated trailing `docs(diary): ...` commit** for the same task. Doing so fragments commit history and clutters the git log.
 
 ---
 
