@@ -1579,3 +1579,18 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Batch regeneration of first 50 pages across all 4 reference manuals (68000 PRM, 68000 UM, A500 A2000 TRM, and HRM) completed with 100% success
   - quick pre-flight quality gates passed.
+---
+
+### [2026-09-17 21:28 CEST] — Consolidate HTML references into Obsidian Markdown via LLM transcription
+- **Affected Subsystems**:
+  - `tools/skills/html-to-markdown`
+  - `Obsidian/Amiga/Reference`
+- **What Was Changed (The Concrete Reality)**:
+  - Upgraded html-to-markdown pipeline to remove 40k char truncation and aggregate multi-page crawls with LLM transcription
+  - Emitted and mirrored publication-grade markdown for 'Instruction Prefetch on the Motorola 68000 Processor' and 'Undocumented features of OCS, ECS and AGA chipsets' to Obsidian/Amiga/Reference/
+- **Architectural Rationale & Trade-Offs**:
+  - HTML technical references contained valuable silicon insights and prefetch queue progressions cited by design docs
+  - Aggregating crawls and stripping navigation chrome produces coherent Obsidian docs that resolve reference links
+- **Verification & Test Results**:
+  - Both HTML references converted with 0 link errors via validate_links.py
+  - pre_flight.py passed

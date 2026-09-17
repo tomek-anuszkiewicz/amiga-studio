@@ -187,7 +187,7 @@ def convert_with_llm(html_content: str, document_title: str, prompt_file: Path) 
             f"{base_prompt}\n\n"
             f"You are transcribing the following HTML technical documentation into publication-grade Markdown.\n"
             f"Document Title: {document_title}\n\n"
-            f"HTML Content:\n```html\n{html_content[:40000]}\n```\n\n"
+            f"HTML Content:\n```html\n{html_content}\n```\n\n"
             f"Return ONLY the complete, publication-grade Markdown text."
         )
 
@@ -238,6 +238,15 @@ def convert_single_html(input_file: Path, output_dir: Path, doc_title: str) -> P
         except Exception:
             pass
     print(f"[+] Emitted Markdown: {out_file.name} ({len(md_content)} chars)")
+
+    if output_dir.parent.name == "Reference":
+        mirror_file = output_dir.parent / out_file.name
+        try:
+            shutil.copyfile(out_file, mirror_file)
+            print(f"[*] Mirrored reference document to: {mirror_file.name}")
+        except Exception:
+            pass
+
     return out_file
 
 
@@ -267,50 +276,87 @@ def convert_crawl_directory(input_dir: Path, output_dir: Path, doc_title: str) -
 
     print(f"    Discovered {len(page_order)} subpages to consolidate.")
 
-    # Frontmatter and unified document header
-    frontmatter = (
-        "---\n"
-        f"title: \"{title}\"\n"
-        f"source: \"{input_dir.name}\"\n"
-        "tags:\n"
-        "  - amiga\n"
-        "  - reference\n"
-        "  - hardware\n"
-        "  - chipset\n"
-        "properties:\n"
-        f"  title: \"{title}\"\n"
-        "---\n\n"
-        f"# {title}\n\n"
-    )
-
-    toc_entries = []
-    chapter_sections = []
-
-    for idx, p_name in enumerate(page_order, 1):
+    # 3. Aggregate content for LLM transcription
+    aggregated_sections = []
+    for p_name in page_order:
         p_path = input_dir / p_name
         p_html = p_path.read_text(encoding="utf-8", errors="replace")
         p_soup = BeautifulSoup(p_html, "html.parser") if BeautifulSoup else None
+        if p_soup:
+            main_table = p_soup.find("table", id="main")
+            if main_table:
+                rows = main_table.find_all("tr", recursive=False)
+                if len(rows) > 1:
+                    tds = rows[1].find_all("td", recursive=False)
+                    if len(tds) > 1:
+                        content_cell = tds[1]
+                        nav = content_cell.find("div", id="navigator")
+                        if nav:
+                            nav.decompose()
+                        aggregated_sections.append(f"<!-- Page: {p_name} -->\n" + str(content_cell))
+                        continue
+            aggregated_sections.append(f"<!-- Page: {p_name} -->\n" + str(p_soup.body or p_soup))
+        else:
+            aggregated_sections.append(f"<!-- Page: {p_name} -->\n" + p_html)
 
-        ch_name = p_path.stem.replace("_", " ").title()
-        if p_name.lower() == "index.html":
-            ch_name = "Overview & Introduction"
+    aggregated_html = "\n\n<hr/>\n\n".join(aggregated_sections)
+    prompt_file = SKILL_DIR / "references" / "llm-transcription-prompt.md"
+    md_content = convert_with_llm(aggregated_html, title, prompt_file)
 
-        ch_id = re.sub(r"\W+", "-", ch_name).strip("-").lower()
-        toc_entries.append(f"- [{ch_name}](#{ch_id})")
+    if not md_content:
+        # Fallback to deterministic DOM extraction
+        frontmatter = (
+            "---\n"
+            f"title: \"{title}\"\n"
+            f"source: \"{input_dir.name}\"\n"
+            "tags:\n"
+            "  - amiga\n"
+            "  - reference\n"
+            "  - hardware\n"
+            "  - chipset\n"
+            "properties:\n"
+            f"  title: \"{title}\"\n"
+            "---\n\n"
+            f"# {title}\n\n"
+        )
 
-        ch_md = dom_to_markdown(p_soup, base_heading_level=2) if p_soup else p_html
-        chapter_sections.append(f"\n\n## {ch_name}\n\n{ch_md}")
+        toc_entries = []
+        chapter_sections = []
 
-    full_toc = "## Table of Contents\n\n" + "\n".join(toc_entries) + "\n\n---\n\n"
-    unified_content = frontmatter + full_toc + "".join(chapter_sections)
+        for idx, p_name in enumerate(page_order, 1):
+            p_path = input_dir / p_name
+            p_html = p_path.read_text(encoding="utf-8", errors="replace")
+            p_soup = BeautifulSoup(p_html, "html.parser") if BeautifulSoup else None
 
-    out_file.write_text(unified_content, encoding="utf-8")
+            ch_name = p_path.stem.replace("_", " ").title()
+            if p_name.lower() == "index.html":
+                ch_name = "Overview & Introduction"
+
+            ch_id = re.sub(r"\W+", "-", ch_name).strip("-").lower()
+            toc_entries.append(f"- [{ch_name}](#{ch_id})")
+
+            ch_md = dom_to_markdown(p_soup, base_heading_level=2) if p_soup else p_html
+            chapter_sections.append(f"\n\n## {ch_name}\n\n{ch_md}")
+
+        full_toc = "## Table of Contents\n\n" + "\n".join(toc_entries) + "\n\n---\n\n"
+        md_content = frontmatter + full_toc + "".join(chapter_sections)
+
+    out_file.write_text(md_content, encoding="utf-8")
     if assets_dir.exists() and not any(assets_dir.iterdir()):
         try:
             assets_dir.rmdir()
         except Exception:
             pass
-    print(f"[+] Emitted consolidated Markdown: {out_file.name} ({len(unified_content)} chars)")
+    print(f"[+] Emitted consolidated Markdown: {out_file.name} ({len(md_content)} chars)")
+
+    if output_dir.parent.name == "Reference":
+        mirror_file = output_dir.parent / out_file.name
+        try:
+            shutil.copyfile(out_file, mirror_file)
+            print(f"[*] Mirrored reference document to: {mirror_file.name}")
+        except Exception:
+            pass
+
     return out_file
 
 
