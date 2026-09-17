@@ -15,6 +15,7 @@ This document serves as the primary technical entry point for building, testing,
 - [2. External Reference Sources & Verification Testbeds](#2-external-reference-sources-verification-testbeds)
   - [Pinned Upstream Sources Summary](#pinned-upstream-sources-summary)
 - [3. Ingested Reference Documentation (In-Repository)](#3-ingested-reference-documentation-in-repository)
+  - [Why Ingested Documentation is Critical](#why-ingested-documentation-is-critical)
   - [Available Reference Documents](#ingested-reference-documents-available-in-repository)
   - [Processing Raw Documents into Markdown](#processing-raw-documents-into-markdown)
 - [4. External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)
@@ -100,6 +101,18 @@ Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed
 
 The repository maintains an authoritative, high-fidelity reference library under `Obsidian/Amiga/Reference/`. All primary reference materials are **already converted into structured Markdown specifications and committed directly to the repository**. Developers and AI agents can read, cross-reference, and semantically search these documents immediately without requiring any external downloads.
 
+<a id="why-ingested-documentation-is-critical"></a>
+### Why Ingested Documentation is Critical
+
+1. **Direct Human Exploration & Research:**
+   - Provides instant, friction-free access to Commodore and Motorola engineering specifications directly inside your IDE or Obsidian vault.
+   - Eliminates the need to search through 400+ page unindexed PDF scans or hunt down defunct retro-computing websites.
+
+2. **Autonomous AI Pair-Programming (Direct & via RAG):**
+   - **Direct Consumption:** AI coding agents inspect structured Markdown specifications, circuit diagrams, and register tables to implement cycle-exact micro-operations and verify ALU behaviors.
+   - **Local Vector RAG Retrieval (`amiga-rag`):** The entire reference library (alongside `Obsidian/Amiga/Design/` architectural specs) is indexed in Qdrant. Autonomous agents perform pre-task conceptual queries before touching code, ensuring zero silent divergence from hardware silicon.
+   - **Interactive Consultation & Change Review:** Developers can query the RAG system directly through CLI or FastMCP tools (`rag_search`) to clarify complex hardware quirks, verify register behavior, or evaluate architectural changes before editing production code.
+
 <a id="ingested-reference-documents-available-in-repository"></a>
 ### Ingested Reference Documents (Available in Repository)
 
@@ -135,7 +148,7 @@ The following primary technical documentation and microarchitectural papers are 
    - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
 
 > [!TIP]
-> To provision original archival PDF scans and OEM technical manual downloads, run `.\tools\bootstrap\bootstrap.ps1 -Documentation` (see [Chapter 4: External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)).
+> If you wish to download the original archival PDF scans, schematics, and OEM manuals, see **[Chapter 4: External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)** (`.\tools\bootstrap\bootstrap.ps1 -Documentation`).
 
 <a id="processing-raw-documents-into-markdown"></a>
 ### Processing Raw Documents into Markdown
