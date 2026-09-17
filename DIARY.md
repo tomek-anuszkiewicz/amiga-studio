@@ -1134,3 +1134,24 @@ Every future modification or implementation task must append an entry following 
   - Tested `bootstrap_documentation.ps1 -List` and `bootstrap.ps1` parameter help outputs.
   - Confirmed zero remaining references to `Reference/temp` across the repository.
 
+### [2026-09-17 06:15 CEST] — Automated Upstream Download & Unpack in bootstrap_sources.ps1
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap_sources.ps1`
+  - `tools/harness/check_polish.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Upgraded `bootstrap_sources.ps1` from a passive validator into an automated downloader, unpacker, and provisioner for all 4 external testbeds:
+    1. Tom Harte SingleStepTests 68000 silicon vectors (`main.zip`, 124 `.json` test suites decompressed via `GZipStream` into `ref_src/SingleStepTests-680x0/68000/v1/`).
+    2. Keir Fraser Amiga Test Kit ADF diagnostic disk (`AmigaTestKit-1.21.zip`, unpacked into `tools/AmigaTestKit/AmigaTestKit.adf`).
+    3. Dirk W. Hoffmann vAmiga C++ reference emulator sources (`v4.5.zip`, unpacked into `ref_src/vAmiga/`).
+    4. Dirk W. Hoffmann vAmigaTS chipset regression test suite (`master.zip`, unpacked into `ref_src/vAmigaTS/`).
+  - Added `-Force`, `-List`, `-SingleStep`, `-AmigaTestKit`, `-VAmiga`, and `-VAmigaTS` CLI flags.
+  - Implemented automatic presence checking to skip already-provisioned datasets unless `-Force` is supplied.
+  - Whitelisted `testkit` in `tools/harness/check_polish.py` to prevent false positive language policy warnings on Keir Fraser's Amiga Test Kit.
+- **Architectural Rationale & Trade-Offs**:
+  - Enables true 1-command bootstrap (`.\tools\bootstrap\bootstrap.ps1 -Sources` or `-All`) on fresh checkouts without requiring manual cloning or searching for test asset URLs.
+- **Verification & Invariants**:
+  - Downloaded and provisioned all four datasets from scratch into `tools/AmigaTestKit/` and `ref_src/`.
+  - Verified `bootstrap_sources.ps1 -List` marks all 4 as `[PRESENT]`.
+  - Verified `bootstrap.ps1 -Sources` completes end-to-end with zero errors.
+
+
