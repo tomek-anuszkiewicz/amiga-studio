@@ -104,6 +104,16 @@ impl<'a> MemoryBus<'a> {
             custom_reg::DSKBYTR => self.read_dskbytr(),
             custom_reg::INTENAR => self.paula.intena,
             custom_reg::INTREQR => self.paula.intreq,
+            custom_reg::COPJMP1 => {
+                let cop1lc = self.agnus.copper.cop1lc;
+                self.agnus.copper.strobe_jump1(cop1lc);
+                0xFFFF
+            }
+            custom_reg::COPJMP2 => {
+                let cop2lc = self.agnus.copper.cop2lc;
+                self.agnus.copper.strobe_jump2(cop2lc);
+                0xFFFF
+            }
             _ => 0xFFFF,
         }
     }

@@ -22,39 +22,47 @@ fn test_dmacon_set_and_clear() {
 #[test]
 fn test_fixed_slots_schedule_and_dynamic_release() {
     let mut dma = DmaScheduler::new();
-    // DMA disabled: Refresh must STILL be active and block Chip RAM (unconditional)
-    for hpos in 0..=3 {
+    // DMA disabled: Refresh must STILL be active on slots 1, 3, 5, 0xE2 and block Chip RAM (unconditional)
+    for &hpos in &dma::HPOS_REFRESH_SLOTS {
         let owner = dma.arbitrate(hpos, 100, false, [false; 4], false, false, true);
         assert_eq!(owner, DmaChannel::Refresh);
         assert!(dma.chip_ram_blocked);
+    }
+    // Even slots 0, 2, 4 must remain unblocked by refresh and awarded to CPU
+    for hpos in [0, 2, 4, 6] {
+        let owner = dma.arbitrate(hpos, 100, false, [false; 4], false, false, true);
+        assert_eq!(owner, DmaChannel::Cpu);
+        assert!(!dma.chip_ram_blocked);
     }
 
     // Enable DMA + Disk + Audio + Sprites
     dma.write_dmacon(0x8000 | 0x0200 | 0x0010 | 0x000F | 0x0020);
 
-    // Slot 4: Disk DMA when active
-    let owner = dma.arbitrate(4, 100, true, [false; 4], false, false, true);
-    assert_eq!(owner, DmaChannel::Disk);
-    assert!(dma.chip_ram_blocked);
+    // Slots 7, 9, 11: Disk DMA when active
+    for &slot in &dma::HPOS_DISK_SLOTS {
+        let owner = dma.arbitrate(slot, 100, true, [false; 4], false, false, true);
+        assert_eq!(owner, DmaChannel::Disk);
+        assert!(dma.chip_ram_blocked);
+    }
 
-    // Dynamic slot release: Disk DMA idle at slot 4 -> released to CPU
-    let owner = dma.arbitrate(4, 100, false, [false; 4], false, false, true);
+    // Dynamic slot release: Disk DMA idle at slot 7 -> released to CPU
+    let owner = dma.arbitrate(7, 100, false, [false; 4], false, false, true);
     assert_eq!(owner, DmaChannel::Cpu);
     assert!(!dma.chip_ram_blocked);
 
-    // Slots 5..8: Audio channels 0..3
-    for ch in 0..4 {
+    // Slots 13, 15, 17, 19: Audio channels 0..3
+    for (ch, &slot) in dma::HPOS_AUDIO_SLOTS.iter().enumerate() {
         let mut audio_active = [false; 4];
         audio_active[ch] = true;
-        let owner = dma.arbitrate(5 + ch as u16, 100, false, audio_active, false, false, true);
+        let owner = dma.arbitrate(slot, 100, false, audio_active, false, false, true);
         assert_eq!(owner, DmaChannel::Audio(ch as u8));
         assert!(dma.chip_ram_blocked);
     }
 
-    // Slots 12..27: Sprites 0..7
+    // Slots 21..=51 odd: Sprites 0..7
     for sprite in 0..8 {
-        let hpos_a = 12 + sprite * 2;
-        let hpos_b = hpos_a + 1;
+        let hpos_a = 21 + sprite * 4;
+        let hpos_b = hpos_a + 2;
         assert_eq!(
             dma.arbitrate(hpos_a, 100, false, [false; 4], false, false, true),
             DmaChannel::Sprite(sprite as u8)
@@ -65,9 +73,9 @@ fn test_fixed_slots_schedule_and_dynamic_release() {
         );
     }
 
-    // Dynamic release: Sprites disabled in DMACON -> slot 12 released to CPU
+    // Dynamic release: Sprites disabled in DMACON -> slot 21 released to CPU
     dma.write_dmacon(0x0020); // CLR SPREN
-    let owner = dma.arbitrate(12, 100, false, [false; 4], false, false, true);
+    let owner = dma.arbitrate(21, 100, false, [false; 4], false, false, true);
     assert_eq!(owner, DmaChannel::Cpu);
     assert!(!dma.chip_ram_blocked);
 }
@@ -219,13 +227,11 @@ fn test_dma_is_in_ddf_window_block_boundary() {
 
 #[test]
 fn test_dma_canonical_constants() {
-    assert_eq!(dma::HPOS_REFRESH_START, 0);
-    assert_eq!(dma::HPOS_REFRESH_END, 3);
-    assert_eq!(dma::HPOS_DISK, 4);
-    assert_eq!(dma::HPOS_AUDIO_START, 5);
-    assert_eq!(dma::HPOS_AUDIO_END, 8);
-    assert_eq!(dma::HPOS_SPRITE_START, 12);
-    assert_eq!(dma::HPOS_SPRITE_END, 27);
+    assert_eq!(dma::HPOS_REFRESH_SLOTS, [1, 3, 5, 0xE2]);
+    assert_eq!(dma::HPOS_DISK_SLOTS, [7, 9, 11]);
+    assert_eq!(dma::HPOS_AUDIO_SLOTS, [13, 15, 17, 19]);
+    assert_eq!(dma::HPOS_SPRITE_START, 21);
+    assert_eq!(dma::HPOS_SPRITE_END, 51);
     assert_eq!(dma::BLITTER_STARVATION_YIELD_CYCLES, 3);
     assert_eq!(dma::DDFSTRT_DEFAULT, 0x0038);
     assert_eq!(dma::DDFSTOP_DEFAULT, 0x00D0);

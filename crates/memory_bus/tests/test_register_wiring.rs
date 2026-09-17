@@ -243,3 +243,25 @@ fn test_memory_bus_canonical_constants() {
     assert_eq!(memory_bus::DSKBYTR_DATA_MASK, 0x90FF);
     assert_eq!(memory_bus::DSKLEN_WRITE_FLAG, 0x4000);
 }
+
+#[test]
+fn test_copjmp1_and_copjmp2_strobe_on_read() {
+    let mut mb = TestMotherboard::new();
+
+    // Set COP1LC and COP2LC
+    mb.agnus.copper.cop1lc = 0x0001_0000;
+    mb.agnus.copper.cop2lc = 0x0002_0000;
+
+    // Initially Copper is not running or at address 0
+    assert_eq!(mb.agnus.copper.cop_pc, 0);
+
+    // Reading COPJMP1 ($DFF088) must strobe jump1 and return open-bus 0xFFFF
+    let res1 = mb.router().read_word(0xDFF088);
+    assert_eq!(res1, BusResult::Ready(0xFFFF));
+    assert_eq!(mb.agnus.copper.cop_pc, 0x0001_0000);
+
+    // Reading COPJMP2 ($DFF08A) must strobe jump2 and return open-bus 0xFFFF
+    let res2 = mb.router().read_word(0xDFF08A);
+    assert_eq!(res2, BusResult::Ready(0xFFFF));
+    assert_eq!(mb.agnus.copper.cop_pc, 0x0002_0000);
+}

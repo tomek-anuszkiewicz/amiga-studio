@@ -94,8 +94,8 @@ All Agnus registers are mapped within the Custom Chip register space (`$DFF000`�
 | **`$DFF082`** | W | **`COP1LCL`** | Copper First Location Pointer (Low 16 bits) |
 | **`$DFF084`** | W | **`COP2LCH`** | Copper Second Location Pointer (High 5 bits) |
 | **`$DFF086`** | W | **`COP2LCL`** | Copper Second Location Pointer (Low 16 bits) |
-| **`$DFF088`** | W | **`COPJMP1`** | Copper Restart at `COP1LC` (strobe) |
-| **`$DFF08A`** | W | **`COPJMP2`** | Copper Restart at `COP2LC` (strobe) |
+| **`$DFF088`** | W/R | **`COPJMP1`** | Copper Restart at `COP1LC` (strobe on write or read; read returns open-bus `$FFFF`) |
+| **`$DFF08A`** | W/R | **`COPJMP2`** | Copper Restart at `COP2LC` (strobe on write or read; read returns open-bus `$FFFF`) |
 | **`$DFF08C`** | W | **`COPINS`**  | Copper Instruction register latch |
 | **`$DFF096`** | W | **`DMACON`**  | DMA Control write (bit 15: SET/CLR, bits 0–14: channel enables) |
 
@@ -220,29 +220,30 @@ Agnus acts as the hardware arbiter for Chip RAM. Each horizontal scanline ($227.
 
 ```mermaid
 flowchart LR
-    SLOTS["Scanline 227.5 CCKs"] --> REFR["CCK 0..3:\n4 Refresh Slots"]
-    SLOTS --> DISK_AUD["CCK 4..11:\n1 Floppy + 4 Audio Slots"]
-    SLOTS --> SPR["CCK 12..27:\n16 Sprite Slots (8 Sprites x 2 words)"]
+    SLOTS["Scanline 227.5 CCKs"] --> REFR["CCK 1, 3, 5, 226:\n4 Refresh Slots (Odd Cycles)"]
+    SLOTS --> DISK_AUD["CCK 7..19 Odd:\n3 Floppy + 4 Audio Slots"]
+    SLOTS --> SPR["CCK 21..51 Odd:\n16 Sprite Slots (8 Sprites x 2 words)"]
     SLOTS --> BPL["CCK 28..D0:\nDisplay Bitplane DMA (Up to 6 words)"]
+    SLOTS --> EVEN["Even Slots (0, 2, 4..52):\nReserved for 68000 CPU"]
     SLOTS --> RESID["Remaining Even/Odd Slots:\nCopper, Blitter, CPU"]
 ```
 
 ### 5.1 8-Tier Master DMA Priority Hierarchy
-Agnus resolves bus mastership on every single Color Clock cycle according to a strict 8-tier priority hierarchy:
+Agnus resolves bus mastership on every single Color Clock cycle according to a strict 8-tier priority hierarchy (Commodore HRM Figure 6-9):
 
-1. **DRAM Refresh (`CCK 0..3`):** 4 dedicated memory cycles during horizontal blanking. Unconditionally locks the Chip RAM bus.
-2. **Floppy Disk DMA (`CCK 4`):** 1 dedicated memory cycle per scanline when disk DMA is enabled (`DMACON` bit 4 `DSKEN`) and active (`dskpt != 0`).
-3. **Audio DMA (`CCK 5..8`):** 4 dedicated cycles (1 for each audio channel `AUD0`–`AUD3`) per scanline when enabled (`DMACON` bit 0 `AUD0EN`..bit 3 `AUD3EN`).
+1. **DRAM Refresh (`CCK 1, 3, 5, 226/0xE2`):** 4 dedicated odd-cycle memory slots per scanline during horizontal blanking and line end. Unconditionally locks the Chip RAM bus.
+2. **Floppy Disk DMA (`CCK 7, 9, 11`):** 3 dedicated odd memory cycles per scanline when disk DMA is enabled (`DMACON` bit 4 `DSKEN`) and active (`dskpt != 0`).
+3. **Audio DMA (`CCK 13, 15, 17, 19`):** 4 dedicated odd cycles (1 for each audio channel `AUD0`–`AUD3`) per scanline when enabled (`DMACON` bit 0 `AUD0EN`..bit 3 `AUD3EN`).
 4. **Bitplane DMA (`DDFSTRT`..=`DDFSTOP`):** Dynamically scheduled in the display data fetch window according to resolution and plane count (`BPLCON0`):
    - **Low-Res (1–4 planes):** Even phases (0, 2, 4, 6) claim planes 1–4. Odd phases remain free for the CPU.
    - **Low-Res (5–6 planes):** Cycle stealing active. Odd phases 1 and 3 are stolen by planes 5 and 6 (stealing 25% or 50% of CPU slots). Odd phases 5 and 7 remain free.
    - **Hi-Res (1–4 planes):** Double data rate. Planes 1–4 consume both even and odd cycles. 4-plane Hi-Res claims 100% of bus bandwidth in the display window, causing complete CPU lockout.
-5. **Sprite DMA (`CCK 12..27`):** 16 memory cycles (2 words per sprite for `SPR0`–`SPR7`) per scanline when enabled (`DMACON` bit 5 `SPREN`).
+5. **Sprite DMA (`CCK 21..=51` odd cycles):** 16 odd memory cycles (2 words per sprite for `SPR0`–`SPR7`, slots 21&23 for Sp0, 25&27 for Sp1, ..., 49&51 for Sp7) per scanline when enabled (`DMACON` bit 5 `SPREN`).
 6. **Copper Coprocessor:** Active when Copper DMA is enabled (`DMACON` bit 7 `COPEN`) and the Copper is actively fetching instruction words (not waiting on beam position or halted).
 7. **Blitter:** Active when Blitter DMA is enabled (`DMACON` bit 6 `BLTEN`) and Blitter is busy (`is_busy == true`):
    - **Blitter Nasty Mode (`DMACON` bit 10 `BLTPRI == 1`):** The Blitter claims all available bus cycles (both even and odd), locking out the CPU completely while active.
    - **Normal Mode (`BLTPRI == 0`):** Agnus monitors CPU starvation. If custom chip DMA or Blitter starves the CPU for 3 consecutive cycles, Agnus forces the Blitter to yield the 4th cycle unconditionally to the CPU (`DmaChannel::Cpu`), and the starvation counter resets.
-8. **Motorola 68000 CPU:** Granted bus mastership whenever no higher-priority custom chip channel claims the cycle.
+8. **Motorola 68000 CPU:** Granted bus mastership whenever no higher-priority custom chip channel claims the cycle. Even cycles throughout horizontal blanking (0, 2, 4, 6..52) remain completely unallocated to fixed DMA channels and are available for CPU bus cycles with zero wait states.
 
 ### 5.2 Dynamic Slot Release & Pointer Progression
 - **Dynamic Slot Release:** If a fixed time-slot channel is disabled in `DMACON` or inactive (e.g. disk pointer zero or sprite DMA disabled), the cycle is immediately released down the hierarchy to Copper, Blitter, or CPU.

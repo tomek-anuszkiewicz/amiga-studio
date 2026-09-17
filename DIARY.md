@@ -6191,3 +6191,26 @@ Every future modification or implementation task must append an entry following 
   - `vAmigaTS` whole-machine verification suite (`test_runner vamiga --category all`): Overall passing test count reached **100 PASSED TESTS (6.81% pass rate, 100 / 1468)**, with zero regressions.
   - All 10 unit tests in `crates/denise/tests/test_pixel_pipeline.rs` passed.
   - `cargo fmt --all -- --check` and `cargo test -p test_runner --test test_architecture_rules` passed cleanly.
+
+---
+
+### [2026-09-17 23:25 CEST] — DMA & Bus Arbitration: Commodore HRM Figure 6-9 Fixed Slot Schedule & COPJMP Strobe-on-Read
+- **Affected Subsystems**:
+  - `crates/dma/src/dma.rs`: Formalized OCS fixed DMA slot schedule matching Commodore HRM Figure 6-9 and physical silicon bus allocation. Fixed channels operate strictly on odd Color Clocks: Refresh at slots `[1, 3, 5, 0xE2]` (and 227 for long line), Disk at `[7, 9, 11]`, Audio at `[13, 15, 17, 19]`, and Sprites at `[21..=51]` (odd). Even cycles during blanking (0, 2, 4..52) are preserved for CPU memory access.
+  - `crates/dma/tests/test_dma.rs`: Updated unit test `test_fixed_slots_schedule_and_dynamic_release` and `test_dma_canonical_constants` to assert odd-slot allocation and dynamic release.
+  - `crates/memory_bus/src/memory_bus.rs`: Implemented strobe-on-read for `COPJMP1` (`$DFF088`) and `COPJMP2` (`$DFF08A`). Reads trigger Copper program counter reload from `COP1LC`/`COP2LC` while returning `$FFFF` (open bus).
+  - `crates/memory_bus/tests/test_register_wiring.rs`: Added unit test `test_copjmp1_and_copjmp2_strobe_on_read` verifying strobe side-effects.
+  - `crates/test_runner/tests/test_vamiga_blitter.rs`: Added regression guard `< 5000` mismatches on `bbusy0`.
+  - `Obsidian/Amiga/Design/Agnus.md`: Synchronized Section 3 and Section 5 with Figure 6-9 odd-slot DMA table and `COPJMP` read strobe behavior.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed the root cause of the 72.73% background color mismatch across the `bbusy*` Blitter busy timing suite. Previous DMA arbitration blocked CPU memory access during refresh cycles 0..3 unconditionally. In real OCS hardware, refresh operates on odd cycles 1, 3, 5, and 226, leaving even cycles open for CPU access.
+  - Implemented strobe-on-read semantics for `COPJMP1` and `COPJMP2`, where reading the strobe address triggers the Copper program counter reload alongside writes.
+  - These two structural hardware fixes dropped `bbusy0` pixel mismatches from 148,420 (72.73%) to 3,796 (1.86%), eliminating the whole-screen background failure across the entire `bbusy*` family (`bbusy1`: 2.7%, `bbusy2`: 1.9%, `bbusy3`: 1.7%, `bbusy4`: 1.3%).
+- **Architectural Rationale & Trade-Offs**:
+  - *Strict Silicon Fidelity:* Resolves systemic timing divergence upstream in the bus arbitration pipeline without arbitrary cycle or coordinate nudges (`structural-root-cause.md`).
+- **Verification & Test Results**:
+  - Verified all 37 passing blitter tests (`fill0..7`, `bsh1..4`, `channels1..4`, `combined1..2`, `line1..13`, `mask1..3`, `start1..2`, `zero1`) and verified 100% exact RGB match on `sblit0`, `sblit1`, `sblit3`, `sblit9`.
+  - Unit tests `cargo test -p dma` (3 passed) and `cargo test -p memory_bus` (6 passed) clean.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 0.65s.
+  - `cargo fmt --all -- --check`: Passed cleanly.
+
