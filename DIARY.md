@@ -1212,3 +1212,21 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Invariants**:
   - Verified `bootstrap.ps1` usage output.
   - Passed `python tools/harness/pre_flight.py --quick`.
+
+### [2026-09-17 06:46 CEST] — Reordering Bootstrap Pipeline & -All Sequence to Physical Causal Order
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap.ps1`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Reordered the bootstrapping tiers so that Documentation (Tier 3) runs before RAG (Tier 4):
+    1. Tier 1: Hardware Verification & External Sources (`-Sources` -> `tools/bootstrap/bootstrap_sources.ps1`)
+    2. Tier 2: AST-Level Code Knowledge Graph (`-Graphify` -> `tools/bootstrap/bootstrap_graphify.ps1`)
+    3. Tier 3: External Reference Documentation & Scans (`-Documentation` -> `tools/bootstrap/bootstrap_documentation.ps1`)
+    4. Tier 4: AI Knowledge & Qdrant RAG Vector Index (`-Rag` -> `tools/bootstrap/bootstrap_rag.ps1`)
+  - Updated the `-All` master workflow in `bootstrap.ps1` to execute all 4 tiers in this exact physical causal sequence (`-Sources` -> `-Graphify` -> `-Documentation` -> `-Rag`).
+  - Synchronized documentation in `docs/developers.md` and script help/usage outputs.
+- **Architectural Rationale & Trade-Offs**:
+  - Adheres strictly to the Substrate-First Invariant (Physical Causal Ordering): RAG indexes reference manuals under `Obsidian/Amiga/Reference/`. Running RAG before Documentation leaves vector embeddings missing all newly fetched or updated reference literature.
+- **Verification & Invariants**:
+  - Verified `Show-Usage` and parameter descriptions.
+  - Passed `python tools/harness/pre_flight.py --quick`.

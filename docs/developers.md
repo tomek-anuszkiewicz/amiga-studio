@@ -172,7 +172,7 @@ To provision every external reference asset, knowledge base, and tooling index i
 
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
-| **Full Setup** | `-All` | Complete initial development setup | Executes all 4 phases sequentially in causal order: **Sources** $\to$ **Documentation** $\to$ **RAG** $\to$ **Graphify** |
+| **Full Setup** | `-All` | Complete initial development setup | Executes all 4 phases sequentially in causal order: **Sources** $\to$ **Graphify** $\to$ **Documentation** $\to$ **RAG** |
 | **Verification Testbeds** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Downloads and decompresses external test suites, M68000 silicon vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS reference testbeds, and the Amiga Test Kit ADF |
 | **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Downloads original archival PDF scans and OEM technical reference manuals (HRM, TRM, PRM, UM, and technical articles) |
 | **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Initializes local Qdrant vector database (`http://localhost:6333`) and indexes reference manuals (`Obsidian/Amiga/Reference/`) and design specs (`Obsidian/Amiga/Design/`) via offline FastEmbed embeddings |
