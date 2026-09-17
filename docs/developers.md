@@ -7,11 +7,11 @@ This document serves as the primary technical entry point for building, testing,
 
 ---
 
----
-
 ## Table of Contents
 
 - [1. Build & Run](#1-build-run)
+  - [Standalone Native GUI (Release)](#standalone-native-gui-release)
+  - [WebAssembly Browser Canvas (Trunk)](#webassembly-browser-canvas-trunk)
 - [2. External Reference Sources & Verification Testbeds](#2-external-reference-sources-verification-testbeds)
   - [Pinned Upstream Sources Summary](#pinned-upstream-sources-summary)
   - [Automated Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)
@@ -35,17 +35,31 @@ This document serves as the primary technical entry point for building, testing,
 <a id="1-build-run"></a><a id="1-build--run"></a><a id="1-zero-setup-build-execution"></a>
 ## 1. Build & Run
 
-A freshly cloned repository is **100% self-contained for compilation and execution** using the standard stable Rust toolchain ([rustup.rs](https://rustup.rs)). No bootstrapping, external downloads, or database services are required to build and run the emulator:
+A freshly cloned repository is **100% self-contained for compilation and execution** using the standard stable Rust toolchain ([rustup.rs](https://rustup.rs)). No bootstrapping, external downloads, or database services are required to run the emulator.
 
+<a id="standalone-native-gui-release"></a>
+### Standalone Native GUI (Release)
+
+Run the optimized native desktop GUI (Developer Studio & Interactive Debugger):
 ```powershell
-# Build entire workspace (debug profile):
-cargo build
+cargo run --release -p gui
+```
 
-# Build optimized native release binary for GUI:
-cargo build --release -p gui
+> To build the standalone release binary without running it immediately:
+> ```powershell
+> cargo build --release -p gui
+> ```
 
-# Run the Developer Studio GUI:
-cargo run -p gui
+<a id="webassembly-browser-canvas-trunk"></a>
+### WebAssembly Browser Canvas (Trunk)
+
+Run the emulator directly inside a web browser using WebAssembly and [Trunk](https://trunkrs.dev):
+```powershell
+# Install Trunk (first-time only):
+cargo install --locked trunk
+
+# Serve and open the WebAssembly canvas in your default browser:
+trunk serve crates/gui/index.html --open
 ```
 
 ---
