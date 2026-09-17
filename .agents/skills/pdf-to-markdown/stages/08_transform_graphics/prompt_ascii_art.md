@@ -27,8 +27,8 @@ Convert the attached technical diagram (such as a register bitfield, memory map,
   - Before outputting, verify that all full-width rows inside the ASCII block have the exact same character length (`len(row_i) == total_width`).
 
 ## 3. Strict Register Box Discipline (Zero Leader Lines)
-- **Compact Enclosed Box ONLY:**
-  - The ASCII art block must contain **ONLY** the bit index header (e.g. `31`, `15`, `0`) and the enclosed register box itself (maximum 3 to 4 lines total height).
+- **Compact Enclosed Box in Code Block:**
+  - The ASCII art block (` ```text `) must contain **ONLY** the bit index header (e.g. `31`, `15`, `0`) and the enclosed register box itself (maximum 3 to 4 lines total height).
   - Example:
     ```text
      23     22                                                  16
@@ -36,35 +36,36 @@ Convert the attached technical diagram (such as a register bitfield, memory map,
     |  S  |                       QUOTIENT                        |
     +-----+-------------------------------------------------------+
     ```
-- **STRICTLY PROHIBITED (Leader Lines & Pointer Stalks):**
-  - **NEVER** draw downward, upward, or angled leader lines, pipes (`|`), branching stalks, plus-junctions (`+---`), or text labels extending outside the register box.
+- **STRICTLY PROHIBITED (Leader Lines & Pointer Stalks in ASCII):**
+  - **NEVER** draw downward, upward, or angled leader lines, pipes (`|`), branching stalks, plus-junctions (`+---`), or text labels extending outside the register box inside the ASCII code block.
   - Multi-line ASCII leader lines break vector embeddings, fail during document chunking, and clutter terminal/mobile displays.
-- **Strict Decoded Fields Placement:**
-  - All field expansions, mnemonics, signal meanings, decoded bit explanations, and register summaries **MUST** reside strictly below the box enclosed inside an Obsidian collapsible callout (`> [!NOTE]-`).
+- **Decoded Fields Table (Directly Under Box):**
+  - When the original diagram contains leader lines, arrows, or labels describing fields, bit definitions, or signals, **always provide them as a clean Markdown table directly below the ASCII box**.
+  - Do NOT hide primary diagram labels inside a collapsed callout. The reader must be able to see the register layout and its field descriptions in plain sight.
 
-## 4. Output Formatting & Collapsible Callouts
+## 4. Output Formatting & Layout
 1. **ASCII Box Block:**
    - Enclose the compact ASCII register box strictly within a fenced code block (` ```text `).
-2. **Figure Caption Placement:**
-   - Place the genuine figure caption directly below the code block as italicized text (`*Figure ...*`).
-3. **Decoded Fields & Breakdown (Mandatory Folded Callout):**
-   - All field expansions, mnemonics, signal meanings, decoded bit explanations, and register summaries accompanying the diagram **MUST** be placed strictly inside an Obsidian collapsible callout (`> [!NOTE]- Decoded Fields & Bit Definitions` or `> [!NOTE]- Register Summary & Field Definitions`).
-   - **NEVER** emit bare, unquoted tables, lists, or headers outside the callout frame. Every line of the breakdown must be prefixed with `>` so that the entire description remains contained within the note frame.
-   - Example using a Markdown table inside the callout:
+2. **Decoded Fields Table (Primary Figure Content - Visible, Outside Note):**
+   - Directly below the ASCII code block, output a clean Markdown table detailing each decoded field, bit range, and label from the diagram's leader lines:
      ```markdown
-     > [!NOTE]- Decoded Fields & Bit Definitions
-     > | Bits | Field | Description |
-     > | :---: | :---: | :--- |
-     > | **23** | `S` | Sign of Quotient |
-     > | **22–16** | `QUOTIENT` | Seven Least Significant Bits of Quotient |
+     | Bits | Field | Description |
+     | :---: | :---: | :--- |
+     | **23** | `S` | Sign of Quotient |
+     | **22–16** | `QUOTIENT` | Seven Least Significant Bits of Quotient |
      ```
-   - Or as a structured list inside the callout:
+   - If the diagram groups bits into functional blocks (e.g., Exception Enable vs Mode Control), include a `Group` column:
      ```markdown
-     > [!NOTE]- Decoded Fields & Bit Definitions
-     > - **Bit 23 (`S`)**: SIGN OF QUOTIENT
-     > - **Bits 22–16 (`QUOTIENT`)**: SEVEN LEAST SIGNIFICANT BITS OF QUOTIENT
+     | Bits | Field | Group | Description |
+     | :---: | :---: | :---: | :--- |
+     | **15** | `BSUN` | Exception Enable | Branch/Set on Unordered |
      ```
-   - This guarantees 100% information preservation, clean mobile rendering, optimal vector retrieval for RAG, and ensures that figure descriptions never bleed into or disrupt the main document flow.
-4. **Strict Pure Output:**
+   - If the diagram is purely a structural layout without leader lines or bit descriptions, omit the table.
+3. **Figure Caption Placement:**
+   - Place the genuine figure caption directly below the table (or below the ASCII box if no table is needed) as italicized text (`*Figure ...*`).
+4. **Supplementary / Internal Notes (`> [!NOTE]-`) [Optional]:**
+   - Obsidian callouts (`> [!NOTE]- ...`) are strictly reserved as an **optional supplement** for internal transcription remarks, context on what was omitted/simplified from a complex graphic, or extra technical notes.
+   - **NEVER** place primary diagram descriptions or bit legends exclusively inside a callout.
+5. **Strict Pure Output:**
    - Output ONLY the pure Markdown/ASCII content without conversational commentary or wrapper text.
 

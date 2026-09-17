@@ -1658,3 +1658,19 @@ Every future modification or implementation task must append an entry following 
   - disrupting heading hierarchy and colliding with genuine chapter sections
 - **Verification & Test Results**:
   - Pre-flight checks passed cleanly
+---
+
+### [2026-09-18 00:12 CEST] — Decoded Bitfield Tables in Primary Figure Flow
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `html-to-markdown`
+  - `prompts`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated prompt_ascii_art.md to mandate rendering bitfield decode tables directly below ASCII register boxes in the primary document flow
+  - Relaxed strict callout encapsulation restriction that forced all bit definitions into collapsed (> [!NOTE]-) blocks
+  - Aligned Priority 6 guidelines in llm-transcription-prompt.md with the same visible table standard
+  - Defined Obsidian callouts strictly as optional supplements for internal transcription notes or omitted graphical details
+- **Architectural Rationale & Trade-Offs**:
+  - Forcing bitfield definitions into collapsed Obsidian callouts concealed critical diagram information that was plainly visible in the original reference manuals. Rendering decoded tables directly in the primary text flow restores immediate visual parity and readability while preserving clean stalk-free ASCII boxes.
+- **Verification & Test Results**:
+  - Pre-flight quality gates passed cleanly
