@@ -6,7 +6,7 @@ This document catalogs all external reference source trees, physical hardware si
 
 ## 1. External Sources Overview & Pinned Versions
 
-The emulator core validates execution against physical hardware silicon vectors, reference C++ emulators, and golden Amiga test suites. Because these test assets contain multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`, managed by automated provisioning scripts and shared across worktrees via zero-cost NTFS directory junctions.
+The emulator core validates execution against physical hardware silicon vectors, reference C++ emulators, and golden Amiga test suites. Because these test assets contain multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`, managed by automated provisioning scripts.
 
 ### Pinned Upstream Sources Summary
 
@@ -36,24 +36,3 @@ Invoke via the central bootstrap coordinator:
 2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
 3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
 4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
-
----
-
-## 3. Git Worktree Isolation & Zero-Cost NTFS Junctions
-
-Because `ref_src/` contains upwards of 6.5 GB of test vectors, checking these files into Git history or copying them across worktrees would create massive repository bloat.
-
-### Git Ignore Boundary (`.gitignore`)
-- `ref_src/` and `tools/AmigaTestKit/` are excluded from Git commits via `.gitignore`.
-- They represent preserved external assets that should never be deleted.
-
-### Sharing Across Worktrees (`tools/git/worktree.ps1`)
-When creating isolated Git worktrees for parallel agent development or feature branches:
-```powershell
-# Create a new isolated worktree with automatically linked external assets:
-.\tools\git\worktree.ps1 add <branch-name>
-```
-The worktree script creates zero-cost NTFS directory junctions pointing back to the main repository's `ref_src/` and `tools/AmigaTestKit/`:
-- **Speed:** Instant ($< 5\text{ ms}$).
-- **Disk Footprint:** Zero additional bytes ($0\text{ MB}$).
-- **Shared Access:** All worktrees immediately share the decompressed test vectors and reference sources without redundant downloads.

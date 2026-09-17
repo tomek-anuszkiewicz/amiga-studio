@@ -6483,6 +6483,17 @@ Every future modification or implementation task must append an entry following 
   - Ran `.\tools\bootstrap\bootstrap_sources.ps1` directly; confirmed instant verification of 124/124 suites with zero test runs and exit code 0.
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:18 CEST] — Pruned NTFS Junctions and Worktree Section from Reference Sources Guide
+- **Affected Subsystems**:
+  - `docs/reference_sources.md` (removed NTFS directory junction mentions and pruned Section 3 on Git Worktree Isolation & Zero-Cost NTFS Junctions)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the NTFS directory junctions phrase from the Section 1 overview.
+  - Completely deleted Section 3 ("Git Worktree Isolation & Zero-Cost NTFS Junctions") from [`docs/reference_sources.md`](docs/reference_sources.md).
+- **Architectural Rationale & Trade-Offs**:
+  - Keeps the external reference sources guide focused strictly on upstream repositories, pinned versions, and automated provisioning lifecycle, eliminating redundant NTFS junction mechanisms and worktree instructions.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
 
 
 
