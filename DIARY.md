@@ -1152,6 +1152,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Invariants**:
   - Downloaded and provisioned all four datasets from scratch into `tools/AmigaTestKit/` and `ref_src/`.
   - Verified `bootstrap_sources.ps1 -List` marks all 4 as `[PRESENT]`.
-  - Verified `bootstrap.ps1 -Sources` completes end-to-end with zero errors.
+### [2026-09-17 06:26 CEST] — Parameter Discovery, -Help / --help Flags & Robust RepoRoot in bootstrap_sources.ps1
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap_sources.ps1`
+  - `.gitignore`
+- **What Was Changed (The Concrete Reality)**:
+  - Added `-Help` parameter with aliases (`-h`, `-?`) and bound `ValueFromRemainingArguments` to capture `--help` and `-help` invocations without PowerShell `PositionalParameterNotFound` errors.
+  - Added automatic display of usage and available parameter list (`Show-Usage`) when `bootstrap_sources.ps1` is executed without parameters (`$PSBoundParameters.Count -eq 0`), before proceeding with the default full verification/provisioning.
+  - Added robust fallback for `$RepoRoot` calculation when `$PSScriptRoot` is empty or invoked across varying PowerShell execution contexts (`Split-Path` or fallback to `Get-Location` verified with `Cargo.toml`).
+  - Added `/tools/AmigaTestKit*/` pattern in `.gitignore` to prevent any staging remnants from entering Git tracking.
+- **Architectural Rationale & Trade-Offs**:
+  - Improves CLI ergonomics and discoverability: users executing the script without arguments immediately see available parameters (`-List`, `-Force`, `-SingleStep`, `-AmigaTestKit`, etc.) while retaining default provisioning behavior.
+- **Verification & Invariants**:
+  - Verified `bootstrap_sources.ps1 --help` and `-Help` display usage and exit immediately with code 0.
+  - Verified `bootstrap_sources.ps1` with zero parameters displays the usage banner, skips already provisioned sources, and displays the summary table with code 0.
+  - Verified `bootstrap.ps1 -Sources` runs cleanly with code 0.
 
 
