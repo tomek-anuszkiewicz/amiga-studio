@@ -1,4 +1,4 @@
-# Technical Reference Library, Bootstrapper & AI RAG Guide
+# Technical Reference Documentation, Bootstrapper & AI RAG Guide
 
 This guide details the technical reference manuals, microarchitectural research papers, automated documentation bootstrapping, and AI RAG (Retrieval-Augmented Generation) vector indexing system for the Amiga 500 emulator.
 

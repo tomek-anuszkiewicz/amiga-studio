@@ -6396,6 +6396,20 @@ Every future modification or implementation task must append an entry following 
   - Ran `.\tools\bootstrap\bootstrap_sources.ps1` directly; successfully verified 124 test suites and executed `test_nop` smoke check with 0 exit code.
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:03 CEST] — Renamed docs/reference.md to docs/reference_documentation.md
+- **Affected Subsystems**:
+  - `docs/reference_documentation.md` (renamed from `docs/reference.md` via `git mv` and updated document title)
+  - `README.md` (updated documentation index link to `docs/reference_documentation.md`)
+- **What Was Changed (The Concrete Reality)**:
+  - Renamed `docs/reference.md` to `docs/reference_documentation.md` to explicitly convey that it covers external hardware reference documents and manuals rather than abstract code references.
+  - Updated title to *Technical Reference Documentation, Bootstrapper & AI RAG Guide*.
+  - Updated link in root `README.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - Clarifies intent: distinguishes technical reference documentation (Commodore HRM, Motorola manuals, Pasti papers) from internal architectural references or API indexes.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 
