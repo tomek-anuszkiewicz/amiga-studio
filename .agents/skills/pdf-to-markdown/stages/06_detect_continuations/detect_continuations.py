@@ -80,14 +80,18 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
         raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 06 continuation detection.")
 
     chapter_files = sorted(list(input_dir.glob("*.json")))
-    print(f"[*] Detecting continuations across {len(chapter_files)} chapter files using Gemini...")
+    from concurrent.futures import ThreadPoolExecutor
 
-    total_continuations = 0
-    group_counter = 1
+    concurrency = int(config.get("llm", {}).get("concurrency", 8))
+    print(f"[*] Detecting continuations across {len(chapter_files)} chapter files using Gemini (concurrency={concurrency})...")
 
-    for c_file in chapter_files:
+    def _process_chapter(c_file_and_idx):
+        c_file, ch_idx = c_file_and_idx
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
+
+        ch_continuations = 0
+        group_counter = 1
 
         i = 0
         while i < len(nodes) - 1:
@@ -104,7 +108,7 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
                 prev_in_chain = nodes[j - 1]
                 if check_continuation_with_gemini(prev_in_chain, candidate, gemini, prompt_template):
                     if not head_node.get("continuation_status"):
-                        group_id = f"table_group_{group_counter:04d}"
+                        group_id = f"table_group_{ch_idx:02d}_{group_counter:04d}"
                         group_counter += 1
                         head_node["continuation_status"] = "head"
                         head_node["is_head"] = True
@@ -125,7 +129,7 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
                     candidate["continued_from"] = head_node["node_id"]
                     candidate["continuation_group_id"] = head_node["continuation_group_id"]
 
-                    total_continuations += 1
+                    ch_continuations += 1
                     print(f"    Linked continuation: {candidate['node_id']} (Page {candidate['page']}) -> {head_node['node_id']} (Page {head_node['page']})")
                     j += 1
                 else:
@@ -138,6 +142,12 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
         with open(target_file, "w", encoding="utf-8") as f:
             json.dump(nodes, f, indent=2)
 
+        return ch_continuations
+
+    with ThreadPoolExecutor(max_workers=min(len(chapter_files), max(1, concurrency))) as executor:
+        results = list(executor.map(_process_chapter, [(cf, idx + 1) for idx, cf in enumerate(chapter_files)]))
+
+    total_continuations = sum(results)
     print(f"[+] Stage 06 complete. Emitted {len(chapter_files)} chapters to {out_dir} with {total_continuations} continuations.")
 
 

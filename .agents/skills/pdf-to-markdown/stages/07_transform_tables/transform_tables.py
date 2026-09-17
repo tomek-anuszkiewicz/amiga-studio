@@ -81,20 +81,14 @@ def process_tables(workspace_dir: Path, config: dict):
     chapter_files = sorted(list(input_dir.glob("*.json")))
     transformed_count = 0
 
-    def _render_table_task(task):
-        idx, raw_text, png_path = task
-        full_prompt = f"{base_prompt}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
-        if png_path and png_path.exists():
-            rendered = gemini.generate_vision(full_prompt, image_path=png_path, stage="07_transform_tables")
-        else:
-            rendered = gemini.generate_text(full_prompt, stage="07_transform_tables")
-        return idx, rendered
+    chapters = {}
+    all_tasks = []
 
     for c_file in chapter_files:
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
+        chapters[c_file] = nodes
 
-        tasks = []
         for idx, node in enumerate(nodes):
             if node.get("type") != "table":
                 continue
@@ -112,38 +106,49 @@ def process_tables(workspace_dir: Path, config: dict):
 
             png_rel = node.get("png_path")
             png_path = workspace_dir / png_rel if png_rel else None
-            tasks.append((idx, raw_text, png_path))
+            all_tasks.append((c_file, idx, raw_text, png_path))
 
-        if tasks:
-            with ThreadPoolExecutor(max_workers=min(len(tasks), concurrency)) as executor:
-                results = list(executor.map(_render_table_task, tasks))
+    def _render_table_task(task):
+        c_file, idx, raw_text, png_path = task
+        full_prompt = f"{base_prompt}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
+        if png_path and png_path.exists():
+            rendered = gemini.generate_vision(full_prompt, image_path=png_path, stage="07_transform_tables")
+        else:
+            rendered = gemini.generate_text(full_prompt, stage="07_transform_tables")
+        return c_file, idx, rendered
 
-            for idx, rendered in results:
-                node = nodes[idx]
-                if rendered:
-                    node["rendered_markdown"] = rendered.strip() + "\n"
-                    node_id = node.get("node_id")
-                    if node_id:
-                        for asset_file in out_assets_dir.glob(f"asset_{node_id}.*"):
+    if all_tasks:
+        print(f"[*] Transforming {len(all_tasks)} tables across {len(chapters)} chapters (concurrency={concurrency})...")
+        with ThreadPoolExecutor(max_workers=min(len(all_tasks), concurrency)) as executor:
+            results = list(executor.map(_render_table_task, all_tasks))
+
+        for c_file, idx, rendered in results:
+            node = chapters[c_file][idx]
+            if rendered:
+                node["rendered_markdown"] = rendered.strip() + "\n"
+                node_id = node.get("node_id")
+                if node_id:
+                    for asset_file in out_assets_dir.glob(f"asset_{node_id}.*"):
+                        try:
+                            asset_file.unlink()
+                        except Exception:
+                            pass
+                if "merged_nodes" in node:
+                    for m_id in node["merged_nodes"]:
+                        for asset_file in out_assets_dir.glob(f"asset_{m_id}.*"):
                             try:
                                 asset_file.unlink()
                             except Exception:
                                 pass
-                    if "merged_nodes" in node:
-                        for m_id in node["merged_nodes"]:
-                            for asset_file in out_assets_dir.glob(f"asset_{m_id}.*"):
-                                try:
-                                    asset_file.unlink()
-                                except Exception:
-                                    pass
-                    node["png_path"] = None
-                    node["svg_path"] = None
-                    node["raw_text_path"] = None
-                else:
-                    asset_ref = node.get("svg_path") or node.get("png_path") or ""
-                    node["rendered_markdown"] = f"![Table]({asset_ref})\n"
-                transformed_count += 1
+                node["png_path"] = None
+                node["svg_path"] = None
+                node["raw_text_path"] = None
+            else:
+                asset_ref = node.get("svg_path") or node.get("png_path") or ""
+                node["rendered_markdown"] = f"![Table]({asset_ref})\n"
+            transformed_count += 1
 
+    for c_file, nodes in chapters.items():
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:
             json.dump(nodes, f, indent=2)

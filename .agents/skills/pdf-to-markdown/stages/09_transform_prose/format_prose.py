@@ -85,15 +85,22 @@ def process_prose(workspace_dir: Path, config: dict):
             rendered_text = rendered.strip()
             if n_type == "toc" and TOC_START_MARKER not in rendered_text:
                 rendered_text = f"{TOC_START_MARKER}\n{rendered_text}\n{TOC_END_MARKER}"
-            return group_indices, rendered_text + "\n\n"
+            return c_file, group_indices, rendered_text + "\n\n"
         else:
-            return group_indices, raw_text + "\n\n"
+            return c_file, group_indices, raw_text + "\n\n"
+
+    def _format_prose_task_wrapper(task):
+        c_file, group_indices, n_type, raw_text, png_path = task
+        return _format_prose_task((c_file, group_indices, n_type, raw_text, png_path))
+
+    chapters = {}
+    all_llm_tasks = []
 
     for c_file in chapter_files:
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
+        chapters[c_file] = nodes
 
-        llm_tasks = []
         i = 0
         while i < len(nodes):
             node = nodes[i]
@@ -141,12 +148,12 @@ def process_prose(workspace_dir: Path, config: dict):
                     else:
                         break
                 combined_raw = "\n\n".join(group_text_parts)
-                llm_tasks.append((group_indices, "toc", combined_raw, None))
+                all_llm_tasks.append((c_file, group_indices, "toc", combined_raw, None))
                 i = j
             elif n_type == "code_block":
                 png_rel = node.get("png_path")
                 png_path = workspace_dir / png_rel if png_rel else None
-                llm_tasks.append(([i], "code_block", raw_text, png_path))
+                all_llm_tasks.append((c_file, [i], "code_block", raw_text, png_path))
                 i += 1
             elif n_type == "prose":
                 # Batch consecutive prose nodes on the same page up to 4000 chars if no other types intervene
@@ -171,24 +178,27 @@ def process_prose(workspace_dir: Path, config: dict):
                     else:
                         break
                 combined_raw = "\n\n".join(group_text_parts)
-                llm_tasks.append((group_indices, "prose", combined_raw, None))
+                all_llm_tasks.append((c_file, group_indices, "prose", combined_raw, None))
                 i = j
             else:
                 i += 1
 
-        if llm_tasks:
-            with ThreadPoolExecutor(max_workers=min(len(llm_tasks), concurrency)) as executor:
-                results = list(executor.map(_format_prose_task, llm_tasks))
+    if all_llm_tasks:
+        print(f"[*] Formatting {len(all_llm_tasks)} prose/code/toc batches across {len(chapters)} chapters (concurrency={concurrency})...")
+        with ThreadPoolExecutor(max_workers=min(len(all_llm_tasks), concurrency)) as executor:
+            results = list(executor.map(_format_prose_task_wrapper, all_llm_tasks))
 
-            for group_indices, rendered_md in results:
-                head_idx = group_indices[0]
-                nodes[head_idx]["rendered_markdown"] = rendered_md
+        for c_file, group_indices, rendered_md in results:
+            nodes = chapters[c_file]
+            head_idx = group_indices[0]
+            nodes[head_idx]["rendered_markdown"] = rendered_md
+            formatted_count += 1
+            for sub_idx in group_indices[1:]:
+                nodes[sub_idx]["rendered_markdown"] = ""
+                nodes[sub_idx]["continuation_status"] = "continuation"
                 formatted_count += 1
-                for sub_idx in group_indices[1:]:
-                    nodes[sub_idx]["rendered_markdown"] = ""
-                    nodes[sub_idx]["continuation_status"] = "continuation"
-                    formatted_count += 1
 
+    for c_file, nodes in chapters.items():
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:
             json.dump(nodes, f, indent=2)

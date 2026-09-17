@@ -146,6 +146,20 @@ def process_proofread_stream(
     else:
         print(f"[*] Stream Proofreading LLM offline or skipped. Normalizing streams directly...")
 
+    title_map = {}
+    if gemini and gemini.is_available() and not skip_llm and manifest:
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _proofread_single_title(entry):
+            raw_title = entry.get("title", "")
+            if raw_title:
+                return entry["index"], proofread_title_llm(raw_title, gemini)
+            return entry["index"], raw_title
+
+        with ThreadPoolExecutor(max_workers=min(len(manifest), concurrency)) as executor:
+            title_results = list(executor.map(_proofread_single_title, manifest))
+        title_map = dict(title_results)
+
     updated_manifest = []
 
     for entry in manifest:
@@ -172,9 +186,7 @@ def process_proofread_stream(
             nodes = json.load(f)
 
         # 1. Proofread and correct chapter title
-        corrected_title = raw_title
-        if gemini and gemini.is_available() and not skip_llm and raw_title:
-            corrected_title = proofread_title_llm(raw_title, gemini)
+        corrected_title = title_map.get(idx, raw_title)
 
         # 2. Harmonize with primary heading node and update node rendered_markdown
         ch_sub = re.match(r"^chapter\s+\d+[:\s]+(.*)$", corrected_title, re.IGNORECASE)

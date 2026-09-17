@@ -179,51 +179,56 @@ def process_graphics(workspace_dir: Path, config: dict):
                 f"Labels:\n{raw_text}\n"
             )
 
-        return idx, {
+        return c_file, idx, {
             "rendered_markdown": rendered_md,
             "prune_image": False,
             "sidecar_name": sidecar_name,
             "sidecar_text": sidecar_text,
         }
 
+    chapters = {}
+    all_tasks = []
+
     for c_file in chapter_files:
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
+        chapters[c_file] = nodes
 
-        tasks = []
         for idx, node in enumerate(nodes):
             if node.get("type") != "graphic":
                 continue
             has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
-            tasks.append((idx, node, has_dedicated_caption))
+            all_tasks.append((c_file, idx, node, has_dedicated_caption))
 
-        if tasks:
-            with ThreadPoolExecutor(max_workers=min(len(tasks), concurrency)) as executor:
-                results = list(executor.map(_transform_graphic_task, tasks))
+    if all_tasks:
+        print(f"[*] Transforming {len(all_tasks)} graphics across {len(chapters)} chapters (concurrency={concurrency})...")
+        with ThreadPoolExecutor(max_workers=min(len(all_tasks), concurrency)) as executor:
+            results = list(executor.map(_transform_graphic_task, all_tasks))
 
-            for idx, res in results:
-                node = nodes[idx]
-                node_id = node.get("node_id", "asset")
-                node["rendered_markdown"] = res["rendered_markdown"]
-                if res["prune_image"]:
-                    for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
-                        try:
-                            asset_f.unlink()
-                        except Exception:
-                            pass
-                    node["png_path"] = None
-                    node["svg_path"] = None
-                    node["sidecar_path"] = None
-                else:
-                    sidecar_name = res["sidecar_name"]
-                    sidecar_text = res["sidecar_text"]
-                    sidecar_path = assets_dir / sidecar_name
-                    with open(sidecar_path, "w", encoding="utf-8") as sf:
-                        sf.write(sidecar_text)
-                    node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{sidecar_name}"
-                    sidecar_count += 1
-                transformed_count += 1
+        for c_file, idx, res in results:
+            node = chapters[c_file][idx]
+            node_id = node.get("node_id", "asset")
+            node["rendered_markdown"] = res["rendered_markdown"]
+            if res["prune_image"]:
+                for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
+                    try:
+                        asset_f.unlink()
+                    except Exception:
+                        pass
+                node["png_path"] = None
+                node["svg_path"] = None
+                node["sidecar_path"] = None
+            else:
+                sidecar_name = res["sidecar_name"]
+                sidecar_text = res["sidecar_text"]
+                sidecar_path = assets_dir / sidecar_name
+                with open(sidecar_path, "w", encoding="utf-8") as sf:
+                    sf.write(sidecar_text)
+                node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{sidecar_name}"
+                sidecar_count += 1
+            transformed_count += 1
 
+    for c_file, nodes in chapters.items():
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:
             json.dump(nodes, f, indent=2)

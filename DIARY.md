@@ -6126,3 +6126,25 @@ Every future modification or implementation task must append an entry following 
   - Verified Python compilation (`python -m py_compile .agents/skills/pdf-to-markdown/stages/01_preprocess/detect_and_ocr.py`).
   - Ran pre-flight verification gate (`python tools/harness/pre_flight.py` — Formatting, AGENTS.md ceiling, API coverage, and architecture rules 100% passed).
 
+---
+
+### [2026-09-17 02:19 CEST] — Tooling: Pipeline-Wide Global Parallelization Across Stages 04, 06, 07, 08, 09, 10
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/04_stream_reduction/reduce_stream.py`
+  - `.agents/skills/pdf-to-markdown/stages/06_detect_continuations/detect_continuations.py`
+  - `.agents/skills/pdf-to-markdown/stages/07_transform_tables/transform_tables.py`
+  - `.agents/skills/pdf-to-markdown/stages/08_transform_graphics/transform_graphics.py`
+  - `.agents/skills/pdf-to-markdown/stages/09_transform_prose/format_prose.py`
+  - `.agents/skills/pdf-to-markdown/stages/10_proofread_stream/proofread_stream.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated the per-chapter nested threadpool bottleneck in Stage 07 (tables), Stage 08 (graphics), and Stage 09 (prose): collected all tasks across all chapters first, processing them with a single document-wide `ThreadPoolExecutor(max_workers=concurrency)`, saturating all 8 worker threads while indexing by `(chapter, node_idx)` to preserve 100% document order.
+  - Parallelized Stage 04: converted `reduce_contiguous_graphics()` and cross-page prose seam welding to parallel task evaluation with subsequent order-preserving reconstruction.
+  - Parallelized Stage 06: processed chapter continuations concurrently across chapter partitions using `ThreadPoolExecutor`.
+  - Parallelized Stage 10: converted chapter title proofreading into a concurrent map across all partitions in the manifest.
+- **Architectural Rationale & Trade-Offs**:
+  - Previously, stages either executed sequentially in loops (Stages 04, 06, 10) or created nested `ThreadPoolExecutor` instances inside single-chapter loops (Stages 07, 08, 09) which capped concurrency to 1–2 workers due to sparse per-chapter items. Global task pooling maximizes throughput and respects `llm.concurrency` (8) across the full document without altering node sequence.
+- **Verification & Test Results**:
+  - Validated Python compilation across all 6 modified stage scripts via `python -m py_compile`.
+  - Pre-flight quality gates passed cleanly (`python tools/harness/pre_flight.py`).
+
+
