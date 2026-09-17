@@ -1706,3 +1706,17 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Updated stage 02 prompt specification
   - manual PDF regeneration deferred per user instruction
+---
+
+### [2026-09-18 01:42 CEST] — Classify List of Tables and Illustrations Continuation Banners as Headers in Stage 02
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `stage-02`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated stages/02_page_segmentation/prompt.md to classify running continuation headers (e.g. LIST OF TABLES Concluded/Continued
+  - LIST OF ILLUSTRATIONS Concluded/Continued) as header rather than toc_header
+- **Architectural Rationale & Trade-Offs**:
+  - Prevents running continuation banners on multi-page list of tables/illustrations from being misclassified as toc_header and dropped or interfering with TOC partition boundaries
+- **Verification & Test Results**:
+  - pre_flight.py passed cleanly
+  - py_compile passed
