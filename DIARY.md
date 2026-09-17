@@ -6159,3 +6159,18 @@ Every future modification or implementation task must append an entry following 
   - Harmonized developer-facing handbooks (`docs/`) and authoritative Obsidian architectural specifications with the new test runner, sprint, and synthesis workflows.
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py` passed cleanly (100% formatting, AGENTS.md <= 14k, API coverage, all 19 architecture tests passed, Obsidian link integrity passed with zero broken links).
+
+---
+
+### [2026-09-17 21:52 CEST] — Denise: Video Pipeline Scanline Termination Fix & vAmigaTS Pass Expansion
+- **Affected Subsystems**:
+  - `crates/denise/src/denise.rs`: Fixed scanline end pixel termination on CCK 226 in `step_cck()` when bitplanes are armed and active. Frame buffer pixels 910 and 911 (`cck_base_x + 6` and `cck_base_x + 7`) within CCK 227 were previously omitted, leaving raw uninitialized black background instead of committing the active backdrop color.
+  - `crates/denise/tests/test_pixel_pipeline.rs`: Added failing reproduction test `test_scanline_end_cck_226_pixels_termination()` asserting pixels 908..911 receive correct backdrop values.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed root cause of near-match pixel failures across the Denise `diwtim*` and `minmax` series where 2 pixels per line at $x=714, 715$ ($196 + 714 = 910$) failed 100% RGB matching.
+  - Ensured pixels 910 and 911 are filled with `backdrop` color alongside the trailing pipeline delayed pixels 908 and 909.
+- **Verification & Test Results**:
+  - `cargo test -p denise` passed all 9 tests cleanly.
+  - `vAmigaTS` whole-machine verification suite (`test_runner vamiga --category all`): Overall passing test count climbed from **90 to 94 tests (6.40% pass rate)** with zero regressions.
+  - Denise category broke its 0% barrier, unlocking 100% RGB passes on `diwtim1` and `diwtim2` alongside near-zero residual pixel divergences on `minmax` (4 pixels), `diwtim0` (10 pixels), `diwtim1b` (10 pixels), and `diwtim2b` (10 pixels).
+  - `cargo fmt --all -- --check` and `cargo test -p test_runner --test test_architecture_rules` passed cleanly.

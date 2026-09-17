@@ -428,6 +428,8 @@ impl Denise {
                     };
                     self.frame_builder.set_pixel(cck_base_x + 4, y, px4);
                     self.frame_builder.set_pixel(cck_base_x + 5, y, px5);
+                    self.frame_builder.set_pixel(cck_base_x + 6, y, backdrop);
+                    self.frame_builder.set_pixel(cck_base_x + 7, y, backdrop);
                     self.pipeline_pixels_valid = [false, false];
                 }
             } else {

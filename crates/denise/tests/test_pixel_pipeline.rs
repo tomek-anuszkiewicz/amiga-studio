@@ -277,3 +277,24 @@ fn test_pipeline_pixels_latency_and_backdrop_immediacy() {
         "px1 of subsequent CCK should receive staged trailing foreground pixel"
     );
 }
+
+#[test]
+fn test_scanline_end_cck_226_pixels_termination() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.set_bplcon0(0x1200); // 1 bitplane, low-res
+    denise.set_color(0, 0xF00); // Red backdrop
+    denise.frame_builder.dma_enabled = true;
+    denise.write_bpldat(0, 0xFFFF); // Armed
+    assert!(denise.bpl_armed);
+
+    // Step at the end of scanline (hpos = 226)
+    let beam_end = config::BeamPosition::new(226, 50, false);
+    denise.step_cck(beam_end);
+
+    let red_argb = frame_builder::rgb444_to_argb32(0xF00);
+    // Pixels 908..911 belong to CCK 227 trailing end of line
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 4, 50), red_argb);
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 5, 50), red_argb);
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 6, 50), red_argb);
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 7, 50), red_argb);
+}
