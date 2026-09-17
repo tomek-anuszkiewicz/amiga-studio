@@ -77,6 +77,12 @@ def extract_assets(input_path: Path, assets_dir: Path):
         except Exception as e:
             print(f"[!] Warning: Asset extraction failed for {hf.name}: {e}", file=sys.stderr)
 
+    if assets_dir.exists() and not any(assets_dir.iterdir()):
+        try:
+            assets_dir.rmdir()
+        except Exception:
+            pass
+
 
 def html_table_to_gfm(table_tag: Tag) -> str:
     """Converts a standard HTML table to GitHub-flavored Markdown."""
@@ -226,6 +232,11 @@ def convert_single_html(input_file: Path, output_dir: Path, doc_title: str) -> P
         md_content = frontmatter + body_md
 
     out_file.write_text(md_content, encoding="utf-8")
+    if assets_dir.exists() and not any(assets_dir.iterdir()):
+        try:
+            assets_dir.rmdir()
+        except Exception:
+            pass
     print(f"[+] Emitted Markdown: {out_file.name} ({len(md_content)} chars)")
     return out_file
 
@@ -294,6 +305,11 @@ def convert_crawl_directory(input_dir: Path, output_dir: Path, doc_title: str) -
     unified_content = frontmatter + full_toc + "".join(chapter_sections)
 
     out_file.write_text(unified_content, encoding="utf-8")
+    if assets_dir.exists() and not any(assets_dir.iterdir()):
+        try:
+            assets_dir.rmdir()
+        except Exception:
+            pass
     print(f"[+] Emitted consolidated Markdown: {out_file.name} ({len(unified_content)} chars)")
     return out_file
 
@@ -320,6 +336,13 @@ def main():
         convert_single_html(input_path, output_dir, doc_name)
     else:
         convert_crawl_directory(input_path, output_dir, doc_name)
+
+    assets_dir = output_dir / "assets"
+    if assets_dir.exists() and not any(assets_dir.iterdir()):
+        try:
+            assets_dir.rmdir()
+        except Exception:
+            pass
 
     print("[+] HTML conversion completed successfully.")
 

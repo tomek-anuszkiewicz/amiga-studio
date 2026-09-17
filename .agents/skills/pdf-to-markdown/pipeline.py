@@ -532,6 +532,14 @@ def main():
             print(f"\n[!] Pipeline halted at Stage {s_info['id']} due to failure.", file=sys.stderr)
             sys.exit(1)
 
+    if output_dir:
+        out_assets = output_dir / "assets"
+        if out_assets.exists() and not any(out_assets.iterdir()):
+            try:
+                out_assets.rmdir()
+            except Exception:
+                pass
+
     print("\n[+] Selected pipeline stages completed successfully!")
 
 

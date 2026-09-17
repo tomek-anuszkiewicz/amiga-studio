@@ -174,6 +174,13 @@ def download_or_copy_assets(
     print(f"  Total processed: {len(images)}")
     print(f"  Saved assets:    {copied_count}")
     print(f"  Destination:     {assets_dir}")
+
+    if assets_dir.exists() and not any(assets_dir.iterdir()):
+        try:
+            assets_dir.rmdir()
+        except Exception:
+            pass
+
     return copied_count
 
 

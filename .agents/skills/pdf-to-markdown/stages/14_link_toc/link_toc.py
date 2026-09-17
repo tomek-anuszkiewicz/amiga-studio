@@ -182,6 +182,12 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
             if f.is_file():
                 shutil.copy2(f, out_assets_dir / f.name)
 
+    if out_assets_dir.exists() and not any(out_assets_dir.iterdir()):
+        try:
+            out_assets_dir.rmdir()
+        except Exception:
+            pass
+
     print(f"[*] Cataloging headers across documents in {input_dir}...")
     catalog = catalog_headers_across_documents(input_dir)
     print(f"    Cataloged {len(catalog)} headers.")

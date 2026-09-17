@@ -267,6 +267,12 @@ def main():
     print(f"  Placeholders resolved: {total_replaced}")
     print(f"  Assets location:       {assets_dir}")
 
+    if assets_dir.exists() and not any(assets_dir.iterdir()):
+        try:
+            assets_dir.rmdir()
+        except Exception:
+            pass
+
 
 if __name__ == "__main__":
     main()

@@ -84,8 +84,11 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
                 base_name = re.sub(r"\.txt$", "", asset_file.name)
                 if asset_file.name in referenced_assets or base_name in referenced_assets:
                     shutil.copy2(asset_file, out_assets_dir / asset_file.name)
+
+    if out_assets_dir.exists():
         if any(out_assets_dir.iterdir()):
-            print(f"[*] Synchronized active assets from {src_assets_dir} to {out_assets_dir}")
+            if src_assets_dir:
+                print(f"[*] Synchronized active assets from {src_assets_dir} to {out_assets_dir}")
         else:
             try:
                 out_assets_dir.rmdir()

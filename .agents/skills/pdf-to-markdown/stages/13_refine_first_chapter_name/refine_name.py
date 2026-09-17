@@ -107,6 +107,11 @@ def process_first_chapter_refinement(
             for f in src_assets.glob("*"):
                 if f.is_file():
                     shutil.copy2(f, out_assets_dir / f.name)
+        if out_assets_dir.exists() and not any(out_assets_dir.iterdir()):
+            try:
+                out_assets_dir.rmdir()
+            except Exception:
+                pass
         for old_f in output_dir.glob("*.md"):
             old_f.unlink()
         for f in md_files:

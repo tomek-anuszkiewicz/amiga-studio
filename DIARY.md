@@ -1465,3 +1465,21 @@ Every future modification or implementation task must append an entry following 
   - losing pages 1 and 2. Dynamic Gemini title determination and composite keying restore full structural fidelity and preserve complete document history.
 - **Verification & Test Results**:
   - Pre-flight quick checks passed cleanly. Pipeline executed through Stages 06-14: 00 - Front Matter.md and 00 - Table of Contents.md emitted distinctly without collision. Verified asset_node_00001.png cover artwork and RAG sidecar.
+---
+
+### [2026-09-17 17:33 CEST] — Prune Empty Assets Directories in Documentation Pipelines
+- **Affected Subsystems**:
+  - `tools`
+  - `doc-pipeline`
+  - `html-to-markdown`
+  - `pdf-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Added automatic empty assets/ directory cleanup to html-to-markdown (pipeline.py, download_assets.py, replace_placeholders.py)
+  - Added empty directory checks to pdf-to-markdown (stages 11, 13, 14, and pipeline.py terminal check)
+  - Pruned orphaned empty assets directory in Obsidian/Amiga/Reference/
+- **Architectural Rationale & Trade-Offs**:
+  - Documentation without visual illustrations should not leave empty assets/ directories in the output tree
+  - keeping the vault clean and free of spurious folders.
+- **Verification & Test Results**:
+  - Pre-flight checks passed
+  - Verified 0 empty assets directories remaining in Obsidian/Amiga/Reference
