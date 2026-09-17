@@ -1115,3 +1115,22 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Invariants**:
   - Passed `cargo test -p test_runner --test test_architecture_rules` (19/19 tests ok).
   - Passed `python tools/harness/pre_flight.py` cleanly across all quality gates.
+
+### [2026-09-17 06:05 CEST] — Reference Documentation Bootstrapper Direct Target to Obsidian/Amiga/Reference/
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap_documentation.ps1`
+  - `tools/bootstrap/bootstrap.ps1`
+  - `.agents/skills/html-to-markdown/SKILL.md`
+  - `.agents/skills/html-to-markdown/scripts/render_comparison.py`
+  - `.gitignore`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated `bootstrap_documentation.ps1` default destination from `Obsidian/Amiga/Reference/temp` to `Obsidian/Amiga/Reference/`.
+  - Guarded `Ensure-StagingReadme` to only create a staging `README.md` if the destination path explicitly contains `temp`, preventing pollution of the permanent Obsidian Reference vault root.
+  - Updated help, usage, and completion messages in `bootstrap_documentation.ps1` and `bootstrap.ps1` to reflect direct provisioning into `Obsidian/Amiga/Reference/`.
+  - Synchronized `.agents/skills/html-to-markdown/` paths and visual comparison scripts to reference `Obsidian/Amiga/Reference/` directly.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates the redundant `temp/` staging layer for downloaded archival reference materials, aligning target folder structure with `.gitignore` exclusion rules (`/Obsidian/Amiga/Reference/<Document_Name>*/`).
+- **Verification & Invariants**:
+  - Tested `bootstrap_documentation.ps1 -List` and `bootstrap.ps1` parameter help outputs.
+  - Confirmed zero remaining references to `Reference/temp` across the repository.
+

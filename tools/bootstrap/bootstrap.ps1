@@ -32,16 +32,16 @@
 
 .PARAMETER Documentation
     Provisions raw external reference documentation (PDF scans, microarchitectural guides,
-    and multi-page HTML crawls) into Obsidian/Amiga/Reference/temp/. Delegates to
+    and multi-page HTML crawls) into Obsidian/Amiga/Reference/. Delegates to
     tools/bootstrap_documentation.ps1. Aliases: -Doc, -Ref.
 
 .PARAMETER Ref
     Alias for -Documentation. Provisions raw external reference documentation into
-    Obsidian/Amiga/Reference/temp/.
+    Obsidian/Amiga/Reference/.
 
 .PARAMETER Doc
     Alias for -Documentation. Provisions raw external reference documentation into
-    Obsidian/Amiga/Reference/temp/.
+    Obsidian/Amiga/Reference/.
 
 .PARAMETER AllSources
     When using -Documentation, downloads from ALL configured mirrors for each document
@@ -65,7 +65,7 @@
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Documentation
-    Download all external reference documentation into Obsidian/Amiga/Reference/temp/.
+    Download all external reference documentation into Obsidian/Amiga/Reference/.
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -All
@@ -107,7 +107,7 @@ function Show-Usage {
     Write-Host "  -Sources                 : Verify & unpack SingleStepTests 68000 test vectors"
     Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
     Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (alias: -Qdrant)"
-    Write-Host "  -Documentation           : Download external reference materials into temp/ (aliases: -Doc, -Ref)"
+    Write-Host "  -Documentation           : Download external reference materials into Reference/ (aliases: -Doc, -Ref)"
     Write-Host "  -AllSources              : Download from all mirrors for -Documentation (alias: -AllMirrors)"
     Write-Host "  -All                     : Run all primary tiers (-Sources, -Graphify, -Rag)"
     Write-Host ""

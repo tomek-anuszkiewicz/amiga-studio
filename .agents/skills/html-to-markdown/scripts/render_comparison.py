@@ -217,7 +217,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Render side-by-side visual comparison of HTML and Markdown.")
     parser.add_argument("--html", "-H", required=True, help="Path to original HTML file")
     parser.add_argument("--markdown", "-M", required=True, help="Path to converted Markdown file")
-    parser.add_argument("--output-dir", "-o", default="Obsidian/Amiga/Reference/temp/html-sandbox", help="Output directory")
+    parser.add_argument("--output-dir", "-o", default="Obsidian/Amiga/Reference/html-sandbox", help="Output directory")
     parser.add_argument("--width", type=int, default=1000, help="Viewport width for each panel")
     parser.add_argument("--height", type=int, default=1200, help="Viewport height for each panel")
 

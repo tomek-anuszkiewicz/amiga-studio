@@ -5,7 +5,7 @@
 .DESCRIPTION
     Fetches raw, unprocessed external reference materials (PDF scans, microarchitectural
     guides, and multi-page HTML crawls) into:
-        Obsidian/Amiga/Reference/temp/<Document_Name>/
+        Obsidian/Amiga/Reference/<Document_Name>/
 
     Features:
     - Multi-source resilience: 2-3 verified mirrors per document with automated failover.
@@ -13,14 +13,12 @@
       for comprehensive testing or archival redundancy.
     - Full web crawling for multi-page articles (e.g. Kuba Winnicki's 16-page 'Achtung! Amiga').
     - Clear error reporting if all mirror sources for an item are unavailable.
-    - Intentional Git visibility: temp/ is not hidden by .gitignore so temporary raw assets
-      remain explicitly visible in git status until inspected, processed, or deleted.
 
 .PARAMETER All
     Downloads all configured reference materials in the catalog.
 
 .PARAMETER Destination
-    Custom destination directory (defaults to Obsidian/Amiga/Reference/temp).
+    Custom destination directory (defaults to Obsidian/Amiga/Reference).
 
 .PARAMETER AllSources
     Downloads from ALL mirrors and sources for each document, rather than stopping after
@@ -64,7 +62,7 @@ param(
 
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (-not $Destination) {
-    $Destination = Join-Path $RepoRoot "Obsidian\Amiga\Reference\temp"
+    $Destination = Join-Path $RepoRoot "Obsidian\Amiga\Reference"
 }
 
 $DefaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -254,8 +252,8 @@ function Show-Usage {
     Write-Host "Amiga Reference Documentation Bootstrapper" -ForegroundColor Cyan
     Write-Host "==========================================" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "NOTE: Downloads raw, unprocessed reference materials into Obsidian/Amiga/Reference/temp/." -ForegroundColor Yellow
-    Write-Host "      Files in temp/ are safe to delete at any time and do not affect emulator execution."
+    Write-Host "NOTE: Downloads raw, unprocessed reference materials into Obsidian/Amiga/Reference/." -ForegroundColor Yellow
+    Write-Host "      Reference files are ignored by Git and do not affect emulator execution."
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
     Write-Host "  .\tools\bootstrap_documentation.ps1 -List                : Show all documents and configured mirrors"
@@ -265,7 +263,7 @@ function Show-Usage {
     Write-Host "Options:" -ForegroundColor White
     Write-Host "  -List                    : Display catalog of reference documents and mirrors"
     Write-Host "  -All                     : Download all reference materials in the catalog"
-    Write-Host "  -Destination <path>      : Custom destination directory (defaults to temp/)"
+    Write-Host "  -Destination <path>      : Custom destination directory (defaults to Obsidian/Amiga/Reference)"
     Write-Host "  -AllSources              : Download from all mirrors for redundancy (alias: -AllMirrors)"
     Write-Host "  -Force                   : Re-download even if target file already exists"
     Write-Host ""
@@ -279,7 +277,7 @@ function Show-CatalogList {
     foreach ($item in $Catalog) {
         Write-Host "[$($item.Id)] $($item.Name)" -ForegroundColor Green
         Write-Host "    Description : $($item.Description)" -ForegroundColor White
-        Write-Host "    Directory   : temp\$($item.Folder)\" -ForegroundColor DarkGray
+        Write-Host "    Directory   : Reference\$($item.Folder)\" -ForegroundColor DarkGray
         Write-Host "    Mirrors ($($item.Mirrors.Count) configured):" -ForegroundColor Yellow
         $idx = 1
         foreach ($m in $item.Mirrors) {
@@ -295,6 +293,9 @@ function Show-CatalogList {
 
 function Ensure-StagingReadme {
     param([string]$TempDir)
+    if ($TempDir -notlike "*temp*") {
+        return
+    }
     if (-not (Test-Path $TempDir)) {
         New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
     }
@@ -599,7 +600,7 @@ if ($HasErrors) {
 } else {
     Write-Host "All requested reference documentation items provisioned successfully." -ForegroundColor Green
     Write-Host ""
-    Write-Host "NOTE: Check 'git status' to inspect untracked downloaded assets in:" -ForegroundColor Yellow
-    Write-Host "      Obsidian/Amiga/Reference/temp/" -ForegroundColor White
+    Write-Host "NOTE: Reference materials provisioned directly into:" -ForegroundColor Yellow
+    Write-Host "      Obsidian/Amiga/Reference/" -ForegroundColor White
     exit 0
 }
