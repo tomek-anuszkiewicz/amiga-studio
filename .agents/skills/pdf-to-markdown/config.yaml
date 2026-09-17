@@ -19,8 +19,9 @@ paths:
   chapters_formatted_dir: "workspace/09_transform_prose"
   proofread_stream_dir: "workspace/10_proofread_stream"
   markdown_emit_dir: "workspace/11_emit_markdown"
-  canonical_markdown_dir: "workspace/12_refine_first_chapter_name"
-  markdown_linked_dir: "workspace/13_link_toc"
+  properties_dir: "workspace/12_generate_properties"
+  canonical_markdown_dir: "workspace/13_refine_first_chapter_name"
+  markdown_linked_dir: "workspace/14_link_toc"
   default_output_dir: "."
 
 llm:
@@ -42,7 +43,8 @@ llm:
     08_transform_graphics: 4096 # Deep spatial reasoning for ASCII art & column alignment
     09_transform_prose: 0      # Fast markdown formatting
     10_proofread_stream: 0     # Instant typo correction
-    12_refine_chapter: 0       # Fast title extraction
+    12_generate_properties: 0  # Fast properties extraction & tagging
+    13_refine_chapter: 0       # Fast title extraction
 
 markers:
   toc_start: "<!-- TOC34534 -->"

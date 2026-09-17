@@ -3,10 +3,9 @@
 stages/11_emit_markdown/emit_markdown.py:
 Serializes partitioned chapter node streams into final Markdown documents:
 1. Emits one file per section: <output_dir>/{index:02d}_{slug}.md.
-2. Injects active Line 1 YAML frontmatter into each file.
-3. Explicitly ignores and skips any segment of type 'toc_header'.
-4. Skips child continuation nodes whose content was rendered by the head node.
-5. Copies all referenced assets from workspace/assets/ to <output_dir>/assets/.
+2. Explicitly ignores and skips any segment of type 'toc_header'.
+3. Skips child continuation nodes whose content was rendered by the head node.
+4. Copies all referenced assets from workspace/assets/ to <output_dir>/assets/.
 """
 
 import argparse
@@ -17,21 +16,6 @@ import shutil
 import sys
 from pathlib import Path
 import yaml
-
-
-def build_frontmatter(title: str, section_idx: int) -> str:
-    return (
-        f"---\n"
-        f"title: \"{title}\"\n"
-        f"section_index: {section_idx}\n"
-        f"tags:\n"
-        f"  - amiga\n"
-        f"  - reference\n"
-        f"  - hardware\n"
-        f"properties:\n"
-        f"  section_index: {section_idx}\n"
-        f"---\n\n"
-    )
 
 
 def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
@@ -128,7 +112,7 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
         with open(json_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        content_parts = [build_frontmatter(title, idx)]
+        content_parts = []
 
         for node in nodes:
             n_type = node.get("type")
@@ -153,11 +137,11 @@ def emit_markdown(workspace_dir: Path, output_dir: Path, config: dict):
 
         print(f"    Emitted: {target_md_name}")
 
-    print(f"[+] Stage 10 complete. Markdown files written to {output_dir}")
+    print(f"[+] Stage 11 complete. Markdown files written to {output_dir}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 11: Emit per-section Markdown files with Line 1 YAML")
+    parser = argparse.ArgumentParser(description="Stage 11: Emit per-section Markdown files")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
     parser.add_argument("--output-dir", type=str, default="output_markdown", help="Target output directory")
     parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")

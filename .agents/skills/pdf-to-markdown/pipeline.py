@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pipeline.py: Master CLI Orchestrator for the 13-Stage PDF-to-Markdown Pipeline.
+pipeline.py: Master CLI Orchestrator for the 14-Stage PDF-to-Markdown Pipeline.
 """
 
 import argparse
@@ -105,18 +105,26 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "id": "12",
-        "dir": "12_refine_first_chapter_name",
-        "script": "refine_name.py",
-        "desc": "Refine canonical name of first chapter",
-        "targets": ["12_refine_first_chapter_name"],
+        "dir": "12_generate_properties",
+        "script": "generate_properties.py",
+        "desc": "Generate publication-grade Obsidian YAML properties with LLM",
+        "targets": ["12_generate_properties"],
         "inspect": ("*.md", "Markdown files"),
     },
     {
         "id": "13",
-        "dir": "13_link_toc",
+        "dir": "13_refine_first_chapter_name",
+        "script": "refine_name.py",
+        "desc": "Refine canonical name of first chapter",
+        "targets": ["13_refine_first_chapter_name"],
+        "inspect": ("*.md", "Markdown files"),
+    },
+    {
+        "id": "14",
+        "dir": "14_link_toc",
         "script": "link_toc.py",
         "desc": "Fuzzy header matching & TOC wikilink conversion",
-        "targets": ["13_link_toc", "__OUTPUT_DIR__"],
+        "targets": ["14_link_toc", "__OUTPUT_DIR__"],
         "inspect": ("*.md", "Markdown files"),
     },
 ]
@@ -228,7 +236,7 @@ def run_stage(
             cmd.extend(["--page-ranges", str(page_ranges)])
     elif stage_num == "11":
         cmd.extend(["--output-dir", str(workspace_dir / "11_emit_markdown")])
-    elif stage_num == "13" and output_dir:
+    elif stage_num == "14" and output_dir:
         cmd.extend(["--output-dir", str(output_dir)])
 
     if verbose:
@@ -371,7 +379,7 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Master 13-Stage PDF-to-Markdown Pipeline Orchestrator")
+    parser = argparse.ArgumentParser(description="Master 14-Stage PDF-to-Markdown Pipeline Orchestrator")
     parser.add_argument("--pdf", type=str, help="Path to input technical PDF document")
     parser.add_argument("--workspace", type=str, default=None, help="Workspace directory for intermediate data")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory for generated Markdown files")

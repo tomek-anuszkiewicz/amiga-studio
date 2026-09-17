@@ -1230,3 +1230,33 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Invariants**:
   - Verified `Show-Usage` and parameter descriptions.
   - Passed `python tools/harness/pre_flight.py --quick`.
+
+### [2026-09-17 14:40 CEST] — Removal of build_frontmatter & Addition of Stage 12 (12_generate_properties) for LLM Obsidian Properties
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/11_emit_markdown/emit_markdown.py`
+  - `.agents/skills/pdf-to-markdown/stages/11_emit_markdown/README.md`
+  - `.agents/skills/pdf-to-markdown/stages/12_generate_properties/generate_properties.py`
+  - `.agents/skills/pdf-to-markdown/stages/12_generate_properties/prompt.md`
+  - `.agents/skills/pdf-to-markdown/stages/12_generate_properties/README.md`
+  - `.agents/skills/pdf-to-markdown/stages/13_refine_first_chapter_name/` (relocated from 12)
+  - `.agents/skills/pdf-to-markdown/stages/14_link_toc/` (relocated from 13)
+  - `.agents/skills/pdf-to-markdown/pipeline.py`
+  - `.agents/skills/pdf-to-markdown/config.yaml`
+  - `.agents/skills/pdf-to-markdown/SKILL.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed rudimentary `build_frontmatter()` and its invocation from `stages/11_emit_markdown/emit_markdown.py`, ensuring Stage 11 emits clean Markdown body content without placeholder YAML frontmatter.
+  - Implemented Stage 12 (`12_generate_properties`) containing `generate_properties.py`, `prompt.md`, and `README.md`. It evaluates the opening chapter/front matter to infer the canonical book title (`book`) and prompts Gemini LLM with chapter content to generate `title`, `book`, `chapter`, and 4-8 kebab-case `tags`, injecting Line 1 Obsidian YAML frontmatter.
+  - Relocated and updated subsequent stages: `12_refine_first_chapter_name` shifted to `13_refine_first_chapter_name`, and `13_link_toc` shifted to `14_link_toc`. Updated stage candidate search paths, CLI arguments, and documentation.
+  - Updated master orchestrator `pipeline.py` to manage the expanded 14-stage sequence, directing final output to `--output-dir` in Stage 14.
+  - Configured `config.yaml` with `properties_dir: "workspace/12_generate_properties"`, updated downstream paths, and added stage thinking budget configurations.
+  - Updated `SKILL.md` directory tree, execution workflow phases, and CLI invocation commands.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates hardcoded placeholder metadata (`tags: [amiga, reference, hardware]`) in favor of publication-grade, document-specific Obsidian properties.
+  - Provides the LLM with the first chapter context so that book-level metadata (`book`) is inferred reliably and consistently across all partitioned chapters.
+  - Preserves graceful fallback heuristics so offline runs or missing API keys continue to emit well-structured frontmatter without crashing.
+- **Verification & Invariants**:
+  - Successfully compiled all Python scripts with `python -m py_compile`.
+  - Verified CLI `--help` output across `pipeline.py`, `generate_properties.py`, `refine_name.py`, and `link_toc.py`.
+  - Executed end-to-end unit and integration test in temporary directory verifying property inference, YAML serialization, and asset synchronization.
+  - Passed `python tools/harness/pre_flight.py --quick`.
+

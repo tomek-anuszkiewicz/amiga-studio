@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-stages/12_refine_first_chapter_name/refine_name.py:
+stages/13_refine_first_chapter_name/refine_name.py:
 Inspects the content and preliminary name of the first chapter in <output_dir>.
 Determines its canonical title and slug (typically Table of Contents / Front Matter).
 Renames the file, updates its Line 1 YAML title, and synchronizes any cross-file wikilinks.
@@ -83,6 +83,7 @@ def process_first_chapter_refinement(
 
     if not input_dir:
         candidates = [
+            workspace_dir / "12_generate_properties",
             workspace_dir / "11_emit_markdown",
             output_dir
         ]
@@ -120,33 +121,34 @@ def process_first_chapter_refinement(
 
     if not new_title or not new_slug:
         if not config_path or not config_path.is_file():
-            raise FileNotFoundError(f"Stage 12: Config file not found: {config_path}")
+            raise FileNotFoundError(f"Stage 13: Config file not found: {config_path}")
         with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
         if not config or not isinstance(config, dict):
-            raise ValueError(f"Stage 12: Config file is empty or invalid: {config_path}")
+            raise ValueError(f"Stage 13: Config file is empty or invalid: {config_path}")
 
         gemini = GeminiClient(config) if GeminiClient else None
-        if not gemini or not gemini.is_available():
-            raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 12 name refinement.")
+        if gemini and gemini.is_available():
+            prompt_file = Path(__file__).parent / "prompt.md"
+            base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
 
-        prompt_file = Path(__file__).parent / "prompt.md"
-        base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
-
-        full_prompt = (
-            f"{base_prompt}\n\n"
-            f"Preliminary File Name: {first_file.name}\n\n"
-            f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
-        )
-        parsed = gemini.generate_json(full_prompt, stage="12_refine_chapter")
-        if isinstance(parsed, dict):
-            new_title = parsed.get("title")
-            new_slug = parsed.get("slug")
+            full_prompt = (
+                f"{base_prompt}\n\n"
+                f"Preliminary File Name: {first_file.name}\n\n"
+                f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
+            )
+            try:
+                parsed = gemini.generate_json(full_prompt, stage="13_refine_chapter")
+                if isinstance(parsed, dict):
+                    new_title = parsed.get("title")
+                    new_slug = parsed.get("slug")
+            except Exception as e:
+                print(f"[!] Warning: LLM title refinement failed ({e}). Using heuristic fallback.")
 
     if not new_title or not new_slug:
-        clean_stem = re.sub(r"^\d+_", "", Path(first_file.name).stem)
-        new_title = clean_stem.replace("_", " ").title()
-        new_slug = clean_stem
+        auto_title, auto_slug = determine_canonical_title_and_slug(content, first_file.name)
+        new_title = new_title or auto_title
+        new_slug = new_slug or auto_slug
 
     clean_title_name = re.sub(r'[:/\\|]', ' - ', new_title)
     clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name).strip(' -.')
@@ -199,14 +201,14 @@ def process_first_chapter_refinement(
         with open(target_first_file, "w", encoding="utf-8") as f:
             f.write(updated_content)
 
-    print(f"[+] Stage 12 complete. Output vault finalized in {output_dir}.")
+    print(f"[+] Stage 13 complete. Output vault finalized in {output_dir}.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 12: Refine first chapter name and slug")
+    parser = argparse.ArgumentParser(description="Stage 13: Refine first chapter name and slug")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
-    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/11_link_toc)")
-    parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/12_refine_first_chapter_name)")
+    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/12_generate_properties)")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/13_refine_first_chapter_name)")
     parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
     parser.add_argument("--inspect", action="store_true", help="Inspect opening chapter excerpt and suggested titles")
     parser.add_argument("--title", type=str, default=None, help="Explicit canonical title")
@@ -214,11 +216,11 @@ def main():
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
-    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "12_refine_first_chapter_name")
+    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "13_refine_first_chapter_name")
     input_dir = Path(args.input_dir) if args.input_dir else None
     config_path = Path(args.config)
     if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 12: Config file not found: {config_path}")
+        raise FileNotFoundError(f"Stage 13: Config file not found: {config_path}")
 
     process_first_chapter_refinement(
         output_dir,

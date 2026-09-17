@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-stages/11_link_toc/link_toc.py:
+stages/14_link_toc/link_toc.py:
 Dedicated fuzzy cross-document Table of Contents linker:
 1. Locates blocks demarcated by <!-- TOC34534 --> and <!-- /TOC34534 -->.
 2. Catalogs all Markdown headers across all emitted files in <output_dir>.
@@ -295,14 +295,14 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
         with open(target_file, "w", encoding="utf-8") as f:
             f.write(updated_content)
 
-    print(f"[+] Stage 11 complete. Processed {linked_count} TOC sections into {output_dir}.")
+    print(f"[+] Stage 14 complete. Processed {linked_count} TOC sections into {output_dir}.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage 13: Fuzzy cross-document Table of Contents linker")
+    parser = argparse.ArgumentParser(description="Stage 14: Fuzzy cross-document Table of Contents linker")
     parser.add_argument("--workspace", type=str, default="workspace", help="Workspace directory")
-    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/12_refine_first_chapter_name)")
-    parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/13_link_toc)")
+    parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/13_refine_first_chapter_name)")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/14_link_toc)")
     parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
 
     args = parser.parse_args()
@@ -310,24 +310,25 @@ def main():
 
     config_path = Path(args.config)
     if not config_path.is_file():
-        raise FileNotFoundError(f"Stage 13: Config file not found: {config_path}")
+        raise FileNotFoundError(f"Stage 14: Config file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     if not config or not isinstance(config, dict):
-        raise ValueError(f"Stage 13: Config file is empty or invalid: {config_path}")
+        raise ValueError(f"Stage 14: Config file is empty or invalid: {config_path}")
 
     input_candidates = [
         Path(args.input_dir) if args.input_dir else None,
-        workspace_dir / "12_refine_first_chapter_name",
+        workspace_dir / "13_refine_first_chapter_name",
+        workspace_dir / "12_generate_properties",
         workspace_dir / "11_emit_markdown",
         Path("output_markdown")
     ]
     input_dir = next((p for p in input_candidates if p and p.exists() and list(p.glob("*.md"))), None)
     if not input_dir:
-        raise FileNotFoundError("No input markdown files found for Stage 13")
+        raise FileNotFoundError("No input markdown files found for Stage 14")
 
-    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "13_link_toc")
+    output_dir = Path(args.output_dir) if args.output_dir else (workspace_dir / "14_link_toc")
 
     process_toc_linking(input_dir, output_dir, workspace_dir, config=config)
 

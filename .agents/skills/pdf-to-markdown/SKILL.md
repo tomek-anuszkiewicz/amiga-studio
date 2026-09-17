@@ -1,6 +1,6 @@
 ---
 name: pdf-to-markdown
-description: Convert technical PDF manuals and reference books into publication-grade Obsidian Markdown using a modular 12-stage stream-based pipeline driven by the Agent.
+description: Convert technical PDF manuals and reference books into publication-grade Obsidian Markdown using a modular 14-stage stream-based pipeline driven by the Agent.
 ---
 
 # Recipe: Modular PDF-to-Markdown Conversion Pipeline (Agent-Driven)
@@ -73,15 +73,20 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │   └── README.md
     │
     ├── 11_emit_markdown/
-    │   ├── emit_markdown.py                 # Emits one .md file per partition ({index:02d}_{slug}.md); ignores toc_header
+    │   ├── emit_markdown.py                 # Emits clean Markdown files per partition ({index:02d}_{slug}.md); ignores toc_header
     │   └── README.md
     │
-    ├── 12_refine_first_chapter_name/
+    ├── 12_generate_properties/
+    │   ├── generate_properties.py           # Generates publication-grade Obsidian YAML properties (title, book, chapter, tags) with LLM
+    │   ├── prompt.md                        # Guidelines for inferring book title and chapter metadata
+    │   └── README.md
+    │
+    ├── 13_refine_first_chapter_name/
     │   ├── refine_name.py                   # Inspects first chapter content & sets canonical title/slug
     │   ├── prompt.md                        # Evaluation guidelines for opening sections
     │   └── README.md
     │
-    └── 13_link_toc/
+    └── 14_link_toc/
         ├── link_toc.py                      # Fuzzy header matcher across all .md files; converts TOC lines to wikilinks; strips markers
         └── README.md
 ```
@@ -173,14 +178,14 @@ python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --fr
 python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 10 --to-stage 10
 ```
 
-### Phase E: Markdown Emission & First Chapter Refinement (Stages 11 – 12)
+### Phase E: Markdown Emission & Properties Generation (Stages 11 – 12)
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 11 --to-stage 12
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 11 --to-stage 12
 ```
 
-### Phase F: Final TOC Wikilinking (Stage 13)
+### Phase F: First Chapter Refinement & Final TOC Wikilinking (Stages 13 – 14)
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --output-dir "<OUTPUT_DIR>" --from-stage 13 --to-stage 13
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --output-dir "<OUTPUT_DIR>" --config "<CONFIG>" --from-stage 13 --to-stage 14
 ```
 
 ---
