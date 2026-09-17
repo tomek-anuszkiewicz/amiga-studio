@@ -79,6 +79,9 @@ The emulator core does not rely on guesswork or high-level approximations; it va
 - **Clean-Room C++ Reference (vAmiga):** Used as an architectural and algorithmic reference implementation for custom chipset timing, bus arbitration, and register interactions.
 - **Hardware Diagnostics (Amiga Test Kit):** Bootable diagnostic floppy disk image used for end-to-end system loop verification, memory testing, and peripheral validation.
 
+> [!NOTE]
+> **Graphify Code Knowledge Graph Integration:** Downloaded reference source files (specifically `ref_src/vAmiga/` and test harnesses) are parsed and indexed directly into the unified **Graphify graph database** (`graphify-out/`) alongside active Rust crates (`crates/`). This allows developers and AI agents to query cross-codebase symbol definitions, trace call hierarchies, and compare Rust implementations against reference C++ algorithms via `graphify query` (see [Chapter 7: Code Structure & Relationships: Graphify](#7-code-structure-relationships-graphify)).
+
 Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`.
 
 <a id="pinned-upstream-sources-summary"></a>
