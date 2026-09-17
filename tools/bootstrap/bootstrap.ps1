@@ -7,10 +7,10 @@
     graphs, local RAG vector documentation, and external reference documentation.
 
     Delegates execution to modular standalone bootstrap scripts:
-    - Tier 1: Hardware Verification & External Sources (-Sources / -Test -> tools/bootstrap_sources.ps1)
-    - Tier 2: AST-Level Code Knowledge Graph (-Graphify -> tools/bootstrap_graphify.ps1)
-    - Tier 3: AI Knowledge & Qdrant RAG Vector Index (-Rag -> tools/bootstrap_rag.ps1)
-    - Tier 4: External Reference Documentation & Scans (-Documentation / -Ref -> tools/bootstrap_documentation.ps1)
+    - Tier 1: Hardware Verification & External Sources (-Sources / -Test -> tools/bootstrap/bootstrap_sources.ps1)
+    - Tier 2: AST-Level Code Knowledge Graph (-Graphify -> tools/bootstrap/bootstrap_graphify.ps1)
+    - Tier 3: AI Knowledge & Qdrant RAG Vector Index (-Rag -> tools/bootstrap/bootstrap_rag.ps1)
+    - Tier 4: External Reference Documentation & Scans (-Documentation / -Ref -> tools/bootstrap/bootstrap_documentation.ps1)
 
     NOTE: Bootstrapping is NOT required to build, test, or run the emulator.
     A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'.
@@ -56,23 +56,23 @@
     Executes all primary bootstrap tiers sequentially (-Sources -> -Graphify -> -Rag).
 
 .EXAMPLE
-    .\tools\bootstrap.ps1 -Sources
+    .\tools\bootstrap\bootstrap.ps1 -Sources
     Provision external hardware test vectors and sources (SingleStepTests, vAmiga).
 
 .EXAMPLE
-    .\tools\bootstrap.ps1 -Graphify
+    .\tools\bootstrap\bootstrap.ps1 -Graphify
     Update AST code knowledge graph in graphify-out/.
 
 .EXAMPLE
-    .\tools\bootstrap.ps1 -Rag
+    .\tools\bootstrap\bootstrap.ps1 -Rag
     Index Obsidian technical documentation into the local Qdrant vector database.
 
 .EXAMPLE
-    .\tools\bootstrap.ps1 -Documentation
+    .\tools\bootstrap\bootstrap.ps1 -Documentation
     Download all external reference documentation into Obsidian/Amiga/Reference/temp/.
 
 .EXAMPLE
-    .\tools\bootstrap.ps1 -All
+    .\tools\bootstrap\bootstrap.ps1 -All
     Run all primary bootstrap tiers (sources -> Graphify AST -> RAG documentation).
 #>
 
@@ -102,11 +102,11 @@ function Show-Usage {
     Write-Host "      A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'."
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap.ps1 -Sources                   : Provision external test sources & vectors (SingleStepTests, vAmiga)"
-    Write-Host "  .\tools\bootstrap.ps1 -Graphify                  : Provision code knowledge graph (Graphify AST extraction)"
-    Write-Host "  .\tools\bootstrap.ps1 -Rag                       : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
-    Write-Host "  .\tools\bootstrap.ps1 -Documentation             : Provision external reference materials (PDFs, HTML crawls)"
-    Write-Host "  .\tools\bootstrap.ps1 -All                       : Provision all primary tiers (sources -> Graphify -> RAG)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Sources         : Provision external test sources & vectors (SingleStepTests, vAmiga)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Graphify        : Provision code knowledge graph (Graphify AST extraction)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Rag             : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Documentation   : Provision external reference materials (PDFs, HTML crawls)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -All             : Provision all primary tiers (sources -> Graphify -> RAG)"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
     Write-Host "  -Sources                 : Verify & unpack SingleStepTests 68000 test vectors (alias: -Test)"

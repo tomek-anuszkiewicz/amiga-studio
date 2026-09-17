@@ -6316,6 +6316,23 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 03:52 CEST] — Removed Root tools/bootstrap.ps1 Duplicate & Consolidated Single Canonical Coordinator
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1` (removed duplicate forwarder script from `tools/` root)
+  - `tools/bootstrap/bootstrap.ps1` (updated internal usage displays and examples to reflect `tools/bootstrap/bootstrap.ps1`)
+  - `README.md` (updated developer quickstart bootstrap path to `tools/bootstrap/bootstrap.ps1`)
+  - `Obsidian/Amiga/Design/PowerShell Guidelines.md` (pruned root wrapper reference, retaining canonical coordinator)
+- **What Was Changed (The Concrete Reality)**:
+  - Deleted `tools/bootstrap.ps1` to eliminate duplicate script files between `tools/` and `tools/bootstrap/`.
+  - Established `tools/bootstrap/bootstrap.ps1` as the single canonical coordinator script for all bootstrap tiers.
+  - Aligned documentation in `README.md` and `PowerShell Guidelines.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - Having both `tools/bootstrap.ps1` and `tools/bootstrap/bootstrap.ps1` created ambiguity and violated single-source-of-truth principles. Consolidating into `tools/bootstrap/bootstrap.ps1` cleanly encapsulates the entire bootstrap subsystem inside its own directory with zero root-level clutter.
+- **Verification & Test Results**:
+  - Tested `tools/bootstrap/bootstrap.ps1` usage display and flag forwarding.
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 

@@ -69,29 +69,33 @@ cargo test -p m68000
 cargo test -p memory_bus
 ```
 
-### Optional Bootstrapping (`tools/bootstrap.ps1`)
+### Optional Bootstrapping (`tools/bootstrap/bootstrap.ps1`)
 
 Bootstrapping is **strictly optional** and only needed for specialized development tasks:
 
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
-| **Verification Testbed** | `-Test` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
+| **Verification Testbed** | `-Sources` / `-Test` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
 | **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
 | **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, technical specs, and design specs |
-| **Full Setup** | `-All` | Complete initial development setup | Provisions all components (hardware test vectors -> Graphify AST -> RAG documentation) |
+| **Reference Scans** | `-Documentation` | External reference scans and manual archives | Provisions raw reference manuals and PDF scans into `temp/` |
+| **Full Setup** | `-All` | Complete initial development setup | Provisions all primary components (sources -> Graphify AST -> RAG documentation) |
 
 ```powershell
 # Hardware test vectors verification setup:
-.\tools\bootstrap.ps1 -Test
+.\tools\bootstrap\bootstrap.ps1 -Sources
 
 # Code AST knowledge graph setup:
-.\tools\bootstrap.ps1 -Graphify
+.\tools\bootstrap\bootstrap.ps1 -Graphify
 
 # Documentation & AI pair-programming setup:
-.\tools\bootstrap.ps1 -Rag
+.\tools\bootstrap\bootstrap.ps1 -Rag
 
-# Complete setup (tests -> Graphify AST -> RAG docs):
-.\tools\bootstrap.ps1 -All
+# External reference manuals and scans:
+.\tools\bootstrap\bootstrap.ps1 -Documentation
+
+# Complete setup (sources -> Graphify AST -> RAG docs):
+.\tools\bootstrap\bootstrap.ps1 -All
 ```
 
 ---

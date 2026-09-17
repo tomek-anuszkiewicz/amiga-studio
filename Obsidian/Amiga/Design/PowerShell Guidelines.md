@@ -13,7 +13,7 @@ related: ["[Rust Guidelines.md](Rust%20Guidelines.md)", "[Testing Strategy and Q
 # PowerShell Tooling & Parameterization Guidelines
 
 - **Parent Specifications:** [General Architecture.md](General%20Architecture.md) | [Testing Strategy and Quality Assurance.md](Testing%20Strategy%20and%20Quality%20Assurance.md)
-- **Living Tooling Implementations:** [`tools/bootstrap.ps1`](../../../tools/bootstrap.ps1) | [`tools/bootstrap/bootstrap.ps1`](../../../tools/bootstrap/bootstrap.ps1) | [`tools/bootstrap/bootstrap_sources.ps1`](../../../tools/bootstrap/bootstrap_sources.ps1) | [`tools/bootstrap/bootstrap_graphify.ps1`](../../../tools/bootstrap/bootstrap_graphify.ps1) | [`tools/bootstrap/bootstrap_rag.ps1`](../../../tools/bootstrap/bootstrap_rag.ps1) | [`tools/bootstrap/bootstrap_documentation.ps1`](../../../tools/bootstrap/bootstrap_documentation.ps1) | [`tools/rag/bin/amiga_rag.ps1`](../../../tools/rag/bin/amiga_rag.ps1)
+- **Living Tooling Implementations:** [`tools/bootstrap/bootstrap.ps1`](../../../tools/bootstrap/bootstrap.ps1) | [`tools/bootstrap/bootstrap_sources.ps1`](../../../tools/bootstrap/bootstrap_sources.ps1) | [`tools/bootstrap/bootstrap_graphify.ps1`](../../../tools/bootstrap/bootstrap_graphify.ps1) | [`tools/bootstrap/bootstrap_rag.ps1`](../../../tools/bootstrap/bootstrap_rag.ps1) | [`tools/bootstrap/bootstrap_documentation.ps1`](../../../tools/bootstrap/bootstrap_documentation.ps1) | [`tools/rag/bin/amiga_rag.ps1`](../../../tools/rag/bin/amiga_rag.ps1)
 - **Operating Rules:** [`performance-and-readability.md`](../../../.agents/rules/performance-and-readability.md) | [`vault-linking-and-graph-integrity.md`](../../../.agents/rules/vault-linking-and-graph-integrity.md)
 
 > [!NOTE]
@@ -220,7 +220,6 @@ Before committing any modifications to PowerShell scripts:
 ## 7. Reference Documentation & Upstream Ground Truth
 
 - **Tooling Implementations:**
-  - [`tools/bootstrap.ps1`](../../../tools/bootstrap.ps1): Root convenience forwarding wrapper.
   - [`tools/bootstrap/bootstrap.ps1`](../../../tools/bootstrap/bootstrap.ps1): Multi-tier repository bootstrap coordinator.
   - [`tools/bootstrap/bootstrap_sources.ps1`](../../../tools/bootstrap/bootstrap_sources.ps1): External test sources, hardware vectors, and reference emulator bootstrapper.
   - [`tools/bootstrap/bootstrap_graphify.ps1`](../../../tools/bootstrap/bootstrap_graphify.ps1): AST code knowledge graph bootstrapper.

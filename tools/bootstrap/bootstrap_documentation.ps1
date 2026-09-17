@@ -303,7 +303,7 @@ function Ensure-StagingReadme {
         $Content = @'
 # Temporary External Reference Staging Directory
 
-This directory contains raw, unprocessed external reference materials (PDF scans, HTML crawls, and archives) downloaded by `tools/bootstrap_documentation.ps1` (or `tools/bootstrap.ps1 -Doc`).
+This directory contains raw, unprocessed external reference materials (PDF scans, HTML crawls, and archives) downloaded by `tools/bootstrap/bootstrap_documentation.ps1` (or `tools/bootstrap/bootstrap.ps1 -Doc`).
 
 ## Operational Guidelines
 - **Safe to Delete:** You can safely delete this directory or any subfolder at any time. It has zero impact on compiling, testing, or running the emulator.
