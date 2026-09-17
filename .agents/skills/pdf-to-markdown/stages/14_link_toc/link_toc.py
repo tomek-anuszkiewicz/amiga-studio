@@ -54,6 +54,32 @@ def catalog_headers_across_documents(output_dir: Path) -> list:
     return header_catalog
 
 
+def norm_alphanumeric(s: str) -> str:
+    """Returns lowercase string containing only ASCII letters and digits [a-z0-9]."""
+    return re.sub(r"[^a-z0-9]+", "", s.lower())
+
+
+PAGE_NUM_PATTERN = re.compile(r"(?:[\s.…_-]+|\s*[([])\b(\d{1,4})\b[)\]]?\s*$")
+
+
+def strip_page_number(title: str) -> str:
+    """Strips trailing printed page numbers (e.g. 'Chapter 2 ... 13' -> 'Chapter 2 ...')."""
+    return PAGE_NUM_PATTERN.sub("", title).strip()
+
+
+def should_strip_page_numbers(lines: list) -> bool:
+    """Returns True if the majority (>= 40%) of bullet lines end with numbers."""
+    bullet_lines = []
+    for line in lines:
+        m = re.match(r"^\s*[-*]\s+(.+)$", line)
+        if m:
+            bullet_lines.append(m.group(1).strip())
+    if not bullet_lines:
+        return False
+    numbered = sum(1 for b in bullet_lines if PAGE_NUM_PATTERN.search(b))
+    return (numbered / len(bullet_lines)) >= 0.40
+
+
 def find_best_header_match(
     query: str,
     catalog: list,
@@ -74,7 +100,8 @@ def find_best_header_match(
         return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
     norm_q = norm(cleaned_query)
-    if not norm_q:
+    alpha_q = norm_alphanumeric(cleaned_query)
+    if not norm_q and not alpha_q:
         return None
 
     best_entry = None
@@ -90,14 +117,18 @@ def find_best_header_match(
 
         cand_raw = entry["header"]
         norm_c = norm(cand_raw)
-        if not norm_c:
+        alpha_c = norm_alphanumeric(cand_raw)
+        if not norm_c and not alpha_c:
             continue
 
-        if norm_q == norm_c:
+        # 1. Exact alphanumeric match (ignoring all punctuation, spaces, and formatting)
+        if alpha_q and alpha_q == alpha_c:
+            score = 1.0
+        elif norm_q == norm_c:
             score = 1.0
         else:
             score = difflib.SequenceMatcher(None, norm_q, norm_c).ratio()
-            # Only award substring bonus if query and candidate are closely sized and meaningful
+            # Award substring bonus if query and candidate are closely sized and meaningful
             if len(norm_q) >= 6 and len(norm_c) >= 6:
                 if norm_q in norm_c or norm_c in norm_q:
                     len_ratio = min(len(norm_q), len(norm_c)) / max(len(norm_q), len(norm_c))
@@ -109,6 +140,7 @@ def find_best_header_match(
             best_entry = entry
 
     return best_entry
+
 
 
 def link_toc_in_file(md_path: Path, catalog: list) -> bool:
@@ -209,6 +241,7 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
             file_matched_blocks += 1
             toc_lines = m.group(1).splitlines()
             linked_lines = []
+            strip_pages = should_strip_page_numbers(toc_lines)
 
             for line in toc_lines:
                 m_bullet = re.match(r"^(\s*)([-*]\s*)(.+)$", line)
@@ -218,31 +251,61 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
 
                 indent = m_bullet.group(1)
                 bullet = m_bullet.group(2)
-                title = m_bullet.group(3).strip()
+                raw_title = m_bullet.group(3).strip()
+                title = strip_page_number(raw_title) if strip_pages else raw_title
+
+                def norm_s(s: str) -> str:
+                    return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
                 # Top-level item in TOC (no indentation): represents a Chapter / Section title
                 if len(indent) == 0:
-                    m_ch = re.search(r"Chapter\s+(\d+)", title, re.IGNORECASE)
+                    m_ch = re.search(r"(?:Chapter|Section)\s+(\d+)", title, re.IGNORECASE)
                     stem_cand = None
                     if m_ch:
-                        ch_prefix = f"{int(m_ch.group(1)):02d}_"
+                        ch_num = int(m_ch.group(1))
+                        ch_pattern = re.compile(rf"^0*{ch_num}\s*[-_.]", re.IGNORECASE)
                         for e in catalog:
-                            if e["stem"].startswith(ch_prefix):
+                            if ch_pattern.search(e["stem"]):
                                 stem_cand = e["stem"]
                                 break
 
                     if stem_cand:
                         current_chapter_stem = stem_cand
-                        first_h = next(
-                            (e for e in catalog if e["stem"] == stem_cand and e["level"] == 1 and (stem_cand, e["header"]) not in used_headers),
-                            None
-                        )
-                        if first_h:
-                            used_headers.add((stem_cand, first_h["header"]))
-                            wikilink = f"[[{stem_cand}#{first_h['header']}|{title}]]"
+                        doc_headers = [
+                            e for e in catalog
+                            if e["stem"] == stem_cand and (stem_cand, e["header"]) not in used_headers
+                        ]
+                        matched_h = None
+
+                        # Check multiple headers combined from beginning of candidate chapter (e.g. H1: "Chapter 1" + H2: "INTRODUCTION")
+                        opening_headers = [e for e in doc_headers if e["level"] <= 2][:3]
+                        if len(opening_headers) >= 2:
+                            combined_text = " ".join(e["header"] for e in opening_headers)
+                            if norm_alphanumeric(title) and norm_alphanumeric(title) == norm_alphanumeric(combined_text):
+                                matched_h = opening_headers[0]
+                            else:
+                                sim = difflib.SequenceMatcher(None, norm_s(title), norm_s(combined_text)).ratio()
+                                if sim >= 0.75:
+                                    matched_h = opening_headers[0]
+
+                        if not matched_h:
+                            matched_h = find_best_header_match(
+                                title,
+                                catalog,
+                                used_headers=used_headers,
+                                preferred_stem=stem_cand,
+                                cutoff=0.65
+                            )
+
+                        if not matched_h:
+                            matched_h = next((e for e in doc_headers if e["level"] == 1), None)
+
+                        if matched_h:
+                            used_headers.add((stem_cand, matched_h["header"]))
+                            wikilink = f"[[{stem_cand}#{matched_h['header']}|{title}]]"
                             linked_lines.append(f"{indent}{bullet}{wikilink}")
                         else:
-                            linked_lines.append(line)
+                            linked_lines.append(f"{indent}{bullet}{title}")
                     else:
                         match_entry = find_best_header_match(
                             title,
@@ -260,7 +323,7 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
                             linked_lines.append(f"{indent}{bullet}{wikilink}")
                         else:
                             current_chapter_stem = None
-                            linked_lines.append(line)
+                            linked_lines.append(f"{indent}{bullet}{title}")
                 else:
                     # Sub-bullet within a chapter: match strictly within current_chapter_stem
                     if current_chapter_stem is not None:
@@ -278,10 +341,10 @@ def process_toc_linking(input_dir: Path, output_dir: Path, workspace_dir: Path, 
                             wikilink = f"[[{target_file}#{target_header}|{title}]]"
                             linked_lines.append(f"{indent}{bullet}{wikilink}")
                         else:
-                            linked_lines.append(line)
+                            linked_lines.append(f"{indent}{bullet}{title}")
                     else:
-                        # Chapter does not exist in catalog: retain clean text bullet
-                        linked_lines.append(line)
+                        # Chapter does not exist in catalog: retain clean text bullet (stripped of trailing numbers)
+                        linked_lines.append(f"{indent}{bullet}{title}")
 
             return "\n".join(linked_lines)
 

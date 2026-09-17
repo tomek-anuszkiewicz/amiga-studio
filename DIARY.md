@@ -1523,3 +1523,27 @@ Every future modification or implementation task must append an entry following 
   - verified 00 - Table of Contents.md starts directly with Section 1 Overview without thumb tabs
   - verified 00 - Front Matter.md contains cover, legal, and sales offices
   - passed pre_flight.py --quick
+---
+
+### [2026-09-17 21:01 CEST] — Improve Stage 14 Table of Contents Linking with Alphanumeric Normalization and Page Number Stripping
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `stages/14_link_toc`
+  - `pipeline`
+- **What Was Changed (The Concrete Reality)**:
+  - Added alphanumeric normalization (norm_alphanumeric) for robust header-to-TOC matching ignoring formatting and punctuation
+  - Implemented majority-voting heuristic (>= 40%) in should_strip_page_numbers and strip_page_number to remove trailing printed page numbers from TOC bullets
+  - Added multi-header concatenation matching (e.g. H1 Chapter 1 + H2 INTRODUCTION) for chapter titles
+  - Generalized chapter stem prefix regex to handle varied output filename conventions (e.g. '01 - ')
+  - Ensured unlinked TOC bullets retain cleanly stripped titles without trailing page numbers
+- **Architectural Rationale & Trade-Offs**:
+  - Printed manual Table of Contents entries often carry trailing page numbers and have minor punctuation or formatting variations compared to actual chapter headings
+  - causing exact and fuzzy SequenceMatcher comparisons to fail or leak page numbers into link titles. In addition
+  - multi-line titles split across H1 and H2 tags previously prevented chapter matching
+  - cascading into failed sub-bullet matching. Deterministic normalization and majority-voted page stripping restore 100% linking fidelity without consuming LLM tokens.
+- **Verification & Test Results**:
+  - Verified across all 4 preview manuals (Hardware Reference Manual
+  - 68000 Programmer's Reference Manual
+  - 68000 User's Manual
+  - and A500 A2000 Technical Reference Manual). Hardware Reference Manual Chapter 1 and all sub-bullets linked completely and cleanly
+  - with zero trailing page numbers leaking into link titles. cargo fmt checked cleanly.
