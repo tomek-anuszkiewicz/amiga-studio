@@ -13,32 +13,15 @@
     3. Migrates test suites from 68000/ into the canonical 68000/v1/ directory.
     4. Validates AmigaTestKit ADF presence in tools/AmigaTestKit/.
     5. Validates vAmiga and vAmigaTS reference repositories in ref_src/.
-    6. Executes a single-step test runner smoke check (test_nop) unless -NoSmoke is passed.
-
-.PARAMETER NoSmoke
-    Skips the SingleStep test runner smoke check ('cargo test -p test_runner --test test_singlestep test_nop').
-
-.PARAMETER SmokeOnly
-    Only executes the SingleStep test runner smoke check without archive inspection or decompression.
+    6. Executes a single-step test runner smoke check (test_nop).
 
 .EXAMPLE
-    .\tools\bootstrap_sources.ps1
+    .\tools\bootstrap\bootstrap_sources.ps1
     Verifies and provisions all test sources and executes the smoke check.
-
-.EXAMPLE
-    .\tools\bootstrap_sources.ps1 -NoSmoke
-    Decompresses archives and migrates suites without running cargo test.
-
-.EXAMPLE
-    .\tools\bootstrap_sources.ps1 -SmokeOnly
-    Quickly verifies the single-step test runner harness.
 #>
 
 [CmdletBinding()]
-param(
-    [switch]$NoSmoke,
-    [switch]$SmokeOnly
-)
+param()
 
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
@@ -48,13 +31,7 @@ function Show-Usage {
     Write-Host "=====================================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap_sources.ps1                    : Verify & provision test sources, then run smoke check"
-    Write-Host "  .\tools\bootstrap_sources.ps1 -NoSmoke           : Decompress & verify suites without running cargo test"
-    Write-Host "  .\tools\bootstrap_sources.ps1 -SmokeOnly         : Only run single-step smoke check"
-    Write-Host ""
-    Write-Host "Options:" -ForegroundColor White
-    Write-Host "  -NoSmoke                 : Skip cargo test single-step smoke check"
-    Write-Host "  -SmokeOnly               : Only run cargo test smoke check"
+    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1          : Verify & provision test sources, then run smoke check"
     Write-Host ""
 }
 
@@ -65,8 +42,7 @@ Write-Host "---------------------------------------------------------" -Foregrou
 $SingleStepBaseDir = Join-Path $RepoRoot "ref_src\SingleStepTests-680x0"
 $SingleStepDir = Join-Path $SingleStepBaseDir "68000\v1"
 
-if (-not $SmokeOnly) {
-    # 1. Expand any SingleStep .zip archives if present
+# 1. Expand any SingleStep .zip archives if present
     if (Test-Path $SingleStepBaseDir) {
         $ZipFiles = Get-ChildItem -Path $SingleStepBaseDir -Filter "*.zip" -Recurse -ErrorAction SilentlyContinue
         foreach ($Zip in $ZipFiles) {
@@ -165,9 +141,7 @@ if (-not $SmokeOnly) {
         Write-Warning "vAmigaTS regression test suite not found: $VAmigaTsDir"
         Write-Host "To populate the custom chipset regression test suite, clone https://github.com/dirkwhoffmann/vAmigaTS into ref_src/vAmigaTS." -ForegroundColor Yellow
     }
-}
 
-if (-not $NoSmoke) {
     Write-Host ""
     Write-Host "Running quick SingleStep test runner smoke check (test_nop)..." -ForegroundColor Cyan
     cargo test -p test_runner --test test_singlestep test_nop
@@ -176,4 +150,3 @@ if (-not $NoSmoke) {
     } else {
         Write-Warning "Single-step test runner smoke check failed. Run 'cargo test -p test_runner --test test_singlestep' for details."
     }
-}

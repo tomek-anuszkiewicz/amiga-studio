@@ -6384,6 +6384,19 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:01 CEST] — Pruned -NoSmoke and -SmokeOnly Parameters from External Sources Bootstrapper
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap_sources.ps1` (removed `.PARAMETER NoSmoke`, `.PARAMETER SmokeOnly`, parameters block, and conditional execution wrappers)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed `-NoSmoke` and `-SmokeOnly` parameters and their help blocks from `tools/bootstrap/bootstrap_sources.ps1`.
+  - Streamlined `bootstrap_sources.ps1` to execute unconditionally: provisioning test suites, verifying archives/repositories, and running the single-step test runner smoke check (`test_nop`).
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates unnecessary parameter complexity from the modular sources bootstrapper. The script has a single cohesive responsibility: provisioning external hardware vectors and immediately verifying that the single-step runner is operational.
+- **Verification & Test Results**:
+  - Ran `.\tools\bootstrap\bootstrap_sources.ps1` directly; successfully verified 124 test suites and executed `test_nop` smoke check with 0 exit code.
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 
