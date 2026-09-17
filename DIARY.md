@@ -1189,4 +1189,14 @@ Every future modification or implementation task must append an entry following 
   - Verified `bootstrap_documentation.ps1 -Undocumented -Markdown` crawls and consolidates Kuba Winnicki's *Achtung! Amiga* into `Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets/`.
   - Verified code formatting (`cargo fmt --all -- --check`) and architecture rules (`cargo test -p test_runner --test test_architecture_rules test_file_size_limits`).
 
-
+### [2026-09-17 06:42 CEST] — Removal of -Ref and -Doc Parameter Aliases from bootstrap.ps1
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap.ps1`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed obsolete parameter aliases `-Ref` and `-Doc` from comment-based help (`.PARAMETER`), parameter attribute definitions (`[Alias("Ref", "Doc")]`), and `Show-Usage` in `bootstrap.ps1`.
+  - Standardized documentation parameter invocation exclusively on canonical `-Documentation`.
+- **Architectural Rationale & Trade-Offs**:
+  - Prevents parameter clutter and ambiguous switch aliases in the root bootstrap orchestrator.
+- **Verification & Invariants**:
+  - Verified `bootstrap.ps1` syntax and help display.
+  - Passed `python tools/harness/pre_flight.py --quick`.
