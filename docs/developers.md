@@ -217,22 +217,6 @@ Provisions original PDF scans, OEM technical manuals, and archival web articles 
 .\tools\bootstrap\bootstrap.ps1 -Documentation
 ```
 
-> [!TIP]
-> **Fine-Grained Script Parameters:** For advanced control over download destinations, mirror redundancy, and forced cache invalidation, invoke the specialized documentation bootstrapper (`.\tools\bootstrap\bootstrap_documentation.ps1`) directly:
-> - `-List`: Display all cataloged reference documents, target directories, and configured mirror URLs without downloading.
-> - `-All`: Download all reference materials in standard automated failover mode.
-> - `-AllSources` (alias `-AllMirrors`): Download archives from *every* configured mirror simultaneously for archival redundancy.
-> - `-Force`: Force re-download even if matching files already exist on disk.
-> - `-Destination <Path>`: Direct downloads to a custom directory instead of `Obsidian/Amiga/Reference/temp`.
->
-> ```powershell
-> # List the document catalog and verified mirrors:
-> .\tools\bootstrap\bootstrap_documentation.ps1 -List
->
-> # Archive all documents from all mirrors with redundancy:
-> .\tools\bootstrap\bootstrap_documentation.ps1 -All -AllSources
-> ```
-
 <a id="upstream-archival-reference-documents"></a>
 ##### Upstream Archival Reference Documents
 
