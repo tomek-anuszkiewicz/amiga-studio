@@ -1278,3 +1278,20 @@ Every future modification or implementation task must append an entry following 
   - Tested asset crop extraction on Page 20 (`node_00280`), verifying the crop starts cleanly at the top border rule ($Y \approx 91\text{ pt}$) and completely excludes the Table 1-1 caption text above ($Y \le 90.17\text{ pt}$).
   - Tested PIL and PyMuPDF import and execution syntax.
   - Passed `python tools/harness/pre_flight.py --quick`.
+
+### [2026-09-17 15:25 CEST] — Modularized Prime Directives & Removed Code Fences in Table Prompt Example
+- **Affected Subsystems**:
+  - `.agents/rules/prime-directives.md` (created new universal invariant rule for thinking mode and code modifications)
+  - `AGENTS.md` (pointer added to Section 1, keeping constitution under 14,000-byte ceiling)
+  - `.agents/skills/pdf-to-markdown/stages/07_transform_tables/prompt_html_table.md` (removed ```html and ``` fences from output example)
+- **What Was Changed (The Concrete Reality)**:
+  - Extracted Prime Directives (invariant modeling over hardcoded fixes, single-point verification, minimal blast radius, exhaustive workspace search) into a dedicated `.agents/rules/prime-directives.md` file.
+  - Added a concise 1-line pointer under Universal Invariants in `AGENTS.md`, reducing `AGENTS.md` to 13,976 bytes ($\le 14,000$ byte constitutional ceiling).
+  - Removed opening ````html` and closing ```` ` backtick fences from the one-shot example under `## Output Format:` in `prompt_html_table.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates prompt conditioning that previously taught LLMs to wrap HTML tables inside Markdown code blocks (` ```html <table>...</table> ``` `), which prevented Obsidian from rendering native HTML tables.
+  - Maintains strict constitutional byte ceiling and inverted pyramid information hierarchy in `AGENTS.md`.
+- **Verification & Invariants**:
+  - Passed `cargo test -p test_runner --test test_architecture_rules test_rule_files_size_limit_and_truncation_safety`.
+  - Passed `python tools/harness/pre_flight.py --quick` across all gates.
+
