@@ -6617,21 +6617,17 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+### [2026-09-17 04:44 CEST] — Consolidated Reference Sources and Documentation into docs/developers.md
+- **Affected Subsystems**:
+  - `docs/developers.md` (consolidated external reference sources, testbeds, literature, and bootstrap instructions)
+  - `docs/reference_documentation.md` (deleted via `git rm`)
+  - `docs/reference_sources.md` (deleted via `git rm`)
+- **What Was Changed (The Concrete Reality)**:
+  - Merged `docs/reference_sources.md` (testbed definitions, pinned versions, SingleStepTests, vAmiga, vAmigaTS, AmigaTestKit, and `bootstrap_sources.ps1` lifecycle) directly into Section 3 of [`docs/developers.md`](docs/developers.md).
+  - Merged `docs/reference_documentation.md` (ingested reference manuals, archival sources, fallback mirrors, OCR/conversion pipelines, and `bootstrap_documentation.ps1`) directly into Section 4 of [`docs/developers.md`](docs/developers.md).
+  - Harmonized with existing bootstrapping options (`tools/bootstrap/bootstrap.ps1`) and knowledge retrieval tooling (RAG & Graphify) in `developers.md` to present a unified, non-redundant developer handbook.
+  - Deleted standalone `docs/reference_documentation.md` and `docs/reference_sources.md` files via `git rm`.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates fragment sprawl across `docs/` by consolidating all developer-facing reference catalogs, testbeds, literature specs, and bootstrap orchestrations into a single authoritative guide.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.

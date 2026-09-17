@@ -1,6 +1,6 @@
 # Developer Guide & Tooling Index
 
-This document serves as the primary technical entry point for building, testing, verifying, and contributing to the Amiga 500 emulator.
+This document serves as the primary technical entry point for building, testing, verifying, and contributing to the Amiga 500 emulator. It consolidates build workflows, optional bootstrapping, external reference sources, ingested documentation, and knowledge retrieval tools.
 
 ---
 
@@ -18,61 +18,190 @@ cargo build --release -p gui
 
 ---
 
-## 2. Optional Bootstrapping (`tools/bootstrap/bootstrap.ps1`)
+## 2. Optional Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)
 
 Bootstrapping is **strictly optional** and only needed for specialized development tasks:
 
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
 | **Verification Testbed** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
-| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
+| **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Provisions raw reference manuals, OEM technical guides, and PDF scans |
 | **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, technical specs, and design specs |
-| **Reference Scans** | `-Documentation` | External reference scans and manual archives | Provisions raw reference manuals and PDF scans into `temp/` |
+| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
 | **Full Setup** | `-All` | Complete initial development setup | Provisions all primary components (sources -> Graphify AST -> RAG documentation) |
 
 ### Bootstrapper Commands
 
 ```powershell
-# Hardware test vectors verification setup:
+# Hardware test vectors and reference sources setup:
 .\tools\bootstrap\bootstrap.ps1 -Sources
+
+# External reference manuals and PDF scans:
+.\tools\bootstrap\bootstrap.ps1 -Documentation
+
+# Documentation & AI pair-programming (Qdrant RAG) setup:
+.\tools\bootstrap\bootstrap.ps1 -Rag
 
 # Code AST knowledge graph setup:
 .\tools\bootstrap\bootstrap.ps1 -Graphify
 
-# Documentation & AI pair-programming setup:
-.\tools\bootstrap\bootstrap.ps1 -Rag
-
-# External reference manuals and scans:
-.\tools\bootstrap\bootstrap.ps1 -Documentation
-
-# Complete setup (sources -> Graphify AST -> RAG docs):
+# Complete development setup:
 .\tools\bootstrap\bootstrap.ps1 -All
 ```
 
 ---
 
-## 3. Developer Documentation & Verification Subsystems
+## 3. External Reference Sources & Verification Testbeds
 
-- [**Test Suite & Verification Framework**](testing.md): Physical hardware single-step test options (`SINGLESTEP_FULL`, `SINGLESTEP_LIMIT`), Cartesian DMA contention math ($2^k \times 2^M$), vAmigaTS subsystem integration, and CLI regression diagnostics.
-- [**External Reference Sources & Testbeds Guide**](reference_sources.md): Catalog of external repositories (Tom Harte SingleStepTests, vAmiga, vAmigaTS, AmigaTestKit), pinned versions, and automated provisioning.
-- [**Technical Reference Documentation & AI RAG Guide**](reference_documentation.md): Ingested hardware reference manuals, automated reference bootstrapper, raw document conversion toolchain, and local Qdrant RAG search.
+The emulator core validates execution against physical hardware silicon vectors, reference C++ emulators, and golden Amiga test suites. Because these test assets contain multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`, managed by automated provisioning scripts.
+
+### Pinned Upstream Sources Summary
+
+| Repository / Asset | Local Path | Upstream Repository & URL | Pinned Version / Release | Primary Role in Emulator |
+| :--- | :--- | :--- | :--- | :--- |
+| **Tom Harte SingleStepTests** | `ref_src/SingleStepTests-680x0/` | [SingleStepTests/680x0](https://github.com/SingleStepTests/680x0) | **Format v1** (`68000/v1/`), 124 opcode suites | Exhaustive M68000 instruction-level verification captured from physical silicon pins (~1M test vectors) |
+| **vAmiga C++ Emulator** | `ref_src/vAmiga/` | [dirkwhoffmann/vAmiga](https://github.com/dirkwhoffmann/vAmiga) | **Release v4.5** | Clean-room C++ reference implementation for custom chipset timing, bus cycles, and register behavior |
+| **vAmiga Test Suite (vAmigaTS)** | `ref_src/vAmigaTS/` | [dirkwhoffmann/vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) | **`master`** (2,077 test directories) | Whole-machine integration testbed with ADF disk images and golden RGB24 viewport captures from real Amigas |
+| **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.20+** (`AmigaTestKit.adf`) | Bootable diagnostic floppy disk for end-to-end machine loop validation and peripheral stress testing |
+
+### Automated Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)
+
+Invoke via the coordinator:
+```powershell
+.\tools\bootstrap\bootstrap.ps1 -Sources
+```
+
+**Automation Lifecycle Steps:**
+1. **Zip Archive Expansion:** Scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
+2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
+3. **Directory Canonicalization:** Migrates any loose `.json` test suites from `68000/` into the canonical `68000/v1/` directory.
+4. **Presence & Completeness Validation:** Verifies that `SingleStepTests-680x0` contains all 124 test suites, checks for `tools/AmigaTestKit/AmigaTestKit.adf`, and validates `ref_src/vAmiga` and `ref_src/vAmigaTS`.
 
 ---
 
-## 4. Knowledge Retrieval: RAG & Graphify
+## 4. Technical Reference Documentation & Literature
+
+The repository maintains an authoritative, high-fidelity reference library under `Obsidian/Amiga/Reference/`. All primary reference materials are **already converted into structured Markdown specifications and committed directly to the repository**. Developers and AI agents can read, cross-reference, and semantically search these documents immediately without requiring any external downloads.
+
+### Ingested Reference Documents (Available in Repository)
+
+The following primary technical documentation and microarchitectural papers are fully converted into structured Markdown, committed directly to Git, and immediately available:
+
+1. **Hardware Reference Manual (Addison-Wesley 2nd Edition, 1989)**
+   - **Location:** `Obsidian/Amiga/Reference/Hardware Reference Manual/`
+   - **Scope:** Primary reference for Amiga custom chipsets (OCS): Agnus (Copper, Blitter), Denise (Bitplanes, Sprites, Color palette), Paula (Audio DMA, Floppy disk controller), interrupt priority routing, and memory map.
+   - **Provenance:** Based strictly on the Addison-Wesley 2nd Edition (1989) typeset on Commodore Amiga 2500/UX (AMIX), covering pure A500 OCS hardware without ECS contamination.
+
+2. **A500 A2000 Technical Reference Manual (Commodore-Amiga OEM, 1987)**
+   - **Location:** `Obsidian/Amiga/Reference/A500 A2000 Technical Reference Manual/`
+   - **Scope:** Official Commodore OEM engineering manual covering bus timing, Gary gate array logic, system motherboard schematics, expansion bus (Zorro), and bridgeboard signals.
+
+3. **M68000 Programmer's Reference Manual (Motorola Rev 1, 1992)**
+   - **Location:** `Obsidian/Amiga/Reference/68000 Programmer's Reference Manual/`
+   - **Scope:** Authoritative instruction set definitions (68000 core), addressing modes, Condition Code Register (CCR) flag calculations, and execution cycle charts.
+
+4. **M68000 User's Manual (Motorola Rev 8, 1993)**
+   - **Location:** `Obsidian/Amiga/Reference/68000 User's Manual/`
+   - **Scope:** Cycle-by-cycle bus timing diagrams, bus state phases ($S0$–$S7$), read/write cycles, wait states, bus arbitration signals (`BR`, `BG`, `BGACK`), pinouts, and electrical characteristics.
+
+5. **Instruction Prefetch on the Motorola 68000 Processor (Jorge Cwik / Pasti, 2005)**
+   - **Location:** `Obsidian/Amiga/Reference/Instruction Prefetch on the Motorola 68000 Processor.md`
+   - **Scope:** Authoritative microarchitectural prefetch queue study (Version 1.3). Establishes the 68000 two-stage `IR` (Instruction Register) and `IRC` (Instruction Register Capture) pipeline model and timing interactions.
+
+6. **Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis (Jorge Cwik / Pasti)**
+   - **Location:** `Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md`
+   - **Scope:** Cycle-exact algorithmic analysis of 68000 non-restoring integer division. Formulates precise cycle calculations verified against physical silicon test vectors.
+
+7. **Undocumented Features of OCS, ECS and AGA Chipsets (Kuba Winnicki / Achtung! Amiga, 2002)**
+   - **Location:** `Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets.md`
+   - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
+
+### Bootstrapping Raw Archival Sources (`tools/bootstrap/bootstrap_documentation.ps1`)
+
+For developers wishing to inspect original PDF scans, verify raw circuit schematics, or re-run the OCR/conversion toolchain, the automated bootstrapper provisions the original archival source materials:
+
+```powershell
+.\tools\bootstrap\bootstrap.ps1 -Documentation
+```
+
+| Document ID | Reference Asset | Source Format & Details | Upstream Archive |
+| :--- | :--- | :--- | :--- |
+| **`hrm`** | Hardware Reference Manual | 405-page, 600 DPI PDF scan (~30 MB) | Internet Archive (1989 2nd Ed) |
+| **`trm`** | A500 A2000 Technical Reference Manual | 308-page, 200 DPI OEM PDF scan (~30 MB) | Internet Archive (1987 OEM) |
+| **`prm`** | 68000 Programmer's Reference Manual | 646-page vector PDF (~4.5 MB) | Internet Archive / Bitsavers |
+| **`um`** | 68000 User's Manual | 216-page, 601 DPI PDF scan (~10 MB) | Internet Archive / Bitsavers (Rev 8) |
+| **`prefetch`** | Instruction Prefetch on the M68000 | Original HTML article (~20 KB) | Pasti Project / Wayback Machine |
+| **`undocumented`** | Undocumented Features (Achtung! Amiga) | 16-page multi-page HTML crawl | winnicki.net / Wayback Machine |
+
+#### Multi-Source Fallback Matrix & Error Resilience
+
+To guarantee download resilience against link rot, server downtime, and rate limits, every reference item is backed by **2–3 independent, verified online mirrors**:
+
+| Document | Primary Mirror (Verified 200 OK) | Secondary Mirror (Verified 200 OK) | Tertiary / Fallback Mirror |
+| :--- | :--- | :--- | :--- |
+| **`Hardware Reference Manual`** | [Internet Archive (1989 2nd Ed OCS PDF, 405p 600 DPI)](https://archive.org/download/commodore-amiga-hardware-reference-manual-2nd/Commodore_Amiga_Hardware_Reference_Manual_2nd.pdf) | [Internet Archive (1985 1st Ed PDF)](https://archive.org/download/Amiga_Hardware_Reference_Manual_1985_Commodore/Amiga_Hardware_Reference_Manual_1985_Commodore.pdf) | Manual local file drop |
+| **`A500 A2000 Technical Reference Manual`** | [Internet Archive (1987 OEM Clean Scan PDF, 308p 200 DPI)](https://archive.org/download/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore/Commodore_Amiga_A500_A2000_Technical_Reference_Manual_1987_Commodore.pdf) | [Internet Archive (1987 OEM Alternate Scan PDF, 309p)](https://archive.org/download/CommodoreAmigaA500A2000TechnicalReferenceManual/Commodore%20Amiga%20A500-A2000%20Technical%20Reference%20Manual.pdf) | Manual local file drop |
+| **`68000 Programmer's Reference Manual`** | [Internet Archive (M68000PM/AD Rev 1 Vector PDF, 646p)](https://archive.org/download/M68000PRM/M68000PRM.pdf) | [Bitsavers (M68000PM/AD Rev 1 1992 PDF)](https://archive.org/download/bitsavers_motorola68ogrammersReferenceManual1992_2394181/M68000PM_AD_Rev_1_Programmers_Reference_Manual_1992.pdf) | Manual local file drop |
+| **`68000 User's Manual`** | [Internet Archive / Bitsavers (Rev 8 PDF, 601 DPI 216p)](https://archive.org/download/bitsavers_motorola68MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive (Rev 8 Alternate Item)](https://archive.org/download/bitsavers_motorola6868000MicroprocessorUsersManualRev81993_11152468/M68000UM_AD_M68000_Microprocessor_Users_Manual_Rev8_1993.pdf) | [Internet Archive / Bitsavers (Family Reference 1988, 608p)](https://archive.org/download/bitsavers_motorola68rence1988_23248083/M68000_Family_Reference_1988.pdf) |
+| **`Instruction Prefetch`** | [Pasti Project (Original Live Web)](http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2021 Snapshot)](https://web.archive.org/web/20210211153835id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) | [Wayback Machine (2019 Snapshot)](https://web.archive.org/web/20190317072535id_/http://pasti.fxatari.com/68kdocs/68kPrefetch.html) |
+| **`Undocumented features`** | [Achtung! Amiga (Original Live Web)](https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2022 Snapshot)](https://web.archive.org/web/20220330190533id_/https://www.winnicki.net/amiga/achtung/) | [Wayback Machine (2016 Snapshot)](https://web.archive.org/web/20160410052327id_/http://www.winnicki.net/amiga/achtung/) |
+
+#### Multi-Page Web Crawling Engine
+For multi-page web publications, the bootstrapper incorporates an autonomous crawling engine:
+- **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 16 technical subpages (`Copper.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`, `What_is_this_all_about.html`).
+- If the primary live server at `winnicki.net` is unreachable or blocks requests, the crawler automatically switches to the permanent Wayback Machine snapshot mirror.
+
+### Processing Raw Documents into Markdown
+
+When new reference manuals or updated editions are retrieved, use specialized agent skills to convert them into repository-grade Markdown:
+
+1. **PDF Scans to Markdown ([`pdf-to-markdown`](../.agents/skills/pdf-to-markdown/SKILL.md)):**
+   - Leverages Gemini multimodal reasoning to analyze document structure and partition into logical chapters.
+   - Extracts and crops circuit diagrams, register maps, and waveforms into high-resolution PNG/SVG assets.
+   - Stitches multi-page register tables into GitHub-flavored Markdown tables.
+   - Generates Git-tracked multimodal sidecar text files (`<image>.txt`) describing timing diagrams for offline AI inspection.
+
+2. **Web Crawls to Markdown ([`html-to-markdown`](../.agents/skills/html-to-markdown/SKILL.md)):**
+   - Crawls multi-page HTML hierarchies (e.g. Kuba Winnicki's *Achtung! Amiga*).
+   - Strips legacy table formatting, inline styling, and obsolete navigational chrome.
+   - Normalizes cross-chapter hyperlinks into Obsidian internal vault links (`[[Chapter#Section]]`).
+
+---
+
+## 5. Knowledge Retrieval: AI RAG & Code AST Graph
 
 ### A. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
 - **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `amiga`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
+- **Vector Database Architecture:**
+  - Local Qdrant instance on `http://localhost:6333`.
+  - Unified `amiga` collection partitioned by source tags: `amiga` for hardware reference manuals, `obsidian` for architectural design notes.
+  - Local FastEmbed (`BAAI/bge-small-en-v1.5`), 100% offline with zero external cloud API keys required.
+  - Incremental cache `amiga_rag_cache.json` tracks SHA-256 hashes of individual files, reindexing modified documents in $< 1$ second while skipping unchanged files.
 - **Automated Reindexing Trigger ([`amiga-rag.md`](../.agents/rules/amiga-rag.md)):**
-  - Reindexing is **fully automated**: whenever hardware documentation, reference guides, or design notes under `Obsidian/Amiga/` are added, modified, or reorganized, incremental reindexing is triggered automatically without requiring manual execution.
-  - Powered by a local SHA-256 hash cache (`amiga_rag_cache.json`), re-indexing verifies unchanged files instantly (< 1s) and embeds only modified text.
-- **Trusted Data Boundary & Provenance:**
-  - The local RAG vector store and Graphify AST graphs operate exclusively on a trusted local boundary.
-  - Only authoritative Commodore/Motorola hardware reference manuals and internal design specs should be placed in `Obsidian/Amiga/`.
-  - Pinned upstreams in `tools/bootstrap.ps1` and strict architectural isolation between guest 68000 emulation and host LLM prompting prevent indirect prompt injection risks.
-- **Query Tools & Manual Override:**
+  - Reindexing is **fully automated**: whenever hardware documentation, reference guides, or design notes under `Obsidian/Amiga/` are added, modified, or reorganized, incremental reindexing is triggered automatically.
+- **Provisioning & Manual Reindexing:**
+  ```powershell
+  # Set up Qdrant Docker container and index all documentation:
+  .\tools\bootstrap\bootstrap.ps1 -Rag
+
+  # Or trigger incremental reindexing directly:
+  .\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga/Reference" --source amiga
+  .\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga/Design" --source obsidian
+  ```
+- **Query Tools & FastMCP:**
   - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "obsidian"])`.
-  - Manual / interactive CLI runner: `.\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga" --source amiga`.
+  - Fast CLI search across hardware manuals:
+    ```powershell
+    python tools/harness/rag_search.py "Agnus blitter line mode minterm" --source amiga
+    ```
+  - Fast CLI search across architectural design specs:
+    ```powershell
+    python tools/harness/rag_search.py "Color Clock CCK phases memory bus wait states" --source obsidian
+    ```
+  - Check database status and document count:
+    ```powershell
+    python tools/rag/rag_qdrant/cli.py status
+    ```
 
 ### B. Code Structure & Relationships: AST Knowledge Graph (`graphify`)
 - **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:
@@ -81,9 +210,15 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 - **Incremental Knowledge Graph Updates ([`graphify.md`](../.agents/rules/graphify.md)):**
   - Graphify maintains an AST cache that extracts only modified files in 1–2 seconds without LLM calls.
   - After modifications to code in `crates/` or `ref_src/`, run `graphify update .` from the repository root (or via `.\tools\bootstrap\bootstrap.ps1 -Graphify`).
-  - This keeps a single unified knowledge graph in `graphify-out/` connecting active emulator crates and reference implementations.
+  - Keeps a single unified knowledge graph in `graphify-out/` connecting active emulator crates and reference implementations.
 - **Query Tools:**
   - `graphify query "<question>"`: Query symbol dependencies, call hierarchies, and architectural boundaries.
   - `graphify path "<A>" "<B>"`: Trace the shortest dependency or call path between two types or functions.
   - `graphify explain "<concept>"`: Extract a focused subgraph explaining a subsystem or module.
 
+---
+
+## 6. Verification & Test Suite
+
+For detailed instructions on running single-step CPU tests, Cartesian DMA contention suites, and regression testing, refer to:
+👉 [**Test Suite & Verification Framework**](testing.md)
