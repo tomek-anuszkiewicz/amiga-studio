@@ -6459,6 +6459,17 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:12 CEST] — Pruned Direct bootstrap_sources Script Invocation from Reference Sources Guide
+- **Affected Subsystems**:
+  - `docs/reference_sources.md` (removed direct `.\tools\bootstrap\bootstrap_sources.ps1` command snippet)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the alternative direct invocation example of `bootstrap_sources.ps1`, promoting `.\tools\bootstrap\bootstrap.ps1 -Sources` as the single canonical command for provisioning external sources.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates redundant script commands and steers developers and agents toward the unified bootstrap coordinator `tools/bootstrap/bootstrap.ps1`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 

@@ -31,11 +31,6 @@ Invoke via the central bootstrap coordinator:
 .\tools\bootstrap\bootstrap.ps1 -Sources
 ```
 
-Or run the dedicated sources bootstrapper directly:
-```powershell
-.\tools\bootstrap\bootstrap_sources.ps1
-```
-
 ### Automation Lifecycle Steps
 1. **Zip Archive Expansion:** Automatically scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
 2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
