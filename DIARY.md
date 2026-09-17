@@ -1295,3 +1295,17 @@ Every future modification or implementation task must append an entry following 
   - Passed `cargo test -p test_runner --test test_architecture_rules test_rule_files_size_limit_and_truncation_safety`.
   - Passed `python tools/harness/pre_flight.py --quick` across all gates.
 
+### [2026-09-17 15:30 CEST] — Codified Prohibition of Unsolicited Code Changes in Prime Directives
+- **Affected Subsystems**:
+  - `.agents/rules/prime-directives.md` (added Section 4: Explicit Request Before Modification)
+  - `AGENTS.md` (updated Prime Directives summary pointer)
+- **What Was Changed (The Concrete Reality)**:
+  - Added Section 4 to `.agents/rules/prime-directives.md` mandating that the agent must never begin writing code, modifying files, or applying refactorings unless directly and explicitly instructed by the user.
+  - Restricted the agent's actions during investigatory questions, bug analysis, and design discussions strictly to analysis, inspection, architectural explanation, and plan creation.
+- **Architectural Rationale & Trade-Offs**:
+  - Prevents agents from prematurely editing codebase files on exploratory questions or speculative fixes before the user has aligned on the approach.
+- **Verification & Invariants**:
+  - Verified pre-flight quality gates (`python tools/harness/pre_flight.py --quick`).
+  - Verified `AGENTS.md` remains strictly within constitutional ceiling at 13,961 bytes ($\le 14,000$ bytes).
+
+
