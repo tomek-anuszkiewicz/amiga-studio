@@ -79,16 +79,57 @@ cargo test -p test_runner --test test_architecture_rules
 
 The `test_runner` crate provides a standalone CLI tool for inspecting coverage matrices, live failure diagnostics, and detecting regressions:
 
+> [!TIP]
+> Running `cargo run -p test_runner` without arguments (or with `--help`) prints the complete usage manual and available command options. You do not need to look up every flag combination manually.
+
 ```powershell
-# Display global pass/fail matrix and coverage summary across all opcodes
+# Display global pass/fail matrix and coverage summary across all opcodes:
 cargo run -p test_runner -- --summary
 
-# Detect regressions and fixed tests compared to previous run
+# Detect regressions and fixed tests compared to previous run:
 cargo run -p test_runner -- --diff
 
-# Execute a single opcode suite directly with live diagnostic failure output
+# Execute a single opcode suite directly with live diagnostic failure output:
 cargo run -p test_runner -- --suite ADD.b
 ```
 
 - 🔴 **Regressions:** Tests that previously passed but now fail are highlighted with `⚠️ [REGRESSION DETECTED]`.
 - 🟢 **Improvements:** Tests that previously failed but now pass are highlighted with `🎉 [PROGRESS / FIX]`.
+
+---
+
+## 5. vAmigaTS Subsystem & Whole-Machine Verification (Preview)
+
+While whole-machine integration is part of a subsequent roadmap phase, the repository already features an integrated test harness and execution runner for the **vAmiga Test Suite (vAmigaTS)** (`ref_src/vAmigaTS/`), validating custom chipset behavior against golden 716×285 24-bit RGB `.raw` viewport captures.
+
+### A. Subsystem Integration Test Suites
+Dedicated Cargo integration tests in `crates/test_runner/tests/` exercise specific custom chip components against targeted vAmigaTS test cases:
+```powershell
+# Verify Copper coprocessor timing:
+cargo test -p test_runner --test test_vamiga_copper
+
+# Verify Blitter DMA and line drawing:
+cargo test -p test_runner --test test_vamiga_blitter
+
+# Verify Denise display window (DIW) clipping:
+cargo test -p test_runner --test test_vamiga_denise
+
+# Verify Paula audio channels and interrupts:
+cargo test -p test_runner --test test_vamiga_paula
+```
+
+### B. Interactive CLI Runner
+Execute vAmigaTS tests directly via the test runner CLI:
+```powershell
+# Execute a specific test by name with live pixel diff reporting:
+cargo run -p test_runner -- vamiga --test coptim1
+
+# Filter by custom chip category (e.g. Copper, Blitter, Denise, Paula):
+cargo run -p test_runner -- vamiga --category Copper
+
+# Inspect deferred test suites and roadmap requirements:
+cargo run -p test_runner -- vamiga --list-deferred
+```
+
+> [!TIP]
+> Pass `--help` to the runner (`cargo run -p test_runner -- --help`) or invoke it without parameters to inspect all available options, category filters, and frame limits.

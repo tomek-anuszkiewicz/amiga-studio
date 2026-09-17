@@ -6548,6 +6548,19 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:30 CEST] — Documented vAmigaTS Verification Preview & CLI Help Guidance
+- **Affected Subsystems**:
+  - `docs/testing.md` (added Section 5 on vAmigaTS subsystem and CLI verification preview, added self-discovery `--help` tips)
+- **What Was Changed (The Concrete Reality)**:
+  - Added Section 5 detailing vAmigaTS test integration:
+    1. Subsystem integration test suites in Cargo (`test_vamiga_copper`, `test_vamiga_blitter`, `test_vamiga_denise`, `test_vamiga_paula`).
+    2. Interactive test runner CLI (`cargo run -p test_runner -- vamiga [OPTIONS]`).
+  - Added tips across sections highlighting that executing `cargo run -p test_runner` without arguments or passing `--help` outputs the complete usage manual and available options, eliminating the need to memorize flag combinations.
+- **Architectural Rationale & Trade-Offs**:
+  - Previews future whole-machine verification capabilities that already exist in the codebase without premature roadmap completion claims, providing contributors and agents with immediate discoverability.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
 
 
 
