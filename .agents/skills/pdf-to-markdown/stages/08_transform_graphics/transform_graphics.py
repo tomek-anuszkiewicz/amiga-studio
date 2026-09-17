@@ -115,17 +115,18 @@ def process_graphics(workspace_dir: Path, config: dict):
         graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
 
         # Check for genuine figure caption from raw_text or separate caption nodes
-        fig_match = re.search(r"(Figure\s+\d+[\-\.]\d+[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
+        fig_match = re.search(r"(Figure\s+[A-Z0-9]+(?:[\-\.][A-Z0-9]+)?[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
         genuine_caption = fig_match.group(1).strip() if fig_match else None
         if not genuine_caption and raw_text.strip():
-            fig_lines = [l.strip() for l in raw_text.splitlines() if l.strip().lower().startswith("figure")]
+            fig_lines = [l.strip() for l in raw_text.splitlines() if re.match(r"^Figure\s+[A-Z0-9]", l.strip(), re.IGNORECASE)]
             if fig_lines:
                 genuine_caption = fig_lines[0]
         if genuine_caption:
             genuine_caption = re.sub(r"[\[\]|]", "", genuine_caption)
 
         # Metadata title strictly for RAG sidecar (never injected as visible body text if absent from book)
-        sidecar_title = genuine_caption or (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
+        node_meta_caption = node.get("metadata", {}).get("caption")
+        sidecar_title = genuine_caption or node_meta_caption or (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
         sidecar_title = re.sub(r"[\[\]|]", "", sidecar_title)
 
         if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:

@@ -1629,3 +1629,19 @@ Every future modification or implementation task must append an entry following 
   - Both Instruction Prefetch and Undocumented Features converted with 100% cache hits (0 API calls)
   - validate_links.py confirmed 0 errors across 43 links
   - pre_flight.py passed
+---
+
+### [2026-09-17 22:54 CEST] — Prevent Artificial Figure Caption Generation for Cover and Graphic Nodes
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `tooling`
+- **What Was Changed (The Concrete Reality)**:
+  - In segment_page.py, removed artificial 'Figure: ' prefix synthesis on full-page graphics/covers
+  - store description in metadata['caption'] and keep raw_text empty
+  - In transform_graphics.py, strengthened figure caption matching to require actual figure identifiers and use node metadata caption for RAG sidecar title
+  - Cleaned up 00 - Front Cover.md to render pure image embed without synthetic figure caption
+- **Architectural Rationale & Trade-Offs**:
+  - Full-page covers and uncaptioned artwork lack printed figure numbers in source books. Synthesizing 'Figure: ' into raw_text caused downstream stage 08 to mistake it for a genuine printed caption
+  - generating redundant italicized body text below the image.
+- **Verification & Test Results**:
+  - Passed unit tests across all workspace crates (23 crates + 7 runner suites). Clean image embed rendered in 00 - Front Cover.md.

@@ -80,7 +80,8 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
                     "bbox": bbox,
                     "bbox_norm": g_bbox_norm,
                     "heading_level": None,
-                    "raw_text": ""
+                    "raw_text": "",
+                    "metadata": {"caption": caption}
                 }]
         return []
 
@@ -99,7 +100,6 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
     if isinstance(classifications, dict):
         if classifications.get("is_full_page_graphic", False):
             graphic_caption = classifications.get("graphic_caption") or "Book Cover Illustration"
-            caption_text = f"Figure: {graphic_caption}" if not graphic_caption.lower().startswith("figure") else graphic_caption
             print(f"[*] Page {page_num}: Detected full-page cover graphic ('{graphic_caption}'). Suppressing individual text blocks.")
             return [{
                 "segment_id": f"page_{page_num:04d}_seg_001",
@@ -108,7 +108,8 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
                 "bbox": [0.0, 0.0, round(page_w, 2), round(page_h, 2)],
                 "bbox_norm": [0.0, 0.0, 1.0, 1.0],
                 "heading_level": None,
-                "raw_text": caption_text
+                "raw_text": "",
+                "metadata": {"caption": graphic_caption}
             }]
         items = classifications.get("segments", [])
     elif isinstance(classifications, list):
