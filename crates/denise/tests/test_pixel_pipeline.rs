@@ -298,3 +298,32 @@ fn test_scanline_end_cck_226_pixels_termination() {
     assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 6, 50), red_argb);
     assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 7, 50), red_argb);
 }
+
+#[test]
+fn test_scanline_end_open_diw_renders_bitplanes() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.set_bplcon0(0x1200); // 1 bitplane, low-res
+    denise.set_color(0, 0xF00); // Red backdrop
+    denise.set_color(1, 0x0F0); // Green foreground
+    denise.frame_builder.dma_enabled = true;
+    denise.write_bpldat(0, 0xFFFF); // Armed with solid 1s
+    assert!(denise.bpl_armed);
+
+    // DIW open from hstart=0x02 to hstop=0x1C8 (> 0x1C7, does not close within scanline)
+    denise.set_diw(0x2C02, 0x2CC8);
+
+    // Step to start of line, then arm bitplanes with solid 1s
+    denise.step_cck(config::BeamPosition::new(0, 50, false));
+    denise.write_bpldat(0, 0xFFFF);
+    assert!(denise.bpl_armed);
+
+    // Step to CCK 224 to trigger shifter reload (224 % 8 == 0)
+    denise.step_cck(config::BeamPosition::new(224, 50, false));
+    let beam_end = config::BeamPosition::new(226, 50, false);
+    denise.step_cck(beam_end);
+
+    let green_argb = frame_builder::rgb444_to_argb32(0x0F0);
+    // Because DIW remained open, trailing pixels 910 and 911 must render active bitplanes
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 6, 50), green_argb);
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 7, 50), green_argb);
+}

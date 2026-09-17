@@ -428,8 +428,36 @@ impl Denise {
                     };
                     self.frame_builder.set_pixel(cck_base_x + 4, y, px4);
                     self.frame_builder.set_pixel(cck_base_x + 5, y, px5);
-                    self.frame_builder.set_pixel(cck_base_x + 6, y, backdrop);
-                    self.frame_builder.set_pixel(cck_base_x + 7, y, backdrop);
+
+                    let (px6, px7) = if self.hflop && vflop {
+                        if hires {
+                            let p4 = self.shift_pixel();
+                            let p5 = self.shift_pixel();
+                            let px6 = if p4 != 0 {
+                                frame_builder::rgb444_to_argb32(self.decode_pixel(p4))
+                            } else {
+                                backdrop
+                            };
+                            let px7 = if p5 != 0 {
+                                frame_builder::rgb444_to_argb32(self.decode_pixel(p5))
+                            } else {
+                                backdrop
+                            };
+                            (px6, px7)
+                        } else {
+                            let p2 = self.shift_pixel();
+                            if p2 != 0 {
+                                let argb = frame_builder::rgb444_to_argb32(self.decode_pixel(p2));
+                                (argb, argb)
+                            } else {
+                                (backdrop, backdrop)
+                            }
+                        }
+                    } else {
+                        (backdrop, backdrop)
+                    };
+                    self.frame_builder.set_pixel(cck_base_x + 6, y, px6);
+                    self.frame_builder.set_pixel(cck_base_x + 7, y, px7);
                     self.pipeline_pixels_valid = [false, false];
                 }
             } else {

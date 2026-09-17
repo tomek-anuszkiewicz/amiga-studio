@@ -6174,3 +6174,20 @@ Every future modification or implementation task must append an entry following 
   - `vAmigaTS` whole-machine verification suite (`test_runner vamiga --category all`): Overall passing test count climbed from **90 to 94 tests (6.40% pass rate)** with zero regressions.
   - Denise category broke its 0% barrier, unlocking 100% RGB passes on `diwtim1` and `diwtim2` alongside near-zero residual pixel divergences on `minmax` (4 pixels), `diwtim0` (10 pixels), `diwtim1b` (10 pixels), and `diwtim2b` (10 pixels).
   - `cargo fmt --all -- --check` and `cargo test -p test_runner --test test_architecture_rules` passed cleanly.
+
+---
+
+### [2026-09-17 22:05 CEST] — Denise: Open Display Window Scanline Extension & Milestone 100 vAmigaTS Passes
+- **Affected Subsystems**:
+  - `crates/denise/src/denise.rs`: In `step_cck()` at `beam.hpos == 226`, conditioned CCK 227 trailing pixels 910 and 911 on post-comparator flip-flop state `self.hflop && vflop`. When DIWSTOP exceeds the maximum scanline counter limit ($0x1C7$), the horizontal comparator never matches, leaving the display window open. Shifted bitplane pixels (low-res / high-res) are now correctly serialized onto pixels 910 and 911 instead of unconditionally defaulting to backdrop.
+  - `crates/denise/tests/test_pixel_pipeline.rs`: Added dedicated unit test `test_scanline_end_open_diw_renders_bitplanes()` asserting that an open DIW (`HSTOP > 0x1C7`) renders active bitplane pixels on pixels 910 and 911.
+- **What Was Changed (The Concrete Reality)**:
+  - Completely resolved the remaining 4–10 pixel divergences across the `diwtim*` and `minmax` test suites.
+  - Replaced the pre-comparator `in_diw1` condition with post-c1 `self.hflop && vflop`, ensuring scanlines where `hstop <= 0x1C7` close cleanly to backdrop, while scanlines with `hstop > 0x1C7` continue rendering foreground graphics into the border area.
+- **Verification & Test Results**:
+  - `minmax`: Passed with **100% pixel match** (204,060 pixels).
+  - `diwtim0`, `diwtim1b`, `diwtim2b`: Passed with **100% pixel match** (all 6 tests in cluster now 100% green).
+  - `diw11`, `diw2`: Passed with **100% pixel match**.
+  - `vAmigaTS` whole-machine verification suite (`test_runner vamiga --category all`): Overall passing test count reached **100 PASSED TESTS (6.81% pass rate, 100 / 1468)**, with zero regressions.
+  - All 10 unit tests in `crates/denise/tests/test_pixel_pipeline.rs` passed.
+  - `cargo fmt --all -- --check` and `cargo test -p test_runner --test test_architecture_rules` passed cleanly.
