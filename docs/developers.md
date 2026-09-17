@@ -242,6 +242,12 @@ Automates downloading, unpacking, decompressing, and validating external test as
 - Verifies the presence of `ref_src/vAmiga/` (C++ reference emulator), `ref_src/vAmigaTS/` (2,077 golden viewport tests), and `tools/AmigaTestKit/AmigaTestKit.adf`.
 - Full details on extraction rules and directory structure are documented in [Chapter 2: Reference Sources Lifecycle & Extraction](#reference-sources-lifecycle-steps).
 
+> [!TIP]
+> **Fine-Grained Execution:** When you need direct execution, testing, or pipeline debugging without invoking the coordinator wrapper, invoke the dedicated sources bootstrapper directly:
+> ```powershell
+> .\tools\bootstrap\bootstrap_sources.ps1
+> ```
+
 <a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a><a id="archival-documentation-provisioning-documentation"></a>
 #### 2. Archival Reference Documentation Provisioning (`-Documentation`)
 
@@ -250,6 +256,22 @@ Provisions original PDF scans, OEM technical manuals, and archival web articles 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Documentation
 ```
+
+> [!TIP]
+> **Fine-Grained Script Parameters:** For advanced control over download destinations, mirror redundancy, and forced cache invalidation, invoke the specialized documentation bootstrapper (`.\tools\bootstrap\bootstrap_documentation.ps1`) directly:
+> - `-List`: Display all cataloged reference documents, target directories, and configured mirror URLs without downloading.
+> - `-All`: Download all reference materials in standard automated failover mode.
+> - `-AllSources` (alias `-AllMirrors`): Download archives from *every* configured mirror simultaneously for archival redundancy.
+> - `-Force`: Force re-download even if matching files already exist on disk.
+> - `-Destination <Path>`: Direct downloads to a custom directory instead of `Obsidian/Amiga/Reference/temp`.
+>
+> ```powershell
+> # List the document catalog and verified mirrors:
+> .\tools\bootstrap\bootstrap_documentation.ps1 -List
+>
+> # Archive all documents from all mirrors with redundancy:
+> .\tools\bootstrap\bootstrap_documentation.ps1 -All -AllSources
+> ```
 
 <a id="upstream-archival-reference-documents"></a>
 ##### Upstream Archival Reference Documents
@@ -298,6 +320,23 @@ Provisions and indexes the local vector database for AI-assisted pair-programmin
 - Maintains `amiga_rag_cache.json` for fast sub-second incremental reindexing.
 - For query tools, CLI commands, and FastMCP details, see [Chapter 5: Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag).
 
+> [!TIP]
+> **Fine-Grained CLI Parameters:** For granular control over vector indexing, directory filtering, and database inspection, use the specialized RAG CLI (`.\tools\rag\bin\amiga_rag.ps1` or `python tools/rag/rag_qdrant/cli.py`):
+> - `--source <NAME>`: Target partition (`amiga` for hardware reference manuals, `obsidian` for architectural design notes).
+> - `--exclude <PATTERNS>`: Exclude directories or file patterns (e.g. `_Private`, `temp`).
+> - `--include-dirs <DIRS>`: Restrict indexing to specific subdirectories (e.g. `'01*' '02*'`).
+> - `--reindex`: Force full re-indexing of all documents, ignoring the SHA-256 incremental cache.
+> - `--list-sources`: Display a summary table of all indexed sources with document and vector counts.
+> - `--status`: Inspect Qdrant database connectivity and total collection size.
+>
+> ```powershell
+> # Inspect Qdrant database status and vector counts:
+> .\tools\rag\bin\amiga_rag.ps1 --status
+>
+> # Force full re-indexing of a specific reference manual directory:
+> .\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga/Reference" --source amiga --reindex
+> ```
+
 <a id="code-knowledge-graph-setup-graphify"></a>
 #### 4. Code Knowledge Graph Setup (`-Graphify`)
 
@@ -312,6 +351,23 @@ Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active 
 - Maps structs, functions, modules, and cross-codebase dependencies into `graphify-out/`.
 - Enables cross-codebase structural queries, call hierarchies, and architectural validation.
 - For query tools and incremental update commands, see [Chapter 6: Code Structure & Relationships: Graphify](#6-code-structure-relationships-graphify).
+
+> [!TIP]
+> **Fine-Grained CLI Parameters:** For detailed control over AST extraction, graph inspection, and semantic queries, use the specialized `graphify` CLI directly:
+> - `graphify update .`: Incrementally re-scan and index only modified files in 1–2 seconds.
+> - `graphify extract <PATH> --code-only`: Headless local AST extraction without requiring external LLM API keys.
+> - `graphify query "<QUESTION>"`: Query symbol dependencies, call hierarchies, and architectural boundaries.
+> - `graphify path "<A>" "<B>"`: Trace the shortest dependency or call path between two types or functions.
+> - `graphify explain "<CONCEPT>"`: Extract a focused subgraph explaining a module or subsystem.
+> - `graphify export [html|obsidian|wiki]`: Export interactive D3 visualizations, Obsidian canvas notes, or wiki articles.
+>
+> ```powershell
+> # Fast incremental AST update after editing crates:
+> graphify update .
+>
+> # Query call hierarchy and symbol relationships:
+> graphify query "How is Agnus connected to the CPU bus?"
+> ```
 
 ---
 
