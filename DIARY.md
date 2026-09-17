@@ -1690,3 +1690,19 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - py_compile passed cleanly
   - cargo fmt passed cleanly
+---
+
+### [2026-09-18 01:32 CEST] — Classify Multi-Column Instruction Banners as Tables in Stage 02
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `stage-02`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated stages/02_page_segmentation/prompt.md to explicitly classify multi-column horizontal instruction header banners as table rather than heading
+- **Architectural Rationale & Trade-Offs**:
+  - Prevents parallel column instruction banners (mnemonics
+  - titles
+  - variants) from getting mashed into distorted single-line headings
+  - routing them to the tabular transformation stage
+- **Verification & Test Results**:
+  - Updated stage 02 prompt specification
+  - manual PDF regeneration deferred per user instruction
