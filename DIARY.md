@@ -1392,3 +1392,21 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Dry-run tested triage on Section 2.2.7 asset (asset_node_01050.png) verifying clean classification to Mermaid
   - dry-run tested triage and ASCII generation on Figure 1-5 asset (asset_node_00224.png) verifying classification to ascii_art and generating a compact 3-line box with clean Markdown breakdown table. All 18 core architecture rules tests passed.
+---
+
+### [2026-09-17 16:21 CEST] — Enforce Theme-Adaptive Table Invariant and Dark Mode Styling
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `stages/07_transform_tables`
+  - `reference_manuals`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated stages/07_transform_tables/prompt.md with Section 4 Theme-Adaptive Styling and Zero Hardcoded Colors
+  - Updated stages/07_transform_tables/prompt_html_table.md to prohibit legacy border=1 and hardcoded color values
+  - Replaced border=1 and border: 1px solid black with var(--table-border-color, currentColor) in Table 1-4, 1-5, and 1-6 of Section 1 Introduction
+- **Architectural Rationale & Trade-Offs**:
+  - Hardcoding border: 1px solid black and border=1 in generated HTML breaks Obsidian dark theme by rendering pitch-black cell dividers and high-contrast white outer bevels
+  - Enforcing theme variables guarantees dark/light mode visual fidelity and preserves 100% tokenized text structure for RAG vector retrieval
+- **Verification & Test Results**:
+  - Cleaned up Tables 1-4, 1-5, and 1-6 with zero remaining hardcoded borders
+  - Pre-flight quick checks passed
+  - All 18 core architecture rules tests passed
