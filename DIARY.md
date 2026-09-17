@@ -6110,3 +6110,19 @@ Every future modification or implementation task must append an entry following 
   - Junction audit script verified `LinkType=''` across all asset paths in `Amiga`, `amiga-bootstrap`, and `Amiga-OCS`.
   - Quality gates passed cleanly: `python tools/harness/pre_flight.py` (Formatting, AGENTS.md size limit, API coverage, architecture rules).
   - CPU test suite passed: `cargo test -p m68000` (100% pass).
+
+---
+
+### [2026-09-17 02:05 CEST] — Tooling: Parallelize Stage 01 Gemini Vision OCR via ThreadPoolExecutor
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown/stages/01_preprocess/detect_and_ocr.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Parallelized scanned and text-deficient page processing in `detect_and_ocr_pages()` using `ThreadPoolExecutor` and `as_completed`, respecting the `concurrency` setting from `config.yaml` (`llm.concurrency`).
+  - Separated initial scan detection / qualification into a fast metadata pass, building an in-memory task queue of pages requiring Gemini Vision OCR.
+  - Fixed an unbound variable bug where visual fallback error handling referenced `page_json_path` instead of `jf`.
+- **Architectural Rationale & Trade-Offs**:
+  - Previously, `detect_and_ocr_pages()` ran sequentially page-by-page, creating high latency when running across multiple scanned pages. Now, OCR requests are dispatched concurrently up to `concurrency` (default 8), matching later pipeline stages.
+- **Verification & Test Results**:
+  - Verified Python compilation (`python -m py_compile .agents/skills/pdf-to-markdown/stages/01_preprocess/detect_and_ocr.py`).
+  - Ran pre-flight verification gate (`python tools/harness/pre_flight.py` — Formatting, AGENTS.md ceiling, API coverage, and architecture rules 100% passed).
+
