@@ -7,6 +7,31 @@ This document serves as the primary technical entry point for building, testing,
 
 ---
 
+## Table of Contents
+
+- [1. Zero-Setup Build & Execution](#1-zero-setup-build-execution)
+- [2. Optional Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)](#2-optional-bootstrapping-overview)
+  - [Bootstrapper Commands](#bootstrapper-commands)
+- [3. External Reference Sources & Verification Testbeds](#3-external-reference-sources-verification-testbeds)
+  - [Pinned Upstream Sources Summary](#pinned-upstream-sources-summary)
+  - [Automated Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)
+- [4. Technical Reference Documentation & Literature](#4-technical-reference-documentation-literature)
+  - [Ingested Reference Documents](#ingested-reference-documents-available-in-repository)
+  - [Bootstrapping Raw Archival Sources](#bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1)
+  - [Processing Raw Documents into Markdown](#processing-raw-documents-into-markdown)
+- [5. Knowledge Retrieval: AI RAG & Code AST Graph](#5-knowledge-retrieval-ai-rag-code-ast-graph)
+  - [A. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#a-domain-hardware-knowledge-local-vector-rag-amiga-rag)
+  - [B. Code Structure & Relationships: AST Knowledge Graph (`graphify`)](#b-code-structure-relationships-ast-knowledge-graph-graphify)
+- [6. Test Suite & Verification Framework](#6-test-suite-verification-framework)
+  - [A. M68000 SingleStepTests (Silicon Verification)](#a-m68000-singlesteptests-physical-hardware-silicon-verification)
+  - [B. Cartesian DMA Contention Verification](#b-cartesian-dma-contention-verification)
+  - [C. Automated Architecture Rules Compliance](#c-automated-architecture-rules-compliance)
+  - [D. CLI Diagnostic Tools & Regression Tracking](#d-cli-diagnostic-tools-regression-tracking)
+  - [E. vAmigaTS Subsystem & Whole-Machine Verification](#e-vamigats-subsystem-whole-machine-verification-preview)
+
+---
+
+<a id="1-zero-setup-build-execution"></a><a id="1-zero-setup-build--execution"></a>
 ## 1. Zero-Setup Build & Execution
 
 A freshly cloned repository is **100% self-contained for compilation and execution** using the standard stable Rust toolchain ([rustup.rs](https://rustup.rs)). No bootstrapping, external downloads, or database services are required to build and run the emulator:
@@ -21,6 +46,7 @@ cargo build --release -p gui
 
 ---
 
+<a id="2-optional-bootstrapping-overview"></a><a id="2-optional-bootstrapping-overview-toolsbootstrapbootstrapps1"></a>
 ## 2. Optional Bootstrapping Overview (`tools/bootstrap/bootstrap.ps1`)
 
 Bootstrapping is **strictly optional** and only needed for specialized development tasks:
@@ -33,6 +59,7 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 | **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
 | **Full Setup** | `-All` | Complete initial development setup | Provisions all primary components (sources -> Graphify AST -> RAG documentation) |
 
+<a id="bootstrapper-commands"></a>
 ### Bootstrapper Commands
 
 ```powershell
@@ -54,10 +81,12 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 
 ---
 
+<a id="3-external-reference-sources-verification-testbeds"></a><a id="3-external-reference-sources--verification-testbeds"></a>
 ## 3. External Reference Sources & Verification Testbeds
 
 The emulator core validates execution against physical hardware silicon vectors, reference C++ emulators, and golden Amiga test suites. Because these test assets contain multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`, managed by automated provisioning scripts.
 
+<a id="pinned-upstream-sources-summary"></a>
 ### Pinned Upstream Sources Summary
 
 | Repository / Asset | Local Path | Upstream Repository & URL | Pinned Version / Release | Primary Role in Emulator |
@@ -67,6 +96,7 @@ The emulator core validates execution against physical hardware silicon vectors,
 | **vAmiga Test Suite (vAmigaTS)** | `ref_src/vAmigaTS/` | [dirkwhoffmann/vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) | **`master`** (2,077 test directories) | Whole-machine integration testbed with ADF disk images and golden RGB24 viewport captures from real Amigas |
 | **Amiga Test Kit** | `tools/AmigaTestKit/AmigaTestKit.adf` | [keirf/amiga-stuff](https://github.com/keirf/amiga-stuff) | **Release v1.20+** (`AmigaTestKit.adf`) | Bootable diagnostic floppy disk for end-to-end machine loop validation and peripheral stress testing |
 
+<a id="automated-provisioning-toolsbootstrapbootstrap_sourcesps1"></a>
 ### Automated Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)
 
 Invoke via the coordinator:
@@ -82,10 +112,12 @@ Invoke via the coordinator:
 
 ---
 
+<a id="4-technical-reference-documentation-literature"></a><a id="4-technical-reference-documentation--literature"></a>
 ## 4. Technical Reference Documentation & Literature
 
 The repository maintains an authoritative, high-fidelity reference library under `Obsidian/Amiga/Reference/`. All primary reference materials are **already converted into structured Markdown specifications and committed directly to the repository**. Developers and AI agents can read, cross-reference, and semantically search these documents immediately without requiring any external downloads.
 
+<a id="ingested-reference-documents-available-in-repository"></a>
 ### Ingested Reference Documents (Available in Repository)
 
 The following primary technical documentation and microarchitectural papers are fully converted into structured Markdown, committed directly to Git, and immediately available:
@@ -119,6 +151,7 @@ The following primary technical documentation and microarchitectural papers are 
    - **Location:** `Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets.md`
    - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
 
+<a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a>
 ### Bootstrapping Raw Archival Sources (`tools/bootstrap/bootstrap_documentation.ps1`)
 
 For developers wishing to inspect original PDF scans, verify raw circuit schematics, or re-run the OCR/conversion toolchain, the automated bootstrapper provisions the original archival source materials:
@@ -154,6 +187,7 @@ For multi-page web publications, the bootstrapper incorporates an autonomous cra
 - **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 16 technical subpages (`Copper.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`, `What_is_this_all_about.html`).
 - If the primary live server at `winnicki.net` is unreachable or blocks requests, the crawler automatically switches to the permanent Wayback Machine snapshot mirror.
 
+<a id="processing-raw-documents-into-markdown"></a>
 ### Processing Raw Documents into Markdown
 
 When new reference manuals or updated editions are retrieved, use specialized agent skills to convert them into repository-grade Markdown:
@@ -171,8 +205,10 @@ When new reference manuals or updated editions are retrieved, use specialized ag
 
 ---
 
+<a id="5-knowledge-retrieval-ai-rag-code-ast-graph"></a><a id="5-knowledge-retrieval-ai-rag--code-ast-graph"></a>
 ## 5. Knowledge Retrieval: AI RAG & Code AST Graph
 
+<a id="a-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a>
 ### A. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
 - **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `amiga`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
 - **Vector Database Architecture:**
@@ -206,6 +242,7 @@ When new reference manuals or updated editions are retrieved, use specialized ag
     python tools/rag/rag_qdrant/cli.py status
     ```
 
+<a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a><a id="b-code-structure--relationships-ast-knowledge-graph-graphify"></a>
 ### B. Code Structure & Relationships: AST Knowledge Graph (`graphify`)
 - **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:
   - **Active Emulator Crates (`crates/`):** Core Rust workspace (`m68000`, `memory_bus`, `debugger`, `gui`, `config`, `rtc`, `test_runner`).
@@ -221,10 +258,12 @@ When new reference manuals or updated editions are retrieved, use specialized ag
 
 ---
 
+<a id="6-test-suite-verification-framework"></a><a id="6-test-suite--verification-framework"></a>
 ## 6. Test Suite & Verification Framework
 
 The emulator relies on a multi-tiered verification framework to guarantee 100% cycle-exact fidelity against real Motorola 68000 silicon and Amiga 500 hardware:
 
+<a id="a-m68000-singlesteptests-physical-hardware-silicon-verification"></a>
 ### A. M68000 SingleStepTests (Physical Hardware Silicon Verification)
 
 The CPU core is validated against **Tom Harte's `SingleStepTests-680x0`** suite (`ref_src/SingleStepTests-680x0/68000/v1/`), consisting of 124 per-instruction test files and ~1,000,000 randomized test vectors captured directly from physical 68000 silicon pins.
@@ -260,6 +299,7 @@ The CPU core is validated against **Tom Harte's `SingleStepTests-680x0`** suite 
 - **Automated Archive Decompression (`tools/bootstrap/bootstrap.ps1 -Sources`):**
   Running `.\tools\bootstrap\bootstrap.ps1 -Sources` automatically scans for compressed archives (`*.json.gz`, `*.gz`, or `.zip`) under `ref_src/SingleStepTests-680x0/` and decompresses them into native `.json` files in `68000/v1/` using native .NET decompression (zero external dependencies).
 
+<a id="b-cartesian-dma-contention-verification"></a>
 ### B. Cartesian DMA Contention Verification
 
 Validates cycle-exact M68000 micro-stepping and wait-state handling under Agnus DMA bus contention across the full combinatorial Cartesian product:
@@ -279,6 +319,7 @@ cargo test -p test_runner --test test_dma_cartesian
 cargo test -p test_runner --test test_dma_cartesian test_dma_cartesian_system_and_traps
 ```
 
+<a id="c-automated-architecture-rules-compliance"></a>
 ### C. Automated Architecture Rules Compliance
 
 Enforces architectural rules defined in [`AGENTS.md`](../AGENTS.md) (code formatting, file size limits $\le 800$ lines, zero runtime panics, zero custom macros, path privacy, and inlining rules):
@@ -286,6 +327,7 @@ Enforces architectural rules defined in [`AGENTS.md`](../AGENTS.md) (code format
 cargo test -p test_runner --test test_architecture_rules
 ```
 
+<a id="d-cli-diagnostic-tools-regression-tracking"></a><a id="d-cli-diagnostic-tools--regression-tracking"></a>
 ### D. CLI Diagnostic Tools & Regression Tracking
 
 The `test_runner` crate provides a standalone CLI tool for inspecting coverage matrices, live failure diagnostics, and detecting regressions:
@@ -307,6 +349,7 @@ cargo run -p test_runner -- --suite ADD.b
 - 🔴 **Regressions:** Tests that previously passed but now fail are highlighted with `⚠️ [REGRESSION DETECTED]`.
 - 🟢 **Improvements:** Tests that previously failed but now pass are highlighted with `🎉 [PROGRESS / FIX]`.
 
+<a id="e-vamigats-subsystem-whole-machine-verification-preview"></a><a id="e-vamigats-subsystem--whole-machine-verification-preview"></a>
 ### E. vAmigaTS Subsystem & Whole-Machine Verification (Preview)
 
 While whole-machine integration is part of a subsequent roadmap phase, the repository features an integrated test harness and execution runner for the **vAmiga Test Suite (vAmigaTS)** (`ref_src/vAmigaTS/`), validating custom chipset behavior against golden 716×285 24-bit RGB `.raw` viewport captures.
