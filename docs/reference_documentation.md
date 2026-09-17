@@ -84,25 +84,10 @@ The repository includes an automated bootstrapper for downloading raw archival m
 
 ### Running the Bootstrapper
 
-Run via the central bootstrap coordinator:
+Invoke via the central bootstrap coordinator:
 ```powershell
 # Provision raw reference manuals and scans:
 .\tools\bootstrap\bootstrap.ps1 -Documentation
-```
-
-Or run the dedicated documentation bootstrapper directly:
-```powershell
-# List all configured documents and verified mirror sources:
-.\tools\bootstrap\bootstrap_documentation.ps1 -List
-
-# Download all reference materials in sequential failover mode:
-.\tools\bootstrap\bootstrap_documentation.ps1 -All
-
-# Download from ALL mirrors simultaneously (for archival verification):
-.\tools\bootstrap\bootstrap_documentation.ps1 -All -AllSources
-
-# Force re-download even if files already exist:
-.\tools\bootstrap\bootstrap_documentation.ps1 -All -Force
 ```
 
 ### Staging Directory Policy (`temp/`)

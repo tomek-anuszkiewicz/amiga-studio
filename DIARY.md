@@ -6494,6 +6494,17 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:20 CEST] — Pruned Direct bootstrap_documentation Invocation from Reference Documentation Guide
+- **Affected Subsystems**:
+  - `docs/reference_documentation.md` (removed direct `.\tools\bootstrap\bootstrap_documentation.ps1` command snippet)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed direct script invocation commands for `bootstrap_documentation.ps1` (`-List`, `-All`, `-AllSources`, `-Force`) from Section 3.
+  - Standardized on `.\tools\bootstrap\bootstrap.ps1 -Documentation` as the single canonical bootstrap entry point.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates clutter and script proliferation in guides, ensuring developers and AI agents interact with external asset bootstrapping through the unified root coordinator `tools/bootstrap/bootstrap.ps1`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
 
 
 
