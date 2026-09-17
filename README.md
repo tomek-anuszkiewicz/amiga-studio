@@ -2,7 +2,7 @@
 
 A cycle-exact, high-performance **Commodore Amiga 500** (OCS) emulator written in Rust, engineered for native desktop platforms and WebAssembly.
 
-Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`) without hard drives or bulky expansion clutter.
+Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`) without hard drives or bulky expansion clutter. Built collaboratively through human-AI pair-programming and architectural sparring — explore [**How This Emulator Was Written**](docs/how_this_emulator_was_written.md) for the full engineering story, zero-code human steering methodology, and evolutionary test harness design.
 
 ---
 
@@ -64,12 +64,3 @@ For the complete controls reference, step-by-step shortcuts, and debugging workf
 
 For compilation instructions, bootstrapping options, test suites, and technical reference guides:
 👉 [**Developer Guide & Technical Index**](docs/developers.md)
-
----
-
-## 3. Documentation Cheat Sheet & Technical Index
-
-Architectural deep dives and engineering methodology specifications:
-
-- [**Core Architecture & Hardware Execution Model**](docs/architecture.md): Color Clock phases (CCK1/CCK2), Gary bus arbitration, Agnus DMA contention, circuit simulation, Big-Endian invariance, and decoupled ownership.
-- [**How This Emulator Was Written: Pair-Programming with an AI Agent**](docs/how_this_emulator_was_written.md): Engineering methodology, zero-code human steering, architectural sparring, minimal frame prototyping, and the evolutionary harness.

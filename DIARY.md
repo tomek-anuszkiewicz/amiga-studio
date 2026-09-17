@@ -6641,3 +6641,15 @@ Every future modification or implementation task must append an entry following 
   - Ensures developers contributing to the emulator grasp core clock synchronization (CCK1/CCK2), shared bus contention, and Big-Endian invariance before delving into tooling, suites, or opcodes.
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+### [2026-09-17 04:48 CEST] — Weaved Engineering Story into README and Removed Architecture Link
+- **Affected Subsystems**:
+  - `README.md` (wove `How This Emulator Was Written` into project intro, removed standalone architecture link and Section 3)
+- **What Was Changed (The Concrete Reality)**:
+  - Wove the engineering story link ([`How This Emulator Was Written`](docs/how_this_emulator_was_written.md)) naturally into the opening introduction of [`README.md`](README.md).
+  - Removed the redundant link to `docs/architecture.md` (already prominently anchored in [`docs/developers.md`](docs/developers.md)).
+  - Pruned now-empty Section 3 (Technical Index) from `the bottom of `README.md`, leaving a clean, lean document ending with Section 2 (For Developers).
+- **Architectural Rationale & Trade-Offs**:
+  - Keeps the root `README.md` focused on player quick start and compact developer direction, while introducing the unique AI-pair-programming engineering methodology upfront.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
