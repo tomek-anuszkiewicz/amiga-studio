@@ -94,7 +94,7 @@ Invoke via the central bootstrap coordinator:
 
 ## 4. Processing Raw Documents into Markdown
 
-When new reference manuals or updated editions are retrieved into `temp/`, use the specialized agent skills to convert them into repository-grade Markdown:
+When new reference manuals or updated editions are retrieved, use specialized agent skills to convert them into repository-grade Markdown:
 
 1. **PDF Scans to Markdown ([`pdf-to-markdown`](../.agents/skills/pdf-to-markdown/SKILL.md)):**
    - Uses PyMuPDF (`fitz`) to split documents into logical chapters.

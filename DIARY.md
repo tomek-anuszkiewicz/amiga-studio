@@ -6515,6 +6515,16 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:23 CEST] — Generalized Markdown Processing Trigger in Reference Documentation Guide
+- **Affected Subsystems**:
+  - `docs/reference_documentation.md` (decoupled document processing introduction from explicit `temp/` folder mention)
+- **What Was Changed (The Concrete Reality)**:
+  - Updated Section 4's opening instruction to state generically: "When new reference manuals or updated editions are retrieved, use specialized agent skills to convert them into repository-grade Markdown:", eliminating the hardcoded staging folder reference.
+- **Architectural Rationale & Trade-Offs**:
+  - Agent conversion skills operate on document targets passed as parameters rather than an inflexible hardcoded directory; removing path coupling improves portability and cleanliness.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
 
 
 
