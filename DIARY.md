@@ -6535,6 +6535,19 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 04:27 CEST] — Separated Ingested Documents from Bootstrapped Archival Sources
+- **Affected Subsystems**:
+  - `docs/reference_documentation.md` (pruned ASCII lifecycle box, partitioned Section 2 into Ingested Documents and Section 3 into Documents to Bootstrap)
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned the ASCII reference data lifecycle diagram from Section 1.
+  - Divided the reference catalog into two distinct, dedicated sections:
+    1. *Section 2 (Ingested Reference Documents):* Highlights the 7 primary manuals already converted to Markdown and committed in `Obsidian/Amiga/Reference/`.
+    2. *Section 3 (Documents to Bootstrap):* Documents the raw archival source targets (PDFs, HTML crawls) downloadable via `.\tools\bootstrap\bootstrap.ps1 -Documentation`.
+- **Architectural Rationale & Trade-Offs**:
+  - Clear conceptual separation between what is active and ready in the repository vs what can optionally be provisioned from external archival mirrors. Eliminates ambiguity about whether external downloads are required to read specifications.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
 
 
 

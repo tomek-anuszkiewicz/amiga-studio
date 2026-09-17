@@ -10,77 +10,46 @@ The repository maintains an authoritative, high-fidelity reference library under
 
 All primary reference materials are **already converted into structured Markdown specifications and committed directly to the repository**. Developers and AI agents can read, cross-reference, and semantically search these documents immediately without requiring any external downloads.
 
-For developers wishing to inspect the original archival scans, verify raw circuit schematics, or ingest new technical documentation, an **automated bootstrapper** and **re-processing toolchain** are provided:
-
-```text
-┌────────────────────────────────────────────────────────────────────────────────┐
-│                           REFERENCE DATA LIFECYCLE                             │
-├────────────────────────────────────────────────────────────────────────────────┤
-│ 1. INGESTED REPOSITORY MARKDOWN (Active & Ready)                               │
-│    Location: Obsidian/Amiga/Reference/                                         │
-│    Status: ✅ Fully converted, structured chapters, searchable, offline        │
-├────────────────────────────────────────────────────────────────────────────────┤
-│ 2. RAW ARCHIVAL SOURCES (Optional Download via Bootstrapper)                   │
-│    Location: Obsidian/Amiga/Reference/temp/<Document_Name>/                    │
-│    Status: 📥 Downloaded via tools/bootstrap/bootstrap_documentation.ps1       │
-├────────────────────────────────────────────────────────────────────────────────┤
-│ 3. CONVERSION & RE-PROCESSING TOOLCHAIN (Skills)                               │
-│    PDF Scans -> Markdown: .agents/skills/pdf-to-markdown/SKILL.md              │
-│    Web Crawls -> Markdown: .agents/skills/html-to-markdown/SKILL.md             │
-├────────────────────────────────────────────────────────────────────────────────┤
-│ 4. SEMANTIC AI VECTOR RAG (Local Qdrant)                                       │
-│    Indexer: tools/bootstrap/bootstrap_rag.ps1 (amiga_rag.ps1)                  │
-│    Search:  python tools/harness/rag_search.py "<query>"                       │
-└────────────────────────────────────────────────────────────────────────────────┘
-```
-
 ---
 
-## 2. Reference Documentation Catalog
+## 2. Ingested Reference Documents (Available in Repository)
 
-Every document in the library is cataloged below with its **current repository status**, hardware focus, and raw archival source:
+The following primary technical documentation and microarchitectural papers are fully converted into structured Markdown, committed directly to Git, and immediately available for reading and RAG vector search:
 
 ### 1. Hardware Reference Manual (Addison-Wesley 2nd Edition, 1989)
-- **Status:** ✅ **Already Ingested & Available** in `Obsidian/Amiga/Reference/Hardware Reference Manual/`
+- **Location:** `Obsidian/Amiga/Reference/Hardware Reference Manual/`
 - **Scope:** Primary reference for Amiga custom chipsets (OCS): Agnus (Copper, Blitter), Denise (Bitplanes, Sprites, Color palette), Paula (Audio DMA, Floppy disk controller), interrupt priority routing, and memory map.
 - **Provenance:** Based strictly on the Addison-Wesley 2nd Edition (1989) typeset on Commodore Amiga 2500/UX (AMIX), covering pure A500 OCS hardware without ECS contamination.
-- **Raw Source Archive:** 📥 **Downloadable via Bootstrap** (`hrm`): 405-page, 600 DPI PDF scan (~30 MB) from Internet Archive.
 
 ### 2. A500 A2000 Technical Reference Manual (Commodore-Amiga OEM, 1987)
-- **Status:** ✅ **Already Ingested & Available** in `Obsidian/Amiga/Reference/A500 A2000 Technical Reference Manual/`
+- **Location:** `Obsidian/Amiga/Reference/A500 A2000 Technical Reference Manual/`
 - **Scope:** Official Commodore OEM engineering manual covering bus timing, Gary gate array logic, system motherboard schematics, expansion bus (Zorro), and bridgeboard signals.
-- **Raw Source Archive:** 📥 **Downloadable via Bootstrap** (`trm`): 308-page, 200 DPI PDF scan (~30 MB) from Internet Archive.
 
 ### 3. M68000 Programmer's Reference Manual (Motorola Rev 1, 1992)
-- **Status:** ✅ **Already Ingested & Available** in `Obsidian/Amiga/Reference/68000 Programmer's Reference Manual/`
+- **Location:** `Obsidian/Amiga/Reference/68000 Programmer's Reference Manual/`
 - **Scope:** Authoritative instruction set definitions (68000 core), addressing modes, Condition Code Register (CCR) flag calculations, and execution cycle charts.
-- **Raw Source Archive:** 📥 **Downloadable via Bootstrap** (`prm`): 646-page vector PDF (~4.5 MB) from Internet Archive and Bitsavers.
 
 ### 4. M68000 User's Manual (Motorola Rev 8, 1993)
-- **Status:** ✅ **Already Ingested & Available** in `Obsidian/Amiga/Reference/68000 User's Manual/`
+- **Location:** `Obsidian/Amiga/Reference/68000 User's Manual/`
 - **Scope:** Cycle-by-cycle bus timing diagrams, bus state phases ($S0$–$S7$), read/write cycles, wait states, bus arbitration signals (`BR`, `BG`, `BGACK`), pinouts, and electrical characteristics.
-- **Raw Source Archive:** 📥 **Downloadable via Bootstrap** (`um`): 216-page, 601 DPI PDF scan (~10 MB) from Internet Archive and Bitsavers.
 
 ### 5. Instruction Prefetch on the Motorola 68000 Processor (Jorge Cwik / Pasti, 2005)
-- **Status:** ✅ **Already Ingested & Available** as `Obsidian/Amiga/Reference/Instruction Prefetch on the Motorola 68000 Processor.md`
+- **Location:** `Obsidian/Amiga/Reference/Instruction Prefetch on the Motorola 68000 Processor.md`
 - **Scope:** Authoritative microarchitectural prefetch queue study (Version 1.3). Establishes the 68000 two-stage `IR` (Instruction Register) and `IRC` (Instruction Register Capture) pipeline model and timing interactions.
-- **Raw Source Archive:** 📥 **Downloadable via Bootstrap** (`prefetch`): Original web article from Pasti Project and Wayback Machine snapshots.
 
 ### 6. Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis (Jorge Cwik / Pasti)
-- **Status:** ✅ **Already Ingested & Available** as `Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md`
+- **Location:** `Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md`
 - **Scope:** Cycle-exact algorithmic analysis of 68000 non-restoring integer division. Formulates precise cycle calculations verified against physical silicon test vectors.
-- **Raw Source Archive:** Synthesized directly from Pasti C verification algorithms.
 
 ### 7. Undocumented Features of OCS, ECS and AGA Chipsets (Kuba Winnicki / Achtung! Amiga, 2002)
-- **Status:** ✅ **Already Ingested & Available** as `Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets.md`
+- **Location:** `Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets.md`
 - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
-- **Raw Source Archive:** 📥 **Downloadable via Bootstrap** (`achtung`): 16-page multi-page HTML crawl from `winnicki.net/amiga/achtung/` and Wayback Machine.
 
 ---
 
-## 3. Automated Reference Bootstrapper (`tools/bootstrap/bootstrap_documentation.ps1`)
+## 3. Documents to Bootstrap (Raw Archival Sources)
 
-The repository includes an automated bootstrapper for downloading raw archival materials into a dedicated staging directory: `Obsidian/Amiga/Reference/temp/<Document_Name>/`.
+For developers wishing to inspect original PDF scans, verify raw circuit schematics, or re-run the OCR/conversion toolchain, the automated bootstrapper provisions the original archival source materials:
 
 ### Running the Bootstrapper
 
@@ -89,6 +58,17 @@ Invoke via the central bootstrap coordinator:
 # Provision raw reference manuals and scans:
 .\tools\bootstrap\bootstrap.ps1 -Documentation
 ```
+
+### Downloadable Archival Sources
+
+| Document ID | Reference Asset | Source Format & Details | Upstream Archive |
+| :--- | :--- | :--- | :--- |
+| **`hrm`** | Hardware Reference Manual | 405-page, 600 DPI PDF scan (~30 MB) | Internet Archive (1989 2nd Ed) |
+| **`trm`** | A500 A2000 Technical Reference Manual | 308-page, 200 DPI OEM PDF scan (~30 MB) | Internet Archive (1987 OEM) |
+| **`prm`** | 68000 Programmer's Reference Manual | 646-page vector PDF (~4.5 MB) | Internet Archive / Bitsavers |
+| **`um`** | 68000 User's Manual | 216-page, 601 DPI PDF scan (~10 MB) | Internet Archive / Bitsavers (Rev 8) |
+| **`prefetch`** | Instruction Prefetch on the M68000 | Original HTML article (~20 KB) | Pasti Project / Wayback Machine |
+| **`undocumented`** | Undocumented Features (Achtung! Amiga) | 16-page multi-page HTML crawl | winnicki.net / Wayback Machine |
 
 ---
 
