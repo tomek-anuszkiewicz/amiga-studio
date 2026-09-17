@@ -7,7 +7,7 @@
     graphs, local RAG vector documentation, and external reference documentation.
 
     Delegates execution to modular standalone bootstrap scripts:
-    - Tier 1: Hardware Verification & External Sources (-Sources / -Test -> tools/bootstrap/bootstrap_sources.ps1)
+    - Tier 1: Hardware Verification & External Sources (-Sources -> tools/bootstrap/bootstrap_sources.ps1)
     - Tier 2: AST-Level Code Knowledge Graph (-Graphify -> tools/bootstrap/bootstrap_graphify.ps1)
     - Tier 3: AI Knowledge & Qdrant RAG Vector Index (-Rag -> tools/bootstrap/bootstrap_rag.ps1)
     - Tier 4: External Reference Documentation & Scans (-Documentation / -Ref -> tools/bootstrap/bootstrap_documentation.ps1)
@@ -18,11 +18,7 @@
 .PARAMETER Sources
     Verifies and provisions physical silicon SingleStepTests 68000 test vectors,
     AmigaTestKit ADF, and reference emulators in ref_src/. Delegates to
-    tools/bootstrap_sources.ps1. Alias: -Test.
-
-.PARAMETER Test
-    Alias for -Sources. Verifies and provisions physical silicon SingleStepTests
-    68000 test vectors and regression media in ref_src/.
+    tools/bootstrap_sources.ps1.
 
 .PARAMETER Graphify
     Generates and updates the AST-level code knowledge graph in graphify-out/ for
@@ -78,7 +74,6 @@
 
 [CmdletBinding()]
 param(
-    [Alias("Test")]
     [switch]$Sources,
     [Alias("Graph")]
     [switch]$Graphify,
@@ -109,7 +104,7 @@ function Show-Usage {
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -All             : Provision all primary tiers (sources -> Graphify -> RAG)"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
-    Write-Host "  -Sources                 : Verify & unpack SingleStepTests 68000 test vectors (alias: -Test)"
+    Write-Host "  -Sources                 : Verify & unpack SingleStepTests 68000 test vectors"
     Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
     Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (alias: -Qdrant)"
     Write-Host "  -Documentation           : Download external reference materials into temp/ (aliases: -Doc, -Ref)"
@@ -133,7 +128,7 @@ if ($Documentation) { $TotalSteps++ }
 $CurrentStep = 1
 
 # -----------------------------------------------------------------------------
-# Tier 1: Verification & External Sources Bootstrap (-Sources / -Test / -All)
+# Tier 1: Verification & External Sources Bootstrap (-Sources / -All)
 # -----------------------------------------------------------------------------
 if ($Sources -or $All) {
     Write-Host ""

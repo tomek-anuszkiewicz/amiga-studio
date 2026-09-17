@@ -75,7 +75,7 @@ Bootstrapping is **strictly optional** and only needed for specialized developme
 
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
-| **Verification Testbed** | `-Sources` / `-Test` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
+| **Verification Testbed** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Provisions Tom Harte physical silicon test vectors (auto-decompressing `.gz`/`.zip` archives in `ref_src/SingleStepTests-680x0/`, 124 suites), verifies vAmiga/vAmigaTS reference suites, and diagnostic disks |
 | **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | AST-level code knowledge graph (`graphify-out/`), mapping crates, structs, functions, and cross-module relationships |
 | **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Local Qdrant vector database (`http://localhost:6333`), indexing Commodore HRM, 68000 PRMs, technical specs, and design specs |
 | **Reference Scans** | `-Documentation` | External reference scans and manual archives | Provisions raw reference manuals and PDF scans into `temp/` |

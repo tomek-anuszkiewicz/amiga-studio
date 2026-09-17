@@ -6348,6 +6348,23 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 03:57 CEST] — Pruned Deprecated -Test Parameter & Alias from Bootstrap Coordinator
+- **Affected Subsystems**:
+  - `tools/bootstrap/bootstrap.ps1` (removed `.PARAMETER Test`, `[Alias("Test")]`, and all `-Test` references)
+  - `README.md` (updated bootstrap table to list `-Sources` cleanly)
+  - `docs/testing.md` (updated SingleStep archive decompression command to `tools/bootstrap/bootstrap.ps1 -Sources`)
+  - `ROADMAP.md` (updated test suite hardening configurations to `-Sources`)
+- **What Was Changed (The Concrete Reality)**:
+  - Removed deprecated `-Test` alias and its `.PARAMETER Test` help block from `tools/bootstrap/bootstrap.ps1`.
+  - Removed `[Alias("Test")]` attribute from the `$Sources` parameter declaration.
+  - Aligned help comments, usage instructions, `README.md`, `docs/testing.md`, and `ROADMAP.md` to reference `-Sources` exclusively.
+- **Architectural Rationale & Trade-Offs**:
+  - The script's tier is external sources provisioning (`bootstrap_sources.ps1`), which downloads and prepares test suites and emulators rather than executing test runs. Removing the ambiguous `-Test` alias eliminates confusion with test execution tools (`cargo test`, `tools/harness/run_tests.py`).
+- **Verification & Test Results**:
+  - Tested `tools/bootstrap/bootstrap.ps1` usage display with zero errors.
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 
 

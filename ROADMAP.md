@@ -298,8 +298,8 @@ To guarantee that autonomous AI agents can reconstruct and verify emulator subsy
     2. **Prune Hardware Irrelevancies from Multi-Volume Manuals:** Strip unused subsystem sections (e.g. FPU 68881/2 in PRM, PC XT Bridgeboard / SCSI in A500/A2000 Technical Reference Manual; *Amiga Guru Book* permanently purged due to OS/C-level irrelevance).
     3. **Minimal Ground Truth Retainment:** Preserve solely the lean, canonical primary sources (`Hardware Reference Manual`, `Instruction Prefetch`, `Undocumented Features`, core `68000 User's Manual`), minimizing repository footprint and eliminating vector embedding noise.
 
-- **End-to-End Hardening of `tools/bootstrap.ps1`:**
-  - Exhaustively test the complete PowerShell bootstrapper across all flag configurations (`-Test`, `-Graphify`, `-Rag`, `-All`).
+- **End-to-End Hardening of `tools/bootstrap/bootstrap.ps1`:**
+  - Exhaustively test the complete PowerShell bootstrapper across all flag configurations (`-Sources`, `-Graphify`, `-Rag`, `-Documentation`, `-All`).
   - Verify clean-room resilience on fresh environments: archive decompression (`.gz`/`.zip`), directory creation, missing dependency warnings, and non-zero exit code reporting.
 
 ---
