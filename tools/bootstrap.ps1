@@ -3,17 +3,79 @@
     Repository bootstrap runner for the Amiga 500 emulator.
 
 .DESCRIPTION
-    Provisions external test assets and AI knowledge bases:
-    -Test     : Verifies and provisions physical silicon SingleStepTests test vectors and regression media.
-    -Graphify : Generates and updates AST-level code knowledge graph (graphify-out/) for structural queries (alias: -Graph).
-    -Rag      : Indexes Commodore reference manuals and Obsidian design notes into local RAG vector database (aliases: -Doc, -Qdrant).
-    -All      : Executes test suites, Graphify AST, and RAG documentation bootstrapping (tests -> Graphify -> RAG).
+    Automates the provisioning of external hardware test suites, AI code knowledge
+    graphs, local RAG vector documentation, and external reference documentation.
+
+    Bootstrapping is organized across modular tiers:
+    - Tier 1: Hardware Verification & Test Vectors (-Test)
+    - Tier 2: AST-Level Code Knowledge Graph (-Graphify)
+    - Tier 3: AI Knowledge & Qdrant RAG Vector Index (-Rag)
+    - Tier 4: External Reference Documentation & Scans (-Ref)
+
+    NOTE: Bootstrapping is NOT required to build, test, or run the emulator.
+    A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'.
+
+.PARAMETER Test
+    Verifies and provisions physical silicon SingleStepTests 68000 test vectors
+    and regression media in ref_src/. Decompresses .gz and .zip suites and migrates
+    test archives into canonical v1 directories.
+
+.PARAMETER Graphify
+    Generates and updates the AST-level code knowledge graph in graphify-out/ for
+    structural queries, call hierarchies, and architectural navigation.
+    Alias: -Graph.
+
+.PARAMETER Rag
+    Indexes Commodore hardware reference manuals, PRMs, and Obsidian architecture
+    notes into the local Qdrant vector database (http://localhost:6333, collection: amiga).
+    Aliases: -Doc, -Qdrant.
+
+.PARAMETER Ref
+    Provisions raw external reference documentation (PDF scans, microarchitectural guides,
+    and multi-page HTML crawls) into Obsidian/Amiga/Reference/temp/. Delegates execution
+    to tools/bootstrap_reference.ps1.
+
+.PARAMETER RefItem
+    When using -Ref, targets a specific reference document by name or alias (e.g. "HRM",
+    "Prefetch", "Achtung! Amiga").
+
+.PARAMETER AllSources
+    When using -Ref, downloads from ALL configured mirrors for each document rather than
+    stopping after the first successful mirror. Useful for archival redundancy.
+    Alias: -AllMirrors.
+
+.PARAMETER NoExtract
+    When using -Ref, downloads reference archives without automatically unpacking them.
+
+.PARAMETER ExtractOnly
+    When using -Ref, unpacks existing archives in temp/ without downloading new files.
+
+.PARAMETER All
+    Executes all primary bootstrap tiers sequentially (-Test -> -Graphify -> -Rag).
 
 .EXAMPLE
     .\tools\bootstrap.ps1 -Test
+    Provision hardware test vectors (SingleStepTests, vAmiga, AmigaTestKit).
+
+.EXAMPLE
     .\tools\bootstrap.ps1 -Graphify
+    Update AST code knowledge graph in graphify-out/.
+
+.EXAMPLE
     .\tools\bootstrap.ps1 -Rag
+    Index Obsidian technical documentation into the local Qdrant vector database.
+
+.EXAMPLE
+    .\tools\bootstrap.ps1 -Ref
+    Download all external reference documentation into Obsidian/Amiga/Reference/temp/.
+
+.EXAMPLE
+    .\tools\bootstrap.ps1 -Ref -RefItem "Prefetch"
+    Download Jorge Cwik's microarchitectural prefetch guide.
+
+.EXAMPLE
     .\tools\bootstrap.ps1 -All
+    Run all primary bootstrap tiers (tests -> Graphify AST -> RAG documentation).
 #>
 
 [CmdletBinding()]
@@ -42,16 +104,28 @@ function Show-Usage {
     Write-Host "NOTE: Bootstrapping is NOT required to build or run the emulator!" -ForegroundColor Yellow
     Write-Host "      A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'."
     Write-Host ""
-    Write-Host "Usage:"
-    Write-Host "  .\tools\bootstrap.ps1 -Test     : Provision hardware test vectors (SingleStepTests, vAmiga, AmigaTestKit)"
-    Write-Host "  .\tools\bootstrap.ps1 -Graphify : Provision code knowledge graph (Graphify AST extraction)"
-    Write-Host "  .\tools\bootstrap.ps1 -Rag      : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian notes)"
-    Write-Host "  .\tools\bootstrap.ps1 -Ref      : Provision external reference materials into temp/ (PDFs, HTML crawls)"
-    Write-Host "  .\tools\bootstrap.ps1 -All      : Provision all components (tests -> Graphify AST -> RAG docs)"
+    Write-Host "Usage:" -ForegroundColor White
+    Write-Host "  .\tools\bootstrap.ps1 -Test                      : Provision hardware test vectors (SingleStepTests, vAmiga)"
+    Write-Host "  .\tools\bootstrap.ps1 -Graphify                  : Provision code knowledge graph (Graphify AST extraction)"
+    Write-Host "  .\tools\bootstrap.ps1 -Rag                       : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
+    Write-Host "  .\tools\bootstrap.ps1 -Ref                       : Provision external reference materials (PDFs, HTML crawls)"
+    Write-Host "  .\tools\bootstrap.ps1 -Ref -RefItem <name>       : Provision a specific reference document"
+    Write-Host "  .\tools\bootstrap.ps1 -All                       : Provision all primary tiers (tests -> Graphify -> RAG)"
+    Write-Host ""
+    Write-Host "Options:" -ForegroundColor White
+    Write-Host "  -Test                    : Verify & unpack SingleStepTests 68000 test vectors"
+    Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
+    Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (aliases: -Doc, -Qdrant)"
+    Write-Host "  -Ref                     : Download external reference materials into temp/"
+    Write-Host "  -RefItem <name>          : Target specific document for -Ref (e.g. 'Prefetch', 'HRM')"
+    Write-Host "  -AllSources              : Download from all mirrors for -Ref (alias: -AllMirrors)"
+    Write-Host "  -NoExtract               : Download archives without unpacking them"
+    Write-Host "  -ExtractOnly             : Unpack existing archives in temp/ without downloading"
+    Write-Host "  -All                     : Run all primary tiers (-Test, -Graphify, -Rag)"
     Write-Host ""
 }
 
-if ($ExtractOnly) { $Ref = $true }
+if ($ExtractOnly -or $RefItem -or $AllSources -or $NoExtract) { $Ref = $true }
 
 if (-not $Rag -and -not $Test -and -not $Graphify -and -not $Ref -and -not $All) {
     Show-Usage

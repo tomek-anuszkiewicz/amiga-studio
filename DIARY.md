@@ -6159,4 +6159,22 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Verified PowerShell syntax of `tools/bootstrap_reference.ps1` using `[scriptblock]::Create()`.
   - `python tools/harness/pre_flight.py`: Passed 100% across all quality gates.
+### [2026-09-17 03:20 CEST] — Unified CLI Help, Parameter Specifications & Show-Usage across Bootstrap Tooling
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1` (unified comment-based help with formal `.PARAMETER` tags, improved `Show-Usage` alignment, and auto-promoted `-Ref` trigger)
+  - `tools/bootstrap_reference.ps1` (unified comment-based help with all parameter tags, encapsulated interactive usage into `Show-Usage`, aligned styling)
+- **What Was Changed (The Concrete Reality)**:
+  - Standardized the PowerShell comment-based help (`<# ... #>`) across both tooling entry points:
+    - Added dedicated `.PARAMETER <Name>` documentation blocks for every switch and parameter (including aliases and default behaviors).
+    - Unified `.DESCRIPTION` and structured `.EXAMPLE` workflows for all common flag combinations.
+  - Symmetrized interactive terminal usage output:
+    - Encapsulated reference bootstrapper usage into a dedicated `Show-Usage` function matching the cyan header, yellow operational note, and formatted parameter table of `bootstrap.ps1`.
+    - Added all sub-switches (`-RefItem`, `-AllSources`, `-NoExtract`, `-ExtractOnly`) to `bootstrap.ps1`'s usage overview.
+  - Enhanced ergonomics: auto-promoted `$Ref = $true` in `bootstrap.ps1` whenever `-RefItem`, `-AllSources`, `-NoExtract`, or `-ExtractOnly` are specified without an explicit `-Ref`.
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates divergence between `bootstrap.ps1` and `bootstrap_reference.ps1`. Both scripts now provide identical visual polish, full PowerShell `Get-Help` introspection, and consistent error/help handling.
+- **Verification & Test Results**:
+  - Verified `Get-Help .\tools\bootstrap.ps1` and `Get-Help .\tools\bootstrap_reference.ps1` with parameter queries (`-Parameter Test`).
+  - Tested interactive execution with no parameters for both scripts, confirming clean `Show-Usage` output.
+  - `python tools/harness/pre_flight.py`: Passed 100% across all quality gates.
 

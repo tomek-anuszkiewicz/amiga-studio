@@ -3,8 +3,8 @@
     Automated bootstrapper for external Amiga reference documentation.
 
 .DESCRIPTION
-    Fetches raw, unprocessed external reference materials (PDFs and multi-page HTML
-    crawls) into:
+    Fetches raw, unprocessed external reference materials (PDF scans, microarchitectural
+    guides, and multi-page HTML crawls) into:
         Obsidian/Amiga/Reference/temp/<Document_Name>/
 
     Features:
@@ -17,17 +17,17 @@
       remain explicitly visible in git status until inspected, processed, or deleted.
 
 .PARAMETER All
-    Downloads all configured reference materials.
+    Downloads all configured reference materials in the catalog.
 
 .PARAMETER Item
-    Downloads a specific document by name or alias (e.g. "Hardware Reference Manual", "Prefetch").
-
-.PARAMETER AllSources
-    Downloads from ALL mirrors and sources for each document, rather than stopping after
-    the first successful mirror. Also aliased as -AllMirrors.
+    Downloads a specific document by name or alias (e.g. "Hardware Reference Manual", "Prefetch", "hrm").
 
 .PARAMETER Destination
     Custom destination directory (defaults to Obsidian/Amiga/Reference/temp).
+
+.PARAMETER AllSources
+    Downloads from ALL mirrors and sources for each document, rather than stopping after
+    the first successful mirror. Alias: -AllMirrors.
 
 .PARAMETER Force
     Forces re-download even if target file already exists and byte size matches.
@@ -35,13 +35,39 @@
 .PARAMETER List
     Displays the catalog of reference documents and their configured mirrors.
 
+.PARAMETER NoExtract
+    Downloads archives without automatically unpacking them.
+
+.PARAMETER ExtractOnly
+    Unpacks existing archives in the destination directory without downloading new files.
+
 .EXAMPLE
     .\tools\bootstrap_reference.ps1 -List
+    Displays catalog of reference documents and mirror sources.
+
+.EXAMPLE
+    .\tools\bootstrap_reference.ps1 -All
+    Downloads all configured reference materials in failover mode.
+
+.EXAMPLE
     .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual"
-    .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual" -AllSources
+    Downloads the Commodore Amiga Hardware Reference Manual.
+
+.EXAMPLE
+    .\tools\bootstrap_reference.ps1 -Item "Prefetch" -AllSources
+    Downloads Jorge Cwik's prefetch study from all available mirrors.
+
+.EXAMPLE
     .\tools\bootstrap_reference.ps1 -All -AllSources
+    Downloads all reference items from all mirrors for comprehensive redundancy.
+
+.EXAMPLE
     .\tools\bootstrap_reference.ps1 -ExtractOnly
+    Unpacks existing archives in temp/ without downloading.
+
+.EXAMPLE
     .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual" -NoExtract
+    Downloads manual without unpacking archives.
 #>
 
 [CmdletBinding()]
@@ -250,6 +276,34 @@ $Catalog = @(
 # -----------------------------------------------------------------------------
 # Helper Functions
 # -----------------------------------------------------------------------------
+
+function Show-Usage {
+    Write-Host ""
+    Write-Host "Amiga Reference Documentation Bootstrapper" -ForegroundColor Cyan
+    Write-Host "==========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "NOTE: Downloads raw, unprocessed reference materials into Obsidian/Amiga/Reference/temp/." -ForegroundColor Yellow
+    Write-Host "      Files in temp/ are safe to delete at any time and do not affect emulator execution."
+    Write-Host ""
+    Write-Host "Usage:" -ForegroundColor White
+    Write-Host "  .\tools\bootstrap_reference.ps1 -List                    : Show all documents and configured mirrors"
+    Write-Host "  .\tools\bootstrap_reference.ps1 -All                     : Download all reference materials (failover mode)"
+    Write-Host "  .\tools\bootstrap_reference.ps1 -Item <name>             : Download a specific document by name or ID"
+    Write-Host "  .\tools\bootstrap_reference.ps1 -All -AllSources         : Download from ALL mirrors for each document"
+    Write-Host "  .\tools\bootstrap_reference.ps1 -ExtractOnly             : Unpack existing archives without downloading"
+    Write-Host "  .\tools\bootstrap_reference.ps1 -Item <name> -NoExtract   : Download archives without unpacking them"
+    Write-Host ""
+    Write-Host "Options:" -ForegroundColor White
+    Write-Host "  -List                    : Display catalog of reference documents and mirrors"
+    Write-Host "  -All                     : Download all reference materials in the catalog"
+    Write-Host "  -Item <name>             : Target specific document (e.g. 'Hardware Reference Manual', 'Prefetch')"
+    Write-Host "  -Destination <path>      : Custom destination directory (defaults to temp/)"
+    Write-Host "  -AllSources              : Download from all mirrors for redundancy (alias: -AllMirrors)"
+    Write-Host "  -Force                   : Re-download even if target file already exists"
+    Write-Host "  -NoExtract               : Download archives without automatically unpacking them"
+    Write-Host "  -ExtractOnly             : Unpack existing archives in destination without downloading"
+    Write-Host ""
+}
 
 function Show-CatalogList {
     Write-Host ""
@@ -667,17 +721,7 @@ if ($AllSources -and -not $Item) {
 }
 
 if (-not $All -and -not $Item -and -not $ExtractOnly) {
-    Write-Host ""
-    Write-Host "Amiga Reference Bootstrapper" -ForegroundColor Cyan
-    Write-Host "============================" -ForegroundColor Cyan
-    Write-Host "Usage:"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -List        : Show all documents and configured mirrors"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -Item <name> : Download specific document"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -All         : Download all reference materials"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -AllSources  : Download from ALL mirrors for each document"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -ExtractOnly : Unpack existing archives without downloading"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -NoExtract   : Download archives without unpacking them"
-    Write-Host ""
+    Show-Usage
     exit 0
 }
 
