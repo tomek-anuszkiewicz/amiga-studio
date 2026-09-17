@@ -67,8 +67,8 @@ tests/singlestep/
 
 # Ingested Commodore hardware manuals and technical specifications
 # (Explicitly ignored per item to ensure visibility of any new or untracked files):
-/Obsidian/Amiga/Reference/68000 Programmer's Reference Manual/
-/Obsidian/Amiga/Reference/68000 User's Manual/
+/Obsidian/Amiga/Reference/68000 Programmer's Reference Manual*/
+/Obsidian/Amiga/Reference/68000 User's Manual*/
 /Obsidian/Amiga/Reference/A500 A2000 Technical Reference Manual/
 /Obsidian/Amiga/Reference/Hardware Reference Manual/
 /Obsidian/Amiga/Reference/Instruction Prefetch on the Motorola 68000 Processor.md

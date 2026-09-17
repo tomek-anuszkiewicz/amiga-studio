@@ -6262,5 +6262,25 @@ Every future modification or implementation task must append an entry following 
   - Executed `bootstrap.ps1 -Sources` and `bootstrap.ps1 -Test`.
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 03:42 CEST] — Renamed bootstrap_reference.ps1 to bootstrap_documentation.ps1
+- **Affected Subsystems**:
+  - `tools/bootstrap_documentation.ps1` (renamed from `tools/bootstrap_reference.ps1`)
+  - `tools/bootstrap.ps1` (updated Tier 4 parameter to `-Documentation` with `-Ref` and `-Doc` aliases)
+  - `Obsidian/Amiga/Reference/README.md` (updated references and pruned historical parameter examples)
+  - `Obsidian/Amiga/Design/PowerShell Guidelines.md` (updated living implementations and references)
+- **What Was Changed (The Concrete Reality)**:
+  - Renamed `tools/bootstrap_reference.ps1` to `tools/bootstrap_documentation.ps1`.
+  - Updated examples, CLI display, and temporary staging README generation in `tools/bootstrap_documentation.ps1`.
+  - Configured `tools/bootstrap.ps1` Tier 4 parameter as `-Documentation` with explicit aliases `[Alias("Ref", "Doc")]`.
+  - Updated `Obsidian/Amiga/Reference/README.md` to reference `bootstrap_documentation.ps1` and cleaned up deprecated `-Item` and archive extraction flags.
+  - Updated `PowerShell Guidelines.md` living implementations catalog.
+- **Architectural Rationale & Trade-Offs**:
+  - Aligns naming conventions across all modular bootstrap scripts (`bootstrap_sources.ps1`, `bootstrap_graphify.ps1`, `bootstrap_rag.ps1`, and `bootstrap_documentation.ps1`). "Documentation" clearly identifies the scope of raw reference manuals, PDF scans, and technical articles.
+- **Verification & Test Results**:
+  - Executed `bootstrap_documentation.ps1 -List`.
+  - Executed `bootstrap.ps1` usage display.
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
 
 

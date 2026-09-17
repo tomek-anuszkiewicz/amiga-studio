@@ -33,15 +33,15 @@
     Displays the catalog of reference documents and their configured mirrors.
 
 .EXAMPLE
-    .\tools\bootstrap_reference.ps1 -List
+    .\tools\bootstrap_documentation.ps1 -List
     Displays catalog of reference documents and mirror sources.
 
 .EXAMPLE
-    .\tools\bootstrap_reference.ps1 -All
+    .\tools\bootstrap_documentation.ps1 -All
     Downloads all configured reference materials in failover mode.
 
 .EXAMPLE
-    .\tools\bootstrap_reference.ps1 -All -AllSources
+    .\tools\bootstrap_documentation.ps1 -All -AllSources
     Downloads all reference items from all mirrors for comprehensive redundancy.
 #>
 
@@ -258,9 +258,9 @@ function Show-Usage {
     Write-Host "      Files in temp/ are safe to delete at any time and do not affect emulator execution."
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap_reference.ps1 -List                    : Show all documents and configured mirrors"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -All                     : Download all reference materials (failover mode)"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -All -AllSources         : Download from ALL mirrors for each document"
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -List                : Show all documents and configured mirrors"
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -All                 : Download all reference materials (failover mode)"
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -All -AllSources     : Download from ALL mirrors for each document"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
     Write-Host "  -List                    : Display catalog of reference documents and mirrors"
@@ -303,7 +303,7 @@ function Ensure-StagingReadme {
         $Content = @'
 # Temporary External Reference Staging Directory
 
-This directory contains raw, unprocessed external reference materials (PDF scans, HTML crawls, and archives) downloaded by `tools/bootstrap_reference.ps1` (or `tools/bootstrap.ps1 -Ref`).
+This directory contains raw, unprocessed external reference materials (PDF scans, HTML crawls, and archives) downloaded by `tools/bootstrap_documentation.ps1` (or `tools/bootstrap.ps1 -Doc`).
 
 ## Operational Guidelines
 - **Safe to Delete:** You can safely delete this directory or any subfolder at any time. It has zero impact on compiling, testing, or running the emulator.

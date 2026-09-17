@@ -13,7 +13,7 @@ related: ["[Rust Guidelines.md](Rust%20Guidelines.md)", "[Testing Strategy and Q
 # PowerShell Tooling & Parameterization Guidelines
 
 - **Parent Specifications:** [General Architecture.md](General%20Architecture.md) | [Testing Strategy and Quality Assurance.md](Testing%20Strategy%20and%20Quality%20Assurance.md)
-- **Living Tooling Implementations:** [`tools/bootstrap.ps1`](../../../tools/bootstrap.ps1) | [`tools/bootstrap_sources.ps1`](../../../tools/bootstrap_sources.ps1) | [`tools/bootstrap_graphify.ps1`](../../../tools/bootstrap_graphify.ps1) | [`tools/bootstrap_rag.ps1`](../../../tools/bootstrap_rag.ps1) | [`tools/bootstrap_reference.ps1`](../../../tools/bootstrap_reference.ps1) | [`tools/rag/bin/amiga_rag.ps1`](../../../tools/rag/bin/amiga_rag.ps1)
+- **Living Tooling Implementations:** [`tools/bootstrap.ps1`](../../../tools/bootstrap.ps1) | [`tools/bootstrap_sources.ps1`](../../../tools/bootstrap_sources.ps1) | [`tools/bootstrap_graphify.ps1`](../../../tools/bootstrap_graphify.ps1) | [`tools/bootstrap_rag.ps1`](../../../tools/bootstrap_rag.ps1) | [`tools/bootstrap_documentation.ps1`](../../../tools/bootstrap_documentation.ps1) | [`tools/rag/bin/amiga_rag.ps1`](../../../tools/rag/bin/amiga_rag.ps1)
 - **Operating Rules:** [`performance-and-readability.md`](../../../.agents/rules/performance-and-readability.md) | [`vault-linking-and-graph-integrity.md`](../../../.agents/rules/vault-linking-and-graph-integrity.md)
 
 > [!NOTE]
@@ -224,7 +224,7 @@ Before committing any modifications to PowerShell scripts:
   - [`tools/bootstrap_sources.ps1`](../../../tools/bootstrap_sources.ps1): External test sources, hardware vectors, and reference emulator bootstrapper.
   - [`tools/bootstrap_graphify.ps1`](../../../tools/bootstrap_graphify.ps1): AST code knowledge graph bootstrapper.
   - [`tools/bootstrap_rag.ps1`](../../../tools/bootstrap_rag.ps1): AI documentation knowledge base and Qdrant vector index bootstrapper.
-  - [`tools/bootstrap_reference.ps1`](../../../tools/bootstrap_reference.ps1): Multi-mirror reference documentation fetcher and crawler.
+  - [`tools/bootstrap_documentation.ps1`](../../../tools/bootstrap_documentation.ps1): Multi-mirror reference documentation fetcher and crawler.
   - [`tools/rag/bin/amiga_rag.ps1`](../../../tools/rag/bin/amiga_rag.ps1): Environment and runner wrapper for the Python RAG vector engine.
 - **Upstream Standards:**
   - Microsoft PowerShell Documentation: [About Comment-Based Help](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_comment_based_help).

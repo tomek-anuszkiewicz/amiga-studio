@@ -10,7 +10,7 @@
     - Tier 1: Hardware Verification & External Sources (-Sources / -Test -> tools/bootstrap_sources.ps1)
     - Tier 2: AST-Level Code Knowledge Graph (-Graphify -> tools/bootstrap_graphify.ps1)
     - Tier 3: AI Knowledge & Qdrant RAG Vector Index (-Rag -> tools/bootstrap_rag.ps1)
-    - Tier 4: External Reference Documentation & Scans (-Ref -> tools/bootstrap_reference.ps1)
+    - Tier 4: External Reference Documentation & Scans (-Documentation / -Ref -> tools/bootstrap_documentation.ps1)
 
     NOTE: Bootstrapping is NOT required to build, test, or run the emulator.
     A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'.
@@ -32,16 +32,24 @@
 .PARAMETER Rag
     Indexes Commodore hardware reference manuals, PRMs, and Obsidian architecture
     notes into the local Qdrant vector database (http://localhost:6333, collection: amiga).
-    Delegates to tools/bootstrap_rag.ps1. Aliases: -Doc, -Qdrant.
+    Delegates to tools/bootstrap_rag.ps1. Alias: -Qdrant.
 
-.PARAMETER Ref
+.PARAMETER Documentation
     Provisions raw external reference documentation (PDF scans, microarchitectural guides,
     and multi-page HTML crawls) into Obsidian/Amiga/Reference/temp/. Delegates to
-    tools/bootstrap_reference.ps1.
+    tools/bootstrap_documentation.ps1. Aliases: -Doc, -Ref.
+
+.PARAMETER Ref
+    Alias for -Documentation. Provisions raw external reference documentation into
+    Obsidian/Amiga/Reference/temp/.
+
+.PARAMETER Doc
+    Alias for -Documentation. Provisions raw external reference documentation into
+    Obsidian/Amiga/Reference/temp/.
 
 .PARAMETER AllSources
-    When using -Ref, downloads from ALL configured mirrors for each document rather than
-    stopping after the first successful mirror. Useful for archival redundancy.
+    When using -Documentation, downloads from ALL configured mirrors for each document
+    rather than stopping after the first successful mirror. Useful for archival redundancy.
     Alias: -AllMirrors.
 
 .PARAMETER All
@@ -60,7 +68,7 @@
     Index Obsidian technical documentation into the local Qdrant vector database.
 
 .EXAMPLE
-    .\tools\bootstrap.ps1 -Ref
+    .\tools\bootstrap.ps1 -Documentation
     Download all external reference documentation into Obsidian/Amiga/Reference/temp/.
 
 .EXAMPLE
@@ -74,9 +82,10 @@ param(
     [switch]$Sources,
     [Alias("Graph")]
     [switch]$Graphify,
-    [Alias("Doc", "Qdrant")]
+    [Alias("Qdrant")]
     [switch]$Rag,
-    [switch]$Ref,
+    [Alias("Ref", "Doc")]
+    [switch]$Documentation,
     [Alias("AllMirrors")]
     [switch]$AllSources,
     [switch]$All
@@ -96,22 +105,22 @@ function Show-Usage {
     Write-Host "  .\tools\bootstrap.ps1 -Sources                   : Provision external test sources & vectors (SingleStepTests, vAmiga)"
     Write-Host "  .\tools\bootstrap.ps1 -Graphify                  : Provision code knowledge graph (Graphify AST extraction)"
     Write-Host "  .\tools\bootstrap.ps1 -Rag                       : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
-    Write-Host "  .\tools\bootstrap.ps1 -Ref                       : Provision external reference materials (PDFs, HTML crawls)"
+    Write-Host "  .\tools\bootstrap.ps1 -Documentation             : Provision external reference materials (PDFs, HTML crawls)"
     Write-Host "  .\tools\bootstrap.ps1 -All                       : Provision all primary tiers (sources -> Graphify -> RAG)"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
     Write-Host "  -Sources                 : Verify & unpack SingleStepTests 68000 test vectors (alias: -Test)"
     Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
-    Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (aliases: -Doc, -Qdrant)"
-    Write-Host "  -Ref                     : Download external reference materials into temp/"
-    Write-Host "  -AllSources              : Download from all mirrors for -Ref (alias: -AllMirrors)"
+    Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (alias: -Qdrant)"
+    Write-Host "  -Documentation           : Download external reference materials into temp/ (aliases: -Doc, -Ref)"
+    Write-Host "  -AllSources              : Download from all mirrors for -Documentation (alias: -AllMirrors)"
     Write-Host "  -All                     : Run all primary tiers (-Sources, -Graphify, -Rag)"
     Write-Host ""
 }
 
-if ($AllSources) { $Ref = $true }
+if ($AllSources) { $Documentation = $true }
 
-if (-not $Rag -and -not $Sources -and -not $Graphify -and -not $Ref -and -not $All) {
+if (-not $Rag -and -not $Sources -and -not $Graphify -and -not $Documentation -and -not $All) {
     Show-Usage
     exit 0
 }
@@ -120,7 +129,7 @@ $TotalSteps = 0
 if ($Sources -or $All) { $TotalSteps++ }
 if ($Graphify -or $All) { $TotalSteps++ }
 if ($Rag -or $All) { $TotalSteps++ }
-if ($Ref) { $TotalSteps++ }
+if ($Documentation) { $TotalSteps++ }
 $CurrentStep = 1
 
 # -----------------------------------------------------------------------------
@@ -175,23 +184,23 @@ if ($Rag -or $All) {
 }
 
 # -----------------------------------------------------------------------------
-# Tier 4: External Reference Documentation Bootstrap (-Ref)
+# Tier 4: External Reference Documentation Bootstrap (-Documentation / -Ref)
 # -----------------------------------------------------------------------------
-if ($Ref) {
+if ($Documentation) {
     Write-Host ""
-    Write-Host "[$CurrentStep/$TotalSteps] Delegating to External Reference Bootstrapper..." -ForegroundColor Green
-    Write-Host "------------------------------------------------------------" -ForegroundColor DarkGray
+    Write-Host "[$CurrentStep/$TotalSteps] Delegating to External Documentation Bootstrapper..." -ForegroundColor Green
+    Write-Host "-------------------------------------------------------------------" -ForegroundColor DarkGray
     $CurrentStep++
 
-    $RefScript = Join-Path $PSScriptRoot "bootstrap_reference.ps1"
-    if (-not (Test-Path $RefScript)) {
-        Write-Error "bootstrap_reference.ps1 not found at: $RefScript"
+    $DocScript = Join-Path $PSScriptRoot "bootstrap_documentation.ps1"
+    if (-not (Test-Path $DocScript)) {
+        Write-Error "bootstrap_documentation.ps1 not found at: $DocScript"
     } else {
-        $RefParams = @{ All = $true }
+        $DocParams = @{ All = $true }
         if ($AllSources) {
-            $RefParams["AllSources"] = $true
+            $DocParams["AllSources"] = $true
         }
-        & $RefScript @RefParams
+        & $DocScript @DocParams
     }
 }
 

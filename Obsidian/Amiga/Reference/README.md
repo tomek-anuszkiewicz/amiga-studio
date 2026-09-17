@@ -45,35 +45,23 @@ The repository maintains converted, structured markdown documents for rapid navi
 
 ---
 
-## 2. Automated Reference Bootstrapper (`tools/bootstrap_reference.ps1`)
+## 2. Automated Reference Bootstrapper (`tools/bootstrap_documentation.ps1`)
 
 To download raw, unprocessed source materials (PDF scans, HTML crawls, and archives) without storing large binary files in Git, use the automated bootstrapper:
 
 ```powershell
 # List available reference items and configured mirrors
-.\tools\bootstrap_reference.ps1 -List
-
-# Download a specific reference document
-.\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual"
-
-# Download multi-page HTML articles (crawls all subpages)
-.\tools\bootstrap_reference.ps1 -Item "Undocumented features"
+.\tools\bootstrap_documentation.ps1 -List
 
 # Download all reference materials (default failover mode: stops after 1st successful mirror)
-.\tools\bootstrap_reference.ps1 -All
+.\tools\bootstrap_documentation.ps1 -All
 
 # Download from ALL mirrors & sources simultaneously (redundancy & full testing mode)
-.\tools\bootstrap_reference.ps1 -All -AllSources
-
-# Unpack existing archives in temp/ without downloading
-.\tools\bootstrap_reference.ps1 -ExtractOnly
-
-# Download archives without automatic unpacking
-.\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual" -NoExtract
+.\tools\bootstrap_documentation.ps1 -All -AllSources
 
 # Or via the main repository bootstrapper
-.\tools\bootstrap.ps1 -Ref
-.\tools\bootstrap.ps1 -Ref -AllSources
+.\tools\bootstrap.ps1 -Documentation
+.\tools\bootstrap.ps1 -Documentation -AllSources
 ```
 
 ---
