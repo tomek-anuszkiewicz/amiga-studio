@@ -60,7 +60,7 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
 
     if not blocks_summary:
         # Check if this text-empty page contains a visual graphic (e.g. book cover, full-page illustration/schematic)
-        if gemini and gemini.is_available() and png_path and png_path.exists():
+        if png_path and png_path.exists():
             empty_prompt_file = Path(__file__).resolve().parent / "prompt_empty_page.md"
             vision_prompt = empty_prompt_file.read_text(encoding="utf-8") if empty_prompt_file.exists() else ""
             res = gemini.generate_json(vision_prompt, image_path=png_path)
@@ -159,9 +159,7 @@ def process_segmentation(workspace_dir: Path, config: dict):
         manifest = json.load(f)
 
     total_pages = manifest["total_pages"]
-    gemini = GeminiClient(config) if GeminiClient else None
-    if not gemini or not gemini.is_available():
-        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 02 segmentation.")
+    gemini = GeminiClient(config)
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 

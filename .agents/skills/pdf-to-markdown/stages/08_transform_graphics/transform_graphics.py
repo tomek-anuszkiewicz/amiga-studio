@@ -74,9 +74,7 @@ def process_graphics(workspace_dir: Path, config: dict):
                 shutil.copy2(f, out_assets_dir / f.name)
     assets_dir = out_assets_dir
 
-    gemini = GeminiClient(config) if GeminiClient else None
-    if not gemini or not gemini.is_available():
-        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 08 graphics transformation.")
+    gemini = GeminiClient(config)
 
     triage_prompt_path = Path(__file__).resolve().parent / "prompt_triage.md"
     triage_prompt = triage_prompt_path.read_text(encoding="utf-8") if triage_prompt_path.exists() else ""

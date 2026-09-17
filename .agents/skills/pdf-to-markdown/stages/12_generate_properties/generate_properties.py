@@ -28,10 +28,7 @@ SKILL_ROOT = Path(__file__).resolve().parents[2]
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
-try:
-    from llm_client import GeminiClient
-except ImportError:
-    GeminiClient = None
+from llm_client import GeminiClient
 
 
 def sanitize_tag(raw_tag: str) -> str:
@@ -42,81 +39,14 @@ def sanitize_tag(raw_tag: str) -> str:
     return cleaned
 
 
-def fallback_infer_properties(
-    file_path: Path,
-    content: str,
-    first_file_content: str,
-    fallback_book: str = "Amiga Reference Manual"
-) -> dict:
-    """Heuristic fallback when LLM is unavailable."""
-    stem = file_path.stem
-    clean_stem = re.sub(r"^\d+[_\s-]+", "", stem).replace("_", " ").strip()
-
-    # Detect title from first markdown header
-    title_match = re.search(r"^#+\s+(.+)$", content, re.MULTILINE)
-    if title_match:
-        raw_title = title_match.group(1).strip()
-        title = re.sub(r"[*_`]", "", raw_title)
-    else:
-        title = clean_stem.title() if clean_stem else "Document"
-
-    # Detect chapter designator
-    chapter_match = re.search(
-        r"\b(Section\s+\d+|Chapter\s+\d+|Appendix\s+[A-Z]|Table of Contents|Front Matter|Preface|Index|Glossary)\b",
-        title,
-        re.IGNORECASE
-    )
-    if chapter_match:
-        chapter = chapter_match.group(1).title()
-    elif "toc" in stem.lower() or "contents" in stem.lower():
-        chapter = "Table of Contents"
-    else:
-        num_m = re.match(r"^(\d+)", stem)
-        chapter = f"Section {int(num_m.group(1))}" if num_m else "Section"
-
-    tags = ["amiga", "reference", "hardware"]
-    lower_content = content.lower()
-    if "68000" in lower_content or "m68k" in lower_content:
-        tags.extend(["m68000", "motorola"])
-    if "blitter" in lower_content:
-        tags.append("blitter")
-    if "copper" in lower_content:
-        tags.append("copper")
-    if "denise" in lower_content or "playfield" in lower_content or "sprite" in lower_content:
-        tags.append("denise")
-    if "paula" in lower_content or "audio" in lower_content:
-        tags.append("paula")
-
-    # Format tags
-    seen = set()
-    dedup_tags = []
-    for t in tags:
-        st = sanitize_tag(t)
-        if st and st not in seen:
-            seen.add(st)
-            dedup_tags.append(st)
-
-    return {
-        "title": title,
-        "book": fallback_book,
-        "chapter": chapter,
-        "tags": dedup_tags[:8]
-    }
-
-
 def generate_chapter_properties(
     file_path: Path,
     content: str,
     first_file_excerpt: str,
     gemini: GeminiClient,
     base_prompt: str,
-    fallback_book: str = "Amiga Reference Manual"
 ) -> dict:
     """Generates Obsidian properties for a single chapter using Gemini."""
-    if not gemini or not gemini.is_available():
-        return fallback_infer_properties(file_path, content, first_file_excerpt, fallback_book)
-
-    # Extract substantial excerpt of chapter content (up to 4000 characters)
     chapter_excerpt = content[:4000]
 
     full_prompt = (
@@ -128,35 +58,31 @@ def generate_chapter_properties(
         f"```markdown\n{chapter_excerpt}\n```\n"
     )
 
-    try:
-        data = gemini.generate_json(full_prompt, stage="12_generate_properties")
-        if isinstance(data, dict):
-            title = str(data.get("title", "")).strip().strip('"')
-            book = str(data.get("book", "")).strip().strip('"')
-            chapter = str(data.get("chapter", "")).strip().strip('"')
-            raw_tags = data.get("tags", [])
+    data = gemini.generate_json(full_prompt, stage="12_generate_properties")
+    if not isinstance(data, dict):
+        raise ValueError(f"Gemini did not return a valid JSON dictionary for {file_path.name}: {data}")
 
-            clean_tags = []
-            if isinstance(raw_tags, list):
-                for t in raw_tags:
-                    st = sanitize_tag(str(t))
-                    if st and st not in clean_tags:
-                        clean_tags.append(st)
+    title = str(data.get("title", "")).strip().strip('"')
+    book = str(data.get("book", "")).strip().strip('"')
+    chapter = str(data.get("chapter", "")).strip().strip('"')
+    raw_tags = data.get("tags", [])
 
-            if not clean_tags:
-                clean_tags = ["amiga", "reference", "hardware"]
+    clean_tags = []
+    if isinstance(raw_tags, list):
+        for t in raw_tags:
+            st = sanitize_tag(str(t))
+            if st and st not in clean_tags:
+                clean_tags.append(st)
 
-            if title and book and chapter:
-                return {
-                    "title": title,
-                    "book": book,
-                    "chapter": chapter,
-                    "tags": clean_tags[:8]
-                }
-    except Exception as e:
-        print(f"[!] Warning: LLM properties generation failed for {file_path.name}: {e}")
+    if not clean_tags:
+        clean_tags = ["amiga", "reference", "hardware"]
 
-    return fallback_infer_properties(file_path, content, first_file_excerpt, fallback_book)
+    return {
+        "title": title or file_path.stem,
+        "book": book or "Amiga Reference Manual",
+        "chapter": chapter or "Section",
+        "tags": clean_tags[:8],
+    }
 
 
 def serialize_obsidian_frontmatter(props: dict) -> str:
@@ -182,7 +108,6 @@ def process_generate_properties(
     input_dir: Path,
     output_dir: Path,
     config: dict,
-    skip_llm: bool = False
 ):
     output_dir.mkdir(parents=True, exist_ok=True)
     out_assets = output_dir / "assets"
@@ -219,18 +144,8 @@ def process_generate_properties(
     with open(first_file, "r", encoding="utf-8") as f:
         first_content = f.read()
 
-    # Determine fallback book name from directory structure or first file
-    fallback_book = workspace_dir.parent.name if workspace_dir.parent else "Amiga Reference Manual"
-    if fallback_book in [".", "workspace", ""]:
-        fallback_book = "Amiga Technical Reference"
-
     # Initialize Gemini client
-    gemini = None
-    if not skip_llm and GeminiClient:
-        try:
-            gemini = GeminiClient(config)
-        except Exception as e:
-            print(f"[!] Warning: Unable to initialize GeminiClient ({e}). Using heuristic fallback.")
+    gemini = GeminiClient(config)
 
     prompt_path = Path(__file__).parent / "prompt.md"
     base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
@@ -255,7 +170,6 @@ def process_generate_properties(
             first_file_excerpt=first_content,
             gemini=gemini,
             base_prompt=base_prompt,
-            fallback_book=fallback_book
         )
 
         frontmatter_block = serialize_obsidian_frontmatter(props)
@@ -268,7 +182,7 @@ def process_generate_properties(
         print(f"    [+] {md_path.name} -> title: \"{props['title']}\", chapter: \"{props['chapter']}\"")
         return props
 
-    concurrency = config.get("llm", {}).get("concurrency", 4) if gemini and gemini.is_available() else 1
+    concurrency = config.get("llm", {}).get("concurrency", 4)
     if concurrency > 1 and len(md_files) > 1:
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
             list(executor.map(process_file, md_files))
@@ -285,7 +199,6 @@ def main():
     parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/11_emit_markdown)")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/12_generate_properties)")
     parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
-    parser.add_argument("--skip-llm", action="store_true", help="Skip LLM invocation and use heuristic fallback")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
@@ -315,7 +228,6 @@ def main():
         input_dir=input_dir,
         output_dir=output_dir,
         config=config,
-        skip_llm=args.skip_llm
     )
 
 

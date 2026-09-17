@@ -122,32 +122,22 @@ def process_proofread_stream(
             workspace_dir / "assets",
         ]:
             if cand.exists():
-                src_assets = cand
-                break
+        manifest_path = input_dir / "chapters_manifest.json"
 
-    if src_assets and src_assets.exists():
-        for asset_f in src_assets.glob("*"):
-            if asset_f.is_file():
-                out_assets.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(asset_f, out_assets / asset_f.name)
+    manifest = []
+    if manifest_path.exists():
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
 
-    # Initialize Gemini client
-    gemini = None
-    base_prompt = ""
-    if not skip_llm:
-        gemini = GeminiClient(config) if GeminiClient else None
-        prompt_file = Path(__file__).resolve().parent / "prompt.md"
-        if prompt_file.exists():
-            base_prompt = prompt_file.read_text(encoding="utf-8")
+    gemini = GeminiClient(config)
+    prompt_file = Path(__file__).resolve().parent / "prompt.md"
+    base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
 
     concurrency = int(config.get("llm", {}).get("concurrency", 8))
-    if gemini and gemini.is_available():
-        print(f"[*] Stream Proofreading LLM active ({gemini.default_model}). Processing {len(manifest)} partitions (concurrency={concurrency})...")
-    else:
-        print(f"[*] Stream Proofreading LLM offline or skipped. Normalizing streams directly...")
+    print(f"[*] Stream Proofreading LLM active ({gemini.default_model}). Processing {len(manifest)} partitions (concurrency={concurrency})...")
 
     title_map = {}
-    if gemini and gemini.is_available() and not skip_llm and manifest:
+    if manifest:
         from concurrent.futures import ThreadPoolExecutor
 
         def _proofread_single_title(entry):
@@ -261,8 +251,6 @@ def main():
     parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/09_transform_prose)")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/10_proofread_stream)")
     parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
-    parser.add_argument("--skip-llm", action="store_true", help="Skip LLM proofreading and normalize streams directly")
-
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     input_dir = Path(args.input_dir) if args.input_dir else (workspace_dir / "09_transform_prose")
@@ -281,8 +269,7 @@ def main():
         workspace_dir,
         input_dir,
         output_dir,
-        config,
-        skip_llm=args.skip_llm
+        config
     )
 
 

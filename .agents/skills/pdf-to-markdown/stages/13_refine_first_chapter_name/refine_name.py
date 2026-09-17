@@ -2,16 +2,17 @@
 """
 stages/13_refine_first_chapter_name/refine_name.py:
 Inspects the content and preliminary name of the first chapter in <output_dir>.
-Determines its canonical title and slug (typically Table of Contents / Front Matter).
+Queries Gemini to determine its canonical title and slug (typically Table of Contents / Front Matter).
 Renames the file, updates its Line 1 YAML title, and synchronizes any cross-file wikilinks.
 """
 
 import argparse
 import json
 import os
-import re
-import sys
 from pathlib import Path
+import re
+import shutil
+import sys
 import yaml
 
 # Import GeminiClient from skill root
@@ -19,40 +20,7 @@ SKILL_ROOT = Path(__file__).resolve().parents[2]
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
-try:
-    from llm_client import GeminiClient
-except ImportError:
-    GeminiClient = None
-
-
-def determine_canonical_title_and_slug(content: str, current_name: str) -> tuple:
-    """
-    Analyzes opening section content to determine canonical title and slug.
-    """
-    lower_content = content.lower()
-    has_toc_links = "[[" in content and ("toc" in lower_content or "contents" in lower_content)
-    has_toc_words = "table of contents" in lower_content or "contents" in lower_content
-
-    # If this is the dedicated TOC partition or contains Table of Contents
-    if "toc" in Path(current_name).stem.lower() or has_toc_links or has_toc_words:
-        return "Table of Contents", "toc"
-
-    # Check if Chapter 1 body is present in this opening file
-    if re.search(r"^#+\s+chapter\s+1\b", content, re.MULTILINE | re.IGNORECASE):
-        return "Chapter 1: Introduction", "chapter_1"
-
-    # Check for Preface / Foreword
-    if "preface" in lower_content:
-        return "Preface", "preface"
-    if "foreword" in lower_content:
-        return "Foreword", "foreword"
-    if "introduction" in lower_content:
-        return "Introduction", "introduction"
-
-    # Fallback to current stem
-    clean_stem = re.sub(r"^\d+[\s_-]*", "", Path(current_name).stem)
-    title = clean_stem.replace("_", " ").title()
-    return title, clean_stem
+from llm_client import GeminiClient
 
 
 def update_frontmatter_title(content: str, new_title: str) -> str:
@@ -73,14 +41,9 @@ def update_frontmatter_title(content: str, new_title: str) -> str:
 def process_first_chapter_refinement(
     output_dir: Path,
     workspace_dir: Path,
+    config_path: Path,
     input_dir: Path = None,
-    config_path: Path = None,
-    inspect_only: bool = False,
-    override_title: str = None,
-    override_slug: str = None
 ):
-    import shutil
-
     if not input_dir:
         candidates = [
             workspace_dir / "12_generate_properties",
@@ -105,50 +68,29 @@ def process_first_chapter_refinement(
     with open(first_file, "r", encoding="utf-8") as f:
         content = f.read()
 
-    if inspect_only:
-        print(f"[*] Opening Chapter Inspection: {first_file.name}")
-        print("=" * 60)
-        lines = content.splitlines()[:50]
-        print("\n".join(lines))
-        print("=" * 60)
-        auto_title, auto_slug = determine_canonical_title_and_slug(content, first_file.name)
-        print(f"Suggested Canonical Title: {auto_title}")
-        print(f"Suggested Slug           : {auto_slug}")
-        return
+    if not config_path or not config_path.is_file():
+        raise FileNotFoundError(f"Stage 13: Config file not found: {config_path}")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    if not config or not isinstance(config, dict):
+        raise ValueError(f"Stage 13: Config file is empty or invalid: {config_path}")
 
-    new_title = override_title
-    new_slug = override_slug
+    gemini = GeminiClient(config)
+    prompt_file = Path(__file__).parent / "prompt.md"
+    base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
 
-    if not new_title or not new_slug:
-        if not config_path or not config_path.is_file():
-            raise FileNotFoundError(f"Stage 13: Config file not found: {config_path}")
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        if not config or not isinstance(config, dict):
-            raise ValueError(f"Stage 13: Config file is empty or invalid: {config_path}")
+    full_prompt = (
+        f"{base_prompt}\n\n"
+        f"Preliminary File Name: {first_file.name}\n\n"
+        f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
+    )
 
-        gemini = GeminiClient(config) if GeminiClient else None
-        if gemini and gemini.is_available():
-            prompt_file = Path(__file__).parent / "prompt.md"
-            base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
+    parsed = gemini.generate_json(full_prompt, stage="13_refine_chapter")
+    if not isinstance(parsed, dict) or "title" not in parsed or "slug" not in parsed:
+        raise ValueError(f"Gemini did not return valid title and slug JSON for {first_file.name}: {parsed}")
 
-            full_prompt = (
-                f"{base_prompt}\n\n"
-                f"Preliminary File Name: {first_file.name}\n\n"
-                f"Content Excerpt:\n```markdown\n{content[:4000]}\n```\n"
-            )
-            try:
-                parsed = gemini.generate_json(full_prompt, stage="13_refine_chapter")
-                if isinstance(parsed, dict):
-                    new_title = parsed.get("title")
-                    new_slug = parsed.get("slug")
-            except Exception as e:
-                print(f"[!] Warning: LLM title refinement failed ({e}). Using heuristic fallback.")
-
-    if not new_title or not new_slug:
-        auto_title, auto_slug = determine_canonical_title_and_slug(content, first_file.name)
-        new_title = new_title or auto_title
-        new_slug = new_slug or auto_slug
+    new_title = str(parsed["title"]).strip().strip('"')
+    new_slug = str(parsed["slug"]).strip().strip('"')
 
     clean_title_name = re.sub(r'[:/\\|]', ' - ', new_title)
     clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name).strip(' -.')
@@ -210,9 +152,6 @@ def main():
     parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/12_generate_properties)")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/13_refine_first_chapter_name)")
     parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
-    parser.add_argument("--inspect", action="store_true", help="Inspect opening chapter excerpt and suggested titles")
-    parser.add_argument("--title", type=str, default=None, help="Explicit canonical title")
-    parser.add_argument("--slug", type=str, default=None, help="Explicit canonical slug")
 
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
@@ -223,13 +162,10 @@ def main():
         raise FileNotFoundError(f"Stage 13: Config file not found: {config_path}")
 
     process_first_chapter_refinement(
-        output_dir,
-        workspace_dir,
-        input_dir=input_dir,
+        output_dir=output_dir,
+        workspace_dir=workspace_dir,
         config_path=config_path,
-        inspect_only=args.inspect,
-        override_title=args.title,
-        override_slug=args.slug
+        input_dir=input_dir,
     )
 
 

@@ -1351,3 +1351,27 @@ Every future modification or implementation task must append an entry following 
   - Verified Table 2-1 and Table 2-2 in Section 2 render cleanly as semantic HTML tables without enclosing backtick code fences (` ```html `).
   - Verified Table of Contents links cleanly resolve to generated section headings via Obsidian wikilinks.
   - Passed `python tools/harness/pre_flight.py --quick`.
+---
+
+### [2026-09-17 16:02 CEST] — Enforce Gemini Cognitive Invariant Across PDF-to-Markdown Pipeline
+- **Affected Subsystems**:
+  - `.agents/skills/pdf-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - llm_client.py: Fail fast on missing GEMINI_API_KEY with RuntimeError
+  - eliminated defensive is_available() checks and mock fallbacks
+  - detect_and_ocr.py: Removed defensive GeminiClient guards and enforced direct LLM text detection
+  - segment_page.py: Unconditionally instantiated GeminiClient and eliminated defensive checks
+  - reduce_stream.py: Fused prose and contiguous graphics using concrete GeminiClient without defensive branching
+  - detect_continuations.py: Streamlined continuation detection to query Gemini directly
+  - transform_tables.py, transform_graphics.py, format_prose.py: Directly instantiated and invoked GeminiClient across workers
+  - proofread_stream.py: Deleted offline fallback methods and removed --skip-llm CLI flag
+  - generate_properties.py: Deleted 60-line fallback_infer_properties(), removed keyword catalog heuristics ('blitter', 'copper'), removed --skip-llm flag, and directly query Gemini
+  - refine_name.py: Deleted 30-line determine_canonical_title_and_slug() heuristic catalog, removed --inspect/--title/--slug flags, and directly query Gemini for first chapter title and slug
+  - config.yaml & SKILL.md: Updated documentation to reflect Gemini as mandatory cognitive engine with zero offline fallbacks
+- **Architectural Rationale & Trade-Offs**:
+  - Offline mock fallbacks and defensive guards created fragmented maintenance overhead, silent quality degradation, and dead heuristic catalogs that contradicted the core invariant that Gemini is always available
+  - Deleting heuristic fallbacks and obsolete flags simplifies the architecture, guarantees consistent high-fidelity output, and establishes clean fail-fast error semantics across the pipeline
+- **Verification & Test Results**:
+  - Validated Stage 12, 13, 14 execution on PRM reference manual: processed 4 files in parallel (Stage 12 in 2.78s, Stage 13 in 2.27s, Stage 14 in 0.27s)
+  - Pre-flight quality gates passed (python tools/harness/pre_flight.py --quick)
+  - Tier 1 unit tests passed (23 crates + 7 test_runner unit suites in 19.06s)

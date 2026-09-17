@@ -69,9 +69,7 @@ def process_tables(workspace_dir: Path, config: dict):
         prompt_path = Path(__file__).resolve().parent / "prompt_markdown_table.md"
     base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
 
-    gemini = GeminiClient(config) if GeminiClient else None
-    if not gemini or not gemini.is_available():
-        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 07 table transformation.")
+    gemini = GeminiClient(config)
 
     from concurrent.futures import ThreadPoolExecutor
 

@@ -36,14 +36,14 @@ except ImportError:
     extract_assets_for_nodes = None
 
 
-def weld_prose_with_gemini(text1: str, text2: str, gemini: Optional[GeminiClient], prompt_template: str) -> str:
+def weld_prose_with_gemini(text1: str, text2: str, gemini: GeminiClient, prompt_template: str) -> str:
     """
     Uses Gemini LLM to evaluate cross-page paragraph continuation and perform accurate de-hyphenation.
     """
     t1 = text1.rstrip()
     t2 = text2.lstrip()
 
-    if gemini and gemini.is_available() and prompt_template:
+    if prompt_template:
         prompt = (
             f"{prompt_template}\n\n"
             f"## Tail Text of Preceding Page:\n```text\n{t1[-300:]}\n```\n\n"
@@ -112,7 +112,7 @@ def reduce_contiguous_graphics(
         labels = [n.get("raw_text", "").strip() for n in run if n.get("raw_text", "").strip()]
         png_path = pages_dir / f"page_{page_num:04d}.png"
 
-        if gemini and gemini.is_available() and png_path.exists() and graphics_prompt:
+        if png_path.exists() and graphics_prompt:
             prompt = (
                 f"{graphics_prompt}\n\n"
                 f"Page: {page_num}\n"
@@ -345,9 +345,7 @@ def reduce_stream(workspace_dir: Path, config: dict):
     graphics_prompt_path = Path(__file__).resolve().parent / "prompt_graphics_union.md"
     graphics_prompt_template = graphics_prompt_path.read_text(encoding="utf-8") if graphics_prompt_path.exists() else ""
 
-    gemini = GeminiClient(config) if GeminiClient else None
-    if not gemini or not gemini.is_available():
-        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 04 stream reduction.")
+    gemini = GeminiClient(config)
 
     with open(raw_stream_path, "r", encoding="utf-8") as f:
         raw_nodes = json.load(f)
@@ -467,7 +465,7 @@ def reduce_stream(workspace_dir: Path, config: dict):
             seam_tasks.append((k, t1, t2))
 
     seam_results = {}
-    if seam_tasks and gemini and gemini.is_available() and seam_prompt_template:
+    if seam_tasks and seam_prompt_template:
         from concurrent.futures import ThreadPoolExecutor
 
         def _eval_seam_task(task):

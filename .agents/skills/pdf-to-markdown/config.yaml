@@ -25,7 +25,7 @@ paths:
   default_output_dir: "."
 
 llm:
-  provider: "google-genai"     # google-genai, openai, or mock/offline
+  provider: "google-genai"     # google-genai (Gemini is the mandatory cognitive engine)
   model_vision: "gemini-3.8-flash"
   model_prose: "gemini-3.8-flash"
   model_table: "gemini-3.8-flash"

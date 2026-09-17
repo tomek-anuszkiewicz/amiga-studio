@@ -9,7 +9,7 @@ This skill converts complex technical PDF documents (such as Amiga hardware refe
 
 It is architected around an **Agent-Driven Hybrid Model**:
 - **Deterministic Python Scripts** handle mechanical tasks (page extraction, 300 DPI rendering, text geometry, asset slicing with 10% margins, stream stitching, chapter partitioning, Markdown emission, and TOC link resolution).
-- **The Agent** acts as the cognitive engine and orchestrator (segmentation validation, multi-page continuation reasoning, table formatting, flowchart-to-Mermaid transcription, RAG sidecar authorship, prose polish, and opening title refinement), eliminating any requirement for external API keys (`GEMINI_API_KEY`).
+- **Gemini LLM & Multimodal Vision** serves as the mandatory cognitive engine across all stages (via `llm_client.py` powered by `google-genai`), providing high-fidelity OCR text extraction, visual zone segmentation, multi-page continuation resolution, table structuring, flowchart/Mermaid transcription, stream proofreading, and publication-grade Obsidian properties generation with zero offline fallbacks.
 
 ---
 

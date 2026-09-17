@@ -177,16 +177,10 @@ def detect_and_ocr_pages(
         ocr_tasks.append((jf, page_data, png_path, page_num, len(blocks), total_chars))
 
     if ocr_tasks:
-        if GeminiClient is None:
-            print("[!] Error: GeminiClient unavailable. Check llm_client.py dependencies.", file=sys.stderr)
-            return False
         if not cfg_dict or "llm" not in cfg_dict:
             print(f"[!] Error: Valid configuration with 'llm' section required for OCR at {config_path}", file=sys.stderr)
             return False
         gemini = GeminiClient(cfg_dict)
-        if not gemini.is_available():
-            print("[!] Error: Gemini API key not configured or client offline.", file=sys.stderr)
-            return False
 
         print(f"[*] Dispatching Gemini Vision OCR for {len(ocr_tasks)} scanned pages (concurrency={concurrency})...")
 

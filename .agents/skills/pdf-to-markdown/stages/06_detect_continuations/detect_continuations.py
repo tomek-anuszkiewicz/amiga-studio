@@ -45,7 +45,7 @@ def check_continuation_with_gemini(node_a: dict, node_b: dict, gemini: Optional[
     if not text_a or not text_b:
         return False
 
-    if gemini and gemini.is_available() and prompt_template:
+    if prompt_template:
         sample_a = text_a if len(text_a) <= 800 else f"{text_a[:350]}\n...\n{text_a[-400:]}"
         sample_b = text_b if len(text_b) <= 800 else f"{text_b[:500]}\n...\n{text_b[-250:]}"
         prompt = (
@@ -75,9 +75,7 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
     prompt_path = Path(__file__).resolve().parent / "prompt_continuation.md"
     prompt_template = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
 
-    gemini = GeminiClient(config) if GeminiClient else None
-    if not gemini or not gemini.is_available():
-        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 06 continuation detection.")
+    gemini = GeminiClient(config)
 
     chapter_files = sorted(list(input_dir.glob("*.json")))
     from concurrent.futures import ThreadPoolExecutor

@@ -118,16 +118,12 @@ class GeminiClient:
 
     def _init_client(self):
         if not self.api_key:
-            return
-        try:
-            from google import genai
-            self.client = genai.Client(api_key=self.api_key)
-        except Exception as e:
-            print(f"[!] Warning: Failed to initialize google.genai Client: {e}")
-            self.client = None
+            raise RuntimeError("GEMINI_API_KEY environment variable is required for pdf-to-markdown pipeline.")
+        from google import genai
+        self.client = genai.Client(api_key=self.api_key)
 
     def is_available(self) -> bool:
-        return self.client is not None and bool(self.api_key)
+        return True
 
     def resolve_thinking_budget(self, stage: Optional[str] = None, thinking_budget: Optional[int] = None) -> Optional[int]:
         if thinking_budget is not None:
@@ -151,8 +147,6 @@ class GeminiClient:
         return cfg, budget
 
     def generate_text(self, prompt: str, model: str = None, stage: Optional[str] = None, thinking_budget: Optional[int] = None, response_mime_type: Optional[str] = None) -> str:
-        if not self.is_available():
-            raise RuntimeError("GEMINI_API_KEY environment variable is required for pipeline inference.")
         import time
         import re
 
@@ -203,8 +197,6 @@ class GeminiClient:
         )
 
     def generate_vision(self, prompt: str, image_path: Path, model: str = None, stage: Optional[str] = None, thinking_budget: Optional[int] = None, response_mime_type: Optional[str] = None) -> str:
-        if not self.is_available():
-            raise RuntimeError("GEMINI_API_KEY environment variable is required for pipeline inference.")
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found for vision generation: {image_path}")
         import time
