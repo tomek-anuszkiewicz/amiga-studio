@@ -14,9 +14,10 @@ This document serves as the primary technical entry point for building, testing,
   - [WebAssembly Browser Canvas (Trunk)](#webassembly-browser-canvas-trunk)
 - [2. External Reference Sources & Verification Testbeds](#2-external-reference-sources-verification-testbeds)
   - [Pinned Upstream Sources Summary](#pinned-upstream-sources-summary)
-- [3. Ingested Reference Documentation (In-Repository)](#3-ingested-reference-documentation-in-repository)
-  - [Why Ingested Documentation is Critical](#why-ingested-documentation-is-critical)
-  - [Available Reference Documents](#ingested-reference-documents-available-in-repository)
+- [3. Documentation Architecture & Reference Literature](#3-documentation-architecture-reference-literature)
+  - [Why Documentation is Critical (Human, AI & RAG)](#why-documentation-is-critical-human-ai-rag)
+  - [In-Repository Specifications (Committed to Git)](#in-repository-specifications-committed-to-git)
+  - [External Reference Documentation (Bootstrapped / Git-Ignored)](#external-reference-documentation-bootstrapped-git-ignored)
   - [Processing Raw Documents into Markdown](#processing-raw-documents-into-markdown)
 - [4. External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)
   - [Automated Sources Provisioning (`tools/bootstrap/bootstrap_sources.ps1`)](#automated-provisioning-toolsbootstrapbootstrap_sourcesps1)
@@ -99,13 +100,13 @@ Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed
 
 ---
 
-<a id="3-ingested-reference-documentation-in-repository"></a><a id="3-ingested-reference-documentation--in-repository"></a><a id="3-technical-reference-documentation-literature"></a><a id="3-technical-reference-documentation--literature"></a>
-## 3. Ingested Reference Documentation (In-Repository)
+<a id="3-documentation-architecture-reference-literature"></a><a id="3-documentation-architecture--reference-literature"></a><a id="3-ingested-reference-documentation-in-repository"></a><a id="3-ingested-reference-documentation--in-repository"></a><a id="3-technical-reference-documentation-literature"></a><a id="3-technical-reference-documentation--literature"></a>
+## 3. Documentation Architecture & Reference Literature
 
-The repository maintains an authoritative, high-fidelity reference library under `Obsidian/Amiga/Reference/`. All primary reference materials are **already converted into structured Markdown specifications and committed directly to the repository**. Developers and AI agents can read, cross-reference, and semantically search these documents immediately without requiring any external downloads.
+The repository maintains an authoritative, high-fidelity documentation library under `Obsidian/Amiga/`. To optimize repository clone sizes and respect licensing boundaries, documentation is strictly partitioned into two categories:
 
-<a id="why-ingested-documentation-is-critical"></a>
-### Why Ingested Documentation is Critical
+<a id="why-documentation-is-critical-human-ai-rag"></a><a id="why-ingested-documentation-is-critical"></a>
+### Why Documentation is Critical (Human, AI & RAG)
 
 1. **Direct Human Exploration & Research:**
    - Provides instant, friction-free access to Commodore and Motorola engineering specifications directly inside your IDE or Obsidian vault.
@@ -116,10 +117,28 @@ The repository maintains an authoritative, high-fidelity reference library under
    - **Local Vector RAG Retrieval (`amiga-rag`):** The entire reference library (alongside `Obsidian/Amiga/Design/` architectural specs) is indexed in Qdrant. Autonomous agents perform pre-task conceptual queries before touching code, ensuring zero silent divergence from hardware silicon.
    - **Interactive Consultation & Change Review:** Developers can query the RAG system directly through CLI or FastMCP tools (`rag_search`) to clarify complex hardware quirks, verify register behavior, or evaluate architectural changes before editing production code.
 
-<a id="ingested-reference-documents-available-in-repository"></a>
-### Ingested Reference Documents (Available in Repository)
+<a id="in-repository-specifications-committed-to-git"></a>
+### In-Repository Specifications (Committed to Git)
 
-The following primary technical documentation and microarchitectural papers are fully converted into structured Markdown, committed directly to Git, and immediately available:
+The following architectural specifications and technical studies are **committed directly to the Git repository** and immediately available upon cloning without external downloads:
+
+1. **Architectural Design Specifications (`Obsidian/Amiga/Design/`):**
+   - 20+ comprehensive architectural specifications covering every major emulator subsystem.
+   - Formulates the M68000 micro-step state machine, Agnus (Copper & Blitter state machines), Denise (bitplanes, sprites, color palette), Paula (audio DMA, floppy disk controller), CIA-A / CIA-B timers, Gary memory bus arbitration, wait state handling, and CPU benchmarking methodologies.
+   - Centralized hardware idiosyncrasies and silicon edge-cases reside in the [Platform Quirks and Invariants Catalog](../Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md).
+
+2. **DIVU & DIVS Cycle-Accurate Timing Analysis (Jorge Cwik / Pasti):**
+   - **Location:** `Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md`
+   - **Scope:** Cycle-exact algorithmic analysis of 68000 non-restoring integer division. Formulates precise cycle calculations verified against physical silicon test vectors.
+
+3. **Core Architectural Guidelines & Specifications:**
+   - [**Core Architecture & Hardware Execution Model**](architecture.md): Formalizes the cycle-exact Color Clock phases (`CCK1`/`CCK2`), shared bus contention, and decoupled ownership.
+   - [**Developer Guide & Tooling Index**](developers.md): Primary technical entry point for building, testing, and tool workflows.
+
+<a id="external-reference-documentation-bootstrapped-git-ignored"></a><a id="ingested-reference-documents-available-in-repository"></a>
+### External Reference Documentation (Bootstrapped / Git-Ignored)
+
+Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`), the primary Commodore and Motorola reference manuals are **excluded from Git tracking**. They are converted into structured Markdown format and must be downloaded or linked via bootstrapping:
 
 1. **Hardware Reference Manual (Addison-Wesley 2nd Edition, 1989)**
    - **Location:** `Obsidian/Amiga/Reference/Hardware Reference Manual/`
@@ -142,16 +161,12 @@ The following primary technical documentation and microarchitectural papers are 
    - **Location:** `Obsidian/Amiga/Reference/Instruction Prefetch on the Motorola 68000 Processor.md`
    - **Scope:** Authoritative microarchitectural prefetch queue study (Version 1.3). Establishes the 68000 two-stage `IR` (Instruction Register) and `IRC` (Instruction Register Capture) pipeline model and timing interactions.
 
-6. **Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis (Jorge Cwik / Pasti)**
-   - **Location:** `Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md`
-   - **Scope:** Cycle-exact algorithmic analysis of 68000 non-restoring integer division. Formulates precise cycle calculations verified against physical silicon test vectors.
-
-7. **Undocumented Features of OCS, ECS and AGA Chipsets (Kuba Winnicki / Achtung! Amiga, 2002)**
+6. **Undocumented Features of OCS, ECS and AGA Chipsets (Kuba Winnicki / Achtung! Amiga, 2002)**
    - **Location:** `Obsidian/Amiga/Reference/Undocumented features of OCS, ECS and AGA chipsets.md`
    - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
 
 > [!TIP]
-> If you wish to download the original archival PDF scans, schematics, and OEM manuals, see **[Chapter 4: External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)** (`.\tools\bootstrap\bootstrap.ps1 -Documentation`).
+> Information and automated scripts for downloading and bootstrapping these external reference materials (as well as original archival PDF scans) are provided in **[Chapter 4: External Reference Downloads & Provisioning](#4-external-reference-downloads-provisioning)** (`.\tools\bootstrap\bootstrap.ps1 -Documentation`).
 
 <a id="processing-raw-documents-into-markdown"></a>
 ### Processing Raw Documents into Markdown
