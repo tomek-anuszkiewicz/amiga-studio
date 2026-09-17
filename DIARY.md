@@ -6223,3 +6223,26 @@ Every future modification or implementation task must append an entry following 
   - Validated syntax and `Show-Usage` on both scripts.
   - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
 
+### [2026-09-17 03:33 CEST] — Extracted Test, Graphify, and RAG Bootstrappers into Standalone Scripts
+- **Affected Subsystems**:
+  - `tools/bootstrap_test.ps1` (new standalone script for hardware test vectors, SingleStepTests unpacking, and regression verification)
+  - `tools/bootstrap_graphify.ps1` (new standalone script for AST code knowledge graph generation)
+  - `tools/bootstrap_rag.ps1` (new standalone script for AI documentation indexing into Qdrant)
+  - `tools/bootstrap.ps1` (refactored into modular coordinator delegating to the 4 child scripts)
+  - `tools/harness/check_polish.py` (added archive extensions like "gz", "zip", "tar" to technical whitelist to eliminate false positives)
+  - `Obsidian/Amiga/Design/PowerShell Guidelines.md` (updated living implementations and references)
+- **What Was Changed (The Concrete Reality)**:
+  - Extracted Tier 1 test bootstrapping into `tools/bootstrap_test.ps1` supporting `-NoSmoke` and `-SmokeOnly` options.
+  - Extracted Tier 2 code knowledge graph generation into `tools/bootstrap_graphify.ps1` supporting `-CheckOnly`.
+  - Extracted Tier 3 AI knowledge indexing into `tools/bootstrap_rag.ps1` supporting `-Path`, `-Source`, and `-CheckOnly`.
+  - Refactored `tools/bootstrap.ps1` into a clean coordinator that delegates to the 4 dedicated scripts (`bootstrap_test.ps1`, `bootstrap_graphify.ps1`, `bootstrap_rag.ps1`, and `bootstrap_reference.ps1`).
+  - Added archive/format file extensions (`"gz"`, `"zip"`, `"tar"`, `"lha"`, `"adf"`, `"rom"`, `"json"`, `"toml"`, `"ps1"`) to `TECHNICAL_WHITELIST` in `tools/harness/check_polish.py` to prevent false positive language flags on file masks like `*.gz`.
+  - Updated `PowerShell Guidelines.md` living implementations index.
+- **Architectural Rationale & Trade-Offs**:
+  - *Single Responsibility & Modularity:* Eliminates monolithic script bloat. Each tier can now be executed, tested, and maintained in isolation without running unwanted checks or having to parse a large multi-purpose script. The parent `bootstrap.ps1` remains an intuitive unified entry point.
+- **Verification & Test Results**:
+  - Tested `bootstrap.ps1`, `bootstrap_test.ps1`, `bootstrap_graphify.ps1`, and `bootstrap_rag.ps1` in PowerShell.
+  - Tested smoke check via `bootstrap_test.ps1` (`cargo test -p test_runner --test test_singlestep test_nop`).
+  - `python tools/harness/pre_flight.py`: Passed 100% cleanly across all quality gates.
+
+
