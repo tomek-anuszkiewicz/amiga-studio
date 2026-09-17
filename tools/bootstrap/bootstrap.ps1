@@ -10,7 +10,7 @@
     - Tier 1: Hardware Verification & External Sources (-Sources -> tools/bootstrap/bootstrap_sources.ps1)
     - Tier 2: AST-Level Code Knowledge Graph (-Graphify -> tools/bootstrap/bootstrap_graphify.ps1)
     - Tier 3: AI Knowledge & Qdrant RAG Vector Index (-Rag -> tools/bootstrap/bootstrap_rag.ps1)
-    - Tier 4: External Reference Documentation & Scans (-Documentation / -Ref -> tools/bootstrap/bootstrap_documentation.ps1)
+    - Tier 4: External Reference Documentation & Scans (-Documentation -> tools/bootstrap/bootstrap_documentation.ps1)
 
     NOTE: Bootstrapping is NOT required to build, test, or run the emulator.
     A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'.
@@ -33,18 +33,10 @@
 .PARAMETER Documentation
     Provisions raw external reference documentation (PDF scans, microarchitectural guides,
     and multi-page HTML crawls) into Obsidian/Amiga/Reference/. Delegates to
-    tools/bootstrap_documentation.ps1. Aliases: -Doc, -Ref.
-
-.PARAMETER Ref
-    Alias for -Documentation. Provisions raw external reference documentation into
-    Obsidian/Amiga/Reference/.
-
-.PARAMETER Doc
-    Alias for -Documentation. Provisions raw external reference documentation into
-    Obsidian/Amiga/Reference/.
+    tools/bootstrap_documentation.ps1.
 
 .PARAMETER Markdown
-    When bootstrapping documentation (-Documentation / -Doc / -Ref), converts downloaded
+    When bootstrapping documentation (-Documentation), converts downloaded
     reference scans and crawls into publication-grade Markdown directly within their target
     directories. Aliases: -Convert, -Process.
 
@@ -88,7 +80,6 @@ param(
     [switch]$Graphify,
     [Alias("Qdrant")]
     [switch]$Rag,
-    [Alias("Ref", "Doc")]
     [switch]$Documentation,
     [Alias("Convert", "Process")]
     [switch]$Markdown,
@@ -118,7 +109,7 @@ function Show-Usage {
     Write-Host "  -Sources                 : Verify & unpack SingleStepTests 68000 test vectors"
     Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
     Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (alias: -Qdrant)"
-    Write-Host "  -Documentation           : Download external reference materials into Reference/ (aliases: -Doc, -Ref)"
+    Write-Host "  -Documentation           : Download external reference materials into Reference/"
     Write-Host "  -Markdown                : Convert downloaded materials into publication-grade Markdown (aliases: -Convert, -Process)"
     Write-Host "  -AllSources              : Download from all mirrors for -Documentation (alias: -AllMirrors)"
     Write-Host "  -All                     : Run all primary tiers (-Sources, -Graphify, -Rag)"
@@ -191,7 +182,7 @@ if ($Rag -or $All) {
 }
 
 # -----------------------------------------------------------------------------
-# Tier 4: External Reference Documentation Bootstrap (-Documentation / -Ref)
+# Tier 4: External Reference Documentation Bootstrap (-Documentation)
 # -----------------------------------------------------------------------------
 if ($Documentation) {
     Write-Host ""
