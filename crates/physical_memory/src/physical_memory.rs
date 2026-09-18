@@ -4,17 +4,16 @@
 //! DMA wait-state stalling, and hardware quirks per Obsidian/Amiga/Design/MemoryBus.md.
 
 pub mod address_bus;
-pub mod bus_result;
 pub mod map;
 
-pub use address_bus::AddressBus;
-pub use bus_result::BusResult;
+pub use address_bus::{AddressBus, BusResult};
 pub use config::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
 };
 pub use map::{
     build_bank_map, build_preset_bank_map, get_preset_bank_map, handler_for_bank, BankHandler,
-    BankReadByteFn, BankReadWordFn, BankWriteByteFn, BankWriteWordFn, BANK_MAP_BARE,
+    BankReadByteDebugFn, BankReadByteFn, BankReadWordDebugFn, BankReadWordFn, BankWriteByteDebugFn,
+    BankWriteByteFn, BankWriteWordDebugFn, BankWriteWordFn, MemoryBank, BANK_MAP_BARE,
     BANK_MAP_EXPANDED, BANK_MAP_STANDARD,
 };
 pub use rtc;
@@ -27,27 +26,6 @@ pub const CHIP_RAM_SIZE_512K: usize = 512 * 1024;
 pub const SLOW_RAM_SIZE: usize = 512 * 1024;
 pub const MAX_FAST_RAM_SIZE: usize = 4 * 1024 * 1024; // 4MB Fast RAM (Auto-Config expansion at $200000..$5FFFFF)
 pub const KICKSTART_SIZE_256K: usize = 256 * 1024;
-
-/// Classification of a 64 KB physical memory bank
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum MemoryBank {
-    /// Chip RAM ($000000-$07FFFF)
-    ChipRam,
-    /// Auto-Config Fast RAM expansion ($200000-$9FFFFF)
-    FastRam,
-    /// CIA-A and CIA-B peripheral registers ($BF0000-$BFFFFF)
-    Cia,
-    /// Slow / Trapdoor RAM ($C00000-$C7FFFF)
-    SlowRam,
-    /// Real-Time Clock ($DC0000-$DC003F)
-    Rtc,
-    /// Custom Chip Registers ($DF0000-$DFFFFF, active at $DFF000-$DFFFFE)
-    CustomChips,
-    /// Kickstart ROM ($F80000-$FFFFFF)
-    KickstartRom,
-    /// Unmapped floating open bus (returns $FF / $FFFF)
-    OpenBus,
-}
 
 /// Cycle-exact Amiga 500 PhysicalMemory
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -281,134 +259,30 @@ impl PhysicalMemory {
     #[inline(always)]
     pub fn read_byte_debug(&self, addr: u32) -> u8 {
         let addr = addr & 0x00FF_FFFF;
-        let bank_idx = (addr >> 16) as usize;
-        match self.bank_map[bank_idx].bank {
-            MemoryBank::ChipRam => self.chip_ram[addr as usize],
-            MemoryBank::FastRam => {
-                if let Some(fast_ram) = &self.fast_ram {
-                    fast_ram[(addr - 0x200000) as usize]
-                } else {
-                    self.unmapped_byte
-                }
-            }
-            MemoryBank::SlowRam => {
-                if let Some(slow_ram) = &self.slow_ram {
-                    slow_ram[(addr - 0xC00000) as usize]
-                } else {
-                    self.unmapped_byte
-                }
-            }
-            MemoryBank::KickstartRom => {
-                let mask = self.kickstart_rom.len() - 1;
-                self.kickstart_rom[(addr as usize) & mask]
-            }
-            MemoryBank::OpenBus | MemoryBank::Cia | MemoryBank::Rtc | MemoryBank::CustomChips => {
-                self.unmapped_byte
-            }
-        }
+        (self.bank_map[(addr >> 16) as usize].read_byte_debug)(self, addr)
     }
 
     /// Side-effect-free word read for disassemblers, debugger inspection, and test result assertions
     #[inline(always)]
     pub fn read_word_debug(&self, addr: u32) -> u16 {
         let addr = addr & 0x00FF_FFFF;
-        let bank_idx = (addr >> 16) as usize;
-        match self.bank_map[bank_idx].bank {
-            MemoryBank::ChipRam => {
-                let idx = addr as usize;
-                u16::from_be_bytes([self.chip_ram[idx], self.chip_ram[idx + 1]])
-            }
-            MemoryBank::FastRam => {
-                if let Some(fast_ram) = &self.fast_ram {
-                    let offset = (addr - 0x200000) as usize;
-                    u16::from_be_bytes([fast_ram[offset], fast_ram[offset + 1]])
-                } else {
-                    let b = self.unmapped_byte as u16;
-                    (b << 8) | b
-                }
-            }
-            MemoryBank::SlowRam => {
-                if let Some(slow_ram) = &self.slow_ram {
-                    let offset = (addr - 0xC00000) as usize;
-                    u16::from_be_bytes([slow_ram[offset], slow_ram[offset + 1]])
-                } else {
-                    let b = self.unmapped_byte as u16;
-                    (b << 8) | b
-                }
-            }
-            MemoryBank::KickstartRom => {
-                let mask = self.kickstart_rom.len() - 1;
-                let idx = (addr as usize) & mask;
-                if idx + 1 < self.kickstart_rom.len() {
-                    u16::from_be_bytes([self.kickstart_rom[idx], self.kickstart_rom[idx + 1]])
-                } else {
-                    u16::from_be_bytes([self.kickstart_rom[idx], self.kickstart_rom[0]])
-                }
-            }
-            MemoryBank::OpenBus | MemoryBank::Cia | MemoryBank::Rtc | MemoryBank::CustomChips => {
-                let b = self.unmapped_byte as u16;
-                (b << 8) | b
-            }
-        }
+        (self.bank_map[(addr >> 16) as usize].read_word_debug)(self, addr)
     }
 
     /// Side-effect-free byte write for debugger modification
     #[inline(always)]
     pub fn write_byte_debug(&mut self, addr: u32, val: u8) {
         let addr = addr & 0x00FF_FFFF;
-        let bank_idx = (addr >> 16) as usize;
-        match self.bank_map[bank_idx].bank {
-            MemoryBank::ChipRam => self.chip_ram[addr as usize] = val,
-            MemoryBank::FastRam => {
-                if let Some(fast_ram) = &mut self.fast_ram {
-                    fast_ram[(addr - 0x200000) as usize] = val;
-                }
-            }
-            MemoryBank::SlowRam => {
-                if let Some(slow_ram) = &mut self.slow_ram {
-                    slow_ram[(addr - 0xC00000) as usize] = val;
-                }
-            }
-            MemoryBank::KickstartRom
-            | MemoryBank::OpenBus
-            | MemoryBank::Cia
-            | MemoryBank::Rtc
-            | MemoryBank::CustomChips => {}
-        }
+        let write_fn = self.bank_map[(addr >> 16) as usize].write_byte_debug;
+        write_fn(self, addr, val);
     }
 
     /// Side-effect-free word write for debugger modification
     #[inline(always)]
     pub fn write_word_debug(&mut self, addr: u32, val: u16) {
         let addr = addr & 0x00FF_FFFF;
-        let bank_idx = (addr >> 16) as usize;
-        let bytes = val.to_be_bytes();
-        match self.bank_map[bank_idx].bank {
-            MemoryBank::ChipRam => {
-                let idx = addr as usize;
-                self.chip_ram[idx] = bytes[0];
-                self.chip_ram[idx + 1] = bytes[1];
-            }
-            MemoryBank::FastRam => {
-                if let Some(fast_ram) = &mut self.fast_ram {
-                    let offset = (addr - 0x200000) as usize;
-                    fast_ram[offset] = bytes[0];
-                    fast_ram[offset + 1] = bytes[1];
-                }
-            }
-            MemoryBank::SlowRam => {
-                if let Some(slow_ram) = &mut self.slow_ram {
-                    let offset = (addr - 0xC00000) as usize;
-                    slow_ram[offset] = bytes[0];
-                    slow_ram[offset + 1] = bytes[1];
-                }
-            }
-            MemoryBank::KickstartRom
-            | MemoryBank::OpenBus
-            | MemoryBank::Cia
-            | MemoryBank::Rtc
-            | MemoryBank::CustomChips => {}
-        }
+        let write_fn = self.bank_map[(addr >> 16) as usize].write_word_debug;
+        write_fn(self, addr, val);
     }
 
     /// Reset: Wipes all RAM to zero and re-engages Kickstart overlay

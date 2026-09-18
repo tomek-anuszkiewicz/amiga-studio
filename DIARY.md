@@ -6667,6 +6667,40 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (10.65s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (19.46s).
 
+---
+
+### [2026-09-18 23:00 CEST] — 3-Module Architecture Consolidation & Direct Bank Debug Delegation
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/address_bus.rs`:
+      - Merged `BusResult<T>` and its helper methods (`is_wait`, `is_ready`, `ok`, `unwrap_or`) directly into `address_bus.rs`.
+      - Fused the bus protocol contract (`BusResult<T>` and `AddressBus` trait) into a single cohesive interface module.
+    - `src/bus_result.rs`:
+      - Deleted file, eliminating single-item micro-file clutter.
+    - `src/map.rs`:
+      - Relocated `MemoryBank` enum definition into `map.rs` where memory topologies and classifications are evaluated.
+      - Extended `BankHandler` with 4 uncontended debug method pointers (`read_byte_debug`, `read_word_debug`, `write_byte_debug`, `write_word_debug`).
+      - Implemented raw, uncontended access functions for all bank classifications (Chip RAM, Fast RAM, Slow RAM, Kickstart ROM, Open Bus).
+      - Re-used raw debug read/write logic within standard cycle-exact handlers (`BusResult::Ready(read_debug(...))`), achieving zero duplication.
+    - `src/physical_memory.rs`:
+      - Removed submodule declaration for `bus_result` and updated re-exports (`pub use address_bus::{AddressBus, BusResult}; pub use map::MemoryBank;`).
+      - Refactored `read_byte_debug`, `read_word_debug`, `write_byte_debug`, and `write_word_debug` into 1-line direct delegations via `self.bank_map[(addr >> 16) as usize]`, eliminating 80+ lines of duplicate `match` branches.
+    - `tests/`:
+      - `tests/test_address_bus.rs`: Merged all tests from `test_bus_result.rs` (`test_bus_result_methods`, `test_chip_ram_contention_and_fast_ram_immunity`).
+      - `tests/test_bus_result.rs`: Deleted file.
+  - `crates/test_runner/tests/test_architecture_rules.rs`:
+    - Updated `test_multi_module_crate_test_parity` table for `physical_memory` to expect `test_address_bus.rs`, `test_map.rs`, and `test_physical_memory.rs`.
+  - `Obsidian/Amiga/Design/MemoryBus.md`:
+    - Updated specification links from `bus_result.rs` to `address_bus.rs`.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated single-item micro-file fragmentation by consolidating `physical_memory` into 3 cohesive domain modules: the protocol contract (`address_bus.rs`), the memory topology and dispatch engine (`map.rs`), and the physical machine core (`physical_memory.rs`).
+  - Simplified debugger/deassembler memory inspection to single-operation direct bank delegations through `bank_map[addr >> 16]`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (8.57s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (22.05s).
+
+
 
 
 
