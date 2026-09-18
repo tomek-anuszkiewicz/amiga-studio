@@ -5,7 +5,7 @@
 //! 8-tier priority arbitration, Blitter Nasty vs Normal mode with 3-cycle CPU starvation yield,
 //! and Chip RAM bus contention against the CPU.
 
-use config::mask::{bplcon0, dmacon};
+use config::mask::dmacon;
 use serde::{Deserialize, Serialize};
 
 /// CCK ranges and slots for fixed DMA channels on each horizontal scanline (Figure 6-9 in Commodore HRM)
@@ -21,10 +21,6 @@ pub const BLITTER_STARVATION_YIELD_CYCLES: u8 = 3;
 /// Default display data fetch boundaries for OCS standard Low-Resolution screen
 pub const DDFSTRT_DEFAULT: u16 = 0x0038;
 pub const DDFSTOP_DEFAULT: u16 = 0x00D0;
-
-/// Default display window coordinates (PAL Standard top-left $2C81, bottom-right $F4C1)
-pub const DIWSTRT_DEFAULT: u16 = 0x2C81;
-pub const DIWSTOP_DEFAULT: u16 = 0xF4C1;
 
 /// Custom chip DMA channels in strict priority order
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -60,10 +56,6 @@ pub struct DmaScheduler {
     pub ddfstrt: u16,
     /// Display Data Fetch Stop ($094, default $00D0)
     pub ddfstop: u16,
-    /// Display Window Start ($08E, default $2C81)
-    pub diwstrt: u16,
-    /// Display Window Stop ($090, default $F4C1)
-    pub diwstop: u16,
     /// Consecutive memory cycles where CPU requested the bus but was held off by normal Blitter (BLTPRI=0)
     pub cpu_starvation_counter: u8,
     /// Channel that currently owns the Chip RAM bus on this cycle
@@ -79,8 +71,6 @@ impl Default for DmaScheduler {
             bplcon0: 0,
             ddfstrt: DDFSTRT_DEFAULT,
             ddfstop: DDFSTOP_DEFAULT,
-            diwstrt: DIWSTRT_DEFAULT,
-            diwstop: DIWSTOP_DEFAULT,
             cpu_starvation_counter: 0,
             current_owner: DmaChannel::Cpu,
             chip_ram_blocked: false,
@@ -100,8 +90,6 @@ impl DmaScheduler {
         self.bplcon0 = 0;
         self.ddfstrt = DDFSTRT_DEFAULT;
         self.ddfstop = DDFSTOP_DEFAULT;
-        self.diwstrt = DIWSTRT_DEFAULT;
-        self.diwstop = DIWSTOP_DEFAULT;
         self.cpu_starvation_counter = 0;
         self.current_owner = DmaChannel::Cpu;
         self.chip_ram_blocked = false;
@@ -125,28 +113,16 @@ impl DmaScheduler {
         self.ddfstop = val;
     }
 
-    /// Sets DIWSTRT register value ($08E)
-    #[inline]
-    pub fn set_diwstrt(&mut self, val: u16) {
-        self.diwstrt = val;
-    }
-
-    /// Sets DIWSTOP register value ($090)
-    #[inline]
-    pub fn set_diwstop(&mut self, val: u16) {
-        self.diwstop = val;
-    }
-
     /// Returns the active number of bitplane DMA channels (0..6)
     #[inline]
     pub fn planecount(&self) -> u8 {
         ((self.bplcon0 >> 12) & 0x07) as u8
     }
 
-    /// Returns true if High-Resolution mode (BPLCON0 bit 15) is active
+    /// Returns true if High-Resolution mode is active (BPLCON0 bit 15)
     #[inline]
     pub fn is_hires(&self) -> bool {
-        (self.bplcon0 & bplcon0::HIRES) != 0
+        (self.bplcon0 & 0x8000) != 0
     }
 
     /// Returns true if the horizontal position is inside the Display Data Fetch window
@@ -171,22 +147,11 @@ impl DmaScheduler {
         block_start == self.ddfstop
     }
 
-    /// Returns true if the vertical position is inside active display scanlines
+    /// Returns true if the vertical position is inside active display scanlines (outside vertical blanking)
     #[inline]
     pub fn is_in_vertical_display(&self, vpos: u16) -> bool {
-        let vstart = (self.diwstrt >> 8) & 0xFF;
-        let vstop_low = (self.diwstop >> 8) & 0xFF;
-        let vstop = if vstop_low < 128 {
-            256 + vstop_low
-        } else {
-            vstop_low
-        };
-        if vstart == 0 && vstop_low == 0 {
-            // Default active range if unconfigured: scanlines 44..300
-            vpos >= 0x2C && vpos < 0x12C
-        } else {
-            vpos >= vstart && vpos < vstop
-        }
+        // Standard PAL active display scanlines: 0x2C (44) .. 0x12C (300)
+        vpos >= 0x2C && vpos < 0x12C
     }
 
     /// Advances DMA scheduler by 1 Color Clock

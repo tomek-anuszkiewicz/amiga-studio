@@ -62,7 +62,18 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     assert_eq!(mb.router().peek_custom_word(0x01A), 0);
 
     // 2. Enable Disk DMA in Agnus DMACON: SET (bit 15) | DMAEN (bit 9) | DSKEN (bit 4) = 0x8210
-    mb.agnus.commit_register_write(0x096, 0x8210);
+    assert_eq!(
+        mb.router().write_word(0xDFF096, 0x8210),
+        BusResult::Ready(())
+    );
+    let due = mb.agnus.step_cck();
+    for item in due.iter().flatten() {
+        mb.router().dispatch_agnus_action(item.0, item.1);
+    }
+    let due2 = mb.agnus.step_cck();
+    for item in due2.iter().flatten() {
+        mb.router().dispatch_agnus_action(item.0, item.1);
+    }
 
     // 3. Set Paula DSKLEN to write mode: bit 14 (WRITE)
     mb.paula.commit_register_write(0x024, 0x4000);
@@ -126,7 +137,7 @@ fn test_open_bus_on_write_only_custom_registers() {
 }
 
 #[test]
-fn test_dskpt_routed_to_agnus_and_floppy() {
+fn test_dskpt_routed_to_agnus() {
     let mut mb = TestMotherboard::new();
 
     // Write DSKPTH ($DFF020) = 0x0004 and DSKPTL ($DFF022) = 0x2000
@@ -149,9 +160,8 @@ fn test_dskpt_routed_to_agnus_and_floppy() {
         mb.router().dispatch_agnus_action(item.0, item.1);
     }
 
-    // Verify Agnus and Floppy now hold pointer $00042000
+    // Verify Agnus holds pointer $00042000
     assert_eq!(mb.agnus.dskpt, 0x0004_2000);
-    assert_eq!(mb.floppy.dskpt, 0x0004_2000);
 }
 
 #[test]
@@ -238,10 +248,10 @@ fn test_memory_bus_canonical_constants() {
     assert_eq!(memory_bus::RTC_START, 0xDC0000);
     assert_eq!(memory_bus::RTC_END, 0xDC003F);
     assert_eq!(memory_bus::CUSTOM_REG_OFFSET_MASK, 0x01FE);
-    assert_eq!(memory_bus::DSKBYTR_DMAON, 0x4000);
-    assert_eq!(memory_bus::DSKBYTR_DISKWRITE, 0x2000);
-    assert_eq!(memory_bus::DSKBYTR_DATA_MASK, 0x90FF);
-    assert_eq!(memory_bus::DSKLEN_WRITE_FLAG, 0x4000);
+    assert_eq!(paula::DSKBYTR_DMAON, 0x4000);
+    assert_eq!(paula::DSKBYTR_DISKWRITE, 0x2000);
+    assert_eq!(paula::DSKBYTR_DATA_MASK, 0x90FF);
+    assert_eq!(paula::DSKLEN_WRITE_FLAG, 0x4000);
 }
 
 #[test]

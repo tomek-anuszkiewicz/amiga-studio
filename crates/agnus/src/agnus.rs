@@ -61,18 +61,12 @@ pub struct Agnus {
     // --- Active Latched Registers (Read is NOW) ---
     /// DMACON / DMACONR ($096 / $002) - active DMA channel enables
     pub dmacon: u16,
-    /// Display Window Start ($08E)
-    pub diwstrt: u16,
-    /// Display Window Stop ($090)
-    pub diwstop: u16,
     /// Display Data Fetch Start ($092)
     pub ddfstrt: u16,
     /// Display Data Fetch Stop ($094)
     pub ddfstop: u16,
     /// Bitplane Control 0 ($100, latched by Agnus for DMA slot count)
     pub bplcon0: u16,
-    /// Bitplane Control 1 ($102)
-    pub bplcon1: u16,
     /// Bitplane Modulo 1 ($108, odd bitplanes)
     pub bpl1mod: i16,
     /// Bitplane Modulo 2 ($10A, even bitplanes)
@@ -116,12 +110,9 @@ impl Agnus {
             chip_ram_blocked: false,
             pending_bpl_dma: None,
             dmacon: 0,
-            diwstrt: 0,
-            diwstop: 0,
             ddfstrt: 0x0038,
             ddfstop: 0x00D0,
             bplcon0: 0,
-            bplcon1: 0,
             bpl1mod: 0,
             bpl2mod: 0,
             bplpt: [0; 6],
@@ -145,12 +136,9 @@ impl Agnus {
         self.chip_ram_blocked = false;
         self.pending_bpl_dma = None;
         self.dmacon = 0;
-        self.diwstrt = 0;
-        self.diwstop = 0;
         self.ddfstrt = 0x0038;
         self.ddfstop = 0x00D0;
         self.bplcon0 = 0;
-        self.bplcon1 = 0;
         self.bpl1mod = 0;
         self.bpl2mod = 0;
         self.bplpt.fill(0);
@@ -413,7 +401,6 @@ impl Agnus {
             custom_reg::COPJMP1 | custom_reg::COPJMP2 => (1, MutationMode::OverwritePending),
             custom_reg::BLTSIZE => (1, MutationMode::OverwritePending),
             custom_reg::BPLCON0 => (4, MutationMode::OverwritePending), // BPLCON0 (Agnus DMA allocation)
-            custom_reg::DIWSTRT | custom_reg::DIWSTOP => (4, MutationMode::OverwritePending),
             custom_reg::DDFSTRT | custom_reg::DDFSTOP => (4, MutationMode::OverwritePending),
             custom_reg::BPL1MOD | custom_reg::BPL2MOD => (2, MutationMode::OverwritePending),
             custom_reg::BLTCON0..=custom_reg::BLTDPTL => (2, MutationMode::OverwritePending),
@@ -476,14 +463,6 @@ impl Agnus {
             }
             custom_reg::COPJMP1 => self.copper.restart_list1(),
             custom_reg::COPJMP2 => self.copper.restart_list2(),
-            custom_reg::DIWSTRT => {
-                self.diwstrt = val;
-                self.dma.set_diwstrt(val);
-            }
-            custom_reg::DIWSTOP => {
-                self.diwstop = val;
-                self.dma.set_diwstop(val);
-            }
             custom_reg::DDFSTRT => {
                 self.ddfstrt = val & 0x00FC;
                 self.dma.set_ddfstrt(val & 0x00FC);
@@ -493,7 +472,6 @@ impl Agnus {
                 self.dma.set_ddfstop(val & 0x00FC);
             }
             custom_reg::BPLCON0 => self.set_bplcon0(val),
-            custom_reg::BPLCON1 => self.bplcon1 = val,
             custom_reg::BPL1MOD => self.bpl1mod = val as i16,
             custom_reg::BPL2MOD => self.bpl2mod = val as i16,
 

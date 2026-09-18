@@ -7,8 +7,8 @@ fn test_fixed_dma_slot_cpu_wait_states() {
     let mut machine = A500Machine::new(A500Config::default());
     machine.reset_cold();
 
-    // 1. Refresh Slots (HPOS 0..3) unconditionally block Chip RAM & Slow RAM
-    for target_hpos in 1..=3 {
+    // 1. Refresh Slots (HPOS 1, 3, 5) unconditionally block Chip RAM & Slow RAM
+    for target_hpos in [1, 3, 5] {
         machine.agnus.hpos = target_hpos - 1;
         machine.step_subsystems_cck();
         assert_eq!(machine.agnus.hpos, target_hpos);

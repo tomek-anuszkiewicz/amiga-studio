@@ -152,3 +152,13 @@ fn test_agnus_canonical_register_constants() {
         dmacon::DMAEN
     );
 }
+
+#[test]
+fn test_agnus_ignores_denise_only_registers() {
+    let agnus = Agnus::new(AgnusModel::OcsPal8371);
+    // DIWSTRT ($08E), DIWSTOP ($090), and BPLCON1 ($102) are Denise-only registers per HRM Appendix A.
+    // Reading them on Agnus returns open bus 0xFFFF.
+    assert_eq!(agnus.read_register(0x08E), 0xFFFF);
+    assert_eq!(agnus.read_register(0x090), 0xFFFF);
+    assert_eq!(agnus.read_register(0x102), 0xFFFF);
+}

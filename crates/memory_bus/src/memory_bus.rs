@@ -31,12 +31,6 @@ pub const RTC_END: u32 = 0xDC003F;
 
 pub const CUSTOM_REG_OFFSET_MASK: u16 = 0x01FE;
 
-/// Composite DSKBYTR status masks
-pub const DSKBYTR_DMAON: u16 = 0x4000;
-pub const DSKBYTR_DISKWRITE: u16 = 0x2000;
-pub const DSKBYTR_DATA_MASK: u16 = 0x90FF;
-pub const DSKLEN_WRITE_FLAG: u16 = 0x4000;
-
 /// Zero-cost stack-allocated router implementing `AddressBus` across all subsystems
 pub struct MemoryBus<'a> {
     pub mem: &'a mut PhysicalMemory,
@@ -50,41 +44,6 @@ pub struct MemoryBus<'a> {
 }
 
 impl<'a> MemoryBus<'a> {
-    /// Assembles composite live DSKBYTR status from Floppy, Agnus, and Paula,
-    /// atomically clearing bit 15 (`DSKBYT`) per Clear-on-Read hardware semantics.
-    pub fn read_dskbytr(&mut self) -> u16 {
-        let floppy_val = self.floppy.read_dskbytr();
-        let dma_active = dmacon::DMAEN | dmacon::DSKEN;
-        let dmaon = if (self.agnus.dmacon & dma_active) == dma_active {
-            DSKBYTR_DMAON
-        } else {
-            0
-        };
-        let diskwrite = if (self.paula.dsklen & DSKLEN_WRITE_FLAG) != 0 {
-            DSKBYTR_DISKWRITE
-        } else {
-            0
-        };
-        (floppy_val & DSKBYTR_DATA_MASK) | dmaon | diskwrite
-    }
-
-    /// Peeks composite live DSKBYTR status without clearing bit 15
-    pub fn peek_dskbytr(&self) -> u16 {
-        let floppy_val = self.floppy.peek_dskbytr();
-        let dma_active = dmacon::DMAEN | dmacon::DSKEN;
-        let dmaon = if (self.agnus.dmacon & dma_active) == dma_active {
-            DSKBYTR_DMAON
-        } else {
-            0
-        };
-        let diskwrite = if (self.paula.dsklen & DSKLEN_WRITE_FLAG) != 0 {
-            DSKBYTR_DISKWRITE
-        } else {
-            0
-        };
-        (floppy_val & DSKBYTR_DATA_MASK) | dmaon | diskwrite
-    }
-
     /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT, DSKBYTR)
     pub fn read_custom_word(&mut self, offset: u16) -> u16 {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
@@ -101,7 +60,7 @@ impl<'a> MemoryBus<'a> {
             custom_reg::POT1DAT => self.paula.pot1dat,
             custom_reg::POTGOR => self.paula.potgor,
             custom_reg::SERDATR => self.paula.serial_port.serdatr,
-            custom_reg::DSKBYTR => self.read_dskbytr(),
+            custom_reg::DSKBYTR => self.paula.assemble_dskbytr(self.floppy.read_dskbytr()),
             custom_reg::INTENAR => self.paula.intena,
             custom_reg::INTREQR => self.paula.intreq,
             custom_reg::COPJMP1 => {
@@ -134,7 +93,7 @@ impl<'a> MemoryBus<'a> {
             custom_reg::POT1DAT => self.paula.pot1dat,
             custom_reg::POTGOR => self.paula.potgor,
             custom_reg::SERDATR => self.paula.serial_port.serdatr,
-            custom_reg::DSKBYTR => self.peek_dskbytr(),
+            custom_reg::DSKBYTR => self.paula.assemble_dskbytr(self.floppy.peek_dskbytr()),
             custom_reg::INTENAR => self.paula.intena,
             custom_reg::INTREQR => self.paula.intreq,
             _ => 0xFFFF,
@@ -229,26 +188,11 @@ impl<'a> MemoryBus<'a> {
                     self.dispatch_agnus_action(r, v);
                 }
             }
-            // Shared / Broadcast: BPLCON1 ($102) -> Denise & Agnus
-            custom_reg::BPLCON1 => {
-                if let Some((r, v)) = self.denise.write_register(custom_reg::BPLCON1, val) {
-                    self.dispatch_denise_action(r, v);
-                }
-                if let Some((r, v)) = self.agnus.write_register(custom_reg::BPLCON1, val) {
-                    self.dispatch_agnus_action(r, v);
-                }
-            }
-            // Shared / Broadcast: DIWSTRT ($08E) & DIWSTOP ($090) -> Denise & Agnus
-            custom_reg::DIWSTRT | custom_reg::DIWSTOP => {
-                if let Some((r, v)) = self.denise.write_register(offset, val) {
-                    self.dispatch_denise_action(r, v);
-                }
-                if let Some((r, v)) = self.agnus.write_register(offset, val) {
-                    self.dispatch_agnus_action(r, v);
-                }
-            }
-            // Denise-specific registers (CLXCON, BPLCON2/3, BPLDAT, SPRITES, COLORS, JOYTEST)
-            custom_reg::CLXCON
+            // Denise-specific registers (DIW, CLXCON, BPLCON1/2/3, BPLDAT, SPRITES, COLORS, JOYTEST)
+            custom_reg::DIWSTRT
+            | custom_reg::DIWSTOP
+            | custom_reg::BPLCON1
+            | custom_reg::CLXCON
             | custom_reg::BPLCON2
             | custom_reg::BPLCON3
             | custom_reg::BPL1DAT..=custom_reg::BPL6DAT
@@ -308,6 +252,7 @@ impl<'a> MemoryBus<'a> {
                     self.paula.dma_enables &= !(val & (dmacon::AUD_ALL | dmacon::DSKEN));
                 }
                 let dmaen = (self.agnus.dmacon & dmacon::DMAEN) != 0;
+                self.paula.dma_master = dmaen;
                 self.paula
                     .audio
                     .set_dma_enables((self.agnus.dmacon & dmacon::AUD_ALL) as u8, dmaen);
@@ -316,24 +261,9 @@ impl<'a> MemoryBus<'a> {
                 self.denise
                     .sprites
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::SPREN) != 0);
-                self.agnus
-                    .blitter
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::BLTEN) != 0);
-                self.agnus
-                    .blitter
-                    .set_bltpri((self.agnus.dmacon & dmacon::BLTPRI) != 0);
-                self.agnus
-                    .copper
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::COPEN) != 0);
                 self.denise
                     .frame_builder
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::BPLEN) != 0);
-                self.denise
-                    .sprites
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::SPREN) != 0);
-            }
-            custom_reg::DSKPTH | custom_reg::DSKPTL => {
-                self.floppy.set_dskpt(self.agnus.dskpt);
             }
             custom_reg::BPLCON0 => {
                 self.agnus.set_bplcon0(val);
@@ -348,9 +278,6 @@ impl<'a> MemoryBus<'a> {
             }
             custom_reg::BLTSIZE => {
                 self.agnus.blitter.trigger_blit(val);
-            }
-            custom_reg::DIWSTRT | custom_reg::DIWSTOP => {
-                self.denise.set_diw(self.agnus.diwstrt, self.agnus.diwstop);
             }
             _ => {}
         }

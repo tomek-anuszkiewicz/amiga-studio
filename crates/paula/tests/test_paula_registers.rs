@@ -74,3 +74,27 @@ fn test_write_only_registers_read_open_bus() {
     assert_eq!(paula.read_register(0x09C), 0xFFFF);
     assert_eq!(paula.read_register(0x0A4), 0xFFFF);
 }
+
+#[test]
+fn test_paula_assemble_dskbytr() {
+    let mut paula = Paula::new();
+    let floppy_word = 0x80A5;
+
+    // 1. Without DMA and without write mode
+    assert_eq!(paula.assemble_dskbytr(floppy_word), 0x80A5);
+
+    // 2. Enable DMA: master + DSKEN
+    paula.dma_master = true;
+    paula.dma_enables = paula::DSKBYTR_DSKEN;
+    assert_eq!(
+        paula.assemble_dskbytr(floppy_word),
+        0x80A5 | paula::DSKBYTR_DMAON
+    );
+
+    // 3. Enable write mode in DSKLEN
+    paula.dsklen = paula::DSKLEN_WRITE_FLAG;
+    assert_eq!(
+        paula.assemble_dskbytr(floppy_word),
+        0x80A5 | paula::DSKBYTR_DMAON | paula::DSKBYTR_DISKWRITE
+    );
+}

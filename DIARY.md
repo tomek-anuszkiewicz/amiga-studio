@@ -6219,4 +6219,27 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: 100% compliant across formatting, AGENTS.md budget (13,789 bytes <= 14,000 limit), test coupling, API coverage, and all 19 architecture tests in `crates/test_runner/tests/test_architecture_rules.rs`.
 
+---
+
+### [2026-09-18 14:35 CEST] — Register Ownership Purification & HRM Appendix A Single Source of Truth
+- **Affected Subsystems**:
+  - `crates/memory_bus/src/memory_bus.rs`: Eliminated composite DSKBYTR assembly helpers and constants (`DSKBYTR_DMAON`, `DSKBYTR_DISKWRITE`, `DSKBYTR_DATA_MASK`, `DSKLEN_WRITE_FLAG`). Delegated `DSKBYTR` reads/peeks directly to `self.paula.assemble_dskbytr(self.floppy.read_dskbytr())`. Directs `DIWSTRT` ($08E), `DIWSTOP` ($090), and `BPLCON1` ($102) exclusively to Denise per HRM Appendix A. Removed redundant proxying of Denise display window updates (`set_diw`) and Floppy pointer forwarding (`set_dskpt`) from `dispatch_agnus_action`. Removed redundant blitter/copper DMA enables and duplicate sprite DMA dispatch.
+  - `crates/paula/src/paula.rs`: Added `assemble_dskbytr(&self, floppy_dskbytr: u16) -> u16` with canonical constants (`DSKBYTR_DMAON`, `DSKBYTR_DISKWRITE`, `DSKBYTR_DATA_MASK`, `DSKLEN_WRITE_FLAG`, `DSKBYTR_DSKEN`), keeping internal DMA and write status strictly inside Paula.
+  - `crates/agnus/src/agnus.rs`: Removed fields `diwstrt`, `diwstop`, and `bplcon1` from struct `Agnus`, initializers, and mutation handling, returning Agnus to its true hardware role (Display Data Fetch via `DDFSTRT`/`DDFSTOP` and DMA slot allocation via `BPLCON0` bitplane count).
+  - `crates/dma/src/dma.rs`: Removed `diwstrt`, `diwstop`, and related setters from `DmaScheduler`. Updated `is_in_vertical_display()` to check PAL standard active scanlines (`0x2C..0x12C`) independently of Denise display window state.
+  - `crates/test_runner/src/vamiga/injector.rs`: Removed obsolete `agnus.diwstrt`/`agnus.diwstop` and `agnus.dma.set_diwstrt`/`set_diwstop` calls during test setup, configuring `denise.set_diw` exclusively.
+  - `crates/agnus/tests/test_agnus_registers.rs`: Added unit test `test_agnus_ignores_denise_only_registers` asserting open-bus `$FFFF` on Denise-only registers.
+  - `crates/paula/tests/test_paula_registers.rs`: Added unit test `test_paula_assemble_dskbytr` verifying composite status assembly from Paula DMA and write states.
+  - `crates/dma/tests/test_dma.rs`: Added unit test `test_dma_is_in_vertical_display`.
+  - `crates/memory_bus/tests/test_register_wiring.rs`: Updated `test_dskbytr_composite_assembly_and_clear_on_read` to write DMACON over the bus and assert Paula assembly; renamed and simplified `test_dskpt_routed_to_agnus`.
+  - `crates/test_runner/tests/test_vamiga_harness.rs`: Added assertions verifying Denise DIW configuration on test injection.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated artificial composite register assembly and proxy routing in `MemoryBus`, establishing Single Source of Truth (SSoT) 1:1 with Commodore Amiga Hardware Reference Manual (HRM), Appendix A.
+  - Denise is the sole owner of Display Window registers (`DIWSTRT`, `DIWSTOP`) and bitplane horizontal scroll delay (`BPLCON1`). Agnus only schedules autonomous display data fetches via `DDFSTRT`/`DDFSTOP` and bitplane channel slots via `BPLCON0`.
+  - Paula is the sole owner of `DSKBYTR` composite assembly, combining internal `DMAON` and `DISKWRITE` flags with the floppy track deserializer word.
+  - Agnus is the sole owner of Disk DMA Pointer (`DSKPTH`/`DSKPTL`), eliminating duplicate pointer copies across peripheral drivers.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: 100% PASS across formatting, AGENTS.md ceiling (13,789 bytes <= 14,000 limit), test coupling, API coverage, and all 19 architecture rules in `crates/test_runner/tests/test_architecture_rules.rs`.
+
+
 

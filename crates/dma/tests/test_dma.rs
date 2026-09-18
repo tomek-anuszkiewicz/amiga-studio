@@ -235,6 +235,14 @@ fn test_dma_canonical_constants() {
     assert_eq!(dma::BLITTER_STARVATION_YIELD_CYCLES, 3);
     assert_eq!(dma::DDFSTRT_DEFAULT, 0x0038);
     assert_eq!(dma::DDFSTOP_DEFAULT, 0x00D0);
-    assert_eq!(dma::DIWSTRT_DEFAULT, 0x2C81);
-    assert_eq!(dma::DIWSTOP_DEFAULT, 0xF4C1);
+}
+
+#[test]
+fn test_dma_is_in_vertical_display() {
+    let dma = DmaScheduler::new();
+    assert!(!dma.is_in_vertical_display(0x2B));
+    assert!(dma.is_in_vertical_display(0x2C));
+    assert!(dma.is_in_vertical_display(0x100));
+    assert!(dma.is_in_vertical_display(0x12B));
+    assert!(!dma.is_in_vertical_display(0x12C));
 }

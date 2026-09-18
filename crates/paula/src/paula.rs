@@ -49,6 +49,12 @@ pub struct Paula {
     pub mutations: [Option<DelayedMutation>; PAULA_MUTATION_CAPACITY],
 }
 
+pub const DSKBYTR_DMAON: u16 = 0x4000;
+pub const DSKBYTR_DISKWRITE: u16 = 0x2000;
+pub const DSKBYTR_DATA_MASK: u16 = 0x90FF;
+pub const DSKLEN_WRITE_FLAG: u16 = 0x4000;
+pub const DSKBYTR_DSKEN: u16 = 0x0010;
+
 impl Default for Paula {
     fn default() -> Self {
         Self::new()
@@ -138,6 +144,22 @@ impl Paula {
             0x01E => self.intreq,
             _ => 0xFFFF,
         }
+    }
+
+    /// Assembles composite live DSKBYTR status from floppy read word, DSKLEN, and Paula DMA enables.
+    #[inline]
+    pub fn assemble_dskbytr(&self, floppy_dskbytr: u16) -> u16 {
+        let dmaon = if self.dma_master && (self.dma_enables & DSKBYTR_DSKEN) != 0 {
+            DSKBYTR_DMAON
+        } else {
+            0
+        };
+        let diskwrite = if (self.dsklen & DSKLEN_WRITE_FLAG) != 0 {
+            DSKBYTR_DISKWRITE
+        } else {
+            0
+        };
+        (floppy_dskbytr & DSKBYTR_DATA_MASK) | dmaon | diskwrite
     }
 
     /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
