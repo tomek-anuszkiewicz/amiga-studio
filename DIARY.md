@@ -6908,6 +6908,29 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 23 crates + 7 test_runner unit suites passed (11.46s).
   - `python tools/harness/run_tests.py --integration`: memory_bus, machine_loop, debugger, gui passed (17.85s).
 
+---
+
+### [2026-09-19 01:10 CEST] — Decoupled FloppyController from MemoryBus & Restored Native Motherboard Signal Routing
+- **Subsystems Affected**:
+  - `crates/memory_bus/Cargo.toml`: Evicted `floppy` dependency.
+  - `crates/memory_bus/src/memory_bus.rs`: Removed `floppy` field, eliminated `read_dskbytr`, `read_dskbytr_debug`, and fake `write_cia` mutation dispatch. Routed `$DFF01A` (`DSKBYTR`) reads directly to `Paula`.
+  - `crates/memory_bus/tests/test_router.rs`, `crates/memory_bus/tests/test_register_wiring.rs`: Removed `floppy` from `TestMotherboard` and tested native Paula `DSKBYTR` register wiring directly.
+  - `crates/paula/src/paula.rs`: Implemented native `peek_dskbytr()` and `read_dskbytr()` with Clear-on-Read semantics on bit 15 (`DSKBYT`), composite flags assembly (`DMAON`, `DISKWRITE`), and `set_disk_byte()` latching.
+  - `crates/paula/tests/test_paula_registers.rs`: Added `test_paula_dskbytr_native_methods` verifying Clear-on-Read and composite flag generation.
+  - `crates/cia/src/cia.rs`: Added `pra_mutated` and `prb_mutated` flags and exposed `poll_pra_output()` and `poll_prb_output()` methods for decoupled cross-chip pin notification.
+  - `crates/cia/tests/test_cia_registers.rs`: Added `test_cia_port_output_polling` unit test.
+  - `crates/machine_loop/src/machine_loop.rs`: Removed `floppy` from `MemoryBus` instantiations; removed redundant `write_cia` dispatch loop from `step_machine()`; integrated CIA-B Port B polling (`poll_prb_output`) and Paula MFM byte latching in `poll_peripheral_pins()`.
+  - `crates/machine_loop/tests/test_action_dispatch.rs`: Added `test_floppy_ciab_prb_polling_and_dskbytr_paula_latching`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Decoupled Address Bus vs Peripheral Wiring:* In physical hardware, the 68000 CPU has zero address lines connected to the floppy drive. Having `FloppyController` inside `MemoryBus` was an architectural violation that broke crate boundaries and forced artificial write-back methods.
+  - *Native Paula Register Ownership:* In hardware, `$DFF01A` is an internal Paula register connected to the incoming `_RDATA` pin. Paula natively owns the deserializer buffer, assembles composite status from its own DMA control state, and clears `DSKBYT` on read.
+  - *Event-Driven Pin Polling:* Replacing synchronous double-dispatch with `cia_b.poll_prb_output()` in `poll_peripheral_pins()` ensures the floppy controller only reacts to real software writes rather than unphysical power-on transitions.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/harness/pre_flight.py`: All quality gates passed cleanly (Formatting, AGENTS.md ceiling, Change-Coupling across all 4 modified crates, API coverage, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 23 crates + 7 test_runner unit suites passed cleanly (5.22s).
+  - `python tools/harness/run_tests.py --integration`: memory_bus, machine_loop, debugger, gui passed cleanly (20.17s).
+
 
 
 

@@ -147,7 +147,7 @@ impl Paula {
             0x014 => self.pot1dat,
             0x016 => self.potgor,
             0x018 => self.serial_port.serdatr,
-            0x01A => self.dskbytr,
+            0x01A => self.peek_dskbytr(),
             0x01C => self.intena,
             0x01E => self.intreq,
             _ => 0xFFFF,
@@ -180,7 +180,28 @@ impl Paula {
         self.dma_active
     }
 
-    /// Assembles composite live DSKBYTR status from floppy read word, DSKLEN, and Paula DMA enables.
+    /// Returns composite DSKBYTR status with live flags without side effects (for debuggers and peek inspection)
+    #[inline]
+    pub fn peek_dskbytr(&self) -> u16 {
+        self.assemble_dskbytr(self.dskbytr)
+    }
+
+    /// Reads composite live DSKBYTR with Clear-on-Read hardware side-effects (clears bit 15 DSKBYT)
+    #[inline]
+    pub fn read_dskbytr(&mut self) -> u16 {
+        let val = self.peek_dskbytr();
+        self.dskbytr &= !0x8000;
+        val
+    }
+
+    /// Action method: latches a new deserialized MFM byte from the floppy drive bitstream
+    #[inline]
+    pub fn set_disk_byte(&mut self, byte: u8, sync_matched: bool) {
+        let sync_bit = if sync_matched { 0x1000 } else { 0 };
+        self.dskbytr = 0x8000 | sync_bit | (byte as u16);
+    }
+
+    /// Assembles composite live DSKBYTR status from raw read word, DSKLEN, and Paula DMA enables.
     #[inline]
     pub fn assemble_dskbytr(&self, floppy_dskbytr: u16) -> u16 {
         let dmaon = if self.dma_master && (self.dma_enables & DSKBYTR_DSKEN) != 0 {

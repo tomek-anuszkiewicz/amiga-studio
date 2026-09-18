@@ -79,3 +79,23 @@ fn test_cia_stage_write_eclock_delay() {
     cia.step_cck();
     assert_eq!(cia.ddra, 0x03);
 }
+
+#[test]
+fn test_cia_port_output_polling() {
+    let mut cia = Cia::new(CiaId::B);
+
+    // Initial state: no mutations
+    assert_eq!(cia.poll_pra_output(), None);
+    assert_eq!(cia.poll_prb_output(), None);
+
+    // Write Port B ($BFD100)
+    cia.commit_register_write(0x1, 0x75);
+    assert_eq!(cia.poll_prb_output(), Some(0x75));
+    // Cleared on poll
+    assert_eq!(cia.poll_prb_output(), None);
+
+    // Write Port A
+    cia.commit_register_write(0x0, 0x5A);
+    assert_eq!(cia.poll_pra_output(), Some(0x5A));
+    assert_eq!(cia.poll_pra_output(), None);
+}

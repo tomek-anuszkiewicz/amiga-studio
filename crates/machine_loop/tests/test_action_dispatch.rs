@@ -321,3 +321,43 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
     assert_eq!(machine.paula.intreq & 0x0080, 0x0080);
     assert_eq!(machine.cpu.state.ipl, 4);
 }
+
+#[test]
+fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
+    let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+
+    // Initially, DF0 motor is off
+    assert!(!machine.floppy.drives[0].motor_on);
+
+    // CPU writes to CIA-B PRB ($BFD100) selecting DF0 with motor on: 0x75
+    assert_eq!(
+        machine.memory_bus().write_byte(0xBFD100, 0x75),
+        BusResult::Ready(())
+    );
+
+    // Before stepping, CIA-B has prb_mutated = true
+    assert!(machine.cia_b.prb_mutated);
+
+    // Stepping the machine executes poll_peripheral_pins which polls CIA-B PRB and updates Floppy
+    machine.step_cck();
+    assert!(!machine.cia_b.prb_mutated);
+    assert!(machine.floppy.drives[0].motor_on);
+
+    // Simulate floppy controller shifting in MFM byte 0x42 with sync match (bit 12) and byte ready (bit 15)
+    machine.floppy.dskbytr = 0x9042;
+
+    // Step machine: poll_peripheral_pins transfers byte into Paula and clears bit 15 in floppy
+    machine.step_cck();
+    assert_eq!(machine.floppy.dskbytr & 0x8000, 0);
+    assert_eq!(machine.paula.dskbytr & 0x90FF, 0x9042);
+
+    // CPU reads DSKBYTR from Paula via memory bus
+    let val = match machine.memory_bus().read_word(0xDFF01A) {
+        BusResult::Ready(v) => v,
+        _ => panic!("Expected Ready"),
+    };
+    assert_eq!(val & 0x90FF, 0x9042);
+
+    // Paula bit 15 is cleared on read
+    assert_eq!(machine.paula.dskbytr & 0x8000, 0);
+}

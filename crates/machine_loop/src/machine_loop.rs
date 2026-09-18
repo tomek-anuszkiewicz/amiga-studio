@@ -75,7 +75,6 @@ impl A500Machine {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            floppy: &mut self.floppy,
         }
     }
 
@@ -245,19 +244,24 @@ impl A500Machine {
             .set_dma_enabled(dmaen && (dmacon & config::mask::dmacon::BPLEN) != 0);
     }
 
-    /// Propagates committed CIA register mutations across the motherboard
-    #[inline(always)]
-    pub fn write_cia(&mut self, id: cia::CiaId, reg: u8, val: u8) {
-        self.memory_bus().write_cia(id, reg, val);
-    }
-
     /// Polls peripheral sensing lines into CIA input pins and custom chip port latches
     pub fn poll_peripheral_pins(&mut self) {
-        // 1. Floppy disk sensing lines -> CIA-A Port A bits 2..5 (mask 0x3C)
+        // 1. Floppy disk drive control lines <- CIA-B Port B ($BFD100)
+        if let Some(prb) = self.cia_b.poll_prb_output() {
+            self.floppy.handle_ciab_port_b_write(prb);
+        }
+
+        // 2. Floppy disk sensing lines -> CIA-A Port A bits 2..5 (mask 0x3C)
         let floppy_inputs = self.floppy.sample_ciaa_port_a_inputs();
         self.cia_a.set_input_pins_a(floppy_inputs, 0x3C);
 
-        // 2. Game ports fire buttons -> CIA-A Port A bits 6..7 (mask 0xC0, active low)
+        // 3. Floppy MFM stream / byte ready -> Paula DSKBYTR
+        if (self.floppy.dskbytr & 0x8000) != 0 {
+            self.paula.dskbytr = (self.paula.dskbytr & !0x90FF) | (self.floppy.dskbytr & 0x90FF);
+            self.floppy.dskbytr &= !0x8000;
+        }
+
+        // 4. Game ports fire buttons -> CIA-A Port A bits 6..7 (mask 0xC0, active low)
         let mut fire_pins = 0xC0;
         if self.game_ports.fire1_port1() {
             fire_pins &= !0x40; // Bit 6 = /FIR0 (Port 1 left mouse button)
@@ -343,15 +347,9 @@ impl A500Machine {
             self.cia_a.shift_in_sdr(scancode);
         }
 
-        // 5. Step CIAs and dispatch E-Clock mutations
-        let cia_a_due = self.cia_a.step_cck();
-        for item in cia_a_due.iter().flatten() {
-            self.write_cia(cia::CiaId::A, item.0, item.1);
-        }
-        let cia_b_due = self.cia_b.step_cck();
-        for item in cia_b_due.iter().flatten() {
-            self.write_cia(cia::CiaId::B, item.0, item.1);
-        }
+        // 5. Step CIAs
+        self.cia_a.step_cck();
+        self.cia_b.step_cck();
 
         // Cross-Chip Signal: CIA-A /IRQ pin -> Paula INTREQ bit 3 (PORTS, mask 0x0008)
         if self.cia_a.irq_pending() {
@@ -413,7 +411,6 @@ impl A500Machine {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            floppy: &mut self.floppy,
         };
         self.cpu.step_cck(&mut bus)
     }
@@ -458,7 +455,6 @@ impl A500Machine {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            floppy: &mut self.floppy,
         };
         self.cpu.set_pc_and_prime_prefetch(target_pc, &mut bus);
     }

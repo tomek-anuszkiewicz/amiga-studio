@@ -5,10 +5,9 @@
 //! peripheral controllers (`CIA-A`, `CIA-B`), and expansion hardware (`RTC`).
 
 use agnus::Agnus;
-use cia::{Cia, CiaId};
+use cia::Cia;
 use config::custom_reg;
 use denise::Denise;
-use floppy::FloppyController;
 use paula::Paula;
 use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 use rtc::RtcMsm6242b;
@@ -39,7 +38,6 @@ pub struct MemoryBus<'a> {
     pub cia_a: &'a mut Cia,
     pub cia_b: &'a mut Cia,
     pub rtc: &'a mut RtcMsm6242b,
-    pub floppy: &'a mut FloppyController,
 }
 
 impl<'a> MemoryBus<'a> {
@@ -58,7 +56,7 @@ impl<'a> MemoryBus<'a> {
             custom_reg::paula::POT1DAT => self.paula.pot1dat(),
             custom_reg::paula::POTGOR => self.paula.potgor(),
             custom_reg::paula::SERDATR => self.paula.serdatr(),
-            custom_reg::paula::DSKBYTR => self.read_dskbytr(),
+            custom_reg::paula::DSKBYTR => self.paula.read_dskbytr(),
             custom_reg::paula::INTENAR => self.paula.intenar(),
             custom_reg::paula::INTREQR => self.paula.intreqr(),
             custom_reg::agnus::COPJMP1 => {
@@ -88,7 +86,7 @@ impl<'a> MemoryBus<'a> {
             custom_reg::paula::POT1DAT => self.paula.pot1dat_debug(),
             custom_reg::paula::POTGOR => self.paula.potgor_debug(),
             custom_reg::paula::SERDATR => self.paula.serdatr_debug(),
-            custom_reg::paula::DSKBYTR => self.read_dskbytr_debug(),
+            custom_reg::paula::DSKBYTR => self.paula.peek_dskbytr(),
             custom_reg::paula::INTENAR => self.paula.intenar_debug(),
             custom_reg::paula::INTREQR => self.paula.intreqr_debug(),
             _ => 0xFFFF,
@@ -142,7 +140,6 @@ impl<'a> MemoryBus<'a> {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 self.cia_b.write_register(reg, val);
-                self.write_cia(CiaId::B, reg, val);
             }
             return;
         }
@@ -232,25 +229,6 @@ impl<'a> MemoryBus<'a> {
     #[inline(always)]
     pub fn write_bytes_debug(&mut self, addr: u32, data: &[u8]) -> usize {
         self.mem.write_bytes_debug(addr, data)
-    }
-
-    /// Reads composite live DSKBYTR status from Floppy and Paula
-    #[inline(always)]
-    pub fn read_dskbytr(&mut self) -> u16 {
-        self.paula.assemble_dskbytr(self.floppy.dskbytr())
-    }
-
-    /// Reads composite DSKBYTR status without side-effects for debugging
-    #[inline(always)]
-    pub fn read_dskbytr_debug(&self) -> u16 {
-        self.paula.assemble_dskbytr(self.floppy.dskbytr_debug())
-    }
-
-    /// Propagates committed CIA register mutations across the motherboard
-    pub fn write_cia(&mut self, id: CiaId, reg: u8, val: u8) {
-        if id == CiaId::B && (reg & 0x0F) == 0x1 {
-            self.floppy.handle_ciab_port_b_write(val);
-        }
     }
 }
 

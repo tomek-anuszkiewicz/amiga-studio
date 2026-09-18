@@ -7,7 +7,6 @@ use agnus::Agnus;
 use cia::{Cia, CiaId};
 use config::{A500Config, RtcModel, VideoStandard};
 use denise::{Denise, DeniseModel};
-use floppy::FloppyController;
 use memory_bus::MemoryBus;
 use paula::Paula;
 use physical_memory::{AddressBus, BusResult, PhysicalMemory};
@@ -21,7 +20,6 @@ struct TestMotherboard {
     cia_a: Cia,
     cia_b: Cia,
     rtc: RtcMsm6242b,
-    floppy: FloppyController,
 }
 
 impl TestMotherboard {
@@ -36,7 +34,6 @@ impl TestMotherboard {
             cia_a: Cia::new(CiaId::A),
             cia_b: Cia::new(CiaId::B),
             rtc: RtcMsm6242b::new(RtcModel::Msm6242b),
-            floppy: FloppyController::new(),
         }
     }
 
@@ -49,7 +46,6 @@ impl TestMotherboard {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            floppy: &mut self.floppy,
         }
     }
 }

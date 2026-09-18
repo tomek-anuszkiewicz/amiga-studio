@@ -7,7 +7,6 @@ use agnus::Agnus;
 use cia::{Cia, CiaId};
 use config::{A500Config, RtcModel, VideoStandard};
 use denise::{Denise, DeniseModel};
-use floppy::FloppyController;
 use memory_bus::MemoryBus;
 use paula::Paula;
 use physical_memory::{AddressBus, BusResult, PhysicalMemory};
@@ -21,7 +20,6 @@ struct TestMotherboard {
     cia_a: Cia,
     cia_b: Cia,
     rtc: RtcMsm6242b,
-    floppy: FloppyController,
 }
 
 impl TestMotherboard {
@@ -36,7 +34,6 @@ impl TestMotherboard {
             cia_a: Cia::new(CiaId::A),
             cia_b: Cia::new(CiaId::B),
             rtc: RtcMsm6242b::new(RtcModel::Msm6242b),
-            floppy: FloppyController::new(),
         }
     }
 
@@ -49,7 +46,6 @@ impl TestMotherboard {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            floppy: &mut self.floppy,
         }
     }
 }
@@ -75,8 +71,8 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     // 3. Set Paula DSKLEN to write mode: bit 14 (WRITE)
     mb.paula.commit_register_write(0x024, 0x4000);
 
-    // 4. Set Floppy deserializer data byte $A5, WORDEQUAL (bit 12), and DSKBYT (bit 15)
-    mb.floppy.dskbytr = 0x90A5; // DSKBYT | WORDEQUAL | byte 0xA5
+    // 4. Set Paula DSKBYTR with data byte $A5, WORDEQUAL (bit 12), and DSKBYT (bit 15)
+    mb.paula.dskbytr = 0x90A5; // DSKBYT | WORDEQUAL | byte 0xA5
 
     // 5. Peek DSKBYTR without clearing bit 15:
     // Should have:
@@ -89,7 +85,7 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     let peeked = mb.router().read_custom_word_debug(0x01A);
     assert_eq!(peeked, 0xF0A5);
     // Ensure bit 15 was NOT cleared by peek
-    assert_eq!(mb.floppy.dskbytr & 0x8000, 0x8000);
+    assert_eq!(mb.paula.dskbytr & 0x8000, 0x8000);
 
     // 6. Read DSKBYTR with Clear-on-Read side-effects
     let read_val = mb.router().read_custom_word(0x01A);
@@ -98,7 +94,7 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     // 7. Subsequent peek should show bit 15 cleared (now 0x70A5)
     let peeked_again = mb.router().read_custom_word_debug(0x01A);
     assert_eq!(peeked_again, 0x70A5);
-    assert_eq!(mb.floppy.dskbytr & 0x8000, 0);
+    assert_eq!(mb.paula.dskbytr & 0x8000, 0);
 }
 
 #[test]

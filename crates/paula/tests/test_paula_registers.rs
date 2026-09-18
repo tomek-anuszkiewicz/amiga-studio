@@ -149,3 +149,27 @@ fn test_dsklen_two_write_arming_sequence() {
     assert!(!paula.is_dsk_dma_armed());
     assert!(!paula.is_dsk_dma_active());
 }
+
+#[test]
+fn test_paula_dskbytr_native_methods() {
+    let mut paula = Paula::new();
+    paula.dma_master = true;
+    paula.dma_enables = paula::DSKBYTR_DSKEN;
+    paula.dsklen = paula::DSKLEN_WRITE_FLAG;
+
+    // Latch byte $42 with sync matched true
+    paula.set_disk_byte(0x42, true);
+
+    // Expected composite: DSKBYT (0x8000) | DMAON (0x4000) | DISKWRITE (0x2000) | WORDEQUAL (0x1000) | 0x42
+    assert_eq!(paula.peek_dskbytr(), 0xF042);
+    assert_eq!(paula.read_register(0x01A), 0xF042);
+    // Ensure peek did not clear bit 15
+    assert_eq!(paula.dskbytr & 0x8000, 0x8000);
+
+    // Read with Clear-on-Read
+    assert_eq!(paula.read_dskbytr(), 0xF042);
+    // Bit 15 is now cleared in live register
+    assert_eq!(paula.dskbytr & 0x8000, 0);
+    // Subsequent peek shows 0x7042
+    assert_eq!(paula.peek_dskbytr(), 0x7042);
+}
