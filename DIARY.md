@@ -6319,6 +6319,27 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 test suites.
   - `python tools/harness/run_tests.py --integration`: 100% pass across multi-crate integration tests (`memory_bus`, `machine_loop`, `debugger`, `gui`).
 
+---
+
+### [2026-09-18 16:15 CEST] — Relocate `TestMemoryBus` to `crates/test_runner` as `test_memory_bus.rs`
+- **Affected Subsystems**:
+  - `crates/test_runner/src/test_memory_bus.rs`: Relocated `TestMemoryBus`, `MemoryType`, `TestMemoryStorage`, `FLAT_TEST_RAM_SIZE`, and `impl AddressBus for TestMemoryBus` from `physical_memory::test_bus` into `test_runner`.
+  - `crates/test_runner/src/test_runner.rs`: Registered `pub mod test_memory_bus;` and re-exported `TestMemoryBus`, `MemoryType`, `TestMemoryStorage`, and `FLAT_TEST_RAM_SIZE`.
+  - `crates/test_runner/src/runner.rs`: Switched import from `use physical_memory::TestMemoryBus;` to `use crate::test_memory_bus::TestMemoryBus;`.
+  - `crates/test_runner/src/dma_harness.rs`: Switched import from `use physical_memory::{MemoryType, TestMemoryBus};` to `use crate::test_memory_bus::{MemoryType, TestMemoryBus};`.
+  - `crates/physical_memory/src/physical_memory.rs`: Removed declaration `pub mod test_bus;` and `test_bus` re-exports.
+  - `crates/physical_memory/src/test_bus.rs`: Deleted obsolete mock file from production memory crate.
+  - `crates/physical_memory/tests/test_physical_memory.rs`: Removed `TestMemoryBus` assertions from production memory unit tests.
+  - `crates/test_runner/tests/test_memory_bus.rs`: Added dedicated unit test suite covering sparse/flat storage, transaction logs, and contention locks (maintaining 1:1 module test parity).
+  - `Obsidian/Amiga/Design/CPU SingleStepTests.md`: Updated doc link pointing to `crates/test_runner/src/test_memory_bus.rs`.
+- **What Was Changed (The Concrete Reality)**:
+  - Cleanly decoupled synthetic test harness infrastructure from runtime production code: `physical_memory` now contains zero test harness mock classes, and `test_runner` self-contains `TestMemoryBus`.
+  - Adhered to the lowercase snake_case module convention (`test_memory_bus.rs`) and verified 1:1 module-to-test parity with external unit tests.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,789 bytes, Test Coupling for `physical_memory` and `test_runner`, 100% API Coverage, all 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 8 test_runner unit suites.
+
+
 
 
 

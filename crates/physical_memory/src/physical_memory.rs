@@ -7,7 +7,6 @@ pub mod arbitration;
 pub mod big_array;
 pub mod bus_trait;
 pub mod map;
-pub mod test_bus;
 
 pub use arbitration::{function_code, BusAccessSize, BusResult};
 pub use bus_trait::{AddressBus, RecordedTransaction};
@@ -21,7 +20,6 @@ pub use map::{
 };
 pub use rtc;
 pub use rtc::RtcMsm6242b;
-pub use test_bus::{MemoryType, TestMemoryBus, TestMemoryStorage, FLAT_TEST_RAM_SIZE};
 
 use serde::{Deserialize, Serialize};
 

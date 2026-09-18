@@ -1,9 +1,10 @@
 use crate::diagnostic::{format_ccr_diff, StateDiff, TestFailure};
 use crate::reporter::{record_suite_result, SuiteResult, TestFailureSummary};
 use crate::schema::SingleStepTest;
+use crate::test_memory_bus::TestMemoryBus;
 use flate2::read::GzDecoder;
 use m68000::Cpu;
-use physical_memory::TestMemoryBus;
+
 use std::fs::File;
 use std::io::{BufReader, Read};
 

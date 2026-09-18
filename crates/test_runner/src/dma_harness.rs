@@ -8,9 +8,9 @@
 
 use crate::diagnostic::StateDiff;
 use crate::schema::SingleStepTest;
+use crate::test_memory_bus::{MemoryType, TestMemoryBus};
 use m68000::state::CpuState;
 use m68000::Cpu;
-use physical_memory::{MemoryType, TestMemoryBus};
 
 /// Failure diagnostic for DMA contention invariance violation
 #[derive(Debug, Clone)]

@@ -9,13 +9,9 @@
 //! - `TestMemoryStorage::Flat`: 16 MB pre-allocated buffer with dirty-address tracking for
 //!   ultra-fast zero-allocation test loops ($O(1)$ memory access and $O(K)$ clean resets).
 
-use super::{
-    arbitration::{BusAccessSize, BusResult},
-    bus_trait::{AddressBus, RecordedTransaction},
-};
-use std::collections::HashMap;
-
+use physical_memory::{AddressBus, BusAccessSize, BusResult, RecordedTransaction};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Classification of memory type for contention and bus arbitration verification
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

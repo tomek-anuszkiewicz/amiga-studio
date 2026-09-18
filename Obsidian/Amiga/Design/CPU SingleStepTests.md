@@ -239,7 +239,7 @@ The test harness is implemented in the dedicated workspace crate [`crates/test_r
 
 ### 5.2 CPU State Setup & Execution Flow
 Implemented directly in [`crates/test_runner/src/runner.rs`](../../../crates/test_runner/src/runner.rs):
-- Instantiates a clean [`TestMemoryBus`](../../../crates/physical_memory/src/test_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
+- Instantiates a clean [`TestMemoryBus`](../../../crates/test_runner/src/test_memory_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
 - Primes CPU registers $D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, and Program Counter (accounting for Tom Harte's $+4$ prefetch offset).
 - Primes prefetch queue registers `ir` and `prefetch[0]`.
 - Drives instruction stepping via `cpu.step_instruction(&mut bus)` or CCK-by-CCK via `cpu.step_cck(&mut bus)`.

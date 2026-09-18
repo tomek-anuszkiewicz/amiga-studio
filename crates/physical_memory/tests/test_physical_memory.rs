@@ -1,4 +1,4 @@
-use physical_memory::{A500Config, A500Preset, BusResult, MemoryBus, TestMemoryBus};
+use physical_memory::{A500Config, A500Preset, BusResult, MemoryBus};
 
 #[test]
 fn test_boot_overlay_and_cia_control() {
@@ -96,20 +96,6 @@ fn test_configurable_unmapped_byte_default_ff_and_test_mode() {
     real_bus.set_unmapped_byte(0xAA);
     assert_eq!(real_bus.read_byte_debug(0x180000), 0xAA);
     assert_eq!(real_bus.read_word_debug(0x180000), 0xAAAA);
-
-    // 2. Test harness mode: TestMemoryBus::new() defaults to 0xFF, configurable to 0x00 for flat test RAM
-    let mut test_bus = TestMemoryBus::new();
-    assert_eq!(test_bus.unmapped_byte(), 0xFF);
-    test_bus.load_test_ram(&[[0x1000, 0x42]]);
-    assert_eq!(test_bus.read_byte_debug(0x1000), 0x42);
-    // Unpopulated address in test memory with default 0xFF
-    assert_eq!(test_bus.read_byte_debug(0x2000), 0xFF);
-
-    // Switch to flat RAM model (SingleStepTests)
-    test_bus.set_unmapped_byte(0x00);
-    assert_eq!(test_bus.read_byte_debug(0x2000), 0x00);
-    assert_eq!(test_bus.read_word_debug(0x2000), 0x0000);
-    assert_eq!(test_bus.read_byte_debug(0x1000), 0x42); // populated untouched
 }
 
 #[test]
