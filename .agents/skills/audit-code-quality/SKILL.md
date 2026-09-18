@@ -1,41 +1,50 @@
 ---
 name: audit-code-quality
-description: On-demand deep architectural code quality audit covering dead code, test-only zombies, minimum visibility leaks, and SRP cohesion across workspace crates.
+description: Deep architectural code quality audit and remediation covering dead code, test-only zombies, minimum visibility leaks, and SRP cohesion across workspace crates.
 ---
 
-# Recipe: On-Demand Architectural Code Quality Auditor
+# Recipe: Architectural Code Quality Auditor & Pruning Playbook
 
-This skill provides a deep, comprehensive on-demand audit across the Rust workspace to detect code rot, information-hiding degradation, and structural cohesion drift that naturally accumulates during rapid feature work and refactoring.
+This skill provides a comprehensive, on-demand procedure across the Rust workspace to audit code rot, prune dead and zombie code, enforce the Principle of Minimum Visibility, and maintain structural cohesion (Single Responsibility Principle).
 
 ---
 
 ## 1. When to Trigger This Skill
 
-- **On-Demand Execution:** Run periodically during refactoring sprints, before milestone reviews (`/code-review`), or when inspecting visibility and architectural hygiene.
-- **Why On-Demand:** Unlike instant pre-flight gates (`pre_flight.py`), deep whole-workspace reference indexing across all production and test files takes several seconds. Running it on-demand prevents slowing down micro-commit loops while ensuring a thorough safety net.
+- **Major Milestone Completion:** Mandatory clean-up after completing milestones in [ROADMAP.md](../../../ROADMAP.md) to purge superseded scaffolding, unreferenced helpers, and test zombies.
+- **Pre-Review Quality Gate:** Run prior to executing [`/code-review`](../../workflows/code-review.md) to eliminate cognitive clutter and visibility leaks before architectural reviews.
+- **Refactoring Sprints:** Run whenever restructuring crate boundaries, decomposing oversized files, or auditing information hiding.
 
 ---
 
-## 2. The 3 Quality Audit Pillars
+## 2. The Three Quality Audit Pillars
 
 ### Pillar 1: Dead Code & Test-Only Zombies
-- **Completely Dead Code:** Declared symbols with 0 callers anywhere across `crates/*/src/` and `crates/*/tests/`.
-- **Test-Only Zombies:** Symbols uncalled by production code (`src/`), called solely in integration tests (`tests/`). These often indicate obsolete APIs kept alive only to satisfy their own unit tests.
+1. **Completely Dead Symbols (💀):**
+   - Declared symbols with **zero callers anywhere** across `crates/*/src/` and `crates/*/tests/`.
+   - *Remediation:* Safe to delete immediately.
+2. **Test-Only Zombie Code (🧟):**
+   - Symbols with **zero callers in production code (`crates/*/src/`)**, but referenced in unit/integration tests (`crates/*/tests/`).
+   - *Origin:* A helper was written, tested, and subsequently bypassed in the main machine loop or bus. The test kept passing, creating the false impression that the code was active.
+   - *Remediation:* Triage against external Host I/O boundaries (see Section 4). If internal scaffolding, purge both the method and its orphaned test.
+3. **Internal Unused Symbols (The "Visibility Downgrade" Indicator):**
+   - In Rust library crates (`[lib]`), `rustc` treats all `pub` items as public API and suppresses `dead_code` warnings.
+   - Demoting `pub` to `pub(crate)` unmasks `rustc`'s built-in reachability analysis via `cargo check --workspace`.
 
 ### Pillar 2: Principle of Minimum Visibility (Least Privilege)
-- **Over-Exposed `pub` Functions:** Symbols declared `pub` whose production callers are strictly confined to their own crate. These should be demoted to `pub(crate)`.
-- **Over-Exposed `pub(crate)` / `pub` Functions:** Symbols whose callers reside strictly within their own defining file. These should be demoted to private `fn`.
-- **Encapsulated Internal Modules:** Detects `pub mod` declarations for internal worker submodules (e.g. `instructions`, `decoders`, internal callbacks) that should be `pub(crate) mod`.
+- **Over-Exposed `pub` Items:** Symbols declared `pub` whose callers are strictly confined to their own crate. Demote to `pub(crate)`.
+- **Over-Exposed `pub(crate)` / `pub` Items:** Symbols whose callers reside strictly within their defining file. Demote to private `fn`.
+- **Encapsulated Internal Modules:** Submodules (e.g. `instructions`, `decoders`, internal callbacks) declared `pub mod` that should be `pub(crate) mod`.
 
 ### Pillar 3: Single Responsibility Principle (SRP) & Structural Cohesion
-- **File Size Violations:** Rust source files in `crates/*/src/` exceeding the constitutional **800-line ceiling** (per `file-size-and-cohesion.md`).
-- **Unencapsulated "God Structs":** Structs declaring $> 12$ public fields, signaling uncoordinated state dumps or lack of domain groupings.
+- **Source File Ceilings:** Files in `crates/*/src/` exceeding the **800-line ceiling** (per [`.agents/rules/file-size-and-cohesion.md`](../../rules/file-size-and-cohesion.md)).
+- **Unencapsulated "God Structs":** Structs declaring $> 12$ public fields, signaling mixed concerns or lack of domain groupings.
 
 ---
 
 ## 3. CLI Audit Workflow
 
-Execute the auditor via Python harness:
+Execute the unified code quality auditor via Python harness:
 
 ### A. Full Workspace Deep Audit
 ```powershell
@@ -44,11 +53,11 @@ python tools/harness/audit_code_quality.py --all
 
 ### B. Targeted Subsystem Audits
 ```powershell
-# Audit only visibility leaks across the entire workspace
-python tools/harness/audit_code_quality.py --visibility
-
 # Audit dead code & zombies in a specific crate
 python tools/harness/audit_code_quality.py --dead-code --crate paula
+
+# Audit only visibility leaks across the workspace
+python tools/harness/audit_code_quality.py --visibility
 
 # Audit SRP and file sizes
 python tools/harness/audit_code_quality.py --srp
@@ -61,53 +70,86 @@ python tools/harness/audit_code_quality.py --all --json > quality_report.json
 
 ---
 
-## 4. Semantic SRP Review (The Agent's Cognitive Role)
+## 4. Dead Code & Zombie Pruning Playbook
 
-While static scripts and regex scanners measure quantitative metrics (line counts > 800, public fields > 12, or caller counts), **evaluating the Single Responsibility Principle (SRP) requires semantic domain reasoning by the Agent**:
+Follow this systematic procedure when remediating dead code and zombies:
 
-1. **Hotspot Inspection:**
-   When `audit_code_quality.py` or architecture tests flag an oversized file or a struct with mixed responsibilities, the Agent must read the source code and identify the distinct conceptual domains.
-2. **Domain Boundary Identification:**
-   For example, in `crates/physical_memory/src/map.rs`:
-   - **Responsibility A (Dispatch Infrastructure):** 64 KB memory bank callback dispatch table (`MemoryBank`, `BankHandler`, direct function pointers).
-   - **Responsibility B (System Topology Presets):** Precalculated machine preset topologies (`build_preset_bank_map`, `BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`).
-3. **Decomposition Proposal & Execution:**
-   The Agent formulates a concrete decomposition plan:
-   - Proposes extracting Responsibility B into a dedicated cohesive submodule (`presets.rs`).
-   - Maintains 3-tier re-exports at the crate root (`src/<crate>.rs`) so downstream consumers experience zero breaking changes.
-   - Adds 1:1 modular unit test parity (`tests/test_presets.rs`).
-   - Delegates execution to the [`refactor-split-module`](../refactor-split-module/SKILL.md) skill.
+### Step 1: Triage Test-Only Zombies
+For each symbol reported under `[TEST-ONLY ZOMBIES]`:
+1. Check if it represents an **external Host I/O boundary**:
+   - Host input injection (e.g. `keyboard::key_down`, `game_ports::plug_port1`, `floppy::insert_disk`). These are intentional public API hooks for frontend GUI / CLI runners.
+   - Retain these methods and add doc comments clarifying their Host I/O purpose.
+2. If it does NOT represent an external host interface:
+   - It is obsolete scaffolding. Mark both the production method and its orphaned test for clean-break removal.
+
+### Step 2: Safe Clean-Break Deletion
+1. Delete confirmed dead symbols in `crates/<crate>/src/`.
+2. Delete orphaned test assertions/cases in `crates/<crate>/tests/`.
+3. Verify that test deletions do not violate the unit testing density invariant in [`.agents/rules/unit-testing-policy.md`](../../rules/unit-testing-policy.md) ($\ge 2$ tests, $\ge 10$ assertions per crate).
+
+### Step 3: Visibility Demotion
+1. Demote over-exposed `pub` functions unreferenced outside their crate to `pub(crate)`.
+2. Demote over-exposed helpers unreferenced outside their defining file to private `fn`.
+3. Encapsulate crate-internal submodules from `pub mod` to `pub(crate) mod`.
 
 ---
 
-## 5. Execution Mode: Subagent Delegation
+## 5. Semantic SRP Review (The Agent's Cognitive Role)
+
+While static scripts flag quantitative metrics (lines > 800, public fields > 12), **evaluating SRP requires semantic domain reasoning by the Agent**:
+
+1. **Hotspot Inspection:**
+   When `audit_code_quality.py` flags an oversized file or a struct with mixed responsibilities, read the source to identify distinct conceptual domains.
+2. **Domain Boundary Identification:**
+   For example, in `crates/physical_memory/src/map.rs`:
+   - **Responsibility A (Dispatch Infrastructure):** 64 KB memory bank callback dispatch table (`MemoryBank`, `BankHandler`).
+   - **Responsibility B (System Topology Presets):** Machine preset topologies (`build_preset_bank_map`, `BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`).
+3. **Decomposition Proposal & Execution:**
+   - Extract secondary domain into a dedicated cohesive submodule (`presets.rs`).
+   - Maintain 3-tier re-exports at the crate root (`src/<crate>.rs`) for zero downstream breaking changes.
+   - Add 1:1 modular unit test parity (`tests/test_presets.rs`).
+   - Delegate execution to [`refactor-split-module`](../refactor-split-module/SKILL.md).
+
+---
+
+## 6. Verification Gate & Definition of Done
+
+After completing auditing, pruning, or visibility adjustments, always verify workspace integrity:
+```powershell
+cargo fmt --all -- --check
+python tools/harness/pre_flight.py
+python tools/harness/run_tests.py --unit
+python tools/harness/run_tests.py --integration
+```
+Ensure all quality gates and architecture rules pass with 100% green status.
+
+---
+
+## 7. Execution Mode: Subagent Delegation
 
 - **Execution Host:** **Isolated Subagent** (child context sandbox).
 - **Model Tier:** `Gemini Flash Low` / `Medium`
 - **Context Savings:** Shields the main conversation from thousands of lines of workspace scan logs, callers lists, and AST grep outputs.
 - **Subagent Task Template:**
-  - `TaskName`: "Code Quality Audit: <workspace_or_crate>"
-  - `TaskSummary`: "Runs deep on-demand code quality audit for dead code, visibility leaks, and SRP."
+  - `TaskName`: "Code Quality Audit & Pruning: <scope>"
+  - `TaskSummary`: "Audits dead code, test-only zombies, visibility leaks, and SRP cohesion."
   - `Prompt`:
     ```markdown
-    Execute on-demand code quality audit across `<SCOPE>`.
+    Execute on-demand code quality audit and pruning across `<SCOPE>`.
     Follow .agents/skills/audit-code-quality/SKILL.md:
     1. Run `python tools/harness/audit_code_quality.py --all`.
-    2. Analyze findings across: Dead Code, Minimum Visibility Leaks, and SRP anomalies.
-    3. Formulate concrete refactoring recommendations.
-    4. Return strictly the Code Quality Audit Report below.
+    2. Triage zombies vs Host I/O boundaries.
+    3. Prune confirmed dead symbols and demote leaked visibility.
+    4. Verify via `python tools/harness/pre_flight.py` and unit tests.
+    5. Return strictly the Code Quality Audit & Pruning Report below.
     ```
 - **Return Contract (Mandatory Structured Output):**
   ```markdown
-  ### 🛡️ Code Quality Audit Report
+  ### 🛡️ Code Quality Audit & Pruning Report
   - **Scope Scanned:** `<scope>`
-  - **Dead Code Count:** <count> symbols
-  - **Test-Only Zombies:** <count> symbols
-  - **Visibility Leaks:** <count> symbols (`pub` -> `pub(crate)` / private)
-  - **SRP / Cohesion Issues:** <count> files/structs
-  - **Top Remediation Targets:**
-    | Subsystem | Symbol / File | Issue | Recommended Action |
-    | :--- | :--- | :--- | :--- |
-    | `physical_memory` | `read_chip_ram` | Leaked `pub` | Demote to private `fn` |
-    | `m68000` | `instructions/move_b.rs` | 1,980 lines | Split into submodules |
+  - **Dead Code Pruned:** <count> symbols
+  - **Test-Only Zombies Handled:** <count> retained (Host I/O) / <count> pruned
+  - **Visibility Demoted:** <count> symbols (`pub` -> `pub(crate)` / private)
+  - **SRP / Cohesion Decompositions:** <count> files/structs
+  - **Verification:** `pre_flight.py` (PASS), `cargo test` (PASS)
   ```

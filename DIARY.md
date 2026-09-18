@@ -6977,6 +6977,20 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p physical_memory`: All 30 tests passed.
   - `cargo test -p test_runner --test test_architecture_rules`: All 19 architecture tests passed.
 
+---
+
+### [2026-09-19 02:00 CEST] — Consolidated Dead-Code & Zombie Pruning into Unified audit-code-quality Skill
+- **Subsystems Affected**:
+  - `.agents/skills/audit-code-quality/SKILL.md`: Elevated into the unified, single source of truth for both discovery (auditing) and remediation (pruning playbook). Incorporated dead-code and zombie classification (Completely Dead, Test-Only Zombies, Visibility Downgrade), Host I/O boundary triage, safe clean-break deletion, visibility demotion, and subagent delegation template.
+  - `.agents/skills/prune-dead-code/`: Deleted redundant legacy skill.
+  - `.agents/skills/remove-dead-code/`: Deleted redundant legacy skill.
+  - `AGENTS.md`: Updated milestone gate reference to point to `audit-code-quality` (13,802 bytes, well under 14,000 ceiling).
+  - `docs/ai_agents.md`: Updated skill index to reference `audit-code-quality`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of Skill Sprawl & Fragmentation:* Maintaining separate skills (`prune-dead-code`, `remove-dead-code`, `audit-code-quality`) created redundant overlapping instructions and maintenance overhead. Unifying discovery and remediation under `audit-code-quality` gives developers and agents a single authoritative playbook for whole-workspace code hygiene.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,802 bytes, Test-Coupling, API Coverage 100%, 19 Architecture Rules).
+
 
 
 

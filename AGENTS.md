@@ -107,7 +107,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Obsidian Design Docs:** Update design documents in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md) and [`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md).
 - **Engineering Diary:** Log changes and rationale in [DIARY.md](DIARY.md) (Section 10) per [`diary-maintenance.md`](.agents/rules/diary-maintenance.md).
 - **Roadmap Maintenance:** Prune completed tasks from [ROADMAP.md](ROADMAP.md) (zero completed items retained) per [`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md).
-- **Milestone Gates:** Run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) and [`prune-dead-code`](.agents/skills/prune-dead-code/SKILL.md) upon major milestone completion.
+- **Milestone Gates:** Run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) and [`audit-code-quality`](.agents/skills/audit-code-quality/SKILL.md) upon major milestone completion.
 - **Prohibition of Blind Golden Hash Modifications**: Zero silent edits to golden hashes/constants per [`spec-compliance.md`](.agents/rules/spec-compliance.md).
 - **Milestone Review:** Run [`/code-review`](.agents/workflows/code-review.md) before declaring roadmap milestones complete.
 

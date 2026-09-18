@@ -66,7 +66,7 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`test-runner`](../.agents/skills/test-runner/SKILL.md): Standardized test execution across all 4 tiers, `.test_results/` snapshot management, and automated differential regression telemetry.
 - [`integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md): 4-Iteration Cascading Verification Protocol runbook for multi-chip integration test suites, failure clustering, and 2–3 attempt limits.
 - [`synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md): Post-facto root-cause consolidation using the 3-Column Diagnostic Matrix (`[Symptom] | [Location] | [Mechanism]`) to replace scattered local workarounds with a unified upstream hardware model.
-- [`prune-dead-code`](../.agents/skills/prune-dead-code/SKILL.md): Systematic procedure for identifying and safely eliminating dead code, unused functions, obsolete constants, and unreferenced crate exports upon milestone completion.
+- [`audit-code-quality`](../.agents/skills/audit-code-quality/SKILL.md): Comprehensive on-demand code quality auditor and pruning playbook covering dead code, test-only zombies, minimum visibility leaks, and SRP cohesion across workspace crates.
 - [`egui-vision-debugger`](../.agents/skills/egui-vision-debugger/SKILL.md): Headless visual inspection and autonomous self-healing skill for the `egui` frontend using `gui-inspector` (`egui_kittest` + `wgpu`) and Agent Multimodal Vision to diagnose layout squishing, splitter contention, and focus lifecycles.
 
 ### C. Architecture, Knowledge & Documentation
