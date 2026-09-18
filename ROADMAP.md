@@ -67,7 +67,26 @@ This document outlines the phased development plan, hardware milestones, verific
 ---
 ## 2. Core Implementation Strategy (Remaining Milestones)
 
-### Step 1: Developer Studio GUI & Diagnostic Tooling Hardening (Ongoing Companion Track)
+### Step 1: Clean-Slate Custom Chipset Spec Reset & Self-Bootstrapped Verification (Immediate Primary Focus)
+
+1. **Strategic Clean-Slate Reset of Custom Chips & Machine Loop (Baseline HRM Spec Alignment):**
+   - Cleanse and reset `crates/machine_loop` and all specialized custom chip subsystems (`agnus`, `denise`, `paula`, `cia`, `copper`, `blitter`, `floppy`, etc.) outside the CPU and physical memory, purging accumulated legacy artifacts, ad-hoc hacks, and non-canonical scaffolding.
+   - Ground every custom chip and register implementation directly in the official Commodore Amiga Hardware Reference Manual (HRM), bringing the codebase to an "idealistic", pure architectural baseline.
+   - Real-world hardware quirks, timing latencies, and edge cases will be introduced strictly when demanded by failing tests and empirical verification rather than premature speculative complexity.
+
+2. **Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution:**
+   - Operationalize the authentic floppy disk subsystem (`DF0:`, MFM deserializer, DMA track loading) and Kickstart ROM overlay bootloader sequence.
+   - Establish full end-to-end capability to load and execute genuine Amiga programs from disk images (`.adf`), which is the foundational prerequisite for launching the native vAmigaTS test harness.
+
+3. **vAmigaTS Native Disk-Based Verification & Self-Testing:**
+   - Execute vAmigaTS disk-based test suites that validate the foundational mechanics of disk loading, drive control, floppy DMA, and CPU coordination (the emulator's ability to run native Amiga software to test itself).
+   - Leverage fast/unthrottled headless execution (running as fast as the host CPU permits without wall-clock rate limiting) for rapid test throughput.
+
+4. **Principled, Rule-Compliant Custom Chip & Register Verification:**
+   - Select and implement custom chip features and registers systematically in strict adherence to repository testing rules (substrate-first ordering, repro-first defect resolution, and 4-tier integration archetypes).
+   - Advance from clean, spec-compliant baseline registers to fully validated cycle-exact implementations driven by verified tests.
+
+### Step 2: Developer Studio GUI & Diagnostic Tooling Hardening (Ongoing Companion Track)
 - **Continuous Testing & Polish of Developer Studio (Debugger View):**
   - Actively test, harden, and refine the Developer Studio GUI (Debugger View) alongside core hardware emulation workloads.
   - Continuously test all interactive panels under live emulation: Disassembly infinite stream browsing and in-place instruction patching, Memory Hex selection and row-wrapping keyboard navigation, register/CCR editing, Microcode Inspector step progression, and breakpoint/watchpoint triggers.
@@ -83,7 +102,7 @@ This document outlines the phased development plan, hardware milestones, verific
     - *Interactive Stream & Hex Editor Keys:* Disassembly stream navigation (Arrow Up/Down scroll, `Enter` to open in-place instruction patcher, `Escape` to cancel editing), Memory Hex editor navigation (Arrow keys, PageUp/PageDown, Home/End, `Tab`/`Enter` to commit edited byte, `Escape` to cancel, `Ctrl + Mouse Wheel` for 1024-byte quick jump).
   - Implement a dedicated in-app **Keyboard Shortcuts Reference Modal (`?` or `F1` or Top Menu Help > Shortcuts)** and enrich button hover tooltips to ensure zero hidden or unadvertised shortcuts remain in the emulator interface.
 
-### Step 2: vAmigaTS Automated Test Suite Execution Harness & Silicon Verification Gate (Active Focus)
+### Step 3: vAmigaTS Automated Test Suite Execution Harness & Silicon Verification Gate (Active Focus)
 - **Delivered vAmigaTS Runner Engine & Verification Infrastructure (v1.0):**
   - Fully recursive catalog discovery and categorization engine in `crates/test_runner/src/vamiga/` (`catalog.rs`, `script.rs`, `runner.rs`, `matcher.rs`, `injector.rs`).
   - Indexes all 2,077 test directories in `ref_src/vAmigaTS`, classifying each test into 1,468 active Phase 1 Baseline OCS tests and 609 formally deferred tests.
@@ -96,7 +115,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - *FPU Coprocessor Suite Gate (206 tests deferred to Phase 3 AGA & FPU):* Tests in `ref_src/vAmigaTS/FPU/` requiring Motorola MC68881/68882 math coprocessors.
   - *ECS & AGA Silicon Suite Gate (112 tests deferred to Phase 2 ECS & Phase 3 AGA):* Tests providing exclusively `_ecs.raw`, `_plus.raw`, or `_aga.raw` reference captures exercising ECS Denise 8373 / SuperHires / BPLCON3 or AGA 24-bit palettes.
   - *Motorola 68010 CPU Architecture Gate (91 tests deferred to 68010 Extension Milestone):* Tests providing exclusively `_68010.raw` captures exercising 68010-specific instructions (`BKPT`, `MOVE from CCR`, `MOVES`, `VBR`, loop mode).
-  - *AmigaOS Floppy MFM Bootblock Gate (7 tests deferred to Step 6 Floppy MFM & Full OS Boot):* Non-standard bootblock tests requiring genuine floppy track MFM streaming and `dos.library` initialization (`diwvmras`, `btst_ipl`, `overscan2`, `bplcon_rmb`, `sprxpos`, `memspeed1`, `memspeed2`).
+  - *AmigaOS Floppy MFM Bootblock Gate (7 tests deferred to Step 7 Floppy MFM & Full OS Boot):* Non-standard bootblock tests requiring genuine floppy track MFM streaming and `dos.library` initialization (`diwvmras`, `btst_ipl`, `overscan2`, `bplcon_rmb`, `sprxpos`, `memspeed1`, `memspeed2`).
   - *Non-Visual Register Assertion Gate (193 tests deferred to Step 2.7):* Peripheral tests (CIA, UART, joystick) lacking 24-bit RGB `.raw` frame captures (providing only CRT camera photographs `.JPG`).
 - **Targeted Subsystem Verification Sub-Suites Execution Track (1,468 Active Baseline Tests):**
   - Tracked authoritatively in [vAmigaTS Verification Scorecard](Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md).
@@ -114,7 +133,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - Strict preservation of code simplicity: keep the code straightforward, transparent, and localized to one place in the DMA scheduler, with zero complex asynchronous event wheels, timing skips, or premature abstractions that sacrifice readability or physical cycle-exactness.
   - Re-evaluate with `--profile` across vAmigaTS suites to measure empirical throughput gains.
 
-### Step 3: Custom Chipset Debugger & Deep Architectural Observability (Developer Studio Extension)
+### Step 4: Custom Chipset Debugger & Deep Architectural Observability (Developer Studio Extension)
 - **Step 3.1: Custom Chipset Registers & Mutation Delay Pipeline Inspector:**
   - Dedicated custom chipset register docks/tabs in Developer Studio (`crates/gui`): Agnus, Denise, Paula, CIAs (A & B), and RTC.
   - Live values formatted in hex/binary with visual change/delta highlighting (electric cyan diffs).
@@ -137,7 +156,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - *Paula Multi-Engine Status:* Audio channel frequency, length, volume, BLEP table synthesis status, floppy MFM bit-stream decoding buffers/sync-word detector (`$4489`), and serial UART FIFO/baud counters.
   - *CIA Timers & Port Observability:* Live countdown display of Timers A & B, TOD clock sub-second counters, serial shift register (SDR) status, and I/O port pin states.
 
-### Step 4: Host I/O Peripherals, Audio Playback & Controller Hub
+### Step 5: Host I/O Peripherals, Audio Playback & Controller Hub
 - **Step 4.1: Host Audio Playback & CRT Presentation Shaders:**
   - Audio sink: Ring buffer decoupled from host audio playback (cpal / Web Audio) with dynamic resampling and ring buffer underflow/overflow protection.
   - GPU post-processing shaders for authentic CRT TV look and feel (scanlines, shadow mask, curvature, phosphor bloom).
@@ -169,7 +188,7 @@ This document outlines the phased development plan, hardware milestones, verific
   - **Dedicated Unit & Integration Tests:**
     - Test suites verifying host scancode translation, keyboard-as-joystick key mapping, dual-mouse and dual-joystick port arbitration, POTGOR button sensing, and headless UI input interaction.
 
-### Step 5: Dedicated Player GUI & Frontend Experience
+### Step 6: Dedicated Player GUI & Frontend Experience
 - **Step 5.1: Hardware Configuration & Kickstart ROM Selector:**
   - Amiga hardware profile selector (Basic A500 512 KB, Classic A500 1 MB [Recommended], Expanded A500 4 MB).
   - Explicit notification and confirmation modal informing the user that changing hardware parameters requires a cold machine reset.
@@ -187,7 +206,7 @@ This document outlines the phased development plan, hardware milestones, verific
     - **Custom Label:** Optional user-defined state name / description for memorable checkpoints and game phases.
     - **Configuration Integrity Guard:** Verifies matching hardware profiles (RAM sizes, chipset mode) before restoring state to prevent emulator panics or guest crashes.
 
-### Step 6: Real-World Amiga Workloads, Host Cache Profiling & Pipeline Optimization (Post-Boot)
+### Step 7: Real-World Amiga Workloads, Host Cache Profiling & Pipeline Optimization (Post-Boot)
 - **Deferred Full-OS & MFM Floppy vAmigaTS Test Suites Verification Gate:**
   - Execute the 9 non-standard test ADFs using physical floppy MFM track streaming via the `crates/floppy` controller.
   - Unfilter and execute all vAmigaTS tests requiring full Kickstart 1.3 bootstrap (`dos.library`, `intuition.library`, and filesystem calls) deferred from Phase 1 bare-metal execution.

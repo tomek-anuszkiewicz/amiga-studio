@@ -6820,9 +6820,22 @@ Every future modification or implementation task must append an entry following 
     - `tests/test_map.rs`: Added `test_bank_handler_mapping_cleanliness` asserting handler bank assignments.
 - **What Was Changed (The Concrete Reality)**:
   - Cleaned up visual noise and non-idiomatic ASCII art banners in `map.rs`, establishing consistent clean code styling across the crate.
+---
+
+### [2026-09-18 23:55 CEST] — Updated `ROADMAP.md` with Strategic Clean-Slate Spec Reset & Bootstrapping Milestones
+- **Affected Subsystems**:
+  - `ROADMAP.md`:
+    - Inserted `Step 1: Clean-Slate Custom Chipset Spec Reset & Self-Bootstrapped Verification (Immediate Primary Focus)` at the top of Section 2 ("Core Implementation Strategy (Remaining Milestones)").
+    - Renumbered subsequent steps sequentially (Step 2: Developer Studio, Step 3: vAmigaTS Runner Engine, Step 4: Custom Chipset Debugger, Step 5: Host I/O, Step 6: Player GUI, Step 7: Real-World Workloads & Post-Boot).
+- **What Was Changed (The Concrete Reality)**:
+  - Established a 4-pillar top-priority execution track:
+    1. *Strategic Clean-Slate Reset:* Cleanse `machine_loop` and specialized chip subsystems (`agnus`, `denise`, `paula`, `cia`, etc.) of non-canonical legacy scaffolding, returning code to an "idealistic" baseline aligned strictly with official Commodore Amiga Hardware Reference Manual (HRM) specifications.
+    2. *Floppy & Kickstart ROM Bring-Up:* Operationalize genuine `.adf` program execution via Kickstart bootloader and floppy DMA.
+    3. *vAmigaTS Native Disk-Based Self-Testing:* Leverage native Amiga disk-based test suites to test disk reading and machine coordination, running at maximum unthrottled host throughput.
+    4. *Principled Register & Chipset Verification:* Prioritize and verify registers and custom chip logic systematically following substrate-first and repro-first rules.
 - **Verification & Test Results**:
-  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
-  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.40s).
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, API Coverage 100%, 19 Architecture Rules).
+
 
 
 
