@@ -232,29 +232,70 @@ impl A500Machine {
         paula_ipl.max(cia_a_ipl).max(cia_b_ipl)
     }
 
+    /// Writes a 16-bit word to custom register space with physical propagation delay.
+    #[inline(always)]
+    pub fn write_custom_word(&mut self, offset: u16, val: u16) {
+        self.memory_bus().write_custom_word(offset, val);
+    }
+
+    /// Writes an 8-bit byte to custom register space with physical byte duplication.
+    #[inline(always)]
+    pub fn write_custom_byte(&mut self, addr: u32, val: u8) {
+        self.memory_bus().write_custom_byte(addr, val);
+    }
+
     /// Dispatches a custom register bus write to the target chip(s) with physical propagation delay.
+    #[inline(always)]
     pub fn dispatch_custom_write(&mut self, offset: u16, val: u16) {
-        self.memory_bus().dispatch_custom_write(offset, val);
+        self.write_custom_word(offset, val);
+    }
+
+    /// Propagates committed Agnus register mutations across the motherboard
+    #[inline(always)]
+    pub fn propagate_agnus_write(&mut self, reg: u16, val: u16) {
+        self.memory_bus().propagate_agnus_write(reg, val);
     }
 
     /// Action method dispatch for committed Agnus registers
+    #[inline(always)]
     pub fn dispatch_agnus_action(&mut self, reg: u16, val: u16) {
-        self.memory_bus().dispatch_agnus_action(reg, val);
+        self.propagate_agnus_write(reg, val);
+    }
+
+    /// Propagates committed Paula register mutations across the motherboard
+    #[inline(always)]
+    pub fn propagate_paula_write(&mut self, reg: u16, val: u16) {
+        self.memory_bus().propagate_paula_write(reg, val);
     }
 
     /// Action method dispatch for committed Paula registers
+    #[inline(always)]
     pub fn dispatch_paula_action(&mut self, reg: u16, val: u16) {
-        self.memory_bus().dispatch_paula_action(reg, val);
+        self.propagate_paula_write(reg, val);
+    }
+
+    /// Propagates committed Denise register mutations across the motherboard
+    #[inline(always)]
+    pub fn propagate_denise_write(&mut self, reg: u16, val: u16) {
+        self.memory_bus().propagate_denise_write(reg, val);
     }
 
     /// Action method dispatch for committed Denise registers
+    #[inline(always)]
     pub fn dispatch_denise_action(&mut self, reg: u16, val: u16) {
-        self.memory_bus().dispatch_denise_action(reg, val);
+        self.propagate_denise_write(reg, val);
+    }
+
+    /// Propagates committed CIA register mutations across the motherboard
+    #[inline(always)]
+    pub fn propagate_cia_write(&mut self, id: cia::CiaId, reg: u8, val: u8) {
+        self.memory_bus().propagate_cia_write(id, reg, val);
     }
 
     /// Action method dispatch for committed CIA registers
+    #[inline(always)]
     pub fn dispatch_cia_action(&mut self, id: cia::CiaId, reg: u8, val: u8) {
-        self.memory_bus().dispatch_cia_action(id, reg, val);
+        self.propagate_cia_write(id, reg, val);
     }
 
     /// Polls peripheral sensing lines into CIA input pins and custom chip port latches

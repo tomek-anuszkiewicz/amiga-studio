@@ -279,3 +279,18 @@ fn test_copjmp1_and_copjmp2_strobe_on_read() {
     assert_eq!(res2, BusResult::Ready(0xFFFF));
     assert_eq!(mb.agnus.copper.cop_pc, 0x0002_0000);
 }
+
+#[test]
+fn test_custom_byte_write_duplicates_byte_lanes() {
+    let mut mb = TestMotherboard::new();
+
+    // Writing a byte 0x42 to even address $DFF180 (COLOR00) must duplicate to 0x4242
+    assert_eq!(mb.router().write_byte(0xDFF180, 0x42), BusResult::Ready(()));
+    // Denise color 0 should now be 0x4242 & 0x0FFF = 0x0242
+    assert_eq!(mb.denise.read_color(0), 0x0242);
+
+    // Writing a byte 0x55 to odd address $DFF181 (COLOR00) must also duplicate to 0x5555
+    assert_eq!(mb.router().write_byte(0xDFF181, 0x55), BusResult::Ready(()));
+    // Denise color 0 should now be 0x5555 & 0x0FFF = 0x0555
+    assert_eq!(mb.denise.read_color(0), 0x0555);
+}

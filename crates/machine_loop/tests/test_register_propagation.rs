@@ -117,3 +117,16 @@ fn test_bus_custom_registers_snapshot_sync_and_open_bus() {
     let bplcon0_read = machine.memory_bus().read_word(0xDFF100).ok().unwrap();
     assert_eq!(bplcon0_read, 0xFFFF);
 }
+
+#[test]
+fn test_write_custom_word_and_byte_methods() {
+    let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+
+    // Test write_custom_word directly on A500
+    machine.write_custom_word(0x180, 0x0F00);
+    assert_eq!(machine.denise.read_color(0), 0x0F00);
+
+    // Test write_custom_byte with byte duplication
+    machine.write_custom_byte(0xDFF182, 0x33);
+    assert_eq!(machine.denise.read_color(1), 0x0333);
+}

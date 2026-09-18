@@ -6259,6 +6259,23 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Architecture Rules).
   - `cargo test -p memory_bus -p agnus -p floppy -p paula -p denise`: All unit and integration tests passed (100%).
 
+---
+
+### [2026-09-18 15:08 CEST] — Elimination of MemoryBus Dispatch Vocabulary & Hardware-Accurate Byte Duplication
+- **Affected Subsystems**:
+  - `crates/memory_bus/src/memory_bus.rs`: Renamed `dispatch_custom_write` to `write_custom_word`, establishing symmetry with `read_custom_word`. Added `write_custom_byte(addr, val)` implementing authentic 68000 bus byte duplication (`((val as u16) << 8) | (val as u16)`) onto the custom register bus. Renamed cross-chip propagation helpers to `propagate_agnus_write`, `propagate_paula_write`, `propagate_denise_write`, and `propagate_cia_write` with backwards-compatible inline aliases for legacy `dispatch_*_action` call sites. Updated `AddressBus::write_byte` and `write_word` to call `write_custom_byte` and `write_custom_word`.
+  - `crates/machine_loop/src/machine_loop.rs`: Added `write_custom_word`, `write_custom_byte`, and `propagate_*_write` public methods to `A500Machine`, maintaining inline `dispatch_*` aliases.
+  - `crates/memory_bus/tests/test_register_wiring.rs`: Added unit test `test_custom_byte_write_duplicates_byte_lanes` asserting that byte writes to even ($DFF180) and odd ($DFF181) addresses duplicate to `(val << 8) | val`.
+  - `crates/machine_loop/tests/test_register_propagation.rs`: Added unit test `test_write_custom_word_and_byte_methods`.
+- **What Was Changed (The Concrete Reality)**:
+  - Purged artificial `dispatch` terminology from `MemoryBus` write paths in favor of straightforward, symmetrical `write_custom_word` and `write_custom_byte`.
+  - Refined cross-chip signal propagation helpers from generic "action dispatch" to concrete electronic `propagate_*_write` naming.
+  - Fixed byte write semantics on custom registers to match authentic 68000 and custom bus hardware, where $A_0$ is disconnected and bytes are mirrored across both data lanes.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Architecture Rules).
+  - `cargo test -p memory_bus -p machine_loop`: All 71 unit and integration tests passed (100%).
+
+
 
 
 
