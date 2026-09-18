@@ -117,7 +117,7 @@ fn test_256_entry_bank_map() {
         assert_eq!(bus.bank_map[b], MemoryBank::KickstartRom);
     }
 
-    assert_eq!(bus.bank_map, physical_memory::map::BANK_MAP_STANDARD);
+    assert_eq!(bus.bank_map, physical_memory::BANK_MAP_STANDARD);
 
     // 2. Bare 512k config: SlowRam and RTC become OpenBus
     let mut bare_bus = PhysicalMemory::from_config(A500Config::bare_512k(VideoStandard::Pal));
@@ -126,7 +126,7 @@ fn test_256_entry_bank_map() {
         assert_eq!(bare_bus.bank_map[b], MemoryBank::OpenBus);
     }
     assert_eq!(bare_bus.bank_map[0xDC], MemoryBank::OpenBus);
-    assert_eq!(bare_bus.bank_map, physical_memory::map::BANK_MAP_BARE);
+    assert_eq!(bare_bus.bank_map, physical_memory::BANK_MAP_BARE);
 
     // 3. Expanded config: Fast RAM occupies 0x20..=0x5F
     let mut exp_bus =
@@ -140,7 +140,7 @@ fn test_256_entry_bank_map() {
     for b in 0x20..=0x5F {
         assert_eq!(exp_bus.bank_map[b], MemoryBank::FastRam);
     }
-    assert_eq!(exp_bus.bank_map, physical_memory::map::BANK_MAP_EXPANDED);
+    assert_eq!(exp_bus.bank_map, physical_memory::BANK_MAP_EXPANDED);
 }
 
 #[test]

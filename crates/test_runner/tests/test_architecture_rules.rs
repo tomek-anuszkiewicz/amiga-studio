@@ -1290,6 +1290,7 @@ fn test_multi_module_crate_test_parity() {
                 "test_address_bus.rs",
                 "test_map.rs",
                 "test_physical_memory.rs",
+                "test_presets.rs",
             ],
         ),
     ];

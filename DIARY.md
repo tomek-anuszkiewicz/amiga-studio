@@ -6958,6 +6958,26 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p m68000`: All 49 tests passed.
   - `python tools/harness/audit_code_quality.py --crate physical_memory`: Confirmed 0 dead code, 0 cohesion issues.
 
+---
+
+### [2026-09-19 01:50 CEST] — Decomposed physical_memory::map into map.rs and presets.rs per SRP Mandate
+- **Subsystems Affected**:
+  - `crates/physical_memory/src/presets.rs`: Extracted `build_preset_bank_map`, static tables (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), `get_preset_bank_map`, and `build_bank_map`.
+  - `crates/physical_memory/src/map.rs`: Preserved single responsibility for 64 KB memory bank dispatch mechanics (`MemoryBank`, `BankHandler`, direct function pointers, and bank callbacks). Demoted handler constants (`CHIP_RAM_HANDLER`, etc.) to `pub(crate)`.
+  - `crates/physical_memory/src/physical_memory.rs`: Added `pub mod presets;` and wired 3-tier re-exports.
+  - `crates/physical_memory/tests/test_presets.rs`: Added dedicated unit test suite validating bank topologies across Bare 512k, Standard 1MB, and Expanded Power User presets.
+  - `crates/physical_memory/tests/test_config.rs`: Updated preset table references to use canonical crate root re-exports.
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Registered `test_presets.rs` in `test_multi_module_crate_test_parity`.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Added Section 4 on Semantic SRP Review detailing the cognitive role of the Agent in analyzing domain concerns and triggering `refactor-split-module`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Separation of Dispatch Engine from System Topologies:* `map.rs` had accumulated two orthogonal responsibilities: the direct method pointer dispatch mechanism and the machine preset topology layouts. Splitting these into `map.rs` and `presets.rs` ensures single responsibility while keeping each file focused, cohesive, and easily auditable.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,796 bytes, Change-Coupling for `physical_memory`, API Coverage 100%, 19 Architecture Rules).
+  - `cargo test -p physical_memory`: All 30 tests passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 19 architecture tests passed.
+
+
 
 
 

@@ -61,7 +61,26 @@ python tools/harness/audit_code_quality.py --all --json > quality_report.json
 
 ---
 
-## 4. Execution Mode: Subagent Delegation
+## 4. Semantic SRP Review (The Agent's Cognitive Role)
+
+While static scripts and regex scanners measure quantitative metrics (line counts > 800, public fields > 12, or caller counts), **evaluating the Single Responsibility Principle (SRP) requires semantic domain reasoning by the Agent**:
+
+1. **Hotspot Inspection:**
+   When `audit_code_quality.py` or architecture tests flag an oversized file or a struct with mixed responsibilities, the Agent must read the source code and identify the distinct conceptual domains.
+2. **Domain Boundary Identification:**
+   For example, in `crates/physical_memory/src/map.rs`:
+   - **Responsibility A (Dispatch Infrastructure):** 64 KB memory bank callback dispatch table (`MemoryBank`, `BankHandler`, direct function pointers).
+   - **Responsibility B (System Topology Presets):** Precalculated machine preset topologies (`build_preset_bank_map`, `BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`).
+3. **Decomposition Proposal & Execution:**
+   The Agent formulates a concrete decomposition plan:
+   - Proposes extracting Responsibility B into a dedicated cohesive submodule (`presets.rs`).
+   - Maintains 3-tier re-exports at the crate root (`src/<crate>.rs`) so downstream consumers experience zero breaking changes.
+   - Adds 1:1 modular unit test parity (`tests/test_presets.rs`).
+   - Delegates execution to the [`refactor-split-module`](../refactor-split-module/SKILL.md) skill.
+
+---
+
+## 5. Execution Mode: Subagent Delegation
 
 - **Execution Host:** **Isolated Subagent** (child context sandbox).
 - **Model Tier:** `Gemini Flash Low` / `Medium`

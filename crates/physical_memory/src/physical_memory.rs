@@ -5,16 +5,20 @@
 
 pub mod address_bus;
 pub mod map;
+pub mod presets;
 
 pub use address_bus::{AddressBus, BusResult};
 pub use config::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
 };
 pub use map::{
-    build_bank_map, build_preset_bank_map, get_preset_bank_map, handler_for_bank, BankHandler,
-    BankReadByteDebugFn, BankReadByteFn, BankReadWordDebugFn, BankReadWordFn, BankWriteByteDebugFn,
-    BankWriteByteFn, BankWriteWordDebugFn, BankWriteWordFn, MemoryBank, BANK_MAP_BARE,
-    BANK_MAP_EXPANDED, BANK_MAP_STANDARD,
+    handler_for_bank, BankHandler, BankReadByteDebugFn, BankReadByteFn, BankReadWordDebugFn,
+    BankReadWordFn, BankWriteByteDebugFn, BankWriteByteFn, BankWriteWordDebugFn, BankWriteWordFn,
+    MemoryBank,
+};
+pub use presets::{
+    build_bank_map, build_preset_bank_map, get_preset_bank_map, BANK_MAP_BARE, BANK_MAP_EXPANDED,
+    BANK_MAP_STANDARD,
 };
 pub use rtc;
 pub use rtc::RtcMsm6242b;
@@ -103,7 +107,7 @@ impl PhysicalMemory {
             FastRamSize::None => None,
             FastRamSize::Mb4 => Some(vec![0x00; MAX_FAST_RAM_SIZE]),
         };
-        let bank_map = map::build_bank_map(&config);
+        let bank_map = presets::build_bank_map(&config);
 
         let mut bus = Self {
             config,
