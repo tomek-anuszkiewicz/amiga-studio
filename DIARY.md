@@ -6525,6 +6525,21 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 test_runner suites (6.78s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (18.72s).
 
+---
+
+### [2026-09-18 22:35 CEST] — Physical Memory Sizing Alignment: `FAST_RAM_SIZE` Normalized to 4 MB
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/physical_memory.rs`: Updated `FAST_RAM_SIZE` from `8 * 1024 * 1024` to `4 * 1024 * 1024` (`4MB Fast RAM`, Auto-Config expansion at `$200000..$5FFFFF`), matching the active `FastRamSize::Mb4` preset and bank map layout (`0x20..=0x5F`). Updated `from_config` to explicitly reference `FAST_RAM_SIZE` instead of a magic number.
+    - `tests/test_config.rs`: Added test assertions verifying `FAST_RAM_SIZE` value (4 MB) and that `expanded_power_user` allocates exactly `FAST_RAM_SIZE` bytes in `exp_bus.fast_ram`.
+- **What Was Changed (The Concrete Reality)**:
+  - Aligned physical memory size constants with historical Amiga 500 realities and active bank dispatch mapping. While Zorro II auto-config space architecturally spans 8 MB (`$200000..$9FFFFF`), 4 MB was an exceptionally large, high-end expansion for the era. The constant now accurately mirrors the 64-bank allocation (`$200000..$5FFFFF`) mapped in `map.rs`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.06s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (17.71s).
+
+
 
 
 

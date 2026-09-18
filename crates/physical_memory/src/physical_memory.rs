@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 /// Maximum size of physical memory regions
 pub const CHIP_RAM_SIZE_512K: usize = 512 * 1024;
 pub const SLOW_RAM_SIZE: usize = 512 * 1024;
-pub const FAST_RAM_SIZE: usize = 8 * 1024 * 1024; // Max 8MB Zorro II Fast RAM
+pub const FAST_RAM_SIZE: usize = 4 * 1024 * 1024; // 4MB Fast RAM (Auto-Config expansion at $200000..$5FFFFF)
 pub const KICKSTART_SIZE_256K: usize = 256 * 1024;
 
 /// Classification of a 64 KB physical memory bank
@@ -65,7 +65,7 @@ pub struct PhysicalMemory {
     /// Slow / Pseudo-fast RAM at $C00000 (512 KB, trapdoor expansion)
     pub slow_ram: Option<Vec<u8>>,
 
-    /// Fast RAM at $200000 (up to 8 MB)
+    /// Fast RAM at $200000 (4 MB)
     pub fast_ram: Option<Vec<u8>>,
 
     /// Physical Kickstart ROM buffer (256 KB)
@@ -123,7 +123,7 @@ impl PhysicalMemory {
         };
         let fast_ram = match config.fast_ram() {
             FastRamSize::None => None,
-            FastRamSize::Mb4 => Some(vec![0x00; 4 * 1024 * 1024]),
+            FastRamSize::Mb4 => Some(vec![0x00; FAST_RAM_SIZE]),
         };
         let bank_map = map::build_bank_map(&config);
 
