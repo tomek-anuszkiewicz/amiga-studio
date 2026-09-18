@@ -92,13 +92,13 @@ fn test_256_entry_bank_map() {
     // At startup, low-memory overlay is active: banks 0..=7 point to Kickstart ROM
     for b in 0..=7 {
         assert_eq!(bus.bank_map[b], MemoryBank::KickstartRom);
-        assert!(!bus.bank_map[b].is_contended);
+        assert!(!bus.is_chip_ram_target((b as u32) << 16));
     }
     // Disengage overlay to restore physical Chip RAM map
     bus.map_chip_ram_to_low_memory();
     for b in 0..=7 {
         assert_eq!(bus.bank_map[b], MemoryBank::ChipRam);
-        assert!(bus.bank_map[b].is_contended);
+        assert!(bus.is_chip_ram_target((b as u32) << 16));
     }
     // Extended Chip: 8..=15 are OpenBus on 512k baseline
     for b in 8..=15 {
@@ -152,9 +152,12 @@ fn test_bank_handler_direct_method_pointer_dispatch() {
 
     // Directly invoke write and read handler pointers from bank_map
     let chip_handler = bus.bank_map[0x00];
-    (chip_handler.write_byte)(&mut bus, 0x000100, 0x42);
+    assert_eq!(
+        (chip_handler.write_byte)(&mut bus, 0x000100, 0x42),
+        physical_memory::BusResult::Ready(())
+    );
     let val = (chip_handler.read_byte)(&bus, 0x000100);
-    assert_eq!(val, 0x42);
+    assert_eq!(val, physical_memory::BusResult::Ready(0x42));
 
     // Verify through normal bus read
     assert_eq!(bus.read_byte_debug(0x000100), 0x42);

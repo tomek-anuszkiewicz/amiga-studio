@@ -6635,6 +6635,39 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.23s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (18.61s).
 
+---
+
+### [2026-09-18 22:55 CEST] — Solution B: Push BusResult into Memory Bank Handlers (Zero Outer Contention Branches)
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/map.rs`:
+      - Updated handler function pointer signatures:
+        - `BankReadByteFn = fn(&PhysicalMemory, u32) -> BusResult<u8>`
+        - `BankWriteByteFn = fn(&mut PhysicalMemory, u32, u8) -> BusResult<()>`
+        - `BankReadWordFn = fn(&PhysicalMemory, u32) -> BusResult<u16>`
+        - `BankWriteWordFn = fn(&mut PhysicalMemory, u32, u16) -> BusResult<()>`
+      - Removed redundant `is_contended: bool` field from `BankHandler` and static handler declarations (`CHIP_RAM_HANDLER`, `FAST_RAM_HANDLER`, `CIA_HANDLER`, `SLOW_RAM_HANDLER`, `RTC_HANDLER`, `CUSTOM_CHIPS_HANDLER`, `KICKSTART_ROM_HANDLER`, `OPEN_BUS_HANDLER`).
+      - Implemented intrinsic contention in `read_chip_ram`, `read_chip_ram_word`, `write_chip_ram`, and `write_chip_ram_word`, returning `BusResult::WaitState` when `bus.chip_ram_blocked` is active.
+      - Implemented intrinsic contention in Slow RAM handlers (`read_slow_ram`, `read_slow_ram_word`, `write_slow_ram`, `write_slow_ram_word`).
+      - Updated Fast RAM, Kickstart ROM, Open Bus, CIA, and RTC handlers to return `BusResult::Ready(...)` without checking `chip_ram_blocked`.
+      - Removed legacy internal helper functions `read_word_internal`, `read_byte_internal`, `write_word_internal`, `write_byte_internal`.
+    - `src/physical_memory.rs`:
+      - Refactored `read_byte`, `read_word`, `write_byte`, and `write_word` to dispatch directly to the 256-entry bank table in a single operation without any outer contention checks.
+      - Updated `is_chip_ram_target` to match `MemoryBank::ChipRam | MemoryBank::SlowRam` on the bank classification.
+      - Implemented uncontended, side-effect-free debug accesses (`read_byte_debug`, `read_word_debug`, `write_byte_debug`, `write_word_debug`) directly inspecting physical memory buffers based on bank classification.
+    - `tests/`:
+      - `test_config.rs`: Updated assertions to test `is_chip_ram_target` instead of removed `bank.is_contended`, and updated direct bank pointer invocation tests to expect `BusResult`.
+      - `test_physical_memory.rs`: Updated direct Kickstart ROM handler assertions to expect `BusResult::Ready(...)`.
+  - `Obsidian/Amiga/Design/MemoryBus.md`: Updated architectural specifications to describe Solution B's intrinsic bank contention model and zero outer contention branches.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated outer contention branches (`if self.chip_ram_blocked && self.is_chip_ram_target(addr)`) from `read_byte`, `read_word`, `write_byte`, and `write_word`. Contention is now modeled as an intrinsic physical characteristic of each memory bank.
+  - Fast RAM, ROM, and Open Bus accesses are 100% branch-free with zero contention checking.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (10.65s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (19.46s).
+
+
 
 
 
