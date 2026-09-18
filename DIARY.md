@@ -6799,10 +6799,22 @@ Every future modification or implementation task must append an entry following 
       - Added `test_direct_custom_and_cia_register_writes` validating direct register dispatch and staged mutation maturation across Denise (`COLOR00`), Paula (`INTENA`), Agnus (`BLTCON0`), CIA-A (`CRA`), and CIA-B (`CRB`).
 - **What Was Changed (The Concrete Reality)**:
   - Eliminated redundant double-work and immediate broadcast hooks during CPU bus cycles. Cross-chip coordination (such as Agnus DMA channel enables propagating to Paula audio and Denise sprites) is cleanly decoupled and driven strictly when delayed silicon mutations mature in `step_subsystems_cck()`.
+---
+
+### [2026-09-18 23:48 CEST] — Pruned Obsolete `is_chip_ram_target` Helper from `PhysicalMemory`
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/physical_memory.rs`:
+      - Removed obsolete `pub fn is_chip_ram_target(&self, addr: u32) -> bool`.
+    - `tests/`:
+      - `test_physical_memory.rs`, `test_config.rs`, `test_address_bus.rs`: Pruned redundant test assertions calling `is_chip_ram_target`.
+- **What Was Changed (The Concrete Reality)**:
+  - Memory contention gating is already intrinsically modeled inside the 256-entry bank table handlers (`map.rs`), where `ChipRam` and `SlowRam` handlers autonomously check `bus.chip_ram_blocked` to return `BusResult::WaitState`.
+  - Eliminating `is_chip_ram_target` pruned dead utility code that was only kept alive by tests, keeping the `PhysicalMemory` public API lean and focused.
 - **Verification & Test Results**:
-  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for memory_bus, API Coverage 100%, 19 Architecture Rules).
-  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (4.44s).
-  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (16.30s).
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (6.02s).
+
 
 
 

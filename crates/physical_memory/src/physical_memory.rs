@@ -142,16 +142,6 @@ impl PhysicalMemory {
         self.low_memory_overlay
     }
 
-    /// Checks whether an address targets Chip RAM or contention-affected Slow RAM
-    #[inline(always)]
-    pub fn is_chip_ram_target(&self, addr: u32) -> bool {
-        let bank_idx = ((addr >> 16) & 0xFF) as usize;
-        matches!(
-            self.bank_map[bank_idx].bank,
-            MemoryBank::ChipRam | MemoryBank::SlowRam
-        )
-    }
-
     /// Reads an 8-bit byte from the 24-bit physical address space, delegating directly to the bank handler.
     #[inline(always)]
     pub fn read_byte(&self, addr: u32) -> BusResult<u8> {

@@ -20,11 +20,6 @@ fn test_chip_ram_contention_and_fast_ram_immunity() {
     let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
-    // Verify is_chip_ram_target identifying contended memory
-    assert!(bus.is_chip_ram_target(0x001000)); // Chip RAM is contended
-    assert!(bus.is_chip_ram_target(0xC00000)); // Slow RAM is contended on Agnus bus
-    assert!(!bus.is_chip_ram_target(0x200000)); // Fast RAM is not contended
-
     // Initial unlocked state: Chip RAM accesses return Ready
     assert_eq!(bus.write_word(0x001000, 0xCAFE), BusResult::Ready(()));
     assert_eq!(bus.read_word(0x001000), BusResult::Ready(0xCAFE));

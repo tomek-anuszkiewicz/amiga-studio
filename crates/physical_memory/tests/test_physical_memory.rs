@@ -73,11 +73,6 @@ fn test_floating_bus_and_contention_targets() {
     // Unmapped address ($150000) returns $FF / $FFFF
     assert_eq!(bus.read_byte_debug(0x150000), 0xFF);
     assert_eq!(bus.read_word_debug(0x150000), 0xFFFF);
-
-    // Verify is_chip_ram_target
-    assert!(bus.is_chip_ram_target(0x000100)); // Chip RAM
-    assert!(bus.is_chip_ram_target(0xC00000)); // Slow RAM
-    assert!(!bus.is_chip_ram_target(0x200100)); // Fast RAM
 }
 
 #[test]
