@@ -182,77 +182,26 @@ impl PhysicalMemory {
         write_fn(self, addr, val)
     }
 
-    /// Injects or writes an arbitrary contiguous byte block into physical memory regions
-    /// (Chip RAM, Fast RAM, Slow RAM, or Kickstart ROM) using direct slice operations.
+    /// Injects or writes an arbitrary contiguous byte block into physical memory.
     /// Returns the number of bytes written.
     pub fn write_bytes(&mut self, addr: u32, data: &[u8]) -> usize {
-        if data.is_empty() {
-            return 0;
-        }
         let addr = addr & 0x00FF_FFFF;
-
-        // 1. Chip RAM ($000000..$07FFFF, or up to configured chip_ram size)
-        if (addr as usize) < self.chip_ram.len() {
-            let start = addr as usize;
-            let end = (start + data.len()).min(self.chip_ram.len());
-            let len = end - start;
-            self.chip_ram[start..end].copy_from_slice(&data[..len]);
-            return len;
-        }
-
-        // 2. Auto-Config Fast RAM ($200000..$9FFFFF)
-        if (0x0020_0000..0x00A0_0000).contains(&addr) {
-            if let Some(ref mut fast_ram) = self.fast_ram {
-                let offset = (addr - 0x0020_0000) as usize;
-                if offset < fast_ram.len() {
-                    let end = (offset + data.len()).min(fast_ram.len());
-                    let len = end - offset;
-                    fast_ram[offset..end].copy_from_slice(&data[..len]);
-                    return len;
-                }
-            }
-            return 0;
-        }
-
-        // 3. Slow / Trapdoor RAM ($C00000..$C7FFFF)
-        if (0x00C0_0000..0x00C8_0000).contains(&addr) {
-            if let Some(ref mut slow_ram) = self.slow_ram {
-                let offset = (addr - 0x00C0_0000) as usize;
-                if offset < slow_ram.len() {
-                    let end = (offset + data.len()).min(slow_ram.len());
-                    let len = end - offset;
-                    slow_ram[offset..end].copy_from_slice(&data[..len]);
-                    return len;
-                }
-            }
-            return 0;
-        }
-
-        // 4. Kickstart ROM ($F80000..$FFFFFF)
         if addr >= 0x00F8_0000 {
             if (addr == 0x00F8_0000 || addr == 0x00FC_0000) && data.len() >= 256 * 1024 {
                 self.kickstart_rom = data.to_vec();
-                return data.len();
             } else {
-                if self.kickstart_rom.is_empty() {
-                    self.kickstart_rom = vec![0xFF; KICKSTART_SIZE_256K];
-                }
-                let mask = self.kickstart_rom.len() - 1;
-                let start = (addr as usize) & mask;
-                if start + data.len() <= self.kickstart_rom.len() {
-                    self.kickstart_rom[start..start + data.len()].copy_from_slice(data);
-                    return data.len();
-                } else {
-                    for (i, &b) in data.iter().enumerate() {
-                        let idx = (start + i) & mask;
-                        self.kickstart_rom[idx] = b;
-                    }
-                    return data.len();
+                let mask = self.kickstart_rom.len().wrapping_sub(1);
+                for (i, &b) in data.iter().enumerate() {
+                    self.kickstart_rom[((addr as usize) + i) & mask] = b;
                 }
             }
+            return data.len();
         }
 
-        0
+        for (i, &b) in data.iter().enumerate() {
+            let _ = self.write_byte(addr.wrapping_add(i as u32), b);
+        }
+        data.len()
     }
 
     /// Side-effect-free byte read for debugger inspection and test result assertions

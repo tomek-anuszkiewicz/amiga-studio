@@ -6700,6 +6700,25 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (8.57s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (22.05s).
 
+---
+
+### [2026-09-18 23:05 CEST] — Simplification of `write_bytes` Memory Injection
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/physical_memory.rs`:
+      - Replaced 70 lines of manual region slicing and conditional range checking across Chip RAM, Fast RAM, and Slow RAM in `write_bytes` with a lean loop delegating to `self.write_byte(addr + i, b)`.
+      - Retained direct Kickstart ROM buffer loading for `$F80000..$FFFFFF` space.
+      - Automatically inherits 24-bit address space bank dispatch from `self.bank_map[(addr >> 16) as usize].write_byte`.
+    - `tests/test_physical_memory.rs`:
+      - Added empty slice verification to `test_write_bytes_across_all_memory_regions`.
+- **What Was Changed (The Concrete Reality)**:
+  - Collapsed `write_bytes` from 72 lines down to 18 lines, removing redundant slicing code while maintaining full support for block injection and ROM flashing across tests and binary loaders.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (8.44s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (17.57s).
+
+
 
 
 

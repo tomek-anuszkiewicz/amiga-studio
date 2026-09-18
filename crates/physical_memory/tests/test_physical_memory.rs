@@ -200,4 +200,7 @@ fn test_write_bytes_across_all_memory_regions() {
     assert_eq!(written_rom, 4);
     assert_eq!(bus.read_word_debug(0xF80000), 0xDEAD);
     assert_eq!(bus.read_word_debug(0xF80002), 0xBEEF);
+
+    // 5. Empty slice returns 0
+    assert_eq!(bus.write_bytes(0x001000, &[]), 0);
 }
