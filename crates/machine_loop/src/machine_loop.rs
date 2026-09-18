@@ -235,7 +235,14 @@ impl A500Machine {
     /// Synchronizes Denise display pipeline DMA enables from Agnus master DMACON state
     #[inline(always)]
     pub fn sync_dmacon(&mut self) {
-        self.memory_bus().sync_dmacon();
+        let dmacon = self.agnus.dmacon;
+        let dmaen = (dmacon & config::mask::dmacon::DMAEN) != 0;
+        self.denise
+            .sprites
+            .set_dma_enabled(dmaen && (dmacon & config::mask::dmacon::SPREN) != 0);
+        self.denise
+            .frame_builder
+            .set_dma_enabled(dmaen && (dmacon & config::mask::dmacon::BPLEN) != 0);
     }
 
     /// Propagates committed CIA register mutations across the motherboard

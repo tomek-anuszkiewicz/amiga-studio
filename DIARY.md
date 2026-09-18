@@ -6865,6 +6865,23 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 23 crates + 7 test_runner suites passed (5.41s).
   - `python tools/harness/run_tests.py --integration`: memory_bus, machine_loop, debugger, gui passed (16.64s).
 
+### Eliminating `sync_dmacon` from `MemoryBus` in Favor of Direct Machine Loop Coordination
+- **User Request & Dialogue**:
+  - The human architect conducted a deep architectural inquiry into `sync_dmacon()`: what it does, why it exists, how Amiga DMA works physically across Agnus, Denise, and Paula, and whether a memory bus should ever have cross-chip state synchronization methods.
+  - Key architectural principle established: `MemoryBus` represents the CPU/Copper address and data bus for reading and writing memory and custom registers (`read_byte`, `write_word`). Agnus never transfers internal DMA state or channel selections through the memory bus. Cross-chip DMA enable propagation belongs strictly to machine chassis coordination (`machine_loop`).
+  - Directive: Clean `MemoryBus` of `sync_dmacon` and move state coordination to `machine_loop`.
+- **Affected Subsystems**:
+  - `crates/memory_bus/`:
+    - `src/memory_bus.rs`: Removed `sync_dmacon()` and unused `use config::mask::dmacon;`.
+    - `tests/test_register_wiring.rs`: Replaced `test_dmacon_routing_to_denise_sprites` with `test_dmacon_routing_to_agnus_and_paula`, validating physical bus routing of `$DFF096` to Agnus and Paula without fake routing shims.
+  - `crates/machine_loop/`:
+    - `src/machine_loop.rs`: Updated `A500Machine::sync_dmacon()` to perform direct field access on `self.agnus` and `self.denise` with zero allocations and zero `MemoryBus` borrow overhead.
+    - `tests/test_register_propagation.rs`: Extended `test_dmacon_sync_to_denise_sprites_and_frame_builder` to verify direct `machine.sync_dmacon()` execution.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md 13,776 bytes, Change-Coupling for `machine_loop` & `memory_bus`, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 23 crates + 7 test_runner unit suites passed (8.82s).
+  - `python tools/harness/run_tests.py --integration`: memory_bus, machine_loop, debugger, gui passed (17.23s).
+
 
 
 

@@ -156,4 +156,10 @@ fn test_dmacon_sync_to_denise_sprites_and_frame_builder() {
 
     assert!(!machine.denise.sprites.dma_enabled);
     assert!(machine.denise.frame_builder.dma_enabled);
+
+    // Direct sync_dmacon() method verification on machine loop
+    machine.agnus.dmacon = 0;
+    machine.sync_dmacon();
+    assert!(!machine.denise.sprites.dma_enabled);
+    assert!(!machine.denise.frame_builder.dma_enabled);
 }

@@ -7,7 +7,6 @@
 use agnus::Agnus;
 use cia::{Cia, CiaId};
 use config::custom_reg;
-use config::mask::dmacon;
 use denise::Denise;
 use floppy::FloppyController;
 use paula::Paula;
@@ -250,19 +249,6 @@ impl<'a> MemoryBus<'a> {
     #[inline(always)]
     pub fn read_dskbytr_debug(&self) -> u16 {
         self.paula.assemble_dskbytr(self.floppy.dskbytr_debug())
-    }
-
-    /// Synchronizes Denise display pipeline DMA enables from Agnus master DMACON state
-    #[inline]
-    pub fn sync_dmacon(&mut self) {
-        let dmacon = self.agnus.dmacon;
-        let dmaen = (dmacon & dmacon::DMAEN) != 0;
-        self.denise
-            .sprites
-            .set_dma_enabled(dmaen && (dmacon & dmacon::SPREN) != 0);
-        self.denise
-            .frame_builder
-            .set_dma_enabled(dmaen && (dmacon & dmacon::BPLEN) != 0);
     }
 
     /// Propagates committed CIA register mutations across the motherboard

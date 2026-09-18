@@ -182,36 +182,26 @@ fn test_aud0lch_aud0lcl_routed_to_agnus() {
 }
 
 #[test]
-fn test_dmacon_routing_to_denise_sprites() {
+fn test_dmacon_routing_to_agnus_and_paula() {
     let mut mb = TestMotherboard::new();
 
-    assert!(!mb.denise.sprites.dma_enabled);
-
-    // Write DMACON ($DFF096): Master Enable (bit 9) + SPREN (bit 5) -> $8220
+    // Write DMACON ($DFF096): SET (bit 15) | Master Enable (bit 9) | DSKEN (bit 4) | AUD0EN (bit 0) -> $8211
     assert_eq!(
-        mb.router().write_word(0xDFF096, 0x8220),
+        mb.router().write_word(0xDFF096, 0x8211),
         BusResult::Ready(())
     );
 
-    // Step 2 CCKs for Agnus to mature and sync DMACON
+    // Step 2 CCKs for Agnus and Paula mutations to mature
     let _ = mb.agnus.step_cck();
     let _ = mb.agnus.step_cck();
-    mb.router().sync_dmacon();
+    let _ = mb.paula.step_cck();
+    let _ = mb.paula.step_cck();
 
-    // Verify Sprite DMA was enabled in Denise
-    assert!(mb.denise.sprites.dma_enabled);
-
-    // Now clear SPREN: write $0020
-    assert_eq!(
-        mb.router().write_word(0xDFF096, 0x0020),
-        BusResult::Ready(())
-    );
-    let _ = mb.agnus.step_cck();
-    let _ = mb.agnus.step_cck();
-    mb.router().sync_dmacon();
-
-    // Verify Sprite DMA was disabled in Denise
-    assert!(!mb.denise.sprites.dma_enabled);
+    // Verify Agnus received and committed DMACON bits
+    assert_eq!(mb.agnus.dmacon & 0x0211, 0x0211);
+    // Verify Paula received and committed DMACON bits
+    assert_eq!(mb.paula.dma_enables & 0x0011, 0x0011);
+    assert!(mb.paula.dma_master);
 }
 
 #[test]
