@@ -6621,6 +6621,21 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (9.89s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (21.13s).
 
+---
+
+### [2026-09-18 23:00 CEST] — Constant Naming Alignment: `FAST_RAM_SIZE` Renamed to `MAX_FAST_RAM_SIZE`
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/physical_memory.rs`: Renamed `FAST_RAM_SIZE` to `MAX_FAST_RAM_SIZE` (`pub const MAX_FAST_RAM_SIZE: usize = 4 * 1024 * 1024;`), aligning with repository naming conventions (`MAX_...`) for upper bound allocation limits.
+    - `tests/test_config.rs`: Updated assertions to reference `physical_memory::MAX_FAST_RAM_SIZE`.
+- **What Was Changed (The Concrete Reality)**:
+  - Cleaned up naming to explicitly state that the constant defines the maximum Fast RAM buffer capacity currently allocated for the expanded preset.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.23s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (18.61s).
+
+
 
 
 

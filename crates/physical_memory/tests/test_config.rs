@@ -134,10 +134,10 @@ fn test_256_entry_bank_map() {
     let mut exp_bus =
         PhysicalMemory::from_config(A500Config::expanded_power_user(VideoStandard::Pal));
     exp_bus.map_chip_ram_to_low_memory();
-    assert_eq!(physical_memory::FAST_RAM_SIZE, 4 * 1024 * 1024);
+    assert_eq!(physical_memory::MAX_FAST_RAM_SIZE, 4 * 1024 * 1024);
     assert_eq!(
         exp_bus.fast_ram.as_ref().unwrap().len(),
-        physical_memory::FAST_RAM_SIZE
+        physical_memory::MAX_FAST_RAM_SIZE
     );
     for b in 0x20..=0x5F {
         assert_eq!(exp_bus.bank_map[b], MemoryBank::FastRam);

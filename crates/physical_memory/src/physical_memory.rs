@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 /// Maximum size of physical memory regions
 pub const CHIP_RAM_SIZE_512K: usize = 512 * 1024;
 pub const SLOW_RAM_SIZE: usize = 512 * 1024;
-pub const FAST_RAM_SIZE: usize = 4 * 1024 * 1024; // 4MB Fast RAM (Auto-Config expansion at $200000..$5FFFFF)
+pub const MAX_FAST_RAM_SIZE: usize = 4 * 1024 * 1024; // 4MB Fast RAM (Auto-Config expansion at $200000..$5FFFFF)
 pub const KICKSTART_SIZE_256K: usize = 256 * 1024;
 
 /// Classification of a 64 KB physical memory bank
@@ -123,7 +123,7 @@ impl PhysicalMemory {
         };
         let fast_ram = match config.fast_ram() {
             FastRamSize::None => None,
-            FastRamSize::Mb4 => Some(vec![0x00; FAST_RAM_SIZE]),
+            FastRamSize::Mb4 => Some(vec![0x00; MAX_FAST_RAM_SIZE]),
         };
         let bank_map = map::build_bank_map(&config);
 
