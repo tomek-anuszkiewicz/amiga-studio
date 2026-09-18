@@ -3,12 +3,12 @@
 //! Provides cycle-exact 24-bit physical address decoding, 2-phase CCK arbitration,
 //! DMA wait-state stalling, and hardware quirks per Obsidian/Amiga/Design/MemoryBus.md.
 
+pub mod address_bus;
 pub mod arbitration;
-pub mod bus_trait;
 pub mod map;
 
+pub use address_bus::AddressBus;
 pub use arbitration::{function_code, BusAccessSize, BusResult};
-pub use bus_trait::AddressBus;
 pub use config::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
 };

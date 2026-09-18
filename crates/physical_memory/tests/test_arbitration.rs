@@ -65,18 +65,3 @@ fn test_chip_ram_contention_and_fast_ram_immunity() {
     assert!(!bus.chip_ram_blocked);
     assert_eq!(bus.read_word(0x001000), BusResult::Ready(0xCAFE));
 }
-
-#[test]
-fn test_address_bus_trait_methods() {
-    use physical_memory::AddressBus;
-
-    let mut bus = PhysicalMemory::new();
-    bus.map_chip_ram_to_low_memory();
-
-    let trait_bus: &mut dyn AddressBus = &mut bus;
-    assert_eq!(trait_bus.write_word(0x002000, 0x1234), BusResult::Ready(()));
-    assert_eq!(trait_bus.read_word(0x002000), BusResult::Ready(0x1234));
-    assert_eq!(trait_bus.read_word_debug(0x002000), 0x1234);
-    assert_eq!(trait_bus.write_byte(0x002000, 0x56), BusResult::Ready(()));
-    assert_eq!(trait_bus.read_byte(0x002000), BusResult::Ready(0x56));
-}

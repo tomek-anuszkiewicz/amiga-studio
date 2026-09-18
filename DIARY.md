@@ -6539,6 +6539,25 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.06s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (17.71s).
 
+---
+
+### [2026-09-18 22:40 CEST] — Module Naming Alignment: `bus_trait.rs` Renamed to `address_bus.rs`
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/bus_trait.rs` $\to$ `src/address_bus.rs`: Renamed file to match the defining abstraction (`AddressBus` trait), eliminating the generic `bus_trait` identifier.
+    - `src/physical_memory.rs`: Updated submodule declaration from `pub mod bus_trait;` to `pub mod address_bus;` and re-export to `pub use address_bus::AddressBus;`.
+    - `tests/test_address_bus.rs`: Created dedicated 1:1 unit test suite verifying `AddressBus` trait methods on `PhysicalMemory` (word/byte reads/writes, non-intrusive debug reads, arbitration wait-states).
+    - `tests/test_arbitration.rs`: Removed redundant trait tests, maintaining clean single-responsibility module isolation.
+  - `Obsidian/Amiga/Design/`:
+    - `MemoryBus.md`: Updated architecture link to point to `crates/physical_memory/src/address_bus.rs`.
+- **What Was Changed (The Concrete Reality)**:
+  - Renamed the trait file to `address_bus.rs` for clear 1:1 module naming and created a corresponding `test_address_bus.rs` test suite satisfying the repository's 1:1 module-to-test parity invariant.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (5.96s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (20.45s).
+
+
 
 
 

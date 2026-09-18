@@ -84,7 +84,7 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
   - **Dual Storage Engine Architecture**:
     - `TestMemoryStorage::Sparse`: Powered by `std::collections::HashMap`, used by default in `TestMemoryBus::new()` for arbitrary unmapped defaults (`0xFF` open bus simulation).
     - `TestMemoryStorage::Flat`: Powered by a pre-allocated 16 MB buffer (`Box<[u8]>`) and a dirty address tracking list (`Vec<u32>`), created via `TestMemoryBus::new_flat()`. Provides $O(1)$ array accesses and $O(K)$ resets (`bus.clear()`) between test cases, eliminating all dynamic heap allocations in inner test execution loops.
-  - Both buses implement the unified `AddressBus` trait ([`crates/physical_memory/src/bus_trait.rs`](../../../crates/physical_memory/src/bus_trait.rs)).
+  - Both buses implement the unified `AddressBus` trait ([`crates/physical_memory/src/address_bus.rs`](../../../crates/physical_memory/src/address_bus.rs)).
 
 ---
 
