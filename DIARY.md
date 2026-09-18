@@ -6371,6 +6371,18 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,789 bytes, Test Coupling, 100% API Coverage, all 19 Architecture Rules).
   - `cargo test -p physical_memory`: 100% pass across all 22 unit tests.
 
+---
+
+### [2026-09-18 20:35 CEST] — Adoption of Clean-Break Refactoring & Zero Legacy Shims Operational Rule
+- **Affected Subsystems**:
+  - `.agents/rules/clean-break-refactoring.md`: Established new operational rule mandating 100% complete workspace cutover on any rename, refactoring, or redesign. Strictly prohibits unsolicited backward-compatibility type aliases (`pub type Old = New;`), forwarding/deprecation wrappers (`old_fn() -> new_fn()`), dual-path fallback branches, and compatibility re-exports. Backward compatibility is strictly opt-in on explicit user command.
+  - `AGENTS.md`: Registered `clean-break-refactoring.md` in Section 1A (Universal Invariants). Tightened Section 3 phrasing to maintain constitutional size ceiling at 13,776 bytes (<= 14,000 limit).
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the architectural invariant that this repository is an internal closed-world application, not a public library with downstream external dependents. Refactoring must always make a clean, atomic break across all workspace callers, tests, and documentation, preventing zombie aliases and shim sprawl.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling, 100% API Coverage, all 19 Architecture Rules).
+
+
 
 
 

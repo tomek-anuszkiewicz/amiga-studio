@@ -20,6 +20,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for functional/utility logic and public APIs; dedicated `tests/` directories with zero inline tests in `src/`.
 - **Immediate Atomic Commits** ([`git-commits.md`](.agents/rules/git-commits.md)): Mandatory atomic commit after every completed task or refactoring; zero uncommitted changes left across turns; Conventional Commits and pre-commit test gates.
 - **Structural Root-Cause Resolution** ([`structural-root-cause.md`](.agents/rules/structural-root-cause.md)): Mandatory structural upstream fixes; strict prohibition of local symptom patches (pixel/timing nudges, ad-hoc regexes, special-case branches).
+- **Clean-Break Refactoring** ([`clean-break-refactoring.md`](.agents/rules/clean-break-refactoring.md)): Zero unsolicited backward compatibility, zero legacy aliases/shims, and complete workspace cutover on changes.
 
 ### B. Domain-Specific Rules (`trigger: model_decision`)
 - **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Strict English for all agent responses, plans, artifacts, source code, and commit messages.
@@ -78,15 +79,15 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 
 2. **Zero Host Panics on Guest Code**:
    - Emulated guest code must **never panic the host process**. Zero `.unwrap()` / `.expect()` in runtime emulation paths.
-   - Unmapped/disconnected address reads simulate open bus: return `$FF` for byte, `$FFFF` for word (standard A500 floating bus pulled high). Configurable via `MemoryBus::set_unmapped_byte()` for synthetic test harnesses.
+   - Unmapped reads return `$FF` / `$FFFF` (floating open bus pulled high; configurable via `set_unmapped_byte()`).
    - Unaligned word/long accesses must trigger M68000 Address Error exception (Vector 3).
 
 3. **Arithmetic & Overflow Handling**:
-   - In debug builds, Rust panics on integer overflow. In emulation logic, ALU operations and cycle counters must explicitly use wrapping arithmetic (`wrapping_add`, `wrapping_sub`).
+   - In emulation logic, ALU operations and cycle counters must explicitly use wrapping arithmetic (`wrapping_add`, `wrapping_sub`).
 
 4. **Zero-Allocation Hot Path & WASM Constraints**:
-   - Hot execution paths (`step()`, `step_cck()`, memory accesses, interrupt polling) must perform **zero dynamic heap allocations** (`Vec::new`, `Box::new`, `format!`, `String`). Use fixed arrays, bitflags, or in-place state.
-   - Core crate constraints: No `std::time::Instant::now()`, no `std::thread`, no `std::fs` (load ROMs/disks as `&[u8]` byte slices).
+   - Hot paths (`step()`, `step_cck()`, memory accesses, interrupt polling) must perform **zero dynamic heap allocations** (`Vec`, `Box`, `format!`, `String`).
+   - Core crate constraints: No `std::time::Instant::now()`, no `std::thread`, no `std::fs` (load ROMs/disks as byte slices).
 
 5. **Subsystem Guidelines & Platform Quirks**:
    - Subsystem-specific rules (file sizes, canonical micro-steps, inlining, workspace layout) are modularized under `.agents/rules/` per Section 1.
