@@ -6301,6 +6301,25 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,789 bytes, Test Coupling across all 6 modified crates, 100% API Coverage, all 19 Architecture Rules).
   - `cargo test -p memory_bus -p agnus -p denise -p paula -p floppy -p cia`: 100% pass across all 49 unit and integration test binaries.
 
+---
+
+### [2026-09-18 16:05 CEST] — PhysicalMemory Dispatch Symmetry & Purge of Legacy `test_injection` Submodule
+- **Affected Subsystems**:
+  - `crates/physical_memory/src/physical_memory.rs`: Refactored `read_byte`, `read_word`, `write_byte`, and `write_word` to delegate directly to `read_byte_internal`, `read_word_internal`, `write_byte_internal`, and `write_word_internal` after performing contention checks. Moved debugger/inspection methods `read_byte_debug`, `read_word_debug`, `write_byte_debug`, `write_word_debug`, and `inject_kickstart_rom` directly into `physical_memory.rs`. Removed declaration `pub mod test_injection;`.
+  - `crates/physical_memory/src/test_injection.rs`: Deleted obsolete module. Purged dead legacy method `PhysicalMemory::load_test_ram` (which previously mutated bank maps and resized Chip RAM buffers arbitrarily; all test harnesses strictly use `TestMemoryBus::load_test_ram`).
+  - `crates/physical_memory/tests/test_physical_memory.rs`: Updated `test_floating_bus_and_tas_quirk` to configure Fast RAM via `A500Preset::ExpandedPowerUser` and use canonical `write_byte_debug` instead of obsolete `load_test_ram`.
+- **What Was Changed (The Concrete Reality)**:
+  - Established a clean, unified two-tier dispatch symmetry across physical memory:
+    1. The emulation bus tier (`read_byte`, `read_word`, `write_byte`, `write_word`) checks DMA contention wait-states and delegates to `*_internal`.
+    2. The debugger/GUI inspection tier (`read_byte_debug`, `read_word_debug`, `write_byte_debug`, `write_word_debug`) directly delegates to `*_internal` with zero wait-states.
+    3. The internal storage tier (`read_byte_internal`, `write_byte_internal`, etc. in `map.rs`) serves as the single source of truth for bank function pointer dispatch.
+  - Purged misleading `test_injection.rs` file, unifying all legitimate memory inspection and bootloader injection methods in the crate root.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,789 bytes, Test Coupling for `physical_memory`, 100% API Coverage, all 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 test suites.
+  - `python tools/harness/run_tests.py --integration`: 100% pass across multi-crate integration tests (`memory_bus`, `machine_loop`, `debugger`, `gui`).
+
+
 
 
 

@@ -8,7 +8,6 @@ pub mod big_array;
 pub mod bus_trait;
 pub mod map;
 pub mod test_bus;
-pub mod test_injection;
 
 pub use arbitration::{function_code, BusAccessSize, BusResult};
 pub use bus_trait::{AddressBus, RecordedTransaction};
@@ -235,7 +234,7 @@ impl PhysicalMemory {
         if self.chip_ram_blocked && bank.is_contended {
             return BusResult::WaitState;
         }
-        BusResult::Ready((bank.read_byte)(self, addr))
+        BusResult::Ready(self.read_byte_internal(addr))
     }
 
     /// Reads a 16-bit Big-Endian word from the 24-bit physical address space, checking for Chip RAM bus contention.
@@ -247,7 +246,7 @@ impl PhysicalMemory {
         if self.chip_ram_blocked && bank.is_contended {
             return BusResult::WaitState;
         }
-        BusResult::Ready((bank.read_word)(self, addr))
+        BusResult::Ready(self.read_word_internal(addr))
     }
 
     /// Writes an 8-bit byte to the 24-bit physical address space, checking for Chip RAM bus contention.
@@ -259,7 +258,7 @@ impl PhysicalMemory {
         if self.chip_ram_blocked && bank.is_contended {
             return BusResult::WaitState;
         }
-        (bank.write_byte)(self, addr, val);
+        self.write_byte_internal(addr, val);
         BusResult::Ready(())
     }
 
@@ -272,8 +271,37 @@ impl PhysicalMemory {
         if self.chip_ram_blocked && bank.is_contended {
             return BusResult::WaitState;
         }
-        (bank.write_word)(self, addr, val);
+        self.write_word_internal(addr, val);
         BusResult::Ready(())
+    }
+
+    /// Injects Kickstart ROM image bytes
+    pub fn inject_kickstart_rom(&mut self, rom: &[u8]) {
+        self.kickstart_rom = rom.to_vec();
+    }
+
+    /// Side-effect-free byte read for debugger inspection and test result assertions
+    #[inline(always)]
+    pub fn read_byte_debug(&self, addr: u32) -> u8 {
+        self.read_byte_internal(addr)
+    }
+
+    /// Side-effect-free word read for disassemblers, debugger inspection, and test result assertions
+    #[inline(always)]
+    pub fn read_word_debug(&self, addr: u32) -> u16 {
+        self.read_word_internal(addr)
+    }
+
+    /// Side-effect-free byte write for debugger modification
+    #[inline(always)]
+    pub fn write_byte_debug(&mut self, addr: u32, val: u8) {
+        self.write_byte_internal(addr, val);
+    }
+
+    /// Side-effect-free word write for debugger modification
+    #[inline(always)]
+    pub fn write_word_debug(&mut self, addr: u32, val: u16) {
+        self.write_word_internal(addr, val);
     }
 
     /// Cold / Hard Reset: Wipes all RAM to zero and re-engages Kickstart overlay

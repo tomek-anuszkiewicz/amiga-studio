@@ -1,4 +1,4 @@
-use physical_memory::{BusResult, MemoryBus, TestMemoryBus};
+use physical_memory::{A500Config, A500Preset, BusResult, MemoryBus, TestMemoryBus};
 
 #[test]
 fn test_boot_overlay_and_cia_control() {
@@ -64,7 +64,9 @@ fn test_chip_ram_contention_and_direct_rw() {
 
 #[test]
 fn test_floating_bus_and_tas_quirk() {
-    let mut bus = MemoryBus::new();
+    let mut config = A500Config::default();
+    config.apply_preset(A500Preset::ExpandedPowerUser);
+    let mut bus = MemoryBus::from_config(config);
     bus.map_chip_ram_to_low_memory();
 
     // Unmapped address ($150000) returns $FF / $FFFF
@@ -77,7 +79,7 @@ fn test_floating_bus_and_tas_quirk() {
     assert_eq!(bus.read_byte_debug(0x000100), 0x00); // unmodified
 
     // In Fast RAM, TAS write succeeds
-    bus.load_test_ram(&[[0x200100, 0x00]]);
+    bus.write_byte_debug(0x200100, 0x00);
     bus.write_tas_byte(0x200100, 0x80);
     assert_eq!(bus.read_byte_debug(0x200100), 0x80);
 }
