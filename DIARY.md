@@ -6382,6 +6382,33 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling, 100% API Coverage, all 19 Architecture Rules).
 
+---
+
+### [2026-09-18 21:35 CEST] — Direct `chip_ram_blocked` Access, Purge of `is_kickstart_loaded`, and Unconditional Hardware Boot Overlay Alignment
+- **Affected Subsystems**:
+  - `crates/physical_memory/src/physical_memory.rs`: Removed wrapper methods `lock_chip_ram()`, `unlock_chip_ram()`, and `is_chip_ram_locked()` in favor of direct `pub chip_ram_blocked: bool` field access. Purged `is_kickstart_loaded()`.
+  - `crates/machine_loop/src/machine_loop.rs`: Removed artificial bypass `if !physical_memory.is_kickstart_loaded() { map_chip_ram_to_low_memory(); }` from `new()`, `reset_cold()`, `reset_warm()`, and `reset_external_devices()`. In physical Amiga hardware, Gary and CIA-A unconditionally assert low-memory boot overlay (`_OVL` low) on `_RESET`. In `restore_save_state()`, replaced check with `state.header.kickstart_crc32 != 0`.
+  - `crates/debugger/src/session.rs`: Removed duplicate Kickstart presence bypass from `reset_cold()` and `reset_warm()`, cleanly relying on `inject_binary()` to disengage overlay for synthetic program execution.
+  - `crates/gui/`: Updated `app.rs` and `layout/left_dock/engine_status.rs` to read and render `chip_ram_blocked` directly.
+  - `crates/test_runner/`: Updated `test_memory_bus.rs` test harness and test binaries to directly manipulate `chip_ram_blocked`.
+  - `crates/m68000/tests/`: Updated `test_micro_archetypes.rs` and `test_cck_bus.rs` to manipulate `chip_ram_blocked` directly.
+  - `crates/physical_memory/tests/`: Updated `test_physical_memory.rs` and `test_arbitration.rs` to directly mutate and assert `chip_ram_blocked`.
+  - `crates/machine_loop/tests/`:
+    - `test_reset.rs`: Updated all reset scenarios (`test_cold_reset_full_flow`, `test_warm_reset_full_flow`, `test_cpu_reset_instruction_external_propagation`, `test_cpu_reset_instruction_privilege_violation`, `test_keyboard_ctrl_amiga_amiga_warm_reset`, `test_reset_overlay_kickstart_vs_synthetic`) to model physical hardware reality (boot overlay active on reset until CIA-A `_OVL` is driven high or `map_chip_ram_to_low_memory()` is called).
+    - `test_dma_contention.rs`: Ensured tests disengage boot overlay post-reset to verify Chip RAM slot contention.
+    - `test_machine_loop.rs`: Updated `test_machine_cold_and_warm_reset`.
+    - `test_save_state.rs`: Asserted Kickstart ROM buffer contents directly instead of deleted `is_kickstart_loaded()`.
+  - `crates/debugger/tests/`: Added `test_debugger_session_reset_and_overlay_lifecycle` in `test_stepping_and_session.rs` to verify session reset and binary injection overlay state transitions.
+  - `crates/gui/tests/`: Updated `test_interactions.rs` to accept initial instruction prefetch under active boot overlay.
+  - `Obsidian/Amiga/Design/MemoryBus.md`: Updated DMA arbitration and Gary boot overlay documentation.
+- **What Was Changed (The Concrete Reality)**:
+  - Aligned the emulator core with physical Amiga 500 hardware: in real hardware, Gary and CIA-A do not check whether an emulator file is loaded; reset always drives `_OVL` active, mapping Kickstart ROM to low memory (`$000000..$07FFFF`). Synthetic binary runners explicitly disengage overlay via `inject_binary()` or `map_chip_ram_to_low_memory()`.
+  - Replaced method wrappers on `chip_ram_blocked` with direct field access per clean-break refactoring rules.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling across all 5 modified crates, 100% API Coverage, all 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 test_runner suites (11.89s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (18.18s).
+
 
 
 

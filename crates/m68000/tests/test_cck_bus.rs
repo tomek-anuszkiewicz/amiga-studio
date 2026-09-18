@@ -39,7 +39,7 @@ fn test_cck_read_contention_stall_at_cck1() {
     cpu.state.micro.ea_addr = 0x002000;
 
     // Agnus DMA occupies Chip RAM
-    bus.lock_chip_ram();
+    bus.chip_ram_blocked = true;
 
     // 1st attempt: CCK1 blocked by DMA -> WaitState
     let res1 = cpu.step_bus_read_src_word(&mut bus);
@@ -50,7 +50,7 @@ fn test_cck_read_contention_stall_at_cck1() {
     assert_eq!(res2, BusResult::WaitState);
 
     // Agnus frees bus
-    bus.unlock_chip_ram();
+    bus.chip_ram_blocked = false;
 
     // 3rd attempt: CCK1 unblocked -> Ready
     let res3 = cpu.step_bus_read_src_word(&mut bus);
@@ -68,14 +68,14 @@ fn test_cck_write_contention_stall_at_cck2() {
     cpu.state.micro.destination = 0xABCD;
 
     // Agnus DMA grabs Chip RAM before CCK2 commit
-    bus.lock_chip_ram();
+    bus.chip_ram_blocked = true;
 
     // CCK2: Gary withholds _DTACK -> CPU stalls at CCK2
     let res2 = cpu.step_bus_write_dst_word(&mut bus);
     assert_eq!(res2, BusResult::WaitState);
 
     // Bus freed
-    bus.unlock_chip_ram();
+    bus.chip_ram_blocked = false;
 
     // CCK2 retry: write commits to memory
     let res3 = cpu.step_bus_write_dst_word(&mut bus);

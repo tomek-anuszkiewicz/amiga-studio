@@ -425,7 +425,7 @@ impl EmulatorApp {
                             render_engine_status(
                                 ui,
                                 &tokens,
-                                self.session.machine.physical_memory.is_chip_ram_locked(),
+                                self.session.machine.physical_memory.chip_ram_blocked,
                                 self.session.instructions_executed,
                                 self.session.machine.cpu.state.cycle_counter as u64 / 2,
                                 self.session.machine.cpu.state.sr,
@@ -435,7 +435,7 @@ impl EmulatorApp {
                                 render_microcode(
                                     ui,
                                     &self.session.machine.cpu.state,
-                                    self.session.machine.physical_memory.is_chip_ram_locked(),
+                                    self.session.machine.physical_memory.chip_ram_blocked,
                                 );
                             }
                         });

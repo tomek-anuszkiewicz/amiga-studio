@@ -84,9 +84,6 @@ impl A500Machine {
     pub fn new(config: A500Config) -> Self {
         let mut cpu = Cpu::new();
         let mut physical_memory = PhysicalMemory::from_config(config.clone());
-        if !physical_memory.is_kickstart_loaded() {
-            physical_memory.map_chip_ram_to_low_memory();
-        }
         cpu.reset_cold(&mut physical_memory);
         let agnus = agnus::Agnus::new(config.agnus_model());
         let denise = denise::Denise::new(config.denise_model());
@@ -124,9 +121,6 @@ impl A500Machine {
     /// Performs cold reset: zeroes RAM, resets all chips and devices to power-on defaults
     pub fn reset_cold(&mut self) {
         self.physical_memory.reset_cold();
-        if !self.physical_memory.is_kickstart_loaded() {
-            self.physical_memory.map_chip_ram_to_low_memory();
-        }
         self.cck = 0;
         self.agnus.reset();
         self.denise.reset();
@@ -145,9 +139,6 @@ impl A500Machine {
     /// Performs warm reset: preserves RAM, re-engages overlay, restarts execution
     pub fn reset_warm(&mut self) {
         self.physical_memory.reset_warm();
-        if !self.physical_memory.is_kickstart_loaded() {
-            self.physical_memory.map_chip_ram_to_low_memory();
-        }
         self.cck = 0;
         self.agnus.reset();
         self.denise.reset();
@@ -167,9 +158,6 @@ impl A500Machine {
     /// without modifying RAM or CPU registers/PC. Invoked by M68000 `RESET` instruction.
     pub fn reset_external_devices(&mut self) {
         self.physical_memory.map_kickstart_to_low_memory();
-        if !self.physical_memory.is_kickstart_loaded() {
-            self.physical_memory.map_chip_ram_to_low_memory();
-        }
         self.agnus.reset();
         self.denise.reset();
         self.paula.reset();
@@ -588,9 +576,9 @@ impl A500Machine {
         // 4. Verify Kickstart ROM compatibility
         if state.header.is_self_contained {
             self.physical_memory.kickstart_rom = state.physical_memory.kickstart_rom.clone();
-        } else if self.physical_memory.is_kickstart_loaded() {
+        } else if state.header.kickstart_crc32 != 0 {
             let active_crc = compute_crc32(&self.physical_memory.kickstart_rom);
-            if state.header.kickstart_crc32 != 0 && active_crc != state.header.kickstart_crc32 {
+            if active_crc != state.header.kickstart_crc32 {
                 return Err(SaveStateError::KickstartMismatch {
                     expected_crc: state.header.kickstart_crc32,
                     actual_crc: active_crc,

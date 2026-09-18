@@ -133,24 +133,6 @@ impl TestMemoryBus {
         self.unmapped_byte = val;
     }
 
-    /// Simulates Agnus DMA locking Chip RAM (triggering WaitState on subsequent accesses)
-    #[inline]
-    pub fn lock_chip_ram(&mut self) {
-        self.chip_ram_blocked = true;
-    }
-
-    /// Releases Agnus DMA lock on Chip RAM
-    #[inline]
-    pub fn unlock_chip_ram(&mut self) {
-        self.chip_ram_blocked = false;
-    }
-
-    /// Returns true if Chip RAM is blocked by DMA contention
-    #[inline]
-    pub fn is_chip_ram_locked(&self) -> bool {
-        self.chip_ram_blocked
-    }
-
     /// Loads a sequence of [address, byte] tuples into physical test memory
     pub fn load_test_ram(&mut self, entries: &[[u32; 2]]) {
         match &mut self.storage {

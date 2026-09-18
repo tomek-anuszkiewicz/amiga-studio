@@ -88,8 +88,8 @@ fn test_bus_cycle_transactions_and_contention() {
     assert!(bus.is_chip_ram_target(0x1000));
     assert!(!bus.is_chip_ram_target(0x200000));
 
-    bus.lock_chip_ram();
-    assert!(bus.is_chip_ram_locked());
+    bus.chip_ram_blocked = true;
+    assert!(bus.chip_ram_blocked);
 
     // Chip RAM target stalls with WaitState
     let wait_res = bus.read_word(0x1000);
@@ -100,8 +100,8 @@ fn test_bus_cycle_transactions_and_contention() {
     assert_eq!(fast_res, BusResult::Ready(0x0000));
 
     // Release lock
-    bus.unlock_chip_ram();
-    assert!(!bus.is_chip_ram_locked());
+    bus.chip_ram_blocked = false;
+    assert!(!bus.chip_ram_blocked);
     let ok_res = bus.read_word(0x1000);
     assert_eq!(ok_res, BusResult::Ready(0x0000));
 }

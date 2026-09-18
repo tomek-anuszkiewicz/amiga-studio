@@ -201,12 +201,16 @@ fn test_save_state_self_contained_roundtrip() {
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
-    assert!(!target_machine.physical_memory.is_kickstart_loaded());
+    assert!(target_machine
+        .physical_memory
+        .kickstart_rom
+        .iter()
+        .all(|&b| b == 0xFF));
 
     target_machine
         .load_state(&state)
         .expect("Failed to load self-contained state");
-    assert!(target_machine.physical_memory.is_kickstart_loaded());
+    assert_eq!(target_machine.physical_memory.kickstart_rom, dummy_rom);
     assert_eq!(
         compute_crc32(&target_machine.physical_memory.kickstart_rom),
         compute_crc32(&dummy_rom)

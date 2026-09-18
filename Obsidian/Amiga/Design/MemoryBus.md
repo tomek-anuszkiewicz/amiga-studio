@@ -217,11 +217,9 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
     - When `RGA` corresponds to `AUD0DAT`..`AUD3DAT` (`$0AA`, `$0BA`, `$0CA`, `$0DA`), Paula latches the 16-bit word from the shared data bus (`DRD15..DRD0`) into the respective audio channel holding latch.
     - When `RGA` corresponds to `DSKDAT` (`$026`), Paula transfers a 16-bit word between the floppy MFM serializer/deserializer and the data bus.
 
-### DMA Arbitration Methods
-Expose methods to simulate Agnus cycle stealing:
-- `lock_chip_ram()`: Sets `chip_ram_blocked = true`.
-- `unlock_chip_ram()`: Sets `chip_ram_blocked = false`.
-- `is_chip_ram_locked() -> bool`: Inspection/diagnostic getter querying the raw lock flag. Note: Never used in execution logic; contention is evaluated via `read_*` and `write_*` methods returning `BusResult`.
+### DMA Arbitration Fields
+Expose raw field to simulate Agnus cycle stealing directly with zero method overhead:
+- `chip_ram_blocked: bool`: Direct public flag asserted by Agnus DMA to block CPU Chip RAM accesses (`BusResult::WaitState`).
 
 ### Test Memory & Direct State Injection for Test Runners
 To support headless unit testing, SingleStepTests, and debugger inspection without side effects:

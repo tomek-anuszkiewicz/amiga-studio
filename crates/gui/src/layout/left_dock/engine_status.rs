@@ -8,7 +8,7 @@ use egui::{Grid, RichText, Ui};
 pub fn render_engine_status(
     ui: &mut Ui,
     tokens: &ColorTokens,
-    is_chip_ram_locked: bool,
+    chip_ram_blocked: bool,
     instructions_executed: u64,
     current_cck: u64,
     sr: u16,
@@ -25,7 +25,7 @@ pub fn render_engine_status(
                         // 1. Chip RAM Bus Arbitration State
                         ui.label(RichText::new("Chip RAM Bus:").color(tokens.text_secondary))
                             .on_hover_text("Bus arbitration state for Agnus, Paula, and CPU");
-                        if is_chip_ram_locked {
+                        if chip_ram_blocked {
                             ui.colored_label(tokens.accent_warning, "LOCKED (DMA Wait State)")
                                 .on_hover_text(
                                     "Chip RAM is currently locked by custom chip DMA channel",

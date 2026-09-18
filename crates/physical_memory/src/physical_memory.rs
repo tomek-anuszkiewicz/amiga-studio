@@ -165,35 +165,6 @@ impl PhysicalMemory {
         self.low_memory_overlay
     }
 
-    /// Queries whether a valid Kickstart ROM is currently loaded into memory (i.e. not unpopulated open bus)
-    #[inline]
-    pub fn is_kickstart_loaded(&self) -> bool {
-        !self.kickstart_rom.is_empty() && !self.kickstart_rom.iter().all(|&b| b == 0xFF)
-    }
-
-    /// Locks Chip RAM bus (Agnus/DMA cycle stealing active)
-    #[inline]
-    pub fn lock_chip_ram(&mut self) {
-        self.chip_ram_blocked = true;
-    }
-
-    /// Unlocks Chip RAM bus (Agnus/DMA cycle stealing inactive)
-    #[inline]
-    pub fn unlock_chip_ram(&mut self) {
-        self.chip_ram_blocked = false;
-    }
-
-    /// Queries whether the Chip RAM bus lock flag is asserted by Agnus/DMA.
-    ///
-    /// # Architectural Note
-    /// This method is strictly an external inspection/diagnostic getter for test assertions and debuggers.
-    /// It must NOT be used in CPU stepping or bus arbitration logic; clients must perform bus accesses
-    /// via `read_byte`, `read_word`, `write_byte`, or `write_word` and check the returned `BusResult`.
-    #[inline]
-    pub fn is_chip_ram_locked(&self) -> bool {
-        self.chip_ram_blocked
-    }
-
     /// Checks whether an address targets Chip RAM or contention-affected Slow RAM
     #[inline(always)]
     pub fn is_chip_ram_target(&self, addr: u32) -> bool {

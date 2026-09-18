@@ -108,7 +108,7 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     prime_prefetch(&mut cpu, &mut bus);
 
     // Agnus DMA occupies Chip RAM before read cycle begins
-    bus.lock_chip_ram();
+    bus.chip_ram_blocked = true;
 
     // Color Clock 1: instruction handler initiates bus read, but Gary withholds _DTACK at CCK1 -> WaitState
     let r1 = cpu.step_cck(&mut bus);
@@ -121,7 +121,7 @@ fn test_archetype2_move_mem_read_dma_contention_stall_at_cck1() {
     assert_eq!(cpu.state.micro.micro_step, 0);
 
     // Agnus completes DMA transfer and frees the bus
-    bus.unlock_chip_ram();
+    bus.chip_ram_blocked = false;
 
     // Color Clock 3: CCK1 succeeds and advances to CCK2
     let r3 = cpu.step_cck(&mut bus);
@@ -181,7 +181,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     assert_eq!(cpu.state.micro.micro_step, 1);
 
     // Before CCK2 commit, Agnus DMA grabs Chip RAM
-    bus.lock_chip_ram();
+    bus.chip_ram_blocked = true;
 
     // Color Clock 2: CCK2 write blocked by DMA -> WaitState
     let r2 = cpu.step_cck(&mut bus);
@@ -196,7 +196,7 @@ fn test_archetype3_move_mem_write_dma_contention_stall_at_cck2() {
     assert_ne!(bus.read_word_debug(0x003000), 0xBEEF);
 
     // Agnus frees bus
-    bus.unlock_chip_ram();
+    bus.chip_ram_blocked = false;
 
     // Color Clock 4: CCK2 succeeds, write commits to Chip RAM
     let r4 = cpu.step_cck(&mut bus);

@@ -50,16 +50,16 @@ fn test_chip_ram_contention_and_direct_rw() {
     assert_eq!(bus.read_word(0xC00000), BusResult::Ready(0x0000));
     assert_eq!(bus.read_word(0x200000), BusResult::Ready(0xFFFF)); // Fast RAM open bus returns 0xFFFF
 
-    bus.lock_chip_ram();
-    assert!(bus.is_chip_ram_locked());
+    bus.chip_ram_blocked = true;
+    assert!(bus.chip_ram_blocked);
     assert_eq!(bus.read_word(0x001000), BusResult::WaitState);
     assert_eq!(bus.write_word(0x001000, 0x1234), BusResult::WaitState);
     assert_eq!(bus.read_word(0xC00000), BusResult::WaitState);
     assert_eq!(bus.write_word(0xC00000, 0x1234), BusResult::WaitState);
     assert_eq!(bus.read_word(0x200000), BusResult::Ready(0xFFFF)); // Fast RAM unaffected
 
-    bus.unlock_chip_ram();
-    assert!(!bus.is_chip_ram_locked());
+    bus.chip_ram_blocked = false;
+    assert!(!bus.chip_ram_blocked);
     assert_eq!(bus.read_word(0x001000), BusResult::Ready(0xCAFE));
 }
 
@@ -116,9 +116,9 @@ fn test_bus_direct_read_write_and_byte_accesses() {
 
     // 4. Contention Handling on Chip RAM
     assert_eq!(bus.read_word(0x004000), BusResult::Ready(0xABCD));
-    bus.lock_chip_ram();
+    bus.chip_ram_blocked = true;
     assert_eq!(bus.read_word(0x004000), BusResult::WaitState);
     assert_eq!(bus.write_word(0x004000, 0x9999), BusResult::WaitState);
-    bus.unlock_chip_ram();
+    bus.chip_ram_blocked = false;
     assert_eq!(bus.read_word(0x004000), BusResult::Ready(0xABCD));
 }

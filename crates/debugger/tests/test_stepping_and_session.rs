@@ -71,12 +71,59 @@ fn test_debugger_session_full_lifecycle() {
     // Warm reset
     session.reset_warm();
     assert!(!session.is_running);
+    assert!(session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
 
     // Cold reset
     session.reset_cold();
     assert_eq!(session.instructions_executed, 0);
     assert_eq!(session.temporal.len(), 0);
     assert_eq!(session.debugger.trace.len(), 0);
+    assert!(session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
+}
+
+#[test]
+fn test_debugger_session_reset_and_overlay_lifecycle() {
+    let mut session = DebuggerSession::new();
+    // Default session creation begins with cold reset -> overlay active
+    assert!(session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
+
+    // Loading binary via inject_binary() disengages boot overlay for synthetic test execution
+    let code: [u8; 4] = [0x4E, 0x71, 0x4E, 0x71]; // NOP, NOP
+    session.load_binary(0x001000, &code, true);
+    assert!(!session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
+
+    // Warm reset re-engages overlay per hardware reality
+    session.reset_warm();
+    assert!(session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
+
+    // Loading another binary disengages overlay again
+    session.load_binary(0x001000, &code, true);
+    assert!(!session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
+
+    // Cold reset re-engages overlay per hardware reality
+    session.reset_cold();
+    assert!(session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
 }
 
 #[test]

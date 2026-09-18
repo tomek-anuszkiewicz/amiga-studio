@@ -6,6 +6,7 @@ use physical_memory::BusResult;
 fn test_fixed_dma_slot_cpu_wait_states() {
     let mut machine = A500Machine::new(A500Config::default());
     machine.reset_cold();
+    machine.physical_memory.map_chip_ram_to_low_memory();
 
     // 1. Refresh Slots (HPOS 1, 3, 5) unconditionally block Chip RAM & Slow RAM
     for target_hpos in [1, 3, 5] {
@@ -52,6 +53,7 @@ fn test_fast_ram_immunity_under_heavy_dma() {
     // Configure ExpandedPowerUser with 4 MB Fast RAM at $200000..$5FFFFF
     let mut machine = A500Machine::new(A500Config::expanded_power_user(config::VideoStandard::Pal));
     machine.reset_cold();
+    machine.physical_memory.map_chip_ram_to_low_memory();
 
     // Write a test value to Fast RAM
     assert_eq!(
@@ -162,6 +164,7 @@ fn test_bitplane_contention_scaling() {
 fn test_blitter_nasty_cpu_lockout_integration() {
     let mut machine = A500Machine::new(A500Config::default());
     machine.reset_cold();
+    machine.physical_memory.map_chip_ram_to_low_memory();
 
     // Enable DMA + Blitter Nasty: DMAEN (bit 9) | BLTPRI (bit 10) | BLTEN (bit 6)
     machine
@@ -186,6 +189,7 @@ fn test_blitter_nasty_cpu_lockout_integration() {
 fn test_cpu_three_cycle_starvation_yield_integration() {
     let mut machine = A500Machine::new(A500Config::default());
     machine.reset_cold();
+    machine.physical_memory.map_chip_ram_to_low_memory();
 
     // Enable DMA + Normal Blitter (BLTPRI == 0): DMAEN (bit 9) | BLTEN (bit 6)
     machine.agnus.dma.write_dmacon(0x8000 | 0x0200 | 0x0040);

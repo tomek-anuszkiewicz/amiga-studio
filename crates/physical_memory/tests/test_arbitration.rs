@@ -47,8 +47,8 @@ fn test_chip_ram_contention_and_fast_ram_immunity() {
     assert_eq!(bus.read_word(0x001000), BusResult::Ready(0xCAFE));
 
     // Lock Chip RAM (simulating Agnus/Blitter DMA channel activity)
-    bus.lock_chip_ram();
-    assert!(bus.is_chip_ram_locked());
+    bus.chip_ram_blocked = true;
+    assert!(bus.chip_ram_blocked);
 
     // Chip RAM and Slow RAM accesses stall with WaitState
     assert_eq!(bus.read_word(0x001000), BusResult::WaitState);
@@ -61,7 +61,7 @@ fn test_chip_ram_contention_and_fast_ram_immunity() {
     assert_eq!(bus.read_word(0x200000), BusResult::Ready(0xFFFF));
 
     // Unlock Chip RAM -> transfers resume
-    bus.unlock_chip_ram();
-    assert!(!bus.is_chip_ram_locked());
+    bus.chip_ram_blocked = false;
+    assert!(!bus.chip_ram_blocked);
     assert_eq!(bus.read_word(0x001000), BusResult::Ready(0xCAFE));
 }

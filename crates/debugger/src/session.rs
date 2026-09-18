@@ -265,9 +265,6 @@ impl DebuggerSession {
     pub fn reset_cold(&mut self) {
         self.is_running = false;
         self.machine.reset_cold();
-        if !self.machine.physical_memory.is_kickstart_loaded() {
-            self.machine.physical_memory.map_chip_ram_to_low_memory();
-        }
         self.temporal.clear();
         self.debugger.trace.clear();
         self.debugger.current_cck = 0;
@@ -280,9 +277,6 @@ impl DebuggerSession {
     pub fn reset_warm(&mut self) {
         self.is_running = false;
         self.machine.reset_warm();
-        if !self.machine.physical_memory.is_kickstart_loaded() {
-            self.machine.physical_memory.map_chip_ram_to_low_memory();
-        }
         self.prev_cpu_state = None;
         self.live_cpu_state = None;
     }

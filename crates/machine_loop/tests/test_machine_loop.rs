@@ -49,7 +49,8 @@ fn test_machine_cold_and_warm_reset() {
     let config = A500Config::default();
     let mut machine = A500Machine::new(config);
 
-    // 1. Simulate running machine: alter RAM, advance clocks, alter chip registers
+    // 1. Simulate running machine: disengage boot overlay, alter RAM, advance clocks, alter chip registers
+    machine.physical_memory.map_chip_ram_to_low_memory();
     machine.step_cycles(500);
     assert_eq!(machine.cck, 500);
     machine.agnus.dma.write_dmacon(0x8200); // Enable DMA
@@ -57,18 +58,23 @@ fn test_machine_cold_and_warm_reset() {
     let _ = machine.memory_bus().write_byte(0x001000, 0x42);
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42);
 
-    // 2. Perform warm reset: preserves RAM, resets CCK to 0, resets chips
+    // 2. Perform warm reset: preserves RAM, re-engages boot overlay, resets CCK to 0, resets chips
     machine.reset_warm();
     assert_eq!(machine.cck, 0);
     assert_eq!(machine.agnus.dma.dmacon, 0x0000);
     assert_eq!(machine.paula.intena, 0x0000);
+    assert!(machine.physical_memory.is_low_memory_overlay_active());
+    // Disengage overlay to inspect physical Chip RAM
+    machine.physical_memory.map_chip_ram_to_low_memory();
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42); // Preserved!
 
-    // 3. Perform cold reset: zeroes RAM, resets CCK to 0, resets chips
+    // 3. Perform cold reset: zeroes RAM, re-engages boot overlay, resets CCK to 0, resets chips
     machine.reset_cold();
     assert_eq!(machine.cck, 0);
     assert_eq!(machine.agnus.dma.dmacon, 0x0000);
     assert_eq!(machine.paula.intena, 0x0000);
+    assert!(machine.physical_memory.is_low_memory_overlay_active());
+    machine.physical_memory.map_chip_ram_to_low_memory();
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x00); // Zeroed!
 }
 
