@@ -6241,5 +6241,24 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: 100% PASS across formatting, AGENTS.md ceiling (13,789 bytes <= 14,000 limit), test coupling, API coverage, and all 19 architecture rules in `crates/test_runner/tests/test_architecture_rules.rs`.
 
+---
+
+### [2026-09-18 14:55 CEST] — Unification of Debug Read Nomenclature & Elimination of MemoryBus Read Redirects
+- **Affected Subsystems**:
+  - `crates/memory_bus/src/memory_bus.rs`: Standardized non-intrusive debug read methods to strictly use the `_debug` suffix (`read_custom_word_debug`, `read_cia_byte_debug`) matching `AddressBus::read_word_debug`. Replaced double-redirect in `DSKBYTR` with direct delegation to `self.floppy.read_dskbytr()` and `self.floppy.peek_dskbytr()`. Removed `BLTDDAT` arm from `read_custom_word` and `read_custom_word_debug` (returning open-bus `$FFFF` per HRM Appendix A write-only specification). Encapsulated Copper strobes into `self.agnus.strobe_copjmp1()` and `self.agnus.strobe_copjmp2()`, eliminating manual pointer extraction in `MemoryBus`.
+  - `crates/agnus/src/agnus.rs`: Added public methods `strobe_copjmp1(&mut self)` and `strobe_copjmp2(&mut self)` triggering internal `copper.restart_list1()` and `copper.restart_list2()`.
+  - `crates/agnus/tests/test_agnus_registers.rs`: Added unit test `test_agnus_copper_strobe_copjmp` verifying COPJMP strobe resets program counter to `cop1lc`/`cop2lc`.
+  - `crates/floppy/src/floppy.rs`: Implemented composite `DMAON` and `DISKWRITE` flag assembly directly into `read_dskbytr()` and `peek_dskbytr()`, maintaining full MFM deserializer and disk DMA state in `FloppyController`.
+  - `crates/floppy/tests/test_mfm.rs`: Added unit test `test_dskbytr_composite_dmaon_and_diskwrite` verifying composite status flag behavior.
+  - `crates/memory_bus/tests/test_register_wiring.rs`: Updated all tests to use `read_custom_word_debug`; added assertions verifying that reading `BLTDDAT` returns open-bus `$FFFF`.
+- **What Was Changed (The Concrete Reality)**:
+  - Harmonized internal bus naming conventions: eliminated disparate `peek_*` method names in `MemoryBus` in favor of consistent `read_*_debug` terminology.
+  - Removed write-only register read handler (`BLTDDAT`) which now cleanly falls into standard open-bus handling.
+  - Streamlined Copper jump strobe resets and Floppy DSKBYTR status reads to avoid multi-hop indirection and leaked internal state.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Architecture Rules).
+  - `cargo test -p memory_bus -p agnus -p floppy -p paula -p denise`: All unit and integration tests passed (100%).
+
+
 
 

@@ -59,7 +59,7 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     let mut mb = TestMotherboard::new();
 
     // 1. Initially, no disk DMA and no sync: DSKBYTR should be 0
-    assert_eq!(mb.router().peek_custom_word(0x01A), 0);
+    assert_eq!(mb.router().read_custom_word_debug(0x01A), 0);
 
     // 2. Enable Disk DMA in Agnus DMACON: SET (bit 15) | DMAEN (bit 9) | DSKEN (bit 4) = 0x8210
     assert_eq!(
@@ -77,6 +77,7 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
 
     // 3. Set Paula DSKLEN to write mode: bit 14 (WRITE)
     mb.paula.commit_register_write(0x024, 0x4000);
+    mb.floppy.set_dsklen(0x4000);
 
     // 4. Set Floppy deserializer data byte $A5, WORDEQUAL (bit 12), and DSKBYT (bit 15)
     mb.floppy.dskbytr = 0x90A5; // DSKBYT | WORDEQUAL | byte 0xA5
@@ -89,7 +90,7 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     // - Bit 12: WORDEQUAL (0x1000)
     // - Bits 7..0: DATA (0xA5)
     // Expected: 0xF0A5
-    let peeked = mb.router().peek_custom_word(0x01A);
+    let peeked = mb.router().read_custom_word_debug(0x01A);
     assert_eq!(peeked, 0xF0A5);
     // Ensure bit 15 was NOT cleared by peek
     assert_eq!(mb.floppy.dskbytr & 0x8000, 0x8000);
@@ -99,7 +100,7 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     assert_eq!(read_val, 0xF0A5);
 
     // 7. Subsequent peek should show bit 15 cleared (now 0x70A5)
-    let peeked_again = mb.router().peek_custom_word(0x01A);
+    let peeked_again = mb.router().read_custom_word_debug(0x01A);
     assert_eq!(peeked_again, 0x70A5);
     assert_eq!(mb.floppy.dskbytr & 0x8000, 0);
 }
@@ -109,6 +110,7 @@ fn test_open_bus_on_write_only_custom_registers() {
     let mut mb = TestMotherboard::new();
 
     // Populate various internal registers with non-zero values
+    mb.agnus.commit_register_write(0x000, 0x1234); // BLTDDAT
     mb.agnus.commit_register_write(0x040, 0x09F0); // BLTCON0
     mb.agnus.commit_register_write(0x080, 0x0003); // COP1LCH
     mb.agnus.commit_register_write(0x082, 0x8000); // COP1LCL
@@ -120,6 +122,7 @@ fn test_open_bus_on_write_only_custom_registers() {
     let mut bus = mb.router();
 
     // Reading write-only registers via read_custom_word must return open bus $FFFF
+    assert_eq!(bus.read_custom_word(0x000), 0xFFFF); // BLTDDAT (write-only)
     assert_eq!(bus.read_custom_word(0x040), 0xFFFF);
     assert_eq!(bus.read_custom_word(0x080), 0xFFFF);
     assert_eq!(bus.read_custom_word(0x082), 0xFFFF);
@@ -130,10 +133,11 @@ fn test_open_bus_on_write_only_custom_registers() {
     assert_eq!(bus.read_custom_word(0x020), 0xFFFF); // DSKPTH
     assert_eq!(bus.read_custom_word(0x022), 0xFFFF); // DSKPTL
 
-    // Peeking write-only registers via peek_custom_word must also return $FFFF
-    assert_eq!(bus.peek_custom_word(0x040), 0xFFFF);
-    assert_eq!(bus.peek_custom_word(0x080), 0xFFFF);
-    assert_eq!(bus.peek_custom_word(0x180), 0xFFFF);
+    // Peeking write-only registers via read_custom_word_debug must also return $FFFF
+    assert_eq!(bus.read_custom_word_debug(0x000), 0xFFFF);
+    assert_eq!(bus.read_custom_word_debug(0x040), 0xFFFF);
+    assert_eq!(bus.read_custom_word_debug(0x080), 0xFFFF);
+    assert_eq!(bus.read_custom_word_debug(0x180), 0xFFFF);
 }
 
 #[test]

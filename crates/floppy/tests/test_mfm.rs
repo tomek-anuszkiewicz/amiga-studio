@@ -186,3 +186,19 @@ fn test_dskbytr_clear_on_read() {
         "Bit 15 should be cleared after read"
     );
 }
+
+#[test]
+fn test_dskbytr_composite_dmaon_and_diskwrite() {
+    let mut controller = FloppyController::new();
+
+    // Initially DMA disabled and read mode: bits 14 and 13 should be 0
+    assert_eq!(controller.peek_dskbytr() & 0x6000, 0);
+
+    // Enable DMA
+    controller.set_dma_enabled(true);
+    assert_eq!(controller.peek_dskbytr() & 0x4000, 0x4000); // DMAON
+
+    // Set write mode in DSKLEN (bit 14)
+    controller.set_dsklen(0x4000);
+    assert_eq!(controller.peek_dskbytr() & 0x6000, 0x6000); // DMAON | DISKWRITE
+}

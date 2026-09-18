@@ -162,3 +162,16 @@ fn test_agnus_ignores_denise_only_registers() {
     assert_eq!(agnus.read_register(0x090), 0xFFFF);
     assert_eq!(agnus.read_register(0x102), 0xFFFF);
 }
+
+#[test]
+fn test_agnus_copper_strobe_copjmp() {
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    agnus.copper.cop1lc = 0x0004_0000;
+    agnus.copper.cop2lc = 0x0006_0000;
+
+    agnus.strobe_copjmp1();
+    assert_eq!(agnus.copper.cop_pc, 0x0004_0000);
+
+    agnus.strobe_copjmp2();
+    assert_eq!(agnus.copper.cop_pc, 0x0006_0000);
+}

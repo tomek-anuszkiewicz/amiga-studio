@@ -461,8 +461,8 @@ impl Agnus {
             custom_reg::COP2LCL => {
                 self.copper.cop2lc = (self.copper.cop2lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
             }
-            custom_reg::COPJMP1 => self.copper.restart_list1(),
-            custom_reg::COPJMP2 => self.copper.restart_list2(),
+            custom_reg::COPJMP1 => self.strobe_copjmp1(),
+            custom_reg::COPJMP2 => self.strobe_copjmp2(),
             custom_reg::DDFSTRT => {
                 self.ddfstrt = val & 0x00FC;
                 self.dma.set_ddfstrt(val & 0x00FC);
@@ -613,5 +613,17 @@ impl Agnus {
     #[inline]
     pub fn is_blitter_nasty(&self) -> bool {
         (self.dmacon & dmacon::BLTPRI) != 0
+    }
+
+    /// Triggers COPJMP1 strobe: restarts Copper execution at COP1LC
+    #[inline]
+    pub fn strobe_copjmp1(&mut self) {
+        self.copper.restart_list1();
+    }
+
+    /// Triggers COPJMP2 strobe: restarts Copper execution at COP2LC
+    #[inline]
+    pub fn strobe_copjmp2(&mut self) {
+        self.copper.restart_list2();
     }
 }

@@ -17,6 +17,9 @@ pub const SECTORS_PER_TRACK: usize = 11;
 pub const SECTOR_DATA_BYTES: usize = 512;
 pub const FORMATTED_DISK_BYTES: usize = TRACKS_PER_DISK * SECTORS_PER_TRACK * SECTOR_DATA_BYTES; // 901,120 bytes (880 KB)
 pub const STANDARD_DSKSYN: u16 = 0x4489;
+pub const DSKBYTR_DMAON: u16 = 0x4000;
+pub const DSKBYTR_DISKWRITE: u16 = 0x2000;
+pub const DSKBYTR_DATA_MASK: u16 = 0x90FF;
 
 /// Individual 3.5-inch floppy disk drive (DF0: to DF3:)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -404,19 +407,31 @@ impl FloppyController {
         (self.dsklen & 0x4000) != 0
     }
 
-    /// Returns the live 8-bit deserialized MFM data byte and status flags,
+    /// Returns the live 8-bit deserialized MFM data byte and composite status flags (DMAON, DISKWRITE),
     /// atomically clearing bit 15 (`DSKBYT`) per Clear-on-Read hardware semantics.
     #[inline]
     pub fn read_dskbytr(&mut self) -> u16 {
-        let val = self.dskbytr;
+        let dmaon = if self.dma_enabled { DSKBYTR_DMAON } else { 0 };
+        let diskwrite = if self.is_write_mode() {
+            DSKBYTR_DISKWRITE
+        } else {
+            0
+        };
+        let val = (self.dskbytr & DSKBYTR_DATA_MASK) | dmaon | diskwrite;
         self.dskbytr &= !0x8000;
         val
     }
 
-    /// Peeks DSKBYTR without clearing bit 15 (for debuggers and UI)
+    /// Peeks composite DSKBYTR without clearing bit 15 (for debuggers and UI)
     #[inline]
     pub fn peek_dskbytr(&self) -> u16 {
-        self.dskbytr
+        let dmaon = if self.dma_enabled { DSKBYTR_DMAON } else { 0 };
+        let diskwrite = if self.is_write_mode() {
+            DSKBYTR_DISKWRITE
+        } else {
+            0
+        };
+        (self.dskbytr & DSKBYTR_DATA_MASK) | dmaon | diskwrite
     }
 
     /// Advances floppy controller state by 1 Color Clock

@@ -48,7 +48,6 @@ impl<'a> MemoryBus<'a> {
     pub fn read_custom_word(&mut self, offset: u16) -> u16 {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            custom_reg::BLTDDAT => self.agnus.read_register(custom_reg::BLTDDAT),
             custom_reg::DMACONR => self.agnus.read_dmaconr(),
             custom_reg::VPOSR => self.agnus.vposr(),
             custom_reg::VHPOSR => self.agnus.vhposr(),
@@ -60,17 +59,15 @@ impl<'a> MemoryBus<'a> {
             custom_reg::POT1DAT => self.paula.pot1dat,
             custom_reg::POTGOR => self.paula.potgor,
             custom_reg::SERDATR => self.paula.serial_port.serdatr,
-            custom_reg::DSKBYTR => self.paula.assemble_dskbytr(self.floppy.read_dskbytr()),
+            custom_reg::DSKBYTR => self.floppy.read_dskbytr(),
             custom_reg::INTENAR => self.paula.intena,
             custom_reg::INTREQR => self.paula.intreq,
             custom_reg::COPJMP1 => {
-                let cop1lc = self.agnus.copper.cop1lc;
-                self.agnus.copper.strobe_jump1(cop1lc);
+                self.agnus.strobe_copjmp1();
                 0xFFFF
             }
             custom_reg::COPJMP2 => {
-                let cop2lc = self.agnus.copper.cop2lc;
-                self.agnus.copper.strobe_jump2(cop2lc);
+                self.agnus.strobe_copjmp2();
                 0xFFFF
             }
             _ => 0xFFFF,
@@ -78,10 +75,9 @@ impl<'a> MemoryBus<'a> {
     }
 
     /// Reads a 16-bit custom register without side-effects for debugging inspection
-    pub fn peek_custom_word(&self, offset: u16) -> u16 {
+    pub fn read_custom_word_debug(&self, offset: u16) -> u16 {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            custom_reg::BLTDDAT => self.agnus.read_register(custom_reg::BLTDDAT),
             custom_reg::DMACONR => self.agnus.read_dmaconr(),
             custom_reg::VPOSR => self.agnus.vposr(),
             custom_reg::VHPOSR => self.agnus.vhposr(),
@@ -93,7 +89,7 @@ impl<'a> MemoryBus<'a> {
             custom_reg::POT1DAT => self.paula.pot1dat,
             custom_reg::POTGOR => self.paula.potgor,
             custom_reg::SERDATR => self.paula.serial_port.serdatr,
-            custom_reg::DSKBYTR => self.paula.assemble_dskbytr(self.floppy.peek_dskbytr()),
+            custom_reg::DSKBYTR => self.floppy.peek_dskbytr(),
             custom_reg::INTENAR => self.paula.intena,
             custom_reg::INTREQR => self.paula.intreq,
             _ => 0xFFFF,
@@ -121,8 +117,8 @@ impl<'a> MemoryBus<'a> {
         0xFF
     }
 
-    /// Peeks an 8-bit byte from CIA register space without side-effects
-    pub fn peek_cia_byte(&self, addr: u32) -> u8 {
+    /// Reads an 8-bit byte from CIA register space without side-effects for debugging inspection
+    pub fn read_cia_byte_debug(&self, addr: u32) -> u8 {
         if (CIA_B_START..=CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
@@ -269,12 +265,10 @@ impl<'a> MemoryBus<'a> {
                 self.agnus.set_bplcon0(val);
             }
             custom_reg::COPJMP1 => {
-                let cop1lc = self.agnus.copper.cop1lc;
-                self.agnus.copper.strobe_jump1(cop1lc);
+                self.agnus.strobe_copjmp1();
             }
             custom_reg::COPJMP2 => {
-                let cop2lc = self.agnus.copper.cop2lc;
-                self.agnus.copper.strobe_jump2(cop2lc);
+                self.agnus.strobe_copjmp2();
             }
             custom_reg::BLTSIZE => {
                 self.agnus.blitter.trigger_blit(val);
@@ -442,10 +436,12 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            BANK_CUSTOM => self.peek_custom_word((addr & CUSTOM_REG_OFFSET_MASK as u32) as u16),
+            BANK_CUSTOM => {
+                self.read_custom_word_debug((addr & CUSTOM_REG_OFFSET_MASK as u32) as u16)
+            }
             BANK_CIA => {
-                let b0 = self.peek_cia_byte(addr);
-                let b1 = self.peek_cia_byte(addr.wrapping_add(1));
+                let b0 = self.read_cia_byte_debug(addr);
+                let b1 = self.read_cia_byte_debug(addr.wrapping_add(1));
                 u16::from_be_bytes([b0, b1])
             }
             BANK_RTC => {
