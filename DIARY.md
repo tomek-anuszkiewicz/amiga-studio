@@ -6579,6 +6579,29 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.70s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (17.41s).
 
+---
+
+### [2026-09-18 22:50 CEST] — Test Scaffolding Decoupling: Relocation of `BusAccessSize` to `crates/test_runner`
+- **Affected Subsystems**:
+  - `crates/test_runner/`:
+    - `src/transactions.rs`: Defined `pub enum BusAccessSize { Byte, Word }` co-located with `RecordedTransaction` and `ExpectedTransaction` for Tom Harte SingleStepTests validation.
+    - `src/test_runner.rs`: Re-exported `BusAccessSize` from crate root.
+    - `src/test_memory_bus.rs`: Updated import to reference `crate::transactions::BusAccessSize`.
+    - `tests/test_memory_bus.rs`: Updated test to import `BusAccessSize` directly from `test_runner`.
+  - `crates/physical_memory/`:
+    - `src/arbitration.rs`: Purged `BusAccessSize` enum and unused Serde dependency. `arbitration.rs` now strictly contains the lean `BusResult<T>` arbitration type.
+    - `src/physical_memory.rs`: Removed `BusAccessSize` from re-exports.
+    - `tests/test_arbitration.rs`: Purged synthetic `test_access_size` assertions, leaving pure contention arbitration tests.
+  - `Obsidian/Amiga/Design/`:
+    - `MemoryBus.md`: Updated specification note to clarify `BusAccessSize` resides in `crates/test_runner/src/transactions.rs`.
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the last piece of test-runner scaffolding (`BusAccessSize`) from production `physical_memory`. The production address bus operates strictly on typed primitive methods (`read_byte`, `read_word`, `write_byte`, `write_word`), keeping runtime zero-overhead and completely decoupled from test data structures.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory and test_runner, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.32s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (19.04s).
+
+
 
 
 

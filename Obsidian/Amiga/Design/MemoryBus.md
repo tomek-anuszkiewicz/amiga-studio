@@ -102,7 +102,7 @@ Maintain the following internal bus state:
 ### Types & Arbitration Primitives
 
 The bus timing and transfer types reside in [`crates/physical_memory/src/arbitration.rs`](../../../crates/physical_memory/src/arbitration.rs):
-- **`BusAccessSize` (`Byte`, `Word`)**: Bus transfer operand widths.
+- **`BusAccessSize` (`Byte`, `Word`)**: Test-runner bus transfer operand widths defined in [`crates/test_runner/src/transactions.rs`](../../../crates/test_runner/src/transactions.rs).
 - **Function Code Lines (`m68000::function_code::*`)**: FC0–FC2 processor output pins defined in [`crates/m68000/src/state.rs`](../../../crates/m68000/src/state.rs) (`USER_DATA = 1`, `USER_PROGRAM = 2`, `SUPERVISOR_DATA = 5`, `SUPERVISOR_PROGRAM = 6`, `CPU_SPACE = 7`).
 
 ### Direct Passive Bus API & Contention Arbitration

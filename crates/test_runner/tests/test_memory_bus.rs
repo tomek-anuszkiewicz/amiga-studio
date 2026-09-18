@@ -1,5 +1,7 @@
-use physical_memory::{AddressBus, BusAccessSize, BusResult};
-use test_runner::{MemoryType, RecordedTransaction, TestMemoryBus, FLAT_TEST_RAM_SIZE};
+use physical_memory::{AddressBus, BusResult};
+use test_runner::{
+    BusAccessSize, MemoryType, RecordedTransaction, TestMemoryBus, FLAT_TEST_RAM_SIZE,
+};
 
 #[test]
 fn test_sparse_test_memory_bus_basics() {

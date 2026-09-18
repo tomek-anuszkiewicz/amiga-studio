@@ -20,6 +20,6 @@ pub use runner::{
 pub use schema::{CpuTestState, SingleStepTest};
 pub use test_memory_bus::{MemoryType, TestMemoryBus, TestMemoryStorage, FLAT_TEST_RAM_SIZE};
 pub use transactions::{
-    match_transactions, parse_transactions, ExpectedTransaction, RecordedTransaction,
+    match_transactions, parse_transactions, BusAccessSize, ExpectedTransaction, RecordedTransaction,
 };
 pub use vamiga::*;

@@ -1,16 +1,6 @@
-//! Bus arbitration, access sizes, and bus transfer results
+//! Bus arbitration and bus transfer results
 //!
-//! Encapsulates operand sizes (Byte, Word) and passive bus access
-//! result (`BusResult`) for Chip RAM DMA contention.
-
-use serde::{Deserialize, Serialize};
-
-/// Bus access transfer size
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BusAccessSize {
-    Byte,
-    Word,
-}
+//! Encapsulates passive bus access result (`BusResult`) for Chip RAM DMA contention.
 
 /// Result of a physical bus access attempt (read or write)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

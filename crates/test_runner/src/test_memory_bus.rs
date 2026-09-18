@@ -9,8 +9,8 @@
 //! - `TestMemoryStorage::Flat`: 16 MB pre-allocated buffer with dirty-address tracking for
 //!   ultra-fast zero-allocation test loops ($O(1)$ memory access and $O(K)$ clean resets).
 
-use crate::transactions::RecordedTransaction;
-use physical_memory::{AddressBus, BusAccessSize, BusResult};
+use crate::transactions::{BusAccessSize, RecordedTransaction};
+use physical_memory::{AddressBus, BusResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

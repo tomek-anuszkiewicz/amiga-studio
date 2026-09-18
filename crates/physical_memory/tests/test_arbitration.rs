@@ -1,7 +1,4 @@
-use physical_memory::{
-    arbitration::{BusAccessSize, BusResult},
-    PhysicalMemory,
-};
+use physical_memory::{arbitration::BusResult, PhysicalMemory};
 
 #[test]
 fn test_bus_result_methods() {
@@ -16,14 +13,6 @@ fn test_bus_result_methods() {
     assert!(wait.is_wait());
     assert_eq!(wait.ok(), None);
     assert_eq!(wait.unwrap_or(0xFFFF), 0xFFFF);
-}
-
-#[test]
-fn test_access_size() {
-    let byte_sz = BusAccessSize::Byte;
-    let word_sz = BusAccessSize::Word;
-    assert_ne!(byte_sz, word_sz);
-    assert_eq!(byte_sz, BusAccessSize::Byte);
 }
 
 #[test]
