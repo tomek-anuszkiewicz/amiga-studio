@@ -7,11 +7,11 @@
 use crate::theme::ColorTokens;
 use debugger::{BreakpointManager, WatchAccess};
 use egui::{Color32, RichText, Ui};
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 pub fn render_memory_hex(
     ui: &mut Ui,
-    bus: &mut MemoryBus,
+    bus: &mut PhysicalMemory,
     breakpoints: &mut BreakpointManager,
     base_addr: &mut u32,
     selected_addr: &mut Option<u32>,

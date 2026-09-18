@@ -1,4 +1,4 @@
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 use physical_memory::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
 };
@@ -52,7 +52,7 @@ fn test_apply_preset_mutation() {
 #[test]
 fn test_memory_bus_with_bare_preset_has_open_bus_rtc() {
     let config = A500Config::bare_512k(VideoStandard::Pal);
-    let bus = MemoryBus::from_config(config);
+    let bus = PhysicalMemory::from_config(config);
 
     assert!(bus.slow_ram.is_none());
     assert!(bus.fast_ram.is_none());
@@ -67,7 +67,7 @@ fn test_memory_bus_with_bare_preset_has_open_bus_rtc() {
 #[test]
 fn test_memory_bus_with_standard_1mb_has_rtc_bank() {
     let config = A500Config::standard_1mb(VideoStandard::Pal);
-    let mut bus = MemoryBus::from_config(config);
+    let mut bus = PhysicalMemory::from_config(config);
 
     assert!(bus.slow_ram.is_some());
     assert!(bus.fast_ram.is_none());
@@ -85,7 +85,7 @@ fn test_memory_bus_with_standard_1mb_has_rtc_bank() {
 
 #[test]
 fn test_memory_bus_apply_config_dynamically() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     assert_eq!(bus.config.active_preset(), A500Preset::Standard1Mb);
     assert!(bus.slow_ram.is_some());
 
@@ -101,7 +101,7 @@ fn test_256_entry_bank_map() {
     use physical_memory::MemoryBank;
 
     // 1. Standard 1MB config
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     // At startup, low-memory overlay is active: banks 0..=7 point to Kickstart ROM
     for b in 0..=7 {
         assert_eq!(bus.bank_map[b], MemoryBank::KickstartRom);
@@ -135,7 +135,7 @@ fn test_256_entry_bank_map() {
     assert_eq!(bus.bank_map, physical_memory::map::BANK_MAP_STANDARD);
 
     // 2. Bare 512k config: SlowRam and RTC become OpenBus
-    let mut bare_bus = MemoryBus::from_config(A500Config::bare_512k(VideoStandard::Pal));
+    let mut bare_bus = PhysicalMemory::from_config(A500Config::bare_512k(VideoStandard::Pal));
     bare_bus.map_chip_ram_to_low_memory();
     for b in 0xC0..=0xC7 {
         assert_eq!(bare_bus.bank_map[b], MemoryBank::OpenBus);
@@ -144,7 +144,8 @@ fn test_256_entry_bank_map() {
     assert_eq!(bare_bus.bank_map, physical_memory::map::BANK_MAP_BARE);
 
     // 3. Expanded config: Fast RAM occupies 0x20..=0x5F
-    let mut exp_bus = MemoryBus::from_config(A500Config::expanded_power_user(VideoStandard::Pal));
+    let mut exp_bus =
+        PhysicalMemory::from_config(A500Config::expanded_power_user(VideoStandard::Pal));
     exp_bus.map_chip_ram_to_low_memory();
     for b in 0x20..=0x5F {
         assert_eq!(exp_bus.bank_map[b], MemoryBank::FastRam);
@@ -154,7 +155,7 @@ fn test_256_entry_bank_map() {
 
 #[test]
 fn test_bank_handler_direct_method_pointer_dispatch() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     // Directly invoke write and read handler pointers from bank_map

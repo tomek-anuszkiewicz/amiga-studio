@@ -5,10 +5,10 @@
 //! trace mode clearing, stack frame layout, STOP awakening, and RTE restoration.
 
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
-fn setup_test_machine() -> (Cpu, MemoryBus) {
-    let mut bus = MemoryBus::new();
+fn setup_test_machine() -> (Cpu, PhysicalMemory) {
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
     let mut cpu = Cpu::new();
     cpu.state.ssp = 0x070000;
@@ -17,13 +17,13 @@ fn setup_test_machine() -> (Cpu, MemoryBus) {
     (cpu, bus)
 }
 
-fn set_vector(bus: &mut MemoryBus, vector_num: u32, handler_addr: u32) {
+fn set_vector(bus: &mut PhysicalMemory, vector_num: u32, handler_addr: u32) {
     let vector_addr = vector_num * 4;
     bus.write_word_debug(vector_addr, (handler_addr >> 16) as u16);
     bus.write_word_debug(vector_addr + 2, (handler_addr & 0xFFFF) as u16);
 }
 
-fn load_code(bus: &mut MemoryBus, start_addr: u32, words: &[u16]) {
+fn load_code(bus: &mut PhysicalMemory, start_addr: u32, words: &[u16]) {
     for (i, &w) in words.iter().enumerate() {
         bus.write_word_debug(start_addr + (i as u32) * 2, w);
     }

@@ -5,7 +5,7 @@
 
 use config::A500Config;
 use machine_loop::{A500Machine, A500State, SaveStateError};
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 use crate::loader::inject_binary;
 use crate::stepping::Debugger;
@@ -70,15 +70,15 @@ impl DebuggerSession {
         Self::from_config(A500Config::default())
     }
 
-    /// Direct reference to the machine's memory bus
+    /// Direct reference to the machine's physical memory
     #[inline]
-    pub fn bus(&self) -> &MemoryBus {
+    pub fn bus(&self) -> &PhysicalMemory {
         &self.machine.physical_memory
     }
 
-    /// Direct mutable reference to the machine's memory bus
+    /// Direct mutable reference to the machine's physical memory
     #[inline]
-    pub fn bus_mut(&mut self) -> &mut MemoryBus {
+    pub fn bus_mut(&mut self) -> &mut PhysicalMemory {
         &mut self.machine.physical_memory
     }
 

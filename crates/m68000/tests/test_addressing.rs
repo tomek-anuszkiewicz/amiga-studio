@@ -1,6 +1,6 @@
 use m68000::micro::ea;
 use m68000::{Cpu, CpuState};
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 #[test]
 fn test_addressing_modes_and_a7_byte_quirk() {
@@ -45,7 +45,7 @@ fn test_indexed_addressing_mode() {
 
 #[test]
 fn test_unaligned_address_error() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     // Set Exception Vector 3 (Address Error, $00000C) to handler at 0x002000
@@ -108,7 +108,7 @@ fn test_unaligned_address_error() {
 
 #[test]
 fn test_move_instruction() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
@@ -130,7 +130,7 @@ fn test_move_instruction() {
 
 #[test]
 fn test_add_sub_ccr() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
@@ -151,7 +151,7 @@ fn test_add_sub_ccr() {
 
 #[test]
 fn test_nop_and_branch() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
@@ -175,7 +175,7 @@ fn test_nop_and_branch() {
 
 #[test]
 fn test_logic_and_shifts() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
@@ -202,7 +202,7 @@ fn test_logic_and_shifts() {
 
 #[test]
 fn test_bit_manipulation() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
@@ -229,7 +229,7 @@ fn test_bit_manipulation() {
 
 #[test]
 fn test_instruction_unaligned_read_address_error() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     // Set Exception Vector 3 (Address Error, $00000C) to handler at 0x002000

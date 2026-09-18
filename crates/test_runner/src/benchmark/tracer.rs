@@ -9,7 +9,7 @@ use std::path::Path;
 
 use disassembler::disassemble;
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 use super::builder::{
     BenchmarkProgram, BenchmarkProgramBuilder, BENCH_EXIT_PC, BENCH_RAM_BUFFER_A1,
@@ -164,7 +164,7 @@ impl BenchmarkTraceLog {
 
 /// Executes a single pass of the program, tracking register and memory deltas
 pub fn trace_program(program: &BenchmarkProgram, max_steps: usize) -> BenchmarkTraceLog {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
     program.inject_into(&mut cpu, &mut bus);
 

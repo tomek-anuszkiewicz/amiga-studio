@@ -1,5 +1,5 @@
 use m68000::{Cpu, MicroStep};
-use physical_memory::{BusResult, MemoryBus};
+use physical_memory::{BusResult, PhysicalMemory};
 
 #[test]
 fn test_micro_state_initial_and_reset() {
@@ -16,7 +16,7 @@ fn test_micro_state_initial_and_reset() {
 
 #[test]
 fn test_cck_unblocked_read_cycle() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
     bus.write_word_debug(0x002000, 0x55AA);
 
@@ -31,7 +31,7 @@ fn test_cck_unblocked_read_cycle() {
 
 #[test]
 fn test_cck_read_contention_stall_at_cck1() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
     bus.write_word_debug(0x002000, 0x1234);
 
@@ -60,7 +60,7 @@ fn test_cck_read_contention_stall_at_cck1() {
 
 #[test]
 fn test_cck_write_contention_stall_at_cck2() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
@@ -87,7 +87,7 @@ fn test_cck_write_contention_stall_at_cck2() {
 
 #[test]
 fn test_clocks_remaining_micro_stepping() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     // 4 CPU clocks = 2 CCK steps
@@ -118,7 +118,7 @@ fn test_clocks_remaining_micro_stepping() {
 
 #[test]
 fn test_cycle_counter_monotonic_accumulation() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
     let mut cpu = Cpu::new();
     assert_eq!(cpu.state.cycle_counter, 0);
@@ -154,7 +154,7 @@ fn test_cycle_counter_monotonic_accumulation() {
 
 #[test]
 fn test_cpu_reset_status_and_vectors() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     // Setup initial SSP = $0007_0000 and PC = $0000_1000

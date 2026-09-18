@@ -1,10 +1,10 @@
 use debugger::{assemble_instruction, disassemble, Debugger};
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 #[test]
 fn test_disassembler_primitives() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     // 1. NOP ($4E71)
@@ -30,7 +30,7 @@ fn test_disassembler_primitives() {
 
 #[test]
 fn test_debugger_trace_buffer_and_breakpoints() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();

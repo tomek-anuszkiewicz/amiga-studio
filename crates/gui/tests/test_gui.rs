@@ -6,7 +6,7 @@ use debugger::Debugger;
 use gui::theme::AppTheme;
 use gui::ViewMode;
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 #[test]
 fn test_temporal_history_ring_buffer() {
@@ -47,7 +47,7 @@ fn test_temporal_history_ring_buffer() {
 
 #[test]
 fn test_binary_loader_and_prefetch_priming() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     // NOP (0x4E71), NOP (0x4E71), RTS (0x4E75)
@@ -67,7 +67,7 @@ fn test_binary_loader_and_prefetch_priming() {
 
 #[test]
 fn test_debugger_stepping_and_trace_recording() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
     let mut dbg = Debugger::new();
 
@@ -106,7 +106,7 @@ fn test_theme_variants() {
 
 #[test]
 fn test_view_mode_and_arbitrary_binary_loading() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     // Verify injecting into high custom screen address $070000
@@ -130,7 +130,7 @@ fn test_view_mode_and_arbitrary_binary_loading() {
 fn test_disassembly_instruction_editing_and_size_invariance() {
     use debugger::assemble_instruction;
 
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     // Injected at $001000: MOVE.W D0, D1 (0x3200, 2 bytes)

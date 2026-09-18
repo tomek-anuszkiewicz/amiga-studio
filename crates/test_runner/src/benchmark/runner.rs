@@ -5,7 +5,7 @@
 //! per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
 
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -143,7 +143,7 @@ pub fn run_benchmark_suite(config: &BenchmarkConfig) -> Result<BenchmarkSuiteRep
         .copied()
         .ok_or_else(|| "BASE-00 specification missing".to_string())?;
 
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     if config.verbose {
@@ -431,7 +431,7 @@ pub fn execute_single_spec(
     passes_count: usize,
     iterations: usize,
     cpu: &mut Cpu,
-    bus: &mut MemoryBus,
+    bus: &mut PhysicalMemory,
     family_baseline_ns_cck: Option<f64>,
     register_baseline_ns_op: Option<f64>,
 ) -> BenchmarkExecutionResult {
@@ -516,7 +516,7 @@ fn execute_pass_inner(
     program: &super::builder::BenchmarkProgram,
     iterations: usize,
     cpu: &mut Cpu,
-    bus: &mut MemoryBus,
+    bus: &mut PhysicalMemory,
 ) -> (f64, bool) {
     let max_cycles = (program.total_cck_per_pass.max(1_000) * 10) as u64;
     let mut has_timed_out = false;

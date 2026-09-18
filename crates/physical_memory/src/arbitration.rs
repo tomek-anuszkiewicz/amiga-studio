@@ -3,7 +3,6 @@
 //! Encapsulates transfer qualifiers (FC0-FC2), operand sizes (Byte, Word),
 //! and passive bus access result (`BusResult`) for Chip RAM DMA contention.
 
-use super::MemoryBus;
 use serde::{Deserialize, Serialize};
 
 /// M68000 Function Code lines (FC0-FC2)
@@ -60,14 +59,5 @@ impl<T> BusResult<T> {
             BusResult::Ready(val) => val,
             BusResult::WaitState => default,
         }
-    }
-}
-
-impl MemoryBus {
-    /// Helper to identify whether an address targets Chip RAM or contention-affected Slow RAM
-    #[inline(always)]
-    pub fn is_chip_ram_target(&self, addr: u32) -> bool {
-        let bank_idx = ((addr >> 16) & 0xFF) as usize;
-        self.bank_map[bank_idx].is_contended
     }
 }

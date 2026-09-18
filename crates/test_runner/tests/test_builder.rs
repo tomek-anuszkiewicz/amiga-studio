@@ -4,7 +4,7 @@
 //! subroutine linkage, and CPU/Bus memory injection across all benchmark strategies.
 
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 use test_runner::benchmark::builder::{
     BenchmarkProgramBuilder, BENCH_ENTRY_PC, BENCH_EXIT_PC, BENCH_RAM_BUFFER_A0,
     BENCH_RAM_BUFFER_A1, BENCH_STACK_TOP,
@@ -95,7 +95,7 @@ fn test_builder_injection_into_cpu_and_bus() {
     let program = BenchmarkProgramBuilder::new(spec.clone()).build();
 
     let mut cpu = Cpu::new();
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
 
     program.inject_into(&mut cpu, &mut bus);
 

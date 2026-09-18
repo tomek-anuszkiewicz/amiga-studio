@@ -771,10 +771,10 @@ fn test_move_from_usp() {
 #[test]
 fn test_stop() {
     use m68000::Cpu;
-    use physical_memory::MemoryBus;
+    use physical_memory::PhysicalMemory;
 
     let mut cpu = Cpu::new();
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     cpu.state.set_supervisor(true);
     cpu.state.set_sr(0x2700);
     cpu.state.ir = 0x4E72; // STOP #$2000

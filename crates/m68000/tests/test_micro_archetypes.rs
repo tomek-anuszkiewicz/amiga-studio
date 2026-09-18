@@ -11,11 +11,11 @@
 //! Also validates bus contention stalls (Agnus DMA locking Chip RAM during CCK1 for reads, CCK2 for writes).
 
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
-/// Helper to set up a test CPU and MemoryBus with mapped Chip RAM and initialized prefetch pipeline
-fn setup_test_machine(base_pc: u32) -> (Cpu, MemoryBus) {
-    let mut bus = MemoryBus::new();
+/// Helper to set up a test CPU and PhysicalMemory with mapped Chip RAM and initialized prefetch pipeline
+fn setup_test_machine(base_pc: u32) -> (Cpu, PhysicalMemory) {
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
@@ -26,7 +26,7 @@ fn setup_test_machine(base_pc: u32) -> (Cpu, MemoryBus) {
 }
 
 /// Initializes CPU prefetch queue from memory at `base_pc`
-fn prime_prefetch(cpu: &mut Cpu, bus: &mut MemoryBus) {
+fn prime_prefetch(cpu: &mut Cpu, bus: &mut PhysicalMemory) {
     let pc = cpu.state.pc;
     cpu.state.ir = bus.read_word_debug(pc);
     cpu.state.prefetch[0] = bus.read_word_debug(pc.wrapping_add(2));

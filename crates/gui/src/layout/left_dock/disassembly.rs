@@ -7,7 +7,7 @@ use crate::theme::ColorTokens;
 use debugger::{assemble_instruction, disassemble, find_aligned_disassembly_start, Debugger};
 use egui::{RichText, Ui};
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 /// State for inline instruction editing in disassembly table
 #[derive(Debug, Clone)]
@@ -20,7 +20,7 @@ pub struct DisasmEditState {
 pub fn render_disassembly(
     ui: &mut Ui,
     cpu: &mut Cpu,
-    bus: &mut MemoryBus,
+    bus: &mut PhysicalMemory,
     debugger: &mut Debugger,
     temporal: &mut debugger::temporal::TemporalHistory,
     goto_addr_str: &mut String,

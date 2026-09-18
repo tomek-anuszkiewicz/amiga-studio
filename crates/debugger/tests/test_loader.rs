@@ -1,10 +1,10 @@
 use debugger::loader::{inject_binary, DEFAULT_TARGET_ADDRESS};
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 #[test]
 fn test_inject_binary_with_auto_prime() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     // SP is 0 initially in raw Cpu::new()
@@ -31,7 +31,7 @@ fn test_inject_binary_with_auto_prime() {
 
 #[test]
 fn test_inject_binary_without_auto_prime_preserves_cpu() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     cpu.state.pc = 0x005000;

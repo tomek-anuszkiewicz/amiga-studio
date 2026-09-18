@@ -4,7 +4,7 @@
 //! and setting the Program Counter with prefetch priming.
 
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 /// Default target RAM address for synthetic binaries ($001000)
 pub const DEFAULT_TARGET_ADDRESS: u32 = 0x001000;
@@ -12,7 +12,7 @@ pub const DEFAULT_TARGET_ADDRESS: u32 = 0x001000;
 /// Injects a byte slice into physical memory and optionally sets PC & primes prefetch
 pub fn inject_binary(
     cpu: &mut Cpu,
-    bus: &mut MemoryBus,
+    bus: &mut PhysicalMemory,
     target_addr: u32,
     data: &[u8],
     auto_prime: bool,

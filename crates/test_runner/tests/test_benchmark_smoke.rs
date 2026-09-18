@@ -1,7 +1,7 @@
 //! Smoke & Verification Test for M68000 Instruction Benchmarking Engine
 
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 use test_runner::benchmark::{
     filter_specs, find_spec_by_id, total_benchmark_specs_count, BenchmarkConfig, BenchmarkProfile,
     BenchmarkProgramBuilder,
@@ -40,7 +40,7 @@ fn test_program_builder_synthesis() {
     assert_eq!(program.total_ops_per_pass, 50);
     assert_eq!(program.total_cck_per_pass, 50 * (add_spec.amiga_cck as u64));
 
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
     program.inject_into(&mut cpu, &mut bus);
 
@@ -56,7 +56,7 @@ fn test_cascading_rts_execution() {
         .with_unroll(20)
         .build();
 
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
     program.inject_into(&mut cpu, &mut bus);
 

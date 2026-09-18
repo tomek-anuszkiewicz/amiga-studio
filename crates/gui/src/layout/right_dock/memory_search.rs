@@ -3,7 +3,7 @@
 //! Pattern search in memory using Hex sequences or ASCII strings.
 
 use egui::{Color32, RichText, Ui};
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SearchMode {
@@ -21,7 +21,7 @@ pub struct MemorySearchState {
 
 pub fn render_memory_search(
     ui: &mut Ui,
-    bus: &MemoryBus,
+    bus: &PhysicalMemory,
     base_addr: &mut u32,
     state: &mut MemorySearchState,
 ) {
@@ -104,7 +104,7 @@ fn parse_query_bytes(query: &str, mode: SearchMode) -> Result<Vec<u8>, String> {
     }
 }
 
-fn find_next(bus: &MemoryBus, base_addr: &mut u32, state: &mut MemorySearchState) {
+fn find_next(bus: &PhysicalMemory, base_addr: &mut u32, state: &mut MemorySearchState) {
     let pattern = match parse_query_bytes(&state.query, state.mode) {
         Ok(p) => p,
         Err(err) => {

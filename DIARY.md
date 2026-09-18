@@ -6339,6 +6339,26 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,789 bytes, Test Coupling for `physical_memory` and `test_runner`, 100% API Coverage, all 19 Architecture Rules).
   - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 8 test_runner unit suites.
 
+---
+
+### [2026-09-18 16:30 CEST] — Elimination of Legacy `MemoryBus` Alias, Direct `is_chip_ram_target`, and Purge of `write_tas_byte`
+- **Affected Subsystems**:
+  - `crates/physical_memory/src/physical_memory.rs`: Purged legacy alias `pub type MemoryBus = PhysicalMemory;`. Moved `is_chip_ram_target(&self, addr: u32) -> bool` directly into `impl PhysicalMemory`. Updated `read_byte`, `read_word`, `write_byte`, and `write_word` to use `self.is_chip_ram_target(addr)` instead of manually re-indexing `self.bank_map[(addr >> 16) & 0xFF].is_contended`.
+  - `crates/physical_memory/src/arbitration.rs`: Removed orphaned `impl MemoryBus` block and unused `use super::MemoryBus;`.
+  - `crates/physical_memory/src/map.rs`: Purged obsolete `write_tas_byte` method and unused `arbitration::BusResult` import.
+  - `crates/physical_memory/tests/`: Updated `test_arbitration.rs`, `test_config.rs`, `test_map.rs`, `test_rtc.rs`, and `test_physical_memory.rs` to construct and assert against `PhysicalMemory` directly. Refactored `test_floating_bus_and_tas_quirk` into `test_floating_bus_and_contention_targets`.
+  - `crates/m68000/tests/`: Switched standalone test suites (`test_addressing.rs`, `test_cck_bus.rs`, `test_interrupts.rs`, `test_micro_archetypes.rs`, `test_programs.rs`) from `physical_memory::MemoryBus` to `physical_memory::PhysicalMemory`.
+  - `crates/test_runner/`: Updated benchmark engine (`runner.rs`, `builder.rs`, `tracer.rs`) and test binaries (`test_singlestep.rs`, `test_builder.rs`, `test_benchmark_smoke.rs`) to use `PhysicalMemory`.
+  - `crates/debugger/`: Updated debugger engine (`session.rs`, `loader.rs`, `stepping.rs`) and tests (`test_debugger.rs`, `test_loader.rs`, `test_stepping_and_session.rs`) to use `PhysicalMemory`.
+  - `crates/gui/`: Updated docking panels (`disassembly.rs`, `registers.rs`, `memory_hex.rs`, `memory_search.rs`) and `tests/test_gui.rs` to reference `PhysicalMemory`.
+- **What Was Changed (The Concrete Reality)**:
+  - Completely purged the confusing type alias `pub type MemoryBus = PhysicalMemory;`. Across the entire codebase, there is now strictly ONE `MemoryBus`: the top-level orchestration bus `memory_bus::MemoryBus` in `crates/memory_bus/`. All components interacting with raw physical RAM and bank maps now explicitly and unambiguously refer to `PhysicalMemory`.
+  - Consolidated contention target detection: `PhysicalMemory::is_chip_ram_target` now serves as the single canonical method for determining whether an address targets contended memory (Chip RAM or Slow RAM).
+  - Cleaned up dead simulation code: `write_tas_byte` was an obsolete mock method never invoked by CPU or bus execution paths. CPU `TAS` execution properly dispatches via standard byte writes matching silicon test vectors.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,789 bytes, Test Coupling across all modified crates, 100% API Coverage, all 19 Architecture Rules).
+  - `cargo test -p physical_memory -p m68000 -p debugger -p gui`: 100% pass across all unit and integration test binaries.
+
 
 
 

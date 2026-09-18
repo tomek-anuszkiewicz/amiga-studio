@@ -5,7 +5,7 @@ use crate::temporal::TemporalHistory;
 use crate::trace::TraceRingBuffer;
 use crate::{disassemble, Disassembly};
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 /// Fine-grained execution stepping modes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,12 +32,12 @@ impl Debugger {
     }
 
     /// Disassembles one instruction at the specified address from memory without side effects
-    pub fn disassemble_at(&self, addr: u32, bus: &MemoryBus) -> (Disassembly, u32) {
+    pub fn disassemble_at(&self, addr: u32, bus: &PhysicalMemory) -> (Disassembly, u32) {
         disassemble(addr, |a| bus.read_word_debug(a))
     }
 
     /// Steps exactly one M68000 instruction, recording to trace history, and returns instruction clocks
-    pub fn step_instruction(&mut self, cpu: &mut Cpu, bus: &mut MemoryBus) -> u32 {
+    pub fn step_instruction(&mut self, cpu: &mut Cpu, bus: &mut PhysicalMemory) -> u32 {
         let pc = cpu.state.instruction_pc; // Address of opcode currently in IR
         let (disasm, _) = self.disassemble_at(pc, bus);
 
@@ -60,7 +60,7 @@ impl Debugger {
     pub fn run_until_breakpoint(
         &mut self,
         cpu: &mut Cpu,
-        bus: &mut MemoryBus,
+        bus: &mut PhysicalMemory,
         max_instructions: usize,
     ) -> usize {
         for steps in 0..max_instructions {
@@ -83,7 +83,7 @@ impl Debugger {
     pub fn run_until_breakpoint_with_temporal(
         &mut self,
         cpu: &mut Cpu,
-        bus: &mut MemoryBus,
+        bus: &mut PhysicalMemory,
         temporal: &mut TemporalHistory,
         max_instructions: usize,
     ) -> usize {

@@ -1,6 +1,6 @@
 use physical_memory::{
     arbitration::{function_code, BusAccessSize, BusResult},
-    MemoryBus,
+    PhysicalMemory,
 };
 
 #[test]
@@ -34,7 +34,7 @@ fn test_function_codes_and_access_size() {
 
 #[test]
 fn test_chip_ram_contention_and_fast_ram_immunity() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     // Verify is_chip_ram_target identifying contended memory

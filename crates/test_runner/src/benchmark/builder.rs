@@ -5,7 +5,7 @@
 //! Obsidian/Amiga/Design/CPU Instruction Benchmark Strategies.md.
 
 use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 use super::catalog::{BenchmarkSpec, BenchmarkStrategy};
 use super::prng::XorShift64;
@@ -35,7 +35,7 @@ pub struct BenchmarkProgram {
 
 impl BenchmarkProgram {
     /// Injects the program image, initial CPU register state, and primed prefetch into the machine
-    pub fn inject_into(&self, cpu: &mut Cpu, bus: &mut MemoryBus) {
+    pub fn inject_into(&self, cpu: &mut Cpu, bus: &mut PhysicalMemory) {
         bus.map_chip_ram_to_low_memory();
 
         // Write memory image

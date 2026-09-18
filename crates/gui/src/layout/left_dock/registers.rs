@@ -5,7 +5,7 @@
 use crate::theme::ColorTokens;
 use egui::{Color32, RichText, Ui};
 use m68000::{Cpu, CpuState};
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 /// Register identifier for interactive inline editing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,7 +35,7 @@ pub fn render_registers(
     ui: &mut Ui,
     tokens: &ColorTokens,
     cpu: &mut Cpu,
-    bus: &mut MemoryBus,
+    bus: &mut PhysicalMemory,
     prev_state: Option<&CpuState>,
     active_reg_edit: &mut Option<(EditRegister, String)>,
 ) {

@@ -1,8 +1,9 @@
-use physical_memory::{A500Config, A500Preset, BusResult, MemoryBus};
+use physical_memory::{A500Config, A500Preset, BusResult, PhysicalMemory};
 
 #[test]
 fn test_boot_overlay_and_cia_control() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
+
     // Inject custom Kickstart ROM byte at offset 0
     let mut rom = vec![0x00; 256 * 1024];
     rom[0] = 0x12;
@@ -33,7 +34,7 @@ fn test_boot_overlay_and_cia_control() {
 
 #[test]
 fn test_chip_ram_contention_and_direct_rw() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     // 1. Direct word write and read
@@ -63,31 +64,26 @@ fn test_chip_ram_contention_and_direct_rw() {
 }
 
 #[test]
-fn test_floating_bus_and_tas_quirk() {
+fn test_floating_bus_and_contention_targets() {
     let mut config = A500Config::default();
     config.apply_preset(A500Preset::ExpandedPowerUser);
-    let mut bus = MemoryBus::from_config(config);
+    let mut bus = PhysicalMemory::from_config(config);
     bus.map_chip_ram_to_low_memory();
 
     // Unmapped address ($150000) returns $FF / $FFFF
     assert_eq!(bus.read_byte_debug(0x150000), 0xFF);
     assert_eq!(bus.read_word_debug(0x150000), 0xFFFF);
 
-    // TAS Quirk: Chip RAM write is dropped
-    bus.write_byte_debug(0x000100, 0x00);
-    bus.write_tas_byte(0x000100, 0x80);
-    assert_eq!(bus.read_byte_debug(0x000100), 0x00); // unmodified
-
-    // In Fast RAM, TAS write succeeds
-    bus.write_byte_debug(0x200100, 0x00);
-    bus.write_tas_byte(0x200100, 0x80);
-    assert_eq!(bus.read_byte_debug(0x200100), 0x80);
+    // Verify is_chip_ram_target
+    assert!(bus.is_chip_ram_target(0x000100)); // Chip RAM
+    assert!(bus.is_chip_ram_target(0xC00000)); // Slow RAM
+    assert!(!bus.is_chip_ram_target(0x200100)); // Fast RAM
 }
 
 #[test]
 fn test_configurable_unmapped_byte_default_ff_and_test_mode() {
     // 1. Real emulator mode: unmapped memory defaults to 0xFF (open bus floating high)
-    let mut real_bus = MemoryBus::new();
+    let mut real_bus = PhysicalMemory::new();
     assert_eq!(real_bus.unmapped_byte(), 0xFF);
     assert_eq!(real_bus.read_byte_debug(0x180000), 0xFF);
     assert_eq!(real_bus.read_word_debug(0x180000), 0xFFFF);
@@ -100,7 +96,7 @@ fn test_configurable_unmapped_byte_default_ff_and_test_mode() {
 
 #[test]
 fn test_bus_direct_read_write_and_byte_accesses() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     // 1. Direct word write and read

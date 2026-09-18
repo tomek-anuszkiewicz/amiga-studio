@@ -84,9 +84,6 @@ pub struct PhysicalMemory {
     pub unmapped_byte: u8,
 }
 
-/// Type alias for standalone CPU tests and benchmarks targeting physical memory storage
-pub type MemoryBus = PhysicalMemory;
-
 #[inline(always)]
 fn default_unmapped_byte() -> u8 {
     0xFF
@@ -223,13 +220,19 @@ impl PhysicalMemory {
         self.chip_ram_blocked
     }
 
+    /// Checks whether an address targets Chip RAM or contention-affected Slow RAM
+    #[inline(always)]
+    pub fn is_chip_ram_target(&self, addr: u32) -> bool {
+        let bank_idx = ((addr >> 16) & 0xFF) as usize;
+        self.bank_map[bank_idx].is_contended
+    }
+
     /// Reads an 8-bit byte from the 24-bit physical address space, checking for Chip RAM bus contention.
     /// Returns `BusResult::WaitState` if the target is Chip RAM (or Slow RAM) and Agnus/DMA is blocking the bus.
     #[inline(always)]
     pub fn read_byte(&self, addr: u32) -> BusResult<u8> {
         let addr = addr & 0x00FF_FFFF;
-        let bank = &self.bank_map[(addr >> 16) as usize];
-        if self.chip_ram_blocked && bank.is_contended {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
             return BusResult::WaitState;
         }
         BusResult::Ready(self.read_byte_internal(addr))
@@ -240,8 +243,7 @@ impl PhysicalMemory {
     #[inline(always)]
     pub fn read_word(&self, addr: u32) -> BusResult<u16> {
         let addr = addr & 0x00FF_FFFF;
-        let bank = &self.bank_map[(addr >> 16) as usize];
-        if self.chip_ram_blocked && bank.is_contended {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
             return BusResult::WaitState;
         }
         BusResult::Ready(self.read_word_internal(addr))
@@ -252,8 +254,7 @@ impl PhysicalMemory {
     #[inline(always)]
     pub fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
         let addr = addr & 0x00FF_FFFF;
-        let bank = self.bank_map[(addr >> 16) as usize];
-        if self.chip_ram_blocked && bank.is_contended {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
             return BusResult::WaitState;
         }
         self.write_byte_internal(addr, val);
@@ -265,8 +266,7 @@ impl PhysicalMemory {
     #[inline(always)]
     pub fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
         let addr = addr & 0x00FF_FFFF;
-        let bank = self.bank_map[(addr >> 16) as usize];
-        if self.chip_ram_blocked && bank.is_contended {
+        if self.chip_ram_blocked && self.is_chip_ram_target(addr) {
             return BusResult::WaitState;
         }
         self.write_word_internal(addr, val);
