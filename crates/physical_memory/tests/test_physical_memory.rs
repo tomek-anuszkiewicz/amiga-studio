@@ -216,4 +216,10 @@ fn test_write_bytes_across_all_memory_regions() {
     assert_eq!(bus.read_word_debug(0xF80010), 0xFEED);
     bus.write_byte_debug(0xF80012, 0x42);
     assert_eq!(bus.read_byte_debug(0xF80012), 0x42);
+
+    // 8. Verification of byte-by-byte write and dynamic expansion into upper 512KB ROM
+    let upper_rom_data = [0xCA, 0xFE];
+    bus.write_bytes_debug(0xFC0000, &upper_rom_data);
+    assert_eq!(bus.read_word_debug(0xFC0000), 0xCAFE);
+    assert_eq!(bus.kickstart_rom.len(), 512 * 1024);
 }

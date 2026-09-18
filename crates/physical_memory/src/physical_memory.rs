@@ -155,30 +155,26 @@ impl PhysicalMemory {
     /// Reads an 8-bit byte from the 24-bit physical address space, delegating directly to the bank handler.
     #[inline(always)]
     pub fn read_byte(&self, addr: u32) -> BusResult<u8> {
-        let addr = addr & 0x00FF_FFFF;
-        (self.bank_map[(addr >> 16) as usize].read_byte)(self, addr)
+        (self.bank_map[((addr >> 16) & 0xFF) as usize].read_byte)(self, addr)
     }
 
     /// Reads a 16-bit Big-Endian word from the 24-bit physical address space, delegating directly to the bank handler.
     #[inline(always)]
     pub fn read_word(&self, addr: u32) -> BusResult<u16> {
-        let addr = addr & 0x00FF_FFFF;
-        (self.bank_map[(addr >> 16) as usize].read_word)(self, addr)
+        (self.bank_map[((addr >> 16) & 0xFF) as usize].read_word)(self, addr)
     }
 
     /// Writes an 8-bit byte to the 24-bit physical address space, delegating directly to the bank handler.
     #[inline(always)]
     pub fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
-        let addr = addr & 0x00FF_FFFF;
-        let write_fn = self.bank_map[(addr >> 16) as usize].write_byte;
+        let write_fn = self.bank_map[((addr >> 16) & 0xFF) as usize].write_byte;
         write_fn(self, addr, val)
     }
 
     /// Writes a 16-bit Big-Endian word to the 24-bit physical address space, delegating directly to the bank handler.
     #[inline(always)]
     pub fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
-        let addr = addr & 0x00FF_FFFF;
-        let write_fn = self.bank_map[(addr >> 16) as usize].write_word;
+        let write_fn = self.bank_map[((addr >> 16) & 0xFF) as usize].write_word;
         write_fn(self, addr, val)
     }
 
@@ -186,12 +182,6 @@ impl PhysicalMemory {
     /// Bypasses bus arbitration locks (such as Chip RAM contention) and side-effects.
     /// Returns the number of bytes written.
     pub fn write_bytes_debug(&mut self, addr: u32, data: &[u8]) -> usize {
-        let addr = addr & 0x00FF_FFFF;
-        if (addr == 0x00F8_0000 || addr == 0x00FC_0000) && data.len() >= 256 * 1024 {
-            self.kickstart_rom = data.to_vec();
-            return data.len();
-        }
-
         for (i, &b) in data.iter().enumerate() {
             self.write_byte_debug(addr.wrapping_add(i as u32), b);
         }
@@ -201,30 +191,26 @@ impl PhysicalMemory {
     /// Side-effect-free byte read for debugger inspection and test result assertions
     #[inline(always)]
     pub fn read_byte_debug(&self, addr: u32) -> u8 {
-        let addr = addr & 0x00FF_FFFF;
-        (self.bank_map[(addr >> 16) as usize].read_byte_debug)(self, addr)
+        (self.bank_map[((addr >> 16) & 0xFF) as usize].read_byte_debug)(self, addr)
     }
 
     /// Side-effect-free word read for disassemblers, debugger inspection, and test result assertions
     #[inline(always)]
     pub fn read_word_debug(&self, addr: u32) -> u16 {
-        let addr = addr & 0x00FF_FFFF;
-        (self.bank_map[(addr >> 16) as usize].read_word_debug)(self, addr)
+        (self.bank_map[((addr >> 16) & 0xFF) as usize].read_word_debug)(self, addr)
     }
 
     /// Side-effect-free byte write for debugger modification
     #[inline(always)]
     pub fn write_byte_debug(&mut self, addr: u32, val: u8) {
-        let addr = addr & 0x00FF_FFFF;
-        let write_fn = self.bank_map[(addr >> 16) as usize].write_byte_debug;
+        let write_fn = self.bank_map[((addr >> 16) & 0xFF) as usize].write_byte_debug;
         write_fn(self, addr, val);
     }
 
     /// Side-effect-free word write for debugger modification
     #[inline(always)]
     pub fn write_word_debug(&mut self, addr: u32, val: u16) {
-        let addr = addr & 0x00FF_FFFF;
-        let write_fn = self.bank_map[(addr >> 16) as usize].write_word_debug;
+        let write_fn = self.bank_map[((addr >> 16) & 0xFF) as usize].write_word_debug;
         write_fn(self, addr, val);
     }
 

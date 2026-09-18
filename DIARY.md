@@ -6762,6 +6762,37 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.48s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (18.28s).
 
+---
+
+### [2026-09-18 23:30 CEST] — Removal of Kickstart Fast-Path from `write_bytes_debug`
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/physical_memory.rs`: Completely removed the `if (addr == 0x00F8_0000 || addr == 0x00FC_0000) && data.len() >= 256 * 1024` fast-path branch. `write_bytes_debug` now writes strictly byte-by-byte via `self.write_byte_debug(addr + i, b)`.
+    - `src/map.rs`: Enabled `write_kickstart_rom_debug` and `write_kickstart_rom_word_debug` to automatically resize `bus.kickstart_rom` up to 512 KB when writes reach upper ROM space, allowing byte-by-byte flashing to expand transparently.
+    - `tests/test_physical_memory.rs`: Added verification asserting byte-by-byte write and automatic 512 KB expansion.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated special-cased branches and bulk vector copies from `write_bytes_debug`, unifying all memory block writing through the exact same per-byte bank dispatch path.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (6.11s).
+
+---
+
+### [2026-09-18 23:35 CEST] — Hardware-Aligned 8-Bit Bank Index Masking in `PhysicalMemory`
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/physical_memory.rs`:
+      - Replaced redundant 24-bit address rewriting (`let addr = addr & 0x00FF_FFFF;`) and unmasked bank lookups across all 8 memory dispatch methods (`read_byte`, `read_word`, `write_byte`, `write_word`, `read_byte_debug`, `read_word_debug`, `write_byte_debug`, `write_word_debug`) with direct 8-bit bank index masking: `((addr >> 16) & 0xFF) as usize`.
+      - Removed redundant `addr & 0x00FF_FFFF` in `write_bytes_debug`.
+- **What Was Changed (The Concrete Reality)**:
+  - Aligned software bus modeling with physical Amiga motherboard reality: Motorola 68000 CPU pins and Agnus DMA controllers only drive 24 address lines (`A23..A1`).
+  - Replaced 32-bit address rewriting with a single-instruction byte extract (`((addr >> 16) & 0xFF)`), guaranteeing Rust bounds-safety for `bank_map: [BankHandler; 256]` while eliminating double-masking in the hottest emulation loop paths.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (6.97s).
+
+
+
 
 
 
