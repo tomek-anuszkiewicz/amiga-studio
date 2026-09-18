@@ -59,15 +59,15 @@ impl<'a> MemoryBus<'a> {
             custom_reg::POT1DAT => self.paula.pot1dat(),
             custom_reg::POTGOR => self.paula.potgor(),
             custom_reg::SERDATR => self.paula.serdatr(),
-            custom_reg::DSKBYTR => self.paula.assemble_dskbytr(self.floppy.dskbytr()),
+            custom_reg::DSKBYTR => self.read_dskbytr(),
             custom_reg::INTENAR => self.paula.intenar(),
             custom_reg::INTREQR => self.paula.intreqr(),
             custom_reg::COPJMP1 => {
-                self.agnus.copjmp1();
+                self.agnus.strobe_copjmp1();
                 0xFFFF
             }
             custom_reg::COPJMP2 => {
-                self.agnus.copjmp2();
+                self.agnus.strobe_copjmp2();
                 0xFFFF
             }
             _ => 0xFFFF,
@@ -89,7 +89,7 @@ impl<'a> MemoryBus<'a> {
             custom_reg::POT1DAT => self.paula.pot1dat_debug(),
             custom_reg::POTGOR => self.paula.potgor_debug(),
             custom_reg::SERDATR => self.paula.serdatr_debug(),
-            custom_reg::DSKBYTR => self.paula.assemble_dskbytr(self.floppy.dskbytr_debug()),
+            custom_reg::DSKBYTR => self.read_dskbytr_debug(),
             custom_reg::INTENAR => self.paula.intenar_debug(),
             custom_reg::INTREQR => self.paula.intreqr_debug(),
             _ => 0xFFFF,
@@ -248,10 +248,22 @@ impl<'a> MemoryBus<'a> {
         self.write_custom_word(offset, word_val);
     }
 
-    /// Writes an arbitrary byte slice directly to physical memory
+    /// Writes an arbitrary byte slice directly to physical memory for debugger/test injection
     #[inline(always)]
-    pub fn write_bytes(&mut self, addr: u32, data: &[u8]) {
-        self.mem.write_bytes(addr, data);
+    pub fn write_bytes_debug(&mut self, addr: u32, data: &[u8]) -> usize {
+        self.mem.write_bytes_debug(addr, data)
+    }
+
+    /// Reads composite live DSKBYTR status from Floppy and Paula
+    #[inline(always)]
+    pub fn read_dskbytr(&mut self) -> u16 {
+        self.paula.assemble_dskbytr(self.floppy.dskbytr())
+    }
+
+    /// Reads composite DSKBYTR status without side-effects for debugging
+    #[inline(always)]
+    pub fn read_dskbytr_debug(&self) -> u16 {
+        self.paula.assemble_dskbytr(self.floppy.dskbytr_debug())
     }
 
     /// Broadcasts committed Agnus signals across the motherboard to peer custom chips

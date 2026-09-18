@@ -133,7 +133,9 @@ fn test_save_state_restores_kickstart_rom_unconditionally() {
     ));
     // Synthetic Kickstart ROM
     let dummy_rom = vec![0x42; 256 * 1024];
-    machine.physical_memory.write_bytes(0xF80000, &dummy_rom);
+    machine
+        .physical_memory
+        .write_bytes_debug(0xF80000, &dummy_rom);
 
     let state = machine.save_state();
     assert_eq!(state.physical_memory.kickstart_rom.len(), 256 * 1024);

@@ -343,8 +343,24 @@ pub fn read_kickstart_rom_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
     }
 }
 
-pub fn write_kickstart_rom_debug(_bus: &mut PhysicalMemory, _addr: u32, _val: u8) {}
-pub fn write_kickstart_rom_word_debug(_bus: &mut PhysicalMemory, _addr: u32, _val: u16) {}
+pub fn write_kickstart_rom_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
+    if addr >= 0x00F8_0000 {
+        let mask = bus.kickstart_rom.len().wrapping_sub(1);
+        let idx = (addr as usize) & mask;
+        bus.kickstart_rom[idx] = val;
+    }
+}
+
+pub fn write_kickstart_rom_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
+    if addr >= 0x00F8_0000 {
+        let mask = bus.kickstart_rom.len().wrapping_sub(1);
+        let idx = (addr as usize) & mask;
+        let bytes = val.to_be_bytes();
+        bus.kickstart_rom[idx] = bytes[0];
+        let next_idx = (idx + 1) & mask;
+        bus.kickstart_rom[next_idx] = bytes[1];
+    }
+}
 
 #[inline(always)]
 pub fn read_kickstart_rom(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {

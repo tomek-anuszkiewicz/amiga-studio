@@ -312,9 +312,9 @@ fn test_debug_read_and_register_method_conventions() {
     assert_eq!(mb.router().read_word(0xDFF00E), BusResult::Ready(0x00A5));
     assert_eq!(mb.denise.clxdat_debug(), 0x0000);
 
-    // 3. COPJMP1 strobe directly via copjmp1()
+    // 3. COPJMP1 strobe directly via strobe_copjmp1()
     mb.agnus.copper.cop1lc = 0x0003_4000;
-    mb.agnus.copjmp1();
+    mb.agnus.strobe_copjmp1();
     assert_eq!(mb.agnus.copper.cop_pc, 0x0003_4000);
 
     // 4. CIA debug byte read does not clear or alter state

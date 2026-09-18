@@ -210,7 +210,7 @@ fn test_cpu_reset_instruction_external_propagation() {
     // so execution can seamlessly continue when RESET re-engages the Gary boot overlay.
     let mut rom = vec![0xFF; 262144];
     rom[0x1000..0x1006].copy_from_slice(&[0x4E, 0x70, 0x4E, 0x71, 0x70, 0x2A]);
-    machine.physical_memory.write_bytes(0xF80000, &rom);
+    machine.physical_memory.write_bytes_debug(0xF80000, &rom);
 
     // Disengage overlay to simulate post-boot state running from Chip RAM
     machine.physical_memory.map_chip_ram_to_low_memory();
@@ -429,7 +429,7 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
     rom[0..4].copy_from_slice(&0x00080000u32.to_be_bytes());
     // Initial PC at $000004: $00FC0002
     rom[4..8].copy_from_slice(&0x00FC0002u32.to_be_bytes());
-    machine.physical_memory.write_bytes(0xF80000, &rom);
+    machine.physical_memory.write_bytes_debug(0xF80000, &rom);
 
     // Cold reset engages overlay and loads vectors
     machine.reset();

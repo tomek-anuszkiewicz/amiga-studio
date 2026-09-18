@@ -76,7 +76,9 @@ fn test_keyboard_ctrl_amiga_amiga_warm_reset_in_machine_loop() {
     let mut machine = A500Machine::new(A500Config::default());
     machine.reset();
     let dummy_rom = [0x55; 512 * 1024];
-    machine.physical_memory.write_bytes(0xF80000, &dummy_rom);
+    machine
+        .physical_memory
+        .write_bytes_debug(0xF80000, &dummy_rom);
 
     // Disengage overlay (PRA bit 0 = 1)
     machine.cia_a.write_register(0x0, 0x01);

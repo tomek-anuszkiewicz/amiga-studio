@@ -169,10 +169,10 @@ fn test_agnus_copper_strobe_copjmp() {
     agnus.copper.cop1lc = 0x0004_0000;
     agnus.copper.cop2lc = 0x0006_0000;
 
-    agnus.copjmp1();
+    agnus.strobe_copjmp1();
     assert_eq!(agnus.copper.cop_pc, 0x0004_0000);
 
-    agnus.copjmp2();
+    agnus.strobe_copjmp2();
     assert_eq!(agnus.copper.cop_pc, 0x0006_0000);
 
     assert_eq!(agnus.dmaconr(), agnus.dmaconr_debug());

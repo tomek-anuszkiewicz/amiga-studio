@@ -6734,6 +6734,35 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (5.77s).
 
+---
+
+### [2026-09-18 23:25 CEST] — Memory Bus Strobes, DSKBYTR Encapsulation, and `write_bytes_debug` Standardization
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/map.rs`: Implemented `write_kickstart_rom_debug` and `write_kickstart_rom_word_debug` writing into `bus.kickstart_rom` when `addr >= 0xF80000`, enabling legitimate debug ROM patching/breakpoint insertion while keeping low-memory overlay safe.
+    - `src/physical_memory.rs`: Renamed `write_bytes` to `write_bytes_debug(&mut self, addr: u32, data: &[u8]) -> usize`. Simplified implementation to fast-path full ROM flashing (`data.len() >= 256 * 1024`) and delegate all other writes to `self.write_byte_debug(...)`.
+    - `tests/`: Updated `test_physical_memory.rs` and `test_map.rs` to call `write_bytes_debug` and assert direct debug ROM byte/word modification.
+  - `crates/agnus/`:
+    - `src/agnus.rs`: Pruned redundant `copjmp1(&mut self)` and `copjmp2(&mut self)` aliases in favor of canonical `strobe_copjmp1(&mut self)` and `strobe_copjmp2(&mut self)`.
+    - `tests/test_agnus_registers.rs`: Updated call sites to `strobe_copjmp1()` / `strobe_copjmp2()`.
+  - `crates/memory_bus/`:
+    - `src/memory_bus.rs`:
+      - Dispatched `COPJMP1` and `COPJMP2` directly to `self.agnus.strobe_copjmp1()` and `strobe_copjmp2()`.
+      - Added helper methods `read_dskbytr(&mut self)` and `read_dskbytr_debug(&self)` encapsulating Paula-Floppy composite status assembly.
+      - Renamed forwarding method `write_bytes` to `write_bytes_debug`.
+    - `tests/`: Updated `test_register_wiring.rs` and `test_router.rs`.
+  - `crates/machine_loop/` & `crates/debugger/`:
+    - Updated callers and test suites to `write_bytes_debug`.
+- **What Was Changed (The Concrete Reality)**:
+  - Aligned all non-contended debug mutation APIs under the unified `_debug` suffix.
+  - Allowed debuggers and tests to legitimately patch Kickstart ROM without special-casing in `write_bytes_debug`.
+  - Explicitly named Copper jump operations as strobes, reinforcing hardware circuit semantics.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for 4 crates, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.48s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (18.28s).
+
+
 
 
 

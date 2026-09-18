@@ -149,7 +149,7 @@ fn test_debugger_session_save_state_preserves_kickstart_rom() {
     session
         .machine
         .physical_memory
-        .write_bytes(0xF80000, &dummy_rom);
+        .write_bytes_debug(0xF80000, &dummy_rom);
 
     let saved = session.save_state();
     assert_eq!(saved.physical_memory.kickstart_rom, dummy_rom);

@@ -127,7 +127,8 @@ fn test_cia_address_decoding() {
 #[test]
 fn test_ciaa_port_a_overlay_toggle() {
     let mut mb = TestMotherboard::new();
-    mb.mem.write_bytes(0xF80000, &[0x11, 0x22, 0x33, 0x44]);
+    mb.mem
+        .write_bytes_debug(0xF80000, &[0x11, 0x22, 0x33, 0x44]);
     mb.mem.map_kickstart_to_low_memory();
 
     let mut bus = mb.router();

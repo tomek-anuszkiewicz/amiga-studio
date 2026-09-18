@@ -185,17 +185,10 @@ impl PhysicalMemory {
     /// Direct debug/injection byte block writer into physical memory.
     /// Bypasses bus arbitration locks (such as Chip RAM contention) and side-effects.
     /// Returns the number of bytes written.
-    pub fn write_bytes(&mut self, addr: u32, data: &[u8]) -> usize {
+    pub fn write_bytes_debug(&mut self, addr: u32, data: &[u8]) -> usize {
         let addr = addr & 0x00FF_FFFF;
-        if addr >= 0x00F8_0000 {
-            if (addr == 0x00F8_0000 || addr == 0x00FC_0000) && data.len() >= 256 * 1024 {
-                self.kickstart_rom = data.to_vec();
-            } else {
-                let mask = self.kickstart_rom.len().wrapping_sub(1);
-                for (i, &b) in data.iter().enumerate() {
-                    self.kickstart_rom[((addr as usize) + i) & mask] = b;
-                }
-            }
+        if (addr == 0x00F8_0000 || addr == 0x00FC_0000) && data.len() >= 256 * 1024 {
+            self.kickstart_rom = data.to_vec();
             return data.len();
         }
 
