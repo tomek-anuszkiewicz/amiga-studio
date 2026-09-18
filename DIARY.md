@@ -6931,6 +6931,34 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 23 crates + 7 test_runner unit suites passed cleanly (5.22s).
   - `python tools/harness/run_tests.py --integration`: memory_bus, machine_loop, debugger, gui passed cleanly (20.17s).
 
+---
+
+### [2026-09-19 01:40 CEST] — Enforced Principle of Minimum Visibility & Introduced On-Demand Code Quality Auditor
+- **Subsystems Affected**:
+  - `crates/physical_memory/src/map.rs`: Demoted all 40+ internal bank read/write callback functions from `pub fn` to private `fn`.
+  - `crates/physical_memory/tests/test_physical_memory.rs`: Updated direct Kickstart ROM read assertions to exercise the public `bus.read_byte()` / `bus.read_word()` interface.
+  - `crates/m68000/src/m68000.rs`: Encapsulated instruction submodules from `pub mod instructions;` to `pub(crate) mod instructions;`.
+  - `crates/m68000/src/instructions/mod.rs`: Encapsulated all 70+ instruction submodules as `pub(crate) mod <mnemonic>;`.
+  - `crates/m68000/src/instructions/move_b.rs`, `crates/m68000/src/instructions/move_w.rs`: Removed 6 dead `alu_move_*_imm_dst_*` helper functions surfaced by the compiler immediately after encapsulation.
+  - `crates/m68000/tests/test_visibility.rs`: Added dedicated test suite verifying public API surface and encapsulation integrity.
+  - `.agents/rules/rust-best-practices.md`: Added Section 5 detailing the **Principle of Minimum Visibility (Least Privilege Visibility)**.
+  - `.agents/rules/workspace-structure-and-reexports.md`: Added Section 7 on internal module scoping vs curated public façade.
+  - `AGENTS.md`: Added concise 1-line pointer to Minimum Visibility rule while preserving the constitutional ceiling ($\le 14,000$ bytes, currently at 13,796 bytes).
+  - `tools/harness/audit_code_quality.py`: Created an on-demand code quality auditor checking dead code, test-only zombies, visibility leaks, and SRP/cohesion metrics.
+  - `tools/harness/check_test_coupling.py`: Fixed bug to ensure untracked files are correctly evaluated alongside git diff.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Created on-demand recipe and subagent delegation template.
+  - `.agents/skills/prune-dead-code/SKILL.md`: Linked `audit_code_quality.py --dead-code`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Information Hiding & Least Privilege:* Exposing internal execution helpers as `pub` pollutes the workspace API surface, encourages architectural leaks, and prevents LLVM/rustc from identifying dead code. Setting items to private or `pub(crate)` restores proper modular encapsulation.
+  - *On-Demand Quality Gate:* Unlike lightweight pre-flight gates run on every micro-commit, deep whole-workspace code audits (searching callers across all files) are expensive. Modularizing this into a dedicated CLI tool and skill allows deep checks without impeding iterative velocity.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,796 bytes, Test Coupling for `m68000` & `physical_memory`, API Coverage 100%, 19 Architecture Rules).
+  - `cargo test -p physical_memory`: All 26 tests passed.
+  - `cargo test -p m68000`: All 49 tests passed.
+  - `python tools/harness/audit_code_quality.py --crate physical_memory`: Confirmed 0 dead code, 0 cohesion issues.
+
+
 
 
 

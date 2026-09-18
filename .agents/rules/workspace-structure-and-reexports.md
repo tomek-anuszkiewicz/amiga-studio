@@ -114,3 +114,17 @@ To improve searchability, eliminate ambiguous file tabs in editors, and guarante
    - Files named `lib.rs` are **strictly forbidden** anywhere across workspace crates (`crates/`) and helper tools (`tools/`).
    - Enforced by automated architecture test `test_named_crate_roots_and_zero_generic_lib_rs`.
 
+---
+
+## 7. Crate Internal Scoping & Principle of Least Visibility
+
+1. **Curated Public Surface**:
+   - The root file (`src/<crate_name>.rs`) represents the strictly curated public interface of the crate.
+   - Internal implementation submodules (such as `instructions`, `decoders`, bank callbacks, or internal state machines) must be scoped with `pub(crate) mod` or private `mod`, never `pub mod`.
+2. **Re-Export Discipline**:
+   - Re-exports via `pub use` are strictly reserved for the crate's documented API consumed by peer crates or host frontends.
+   - Never re-export internal helpers, callbacks, or execution archetypes.
+3. **Visibility Leak Prevention**:
+   - Items must be declared with the narrowest visibility under which they function. Avoid defaulting to `pub` so the compiler and automated linters can accurately surface dead or zombie code.
+
+

@@ -103,33 +103,6 @@ pub fn alu_move_b_mem_dst_pd(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     state.micro.ea_addr = an;
 }
 
-pub fn alu_move_b_imm_dst_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.prefetch[0] & 0xFF) as u8;
-    state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
-    state.micro.ea_addr = state.read_a(reg_dst as usize);
-}
-
-pub fn alu_move_b_imm_dst_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.prefetch[0] & 0xFF) as u8;
-    state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
-    let an = state.read_a(reg_dst as usize);
-    state.micro.ea_addr = an;
-    let inc = if reg_dst == 7 { 2 } else { 1 };
-    state.write_a(reg_dst as usize, an.wrapping_add(inc));
-}
-
-pub fn alu_move_b_imm_dst_pd(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.prefetch[0] & 0xFF) as u8;
-    state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
-    state.micro.destination = val as u32;
-    let dec = if reg_dst == 7 { 2 } else { 1 };
-    let an = state.read_a(reg_dst as usize).wrapping_sub(dec);
-    state.write_a(reg_dst as usize, an);
-    state.micro.ea_addr = an;
-}
-
 pub fn alu_move_b_src_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let val = (state.micro.source & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);

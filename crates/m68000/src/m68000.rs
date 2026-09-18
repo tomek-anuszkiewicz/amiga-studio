@@ -4,7 +4,7 @@
 //! condition code evaluation, and a 65,536-entry compile-time static opcode descriptor table.
 
 pub mod core;
-pub mod instructions;
+pub(crate) mod instructions;
 pub mod micro {
     pub mod common;
     pub mod dispatch_table;

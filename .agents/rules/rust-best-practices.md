@@ -37,8 +37,19 @@ All Rust code across the Amiga 500 emulator workspace must strictly adhere to th
 
 ---
 
-## 5. Comprehensive Unit Test Coverage
+## 5. Principle of Minimum Visibility (Least Privilege Visibility)
+- **Minimum Required Visibility:** Functions, structs, methods, constants, and modules must strictly use the narrowest visibility under which they currently function.
+- **Private by Default:** All items are private (`fn`, `struct`, `const`) unless access across files is genuinely required.
+- **`pub(crate)` for Internal Collaboration:** Use `pub(crate)` when an item must be shared between modules within the same crate. Never default to `pub` for internal helpers, execution engines, or dispatch callbacks.
+- **`pub` Strictly for External Public API:** Elevate to `pub` only when an item forms part of the crate's documented public surface consumed by downstream peer crates or host frontends (`machine_loop`, `gui`).
+- **Encapsulate Internal Modules:** Crates must never expose internal worker submodules (such as `instructions`, `decoders`, internal callbacks) via `pub mod`. Use `pub(crate) mod` to maintain an uncluttered crate API.
+- **Eliminate Visibility Leaks for Dead Code Detection:** Leaking `pub` visibility prevents the Rust compiler and static analysis tools from identifying unused dead code. Restricting visibility ensures dead or zombie code is surfaced immediately.
+
+---
+
+## 6. Comprehensive Unit Test Coverage
 - **Mandatory Unit Tests for Testable Logic:** Every newly created or modified Rust source file containing testable domain logic, algorithmic transformations, state machines, hardware models, statistical calculations, builders, or parsers must have corresponding unit tests.
-- **Placement & Structure:** Unit tests should be implemented either inline as `#[cfg(test)] mod tests { ... }` or in dedicated test targets under `tests/<module_name>.rs` (matching the module name directly).
+- **Placement & Structure:** Unit tests must be placed strictly in dedicated test files under `crates/<crate>/tests/test_<name>.rs` per `unit-testing-policy.md` (zero inline tests in `src/`).
 - **Pragmatic Scope:** Pure struct declarations or thin forwarders without branching or business logic may rely on parent integration tests. However, any module implementing algorithms, parsing, state mutations, filtering, statistics, or hardware circuits must have dedicated unit tests verifying happy paths, boundary conditions, zero/empty states, and failure modes.
+
 

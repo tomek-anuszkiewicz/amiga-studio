@@ -34,17 +34,17 @@ def get_modified_files(mode):
         code, out = run_cmd(["git", "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"])
         return out.splitlines() if out else []
     else:
-        # Working tree vs HEAD (staged + unstaged)
+        # Working tree vs HEAD (staged + unstaged + untracked)
+        files = set()
         code, out = run_cmd(["git", "diff", "--name-only", "HEAD"])
         if out:
-            return out.splitlines()
-        # Fallback to status for untracked files
+            files.update(out.splitlines())
         code, status_out = run_cmd(["git", "status", "--porcelain"])
-        files = []
-        for line in status_out.splitlines():
-            if len(line) > 3:
-                files.append(line[3:].strip())
-        return files
+        if status_out:
+            for line in status_out.splitlines():
+                if len(line) > 3:
+                    files.add(line[3:].strip())
+        return list(files)
 
 def check_test_coupling(mode="--working-tree"):
     files = get_modified_files(mode)

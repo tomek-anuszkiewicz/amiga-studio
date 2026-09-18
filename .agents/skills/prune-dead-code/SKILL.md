@@ -30,6 +30,10 @@ Inspect the output for:
 - `unused_variables` / `unused_mut`.
 
 ### Step 2: Unreferenced Constant & Symbol Audit
+Execute the on-demand code quality auditor to identify dead symbols and test-only zombies:
+```powershell
+python tools/harness/audit_code_quality.py --dead-code
+```
 Audit domain-specific constants and internal methods that may be unreferenced outside their defining module:
 - Search for constants in `crates/*/src/` that are no longer referenced by active execution paths (e.g., historical memory sizing constants or superseded mask definitions).
 - Check `pub use` re-exports in crate root files (`crates/*/src/<crate>.rs`) against the 3-Tier Re-Export Strategy in [`.agents/rules/workspace-structure-and-reexports.md`](../../rules/workspace-structure-and-reexports.md).

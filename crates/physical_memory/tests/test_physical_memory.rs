@@ -128,23 +128,11 @@ fn test_physical_memory_reset_and_kickstart_direct_access() {
     rom[3] = 0x78;
     bus.write_bytes_debug(0xF80000, &rom);
 
-    // Verify direct kickstart read handlers
-    assert_eq!(
-        physical_memory::map::read_kickstart_rom(&bus, 0),
-        BusResult::Ready(0x12)
-    );
-    assert_eq!(
-        physical_memory::map::read_kickstart_rom(&bus, 1),
-        BusResult::Ready(0x34)
-    );
-    assert_eq!(
-        physical_memory::map::read_kickstart_rom_word(&bus, 0),
-        BusResult::Ready(0x1234)
-    );
-    assert_eq!(
-        physical_memory::map::read_kickstart_rom_word(&bus, 2),
-        BusResult::Ready(0x5678)
-    );
+    // Verify kickstart read handlers via public bus interface
+    assert_eq!(bus.read_byte(0xF80000), BusResult::Ready(0x12));
+    assert_eq!(bus.read_byte(0xF80001), BusResult::Ready(0x34));
+    assert_eq!(bus.read_word(0xF80000), BusResult::Ready(0x1234));
+    assert_eq!(bus.read_word(0xF80002), BusResult::Ready(0x5678));
 
     // Modify memory and disengage overlay
     bus.map_chip_ram_to_low_memory();
