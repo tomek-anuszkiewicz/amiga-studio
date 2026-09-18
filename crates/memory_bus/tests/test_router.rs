@@ -153,3 +153,34 @@ fn test_rtc_odd_byte_routing() {
     // Non-RTC register address in bank $DC returns floating open bus
     assert_eq!(bus.read_byte(0xDC0040), BusResult::Ready(0xFF));
 }
+
+#[test]
+fn test_direct_custom_and_cia_register_writes() {
+    let mut mb = TestMotherboard::new();
+    {
+        let mut bus = mb.router();
+        // Denise: COLOR00 ($DFF180)
+        let _ = bus.write_word(0xDFF180, 0x0F00);
+        // Paula: INTENA ($DFF09A) - set bit 15 (SET) | bit 14 (INTEN) | bit 0 (TBE) = 0xC001
+        let _ = bus.write_word(0xDFF09A, 0xC001);
+        // Agnus: BLTCON0 ($DFF040)
+        let _ = bus.write_word(0xDFF040, 0x09F0);
+        // Shared: BPLCON0 ($DFF100)
+        let _ = bus.write_word(0xDFF100, 0x1200);
+        // CIA-A: CRA ($BFEE01)
+        let _ = bus.write_byte(0xBFEE01, 0x55);
+        // CIA-B: CRB ($BFDF00)
+        let _ = bus.write_byte(0xBFDF00, 0xAA);
+    }
+
+    assert_eq!(mb.denise.read_color(0), 0x0F00);
+    // Step Paula 1 CCK so staged INTENA write matures
+    let _ = mb.paula.step_cck();
+    assert_eq!(mb.paula.intena, 0x4001);
+    // Step Agnus 2 CCKs so staged BLTCON0 write matures
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
+    assert_eq!(mb.agnus.blitter.bltcon0, 0x09F0);
+    assert_eq!(mb.cia_a.cra, 0x55);
+    assert_eq!(mb.cia_b.crb, 0xAA);
+}

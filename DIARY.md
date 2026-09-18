@@ -6787,9 +6787,23 @@ Every future modification or implementation task must append an entry following 
 - **What Was Changed (The Concrete Reality)**:
   - Aligned software bus modeling with physical Amiga motherboard reality: Motorola 68000 CPU pins and Agnus DMA controllers only drive 24 address lines (`A23..A1`).
   - Replaced 32-bit address rewriting with a single-instruction byte extract (`((addr >> 16) & 0xFF)`), guaranteeing Rust bounds-safety for `bank_map: [BankHandler; 256]` while eliminating double-masking in the hottest emulation loop paths.
+---
+
+### [2026-09-18 23:44 CEST] — Simplified Direct Custom Chip Register Dispatch in `MemoryBus`
+- **Affected Subsystems**:
+  - `crates/memory_bus/`:
+    - `src/memory_bus.rs`:
+      - Simplified `write_custom_word`: removed all redundant `if let Some((r, v))` matching and intermediate immediate broadcast calls (`write_denise`, `write_paula`, `broadcast_agnus_signals`), dispatching directly to `self.denise.write_register(...)`, `self.paula.write_register(...)`, and `self.agnus.write_register(...)`.
+      - Ensured CIA-B Port B writes (`$BFD100`) invoke `self.write_cia(CiaId::B, reg, val)` in `write_cia_byte` to route motor, step, and drive select signals to the floppy controller.
+    - `tests/test_router.rs`:
+      - Added `test_direct_custom_and_cia_register_writes` validating direct register dispatch and staged mutation maturation across Denise (`COLOR00`), Paula (`INTENA`), Agnus (`BLTCON0`), CIA-A (`CRA`), and CIA-B (`CRB`).
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated redundant double-work and immediate broadcast hooks during CPU bus cycles. Cross-chip coordination (such as Agnus DMA channel enables propagating to Paula audio and Denise sprites) is cleanly decoupled and driven strictly when delayed silicon mutations mature in `step_subsystems_cck()`.
 - **Verification & Test Results**:
-  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
-  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (6.97s).
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for memory_bus, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (4.44s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (16.30s).
+
 
 
 

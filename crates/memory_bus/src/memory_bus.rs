@@ -142,18 +142,15 @@ impl<'a> MemoryBus<'a> {
         if (CIA_B_START..=CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
-                if let Some((r, v)) = self.cia_b.write_register(reg, val) {
-                    self.write_cia(CiaId::B, r, v);
-                }
+                self.cia_b.write_register(reg, val);
+                self.write_cia(CiaId::B, reg, val);
             }
             return;
         }
         // CIA-A ($BFE001-$BFEF01)
         if (CIA_A_START..=CIA_A_END).contains(&addr) && (addr & 1) == 1 {
             let reg = ((addr >> 8) & 0x0F) as u8;
-            if let Some((r, v)) = self.cia_a.write_register(reg, val) {
-                self.write_cia(CiaId::A, r, v);
-            }
+            self.cia_a.write_register(reg, val);
             // CIA-A bit 0 of Port A ($BFE001) controls the low-memory overlay (_OVL)
             if reg == 0 {
                 if (val & 0x01) == 0 {
@@ -169,20 +166,10 @@ impl<'a> MemoryBus<'a> {
     pub fn write_custom_word(&mut self, offset: u16, val: u16) {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            // Master DMA control: staged in Agnus, broadcasts to all chips on commit
-            custom_reg::DMACON => {
-                if let Some((r, v)) = self.agnus.write_register(custom_reg::DMACON, val) {
-                    self.broadcast_agnus_signals(r, v);
-                }
-            }
             // Shared / Broadcast: BPLCON0 ($100) -> Denise (1 CCK) & Agnus (4 CCK)
             custom_reg::BPLCON0 => {
-                if let Some((r, v)) = self.denise.write_register(custom_reg::BPLCON0, val) {
-                    self.write_denise(r, v);
-                }
-                if let Some((r, v)) = self.agnus.write_register(custom_reg::BPLCON0, val) {
-                    self.broadcast_agnus_signals(r, v);
-                }
+                self.denise.write_register(custom_reg::BPLCON0, val);
+                self.agnus.write_register(custom_reg::BPLCON0, val);
             }
             // Denise-specific registers (DIW, CLXCON, BPLCON1/2/3, BPLDAT, SPRITES, COLORS, JOYTEST)
             custom_reg::DIWSTRT
@@ -195,9 +182,7 @@ impl<'a> MemoryBus<'a> {
             | custom_reg::SPR0POS..=custom_reg::SPR7DATB
             | custom_reg::COLOR00..=custom_reg::COLOR31
             | custom_reg::JOYTEST => {
-                if let Some((r, v)) = self.denise.write_register(offset, val) {
-                    self.write_denise(r, v);
-                }
+                self.denise.write_register(offset, val);
             }
             // Paula-specific registers (INTENA, INTREQ, ADKCON, UART, DSKLEN/SYNC, AUDIO length/period/volume/data)
             custom_reg::INTENA
@@ -223,15 +208,11 @@ impl<'a> MemoryBus<'a> {
             | custom_reg::AUD3PER
             | custom_reg::AUD3VOL
             | custom_reg::AUD3DAT => {
-                if let Some((r, v)) = self.paula.write_register(offset, val) {
-                    self.write_paula(r, v);
-                }
+                self.paula.write_register(offset, val);
             }
-            // Agnus-specific registers (Blitter, Copper, DMA pointers, modulos, DDF, AUDxLC)
+            // Agnus-specific registers (DMACON, Blitter, Copper, DMA pointers, modulos, DDF, AUDxLC)
             _ => {
-                if let Some((r, v)) = self.agnus.write_register(offset, val) {
-                    self.broadcast_agnus_signals(r, v);
-                }
+                self.agnus.write_register(offset, val);
             }
         }
     }
