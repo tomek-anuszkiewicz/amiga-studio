@@ -222,42 +222,14 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
 - **Headless Frame Differencer:** Renders full frames in `FrameBuilder` and compares pixel buffers directly against the 2,815 reference `.raw` frame dumps ($716 \times 285 \times 3$ RGB).
 
 ### 3.3 Visual & Audio Multimodal Validation
-- **Full HD ($1920 \times 1080$) Standardization & Responsive Multi-Tier Studio Workbench (`LayoutTier`):**
-  - Standardized Full HD ($1920 \times 1080$) as the primary Developer Studio baseline, eliminating empty panel voids and black margins around the CRT display.
-  - Implemented responsive multi-tier layout architecture (`LayoutTier::FullHdWide`, `LayoutTier::StandardDesktop`, `LayoutTier::Compact`):
-    - **Full HD Wide ($\ge 1680\text{px}$):** 4-pane Studio Workbench featuring full-height Disassembly stream, prominent 4:3 Amiga CRT monitor ($512 \times 384$), dedicated Execution Trace Log, new Emulation Engine Status card, and expanded Memory Hex editor (up to 36 rows = 576 bytes).
-    - **Standard Desktop & Compact ($< 1680\text{px}$):** Adaptive 3-column layout with vertical scrollbars and wrapped transport controls, ensuring usability down to $1024 \times 600$.
-  - Introduced centralized semantic design tokens (`ColorTokens` in `crates/gui/src/theme/tokens.rs`), replacing harsh neon cyan with soft sky blue (`#38BDF8`), electric cyan diffs (`#67E8F9`), and high-contrast dark slate condition code badges.
-  - Stabilized register layout with fixed-width `{:>11}` decimals, eliminating column jitter across signed 32-bit values.
-  - Guarded by 36 automated tests in `crates/gui` and verified visually across $1920 \times 1080$, $1280 \times 720$, and $1024 \times 600$ via `gui-inspector`.
-- **Native `eframe::Storage` Persistence & UI Settings Retention:**
-  - Integrated native `eframe::Storage` persistence (`persistence` feature with RON serialization) across desktop and WebAssembly (`localStorage`).
-  - Automatically preserves window geometry (position and size), panel splitter widths (`SidePanel` Left Dock and Right Dock), and all `CollapsingHeader` states (open vs closed) via `egui::Memory`.
-  - Serializes high-level user preferences (`UserPreferences`: active theme, Developer Studio vs ScreenOnly mode, microcode inspector visibility, and temporal history ring buffer capacity) across sessions under `eframe::APP_KEY`.
-  - Enforced strict machine state transience: guest execution state (`DebuggerSession`, CPU registers, RAM contents, execution counter) is never saved to disk and always starts clean on app launch.
-  - Added `default-run = "amiga-studio"` to `crates/gui/Cargo.toml`, enabling single-command launch via `cargo run -p gui`.
-  - Guarded by 3 automated integration tests in `crates/gui/tests/test_persistence.rs`.
-- **Vision-Driven Headless GUI Inspector (`gui-inspector`) & Autonomous Self-Healing (`egui-vision-debugger`):**
-  - Built headless offscreen capture harness (`crates/gui/src/bin/gui_inspector.rs`) utilizing `egui_kittest` + `wgpu` strictly isolated under `cfg(not(target_arch = "wasm32"))`.
-  - Authored specialized agent skill (`.agents/skills/egui-vision-debugger/`) for automated scenario execution, visual layout audits via `view_file`, and self-healing iterations.
-  - Formalized the **Self-Documenting UI Standard ("Zero-External-Lookup Principle")** across `egui-best-practices.md` and Obsidian design specifications: every inspectable register, flag, and memory region provides contextual documentation on hover (`.on_hover_ui`/`.on_hover_text`) using zero-allocation static string slices (`&'static str`).
-  - Added dedicated hover inspection presets (`hover_register`, `hover_ccr`, `hover_memory`, `game_mode`, `workbench_theme`) with `tooltip_delay = 0.0` for immediate headless capture.
-  - Corrected immediate-mode focus lifecycles and keyboard Enter activation across register and disassembly inline editors.
-  - Guarded by 29 automated headless integration tests in `crates/gui/tests/test_interactions.rs`.
-- **Interactive Developer Ergonomics, Draggable Splitters & Continuous Memory Browsing:**
-  - **Full-Height Disassembly & True Infinite Scroll:** Eliminated all outer and nested `ScrollArea` wrappers around Disassembly; visible instruction row count is computed directly from available height (`(ui.available_height() / 19.0).floor() as usize`); mouse-wheel streams instructions forward/backward across 24-bit memory space with Ctrl (10x) and Shift (5x) acceleration and event consumption; includes integrated 24-bit vertical scrollbar ($000000..=$00FFFFFE) on the right edge; stepping (`F10`, `Shift+F10`, `F11`) or running (`F5`) automatically snaps view back to live $PC$.
-  - **Vertical Column Splitter (Full HD Mode):** Inline draggable vertical divider (`ResizeHorizontal` cursor with hover stroke) between Column 2 (Disassembly) and Column 3 (CRT Screen & Trace Log), dynamically adjusting `disasm_pane_width` (default 460px, clamped 280px..=total_w - 380px) and persisted in `UserPreferences`.
-  - **CRT Screen / Trace Log Horizontal Splitter (Full HD Mode):** Draggable horizontal divider between top Amiga CRT display/temporal bar and bottom Execution Trace Log, persisted in `crt_pane_height`.
-  - **Dynamic Right Dock Vertical Fill & Bottom Tools Docking:** Removed the horizontal splitter in Right Dock; adopted natural `Layout::bottom_up` layout where bottom tools (`Memory Search`, `Breakpoints & Watchpoints`) dock cleanly to the bottom taking their measured height, while `Memory Hex Editor` docks to the top and dynamically expands to occupy 100% of all available vertical space above them (35 rows in Full HD, 8 rows in 720p).
-  - **Permanent Fixed Margins Across All Columns:** Enforced explicit symmetric panel frames (`SidePanel::left` 8px/4px, `CentralPanel` 4px/4px, `SidePanel::right` 4px/8px), creating uniform 8px spacing across all dividers and window edges; eliminated dead space in Disassembly so stream pulls flush against the vertical splitter; eliminated 18px CollapsingHeader indent in bottom tools so search and breakpoint cards align flush with Memory Hex Editor.
-  - **Memory Hex Selection & Row-Wrapping Keyboard Navigation:** Single-click selects cell without opening input field; double-click or `Enter` enters inline editing; arrow keys navigate across cells with row wrapping (`ArrowLeft` col 0 to col 15 of previous row, `ArrowRight` col 15 to col 0 of next row) and auto-scrolling `base_addr` on boundary overflow; `Escape` deselects cleanly.
-  - **Panel Margins & Font Robustness:** Eliminated nested scroll area conflicts and border clipping on right dock; vector-painted resolution-independent circular breakpoint indicators (`circle_filled` / `circle_stroke`) replacing font missing-glyph boxes; styled text buttons (`Save`, `Cancel`) for in-place instruction editing.
-  - Guarded by 45 automated headless integration and unit tests across `crates/gui/tests/`.
-- **Screenshot Frame Dumps:**
-  - Export rendered video frames at specific VBlank intervals.
-  - Use visual comparison (pixel diffs or multimodal LLM inspection) to verify Copper color gradients, sprite multiplexing, and raster splits against WinUAE/vAmiga output.
-- **Audio Sample Dumps:**
-  - Capture raw PCM audio buffers from Paula channels at fixed cycle intervals and compare waveform phase and amplitude against hardware recordings.
+- **Headless Frame Differencer:**
+  - Render offscreen viewports in `FrameBuilder` ($716 \times 285 \times 3$ RGB) and compare pixel buffers directly against 2,815 golden reference `.raw` / `.tiff` captures.
+  - Compute exact match percentages, per-channel tolerance deviations ($\pm 1$ ADC noise), and visual mismatch coordinates.
+- **Multimodal Visual Inspection:**
+  - Leverage AI agent vision tools (`egui-vision-debugger`, offscreen renderers) to inspect rendered CRT frames for raster beam splits, Copper color gradients, display window clipping (`DIW`), and sprite multiplexing anomalies.
+- **Audio Waveform & Sample Dumps:**
+  - Capture raw PCM audio buffers from Paula's 4 DMA channels at fixed cycle intervals.
+  - Verify frequency, period clock division, and volume modulation envelopes against reference audio captures.
 
 ### 3.4 Headless Debugger Interface for Agents
 - Provide a machine-readable REST / IPC interface to the [Debugger](Obsidian/Amiga/Design/Debugger.md) engine:

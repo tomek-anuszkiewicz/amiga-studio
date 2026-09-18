@@ -6206,11 +6206,17 @@ Every future modification or implementation task must append an entry following 
   - Addressed the root cause of the 72.73% background color mismatch across the `bbusy*` Blitter busy timing suite. Previous DMA arbitration blocked CPU memory access during refresh cycles 0..3 unconditionally. In real OCS hardware, refresh operates on odd cycles 1, 3, 5, and 226, leaving even cycles open for CPU access.
   - Implemented strobe-on-read semantics for `COPJMP1` and `COPJMP2`, where reading the strobe address triggers the Copper program counter reload alongside writes.
   - These two structural hardware fixes dropped `bbusy0` pixel mismatches from 148,420 (72.73%) to 3,796 (1.86%), eliminating the whole-screen background failure across the entire `bbusy*` family (`bbusy1`: 2.7%, `bbusy2`: 1.9%, `bbusy3`: 1.7%, `bbusy4`: 1.3%).
+---
+
+### [2026-09-18 12:43 CEST] — Roadmap Maintenance: Pruning GUI Changelog Sprawl from Section 3.3
+- **Affected Subsystems**:
+  - `ROADMAP.md`: Section 3.3 was bloated with historical Developer Studio GUI implementation notes (Full HD layout tiers, `eframe::Storage` persistence, draggable splitters, font indicators) that had been accidentally pasted under an AI agent testing heading. Pruned all completed GUI changelog entries and restored Section 3.3 to concise, forward-looking specifications for visual and audio multimodal validation (headless frame differencing, multimodal CRT visual inspection, Paula audio sample dumps).
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated 38 lines of redundant, historical GUI release notes from `ROADMAP.md` per `.agents/rules/roadmap-maintenance.md` ("Zero Completed Items Retention").
+  - Streamlined Section 3.3 to focus exclusively on automated visual and audio verification methodology.
 - **Architectural Rationale & Trade-Offs**:
-  - *Strict Silicon Fidelity:* Resolves systemic timing divergence upstream in the bus arbitration pipeline without arbitrary cycle or coordinate nudges (`structural-root-cause.md`).
+  - Keeps the central roadmap strictly forward-looking, readable, and free of historical noise and context bloat.
 - **Verification & Test Results**:
-  - Verified all 37 passing blitter tests (`fill0..7`, `bsh1..4`, `channels1..4`, `combined1..2`, `line1..13`, `mask1..3`, `start1..2`, `zero1`) and verified 100% exact RGB match on `sblit0`, `sblit1`, `sblit3`, `sblit9`.
-  - Unit tests `cargo test -p dma` (3 passed) and `cargo test -p memory_bus` (6 passed) clean.
-  - `cargo test -p test_runner --test test_architecture_rules`: All 19 tests passed in 0.65s.
-  - `cargo fmt --all -- --check`: Passed cleanly.
+  - `python tools/harness/pre_flight.py`: 100% compliant across formatting, AGENTS.md budget (13,789 bytes <= 14,000 limit), test coupling, API coverage, and all 19 architecture tests in `crates/test_runner/tests/test_architecture_rules.rs`.
+
 
