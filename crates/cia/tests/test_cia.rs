@@ -26,3 +26,11 @@ fn test_cia_timer_and_icr() {
     assert_eq!(cia.read_register(0xD) & 0x81, 0x81);
     assert!(!cia.irq_pending());
 }
+
+#[test]
+fn test_cia_read_register_debug() {
+    let mut cia = Cia::new(CiaId::A);
+    cia.pra = 0x42;
+    assert_eq!(cia.read_register_debug(0), 0x42);
+    assert_eq!(cia.read_register_debug(0), cia.peek_register(0));
+}

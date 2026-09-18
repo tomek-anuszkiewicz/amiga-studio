@@ -621,9 +621,45 @@ impl Agnus {
         self.copper.restart_list1();
     }
 
+    /// Triggers COPJMP1 strobe: restarts Copper execution at COP1LC
+    #[inline(always)]
+    pub fn copjmp1(&mut self) {
+        self.strobe_copjmp1();
+    }
+
     /// Triggers COPJMP2 strobe: restarts Copper execution at COP2LC
     #[inline]
     pub fn strobe_copjmp2(&mut self) {
         self.copper.restart_list2();
+    }
+
+    /// Triggers COPJMP2 strobe: restarts Copper execution at COP2LC
+    #[inline(always)]
+    pub fn copjmp2(&mut self) {
+        self.strobe_copjmp2();
+    }
+
+    /// Reads DMA Control and Blitter status (DMACONR at $DFF002)
+    #[inline(always)]
+    pub fn dmaconr(&self) -> u16 {
+        self.read_dmaconr()
+    }
+
+    /// Reads DMA Control and Blitter status without side-effects for debugging
+    #[inline(always)]
+    pub fn dmaconr_debug(&self) -> u16 {
+        self.read_dmaconr()
+    }
+
+    /// Reads Vertical and Horizontal beam position register without side-effects for debugging
+    #[inline(always)]
+    pub fn vhposr_debug(&self) -> u16 {
+        self.vhposr()
+    }
+
+    /// Reads Vertical position register and chip ID without side-effects for debugging
+    #[inline(always)]
+    pub fn vposr_debug(&self) -> u16 {
+        self.vposr()
     }
 }

@@ -268,6 +268,12 @@ impl Cia {
         }
     }
 
+    /// Read-only inspection of register without side-effects for debugging
+    #[inline(always)]
+    pub fn read_register_debug(&self, reg: u8) -> u8 {
+        self.peek_register(reg)
+    }
+
     /// Stages a register write with E-Clock delay in the mutation pipeline.
     /// Returns `Some((reg, val))` if committed immediately, or `None` if staged in pipeline.
     pub fn stage_write(

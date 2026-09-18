@@ -98,3 +98,30 @@ fn test_paula_assemble_dskbytr() {
         0x80A5 | paula::DSKBYTR_DMAON | paula::DSKBYTR_DISKWRITE
     );
 }
+
+#[test]
+fn test_paula_register_getters() {
+    let mut paula = Paula::new();
+    paula.adkcon = 0x1234;
+    paula.pot0dat = 0x2345;
+    paula.pot1dat = 0x3456;
+    paula.potgor = 0x4567;
+    paula.serial_port.serdatr = 0x5678;
+    paula.intena = 0x6789;
+    paula.intreq = 0x789A;
+
+    assert_eq!(paula.adkconr(), 0x1234);
+    assert_eq!(paula.adkconr_debug(), 0x1234);
+    assert_eq!(paula.pot0dat(), 0x2345);
+    assert_eq!(paula.pot0dat_debug(), 0x2345);
+    assert_eq!(paula.pot1dat(), 0x3456);
+    assert_eq!(paula.pot1dat_debug(), 0x3456);
+    assert_eq!(paula.potgor(), 0x4567);
+    assert_eq!(paula.potgor_debug(), 0x4567);
+    assert_eq!(paula.serdatr(), 0x5678);
+    assert_eq!(paula.serdatr_debug(), 0x5678);
+    assert_eq!(paula.intenar(), 0x6789);
+    assert_eq!(paula.intenar_debug(), 0x6789);
+    assert_eq!(paula.intreqr(), 0x789A);
+    assert_eq!(paula.intreqr_debug(), 0x789A);
+}

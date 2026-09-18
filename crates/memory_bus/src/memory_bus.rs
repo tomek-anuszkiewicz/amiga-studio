@@ -48,26 +48,26 @@ impl<'a> MemoryBus<'a> {
     pub fn read_custom_word(&mut self, offset: u16) -> u16 {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            custom_reg::DMACONR => self.agnus.read_dmaconr(),
+            custom_reg::DMACONR => self.agnus.dmaconr(),
             custom_reg::VPOSR => self.agnus.vposr(),
             custom_reg::VHPOSR => self.agnus.vhposr(),
-            custom_reg::JOY0DAT => self.denise.joy0dat,
-            custom_reg::JOY1DAT => self.denise.joy1dat,
-            custom_reg::CLXDAT => self.denise.read_clxdat(),
-            custom_reg::ADKCONR => self.paula.adkcon,
-            custom_reg::POT0DAT => self.paula.pot0dat,
-            custom_reg::POT1DAT => self.paula.pot1dat,
-            custom_reg::POTGOR => self.paula.potgor,
-            custom_reg::SERDATR => self.paula.serial_port.serdatr,
-            custom_reg::DSKBYTR => self.floppy.read_dskbytr(),
-            custom_reg::INTENAR => self.paula.intena,
-            custom_reg::INTREQR => self.paula.intreq,
+            custom_reg::JOY0DAT => self.denise.joy0dat(),
+            custom_reg::JOY1DAT => self.denise.joy1dat(),
+            custom_reg::CLXDAT => self.denise.clxdat(),
+            custom_reg::ADKCONR => self.paula.adkconr(),
+            custom_reg::POT0DAT => self.paula.pot0dat(),
+            custom_reg::POT1DAT => self.paula.pot1dat(),
+            custom_reg::POTGOR => self.paula.potgor(),
+            custom_reg::SERDATR => self.paula.serdatr(),
+            custom_reg::DSKBYTR => self.floppy.dskbytr(),
+            custom_reg::INTENAR => self.paula.intenar(),
+            custom_reg::INTREQR => self.paula.intreqr(),
             custom_reg::COPJMP1 => {
-                self.agnus.strobe_copjmp1();
+                self.agnus.copjmp1();
                 0xFFFF
             }
             custom_reg::COPJMP2 => {
-                self.agnus.strobe_copjmp2();
+                self.agnus.copjmp2();
                 0xFFFF
             }
             _ => 0xFFFF,
@@ -78,20 +78,20 @@ impl<'a> MemoryBus<'a> {
     pub fn read_custom_word_debug(&self, offset: u16) -> u16 {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            custom_reg::DMACONR => self.agnus.read_dmaconr(),
-            custom_reg::VPOSR => self.agnus.vposr(),
-            custom_reg::VHPOSR => self.agnus.vhposr(),
-            custom_reg::JOY0DAT => self.denise.joy0dat,
-            custom_reg::JOY1DAT => self.denise.joy1dat,
-            custom_reg::CLXDAT => self.denise.clxdat,
-            custom_reg::ADKCONR => self.paula.adkcon,
-            custom_reg::POT0DAT => self.paula.pot0dat,
-            custom_reg::POT1DAT => self.paula.pot1dat,
-            custom_reg::POTGOR => self.paula.potgor,
-            custom_reg::SERDATR => self.paula.serial_port.serdatr,
-            custom_reg::DSKBYTR => self.floppy.peek_dskbytr(),
-            custom_reg::INTENAR => self.paula.intena,
-            custom_reg::INTREQR => self.paula.intreq,
+            custom_reg::DMACONR => self.agnus.dmaconr_debug(),
+            custom_reg::VPOSR => self.agnus.vposr_debug(),
+            custom_reg::VHPOSR => self.agnus.vhposr_debug(),
+            custom_reg::JOY0DAT => self.denise.joy0dat_debug(),
+            custom_reg::JOY1DAT => self.denise.joy1dat_debug(),
+            custom_reg::CLXDAT => self.denise.clxdat_debug(),
+            custom_reg::ADKCONR => self.paula.adkconr_debug(),
+            custom_reg::POT0DAT => self.paula.pot0dat_debug(),
+            custom_reg::POT1DAT => self.paula.pot1dat_debug(),
+            custom_reg::POTGOR => self.paula.potgor_debug(),
+            custom_reg::SERDATR => self.paula.serdatr_debug(),
+            custom_reg::DSKBYTR => self.floppy.dskbytr_debug(),
+            custom_reg::INTENAR => self.paula.intenar_debug(),
+            custom_reg::INTREQR => self.paula.intreqr_debug(),
             _ => 0xFFFF,
         }
     }
@@ -122,14 +122,14 @@ impl<'a> MemoryBus<'a> {
         if (CIA_B_START..=CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
-                return self.cia_b.peek_register(reg);
+                return self.cia_b.read_register_debug(reg);
             }
             return 0xFF;
         }
         if (CIA_A_START..=CIA_A_END).contains(&addr) {
             if (addr & 1) == 1 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
-                return self.cia_a.peek_register(reg);
+                return self.cia_a.read_register_debug(reg);
             }
             return 0xFF;
         }
@@ -283,10 +283,10 @@ impl<'a> MemoryBus<'a> {
                 self.agnus.set_bplcon0(val);
             }
             custom_reg::COPJMP1 => {
-                self.agnus.strobe_copjmp1();
+                self.agnus.copjmp1();
             }
             custom_reg::COPJMP2 => {
-                self.agnus.strobe_copjmp2();
+                self.agnus.copjmp2();
             }
             custom_reg::BLTSIZE => {
                 self.agnus.blitter.trigger_blit(val);

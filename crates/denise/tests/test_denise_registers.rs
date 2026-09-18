@@ -51,3 +51,20 @@ fn test_write_only_registers_read_open_bus() {
     assert_eq!(denise.read_register(0x100), 0xFFFF);
     assert_eq!(denise.read_register(0x180), 0xFFFF);
 }
+
+#[test]
+fn test_denise_joy_and_clx_getters() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.set_joy0dat(0x1234);
+    assert_eq!(denise.joy0dat(), 0x1234);
+    assert_eq!(denise.joy0dat_debug(), 0x1234);
+
+    denise.set_joy1dat(0x5678);
+    assert_eq!(denise.joy1dat(), 0x5678);
+    assert_eq!(denise.joy1dat_debug(), 0x5678);
+
+    denise.clxdat = 0x00FF;
+    assert_eq!(denise.clxdat_debug(), 0x00FF);
+    assert_eq!(denise.clxdat(), 0x00FF);
+    assert_eq!(denise.clxdat_debug(), 0x0000);
+}

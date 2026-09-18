@@ -434,6 +434,18 @@ impl FloppyController {
         (self.dskbytr & DSKBYTR_DATA_MASK) | dmaon | diskwrite
     }
 
+    /// Reads live DSKBYTR with clear-on-read side effect
+    #[inline(always)]
+    pub fn dskbytr(&mut self) -> u16 {
+        self.read_dskbytr()
+    }
+
+    /// Reads composite DSKBYTR without side-effects for debugging
+    #[inline(always)]
+    pub fn dskbytr_debug(&self) -> u16 {
+        self.peek_dskbytr()
+    }
+
     /// Advances floppy controller state by 1 Color Clock
     #[inline]
     pub fn step_cck(&mut self) {

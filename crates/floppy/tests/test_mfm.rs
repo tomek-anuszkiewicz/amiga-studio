@@ -201,4 +201,6 @@ fn test_dskbytr_composite_dmaon_and_diskwrite() {
     // Set write mode in DSKLEN (bit 14)
     controller.set_dsklen(0x4000);
     assert_eq!(controller.peek_dskbytr() & 0x6000, 0x6000); // DMAON | DISKWRITE
+    assert_eq!(controller.dskbytr_debug(), controller.peek_dskbytr());
+    assert_eq!(controller.dskbytr(), controller.read_dskbytr());
 }

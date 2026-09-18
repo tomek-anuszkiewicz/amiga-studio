@@ -6275,6 +6275,33 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Architecture Rules).
   - `cargo test -p memory_bus -p machine_loop`: All 71 unit and integration tests passed (100%).
 
+---
+
+### [2026-09-18 15:25 CEST] — Register Encapsulation, Protected Fields & Universal `_debug` Accessor Protocol
+- **Affected Subsystems**:
+  - `crates/denise/src/denise.rs`: Encapsulated joystick and collision data registers with canonical accessors `joy0dat()`, `joy0dat_debug()`, `set_joy0dat()`, `joy1dat()`, `joy1dat_debug()`, `set_joy1dat()`, `clxdat()`, and `clxdat_debug()`. Extracted display mode decoding logic into submodule `crates/denise/src/decode.rs` to keep `denise.rs` under the strict 800-line ceiling.
+  - `crates/denise/src/decode.rs`: Pure pixel decoding routines (`decode_ham6`, `decode_ehb`, `decode_dual_playfield`).
+  - `crates/denise/tests/test_decode.rs`: Added dedicated 1:1 unit test suite covering HAM6, EHB, and Dual Playfield pixel decoders.
+  - `crates/denise/tests/test_denise_registers.rs`: Added unit test `test_denise_joy_and_clx_getters`.
+  - `crates/agnus/src/agnus.rs`: Added canonical register accessors `copjmp1(&mut self)`, `copjmp2(&mut self)`, `dmaconr(&self)`, `dmaconr_debug(&self)`, `vhposr_debug(&self)`, and `vposr_debug(&self)`.
+  - `crates/agnus/tests/test_agnus_registers.rs`: Updated tests to assert behavior of `copjmp1()`, `copjmp2()`, and `dmaconr()`.
+  - `crates/paula/src/paula.rs`: Added canonical getters and debug inspection accessors for Paula read registers: `adkconr`, `adkconr_debug`, `pot0dat`, `pot0dat_debug`, `pot1dat`, `pot1dat_debug`, `potgor`, `potgor_debug`, `serdatr`, `serdatr_debug`, `intenar`, `intenar_debug`, `intreqr`, and `intreqr_debug`.
+  - `crates/paula/tests/test_paula_registers.rs`: Added unit test `test_paula_register_getters`.
+  - `crates/floppy/src/floppy.rs`: Added `dskbytr(&mut self)` and `dskbytr_debug(&self)` eliminating naked field reads.
+  - `crates/floppy/tests/test_mfm.rs`: Updated unit test assertions to exercise `dskbytr()` and `dskbytr_debug()`.
+  - `crates/cia/src/cia.rs`: Added `read_register_debug(&self, reg: u8) -> u8` for safe, side-effect-free register inspection.
+  - `crates/cia/tests/test_cia.rs`: Added unit test `test_cia_read_register_debug`.
+  - `crates/memory_bus/src/memory_bus.rs`: Refactored `read_custom_word` and `read_custom_word_debug` to route exclusively through dedicated custom chip methods named directly after hardware registers (e.g. `self.denise.joy0dat()`, `self.agnus.dmaconr()`, `self.paula.adkconr()`). All non-intrusive debug inspection paths are strictly constrained to `*_debug` variants (e.g. `joy0dat_debug()`, `dmaconr_debug()`, `dskbytr_debug()`, `read_register_debug()`). Switched `propagate_agnus_write` COPJMP triggers to `self.agnus.copjmp1()` and `copjmp2()`.
+  - `crates/memory_bus/tests/test_register_wiring.rs`: Added comprehensive unit test `test_debug_read_and_register_method_conventions`.
+- **What Was Changed (The Concrete Reality)**:
+  - Enforced the architectural invariant that memory bus logic does not touch raw struct fields directly without methods. Live bus reads call methods matching register names (`joy0dat()`), while writes/mutations go through `set_*` or direct action routines (`copjmp1()`).
+  - Standardized non-intrusive debugger inspection: every debug read across all chips (Denise, Agnus, Paula, Floppy, CIA) is strictly guaranteed to have zero silicon side-effects and is explicitly named `*_debug()`.
+  - Addressed Rust field access mechanics: explained why idiomatic Rust encapsulation uses private struct fields combined with `#[inline(always)]` getters/setters rather than naked public fields.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,789 bytes, Test Coupling across all 6 modified crates, 100% API Coverage, all 19 Architecture Rules).
+  - `cargo test -p memory_bus -p agnus -p denise -p paula -p floppy -p cia`: 100% pass across all 49 unit and integration test binaries.
+
+
 
 
 

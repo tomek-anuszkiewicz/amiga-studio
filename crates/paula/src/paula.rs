@@ -373,4 +373,88 @@ impl Paula {
 
         0
     }
+
+    /// Reads Audio/Disk Control register (ADKCONR at $DFF010)
+    #[inline(always)]
+    pub fn adkconr(&self) -> u16 {
+        self.adkcon
+    }
+
+    /// Reads Audio/Disk Control register without side-effects for debugging
+    #[inline(always)]
+    pub fn adkconr_debug(&self) -> u16 {
+        self.adkcon
+    }
+
+    /// Reads Potentiometer 0 data register (POT0DAT at $DFF012)
+    #[inline(always)]
+    pub fn pot0dat(&self) -> u16 {
+        self.pot0dat
+    }
+
+    /// Reads Potentiometer 0 data register without side-effects for debugging
+    #[inline(always)]
+    pub fn pot0dat_debug(&self) -> u16 {
+        self.pot0dat
+    }
+
+    /// Reads Potentiometer 1 data register (POT1DAT at $DFF014)
+    #[inline(always)]
+    pub fn pot1dat(&self) -> u16 {
+        self.pot1dat
+    }
+
+    /// Reads Potentiometer 1 data register without side-effects for debugging
+    #[inline(always)]
+    pub fn pot1dat_debug(&self) -> u16 {
+        self.pot1dat
+    }
+
+    /// Reads Potentiometer Port control/data register (POTGOR at $DFF016)
+    #[inline(always)]
+    pub fn potgor(&self) -> u16 {
+        self.potgor
+    }
+
+    /// Reads Potentiometer Port control/data register without side-effects for debugging
+    #[inline(always)]
+    pub fn potgor_debug(&self) -> u16 {
+        self.potgor
+    }
+
+    /// Reads Serial port data and status register (SERDATR at $DFF018)
+    #[inline(always)]
+    pub fn serdatr(&self) -> u16 {
+        self.serial_port.serdatr
+    }
+
+    /// Reads Serial port data and status register without side-effects for debugging
+    #[inline(always)]
+    pub fn serdatr_debug(&self) -> u16 {
+        self.serial_port.serdatr
+    }
+
+    /// Reads Interrupt enable register (INTENAR at $DFF01C)
+    #[inline(always)]
+    pub fn intenar(&self) -> u16 {
+        self.intena
+    }
+
+    /// Reads Interrupt enable register without side-effects for debugging
+    #[inline(always)]
+    pub fn intenar_debug(&self) -> u16 {
+        self.intena
+    }
+
+    /// Reads Interrupt request register (INTREQR at $DFF01E)
+    #[inline(always)]
+    pub fn intreqr(&self) -> u16 {
+        self.intreq
+    }
+
+    /// Reads Interrupt request register without side-effects for debugging
+    #[inline(always)]
+    pub fn intreqr_debug(&self) -> u16 {
+        self.intreq
+    }
 }

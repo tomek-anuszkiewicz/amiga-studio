@@ -294,3 +294,33 @@ fn test_custom_byte_write_duplicates_byte_lanes() {
     // Denise color 0 should now be 0x5555 & 0x0FFF = 0x0555
     assert_eq!(mb.denise.read_color(0), 0x0555);
 }
+
+#[test]
+fn test_debug_read_and_register_method_conventions() {
+    let mut mb = TestMotherboard::new();
+
+    // 1. JOY0DAT / JOY1DAT via Denise setters & read_word_debug
+    mb.denise.set_joy0dat(0x1234);
+    mb.denise.set_joy1dat(0x5678);
+    assert_eq!(mb.router().read_word_debug(0xDFF00A), 0x1234);
+    assert_eq!(mb.router().read_word_debug(0xDFF00C), 0x5678);
+
+    // 2. CLXDAT debug read does NOT clear collision bits
+    mb.denise.clxdat = 0x00A5;
+    assert_eq!(mb.router().read_word_debug(0xDFF00E), 0x00A5);
+    assert_eq!(mb.denise.clxdat_debug(), 0x00A5);
+    // Live read clears it
+    assert_eq!(mb.router().read_word(0xDFF00E), BusResult::Ready(0x00A5));
+    assert_eq!(mb.denise.clxdat_debug(), 0x0000);
+
+    // 3. COPJMP1 strobe directly via copjmp1()
+    mb.agnus.copper.cop1lc = 0x0003_4000;
+    mb.agnus.copjmp1();
+    assert_eq!(mb.agnus.copper.cop_pc, 0x0003_4000);
+
+    // 4. CIA debug byte read does not clear or alter state
+    mb.cia_a.pra = 0xAA;
+    let debug_cia = mb.router().read_cia_byte_debug(0xBFE001);
+    assert_eq!(debug_cia, mb.cia_a.read_register_debug(0));
+    assert_eq!(debug_cia, 0xAA);
+}
