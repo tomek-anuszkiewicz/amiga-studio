@@ -166,7 +166,12 @@ impl<'a> MemoryBus<'a> {
     pub fn write_custom_word(&mut self, offset: u16, val: u16) {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            // Shared / Broadcast: BPLCON0 ($100) -> Denise (1 CCK) & Agnus (4 CCK)
+            // Shared: DMACON ($096) -> Agnus and Paula (both decode master DMA lines on the bus)
+            custom_reg::DMACON => {
+                self.agnus.write_register(custom_reg::DMACON, val);
+                self.paula.write_register(custom_reg::DMACON, val);
+            }
+            // Shared: BPLCON0 ($100) -> Denise (1 CCK) & Agnus (4 CCK)
             custom_reg::BPLCON0 => {
                 self.denise.write_register(custom_reg::BPLCON0, val);
                 self.agnus.write_register(custom_reg::BPLCON0, val);
@@ -247,53 +252,17 @@ impl<'a> MemoryBus<'a> {
         self.paula.assemble_dskbytr(self.floppy.dskbytr_debug())
     }
 
-    /// Broadcasts committed Agnus signals across the motherboard to peer custom chips
-    pub fn broadcast_agnus_signals(&mut self, reg: u16, val: u16) {
-        match reg & CUSTOM_REG_OFFSET_MASK {
-            custom_reg::DMACON => {
-                // Broadcast to Paula's dma_enables
-                if (val & dmacon::SET_CLR) != 0 {
-                    self.paula.dma_enables |= val & (dmacon::AUD_ALL | dmacon::DSKEN);
-                } else {
-                    self.paula.dma_enables &= !(val & (dmacon::AUD_ALL | dmacon::DSKEN));
-                }
-                let dmaen = (self.agnus.dmacon & dmacon::DMAEN) != 0;
-                self.paula.dma_master = dmaen;
-                self.paula
-                    .audio
-                    .set_dma_enables((self.agnus.dmacon & dmacon::AUD_ALL) as u8, dmaen);
-                self.denise
-                    .sprites
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::SPREN) != 0);
-                self.denise
-                    .frame_builder
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::BPLEN) != 0);
-            }
-            _ => {}
-        }
-    }
-
-    /// Propagates committed Paula register mutations across the motherboard
-    pub fn write_paula(&mut self, _reg: u16, _val: u16) {
-        // Paula register state is owned directly by Paula silicon
-    }
-
-    /// Propagates committed Denise register mutations across the motherboard
-    pub fn write_denise(&mut self, reg: u16, val: u16) {
-        match reg & CUSTOM_REG_OFFSET_MASK {
-            custom_reg::BPLCON0 => self.denise.set_bplcon0(val),
-            custom_reg::BPLCON1 => self.denise.set_bplcon1(val),
-            custom_reg::BPLCON2 => self.denise.set_bplcon2(val),
-            custom_reg::COLOR00..=custom_reg::COLOR31 => {
-                let idx = ((reg - custom_reg::COLOR00) / 2) as usize;
-                self.denise.set_color(idx, val);
-            }
-            custom_reg::DIWSTRT | custom_reg::DIWSTOP => {
-                self.denise
-                    .set_diw(self.denise.diwstrt, self.denise.diwstop);
-            }
-            _ => {}
-        }
+    /// Synchronizes Denise display pipeline DMA enables from Agnus master DMACON state
+    #[inline]
+    pub fn sync_dmacon(&mut self) {
+        let dmacon = self.agnus.dmacon;
+        let dmaen = (dmacon & dmacon::DMAEN) != 0;
+        self.denise
+            .sprites
+            .set_dma_enabled(dmaen && (dmacon & dmacon::SPREN) != 0);
+        self.denise
+            .frame_builder
+            .set_dma_enabled(dmaen && (dmacon & dmacon::BPLEN) != 0);
     }
 
     /// Propagates committed CIA register mutations across the motherboard

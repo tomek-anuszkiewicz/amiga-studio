@@ -272,3 +272,32 @@ fn test_sprite_multiplexing() {
         })
     );
 }
+
+#[test]
+fn test_sprite_dma_enable_transition_and_idempotence() {
+    let mut sprites = Sprites::new();
+
+    // Arm sprite 0 manually
+    sprites.set_data(0, 0x1234, 0x5678);
+    assert!(sprites.channels[0].is_armed);
+
+    // Redundant disable while already disabled must NOT disarm manually loaded sprite
+    sprites.set_dma_enabled(false);
+    assert!(
+        sprites.channels[0].is_armed,
+        "Redundant disable must not disarm"
+    );
+
+    // Enable DMA
+    sprites.set_dma_enabled(true);
+    assert!(sprites.dma_enabled);
+    assert!(sprites.channels[0].is_armed);
+
+    // Falling edge transition from true to false MUST disarm channels
+    sprites.set_dma_enabled(false);
+    assert!(!sprites.dma_enabled);
+    assert!(
+        !sprites.channels[0].is_armed,
+        "Falling edge must disarm channels"
+    );
+}

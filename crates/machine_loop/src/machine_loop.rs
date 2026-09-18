@@ -232,22 +232,10 @@ impl A500Machine {
         self.memory_bus().write_custom_byte(addr, val);
     }
 
-    /// Broadcasts committed Agnus signals across the motherboard to peer custom chips
+    /// Synchronizes Denise display pipeline DMA enables from Agnus master DMACON state
     #[inline(always)]
-    pub fn broadcast_agnus_signals(&mut self, reg: u16, val: u16) {
-        self.memory_bus().broadcast_agnus_signals(reg, val);
-    }
-
-    /// Propagates committed Paula register mutations across the motherboard
-    #[inline(always)]
-    pub fn write_paula(&mut self, reg: u16, val: u16) {
-        self.memory_bus().write_paula(reg, val);
-    }
-
-    /// Propagates committed Denise register mutations across the motherboard
-    #[inline(always)]
-    pub fn write_denise(&mut self, reg: u16, val: u16) {
-        self.memory_bus().write_denise(reg, val);
+    pub fn sync_dmacon(&mut self) {
+        self.memory_bus().sync_dmacon();
     }
 
     /// Propagates committed CIA register mutations across the motherboard
@@ -286,10 +274,7 @@ impl A500Machine {
     /// dispatching matured actions, advancing RTC, and arbitrating interrupts.
     pub fn step_subsystems_cck(&mut self) {
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
-        let agnus_due = self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
-        for item in agnus_due.iter().flatten() {
-            self.broadcast_agnus_signals(item.0, item.1);
-        }
+        self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
         if let Some((reg, val)) = self.agnus.poll_copper_write() {
             self.write_custom_word(reg, val);
         }
@@ -298,32 +283,29 @@ impl A500Machine {
         }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
 
-        // Cross-Chip Signal: Blitter completion (_BLITINT) -> Paula INTREQ bit 6 (mask 0x0040)
+        // Synchronize Denise display pipeline DMA enables from Agnus master DMACON state
+        self.sync_dmacon();
+
+        // Physical Trace: Blitter completion (_BLITINT pin) -> Paula INTREQ bit 6 (mask 0x0040)
         if self.agnus.poll_blitter_irq() {
             self.paula.set_interrupt_request(0x0040);
         }
 
-        // Cross-Chip Signal: Vertical blanking interval -> Paula INTREQ bit 5 (mask 0x0020) & CIA-A TOD tick
+        // Physical Trace: Vertical blanking interval (_VSYNC pin) -> Paula INTREQ bit 5 (mask 0x0020) & CIA-A TOD tick
         if self.agnus.poll_vblank_irq() {
             self.paula.set_interrupt_request(0x0020);
             self.cia_a.tick_tod();
         }
 
-        // 2. Step Denise (steps sprites, frame_builder, video serializer, and mutation pipeline)
+        // 2. Step Denise (steps sprites, frame_builder, and video serializer)
         let beam = self.agnus.beam();
         if beam.hpos == 0 {
-            self.cia_b.tick_tod(); // CIA-B TOD tracks horizontal scanline sync
+            self.cia_b.tick_tod(); // Physical Trace: _HSYNC pin -> CIA-B TOD pin
         }
-        let denise_due = self.denise.step_cck(beam);
-        for item in denise_due.iter().flatten() {
-            self.write_denise(item.0, item.1);
-        }
+        self.denise.step_cck(beam);
 
         // 3. Step Paula (steps audio, serial_port, and mutation pipeline)
-        let paula_due = self.paula.step_cck();
-        for item in paula_due.iter().flatten() {
-            self.write_paula(item.0, item.1);
-        }
+        self.paula.step_cck();
         self.floppy.step_cck();
         if self.paula.is_dsk_dma_active() {
             self.floppy.step_cck_ram(

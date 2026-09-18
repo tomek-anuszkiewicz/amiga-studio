@@ -6835,6 +6835,36 @@ Every future modification or implementation task must append an entry following 
     4. *Principled Register & Chipset Verification:* Prioritize and verify registers and custom chip logic systematically following substrate-first and repro-first rules.
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, API Coverage 100%, 19 Architecture Rules).
+---
+
+### [2026-09-18 23:59 CEST] — Eliminated Artificial Register Broadcasts in Favor of Physical Bus Decoding
+- **Affected Subsystems**:
+  - `crates/memory_bus/`:
+    - `src/memory_bus.rs`:
+      - Removed artificial `broadcast_agnus_signals(reg, val)`, `write_paula(reg, val)`, and `write_denise(reg, val)` shims.
+      - Added direct multi-chip decoding for `DMACON` ($096) in `write_custom_word`, directly staging into both Agnus and Paula as in physical silicon.
+      - Replaced cross-chip register forwarding with lean `sync_dmacon()` updating Denise sprite and frame builder DMA enables from Agnus master `DMACON`.
+    - `tests/test_router.rs` & `tests/test_register_wiring.rs`:
+      - Replaced synthetic `broadcast_agnus_signals` test loops with direct CCK stepping and `sync_dmacon()`.
+  - `crates/machine_loop/`:
+    - `src/machine_loop.rs`:
+      - Removed forwarding shims `broadcast_agnus_signals`, `write_paula`, and `write_denise`.
+      - In `step_subsystems_cck()`: eliminated all fake `due` iterations (`agnus_due`, `denise_due`, `paula_due`). Subsystems step naturally and discrete physical PCB traces (`_BLITINT`, `_VSYNC`, `_HSYNC`) drive target interrupt and TOD pins directly.
+    - `tests/test_register_propagation.rs`:
+      - Added `test_dmacon_sync_to_denise_sprites_and_frame_builder` validating DMACON synchronization to Denise bitplane and sprite DMA.
+  - `crates/sprites/`:
+    - `src/sprites.rs`:
+      - Guarded `set_dma_enabled` against redundant disarming when DMA state is unchanged (`if self.dma_enabled == enabled { return; }`), preserving manually loaded CPU sprite register states when DMA remains disabled.
+    - `tests/test_sprites.rs`:
+      - Added `test_sprite_dma_enable_transition_and_idempotence` validating falling-edge channel disarming and idempotent disabled state.
+- **What Was Changed (The Concrete Reality)**:
+  - In physical Amiga silicon, custom chips never broadcast register writes to one another over a synthetic message bus. The 16-bit custom data bus is decoded directly by motherboard address lines, while cross-chip interactions are strictly mediated by discrete physical signal lines (`_BLITINT`, `_VSYNC`, `_HSYNC`, and DMA enables).
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Change-Coupling verified for `machine_loop`, `memory_bus`, `sprites`, API Coverage 100%, 19 Architecture Rules).
+  - `cargo test -p memory_bus -p machine_loop -p sprites`: 100% tests passed.
+  - `python tools/harness/run_tests.py --unit`: 23 crates + 7 test_runner suites passed (5.41s).
+  - `python tools/harness/run_tests.py --integration`: memory_bus, machine_loop, debugger, gui passed (16.64s).
+
 
 
 

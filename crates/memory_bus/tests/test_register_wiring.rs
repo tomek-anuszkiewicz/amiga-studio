@@ -66,14 +66,11 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
         mb.router().write_word(0xDFF096, 0x8210),
         BusResult::Ready(())
     );
-    let due = mb.agnus.step_cck();
-    for item in due.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
-    let due2 = mb.agnus.step_cck();
-    for item in due2.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
+    // Step 2 CCK cycles for DMACON to mature in Agnus and Paula
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
+    let _ = mb.paula.step_cck();
+    let _ = mb.paula.step_cck();
 
     // 3. Set Paula DSKLEN to write mode: bit 14 (WRITE)
     mb.paula.commit_register_write(0x024, 0x4000);
@@ -154,14 +151,8 @@ fn test_dskpt_routed_to_agnus() {
     );
 
     // Step 2 CCK cycles for writes to mature in Agnus
-    let due1 = mb.agnus.step_cck();
-    for item in due1.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
-    let due2 = mb.agnus.step_cck();
-    for item in due2.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
 
     // Verify Agnus holds pointer $00042000
     assert_eq!(mb.agnus.dskpt, 0x0004_2000);
@@ -182,14 +173,8 @@ fn test_aud0lch_aud0lcl_routed_to_agnus() {
     );
 
     // Step 2 CCK cycles for writes to mature in Agnus
-    let due1 = mb.agnus.step_cck();
-    for item in due1.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
-    let due2 = mb.agnus.step_cck();
-    for item in due2.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
 
     // Verify Agnus audlc[0] and audpt[0] hold $00028000
     assert_eq!(mb.agnus.audlc[0], 0x0002_8000);
@@ -208,15 +193,10 @@ fn test_dmacon_routing_to_denise_sprites() {
         BusResult::Ready(())
     );
 
-    // Step 2 CCKs for Agnus to mature and dispatch DMACON action
-    let due1 = mb.agnus.step_cck();
-    for item in due1.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
-    let due2 = mb.agnus.step_cck();
-    for item in due2.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
+    // Step 2 CCKs for Agnus to mature and sync DMACON
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
+    mb.router().sync_dmacon();
 
     // Verify Sprite DMA was enabled in Denise
     assert!(mb.denise.sprites.dma_enabled);
@@ -226,14 +206,9 @@ fn test_dmacon_routing_to_denise_sprites() {
         mb.router().write_word(0xDFF096, 0x0020),
         BusResult::Ready(())
     );
-    let due3 = mb.agnus.step_cck();
-    for item in due3.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
-    let due4 = mb.agnus.step_cck();
-    for item in due4.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
+    mb.router().sync_dmacon();
 
     // Verify Sprite DMA was disabled in Denise
     assert!(!mb.denise.sprites.dma_enabled);

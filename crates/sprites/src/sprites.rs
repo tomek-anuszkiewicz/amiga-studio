@@ -146,6 +146,9 @@ impl Sprites {
     /// Sets Sprite DMA enabled state from DMACON
     #[inline]
     pub fn set_dma_enabled(&mut self, enabled: bool) {
+        if self.dma_enabled == enabled {
+            return;
+        }
         self.dma_enabled = enabled;
         if !enabled {
             for ch in &mut self.channels {

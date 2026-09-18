@@ -90,15 +90,9 @@ fn test_custom_register_broadcast_and_routing() {
         "Agnus must stage DMACON write in mutation pipeline"
     );
 
-    // Step 2 CCKs: Agnus mutation matures and broadcasts to Paula and subsystems
-    let due1 = mb.agnus.step_cck();
-    for item in due1.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
-    let due2 = mb.agnus.step_cck();
-    for item in due2.iter().flatten() {
-        mb.router().broadcast_agnus_signals(item.0, item.1);
-    }
+    // Step 2 CCKs: Agnus mutation matures and enables Copper DMA
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
     assert!(mb.agnus.copper.dma_enabled, "Copper DMA must be enabled");
 }
 

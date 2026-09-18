@@ -130,3 +130,30 @@ fn test_write_custom_word_and_byte_methods() {
     machine.write_custom_byte(0xDFF182, 0x33);
     assert_eq!(machine.denise.read_color(1), 0x0333);
 }
+
+#[test]
+fn test_dmacon_sync_to_denise_sprites_and_frame_builder() {
+    let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+
+    // Initially both sprite and frame builder DMA are disabled
+    assert!(!machine.denise.sprites.dma_enabled);
+    assert!(!machine.denise.frame_builder.dma_enabled);
+
+    // Write DMACON = SET DMAEN (bit 9) + SPREN (bit 5) + BPLEN (bit 8) -> 0x8320
+    machine.write_custom_word(0x096, 0x8320);
+
+    // Step 2 CCKs for DMACON write to mature in Agnus and sync to Denise
+    machine.step_cck();
+    machine.step_cck();
+
+    assert!(machine.denise.sprites.dma_enabled);
+    assert!(machine.denise.frame_builder.dma_enabled);
+
+    // Clear SPREN (bit 5)
+    machine.write_custom_word(0x096, 0x0020);
+    machine.step_cck();
+    machine.step_cck();
+
+    assert!(!machine.denise.sprites.dma_enabled);
+    assert!(machine.denise.frame_builder.dma_enabled);
+}
