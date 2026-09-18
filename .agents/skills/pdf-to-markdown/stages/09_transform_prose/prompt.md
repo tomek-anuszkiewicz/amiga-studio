@@ -38,5 +38,8 @@ You are given:
    - Standard narrative paragraphs, historical context, IEEE standard explanations, and background terminology notes must strictly remain regular Markdown prose paragraphs.
    - Do not invent callout syntax (`> [!...]`) for explanatory text. Callouts are assembled deterministically by the pipeline based on visual layout.
 
+8. **Processor Model Numbers (OCR Typo Correction)**:
+   - Motorola processor model numbers end in numeric digits (zeros), NEVER the capital letter 'O' (e.g. `MC68000` NOT `MC68OOO`, `MC68HC000` NOT `MC68HCOOO`, `MC68EC000` NOT `MC68ECOOO`, `MC68008` NOT `MC68OO8`, `MC68010` NOT `MC68O1O`, `68000` NOT `68OOO`). They are microprocessors, so they end in numeric zeros.
+
 ## Output Format:
 Return strictly the formatted Markdown text for the node.

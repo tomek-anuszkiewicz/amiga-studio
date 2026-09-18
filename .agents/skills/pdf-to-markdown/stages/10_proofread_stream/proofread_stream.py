@@ -41,6 +41,8 @@ def proofread_title_llm(raw_title: str, gemini: GeminiClient) -> str:
         "You are an expert technical editor. Correct any OCR typos, accidental split words, or weird spacing "
         "in this chapter/section title. Do not change the wording or meaning; only fix OCR errors and broken words "
         "(e.g. 'HARDW ARE' -> 'HARDWARE', 'COPROC ESSOR' -> 'COPROCESSOR', 'PLAYF IELD' -> 'PLAYFIELD'). "
+        "Motorola processor model numbers end in numeric zeros, NEVER the letter 'O' "
+        "(e.g. 'MC68000' not 'MC68OOO', 'MC68HC000' not 'MC68HCOOO', 'MC68EC000' not 'MC68ECOOO'). "
         "Return ONLY the clean corrected title text without quotes, markdown formatting, or explanation:\n\n"
         f"{raw_title}"
     )

@@ -1720,3 +1720,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - pre_flight.py passed cleanly
   - py_compile passed
+---
+
+### [2026-09-18 02:03 CEST] — Add Processor Model Number Typo Rules to Stage 10 and Stage 09 Prompts
+- **Affected Subsystems**:
+  - `pdf-to-markdown`
+  - `stage-09`
+  - `stage-10`
+- **What Was Changed (The Concrete Reality)**:
+  - Updated stages/10_proofread_stream/prompt.md
+  - stages/10_proofread_stream/proofread_stream.py
+  - and stages/09_transform_prose/prompt.md to explicitly enforce M68000 processor model numbers ending in numeric zeros rather than uppercase 'O's
+- **Architectural Rationale & Trade-Offs**:
+  - OCR scanners frequently confuse 0 and O in processor part numbers (e.g. MC68HCOOO -> MC68HC000)
+  - explicit prompt invariants ensure clean technical terminology while omitting short registers to prevent ambiguous substitutions
+- **Verification & Test Results**:
+  - pre_flight.py passed
+  - py_compile passed
