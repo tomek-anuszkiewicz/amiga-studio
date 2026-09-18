@@ -1,20 +1,9 @@
-//! Memory Bus Abstraction and Transaction Verification Types
+//! Memory Bus Abstraction
 //!
 //! Defines the core `AddressBus` trait implemented by both authentic hardware
-//! emulation buses (`MemoryBus`) and synthetic test-runner harnesses (`TestMemoryBus`),
-//! along with recorded transaction types for cycle-exact verification.
+//! emulation buses (`MemoryBus`) and synthetic test-runner harnesses (`TestMemoryBus`).
 
-use super::{arbitration::BusAccessSize, arbitration::BusResult};
-use serde::{Deserialize, Serialize};
-
-/// Simplified recorded CPU bus cycle transaction for test validation
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RecordedTransaction {
-    pub is_read: bool,
-    pub addr: u32,
-    pub size: BusAccessSize,
-    pub data: u16,
-}
+use super::arbitration::BusResult;
 
 /// Abstract 24-bit address bus interface
 ///

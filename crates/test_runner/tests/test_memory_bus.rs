@@ -1,5 +1,5 @@
 use physical_memory::{AddressBus, BusAccessSize, BusResult};
-use test_runner::{MemoryType, TestMemoryBus, FLAT_TEST_RAM_SIZE};
+use test_runner::{MemoryType, RecordedTransaction, TestMemoryBus, FLAT_TEST_RAM_SIZE};
 
 #[test]
 fn test_sparse_test_memory_bus_basics() {
@@ -81,6 +81,15 @@ fn test_bus_cycle_transactions_and_contention() {
     assert_eq!(txs[1].addr, 0x2000);
     assert_eq!(txs[1].size, BusAccessSize::Word);
     assert_eq!(txs[1].data, 0xBEEF);
+    assert_eq!(
+        txs[0],
+        RecordedTransaction {
+            is_read: true,
+            addr: 0x1000,
+            size: BusAccessSize::Byte,
+            data: 0,
+        }
+    );
 
     // Contention lock on Chip RAM
     bus.set_address_type(0x1000, MemoryType::ChipRam);

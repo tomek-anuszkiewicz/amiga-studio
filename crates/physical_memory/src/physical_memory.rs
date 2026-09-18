@@ -4,12 +4,11 @@
 //! DMA wait-state stalling, and hardware quirks per Obsidian/Amiga/Design/MemoryBus.md.
 
 pub mod arbitration;
-pub mod big_array;
 pub mod bus_trait;
 pub mod map;
 
 pub use arbitration::{function_code, BusAccessSize, BusResult};
-pub use bus_trait::{AddressBus, RecordedTransaction};
+pub use bus_trait::AddressBus;
 pub use config::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
 };
@@ -57,7 +56,7 @@ pub struct PhysicalMemory {
     pub config: A500Config,
 
     /// 256-entry direct bank dispatch table (function pointers to read/write handlers)
-    #[serde(with = "big_array")]
+    #[serde(with = "config::big_array")]
     pub bank_map: [BankHandler; 256],
 
     /// Physical Chip RAM buffer (512 KB)

@@ -6499,6 +6499,33 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 test_runner suites (5.25s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (19.52s).
 
+---
+
+### [2026-09-18 22:30 CEST] — Test Scaffolding Decoupling: Relocation of `RecordedTransaction`, Elimination of Duplicate `big_array.rs`, and Dead Code Scanner Tooling
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/bus_trait.rs`: Purged test validation struct `RecordedTransaction`. `bus_trait.rs` now contains strictly the lean, production `AddressBus` trait without test-runner baggage or Serde dependencies.
+    - `src/physical_memory.rs`: Removed `pub mod big_array;` and switched `bank_map` Serde attribute to use the shared workspace utility `#[serde(with = "config::big_array")]`.
+    - `src/big_array.rs`: Deleted redundant 55-line file (exact duplicate of `config::big_array`).
+    - `tests/test_arbitration.rs`: Added unit test `test_address_bus_trait_methods`.
+  - `crates/test_runner/`:
+    - `src/transactions.rs`: Authoritatively defined `RecordedTransaction` where it is actually used for single-step vector validation.
+    - `src/test_memory_bus.rs`: Updated import to `use crate::transactions::RecordedTransaction;`.
+    - `src/test_runner.rs`: Re-exported `RecordedTransaction`.
+    - `tests/test_memory_bus.rs`: Updated test to assert `RecordedTransaction` equality and fields.
+  - `tools/harness/`:
+    - Added `detect_dead_code.py` static analysis scanner capable of differentiating completely dead code (0 callers) from test-only zombie code (0 callers in production `src/`, >0 in `tests/`).
+  - `.agents/skills/`:
+    - Added `remove-dead-code` skill (`SKILL.md`) codifying the systematic dead code audit, zombie triage, visibility downgrade trick, and clean-break removal protocol.
+- **What Was Changed (The Concrete Reality)**:
+  - Cleaned up the architectural separation between core production emulation (`physical_memory`) and test harnesses (`test_runner`). Production bus traits no longer drag test validation structs.
+  - Eliminated duplicate Serde big-array serialization boilerplate by standardizing on `config::big_array`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory and test_runner, 100% API Coverage, all 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 test_runner suites (6.78s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (18.72s).
+
+
 
 
 
