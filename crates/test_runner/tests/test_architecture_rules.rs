@@ -966,6 +966,19 @@ fn test_zero_backward_compatibility_shims_and_stale_aliases() {
         "run_dual_test",
     ];
 
+    let forbidden_identifiers = [
+        "reset_cold",
+        "dispatch_custom_write",
+        "dispatch_agnus_action",
+        "dispatch_paula_action",
+        "dispatch_denise_action",
+        "dispatch_cia_action",
+        "propagate_agnus_write",
+        "propagate_paula_write",
+        "propagate_denise_write",
+        "propagate_cia_write",
+    ];
+
     let mut violations = Vec::new();
 
     for file in rs_files {
@@ -987,6 +1000,16 @@ fn test_zero_backward_compatibility_shims_and_stale_aliases() {
                         rel_path.display(),
                         line_idx + 1,
                         phrase
+                    ));
+                }
+            }
+            for ident in &forbidden_identifiers {
+                if line.contains(ident) {
+                    violations.push(format!(
+                        "{}:{} -> Contains forbidden stale/legacy identifier `{}`",
+                        rel_path.display(),
+                        line_idx + 1,
+                        ident
                     ));
                 }
             }

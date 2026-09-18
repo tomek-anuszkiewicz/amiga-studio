@@ -77,7 +77,7 @@ fn test_debugger_session_full_lifecycle() {
         .is_low_memory_overlay_active());
 
     // Cold reset
-    session.reset_cold();
+    session.reset();
     assert_eq!(session.instructions_executed, 0);
     assert_eq!(session.temporal.len(), 0);
     assert_eq!(session.debugger.trace.len(), 0);
@@ -119,7 +119,7 @@ fn test_debugger_session_reset_and_overlay_lifecycle() {
         .is_low_memory_overlay_active());
 
     // Cold reset re-engages overlay per hardware reality
-    session.reset_cold();
+    session.reset();
     assert!(session
         .machine
         .physical_memory

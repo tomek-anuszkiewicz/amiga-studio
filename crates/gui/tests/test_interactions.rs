@@ -1735,3 +1735,32 @@ fn test_simulated_quick_save_and_load_shortcuts() {
     assert_eq!(app.session.machine.cck, 300);
     assert!(app.toast_message.as_ref().unwrap().0.contains("Restored"));
 }
+
+#[test]
+fn test_ctrl_r_shortcut_triggers_reset() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+
+    for _ in 0..100 {
+        app.session.step_cck();
+    }
+    assert_eq!(app.session.machine.cck, 100);
+
+    let ctrl_r = RawInput {
+        modifiers: Modifiers::COMMAND,
+        events: vec![Event::Key {
+            key: Key::R,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::COMMAND,
+        }],
+        ..Default::default()
+    };
+    let _ = ctx.run(ctrl_r, |ctx| {
+        app.update_ui(ctx);
+    });
+
+    assert_eq!(app.session.machine.cck, 0);
+    assert_eq!(app.session.debugger.current_cck, 0);
+}

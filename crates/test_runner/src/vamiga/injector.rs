@@ -89,8 +89,8 @@ pub fn inject_vamiga_test(machine: &mut A500Machine, adf_bytes: &[u8]) -> Result
         return Err("ADF file too short to contain Sector 2 payload".to_string());
     }
 
-    // 1. Cold reset and map Chip RAM to low memory
-    machine.reset_cold();
+    // 1. Reset and map Chip RAM to low memory
+    machine.reset();
     machine.physical_memory.map_chip_ram_to_low_memory();
 
     // 2. Slice Sector 2 payload ($000400) directly into Chip RAM at $00070000

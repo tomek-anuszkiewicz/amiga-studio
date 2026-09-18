@@ -13,9 +13,6 @@ use serde::{Deserialize, Serialize};
 /// the bus cycle completed (`Ready(())`) or stalled on wait states (`WaitState`).
 pub type BusFn = fn(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()>;
 
-/// Backward-compatible alias for `BusFn`.
-pub type StepFn = BusFn;
-
 /// Pure internal ALU operation.
 /// Operates strictly on `CpuState` using pre-decoded register indices.
 pub type AluFn = fn(state: &mut CpuState, reg_src: u8, reg_dst: u8);

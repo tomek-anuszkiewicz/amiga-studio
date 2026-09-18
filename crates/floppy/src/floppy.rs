@@ -101,12 +101,6 @@ impl FloppyDrive {
         }
     }
 
-    /// Steps the head (legacy wrapper)
-    #[inline]
-    pub fn step(&mut self, inward: bool) {
-        self.step_pulse(inward);
-    }
-
     /// Inserts a floppy disk image into the drive
     pub fn insert_disk(&mut self, data: &[u8]) {
         self.disk_data = Some(data.to_vec());

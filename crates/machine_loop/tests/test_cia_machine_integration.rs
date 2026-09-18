@@ -11,7 +11,7 @@ fn test_cia_a_timer_underflow_triggers_level2_interrupt() {
     let mut harness = MachineHarness::new();
 
     // 1. Unmask Level 2 PORTS interrupt in Paula INTENA (bit 3 + master bit 14 = 0x4008)
-    harness.machine.dispatch_custom_write(0x09A, 0xC008); // SET/CLR + INTEN + PORTS
+    harness.machine.write_custom_word(0x09A, 0xC008); // SET/CLR + INTEN + PORTS
 
     // 2. Configure CIA-A Timer A:
     // Latch = 5 E-Clocks (each E-Clock = 5 CCKs -> 25 CCKs total)
@@ -61,7 +61,7 @@ fn test_cia_b_timer_underflow_triggers_level6_interrupt() {
     let mut harness = MachineHarness::new();
 
     // 1. Unmask Level 6 EXTER interrupt in Paula INTENA (bit 13 + master bit 14 = 0x6000)
-    harness.machine.dispatch_custom_write(0x09A, 0xE000); // SET/CLR + INTEN + EXTER
+    harness.machine.write_custom_word(0x09A, 0xE000); // SET/CLR + INTEN + EXTER
 
     // 2. Configure CIA-B Timer A for 4 E-Clocks
     harness.machine.cia_b.commit_register_write(0x04, 4); // TALO

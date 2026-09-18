@@ -247,8 +247,8 @@ impl PhysicalMemory {
         self.write_word_internal(addr, val);
     }
 
-    /// Cold / Hard Reset: Wipes all RAM to zero and re-engages Kickstart overlay
-    pub fn reset_cold(&mut self) {
+    /// Reset: Wipes all RAM to zero and re-engages Kickstart overlay
+    pub fn reset(&mut self) {
         self.chip_ram.fill(0x00);
         if let Some(slow_ram) = &mut self.slow_ram {
             slow_ram.fill(0x00);

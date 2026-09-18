@@ -24,8 +24,8 @@ impl Cpu {
         }
     }
 
-    /// Cold Reset: Zeroes data/address registers and USP, then initialises supervisor vectors
-    pub fn reset_cold(&mut self, bus: &mut dyn AddressBus) {
+    /// Reset: Zeroes data/address registers and USP, then initialises supervisor vectors
+    pub fn reset(&mut self, bus: &mut dyn AddressBus) {
         self.state.clear_registers();
         self.reset_internal(bus);
     }
@@ -33,11 +33,6 @@ impl Cpu {
     /// Warm Reset: Preserves data/address registers and USP intact, then reloads supervisor vectors
     pub fn reset_warm(&mut self, bus: &mut dyn AddressBus) {
         self.reset_internal(bus);
-    }
-
-    /// General reset defaulting to Cold Reset
-    pub fn reset(&mut self, bus: &mut dyn AddressBus) {
-        self.reset_cold(bus);
     }
 
     fn reset_internal(&mut self, bus: &mut dyn AddressBus) {

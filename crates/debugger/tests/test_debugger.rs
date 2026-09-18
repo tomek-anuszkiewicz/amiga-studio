@@ -244,7 +244,7 @@ fn test_debugger_session_controller() {
     assert_eq!(session.instructions_executed, 1 + executed as u64);
 
     // Reset cold
-    session.reset_cold();
+    session.reset();
     assert_eq!(session.instructions_executed, 0);
     assert_eq!(session.temporal.len(), 0);
     assert!(!session.is_running);

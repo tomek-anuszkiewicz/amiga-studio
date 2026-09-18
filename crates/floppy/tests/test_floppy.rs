@@ -8,11 +8,11 @@ fn test_floppy_geometry_and_stepping() {
     let df0 = &mut controller.drives[0];
     assert!(df0.is_track0());
 
-    df0.step(true); // Step inward to cylinder 1
+    df0.step_pulse(true); // Step inward to cylinder 1
     assert_eq!(df0.cylinder, 1);
     assert!(!df0.is_track0());
 
-    df0.step(false); // Step outward to cylinder 0
+    df0.step_pulse(false); // Step outward to cylinder 0
     assert_eq!(df0.cylinder, 0);
     assert!(df0.is_track0());
 }

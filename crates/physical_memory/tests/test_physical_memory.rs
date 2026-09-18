@@ -122,3 +122,38 @@ fn test_bus_direct_read_write_and_byte_accesses() {
     bus.chip_ram_blocked = false;
     assert_eq!(bus.read_word(0x004000), BusResult::Ready(0xABCD));
 }
+
+#[test]
+fn test_physical_memory_reset_and_kickstart_direct_access() {
+    let mut bus = PhysicalMemory::new();
+    let mut rom = vec![0x00; 256 * 1024];
+    rom[0] = 0x12;
+    rom[1] = 0x34;
+    rom[2] = 0x56;
+    rom[3] = 0x78;
+    bus.inject_kickstart_rom(&rom);
+
+    // Verify direct kickstart read handlers
+    assert_eq!(physical_memory::map::read_kickstart_rom(&bus, 0), 0x12);
+    assert_eq!(physical_memory::map::read_kickstart_rom(&bus, 1), 0x34);
+    assert_eq!(
+        physical_memory::map::read_kickstart_rom_word(&bus, 0),
+        0x1234
+    );
+    assert_eq!(
+        physical_memory::map::read_kickstart_rom_word(&bus, 2),
+        0x5678
+    );
+
+    // Modify memory and disengage overlay
+    bus.map_chip_ram_to_low_memory();
+    assert!(!bus.is_low_memory_overlay_active());
+    let _ = bus.write_word(0x000000, 0x9999);
+    bus.chip_ram_blocked = true;
+
+    // Reset clears RAM, unblocks chip RAM, and re-engages overlay
+    bus.reset();
+    assert!(bus.is_low_memory_overlay_active());
+    assert!(!bus.chip_ram_blocked);
+    assert_eq!(bus.read_word_debug(0x000000), 0x1234);
+}

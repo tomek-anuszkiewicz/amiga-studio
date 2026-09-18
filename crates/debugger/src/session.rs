@@ -261,10 +261,10 @@ impl DebuggerSession {
         }
     }
 
-    /// Cold-resets the A500 machine
-    pub fn reset_cold(&mut self) {
+    /// Resets the A500 machine
+    pub fn reset(&mut self) {
         self.is_running = false;
-        self.machine.reset_cold();
+        self.machine.reset();
         self.temporal.clear();
         self.debugger.trace.clear();
         self.debugger.current_cck = 0;

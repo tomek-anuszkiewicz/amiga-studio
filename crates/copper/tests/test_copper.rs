@@ -335,3 +335,14 @@ fn test_copper_canonical_constants() {
     assert_eq!(COPPER_OCS_MIN_REGISTER_LIMIT, 0x0040);
     assert_eq!(COPPER_ADDRESS_MASK_512K, 0x0007_FFFE);
 }
+
+#[test]
+fn test_copper_registers_canonical_ir1_and_reset() {
+    let mut cop = Copper::new();
+    cop.ir1 = 0x1234;
+    cop.ir2 = 0x5678;
+    cop.reset();
+    assert_eq!(cop.ir1, 0);
+    assert_eq!(cop.ir2, 0);
+    assert_eq!(cop.cop_pc, 0);
+}

@@ -44,7 +44,7 @@ fn test_cold_reset_full_flow() {
     assert_eq!(machine.cck, 1000);
 
     // 5. Trigger Cold Reset
-    machine.reset_cold();
+    machine.reset();
 
     // Verify clock counter reset
     assert_eq!(
@@ -411,7 +411,7 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
         "Hardware reset must unconditionally engage low-memory boot overlay"
     );
 
-    machine.reset_cold();
+    machine.reset();
     assert!(
         machine.physical_memory.is_low_memory_overlay_active(),
         "Cold reset must unconditionally engage boot overlay"
@@ -432,7 +432,7 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
     machine.physical_memory.inject_kickstart_rom(&rom);
 
     // Cold reset engages overlay and loads vectors
-    machine.reset_cold();
+    machine.reset();
     assert!(
         machine.physical_memory.is_low_memory_overlay_active(),
         "Kickstart mode must engage low-memory boot overlay on cold reset"

@@ -6409,6 +6409,49 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 test_runner suites (11.89s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (18.18s).
 
+---
+
+### [2026-09-18 21:55 CEST] — Global Reset Unification, Motherboard Chip Write Harmonization, and Legacy Shims Purge
+- **Affected Subsystems**:
+  - `crates/m68000/`:
+    - `src/core.rs`: Replaced `reset_cold` with canonical `reset(&mut self, bus: &mut dyn AddressBus)`. Retained `reset_warm(&mut self, bus: &mut dyn AddressBus)`. Completely removed `reset_cold`.
+    - `src/micro/types.rs` & `src/m68000.rs`: Deleted legacy `pub type StepFn = BusFn;` and its re-export.
+    - `tests/test_cck_bus.rs`: Added `test_cpu_reset_and_reset_warm` exercising register zeroing on standard `reset` vs register preservation on `reset_warm`.
+  - `crates/physical_memory/`:
+    - `src/physical_memory.rs`: Renamed `reset_cold()` to `reset()`.
+    - `src/map.rs`: Inlined direct ROM array indexing in `read_kickstart_rom` and `read_kickstart_rom_word`, removed `is_empty()` branches, and purged `read_kickstart_word` and `read_kickstart_byte`.
+    - `tests/test_physical_memory.rs`: Added `test_physical_memory_reset_and_kickstart_direct_access`.
+  - `crates/copper/`:
+    - `src/copper.rs`: Deleted deprecated `pub copins: u16` field and assignments in favor of canonical `ir1`.
+    - `tests/test_copper.rs`: Added `test_copper_registers_canonical_ir1_and_reset`.
+  - `crates/floppy/`:
+    - `src/floppy.rs`: Deleted legacy `pub fn step(&mut self, inward: bool)` in favor of canonical `step_pulse`.
+    - `tests/test_floppy.rs`: Updated call sites to `step_pulse`.
+  - `crates/memory_bus/`:
+    - `src/memory_bus.rs`: Renamed `propagate_agnus_write` -> `write_agnus`, `propagate_paula_write` -> `write_paula`, `propagate_denise_write` -> `write_denise`, `propagate_cia_write` -> `write_cia`. Deleted all legacy `dispatch_custom_write` and `dispatch_*_action` aliases.
+    - `tests/test_register_wiring.rs` & `tests/test_router.rs`: Updated callers to `write_agnus`.
+  - `crates/machine_loop/`:
+    - `src/machine_loop.rs`: Renamed `reset_cold` -> `reset`, `propagate_*_write` -> `write_*`. Purged `dispatch_custom_write` and `dispatch_*_action` methods. Updated internal pipelines in `step_subsystems_cck()`.
+    - `tests/`: Replaced all occurrences of `dispatch_custom_write` with canonical `write_custom_word`, and `reset_cold` with `reset` across all integration test suites.
+  - `crates/debugger/`:
+    - `src/session.rs`: Renamed `reset_cold` -> `reset`.
+    - `tests/`: Updated `test_debugger.rs` and `test_stepping_and_session.rs`.
+  - `crates/gui/`:
+    - `src/app.rs` & `src/layout/top_menu_bar.rs`: Updated Ctrl+R and UI menu to invoke `session.reset()`.
+    - `tests/test_interactions.rs`: Added `test_ctrl_r_shortcut_triggers_reset`.
+  - `crates/test_runner/`:
+    - `src/vamiga/injector.rs`: Updated `machine.reset_cold()` to `machine.reset()`.
+    - `tests/test_architecture_rules.rs`: Expanded `test_zero_backward_compatibility_shims_and_stale_aliases` with automated bans on `"reset_cold"`, `"dispatch_custom_write"`, `"dispatch_*_action"`, and `"propagate_*_write"`.
+- **What Was Changed (The Concrete Reality)**:
+  - Unified the reset model across the entire workspace into a simple, coherent two-tier model: `reset(...)` for full/cold reset (clearing registers, RAM, and initializing chips) and `reset_warm(...)` for warm reset (retaining RAM/registers). Eliminated all occurrences of `reset_cold`.
+  - Harmonized motherboard mutation propagation methods to canonical `write_agnus`, `write_paula`, `write_denise`, and `write_cia`, with direct `write_custom_word` for custom chip registers.
+  - Executed clean-break elimination of legacy compatibility shims (`copins`, `StepFn`, `step`, `read_kickstart_word/byte`).
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for all 9 modified crates, 100% API Coverage, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 test_runner suites (2.88s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (5.28s).
+
+
 
 
 

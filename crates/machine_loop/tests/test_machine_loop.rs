@@ -69,7 +69,7 @@ fn test_machine_cold_and_warm_reset() {
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42); // Preserved!
 
     // 3. Perform cold reset: zeroes RAM, re-engages boot overlay, resets CCK to 0, resets chips
-    machine.reset_cold();
+    machine.reset();
     assert_eq!(machine.cck, 0);
     assert_eq!(machine.agnus.dma.dmacon, 0x0000);
     assert_eq!(machine.paula.intena, 0x0000);
@@ -97,7 +97,7 @@ fn test_machine_game_ports_routing() {
     assert_eq!(machine.game_ports.joy1dat(), 0x0100); // Up direction set in bit 8
 
     // Reset restores defaults
-    machine.reset_cold();
+    machine.reset();
     assert!(!machine.game_ports.fire1_port1());
     assert!(!machine.game_ports.fire1_port2());
 }

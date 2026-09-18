@@ -199,13 +199,23 @@ pub fn write_slow_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) {
 }
 
 /// Read handler for Kickstart ROM ($F80000-$FFFFFF, mirrored at $000000 during boot overlay)
+#[inline(always)]
 pub fn read_kickstart_rom(bus: &PhysicalMemory, addr: u32) -> u8 {
-    bus.read_kickstart_byte(addr)
+    let mask = bus.kickstart_rom.len() - 1;
+    let idx = (addr as usize) & mask;
+    bus.kickstart_rom[idx]
 }
 
 /// Read word handler for Kickstart ROM ($F80000-$FFFFFF, mirrored at $000000 during boot overlay)
+#[inline(always)]
 pub fn read_kickstart_rom_word(bus: &PhysicalMemory, addr: u32) -> u16 {
-    bus.read_kickstart_word(addr)
+    let mask = bus.kickstart_rom.len() - 1;
+    let idx = (addr as usize) & mask;
+    if idx + 1 < bus.kickstart_rom.len() {
+        u16::from_be_bytes([bus.kickstart_rom[idx], bus.kickstart_rom[idx + 1]])
+    } else {
+        u16::from_be_bytes([bus.kickstart_rom[idx], bus.kickstart_rom[0]])
+    }
 }
 
 /// Write handler for Kickstart ROM (ROM writes are silent no-ops)
@@ -436,41 +446,11 @@ impl PhysicalMemory {
         (self.bank_map[bank_idx].write_word)(self, addr, data);
     }
 
-    /// Read 16-bit word from Kickstart ROM (256 KB, mirrored across $F80000..$FFFFFF)
-    #[inline]
-    pub(crate) fn read_kickstart_word(&self, offset: u32) -> u16 {
-        if self.kickstart_rom.is_empty() {
-            return 0xFFFF;
-        }
-        let rom_len = self.kickstart_rom.len();
-        let mask = (rom_len - 1) as u32;
-        let idx = (offset & mask) as usize;
-        if idx + 1 < rom_len {
-            u16::from_be_bytes([self.kickstart_rom[idx], self.kickstart_rom[idx + 1]])
-        } else {
-            let b0 = self.read_kickstart_byte(offset);
-            let b1 = self.read_kickstart_byte(offset.wrapping_add(1));
-            u16::from_be_bytes([b0, b1])
-        }
-    }
-
     /// Writes an 8-bit byte using direct function pointer dispatch from the 256-entry bank table
     #[inline(always)]
     pub(crate) fn write_byte_internal(&mut self, addr: u32, val: u8) {
         let addr = addr & 0x00FF_FFFF;
         let bank_idx = (addr >> 16) as usize;
         (self.bank_map[bank_idx].write_byte)(self, addr, val);
-    }
-
-    /// Read byte from Kickstart ROM (256 KB, mirrored across $F80000..$FFFFFF)
-    #[inline]
-    pub(crate) fn read_kickstart_byte(&self, offset: u32) -> u8 {
-        if self.kickstart_rom.is_empty() {
-            return 0xFF;
-        }
-        let rom_len = self.kickstart_rom.len();
-        let mask = (rom_len - 1) as u32;
-        let idx = (offset & mask) as usize;
-        self.kickstart_rom[idx]
     }
 }

@@ -16,8 +16,8 @@ fn test_denise_display_window_configuration_and_clipping() {
     let diwstrt = 0x2C81;
     let diwstop = 0x2CC1;
 
-    harness.machine.dispatch_custom_write(0x08E, diwstrt);
-    harness.machine.dispatch_custom_write(0x090, diwstop);
+    harness.machine.write_custom_word(0x08E, diwstrt);
+    harness.machine.write_custom_word(0x090, diwstop);
     harness.step_cck(2);
 
     assert_eq!(harness.machine.denise.diwstrt, diwstrt);
@@ -57,11 +57,11 @@ fn test_denise_bitplane_mode_and_serialization() {
     let mut harness = MachineHarness::new();
 
     // Configure 1 bitplane in Low-Res (BPU = 1 -> 0x1200)
-    harness.machine.dispatch_custom_write(0x100, 0x1200);
+    harness.machine.write_custom_word(0x100, 0x1200);
 
     // Setup COLOR00 = Black ($000), COLOR01 = Green ($0F0)
-    harness.machine.dispatch_custom_write(0x180, 0x0000);
-    harness.machine.dispatch_custom_write(0x182, 0x00F0);
+    harness.machine.write_custom_word(0x180, 0x0000);
+    harness.machine.write_custom_word(0x182, 0x00F0);
     harness.step_cck(2);
 
     assert_eq!(harness.machine.denise.bitplane_count(), 1);
@@ -70,7 +70,7 @@ fn test_denise_bitplane_mode_and_serialization() {
     assert_eq!(harness.machine.denise.color[1], 0x00F0);
 
     // Write Bitplane 1 data latch (0x8000 -> first pixel 1, next 15 pixels 0)
-    harness.machine.dispatch_custom_write(0x110, 0x8000);
+    harness.machine.write_custom_word(0x110, 0x8000);
     harness.step_cck(2);
 
     // Load bitplane data into Denise shifters
@@ -93,7 +93,7 @@ fn test_denise_frame_builder_raster_scanline_generation() {
     let mut harness = MachineHarness::new();
 
     // Set background COLOR00 to Blue ($00F)
-    harness.machine.dispatch_custom_write(0x180, 0x000F);
+    harness.machine.write_custom_word(0x180, 0x000F);
     harness.step_cck(2);
 
     // Step across to line 30 (active visible scanline outside VBlank lines 0..25)
@@ -123,9 +123,9 @@ fn test_machine_loop_agnus_bpl_dma_routed_to_denise() {
     // Point BPL1PTH/L to $1000
     harness.machine.agnus.bplpt[0] = 0x1000;
     // Enable Master DMA + Bitplane DMA ($8300)
-    harness.machine.dispatch_custom_write(0x096, 0x8300);
+    harness.machine.write_custom_word(0x096, 0x8300);
     // 1 bitplane in BPLCON0 ($1200)
-    harness.machine.dispatch_custom_write(0x100, 0x1200);
+    harness.machine.write_custom_word(0x100, 0x1200);
     harness.step_cck(4);
 
     harness.machine.agnus.ddfstrt = 0x38;

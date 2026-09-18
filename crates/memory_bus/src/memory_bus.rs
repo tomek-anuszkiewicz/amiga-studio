@@ -143,7 +143,7 @@ impl<'a> MemoryBus<'a> {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 if let Some((r, v)) = self.cia_b.write_register(reg, val) {
-                    self.propagate_cia_write(CiaId::B, r, v);
+                    self.write_cia(CiaId::B, r, v);
                 }
             }
             return;
@@ -152,7 +152,7 @@ impl<'a> MemoryBus<'a> {
         if (CIA_A_START..=CIA_A_END).contains(&addr) && (addr & 1) == 1 {
             let reg = ((addr >> 8) & 0x0F) as u8;
             if let Some((r, v)) = self.cia_a.write_register(reg, val) {
-                self.propagate_cia_write(CiaId::A, r, v);
+                self.write_cia(CiaId::A, r, v);
             }
             // CIA-A bit 0 of Port A ($BFE001) controls the low-memory overlay (_OVL)
             if reg == 0 {
@@ -172,16 +172,16 @@ impl<'a> MemoryBus<'a> {
             // Master DMA control: staged in Agnus, broadcasts to all chips on commit
             custom_reg::DMACON => {
                 if let Some((r, v)) = self.agnus.write_register(custom_reg::DMACON, val) {
-                    self.propagate_agnus_write(r, v);
+                    self.write_agnus(r, v);
                 }
             }
             // Shared / Broadcast: BPLCON0 ($100) -> Denise (1 CCK) & Agnus (4 CCK)
             custom_reg::BPLCON0 => {
                 if let Some((r, v)) = self.denise.write_register(custom_reg::BPLCON0, val) {
-                    self.propagate_denise_write(r, v);
+                    self.write_denise(r, v);
                 }
                 if let Some((r, v)) = self.agnus.write_register(custom_reg::BPLCON0, val) {
-                    self.propagate_agnus_write(r, v);
+                    self.write_agnus(r, v);
                 }
             }
             // Denise-specific registers (DIW, CLXCON, BPLCON1/2/3, BPLDAT, SPRITES, COLORS, JOYTEST)
@@ -196,7 +196,7 @@ impl<'a> MemoryBus<'a> {
             | custom_reg::COLOR00..=custom_reg::COLOR31
             | custom_reg::JOYTEST => {
                 if let Some((r, v)) = self.denise.write_register(offset, val) {
-                    self.propagate_denise_write(r, v);
+                    self.write_denise(r, v);
                 }
             }
             // Paula-specific registers (INTENA, INTREQ, ADKCON, UART, DSKLEN/SYNC, AUDIO length/period/volume/data)
@@ -224,13 +224,13 @@ impl<'a> MemoryBus<'a> {
             | custom_reg::AUD3VOL
             | custom_reg::AUD3DAT => {
                 if let Some((r, v)) = self.paula.write_register(offset, val) {
-                    self.propagate_paula_write(r, v);
+                    self.write_paula(r, v);
                 }
             }
             // Agnus-specific registers (Blitter, Copper, DMA pointers, modulos, DDF, AUDxLC)
             _ => {
                 if let Some((r, v)) = self.agnus.write_register(offset, val) {
-                    self.propagate_agnus_write(r, v);
+                    self.write_agnus(r, v);
                 }
             }
         }
@@ -248,14 +248,8 @@ impl<'a> MemoryBus<'a> {
         self.write_custom_word(offset, word_val);
     }
 
-    /// Backwards-compatible alias forwarding to `write_custom_word`
-    #[inline(always)]
-    pub fn dispatch_custom_write(&mut self, offset: u16, val: u16) {
-        self.write_custom_word(offset, val);
-    }
-
     /// Propagates committed Agnus register mutations across the motherboard
-    pub fn propagate_agnus_write(&mut self, reg: u16, val: u16) {
+    pub fn write_agnus(&mut self, reg: u16, val: u16) {
         match reg & CUSTOM_REG_OFFSET_MASK {
             custom_reg::DMACON => {
                 self.agnus.dma.write_dmacon(val);
@@ -295,14 +289,8 @@ impl<'a> MemoryBus<'a> {
         }
     }
 
-    /// Backwards-compatible alias forwarding to `propagate_agnus_write`
-    #[inline(always)]
-    pub fn dispatch_agnus_action(&mut self, reg: u16, val: u16) {
-        self.propagate_agnus_write(reg, val);
-    }
-
     /// Propagates committed Paula register mutations across the motherboard
-    pub fn propagate_paula_write(&mut self, reg: u16, val: u16) {
+    pub fn write_paula(&mut self, reg: u16, val: u16) {
         match reg & CUSTOM_REG_OFFSET_MASK {
             custom_reg::DSKLEN => self.floppy.set_dsklen(val),
             custom_reg::DSKSYNC => self.floppy.set_dsksyn(val),
@@ -311,14 +299,8 @@ impl<'a> MemoryBus<'a> {
         }
     }
 
-    /// Backwards-compatible alias forwarding to `propagate_paula_write`
-    #[inline(always)]
-    pub fn dispatch_paula_action(&mut self, reg: u16, val: u16) {
-        self.propagate_paula_write(reg, val);
-    }
-
     /// Propagates committed Denise register mutations across the motherboard
-    pub fn propagate_denise_write(&mut self, reg: u16, val: u16) {
+    pub fn write_denise(&mut self, reg: u16, val: u16) {
         match reg & CUSTOM_REG_OFFSET_MASK {
             custom_reg::BPLCON0 => self.denise.set_bplcon0(val),
             custom_reg::BPLCON1 => self.denise.set_bplcon1(val),
@@ -335,23 +317,11 @@ impl<'a> MemoryBus<'a> {
         }
     }
 
-    /// Backwards-compatible alias forwarding to `propagate_denise_write`
-    #[inline(always)]
-    pub fn dispatch_denise_action(&mut self, reg: u16, val: u16) {
-        self.propagate_denise_write(reg, val);
-    }
-
     /// Propagates committed CIA register mutations across the motherboard
-    pub fn propagate_cia_write(&mut self, id: CiaId, reg: u8, val: u8) {
+    pub fn write_cia(&mut self, id: CiaId, reg: u8, val: u8) {
         if id == CiaId::B && (reg & 0x0F) == 0x1 {
             self.floppy.handle_ciab_port_b_write(val);
         }
-    }
-
-    /// Backwards-compatible alias forwarding to `propagate_cia_write`
-    #[inline(always)]
-    pub fn dispatch_cia_action(&mut self, id: CiaId, reg: u8, val: u8) {
-        self.propagate_cia_write(id, reg, val);
     }
 }
 

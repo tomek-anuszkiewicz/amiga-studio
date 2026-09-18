@@ -70,8 +70,6 @@ pub struct Copper {
     pub ir1: u16,
     /// Instruction register 2 (IR2 / cop2ins)
     pub ir2: u16,
-    /// Current instruction latch (legacy alias for ir1)
-    pub copins: u16,
     /// Copper control register ($02E)
     pub copcon: u16,
     /// Copper Danger mode flag (COPCON bit 1: allows writes to $DFF000..$DFF07E)
@@ -99,7 +97,6 @@ impl Copper {
         self.cop_pc = 0;
         self.ir1 = 0;
         self.ir2 = 0;
-        self.copins = 0;
         self.copcon = 0;
         self.cdang = false;
         self.dma_enabled = false;
@@ -290,7 +287,6 @@ impl Copper {
                 }
                 if cck_left <= 1 {
                     self.ir1 = read_chip_ram_word(chip_ram, self.cop_pc);
-                    self.copins = self.ir1;
                     self.cop_pc = self.cop_pc.wrapping_add(2) & COPPER_ADDRESS_MASK_512K;
                     self.state = CopperState::FetchIR2(2);
                 } else {

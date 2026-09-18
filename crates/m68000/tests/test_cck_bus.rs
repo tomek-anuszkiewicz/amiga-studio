@@ -192,3 +192,35 @@ fn test_cpu_reset_status_and_vectors() {
     );
     assert_eq!(m68000::vector::addr(m68000::vector::TRAP_BASE), 0x80);
 }
+
+#[test]
+fn test_cpu_reset_and_reset_warm() {
+    let mut bus = PhysicalMemory::new();
+    bus.map_chip_ram_to_low_memory();
+
+    bus.write_word_debug(0, 0x0007);
+    bus.write_word_debug(2, 0x0000);
+    bus.write_word_debug(4, 0x0000);
+    bus.write_word_debug(6, 0x2000);
+
+    let mut cpu = Cpu::new();
+    cpu.state.set_d_long(0, 0x12345678);
+    cpu.state.set_a_long(0, 0x9ABCDEF0);
+    cpu.state.usp = 0x00054321;
+
+    // Warm reset preserves D/A registers and USP
+    cpu.reset_warm(&mut bus);
+    assert_eq!(cpu.state.d_long(0), 0x12345678);
+    assert_eq!(cpu.state.a_long(0), 0x9ABCDEF0);
+    assert_eq!(cpu.state.usp, 0x00054321);
+    assert_eq!(cpu.state.ssp, 0x00070000);
+    assert_eq!(cpu.state.instruction_pc, 0x00002000);
+
+    // Standard reset zeroes data/address registers and USP
+    cpu.reset(&mut bus);
+    assert_eq!(cpu.state.d_long(0), 0);
+    assert_eq!(cpu.state.a_long(0), 0);
+    assert_eq!(cpu.state.usp, 0);
+    assert_eq!(cpu.state.ssp, 0x00070000);
+    assert_eq!(cpu.state.instruction_pc, 0x00002000);
+}

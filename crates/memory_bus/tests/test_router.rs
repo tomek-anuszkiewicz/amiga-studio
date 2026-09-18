@@ -93,11 +93,11 @@ fn test_custom_register_broadcast_and_routing() {
     // Step 2 CCKs: Agnus mutation matures and broadcasts to Paula and subsystems
     let due1 = mb.agnus.step_cck();
     for item in due1.iter().flatten() {
-        mb.router().dispatch_agnus_action(item.0, item.1);
+        mb.router().write_agnus(item.0, item.1);
     }
     let due2 = mb.agnus.step_cck();
     for item in due2.iter().flatten() {
-        mb.router().dispatch_agnus_action(item.0, item.1);
+        mb.router().write_agnus(item.0, item.1);
     }
     assert!(mb.agnus.copper.dma_enabled, "Copper DMA must be enabled");
 }

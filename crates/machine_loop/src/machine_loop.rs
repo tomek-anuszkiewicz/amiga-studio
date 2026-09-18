@@ -84,7 +84,7 @@ impl A500Machine {
     pub fn new(config: A500Config) -> Self {
         let mut cpu = Cpu::new();
         let mut physical_memory = PhysicalMemory::from_config(config.clone());
-        cpu.reset_cold(&mut physical_memory);
+        cpu.reset(&mut physical_memory);
         let agnus = agnus::Agnus::new(config.agnus_model());
         let denise = denise::Denise::new(config.denise_model());
         let paula = paula::Paula::new();
@@ -119,8 +119,8 @@ impl A500Machine {
     }
 
     /// Performs cold reset: zeroes RAM, resets all chips and devices to power-on defaults
-    pub fn reset_cold(&mut self) {
-        self.physical_memory.reset_cold();
+    pub fn reset(&mut self) {
+        self.physical_memory.reset();
         self.cck = 0;
         self.agnus.reset();
         self.denise.reset();
@@ -131,7 +131,7 @@ impl A500Machine {
         self.keyboard.reset();
         self.game_ports.reset();
         self.parallel_port.reset();
-        self.cpu.reset_cold(&mut self.physical_memory);
+        self.cpu.reset(&mut self.physical_memory);
         self.poll_peripheral_pins();
         self.cpu.state.ipl = self.resolve_ipl();
     }
@@ -232,58 +232,28 @@ impl A500Machine {
         self.memory_bus().write_custom_byte(addr, val);
     }
 
-    /// Dispatches a custom register bus write to the target chip(s) with physical propagation delay.
-    #[inline(always)]
-    pub fn dispatch_custom_write(&mut self, offset: u16, val: u16) {
-        self.write_custom_word(offset, val);
-    }
-
     /// Propagates committed Agnus register mutations across the motherboard
     #[inline(always)]
-    pub fn propagate_agnus_write(&mut self, reg: u16, val: u16) {
-        self.memory_bus().propagate_agnus_write(reg, val);
-    }
-
-    /// Action method dispatch for committed Agnus registers
-    #[inline(always)]
-    pub fn dispatch_agnus_action(&mut self, reg: u16, val: u16) {
-        self.propagate_agnus_write(reg, val);
+    pub fn write_agnus(&mut self, reg: u16, val: u16) {
+        self.memory_bus().write_agnus(reg, val);
     }
 
     /// Propagates committed Paula register mutations across the motherboard
     #[inline(always)]
-    pub fn propagate_paula_write(&mut self, reg: u16, val: u16) {
-        self.memory_bus().propagate_paula_write(reg, val);
-    }
-
-    /// Action method dispatch for committed Paula registers
-    #[inline(always)]
-    pub fn dispatch_paula_action(&mut self, reg: u16, val: u16) {
-        self.propagate_paula_write(reg, val);
+    pub fn write_paula(&mut self, reg: u16, val: u16) {
+        self.memory_bus().write_paula(reg, val);
     }
 
     /// Propagates committed Denise register mutations across the motherboard
     #[inline(always)]
-    pub fn propagate_denise_write(&mut self, reg: u16, val: u16) {
-        self.memory_bus().propagate_denise_write(reg, val);
-    }
-
-    /// Action method dispatch for committed Denise registers
-    #[inline(always)]
-    pub fn dispatch_denise_action(&mut self, reg: u16, val: u16) {
-        self.propagate_denise_write(reg, val);
+    pub fn write_denise(&mut self, reg: u16, val: u16) {
+        self.memory_bus().write_denise(reg, val);
     }
 
     /// Propagates committed CIA register mutations across the motherboard
     #[inline(always)]
-    pub fn propagate_cia_write(&mut self, id: cia::CiaId, reg: u8, val: u8) {
-        self.memory_bus().propagate_cia_write(id, reg, val);
-    }
-
-    /// Action method dispatch for committed CIA registers
-    #[inline(always)]
-    pub fn dispatch_cia_action(&mut self, id: cia::CiaId, reg: u8, val: u8) {
-        self.propagate_cia_write(id, reg, val);
+    pub fn write_cia(&mut self, id: cia::CiaId, reg: u8, val: u8) {
+        self.memory_bus().write_cia(id, reg, val);
     }
 
     /// Polls peripheral sensing lines into CIA input pins and custom chip port latches
@@ -318,10 +288,10 @@ impl A500Machine {
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
         let agnus_due = self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
         for item in agnus_due.iter().flatten() {
-            self.dispatch_agnus_action(item.0, item.1);
+            self.write_agnus(item.0, item.1);
         }
         if let Some((reg, val)) = self.agnus.poll_copper_write() {
-            self.dispatch_custom_write(reg, val);
+            self.write_custom_word(reg, val);
         }
         if let Some((plane, word)) = self.agnus.poll_bpl_dma() {
             self.denise.write_bpldat(plane as usize, word);
@@ -346,13 +316,13 @@ impl A500Machine {
         }
         let denise_due = self.denise.step_cck(beam);
         for item in denise_due.iter().flatten() {
-            self.dispatch_denise_action(item.0, item.1);
+            self.write_denise(item.0, item.1);
         }
 
         // 3. Step Paula (steps audio, serial_port, and mutation pipeline)
         let paula_due = self.paula.step_cck();
         for item in paula_due.iter().flatten() {
-            self.dispatch_paula_action(item.0, item.1);
+            self.write_paula(item.0, item.1);
         }
         self.floppy.step_cck();
 
@@ -378,11 +348,11 @@ impl A500Machine {
         // 5. Step CIAs and dispatch E-Clock mutations
         let cia_a_due = self.cia_a.step_cck();
         for item in cia_a_due.iter().flatten() {
-            self.dispatch_cia_action(cia::CiaId::A, item.0, item.1);
+            self.write_cia(cia::CiaId::A, item.0, item.1);
         }
         let cia_b_due = self.cia_b.step_cck();
         for item in cia_b_due.iter().flatten() {
-            self.dispatch_cia_action(cia::CiaId::B, item.0, item.1);
+            self.write_cia(cia::CiaId::B, item.0, item.1);
         }
 
         // Cross-Chip Signal: CIA-A /IRQ pin -> Paula INTREQ bit 3 (PORTS, mask 0x0008)

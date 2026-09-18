@@ -14,7 +14,7 @@ fn test_denise_full_32_color_palette_batch_mutation() {
     for i in 0..32u16 {
         let reg_offset = 0x180 + i * 2;
         let color_val = 0x0100 + i; // Distinct 12-bit RGB444 color
-        harness.machine.dispatch_custom_write(reg_offset, color_val);
+        harness.machine.write_custom_word(reg_offset, color_val);
     }
 
     // 2. Step 2 Color Clocks to allow the delayed mutation pipeline to mature and commit
@@ -39,8 +39,8 @@ fn test_sprite_channel_vertical_window_and_data_arming() {
     // Sprite 0: VSTART = 40, VSTOP = 55, HSTART = 120 ($78)
     // SPR0POS ($140): VSTART in bits 15..8 (40 = $28), HSTART in bits 7..0 ($78) -> $2878
     // SPR0CTL ($142): VSTOP in bits 15..8 (55 = $37), bits 7..0 = 0 -> $3700
-    harness.machine.dispatch_custom_write(0x140, 0x2878);
-    harness.machine.dispatch_custom_write(0x142, 0x3700);
+    harness.machine.write_custom_word(0x140, 0x2878);
+    harness.machine.write_custom_word(0x142, 0x3700);
     harness.step_cck(2);
 
     assert_eq!(harness.machine.denise.sprites.channels[0].vstart(), 40);
@@ -51,8 +51,8 @@ fn test_sprite_channel_vertical_window_and_data_arming() {
     assert!(!harness.machine.denise.sprites.channels[0].is_armed);
 
     // Arm Sprite 0 by writing image data (SPR0DATA at $144, SPR0DATB at $146)
-    harness.machine.dispatch_custom_write(0x144, 0xCCCC);
-    harness.machine.dispatch_custom_write(0x146, 0x3333);
+    harness.machine.write_custom_word(0x144, 0xCCCC);
+    harness.machine.write_custom_word(0x146, 0x3333);
     harness.step_cck(2);
 
     // Channel should now be armed
@@ -87,18 +87,18 @@ fn test_sprite_dma_toggle_disarms_channels() {
     let mut harness = MachineHarness::new();
 
     // Enable Sprite DMA via DMACON: Master Enable + SPREN -> $8220
-    harness.machine.dispatch_custom_write(0x096, 0x8220);
+    harness.machine.write_custom_word(0x096, 0x8220);
     harness.step_cck(2);
     assert!(harness.machine.denise.sprites.dma_enabled);
 
     // Arm Sprite 0
-    harness.machine.dispatch_custom_write(0x140, 0x1020);
-    harness.machine.dispatch_custom_write(0x144, 0xAAAA);
+    harness.machine.write_custom_word(0x140, 0x1020);
+    harness.machine.write_custom_word(0x144, 0xAAAA);
     harness.step_cck(2);
     assert!(harness.machine.denise.sprites.channels[0].is_armed);
 
     // Disable Sprite DMA via DMACON ($DFF096): write $0020 (clear SPREN)
-    harness.machine.dispatch_custom_write(0x096, 0x0020);
+    harness.machine.write_custom_word(0x096, 0x0020);
     harness.step_cck(2);
 
     // When Sprite DMA is disabled via DMACON, sprite channels should disarm

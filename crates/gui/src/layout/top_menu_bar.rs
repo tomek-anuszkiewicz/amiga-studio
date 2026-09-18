@@ -21,8 +21,8 @@ pub fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 
                     ui.separator();
 
-                    if ui.button("🔄 Reset Cold (Ctrl+R)").clicked() {
-                        app.session.reset_cold();
+                    if ui.button("🔄 Reset (Ctrl+R)").clicked() {
+                        app.session.reset();
                         ui.close_menu();
                     }
 

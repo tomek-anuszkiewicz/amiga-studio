@@ -285,9 +285,9 @@ impl EmulatorApp {
             self.session.temporal.toggle_recording();
         }
 
-        // Ctrl + R: Reset Cold
+        // Ctrl + R: Reset
         if input.modifiers.command && input.key_pressed(egui::Key::R) {
-            self.session.reset_cold();
+            self.session.reset();
         }
 
         // Ctrl + O: Load Binary
