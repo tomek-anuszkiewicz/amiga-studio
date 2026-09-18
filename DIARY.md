@@ -6991,6 +6991,24 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,802 bytes, Test-Coupling, API Coverage 100%, 19 Architecture Rules).
 
+---
+
+### [2026-09-19 02:05 CEST] — Relocated Skill-Specific Python Scripts from tools/harness into Dedicated Skill Folders
+- **Subsystems Affected**:
+  - `tools/harness/`: Pruned down to 7 strictly universal infrastructure scripts (`pre_flight.py`, `run_tests.py`, `check_polish.py`, `check_test_coupling.py`, `audit_api_coverage.py`, `log_diary.py`, `rag_search.py`).
+  - `.agents/skills/audit-code-quality/scripts/audit_code_quality.py`: Relocated from `tools/harness/audit_code_quality.py`. Added dynamic `find_repo_root()` lookup to resolve `REPO_ROOT` robustly regardless of directory depth.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Updated CLI audit commands and subagent prompt to target `.agents/skills/audit-code-quality/scripts/audit_code_quality.py`.
+  - `.agents/skills/profile-external/scripts/aggregate_profile.py`: Relocated from `tools/harness/aggregate_profile.py`.
+  - `.agents/skills/profile-external/SKILL.md`: Updated aggregation commands to target `.agents/skills/profile-external/scripts/aggregate_profile.py`.
+  - `Obsidian/Amiga/Design/Performance Profiling and Optimization Strategy.md`: Updated references to `.agents/skills/profile-external/scripts/aggregate_profile.py`.
+  - `tools/harness/detect_dead_code.py`: Deleted obsolete script, 100% superseded by `audit_code_quality.py`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Domain Encapsulation & Separation of Concerns:* `tools/harness/` is the core repository-wide verification harness used by git pre-commit hooks and universal CI. Specialized tools that serve only a single agent skill or runbook belong inside that skill's `scripts/` directory per the skill standard, avoiding clutter in shared tooling directories.
+- **Verification & Test Results**:
+  - `python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --srp`: Verified clean execution.
+  - `python .agents/skills/profile-external/scripts/aggregate_profile.py --help`: Verified clean execution.
+  - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,802 bytes, Test-Coupling, API Coverage 100%, 19 Architecture Rules).
+
 
 
 

@@ -21,7 +21,14 @@ import re
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+def find_repo_root() -> Path:
+    curr = Path(__file__).resolve().parent
+    for p in [curr] + list(curr.parents):
+        if (p / "Cargo.toml").exists() and (p / ".git").exists():
+            return p
+    return curr.parents[3]
+
+REPO_ROOT = find_repo_root()
 CRATES_DIR = REPO_ROOT / "crates"
 
 # Crates or modules with special execution models (e.g. 65,536-entry function pointer dispatch tables)

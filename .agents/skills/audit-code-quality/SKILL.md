@@ -48,24 +48,24 @@ Execute the unified code quality auditor via Python harness:
 
 ### A. Full Workspace Deep Audit
 ```powershell
-python tools/harness/audit_code_quality.py --all
+python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --all
 ```
 
 ### B. Targeted Subsystem Audits
 ```powershell
 # Audit dead code & zombies in a specific crate
-python tools/harness/audit_code_quality.py --dead-code --crate paula
+python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --dead-code --crate paula
 
 # Audit only visibility leaks across the workspace
-python tools/harness/audit_code_quality.py --visibility
+python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --visibility
 
 # Audit SRP and file sizes
-python tools/harness/audit_code_quality.py --srp
+python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --srp
 ```
 
 ### C. Machine-Readable JSON Export
 ```powershell
-python tools/harness/audit_code_quality.py --all --json > quality_report.json
+python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --all --json > quality_report.json
 ```
 
 ---
@@ -137,7 +137,7 @@ Ensure all quality gates and architecture rules pass with 100% green status.
     ```markdown
     Execute on-demand code quality audit and pruning across `<SCOPE>`.
     Follow .agents/skills/audit-code-quality/SKILL.md:
-    1. Run `python tools/harness/audit_code_quality.py --all`.
+    1. Run `python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --all`.
     2. Triage zombies vs Host I/O boundaries.
     3. Prune confirmed dead symbols and demote leaked visibility.
     4. Verify via `python tools/harness/pre_flight.py` and unit tests.
