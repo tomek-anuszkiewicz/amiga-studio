@@ -21,9 +21,9 @@ pub type AluFn = fn(state: &mut CpuState, reg_src: u8, reg_dst: u8);
 #[inline(always)]
 pub fn data_fc(state: &CpuState) -> u8 {
     if state.is_supervisor() {
-        physical_memory::function_code::SUPERVISOR_DATA
+        crate::state::function_code::SUPERVISOR_DATA
     } else {
-        physical_memory::function_code::USER_DATA
+        crate::state::function_code::USER_DATA
     }
 }
 
@@ -31,9 +31,9 @@ pub fn data_fc(state: &CpuState) -> u8 {
 #[inline(always)]
 pub fn prog_fc(state: &CpuState) -> u8 {
     if state.is_supervisor() {
-        physical_memory::function_code::SUPERVISOR_PROGRAM
+        crate::state::function_code::SUPERVISOR_PROGRAM
     } else {
-        physical_memory::function_code::USER_PROGRAM
+        crate::state::function_code::USER_PROGRAM
     }
 }
 

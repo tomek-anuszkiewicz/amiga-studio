@@ -1,5 +1,5 @@
 use physical_memory::{
-    arbitration::{function_code, BusAccessSize, BusResult},
+    arbitration::{BusAccessSize, BusResult},
     PhysicalMemory,
 };
 
@@ -19,13 +19,7 @@ fn test_bus_result_methods() {
 }
 
 #[test]
-fn test_function_codes_and_access_size() {
-    assert_eq!(function_code::USER_DATA, 1);
-    assert_eq!(function_code::USER_PROGRAM, 2);
-    assert_eq!(function_code::SUPERVISOR_DATA, 5);
-    assert_eq!(function_code::SUPERVISOR_PROGRAM, 6);
-    assert_eq!(function_code::CPU_SPACE, 7);
-
+fn test_access_size() {
     let byte_sz = BusAccessSize::Byte;
     let word_sz = BusAccessSize::Word;
     assert_ne!(byte_sz, word_sz);

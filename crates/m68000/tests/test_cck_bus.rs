@@ -194,6 +194,30 @@ fn test_cpu_reset_status_and_vectors() {
 }
 
 #[test]
+fn test_function_code_constants_and_helpers() {
+    use m68000::function_code;
+    use m68000::micro::{data_fc, prog_fc};
+
+    assert_eq!(function_code::USER_DATA, 1);
+    assert_eq!(function_code::USER_PROGRAM, 2);
+    assert_eq!(function_code::SUPERVISOR_DATA, 5);
+    assert_eq!(function_code::SUPERVISOR_PROGRAM, 6);
+    assert_eq!(function_code::CPU_SPACE, 7);
+
+    let mut state = m68000::CpuState::default();
+    // Default reset state is supervisor
+    assert!(state.is_supervisor());
+    assert_eq!(data_fc(&state), function_code::SUPERVISOR_DATA);
+    assert_eq!(prog_fc(&state), function_code::SUPERVISOR_PROGRAM);
+
+    // User mode (clear S bit)
+    state.sr &= !m68000::SR_S;
+    assert!(!state.is_supervisor());
+    assert_eq!(data_fc(&state), function_code::USER_DATA);
+    assert_eq!(prog_fc(&state), function_code::USER_PROGRAM);
+}
+
+#[test]
 fn test_cpu_reset_and_reset_warm() {
     let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();

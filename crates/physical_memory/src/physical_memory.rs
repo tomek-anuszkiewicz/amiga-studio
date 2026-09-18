@@ -8,7 +8,7 @@ pub mod arbitration;
 pub mod map;
 
 pub use address_bus::AddressBus;
-pub use arbitration::{function_code, BusAccessSize, BusResult};
+pub use arbitration::{BusAccessSize, BusResult};
 pub use config::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
 };

@@ -6557,6 +6557,29 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (5.96s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (20.45s).
 
+---
+
+### [2026-09-18 22:45 CEST] — Subsystem Boundary Alignment: `function_code` Relocated to `m68000`
+- **Affected Subsystems**:
+  - `crates/m68000/`:
+    - `src/state.rs`: Defined `pub mod function_code` (USER_DATA, USER_PROGRAM, SUPERVISOR_DATA, SUPERVISOR_PROGRAM, CPU_SPACE) directly representing M68000 FC0–FC2 processor output pins.
+    - `src/m68000.rs`: Re-exported `function_code` alongside `vector`.
+    - `src/micro/types.rs`: Updated `data_fc` and `prog_fc` to reference `crate::state::function_code` instead of `physical_memory::function_code`.
+    - `tests/test_cck_bus.rs`: Added unit test `test_function_code_constants_and_helpers` verifying FC values and supervisor/user state transitions.
+  - `crates/physical_memory/`:
+    - `src/arbitration.rs`: Purged `function_code` module. `arbitration.rs` now solely handles bus contention types and results.
+    - `src/physical_memory.rs`: Removed `function_code` from `arbitration` re-export list.
+    - `tests/test_arbitration.rs`: Removed synthetic `function_code` assertions.
+  - `Obsidian/Amiga/Design/`:
+    - `MemoryBus.md`: Updated Function Code reference to point to `m68000::function_code` in `crates/m68000/src/state.rs`.
+- **What Was Changed (The Concrete Reality)**:
+  - Fixed an inverted dependency where `m68000` was importing processor pin signals (FC0–FC2) from `physical_memory`. Function codes naturally originate from the CPU itself and are now co-located with `CpuState`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for m68000 and physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.70s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (17.41s).
+
+
 
 
 

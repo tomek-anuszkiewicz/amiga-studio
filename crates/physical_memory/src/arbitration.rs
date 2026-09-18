@@ -1,18 +1,9 @@
-//! Bus arbitration, function codes, access sizes, and bus transfer results
+//! Bus arbitration, access sizes, and bus transfer results
 //!
-//! Encapsulates transfer qualifiers (FC0-FC2), operand sizes (Byte, Word),
-//! and passive bus access result (`BusResult`) for Chip RAM DMA contention.
+//! Encapsulates operand sizes (Byte, Word) and passive bus access
+//! result (`BusResult`) for Chip RAM DMA contention.
 
 use serde::{Deserialize, Serialize};
-
-/// M68000 Function Code lines (FC0-FC2)
-pub mod function_code {
-    pub const USER_DATA: u8 = 1;
-    pub const USER_PROGRAM: u8 = 2;
-    pub const SUPERVISOR_DATA: u8 = 5;
-    pub const SUPERVISOR_PROGRAM: u8 = 6;
-    pub const CPU_SPACE: u8 = 7;
-}
 
 /// Bus access transfer size
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

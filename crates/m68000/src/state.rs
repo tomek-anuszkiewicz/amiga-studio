@@ -16,6 +16,15 @@ pub const SR_MASK: u16 = SR_T | SR_S | SR_I_MASK | CCR_ALL;
 /// Default Status Register on CPU Reset (Supervisor bit set, Interrupt Priority Mask Level 7)
 pub const SR_RESET_DEFAULT: u16 = SR_S | SR_I_MASK; // 0x2700
 
+/// M68000 Function Code lines (FC0-FC2)
+pub mod function_code {
+    pub const USER_DATA: u8 = 1;
+    pub const USER_PROGRAM: u8 = 2;
+    pub const SUPERVISOR_DATA: u8 = 5;
+    pub const SUPERVISOR_PROGRAM: u8 = 6;
+    pub const CPU_SPACE: u8 = 7;
+}
+
 /// Standard Motorola 68000 exception vector numbers (each vector occupies 4 bytes at vector * 4)
 pub mod vector {
     pub const RESET_SSP: u32 = 0;

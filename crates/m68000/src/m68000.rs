@@ -28,6 +28,6 @@ pub use micro::{
     OPCODE_DESCRIPTOR_TABLE,
 };
 pub use state::{
-    vector, CpuState, CCR_ALL, CCR_C, CCR_N, CCR_V, CCR_X, CCR_Z, SR_I_MASK, SR_MASK,
-    SR_RESET_DEFAULT, SR_S, SR_T,
+    function_code, vector, CpuState, CCR_ALL, CCR_C, CCR_N, CCR_V, CCR_X, CCR_Z, SR_I_MASK,
+    SR_MASK, SR_RESET_DEFAULT, SR_S, SR_T,
 };
