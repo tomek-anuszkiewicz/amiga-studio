@@ -6462,6 +6462,44 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - Verified documentation links and formatting.
 
+---
+
+### [2026-09-18 22:15 CEST] — Universal Memory Block Writer, Unconditional Self-Contained Save States, and Paula/Floppy Register Deduplication
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/physical_memory.rs`: Implemented universal `write_bytes(&mut self, addr: u32, data: &[u8]) -> usize` handling Chip RAM, Fast RAM, Slow RAM, and Kickstart ROM space ($F80000..$FFFFFF). Completely purged `inject_kickstart_rom`.
+    - `tests/test_physical_memory.rs`: Replaced `inject_kickstart_rom` calls with `write_bytes(0xF80000, &rom)`, added comprehensive `test_write_bytes_across_all_memory_regions` exercising Chip RAM, Fast RAM, Slow RAM, and Kickstart ROM.
+    - `tests/test_map.rs`: Replaced `inject_kickstart_rom` with `write_bytes(0xF80000, &rom)`.
+  - `crates/paula/`:
+    - `src/paula.rs`: Authoritatively owns DSKLEN 2-write arming state machine (`dma_armed: bool`, `dma_active: bool`). Added `write_dsklen(val)` enforcing two consecutive writes with bit 15 set before activating DMA, with clearing bit 15 stopping/unarming DMA. Added `is_dsk_dma_armed()` and `is_dsk_dma_active()`. Added `assemble_dskbytr(&self, floppy_dskbytr: u16) -> u16` dynamically combining floppy deserializer bits ($90FF) with DMAON ($4000) and DISKWRITE ($2000).
+    - `tests/test_paula_registers.rs`: Added `test_dsklen_two_write_arming_sequence` verifying the 2-write sequence.
+  - `crates/floppy/`:
+    - `src/floppy.rs`: Deduplicated state per Option B (Strict Physical Signal Decoupling). Purged duplicated `dsklen`, `dma_armed`, `dma_active`, `dma_enabled`, `dsksyn`, `adkcon` and their setters from `FloppyController`. Updated `step_cck_ram` to receive `adkcon`, `dsksyn`, and mutate `dsklen` / `dma_active` via references to Paula's authoritative registers. Removed `set_dma_enabled`.
+    - `tests/test_floppy.rs` & `tests/test_mfm.rs`: Updated DMA and MFM streaming tests to step with Paula's registers and assert raw deserializer behavior.
+  - `crates/memory_bus/`:
+    - `src/memory_bus.rs`: Added forwarding `write_bytes(&mut self, addr: u32, data: &[u8]) -> usize`. Renamed `write_agnus` to `broadcast_agnus_signals(reg, val)`, eliminating artificial loopback re-invocations (`COPJMP1/2`, `BLTSIZE`, `BPLCON0`, duplicate `write_dmacon`). In `write_paula`, removed redundant mirror calls to `floppy.set_dsklen`, `set_dsksyn`, `set_adkcon`. In `read_custom_word` and `read_custom_word_debug`, assembled composite live DSKBYTR via `self.paula.assemble_dskbytr(...)`.
+    - `tests/test_router.rs` & `tests/test_register_wiring.rs`: Updated callers to `broadcast_agnus_signals` and `write_bytes`.
+  - `crates/machine_loop/`:
+    - `src/save_state.rs`: Save states are now unconditionally self-contained snapshots embedding `PhysicalMemory` (including Kickstart ROM). Purged `kickstart_crc32` and `is_self_contained` from `SaveStateHeader`. Purged `SaveStateError::KickstartMismatch` and `compute_crc32`.
+    - `src/machine_loop.rs`: Updated `save_state` to always clone full `PhysicalMemory`. Purged `save_state_self_contained`. Updated `load_state` to unconditionally restore `self.physical_memory = state.physical_memory.clone()`. Updated `step_subsystems_cck` to step floppy DMA using Paula's authoritative registers when `paula.is_dsk_dma_active()`.
+    - `tests/`: Updated `test_action_dispatch.rs`, `test_save_state.rs`, `test_reset.rs`, and `test_cia_keyboard_integration.rs` to use `write_bytes` and assert unconditional self-contained restore.
+  - `crates/debugger/`:
+    - `src/loader.rs`: Replaced per-byte loop in `inject_binary` with direct `bus.write_bytes(target_addr, data)`.
+    - `src/session.rs` & `src/debugger.rs`: Purged `save_state_self_contained` and `compute_crc32`.
+    - `tests/test_debugger_save_state.rs`: Added `test_debugger_session_save_state_preserves_kickstart_rom`.
+  - `crates/test_runner/tests/test_architecture_rules.rs`:
+    - Added automated ban on `"inject_kickstart_rom"` and `"save_state_self_contained"` in `test_zero_backward_compatibility_shims_and_stale_aliases`.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated specialized, ad-hoc Kickstart injection in favor of a universal memory block writer `write_bytes()` across all physical memory regions.
+  - Made save states 100% self-contained snapshots: a saved machine state is completely autonomous, restoring the exact ROM image it was running with zero fragile CRC mismatch errors.
+  - Cleaned up motherboard custom chip signal routing: Agnus register writes dispatch once; cross-chip signals broadcast without fake coprocessor re-invocations.
+  - Enforced strict physical ownership between Paula and FloppyController: Paula authoritatively manages DSKLEN and DMACON disk gating; FloppyController performs MFM deserialization and drive mechanics.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for 6 modified crates, 100% API Coverage, all 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 test_runner suites (5.25s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (19.52s).
+
+
 
 
 

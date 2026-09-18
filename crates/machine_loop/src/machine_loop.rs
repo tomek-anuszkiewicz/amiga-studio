@@ -232,10 +232,10 @@ impl A500Machine {
         self.memory_bus().write_custom_byte(addr, val);
     }
 
-    /// Propagates committed Agnus register mutations across the motherboard
+    /// Broadcasts committed Agnus signals across the motherboard to peer custom chips
     #[inline(always)]
-    pub fn write_agnus(&mut self, reg: u16, val: u16) {
-        self.memory_bus().write_agnus(reg, val);
+    pub fn broadcast_agnus_signals(&mut self, reg: u16, val: u16) {
+        self.memory_bus().broadcast_agnus_signals(reg, val);
     }
 
     /// Propagates committed Paula register mutations across the motherboard
@@ -288,7 +288,7 @@ impl A500Machine {
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
         let agnus_due = self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
         for item in agnus_due.iter().flatten() {
-            self.write_agnus(item.0, item.1);
+            self.broadcast_agnus_signals(item.0, item.1);
         }
         if let Some((reg, val)) = self.agnus.poll_copper_write() {
             self.write_custom_word(reg, val);
@@ -325,6 +325,15 @@ impl A500Machine {
             self.write_paula(item.0, item.1);
         }
         self.floppy.step_cck();
+        if self.paula.is_dsk_dma_active() {
+            self.floppy.step_cck_ram(
+                &mut self.physical_memory.chip_ram,
+                self.paula.adkcon,
+                self.paula.dsksync,
+                &mut self.paula.dsklen,
+                &mut self.paula.dma_active,
+            );
+        }
 
         // Cross-Chip Signal: Disk block DMA finished -> Paula INTREQ bit 1 (mask 0x0002)
         if self.floppy.poll_dskblk_irq() {
@@ -465,9 +474,8 @@ impl A500Machine {
         self.cpu.set_pc_and_prime_prefetch(target_pc, &mut bus);
     }
 
-    /// Captures a complete machine state snapshot in referenced Kickstart ROM mode
+    /// Captures a complete machine state snapshot with fully embedded Kickstart ROM
     pub fn save_state(&self) -> A500State {
-        let kickstart_crc32 = compute_crc32(&self.physical_memory.kickstart_rom);
         let header = SaveStateHeader {
             magic: SAVE_STATE_MAGIC,
             version: SAVE_STATE_VERSION,
@@ -484,20 +492,14 @@ impl A500Machine {
                 .fast_ram
                 .as_ref()
                 .map_or(0, |r| r.len()),
-            kickstart_crc32,
-            is_self_contained: false,
         };
-
-        let mut mem_clone = self.physical_memory.clone();
-        // In referenced mode, do not duplicate Kickstart ROM in the snapshot
-        mem_clone.kickstart_rom = Vec::new();
 
         A500State {
             header,
             cck: self.cck,
             config: self.config.clone(),
             cpu: self.cpu.state.clone(),
-            physical_memory: mem_clone,
+            physical_memory: self.physical_memory.clone(),
             rtc: self.rtc.clone(),
             agnus: self.agnus.clone(),
             denise: self.denise.clone(),
@@ -509,14 +511,6 @@ impl A500Machine {
             game_ports: self.game_ports.clone(),
             parallel_port: self.parallel_port.clone(),
         }
-    }
-
-    /// Captures a self-contained state snapshot with embedded Kickstart ROM
-    pub fn save_state_self_contained(&self) -> A500State {
-        let mut state = self.save_state();
-        state.header.is_self_contained = true;
-        state.physical_memory.kickstart_rom = self.physical_memory.kickstart_rom.clone();
-        state
     }
 
     /// Restores a complete machine state snapshot with strict compatibility guards
@@ -543,34 +537,17 @@ impl A500Machine {
             });
         }
 
-        // 4. Verify Kickstart ROM compatibility
-        if state.header.is_self_contained {
-            self.physical_memory.kickstart_rom = state.physical_memory.kickstart_rom.clone();
-        } else if state.header.kickstart_crc32 != 0 {
-            let active_crc = compute_crc32(&self.physical_memory.kickstart_rom);
-            if active_crc != state.header.kickstart_crc32 {
-                return Err(SaveStateError::KickstartMismatch {
-                    expected_crc: state.header.kickstart_crc32,
-                    actual_crc: active_crc,
-                });
-            }
-        }
-
-        // 5. Restore Physical Memory (preserving active ROM in referenced mode)
-        let active_rom = self.physical_memory.kickstart_rom.clone();
+        // 4. Restore Physical Memory (unconditionally restoring RAM and Kickstart ROM)
         self.physical_memory = state.physical_memory.clone();
-        if !state.header.is_self_contained {
-            self.physical_memory.kickstart_rom = active_rom;
-        }
 
-        // 6. Restore Master Monotonic Color Clock counter
+        // 5. Restore Master Monotonic Color Clock counter
         self.cck = state.cck;
 
-        // 7. Restore CPU state and re-hydrate static micro-step pointers
+        // 6. Restore CPU state and re-hydrate static micro-step pointers
         self.cpu.state = state.cpu.clone();
         self.cpu.rehydrate_micro_steps();
 
-        // 8. Restore Custom Chips & Peripherals
+        // 7. Restore Custom Chips & Peripherals
         self.rtc = state.rtc.clone();
         self.agnus = state.agnus.clone();
         self.denise = state.denise.clone();
@@ -582,7 +559,7 @@ impl A500Machine {
         self.game_ports = state.game_ports.clone();
         self.parallel_port = state.parallel_port.clone();
 
-        // 9. Re-poll peripheral pins to establish consistent signal line levels
+        // 8. Re-poll peripheral pins to establish consistent signal line levels
         self.poll_peripheral_pins();
 
         Ok(())
@@ -592,13 +569,9 @@ impl A500Machine {
     pub fn save_state_to_file(
         &self,
         path: impl AsRef<std::path::Path>,
-        self_contained: bool,
+        _compressed: bool,
     ) -> Result<(), SaveStateError> {
-        let state = if self_contained {
-            self.save_state_self_contained()
-        } else {
-            self.save_state()
-        };
+        let state = self.save_state();
         let path = path.as_ref();
         let is_gz = path
             .extension()

@@ -23,7 +23,7 @@ pub use disassembler::{
 };
 pub use loader::{inject_binary, DEFAULT_TARGET_ADDRESS};
 pub use machine_loop::{
-    compute_crc32, A500State, SaveStateError, SaveStateHeader, SAVE_STATE_MAGIC, SAVE_STATE_VERSION,
+    A500State, SaveStateError, SaveStateHeader, SAVE_STATE_MAGIC, SAVE_STATE_VERSION,
 };
 pub use session::DebuggerSession;
 pub use stepping::{Debugger, StepMode};

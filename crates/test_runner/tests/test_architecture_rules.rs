@@ -977,6 +977,8 @@ fn test_zero_backward_compatibility_shims_and_stale_aliases() {
         "propagate_paula_write",
         "propagate_denise_write",
         "propagate_cia_write",
+        "inject_kickstart_rom",
+        "save_state_self_contained",
     ];
 
     let mut violations = Vec::new();

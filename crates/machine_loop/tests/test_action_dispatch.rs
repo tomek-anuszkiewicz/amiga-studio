@@ -11,7 +11,7 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert!(!machine.agnus.blitter.dma_enabled);
     assert!(!machine.agnus.blitter.bltpri);
     assert!(!machine.denise.sprites.dma_enabled);
-    assert!(!machine.floppy.dma_enabled);
+    assert_eq!(machine.paula.dma_enables & paula::DSKBYTR_DSKEN, 0);
     assert!(!machine.denise.frame_builder.dma_enabled);
     for ch in 0..4 {
         assert!(!machine.paula.audio.channels[ch].dma_enabled);
@@ -34,7 +34,7 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert!(machine.agnus.blitter.dma_enabled);
     assert!(!machine.agnus.blitter.bltpri);
     assert!(machine.denise.sprites.dma_enabled);
-    assert!(machine.floppy.dma_enabled);
+    assert_ne!(machine.paula.dma_enables & paula::DSKBYTR_DSKEN, 0);
     assert!(machine.denise.frame_builder.dma_enabled);
     for ch in 0..4 {
         assert!(machine.paula.audio.channels[ch].dma_enabled);
@@ -61,7 +61,7 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert!(!machine.agnus.copper.dma_enabled);
     assert!(!machine.agnus.blitter.dma_enabled);
     assert!(!machine.denise.sprites.dma_enabled);
-    assert!(!machine.floppy.dma_enabled);
+    assert!(!machine.paula.dma_master);
     assert!(!machine.denise.frame_builder.dma_enabled);
     for ch in 0..4 {
         assert!(!machine.paula.audio.channels[ch].dma_enabled);
@@ -228,7 +228,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     );
     machine.step_cck();
     machine.step_cck();
-    assert!(machine.floppy.dma_enabled);
+    assert_ne!(machine.paula.dma_enables & paula::DSKBYTR_DSKEN, 0);
 
     // Test DSKLEN 2-write arming sequence
     // First write: DSKLEN ($DFF024) = 0x9000 (SET bit 15, len = 0x1000)
@@ -239,8 +239,9 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     machine.step_cck();
     machine.step_cck();
 
-    // First write does not arm DMA yet
-    assert!(!machine.floppy.is_dma_active());
+    // First write does not activate DMA yet (armed only)
+    assert!(machine.paula.is_dsk_dma_armed());
+    assert!(!machine.paula.is_dsk_dma_active());
 
     // Second write: DSKLEN = 0x9000
     assert_eq!(
@@ -251,7 +252,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     machine.step_cck();
 
     // Second consecutive write with bit 15 sets dma_active
-    assert!(machine.floppy.is_dma_active());
+    assert!(machine.paula.is_dsk_dma_active());
 }
 
 #[test]

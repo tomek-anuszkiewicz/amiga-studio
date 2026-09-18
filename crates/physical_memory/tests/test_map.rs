@@ -32,7 +32,7 @@ fn test_boot_overlay_mechanics() {
     let mut rom = vec![0x00; 256 * 1024];
     rom[0] = 0x11;
     rom[1] = 0x22;
-    bus.inject_kickstart_rom(&rom);
+    bus.write_bytes(0xF80000, &rom);
 
     // Initial state: overlay is engaged
     assert!(bus.is_low_memory_overlay_active());

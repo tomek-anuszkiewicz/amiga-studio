@@ -297,11 +297,6 @@ impl DebuggerSession {
         self.machine.save_state()
     }
 
-    /// Saves the machine state in self-contained mode (embedding Kickstart ROM)
-    pub fn save_state_self_contained(&self) -> A500State {
-        self.machine.save_state_self_contained()
-    }
-
     /// Restores machine state from an `A500State` snapshot and synchronizes debugger tracking
     pub fn load_state(&mut self, state: &A500State) -> Result<(), SaveStateError> {
         self.machine.load_state(state)?;

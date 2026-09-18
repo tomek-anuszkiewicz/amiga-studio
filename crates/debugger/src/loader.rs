@@ -20,12 +20,7 @@ pub fn inject_binary(
     // Disengage Kickstart low-memory boot overlay so physical Chip RAM is accessible
     bus.map_chip_ram_to_low_memory();
 
-    let mut written = 0;
-    for (i, &byte) in data.iter().enumerate() {
-        let addr = target_addr.wrapping_add(i as u32);
-        bus.write_byte_debug(addr, byte);
-        written += 1;
-    }
+    let written = bus.write_bytes(target_addr, data);
 
     if auto_prime {
         // If stack pointer is zero, set default SP to top of 512KB Chip RAM ($080000)

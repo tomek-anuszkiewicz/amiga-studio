@@ -1,9 +1,7 @@
 //! Integration tests for Amiga 500 Save State Serialization and Restoration
 
 use config::{A500Config, A500Preset, VideoStandard};
-use machine_loop::{
-    compute_crc32, A500Machine, A500State, SaveStateError, SAVE_STATE_MAGIC, SAVE_STATE_VERSION,
-};
+use machine_loop::{A500Machine, A500State, SaveStateError, SAVE_STATE_MAGIC, SAVE_STATE_VERSION};
 
 #[test]
 fn test_save_state_metadata_and_header() {
@@ -18,7 +16,6 @@ fn test_save_state_metadata_and_header() {
     assert_eq!(state.header.chip_ram_size, 512 * 1024);
     assert_eq!(state.header.slow_ram_size, 512 * 1024);
     assert_eq!(state.header.fast_ram_size, 0);
-    assert!(!state.header.is_self_contained);
     assert_eq!(state.cck, 0);
 }
 
@@ -129,33 +126,32 @@ fn test_save_state_deterministic_stepping_roundtrip() {
 }
 
 #[test]
-fn test_save_state_kickstart_mismatch_guard() {
+fn test_save_state_restores_kickstart_rom_unconditionally() {
     let mut machine = A500Machine::new(A500Config::from_preset(
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
     // Synthetic Kickstart ROM
-    machine
+    let dummy_rom = vec![0x42; 256 * 1024];
+    machine.physical_memory.write_bytes(0xF80000, &dummy_rom);
+
+    let state = machine.save_state();
+    assert_eq!(state.physical_memory.kickstart_rom.len(), 256 * 1024);
+
+    let mut target_machine = A500Machine::new(A500Config::from_preset(
+        A500Preset::Bare512k,
+        VideoStandard::Pal,
+    ));
+    assert!(target_machine
         .physical_memory
-        .inject_kickstart_rom(&[0x11; 256 * 1024]);
-    let mut state = machine.save_state();
+        .kickstart_rom
+        .iter()
+        .all(|&b| b == 0xFF));
 
-    // Alter expected Kickstart CRC in save state
-    state.header.kickstart_crc32 = 0xDEADBEEF;
-
-    let err = machine
+    target_machine
         .load_state(&state)
-        .expect_err("Loading state with mismatched Kickstart CRC must fail");
-    match err {
-        SaveStateError::KickstartMismatch {
-            expected_crc,
-            actual_crc,
-        } => {
-            assert_eq!(expected_crc, 0xDEADBEEF);
-            assert_ne!(actual_crc, 0xDEADBEEF);
-        }
-        other => panic!("Expected KickstartMismatch, got {:?}", other),
-    }
+        .expect("Loading state with Kickstart ROM must succeed");
+    assert_eq!(target_machine.physical_memory.kickstart_rom, dummy_rom);
 }
 
 #[test]
@@ -182,39 +178,6 @@ fn test_save_state_ram_size_mismatch_guard() {
         }
         other => panic!("Expected MemorySizeMismatch, got {:?}", other),
     }
-}
-
-#[test]
-fn test_save_state_self_contained_roundtrip() {
-    let mut machine = A500Machine::new(A500Config::from_preset(
-        A500Preset::Bare512k,
-        VideoStandard::Pal,
-    ));
-    let dummy_rom = vec![0x42; 256 * 1024];
-    machine.physical_memory.inject_kickstart_rom(&dummy_rom);
-
-    let state = machine.save_state_self_contained();
-    assert!(state.header.is_self_contained);
-    assert_eq!(state.physical_memory.kickstart_rom.len(), 256 * 1024);
-
-    let mut target_machine = A500Machine::new(A500Config::from_preset(
-        A500Preset::Bare512k,
-        VideoStandard::Pal,
-    ));
-    assert!(target_machine
-        .physical_memory
-        .kickstart_rom
-        .iter()
-        .all(|&b| b == 0xFF));
-
-    target_machine
-        .load_state(&state)
-        .expect("Failed to load self-contained state");
-    assert_eq!(target_machine.physical_memory.kickstart_rom, dummy_rom);
-    assert_eq!(
-        compute_crc32(&target_machine.physical_memory.kickstart_rom),
-        compute_crc32(&dummy_rom)
-    );
 }
 
 #[test]

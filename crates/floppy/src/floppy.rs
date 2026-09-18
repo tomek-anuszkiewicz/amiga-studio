@@ -171,22 +171,10 @@ pub struct FloppyController {
     pub prev_ciab_prb: u8,
     /// Disk DMA Pointer (DSKPTH / DSKPTL)
     pub dskpt: u32,
-    /// Disk DMA Length register (DSKLEN: bit 15 = DMAEN, bit 14 = WRITE)
-    pub dsklen: u16,
-    /// True if DSKLEN write 1 has armed the DMA sequence
-    pub dma_armed: bool,
-    /// True if DSKLEN write 2 has activated the DMA transfer
-    pub dma_active: bool,
-    /// Disk DMA channel enabled via DMACON (DSKEN bit 4 and DMAEN bit 9)
-    pub dma_enabled: bool,
     /// Disk DMA data holding register (DSKDAT)
     pub dskdat: u16,
-    /// Disk sync pattern register (DSKSYN, default $4489)
-    pub dsksyn: u16,
     /// Disk byte and sync status register (DSKBYTR)
     pub dskbytr: u16,
-    /// Audio / Disk control register (ADKCON)
-    pub adkcon: u16,
     /// Disk block DMA completion interrupt strobe (DSKBLK, Level 1, bit 1)
     #[serde(default)]
     pub dskblk_irq: bool,
@@ -213,14 +201,8 @@ impl Default for FloppyController {
             ],
             prev_ciab_prb: 0xFF, // All signals initially deasserted high
             dskpt: 0,
-            dsklen: 0,
-            dma_armed: false,
-            dma_active: false,
-            dma_enabled: false,
             dskdat: 0,
-            dsksyn: STANDARD_DSKSYN,
             dskbytr: 0,
-            adkcon: 0,
             dskblk_irq: false,
             dsksyn_irq: false,
             mfm_track_buffer: Vec::new(),
@@ -240,14 +222,8 @@ impl FloppyController {
     pub fn reset(&mut self) {
         self.prev_ciab_prb = 0xFF;
         self.dskpt = 0;
-        self.dsklen = 0;
-        self.dma_armed = false;
-        self.dma_active = false;
-        self.dma_enabled = false;
         self.dskdat = 0;
-        self.dsksyn = STANDARD_DSKSYN;
         self.dskbytr = 0;
-        self.adkcon = 0;
         self.dskblk_irq = false;
         self.dsksyn_irq = false;
         self.mfm_track_buffer.clear();
@@ -312,106 +288,17 @@ impl FloppyController {
         0x3C
     }
 
-    /// Action method: sets Disk DMA enable state from DMACON (DSKEN bit 4 and DMAEN bit 9)
-    #[inline]
-    pub fn set_dma_enabled(&mut self, enabled: bool) {
-        self.dma_enabled = enabled;
-        if !enabled {
-            self.dma_active = false;
-        }
-    }
-
     /// Action method: sets Disk DMA Pointer (DSKPTH / DSKPTL)
     #[inline]
     pub fn set_dskpt(&mut self, addr: u32) {
         self.dskpt = addr & 0x00FF_FFFF;
     }
 
-    /// Action method: writes DSKLEN register following the 2-write arming sequence
-    pub fn set_dsklen(&mut self, val: u16) {
-        self.dsklen = val;
-        let dmaen = (val & 0x8000) != 0;
-
-        if !dmaen {
-            // Writing DSKLEN with bit 15 = 0 disables and unarms DMA
-            self.dma_armed = false;
-            self.dma_active = false;
-        } else if !self.dma_armed {
-            // First write with bit 15 = 1 arms the controller
-            self.dma_armed = true;
-        } else {
-            // Second write with bit 15 = 1 starts the DMA transfer (if enabled in DMACON)
-            self.dma_active = self.dma_enabled;
-            if self.dma_active {
-                self.load_current_track_mfm();
-                self.mfm_track_pos = 0;
-                self.wordsync_matched = false;
-            }
-        }
-    }
-
-    /// Encodes the current track of the selected drive into raw MFM format
-    pub fn load_current_track_mfm(&mut self) {
-        for drive in &self.drives {
-            if drive.selected {
-                if let Some(track_data) = drive.get_current_track_data() {
-                    let track_idx = drive.current_track_index() as u8;
-                    self.mfm_track_buffer = encode_amiga_track(track_idx, track_data);
-                    return;
-                }
-            }
-        }
-        // Fallback: raw stream with standard clock pattern
-        self.mfm_track_buffer = vec![0xAA; RAW_MFM_TRACK_BYTES];
-    }
-
-    /// Action method: sets Disk Sync register (DSKSYNC, default $4489)
-    #[inline]
-    pub fn set_dsksyn(&mut self, val: u16) {
-        self.dsksyn = val;
-    }
-
-    /// Action method: sets Audio/Disk Control register (ADKCON)
-    #[inline]
-    pub fn set_adkcon(&mut self, val: u16) {
-        self.adkcon = val;
-    }
-
-    /// Returns true if disk DMA is armed in DSKLEN
-    #[inline]
-    pub fn is_dma_armed(&self) -> bool {
-        self.dma_armed
-    }
-
-    /// Returns true if disk DMA is actively streaming words
-    #[inline]
-    pub fn is_dma_active(&self) -> bool {
-        self.dma_active
-    }
-
-    /// Returns true if disk DMA is enabled in DSKLEN
-    #[inline]
-    pub fn is_dma_enabled(&self) -> bool {
-        (self.dsklen & 0x8000) != 0
-    }
-
-    /// Returns true if disk DMA is configured for writing
-    #[inline]
-    pub fn is_write_mode(&self) -> bool {
-        (self.dsklen & 0x4000) != 0
-    }
-
     /// Returns the live 8-bit deserialized MFM data byte and composite status flags (DMAON, DISKWRITE),
     /// atomically clearing bit 15 (`DSKBYT`) per Clear-on-Read hardware semantics.
     #[inline]
     pub fn read_dskbytr(&mut self) -> u16 {
-        let dmaon = if self.dma_enabled { DSKBYTR_DMAON } else { 0 };
-        let diskwrite = if self.is_write_mode() {
-            DSKBYTR_DISKWRITE
-        } else {
-            0
-        };
-        let val = (self.dskbytr & DSKBYTR_DATA_MASK) | dmaon | diskwrite;
+        let val = self.dskbytr & (DSKBYTR_DATA_MASK | 0x8000 | 0x1000);
         self.dskbytr &= !0x8000;
         val
     }
@@ -419,13 +306,7 @@ impl FloppyController {
     /// Peeks composite DSKBYTR without clearing bit 15 (for debuggers and UI)
     #[inline]
     pub fn peek_dskbytr(&self) -> u16 {
-        let dmaon = if self.dma_enabled { DSKBYTR_DMAON } else { 0 };
-        let diskwrite = if self.is_write_mode() {
-            DSKBYTR_DISKWRITE
-        } else {
-            0
-        };
-        (self.dskbytr & DSKBYTR_DATA_MASK) | dmaon | diskwrite
+        self.dskbytr & (DSKBYTR_DATA_MASK | 0x8000 | 0x1000)
     }
 
     /// Reads live DSKBYTR with clear-on-read side effect
@@ -446,13 +327,43 @@ impl FloppyController {
         // Scaffold placeholder: MFM bit deserialization during active DMA
     }
 
-    /// Advances floppy DMA streaming by 1 word slot into Chip RAM
-    pub fn step_cck_ram(&mut self, chip_ram: &mut [u8]) {
-        if !self.dma_active || self.mfm_track_buffer.is_empty() {
+    /// Encodes the current track of the selected drive into raw MFM format
+    pub fn load_current_track_mfm(&mut self) {
+        for drive in &self.drives {
+            if drive.selected {
+                if let Some(track_data) = drive.get_current_track_data() {
+                    let track_idx = drive.current_track_index() as u8;
+                    self.mfm_track_buffer = encode_amiga_track(track_idx, track_data);
+                    return;
+                }
+            }
+        }
+        // Fallback: raw stream with standard clock pattern
+        self.mfm_track_buffer = vec![0xAA; RAW_MFM_TRACK_BYTES];
+    }
+
+    /// Advances floppy DMA streaming by 1 word slot into Chip RAM querying authoritative Paula registers
+    pub fn step_cck_ram(
+        &mut self,
+        chip_ram: &mut [u8],
+        adkcon: u16,
+        dsksyn: u16,
+        dsklen: &mut u16,
+        dma_active: &mut bool,
+    ) {
+        if !*dma_active {
+            return;
+        }
+        if self.mfm_track_buffer.is_empty() {
+            self.load_current_track_mfm();
+            self.mfm_track_pos = 0;
+            self.wordsync_matched = false;
+        }
+        if self.mfm_track_buffer.is_empty() {
             return;
         }
 
-        let wordsync = (self.adkcon & 0x0400) != 0;
+        let wordsync = (adkcon & 0x0400) != 0;
 
         // If wordsync is enabled and not yet matched, scan for sync pattern
         if wordsync && !self.wordsync_matched {
@@ -463,7 +374,7 @@ impl FloppyController {
                     self.mfm_track_buffer[self.mfm_track_pos + 1],
                 ]);
                 self.mfm_track_pos += 2;
-                if word == self.dsksyn {
+                if word == dsksyn {
                     self.wordsync_matched = true;
                     self.dsksyn_irq = true;
                     self.dskbytr |= 0x1000; // Bit 12: DSKSYN matched
@@ -492,7 +403,8 @@ impl FloppyController {
         self.dskbytr = 0x8000 | (self.dskbytr & 0x1000) | ((word & 0x00FF) as u16);
 
         // DMA memory transfer to Chip RAM
-        if !self.is_write_mode() {
+        let is_write = (*dsklen & 0x4000) != 0;
+        if !is_write {
             let pt = self.dskpt as usize;
             if pt + 1 < chip_ram.len() {
                 chip_ram[pt] = (word >> 8) as u8;
@@ -502,12 +414,12 @@ impl FloppyController {
         }
 
         // Decrement length counter
-        let len_words = self.dsklen & 0x3FFF;
+        let len_words = *dsklen & 0x3FFF;
         if len_words > 1 {
-            self.dsklen = (self.dsklen & 0xC000) | (len_words - 1);
+            *dsklen = (*dsklen & 0xC000) | (len_words - 1);
         } else {
-            self.dsklen &= 0xC000;
-            self.dma_active = false;
+            *dsklen &= 0xC000;
+            *dma_active = false;
             self.dskblk_irq = true; // Level 1 DSKBLK completion interrupt
         }
     }

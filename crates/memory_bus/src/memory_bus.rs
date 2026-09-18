@@ -59,7 +59,7 @@ impl<'a> MemoryBus<'a> {
             custom_reg::POT1DAT => self.paula.pot1dat(),
             custom_reg::POTGOR => self.paula.potgor(),
             custom_reg::SERDATR => self.paula.serdatr(),
-            custom_reg::DSKBYTR => self.floppy.dskbytr(),
+            custom_reg::DSKBYTR => self.paula.assemble_dskbytr(self.floppy.dskbytr()),
             custom_reg::INTENAR => self.paula.intenar(),
             custom_reg::INTREQR => self.paula.intreqr(),
             custom_reg::COPJMP1 => {
@@ -89,7 +89,7 @@ impl<'a> MemoryBus<'a> {
             custom_reg::POT1DAT => self.paula.pot1dat_debug(),
             custom_reg::POTGOR => self.paula.potgor_debug(),
             custom_reg::SERDATR => self.paula.serdatr_debug(),
-            custom_reg::DSKBYTR => self.floppy.dskbytr_debug(),
+            custom_reg::DSKBYTR => self.paula.assemble_dskbytr(self.floppy.dskbytr_debug()),
             custom_reg::INTENAR => self.paula.intenar_debug(),
             custom_reg::INTREQR => self.paula.intreqr_debug(),
             _ => 0xFFFF,
@@ -172,7 +172,7 @@ impl<'a> MemoryBus<'a> {
             // Master DMA control: staged in Agnus, broadcasts to all chips on commit
             custom_reg::DMACON => {
                 if let Some((r, v)) = self.agnus.write_register(custom_reg::DMACON, val) {
-                    self.write_agnus(r, v);
+                    self.broadcast_agnus_signals(r, v);
                 }
             }
             // Shared / Broadcast: BPLCON0 ($100) -> Denise (1 CCK) & Agnus (4 CCK)
@@ -181,7 +181,7 @@ impl<'a> MemoryBus<'a> {
                     self.write_denise(r, v);
                 }
                 if let Some((r, v)) = self.agnus.write_register(custom_reg::BPLCON0, val) {
-                    self.write_agnus(r, v);
+                    self.broadcast_agnus_signals(r, v);
                 }
             }
             // Denise-specific registers (DIW, CLXCON, BPLCON1/2/3, BPLDAT, SPRITES, COLORS, JOYTEST)
@@ -230,7 +230,7 @@ impl<'a> MemoryBus<'a> {
             // Agnus-specific registers (Blitter, Copper, DMA pointers, modulos, DDF, AUDxLC)
             _ => {
                 if let Some((r, v)) = self.agnus.write_register(offset, val) {
-                    self.write_agnus(r, v);
+                    self.broadcast_agnus_signals(r, v);
                 }
             }
         }
@@ -248,11 +248,16 @@ impl<'a> MemoryBus<'a> {
         self.write_custom_word(offset, word_val);
     }
 
-    /// Propagates committed Agnus register mutations across the motherboard
-    pub fn write_agnus(&mut self, reg: u16, val: u16) {
+    /// Writes an arbitrary byte slice directly to physical memory
+    #[inline(always)]
+    pub fn write_bytes(&mut self, addr: u32, data: &[u8]) {
+        self.mem.write_bytes(addr, data);
+    }
+
+    /// Broadcasts committed Agnus signals across the motherboard to peer custom chips
+    pub fn broadcast_agnus_signals(&mut self, reg: u16, val: u16) {
         match reg & CUSTOM_REG_OFFSET_MASK {
             custom_reg::DMACON => {
-                self.agnus.dma.write_dmacon(val);
                 // Broadcast to Paula's dma_enables
                 if (val & dmacon::SET_CLR) != 0 {
                     self.paula.dma_enables |= val & (dmacon::AUD_ALL | dmacon::DSKEN);
@@ -264,8 +269,6 @@ impl<'a> MemoryBus<'a> {
                 self.paula
                     .audio
                     .set_dma_enables((self.agnus.dmacon & dmacon::AUD_ALL) as u8, dmaen);
-                self.floppy
-                    .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::DSKEN) != 0);
                 self.denise
                     .sprites
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::SPREN) != 0);
@@ -273,30 +276,13 @@ impl<'a> MemoryBus<'a> {
                     .frame_builder
                     .set_dma_enabled(dmaen && (self.agnus.dmacon & dmacon::BPLEN) != 0);
             }
-            custom_reg::BPLCON0 => {
-                self.agnus.set_bplcon0(val);
-            }
-            custom_reg::COPJMP1 => {
-                self.agnus.copjmp1();
-            }
-            custom_reg::COPJMP2 => {
-                self.agnus.copjmp2();
-            }
-            custom_reg::BLTSIZE => {
-                self.agnus.blitter.trigger_blit(val);
-            }
             _ => {}
         }
     }
 
     /// Propagates committed Paula register mutations across the motherboard
-    pub fn write_paula(&mut self, reg: u16, val: u16) {
-        match reg & CUSTOM_REG_OFFSET_MASK {
-            custom_reg::DSKLEN => self.floppy.set_dsklen(val),
-            custom_reg::DSKSYNC => self.floppy.set_dsksyn(val),
-            custom_reg::ADKCON => self.floppy.set_adkcon(self.paula.adkcon),
-            _ => {}
-        }
+    pub fn write_paula(&mut self, _reg: u16, _val: u16) {
+        // Paula register state is owned directly by Paula silicon
     }
 
     /// Propagates committed Denise register mutations across the motherboard

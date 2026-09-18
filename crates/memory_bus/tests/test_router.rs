@@ -93,11 +93,11 @@ fn test_custom_register_broadcast_and_routing() {
     // Step 2 CCKs: Agnus mutation matures and broadcasts to Paula and subsystems
     let due1 = mb.agnus.step_cck();
     for item in due1.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
     let due2 = mb.agnus.step_cck();
     for item in due2.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
     assert!(mb.agnus.copper.dma_enabled, "Copper DMA must be enabled");
 }
@@ -127,7 +127,7 @@ fn test_cia_address_decoding() {
 #[test]
 fn test_ciaa_port_a_overlay_toggle() {
     let mut mb = TestMotherboard::new();
-    mb.mem.inject_kickstart_rom(&[0x11, 0x22, 0x33, 0x44]);
+    mb.mem.write_bytes(0xF80000, &[0x11, 0x22, 0x33, 0x44]);
     mb.mem.map_kickstart_to_low_memory();
 
     let mut bus = mb.router();

@@ -38,6 +38,10 @@ pub struct Paula {
     pub dsklen: u16,
     pub dskdat: u16,
     pub dsksync: u16,
+    /// True if DSKLEN write 1 has armed the disk DMA sequence
+    pub dma_armed: bool,
+    /// True if DSKLEN write 2 has activated the disk DMA transfer
+    pub dma_active: bool,
 
     /// Paula-local DMA enables latched from DMACON ($096: AUD0..3EN, DSKEN)
     pub dma_enables: u16,
@@ -78,6 +82,8 @@ impl Paula {
             dsklen: 0,
             dskdat: 0,
             dsksync: 0x4489,
+            dma_armed: false,
+            dma_active: false,
             dma_enables: 0,
             dma_master: false,
             mutations: [None; PAULA_MUTATION_CAPACITY],
@@ -99,6 +105,8 @@ impl Paula {
         self.dsklen = 0;
         self.dskdat = 0;
         self.dsksync = 0x4489;
+        self.dma_armed = false;
+        self.dma_active = false;
         self.dma_enables = 0;
         self.dma_master = false;
         self.mutations = [None; PAULA_MUTATION_CAPACITY];
@@ -144,6 +152,32 @@ impl Paula {
             0x01E => self.intreq,
             _ => 0xFFFF,
         }
+    }
+
+    /// Action method: writes DSKLEN register following the 2-write arming sequence
+    pub fn write_dsklen(&mut self, val: u16) {
+        self.dsklen = val;
+        let dmaen = (val & 0x8000) != 0;
+        if !dmaen {
+            self.dma_armed = false;
+            self.dma_active = false;
+        } else if !self.dma_armed {
+            self.dma_armed = true;
+        } else {
+            self.dma_active = true;
+        }
+    }
+
+    /// Returns true if disk DMA is armed in DSKLEN
+    #[inline]
+    pub fn is_dsk_dma_armed(&self) -> bool {
+        self.dma_armed
+    }
+
+    /// Returns true if disk DMA is active in DSKLEN
+    #[inline]
+    pub fn is_dsk_dma_active(&self) -> bool {
+        self.dma_active
     }
 
     /// Assembles composite live DSKBYTR status from floppy read word, DSKLEN, and Paula DMA enables.
@@ -226,7 +260,7 @@ impl Paula {
             0x030 => self.serial_port.write_serdat(val),
             0x032 => self.serial_port.write_serper(val),
             0x034 => self.potgo = val,
-            0x024 => self.dsklen = val,
+            0x024 => self.write_dsklen(val),
             0x026 => self.dskdat = val,
             0x07E => self.dsksync = val,
 

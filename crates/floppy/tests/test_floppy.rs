@@ -3,7 +3,6 @@ use floppy::FloppyController;
 #[test]
 fn test_floppy_geometry_and_stepping() {
     let mut controller = FloppyController::new();
-    assert_eq!(controller.dsksyn, 0x4489);
 
     let df0 = &mut controller.drives[0];
     assert!(df0.is_track0());
@@ -18,36 +17,13 @@ fn test_floppy_geometry_and_stepping() {
 }
 
 #[test]
-fn test_dsklen_modes() {
+fn test_dskpt_address_masking() {
     let mut controller = FloppyController::new();
-    controller.dsklen = 0xC100; // Bit 15 = DMA enable, Bit 14 = Write mode
-    assert!(controller.is_dma_enabled());
-    assert!(controller.is_write_mode());
-}
-
-#[test]
-fn test_dsklen_two_write_arming_sequence() {
-    let mut controller = FloppyController::new();
-    controller.set_dma_enabled(true);
-
-    // Initial state: not armed, not active
-    assert!(!controller.is_dma_armed());
-    assert!(!controller.is_dma_active());
-
-    // Write 1: length with DMAEN bit 15 = 1 arms the controller
-    controller.set_dsklen(0x8100);
-    assert!(controller.is_dma_armed());
-    assert!(!controller.is_dma_active());
-
-    // Write 2: second write starts the transfer
-    controller.set_dsklen(0x8100);
-    assert!(controller.is_dma_armed());
-    assert!(controller.is_dma_active());
-
-    // Write 3: clearing bit 15 unarms and stops transfer
-    controller.set_dsklen(0x4000);
-    assert!(!controller.is_dma_armed());
-    assert!(!controller.is_dma_active());
+    controller.set_dskpt(0x0004_2000);
+    assert_eq!(controller.dskpt, 0x0004_2000);
+    // Upper byte masked to 24-bit
+    controller.set_dskpt(0xFF04_2000);
+    assert_eq!(controller.dskpt, 0x0004_2000);
 }
 
 #[test]

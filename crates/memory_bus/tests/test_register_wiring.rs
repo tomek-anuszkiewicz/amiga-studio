@@ -68,16 +68,15 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     );
     let due = mb.agnus.step_cck();
     for item in due.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
     let due2 = mb.agnus.step_cck();
     for item in due2.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
 
     // 3. Set Paula DSKLEN to write mode: bit 14 (WRITE)
     mb.paula.commit_register_write(0x024, 0x4000);
-    mb.floppy.set_dsklen(0x4000);
 
     // 4. Set Floppy deserializer data byte $A5, WORDEQUAL (bit 12), and DSKBYT (bit 15)
     mb.floppy.dskbytr = 0x90A5; // DSKBYT | WORDEQUAL | byte 0xA5
@@ -157,11 +156,11 @@ fn test_dskpt_routed_to_agnus() {
     // Step 2 CCK cycles for writes to mature in Agnus
     let due1 = mb.agnus.step_cck();
     for item in due1.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
     let due2 = mb.agnus.step_cck();
     for item in due2.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
 
     // Verify Agnus holds pointer $00042000
@@ -185,11 +184,11 @@ fn test_aud0lch_aud0lcl_routed_to_agnus() {
     // Step 2 CCK cycles for writes to mature in Agnus
     let due1 = mb.agnus.step_cck();
     for item in due1.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
     let due2 = mb.agnus.step_cck();
     for item in due2.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
 
     // Verify Agnus audlc[0] and audpt[0] hold $00028000
@@ -212,11 +211,11 @@ fn test_dmacon_routing_to_denise_sprites() {
     // Step 2 CCKs for Agnus to mature and dispatch DMACON action
     let due1 = mb.agnus.step_cck();
     for item in due1.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
     let due2 = mb.agnus.step_cck();
     for item in due2.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
 
     // Verify Sprite DMA was enabled in Denise
@@ -229,11 +228,11 @@ fn test_dmacon_routing_to_denise_sprites() {
     );
     let due3 = mb.agnus.step_cck();
     for item in due3.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
     let due4 = mb.agnus.step_cck();
     for item in due4.iter().flatten() {
-        mb.router().write_agnus(item.0, item.1);
+        mb.router().broadcast_agnus_signals(item.0, item.1);
     }
 
     // Verify Sprite DMA was disabled in Denise
