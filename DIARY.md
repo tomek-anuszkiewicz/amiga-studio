@@ -6359,6 +6359,19 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,789 bytes, Test Coupling across all modified crates, 100% API Coverage, all 19 Architecture Rules).
   - `cargo test -p physical_memory -p m68000 -p debugger -p gui`: 100% pass across all unit and integration test binaries.
 
+---
+
+### [2026-09-18 16:35 CEST] — Purge of Dead Dynamic Reconfiguration Method `apply_config`
+- **Affected Subsystems**:
+  - `crates/physical_memory/src/physical_memory.rs`: Removed dead public method `apply_config(&mut self, config: A500Config)`. In real hardware and emulation, machine reconfiguration occurs at reset/initialization (`PhysicalMemory::from_config(config)` or `A500::new(config)`), not via dynamic buffer resizing on a running physical bus.
+  - `crates/physical_memory/tests/test_config.rs`: Removed synthetic test `test_memory_bus_apply_config_dynamically` which existed solely to satisfy the public API coverage audit.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated unused `apply_config` and its synthetic test, maintaining a clean, production-only public API surface.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,789 bytes, Test Coupling, 100% API Coverage, all 19 Architecture Rules).
+  - `cargo test -p physical_memory`: 100% pass across all 22 unit tests.
+
+
 
 
 

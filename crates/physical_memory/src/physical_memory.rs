@@ -143,32 +143,6 @@ impl PhysicalMemory {
         bus
     }
 
-    /// Reconfigures RAM buffers and RTC mapping by applying a new A500Config
-    pub fn apply_config(&mut self, config: A500Config) {
-        let chip_ram_size = match config.chip_ram() {
-            ChipRamSize::Kb512 => CHIP_RAM_SIZE_512K,
-        };
-        self.chip_ram.resize(chip_ram_size, 0);
-
-        self.slow_ram = match config.slow_ram() {
-            SlowRamSize::None => None,
-            SlowRamSize::Kb512 => Some(vec![0x00; SLOW_RAM_SIZE]),
-        };
-
-        self.fast_ram = match config.fast_ram() {
-            FastRamSize::None => None,
-            FastRamSize::Mb4 => Some(vec![0x00; 4 * 1024 * 1024]),
-        };
-
-        self.bank_map = map::build_bank_map(&config);
-        if self.low_memory_overlay {
-            for b in 0x00..=0x07 {
-                self.bank_map[b] = map::KICKSTART_ROM_HANDLER;
-            }
-        }
-        self.config = config;
-    }
-
     /// Engages low-memory boot overlay (_OVL), routing $000000-$07FFFF accesses to Kickstart ROM
     pub fn map_kickstart_to_low_memory(&mut self) {
         self.low_memory_overlay = true;

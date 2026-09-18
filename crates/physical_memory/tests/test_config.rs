@@ -84,19 +84,6 @@ fn test_memory_bus_with_standard_1mb_has_rtc_bank() {
 }
 
 #[test]
-fn test_memory_bus_apply_config_dynamically() {
-    let mut bus = PhysicalMemory::new();
-    assert_eq!(bus.config.active_preset(), A500Preset::Standard1Mb);
-    assert!(bus.slow_ram.is_some());
-
-    // Switch dynamically to bare 512k
-    bus.apply_config(A500Config::bare_512k(VideoStandard::Pal));
-    assert_eq!(bus.config.active_preset(), A500Preset::Bare512k);
-    assert!(bus.slow_ram.is_none());
-    assert_eq!(bus.read_byte_debug(0xDC0001), 0xFF);
-}
-
-#[test]
 fn test_256_entry_bank_map() {
     use physical_memory::MemoryBank;
 
