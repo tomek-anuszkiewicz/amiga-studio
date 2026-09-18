@@ -3,7 +3,7 @@
 //! Defines the core `AddressBus` trait implemented by both authentic hardware
 //! emulation buses (`MemoryBus`) and synthetic test-runner harnesses (`TestMemoryBus`).
 
-use super::arbitration::BusResult;
+use super::bus_result::BusResult;
 
 /// Abstract 24-bit address bus interface
 ///

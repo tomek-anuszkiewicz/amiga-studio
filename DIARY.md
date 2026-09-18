@@ -6601,6 +6601,27 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.32s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (19.04s).
 
+---
+
+### [2026-09-18 22:55 CEST] — Module Naming Alignment: `arbitration.rs` Renamed to `bus_result.rs`
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/arbitration.rs` $\to$ `src/bus_result.rs`: Renamed file to 1:1 match the defining `BusResult<T>` type after relocating function codes and test-only access sizes.
+    - `src/address_bus.rs`: Updated import to `use super::bus_result::BusResult;`.
+    - `src/physical_memory.rs`: Updated submodule declaration to `pub mod bus_result;` and re-export to `pub use bus_result::BusResult;`.
+    - `tests/test_arbitration.rs` $\to$ `tests/test_bus_result.rs`: Renamed test suite to match module and updated imports.
+  - `crates/test_runner/`:
+    - `tests/test_architecture_rules.rs`: Updated `test_multi_module_crate_test_parity` expectation table to require `test_bus_result.rs` and `test_address_bus.rs`.
+  - `Obsidian/Amiga/Design/`:
+    - `MemoryBus.md`: Updated specification links from `arbitration.rs` to `bus_result.rs`.
+- **What Was Changed (The Concrete Reality)**:
+  - Cleaned up module names in `physical_memory` to form an intuitive, 1:1 mapped triad: `address_bus.rs` (`AddressBus`), `bus_result.rs` (`BusResult`), and `map.rs` (bank decoding), completely free of historical clutter.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (9.89s).
+  - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (21.13s).
+
+
 
 
 

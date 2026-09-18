@@ -1,4 +1,4 @@
-use physical_memory::{arbitration::BusResult, PhysicalMemory};
+use physical_memory::{bus_result::BusResult, PhysicalMemory};
 
 #[test]
 fn test_bus_result_methods() {

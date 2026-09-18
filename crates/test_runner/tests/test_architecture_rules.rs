@@ -1287,7 +1287,8 @@ fn test_multi_module_crate_test_parity() {
         (
             "physical_memory",
             &[
-                "test_arbitration.rs",
+                "test_address_bus.rs",
+                "test_bus_result.rs",
                 "test_map.rs",
                 "test_physical_memory.rs",
             ],

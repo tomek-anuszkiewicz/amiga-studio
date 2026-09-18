@@ -4,11 +4,11 @@
 //! DMA wait-state stalling, and hardware quirks per Obsidian/Amiga/Design/MemoryBus.md.
 
 pub mod address_bus;
-pub mod arbitration;
+pub mod bus_result;
 pub mod map;
 
 pub use address_bus::AddressBus;
-pub use arbitration::BusResult;
+pub use bus_result::BusResult;
 pub use config::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
 };
