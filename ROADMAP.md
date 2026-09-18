@@ -73,6 +73,15 @@ This document outlines the phased development plan, hardware milestones, verific
   - Continuously test all interactive panels under live emulation: Disassembly infinite stream browsing and in-place instruction patching, Memory Hex selection and row-wrapping keyboard navigation, register/CCR editing, Microcode Inspector step progression, and breakpoint/watchpoint triggers.
   - Verify layout stability, symmetric margin geometry, scrollbar ergonomics, and responsive display tiers (`LayoutTier::FullHdWide`, `LayoutTier::StandardDesktop`, `LayoutTier::Compact`) across diverse window sizes and display resolutions.
   - Test and refine upcoming Save State management (`State` menu, in-memory quick slots 1–5, `F6`/`F9` shortcuts, native file dialogs, and State Manager modal dialog).
+- **Developer Studio & Debugger Keyboard Shortcuts Documentation & Discoverability:**
+  - Full audit, documentation, and user-facing surfacing of all implemented keyboard shortcuts across Developer Studio and Game View modes:
+    - *View & Window Modes:* `F12` / `F2` (Toggle Developer Studio vs Screen-Only Game View), `Escape` (Exit Screen-Only Game View and pause emulation for inspection).
+    - *Execution & Stepping Controls:* `F5` / `Space` (Toggle Run / Pause when no text input is focused), `F10` (Step Single Instruction forward), `Shift + F10` (Step Backward / Rewind execution history via temporal buffer), `F11` (Step single Color Clock phase ~280 ns / CCK).
+    - *Tooling, Panels & Machine Control:* `F8` (Toggle Microcode Inspector pane visibility), `Alt + T` (Toggle Temporal Recording on/off), `Ctrl + R` (Trigger Cold / Full Machine Reset), `Ctrl + O` (Open Load Binary injection dialog).
+    - *State Persistence & Quick Slots:* `F6` (Quick Save snapshot to in-memory Slot 1), `F9` (Quick Load snapshot from in-memory Slot 1), `Ctrl + S` (Save State to file dialog), `Ctrl + L` (Load State from file dialog).
+    - *GUI Display Scaling & Zoom:* `Ctrl + +` / `Ctrl + =` (Zoom In by +25%, up to 250%), `Ctrl + -` (Zoom Out by -25%, down to 75%), `Ctrl + 0` (Reset Zoom to 100%).
+    - *Interactive Stream & Hex Editor Keys:* Disassembly stream navigation (Arrow Up/Down scroll, `Enter` to open in-place instruction patcher, `Escape` to cancel editing), Memory Hex editor navigation (Arrow keys, PageUp/PageDown, Home/End, `Tab`/`Enter` to commit edited byte, `Escape` to cancel, `Ctrl + Mouse Wheel` for 1024-byte quick jump).
+  - Implement a dedicated in-app **Keyboard Shortcuts Reference Modal (`?` or `F1` or Top Menu Help > Shortcuts)** and enrich button hover tooltips to ensure zero hidden or unadvertised shortcuts remain in the emulator interface.
 
 ### Step 2: vAmigaTS Automated Test Suite Execution Harness & Silicon Verification Gate (Active Focus)
 - **Delivered vAmigaTS Runner Engine & Verification Infrastructure (v1.0):**

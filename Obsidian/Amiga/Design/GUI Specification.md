@@ -286,7 +286,42 @@ To guarantee that the visual presentation can be reconstructed from specificatio
 
 ---
 
-## 6. Reference Documentation & Upstream Ground Truth
+## 6. Keyboard Shortcuts & Interactive Bindings Matrix
+
+All keyboard shortcuts are centralized and dispatched in [`crates/gui/src/app.rs`](../../../crates/gui/src/app.rs) (`handle_keyboard_shortcuts`) and interactive panels:
+
+| Domain | Key Binding | Action / Behavior | UI Origin & Target |
+| :--- | :--- | :--- | :--- |
+| **View Modes** | `F12` or `F2` | Toggle Developer Studio vs Screen-Only Game View | Central Viewport / Canvas |
+| **View Modes** | `Escape` | Exit Game View and return to Developer Studio (pauses emulation) | Central Viewport |
+| **Execution** | `F5` or `Space` | Toggle Run / Pause (when no text input field is focused) | Top Menu Bar / Engine |
+| **Stepping** | `F10` | Step single M68000 instruction forward | Top Menu Bar / Disassembly |
+| **Stepping** | `Shift + F10` | Step backward (rewind 1 instruction via temporal buffer) | Top Menu Bar / Temporal Bar |
+| **Stepping** | `F11` | Step single Color Clock phase (CCK ~280 ns) | Top Menu Bar / Microcode |
+| **Tooling** | `F8` | Toggle Microcode Inspector dock visibility | Left Dock |
+| **Tooling** | `Alt + T` | Toggle Temporal Recording on / off | Temporal Scrubber Bar |
+| **Tooling** | `Ctrl + R` | Machine Cold / Full Reset (`session.reset()`) | Top Menu Bar / File |
+| **Tooling** | `Ctrl + O` | Open Load Binary modal file dialog | Top Menu Bar / File |
+| **Persistence** | `F6` | Quick-save snapshot to in-memory Slot 1 | Top Menu Bar / State |
+| **Persistence** | `F9` | Quick-load snapshot from in-memory Slot 1 | Top Menu Bar / State |
+| **Persistence** | `Ctrl + S` | Open Save State to disk dialog | Top Menu Bar / State |
+| **Persistence** | `Ctrl + L` | Open Load State from disk dialog | Top Menu Bar / State |
+| **GUI Zoom** | `Ctrl + +` / `Ctrl + =` | Increase GUI scale (+25%, max 250%) | Top Menu Bar / Context |
+| **GUI Zoom** | `Ctrl + -` | Decrease GUI scale (-25%, min 75%) | Top Menu Bar / Context |
+| **GUI Zoom** | `Ctrl + 0` | Reset GUI scale to default (100%) | Top Menu Bar / Context |
+| **Disassembly** | `Arrow Up` / `Down` | Scroll stream lines without moving PC | Disassembly Viewport |
+| **Disassembly** | `Enter` | Open in-place instruction assembler patcher | Disassembly Selected Row |
+| **Disassembly** | `Escape` | Cancel in-place instruction editing | Disassembly Patcher |
+| **Memory Hex** | `Arrow Keys` | Navigate byte cursor horizontally/vertically | Memory Hex Grid |
+| **Memory Hex** | `PageUp` / `PageDown` | Jump cursor 128 bytes backward/forward | Memory Hex Grid |
+| **Memory Hex** | `Home` / `End` | Jump cursor to start/end of current row | Memory Hex Grid |
+| **Memory Hex** | `Tab` or `Enter` | Commit edited hex nibble/byte and advance | Memory Hex Cell Editor |
+| **Memory Hex** | `Escape` | Cancel active byte edit | Memory Hex Cell Editor |
+| **Memory Hex** | `Ctrl + Wheel` | Jump 1,024 bytes (1 KB page) up/down | Memory Hex Scroller |
+
+---
+
+## 7. Reference Documentation & Upstream Ground Truth
 
 - [GUI Frontend Architecture & Overview](GUI.md): High-level frontend architecture, CRT shaders, aspect ratios, and input mapping.
 - [egui Guidelines & Frontend Best Practices](egui%20Guidelines.md): Immediate-mode UI patterns, layout invariants, and headless testing rules.
@@ -295,5 +330,6 @@ To guarantee that the visual presentation can be reconstructed from specificatio
 - [Temporal Debugger Ring Buffer](../../../crates/debugger/src/temporal.rs): High-capacity zero-allocation execution history ring buffer.
 - [GUI Crate Implementation](../../../crates/gui/src/gui.rs): Living Rust implementation of eframe app, views, docks, and modals.
 - [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.
+
 
 

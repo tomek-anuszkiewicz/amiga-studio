@@ -6451,6 +6451,17 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 test_runner suites (2.88s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (5.28s).
 
+### Entry: Developer Studio Keyboard Shortcuts Documentation & Discoverability Roadmap (`ROADMAP.md`, `GUI Specification.md`)
+- **Date & Context**: September 18, 2026. Following user direction to capture and formalize all implemented keyboard shortcuts within the Developer Studio debugger GUI that were previously unadvertised or hidden.
+- **Architectural Motivation**:
+  - The immediate-mode Developer Studio (`crates/gui/src/app.rs`) supports a rich set of power-user keyboard shortcuts for mode toggling (`F12`/`F2`, `Escape`), execution control (`F5`/`Space`, `F10`/`Shift+F10`, `F11`), tooling inspection (`F8`, `Alt+T`, `Ctrl+R`, `Ctrl+O`), state persistence (`F6`/`F9`, `Ctrl+S`/`Ctrl+L`), zoom scaling (`Ctrl++`/`Ctrl+-`/`Ctrl+0`), and fine-grained memory/disassembly editing.
+  - However, many of these shortcuts lacked discoverability in the UI, leading to hidden functionality.
+- **What Was Changed**:
+  - `ROADMAP.md`: Updated Section 2, Step 1 ("Developer Studio GUI & Diagnostic Tooling Hardening") with a dedicated deliverable defining the full shortcut matrix and scheduling an in-app keyboard shortcuts reference modal (`?` / `F1` or Help menu) and enriched contextual tooltips.
+  - `Obsidian/Amiga/Design/GUI Specification.md`: Added Section 6 ("Keyboard Shortcuts & Interactive Bindings Matrix") providing an authoritative 26-binding tabular reference linking domains, keys, behaviors, and source origins (`crates/gui/src/app.rs`, `memory_hex.rs`, `disassembly.rs`).
+- **Verification & Test Results**:
+  - Verified documentation links and formatting.
+
 
 
 
