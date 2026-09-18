@@ -64,3 +64,11 @@ fn test_chip_ram_bounds_and_open_bus() {
     // Beyond 512KB ($080000..$1FFFFF, bank 0x08+), standard unexpanded machine has open bus
     assert_eq!(bus.read_word(0x081000), BusResult::Ready(0xFFFF));
 }
+
+#[test]
+fn test_bank_handler_mapping_cleanliness() {
+    let bus = PhysicalMemory::new();
+    assert_eq!(bus.bank_map[0x00].bank, MemoryBank::KickstartRom);
+    assert_eq!(bus.bank_map[0xDF].bank, MemoryBank::CustomChips);
+    assert_eq!(bus.bank_map[0xBF].bank, MemoryBank::Cia);
+}

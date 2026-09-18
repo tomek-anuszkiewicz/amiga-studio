@@ -129,12 +129,6 @@ impl<'de> Deserialize<'de> for BankHandler {
     }
 }
 
-// =============================================================================
-// Individual Memory Bank Handler Implementations
-// =============================================================================
-
-// --- Chip RAM ($000000-$07FFFF) ---
-
 #[inline(always)]
 pub fn read_chip_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
     bus.chip_ram[addr as usize]
@@ -197,8 +191,6 @@ pub fn write_chip_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> Bus
     }
 }
 
-// --- Auto-Config Fast RAM ($200000-$9FFFFF) ---
-
 pub fn read_fast_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
     if let Some(fast_ram) = &bus.fast_ram {
         let offset = (addr - 0x200000) as usize;
@@ -251,8 +243,6 @@ pub fn write_fast_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> Bus
     write_fast_ram_word_debug(bus, addr, val);
     BusResult::Ready(())
 }
-
-// --- Slow / Trapdoor RAM ($C00000-$C7FFFF) ---
 
 pub fn read_slow_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
     if let Some(slow_ram) = &bus.slow_ram {
@@ -323,8 +313,6 @@ pub fn write_slow_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> Bus
     }
 }
 
-// --- Kickstart ROM ($F80000-$FFFFFF, mirrored at $000000 during boot overlay) ---
-
 #[inline(always)]
 pub fn read_kickstart_rom_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
     let mask = bus.kickstart_rom.len() - 1;
@@ -388,8 +376,6 @@ pub fn write_kickstart_rom_word(_bus: &mut PhysicalMemory, _addr: u32, _val: u16
     BusResult::Ready(())
 }
 
-// --- Unmapped Open Bus & Peripheral Fallbacks ---
-
 pub fn read_open_bus_debug(bus: &PhysicalMemory, _addr: u32) -> u8 {
     bus.unmapped_byte
 }
@@ -417,10 +403,6 @@ pub fn write_open_bus(_bus: &mut PhysicalMemory, _addr: u32, _val: u8) -> BusRes
 pub fn write_open_bus_word(_bus: &mut PhysicalMemory, _addr: u32, _val: u16) -> BusResult<()> {
     BusResult::Ready(())
 }
-
-// =============================================================================
-// Static Handler Definitions
-// =============================================================================
 
 pub const CHIP_RAM_HANDLER: BankHandler = BankHandler {
     bank: MemoryBank::ChipRam,
@@ -531,10 +513,6 @@ pub const fn handler_for_bank(bank: MemoryBank) -> BankHandler {
         MemoryBank::OpenBus => OPEN_BUS_HANDLER,
     }
 }
-
-// =============================================================================
-// 256-Entry Bank Dispatch Table Construction
-// =============================================================================
 
 /// Precalculates the 256-entry 64 KB memory bank dispatch table for a given preset at compile time
 pub const fn build_preset_bank_map(preset: A500Preset) -> [BankHandler; 256] {

@@ -6811,9 +6811,19 @@ Every future modification or implementation task must append an entry following 
 - **What Was Changed (The Concrete Reality)**:
   - Memory contention gating is already intrinsically modeled inside the 256-entry bank table handlers (`map.rs`), where `ChipRam` and `SlowRam` handlers autonomously check `bus.chip_ram_blocked` to return `BusResult::WaitState`.
   - Eliminating `is_chip_ram_target` pruned dead utility code that was only kept alive by tests, keeping the `PhysicalMemory` public API lean and focused.
+---
+
+### [2026-09-18 23:51 CEST] — Pruned Redundant Banner and Section Delimiter Comments in `map.rs`
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/map.rs`: Pruned decorative ASCII banner dividers (`// --- ... ---` and `// ===...===`) across memory bank handlers and table builders. Standard Rust documentation comments (`///`) were preserved on all declarations.
+    - `tests/test_map.rs`: Added `test_bank_handler_mapping_cleanliness` asserting handler bank assignments.
+- **What Was Changed (The Concrete Reality)**:
+  - Cleaned up visual noise and non-idiomatic ASCII art banners in `map.rs`, establishing consistent clean code styling across the crate.
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
-  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (6.02s).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (7.40s).
+
 
 
 
