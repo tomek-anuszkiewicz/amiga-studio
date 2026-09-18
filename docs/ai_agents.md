@@ -55,28 +55,38 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 
 ## 3. Specialized Agent Skills (`.agents/skills/`)
 
-Operational procedures and recipes are modularized under [`.agents/skills/`](../.agents/skills/) across three primary engineering domains:
+Operational procedures and recipes are modularized under [`.agents/skills/`](../.agents/skills/) across four primary engineering domains:
 
 ### A. CPU & Hardware Emulation
 - [`add-m68k-instruction`](../.agents/skills/add-m68k-instruction/SKILL.md): Step-by-step recipe for implementing new M68000 instructions (decoding, CCK micro-steps, inlined CCR flags, and single-step test validation).
 - [`m68k-singlestep-test`](../.agents/skills/m68k-singlestep-test/SKILL.md): Diagnostic runbook for running, isolating, and troubleshooting Tom Harte physical silicon single-step hardware test failures.
 
-### B. Quality Assurance & Code Hygiene
+### B. Quality Assurance, Performance & Refactoring
 - [`code-review`](../.agents/skills/code-review/SKILL.md): Comprehensive 14-point audit checklist for code quality, file sizes ($\le 800$ lines), inlining, zero runtime panics, and spec compliance.
 - [`test-runner`](../.agents/skills/test-runner/SKILL.md): Standardized test execution across all 4 tiers, `.test_results/` snapshot management, and automated differential regression telemetry.
 - [`integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md): 4-Iteration Cascading Verification Protocol runbook for multi-chip integration test suites, failure clustering, and 2–3 attempt limits.
 - [`synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md): Post-facto root-cause consolidation using the 3-Column Diagnostic Matrix (`[Symptom] | [Location] | [Mechanism]`) to replace scattered local workarounds with a unified upstream hardware model.
-- [`audit-code-quality`](../.agents/skills/audit-code-quality/SKILL.md): Comprehensive on-demand code quality auditor and pruning playbook covering dead code, test-only zombies, minimum visibility leaks, and SRP cohesion across workspace crates.
+- [`audit-code-quality`](../.agents/skills/audit-code-quality/SKILL.md): Comprehensive on-demand code quality auditor and pruning playbook covering dead code, test-only zombies, minimum visibility leaks, SRP cohesion, and skill catalog synchronization.
+- [`refactor-split-module`](../.agents/skills/refactor-split-module/SKILL.md): Decompose oversized Rust source files (> 800 lines) into cohesive submodules while preserving 3-tier re-exports.
+- [`profile-external`](../.agents/skills/profile-external/SKILL.md): Profile Amiga 500 emulator execution hot paths using external sampling profilers (`samply` / Firefox Profiler) and verify throughput against Git-tracked baselines.
 - [`egui-vision-debugger`](../.agents/skills/egui-vision-debugger/SKILL.md): Headless visual inspection and autonomous self-healing skill for the `egui` frontend using `gui-inspector` (`egui_kittest` + `wgpu`) and Agent Multimodal Vision to diagnose layout squishing, splitter contention, and focus lifecycles.
+- [`capture-gui-screenshot`](../.agents/skills/capture-gui-screenshot/SKILL.md): 1-shot headless screenshot capture and multimodal visual inspection for the Amiga 500 egui Developer Studio.
 
 ### C. Architecture, Knowledge & Documentation
 - [`obsidian-vault-linking`](../.agents/skills/obsidian-vault-linking/SKILL.md): Enforces Line 1 YAML properties (`tags: [spec, ...]`), inverted pyramid structure, dual-layer linking (inline contextual + bottom structural references), and zero broken links across [Obsidian/Amiga/Design/](../Obsidian/Amiga/Design/).
+- [`sync-design-docs`](../.agents/skills/sync-design-docs/SKILL.md): Synchronize Obsidian design specifications with active codebase changes, prune draft code, and update crate graphs.
+- [`roadmap-maintenance`](../.agents/skills/roadmap-maintenance/SKILL.md): Systematic maintenance and substrate-first ordering of `ROADMAP.md` with zero retention of completed items.
 - [`compact-diary`](../.agents/skills/compact-diary/SKILL.md): Milestone compaction procedure synthesizing older chronological log entries in [DIARY.md](../DIARY.md) into concise architectural digests while preserving key evolutionary rationale and verified results.
+- [`describe-diagram-assets`](../.agents/skills/describe-diagram-assets/SKILL.md): Inspect circuit diagrams via multimodal vision, author technical sidecars (`<image>.txt`), and sync RAG cache.
 - [`pdf-to-markdown`](../.agents/skills/pdf-to-markdown/SKILL.md): High-fidelity document conversion toolchain (PyMuPDF chapter splitting, figure cropping, SVG vectorization, and table stitching) for technical reference manuals.
 - [`index-amiga-rag`](../.agents/skills/index-amiga-rag/SKILL.md): Operational procedure for Qdrant vector reindexing, status verification, and offline visual diagram sidecar maintenance (`<image>.txt`).
 - [`author-methodology-doc`](../.agents/skills/author-methodology-doc/SKILL.md): Author, audit, or restructure narrative articles, methodology documents, essays, and retrospective devlogs (e.g. `docs/how_this_emulator_was_written.md`) using the 6-layer Inverted Pyramid hierarchy.
 - [`html-to-markdown`](../.agents/skills/html-to-markdown/SKILL.md): Standardized toolchain for converting legacy Word HTML, vintage web documentation, and technical HTML articles into clean, publication-grade Obsidian Markdown with asset extraction, layout unnesting, and anchor link validation.
 - [`graphify`](../.agents/skills/graphify/SKILL.md): Persistent code knowledge graph navigation, call hierarchy tracing, and scoped subtree updates (`crates/` vs `ref_src/`).
+
+### D. Git & Worktree Orchestration
+- [`git-worktree`](../.agents/skills/git-worktree/SKILL.md): Create, synchronize, and tear down isolated Git worktrees with automatic physical copying of ignored test assets and `.env` (Zero NTFS Junctions).
+- [`git-resolve-merge`](../.agents/skills/git-resolve-merge/SKILL.md): Resolve 3-way Git merge conflicts holistically in isolated worktrees with mandatory merge commits and regression verification.
 
 ---
 

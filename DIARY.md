@@ -7009,6 +7009,19 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/profile-external/scripts/aggregate_profile.py --help`: Verified clean execution.
   - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,802 bytes, Test-Coupling, API Coverage 100%, 19 Architecture Rules).
 
+---
+
+### [2026-09-19 02:10 CEST] — Integrated Agent Skills Catalog Synchronization into audit-code-quality & Synchronized docs/ai_agents.md
+- **Subsystems Affected**:
+  - `docs/ai_agents.md`: Updated Section 3 with all 23 active skills on disk, categorizing them across 4 domains (CPU & Emulation, Quality & Refactoring, Architecture & Knowledge, Git & Worktree Orchestration). Added 8 missing skills (`profile-external`, `capture-gui-screenshot`, `refactor-split-module`, `describe-diagram-assets`, `sync-design-docs`, `roadmap-maintenance`, `git-worktree`, `git-resolve-merge`).
+  - `.agents/skills/audit-code-quality/scripts/audit_code_quality.py`: Added `check_skills_catalog_sync()` function and `--skills` flag to verify that all on-disk skill directories (`.agents/skills/`) are cataloged in `docs/ai_agents.md` with zero missing and zero phantom references.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Added Pillar 4 ("Agent Skills Catalog Synchronization"), CLI examples for `--skills`, and updated subagent return contract.
+- **Architectural Rationale & Trade-Offs**:
+  - *Preventing Documentation Drift & Dark Skills:* Rapid agent creation and refactoring can lead to "dark skills"—skills residing on disk that aren't discovered or referenced in the repository-level guide. Baking this check into `audit_code_quality.py` guarantees that `docs/ai_agents.md` remains the faithful 1:1 catalog of all capabilities.
+- **Verification & Test Results**:
+  - `python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --skills`: Verified 23/23 skills synchronized (0 missing, 0 phantom).
+  - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,802 bytes, Test-Coupling, API Coverage 100%, 19 Architecture Rules).
+
 
 
 

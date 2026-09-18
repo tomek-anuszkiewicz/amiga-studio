@@ -351,18 +351,55 @@ def scan_srp_and_cohesion(target_crate=None):
     return violations
 
 
+def check_skills_catalog_sync():
+    """Verifies that all skills in .agents/skills/ are documented in docs/ai_agents.md."""
+    skills_dir = REPO_ROOT / ".agents" / "skills"
+    ai_agents_doc = REPO_ROOT / "docs" / "ai_agents.md"
+
+    if not skills_dir.exists() or not ai_agents_doc.exists():
+        return {"actual_count": 0, "documented_count": 0, "issues": []}
+
+    actual_skills = {p.name for p in skills_dir.iterdir() if p.is_dir() and (p / "SKILL.md").exists()}
+    doc_content = ai_agents_doc.read_text(encoding="utf-8")
+    documented_skills = set(re.findall(r"\[`([a-zA-Z0-9_-]+)`\]\(\.\./\.agents/skills/\1/SKILL\.md\)", doc_content))
+
+    issues = []
+    missing_in_doc = actual_skills - documented_skills
+    for skill in sorted(missing_in_doc):
+        issues.append({
+            "type": "missing_in_docs",
+            "skill": skill,
+            "message": f"Skill `{skill}` exists in .agents/skills/ but is missing from docs/ai_agents.md",
+        })
+
+    phantom_in_doc = documented_skills - actual_skills
+    for skill in sorted(phantom_in_doc):
+        issues.append({
+            "type": "phantom_in_docs",
+            "skill": skill,
+            "message": f"Skill `{skill}` is documented in docs/ai_agents.md but does not exist in .agents/skills/",
+        })
+
+    return {
+        "actual_count": len(actual_skills),
+        "documented_count": len(documented_skills),
+        "issues": issues,
+    }
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, and SRP cohesion.")
-    parser.add_argument("--all", action="store_true", help="Run all audits (dead code, visibility, SRP)")
+    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, and skill catalog sync.")
+    parser.add_argument("--all", action="store_true", help="Run all audits (dead code, visibility, SRP, skills sync)")
     parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
     parser.add_argument("--visibility", action="store_true", help="Run least visibility scanner")
     parser.add_argument("--srp", action="store_true", help="Run SRP and file cohesion checks")
+    parser.add_argument("--skills", action="store_true", help="Audit skill catalog sync in docs/ai_agents.md")
     parser.add_argument("--crate", help="Filter audit to a specific crate")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     args = parser.parse_args()
 
     # Default to --all if no specific mode selected
-    if not (args.all or args.dead_code or args.visibility or args.srp):
+    if not (args.all or args.dead_code or args.visibility or args.srp or args.skills):
         args.all = True
 
     dead, zombies = ([], [])
@@ -377,12 +414,17 @@ def main():
     if args.all or args.srp:
         srp_issues = scan_srp_and_cohesion(args.crate)
 
+    skill_audit = {"actual_count": 0, "documented_count": 0, "issues": []}
+    if args.all or args.skills:
+        skill_audit = check_skills_catalog_sync()
+
     if args.json:
         out = {
             "dead_code": dead,
             "test_only_zombies": zombies,
             "visibility_leaks": vis_leaks,
             "srp_cohesion_issues": srp_issues,
+            "skills_sync": skill_audit,
         }
         print(json.dumps(out, indent=2))
         return
@@ -427,10 +469,22 @@ def main():
             print(f"    * [{issue['type']}] {issue['file']}: {issue['metric']}")
             print(f"      -> {issue['recommendation']}")
 
+    if args.all or args.skills:
+        print(f"\n[4. AGENT SKILLS CATALOG SYNCHRONIZATION (docs/ai_agents.md)]")
+        print(f"  - Active on-disk skills: {skill_audit['actual_count']}")
+        print(f"  - Documented in docs/ai_agents.md: {skill_audit['documented_count']}")
+        if not skill_audit["issues"]:
+            print("  - Status: [PASS] 100% synchronized (all skills cataloged cleanly).")
+        else:
+            print(f"  - Status: [FAIL] {len(skill_audit['issues'])} discrepancy/ies found:")
+            for iss in skill_audit["issues"]:
+                print(f"    * {iss['message']}")
+
     print("\n" + "=" * 76)
-    print(f"Audit Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues.")
+    print(f"Audit Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(skill_audit['issues'])} skill sync issues.")
     print("=" * 76)
 
 
 if __name__ == "__main__":
     main()
+

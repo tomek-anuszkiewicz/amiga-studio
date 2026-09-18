@@ -17,7 +17,7 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 
 ---
 
-## 2. The Three Quality Audit Pillars
+## 2. The Four Quality Audit Pillars
 
 ### Pillar 1: Dead Code & Test-Only Zombies
 1. **Completely Dead Symbols (💀):**
@@ -40,6 +40,11 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Source File Ceilings:** Files in `crates/*/src/` exceeding the **800-line ceiling** (per [`.agents/rules/file-size-and-cohesion.md`](../../rules/file-size-and-cohesion.md)).
 - **Unencapsulated "God Structs":** Structs declaring $> 12$ public fields, signaling mixed concerns or lack of domain groupings.
 
+### Pillar 4: Agent Skills Catalog Synchronization (`docs/ai_agents.md`)
+- **Complete Skill Index Integrity:** Every active skill directory under `.agents/skills/` containing a `SKILL.md` must be cataloged in [`docs/ai_agents.md`](../../../docs/ai_agents.md).
+- **Zero Phantom References:** Every skill linked in `docs/ai_agents.md` must actually exist on disk.
+- **Audit Verification:** Verified automatically via `--skills` or `--all`. When drift is detected, add missing skills to the appropriate domain section in `docs/ai_agents.md` or prune deleted skills.
+
 ---
 
 ## 3. CLI Audit Workflow
@@ -61,6 +66,9 @@ python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --visibil
 
 # Audit SRP and file sizes
 python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --srp
+
+# Audit agent skills catalog synchronization in docs/ai_agents.md
+python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --skills
 ```
 
 ### C. Machine-Readable JSON Export
@@ -151,5 +159,6 @@ Ensure all quality gates and architecture rules pass with 100% green status.
   - **Test-Only Zombies Handled:** <count> retained (Host I/O) / <count> pruned
   - **Visibility Demoted:** <count> symbols (`pub` -> `pub(crate)` / private)
   - **SRP / Cohesion Decompositions:** <count> files/structs
+  - **Skills Catalog Sync:** [PASS (all synchronized) | <count> discrepancies]
   - **Verification:** `pre_flight.py` (PASS), `cargo test` (PASS)
   ```
