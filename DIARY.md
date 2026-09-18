@@ -6718,6 +6718,23 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (8.44s).
   - `python tools/harness/run_tests.py --integration`: 100% pass across memory_bus, machine_loop, debugger, gui (17.57s).
 
+---
+
+### [2026-09-18 23:15 CEST] — Conversion of `write_bytes` to Debug-Mode Injection
+- **Affected Subsystems**:
+  - `crates/physical_memory/`:
+    - `src/physical_memory.rs`:
+      - Converted `write_bytes` to call `self.write_byte_debug(addr + i, b)` instead of `self.write_byte(...)`.
+      - Updated doc comments to reflect that `write_bytes` is a side-effect-free, un-arbitrated debug and test injection tool that bypasses `chip_ram_blocked` wait states and hardware side-effects.
+    - `tests/test_physical_memory.rs`:
+      - Added assertion in `test_write_bytes_across_all_memory_regions` proving `write_bytes` succeeds even while `bus.chip_ram_blocked == true`.
+- **What Was Changed (The Concrete Reality)**:
+  - Ensured test and binary loader memory injection (`loader.rs`) operates without stalling or dropping writes when Chip RAM bus arbitration locks are engaged.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md ceiling 13,776 bytes, Test Coupling for physical_memory, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 100% pass across 23 crates + 7 test_runner unit suites (5.77s).
+
+
 
 
 

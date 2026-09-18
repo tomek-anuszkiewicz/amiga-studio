@@ -182,7 +182,8 @@ impl PhysicalMemory {
         write_fn(self, addr, val)
     }
 
-    /// Injects or writes an arbitrary contiguous byte block into physical memory.
+    /// Direct debug/injection byte block writer into physical memory.
+    /// Bypasses bus arbitration locks (such as Chip RAM contention) and side-effects.
     /// Returns the number of bytes written.
     pub fn write_bytes(&mut self, addr: u32, data: &[u8]) -> usize {
         let addr = addr & 0x00FF_FFFF;
@@ -199,7 +200,7 @@ impl PhysicalMemory {
         }
 
         for (i, &b) in data.iter().enumerate() {
-            let _ = self.write_byte(addr.wrapping_add(i as u32), b);
+            self.write_byte_debug(addr.wrapping_add(i as u32), b);
         }
         data.len()
     }

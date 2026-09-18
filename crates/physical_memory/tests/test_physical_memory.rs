@@ -203,4 +203,11 @@ fn test_write_bytes_across_all_memory_regions() {
 
     // 5. Empty slice returns 0
     assert_eq!(bus.write_bytes(0x001000, &[]), 0);
+
+    // 6. Verification that write_bytes operates in debug mode, bypassing chip_ram_blocked
+    bus.chip_ram_blocked = true;
+    let blocked_chip_data = [0x12, 0x34];
+    assert_eq!(bus.write_bytes(0x002000, &blocked_chip_data), 2);
+    assert_eq!(bus.read_word_debug(0x002000), 0x1234);
+    bus.chip_ram_blocked = false;
 }
