@@ -6882,6 +6882,32 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 23 crates + 7 test_runner unit suites passed (8.82s).
   - `python tools/harness/run_tests.py --integration`: memory_bus, machine_loop, debugger, gui passed (17.23s).
 
+### Chip-Namespaced Custom Register Architecture & Parallel Bus Decoding
+- **User Request & Dialogue**:
+  - The user requested reorganizing `custom_reg` in `crates/config/src/registers.rs` into chip-specific namespaces (`custom_reg::agnus::*`, `custom_reg::denise::*`, `custom_reg::paula::*`) to make register dispatch in `MemoryBus` completely self-documenting and eliminate redundant comments.
+  - The user explicitly rejected introducing any artificial `shared` module: on the physical Amiga motherboard, there is no separate "shared" custom chip. Multi-chip registers like `DMACON` and `BPLCON0` exist naturally within both chips that physically decode them (`custom_reg::agnus::DMACON`, `custom_reg::paula::DMACON`, `custom_reg::denise::BPLCON0`, `custom_reg::agnus::BPLCON0`).
+  - Directive: Reorganize `custom_reg` into `agnus`, `denise`, and `paula` submodules with flat root-level re-exports for general access, update `MemoryBus` register routing to use explicit chip namespaces, and remove obsolete comments.
+- **Affected Subsystems**:
+  - `crates/config/`:
+    - `src/registers.rs`:
+      - Reorganized `custom_reg` into three physical chip submodules: `custom_reg::agnus` (Agnus 8370/8371/8372), `custom_reg::denise` (Denise 8362), and `custom_reg::paula` (Paula 8364).
+      - Multi-chip decoded registers (`DMACON`, `DMACONR`, `BPLCON0`) are declared inside each decoding chip's module and re-exported with root disambiguation to preserve flat addressing compatibility.
+      - Total file size kept strictly below constitutional limit (595 lines, limit <= 800 lines).
+    - `tests/test_registers.rs`:
+      - Added `test_custom_reg_chip_namespaces_and_multi_chip_decoding` validating chip submodule access and identity of multi-chip decoded register constants.
+  - `crates/memory_bus/`:
+    - `src/memory_bus.rs`:
+      - Updated `read_custom_word`, `read_custom_word_debug`, and `write_custom_word` match arms to use explicit chip namespaces (`custom_reg::agnus::*`, `custom_reg::denise::*`, `custom_reg::paula::*`).
+      - In `write_custom_word`, multi-chip routing arms explicitly route to decoding chips: `custom_reg::agnus::DMACON` -> `agnus.write_register` and `paula.write_register`; `custom_reg::denise::BPLCON0` -> `denise.write_register` and `agnus.write_register`.
+      - Removed redundant categorization comments since the code is now 100% self-documenting.
+    - `tests/test_register_wiring.rs`:
+      - Added `test_chip_namespaced_custom_register_dispatch` validating write and read dispatch across Agnus, Denise, and Paula via namespaced register constants.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly (Formatting, AGENTS.md 13,776 bytes, Change-Coupling for `config` and `memory_bus`, API Coverage 100%, 19 Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: 23 crates + 7 test_runner unit suites passed (11.46s).
+  - `python tools/harness/run_tests.py --integration`: memory_bus, machine_loop, debugger, gui passed (17.85s).
+
 
 
 

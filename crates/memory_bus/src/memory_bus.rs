@@ -47,25 +47,25 @@ impl<'a> MemoryBus<'a> {
     pub fn read_custom_word(&mut self, offset: u16) -> u16 {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            custom_reg::DMACONR => self.agnus.dmaconr(),
-            custom_reg::VPOSR => self.agnus.vposr(),
-            custom_reg::VHPOSR => self.agnus.vhposr(),
-            custom_reg::JOY0DAT => self.denise.joy0dat(),
-            custom_reg::JOY1DAT => self.denise.joy1dat(),
-            custom_reg::CLXDAT => self.denise.clxdat(),
-            custom_reg::ADKCONR => self.paula.adkconr(),
-            custom_reg::POT0DAT => self.paula.pot0dat(),
-            custom_reg::POT1DAT => self.paula.pot1dat(),
-            custom_reg::POTGOR => self.paula.potgor(),
-            custom_reg::SERDATR => self.paula.serdatr(),
-            custom_reg::DSKBYTR => self.read_dskbytr(),
-            custom_reg::INTENAR => self.paula.intenar(),
-            custom_reg::INTREQR => self.paula.intreqr(),
-            custom_reg::COPJMP1 => {
+            custom_reg::agnus::DMACONR => self.agnus.dmaconr(),
+            custom_reg::agnus::VPOSR => self.agnus.vposr(),
+            custom_reg::agnus::VHPOSR => self.agnus.vhposr(),
+            custom_reg::denise::JOY0DAT => self.denise.joy0dat(),
+            custom_reg::denise::JOY1DAT => self.denise.joy1dat(),
+            custom_reg::denise::CLXDAT => self.denise.clxdat(),
+            custom_reg::paula::ADKCONR => self.paula.adkconr(),
+            custom_reg::paula::POT0DAT => self.paula.pot0dat(),
+            custom_reg::paula::POT1DAT => self.paula.pot1dat(),
+            custom_reg::paula::POTGOR => self.paula.potgor(),
+            custom_reg::paula::SERDATR => self.paula.serdatr(),
+            custom_reg::paula::DSKBYTR => self.read_dskbytr(),
+            custom_reg::paula::INTENAR => self.paula.intenar(),
+            custom_reg::paula::INTREQR => self.paula.intreqr(),
+            custom_reg::agnus::COPJMP1 => {
                 self.agnus.strobe_copjmp1();
                 0xFFFF
             }
-            custom_reg::COPJMP2 => {
+            custom_reg::agnus::COPJMP2 => {
                 self.agnus.strobe_copjmp2();
                 0xFFFF
             }
@@ -77,20 +77,20 @@ impl<'a> MemoryBus<'a> {
     pub fn read_custom_word_debug(&self, offset: u16) -> u16 {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            custom_reg::DMACONR => self.agnus.dmaconr_debug(),
-            custom_reg::VPOSR => self.agnus.vposr_debug(),
-            custom_reg::VHPOSR => self.agnus.vhposr_debug(),
-            custom_reg::JOY0DAT => self.denise.joy0dat_debug(),
-            custom_reg::JOY1DAT => self.denise.joy1dat_debug(),
-            custom_reg::CLXDAT => self.denise.clxdat_debug(),
-            custom_reg::ADKCONR => self.paula.adkconr_debug(),
-            custom_reg::POT0DAT => self.paula.pot0dat_debug(),
-            custom_reg::POT1DAT => self.paula.pot1dat_debug(),
-            custom_reg::POTGOR => self.paula.potgor_debug(),
-            custom_reg::SERDATR => self.paula.serdatr_debug(),
-            custom_reg::DSKBYTR => self.read_dskbytr_debug(),
-            custom_reg::INTENAR => self.paula.intenar_debug(),
-            custom_reg::INTREQR => self.paula.intreqr_debug(),
+            custom_reg::agnus::DMACONR => self.agnus.dmaconr_debug(),
+            custom_reg::agnus::VPOSR => self.agnus.vposr_debug(),
+            custom_reg::agnus::VHPOSR => self.agnus.vhposr_debug(),
+            custom_reg::denise::JOY0DAT => self.denise.joy0dat_debug(),
+            custom_reg::denise::JOY1DAT => self.denise.joy1dat_debug(),
+            custom_reg::denise::CLXDAT => self.denise.clxdat_debug(),
+            custom_reg::paula::ADKCONR => self.paula.adkconr_debug(),
+            custom_reg::paula::POT0DAT => self.paula.pot0dat_debug(),
+            custom_reg::paula::POT1DAT => self.paula.pot1dat_debug(),
+            custom_reg::paula::POTGOR => self.paula.potgor_debug(),
+            custom_reg::paula::SERDATR => self.paula.serdatr_debug(),
+            custom_reg::paula::DSKBYTR => self.read_dskbytr_debug(),
+            custom_reg::paula::INTENAR => self.paula.intenar_debug(),
+            custom_reg::paula::INTREQR => self.paula.intreqr_debug(),
             _ => 0xFFFF,
         }
     }
@@ -165,56 +165,51 @@ impl<'a> MemoryBus<'a> {
     pub fn write_custom_word(&mut self, offset: u16, val: u16) {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
-            // Shared: DMACON ($096) -> Agnus and Paula (both decode master DMA lines on the bus)
-            custom_reg::DMACON => {
-                self.agnus.write_register(custom_reg::DMACON, val);
-                self.paula.write_register(custom_reg::DMACON, val);
+            custom_reg::agnus::DMACON => {
+                self.agnus.write_register(custom_reg::agnus::DMACON, val);
+                self.paula.write_register(custom_reg::paula::DMACON, val);
             }
-            // Shared: BPLCON0 ($100) -> Denise (1 CCK) & Agnus (4 CCK)
-            custom_reg::BPLCON0 => {
-                self.denise.write_register(custom_reg::BPLCON0, val);
-                self.agnus.write_register(custom_reg::BPLCON0, val);
+            custom_reg::denise::BPLCON0 => {
+                self.denise.write_register(custom_reg::denise::BPLCON0, val);
+                self.agnus.write_register(custom_reg::agnus::BPLCON0, val);
             }
-            // Denise-specific registers (DIW, CLXCON, BPLCON1/2/3, BPLDAT, SPRITES, COLORS, JOYTEST)
-            custom_reg::DIWSTRT
-            | custom_reg::DIWSTOP
-            | custom_reg::BPLCON1
-            | custom_reg::CLXCON
-            | custom_reg::BPLCON2
-            | custom_reg::BPLCON3
-            | custom_reg::BPL1DAT..=custom_reg::BPL6DAT
-            | custom_reg::SPR0POS..=custom_reg::SPR7DATB
-            | custom_reg::COLOR00..=custom_reg::COLOR31
-            | custom_reg::JOYTEST => {
+            custom_reg::denise::DIWSTRT
+            | custom_reg::denise::DIWSTOP
+            | custom_reg::denise::BPLCON1
+            | custom_reg::denise::CLXCON
+            | custom_reg::denise::BPLCON2
+            | custom_reg::denise::BPLCON3
+            | custom_reg::denise::BPL1DAT..=custom_reg::denise::BPL6DAT
+            | custom_reg::denise::SPR0POS..=custom_reg::denise::SPR7DATB
+            | custom_reg::denise::COLOR00..=custom_reg::denise::COLOR31
+            | custom_reg::denise::JOYTEST => {
                 self.denise.write_register(offset, val);
             }
-            // Paula-specific registers (INTENA, INTREQ, ADKCON, UART, DSKLEN/SYNC, AUDIO length/period/volume/data)
-            custom_reg::INTENA
-            | custom_reg::INTREQ
-            | custom_reg::ADKCON
-            | custom_reg::DSKDAT
-            | custom_reg::DSKLEN
-            | custom_reg::DSKSYNC
-            | custom_reg::SERDAT..=custom_reg::POTGO
-            | custom_reg::AUD0LEN
-            | custom_reg::AUD0PER
-            | custom_reg::AUD0VOL
-            | custom_reg::AUD0DAT
-            | custom_reg::AUD1LEN
-            | custom_reg::AUD1PER
-            | custom_reg::AUD1VOL
-            | custom_reg::AUD1DAT
-            | custom_reg::AUD2LEN
-            | custom_reg::AUD2PER
-            | custom_reg::AUD2VOL
-            | custom_reg::AUD2DAT
-            | custom_reg::AUD3LEN
-            | custom_reg::AUD3PER
-            | custom_reg::AUD3VOL
-            | custom_reg::AUD3DAT => {
+            custom_reg::paula::INTENA
+            | custom_reg::paula::INTREQ
+            | custom_reg::paula::ADKCON
+            | custom_reg::paula::DSKDAT
+            | custom_reg::paula::DSKLEN
+            | custom_reg::paula::DSKSYNC
+            | custom_reg::paula::SERDAT..=custom_reg::paula::POTGO
+            | custom_reg::paula::AUD0LEN
+            | custom_reg::paula::AUD0PER
+            | custom_reg::paula::AUD0VOL
+            | custom_reg::paula::AUD0DAT
+            | custom_reg::paula::AUD1LEN
+            | custom_reg::paula::AUD1PER
+            | custom_reg::paula::AUD1VOL
+            | custom_reg::paula::AUD1DAT
+            | custom_reg::paula::AUD2LEN
+            | custom_reg::paula::AUD2PER
+            | custom_reg::paula::AUD2VOL
+            | custom_reg::paula::AUD2DAT
+            | custom_reg::paula::AUD3LEN
+            | custom_reg::paula::AUD3PER
+            | custom_reg::paula::AUD3VOL
+            | custom_reg::paula::AUD3DAT => {
                 self.paula.write_register(offset, val);
             }
-            // Agnus-specific registers (DMACON, Blitter, Copper, DMA pointers, modulos, DDF, AUDxLC)
             _ => {
                 self.agnus.write_register(offset, val);
             }

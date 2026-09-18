@@ -288,3 +288,48 @@ fn test_debug_read_and_register_method_conventions() {
     assert_eq!(debug_cia, mb.cia_a.read_register_debug(0));
     assert_eq!(debug_cia, 0xAA);
 }
+
+#[test]
+fn test_chip_namespaced_custom_register_dispatch() {
+    use config::custom_reg;
+
+    let mut mb = TestMotherboard::new();
+
+    // 1. Multi-chip decoded write: DMACON to Agnus and Paula
+    mb.router()
+        .write_custom_word(custom_reg::agnus::DMACON, 0x8201);
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
+    let _ = mb.paula.step_cck();
+    let _ = mb.paula.step_cck();
+    assert_eq!(mb.agnus.dmacon & 0x0201, 0x0201);
+    assert_eq!(mb.paula.dma_enables & 0x0001, 0x0001);
+
+    // 2. Denise-specific write: COLOR00
+    mb.router()
+        .write_custom_word(custom_reg::denise::COLOR00, 0x0ABC);
+    assert_eq!(mb.denise.read_color(0), 0x0ABC);
+
+    // 3. Paula-specific write: INTENA
+    mb.router()
+        .write_custom_word(custom_reg::paula::INTENA, 0xC004);
+    let _ = mb.paula.step_cck();
+    assert_eq!(mb.paula.intena & 0x4004, 0x4004);
+
+    // 4. Agnus-specific read: VPOSR
+    let vposr = mb.router().read_custom_word(custom_reg::agnus::VPOSR);
+    assert_eq!(vposr, mb.agnus.vposr());
+
+    // 5. Denise-specific read: JOY0DAT
+    mb.denise.set_joy0dat(0x4321);
+    assert_eq!(
+        mb.router().read_custom_word(custom_reg::denise::JOY0DAT),
+        0x4321
+    );
+
+    // 6. Paula-specific read: INTENAR
+    assert_eq!(
+        mb.router().read_custom_word(custom_reg::paula::INTENAR),
+        mb.paula.intenar()
+    );
+}
