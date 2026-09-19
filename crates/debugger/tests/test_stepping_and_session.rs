@@ -177,3 +177,10 @@ fn test_session_bus_access() {
     let bus = session.bus();
     assert_eq!(bus.read_byte(0x000000), BusResult::Ready(0xFF));
 }
+
+#[test]
+fn test_session_temporal_step_navigation() {
+    let mut session = DebuggerSession::new();
+    session.step_backward();
+    session.step_forward();
+}

@@ -31,7 +31,7 @@ impl Debugger {
     }
 
     /// Disassembles one instruction at the specified address from memory without side effects
-    pub fn disassemble_at(&self, addr: u32, bus: &PhysicalMemory) -> (Disassembly, u32) {
+    pub(crate) fn disassemble_at(&self, addr: u32, bus: &PhysicalMemory) -> (Disassembly, u32) {
         disassemble(addr, |a| bus.read_word_debug(a))
     }
 

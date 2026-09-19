@@ -331,3 +331,9 @@ fn test_sprite_clxcon_initial_value() {
     sprites.reset();
     assert_eq!(sprites.clxcon, 0xF000);
 }
+
+#[test]
+fn test_sprite_shift_pixel_drain() {
+    let mut sprites = Sprites::new();
+    assert_eq!(sprites.channels[0].shift_pixel(), 0);
+}

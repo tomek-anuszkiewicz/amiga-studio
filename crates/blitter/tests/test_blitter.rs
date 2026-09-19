@@ -363,3 +363,12 @@ fn test_blitter_initial_state() {
     assert!(!blit.dma_enabled);
     assert_eq!(blit.bltsize, 0);
 }
+
+#[test]
+fn test_blitter_reset_clears_registers() {
+    let mut blit = Blitter::new();
+    blit.bltcon0 = 0xABCD;
+    blit.reset();
+    assert_eq!(blit.bltcon0, 0);
+    assert!(!blit.is_busy);
+}

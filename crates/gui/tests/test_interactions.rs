@@ -1764,3 +1764,13 @@ fn test_ctrl_r_shortcut_triggers_reset() {
     assert_eq!(app.session.machine.cck, 0);
     assert_eq!(app.session.debugger.current_cck, 0);
 }
+
+#[test]
+fn test_theme_toggle_persistence() {
+    let mut app = EmulatorApp::default();
+    assert_eq!(app.theme, AppTheme::Dark);
+    app.theme = AppTheme::Light;
+    assert_eq!(app.theme, AppTheme::Light);
+    app.theme = AppTheme::ClassicWorkbench;
+    assert_eq!(app.theme, AppTheme::ClassicWorkbench);
+}

@@ -6,7 +6,7 @@
 use crate::app::EmulatorApp;
 use egui::RichText;
 
-pub fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
+pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
     let tokens = app.theme.tokens();
 
     ui.vertical(|ui| {

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 pub const COLOR_PALETTE_SIZE: usize = 32;
 
 /// Fixed-capacity in-flight register mutation buffer for Denise (covers 32 colors + controls)
-pub const DENISE_MUTATION_CAPACITY: usize = 64;
+const DENISE_MUTATION_CAPACITY: usize = 64;
 
 pub mod decode;
 pub use decode::{decode_dual_playfield, decode_ehb, decode_ham6};
@@ -469,13 +469,13 @@ impl Denise {
 
     /// Action method: sets BPLCON1 horizontal scroll offsets
     #[inline]
-    pub fn set_bplcon1(&mut self, val: u16) {
+    fn set_bplcon1(&mut self, val: u16) {
         self.bplcon1 = val;
     }
 
     /// Action method: sets BPLCON2 priority flags
     #[inline]
-    pub fn set_bplcon2(&mut self, val: u16) {
+    fn set_bplcon2(&mut self, val: u16) {
         self.bplcon2 = val;
     }
 
@@ -500,13 +500,13 @@ impl Denise {
 
     /// Returns true if Hold-And-Modify (HAM) mode is enabled
     #[inline]
-    pub fn is_ham(&self) -> bool {
+    fn is_ham(&self) -> bool {
         (self.bplcon0 & 0x0800) != 0
     }
 
     /// Returns true if Dual Playfield mode is enabled
     #[inline]
-    pub fn is_dual_playfield(&self) -> bool {
+    fn is_dual_playfield(&self) -> bool {
         (self.bplcon0 & 0x0400) != 0
     }
 

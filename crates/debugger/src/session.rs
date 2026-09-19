@@ -190,7 +190,7 @@ impl DebuggerSession {
     }
 
     /// Rewinds by N steps in execution history
-    pub fn step_backward_n(&mut self, delta: usize) {
+    fn step_backward_n(&mut self, delta: usize) {
         if let Some(target_idx) = self.temporal.step_back_n(delta) {
             self.scrub_to_frame(target_idx);
         }

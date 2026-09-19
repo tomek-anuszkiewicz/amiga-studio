@@ -42,3 +42,11 @@ fn test_disassemble_pc_wrapping_and_offsets() {
     assert_eq!(d.mnemonic, "NOP");
     assert_eq!(b, 2);
 }
+
+#[test]
+fn test_disassemble_clr_l() {
+    let (d, b) = disassemble(0x2000, |_| 0x4280);
+    assert_eq!(d.mnemonic, "CLR.L");
+    assert_eq!(d.operands, "D0");
+    assert_eq!(b, 2);
+}

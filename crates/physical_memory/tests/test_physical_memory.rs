@@ -206,3 +206,8 @@ fn test_write_bytes_across_all_memory_regions() {
     assert_eq!(bus.read_word_debug(0xFC0000), 0xCAFE);
     assert_eq!(bus.kickstart_rom.len(), 512 * 1024);
 }
+
+#[test]
+fn test_physical_memory_max_fast_ram_constant() {
+    assert_eq!(physical_memory::MAX_FAST_RAM_SIZE, 4 * 1024 * 1024);
+}

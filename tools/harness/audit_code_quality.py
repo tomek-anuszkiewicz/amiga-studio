@@ -302,6 +302,11 @@ def scan_least_visibility(target_crate=None):
                     same_file_callers.append((f, l))
 
         if len(external_callers) == 0:
+            # If callers exist in external tests/ suites, the symbol must remain pub
+            # because external integration tests (crates/*/tests/) cannot access pub(crate) items per unit-testing-policy.md
+            if len(test_callers) > 0:
+                continue
+
             # If callers exist only within the same file, recommend private fn
             if len(internal_callers) == len(same_file_callers):
                 recommended = "private (fn)"

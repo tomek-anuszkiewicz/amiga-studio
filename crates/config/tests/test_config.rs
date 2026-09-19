@@ -1,6 +1,6 @@
 use config::{
-    A500Config, A500Preset, AgnusModel, ChipRamSize, DeniseModel, FastRamSize, RtcModel,
-    SlowRamSize, VideoStandard,
+    A500Config, A500Preset, AgnusModel, ChipRamSize, DeniseModel, FastRamSize, PaulaModel,
+    RtcModel, SlowRamSize, VideoStandard,
 };
 
 #[test]
@@ -14,6 +14,7 @@ fn test_default_config() {
     assert_eq!(config.rtc(), RtcModel::Msm6242b);
     assert_eq!(config.agnus_model(), AgnusModel::OcsPal8371);
     assert_eq!(config.denise_model(), DeniseModel::Ocs8362);
+    assert_eq!(config.paula_model(), PaulaModel::Ocs8364);
 }
 
 #[test]

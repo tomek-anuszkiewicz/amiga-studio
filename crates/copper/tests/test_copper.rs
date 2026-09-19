@@ -346,3 +346,12 @@ fn test_copper_registers_canonical_ir1_and_reset() {
     assert_eq!(cop.ir2, 0);
     assert_eq!(cop.cop_pc, 0);
 }
+
+#[test]
+fn test_copper_copcon_cdang_setting() {
+    let mut cop = Copper::new();
+    cop.set_copcon(0x0002);
+    assert!(cop.cdang);
+    cop.set_copcon(0x0000);
+    assert!(!cop.cdang);
+}

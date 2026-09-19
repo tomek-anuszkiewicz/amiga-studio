@@ -110,3 +110,13 @@ fn test_floppy_motor_selection() {
     controller.drives[0].set_motor(true);
     assert!(controller.drives[0].motor_on);
 }
+
+#[test]
+fn test_floppy_drive_step_and_track0() {
+    let mut controller = FloppyController::new();
+    assert!(controller.drives[0].is_track0());
+    controller.drives[0].step_pulse(true);
+    assert!(!controller.drives[0].is_track0());
+    controller.drives[0].step_pulse(false);
+    assert!(controller.drives[0].is_track0());
+}

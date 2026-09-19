@@ -10,9 +10,9 @@ pub use mfm::*;
 use serde::{Deserialize, Serialize};
 
 /// Standard Double Density disk geometry constants
-pub const CYLINDERS_PER_DISK: u8 = 80;
-pub const HEADS_PER_DISK: u8 = 2;
-pub const TRACKS_PER_DISK: usize = (CYLINDERS_PER_DISK as usize) * (HEADS_PER_DISK as usize);
+const CYLINDERS_PER_DISK: u8 = 80;
+const HEADS_PER_DISK: u8 = 2;
+const TRACKS_PER_DISK: usize = (CYLINDERS_PER_DISK as usize) * (HEADS_PER_DISK as usize);
 pub const SECTORS_PER_TRACK: usize = 11;
 pub const SECTOR_DATA_BYTES: usize = 512;
 pub const FORMATTED_DISK_BYTES: usize = TRACKS_PER_DISK * SECTORS_PER_TRACK * SECTOR_DATA_BYTES; // 901,120 bytes (880 KB)
@@ -79,7 +79,7 @@ impl FloppyDrive {
 
     /// Action method: sets head side (0 = lower head, 1 = upper head)
     #[inline]
-    pub fn set_side(&mut self, side: u8) {
+    fn set_side(&mut self, side: u8) {
         self.side = side.min(1);
     }
 
@@ -117,13 +117,13 @@ impl FloppyDrive {
 
     /// Returns the current physical track index (0..159)
     #[inline]
-    pub fn current_track_index(&self) -> usize {
+    fn current_track_index(&self) -> usize {
         (self.cylinder as usize) * 2 + (self.side as usize)
     }
 
     /// Returns a slice to the unencoded 5632-byte track data if a disk is inserted
     #[inline]
-    pub fn get_current_track_data(&self) -> Option<&[u8]> {
+    fn get_current_track_data(&self) -> Option<&[u8]> {
         let track_idx = self.current_track_index();
         let start = track_idx * (SECTORS_PER_TRACK * SECTOR_DATA_BYTES);
         let end = start + (SECTORS_PER_TRACK * SECTOR_DATA_BYTES);
@@ -150,7 +150,7 @@ impl FloppyDrive {
 
     /// Returns true if the write protection tab is engaged
     #[inline]
-    pub fn is_write_protected(&self) -> bool {
+    fn is_write_protected(&self) -> bool {
         self.write_protected
     }
 
@@ -315,7 +315,7 @@ impl FloppyController {
     }
 
     /// Encodes the current track of the selected drive into raw MFM format
-    pub fn load_current_track_mfm(&mut self) {
+    fn load_current_track_mfm(&mut self) {
         for drive in &self.drives {
             if drive.selected {
                 if let Some(track_data) = drive.get_current_track_data() {

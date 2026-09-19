@@ -210,3 +210,15 @@ fn test_save_state_file_persistence() {
 
     let _ = std::fs::remove_file(&temp_path);
 }
+
+#[test]
+fn test_save_state_json_string_roundtrip() {
+    let machine = A500Machine::new(A500Config::from_preset(
+        A500Preset::Bare512k,
+        VideoStandard::Pal,
+    ));
+    let json = machine
+        .save_state_to_json()
+        .expect("JSON serialization must succeed");
+    assert!(!json.is_empty());
+}

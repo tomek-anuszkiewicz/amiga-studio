@@ -9,7 +9,7 @@ use debugger::{BreakpointManager, WatchAccess};
 use egui::{Color32, RichText, Ui};
 use physical_memory::PhysicalMemory;
 
-pub fn render_memory_hex(
+pub(crate) fn render_memory_hex(
     ui: &mut Ui,
     bus: &mut PhysicalMemory,
     breakpoints: &mut BreakpointManager,

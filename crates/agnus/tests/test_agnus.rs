@@ -186,3 +186,8 @@ fn test_agnus_ntsc_line_ccks() {
     assert_eq!(NTSC_LONG_LINE_CCKS, 228);
     assert_eq!(PAL_LINE_CCKS, 227);
 }
+
+#[test]
+fn test_agnus_pipeline_lead_constant() {
+    assert_eq!(agnus::VHPOSR_PIPELINE_LEAD_CCKS, 5);
+}

@@ -149,7 +149,7 @@ impl Copper {
 
     /// Evaluates the WAIT / SKIP beam position comparator
     #[inline]
-    pub fn eval_comparator(&self, beam: BeamPosition, blitter_busy: bool) -> bool {
+    fn eval_comparator(&self, beam: BeamPosition, blitter_busy: bool) -> bool {
         let vpos_target = ((self.ir1 >> 8) & 0xFF) as u16;
         let vpos_mask = (((self.ir2 >> 8) & 0x7F) | COPPER_VPOS_FORCE_BIT7) as u16;
 

@@ -7,10 +7,10 @@ use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
 /// Number of Color Clocks per Motorola E-Clock tick (5 CCK = 10 CPU cycles)
-pub const CCK_PER_ECLOCK: u8 = 5;
+const CCK_PER_ECLOCK: u8 = 5;
 
 /// Total number of 8520 registers
-pub const CIA_REGISTER_COUNT: usize = 16;
+const CIA_REGISTER_COUNT: usize = 16;
 
 /// CIA chip identity (CIA-A or CIA-B)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

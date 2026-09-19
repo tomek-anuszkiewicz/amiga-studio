@@ -25,3 +25,12 @@ fn test_interrupt_arbitration_and_set_clr() {
     paula.write_intena(0x4000); // Clear bit 14
     assert_eq!(paula.pending_interrupt_level(), 0);
 }
+
+#[test]
+fn test_paula_reset_state() {
+    let mut paula = Paula::new();
+    paula.intena = 0xFFFF;
+    paula.reset();
+    assert_eq!(paula.intena, 0);
+    assert_eq!(paula.pending_interrupt_level(), 0);
+}

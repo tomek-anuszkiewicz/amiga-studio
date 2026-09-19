@@ -500,7 +500,7 @@ pub(crate) const OPEN_BUS_HANDLER: BankHandler = BankHandler {
 };
 
 /// Maps a `MemoryBank` classification to its direct method handler
-pub const fn handler_for_bank(bank: MemoryBank) -> BankHandler {
+const fn handler_for_bank(bank: MemoryBank) -> BankHandler {
     match bank {
         MemoryBank::ChipRam => CHIP_RAM_HANDLER,
         MemoryBank::FastRam => FAST_RAM_HANDLER,

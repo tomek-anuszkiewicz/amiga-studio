@@ -5,7 +5,7 @@
 use crate::theme::ColorTokens;
 use egui::{Grid, RichText, Ui};
 
-pub fn render_engine_status(
+pub(crate) fn render_engine_status(
     ui: &mut Ui,
     tokens: &ColorTokens,
     chip_ram_blocked: bool,

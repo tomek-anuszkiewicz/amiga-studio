@@ -19,7 +19,7 @@ pub struct MemorySearchState {
     pub status_message: Option<(String, bool)>, // (message, is_error)
 }
 
-pub fn render_memory_search(
+pub(crate) fn render_memory_search(
     ui: &mut Ui,
     bus: &PhysicalMemory,
     base_addr: &mut u32,

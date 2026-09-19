@@ -155,7 +155,7 @@ impl A500Machine {
 
     /// Resets all external devices (custom chips, CIAs, peripherals, overlay)
     /// without modifying RAM or CPU registers/PC. Invoked by M68000 `RESET` instruction.
-    pub fn reset_external_devices(&mut self) {
+    fn reset_external_devices(&mut self) {
         self.physical_memory.map_kickstart_to_low_memory();
         self.agnus.reset();
         self.denise.reset();

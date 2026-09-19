@@ -5,7 +5,7 @@ use crate::ea::*;
 /// Attempts to disassemble arithmetic, logic, compare, bit, multiply/divide, and shift/rotate instructions.
 ///
 /// Returns `Some((mnemonic, operands))` if decoded, consuming extension words via `next_word`.
-pub fn try_disassemble_alu(
+pub(crate) fn try_disassemble_alu(
     op: u16,
     mut next_word: impl FnMut() -> u16,
 ) -> Option<(&'static str, String)> {

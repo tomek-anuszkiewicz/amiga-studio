@@ -94,7 +94,7 @@ impl<'a> MemoryBus<'a> {
     }
 
     /// Reads an 8-bit byte from CIA register space ($BF0000..$BFFFFF)
-    pub fn read_cia_byte(&mut self, addr: u32) -> u8 {
+    fn read_cia_byte(&mut self, addr: u32) -> u8 {
         // CIA-B ($BFD000-$BFDF00): Even byte addresses (A0 = 0)
         if (CIA_B_START..=CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {
@@ -134,7 +134,7 @@ impl<'a> MemoryBus<'a> {
     }
 
     /// Writes an 8-bit byte to CIA register space ($BF0000..$BFFFFF)
-    pub fn write_cia_byte(&mut self, addr: u32, val: u8) {
+    fn write_cia_byte(&mut self, addr: u32, val: u8) {
         // CIA-B ($BFD000-$BFDF00)
         if (CIA_B_START..=CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {

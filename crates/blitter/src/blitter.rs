@@ -276,7 +276,7 @@ impl Blitter {
 
     /// Returns the active micro-phase sequence for a word in Area Mode according to HRM Table 6.2
     #[inline]
-    pub fn active_word_phases(&self) -> ([BlitterPhase; 4], u8) {
+    fn active_word_phases(&self) -> ([BlitterPhase; 4], u8) {
         let use_a = (self.bltcon0 & 0x0800) != 0;
         let use_b = (self.bltcon0 & 0x0400) != 0;
         let use_c = (self.bltcon0 & 0x0200) != 0;

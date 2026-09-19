@@ -34,7 +34,7 @@ pub enum LayoutTier {
 }
 
 impl LayoutTier {
-    pub fn from_width(width: f32) -> Self {
+    fn from_width(width: f32) -> Self {
         if width >= 1680.0 {
             LayoutTier::FullHdWide
         } else if width >= 1200.0 {
@@ -46,7 +46,7 @@ impl LayoutTier {
 }
 
 /// Maximum instructions executed per GUI frame during free-running emulation
-pub const MAX_INSTRUCTIONS_PER_FRAME: usize = 5000;
+const MAX_INSTRUCTIONS_PER_FRAME: usize = 5000;
 
 /// App display mode: Developer Studio vs Clean Standalone Game Mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -217,7 +217,7 @@ impl EmulatorApp {
     }
 
     /// Opens the native file chooser dialog for binary injection
-    pub fn open_load_binary_dialog(&mut self) {
+    pub(crate) fn open_load_binary_dialog(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let file = rfd::FileDialog::new()
@@ -233,7 +233,7 @@ impl EmulatorApp {
     }
 
     /// Handles global keyboard shortcuts
-    pub fn handle_keyboard_shortcuts(&mut self, ctx: &egui::Context) {
+    fn handle_keyboard_shortcuts(&mut self, ctx: &egui::Context) {
         let input = ctx.input(|i| i.clone());
 
         let toggle_view_mode = input.key_pressed(egui::Key::F12)

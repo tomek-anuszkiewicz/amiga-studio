@@ -16,21 +16,21 @@ use serde::{Deserialize, Serialize};
 /// Maximum horizontal Color Clock cycles per scanline (PAL)
 pub const PAL_LINE_CCKS: u16 = 227;
 /// Total vertical scanlines per frame (PAL)
-pub const PAL_FRAME_LINES: u16 = 312;
+const PAL_FRAME_LINES: u16 = 312;
 /// Short scanline length in Color Clocks (NTSC standard)
 pub const NTSC_SHORT_LINE_CCKS: u16 = 227;
 /// Long scanline length in Color Clocks (NTSC interlace LOL bit active)
 pub const NTSC_LONG_LINE_CCKS: u16 = 228;
 /// Total vertical scanlines per frame (NTSC)
-pub const NTSC_FRAME_LINES: u16 = 262;
+const NTSC_FRAME_LINES: u16 = 262;
 
 /// Number of Color Clocks that Agnus's internal scheduling counter leads the visible display beam
 pub const VHPOSR_PIPELINE_LEAD_CCKS: u16 = 5;
 /// Number of Color Clocks after line wrap during which the vertical ripple counter is settling
-pub const VHPOSR_VERTICAL_SETTLE_CCKS: u16 = 1;
+const VHPOSR_VERTICAL_SETTLE_CCKS: u16 = 1;
 
 /// Fixed-capacity in-flight register mutation buffer for Agnus (covers all writable registers)
-pub const AGNUS_MUTATION_CAPACITY: usize = 64;
+const AGNUS_MUTATION_CAPACITY: usize = 64;
 
 /// Agnus custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

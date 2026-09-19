@@ -73,7 +73,7 @@ impl SpriteChannel {
 
     /// Evaluates vertical comparator at line start
     #[inline]
-    pub fn update_scanline(&mut self, vpos: u16) {
+    fn update_scanline(&mut self, vpos: u16) {
         let vstart = self.vstart();
         let vstop = self.vstop();
         self.is_active_line = vpos >= vstart && vpos < vstop;
@@ -82,7 +82,7 @@ impl SpriteChannel {
 
     /// Checks horizontal comparator against current pixel coordinate
     #[inline]
-    pub fn check_hstart(&mut self, hpos_pixel: u16) {
+    fn check_hstart(&mut self, hpos_pixel: u16) {
         if self.is_active_line && self.is_armed && hpos_pixel == self.hstart() {
             self.shift_a = self.data_a;
             self.shift_b = self.data_b;

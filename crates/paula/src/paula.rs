@@ -10,7 +10,7 @@ use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
 /// Fixed-capacity in-flight register mutation buffer for Paula (covers audio, disk, uart, int)
-pub const PAULA_MUTATION_CAPACITY: usize = 32;
+const PAULA_MUTATION_CAPACITY: usize = 32;
 
 /// Paula custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

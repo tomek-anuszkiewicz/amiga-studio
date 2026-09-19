@@ -179,7 +179,7 @@ impl TemporalHistory {
 
     /// Current chronological index being scrubbed, or live head (len - 1)
     #[inline]
-    pub fn current_cursor_or_head(&self) -> usize {
+    fn current_cursor_or_head(&self) -> usize {
         self.scrub_cursor.unwrap_or(self.len().saturating_sub(1))
     }
 

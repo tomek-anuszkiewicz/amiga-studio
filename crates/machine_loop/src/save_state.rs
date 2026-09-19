@@ -179,7 +179,7 @@ impl A500State {
     }
 
     /// Saves the snapshot to a file (compressed if path ends in .gz / .a500z or requested)
-    pub fn save_to_file(
+    pub(crate) fn save_to_file(
         &self,
         path: impl AsRef<Path>,
         compressed: bool,

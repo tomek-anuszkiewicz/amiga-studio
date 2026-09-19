@@ -34,3 +34,10 @@ fn test_cia_read_register_debug() {
     assert_eq!(cia.read_register_debug(0), 0x42);
     assert_eq!(cia.read_register_debug(0), cia.peek_register(0));
 }
+
+#[test]
+fn test_cia_b_initialization() {
+    let cia_b = Cia::new(CiaId::B);
+    assert_eq!(cia_b.id, CiaId::B);
+    assert_eq!(cia_b.icr_mask, 0);
+}

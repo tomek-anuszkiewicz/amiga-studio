@@ -17,7 +17,7 @@ pub struct DisasmEditState {
     pub error: Option<String>,
 }
 
-pub fn render_disassembly(
+pub(crate) fn render_disassembly(
     ui: &mut Ui,
     cpu: &mut Cpu,
     bus: &mut PhysicalMemory,

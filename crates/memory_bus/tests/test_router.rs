@@ -174,3 +174,11 @@ fn test_direct_custom_and_cia_register_writes() {
     assert_eq!(mb.cia_a.cra, 0x55);
     assert_eq!(mb.cia_b.crb, 0xAA);
 }
+
+#[test]
+fn test_memory_bus_open_bus_read_byte() {
+    let mut mb = MemoryBus::new(A500Config::default());
+    let mut bus = mb.router();
+    let res = bus.read_byte(0x200000);
+    assert_eq!(res, BusResult::Ready(0xFF));
+}

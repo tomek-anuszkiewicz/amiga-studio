@@ -201,7 +201,7 @@ impl DmaScheduler {
     }
 
     /// Returns the fixed DMA channel mapped to a horizontal Color Clock slot (HPOS)
-    pub fn fixed_slot_for_hpos(hpos: u16) -> Option<DmaChannel> {
+    fn fixed_slot_for_hpos(hpos: u16) -> Option<DmaChannel> {
         match hpos {
             1 | 3 | 5 | 0xE2 | 0xE3 => Some(DmaChannel::Refresh),
             7 | 9 | 11 => Some(DmaChannel::Disk),

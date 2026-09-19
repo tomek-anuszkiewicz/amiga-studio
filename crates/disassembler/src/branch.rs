@@ -5,7 +5,7 @@ use crate::ea::*;
 /// Attempts to disassemble branch, jump, trap, return, and loop instructions.
 ///
 /// Returns `Some((mnemonic, operands))` if decoded, consuming extension words via `next_word`.
-pub fn try_disassemble_branch(
+pub(crate) fn try_disassemble_branch(
     pc: u32,
     op: u16,
     mut next_word: impl FnMut() -> u16,

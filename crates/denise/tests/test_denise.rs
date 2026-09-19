@@ -161,3 +161,11 @@ fn test_denise_hflop_comparator() {
     denise.step_cck(beam_stop);
     assert!(!denise.hflop);
 }
+
+#[test]
+fn test_denise_bplcon0_modes() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.set_bplcon0(0x9200); // HIRES | 1 plane | COLOR
+    assert!(denise.is_hires());
+    assert_eq!(denise.bitplane_count(), 1);
+}

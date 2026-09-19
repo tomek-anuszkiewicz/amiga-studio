@@ -39,7 +39,7 @@ pub struct ColorTokens {
 
 impl ColorTokens {
     /// Retro Studio Pro Dark palette (default)
-    pub const DARK: Self = Self {
+    pub(crate) const DARK: Self = Self {
         canvas_bg: Color32::from_rgb(14, 17, 23),
         panel_bg: Color32::from_rgb(22, 27, 34),
         card_bg: Color32::from_rgb(30, 36, 48),
@@ -67,7 +67,7 @@ impl ColorTokens {
     };
 
     /// Clean Light palette
-    pub const LIGHT: Self = Self {
+    pub(crate) const LIGHT: Self = Self {
         canvas_bg: Color32::from_rgb(245, 247, 250),
         panel_bg: Color32::from_rgb(238, 242, 246),
         card_bg: Color32::from_rgb(228, 233, 240),
@@ -95,7 +95,7 @@ impl ColorTokens {
     };
 
     /// Classic Amiga Workbench 1.3 palette
-    pub const CLASSIC_WORKBENCH: Self = Self {
+    pub(crate) const CLASSIC_WORKBENCH: Self = Self {
         canvas_bg: Color32::from_rgb(0, 60, 125),
         panel_bg: Color32::from_rgb(0, 85, 170),
         card_bg: Color32::from_rgb(0, 70, 140),

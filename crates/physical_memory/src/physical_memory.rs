@@ -12,9 +12,8 @@ pub use config::{
     A500Config, A500Preset, ChipRamSize, FastRamSize, RtcModel, SlowRamSize, VideoStandard,
 };
 pub use map::{
-    handler_for_bank, BankHandler, BankReadByteDebugFn, BankReadByteFn, BankReadWordDebugFn,
-    BankReadWordFn, BankWriteByteDebugFn, BankWriteByteFn, BankWriteWordDebugFn, BankWriteWordFn,
-    MemoryBank,
+    BankHandler, BankReadByteDebugFn, BankReadByteFn, BankReadWordDebugFn, BankReadWordFn,
+    BankWriteByteDebugFn, BankWriteByteFn, BankWriteWordDebugFn, BankWriteWordFn, MemoryBank,
 };
 pub use presets::{
     build_bank_map, build_preset_bank_map, get_preset_bank_map, BANK_MAP_BARE, BANK_MAP_EXPANDED,
@@ -26,10 +25,10 @@ pub use rtc::RtcMsm6242b;
 use serde::{Deserialize, Serialize};
 
 /// Maximum size of physical memory regions
-pub const CHIP_RAM_SIZE_512K: usize = 512 * 1024;
-pub const SLOW_RAM_SIZE: usize = 512 * 1024;
+const CHIP_RAM_SIZE_512K: usize = 512 * 1024;
+const SLOW_RAM_SIZE: usize = 512 * 1024;
 pub const MAX_FAST_RAM_SIZE: usize = 4 * 1024 * 1024; // 4MB Fast RAM (Auto-Config expansion at $200000..$5FFFFF)
-pub const KICKSTART_SIZE_256K: usize = 256 * 1024;
+const KICKSTART_SIZE_256K: usize = 256 * 1024;
 
 /// Cycle-exact Amiga 500 PhysicalMemory
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

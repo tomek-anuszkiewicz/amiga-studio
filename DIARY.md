@@ -7199,3 +7199,51 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - 0 dead, 0 zombies in audit_code_quality
   - 100% pass across pre_flight, Tier 1 unit tests (13.23s), and Tier 2 integration tests (19.94s)
+---
+
+### [2026-09-19 10:22 CEST] — Remediate Principle of Minimum Visibility and Enhance Audit Scanner
+- **Affected Subsystems**:
+  - `crates/agnus`
+  - `crates/blitter`
+  - `crates/cia`
+  - `crates/config`
+  - `crates/copper`
+  - `crates/debugger`
+  - `crates/denise`
+  - `crates/disassembler`
+  - `crates/dma`
+  - `crates/floppy`
+  - `crates/gui`
+  - `crates/machine_loop`
+  - `crates/memory_bus`
+  - `crates/paula`
+  - `crates/physical_memory`
+  - `crates/sprites`
+  - `tools/harness`
+- **What Was Changed (The Concrete Reality)**:
+  - Enhanced `tools/harness/audit_code_quality.py` (`scan_least_visibility`) to account for external integration test callers (`crates/*/tests/`), eliminating 130 false positive visibility warnings for tested public APIs.
+  - Demoted 67 genuine over-exposed symbols across 15 crates to their minimum required visibility (`pub(crate)` or private `fn` / `const`):
+    - Agnus: demoted internal scanline constants (`PAL_FRAME_LINES`, `NTSC_FRAME_LINES`, etc.) to private `const`.
+    - Blitter: demoted `active_word_phases` to private `fn`.
+    - CIA: demoted `CCK_PER_ECLOCK` and `CIA_REGISTER_COUNT` to private `const`.
+    - Copper: demoted `eval_comparator` to private `fn`.
+    - Debugger: demoted `step_backward_n` and `current_cursor_or_head` to private `fn`; demoted `disassemble_at` to `pub(crate) fn`.
+    - Denise: demoted `DENISE_MUTATION_CAPACITY` to private `const`; demoted `set_bplcon1`, `set_bplcon2`, `is_ham`, `is_dual_playfield` to private `fn`.
+    - Disassembler: demoted `try_disassemble_alu`, `try_disassemble_branch`, `try_disassemble_data` to `pub(crate) fn`.
+    - DMA: demoted `fixed_slot_for_hpos` to private `fn`.
+    - Floppy: demoted internal geometry constants to private `const`; demoted track/side helpers to private `fn`; demoted `RAW_MFM_TRACK_BYTES` and `encode_amiga_track` to `pub(crate)`.
+    - GUI: demoted layout renderers and dialog openers to `pub(crate) fn`; demoted theme tokens (`DARK`, `LIGHT`, `CLASSIC_WORKBENCH`) to `pub(crate) const`; demoted app shortcuts/instruction constants to private.
+    - Machine Loop: demoted `reset_external_devices` to private `fn`; demoted `save_to_file` to `pub(crate) fn`.
+    - Memory Bus: demoted `read_cia_byte` and `write_cia_byte` to private `fn`.
+    - Paula: demoted `PAULA_MUTATION_CAPACITY` to private `const`.
+    - Physical Memory: demoted `handler_for_bank` to private `const fn`; demoted memory size constants to private `const`.
+    - Sprites: demoted `update_scanline` and `check_hstart` to private `fn`.
+  - Added unit test coverage across all 15 crates' `tests/` suites to maintain 100% change coupling per `unit-testing-policy.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - Enforce Principle of Minimum Visibility and information hiding across crate boundaries.
+  - Distinguish genuine internal encapsulation leaks from required public test interfaces mandated by the external integration test architecture (`crates/<crate>/tests/`).
+- **Verification & Test Results**:
+  - `audit_code_quality.py --all`: 0 dead, 0 zombies, 0 visibility leaks
+  - `pre_flight.py`: 100% passing across formatting, test coupling, API coverage, and architecture rules
+  - `cargo test -p test_runner --test test_architecture_rules`: 19/19 passed
+  - `cargo test --workspace`: all suites passed
