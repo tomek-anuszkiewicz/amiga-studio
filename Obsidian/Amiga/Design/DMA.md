@@ -10,7 +10,7 @@ updated: 2026-09-19
 related: ["[Agnus.md](Agnus.md)", "[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/dma"
-last_synced_commit: "0fcd519"
+last_synced_commit: "859017971b0453661ce25cc2c6f4de6b7475f2df"
 last_synced_date: "2026-09-19"
 ---
 # Agnus DMA Architecture, Slot Scheduling & Bus Arbitration Specification

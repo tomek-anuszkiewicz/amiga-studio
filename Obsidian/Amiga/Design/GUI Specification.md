@@ -10,7 +10,7 @@ updated: 2026-09-16
 related: ["[GUI.md](GUI.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](General%20Architecture.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
 tracked_paths:
   - "crates/gui"
-last_synced_commit: "03da398"
+last_synced_commit: "859017971b0453661ce25cc2c6f4de6b7475f2df"
 last_synced_date: "2026-09-19"
 ---
 # Amiga 500 Developer GUI & Debugger Layout Specification

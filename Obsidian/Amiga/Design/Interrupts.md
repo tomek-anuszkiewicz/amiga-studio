@@ -10,7 +10,7 @@ updated: 2026-09-19
 related: ["[Paula.md](Paula.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CIA.md](CIA.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/interrupts"
-last_synced_commit: "db7dcc2"
+last_synced_commit: "859017971b0453661ce25cc2c6f4de6b7475f2df"
 last_synced_date: "2026-09-19"
 ---
 # Amiga 500 Central Interrupt Architecture & Controller Specification
