@@ -251,7 +251,8 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusRes
     let dummy_read_active = ((state_raw >> 7) & 1) != 0;
 
     // 1. Initial check: mask == 0 and address alignment
-    if bit_idx == 0 && sub_word == 0 && !dummy_read_active && !is_cck2 {
+    let is_transfer_start = bit_idx == 0 && sub_word == 0 && !dummy_read_active && !is_cck2;
+    if is_transfer_start {
         if mask == 0 {
             cpu.state.micro.movem_state = 0;
             cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);
@@ -294,7 +295,8 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusRes
         }
     } else {
         // 3. Find next register in mask (if starting new register)
-        if sub_word == 0 && !is_cck2 {
+        let is_register_start = sub_word == 0 && !is_cck2;
+        if is_register_start {
             while bit_idx < 16 && (mask & (1 << bit_idx)) == 0 {
                 bit_idx += 1;
             }

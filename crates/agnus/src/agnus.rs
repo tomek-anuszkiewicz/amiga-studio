@@ -603,8 +603,9 @@ impl Agnus {
     /// Queries whether a specific DMA channel is enabled in DMACON
     #[inline]
     pub fn is_dma_enabled(&self, mask: u16) -> bool {
-        // Master DMAEN (bit 9) must be set
-        (self.dmacon & dmacon::DMAEN) != 0 && (self.dmacon & mask) != 0
+        let master_enabled = (self.dmacon & dmacon::DMAEN) != 0;
+        let channel_enabled = (self.dmacon & mask) != 0;
+        master_enabled && channel_enabled
     }
 
     /// Returns true if Blitter Nasty (BLTPRI, bit 10) is enabled

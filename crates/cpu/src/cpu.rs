@@ -130,7 +130,9 @@ impl Cpu {
     /// Returns `true` if valid steps are ready, or `false` if unmapped/empty (halting the CPU).
     #[inline(always)]
     fn ensure_instruction_ready(&mut self) -> bool {
-        if self.state.micro.micro_step == 0 && self.state.micro.current_steps.is_empty() {
+        let needs_initialization =
+            self.state.micro.micro_step == 0 && self.state.micro.current_steps.is_empty();
+        if needs_initialization {
             self.initiate_current_instruction();
         }
 
@@ -187,14 +189,17 @@ impl Cpu {
 
                 // If ALU redirected execution to a new step sequence (e.g. Bcc branch taken),
                 // restart immediately at step 0 of the new sequence
-                if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
+                let sequence_redirected = self.state.micro.current_steps.as_ptr() != prev_steps_ptr;
+                if sequence_redirected {
                     self.state.micro.clocks_remaining = 0;
                     continue;
                 }
 
                 // Instantaneous zero-clock step (pure ALU / EA calculation):
                 // Advance micro_step and continue within the same CCK.
-                if step.alu_fn.is_some() && self.state.micro.clocks_remaining == 0 {
+                let is_instantaneous_step =
+                    step.is_instantaneous() && self.state.micro.clocks_remaining == 0;
+                if is_instantaneous_step {
                     self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
                     continue;
                 }
@@ -214,7 +219,8 @@ impl Cpu {
 
             // If step redirected execution to a new step sequence (e.g. Address Error),
             // conclude this CCK and begin the new sequence on next CCK.
-            if self.state.micro.current_steps.as_ptr() != prev_steps_ptr {
+            let sequence_redirected = self.state.micro.current_steps.as_ptr() != prev_steps_ptr;
+            if sequence_redirected {
                 self.state.micro.clocks_remaining = 0;
                 return false;
             }
@@ -225,16 +231,20 @@ impl Cpu {
                     self.state.micro.clocks_remaining =
                         self.state.micro.clocks_remaining.saturating_sub(2);
 
-                    if (step.base_clocks > 0 || step.alu_fn.is_some())
-                        && self.state.micro.clocks_remaining == 0
-                        && self.state.micro.micro_step == prev_micro_step
-                    {
+                    let step_has_work = step.has_work();
+                    let step_clocks_exhausted = self.state.micro.clocks_remaining == 0;
+                    let sequence_did_not_branch = self.state.micro.micro_step == prev_micro_step;
+
+                    // Advance to next micro-step once this step's clocks are exhausted
+                    // and execution did not divert internally:
+                    if step_has_work && step_clocks_exhausted && sequence_did_not_branch {
                         self.state.micro.micro_step = self.state.micro.micro_step.wrapping_add(1);
                     }
 
-                    if (self.state.micro.micro_step as usize)
-                        >= self.state.micro.current_steps.len()
-                    {
+                    let instruction_steps_completed = (self.state.micro.micro_step as usize)
+                        >= self.state.micro.current_steps.len();
+
+                    if instruction_steps_completed {
                         self.retire_current_instruction();
                         return true;
                     }
@@ -351,7 +361,8 @@ impl Cpu {
         let start_cycles = self.state.cycle_counter;
         loop {
             let completed = self.step_cck_internal(bus);
-            if completed || self.state.halted || self.state.stopped {
+            let execution_finished = completed || self.state.halted || self.state.stopped;
+            if execution_finished {
                 return self.state.cycle_counter.wrapping_sub(start_cycles) as u32;
             }
         }

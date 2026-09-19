@@ -348,3 +348,58 @@ fn test_archetype6_jsr_16_clocks() {
     );
     assert_eq!(cpu.state.pc, 0x002004, "PC must be primed at target + 4");
 }
+
+#[test]
+fn test_micro_step_predicates_and_work_detection() {
+    fn dummy_bus(
+        _cpu: &mut Cpu,
+        _bus: &mut dyn physical_memory::AddressBus,
+    ) -> physical_memory::BusResult<()> {
+        physical_memory::BusResult::Ready(())
+    }
+    fn dummy_alu(_state: &mut cpu::CpuState, _src: u8, _dst: u8) {}
+
+    let cck_step = cpu::MicroStep::cck(dummy_bus);
+    assert!(
+        cck_step.has_work(),
+        "CCK step with base clocks must report has_work = true"
+    );
+    assert!(
+        !cck_step.is_instantaneous(),
+        "CCK step has 2 clocks, cannot be instantaneous"
+    );
+
+    let idle_step = cpu::MicroStep::cck_idle();
+    assert!(
+        idle_step.has_work(),
+        "CCK idle step has 2 base clocks, reports has_work = true"
+    );
+    assert!(
+        !idle_step.is_instantaneous(),
+        "CCK idle step consumes clocks, cannot be instantaneous"
+    );
+
+    let alu_step = cpu::MicroStep::alu(dummy_alu);
+    assert!(
+        alu_step.has_work(),
+        "ALU step has ALU callback, reports has_work = true"
+    );
+    assert!(
+        alu_step.is_instantaneous(),
+        "ALU step with 0 clocks must report is_instantaneous = true"
+    );
+
+    let empty_step = cpu::MicroStep {
+        bus_fn: None,
+        alu_fn: None,
+        base_clocks: 0,
+    };
+    assert!(
+        !empty_step.has_work(),
+        "Empty step with 0 clocks and no callbacks must report has_work = false"
+    );
+    assert!(
+        !empty_step.is_instantaneous(),
+        "Empty step without ALU callback cannot be instantaneous"
+    );
+}

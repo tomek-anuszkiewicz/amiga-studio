@@ -7751,6 +7751,28 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p memory_bus -p machine_loop -p debugger -p gui -j 2`: All integration suites passed.
   - `python tools/harness/pre_flight.py`: Passed all 5 quality gates.
 
+---
+
+### [2026-09-19 14:55 CEST] — Refactored Cryptic Compound Conditions into Expressive Explaining Variables and Domain Predicates
+
+- **Files Modified**:
+  - `crates/cpu/src/micro/types.rs`: Added `MicroStep::has_work()` and `MicroStep::is_instantaneous()` domain predicate helpers.
+  - `crates/cpu/src/cpu.rs`: Replaced dense inline conditions in `ensure_instruction_ready()`, `step_cck_internal()` (micro-step dispatch phases 2a and 2b), and `step_instruction()` with self-documenting explaining variables (`needs_initialization`, `sequence_redirected`, `is_instantaneous_step`, `step_has_work`, `step_clocks_exhausted`, `sequence_did_not_branch`, `instruction_steps_completed`, `execution_finished`).
+  - `crates/cpu/src/state.rs`: Refactored `is_interrupt_pending()` into `is_nmi` and `exceeds_priority_mask`; modernized `eval_condition()` with canonical PRM signed comparisons (`n == v`, `n != v`, `(n == v) && !z`, `z || (n != v)`).
+  - `crates/cpu/src/instructions/movem.rs`: Extracted explaining variables `is_transfer_start` and `is_register_start`.
+  - `crates/agnus/src/agnus.rs`: Decomposed `is_dma_enabled()` into `master_enabled && channel_enabled`.
+  - `crates/cpu/tests/test_micro_archetypes.rs`: Added unit test `test_micro_step_predicates_and_work_detection` validating step predicates across all micro-step types.
+  - `crates/agnus/tests/test_agnus_registers.rs`: Added unit test `test_is_dma_enabled_requires_master_and_channel` validating master `DMAEN` gating.
+- **Architectural Rationale & Trade-Offs**:
+  - *Readability Without Overhead:* Complex boolean conditions in high-performance execution loops (`(step.base_clocks > 0 || step.alu_fn.is_some()) && clocks == 0 && micro_step == prev`) force readers to mentally reverse-engineer hardware states. Decomposing these into explaining variables and `#[inline(always)]` domain predicates makes the code read like hardware specification prose while LLVM folds the variables directly into CPU flag registers with zero runtime performance cost.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: Compliant across workspace.
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly.
+  - `cargo test -p cpu`: All 6 test suites (53 tests) passed.
+  - `cargo test -p agnus`: All 2 test suites (22 tests) passed.
+  - `cargo test -p test_runner --test test_dma_cartesian`: All 19 Cartesian DMA contention permutation sweeps passed (39.07s).
+
+
 
 
 

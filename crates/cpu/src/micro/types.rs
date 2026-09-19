@@ -103,6 +103,18 @@ impl MicroStep {
             base_clocks: 2,
         }
     }
+
+    /// Returns true if this micro-step executes active work (clock-consuming bus/idle cycles or ALU logic)
+    #[inline(always)]
+    pub const fn has_work(&self) -> bool {
+        self.base_clocks > 0 || self.alu_fn.is_some()
+    }
+
+    /// Returns true if this micro-step is an instantaneous pure ALU/EA operation consuming zero clocks
+    #[inline(always)]
+    pub const fn is_instantaneous(&self) -> bool {
+        self.alu_fn.is_some() && self.base_clocks == 0
+    }
 }
 
 /// Static descriptor mapping an opcode to its slice of MicroSteps and registers
