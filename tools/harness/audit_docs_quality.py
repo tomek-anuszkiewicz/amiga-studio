@@ -526,6 +526,7 @@ def check_workflow_and_skill_governance():
         "sync-design-docs": "Design specification synchronization with git commit history",
         "roadmap-maintenance": "Milestone scorecard pruning and substrate-first roadmap update",
         "index-amiga-rag": "Qdrant vector database re-indexing and offline sidecar maintenance",
+        "audit-all": "Comprehensive master quality audit suite orchestrator",
         "audit-code-quality": "Rust codebase quality, dead code, visibility, and SRP audit",
         "audit-docs-quality": "Documentation, vault linking, and governance quality audit",
         "audit-hardware-quality": "Hardware architectural bus topology and silicon compliance audit",

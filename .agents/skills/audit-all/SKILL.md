@@ -1,15 +1,16 @@
 ---
 name: audit-all
-description: Execute comprehensive quality audit triad covering Rust code health, Obsidian documentation sync, and physical hardware compliance sequentially across workspace crates.
+description: Execute comprehensive quality audit master suite covering Rust code health, Obsidian documentation sync, physical hardware compliance, and bidirectional semantic parity sequentially across workspace crates.
 ---
 
-# Recipe: Unified Quality Audit Triad Playbook (audit-all)
+# Recipe: Unified Quality Audit Master Playbook (audit-all)
 
-This skill provides an overarching execution procedure for the comprehensive Amiga 500 emulator quality audit triad. It orchestrates the three specialized quality suites directly in sequence:
+This skill provides an overarching execution procedure for the comprehensive Amiga 500 emulator quality audit suite. It orchestrates the specialized quality suites directly in sequence:
 1. **`audit-code-quality`**: Rust code health, dead code, zombies, visibility leaks, SRP cohesion, and test parity.
 2. **`audit-docs-quality`**: Obsidian design spec drift/sync, vault links, rule sizes, skills catalog, workflow symmetry, and Pillar 9 Semantic Doc-to-Code Double-Check (registers, memory map, crate topology, signals, quirks).
 3. **`audit-hardware-quality`**: Motherboard bus topology, Agnus DMA mastership, passive latching, CCK stepping, open bus `$FF`, and Tier 2 integration tests.
-4. **`verbal-double-check`**: Mandatory 5-point heuristic self-audit against rule forgetting, spec drift, and symptom nudging.
+4. **`audit-semantic-parity`**: Inference-driven bidirectional code-to-docs parity (blind spots, undocumented code) and docs-to-code parity (hallucinations, ghost features, spec drift).
+5. **`verbal-double-check`**: Mandatory 5-point heuristic self-audit against rule forgetting, spec drift, and symptom nudging.
 
 ---
 
@@ -23,7 +24,7 @@ This skill provides an overarching execution procedure for the comprehensive Ami
 
 ## 2. Sequential CLI Execution & Double-Check Protocol
 
-Execute the triad suites and the verbal double-check in order:
+Execute the quality suites, semantic parity evaluation, and the verbal double-check in order:
 
 ```powershell
 # 1. Rust Code Quality
@@ -35,11 +36,14 @@ python tools/harness/audit_docs_quality.py --all
 # 3. Hardware Silicon Compliance
 python tools/harness/audit_hardware_quality.py --all
 
-# 4. Pre-Flight Repository Gate
+# 4. Bidirectional Semantic Parity (Inference Audit)
+# Run /audit-semantic-parity [subsystem] targeting recently modified crates or primary coordinators (agnus, paula, interrupts)
+
+# 5. Pre-Flight Repository Gate
 python tools/harness/pre_flight.py
 ```
 
-### Step 5: The Verbal Double-Check (Anti-Drift Conscience)
+### Step 6: The Verbal Double-Check (Anti-Drift Conscience)
 Conclude every run by affirming the **5 Heuristic Questions**:
 1. 🧠 **Spec Freshness:** Did recent code changes alter chip behavior or registers without updating `Obsidian/Amiga/Design/*.md`?
 2. 🚫 **Anti-Nudge (`structural-root-cause.md`):** Are all beam coordinates and delays silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom patches?
@@ -61,3 +65,7 @@ When issues are reported during any stage of `audit-all`, delegate remediation t
    - For semantic discrepancies: `python tools/harness/audit_docs_quality.py --semantic-sync`.
 3. **Hardware Silicon Compliance Issues:**
    - Follow [`audit-hardware-quality`](../audit-hardware-quality/SKILL.md) and [`/audit-hardware-quality`](../../workflows/audit-hardware-quality.md).
+4. **Bidirectional Semantic Parity Issues:**
+   - Follow [`audit-semantic-parity`](../audit-semantic-parity/SKILL.md) and [`/audit-semantic-parity`](../../workflows/audit-semantic-parity.md).
+   - For documentation enrichment: add missing register bitfields, phase timing, and errata to `Obsidian/Amiga/Design/<Spec>.md`.
+   - For code alignment / spec divergence: escalate conflicts to the user before modifying code per `spec-compliance.md`.
