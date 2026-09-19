@@ -8,8 +8,11 @@ status: "active"
 created: 2026-09-06
 updated: 2026-09-12
 related: ["[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)"]
+tracked_paths:
+  - "crates/rtc"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Amiga 500 Real-Time Clock (RTC) Specification
 
 > [!NOTE]

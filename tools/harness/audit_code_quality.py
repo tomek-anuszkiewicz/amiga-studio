@@ -16,8 +16,10 @@ Audits three critical architectural dimensions across workspace crates:
 """
 
 import argparse
+import datetime
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -497,18 +499,201 @@ def check_script_locality_and_governance():
 
 def main():
     parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, skill catalog sync, and script locality.")
-    parser.add_argument("--all", action="store_true", help="Run all audits (dead code, visibility, SRP, skills sync, script locality)")
+def parse_markdown_frontmatter(file_path: Path):
+    """Parses frontmatter key-values and list items between opening and closing ---."""
+    text = file_path.read_text(encoding="utf-8", errors="ignore")
+    if not text.startswith("---"):
+        return {}, text
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return {}, text
+    fm_text = parts[1]
+
+    data = {}
+    lines = fm_text.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith("last_synced_commit:"):
+            data["last_synced_commit"] = line.split(":", 1)[1].strip().strip('"\'')
+        elif line.startswith("last_synced_date:"):
+            data["last_synced_date"] = line.split(":", 1)[1].strip().strip('"\'')
+        elif line.startswith("subsystem:"):
+            data["subsystem"] = line.split(":", 1)[1].strip().strip('"\'')
+        elif line.startswith("tracked_paths:"):
+            paths = []
+            i += 1
+            while i < len(lines) and (lines[i].startswith("  -") or lines[i].startswith("    -")):
+                item = lines[i].split("-", 1)[1].strip().strip('"\'')
+                paths.append(item)
+                i += 1
+            data["tracked_paths"] = paths
+            continue
+        i += 1
+
+    return data, text
+
+
+def bump_markdown_checkpoint(file_path: Path, new_commit: str, new_date: str) -> bool:
+    """Updates last_synced_commit and last_synced_date in YAML frontmatter."""
+    text = file_path.read_text(encoding="utf-8")
+    if not text.startswith("---"):
+        return False
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return False
+    fm_lines = parts[1].splitlines()
+
+    commit_found = False
+    date_found = False
+    new_fm_lines = []
+    for line in fm_lines:
+        if line.startswith("last_synced_commit:"):
+            new_fm_lines.append(f'last_synced_commit: "{new_commit}"')
+            commit_found = True
+        elif line.startswith("last_synced_date:"):
+            new_fm_lines.append(f'last_synced_date: "{new_date}"')
+            date_found = True
+        else:
+            new_fm_lines.append(line)
+
+    if not commit_found:
+        new_fm_lines.append(f'last_synced_commit: "{new_commit}"')
+    if not date_found:
+        new_fm_lines.append(f'last_synced_date: "{new_date}"')
+
+    new_content = "---\n" + "\n".join(new_fm_lines) + "\n---" + parts[2]
+    file_path.write_text(new_content, encoding="utf-8")
+    return True
+
+
+def check_design_docs_sync():
+    """Checks whether code in tracked_paths has drifted since last_synced_commit."""
+    design_dir = REPO_ROOT / "Obsidian" / "Amiga" / "Design"
+    if not design_dir.exists():
+        return {"tracked_count": 0, "synced_count": 0, "drifted": [], "synced": []}
+
+    tracked = []
+    drifted = []
+    synced = []
+
+    for doc in sorted(design_dir.glob("*.md")):
+        fm, _ = parse_markdown_frontmatter(doc)
+        paths = fm.get("tracked_paths", [])
+        commit = fm.get("last_synced_commit")
+
+        if not paths or not commit:
+            continue
+
+        tracked.append(doc.name)
+        cmd = ["git", "rev-list", "--count", f"{commit}..HEAD", "--"] + paths
+        res = subprocess.run(cmd, cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
+        if res.returncode != 0:
+            drifted.append({
+                "file": doc.name,
+                "commit": commit,
+                "paths": paths,
+                "error": f"Invalid commit or git error: {res.stderr.strip()}",
+                "count": -1,
+                "log": [],
+            })
+            continue
+
+        count = int(res.stdout.strip() or "0")
+        if count > 0:
+            log_cmd = ["git", "log", "--oneline", f"{commit}..HEAD", "--"] + paths
+            l_res = subprocess.run(log_cmd, cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
+            commits_log = [l.strip() for l in l_res.stdout.splitlines()[:5]]
+            drifted.append({
+                "file": doc.name,
+                "commit": commit,
+                "paths": paths,
+                "count": count,
+                "log": commits_log,
+            })
+        else:
+            synced.append(doc.name)
+
+    return {
+        "tracked_count": len(tracked),
+        "synced_count": len(synced),
+        "drifted": drifted,
+        "synced": synced,
+    }
+
+
+def show_design_diff(doc_name: str):
+    """Outputs git diff between last_synced_commit and HEAD for tracked_paths."""
+    design_dir = REPO_ROOT / "Obsidian" / "Amiga" / "Design"
+    doc_path = design_dir / doc_name
+    if not doc_path.exists() and not doc_name.endswith(".md"):
+        doc_path = design_dir / f"{doc_name}.md"
+    if not doc_path.exists():
+        print(f"Error: Design document not found: {doc_name}", file=sys.stderr)
+        return False
+
+    fm, _ = parse_markdown_frontmatter(doc_path)
+    paths = fm.get("tracked_paths", [])
+    commit = fm.get("last_synced_commit")
+    if not paths or not commit:
+        print(f"Document {doc_path.name} does not define tracked_paths or last_synced_commit.", file=sys.stderr)
+        return False
+
+    print(f">> Inspecting diff for {doc_path.name} ({commit}..HEAD) in paths: {', '.join(paths)}\n")
+    diff_cmd = ["git", "diff", f"{commit}..HEAD", "--"] + paths
+    subprocess.run(diff_cmd, cwd=REPO_ROOT)
+    return True
+
+
+def bump_design_checkpoint(doc_name: str) -> bool:
+    """Updates last_synced_commit to HEAD and last_synced_date to today in the design doc."""
+    design_dir = REPO_ROOT / "Obsidian" / "Amiga" / "Design"
+    doc_path = design_dir / doc_name
+    if not doc_path.exists() and not doc_name.endswith(".md"):
+        doc_path = design_dir / f"{doc_name}.md"
+    if not doc_path.exists():
+        print(f"Error: Design document not found: {doc_name}", file=sys.stderr)
+        return False
+
+    h_res = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO_ROOT, stdout=subprocess.PIPE, text=True, encoding="utf-8")
+    head_commit = h_res.stdout.strip()
+    import datetime
+    today = datetime.date.today().isoformat()
+
+    if bump_markdown_checkpoint(doc_path, head_commit, today):
+        print(f"[OK] Bumped checkpoint for {doc_path.name}: last_synced_commit = '{head_commit}', last_synced_date = '{today}'")
+        return True
+    else:
+        print(f"Error: Failed to update frontmatter in {doc_path.name}", file=sys.stderr)
+        return False
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, skill catalog sync, and design doc sync.")
+    parser.add_argument("--all", action="store_true", help="Run all audits (dead code, visibility, SRP, skills sync, script locality, design sync)")
     parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
     parser.add_argument("--visibility", action="store_true", help="Run least visibility scanner")
     parser.add_argument("--srp", action="store_true", help="Run SRP and file cohesion checks")
     parser.add_argument("--skills", action="store_true", help="Audit skill catalog sync in docs/ai_agents.md")
     parser.add_argument("--scripts", action="store_true", help="Audit two-way script locality and harness governance")
+    parser.add_argument("--design-sync", action="store_true", help="Audit design documentation sync with code commits")
+    parser.add_argument("--design-diff", help="Show code diff since last_synced_commit for a design doc")
+    parser.add_argument("--design-bump", help="Bump last_synced_commit to current HEAD for a design doc")
     parser.add_argument("--crate", help="Filter audit to a specific crate")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     args = parser.parse_args()
 
+    # Handle targeted actions first
+    if args.design_diff:
+        show_design_diff(args.design_diff)
+        return
+
+    if args.design_bump:
+        bump_design_checkpoint(args.design_bump)
+        return
+
     # Default to --all if no specific mode selected
-    if not (args.all or args.dead_code or args.visibility or args.srp or args.skills or args.scripts):
+    if not (args.all or args.dead_code or args.visibility or args.srp or args.skills or args.scripts or args.design_sync):
         args.all = True
 
     dead, zombies = ([], [])
@@ -531,6 +716,10 @@ def main():
     if args.all or args.scripts:
         script_issues = check_script_locality_and_governance()
 
+    design_audit = {"tracked_count": 0, "synced_count": 0, "drifted": [], "synced": []}
+    if args.all or args.design_sync:
+        design_audit = check_design_docs_sync()
+
     if args.json:
         out = {
             "dead_code": dead,
@@ -539,6 +728,7 @@ def main():
             "srp_cohesion_issues": srp_issues,
             "skills_sync": skill_audit,
             "script_locality_issues": script_issues,
+            "design_docs_sync": design_audit,
         }
         print(json.dumps(out, indent=2))
         return
@@ -604,8 +794,25 @@ def main():
                 print(f"    * [{s_issue['type']}] {s_issue['location']}")
                 print(f"      -> {s_issue['recommendation']}")
 
+    if args.all or args.design_sync:
+        print(f"\n[6. DESIGN DOCUMENTATION & CODE DRIFT DETECTION]")
+        print(f"  - Tracked Design Specs: {design_audit['tracked_count']}")
+        if not design_audit["drifted"]:
+            print(f"  - Status: [PASS] All {design_audit['synced_count']} tracked specification(s) are in sync with HEAD.")
+        else:
+            print(f"  - Status: [DRIFT] {len(design_audit['drifted'])} specification(s) behind code HEAD:")
+            for d in design_audit["drifted"]:
+                if d.get("error"):
+                    print(f"    * {d['file']}: {d['error']}")
+                else:
+                    paths_str = ", ".join(d["paths"])
+                    print(f"    * {d['file']}: {d['count']} commit(s) behind in [{paths_str}] (synced at: {d['commit']})")
+                    for c_log in d.get("log", []):
+                        print(f"        - {c_log}")
+            print("\n  -> Remediation: Inspect diff with --design-diff <doc>, update spec, then run --design-bump <doc>")
+
     print("\n" + "=" * 76)
-    print(f"Audit Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(skill_audit['issues'])} skill sync issues, {len(script_issues)} script locality issues.")
+    print(f"Audit Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(skill_audit['issues'])} skill sync issues, {len(script_issues)} script locality issues, {len(design_audit['drifted'])} design drift issues.")
     print("=" * 76)
 
 

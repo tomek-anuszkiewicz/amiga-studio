@@ -8,8 +8,11 @@ status: "active"
 created: 2026-09-06
 updated: 2026-09-13
 related: ["[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Agnus.md](Agnus.md)"]
+tracked_paths:
+  - "crates/floppy"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Amiga 500 Floppy Disk Subsystem Architecture
 
 > [!NOTE]

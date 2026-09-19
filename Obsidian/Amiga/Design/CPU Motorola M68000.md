@@ -8,8 +8,11 @@ status: "active"
 created: 2026-08-31
 updated: 2026-09-14
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+tracked_paths:
+  - "crates/m68000"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Motorola 68000 CPU Design Specification
 
 - **Module Location:** `m68000/`

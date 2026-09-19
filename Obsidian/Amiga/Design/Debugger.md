@@ -8,8 +8,11 @@ status: "active"
 created: 2026-09-05
 updated: 2026-09-12
 related: ["[General Architecture.md](General%20Architecture.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[GUI.md](GUI.md)", "[GUI Specification.md](GUI%20Specification.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)"]
+tracked_paths:
+  - "crates/debugger"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Amiga 500 Debugger Architecture & Inspection Engine
 
 - **Parent Specification:** [General Architecture.md](General%20Architecture.md) | [Main loop A500.md](Main%20loop%20A500.md)

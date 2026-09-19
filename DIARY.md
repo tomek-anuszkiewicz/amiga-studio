@@ -7038,29 +7038,26 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --all`: Verified complete 5-pillar audit execution in 2.2s.
   - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,802 bytes, Test-Coupling, API Coverage 100%, 19 Architecture Rules).
 
+---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+### [2026-09-19 02:25 CEST] — Implemented Deterministic Design Docs Drift Detection & Git Commit Checkpoints
+- **Subsystems Affected**:
+  - `tools/harness/audit_code_quality.py`: Promoted to shared harness (referenced by both `audit-code-quality` and `sync-design-docs`). Added Pillar 6 (`--design-sync`, `--design-diff`, `--design-bump`):
+    - `parse_markdown_frontmatter()`: Parses YAML frontmatter properties `tracked_paths`, `last_synced_commit`, and `last_synced_date`.
+    - `bump_markdown_checkpoint()`: Updates frontmatter checkpoints atomically to HEAD.
+    - `check_design_docs_sync()`: Computes `git rev-list --count <last_synced_commit>..HEAD -- <tracked_paths>` across all code-backed specifications.
+    - `show_design_diff()`: Displays exact git diff against tracked crate paths for rapid differential review.
+  - `Obsidian/Amiga/Design/*.md`: Initialized cryptographic Git commit checkpoints (`last_synced_commit: "a4f9f76"`, `last_synced_date: "2026-09-19"`, `tracked_paths`) across 19 code-backed architectural specifications.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Added Pillar 6 (Design Documentation & Code Drift Detection), updated CLI workflow, and updated return contract.
+  - `.agents/skills/sync-design-docs/SKILL.md`: Upgraded workflow from heuristic agent inference to deterministic drift detection via `--design-sync`, differential review via `--design-diff`, and checkpoint stamping via `--design-bump`.
+  - `.agents/rules/docs-maintenance.md`: Codified Section 4 (Deterministic Git Commit Checkpoints), documenting frontmatter properties, automated verification gates, and checkpoint stamping.
+- **Architectural Rationale & Trade-Offs**:
+  - *Eliminating Inferred Drift:* Previously, design document synchronization relied entirely on model inference to notice when code changed, which was brittle and prone to omission. Backing every specification by concrete `tracked_paths` and an immutable Git commit checkpoint makes documentation rot measurable, auditable, and deterministically verifiable on every milestone.
+  - *Shared Harness Promotion:* By cross-referencing `audit_code_quality.py` across two skills, Rule B of Pillar 5 cleanly triggered its promotion into `tools/harness/`, preventing cross-skill folder leakage.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_code_quality.py --design-sync`: Verified 19/19 tracked specifications in sync with HEAD (PASS).
+  - `python tools/harness/audit_code_quality.py --scripts`: Verified 0 placement anomalies across both directions (PASS).
+  - `python tools/harness/pre_flight.py`: All 5 pre-flight gates passed cleanly.
 
 
 

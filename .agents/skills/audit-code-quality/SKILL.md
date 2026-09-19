@@ -51,6 +51,13 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Rule B (Shared Promotion):** Any script inside `.agents/skills/<skill>/scripts/` referenced by $> 1$ distinct skills or workflows must be promoted into `tools/harness/` to avoid cross-skill leakage.
 - **Audit Verification:** Verified automatically via `--scripts` or `--all`.
 
+### Pillar 6: Design Documentation & Code Drift Detection (`--design-sync`)
+- **Deterministic Git Checkpoints:** Every code-backed design specification in `Obsidian/Amiga/Design/` records `tracked_paths` and `last_synced_commit` in its YAML frontmatter.
+- **Automated Drift Detection:** `audit_code_quality.py` computes `git rev-list --count <last_synced_commit>..HEAD -- <tracked_paths>` to identify specifications whose underlying Rust crates have moved forward without review.
+- **Differential Inspection:** Inspect the exact code diff since the last synchronization via `--design-diff <doc>`.
+- **Checkpoint Stamping:** Once the specification is updated (or verified to still be accurate), stamp the HEAD commit via `--design-bump <doc>`.
+- **Audit Verification:** Verified automatically via `--design-sync` or `--all`.
+
 ---
 
 ## 3. CLI Audit Workflow
@@ -59,30 +66,39 @@ Execute the unified code quality auditor via Python harness:
 
 ### A. Full Workspace Deep Audit
 ```powershell
-python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --all
+python tools/harness/audit_code_quality.py --all
 ```
 
 ### B. Targeted Subsystem Audits
 ```powershell
 # Audit dead code & zombies in a specific crate
-python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --dead-code --crate paula
+python tools/harness/audit_code_quality.py --dead-code --crate paula
 
 # Audit only visibility leaks across the workspace
-python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --visibility
+python tools/harness/audit_code_quality.py --visibility
 
 # Audit SRP and file sizes
-python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --srp
+python tools/harness/audit_code_quality.py --srp
 
 # Audit agent skills catalog synchronization in docs/ai_agents.md
-python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --skills
+python tools/harness/audit_code_quality.py --skills
 
 # Audit two-way script locality and harness placement governance
-python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --scripts
+python tools/harness/audit_code_quality.py --scripts
+
+# Audit design specifications drift against code crates
+python tools/harness/audit_code_quality.py --design-sync
+
+# Inspect git diff for a drifted design specification
+python tools/harness/audit_code_quality.py --design-diff Denise.md
+
+# Bump checkpoint of a verified design specification to HEAD
+python tools/harness/audit_code_quality.py --design-bump Denise.md
 ```
 
 ### C. Machine-Readable JSON Export
 ```powershell
-python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --all --json > quality_report.json
+python tools/harness/audit_code_quality.py --all --json > quality_report.json
 ```
 
 ---
@@ -154,7 +170,7 @@ Ensure all quality gates and architecture rules pass with 100% green status.
     ```markdown
     Execute on-demand code quality audit and pruning across `<SCOPE>`.
     Follow .agents/skills/audit-code-quality/SKILL.md:
-    1. Run `python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --all`.
+    1. Run `python tools/harness/audit_code_quality.py --all`.
     2. Triage zombies vs Host I/O boundaries.
     3. Prune confirmed dead symbols and demote leaked visibility.
     4. Verify via `python tools/harness/pre_flight.py` and unit tests.
@@ -170,5 +186,6 @@ Ensure all quality gates and architecture rules pass with 100% green status.
   - **SRP / Cohesion Decompositions:** <count> files/structs
   - **Skills Catalog Sync:** [PASS (all synchronized) | <count> discrepancies]
   - **Script Locality & Governance:** [PASS (all properly placed) | <count> anomalies]
+  - **Design Specs Sync:** [PASS (all synchronized) | <count> drifted]
   - **Verification:** `pre_flight.py` (PASS), `cargo test` (PASS)
   ```

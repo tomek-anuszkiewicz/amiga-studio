@@ -8,8 +8,12 @@ status: "active"
 created: 2026-09-04
 updated: 2026-09-12
 related: ["[Game Ports.md](Game%20Ports.md)", "[Joystick.md](Joystick.md)", "[Denise.md](Denise.md)", "[CIA.md](CIA.md)", "[GUI.md](GUI.md)", "[General Architecture.md](General%20Architecture.md)"]
+tracked_paths:
+  - "crates/mouse"
+  - "crates/game_ports"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Amiga 500 Mouse Subsystem & Pointer Architecture
 
 This document specifies the hardware registers, quadrature counter mechanics, button sensing, and cross-platform host mouse/touchscreen input abstraction for the Amiga 500 emulator.

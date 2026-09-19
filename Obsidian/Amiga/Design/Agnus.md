@@ -8,8 +8,14 @@ status: "active"
 created: 2026-09-06
 updated: 2026-09-14
 related: ["[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Denise.md](Denise.md)"]
+tracked_paths:
+  - "crates/agnus"
+  - "crates/copper"
+  - "crates/blitter"
+  - "crates/dma"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Agnus (MOS 8370 / 8371 / 8372A) Architecture & Hardware Specification
 
 > [!NOTE]

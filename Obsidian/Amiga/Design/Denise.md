@@ -8,8 +8,13 @@ status: "active"
 created: 2026-09-06
 updated: 2026-09-12
 related: ["[Agnus.md](Agnus.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Joystick.md](Joystick.md)", "[Mouse.md](Mouse.md)"]
+tracked_paths:
+  - "crates/denise"
+  - "crates/sprites"
+  - "crates/frame_builder"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Denise (MOS 8362 / 8373) Architecture & Hardware Specification
 
 > [!NOTE]

@@ -8,8 +8,11 @@ status: "active"
 created: 2026-09-10
 updated: 2026-09-16
 related: ["[GUI.md](GUI.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](General%20Architecture.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
+tracked_paths:
+  - "crates/gui"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Amiga 500 Developer GUI & Debugger Layout Specification
 
 - **Parent Specification:** [GUI.md](GUI.md) | [General Architecture.md](General%20Architecture.md)

@@ -8,8 +8,11 @@ status: "active"
 created: 2026-09-05
 updated: 2026-09-12
 related: ["[GUI Specification.md](GUI%20Specification.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](General%20Architecture.md)"]
+tracked_paths:
+  - "crates/gui"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Amiga 500 GUI & Frontend Architecture
 
 - **Parent Specification:** [General Architecture.md](General%20Architecture.md)

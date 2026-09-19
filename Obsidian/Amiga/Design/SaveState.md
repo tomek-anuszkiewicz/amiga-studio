@@ -8,8 +8,11 @@ status: "active"
 created: 2026-08-31
 updated: 2026-09-14
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Agnus.md](Agnus.md)"]
+tracked_paths:
+  - "crates/machine_loop/src/save_state.rs"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Amiga 500 Save State Architecture & Serialization Specification
 
 > [!NOTE]
