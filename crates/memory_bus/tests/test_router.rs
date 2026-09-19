@@ -182,3 +182,11 @@ fn test_memory_bus_open_bus_read_byte() {
     let res = bus.read_byte(0x200000);
     assert_eq!(res, BusResult::Ready(0xFF));
 }
+
+#[test]
+fn test_memory_bus_debug_derive() {
+    let mut mb = TestMotherboard::new();
+    let bus = mb.router();
+    let debug_str = format!("{:?}", bus);
+    assert!(debug_str.contains("MemoryBus"));
+}

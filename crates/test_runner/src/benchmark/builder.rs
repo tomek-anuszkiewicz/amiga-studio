@@ -74,6 +74,7 @@ impl BenchmarkProgram {
 }
 
 /// Programmatic builder for M68000 benchmark programs
+#[derive(Debug)]
 pub struct BenchmarkProgramBuilder {
     spec: BenchmarkSpec,
     unroll_k: usize,

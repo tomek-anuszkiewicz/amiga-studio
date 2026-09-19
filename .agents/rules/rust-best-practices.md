@@ -27,6 +27,7 @@ All Rust code across the Amiga 500 emulator workspace must strictly adhere to th
 - **Zero Circular Handles:** Never use `Rc<RefCell<...>>` or raw pointers between sibling subsystems. All subsystems are owned directly by the top-level machine (`A500` or `EmulatorApp`).
 - **Big-Endian Guest vs Little-Endian Host:** Never perform pointer casts or `transmute` on guest memory buffers. Always use explicit byte conversion helpers (`u16::from_be_bytes`, `u32::from_be_bytes`).
 - **Zero Allocations in Hot Paths:** Hot execution paths must perform zero dynamic heap allocations (`Vec`, `Box`, `String`, `format!`). Use fixed-capacity arrays or in-place state.
+- **Borrow Views over Containers:** Functions inspecting buffers or sequences must accept borrowed slices (`&[T]`, `&mut [T]`) rather than concrete heap containers (`&Vec<T>`, `&mut Vec<T>`). Accept `&str` instead of `&String`. Enforced at compiler/AST level via `clippy::ptr_arg`.
 
 ---
 
@@ -189,16 +190,26 @@ impl ChannelConfig {
 }
 ```
 
+4. **Collection Getters (Slice Views):**
+   - Getters exposing internal buffers or sequences must return borrowed slices (`&[T]` or `&mut [T]`), never references to concrete containers (`&Vec<T>`).
+   - Example: Field `data: Vec<i16>` -> getter `pub fn data(&self) -> &[i16]`.
+
 ---
 
-## 7. Comprehensive Unit Test Coverage
+## 7. Trait Derives & Default Discipline
+- **Default for Parameterless Constructors:** Always implement or derive `Default` if a parameterless constructor (`new()`) exists, ensuring `new()` delegates to `Self::default()`. Enforced at compiler/AST level via `clippy::new_without_default`.
+- **Mandatory Debug Trait:** All public enums and structs must derive `Debug`. Enforced at compiler level via `missing_debug_implementations`.
+
+---
+
+## 8. Comprehensive Unit Test Coverage
 - **Mandatory Unit Tests for Testable Logic:** Every newly created or modified Rust source file containing testable domain logic, algorithmic transformations, state machines, hardware models, statistical calculations, builders, or parsers must have corresponding unit tests.
 - **Placement & Structure:** Unit tests must be placed strictly in dedicated test files under `crates/<crate>/tests/test_<name>.rs` per `unit-testing-policy.md` (zero inline tests in `src/`).
 - **Pragmatic Scope:** Pure struct declarations or thin forwarders without branching or business logic may rely on parent integration tests. However, any module implementing algorithms, parsing, state mutations, filtering, statistics, or hardware circuits must have dedicated unit tests verifying happy paths, boundary conditions, zero/empty states, and failure modes.
 
 ---
 
-## 8. Authoritative Rust Design Specifications & Delegation
+## 9. Authoritative Rust Design Specifications & Delegation
 
 When designing Rust data models, trait interfaces, and systems boundaries, agents must adhere to:
 - [`Rust Guidelines.md`](../../Obsidian/Amiga/Design/Rust%20Guidelines.md): Project-wide Rust systems idioms, memory layout patterns, and error handling architecture.

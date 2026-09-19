@@ -25,6 +25,7 @@ Audits three critical architectural dimensions across workspace crates:
    - Evaluates standard getters matching field name without `get_` prefix.
    - Evaluates boolean getters starting with `is_` (or `has_`/`can_`) and zero duplicate prefixes.
    - Evaluates setters starting with `set_<field>`.
+   - Evaluates collection getters returning borrowed slices rather than concrete container references (&Vec<T>).
 """
 
 import argparse
@@ -860,6 +861,21 @@ def scan_accessor_conventions(target_crate=None):
                             "recommendation": f"Boolean getter `{fn_name}` for field in `{curr_impl}` must start with `is_` (e.g. `is_{fn_name}`) or retain `has_`/`can_` per rust-best-practices.md.",
                         })
 
+                # 4. Collection getter returning concrete container (&Vec or &mut Vec) instead of borrowed slice
+                if (ret_type.startswith("&Vec<") or ret_type.startswith("&mut Vec<")) and not has_extra_params:
+                    inner_m = re.match(r"^&(?:mut\s+)?Vec<\s*(.+)\s*>$", ret_type)
+                    slice_type = f"&[{inner_m.group(1)}]" if inner_m else "&[T]"
+                    if ret_type.startswith("&mut"):
+                        slice_type = f"&mut [{inner_m.group(1)}]" if inner_m else "&mut [T]"
+                    issues.append({
+                        "type": "concrete_container_getter",
+                        "crate": c.name,
+                        "file": rel,
+                        "line": start_line,
+                        "metric": f"{fn_name}() -> {ret_type}",
+                        "recommendation": f"Collection getter `{fn_name}` exposes internal `{ret_type}`. Return borrowed slice `{slice_type}` per rust-best-practices.md.",
+                    })
+
     return issues
 
 
@@ -1039,7 +1055,7 @@ def main():
     if args.all or args.accessors:
         print(f"\n[9. METHOD NAMING & ACCESSOR CONVENTIONS]")
         if not accessor_issues:
-            print("  - Status: [PASS] All getters and setters adhere to method naming conventions (no get_ prefix, is_/has_/can_ booleans, set_ setters).")
+            print("  - Status: [PASS] All getters and setters adhere to method naming conventions (no get_ prefix, is_/has_/can_ booleans, set_ setters, slice view collection getters).")
         else:
             print(f"  - Status: [WARN] {len(accessor_issues)} accessor convention violation(s) detected:")
             for issue in accessor_issues[:15]:

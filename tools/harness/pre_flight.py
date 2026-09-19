@@ -79,6 +79,20 @@ def check_api_coverage():
         return False, f"API coverage audit failed:\n{output}", elapsed
     return True, "100% peripheral/utility public APIs tested", elapsed
 
+def check_clippy_invariants():
+    cmd = [
+        "cargo", "clippy", "--workspace", "--",
+        "-A", "warnings",
+        "-D", "clippy::ptr_arg",
+        "-D", "clippy::new_without_default",
+        "-D", "missing_debug_implementations",
+    ]
+    code, stdout, stderr, elapsed = run_cmd(cmd)
+    if code != 0:
+        output = stdout.strip() or stderr.strip()
+        return False, f"Clippy AST invariants check failed:\n{output}", elapsed
+    return True, "100% compliant (ptr_arg, new_without_default, missing_debug_implementations)", elapsed
+
 def check_architecture_rules():
     cmd = ["cargo", "test", "-p", "test_runner", "--test", "test_architecture_rules", "--", "--quiet"]
     code, stdout, stderr, elapsed = run_cmd(cmd)
@@ -103,6 +117,7 @@ def main():
         ("AGENTS.md Ceiling", check_agents_md),
         ("Test Coupling", lambda: check_test_coupling(staged=staged_mode)),
         ("API Coverage", check_api_coverage),
+        ("Clippy Invariants", check_clippy_invariants),
     ]
     
     if not quick_mode:

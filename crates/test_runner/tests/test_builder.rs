@@ -119,3 +119,11 @@ fn test_builder_injection_into_cpu_and_bus() {
     assert_eq!(bus.chip_ram[exit + 2], 0x27);
     assert_eq!(bus.chip_ram[exit + 3], 0x00);
 }
+
+#[test]
+fn test_benchmark_program_builder_debug_derive() {
+    let spec = find_spec_by_id("ARITH-02").expect("ARITH-02 must exist");
+    let builder = BenchmarkProgramBuilder::new(spec);
+    let debug_str = format!("{:?}", builder);
+    assert!(debug_str.contains("BenchmarkProgramBuilder"));
+}

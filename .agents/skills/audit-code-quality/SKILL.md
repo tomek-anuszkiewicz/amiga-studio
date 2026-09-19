@@ -78,7 +78,14 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
   1. **Standard Getters:** Must exactly match the field name (do NOT use a `get_` prefix). Pattern: `pub const fn <field>(&self) -> T` (or `&T` if non-Copy).
   2. **Boolean Getters:** Must start with the `is_` prefix (or retain natural boolean prefixes like `has_`, `can_` if already present in the field name). If field is named `enabled: bool` -> getter is `pub const fn is_enabled(&self) -> bool`. If field already has `is_` (e.g. `is_active: bool`), do not duplicate it (`pub const fn is_active(&self) -> bool`).
   3. **Setters:** Must start with the `set_` prefix followed by the field name. Pattern: `pub const fn set_<field>(&mut self, value: T)`.
+  4. **Collection Getters (Slice Views):** Getters exposing internal buffers or sequences must return borrowed slices (`&[T]` or `&mut [T]`), never references to concrete containers (`&Vec<T>`). Example: Field `data: Vec<i16>` -> getter `pub fn data(&self) -> &[i16]`.
 - **Verification Method:** Verified directly via `python tools/harness/audit_code_quality.py --accessors` alongside Agent cognitive inference for domain-specific invariant validation.
+
+### Pillar 10: Compiler-Grade AST Invariants & Trait Discipline
+- **Borrow Views over Containers:** Functions inspecting buffers or sequences must accept borrowed slices (`&[T]`, `&mut [T]`) rather than concrete heap containers (`&Vec<T>`, `&mut Vec<T>`), and accept `&str` instead of `&String`. Enforced with 100% AST accuracy via `clippy::ptr_arg`.
+- **Default for Parameterless Constructors:** Always implement or derive `Default` if a parameterless constructor (`new()`) exists, ensuring `new()` delegates to `Self::default()`. Enforced at AST level via `clippy::new_without_default`.
+- **Mandatory Debug Trait:** All public enums and structs must derive `Debug`. Enforced at compiler level via `missing_debug_implementations`.
+- **Verification Gate:** Enforced on every build via `check_clippy_invariants()` in `tools/harness/pre_flight.py`.
 
 ---
 
@@ -111,6 +118,9 @@ python tools/harness/audit_code_quality.py --conditions
 
 # Audit struct accessors and method naming conventions
 python tools/harness/audit_code_quality.py --accessors
+
+# Verify compiler-grade AST invariants (Borrow Views, Default, Debug)
+cargo clippy --workspace -- -A warnings -D clippy::ptr_arg -D clippy::new_without_default -D missing_debug_implementations
 
 # Machine-readable JSON export
 python tools/harness/audit_code_quality.py --all --json > quality_report.json

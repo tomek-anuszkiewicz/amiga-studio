@@ -51,9 +51,13 @@ When invoked without parameters:
    ```powershell
    python tools/harness/audit_code_quality.py --tests
    ```
-- **Audit Method Naming & Accessor Conventions (`get_` forbidden, `is_`/`has_`/`can_` booleans, `set_` setters):**
+- **Audit Method Naming & Accessor Conventions (`get_` forbidden, `is_`/`has_`/`can_` booleans, `set_` setters, slice getters):**
    ```powershell
    python tools/harness/audit_code_quality.py --accessors
+   ```
+- **Audit Compiler AST Invariants (`ptr_arg`, `new_without_default`, `missing_debug_implementations`):**
+   ```powershell
+   cargo clippy --workspace -- -A warnings -D clippy::ptr_arg -D clippy::new_without_default -D missing_debug_implementations
    ```
 - **Audit Specific Crate:**
    ```powershell
@@ -70,13 +74,14 @@ Follow the detailed playbooks in [`.agents/skills/audit-code-quality/SKILL.md`](
 4. **Inlining Alignment:** Add mandatory `#[inline(always)]` to hot leaf ALU/CCR functions and `#[inline(never)]` to cold exception trigger handlers per [`.agents/rules/method-inlining.md`](../rules/method-inlining.md).
 5. **Anti-Pattern Elimination:** Replace any ad-hoc macros (`macro_rules!`) and const-generic templates with concrete, explicit functions.
 6. **Test Organization:** Move any inline tests in `src/` to `tests/` and maintain 1:1 test file parity in multi-module crates per [`.agents/rules/unit-testing-policy.md`](../rules/unit-testing-policy.md).
-7. **Struct Encapsulation & Accessors:** Enforce Category A (POD) and Category B (Complex) encapsulation rules per [`.agents/rules/rust-best-practices.md`](../rules/rust-best-practices.md), eliminating raw public fields. Enforce Method Naming & Accessor Conventions: standard getters must match the field name without `get_` prefix (`<field>(&self)`), boolean getters must start with `is_` (or retain `has_`/`can_`), and setters must start with `set_<field>`.
+7. **Struct Encapsulation, Accessors & Collection Slices:** Enforce Category A (POD) and Category B (Complex) encapsulation rules per [`.agents/rules/rust-best-practices.md`](../rules/rust-best-practices.md), eliminating raw public fields. Enforce Method Naming & Accessor Conventions: standard getters must match the field name without `get_` prefix (`<field>(&self)`), boolean getters must start with `is_` (or retain `has_`/`can_`), setters must start with `set_<field>`, and collection getters must return borrowed slices (`&[T]` / `&mut [T]`) rather than concrete containers (`&Vec<T>`).
+8. **Compiler-Grade AST Invariants & Trait Discipline:** Enforce borrow views over containers (`&[T]`, `&str` rather than `&Vec<T>`, `&String`) via `clippy::ptr_arg`, parameterless constructor `Default` delegation via `clippy::new_without_default`, and mandatory `Debug` derives on all public enums and structs via `missing_debug_implementations` (verified via `check_clippy_invariants` in `pre_flight.py`).
 
 ---
 
 ## 4. The Verbal Double-Check (Self-Audit & Heuristic Verification)
 
-Beyond mechanical script passes, explicitly review the **6 Non-Negotiable Conscience Questions** (driven by Agent cognitive inference; zero Python scripts required):
+Beyond mechanical script passes, explicitly review the **7 Non-Negotiable Conscience Questions** (driven by Agent cognitive inference; zero Python scripts required):
 1. 🧠 **Spec Freshness Review:** Did code refactoring or pruning introduce behavior changes not yet updated in `Obsidian/Amiga/Design/*.md`?
 2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all clock delays, cycle counts, and beam offsets silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom nudges?
 3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify chip behavior and state changes, or do they only assert trivial boilerplate?
@@ -86,7 +91,11 @@ Beyond mechanical script passes, explicitly review the **6 Non-Negotiable Consci
    - Are all struct fields strictly private with zero raw public field leaks?
    - **Category A (POD / Value Objects):** Pure data structs have private fields, `pub const fn new(...) -> Self`, `#[inline(always)] pub const fn` getters/setters, and derived traits (`Debug, Clone, Copy, PartialEq, Eq`).
    - **Category B (Complex Structs):** Structs with allocations, handles, or invariants have private fields, constructors (`new` or fallible `try_new` with validation), compile-time or reference getters (`pub const fn` / `pub fn`), and domain-validated setters only when required by domain logic.
-   - **Method Naming & Accessor Conventions:** Standard getters match field name without `get_` prefix, boolean getters start with `is_` / `has_` / `can_` (zero duplicate prefixes), and setters start with `set_`.
+   - **Method Naming & Accessor Conventions:** Standard getters match field name without `get_` prefix, boolean getters start with `is_` / `has_` / `can_` (zero duplicate prefixes), setters start with `set_`, and collection getters return slice views (`&[T]`, `&mut [T]`).
+7. 🧩 **Compiler AST & Trait Discipline Review (`rust-best-practices.md`):**
+   - Do functions inspecting sequences take borrowed slices (`&[T]`, `&str`) rather than concrete containers (`&Vec<T>`, `&String`)?
+   - Do parameterless constructors (`new()`) delegate to `Self::default()`?
+   - Do all public structs and enums derive `Debug`?
 
 ---
 
@@ -103,6 +112,8 @@ Conclude with the standardized summary report:
 - **Anti-Pattern Prohibitions:** [PASS | <count> violations]
 - **External Test Suites & Parity:** [PASS | <count> issues]
 - **Accessor & Naming Conventions:** [PASS | <count> violations]
-- **Verbal Double-Check Conscience Review:** [CONFIRMED - 6/6 heuristics verified]
+- **Clippy AST Invariants:** [PASS | <count> violations]
+- **Verbal Double-Check Conscience Review:** [CONFIRMED - 7/7 heuristics verified]
 - **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
 ```
+

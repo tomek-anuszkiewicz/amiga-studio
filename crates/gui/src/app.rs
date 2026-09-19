@@ -98,6 +98,7 @@ impl Default for UserPreferences {
 }
 
 /// Central Amiga 500 Emulator GUI Application (View Layer)
+#[derive(Debug)]
 pub struct EmulatorApp {
     /// Headless machine execution controller & model
     pub session: DebuggerSession,

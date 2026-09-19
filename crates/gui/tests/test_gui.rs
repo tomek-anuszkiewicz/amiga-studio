@@ -173,3 +173,10 @@ fn test_left_dock_registers_and_microcode_rendering() {
         "Left dock with registers and microcode must render valid shapes"
     );
 }
+
+#[test]
+fn test_emulator_app_debug_derive() {
+    let app = gui::EmulatorApp::default();
+    let debug_str = format!("{:?}", app);
+    assert!(debug_str.contains("EmulatorApp"));
+}

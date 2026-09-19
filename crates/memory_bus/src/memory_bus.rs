@@ -30,6 +30,7 @@ pub const RTC_END: u32 = 0xDC003F;
 pub const CUSTOM_REG_OFFSET_MASK: u16 = 0x01FE;
 
 /// Zero-cost stack-allocated router implementing `AddressBus` across all subsystems
+#[derive(Debug)]
 pub struct MemoryBus<'a> {
     pub mem: &'a mut PhysicalMemory,
     pub agnus: &'a mut Agnus,

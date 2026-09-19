@@ -7880,6 +7880,30 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed (including rule size safety and markdown link integrity).
   - `cargo fmt --all -- --check`: 100% compliant.
 
+---
+
+### [2026-09-19 21:55 CEST] — Codified Borrow Views, Collection Getters, and Trait Derives with Compiler-Grade AST Enforcement
+
+- **Files Modified**:
+  - `.agents/rules/rust-best-practices.md`: Codified *Borrow Views over Containers* in Section 3 (`&[T]`, `&str` instead of `&Vec<T>`, `&String`), *Collection Getters (Slice Views)* in Section 6 (`pub fn data(&self) -> &[i16]`, never returning concrete `&Vec<T>`), and added Section 7 (*Trait Derives & Default Discipline*) requiring `Default` implementation/derivation when parameterless `new()` exists (delegating to `Self::default()`) and mandatory `Debug` on all public enums and structs. Renumbered subsequent sections.
+  - `crates/memory_bus/src/memory_bus.rs`, `crates/memory_bus/tests/test_router.rs`: Derived `Debug` on `MemoryBus<'a>` and added unit test verification.
+  - `crates/gui/src/app.rs`, `crates/gui/tests/test_gui.rs`: Derived `Debug` on `EmulatorApp` and added headless unit test verification.
+  - `crates/test_runner/src/benchmark/builder.rs`, `crates/test_runner/tests/test_builder.rs`: Derived `Debug` on `BenchmarkProgramBuilder` and added unit test verification.
+  - `crates/test_runner/src/dma_harness.rs`, `crates/test_runner/tests/test_dma_cartesian.rs`: Derived `Debug` on `PreFlight` and added unit test verification.
+  - `tools/harness/pre_flight.py`: Added mandatory compiler-grade AST quality gate `check_clippy_invariants()` executing `cargo clippy --workspace -- -A warnings -D clippy::ptr_arg -D clippy::new_without_default -D missing_debug_implementations`.
+  - `tools/harness/audit_code_quality.py`: Added detection for collection getters exposing concrete containers (`-> &Vec<T>` / `-> &mut Vec<T>`) recommending slice views (`-> &[T]` / `-> &mut [T]`).
+  - `.agents/skills/audit-code-quality/SKILL.md`: Updated Pillar 9 with Collection Getters and added Pillar 10 (*Compiler-Grade AST Invariants & Trait Discipline*).
+  - `.agents/workflows/audit-code-quality.md`: Integrated Clippy AST commands, updated remediation steps, verbal conscience review (7/7 heuristics), and output contract.
+- **Architectural Rationale & Trade-Offs**:
+  - *Compiler-Grade AST Verification vs Fragile Textual Heuristics:* Invariants such as container parameter borrowing, trait implementation coverage, and missing trait derivations require semantic understanding of the compiler's High-Level Intermediate Representation (HIR) and type resolver. While ad-hoc regex scripts can detect surface patterns, they are inherently blind to type aliases and cross-file trait definitions. Instead of reinventing a brittle parser in Python, we delegate AST-level invariant enforcement directly to `cargo clippy` and `rustc` (`clippy::ptr_arg`, `clippy::new_without_default`, `missing_debug_implementations`) wired into `pre_flight.py`, while reserving `audit_code_quality.py` for Amiga-specific architectural naming conventions and slice return accessors.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Clippy Invariants 0.45s, Architecture Rules).
+  - `cargo clippy --workspace -- -A warnings -D clippy::ptr_arg -D clippy::new_without_default -D missing_debug_implementations`: 100% compliant across all 26 workspace crates.
+  - `python tools/harness/audit_code_quality.py --accessors`: Verified clean scan reporting 0 collection container leaks.
+  - `python tools/harness/audit_docs_quality.py`: 10/10 quality pillars passed with 0 issues detected.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed cleanly.
+
+
 
 
 

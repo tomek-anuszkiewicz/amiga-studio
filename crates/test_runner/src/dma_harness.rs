@@ -46,6 +46,7 @@ pub struct CartesianPermutationStats {
 impl std::error::Error for DmaContentionFailure {}
 
 /// Pre-flight analysis result capturing golden state and memory contacts
+#[derive(Debug)]
 pub struct PreFlight {
     pub base_clocks: u32,
     pub base_cck_count: u64,
