@@ -7539,4 +7539,24 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly.
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
 
+---
+
+### [2026-09-19 13:14 CEST] — Created audit-semantic-parity Workflow & Skill for Inference-Driven Quality Audits
+- **Affected Subsystems**:
+  - `.agents/skills/audit-semantic-parity/SKILL.md`: Authored dedicated skill defining the 3-vector bidirectional semantic parity evaluation model (Forward Parity for blind spots, Reverse Parity for ghost features/spec drift, and Silicon Depth scoring).
+  - `.agents/workflows/audit-semantic-parity.md`: Authored interactive slash command workflow (`/audit-semantic-parity [subsystem]`) supporting targeted subsystem evaluation and automated source/spec extraction.
+  - `tools/harness/audit_docs_quality.py`: Registered `audit-semantic-parity` in `PROCEDURAL_MILESTONE_SKILLS` and as a companion skill under `docs-maintenance.md`.
+  - `.agents/rules/docs-maintenance.md`: Referenced `audit-semantic-parity` under Section 8.
+  - `docs/ai_agents.md`: Documented skill in Section 3.C and cataloged workflow in Section 4.
+- **What Was Changed (The Concrete Reality)**:
+  - Transitioned documentation quality verification from purely static/heuristic regex checks to deep inference-driven semantic auditing.
+  - Established standard evaluation criteria and reporting templates to catch cases where code implements subtle silicon behavior omitted from docs (blind spots) or docs describe speculative features missing from code (ghost features).
+- **Architectural Rationale & Trade-Offs**:
+  - *Moving Beyond Static Linters:* Heuristic scripts can verify file existence, register offsets, and git commit hashes, but cannot evaluate conceptual completeness, bitfield depth, or narrative accuracy. The semantic parity workflow bridges this critical gap.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py --all`: 10/10 pillars passed cleanly with 0 issues (27 skills, 14 workflows, 100% two-way symmetry).
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly.
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
+
+
 

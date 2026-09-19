@@ -86,6 +86,7 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`html-to-markdown`](../.agents/skills/html-to-markdown/SKILL.md): Standardized toolchain for converting legacy Word HTML, vintage web documentation, and technical HTML articles into clean, publication-grade Obsidian Markdown with asset extraction, layout unnesting, and anchor link validation.
 - [`graphify`](../.agents/skills/graphify/SKILL.md): Persistent code knowledge graph navigation, call hierarchy tracing, and scoped subtree updates (`crates/` vs `ref_src/`).
 - [`audit-docs-quality`](../.agents/skills/audit-docs-quality/SKILL.md): Comprehensive documentation, Obsidian vault linking, constitutional size limits, and agent governance quality audit playbook.
+- [`audit-semantic-parity`](../.agents/skills/audit-semantic-parity/SKILL.md): Inference-driven bidirectional semantic audit evaluating code-to-docs parity (blind spots, undocumented code) and docs-to-code parity (hallucinations, ghost features, spec drift).
 
 ### D. Git & Worktree Orchestration
 - [`git-worktree`](../.agents/skills/git-worktree/SKILL.md): Create, synchronize, and tear down isolated Git worktrees with automatic physical copying of ignored test assets and `.env` (Zero NTFS Junctions).
@@ -103,6 +104,7 @@ Developers trigger high-level orchestration directly in the IDE chat UI using sl
 | **`/code-review`** | [`code-review.md`](../.agents/workflows/code-review.md) | Comprehensive 14-point pre-commit and milestone architectural compliance audit. |
 | **`/audit-code-quality`** | [`audit-code-quality.md`](../.agents/workflows/audit-code-quality.md) | Full-workspace Rust code quality audit (dead code, zombies, visibility, SRP, inlining, test parity). |
 | **`/audit-docs-quality`** | [`audit-docs-quality.md`](../.agents/workflows/audit-docs-quality.md) | Full-repository documentation and governance audit (design sync, vault links, size limits, skills catalog). |
+| **`/audit-semantic-parity`** | [`audit-semantic-parity.md`](../.agents/workflows/audit-semantic-parity.md) | Inference-driven bidirectional code-to-docs and docs-to-code semantic parity audit. |
 | **`/audit-hardware-quality`** | [`audit-hardware-quality.md`](../.agents/workflows/audit-hardware-quality.md) | Full-workspace hardware architectural audit (bus topology, Agnus DMA mastership, passive latching, CCK). |
 | **`/test-runner`** | [`test-runner.md`](../.agents/workflows/test-runner.md) | Standardized test suite execution, `.test_results/` snapshot rotation, and automated regression diffing. |
 | **`/integration-test-sprint`** | [`integration-test-sprint.md`](../.agents/workflows/integration-test-sprint.md) | 4-iteration cascading verification sweep, failure clustering, and 2–3 attempt time-boxing. |

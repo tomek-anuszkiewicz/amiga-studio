@@ -529,6 +529,7 @@ def check_workflow_and_skill_governance():
         "audit-code-quality": "Rust codebase quality, dead code, visibility, and SRP audit",
         "audit-docs-quality": "Documentation, vault linking, and governance quality audit",
         "audit-hardware-quality": "Hardware architectural bus topology and silicon compliance audit",
+        "audit-semantic-parity": "Inference-driven bidirectional code-to-docs and docs-to-code semantic parity audit",
     }
 
     active_workflow_stems = {wf.stem for wf in workflow_files}
@@ -544,7 +545,7 @@ def check_workflow_and_skill_governance():
         "amiga-rag.md": {"index-amiga-rag"},
         "asset-descriptions.md": {"describe-diagram-assets"},
         "diary-maintenance.md": {"compact-diary"},
-        "docs-maintenance.md": {"sync-design-docs", "obsidian-vault-linking", "audit-docs-quality"},
+        "docs-maintenance.md": {"sync-design-docs", "obsidian-vault-linking", "audit-docs-quality", "audit-semantic-parity"},
         "vault-linking-and-graph-integrity.md": {"obsidian-vault-linking", "audit-docs-quality"},
         "egui-best-practices.md": {"egui-vision-debugger", "capture-gui-screenshot"},
         "file-size-and-cohesion.md": {"refactor-split-module"},

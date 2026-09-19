@@ -78,6 +78,7 @@ Design specifications under [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Desi
 
 ---
 
-## 8. Execution Skill: `sync-design-docs`
+## 8. Execution Skills: `sync-design-docs` & `audit-semantic-parity`
 
 - Follow the operational procedure in [`sync-design-docs`](../skills/sync-design-docs/SKILL.md) to inspect git diffs, update affected living specifications, prune speculative draft snippets, update Mermaid dependency graphs, stamp git checkpoints, and verify linking integrity.
+- Follow the operational procedure in [`audit-semantic-parity`](../skills/audit-semantic-parity/SKILL.md) to conduct inference-driven bidirectional audits evaluating code-to-docs parity (blind spots, undocumented logic) and docs-to-code parity (hallucinations, ghost features, spec drift).
