@@ -67,6 +67,7 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`test-runner`](../.agents/skills/test-runner/SKILL.md): Standardized test execution across all 4 tiers, `.test_results/` snapshot management, and automated differential regression telemetry.
 - [`integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md): 4-Iteration Cascading Verification Protocol runbook for multi-chip integration test suites, failure clustering, and 2–3 attempt limits.
 - [`synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md): Post-facto root-cause consolidation using the 3-Column Diagnostic Matrix (`[Symptom] | [Location] | [Mechanism]`) to replace scattered local workarounds with a unified upstream hardware model.
+- [`audit-all`](../.agents/skills/audit-all/SKILL.md): Master quality audit orchestrator executing the full quality triad (code quality, documentation quality, and hardware silicon quality) alongside the pre-flight quality gate.
 - [`audit-code-quality`](../.agents/skills/audit-code-quality/SKILL.md): Comprehensive on-demand code quality auditor and pruning playbook covering dead code, test-only zombies, minimum visibility leaks, SRP cohesion, inlining, and test parity.
 - [`refactor-split-module`](../.agents/skills/refactor-split-module/SKILL.md): Decompose oversized Rust source files (> 800 lines) into cohesive submodules while preserving 3-tier re-exports.
 - [`profile-external`](../.agents/skills/profile-external/SKILL.md): Profile Amiga 500 emulator execution hot paths using external sampling profilers (`samply` / Firefox Profiler) and verify throughput against Git-tracked baselines.
@@ -98,6 +99,7 @@ Developers trigger high-level orchestration directly in the IDE chat UI using sl
 
 | Slash Command | Workflow File | Primary Purpose |
 | :--- | :--- | :--- |
+| **`/audit-all`** | [`audit-all.md`](../.agents/workflows/audit-all.md) | Comprehensive unified quality audit orchestrator running code, documentation, and hardware suites. |
 | **`/code-review`** | [`code-review.md`](../.agents/workflows/code-review.md) | Comprehensive 14-point pre-commit and milestone architectural compliance audit. |
 | **`/audit-code-quality`** | [`audit-code-quality.md`](../.agents/workflows/audit-code-quality.md) | Full-workspace Rust code quality audit (dead code, zombies, visibility, SRP, inlining, test parity). |
 | **`/audit-docs-quality`** | [`audit-docs-quality.md`](../.agents/workflows/audit-docs-quality.md) | Full-repository documentation and governance audit (design sync, vault links, size limits, skills catalog). |

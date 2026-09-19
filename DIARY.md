@@ -7347,3 +7347,23 @@ Every future modification or implementation task must append an entry following 
   - 0 issues in audit-hardware-quality
   - 0 dead code/zombies/visibility leaks in audit-code-quality). All 20 architecture tests passed in test_architecture_rules
   - pre_flight.py 100% compliant.
+---
+
+### [2026-09-19 11:23 CEST] — Unified Quality Audit Triad Master Orchestrator (audit-all)
+- **Affected Subsystems**:
+  - `Quality Assurance`
+  - `Tools`
+  - `Agent Governance`
+  - `Workflows`
+- **What Was Changed (The Concrete Reality)**:
+  - Created tools/harness/audit_all.py as the unified master orchestrator running the code, docs, and hardware quality suites
+  - Added .agents/workflows/audit-all.md and .agents/skills/audit-all/SKILL.md
+  - Registered audit-all in docs/ai_agents.md and AGENTS.md Section 4 Milestone Gates
+  - Included audit_all.py in UNIVERSAL_HARNESS_SCRIPTS
+- **Architectural Rationale & Trade-Offs**:
+  - Provides a 1-shot command for developers and agents to run the complete quality audit triad across Rust code health
+  - Obsidian documentation sync
+  - and physical Amiga 500 hardware compliance with an executive dashboard
+- **Verification & Test Results**:
+  - python tools/harness/audit_all.py passed cleanly (code: 19.46s, docs: 0.85s, hardware: 0.11s, 0 total violations)
+  - python tools/harness/pre_flight.py passed with all 20 architecture tests clean and AGENTS.md <= 14,000 bytes

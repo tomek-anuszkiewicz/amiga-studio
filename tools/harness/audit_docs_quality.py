@@ -391,6 +391,7 @@ def check_script_locality_and_governance():
         "check_polish.py",
         "check_test_coupling.py",
         "audit_api_coverage.py",
+        "audit_all.py",
         "audit_code_quality.py",
         "audit_docs_quality.py",
         "audit_hardware_quality.py",
