@@ -52,3 +52,11 @@ fn test_disassemble_clr_l() {
     assert_eq!(d.operands, "D0");
     assert_eq!(b, 2);
 }
+
+#[test]
+fn test_disassemble_addq_w() {
+    let (d, b) = disassemble(0x3000, |_| 0x5240);
+    assert_eq!(d.mnemonic, "ADDQ.W");
+    assert_eq!(d.operands, "#1, D0");
+    assert_eq!(b, 2);
+}

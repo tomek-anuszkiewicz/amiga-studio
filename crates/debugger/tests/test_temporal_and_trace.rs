@@ -149,3 +149,14 @@ fn test_temporal_history_seek_cck_edge_cases() {
     assert_eq!(history.find_closest_cck(290), Some(2));
     assert_eq!(history.find_closest_cck(500), Some(2));
 }
+
+#[test]
+fn test_temporal_history_clear_and_cursor() {
+    let mut history = TemporalHistory::new(10);
+    let state = CpuState::default();
+    history.record(100, 0x1000, 0x4E71, state);
+    assert_eq!(history.len(), 1);
+    history.clear();
+    assert_eq!(history.len(), 0);
+    assert_eq!(history.scrub_cursor, None);
+}

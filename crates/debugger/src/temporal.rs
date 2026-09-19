@@ -180,7 +180,8 @@ impl TemporalHistory {
     /// Current chronological index being scrubbed, or live head (len - 1)
     #[inline]
     fn current_cursor_or_head(&self) -> usize {
-        self.scrub_cursor.unwrap_or(self.len().saturating_sub(1))
+        self.scrub_cursor
+            .unwrap_or_else(|| self.len().saturating_sub(1))
     }
 
     /// Steps backward by `delta` instructions in history

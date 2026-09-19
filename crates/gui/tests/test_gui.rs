@@ -165,8 +165,10 @@ fn test_disassembly_instruction_editing_and_size_invariance() {
 #[test]
 fn test_left_dock_registers_and_microcode_rendering() {
     let ctx = egui::Context::default();
-    let mut app = gui::EmulatorApp::default();
-    app.show_microcode = true;
+    let mut app = gui::EmulatorApp {
+        show_microcode: true,
+        ..Default::default()
+    };
 
     // Run frame in Developer mode
     let output = ctx.run(egui::RawInput::default(), |ctx| app.update_ui(ctx));
@@ -181,4 +183,12 @@ fn test_emulator_app_debug_derive() {
     let app = gui::EmulatorApp::default();
     let debug_str = format!("{:?}", app);
     assert!(debug_str.contains("EmulatorApp"));
+}
+
+#[test]
+fn test_temporal_bar_rendering() {
+    let ctx = egui::Context::default();
+    let mut app = gui::EmulatorApp::default();
+    let output = ctx.run(egui::RawInput::default(), |ctx| app.update_ui(ctx));
+    assert!(!output.shapes.is_empty());
 }

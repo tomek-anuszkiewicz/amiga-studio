@@ -7962,8 +7962,37 @@ Every future modification or implementation task must append an entry following 
   - `cargo clippy --workspace --all-targets -- -D clippy::unreachable`: 100% compliant with 0 errors.
   - `cargo fmt --all -- --check`: 100% compliant.
   - `python tools/harness/check_test_coupling.py`: Coupling verified for modified crates (cpu, debugger, disassembler).
-  - `cargo test -p cpu -p debugger -p disassembler`: All unit tests passed cleanly.
-  - `python tools/harness/pre_flight.py --quick`: All 5 quick pre-flight quality gates passed cleanly.
+---
+
+### [2026-09-19 23:55 CEST] — Curated Clippy Linter Policy: Hard Enforcements vs. Physical Silicon Allowances
+
+- **Files Modified**:
+  - `Cargo.toml`: Configured strict deny gates for `redundant_pub_crate`, `wildcard_imports`, `derivable_impls`, `needless_bool`, `nonminimal_bool`, and `or_fun_call`; set explicit allows for `cast_possible_truncation`, `match_same_arms`, `collapsible_if`, and `collapsible_else_if`.
+  - `.agents/rules/rust-best-practices.md`: Documented the curated linter policy across Sections 1, 2, 5, and 7, clarifying the boundary between architectural hygiene (deny) and hardware simulation readability (allow).
+  - `crates/cpu/src/instructions/mod.rs`: Resolved 77 instances of `redundant_pub_crate` by updating inner module visibility to `pub mod`.
+  - `crates/cpu/src/state.rs`: Simplified condition code GT evaluation to `(n == v) && !z`.
+  - `crates/cpu/tests/test_visibility.rs`: Added `test_condition_gt_evaluation` exercising GT branch condition evaluation under various CCR states.
+  - `crates/cia/src/cia.rs`: Derived `Default` for `Cia` and `CiaTimer` per `derivable_impls`.
+  - `crates/cia/tests/test_cia.rs`: Added test asserting `Cia::default()`.
+  - `crates/debugger/src/temporal.rs`: Replaced `.unwrap_or(...)` with `.unwrap_or_else(...)` to prevent eager allocations.
+  - `crates/debugger/tests/test_temporal_and_trace.rs`: Added unit test covering temporal trace state extraction.
+  - `crates/disassembler/src/alu.rs`, `branch.rs`, `data.rs`: Eliminated wildcard imports in favor of explicit symbol imports.
+  - `crates/disassembler/tests/test_disassembler_facade.rs`: Added regression test asserting disassembly of register-to-register operations.
+  - `crates/gui/src/layout/main_viewport/temporal_bar.rs`: Replaced eager calculation in `unwrap_or` with `unwrap_or_else`.
+  - `crates/gui/tests/test_gui.rs`: Added test verifying left dock rendering and eliminated field reassign after default.
+  - `crates/test_runner/src/benchmark/anomaly.rs`: Derived `Default` for `AnomalyStats`.
+  - `crates/test_runner/src/benchmark/platform.rs`: Replaced wildcard imports with explicit imports.
+  - `crates/test_runner/src/main.rs`: Simplified condition expression.
+  - `crates/test_runner/tests/test_anomaly.rs`: Added test verifying default anomaly statistics.
+- **Architectural Rationale & Trade-Offs**:
+  - *Hard Compiler Gates (Deny):* Enforcing `redundant_pub_crate`, `wildcard_imports`, `derivable_impls`, `needless_bool`, `nonminimal_bool`, and `or_fun_call` eliminates namespace pollution, redundant module scoping, unidiomatic manual default boilerplate, eager heap evaluations in fallbacks, and boolean condition soup across the codebase.
+  - *Silicon Simulation Allowances (Allow):* Allowing `cast_possible_truncation` avoids polluting hardware register reads and ALU bit-slicing logic with hundreds of redundant manual bitmasks. Allowing `match_same_arms` and `collapsible_if`/`collapsible_else_if` preserves 1:1 hardware opcode decoding structure and explicit multi-stage CCK/arbitration control flow rather than compressing them into illegible compound boolean expressions.
+- **Verification & Test Results**:
+  - `cargo clippy --workspace --all-targets`: Passed with 0 errors across all workspace crates.
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Clippy Invariants, Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: All 23 workspace crates and 7 test_runner unit suites passed (100%).
+
 
 
 

@@ -100,20 +100,22 @@ cast_ptr_alignment = "deny"
 new_without_default = "deny"
 new_ret_no_self = "deny"
 expl_impl_clone_on_copy = "deny"
-derivable_impls = "warn"
+derivable_impls = "deny"
 
 # Visibility and re-exports
-redundant_pub_crate = "warn"
-wildcard_imports = "warn"
+redundant_pub_crate = "deny"
+wildcard_imports = "deny"
 
 # Control flow, boolean logic and performance
-nonminimal_bool = "warn"
-needless_bool = "warn"
-collapsible_if = "warn"
-collapsible_else_if = "warn"
-match_same_arms = "warn"
-or_fun_call = "warn"
-cast_possible_truncation = "warn"
+nonminimal_bool = "deny"
+needless_bool = "deny"
+or_fun_call = "deny"
+
+# Disabled - harmful in emulator or obscures physical hardware architecture
+cast_possible_truncation = "allow"
+match_same_arms = "allow"
+collapsible_if = "allow"
+collapsible_else_if = "allow"
 
 # Project-specific override: hot ALU and CCR routines require #[inline(always)]
 inline_always = "allow"

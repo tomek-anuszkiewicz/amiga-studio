@@ -12,13 +12,17 @@ All Rust code across the Amiga 500 emulator workspace must strictly adhere to th
 ## 1. Safety & Error Discipline
 - **Zero Host Panics on Guest Code:** Runtime emulation code (`step()`, memory accesses, interrupt handling, chip registers) must **never** call `.unwrap()`, `.expect()`, `panic!()`, or `unreachable!()`. Handle open bus, unaligned access, or invalid opcodes defensively. Mechanically enforced in production code (`crates/*/src/`) via compiler lints `clippy::unwrap_used = "deny"`, `clippy::expect_used = "deny"`, `clippy::panic = "deny"`, and `clippy::unreachable = "deny"`. Integration test suites (`crates/*/tests/*.rs`) are exempt via `#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]`.
 - **Wrapping Arithmetic:** In emulator ALU and cycle counting, always use explicit wrapping arithmetic (`wrapping_add`, `wrapping_sub`, `wrapping_shl`, `wrapping_shr`) to avoid debug overflow panics.
-- **Explicit Bit Masking:** Explicitly mask results (`& 0xFF`, `& 0xFFFF`, `& 0xFFFFFF`) when truncating registers or memory addresses.
+- **Explicit Bit Masking & Natural Hardware Casting:** Explicitly mask results (`& 0xFF`, `& 0xFFFF`, `& 0xFFFFFF`) when isolating register fields or memory bus addresses. However, generic linter truncation warnings (`clippy::cast_possible_truncation = "allow"`) are intentionally allowed project-wide to avoid polluting physical hardware registers, ALU routines, and M68000 ISA implementations with hundreds of redundant defensive casts.
+- **Non-Eager Fallback Closures:** Never evaluate function calls eagerly inside fallback options (`unwrap_or(func())`). Use lazy closure evaluation (`unwrap_or_else(|| func())`) to preserve short-circuiting. Mechanically enforced via `clippy::or_fun_call = "deny"`.
+- **Boolean Logic Clarity & De-Morgan Simplification:** Keep boolean conditions minimal, declarative, and free of redundant terms (e.g. `(n == v) && !z` for M68000 `GT`). Mechanically enforced via `clippy::nonminimal_bool = "deny"` and `clippy::needless_bool = "deny"`.
 
 ---
 
 ## 2. Explicitness & Code Clarity
 - **Strict Prohibition of User-Defined Macros (`macro_rules!` Forbidden):** Custom macros are forbidden across the codebase. Write explicit, self-documenting Rust functions, direct calls, or compile-time `const fn` arrays. Enforced via `test_architecture_rules.rs`.
 - **Prohibition of Const-Generic Functions with Constant Parameters:** Const generics (`<const N: usize>`) are forbidden for instruction handlers, decoding logic, and execution paths. Write concrete, specialized functions. Enforced via `test_architecture_rules.rs`.
+- **Explicit Imports (Zero Wildcard Imports):** Wildcard imports (`use module::*;`) obscure symbol origin, pollute namespaces, and break IDE navigation. Explicitly enumerate all imported items (`use module::{ItemA, ItemB};`). Mechanically enforced via `clippy::wildcard_imports = "deny"`.
+- **Hardware Architecture Preservation (Disabled Linter Collapsing):** In an emulator, distinct opcode bit patterns or register addresses legitimately share execution logic, and multi-stage hardware timing checks (CCK phases, DMA arbitration) must remain transparently sequential. Clippy's `match_same_arms = "allow"`, `collapsible_if = "allow"`, and `collapsible_else_if = "allow"` are intentionally disabled to prevent linters from destroying 1:1 hardware readability into collapsed condition soup.
 - **No Clever Obscurity:** Prioritize readability and direct 1:1 hardware traceability over cryptic micro-optimizations that LLVM already handles.
 
 ---
@@ -44,6 +48,7 @@ All Rust code across the Amiga 500 emulator workspace must strictly adhere to th
 - **`pub(crate)` for Internal Collaboration:** Use `pub(crate)` when an item must be shared between modules within the same crate. Never default to `pub` for internal helpers, execution engines, or dispatch callbacks.
 - **`pub` Strictly for External Public API:** Elevate to `pub` only when an item forms part of the crate's documented public surface consumed by downstream peer crates or host frontends (`machine_loop`, `gui`).
 - **Encapsulate Internal Modules:** Crates must never expose internal worker submodules (such as `instructions`, `decoders`, internal callbacks) via `pub mod`. Use `pub(crate) mod` to maintain an uncluttered crate API.
+- **Redundant Visibility Modifiers:** Never add `pub(crate)` qualifiers to items or modules inside an already-private parent module (where `pub` already achieves crate-private visibility). Enforced via `clippy::redundant_pub_crate = "deny"`.
 - **Eliminate Visibility Leaks for Dead Code Detection:** Leaking `pub` visibility prevents the Rust compiler and static analysis tools from identifying unused dead code. Restricting visibility ensures dead or zombie code is surfaced immediately.
 
 ---
@@ -200,7 +205,7 @@ impl ChannelConfig {
 - **Default for Parameterless Constructors:** Always implement or derive `Default` if a parameterless constructor (`new()`) exists, ensuring `new()` delegates to `Self::default()`. Enforced at compiler/AST level via `clippy::new_without_default = "deny"`.
 - **Constructors Returning Self:** Any method named `new` must return `Self`. Enforced via `clippy::new_ret_no_self = "deny"`.
 - **Derive Clone on Copy:** Never manually implement `Clone` when the type implements `Copy`. Enforced via `clippy::expl_impl_clone_on_copy = "deny"`.
-- **Derivable Implementations:** Prefer `#[derive(Default)]` over manual implementations when all fields implement `Default`. Enforced via `clippy::derivable_impls = "warn"`.
+- **Derivable Implementations:** Prefer `#[derive(Default)]` over manual implementations when all fields implement `Default`. Enforced via `clippy::derivable_impls = "deny"`.
 - **Mandatory Debug Trait:** All public enums and structs must derive `Debug`. Enforced at compiler level via `missing_debug_implementations = "deny"`.
 
 ---

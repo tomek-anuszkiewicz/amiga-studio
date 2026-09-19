@@ -43,3 +43,8 @@ fn test_cia_b_initialization() {
     assert_eq!(cia_b.id, CiaId::B);
     assert_eq!(cia_b.icr_mask, 0);
 }
+
+#[test]
+fn test_cia_id_default() {
+    assert_eq!(CiaId::default(), CiaId::A);
+}

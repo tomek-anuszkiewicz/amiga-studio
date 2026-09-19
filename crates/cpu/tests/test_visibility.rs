@@ -26,3 +26,24 @@ fn test_m68000_core_rehydration_and_state() {
     cpu.rehydrate_micro_steps();
     assert!(!cpu.state.micro.current_steps.is_empty());
 }
+
+#[test]
+fn test_condition_gt_evaluation() {
+    let mut cpu = Cpu::new();
+    // GT condition code is 0x0E: (N == V) && !Z
+    // 1. N=0, V=0, Z=0 -> true
+    cpu.state.set_ccr_nzvc(false, false, false, false);
+    assert!(cpu.state.eval_condition(0x0E));
+
+    // 2. N=1, V=1, Z=0 -> true
+    cpu.state.set_ccr_nzvc(true, false, true, false);
+    assert!(cpu.state.eval_condition(0x0E));
+
+    // 3. N=1, V=0, Z=0 -> false
+    cpu.state.set_ccr_nzvc(true, false, false, false);
+    assert!(!cpu.state.eval_condition(0x0E));
+
+    // 4. Z=1 -> false
+    cpu.state.set_ccr_nzvc(false, true, false, false);
+    assert!(!cpu.state.eval_condition(0x0E));
+}

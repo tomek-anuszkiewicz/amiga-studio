@@ -37,23 +37,12 @@ impl AnomalyType {
 }
 
 /// Anomaly evaluation verdict for a benchmark result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AnomalyVerdict {
     pub is_anomaly: bool,
     pub anomaly_types: Vec<AnomalyType>,
     pub delta_vs_baseline_pct: Option<f64>,
     pub notes: Vec<String>,
-}
-
-impl Default for AnomalyVerdict {
-    fn default() -> Self {
-        Self {
-            is_anomaly: false,
-            anomaly_types: Vec::new(),
-            delta_vs_baseline_pct: None,
-            notes: Vec::new(),
-        }
-    }
 }
 
 /// Classifies performance anomalies for a given instruction result

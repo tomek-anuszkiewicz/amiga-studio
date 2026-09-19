@@ -1,6 +1,6 @@
 //! Data movement, stack operations, unaries, and single-operand disassembler module
 
-use crate::ea::*;
+use crate::ea::{format_ea, format_movem_reg_list};
 
 /// Attempts to disassemble data movement, register transfer, and unary arithmetic instructions.
 ///

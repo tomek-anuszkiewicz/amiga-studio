@@ -477,7 +477,7 @@ fn run_chipset_benchmarks_cli(args: &[String]) {
             eprintln!("Error recording baseline: {}", e);
             std::process::exit(1);
         }
-    } else if compare || (!record && !compare) {
+    } else if compare || !record {
         println!(
             "[*] Running chipset performance regression audit ({} frames)...",
             frames

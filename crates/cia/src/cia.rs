@@ -13,18 +13,13 @@ const CCK_PER_ECLOCK: u8 = 5;
 const CIA_REGISTER_COUNT: usize = 16;
 
 /// CIA chip identity (CIA-A or CIA-B)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum CiaId {
     /// CIA-A (connected to IRQ level 2, keyboard, game port fire, OVL)
+    #[default]
     A,
     /// CIA-B (connected to IRQ level 6, parallel port, floppy control)
     B,
-}
-
-impl Default for CiaId {
-    fn default() -> Self {
-        CiaId::A
-    }
 }
 
 /// MOS 8520 CIA chip state

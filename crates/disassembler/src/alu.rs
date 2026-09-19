@@ -1,6 +1,6 @@
 //! ALU, Compare, Bitwise, Immediate, Multiply/Divide and Shift/Rotate disassembler module
 
-use crate::ea::*;
+use crate::ea::{format_ea, format_immediate};
 
 /// Attempts to disassemble arithmetic, logic, compare, bit, multiply/divide, and shift/rotate instructions.
 ///

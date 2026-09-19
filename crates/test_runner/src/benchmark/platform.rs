@@ -160,7 +160,10 @@ mod win_ffi {
 
 #[cfg(all(windows, not(target_arch = "wasm32")))]
 fn detect_windows_p_core() -> (bool, Option<usize>) {
-    use win_ffi::*;
+    use win_ffi::{
+        GetLogicalProcessorInformationEx, RELATION_PROCESSOR_CORE,
+        SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX,
+    };
 
     let mut len: u32 = 0;
     unsafe {
@@ -216,7 +219,10 @@ fn detect_windows_p_core() -> (bool, Option<usize>) {
 
 #[cfg(all(windows, not(target_arch = "wasm32")))]
 fn pin_windows_thread(core_idx: usize) -> Result<(), String> {
-    use win_ffi::*;
+    use win_ffi::{
+        GetCurrentProcess, GetCurrentThread, SetPriorityClass, SetThreadAffinityMask,
+        HIGH_PRIORITY_CLASS,
+    };
 
     let mask = 1usize << (core_idx & (usize::BITS as usize - 1));
     unsafe {
