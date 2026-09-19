@@ -23,7 +23,6 @@ const LINE_COUNT_EXCEPTIONS: &[&str] = &[
     "and.rs",
     "or.rs",
     "cmpi.rs",
-    "blep_tables.rs",
 ];
 
 /// Core emulation crates where `.unwrap()` and `.expect()` are strictly forbidden in runtime code.
@@ -122,6 +121,55 @@ fn test_file_size_limits() {
         violations.is_empty(),
         "Architecture Rule Violation: The following Rust source file(s) exceed the 800-line limit per AGENTS.md:\n{}",
         violations.join("\n")
+    );
+}
+
+#[test]
+fn test_no_stale_line_count_exceptions() {
+    let repo_root = find_repo_root();
+    let crates_dir = repo_root.join("crates");
+    let mut rs_files = Vec::new();
+    collect_rs_files(&crates_dir, &mut rs_files);
+
+    let mut stale_exceptions = Vec::new();
+
+    for &exception_name in LINE_COUNT_EXCEPTIONS {
+        let matching_files: Vec<&PathBuf> = rs_files
+            .iter()
+            .filter(|f| {
+                f.components().any(|c| c.as_os_str() == "src")
+                    && f.file_name().and_then(|n| n.to_str()) == Some(exception_name)
+            })
+            .collect();
+
+        if matching_files.is_empty() {
+            stale_exceptions.push(format!(
+                "Exception '{}' does not match any production file under crates/*/src/",
+                exception_name
+            ));
+            continue;
+        }
+
+        for file in matching_files {
+            let content = fs::read_to_string(file).expect("Failed to read exception file");
+            let line_count = content.lines().count();
+            if line_count <= 800 {
+                let rel_path = file.strip_prefix(&repo_root).unwrap_or(file);
+                stale_exceptions.push(format!(
+                    "{} ({} lines <= 800 limit; exception is stale and requires manual user approval to prune)",
+                    rel_path.display(),
+                    line_count
+                ));
+            }
+        }
+    }
+
+    assert!(
+        stale_exceptions.is_empty(),
+        "Architecture Rule Violation: Found stale or missing LINE_COUNT_EXCEPTIONS.\n\
+         Automated or silent exception list modifications are strictly forbidden.\n\
+         Notify the user for explicit confirmation before removing any entry:\n{}",
+        stale_exceptions.join("\n")
     );
 }
 

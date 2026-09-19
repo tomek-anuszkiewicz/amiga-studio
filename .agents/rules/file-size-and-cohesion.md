@@ -43,8 +43,20 @@ A foundational architectural mandate across all workspace crates is organizing c
 
 ## 4. Recognized Exceptions (Permitted to Exceed 800 Lines)
 Splitting these files hurts performance, breaks static table locality, and damages readability:
-1. **Compile-time static dispatch and lookup tables**: e.g., `dispatch_table.rs` (65,536-entry opcode decoding logic, compile-time tables), precalculated BLEP windowed sinc tables, and large mathematical LUTs.
+1. **Compile-time static dispatch and lookup tables**: e.g., `dispatch_table.rs` (65,536-entry opcode decoding logic, compile-time tables) and large mathematical LUTs.
 2. **Exhaustive linear instruction decoders or atomic hardware circuit state machines**: Sequential execution flows where splitting clock cycle phases across files obscures circuit timing (e.g., `add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`, `move_b.rs`, `move_w.rs`, `move_l.rs`).
+
+### Two-Way Exception Governance & Prohibition of Silent Mutations
+Modifications to `LINE_COUNT_EXCEPTIONS` (in `crates/test_runner/tests/test_architecture_rules.rs` and `tools/harness/audit_code_quality.py`) are strictly governed:
+1. **Zero Autonomous Additions:**
+   - When a file exceeds 800 lines, the agent is **strictly prohibited from autonomously adding it to `LINE_COUNT_EXCEPTIONS`** to silence CI failures.
+   - The agent must decompose the file per Section 5/Section 7, or present the issue to the user with exact metrics and await an explicit user command to grant an exception.
+2. **Zero Autonomous Deletions:**
+   - When a refactored file drops to $\le 800$ lines, the agent is **strictly prohibited from silently pruning it from `LINE_COUNT_EXCEPTIONS`**.
+   - Automated architecture tests (`test_no_stale_line_count_exceptions`) and code quality audits (`[stale_line_count_exception]`) will explicitly fail or warn, alerting the user to decide and authorize the removal.
+3. **Continuous Automated Bidirectional Verification:**
+   - `test_file_size_limits`: Fails if any unexempted production file exceeds 800 lines.
+   - `test_no_stale_line_count_exceptions`: Fails if any file registered in `LINE_COUNT_EXCEPTIONS` has $\le 800$ lines or does not exist on disk.
 
 ## 5. When to Split (Architectural Triggers)
 Split regardless of line count when:

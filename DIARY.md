@@ -7247,3 +7247,30 @@ Every future modification or implementation task must append an entry following 
   - `pre_flight.py`: 100% passing across formatting, test coupling, API coverage, and architecture rules
   - `cargo test -p test_runner --test test_architecture_rules`: 19/19 passed
   - `cargo test --workspace`: all suites passed
+
+---
+
+### [2026-09-19 10:48 CEST] — Two-Way Governance & Automated Invariant for LINE_COUNT_EXCEPTIONS
+- **Affected Subsystems**:
+  - `crates/test_runner`
+  - `tools/harness`
+  - `.agents/rules`
+- **What Was Changed (The Concrete Reality)**:
+  - Added `test_no_stale_line_count_exceptions` to `crates/test_runner/tests/test_architecture_rules.rs`:
+    - Enforces that every file registered in `LINE_COUNT_EXCEPTIONS` must physically exist under `crates/*/src/` and must strictly exceed 800 lines.
+    - Pruned non-existent `blep_tables.rs` from `LINE_COUNT_EXCEPTIONS`.
+    - If a file drops to $\le 800$ lines, test suite compilation and CI fail with explicit diagnostics to prevent silent pruning.
+  - Enhanced `tools/harness/audit_code_quality.py` (`scan_srp_and_cohesion`):
+    - Added detection for `[stale_line_count_exception]` ($\le 800$ lines) and `[missing_line_count_exception]`.
+    - Requires explicit user command before any exception list modification can be committed.
+  - Codified Two-Way Exception Governance in `.agents/rules/file-size-and-cohesion.md`:
+    - Zero autonomous additions: agent cannot add files to `LINE_COUNT_EXCEPTIONS` to bypass CI failure.
+    - Zero autonomous deletions: agent cannot silently prune files from `LINE_COUNT_EXCEPTIONS` without user authorization.
+- **Architectural Rationale & Trade-Offs**:
+  - Prevent silent exception creep and ensure human operator oversight on all architectural size exceptions.
+  - Eliminates stale technical debt as files are decomposed into cohesive submodules over time.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: 20/20 passed.
+  - `python tools/harness/pre_flight.py`: 100% compliant.
+  - `python tools/harness/audit_code_quality.py --all`: 0 dead, 0 zombies, 0 visibility leaks, 0 file size/stale exception violations.
+

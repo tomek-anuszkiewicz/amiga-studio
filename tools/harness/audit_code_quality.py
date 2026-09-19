@@ -404,6 +404,32 @@ def scan_srp_and_cohesion(target_crate=None):
                     elif re.match(r"^\s*pub\s+[a-zA-Z0-9_]+\s*:", line):
                         struct_pub_fields += 1
 
+    # Check for stale or missing exceptions in LINE_COUNT_EXCEPTIONS
+    if not target_crate:
+        for exc_path_str in sorted(LINE_COUNT_EXCEPTIONS):
+            exc_path = REPO_ROOT / exc_path_str
+            if not exc_path.exists():
+                violations.append({
+                    "type": "missing_line_count_exception",
+                    "crate": exc_path_str.split("/")[1] if "/" in exc_path_str else "",
+                    "file": exc_path_str,
+                    "metric": "File does not exist on disk",
+                    "recommendation": "Exception entry is obsolete; requires explicit user command to prune.",
+                })
+            else:
+                try:
+                    exc_lines = len(exc_path.read_text(encoding="utf-8", errors="ignore").splitlines())
+                    if exc_lines <= 800:
+                        violations.append({
+                            "type": "stale_line_count_exception",
+                            "crate": exc_path_str.split("/")[1] if "/" in exc_path_str else "",
+                            "file": exc_path_str,
+                            "metric": f"{exc_lines} lines (<= 800 limit)",
+                            "recommendation": "File has been modularized and no longer exceeds 800 lines; requires explicit user command to prune from LINE_COUNT_EXCEPTIONS.",
+                        })
+                except Exception:
+                    pass
+
     return violations
 
 
