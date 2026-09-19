@@ -7384,3 +7384,20 @@ Every future modification or implementation task must append an entry following 
   - python tools/harness/audit_docs_quality.py --all passed with 33/33 (100%) design specifications reflected
   - python tools/harness/audit_all.py passed cleanly in 20.72s with 0 violations
   - pre_flight.py 100% compliant
+---
+
+### [2026-09-19 11:37 CEST] — Streamline audit-all into Declarative Sequential Workflow
+- **Affected Subsystems**:
+  - `Quality Assurance`
+  - `Agent Governance`
+  - `Workflows`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed redundant subprocess wrapper tools/harness/audit_all.py
+  - Updated .agents/workflows/audit-all.md and .agents/skills/audit-all/SKILL.md to directly orchestrate sequential execution of audit_code_quality.py, audit_docs_quality.py, and audit_hardware_quality.py
+  - Removed audit_all.py from UNIVERSAL_HARNESS_SCRIPTS in audit_docs_quality.py
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminates unnecessary wrapper code and buffer latency
+  - providing direct unbuffered terminal streaming for each specialized audit tool while maintaining a clean slash-command entrypoint
+- **Verification & Test Results**:
+  - audit_docs_quality.py --all passed with 0 issues
+  - pre_flight.py passed with all 20 architecture tests clean and AGENTS.md <= 14,000 bytes
