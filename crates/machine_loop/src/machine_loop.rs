@@ -202,14 +202,16 @@ impl A500Machine {
         let paula_ipl = self.paula.pending_interrupt_level();
         // CIA-A (Level 2) and CIA-B (Level 6) lines pass through Paula INTENA (bits 3 and 13 + master bit 14)
         let cia_a_ipl = if self.cia_a.irq_pending()
-            && (self.paula.intena == 0 || (self.paula.intena & 0x4008) == 0x4008)
+            && (self.paula.interrupts.intena == 0
+                || (self.paula.interrupts.intena & 0x4008) == 0x4008)
         {
             2
         } else {
             0
         };
         let cia_b_ipl = if self.cia_b.irq_pending()
-            && (self.paula.intena == 0 || (self.paula.intena & 0x6000) == 0x6000)
+            && (self.paula.interrupts.intena == 0
+                || (self.paula.interrupts.intena & 0x6000) == 0x6000)
         {
             6
         } else {

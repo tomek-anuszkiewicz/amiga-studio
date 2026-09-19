@@ -52,7 +52,7 @@ fn test_audio_dma_playback_and_interrupt_propagation() {
 
     // 5. Step machine loop across several periods
     let mut cck = 0;
-    while (harness.machine.paula.intreq & 0x0080) == 0 {
+    while (harness.machine.paula.interrupts.intreq & 0x0080) == 0 {
         harness.machine.step_cck();
         cck += 1;
         assert!(
@@ -63,7 +63,7 @@ fn test_audio_dma_playback_and_interrupt_propagation() {
 
     // 6. Verify Paula INTREQ bit 7 is set and CPU IPL resolves to Level 4
     assert_eq!(
-        harness.machine.paula.intreq & 0x0080,
+        harness.machine.paula.interrupts.intreq & 0x0080,
         0x0080,
         "Audio Channel 0 buffer finish did not assert INTREQ bit 7"
     );

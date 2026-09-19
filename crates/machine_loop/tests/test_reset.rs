@@ -78,7 +78,10 @@ fn test_cold_reset_full_flow() {
         machine.denise.color[0], 0x0000,
         "Palette must be reset to 0"
     );
-    assert_eq!(machine.paula.intena, 0x0000, "INTENA must be reset to 0");
+    assert_eq!(
+        machine.paula.interrupts.intena, 0x0000,
+        "INTENA must be reset to 0"
+    );
     assert_eq!(machine.cia_a.ddra, 0x00, "CIA-A DDRA must be reset to 0");
 
     // Verify CPU registers zeroed
@@ -168,7 +171,10 @@ fn test_warm_reset_full_flow() {
         machine.denise.color[0], 0x0000,
         "Palette must be reset to 0"
     );
-    assert_eq!(machine.paula.intena, 0x0000, "INTENA must be reset to 0");
+    assert_eq!(
+        machine.paula.interrupts.intena, 0x0000,
+        "INTENA must be reset to 0"
+    );
 
     // Verify CPU registers preserved intact
     assert_eq!(
@@ -257,7 +263,7 @@ fn test_cpu_reset_instruction_external_propagation() {
         "Palette must be reset by M68000 RESET instruction"
     );
     assert_eq!(
-        machine.paula.intena, 0x0000,
+        machine.paula.interrupts.intena, 0x0000,
         "INTENA must be reset by M68000 RESET instruction"
     );
 

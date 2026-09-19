@@ -7,10 +7,10 @@ subsystem: "paula"
 status: "active"
 created: 2026-09-06
 updated: 2026-09-19
-related: ["[Audio.md](Audio.md)", "[Floppy.md](Floppy.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CIA.md](CIA.md)", "[SaveState.md](SaveState.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
+related: ["[Audio.md](Audio.md)", "[Floppy.md](Floppy.md)", "[Interrupts.md](Interrupts.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CIA.md](CIA.md)", "[SaveState.md](SaveState.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/paula"
-last_synced_commit: "0fcd519"
+last_synced_commit: "db7dcc2"
 last_synced_date: "2026-09-19"
 ---
 # Paula (MOS 8364) Architecture & Hardware Specification
@@ -19,7 +19,7 @@ last_synced_date: "2026-09-19"
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
 > Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 > Save state structures for Paula are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt priority arbitration (IPL 1–6) are coordinated with [Main loop A500.md](Main%20loop%20A500.md) and [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Disk controller interaction is detailed in [Floppy.md](Floppy.md), and DMA channel arbitration is handled by [Agnus.md](Agnus.md) and [DMA.md](DMA.md).
-> 4-channel audio sample streaming is specified in [Audio.md](Audio.md).
+> 4-channel audio sample streaming is specified in [Audio.md](Audio.md), and central interrupt encoding in [Interrupts.md](Interrupts.md).
 
 ---
 
@@ -32,7 +32,7 @@ flowchart TD
     PAULA["Paula (MOS 8364)"] --> AUDIO["4-Channel DMA Audio\n(crates/audio)"]
     PAULA --> FLOPPY["Floppy Disk MFM Controller\n(DSKDAT, DSKSYN, DSKLEN)"]
     PAULA --> UART["Serial Port UART\n(SERDAT, SERPER, 9-bit Framing)"]
-    PAULA --> INTR["Central Interrupt Multiplexer\n(14 Sources -> Levels 1..6 -> IPL Out)"]
+    PAULA --> INTR["Central Interrupt Multiplexer\n(crates/interrupts)"]
 ```
 
 ---
@@ -45,20 +45,22 @@ Paula is partitioned into focused, decoupled workspace crates under `crates/`:
 crates/
 ├── audio/             // 4-channel DMA audio engine, volume scaling, period counters, BLEP synthesis
 ├── serial_port/       // RS-232 UART transceiver (SERDAT, SERPER, 9-bit framing)
-└── paula/             // Paula coordinator, central INTENA/INTREQ multiplexer, and register routing
+├── interrupts/        // Central interrupt priority controller (INTENA, INTREQ, 14->6 encoder)
+└── paula/             // Paula coordinator, register routing, and DMA/pipeline delay staging
 ```
 
 ### 2.1 Logical Subsystem Containment & Re-Exports
 In accordance with the 3-tier re-export hierarchy, `crates/paula` owns and re-exports its companion crates:
 ```rust
 pub use audio;
+pub use interrupts;
+pub use interrupts::InterruptController;
 pub use serial_port;
 
 pub struct Paula {
     pub audio: audio::Audio,
     pub serial_port: serial_port::SerialPort,
-    pub intena: u16,
-    pub intreq: u16,
+    pub interrupts: interrupts::InterruptController,
     pub adkcon: u16,
     // ... pot counters, floppy latches, and in-flight mutation pipeline
 }
@@ -177,6 +179,8 @@ Paula aggregates all 14 system interrupt sources into 6 prioritized levels ($IPL
 | **5** | `RBF` (Serial RX Buffer Full), `DSKSYN` (Disk Sync Match) | Paula (UART, Floppy) |
 | **6** | `EXTER` (External CIA-B interrupt line) | CIA-B |
 
+*Authoritative Specification:* See [Interrupts.md](Interrupts.md).
+
 ### 7.1 Set / Clear Control (`INTENA` & `INTREQ`)
 Both `INTENA` (`$DFF09A`) and `INTREQ` (`$DFF09C`) use bit 15 as an atomic control flag:
 - **Bit 15 = 1 (`SET`):** Any bit set to `1` in the written word is asserted/enabled.
@@ -197,6 +201,7 @@ Both `INTENA` (`$DFF09A`) and `INTREQ` (`$DFF09C`) use bit 15 as an atomic contr
 
 ## 9. Reference Documentation & Upstream Ground Truth
 
+- [Interrupt Controller Architecture Specification](Interrupts.md): 14-source priority encoder, atomic SET/CLR semantics, and IPL 1..6 level generation.
 - [Audio Architecture Specification](Audio.md): 4-channel DMA audio engine, volume scaling, period counters, and BLEP synthesis.
 - [Floppy Subsystem Specification](Floppy.md): MFM decoding, drive mechanics, and sector formats.
 - [Amiga Hardware Reference Manual: Chapter 5 (Audio Hardware)](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md): Authoritative specification for 4-channel DMA audio.

@@ -61,7 +61,7 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
     // 4. Enable Paula interrupts: Master enable (bit 14) + Audio Channel 0 (bit 7)
     // Write INTENA ($DFF09A) = 0xC080 (SET bit 15 | INTEN bit 14 | AUD0 bit 7)
     machine.paula.write_intena(0xC080);
-    assert_eq!(machine.paula.intena & 0x4080, 0x4080);
+    assert_eq!(machine.paula.interrupts.intena & 0x4080, 0x4080);
 
     // 5. Trigger Paula Audio Channel 0 buffer finish (AUD0DSR)
     machine.paula.audio.channels[0].restart_strobe = true;
@@ -138,7 +138,7 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
 
     // Verify CIA-A asserts IRQ and Paula reflects PORTS bit 3
     assert!(machine.cia_a.irq_pending());
-    assert_eq!(machine.paula.intreq & 0x0008, 0x0008);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0008, 0x0008);
     assert_eq!(machine.cpu.state.ipl, 2);
 
     // Step until CPU enters the ISR at $003000
@@ -193,14 +193,14 @@ fn test_end_to_end_vblank_interrupt_to_cpu() {
 
     // Step machine until VBlank IRQ is asserted
     let mut cck_count = 0;
-    while (machine.paula.intreq & 0x0020) == 0 {
+    while (machine.paula.interrupts.intreq & 0x0020) == 0 {
         machine.step_cck();
         cck_count += 1;
         assert!(cck_count < 200, "Timed out waiting for VBlank INTREQ");
     }
 
     // Verify VBlank asserted
-    assert_eq!(machine.paula.intreq & 0x0020, 0x0020);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0020, 0x0020);
     assert_eq!(machine.cpu.state.ipl, 3);
 
     // Step CPU until it enters the ISR at $004000
@@ -252,7 +252,7 @@ fn test_master_intena_masking_suppresses_cpu_interrupt() {
     }
 
     // INTREQ bit 7 is set, but because INTEN is 0, IPL remains 0
-    assert_eq!(machine.paula.intreq & 0x0080, 0x0080);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0080, 0x0080);
     assert_eq!(machine.cpu.state.ipl, 0);
     // CPU continues normal execution without entering ISR
     assert_ne!(machine.cpu.state.instruction_pc, 0x002000);

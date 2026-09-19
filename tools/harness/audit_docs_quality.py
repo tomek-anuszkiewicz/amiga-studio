@@ -654,6 +654,7 @@ DESIGN_DOC_GOVERNANCE_MAP = {
     "Sprites.md": ("hardware-bus-topology.md", "Denise 8 hardware sprites, position comparators, attached pairs"),
     "Frame Buffer.md": ("hardware-bus-topology.md", "Denise raster scanline pixel compositor, RGB palette DAC, and ARGB frame buffer"),
     "Paula.md": ("hardware-bus-topology.md", "Paula audio and interrupt handling"),
+    "Interrupts.md": ("hardware-bus-topology.md", "Central interrupt multiplexer, 14-source priority encoder, IPL 1..6"),
     "Audio.md": ("hardware-bus-topology.md", "Paula 4-channel DMA audio engine, volume scaling, period counters"),
     "CIA.md": ("hardware-bus-topology.md", "8520 CIA timers, TOD counters, and peripheral handshaking"),
     "Floppy.md": ("hardware-bus-topology.md", "Floppy drive subsystem, MFM encoding, and DMA transfers"),

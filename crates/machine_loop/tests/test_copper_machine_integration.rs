@@ -129,7 +129,7 @@ fn test_copper_triggers_interrupt_to_cpu() {
     harness.step_until_vpos(8, 3000);
 
     // Verify Copper wrote to INTREQ and Paula raised Level 3 IPL
-    assert_eq!(harness.machine.paula.intreq & 0x0010, 0x0010);
+    assert_eq!(harness.machine.paula.interrupts.intreq & 0x0010, 0x0010);
     assert_eq!(
         harness.machine.resolve_ipl(),
         3,

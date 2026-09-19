@@ -7,7 +7,7 @@ fn test_interrupt_arbitration_and_set_clr() {
 
     // Enable master INTEN (bit 14) + VBlank (bit 5) + Audio 0 (bit 7)
     paula.write_intena(0xC0A0); // $8000 | 0x4000 | 0x0080 | 0x0020
-    assert_eq!(paula.intena, 0x40A0);
+    assert_eq!(paula.interrupts.intena, 0x40A0);
 
     // Request VBlank (Level 3)
     paula.set_interrupt_request(0x0020);
@@ -29,8 +29,8 @@ fn test_interrupt_arbitration_and_set_clr() {
 #[test]
 fn test_paula_reset_state() {
     let mut paula = Paula::new();
-    paula.intena = 0xFFFF;
+    paula.interrupts.intena = 0xFFFF;
     paula.reset();
-    assert_eq!(paula.intena, 0);
+    assert_eq!(paula.interrupts.intena, 0);
     assert_eq!(paula.pending_interrupt_level(), 0);
 }

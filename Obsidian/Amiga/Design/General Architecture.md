@@ -7,7 +7,7 @@ subsystem: "general"
 status: "active"
 created: 2026-08-31
 updated: 2026-09-19
-related: ["[Main loop A500.md](Main%20loop%20A500.md)", "[Game Ports.md](Game%20Ports.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Testing Strategy and Quality Assurance.md](Testing%20Strategy%20and%20Quality%20Assurance.md)"]
+related: ["[Main loop A500.md](Main%20loop%20A500.md)", "[Game Ports.md](Game%20Ports.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Interrupts.md](Interrupts.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Testing Strategy and Quality Assurance.md](Testing%20Strategy%20and%20Quality%20Assurance.md)"]
 ---
 
 # Amiga 500 General System Architecture
@@ -131,6 +131,7 @@ graph TD
         PAULA["paula<br/><code>crates/paula</code>"]:::chip
         AUD["audio<br/><code>crates/audio</code>"]:::subchip
         SER["serial_port<br/><code>crates/serial_port</code>"]:::subchip
+        INTR["interrupts<br/><code>crates/interrupts</code>"]:::subchip
 
         CIA["cia (A & B)<br/><code>crates/cia</code>"]:::chip
     end
@@ -175,6 +176,7 @@ graph TD
 
     PAULA --> AUD
     PAULA --> SER
+    PAULA --> INTR
 
     GP --> MOU
     GP --> JOY

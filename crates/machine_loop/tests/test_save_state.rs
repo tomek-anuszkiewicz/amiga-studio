@@ -217,8 +217,7 @@ fn test_save_state_json_string_roundtrip() {
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
-    let json = machine
-        .save_state_to_json()
-        .expect("JSON serialization must succeed");
+    let state = machine.save_state();
+    let json = serde_json::to_string(&state).expect("JSON serialization must succeed");
     assert!(!json.is_empty());
 }

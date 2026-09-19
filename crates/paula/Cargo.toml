@@ -10,5 +10,6 @@ path = "src/paula.rs"
 [dependencies]
 audio = { workspace = true }
 config = { workspace = true }
+interrupts = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serial_port = { workspace = true }

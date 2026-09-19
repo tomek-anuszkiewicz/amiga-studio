@@ -62,7 +62,7 @@ fn test_machine_cold_and_warm_reset() {
     machine.reset_warm();
     assert_eq!(machine.cck, 0);
     assert_eq!(machine.agnus.dma.dmacon, 0x0000);
-    assert_eq!(machine.paula.intena, 0x0000);
+    assert_eq!(machine.paula.interrupts.intena, 0x0000);
     assert!(machine.physical_memory.is_low_memory_overlay_active());
     // Disengage overlay to inspect physical Chip RAM
     machine.physical_memory.map_chip_ram_to_low_memory();
@@ -72,7 +72,7 @@ fn test_machine_cold_and_warm_reset() {
     machine.reset();
     assert_eq!(machine.cck, 0);
     assert_eq!(machine.agnus.dma.dmacon, 0x0000);
-    assert_eq!(machine.paula.intena, 0x0000);
+    assert_eq!(machine.paula.interrupts.intena, 0x0000);
     assert!(machine.physical_memory.is_low_memory_overlay_active());
     machine.physical_memory.map_chip_ram_to_low_memory();
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x00); // Zeroed!

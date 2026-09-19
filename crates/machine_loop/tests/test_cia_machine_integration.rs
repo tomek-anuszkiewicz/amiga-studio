@@ -43,7 +43,7 @@ fn test_cia_a_timer_underflow_triggers_level2_interrupt() {
 
     // Verify Paula INTREQ received PORTS interrupt (bit 3 = 0x0008)
     assert_ne!(
-        harness.machine.paula.intreq & 0x0008,
+        harness.machine.paula.interrupts.intreq & 0x0008,
         0,
         "Paula INTREQ bit 3 (PORTS) should be asserted"
     );
@@ -82,7 +82,7 @@ fn test_cia_b_timer_underflow_triggers_level6_interrupt() {
     // Verify CIA-B IRQ and Paula EXTER (bit 13)
     assert!(harness.machine.cia_b.irq_pending());
     assert_ne!(
-        harness.machine.paula.intreq & 0x2000,
+        harness.machine.paula.interrupts.intreq & 0x2000,
         0,
         "Paula INTREQ bit 13 (EXTER) should be asserted"
     );

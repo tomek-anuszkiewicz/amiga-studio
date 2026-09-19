@@ -8,22 +8,22 @@ fn test_intena_intreq_propagation_delay_1_cck() {
     paula.write_register(0x09A, 0xC020);
 
     // At cycle T: not yet committed
-    assert_eq!(paula.intena, 0);
+    assert_eq!(paula.interrupts.intena, 0);
     assert_eq!(paula.read_register(0x01C), 0);
 
     // Step 1 CCK (Cycle T+1): matures and commits!
     paula.step_cck();
-    assert_eq!(paula.intena, 0x4020);
+    assert_eq!(paula.interrupts.intena, 0x4020);
     assert_eq!(paula.read_register(0x01C), 0x4020);
 
     // Write INTREQ at cycle T+1 (SET Level 3 VBlank request)
     paula.write_register(0x09C, 0x8020);
-    assert_eq!(paula.intreq, 0);
+    assert_eq!(paula.interrupts.intreq, 0);
     assert_eq!(paula.pending_interrupt_level(), 0);
 
     // Step 1 CCK (Cycle T+2): matures and commits, triggering IPL 3!
     paula.step_cck();
-    assert_eq!(paula.intreq, 0x0020);
+    assert_eq!(paula.interrupts.intreq, 0x0020);
     assert_eq!(paula.pending_interrupt_level(), 3);
 }
 
@@ -107,8 +107,8 @@ fn test_paula_register_getters() {
     paula.pot1dat = 0x3456;
     paula.potgor = 0x4567;
     paula.serial_port.serdatr = 0x5678;
-    paula.intena = 0x6789;
-    paula.intreq = 0x789A;
+    paula.interrupts.intena = 0x6789;
+    paula.interrupts.intreq = 0x789A;
 
     assert_eq!(paula.adkconr(), 0x1234);
     assert_eq!(paula.adkconr_debug(), 0x1234);

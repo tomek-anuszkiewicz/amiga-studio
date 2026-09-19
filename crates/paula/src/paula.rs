@@ -4,6 +4,8 @@
 //! and central interrupt multiplexer (INTENA, INTREQ -> IPL 1..6).
 
 pub use audio;
+pub use interrupts;
+pub use interrupts::InterruptController;
 pub use serial_port;
 
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
@@ -19,11 +21,8 @@ pub struct Paula {
     pub audio: audio::Audio,
     /// RS-232 serial UART transceiver
     pub serial_port: serial_port::SerialPort,
-    // --- Active Latched Registers (Read is NOW) ---
-    /// Interrupt Enable register (INTENA / INTENAR at $DFF09A / $DFF01C)
-    pub intena: u16,
-    /// Interrupt Request register (INTREQ / INTREQR at $DFF09C / $DFF01E)
-    pub intreq: u16,
+    /// Central interrupt priority controller (INTENA / INTREQ / IPL 1..6)
+    pub interrupts: interrupts::InterruptController,
     /// Audio / Disk / UART Control register (ADKCON / ADKCONR at $DFF09E / $DFF010)
     pub adkcon: u16,
 
@@ -71,8 +70,7 @@ impl Paula {
         Self {
             audio: audio::Audio::new(),
             serial_port: serial_port::SerialPort::new(),
-            intena: 0,
-            intreq: 0,
+            interrupts: interrupts::InterruptController::new(),
             adkcon: 0,
             pot0dat: 0,
             pot1dat: 0,
@@ -94,8 +92,7 @@ impl Paula {
     pub fn reset(&mut self) {
         self.audio.reset();
         self.serial_port.reset();
-        self.intena = 0;
-        self.intreq = 0;
+        self.interrupts.reset();
         self.adkcon = 0;
         self.pot0dat = 0;
         self.pot1dat = 0;
@@ -148,8 +145,8 @@ impl Paula {
             0x016 => self.potgor,
             0x018 => self.serial_port.serdatr,
             0x01A => self.peek_dskbytr(),
-            0x01C => self.intena,
-            0x01E => self.intreq,
+            0x01C => self.interrupts.read_intenar(),
+            0x01E => self.interrupts.read_intreqr(),
             _ => 0xFFFF,
         }
     }
@@ -348,27 +345,21 @@ impl Paula {
     }
 
     /// Writes INTENA register following SET/CLR bit 15 logic
+    #[inline]
     pub fn write_intena(&mut self, val: u16) {
-        if (val & 0x8000) != 0 {
-            self.intena |= val & 0x7FFF;
-        } else {
-            self.intena &= !(val & 0x7FFF);
-        }
+        self.interrupts.write_intena(val);
     }
 
     /// Writes INTREQ register following SET/CLR bit 15 logic
+    #[inline]
     pub fn write_intreq(&mut self, val: u16) {
-        if (val & 0x8000) != 0 {
-            self.intreq |= val & 0x7FFF;
-        } else {
-            self.intreq &= !(val & 0x7FFF);
-        }
+        self.interrupts.write_intreq(val);
     }
 
     /// Asserts interrupt request bits immediately
     #[inline]
     pub fn set_interrupt_request(&mut self, mask: u16) {
-        self.intreq |= mask & 0x7FFF;
+        self.interrupts.request(mask);
     }
 
     /// Polls and clears the audio DMA restart strobe (`AUDxDSR`) for channel `ch`
@@ -378,43 +369,9 @@ impl Paula {
     }
 
     /// Evaluates pending, enabled interrupt sources and returns the highest active IPL (0..6)
+    #[inline]
     pub fn pending_interrupt_level(&self) -> u8 {
-        // Master interrupt enable bit (INTEN, bit 14)
-        if (self.intena & 0x4000) == 0 {
-            return 0;
-        }
-
-        let pending = self.intreq & self.intena & 0x3FFF;
-        if pending == 0 {
-            return 0;
-        }
-
-        // Level 6: External / CIA-B (bit 13)
-        if (pending & 0x2000) != 0 {
-            return 6;
-        }
-        // Level 5: Disk Sync (bit 12) or Serial Receive (bit 11)
-        if (pending & 0x1800) != 0 {
-            return 5;
-        }
-        // Level 4: Audio channels 0..3 (bits 10..7)
-        if (pending & 0x0780) != 0 {
-            return 4;
-        }
-        // Level 3: Copper (bit 4), VBlank (bit 5), or Blitter (bit 6)
-        if (pending & 0x0070) != 0 {
-            return 3;
-        }
-        // Level 2: Ports / CIA-A (bit 3)
-        if (pending & 0x0008) != 0 {
-            return 2;
-        }
-        // Level 1: Serial Transmit (bit 0), Disk Block (bit 1), Software (bit 2)
-        if (pending & 0x0007) != 0 {
-            return 1;
-        }
-
-        0
+        self.interrupts.pending_level()
     }
 
     /// Reads Audio/Disk Control register (ADKCONR at $DFF010)
@@ -480,24 +437,24 @@ impl Paula {
     /// Reads Interrupt enable register (INTENAR at $DFF01C)
     #[inline(always)]
     pub fn intenar(&self) -> u16 {
-        self.intena
+        self.interrupts.read_intenar()
     }
 
     /// Reads Interrupt enable register without side-effects for debugging
     #[inline(always)]
     pub fn intenar_debug(&self) -> u16 {
-        self.intena
+        self.interrupts.read_intenar()
     }
 
     /// Reads Interrupt request register (INTREQR at $DFF01E)
     #[inline(always)]
     pub fn intreqr(&self) -> u16 {
-        self.intreq
+        self.interrupts.read_intreqr()
     }
 
     /// Reads Interrupt request register without side-effects for debugging
     #[inline(always)]
     pub fn intreqr_debug(&self) -> u16 {
-        self.intreq
+        self.interrupts.read_intreqr()
     }
 }

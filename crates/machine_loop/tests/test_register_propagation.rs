@@ -94,8 +94,8 @@ fn test_paula_interrupt_cascade_to_cpu_ipl() {
 
     // Step 1 CCK: writes mature and commit in Paula, immediately updating CPU IPL!
     machine.step_cck();
-    assert_eq!(machine.paula.intena, 0x4020);
-    assert_eq!(machine.paula.intreq, 0x0020);
+    assert_eq!(machine.paula.interrupts.intena, 0x4020);
+    assert_eq!(machine.paula.interrupts.intreq, 0x0020);
     assert_eq!(machine.cpu.state.ipl, 3);
 }
 

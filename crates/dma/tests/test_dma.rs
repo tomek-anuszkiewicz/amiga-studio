@@ -251,7 +251,7 @@ fn test_dma_is_in_vertical_display() {
 fn test_dma_dmacon_read_write_symmetry() {
     let mut dma = DmaScheduler::new();
     dma.write_dmacon(0x8200);
-    assert_eq!(dma.read_dmaconr() & 0x0200, 0x0200);
+    assert_eq!(dma.dmacon & 0x0200, 0x0200);
     dma.write_dmacon(0x0200);
-    assert_eq!(dma.read_dmaconr() & 0x0200, 0x0000);
+    assert_eq!(dma.dmacon & 0x0200, 0x0000);
 }

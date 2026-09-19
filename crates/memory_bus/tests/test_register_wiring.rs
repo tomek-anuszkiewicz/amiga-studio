@@ -310,7 +310,7 @@ fn test_chip_namespaced_custom_register_dispatch() {
     mb.router()
         .write_custom_word(custom_reg::paula::INTENA, 0xC004);
     let _ = mb.paula.step_cck();
-    assert_eq!(mb.paula.intena & 0x4004, 0x4004);
+    assert_eq!(mb.paula.interrupts.intena & 0x4004, 0x4004);
 
     // 4. Agnus-specific read: VPOSR
     let vposr = mb.router().read_custom_word(custom_reg::agnus::VPOSR);

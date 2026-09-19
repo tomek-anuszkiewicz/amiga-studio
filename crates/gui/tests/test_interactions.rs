@@ -1,5 +1,5 @@
 use egui::{Event, Key, Modifiers, RawInput};
-use gui::{DisasmEditState, EditRegister, EmulatorApp, ViewMode};
+use gui::{AppTheme, DisasmEditState, EditRegister, EmulatorApp, ViewMode};
 use std::path::PathBuf;
 
 #[test]

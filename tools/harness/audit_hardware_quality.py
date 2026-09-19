@@ -56,6 +56,7 @@ CUSTOM_CHIPS = {
     "denise": {"forbidden_peers": ["agnus", "paula", "cia", "copper", "blitter"]},
     "paula": {"forbidden_peers": ["agnus", "denise", "cia", "copper", "blitter"]},
     "audio": {"forbidden_peers": ["agnus", "denise", "cia"]},
+    "interrupts": {"forbidden_peers": ["agnus", "denise", "cia", "copper", "blitter"]},
     "floppy": {"forbidden_peers": ["agnus", "denise", "cia"]},
     "cia": {"forbidden_peers": ["agnus", "denise", "paula"]},
 }

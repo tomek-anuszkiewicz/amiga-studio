@@ -7508,3 +7508,35 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All quality gates passed cleanly.
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
 
+---
+
+### [2026-09-19 13:08 CEST] — Extraction of InterruptController into Dedicated Crate and Documentation Sync
+- **Affected Subsystems**:
+  - `crates/interrupts`: Created standalone, allocation-free crate with named root `src/interrupts.rs` encapsulating the 14-source priority encoder, atomic SET/CLR bit 15 logic, master enable (bit 14 `INTEN`), and prioritized CPU interrupt level resolution ($IPL 1..6$).
+  - `crates/paula`: Decoupled `InterruptController` from Paula's internal struct, re-exporting `interrupts::InterruptController` via 3-tier re-export hierarchy and embedding `pub interrupts: interrupts::InterruptController`. Pruned dead helper `clear_interrupt_request`.
+  - `crates/machine_loop`, `crates/memory_bus`, `crates/test_runner`: Migrated all direct field accesses and tests from `paula.intena` to `paula.interrupts.intena` without legacy aliases or backward-compatibility shims.
+  - `Obsidian/Amiga/Design/Interrupts.md`: Authored dedicated 1:1 specification for `crates/interrupts` covering 14 hardware interrupt sources, 6 priority levels, atomic SET/CLR bit 15 semantics, and decoupled motherboard IPL routing.
+  - `Obsidian/Amiga/Design/Paula.md`: Updated module decomposition diagram and code architecture to document containment of `crates/interrupts`.
+  - `Obsidian/Amiga/Design/General Architecture.md`: Added `crates/interrupts` to system topology Mermaid diagram under Paula and linked in related documents.
+  - `tools/harness/audit_docs_quality.py`: Registered `Interrupts.md` in `DESIGN_DOC_GOVERNANCE_MAP` under `hardware-bus-topology.md`.
+  - `tools/harness/audit_hardware_quality.py`: Added `interrupts` to `CUSTOM_CHIPS` with signal smuggling protection.
+  - `.agents/rules/hardware-bus-topology.md`: Delegated `Interrupts.md` under Custom Chip Architecture.
+- **What Was Changed (The Concrete Reality)**:
+  - Decomposed the centralized Amiga interrupt controller out of `crates/paula` into an independent workspace member `crates/interrupts`.
+  - Implemented 5 exhaustive unit tests in `crates/interrupts/tests/test_interrupts.rs` covering all 14 interrupt bit definitions, SET/CLR write semantics, priority encoding preemption, and controller reset.
+  - Cleaned up dead methods and visibility leaks to achieve 0 dead code, 0 test-only zombies, and 0 visibility leaks in `audit_code_quality.py`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Decoupled Ownership:* Centralized interrupt evaluation is conceptually independent of audio sample playback and floppy MFM demodulation. Isolating `InterruptController` simplifies reasoning and verification.
+  - *Clean-Break Refactoring:* Adhered strictly to zero-shim policy by updating all call sites across `machine_loop`, `memory_bus`, and `test_runner` to use `paula.interrupts.*` directly.
+- **Verification & Test Results**:
+  - `cargo test -p interrupts`: 5/5 unit tests passed.
+  - `cargo test -p paula`: All tests passed.
+  - `cargo test -p machine_loop`: All 18 test suites passed.
+  - `cargo test -p test_runner --test test_vamiga_paula`: 2/2 passed.
+  - `python tools/harness/audit_docs_quality.py --all`: 10/10 pillars passed cleanly with 0 issues (40 specs, 1016 links).
+  - `python tools/harness/audit_code_quality.py --all`: 0 dead, 0 zombies, 0 visibility leaks, 0 inlining issues, 0 path privacy issues.
+  - `python tools/harness/audit_hardware_quality.py --all`: 5/5 pillars passed cleanly with 0 issues.
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly.
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
+
+

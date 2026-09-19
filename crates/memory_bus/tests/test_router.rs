@@ -166,7 +166,7 @@ fn test_direct_custom_and_cia_register_writes() {
     assert_eq!(mb.denise.color[0], 0x0F00);
     // Step Paula 1 CCK so staged INTENA write matures
     let _ = mb.paula.step_cck();
-    assert_eq!(mb.paula.intena, 0x4001);
+    assert_eq!(mb.paula.interrupts.intena, 0x4001);
     // Step Agnus 2 CCKs so staged BLTCON0 write matures
     let _ = mb.agnus.step_cck();
     let _ = mb.agnus.step_cck();
@@ -177,7 +177,7 @@ fn test_direct_custom_and_cia_register_writes() {
 
 #[test]
 fn test_memory_bus_open_bus_read_byte() {
-    let mut mb = MemoryBus::new(A500Config::default());
+    let mut mb = TestMotherboard::new();
     let mut bus = mb.router();
     let res = bus.read_byte(0x200000);
     assert_eq!(res, BusResult::Ready(0xFF));

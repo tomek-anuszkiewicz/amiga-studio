@@ -279,7 +279,7 @@ fn test_blitter_finish_asserts_blitint_and_escalates_ipl() {
 
     // Step 1 CCK: machine loop polls Agnus blitter IRQ, sets Paula INTREQ bit 6, arbitrates IPL to 3
     machine.step_cck();
-    assert_eq!(machine.paula.intreq & 0x0040, 0x0040);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0040, 0x0040);
     assert_eq!(machine.cpu.state.ipl, 3);
 }
 
@@ -318,7 +318,7 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
     // Step 1 CCK: Agnus reloads audpt[0] from audlc[0], Paula asserts INTREQ bit 7, CPU IPL -> 4
     machine.step_cck();
     assert_eq!(machine.agnus.audpt[0], 0x0002_5000);
-    assert_eq!(machine.paula.intreq & 0x0080, 0x0080);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0080, 0x0080);
     assert_eq!(machine.cpu.state.ipl, 4);
 }
 

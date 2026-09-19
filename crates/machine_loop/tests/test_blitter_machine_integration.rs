@@ -101,7 +101,7 @@ fn test_blitter_copy_and_interrupt_propagation() {
 
     // 8. Assert Paula INTREQ bit 6 is set and CPU IPL resolves to Level 3
     assert_eq!(
-        harness.machine.paula.intreq & 0x0040,
+        harness.machine.paula.interrupts.intreq & 0x0040,
         0x0040,
         "Paula INTREQ bit 6 (_BLITINT) was not asserted upon Blitter completion"
     );
