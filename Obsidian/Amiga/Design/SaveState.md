@@ -10,7 +10,7 @@ updated: 2026-09-14
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Agnus.md](Agnus.md)"]
 tracked_paths:
   - "crates/machine_loop/src/save_state.rs"
-last_synced_commit: "03da398"
+last_synced_commit: "e10f5085c8a0526c8a5ca03bf29eefdc32b34805"
 last_synced_date: "2026-09-19"
 ---
 # Amiga 500 Save State Architecture & Serialization Specification
