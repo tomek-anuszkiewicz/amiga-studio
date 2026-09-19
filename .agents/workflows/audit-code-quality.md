@@ -66,17 +66,22 @@ Follow the detailed playbooks in [`.agents/skills/audit-code-quality/SKILL.md`](
 4. **Inlining Alignment:** Add mandatory `#[inline(always)]` to hot leaf ALU/CCR functions and `#[inline(never)]` to cold exception trigger handlers per [`.agents/rules/method-inlining.md`](../rules/method-inlining.md).
 5. **Anti-Pattern Elimination:** Replace any ad-hoc macros (`macro_rules!`) and const-generic templates with concrete, explicit functions.
 6. **Test Organization:** Move any inline tests in `src/` to `tests/` and maintain 1:1 test file parity in multi-module crates per [`.agents/rules/unit-testing-policy.md`](../rules/unit-testing-policy.md).
+7. **Struct Encapsulation:** Enforce Category A (POD) and Category B (Complex) encapsulation rules per [`.agents/rules/rust-best-practices.md`](../rules/rust-best-practices.md) via Agent cognitive inference, eliminating raw public fields.
 
 ---
 
 ## 4. The Verbal Double-Check (Self-Audit & Heuristic Verification)
 
-Beyond mechanical script passes, explicitly review the **5 Non-Negotiable Conscience Questions**:
+Beyond mechanical script passes, explicitly review the **6 Non-Negotiable Conscience Questions** (driven by Agent cognitive inference; zero Python scripts required):
 1. 🧠 **Spec Freshness Review:** Did code refactoring or pruning introduce behavior changes not yet updated in `Obsidian/Amiga/Design/*.md`?
 2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all clock delays, cycle counts, and beam offsets silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom nudges?
 3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify chip behavior and state changes, or do they only assert trivial boilerplate?
 4. 📢 **Spec Conflict Escalation (`spec-compliance.md`):** Were any conflicts between reference test suites and internal design specs escalated to the user before changing code?
 5. 🧹 **Clean-Break Refactoring (`clean-break-refactoring.md`):** Were old methods, legacy aliases, and temporary shims completely deleted rather than left behind?
+6. 🔒 **Struct Encapsulation & Accessor Review (`rust-best-practices.md`):**
+   - Are all struct fields strictly private with zero raw public field leaks?
+   - **Category A (POD / Value Objects):** Pure data structs have private fields, `pub const fn new(...) -> Self`, `#[inline(always)] pub const fn` getters/setters, and derived traits (`Debug, Clone, Copy, PartialEq, Eq`).
+   - **Category B (Complex Structs):** Structs with allocations, handles, or invariants have private fields, constructors (`new` or fallible `try_new` with validation), compile-time or reference getters (`pub const fn` / `pub fn`), and domain-validated setters only when required by domain logic.
 
 ---
 
@@ -92,6 +97,6 @@ Conclude with the standardized summary report:
 - **Inlining Guidelines:** [PASS | <count> anomalies]
 - **Anti-Pattern Prohibitions:** [PASS | <count> violations]
 - **External Test Suites & Parity:** [PASS | <count> issues]
-- **Verbal Double-Check Conscience Review:** [CONFIRMED - 5/5 heuristics verified]
+- **Verbal Double-Check Conscience Review:** [CONFIRMED - 6/6 heuristics verified]
 - **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
 ```

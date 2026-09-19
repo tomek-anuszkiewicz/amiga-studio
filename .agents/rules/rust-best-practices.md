@@ -47,16 +47,104 @@ All Rust code across the Amiga 500 emulator workspace must strictly adhere to th
 
 ---
 
-## 6. Comprehensive Unit Test Coverage
+## 6. Struct Encapsulation & Accessor Rule
+
+### Category A: Value Objects / POD Structs
+Matches pure data structs (primitives, raw numbers, small `Copy` types) with public fields or trivial side-effect-free setters.
+
+**Rules:**
+- Make all fields private.
+- Add `pub const fn new(...) -> Self`.
+- Add `#[inline(always)] pub const fn <field>(&self)` getters (return `T` if `Copy`, else `&T`).
+- Add `#[inline(always)] pub const fn set_<field>(&mut self, val: T)` setters.
+- Derive `Debug, Clone, Copy, PartialEq, Eq` when possible.
+
+**Example:**
+```rust
+// BEFORE:
+pub struct StereoSample { pub left: i16, pub right: i16 }
+
+// AFTER:
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StereoSample {
+    left: i16,
+    right: i16,
+}
+
+impl StereoSample {
+    #[inline(always)]
+    pub const fn new(left: i16, right: i16) -> Self { Self { left, right } }
+
+    #[inline(always)]
+    pub const fn left(&self) -> i16 { self.left }
+
+    #[inline(always)]
+    pub const fn right(&self) -> i16 { self.right }
+
+    #[inline(always)]
+    pub const fn set_left(&mut self, left: i16) { self.left = left; }
+
+    #[inline(always)]
+    pub const fn set_right(&mut self, right: i16) { self.right = right; }
+}
+```
+
+### Category B: All Remaining / Complex Structs
+Applies to structs containing allocations, handles, non-primitive state, or business logic invariants.
+
+**Rules:**
+- All fields must remain strictly private.
+- Provide appropriate constructors (`new` or `try_new` if fallible/validated).
+- Accessors:
+  - Use `pub const fn <field>(&self) -> &T` if evaluatable at compile time.
+  - Fall back to `pub fn <field>(&self) -> &T` otherwise.
+- Setters:
+  - Only provide if explicitly required by domain logic.
+  - Must enforce necessary invariants and validations.
+
+**Example:**
+```rust
+pub struct AudioBuffer {
+    channels: usize,
+    data: Vec<i16>,
+}
+
+impl AudioBuffer {
+    pub fn try_new(channels: usize, capacity: usize) -> Result<Self, &'static str> {
+        if channels == 0 {
+            return Err("channels must be greater than zero");
+        }
+        Ok(Self {
+            channels,
+            data: Vec::with_capacity(capacity),
+        })
+    }
+
+    #[inline]
+    pub const fn channels(&self) -> usize {
+        self.channels
+    }
+
+    #[inline]
+    pub fn data(&self) -> &[i16] {
+        &self.data
+    }
+}
+```
+
+---
+
+## 7. Comprehensive Unit Test Coverage
 - **Mandatory Unit Tests for Testable Logic:** Every newly created or modified Rust source file containing testable domain logic, algorithmic transformations, state machines, hardware models, statistical calculations, builders, or parsers must have corresponding unit tests.
 - **Placement & Structure:** Unit tests must be placed strictly in dedicated test files under `crates/<crate>/tests/test_<name>.rs` per `unit-testing-policy.md` (zero inline tests in `src/`).
 - **Pragmatic Scope:** Pure struct declarations or thin forwarders without branching or business logic may rely on parent integration tests. However, any module implementing algorithms, parsing, state mutations, filtering, statistics, or hardware circuits must have dedicated unit tests verifying happy paths, boundary conditions, zero/empty states, and failure modes.
 
 ---
 
-## 7. Authoritative Rust Design Specifications & Delegation
+## 8. Authoritative Rust Design Specifications & Delegation
 
 When designing Rust data models, trait interfaces, and systems boundaries, agents must adhere to:
 - [`Rust Guidelines.md`](../../Obsidian/Amiga/Design/Rust%20Guidelines.md): Project-wide Rust systems idioms, memory layout patterns, and error handling architecture.
+
 
 

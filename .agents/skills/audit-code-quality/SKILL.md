@@ -17,7 +17,7 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 
 ---
 
-## 2. The Six Code Quality Pillars
+## 2. The Nine Code Quality Pillars
 
 ### Pillar 1: Dead Code & Test-Only Zombies
 1. **Completely Dead Symbols (💀):**
@@ -60,6 +60,21 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Self-Documenting Boolean Logic:** Scans for dense compound conditionals (`if (a || b) && c && d`) that should be decomposed into named explaining variables (`let is_ready = ...;`) or domain predicate methods per [`.agents/rules/performance-and-readability.md`](../../rules/performance-and-readability.md).
 - **Prohibition of Multi-Clause Clutter:** Flags conditionals with mixed nested operators or $\ge 3$ connectives to ensure code reads like declarative hardware specification prose.
 - **Short-Circuit Preservation Invariant:** Explaining variables must never eagerly evaluate sub-expressions or function calls that would otherwise be avoided via boolean short-circuit evaluation (`&&`, `||`) or branched execution (`match`).
+
+### Pillar 9: Struct Encapsulation & Accessor Discipline (Agent Inference)
+- **Zero Raw Public Fields:** All struct fields must remain strictly private per [`.agents/rules/rust-best-practices.md`](../../rules/rust-best-practices.md). Raw public fields leak internal representation and bypass domain invariants.
+- **Category A (Value Objects / POD Structs):** Pure data structs (primitives, raw numbers, small `Copy` types):
+  - Make all fields private.
+  - Provide `pub const fn new(...) -> Self`.
+  - Add `#[inline(always)] pub const fn <field>(&self)` getters (return `T` if `Copy`, else `&T`).
+  - Add `#[inline(always)] pub const fn set_<field>(&mut self, val: T)` setters.
+  - Derive `Debug, Clone, Copy, PartialEq, Eq` when possible.
+- **Category B (All Remaining / Complex Structs):** Structs with allocations, handles, non-primitive state, or business logic invariants:
+  - All fields must remain strictly private.
+  - Provide appropriate constructors (`new` or fallible `try_new` with validation).
+  - Accessors: `pub const fn <field>(&self) -> &T` if compile-time evaluatable, otherwise `pub fn <field>(&self) -> &T`.
+  - Setters: Only provide if explicitly required by domain logic, enforcing necessary invariants and validations.
+- **Verification Method:** Verified directly via Agent cognitive inference during audits (zero external Python scripts required).
 
 ---
 
@@ -113,3 +128,27 @@ For each symbol reported under `[TEST-ONLY ZOMBIES]`:
 2. Delete orphaned test assertions/functions in `crates/<crate>/tests/`.
 3. Run `cargo check --workspace` to verify zero unbroken callers remain.
 4. Run `python tools/harness/pre_flight.py` to confirm workspace compiles cleanly.
+
+---
+
+## 5. Struct Encapsulation & Accessor Remediation Playbook (Agent Inference)
+
+Follow this systematic procedure when remediating unencapsulated structs and public fields:
+
+### Step 1: Classify Struct Category
+1. **Category A (Value Objects / POD Structs):** Pure data structs (primitives, coordinates, RGB/audio samples, raw numeric pairs).
+2. **Category B (Complex / Invariant Structs):** Structs containing allocations (`Vec`), handles, non-primitive state, or business logic invariants.
+
+### Step 2: Safe Encapsulation Remediation
+1. Make all fields private (remove `pub` from field declarations).
+2. For Category A:
+   - Provide `pub const fn new(...) -> Self`.
+   - Provide `#[inline(always)] pub const fn <field>(&self)` getters and `#[inline(always)] pub const fn set_<field>(&mut self, val: T)` setters.
+   - Derive `Debug, Clone, Copy, PartialEq, Eq` when possible.
+3. For Category B:
+   - Provide `new` or `try_new` constructors enforcing domain invariants.
+   - Provide `pub const fn <field>(&self) -> &T` or `pub fn <field>(&self) -> &T` reference getters.
+   - Add setters only when explicitly required by domain logic, enforcing necessary validations.
+4. Update all call sites across `crates/*/src/` and `crates/*/tests/` to use accessors and constructors.
+5. Verify via `cargo check --workspace` and `python tools/harness/pre_flight.py`.
+

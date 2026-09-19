@@ -7847,6 +7847,22 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed.
   - `python tools/harness/audit_docs_quality.py`: 10/10 quality pillars passed with 0 issues detected.
 
+---
+
+### [2026-09-19 21:08 CEST] — Codified Struct Encapsulation & Accessor Discipline into Rules, Skills, and Workflows
+
+- **Files Modified**:
+  - `.agents/rules/rust-best-practices.md`: Added Section 6 (*Struct Encapsulation & Accessor Rule*) specifying Category A (POD / Value Objects) and Category B (Complex Structs) rules, private fields, `const fn` constructors, getters (`#[inline(always)] pub const fn` for Category A, compile-time/reference for Category B), setters, and trait derivations (`Debug, Clone, Copy, PartialEq, Eq`). Renumbered subsequent sections.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Added Pillar 9 (*Struct Encapsulation & Accessor Discipline (Agent Inference)*) and Section 5 (*Struct Encapsulation & Accessor Remediation Playbook (Agent Inference)*) detailing the two-step classification and safe remediation procedure for unencapsulated structs.
+  - `.agents/workflows/audit-code-quality.md`: Integrated Struct Encapsulation into Section 3 (Step 7) and Section 4 (Conscience Check 6), establishing heuristic cognitive evaluation during audits (zero Python script implementation required), and updated output contract to 6/6 verified heuristics.
+- **Architectural Rationale & Trade-Offs**:
+  - *Heuristic Agent Inference vs Brittle Parsing:* Public field leaks and encapsulation discipline are inherently semantic and contextual—differentiating pure data transfer value objects (which warrant zero-cost inlined copy getters/setters) from complex domain entities with invariant enforcement (which require validated constructors and restricted reference getters). Rather than writing brittle ad-hoc Python regex scripts, this rule is assigned to the Agent's cognitive inference during the Verbal Double-Check conscience review, ensuring high-fidelity architectural oversight.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed cleanly.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed (including rule size safety and markdown link integrity).
+  - `python tools/harness/audit_docs_quality.py --all`: 10/10 quality pillars passed with 0 issues detected.
+
+
 
 
 
