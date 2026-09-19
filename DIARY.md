@@ -7862,6 +7862,24 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed (including rule size safety and markdown link integrity).
   - `python tools/harness/audit_docs_quality.py --all`: 10/10 quality pillars passed with 0 issues detected.
 
+---
+
+### [2026-09-19 21:30 CEST] — Codified Method Naming & Accessor Conventions and Implemented Automated Quality Scanner
+
+- **Files Modified**:
+  - `.agents/rules/rust-best-practices.md`: Added subsection `### Method Naming & Accessor Conventions` under Section 6 defining standard getters (`<field>(&self)` without `get_`), boolean getters (`is_<field>(&self)` or retaining `has_`/`can_`, zero duplicate prefixes), setters (`set_<field>(&mut self, value: T)`), and full `ChannelConfig` reference example.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Updated Pillar 9 to `Pillar 9: Struct Encapsulation & Accessor Discipline (--accessors)` incorporating the accessor naming conventions, updated Section 3 CLI commands with `--accessors`, and updated Section 5 Remediation Playbook.
+  - `.agents/workflows/audit-code-quality.md`: Integrated `--accessors` command in Section 2, updated Step 7 in Section 3 (Remediation Procedure), updated Conscience Check 6 in Section 4, and added accessor conventions to Section 5 output contract.
+  - `tools/harness/audit_code_quality.py`: Implemented `scan_accessor_conventions()` scanner detecting forbidden `get_` getters (zero additional parameters), missing boolean prefixes (`is_`/`has_`/`can_`), and duplicate prefixes (`is_is_`, etc.), added `--accessors` CLI flag, JSON export, and terminal report section `[9. METHOD NAMING & ACCESSOR CONVENTIONS]`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Standardized Accessor Ergonomics & Clean Hardware Semantics:* Rust API guidelines (C-GETTER) and clean hardware simulation semantics dictate that field getters must match field names directly without verbose `get_` prefixes. Boolean states represent active conditions or capabilities, mandating intuitive `is_`, `has_`, or `can_` prefixes. Setters provide clear, uniform mutation targets with `set_`. Automating this check in `audit_code_quality.py` provides immediate, non-intrusive feedback across the workspace during quality audits.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_code_quality.py --accessors`: Verified clean scan reporting 7 known existing violations in `cpu::state` and `floppy::floppy`.
+  - `python tools/harness/audit_code_quality.py --accessors --json`: Verified structured JSON export.
+  - `python tools/harness/pre_flight.py --quick`: All pre-flight quality gates passed cleanly.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed (including rule size safety and markdown link integrity).
+  - `cargo fmt --all -- --check`: 100% compliant.
+
 
 
 

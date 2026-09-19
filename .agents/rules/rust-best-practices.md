@@ -132,6 +132,63 @@ impl AudioBuffer {
 }
 ```
 
+### Method Naming & Accessor Conventions
+
+1. **Standard Getters:**
+   - Must exactly match the field name (do NOT use a `get_` prefix).
+   - Pattern: `pub const fn <field>(&self) -> T` (or `&T` if non-Copy).
+   - Example: Field `sample_rate: u32` -> getter `pub const fn sample_rate(&self) -> u32`.
+
+2. **Boolean Getters:**
+   - Must start with the `is_` prefix (or retain natural boolean prefixes like `has_`, `can_` if already present in the field name).
+   - If the field is named `enabled: bool`, the getter is `pub const fn is_enabled(&self) -> bool`.
+   - If the field already has an `is_` prefix (e.g. `is_active: bool`), do not duplicate it (`pub const fn is_active(&self) -> bool`).
+
+3. **Setters:**
+   - Must start with the `set_` prefix followed by the field name.
+   - Pattern: `pub const fn set_<field>(&mut self, value: T)`.
+   - Example: Field `volume: u8` -> setter `pub const fn set_volume(&mut self, volume: u8)`.
+   - Example (Boolean): Field `enabled: bool` -> setter `pub const fn set_enabled(&mut self, enabled: bool)`.
+
+Example:
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChannelConfig {
+    volume: u8,
+    enabled: bool,
+}
+
+impl ChannelConfig {
+    #[inline(always)]
+    pub const fn new(volume: u8, enabled: bool) -> Self {
+        Self { volume, enabled }
+    }
+
+    // Standard getter (matches field name)
+    #[inline(always)]
+    pub const fn volume(&self) -> u8 {
+        self.volume
+    }
+
+    // Boolean getter (starts with is_)
+    #[inline(always)]
+    pub const fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    // Setters (start with set_)
+    #[inline(always)]
+    pub const fn set_volume(&mut self, volume: u8) {
+        self.volume = volume;
+    }
+
+    #[inline(always)]
+    pub const fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+}
+```
+
 ---
 
 ## 7. Comprehensive Unit Test Coverage

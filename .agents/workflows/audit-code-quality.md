@@ -51,6 +51,10 @@ When invoked without parameters:
    ```powershell
    python tools/harness/audit_code_quality.py --tests
    ```
+- **Audit Method Naming & Accessor Conventions (`get_` forbidden, `is_`/`has_`/`can_` booleans, `set_` setters):**
+   ```powershell
+   python tools/harness/audit_code_quality.py --accessors
+   ```
 - **Audit Specific Crate:**
    ```powershell
    python tools/harness/audit_code_quality.py --all --crate paula
@@ -66,7 +70,7 @@ Follow the detailed playbooks in [`.agents/skills/audit-code-quality/SKILL.md`](
 4. **Inlining Alignment:** Add mandatory `#[inline(always)]` to hot leaf ALU/CCR functions and `#[inline(never)]` to cold exception trigger handlers per [`.agents/rules/method-inlining.md`](../rules/method-inlining.md).
 5. **Anti-Pattern Elimination:** Replace any ad-hoc macros (`macro_rules!`) and const-generic templates with concrete, explicit functions.
 6. **Test Organization:** Move any inline tests in `src/` to `tests/` and maintain 1:1 test file parity in multi-module crates per [`.agents/rules/unit-testing-policy.md`](../rules/unit-testing-policy.md).
-7. **Struct Encapsulation:** Enforce Category A (POD) and Category B (Complex) encapsulation rules per [`.agents/rules/rust-best-practices.md`](../rules/rust-best-practices.md) via Agent cognitive inference, eliminating raw public fields.
+7. **Struct Encapsulation & Accessors:** Enforce Category A (POD) and Category B (Complex) encapsulation rules per [`.agents/rules/rust-best-practices.md`](../rules/rust-best-practices.md), eliminating raw public fields. Enforce Method Naming & Accessor Conventions: standard getters must match the field name without `get_` prefix (`<field>(&self)`), boolean getters must start with `is_` (or retain `has_`/`can_`), and setters must start with `set_<field>`.
 
 ---
 
@@ -82,6 +86,7 @@ Beyond mechanical script passes, explicitly review the **6 Non-Negotiable Consci
    - Are all struct fields strictly private with zero raw public field leaks?
    - **Category A (POD / Value Objects):** Pure data structs have private fields, `pub const fn new(...) -> Self`, `#[inline(always)] pub const fn` getters/setters, and derived traits (`Debug, Clone, Copy, PartialEq, Eq`).
    - **Category B (Complex Structs):** Structs with allocations, handles, or invariants have private fields, constructors (`new` or fallible `try_new` with validation), compile-time or reference getters (`pub const fn` / `pub fn`), and domain-validated setters only when required by domain logic.
+   - **Method Naming & Accessor Conventions:** Standard getters match field name without `get_` prefix, boolean getters start with `is_` / `has_` / `can_` (zero duplicate prefixes), and setters start with `set_`.
 
 ---
 
@@ -97,6 +102,7 @@ Conclude with the standardized summary report:
 - **Inlining Guidelines:** [PASS | <count> anomalies]
 - **Anti-Pattern Prohibitions:** [PASS | <count> violations]
 - **External Test Suites & Parity:** [PASS | <count> issues]
+- **Accessor & Naming Conventions:** [PASS | <count> violations]
 - **Verbal Double-Check Conscience Review:** [CONFIRMED - 6/6 heuristics verified]
 - **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
 ```

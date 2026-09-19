@@ -61,7 +61,7 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Prohibition of Multi-Clause Clutter:** Flags conditionals with mixed nested operators or $\ge 3$ connectives to ensure code reads like declarative hardware specification prose.
 - **Short-Circuit Preservation Invariant:** Explaining variables must never eagerly evaluate sub-expressions or function calls that would otherwise be avoided via boolean short-circuit evaluation (`&&`, `||`) or branched execution (`match`).
 
-### Pillar 9: Struct Encapsulation & Accessor Discipline (Agent Inference)
+### Pillar 9: Struct Encapsulation & Accessor Discipline (--accessors)
 - **Zero Raw Public Fields:** All struct fields must remain strictly private per [`.agents/rules/rust-best-practices.md`](../../rules/rust-best-practices.md). Raw public fields leak internal representation and bypass domain invariants.
 - **Category A (Value Objects / POD Structs):** Pure data structs (primitives, raw numbers, small `Copy` types):
   - Make all fields private.
@@ -74,7 +74,11 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
   - Provide appropriate constructors (`new` or fallible `try_new` with validation).
   - Accessors: `pub const fn <field>(&self) -> &T` if compile-time evaluatable, otherwise `pub fn <field>(&self) -> &T`.
   - Setters: Only provide if explicitly required by domain logic, enforcing necessary invariants and validations.
-- **Verification Method:** Verified directly via Agent cognitive inference during audits (zero external Python scripts required).
+- **Method Naming & Accessor Conventions:**
+  1. **Standard Getters:** Must exactly match the field name (do NOT use a `get_` prefix). Pattern: `pub const fn <field>(&self) -> T` (or `&T` if non-Copy).
+  2. **Boolean Getters:** Must start with the `is_` prefix (or retain natural boolean prefixes like `has_`, `can_` if already present in the field name). If field is named `enabled: bool` -> getter is `pub const fn is_enabled(&self) -> bool`. If field already has `is_` (e.g. `is_active: bool`), do not duplicate it (`pub const fn is_active(&self) -> bool`).
+  3. **Setters:** Must start with the `set_` prefix followed by the field name. Pattern: `pub const fn set_<field>(&mut self, value: T)`.
+- **Verification Method:** Verified directly via `python tools/harness/audit_code_quality.py --accessors` alongside Agent cognitive inference for domain-specific invariant validation.
 
 ---
 
@@ -105,6 +109,9 @@ python tools/harness/audit_code_quality.py --tests
 # Audit condition soup and boolean clarity
 python tools/harness/audit_code_quality.py --conditions
 
+# Audit struct accessors and method naming conventions
+python tools/harness/audit_code_quality.py --accessors
+
 # Machine-readable JSON export
 python tools/harness/audit_code_quality.py --all --json > quality_report.json
 ```
@@ -131,7 +138,7 @@ For each symbol reported under `[TEST-ONLY ZOMBIES]`:
 
 ---
 
-## 5. Struct Encapsulation & Accessor Remediation Playbook (Agent Inference)
+## 5. Struct Encapsulation & Accessor Remediation Playbook (--accessors)
 
 Follow this systematic procedure when remediating unencapsulated structs and public fields:
 
@@ -143,12 +150,15 @@ Follow this systematic procedure when remediating unencapsulated structs and pub
 1. Make all fields private (remove `pub` from field declarations).
 2. For Category A:
    - Provide `pub const fn new(...) -> Self`.
-   - Provide `#[inline(always)] pub const fn <field>(&self)` getters and `#[inline(always)] pub const fn set_<field>(&mut self, val: T)` setters.
+   - Provide standard getters matching field name without `get_` prefix (`#[inline(always)] pub const fn <field>(&self)`).
+   - Provide boolean getters starting with `is_` (e.g. `is_enabled(&self) -> bool`, retaining `has_`/`can_`).
+   - Provide setters starting with `set_` (`#[inline(always)] pub const fn set_<field>(&mut self, val: T)`).
    - Derive `Debug, Clone, Copy, PartialEq, Eq` when possible.
 3. For Category B:
    - Provide `new` or `try_new` constructors enforcing domain invariants.
-   - Provide `pub const fn <field>(&self) -> &T` or `pub fn <field>(&self) -> &T` reference getters.
-   - Add setters only when explicitly required by domain logic, enforcing necessary validations.
+   - Provide `pub const fn <field>(&self) -> &T` or `pub fn <field>(&self) -> &T` reference getters matching field name without `get_` prefix.
+   - Add setters only when explicitly required by domain logic, prefixed with `set_<field>`, enforcing necessary validations.
 4. Update all call sites across `crates/*/src/` and `crates/*/tests/` to use accessors and constructors.
-5. Verify via `cargo check --workspace` and `python tools/harness/pre_flight.py`.
+5. Verify via `python tools/harness/audit_code_quality.py --accessors`, `cargo check --workspace`, and `python tools/harness/pre_flight.py`.
+
 

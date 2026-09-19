@@ -21,6 +21,10 @@ Audits three critical architectural dimensions across workspace crates:
    - Verifies external tests/ layout and test_ canonical naming.
 7. Path Privacy & Host Isolation:
    - Scans crates for hardcoded host paths, user directories, or external private paths.
+8. Method Naming & Accessor Conventions:
+   - Evaluates standard getters matching field name without `get_` prefix.
+   - Evaluates boolean getters starting with `is_` (or `has_`/`can_`) and zero duplicate prefixes.
+   - Evaluates setters starting with `set_<field>`.
 """
 
 import argparse
@@ -707,6 +711,158 @@ def scan_condition_soup(target_crate=None):
     return issues
 
 
+def scan_accessor_conventions(target_crate=None):
+    """
+    Scans crate source files for violations of method naming and accessor conventions
+    per .agents/rules/rust-best-practices.md:
+    1. Standard getters must match field name without `get_` prefix.
+    2. Boolean getters must start with `is_` (or retain `has_`/`can_`) with zero duplicate prefixes.
+    3. Setters must start with `set_<field>`.
+    """
+    crates = (
+        [CRATES_DIR / target_crate]
+        if target_crate
+        else [p for p in CRATES_DIR.iterdir() if p.is_dir() and (p / "Cargo.toml").exists()]
+    )
+    issues = []
+
+    re_struct_start = re.compile(r"^\s*(?:pub(?:\([^)]+\))?\s+)?struct\s+([a-zA-Z0-9_]+)\b[^{;]*\{")
+    re_bool_field = re.compile(r"^\s*(?:pub(?:\([^)]+\))?\s+)?([a-zA-Z0-9_]+)\s*:\s*bool\b")
+    re_impl_start = re.compile(r"^\s*impl(?:\s*<[^>]+>)?\s+([a-zA-Z0-9_]+)\b")
+    re_fn_start = re.compile(r"^\s*(?:pub(?:\([^)]+\))?\s+)?(?:const\s+|unsafe\s+)?fn\s+([a-zA-Z0-9_]+)\s*\(")
+    re_fn_sig = re.compile(
+        r"^\s*(?:pub(?:\([^)]+\))?\s+)?(?:const\s+|unsafe\s+)?fn\s+([a-zA-Z0-9_]+)\s*\((.*?)\)(?:\s*->\s*([^{;]+))?"
+    )
+
+    for c in crates:
+        src_dir = c / "src"
+        if not src_dir.exists():
+            continue
+
+        for f in src_dir.rglob("*.rs"):
+            rel = f.relative_to(REPO_ROOT).as_posix()
+            try:
+                content = f.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+
+            lines = content.splitlines()
+
+            # Pass 1: collect structs and their boolean fields
+            structs = {}
+            curr_struct = None
+            in_struct = False
+            for line in lines:
+                if not in_struct:
+                    m_st = re_struct_start.match(line)
+                    if m_st:
+                        curr_struct = m_st.group(1)
+                        structs[curr_struct] = []
+                        in_struct = True
+                else:
+                    if line.strip().startswith("}"):
+                        in_struct = False
+                        curr_struct = None
+                    else:
+                        m_bf = re_bool_field.match(line)
+                        if m_bf and curr_struct:
+                            structs[curr_struct].append(m_bf.group(1))
+
+            # Pass 2: parse methods inside impl blocks (with multi-line support)
+            curr_impl = None
+            in_sig = False
+            sig_buffer = []
+            sig_start_line = 0
+
+            for line_idx, line in enumerate(lines, start=1):
+                trimmed = line.strip()
+                if trimmed.startswith("//"):
+                    continue
+
+                m_impl = re_impl_start.match(line)
+                if m_impl:
+                    curr_impl = m_impl.group(1)
+                elif trimmed.startswith("}") and curr_impl and not in_sig:
+                    curr_impl = None
+
+                if not in_sig:
+                    if re_fn_start.match(line):
+                        if ")" in line:
+                            # Single-line signature
+                            full_sig = line
+                            start_line = line_idx
+                            m_fn = re_fn_sig.match(full_sig)
+                        else:
+                            in_sig = True
+                            sig_buffer = [line]
+                            sig_start_line = line_idx
+                            continue
+                    else:
+                        continue
+                else:
+                    sig_buffer.append(line)
+                    if ")" in line:
+                        in_sig = False
+                        full_sig = " ".join(s.strip() for s in sig_buffer)
+                        start_line = sig_start_line
+                        sig_buffer = []
+                        m_fn = re_fn_sig.match(full_sig)
+                    else:
+                        continue
+
+                if not m_fn:
+                    continue
+
+                fn_name = m_fn.group(1)
+                params = m_fn.group(2).strip()
+                ret_type = (m_fn.group(3) or "").strip()
+
+                is_method = params.startswith("&self") or params.startswith("&mut self")
+                if not is_method:
+                    continue
+
+                params_without_self = re.sub(r"^&(?:mut\s+)?self\s*,?\s*", "", params).strip()
+                has_extra_params = len(params_without_self) > 0
+
+                # 1. Standard getter with forbidden get_ prefix (0 additional arguments)
+                if fn_name.startswith("get_") and not has_extra_params:
+                    issues.append({
+                        "type": "forbidden_get_prefix",
+                        "crate": c.name,
+                        "file": rel,
+                        "line": start_line,
+                        "metric": fn_name,
+                        "recommendation": f"Standard getter `{fn_name}` must not use `get_` prefix per rust-best-practices.md. Use `<field>(&self)` (or `is_<field>(&self)` for booleans).",
+                    })
+
+                # 2. Duplicate prefixes
+                for dup_prefix in ("is_is_", "has_has_", "can_can_", "set_set_"):
+                    if fn_name.startswith(dup_prefix):
+                        issues.append({
+                            "type": "duplicate_accessor_prefix",
+                            "crate": c.name,
+                            "file": rel,
+                            "line": start_line,
+                            "metric": fn_name,
+                            "recommendation": f"Method `{fn_name}` has duplicate prefix `{dup_prefix}` per rust-best-practices.md.",
+                        })
+
+                # 3. Boolean getter missing is_/has_/can_ prefix
+                if ret_type == "bool" and not has_extra_params and curr_impl and curr_impl in structs:
+                    known_bool_fields = structs[curr_impl]
+                    if fn_name in known_bool_fields and not fn_name.startswith(("is_", "has_", "can_")):
+                        issues.append({
+                            "type": "missing_boolean_prefix",
+                            "crate": c.name,
+                            "file": rel,
+                            "line": start_line,
+                            "metric": fn_name,
+                            "recommendation": f"Boolean getter `{fn_name}` for field in `{curr_impl}` must start with `is_` (e.g. `is_{fn_name}`) or retain `has_`/`can_` per rust-best-practices.md.",
+                        })
+
+    return issues
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Audit dead code, minimum visibility leaks, SRP cohesion, inlining guidelines, antipatterns, test suites, path privacy, and boolean conditions."
@@ -720,6 +876,7 @@ def main():
     parser.add_argument("--tests", action="store_true", help="Run external test suite and inline test scanner")
     parser.add_argument("--path-privacy", action="store_true", help="Run path privacy and host isolation scanner")
     parser.add_argument("--conditions", action="store_true", help="Run condition soup & boolean clarity scanner")
+    parser.add_argument("--accessors", action="store_true", help="Run method naming and accessor convention checks")
     parser.add_argument("--crate", help="Filter audit to a specific crate")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     args = parser.parse_args()
@@ -735,6 +892,7 @@ def main():
         or args.tests
         or args.path_privacy
         or args.conditions
+        or args.accessors
     ):
         args.all = True
 
@@ -770,6 +928,10 @@ def main():
     if args.all or args.conditions:
         condition_issues = scan_condition_soup(args.crate)
 
+    accessor_issues = []
+    if args.all or args.accessors:
+        accessor_issues = scan_accessor_conventions(args.crate)
+
     if args.json:
         out = {
             "dead_code": dead,
@@ -781,6 +943,7 @@ def main():
             "test_suite_issues": test_suite_issues,
             "path_privacy_issues": privacy_issues,
             "condition_issues": condition_issues,
+            "accessor_issues": accessor_issues,
         }
         print(json.dumps(out, indent=2))
         return
@@ -873,11 +1036,24 @@ def main():
             if len(condition_issues) > 15:
                 print(f"    * ... and {len(condition_issues) - 15} more")
 
+    if args.all or args.accessors:
+        print(f"\n[9. METHOD NAMING & ACCESSOR CONVENTIONS]")
+        if not accessor_issues:
+            print("  - Status: [PASS] All getters and setters adhere to method naming conventions (no get_ prefix, is_/has_/can_ booleans, set_ setters).")
+        else:
+            print(f"  - Status: [WARN] {len(accessor_issues)} accessor convention violation(s) detected:")
+            for issue in accessor_issues[:15]:
+                print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} -> `{issue['metric']}`")
+                print(f"      -> {issue['recommendation']}")
+            if len(accessor_issues) > 15:
+                print(f"    * ... and {len(accessor_issues) - 15} more")
+
     print("\n" + "=" * 76)
     print(
         f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, "
         f"{len(srp_issues)} cohesion issues, {len(inlining_issues)} inlining issues, {len(antipattern_issues)} antipattern issues, "
-        f"{len(test_suite_issues)} test suite issues, {len(privacy_issues)} path privacy issues, {len(condition_issues)} condition soup issues."
+        f"{len(test_suite_issues)} test suite issues, {len(privacy_issues)} path privacy issues, {len(condition_issues)} condition soup issues, "
+        f"{len(accessor_issues)} accessor issues."
     )
     print("=" * 76)
 
