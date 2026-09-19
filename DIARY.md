@@ -7927,7 +7927,23 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: 100% compliant.
   - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed cleanly (3.30s).
   - `python tools/harness/audit_code_quality.py --all`: 5/5 non-redundant pillars executed cleanly with exit code 0.
-  - `python tools/harness/pre_flight.py`: All 6 quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Clippy Invariants, Architecture Rules).
+---
+
+### [2026-09-19 22:38 CEST] — Promoted Missing Debug Implementations Lint to Deny in Cargo.toml
+
+- **Files Modified**:
+  - `Cargo.toml`: Promoted `missing_debug_implementations = "deny"` in `[workspace.lints.rust]`.
+  - `.agents/rules/rust-best-practices.md`: Synchronized Section 7 (Mandatory Debug Trait) to state that all public enums and structs must derive `Debug` with compiler-level enforcement via `missing_debug_implementations = "deny"`.
+  - `crates/test_runner/tests/test_dma_cartesian.rs`: Corrected `test_preflight_debug_derive` to load a verified `SingleStepTest` vector directly using `load_hardware_tests("NOP", 100.0)` rather than an ad-hoc incomplete JSON string with missing register schema fields.
+- **Architectural Rationale & Trade-Offs**:
+  - *Comprehensive Self-Diagnosis:* Denying `missing_debug_implementations` at compiler level ensures all public types and internal structures implement or derive `Debug`, providing guaranteed state formatting for headless harnesses, test failures, and debugger diagnostics.
+  - *Zero Existing Violations:* An exhaustive compiler audit confirmed 100% compliance across all 26 workspace crates, allowing immediate, clean promotion without functional breakage.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed cleanly.
+  - `cargo test -p test_runner --test test_dma_cartesian test_preflight_debug_derive`: Passed cleanly with 0 errors.
+  - `python tools/harness/pre_flight.py --quick`: All 5 quick pre-flight quality gates passed cleanly.
+
 
 
 

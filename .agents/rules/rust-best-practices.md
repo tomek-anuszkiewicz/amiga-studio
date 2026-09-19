@@ -201,7 +201,7 @@ impl ChannelConfig {
 - **Constructors Returning Self:** Any method named `new` must return `Self`. Enforced via `clippy::new_ret_no_self = "deny"`.
 - **Derive Clone on Copy:** Never manually implement `Clone` when the type implements `Copy`. Enforced via `clippy::expl_impl_clone_on_copy = "deny"`.
 - **Derivable Implementations:** Prefer `#[derive(Default)]` over manual implementations when all fields implement `Default`. Enforced via `clippy::derivable_impls = "warn"`.
-- **Mandatory Debug Trait:** All public enums and structs must derive `Debug`. Enforced at compiler level via `missing_debug_implementations = "warn"`.
+- **Mandatory Debug Trait:** All public enums and structs must derive `Debug`. Enforced at compiler level via `missing_debug_implementations = "deny"`.
 
 ---
 

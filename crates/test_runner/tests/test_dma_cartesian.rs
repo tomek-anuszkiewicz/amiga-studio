@@ -324,9 +324,9 @@ fn test_dma_cartesian_privileged_and_atomic() {
 #[test]
 fn test_preflight_debug_derive() {
     use test_runner::dma_harness::{run_preflight, PreFlight};
-    let test_json = r#"{"name":"0000","initial":{"pc":4096,"ssp":0,"sr":9984,"usp":0,"d":[0,0,0,0,0,0,0,0],"a":[0,0,0,0,0,0,0,0],"ram":[[4096,78],[4097,113]]},"final":{"pc":4100,"ssp":0,"sr":9984,"usp":0,"d":[0,0,0,0,0,0,0,0],"a":[0,0,0,0,0,0,0,0],"ram":[[4096,78],[4097,113]]},"length":4,"cycles":[]}"#;
-    let test: SingleStepTest = serde_json::from_str(test_json).unwrap();
-    let preflight: PreFlight = run_preflight(&test);
+    let tests = load_hardware_tests("NOP", 100.0);
+    assert!(!tests.is_empty(), "NOP tests must be loaded");
+    let preflight: PreFlight = run_preflight(&tests[0]);
     let debug_str = format!("{:?}", preflight);
     assert!(debug_str.contains("PreFlight"));
 }

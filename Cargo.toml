@@ -74,7 +74,7 @@ dead_code = "deny"
 unused_imports = "deny"
 unused_variables = "deny"
 unused_must_use = "deny"
-missing_debug_implementations = "warn"
+missing_debug_implementations = "deny"
 
 [workspace.lints.clippy]
 # Zero host panics on guest code (strictly denied in production code; tests exempt via #![allow(...)])
