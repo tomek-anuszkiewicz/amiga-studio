@@ -7462,6 +7462,21 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/audit_docs_quality.py --all`: 10/10 pillars passed cleanly (100% rule coverage, 148 sidecars, 295 diary entries, 0 roadmap completed tasks).
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
-  - `python tools/harness/pre_flight.py`: 100% compliant.
   - `python tools/harness/audit_code_quality.py --all`: 0 dead code, 0 zombies, 0 visibility leaks, 0 inlining issues.
   - `python tools/harness/audit_hardware_quality.py --all`: 5/5 pillars passed cleanly.
+
+---
+
+### [2026-09-19 12:20 CEST] — Pillar 7 Path Privacy Scanner in audit_code_quality.py
+- **Affected Subsystems**:
+  - `tools/harness/audit_code_quality.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Completed all 3 suggested Triad enhancements by implementing **Pillar 7: Path Privacy & Host Isolation (`--path-privacy`)** in `audit_code_quality.py`:
+    1. *In-Tool Path Privacy Scan:* Mirrored `test_no_external_hardcoded_paths` directly into `audit_code_quality.py`. Scans all crate source and test files for forbidden host paths (`C:\Users\`, `C:/Users/`, `/home/`, `Google Drive`).
+    2. *Integrated Dashboard Output:* Surfaces path privacy status directly in the terminal report and JSON summary alongside dead code, visibility, SRP, inlining, antipatterns, and test suites.
+- **Architectural Rationale & Trade-Offs**:
+  - Developers and agents running `audit_code_quality.py` now receive instant feedback on path privacy leaks without waiting for downstream architecture test runs or pre-commit rejections.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_code_quality.py --path-privacy`: 0 path privacy issues across 295 Rust files.
+  - `python tools/harness/audit_code_quality.py --all`: 7/7 pillars passed cleanly (0 dead, 0 zombies, 0 visibility leaks, 0 inlining issues, 0 antipatterns, 0 test issues, 0 path privacy issues).
+  - `python tools/harness/pre_flight.py`: 100% compliant.

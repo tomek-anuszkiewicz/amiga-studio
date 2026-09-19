@@ -13,6 +13,14 @@ Audits three critical architectural dimensions across workspace crates:
 3. Single Responsibility Principle & Cohesion:
    - Source files exceeding 800 lines in crates/*/src/ (referencing architecture rule exceptions).
    - Structs with excessive public fields (> 12) indicating potential "God Structs" or unencapsulated state.
+4. Method Inlining Guidelines:
+   - Evaluates #[inline(always)] on hot ALU/CCR setters and #[inline(never)] on cold traps.
+5. Macro & Const-Generic Prohibitions:
+   - Zero macro_rules! and zero const-generic function handlers.
+6. External Test Suites & Parity:
+   - Verifies external tests/ layout and test_ canonical naming.
+7. Path Privacy & Host Isolation:
+   - Scans crates for hardcoded host paths, user directories, or external private paths.
 """
 
 import argparse
@@ -584,14 +592,47 @@ def scan_external_test_suites(crate_name=None):
                     "type": "non_canonical_test_name",
                     "file": str(tf.relative_to(REPO_ROOT)),
                     "line": 1,
-                    "metric": tf.name,
                     "recommendation": f"Test file `{tf.name}` must start with `test_` prefix.",
                 })
     return issues
 
 
+def scan_path_privacy(target_crate=None):
+    """
+    Scans crate source and test files for hardcoded host paths, user directories,
+    or external private folder references per .agents/rules/no-external-paths.md.
+    """
+    crates = [CRATES_DIR / target_crate] if target_crate else [p for p in CRATES_DIR.iterdir() if p.is_dir() and (p / "Cargo.toml").exists()]
+    forbidden_patterns = ["C:\\Users\\", "C:/Users/", "/home/", "Google Drive"]
+
+    issues = []
+    for c in crates:
+        for f in c.rglob("*.rs"):
+            if f.name == "test_architecture_rules.rs":
+                continue
+            try:
+                content = f.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+
+            for line_idx, line in enumerate(content.splitlines(), start=1):
+                for pat in forbidden_patterns:
+                    if pat in line:
+                        rel = f.relative_to(REPO_ROOT).as_posix()
+                        issues.append({
+                            "type": "hardcoded_external_path",
+                            "file": rel,
+                            "line": line_idx,
+                            "pattern": pat,
+                            "snippet": line.strip(),
+                            "recommendation": f"Replace hardcoded host path pattern `{pat}` with generic placeholder or relative configuration.",
+                        })
+
+    return issues
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, inlining guidelines, antipatterns, and test suites.")
+    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, inlining guidelines, antipatterns, test suites, and path privacy.")
     parser.add_argument("--all", action="store_true", help="Run all code quality audits")
     parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
     parser.add_argument("--visibility", action="store_true", help="Run least visibility scanner")
@@ -599,12 +640,13 @@ def main():
     parser.add_argument("--inlining", action="store_true", help="Run method inlining guidelines scanner")
     parser.add_argument("--antipatterns", action="store_true", help="Run macro and const-generic antipattern checks")
     parser.add_argument("--tests", action="store_true", help="Run external test suite and inline test scanner")
+    parser.add_argument("--path-privacy", action="store_true", help="Run path privacy and host isolation scanner")
     parser.add_argument("--crate", help="Filter audit to a specific crate")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     args = parser.parse_args()
 
     # Default to --all if no specific mode selected
-    if not (args.all or args.dead_code or args.visibility or args.srp or args.inlining or args.antipatterns or args.tests):
+    if not (args.all or args.dead_code or args.visibility or args.srp or args.inlining or args.antipatterns or args.tests or args.path_privacy):
         args.all = True
 
     dead, zombies = ([], [])
@@ -631,6 +673,10 @@ def main():
     if args.all or args.tests:
         test_suite_issues = scan_external_test_suites(args.crate)
 
+    privacy_issues = []
+    if args.all or args.path_privacy:
+        privacy_issues = scan_path_privacy(args.crate)
+
     if args.json:
         out = {
             "dead_code": dead,
@@ -640,6 +686,7 @@ def main():
             "inlining_issues": inlining_issues,
             "antipattern_issues": antipattern_issues,
             "test_suite_issues": test_suite_issues,
+            "path_privacy_issues": privacy_issues,
         }
         print(json.dumps(out, indent=2))
         return
@@ -711,8 +758,17 @@ def main():
             for issue in test_suite_issues:
                 print(f"    * [{issue['type']}] {issue['file']} -> {issue['recommendation']}")
 
+    if args.all or args.path_privacy:
+        print(f"\n[7. PATH PRIVACY & HOST ISOLATION]")
+        if not privacy_issues:
+            print("  - Status: [PASS] Zero hardcoded user/host paths in workspace crates.")
+        else:
+            print(f"  - Status: [FAIL] {len(privacy_issues)} path privacy violation(s) detected:")
+            for issue in privacy_issues:
+                print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} (found '{issue['pattern']}') -> {issue['recommendation']}")
+
     print("\n" + "=" * 76)
-    print(f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(inlining_issues)} inlining issues, {len(antipattern_issues)} antipattern issues, {len(test_suite_issues)} test suite issues.")
+    print(f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(inlining_issues)} inlining issues, {len(antipattern_issues)} antipattern issues, {len(test_suite_issues)} test suite issues, {len(privacy_issues)} path privacy issues.")
     print("=" * 76)
 
 
