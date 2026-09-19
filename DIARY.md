@@ -7102,3 +7102,17 @@ Every future modification or implementation task must append an entry following 
   - while streamlining skills into reusable operational runbooks.
 - **Verification & Test Results**:
   - pre_flight.py and test_architecture_rules passed 100% cleanly.
+---
+
+### [2026-09-19 03:05 CEST] — Promote Code Quality Auditor to Slash Command Workflow
+- **Affected Subsystems**:
+  - `workflows`
+  - `quality`
+- **What Was Changed (The Concrete Reality)**:
+  - Created .agents/workflows/audit-code-quality.md enabling /audit-code-quality slash command
+  - Connected workflow to universal quality audit script tools/harness/audit_code_quality.py and backing skill
+- **Architectural Rationale & Trade-Offs**:
+  - Elevated whole-workspace code quality auditing to a first-class slash command workflow alongside /code-review
+  - providing immediate invocation of the 6 audit pillars.
+- **Verification & Test Results**:
+  - pre_flight.py and test_architecture_rules passed cleanly.
