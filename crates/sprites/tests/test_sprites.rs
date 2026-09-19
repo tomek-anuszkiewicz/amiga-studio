@@ -10,6 +10,27 @@ fn beam(vpos: u16) -> BeamPosition {
     }
 }
 
+fn set_pos(sprites: &mut Sprites, ch: usize, val: u16) {
+    if ch < 8 {
+        sprites.channels[ch].pos = val;
+    }
+}
+
+fn set_ctl(sprites: &mut Sprites, ch: usize, val: u16) {
+    if ch < 8 {
+        sprites.channels[ch].ctl = val;
+        sprites.channels[ch].is_armed = false;
+    }
+}
+
+fn set_data(sprites: &mut Sprites, ch: usize, data_a: u16, data_b: u16) {
+    if ch < 8 {
+        sprites.channels[ch].data_a = data_a;
+        sprites.channels[ch].data_b = data_b;
+        sprites.channels[ch].is_armed = true;
+    }
+}
+
 #[test]
 fn test_sprite_decoding_and_reset() {
     let mut sprites = Sprites::new();
@@ -19,8 +40,8 @@ fn test_sprite_decoding_and_reset() {
     let pos = (0x64 << 8) | 0x32;
     let ctl = (0x78 << 8) | 0x80 | (1 << 2) | (1 << 1) | 1;
 
-    sprites.set_pos(0, pos);
-    sprites.set_ctl(0, ctl);
+    set_pos(&mut sprites, 0, pos);
+    set_ctl(&mut sprites, 0, ctl);
 
     let ch0 = &sprites.channels[0];
     assert_eq!(ch0.vstart(), 100 | 0x100); // 356
@@ -28,7 +49,7 @@ fn test_sprite_decoding_and_reset() {
     assert_eq!(ch0.hstart(), (0x32 << 1) | 1); // 101
     assert!(ch0.is_attached());
 
-    sprites.set_data(0, 0xAAAA, 0x5555);
+    set_data(&mut sprites, 0, 0xAAAA, 0x5555);
     assert!(sprites.channels[0].is_armed);
 
     sprites.reset();
@@ -42,8 +63,8 @@ fn test_sprite_decoding_and_reset() {
 fn test_sprite_vertical_comparator_and_scanlines() {
     let mut sprites = Sprites::new();
     // VSTART = 100, VSTOP = 105, HSTART = 50
-    sprites.set_pos(0, (100 << 8) | 50);
-    sprites.set_ctl(0, 105 << 8);
+    set_pos(&mut sprites, 0, (100 << 8) | 50);
+    set_ctl(&mut sprites, 0, 105 << 8);
 
     // Line 99: not active
     sprites.step_cck(beam(99));
@@ -68,12 +89,12 @@ fn test_sprite_vertical_comparator_and_scanlines() {
 fn test_sprite_horizontal_arming_and_shift_serialization() {
     let mut sprites = Sprites::new();
     // VSTART = 50, VSTOP = 60, HSTART = 100 (low=50, high=0 -> 100)
-    sprites.set_pos(0, (50 << 8) | 50);
-    sprites.set_ctl(0, 60 << 8);
+    set_pos(&mut sprites, 0, (50 << 8) | 50);
+    set_ctl(&mut sprites, 0, 60 << 8);
 
     // Data: bit 15 = 1 in A, bit 15 = 0 in B -> pixel color 1
     // bit 14 = 1 in A, bit 14 = 1 in B -> pixel color 3
-    sprites.set_data(0, 0xC000, 0x4000);
+    set_data(&mut sprites, 0, 0xC000, 0x4000);
     assert!(sprites.channels[0].is_armed);
 
     // Scanline 50
@@ -120,17 +141,17 @@ fn test_sprite_horizontal_arming_and_shift_serialization() {
 #[test]
 fn test_sprite_disarming_on_ctl_write() {
     let mut sprites = Sprites::new();
-    sprites.set_pos(0, (50 << 8) | 50);
-    sprites.set_ctl(0, 60 << 8);
-    sprites.set_data(0, 0xFFFF, 0xFFFF);
+    set_pos(&mut sprites, 0, (50 << 8) | 50);
+    set_ctl(&mut sprites, 0, 60 << 8);
+    set_data(&mut sprites, 0, 0xFFFF, 0xFFFF);
     assert!(sprites.channels[0].is_armed);
 
     // Writing CTL disarms the horizontal comparator
-    sprites.set_ctl(0, 60 << 8);
+    set_ctl(&mut sprites, 0, 60 << 8);
     assert!(!sprites.channels[0].is_armed);
 
     // Re-writing DATA re-arms it
-    sprites.set_data(0, 0xFFFF, 0xFFFF);
+    set_data(&mut sprites, 0, 0xFFFF, 0xFFFF);
     assert!(sprites.channels[0].is_armed);
 }
 
@@ -139,18 +160,18 @@ fn test_sprite_attached_mode_15_colors() {
     let mut sprites = Sprites::new();
     // Pair 0: Sprite 0 (even) and Sprite 1 (odd)
     // Both positioned at line 50, HSTART = 100
-    sprites.set_pos(0, (50 << 8) | 50);
-    sprites.set_ctl(0, 60 << 8);
+    set_pos(&mut sprites, 0, (50 << 8) | 50);
+    set_ctl(&mut sprites, 0, 60 << 8);
 
     // Sprite 1 attached (bit 7 ATT = 1)
-    sprites.set_pos(1, (50 << 8) | 50);
-    sprites.set_ctl(1, (60 << 8) | 0x0080);
+    set_pos(&mut sprites, 1, (50 << 8) | 50);
+    set_ctl(&mut sprites, 1, (60 << 8) | 0x0080);
     assert!(sprites.channels[1].is_attached());
 
     // Sprite 0: bit 15 has data_a=1, data_b=0 (value = 1)
-    sprites.set_data(0, 0x8000, 0x0000);
+    set_data(&mut sprites, 0, 0x8000, 0x0000);
     // Sprite 1: bit 15 has data_a=1, data_b=1 (value = 3)
-    sprites.set_data(1, 0x8000, 0x8000);
+    set_data(&mut sprites, 1, 0x8000, 0x8000);
 
     sprites.step_cck(beam(50));
 
@@ -175,19 +196,19 @@ fn test_sprite_to_sprite_collision_clxdat() {
     let mut sprites = Sprites::new();
 
     // Sprite 0 (Pair 0) at HSTART = 100, line 50
-    sprites.set_pos(0, (50 << 8) | 50);
-    sprites.set_ctl(0, 60 << 8);
-    sprites.set_data(0, 0x8000, 0x8000); // 1 active pixel at px 100
+    set_pos(&mut sprites, 0, (50 << 8) | 50);
+    set_ctl(&mut sprites, 0, 60 << 8);
+    set_data(&mut sprites, 0, 0x8000, 0x8000); // 1 active pixel at px 100
 
     // Sprite 2 (Pair 1) at HSTART = 100, line 50
-    sprites.set_pos(2, (50 << 8) | 50);
-    sprites.set_ctl(2, 60 << 8);
-    sprites.set_data(2, 0x8000, 0x8000); // 1 active pixel at px 100
+    set_pos(&mut sprites, 2, (50 << 8) | 50);
+    set_ctl(&mut sprites, 2, 60 << 8);
+    set_data(&mut sprites, 2, 0x8000, 0x8000); // 1 active pixel at px 100
 
     // Sprite 4 (Pair 2) at HSTART = 100, line 50
-    sprites.set_pos(4, (50 << 8) | 50);
-    sprites.set_ctl(4, 60 << 8);
-    sprites.set_data(4, 0x8000, 0x8000); // 1 active pixel at px 100
+    set_pos(&mut sprites, 4, (50 << 8) | 50);
+    set_ctl(&mut sprites, 4, 60 << 8);
+    set_data(&mut sprites, 4, 0x8000, 0x8000); // 1 active pixel at px 100
 
     sprites.step_cck(beam(50));
 
@@ -208,14 +229,14 @@ fn test_sprite_priority_arbitration() {
     let mut sprites = Sprites::new();
 
     // Pair 0 (Sprite 0): color 1 -> color_index = 17
-    sprites.set_pos(0, (50 << 8) | 50);
-    sprites.set_ctl(0, 60 << 8);
-    sprites.set_data(0, 0x8000, 0x0000);
+    set_pos(&mut sprites, 0, (50 << 8) | 50);
+    set_ctl(&mut sprites, 0, 60 << 8);
+    set_data(&mut sprites, 0, 0x8000, 0x0000);
 
     // Pair 1 (Sprite 2): color 3 -> color_index = 16 + 4 + 3 = 23
-    sprites.set_pos(2, (50 << 8) | 50);
-    sprites.set_ctl(2, 60 << 8);
-    sprites.set_data(2, 0x8000, 0x8000);
+    set_pos(&mut sprites, 2, (50 << 8) | 50);
+    set_ctl(&mut sprites, 2, 60 << 8);
+    set_data(&mut sprites, 2, 0x8000, 0x8000);
 
     sprites.step_cck(beam(50));
 
@@ -237,9 +258,9 @@ fn test_sprite_multiplexing() {
     let mut sprites = Sprites::new();
 
     // First use: lines 50..60, HSTART = 100
-    sprites.set_pos(0, (50 << 8) | 50);
-    sprites.set_ctl(0, 60 << 8);
-    sprites.set_data(0, 0x8000, 0x0000);
+    set_pos(&mut sprites, 0, (50 << 8) | 50);
+    set_ctl(&mut sprites, 0, 60 << 8);
+    set_data(&mut sprites, 0, 0x8000, 0x0000);
 
     sprites.step_cck(beam(50));
     let mut clxdat = 0u16;
@@ -258,9 +279,9 @@ fn test_sprite_multiplexing() {
     assert_eq!(p_inactive, None);
 
     // Reuse channel 0: lines 150..160, HSTART = 120
-    sprites.set_pos(0, (150 << 8) | 60);
-    sprites.set_ctl(0, 160 << 8);
-    sprites.set_data(0, 0x0000, 0x8000); // color 2 -> 16 + 2 = 18
+    set_pos(&mut sprites, 0, (150 << 8) | 60);
+    set_ctl(&mut sprites, 0, 160 << 8);
+    set_data(&mut sprites, 0, 0x0000, 0x8000); // color 2 -> 16 + 2 = 18
 
     sprites.step_cck(beam(150));
     let p2 = sprites.evaluate_pixel(120, &mut clxdat);
@@ -278,7 +299,7 @@ fn test_sprite_dma_enable_transition_and_idempotence() {
     let mut sprites = Sprites::new();
 
     // Arm sprite 0 manually
-    sprites.set_data(0, 0x1234, 0x5678);
+    set_data(&mut sprites, 0, 0x1234, 0x5678);
     assert!(sprites.channels[0].is_armed);
 
     // Redundant disable while already disabled must NOT disarm manually loaded sprite

@@ -163,7 +163,7 @@ fn test_direct_custom_and_cia_register_writes() {
         let _ = bus.write_byte(0xBFDF00, 0xAA);
     }
 
-    assert_eq!(mb.denise.read_color(0), 0x0F00);
+    assert_eq!(mb.denise.color[0], 0x0F00);
     // Step Paula 1 CCK so staged INTENA write matures
     let _ = mb.paula.step_cck();
     assert_eq!(mb.paula.intena, 0x4001);

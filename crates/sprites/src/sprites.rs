@@ -162,33 +162,6 @@ impl Sprites {
         }
     }
 
-    /// Sets sprite position register (SPRxPOS)
-    #[inline]
-    pub fn set_pos(&mut self, ch: usize, val: u16) {
-        if ch < 8 {
-            self.channels[ch].pos = val;
-        }
-    }
-
-    /// Sets sprite control register (SPRxCTL) - writing disables horizontal comparator
-    #[inline]
-    pub fn set_ctl(&mut self, ch: usize, val: u16) {
-        if ch < 8 {
-            self.channels[ch].ctl = val;
-            self.channels[ch].is_armed = false;
-        }
-    }
-
-    /// Sets sprite image data (SPRxDATA and SPRxDATB) - writing DATA arms comparator
-    #[inline]
-    pub fn set_data(&mut self, ch: usize, data_a: u16, data_b: u16) {
-        if ch < 8 {
-            self.channels[ch].data_a = data_a;
-            self.channels[ch].data_b = data_b;
-            self.channels[ch].is_armed = true;
-        }
-    }
-
     /// Evaluates all 8 sprites for a given pixel coordinate on scanline `vpos`.
     /// Returns the highest-priority non-transparent sprite pixel (if any) and updates CLXDAT.
     pub fn evaluate_pixel(&mut self, hpos_pixel: u16, clxdat: &mut u16) -> Option<SpritePixel> {

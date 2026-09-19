@@ -4,7 +4,7 @@ use m68000::{Cpu, OPCODE_DESCRIPTOR_TABLE};
 
 #[test]
 fn test_m68000_public_api_surface_and_encapsulation() {
-    let mut cpu = Cpu::new();
+    let cpu = Cpu::new();
     assert_eq!(cpu.state.pc, 0);
 
     // Verify opcode descriptor table accessibility while internal instruction submodules remain encapsulated

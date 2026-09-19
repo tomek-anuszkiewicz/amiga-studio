@@ -18,7 +18,7 @@ fn test_interrupt_arbitration_and_set_clr() {
     assert_eq!(paula.pending_interrupt_level(), 4);
 
     // Clear Audio 0 request
-    paula.clear_interrupt_request(0x0080);
+    paula.write_intreq(0x0080);
     assert_eq!(paula.pending_interrupt_level(), 3);
 
     // Clear master enable

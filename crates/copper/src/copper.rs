@@ -116,18 +116,6 @@ impl Copper {
         }
     }
 
-    /// Sets COP1LC address latch
-    #[inline]
-    pub fn set_cop1lc(&mut self, addr: u32) {
-        self.cop1lc = addr;
-    }
-
-    /// Sets COP2LC address latch
-    #[inline]
-    pub fn set_cop2lc(&mut self, addr: u32) {
-        self.cop2lc = addr;
-    }
-
     /// Restarts execution using Copper list 1 (COPJMP1 strobe)
     #[inline]
     pub fn restart_list1(&mut self) {

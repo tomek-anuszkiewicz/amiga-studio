@@ -102,7 +102,7 @@ fn test_amiga_track_dma_stream_and_sync() {
     assert!(controller.drives[0].motor_on);
 
     // Set DSKPT to 0x1000 in Chip RAM
-    controller.set_dskpt(0x1000);
+    controller.dskpt = 0x1000;
 
     // Arm and start DMA: transfer 100 words with WORDSYNC ($0400) and sync word $4489
     let mut dsklen = 0x8000 | 100;
@@ -145,7 +145,7 @@ fn test_dskbytr_clear_on_read() {
     let adf_image = vec![0x77u8; FORMATTED_DISK_BYTES];
     controller.drives[0].insert_disk(&adf_image);
     controller.handle_ciab_port_b_write(0b0111_0111);
-    controller.set_dskpt(0x0200);
+    controller.dskpt = 0x0200;
 
     // Read 2 words
     let mut dsklen = 0x8002;
@@ -181,9 +181,8 @@ fn test_dskbytr_peek_and_read_data_bits() {
     let mut controller = FloppyController::new();
     controller.dskbytr = 0x90A5; // DSKBYT | WORDEQUAL | byte 0xA5
 
-    assert_eq!(controller.dskbytr_debug(), 0x90A5);
     assert_eq!(controller.peek_dskbytr(), 0x90A5);
     assert_eq!(controller.read_dskbytr(), 0x90A5);
     // Bit 15 cleared after read
-    assert_eq!(controller.dskbytr_debug(), 0x10A5);
+    assert_eq!(controller.peek_dskbytr(), 0x10A5);
 }

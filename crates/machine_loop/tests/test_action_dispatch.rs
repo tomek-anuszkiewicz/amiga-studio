@@ -240,7 +240,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     machine.step_cck();
 
     // First write does not activate DMA yet (armed only)
-    assert!(machine.paula.is_dsk_dma_armed());
+    assert!(machine.paula.dma_armed);
     assert!(!machine.paula.is_dsk_dma_active());
 
     // Second write: DSKLEN = 0x9000
@@ -313,7 +313,7 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
     machine.agnus.audpt[0] = 0x0002_5100;
 
     // Paula audio channel 0 finishes sample buffer and requests loop restart (AUD0DSR)
-    machine.paula.audio.trigger_buffer_finish(0);
+    machine.paula.audio.channels[0].restart_strobe = true;
 
     // Step 1 CCK: Agnus reloads audpt[0] from audlc[0], Paula asserts INTREQ bit 7, CPU IPL -> 4
     machine.step_cck();

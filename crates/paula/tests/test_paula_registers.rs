@@ -131,22 +131,22 @@ fn test_dsklen_two_write_arming_sequence() {
     let mut paula = Paula::new();
 
     // Initial state: not armed, not active
-    assert!(!paula.is_dsk_dma_armed());
+    assert!(!paula.dma_armed);
     assert!(!paula.is_dsk_dma_active());
 
     // Write 1: length with DMAEN bit 15 = 1 arms the controller
     paula.write_dsklen(0x8100);
-    assert!(paula.is_dsk_dma_armed());
+    assert!(paula.dma_armed);
     assert!(!paula.is_dsk_dma_active());
 
     // Write 2: second write starts the transfer
     paula.write_dsklen(0x8100);
-    assert!(paula.is_dsk_dma_armed());
+    assert!(paula.dma_armed);
     assert!(paula.is_dsk_dma_active());
 
     // Write 3: clearing bit 15 unarms and stops transfer
     paula.write_dsklen(0x4000);
-    assert!(!paula.is_dsk_dma_armed());
+    assert!(!paula.dma_armed);
     assert!(!paula.is_dsk_dma_active());
 }
 

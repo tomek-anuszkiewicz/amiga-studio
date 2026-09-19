@@ -3,11 +3,11 @@ use denise::{Denise, DeniseModel};
 #[test]
 fn test_denise_reset_and_palette() {
     let mut denise = Denise::new(DeniseModel::Ocs8362);
-    assert_eq!(denise.read_color(0), 0);
+    assert_eq!(denise.color[0], 0);
 
     // Write white: 0x0FFF
-    denise.write_color(0, 0x0FFF);
-    assert_eq!(denise.read_color(0), 0x0FFF);
+    denise.color[0] = 0x0FFF;
+    assert_eq!(denise.color[0], 0x0FFF);
 
     // CLXDAT clear-on-read
     denise.clxdat = 0x1234;
@@ -15,7 +15,7 @@ fn test_denise_reset_and_palette() {
     assert_eq!(denise.read_clxdat(), 0);
 
     denise.reset();
-    assert_eq!(denise.read_color(0), 0);
+    assert_eq!(denise.color[0], 0);
 }
 
 #[test]
@@ -82,7 +82,7 @@ fn test_denise_write_bpldat_and_dma_reload() {
 #[test]
 fn test_denise_vblank_and_hblank_analog_black() {
     let mut denise = Denise::new(DeniseModel::Ocs8362);
-    denise.write_color(0, 0x0FFF); // Backdrop is white
+    denise.color[0] = 0x0FFF; // Backdrop is white
 
     // VBlank line 10: pixel buffer must receive analog blanking (pure black 0xFF00_0000)
     let beam_vblank = config::BeamPosition::new(100, 10, false);
@@ -100,7 +100,7 @@ fn test_denise_vblank_and_hblank_analog_black() {
 #[test]
 fn test_denise_short_line_cck227_edge_coverage() {
     let mut denise = Denise::new(DeniseModel::Ocs8362);
-    denise.write_color(0, 0x00F0); // Backdrop is green (0x00F0 -> ARGB 0xFF00F000)
+    denise.color[0] = 0x00F0; // Backdrop is green (0x00F0 -> ARGB 0xFF00F000)
 
     // On an active line (vpos = 50), stepping at CCK 226 (last CCK of short line)
     // must write both CCK 226 and CCK 227 so that the 912-pixel viewport row is fully filled
@@ -118,12 +118,12 @@ fn test_denise_color_write_immediate_commit_timing() {
     let mut denise = Denise::new(DeniseModel::Ocs8362);
 
     // Initial backdrop color is black
-    assert_eq!(denise.read_color(0), 0x0000);
+    assert_eq!(denise.color[0], 0x0000);
 
     // Writing COLOR00 via write_register must commit immediately on the active cycle (0 delay)
     let res = denise.write_register(0x180, 0x0F0F);
     assert_eq!(res, Some((0x180, 0x0F0F)));
-    assert_eq!(denise.read_color(0), 0x0F0F);
+    assert_eq!(denise.color[0], 0x0F0F);
 
     // Stepping CCK at an active beam coordinate draws using the updated color immediately
     let beam = config::BeamPosition::new(50, 50, false);

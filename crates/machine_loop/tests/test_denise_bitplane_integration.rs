@@ -75,7 +75,7 @@ fn test_denise_bitplane_mode_and_serialization() {
 
     // Load bitplane data into Denise shifters
     let bpldat = harness.machine.denise.bpldat;
-    harness.machine.denise.load_bitplane_data(bpldat);
+    harness.machine.denise.shifters = bpldat;
 
     // Pixel 0: bit is 1 -> maps to COLOR01 ($00F0)
     let p0 = harness.machine.denise.shift_pixel();

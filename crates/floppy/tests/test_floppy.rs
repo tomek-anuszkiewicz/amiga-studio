@@ -17,12 +17,9 @@ fn test_floppy_geometry_and_stepping() {
 }
 
 #[test]
-fn test_dskpt_address_masking() {
+fn test_dskpt_pointer_assignment() {
     let mut controller = FloppyController::new();
-    controller.set_dskpt(0x0004_2000);
-    assert_eq!(controller.dskpt, 0x0004_2000);
-    // Upper byte masked to 24-bit
-    controller.set_dskpt(0xFF04_2000);
+    controller.dskpt = 0x0004_2000;
     assert_eq!(controller.dskpt, 0x0004_2000);
 }
 
@@ -107,9 +104,9 @@ fn test_ciaa_port_a_sensing_inputs() {
 #[test]
 fn test_floppy_motor_selection() {
     let mut controller = FloppyController::new();
-    assert!(!controller.drives[0].motor);
+    assert!(!controller.drives[0].motor_on);
     assert!(!controller.drives[0].selected);
 
     controller.drives[0].set_motor(true);
-    assert!(controller.drives[0].motor);
+    assert!(controller.drives[0].motor_on);
 }

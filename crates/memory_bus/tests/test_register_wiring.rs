@@ -247,21 +247,21 @@ fn test_custom_byte_write_duplicates_byte_lanes() {
     // Writing a byte 0x42 to even address $DFF180 (COLOR00) must duplicate to 0x4242
     assert_eq!(mb.router().write_byte(0xDFF180, 0x42), BusResult::Ready(()));
     // Denise color 0 should now be 0x4242 & 0x0FFF = 0x0242
-    assert_eq!(mb.denise.read_color(0), 0x0242);
+    assert_eq!(mb.denise.color[0], 0x0242);
 
     // Writing a byte 0x55 to odd address $DFF181 (COLOR00) must also duplicate to 0x5555
     assert_eq!(mb.router().write_byte(0xDFF181, 0x55), BusResult::Ready(()));
     // Denise color 0 should now be 0x5555 & 0x0FFF = 0x0555
-    assert_eq!(mb.denise.read_color(0), 0x0555);
+    assert_eq!(mb.denise.color[0], 0x0555);
 }
 
 #[test]
 fn test_debug_read_and_register_method_conventions() {
     let mut mb = TestMotherboard::new();
 
-    // 1. JOY0DAT / JOY1DAT via Denise setters & read_word_debug
-    mb.denise.set_joy0dat(0x1234);
-    mb.denise.set_joy1dat(0x5678);
+    // 1. JOY0DAT / JOY1DAT via Denise fields & read_word_debug
+    mb.denise.joy0dat = 0x1234;
+    mb.denise.joy1dat = 0x5678;
     assert_eq!(mb.router().read_word_debug(0xDFF00A), 0x1234);
     assert_eq!(mb.router().read_word_debug(0xDFF00C), 0x5678);
 
@@ -304,7 +304,7 @@ fn test_chip_namespaced_custom_register_dispatch() {
     // 2. Denise-specific write: COLOR00
     mb.router()
         .write_custom_word(custom_reg::denise::COLOR00, 0x0ABC);
-    assert_eq!(mb.denise.read_color(0), 0x0ABC);
+    assert_eq!(mb.denise.color[0], 0x0ABC);
 
     // 3. Paula-specific write: INTENA
     mb.router()
@@ -317,7 +317,7 @@ fn test_chip_namespaced_custom_register_dispatch() {
     assert_eq!(vposr, mb.agnus.vposr());
 
     // 5. Denise-specific read: JOY0DAT
-    mb.denise.set_joy0dat(0x4321);
+    mb.denise.joy0dat = 0x4321;
     assert_eq!(
         mb.router().read_custom_word(custom_reg::denise::JOY0DAT),
         0x4321

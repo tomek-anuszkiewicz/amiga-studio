@@ -287,12 +287,6 @@ impl FloppyController {
         0x3C
     }
 
-    /// Action method: sets Disk DMA Pointer (DSKPTH / DSKPTL)
-    #[inline]
-    pub fn set_dskpt(&mut self, addr: u32) {
-        self.dskpt = addr & 0x00FF_FFFF;
-    }
-
     /// Returns the live 8-bit deserialized MFM data byte and composite status flags (DMAON, DISKWRITE),
     /// atomically clearing bit 15 (`DSKBYT`) per Clear-on-Read hardware semantics.
     #[inline]
@@ -312,12 +306,6 @@ impl FloppyController {
     #[inline(always)]
     pub fn dskbytr(&mut self) -> u16 {
         self.read_dskbytr()
-    }
-
-    /// Reads composite DSKBYTR without side-effects for debugging
-    #[inline(always)]
-    pub fn dskbytr_debug(&self) -> u16 {
-        self.peek_dskbytr()
     }
 
     /// Advances floppy controller state by 1 Color Clock

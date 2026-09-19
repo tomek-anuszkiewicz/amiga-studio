@@ -124,11 +124,11 @@ fn test_write_custom_word_and_byte_methods() {
 
     // Test write_custom_word directly on A500
     machine.write_custom_word(0x180, 0x0F00);
-    assert_eq!(machine.denise.read_color(0), 0x0F00);
+    assert_eq!(machine.denise.color[0], 0x0F00);
 
     // Test write_custom_byte with byte duplication
     machine.write_custom_byte(0xDFF182, 0x33);
-    assert_eq!(machine.denise.read_color(1), 0x0333);
+    assert_eq!(machine.denise.color[1], 0x0333);
 }
 
 #[test]

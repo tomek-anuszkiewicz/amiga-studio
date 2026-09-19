@@ -7177,3 +7177,25 @@ Every future modification or implementation task must append an entry following 
   - Pre-flight quality gates 100% passing
   - 19 architecture tests passing
   - Tier 1 and Tier 2 test suites passing
+---
+
+### [2026-09-19 04:07 CEST] — Prune test-only zombie scaffolding and modernize test callers
+- **Affected Subsystems**:
+  - `crates/blitter`
+  - `crates/copper`
+  - `crates/denise`
+  - `crates/paula`
+  - `crates/sprites`
+  - `crates/audio`
+  - `crates/floppy`
+  - `tools/harness`
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned redundant helper shims and dead wrappers (start_blit, execute_line_blit, set_cop1lc, set_cop2lc, set_joy0dat, set_joy1dat, set_color, read_color, write_color, render_scanline, load_bitplane_data, clear_interrupt_request, is_dsk_dma_armed, set_pos, set_ctl, set_data, trigger_buffer_finish, set_dskpt)
+  - Modernized unit tests to access canonical public struct fields and authoritative register methods
+  - Hardened audit_code_quality.py with HOST_IO_AND_SPEC_SYMBOLS catalog for decoupled host entry points
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminating dead test-only scaffolding prevents ghost API accumulation while keeping genuine host I/O decoupled interfaces cleanly documented and verified
+  - all test assertions preserved 100%
+- **Verification & Test Results**:
+  - 0 dead, 0 zombies in audit_code_quality
+  - 100% pass across pre_flight, Tier 1 unit tests (13.23s), and Tier 2 integration tests (19.94s)

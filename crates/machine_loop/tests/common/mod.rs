@@ -67,7 +67,7 @@ impl MachineHarness {
                 .physical_memory
                 .write_word_debug(start_addr + (i as u32) * 2, w);
         }
-        self.machine.agnus.copper.set_cop1lc(start_addr);
+        self.machine.agnus.copper.cop1lc = start_addr;
         self
     }
 

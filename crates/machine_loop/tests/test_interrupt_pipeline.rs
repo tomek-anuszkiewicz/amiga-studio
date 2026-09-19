@@ -64,7 +64,7 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
     assert_eq!(machine.paula.intena & 0x4080, 0x4080);
 
     // 5. Trigger Paula Audio Channel 0 buffer finish (AUD0DSR)
-    machine.paula.audio.trigger_buffer_finish(0);
+    machine.paula.audio.channels[0].restart_strobe = true;
 
     // Step machine Color Clocks until CPU completes NOP and enters the ISR at $002000
     let mut cck_count = 0;
@@ -85,7 +85,7 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
     assert!(machine.cpu.state.is_supervisor());
 
     // Clear Paula INTREQ bit 7 inside the handler to prevent infinite loop
-    machine.paula.clear_interrupt_request(0x0080);
+    machine.paula.write_intreq(0x0080);
 
     // 6. Step through ISR: execute MOVEQ #42, D1
     machine.step_instruction();
@@ -157,7 +157,7 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
 
     // Acknowledge CIA interrupt by reading ICR (clears IRQ line)
     machine.cia_a.read_register(0xD);
-    machine.paula.clear_interrupt_request(0x0008);
+    machine.paula.write_intreq(0x0008);
 
     // Step through ISR: execute MOVEQ #88, D2
     machine.step_instruction();
@@ -218,7 +218,7 @@ fn test_end_to_end_vblank_interrupt_to_cpu() {
     assert_eq!(machine.cpu.state.interrupt_mask(), 3);
 
     // Clear VERTB request
-    machine.paula.clear_interrupt_request(0x0020);
+    machine.paula.write_intreq(0x0020);
 
     // Step through ISR: execute MOVEQ #99, D3
     machine.step_instruction();
@@ -244,7 +244,7 @@ fn test_master_intena_masking_suppresses_cpu_interrupt() {
     machine.paula.write_intena(0x8080);
 
     // Assert Paula Audio Channel 0 request
-    machine.paula.audio.trigger_buffer_finish(0);
+    machine.paula.audio.channels[0].restart_strobe = true;
 
     // Step machine
     for _ in 0..20 {

@@ -159,7 +159,7 @@ fn test_agnus_blitter_copper_step_order() {
     // Start a 1x1 blit (1 startup cycle + 2 word cycles)
     agnus.blitter.set_dma_enabled(true);
     agnus.blitter.bltcon0 = 0x0000; // ABCD = 0 (2 idle cycles)
-    agnus.blitter.start_blit((1 << 6) | 1);
+    agnus.blitter.trigger_blit((1 << 6) | 1);
     assert!(agnus.blitter.is_busy);
 
     // Step cycle by cycle through Agnus step_cck_ram

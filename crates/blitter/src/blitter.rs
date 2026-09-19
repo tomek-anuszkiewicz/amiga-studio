@@ -194,12 +194,6 @@ impl Blitter {
         self.bltpri = enabled;
     }
 
-    /// Triggers a new blit operation by writing BLTSIZE
-    #[inline]
-    pub fn start_blit(&mut self, bltsize: u16) {
-        self.trigger_blit(bltsize);
-    }
-
     /// Action method: triggers blit execution when BLTSIZE matures
     pub fn trigger_blit(&mut self, bltsize: u16) {
         self.bltsize = bltsize;
@@ -525,11 +519,5 @@ impl Blitter {
                 self.step_area_cycle(chip_ram);
             }
         }
-    }
-
-    /// Synchronously executes a Line Blit to completion
-    #[inline]
-    pub fn execute_line_blit(&mut self, chip_ram: &mut [u8]) {
-        self.execute_blit(chip_ram);
     }
 }

@@ -1,6 +1,6 @@
 use debugger::{Debugger, DebuggerSession};
 use m68000::Cpu;
-use physical_memory::PhysicalMemory;
+use physical_memory::{BusResult, PhysicalMemory};
 
 #[test]
 fn test_debugger_stepping_and_breakpoints() {
@@ -175,5 +175,5 @@ fn test_lea_step_instruction_call() {
 fn test_session_bus_access() {
     let session = DebuggerSession::new();
     let bus = session.bus();
-    assert_eq!(bus.read_byte(0x000000), 0xFF);
+    assert_eq!(bus.read_byte(0x000000), BusResult::Ready(0xFF));
 }

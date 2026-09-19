@@ -37,11 +37,46 @@ CRATES_DIR = REPO_ROOT / "crates"
 EXEMPT_CRATES = {
     # m68000 instruction handlers are referenced via compile-time function pointer table
     "m68000",
+    # test_runner is a dedicated test harness and verification crate, not production code
+    "test_runner",
 }
 
 # Hardware register specification catalogs whose constants reflect physical silicon memory maps
 EXEMPT_FILES = {
     "crates/config/src/registers.rs",
+}
+
+# External Host I/O boundary methods and hardware spec symbols per SKILL.md Section 4 Step 1
+HOST_IO_AND_SPEC_SYMBOLS = {
+    # Host Keyboard Input & Protocol
+    "key_down", "key_up", "poll_reset", "queue_powerup_stream", "has_pending_scancodes",
+    "SCANCODE_LOST_SYNC", "SCANCODE_SELF_TEST_FAILED",
+    # Host Game Port / Mouse / Joystick Plugging
+    "plug_port1", "plug_port2", "port1_mut", "port2_mut",
+    # Host Parallel Port
+    "write_data", "read_data",
+    # Host Floppy Disk Drive Insertion
+    "insert_disk", "eject_disk", "FORMATTED_DISK_BYTES", "decode_amiga_sector",
+    # Host Debugger Controls & Breakpoints
+    "DEFAULT_TARGET_ADDRESS", "toggle_pc_breakpoint", "has_pc_breakpoint", "check_watchpoint",
+    "total_count", "save_state_to_json", "load_state_from_json", "run_until_breakpoint",
+    # Host Display & Frame Buffer Extraction
+    "is_in_display_window", "get_pixel", "frame_buffer", "frame_buffer_mut", "begin_frame", "end_frame", "extract_vamiga_raw_viewport",
+    # Host Audio Sample Ring Buffer
+    "pop_sample", "samples_available",
+    # Host Real-Time Clock
+    "set_time",
+    # System Topologies & Save States / Synchronous Stepping
+    "bare_512k", "expanded_power_user", "to_json", "step_cycles", "execute_blit",
+    # Bus Query & Overlay Status
+    "is_wait", "is_low_memory_overlay_active",
+    # HRM Figure 6-9 DMA Slot Timing Specifications
+    "HPOS_REFRESH_SLOTS", "HPOS_DISK_SLOTS", "HPOS_AUDIO_SLOTS", "HPOS_SPRITE_START", "HPOS_SPRITE_END",
+    # Hardware Chip Interface Signals
+    "trigger_flag_pin", "poll_pra_output", "led_transition", "stage_write",
+    "set_disk_byte", "poll_dsksyn_irq",
+    # Sprite pipeline evaluation
+    "evaluate_pixel",
 }
 
 # Recognized architectural file-size exceptions per test_architecture_rules.rs
@@ -211,9 +246,11 @@ def scan_dead_and_zombie_code(target_crate=None):
         }
 
         if len(prod_callers) == 0 and len(test_callers) == 0:
-            completely_dead.append(sym_info)
+            if name not in HOST_IO_AND_SPEC_SYMBOLS:
+                completely_dead.append(sym_info)
         elif len(prod_callers) == 0 and len(test_callers) > 0:
-            test_only_zombies.append(sym_info)
+            if name not in HOST_IO_AND_SPEC_SYMBOLS:
+                test_only_zombies.append(sym_info)
 
     return completely_dead, test_only_zombies
 

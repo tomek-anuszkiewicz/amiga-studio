@@ -404,13 +404,6 @@ impl Denise {
         due
     }
 
-    /// Loads 6 parallel bitplane words into active shift registers
-    #[inline]
-    pub fn load_bitplane_data(&mut self, data: [u16; 6]) {
-        self.bpldat = data;
-        self.shifters = data;
-    }
-
     /// Writes a 16-bit word into BPLxDAT ($110 + plane * 2).
     ///
     /// When plane 0 (BPL1DAT) is written, all 6 bpldat latches are transferred into the active shift registers.
@@ -468,38 +461,6 @@ impl Denise {
         }
     }
 
-    /// Renders a full horizontal scanline of bitplane word blocks into FrameBuilder
-    pub fn render_scanline(&mut self, vpos: u16, word_blocks: &[[u16; 6]]) {
-        self.last_ham_rgb = self.color[0];
-        let pf1_delay = (self.bplcon1 & 0x0F) as usize;
-        let hires = self.is_hires();
-        let scale = if hires { 2 } else { 1 };
-
-        let mut pixel_x = 0usize;
-
-        let backdrop_argb = frame_builder::rgb444_to_argb32(self.color[0]);
-        for _ in 0..(pf1_delay * scale) {
-            self.frame_builder
-                .set_pixel(pixel_x, vpos as usize, backdrop_argb);
-            pixel_x += 1;
-        }
-
-        for block in word_blocks {
-            self.load_bitplane_data(*block);
-
-            for _ in 0..16 {
-                let pixel_data = self.shift_pixel();
-                let rgb = self.decode_pixel(pixel_data);
-                let argb = frame_builder::rgb444_to_argb32(rgb);
-
-                for _ in 0..scale {
-                    self.frame_builder.set_pixel(pixel_x, vpos as usize, argb);
-                    pixel_x += 1;
-                }
-            }
-        }
-    }
-
     /// Action method: sets BPLCON0 and updates active display mode flags
     #[inline]
     pub fn set_bplcon0(&mut self, val: u16) {
@@ -516,14 +477,6 @@ impl Denise {
     #[inline]
     pub fn set_bplcon2(&mut self, val: u16) {
         self.bplcon2 = val;
-    }
-
-    /// Action method: sets an individual RGB444 color palette entry
-    #[inline]
-    pub fn set_color(&mut self, index: usize, rgb: u16) {
-        if index < COLOR_PALETTE_SIZE {
-            self.color[index] = rgb & 0x0FFF;
-        }
     }
 
     /// Action method: sets display window clipping coordinates
@@ -663,24 +616,6 @@ impl Denise {
         }
     }
 
-    /// Writes to color palette register directly (COLOR00..COLOR31 at $DFF180..$DFF1BE)
-    #[inline]
-    pub fn write_color(&mut self, index: usize, val: u16) {
-        if index < COLOR_PALETTE_SIZE {
-            self.color[index] = val & 0x0FFF;
-        }
-    }
-
-    /// Reads color palette register (12-bit RGB444)
-    #[inline]
-    pub fn read_color(&self, index: usize) -> u16 {
-        if index < COLOR_PALETTE_SIZE {
-            self.color[index]
-        } else {
-            0
-        }
-    }
-
     /// Reads Joystick/Mouse 0 data register (JOY0DAT at $DFF00A)
     #[inline(always)]
     pub fn joy0dat(&self) -> u16 {
@@ -693,12 +628,6 @@ impl Denise {
         self.joy0dat
     }
 
-    /// Sets Joystick/Mouse 0 data register
-    #[inline(always)]
-    pub fn set_joy0dat(&mut self, val: u16) {
-        self.joy0dat = val;
-    }
-
     /// Reads Joystick/Mouse 1 data register (JOY1DAT at $DFF00C)
     #[inline(always)]
     pub fn joy1dat(&self) -> u16 {
@@ -709,12 +638,6 @@ impl Denise {
     #[inline(always)]
     pub fn joy1dat_debug(&self) -> u16 {
         self.joy1dat
-    }
-
-    /// Sets Joystick/Mouse 1 data register
-    #[inline(always)]
-    pub fn set_joy1dat(&mut self, val: u16) {
-        self.joy1dat = val;
     }
 
     /// Reads Collision Data register with clear-on-read side-effect (CLXDAT at $DFF00E)

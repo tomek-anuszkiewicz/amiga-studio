@@ -5,7 +5,7 @@ fn test_blitter_reset_and_start() {
     let mut blit = Blitter::new();
     assert!(!blit.is_busy);
 
-    blit.start_blit(0x0408); // 16 rows, 8 words
+    blit.trigger_blit(0x0408); // 16 rows, 8 words
     assert!(blit.is_busy);
     assert_eq!(blit.bltsize, 0x0408);
 
@@ -285,7 +285,7 @@ fn test_cycle_by_cycle_stepping() {
     blit.bltdpt = 0x40;
 
     // Start 1 row of 1 word (1 startup cycle + 2 memory cycles)
-    blit.start_blit((1 << 6) | 1);
+    blit.trigger_blit((1 << 6) | 1);
     assert!(blit.is_busy);
     assert!(!blit.poll_blit_irq());
 
@@ -343,7 +343,7 @@ fn test_blitter_unconnected_channels_cookie_cut() {
     blit.bltalwm = 0xFFFF;
     blit.bltdpt = 0x20;
 
-    blit.start_blit((1 << 6) | 1);
+    blit.trigger_blit((1 << 6) | 1);
     // Startup
     blit.step_cck_ram(&mut ram);
     // Phase 0: BusIdle

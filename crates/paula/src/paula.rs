@@ -168,12 +168,6 @@ impl Paula {
         }
     }
 
-    /// Returns true if disk DMA is armed in DSKLEN
-    #[inline]
-    pub fn is_dsk_dma_armed(&self) -> bool {
-        self.dma_armed
-    }
-
     /// Returns true if disk DMA is active in DSKLEN
     #[inline]
     pub fn is_dsk_dma_active(&self) -> bool {
@@ -375,12 +369,6 @@ impl Paula {
     #[inline]
     pub fn set_interrupt_request(&mut self, mask: u16) {
         self.intreq |= mask & 0x7FFF;
-    }
-
-    /// Clears interrupt request bits immediately
-    #[inline]
-    pub fn clear_interrupt_request(&mut self, mask: u16) {
-        self.intreq &= !(mask & 0x7FFF);
     }
 
     /// Polls and clears the audio DMA restart strobe (`AUDxDSR`) for channel `ch`
