@@ -99,29 +99,3 @@ Provide the audit report using the following standard template:
 **Verdict:** [APPROVED | CHANGES REQUESTED]
 **Observations / Required Actions:** (if any)
 ```
-
----
-
-## 4. Execution Mode: Subagent Delegation
-
-- **Execution Host:** **Isolated Subagent** (child context sandbox).
-- **Model Tier:** `Gemini Pro High` (Adversarial, rigorous, bias-free compliance auditing).
-- **Context Savings:** Isolates lengthy git diff inspections, deep AST checks, and line-by-line verification from the main conversation.
-- **Subagent Task Template:**
-  - `TaskName`: "Adversarial Code & Architecture Review"
-  - `TaskSummary`: "Performs independent, strict compliance audit of git diff against constitutional rules and tests."
-  - `Prompt`:
-    ```markdown
-    Conduct an adversarial code and architecture audit of the recent changes.
-    Follow .agents/skills/code-review/SKILL.md:
-    1. Check git diff against all constitutional gates.
-    2. Ensure zero inline tests in `crates/*/src/` (tests must be in dedicated `crates/*/tests/`).
-    3. Run `cargo test -p test_runner --test test_architecture_rules`.
-    4. Check file size limits (<= 800 lines) and AGENTS.md ceiling (<= 14,000 bytes).
-    5. Return strictly the formal Code Review Audit Report below.
-    ```
-- **Return Contract (Mandatory Structured Output):**
-  The subagent must conclude with the standard `### 🛡️ Code & Architecture Compliance Review` report containing:
-  - All 18 checkboxes verified `[x]`.
-  - Concrete file/line markdown links for any flagged observations.
-  - Final Verdict: `APPROVED` or `CHANGES REQUESTED`.

@@ -64,30 +64,13 @@ python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --update-cache
 
 ---
 
-## 4. Execution Mode: Subagent Delegation
+## 4. Standard Report Format
 
-- **Execution Host:** **Isolated Subagent** (child context sandbox).
-- **Model Tier:** `Gemini Flash Low (Multimodal Vision)`
-- **Context Savings:** Absorbs raster image bytes, pinout coordinate measurements, and raw OCR inspection from the main conversation.
-- **Subagent Task Template:**
-  - `TaskName`: "Generating Diagram Sidecars: <asset_name>"
-  - `TaskSummary`: "Inspects diagram image via native multimodal vision, extracts signals/circuits, generates `<image>.txt` sidecar, and updates cache."
-  - `Prompt`:
-    ```markdown
-    Generate technical sidecar for diagram asset: <IMAGE_PATH>.
-    Follow .agents/skills/describe-diagram-assets/SKILL.md:
-    1. Inspect image with `view_file`.
-    2. Extract active-low signals, pinouts, timing states, and hardware behavior.
-    3. Author `<image_path>.txt` technical sidecar alongside image.
-    4. Register SHA256 hash in RAG cache via `assets_manager.py`.
-    5. Return strictly the Sidecar Generation Report below.
-    ```
-- **Return Contract (Mandatory Structured Output):**
-  The subagent must conclude with this exact markdown block:
-  ```markdown
-  ### 📐 Diagram Asset Description Report
-  - **Asset Processed:** `<image_path>`
-  - **Generated Sidecar:** [`<image_path>.txt`](file:///<image_path>.txt)
-  - **Extracted Signals / Pinouts:** `<comma_separated_signals>` (e.g. `_AS`, `_DTACK`, `_BERR`, `IPL0-IPL2`)
-  - **Cache Hash Status:** Updated in `RAG_CACHE_FILE` (`assets_manager.py` PASS).
-  ```
+```markdown
+### 📐 Diagram Asset Description Report
+- **Asset Processed:** `<image_path>`
+- **Generated Sidecar:** [`<image_path>.txt`](file:///<image_path>.txt)
+- **Extracted Signals / Pinouts:** `<comma_separated_signals>` (e.g. `_AS`, `_DTACK`, `_BERR`, `IPL0-IPL2`)
+- **Cache Hash Status:** Updated in `RAG_CACHE_FILE` (`assets_manager.py` PASS).
+```
+

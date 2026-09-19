@@ -156,36 +156,17 @@ python tools/harness/run_tests.py --integration
 ```
 Ensure all quality gates and architecture rules pass with 100% green status.
 
----
+### Standard Audit Report Format
+```markdown
+### 🛡️ Code Quality Audit & Pruning Report
+- **Scope Scanned:** `<scope>`
+- **Dead Code Pruned:** <count> symbols
+- **Test-Only Zombies Handled:** <count> retained (Host I/O) / <count> pruned
+- **Visibility Demoted:** <count> symbols (`pub` -> `pub(crate)` / private)
+- **SRP / Cohesion Decompositions:** <count> files/structs
+- **Skills Catalog Sync:** [PASS (all synchronized) | <count> discrepancies]
+- **Script Locality & Governance:** [PASS (all properly placed) | <count> anomalies]
+- **Design Specs Sync:** [PASS (all synchronized) | <count> drifted]
+- **Verification:** `pre_flight.py` (PASS), `cargo test` (PASS)
+```
 
-## 7. Execution Mode: Subagent Delegation
-
-- **Execution Host:** **Isolated Subagent** (child context sandbox).
-- **Model Tier:** `Gemini Flash Low` / `Medium`
-- **Context Savings:** Shields the main conversation from thousands of lines of workspace scan logs, callers lists, and AST grep outputs.
-- **Subagent Task Template:**
-  - `TaskName`: "Code Quality Audit & Pruning: <scope>"
-  - `TaskSummary`: "Audits dead code, test-only zombies, visibility leaks, and SRP cohesion."
-  - `Prompt`:
-    ```markdown
-    Execute on-demand code quality audit and pruning across `<SCOPE>`.
-    Follow .agents/skills/audit-code-quality/SKILL.md:
-    1. Run `python tools/harness/audit_code_quality.py --all`.
-    2. Triage zombies vs Host I/O boundaries.
-    3. Prune confirmed dead symbols and demote leaked visibility.
-    4. Verify via `python tools/harness/pre_flight.py` and unit tests.
-    5. Return strictly the Code Quality Audit & Pruning Report below.
-    ```
-- **Return Contract (Mandatory Structured Output):**
-  ```markdown
-  ### 🛡️ Code Quality Audit & Pruning Report
-  - **Scope Scanned:** `<scope>`
-  - **Dead Code Pruned:** <count> symbols
-  - **Test-Only Zombies Handled:** <count> retained (Host I/O) / <count> pruned
-  - **Visibility Demoted:** <count> symbols (`pub` -> `pub(crate)` / private)
-  - **SRP / Cohesion Decompositions:** <count> files/structs
-  - **Skills Catalog Sync:** [PASS (all synchronized) | <count> discrepancies]
-  - **Script Locality & Governance:** [PASS (all properly placed) | <count> anomalies]
-  - **Design Specs Sync:** [PASS (all synchronized) | <count> drifted]
-  - **Verification:** `pre_flight.py` (PASS), `cargo test` (PASS)
-  ```

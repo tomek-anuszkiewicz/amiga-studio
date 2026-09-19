@@ -82,38 +82,18 @@ Re-run `--design-sync` to verify that 100% of tracked specifications are in sync
 
 ---
 
-## 3. Execution Mode: Subagent Delegation
+## 3. Standard Sync Report Format
 
-- **Execution Host:** **Isolated Subagent** (child context sandbox).
-- **Model Tier:** `Gemini Flash Medium`
-- **Context Savings:** Isolates scanning across 28 Obsidian documents, git diff parsing, and Mermaid graph syntax verification from the main conversation.
-- **Subagent Task Template:**
-  - `TaskName`: "Syncing Design Specifications"
-  - `TaskSummary`: "Audits design drift, inspects diffs, updates Obsidian design documents, stamps checkpoints, and validates links."
-  - `Prompt`:
-    ```markdown
-    Synchronize Obsidian design documentation with recent code changes.
-    Follow .agents/skills/sync-design-docs/SKILL.md:
-    1. Run `python tools/harness/audit_code_quality.py --design-sync`.
-    2. For each drifted document, inspect `tools/harness/audit_code_quality.py --design-diff <doc>`.
-    3. Update hardware registers, timings, and tables to match code.
-    4. Prune speculative draft sketches and duplicate Rust code.
-    5. Update Mermaid crate graph in `General Architecture.md` if dependencies changed.
-    6. Verify link integrity: `cargo test -p test_runner --test test_architecture_rules -- test_obsidian_design_docs_links_integrity`.
-    7. Stamp checkpoint: `python tools/harness/audit_code_quality.py --design-bump <doc>`.
-    8. Return strictly the Design Docs Sync Report below.
-    ```
-- **Return Contract (Mandatory Structured Output):**
-  The subagent must conclude with this exact markdown block:
-  ```markdown
-  ### 📚 Design Documentation Sync Report
-  - **Documents Updated & Bumped:**
-    | Design Document | Subsystem / Topic | Changes Applied | Checkpoint Bumped |
-    | :--- | :--- | :--- | :--- |
-    | `Obsidian/Amiga/Design/<doc>.md` | `<subsystem>` | Synchronized registers, timing tables | `HEAD` (`<hash>`) |
-  - **Pruned Draft / Redundant Content:**
-    - `<doc>.md`: Removed speculative code snippets (L<start>-L<end>).
-  - **Mermaid Graph Status:** [UPDATED | UNCHANGED]
-  - **Vault Link Integrity:** `test_obsidian_design_docs_links_integrity` passed (0 broken links).
-  - **Design Specs Sync Status:** All tracked specifications in sync with HEAD.
-  ```
+```markdown
+### 📚 Design Documentation Sync Report
+- **Documents Updated & Bumped:**
+  | Design Document | Subsystem / Topic | Changes Applied | Checkpoint Bumped |
+  | :--- | :--- | :--- | :--- |
+  | `Obsidian/Amiga/Design/<doc>.md` | `<subsystem>` | Synchronized registers, timing tables | `HEAD` (`<hash>`) |
+- **Pruned Draft / Redundant Content:**
+  - `<doc>.md`: Removed speculative code snippets.
+- **Mermaid Graph Status:** [UPDATED | UNCHANGED]
+- **Vault Link Integrity:** `test_obsidian_design_docs_links_integrity` passed (0 broken links).
+- **Design Specs Sync Status:** All tracked specifications in sync with HEAD.
+```
+

@@ -94,40 +94,21 @@ If the branch was developed in an isolated worktree:
 
 ---
 
-## 5. Execution Mode: Subagent Delegation
+## 5. Standard Merge Report Format
 
-- **Execution Host:** **Isolated Subagent** (child context sandbox).
-- **Model Tier:** `Gemini Flash Medium`
-- **Context Savings:** Isolates raw `diff3` conflict markers, multi-file conflict churn, and worktree git status commands from the main pair-programming context.
-- **Subagent Task Template:**
-  - `TaskName`: "Git Merge & Conflict Resolution: <branch_name>"
-  - `TaskSummary`: "Creates isolated worktree via worktree.ps1, resolves 3-way conflicts holistically, verifies tests, and creates structured merge commit."
-  - `Prompt`:
-    ```markdown
-    Merge branch `<SOURCE_BRANCH>` into `<TARGET_BRANCH>` using isolated worktree.
-    Follow .agents/skills/git-resolve-merge/SKILL.md:
-    1. Create isolated sibling worktree via `.\tools\git\worktree.ps1 add merge-<branch>`.
-    2. Attempt merge: `git merge --no-ff <source_branch>`.
-    3. If conflicts occur, analyze intent of both sides and preserve all non-conflicting features.
-    4. Run `cargo test` and `test_architecture_rules`.
-    5. Commit with standardized merge commit message.
-    6. Clean up worktree via `.\tools\git\worktree.ps1 remove merge-<branch>`.
-    7. Return strictly the Conflict Resolution Report below.
-    ```
-- **Return Contract (Mandatory Structured Output):**
-  The subagent must conclude with this exact markdown block:
-  ```markdown
-  ### 🔀 Git Merge & Conflict Resolution Report
-  - **Source Branch:** `<source_branch>` $\to$ **Target Branch:** `<target_branch>`
-  - **Merge Status:** [MERGED CLEANLY | CONFLICTS RESOLVED | ABORTED]
-  - **Merge Commit SHA:** `<commit_sha>`
-  - **Conflict Decision Log:**
-    | Conflicted File | Conflicting Aspects | Resolution Rationale |
-    | :--- | :--- | :--- |
-    | `crates/.../<crate>.rs` | Both branches added imports | Merged both import blocks, eliminated duplicate entries |
-  - **Test Verification:**
-    - `cargo test --all`: PASS
-    - `cargo fmt --all -- --check`: PASS
-    - `test_architecture_rules`: PASS
-  - **Worktree Cleanup:** Worktree removed and pruned cleanly.
-  ```
+```markdown
+### 🔀 Git Merge & Conflict Resolution Report
+- **Source Branch:** `<source_branch>` $\to$ **Target Branch:** `<target_branch>`
+- **Merge Status:** [MERGED CLEANLY | CONFLICTS RESOLVED | ABORTED]
+- **Merge Commit SHA:** `<commit_sha>`
+- **Conflict Decision Log:**
+  | Conflicted File | Conflicting Aspects | Resolution Rationale |
+  | :--- | :--- | :--- |
+  | `crates/.../<crate>.rs` | Both branches added imports | Merged both import blocks, eliminated duplicate entries |
+- **Test Verification:**
+  - `cargo test --all`: PASS
+  - `cargo fmt --all -- --check`: PASS
+  - `test_architecture_rules`: PASS
+- **Worktree Cleanup:** Worktree removed and pruned cleanly.
+```
+

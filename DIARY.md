@@ -7085,3 +7085,20 @@ Every future modification or implementation task must append an entry following 
   - aligning the parallel execution rule with active capabilities while establishing the native Antigravity subagent discovery structure (agents.json and agent.md) for empirical validation.
 - **Verification & Test Results**:
   - pre_flight.py and test_architecture_rules passed cleanly.
+---
+
+### [2026-09-19 03:00 CEST] — Establish 4 Specialized Native Subagents and Prune Dead Delegation Boilerplate
+- **Affected Subsystems**:
+  - `agents`
+  - `skills`
+  - `workflows`
+- **What Was Changed (The Concrete Reality)**:
+  - Created native Antigravity subagent declarations under .agents/agents/: code_reviewer, cpu_verifier, vision_analyst, doc_curator
+  - Pruned dead Subagent Delegation sections and copy-pasted task templates across 9 skills: code-review, audit-code-quality, m68k-singlestep-test, describe-diagram-assets, egui-vision-debugger, sync-design-docs, obsidian-vault-linking, refactor-split-module, git-resolve-merge
+  - Refactored Section 0 of .agents/workflows/code-review.md to reference native agents and asynchronous test gates cleanly
+- **Architectural Rationale & Trade-Offs**:
+  - Replaced non-executable prompt-level subagent boilerplate with native Antigravity subagent declarations under .agents/agents/
+  - each equipped with strict tool whitelists and targeted system prompts
+  - while streamlining skills into reusable operational runbooks.
+- **Verification & Test Results**:
+  - pre_flight.py and test_architecture_rules passed 100% cleanly.

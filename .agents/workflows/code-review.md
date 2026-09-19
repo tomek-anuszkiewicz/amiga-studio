@@ -9,23 +9,21 @@ Use this workflow to conduct an independent, rigorous audit of changes before co
 
 ---
 
-## 0. Subagent Orchestration & Parallel Review Execution
+## 0. Review Architecture & Execution Strategy
 
-To prevent confirmation bias and eliminate main conversation context bloat during audits:
-1. **Launch Adversarial Code Review Subagent** (`Gemini Pro High`):
-   - Invokes [`code-review`](../skills/code-review/SKILL.md) in an isolated child subagent.
-   - Inspects `git diff` against all 18 constitutional gates without pair-programming bias.
-   - Returns structured `### 🛡️ Code & Architecture Compliance Review` report.
-2. **Launch Documentation Sync Subagent** (`Gemini Flash Medium`):
-   - Invokes [`sync-design-docs`](../skills/sync-design-docs/SKILL.md) in a child subagent.
-   - Audits Obsidian design specs and Mermaid crate graphs against `git diff`.
-   - Returns structured `### 📚 Design Documentation Sync Report`.
-3. **Launch Asynchronous Test Gate**:
-   - Runs `cargo test -p test_runner --test test_architecture_rules` as a non-blocking background task.
-4. **Main Agent Executive Synthesis**:
-   - Consolidates the subagent reports and background test outputs into the single review verdict.
+To ensure objective compliance and prevent confirmation bias:
+1. **Adversarial Audit**:
+   - The review can be conducted by the dedicated `code_reviewer` subagent (`.agents/agents/code_reviewer/agent.md`) or directly in-session following the 18 constitutional gates in [`code-review`](../skills/code-review/SKILL.md).
+   - Inspects `git diff` against all architectural rules with an adversarial mindset.
+2. **Documentation Alignment**:
+   - Audits Obsidian design specs and Mermaid crate graphs against `git diff` following [`sync-design-docs`](../skills/sync-design-docs/SKILL.md).
+3. **Asynchronous Quality Gates**:
+   - Runs `cargo fmt --all -- --check`, `python tools/harness/pre_flight.py`, and `cargo test -p test_runner --test test_architecture_rules` as background tasks.
+4. **Synthesis & Verdict**:
+   - Consolidates test outputs and rule checklists into the final review report.
 
 ---
+
 
 ## 1. Automated Architecture & Formatting Verification
 Execute formatting check and the automated architectural test suite:

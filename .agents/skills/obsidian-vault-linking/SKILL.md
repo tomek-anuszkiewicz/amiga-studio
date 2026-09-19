@@ -77,33 +77,16 @@ Ensure `test_obsidian_design_docs_links_integrity` passes with 0 broken links.
 
 ---
 
-## 5. Execution Mode: Subagent Delegation
+## 5. Standard Audit Report Format
 
-- **Execution Host:** **Isolated Subagent** (child context sandbox).
-- **Model Tier:** `Gemini Flash Low`
-- **Context Savings:** Isolates batch regex parsing across 28 Obsidian specs and deep markdown link crawling from the main conversation.
-- **Subagent Task Template:**
-  - `TaskName`: "Auditing Obsidian Vault Links"
-  - `TaskSummary`: "Verifies line-1 YAML frontmatter, dual-layer linking, and relative path integrity across all design specs."
-  - `Prompt`:
-    ```markdown
-    Audit and repair links across `Obsidian/Amiga/Design/`.
-    Follow .agents/skills/obsidian-vault-linking/SKILL.md:
-    1. Verify Line 1 YAML properties (`related` array).
-    2. Check dual-layer linking (inline contextual + bottom reference section).
-    3. Verify relative path depth.
-    4. Run `cargo test -p test_runner --test test_architecture_rules -- test_obsidian_design_docs_links_integrity`.
-    5. Return strictly the Vault Link Integrity Report below.
-    ```
-- **Return Contract (Mandatory Structured Output):**
-  The subagent must conclude with this exact markdown block:
-  ```markdown
-  ### 🔗 Obsidian Vault Link Audit Report
-  - **Documents Audited:** 28 design specifications
-  - **Audit Status:** [ALL PASS | REPAIRED]
-  - **Broken Links Fixed:**
-    | Document | Broken Link Target | Corrected Relative Path |
-    | :--- | :--- | :--- |
-    | `Obsidian/Amiga/Design/...` | `[Wrong.md]` | `[Correct.md](Correct.md)` |
-  - **Architecture Test Result:** `test_obsidian_design_docs_links_integrity` (0 broken links).
-  ```
+```markdown
+### 🔗 Obsidian Vault Link Audit Report
+- **Documents Audited:** 28 design specifications
+- **Audit Status:** [ALL PASS | REPAIRED]
+- **Broken Links Fixed:**
+  | Document | Broken Link Target | Corrected Relative Path |
+  | :--- | :--- | :--- |
+  | `Obsidian/Amiga/Design/...` | `[Wrong.md]` | `[Correct.md](Correct.md)` |
+- **Architecture Test Result:** `test_obsidian_design_docs_links_integrity` (0 broken links).
+```
+
