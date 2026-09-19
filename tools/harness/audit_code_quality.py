@@ -90,7 +90,6 @@ LINE_COUNT_EXCEPTIONS = {
     "crates/m68000/src/instructions/or.rs",
     "crates/m68000/src/instructions/cmpi.rs",
     "crates/m68000/src/micro/dispatch_table.rs",
-    "crates/m68000/src/micro/step_execution.rs",
 }
 
 # Standard trait and lifecycle boilerplate methods to ignore
