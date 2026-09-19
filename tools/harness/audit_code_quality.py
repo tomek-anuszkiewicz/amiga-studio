@@ -79,11 +79,16 @@ HOST_IO_AND_SPEC_SYMBOLS = {
     "evaluate_pixel",
 }
 
-# Recognized architectural file-size exceptions per test_architecture_rules.rs
+# Recognized architectural file-size exceptions per file-size-and-cohesion.md & test_architecture_rules.rs
 LINE_COUNT_EXCEPTIONS = {
     "crates/m68000/src/instructions/move_b.rs",
     "crates/m68000/src/instructions/move_w.rs",
     "crates/m68000/src/instructions/move_l.rs",
+    "crates/m68000/src/instructions/add.rs",
+    "crates/m68000/src/instructions/sub.rs",
+    "crates/m68000/src/instructions/and.rs",
+    "crates/m68000/src/instructions/or.rs",
+    "crates/m68000/src/instructions/cmpi.rs",
     "crates/m68000/src/micro/dispatch_table.rs",
     "crates/m68000/src/micro/step_execution.rs",
 }
@@ -729,7 +734,12 @@ def bump_markdown_checkpoint(file_path: Path, new_commit: str, new_date: str) ->
     if not date_found:
         new_fm_lines.append(f'last_synced_date: "{new_date}"')
 
-    new_content = "---\n" + "\n".join(new_fm_lines) + "\n---" + parts[2]
+    while new_fm_lines and not new_fm_lines[0].strip():
+        new_fm_lines.pop(0)
+    while new_fm_lines and not new_fm_lines[-1].strip():
+        new_fm_lines.pop()
+
+    new_content = "---\n" + "\n".join(new_fm_lines) + "\n---\n" + parts[2].lstrip("\r\n")
     file_path.write_text(new_content, encoding="utf-8")
     return True
 
