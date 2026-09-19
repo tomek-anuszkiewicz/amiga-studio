@@ -7662,6 +7662,29 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_docs_quality.py --all`: 10/10 pillars passed cleanly with 0 issues.
   - `python tools/harness/pre_flight.py`: 5/5 quality gates passed cleanly (AGENTS.md ceiling: 13,797 <= 14,000 bytes, 21 architecture tests passed).
 
+---
+
+### [2026-09-19 13:52 CEST] — Clean-Break Retirement of audit-all Meta-Orchestrator
+- **Affected Subsystems**:
+  - `.agents/workflows/audit-all.md`: Deleted.
+  - `.agents/skills/audit-all/SKILL.md`: Deleted.
+  - `docs/ai_agents.md`: Removed `audit-all` skill description and slash command table row.
+  - `AGENTS.md`: Updated Section 4 Milestone Gates to reference the 4 specialized quality audits directly.
+  - `tools/harness/audit_docs_quality.py`: Removed `audit-all` from `PROCEDURAL_MILESTONE_SKILLS`.
+- **What Was Changed (The Concrete Reality)**:
+  - Retired the redundant `audit-all` wrapper per `clean-break-refactoring.md`.
+  - Preserved the 4 specialized, single-responsibility quality audit systems as first-class tools:
+    1. `/audit-code-quality`: Rust code health, dead code, visibility, inlining, and test parity.
+    2. `/audit-docs-quality`: Documentation integrity, Obsidian vault links, rules delegation, and semantic checks.
+    3. `/audit-hardware-quality`: Motherboard bus topology, Agnus DMA mastership, and CCK timing.
+    4. `/audit-semantic-parity`: Inference-driven bidirectional code-to-docs parity across chip subsystems.
+- **Architectural Rationale & Trade-Offs**:
+  - *Lean Governance & Zero Wrapper Friction:* The meta-orchestrator added maintenance coupling across multiple index files whenever specialized audits evolved. Because full sweeps can be requested naturally through verbal prompts or running the targeted suites as needed, eliminating `audit-all` simplifies the workflow surface area without any loss of auditing power.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py --all`: 10/10 pillars passed cleanly with 0 issues (26 skills, 13 workflows synchronized).
+  - `python tools/harness/pre_flight.py`: 5/5 quality gates passed cleanly (AGENTS.md ceiling: 13,770 <= 14,000 bytes, 21 architecture tests passed).
+
+
 
 
 
