@@ -175,7 +175,11 @@ fn test_lea_step_instruction_call() {
 fn test_session_bus_access() {
     let session = DebuggerSession::new();
     let bus = session.bus();
-    assert_eq!(bus.read_byte(0x000000), BusResult::Ready(0xFF));
+    // In unpopulated mode with boot overlay active, offset 0..3 is synthetic boot vector (SSP = $00080000),
+    // and unmapped ROM space beyond the vector table returns open bus ($FF).
+    assert_eq!(bus.read_byte(0x000000), BusResult::Ready(0x00));
+    assert_eq!(bus.read_byte(0x000001), BusResult::Ready(0x08));
+    assert_eq!(bus.read_byte(0x000008), BusResult::Ready(0xFF));
 }
 
 #[test]

@@ -242,3 +242,26 @@ fn test_cpu_reset_and_reset_warm() {
     assert_eq!(cpu.state.ssp, 0x00070000);
     assert_eq!(cpu.state.instruction_pc, 0x00002000);
 }
+
+#[test]
+fn test_cpu_reset_unaligned_pc_triggers_double_bus_fault() {
+    let mut bus = PhysicalMemory::new();
+    bus.map_chip_ram_to_low_memory();
+
+    // Setup valid SSP = $0007_0000, but odd unaligned PC = $0000_1001
+    bus.write_word_debug(0, 0x0007);
+    bus.write_word_debug(2, 0x0000);
+    bus.write_word_debug(4, 0x0000);
+    bus.write_word_debug(6, 0x1001);
+
+    let mut cpu = Cpu::new();
+    cpu.reset(&mut bus);
+
+    // On physical M68000 silicon, unaligned PC at reset triggers an immediate Double Bus Fault
+    assert!(
+        cpu.state.halted,
+        "CPU must be halted on Double Bus Fault when reset PC vector is unaligned"
+    );
+    assert_eq!(cpu.state.instruction_pc, 0x0000_1001);
+    assert_eq!(cpu.state.pc, 0x0000_1001);
+}

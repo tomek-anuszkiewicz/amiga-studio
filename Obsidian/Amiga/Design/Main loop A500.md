@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-14
+updated: 2026-09-19
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Agnus.md](Agnus.md)"]
 tracked_paths:
   - "crates/machine_loop"
@@ -208,15 +208,16 @@ On real Amiga hardware, **all resets start CPU execution from address `$000000` 
 ---
 
 ### 5.3 Cold / Hard Reset (`reset_cold`)
-1. **MemoryBus:** Call `memory_bus.reset_cold()`. Zeroes all physical Chip RAM, Slow RAM, and Fast RAM buffers (`$00`) and engages low-memory overlay (`map_kickstart_to_low_memory()`).
-   - *Headless / Test Invariant:* If no Kickstart ROM is loaded (synthetic test mode), disengages overlay so test RAM at `$000000` remains visible.
+1. **MemoryBus:** Call `memory_bus.reset_cold()`. Zeroes all physical Chip RAM, Slow RAM, and Fast RAM buffers (`$00`) and unconditionally engages low-memory overlay (`map_kickstart_to_low_memory()`).
+   - *Headless / Synthetic Test Invariant:* When no external Kickstart ROM is loaded, `PhysicalMemory`'s default `kickstart_rom` buffer provides synthetic boot vectors (`SSP = $00080000` at `$000000`, `PC = $00000000` at `$000004`), backed by `$FF` open bus. The CPU executes physical vector fetches through `_OVL` with zero synthetic normalization in the CPU core.
 2. **Master CCK Counter:** Set `self.cck = 0`.
 3. **Specialized Chips:** Apply chip reset defaults from the table above (disable DMA, mask interrupts, halt Copper/Blitter, mute audio, clear CIA latches).
 4. **CPU:** Apply M68000 reset:
    - `SR` set to `$2700`.
-   - Read initial `SSP` from `$000000` (routed to Kickstart ROM).
-   - Read initial `PC` from `$000004` (routed to Kickstart ROM).
-   - Prime prefetch queue (`IR` and `IRC`).
+   - Read initial `SSP` from `$000000` (routed to Kickstart ROM via active `_OVL`).
+   - Read initial `PC` from `$000004` (routed to Kickstart ROM via active `_OVL`).
+   - If initial `PC` is unaligned (`(pc & 1) != 0`), trigger immediate Double Bus Fault (`halted = true`) and abort prefetch.
+   - Otherwise, prime prefetch pipeline (`IR` and `IRC`) and initiate the first instruction.
 5. **Execution & Kickstart Detection:**
    - CPU begins executing at Kickstart entry point.
    - Because RAM was zeroed, memory checksum validation fails.
@@ -225,14 +226,15 @@ On real Amiga hardware, **all resets start CPU execution from address `$000000` 
 ---
 
 ### 5.4 Warm Reset (`reset_warm`)
-1. **MemoryBus:** Call `memory_bus.reset_warm()`. **Leaves RAM contents completely intact!** Re-engages low-memory overlay (`map_kickstart_to_low_memory()`).
-   - *Headless / Test Invariant:* If no Kickstart ROM is loaded, disengages overlay so test RAM at `$000000` remains visible.
+1. **MemoryBus:** Call `memory_bus.reset_warm()`. **Leaves RAM contents completely intact!** Unconditionally re-engages low-memory overlay (`map_kickstart_to_low_memory()`).
+   - *Headless / Synthetic Test Invariant:* When no external Kickstart ROM is loaded, `PhysicalMemory`'s default `kickstart_rom` buffer provides synthetic boot vectors (`SSP = $00080000`, `PC = $00000000`).
 2. **Master CCK Counter:** Set `self.cck = 0`.
 3. **Specialized Chips:** Apply chip reset defaults (disable DMA, mask interrupts, mute audio, reset CIA port latches), leaving physical RAM undisturbed.
 4. **CPU:**
    - Re-initialize `SR = $2700`.
-   - Reload initial `SSP` from `$000000` and initial `PC` from `$000004`.
-   - Prime prefetch queue (`IR` and `IRC`).
+   - Reload initial `SSP` from `$000000` and initial `PC` from `$000004` via `_OVL`.
+   - If initial `PC` is unaligned (`(pc & 1) != 0`), trigger Double Bus Fault (`halted = true`).
+   - Otherwise, prime prefetch pipeline (`IR` and `IRC`) and initiate the first instruction.
 5. **Kickstart Detection & Fast Reboot:**
    - CPU begins executing at Kickstart entry point.
    - Kickstart scans RAM for magic resident signatures (`KickTagPtr`, ExecBase pointers, `ColdCapture`/`CoolCapture` vectors, and memory checksums).

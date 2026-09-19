@@ -145,9 +145,7 @@ fn test_save_state_restores_kickstart_rom_unconditionally() {
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
-    assert!(target_machine
-        .physical_memory
-        .kickstart_rom
+    assert!(target_machine.physical_memory.kickstart_rom[8..]
         .iter()
         .all(|&b| b == 0xFF));
 

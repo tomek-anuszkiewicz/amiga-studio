@@ -7726,6 +7726,32 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --integration`: All Tier 2 integration tests passed (4.72s).
   - `cargo test -p test_runner --test test_dma_cartesian`: All 19 Cartesian DMA contention permutation sweeps passed (41.10s).
 
+---
+
+### [2026-09-19 14:40 CEST] — Purged Synthetic Reset Normalization from CPU Core, Aligned Physical Double Bus Fault and Relocated Synthetic Boot Vectors to PhysicalMemory
+
+- **Files Modified**:
+  - `crates/cpu/src/cpu.rs`: Purged synthetic `$080000` / `$FFFFFFFF` normalization from `reset_internal()`. Implemented physical Motorola 68000 Double Bus Fault (`(pc & 1) != 0` -> `self.state.halted = true` immediately, aborting prefetch). Added eager instruction priming (`self.initiate_current_instruction()`) to `reset_internal()`. Simplified `ensure_instruction_ready()` by removing redundant `instruction_pc == 0` fallback.
+  - `crates/cpu/tests/test_cck_bus.rs`: Added isolated Red-Green unit test `test_cpu_reset_unaligned_pc_triggers_double_bus_fault` asserting physical CPU halt on unaligned initial PC.
+  - `crates/physical_memory/src/physical_memory.rs`: Pre-populated default synthetic boot vectors (`$00080000` for `SSP` and `$00000000` for `PC`) into `kickstart_rom[0..8]` while leaving remaining buffer `$FF`.
+  - `crates/physical_memory/tests/test_physical_memory.rs`: Added unit test `test_physical_memory_default_synthetic_kickstart_vectors` validating default ROM vector initialization and open-bus remainder.
+  - `crates/gui/tests/test_interactions.rs`: Updated `test_startup_clean_memory` to expect Kickstart boot vector byte `$08` under active boot overlay while verifying memory isolation.
+  - `crates/debugger/tests/test_stepping_and_session.rs`: Aligned `test_session_bus_access` to assert byte 0 is `$00`, byte 1 is `$08`, and byte 8 is `$FF`.
+  - `crates/machine_loop/tests/test_save_state.rs`: Asserted `kickstart_rom[8..]` is `$FF` for unpopulated initial state.
+  - `Obsidian/Amiga/Design/Platform Quirks and Invariants Catalog.md`: Added invariant documenting physical M68000 reset vector fetching, unaligned PC Double Bus Fault handling, and synthetic ROM vector delegation.
+  - `Obsidian/Amiga/Design/Main loop A500.md`: Updated Sections 5.3 & 5.4 documenting synthetic boot vectors in `PhysicalMemory` under unconditional reset boot overlay and M68000 Double Bus Fault semantics.
+- **Architectural Rationale & Trade-Offs**:
+  - *Structural Root Cause vs Local Symptom Patching:* When the boot overlay (`_OVL = 0`) was made unconditional on reset in `machine_loop`, an unpopulated `kickstart_rom` (all `$FF`) caused the CPU to read `PC = $FFFFFFFF` (odd address) on reset. A local symptom patch had been introduced directly in `Cpu::reset()` to artificially clamp `PC` to `$000000` and `SSP` to `$080000`. This violated the decoupled bus topology and infected the generic CPU core with Amiga motherboard assumptions. Relocating synthetic boot vectors to `PhysicalMemory`'s default `kickstart_rom` allows the CPU core to remain 100% physically exact, generic, and decoupled from Amiga address layouts.
+  - *Silicon Accuracy on Reset Fault:* Motorola 68000 silicon specifies that if an unaligned address is loaded into PC during reset sequence, the processor immediately halts via Double Bus Fault with `HALT` asserted and ceases all bus activity.
+  - *Elimination of Lazy Instruction Initiation:* Calling `initiate_current_instruction()` eagerly inside `reset_internal()` right after prefetch priming guarantees the CPU is immediately execution-ready, eliminating lazy PC adjustment hacks in `ensure_instruction_ready()`.
+- **Verification & Test Results**:
+  - `cargo test -p cpu --test test_cck_bus`: Confirmed `test_cpu_reset_unaligned_pc_triggers_double_bus_fault` passes.
+  - `cargo test -p physical_memory`: Confirmed `test_physical_memory_default_synthetic_kickstart_vectors` passes.
+  - `python tools/harness/run_tests.py --unit`: All 23 workspace crates + 7 test_runner unit suites passed cleanly.
+  - `cargo test -p memory_bus -p machine_loop -p debugger -p gui -j 2`: All integration suites passed.
+  - `python tools/harness/pre_flight.py`: Passed all 5 quality gates.
+
+
 
 
 

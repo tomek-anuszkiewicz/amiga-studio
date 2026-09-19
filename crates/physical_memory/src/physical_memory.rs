@@ -108,13 +108,20 @@ impl PhysicalMemory {
         };
         let bank_map = presets::build_bank_map(&config);
 
+        let mut kickstart_rom = vec![0xFF; KICKSTART_SIZE_256K];
+        // Synthetic default boot vectors for unpopulated Kickstart ROM mode (headless testing / developer startup):
+        // Vector 0 ($000000): Default SSP = $00080000 (top of standard 512KB Chip RAM)
+        kickstart_rom[0..4].copy_from_slice(&0x00080000u32.to_be_bytes());
+        // Vector 1 ($000004): Default PC = $00000000 (base of Chip RAM / synthetic test code)
+        kickstart_rom[4..8].copy_from_slice(&0x00000000u32.to_be_bytes());
+
         let mut bus = Self {
             config,
             bank_map,
             chip_ram: vec![0x00; chip_ram_size],
             slow_ram,
             fast_ram,
-            kickstart_rom: vec![0xFF; KICKSTART_SIZE_256K],
+            kickstart_rom,
             chip_ram_blocked: false,
             low_memory_overlay: true,
             unmapped_byte: 0xFF,

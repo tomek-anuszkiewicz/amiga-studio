@@ -376,8 +376,10 @@ fn test_startup_clean_memory() {
     assert_eq!(app.session.machine.cpu.state.a_regs()[7], 0x080000);
     assert_eq!(app.session.machine.cpu.state.ssp, 0x080000);
     assert!(
-        app.session.machine.cpu.state.ir == 0xFFFF || app.session.machine.cpu.state.ir == 0x0000,
-        "Expected unpopulated Kickstart ROM ($FFFF) or zeroed Chip RAM ($0000), got ${:04X}",
+        app.session.machine.cpu.state.ir == 0xFFFF
+            || app.session.machine.cpu.state.ir == 0x0000
+            || app.session.machine.cpu.state.ir == 0x0008,
+        "Expected unpopulated Kickstart ROM ($FFFF), zeroed Chip RAM ($0000), or synthetic boot vector ($0008), got ${:04X}",
         app.session.machine.cpu.state.ir
     );
     assert_eq!(app.goto_addr_str, "000000");
@@ -386,8 +388,8 @@ fn test_startup_clean_memory() {
     for addr in [0x000000, 0x001000, 0x001002, 0x002000, 0x070000] {
         let val = app.session.machine.physical_memory.read_word_debug(addr);
         assert!(
-            val == 0xFFFF || val == 0x0000,
-            "Expected clean/unmapped memory, got ${:04X}",
+            val == 0xFFFF || val == 0x0000 || val == 0x0008,
+            "Expected clean/unmapped memory or boot vector, got ${:04X}",
             val
         );
     }

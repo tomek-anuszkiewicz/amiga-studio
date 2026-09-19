@@ -211,3 +211,22 @@ fn test_write_bytes_across_all_memory_regions() {
 fn test_physical_memory_max_fast_ram_constant() {
     assert_eq!(physical_memory::MAX_FAST_RAM_SIZE, 4 * 1024 * 1024);
 }
+
+#[test]
+fn test_physical_memory_default_synthetic_kickstart_vectors() {
+    let bus = PhysicalMemory::new();
+    assert!(bus.is_low_memory_overlay_active());
+
+    // In unpopulated mode, default kickstart_rom serves synthetic boot vectors under overlay:
+    // Vector 0 ($000000..$000003): SSP = $00080000 (top of standard 512KB Chip RAM)
+    let ssp_hi = bus.read_word_debug(0x000000);
+    let ssp_lo = bus.read_word_debug(0x000002);
+    let ssp = ((ssp_hi as u32) << 16) | (ssp_lo as u32);
+    assert_eq!(ssp, 0x0008_0000);
+
+    // Vector 1 ($000004..$000007): PC = $00000000 (base of Chip RAM)
+    let pc_hi = bus.read_word_debug(0x000004);
+    let pc_lo = bus.read_word_debug(0x000006);
+    let pc = ((pc_hi as u32) << 16) | (pc_lo as u32);
+    assert_eq!(pc, 0x0000_0000);
+}

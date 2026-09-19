@@ -86,15 +86,15 @@ impl Cpu {
         self.state.pc = ((pc_hi as u32) << 16) | (pc_lo as u32);
         self.state.instruction_pc = self.state.pc;
 
-        // If reset vector points to unpopulated open bus ($FFFFFFFF) or is an unaligned odd address,
-        // normalize PC to $000000. Default SSP to top of 512KB Chip RAM ($080000) if zero/unmapped.
-        if self.state.pc == 0xFFFF_FFFF || (self.state.pc & 1) != 0 {
-            self.state.pc = 0x000000;
-            self.state.instruction_pc = 0x000000;
-        }
-        if self.state.ssp == 0xFFFF_FFFF || self.state.ssp == 0 || (self.state.ssp & 1) != 0 {
-            self.state.ssp = 0x080000;
-            self.state.set_a_long(7, self.state.ssp);
+        // Hardware M68000 Reset Vector Invariants:
+        // On real 68000 silicon, Vector 0 ($000000) is loaded into SSP and Vector 1 ($000004)
+        // is loaded into PC without any sanitization or default substitution.
+        // If the initial PC address has bit 0 set (odd address), instruction prefetch cannot
+        // proceed across the 16-bit data bus. An address error during reset exception processing
+        // triggers an immediate Double Bus Fault, halting the CPU.
+        if (self.state.pc & 1) != 0 {
+            self.state.halted = true;
+            return;
         }
 
         // Prime prefetch pipeline
@@ -103,6 +103,9 @@ impl Cpu {
         self.state.prefetch[0] = bus.read_word_debug(self.state.pc);
         self.state.pc = self.state.pc.wrapping_add(2);
         self.state.prefetch[1] = 0;
+
+        // Initiate the initial instruction descriptor immediately so CPU micro-state is fully ready
+        self.initiate_current_instruction();
     }
 
     /// Advances the global cycle counter
@@ -128,9 +131,6 @@ impl Cpu {
     #[inline(always)]
     fn ensure_instruction_ready(&mut self) -> bool {
         if self.state.micro.micro_step == 0 && self.state.micro.current_steps.is_empty() {
-            if self.state.instruction_pc == 0 {
-                self.state.instruction_pc = self.state.pc.wrapping_sub(4);
-            }
             self.initiate_current_instruction();
         }
 
