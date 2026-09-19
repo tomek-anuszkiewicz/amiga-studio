@@ -194,38 +194,6 @@ impl Blitter {
         self.bltpri = enabled;
     }
 
-    /// Synchronizes channel pointers from Agnus registers
-    #[inline]
-    pub fn sync_pointers(&mut self, apt: u32, bpt: u32, cpt: u32, dpt: u32) {
-        self.bltapt = apt;
-        self.bltbpt = bpt;
-        self.bltcpt = cpt;
-        self.bltdpt = dpt;
-    }
-
-    /// Synchronizes control registers and channel modulos from Agnus
-    #[inline]
-    pub fn sync_controls(
-        &mut self,
-        con0: u16,
-        con1: u16,
-        afwm: u16,
-        alwm: u16,
-        amod: i16,
-        bmod: i16,
-        cmod: i16,
-        dmod: i16,
-    ) {
-        self.bltcon0 = con0;
-        self.bltcon1 = con1;
-        self.bltafwm = afwm;
-        self.bltalwm = alwm;
-        self.bltamod = amod;
-        self.bltbmod = bmod;
-        self.bltcmod = cmod;
-        self.bltdmod = dmod;
-    }
-
     /// Triggers a new blit operation by writing BLTSIZE
     #[inline]
     pub fn start_blit(&mut self, bltsize: u16) {
@@ -557,12 +525,6 @@ impl Blitter {
                 self.step_area_cycle(chip_ram);
             }
         }
-    }
-
-    /// Synchronously executes an Area Blit to completion
-    #[inline]
-    pub fn execute_area_blit(&mut self, chip_ram: &mut [u8]) {
-        self.execute_blit(chip_ram);
     }
 
     /// Synchronously executes a Line Blit to completion

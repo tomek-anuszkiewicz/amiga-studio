@@ -137,12 +137,6 @@ impl Sprites {
         self.clxcon = 0xF000;
     }
 
-    /// Sets the collision control register (CLXCON)
-    #[inline]
-    pub fn set_clxcon(&mut self, val: u16) {
-        self.clxcon = val;
-    }
-
     /// Sets Sprite DMA enabled state from DMACON
     #[inline]
     pub fn set_dma_enabled(&mut self, enabled: bool) {

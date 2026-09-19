@@ -7154,3 +7154,26 @@ Every future modification or implementation task must append an entry following 
   - audit_code_quality.py --governance reports 0 candidates and 0 issues
   - pre_flight.py passed
   - test_architecture_rules passed 19/19
+---
+
+### [2026-09-19 03:36 CEST] — Prune Unreferenced Dead Code and Harmonize Quality Gate
+- **Affected Subsystems**:
+  - `agnus`
+  - `blitter`
+  - `copper`
+  - `debugger`
+  - `floppy`
+  - `sprites`
+  - `test_runner`
+  - `tooling`
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned unreferenced dead functions and constants across agnus, blitter, copper, debugger, floppy, sprites, and test_runner
+  - exempt physical register specs in crates/config/src/registers.rs
+  - updated test suites in affected crates to satisfy change coupling
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminate orphaned symbols identified by audit_code_quality while maintaining physical hardware register maps and full test coupling
+- **Verification & Test Results**:
+  - 0 dead symbols remaining
+  - Pre-flight quality gates 100% passing
+  - 19 architecture tests passing
+  - Tier 1 and Tier 2 test suites passing

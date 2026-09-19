@@ -1,7 +1,6 @@
 //! Stepping primitives and Headless Debugger Engine
 
 use crate::breakpoints::BreakpointManager;
-use crate::temporal::TemporalHistory;
 use crate::trace::TraceRingBuffer;
 use crate::{disassemble, Disassembly};
 use m68000::Cpu;
@@ -70,33 +69,6 @@ impl Debugger {
             }
             if cpu.state.halted || cpu.state.stopped {
                 return steps;
-            }
-            self.step_instruction(cpu, bus);
-            if cpu.state.halted || cpu.state.stopped {
-                return steps + 1;
-            }
-        }
-        max_instructions
-    }
-
-    /// Free-runs execution while optionally recording states into the high-capacity temporal history buffer
-    pub fn run_until_breakpoint_with_temporal(
-        &mut self,
-        cpu: &mut Cpu,
-        bus: &mut PhysicalMemory,
-        temporal: &mut TemporalHistory,
-        max_instructions: usize,
-    ) -> usize {
-        for steps in 0..max_instructions {
-            let next_pc = cpu.state.instruction_pc;
-            if self.breakpoints.check_pc_with_state(next_pc, &cpu.state) {
-                return steps;
-            }
-            if cpu.state.halted || cpu.state.stopped {
-                return steps;
-            }
-            if temporal.is_recording() {
-                temporal.record(self.current_cck, next_pc, cpu.state.ir, cpu.state.clone());
             }
             self.step_instruction(cpu, bus);
             if cpu.state.halted || cpu.state.stopped {

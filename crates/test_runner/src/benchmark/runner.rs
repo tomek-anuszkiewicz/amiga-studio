@@ -44,14 +44,6 @@ impl BenchmarkProfile {
         }
     }
 
-    pub const fn dir_name(&self) -> &'static str {
-        match self {
-            Self::Quick => "quick",
-            Self::Standard => "standard",
-            Self::Thorough => "thorough",
-        }
-    }
-
     pub const fn name(&self) -> &'static str {
         match self {
             Self::Quick => "quick",

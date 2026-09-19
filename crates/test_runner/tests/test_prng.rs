@@ -55,3 +55,12 @@ fn test_prng_buffer_filling_and_alignment() {
         assert_eq!(addr & 1, 0, "Chip RAM address must be word-aligned (even)");
     }
 }
+
+#[test]
+fn test_prng_integer_methods() {
+    let mut prng = XorShift64::default();
+    let v32 = prng.next_u32();
+    let v16 = prng.next_u16();
+    assert_ne!(v32, 0);
+    assert_ne!(v16, 0);
+}

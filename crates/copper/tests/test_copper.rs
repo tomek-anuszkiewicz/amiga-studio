@@ -4,8 +4,8 @@ use copper::{Copper, CopperState};
 #[test]
 fn test_copper_reset_and_restart() {
     let mut cop = Copper::new();
-    cop.cop1lc = 0x00040000;
-    cop.cop2lc = 0x00050000;
+    cop.set_cop1lc(0x00040000);
+    cop.set_cop2lc(0x00050000);
 
     cop.restart_list1();
     assert_eq!(cop.cop_pc, 0x00040000);

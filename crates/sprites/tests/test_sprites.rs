@@ -301,3 +301,12 @@ fn test_sprite_dma_enable_transition_and_idempotence() {
         "Falling edge must disarm channels"
     );
 }
+
+#[test]
+fn test_sprite_clxcon_initial_value() {
+    let mut sprites = Sprites::new();
+    assert_eq!(sprites.clxcon, 0xF000);
+    sprites.clxcon = 0x0000;
+    sprites.reset();
+    assert_eq!(sprites.clxcon, 0xF000);
+}

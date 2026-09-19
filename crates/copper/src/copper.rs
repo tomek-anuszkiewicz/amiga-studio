@@ -152,20 +152,6 @@ impl Copper {
         self.dma_enabled && self.is_running && !self.is_waiting
     }
 
-    /// Action method: triggers Copper restart on COP1LC address
-    #[inline]
-    pub fn strobe_jump1(&mut self, addr: u32) {
-        self.cop1lc = addr;
-        self.restart_list1();
-    }
-
-    /// Action method: triggers Copper restart on COP2LC address
-    #[inline]
-    pub fn strobe_jump2(&mut self, addr: u32) {
-        self.cop2lc = addr;
-        self.restart_list2();
-    }
-
     /// Writes COPCON control register
     #[inline]
     pub fn set_copcon(&mut self, val: u16) {

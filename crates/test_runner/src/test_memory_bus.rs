@@ -266,12 +266,6 @@ impl TestMemoryBus {
         self.address_classification.insert(addr, mem_type);
     }
 
-    /// Clears all dynamic address classifications
-    #[inline]
-    pub fn clear_address_classification(&mut self) {
-        self.address_classification.clear();
-    }
-
     #[inline]
     fn is_chip_ram_target_internal(classification: &HashMap<u32, MemoryType>, addr: u32) -> bool {
         if classification.is_empty() {

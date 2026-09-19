@@ -76,12 +76,6 @@ impl DebuggerSession {
         &self.machine.physical_memory
     }
 
-    /// Direct mutable reference to the machine's physical memory
-    #[inline]
-    pub fn bus_mut(&mut self) -> &mut PhysicalMemory {
-        &mut self.machine.physical_memory
-    }
-
     /// Captures a 256-byte snapshot of memory around `base_addr` for diff highlighting
     pub fn capture_memory_snapshot(&mut self, base_addr: u32) {
         for i in 0..256 {

@@ -103,3 +103,13 @@ fn test_ciaa_port_a_sensing_inputs() {
     // Result = 0b0000_1100 = 0x0C
     assert_eq!(controller.sample_ciaa_port_a_inputs(), 0x0C);
 }
+
+#[test]
+fn test_floppy_motor_selection() {
+    let mut controller = FloppyController::new();
+    assert!(!controller.drives[0].motor);
+    assert!(!controller.drives[0].selected);
+
+    controller.drives[0].set_motor(true);
+    assert!(controller.drives[0].motor);
+}

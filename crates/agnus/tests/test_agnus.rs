@@ -1,4 +1,4 @@
-use agnus::{Agnus, AgnusModel, PAL_LINE_CCKS};
+use agnus::{Agnus, AgnusModel, NTSC_LONG_LINE_CCKS, NTSC_SHORT_LINE_CCKS, PAL_LINE_CCKS};
 
 #[test]
 fn test_agnus_beam_progression() {
@@ -178,4 +178,11 @@ fn test_agnus_blitter_copper_step_order() {
     // Cycle 3: word phase 1 (completes)
     agnus.step_cck_ram(&mut chip_ram);
     assert!(!agnus.blitter.is_busy);
+}
+
+#[test]
+fn test_agnus_ntsc_line_ccks() {
+    assert_eq!(NTSC_SHORT_LINE_CCKS, 227);
+    assert_eq!(NTSC_LONG_LINE_CCKS, 228);
+    assert_eq!(PAL_LINE_CCKS, 227);
 }

@@ -17,8 +17,6 @@ use serde::{Deserialize, Serialize};
 pub const PAL_LINE_CCKS: u16 = 227;
 /// Total vertical scanlines per frame (PAL)
 pub const PAL_FRAME_LINES: u16 = 312;
-/// Maximum horizontal Color Clock cycles per scanline (NTSC short line)
-pub const NTSC_LINE_CCKS: u16 = 227;
 /// Short scanline length in Color Clocks (NTSC standard)
 pub const NTSC_SHORT_LINE_CCKS: u16 = 227;
 /// Long scanline length in Color Clocks (NTSC interlace LOL bit active)

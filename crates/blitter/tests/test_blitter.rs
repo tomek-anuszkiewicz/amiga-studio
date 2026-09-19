@@ -355,3 +355,11 @@ fn test_blitter_unconnected_channels_cookie_cut() {
     let written = u16::from_be_bytes([ram[0x20], ram[0x21]]);
     assert_eq!(written, 0xFFFF);
 }
+
+#[test]
+fn test_blitter_initial_state() {
+    let blit = Blitter::new();
+    assert!(!blit.is_busy);
+    assert!(!blit.dma_enabled);
+    assert_eq!(blit.bltsize, 0);
+}

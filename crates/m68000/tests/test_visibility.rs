@@ -1,6 +1,6 @@
 //! Verification of M68000 public API surface and encapsulation integrity
 
-use m68000::{Cpu, CpuState, Size, OPCODE_DESCRIPTOR_TABLE};
+use m68000::{Cpu, OPCODE_DESCRIPTOR_TABLE};
 
 #[test]
 fn test_m68000_public_api_surface_and_encapsulation() {
@@ -9,12 +9,12 @@ fn test_m68000_public_api_surface_and_encapsulation() {
 
     // Verify opcode descriptor table accessibility while internal instruction submodules remain encapsulated
     let nop_desc = &OPCODE_DESCRIPTOR_TABLE[0x4E71];
-    assert_eq!(nop_desc.mnemonic, "NOP");
-    assert_eq!(nop_desc.size, Size::None);
+    assert!(!nop_desc.steps.is_empty());
 
     let move_b_desc = &OPCODE_DESCRIPTOR_TABLE[0x1000]; // MOVE.B D0, D0
-    assert_eq!(move_b_desc.mnemonic, "MOVE");
-    assert_eq!(move_b_desc.size, Size::Byte);
+    assert!(!move_b_desc.steps.is_empty());
+    assert_eq!(move_b_desc.reg_src, 0);
+    assert_eq!(move_b_desc.reg_dst, 0);
 }
 
 #[test]

@@ -16,7 +16,6 @@ pub const TRACKS_PER_DISK: usize = (CYLINDERS_PER_DISK as usize) * (HEADS_PER_DI
 pub const SECTORS_PER_TRACK: usize = 11;
 pub const SECTOR_DATA_BYTES: usize = 512;
 pub const FORMATTED_DISK_BYTES: usize = TRACKS_PER_DISK * SECTORS_PER_TRACK * SECTOR_DATA_BYTES; // 901,120 bytes (880 KB)
-pub const STANDARD_DSKSYN: u16 = 0x4489;
 pub const DSKBYTR_DMAON: u16 = 0x4000;
 pub const DSKBYTR_DISKWRITE: u16 = 0x2000;
 pub const DSKBYTR_DATA_MASK: u16 = 0x90FF;
@@ -422,12 +421,6 @@ impl FloppyController {
             *dma_active = false;
             self.dskblk_irq = true; // Level 1 DSKBLK completion interrupt
         }
-    }
-
-    /// Triggers a disk block transfer finish interrupt strobe (DSKBLK, bit 1)
-    #[inline]
-    pub fn trigger_dskblk(&mut self) {
-        self.dskblk_irq = true;
     }
 
     /// Polls and clears the disk block DMA completion interrupt strobe

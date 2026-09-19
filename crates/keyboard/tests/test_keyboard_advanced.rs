@@ -1,7 +1,8 @@
 use keyboard::{
     Keyboard, KeyboardTransmissionState, SCANCODE_BUFFER_OVERFLOW, SCANCODE_CAPS_LOCK,
-    SCANCODE_CTRL, SCANCODE_L_AMIGA, SCANCODE_POWERUP_STREAM_END, SCANCODE_POWERUP_STREAM_START,
-    SCANCODE_RESET_WARNING, SCANCODE_R_AMIGA,
+    SCANCODE_CTRL, SCANCODE_LOST_SYNC, SCANCODE_L_AMIGA, SCANCODE_POWERUP_STREAM_END,
+    SCANCODE_POWERUP_STREAM_START, SCANCODE_RESET_WARNING, SCANCODE_R_AMIGA,
+    SCANCODE_SELF_TEST_FAILED,
 };
 
 #[test]
@@ -151,4 +152,10 @@ fn test_powerup_stream_generation() {
     assert_eq!(kbd.dequeue_scancode(), Some((0x20 << 1) & 0xFE));
     assert_eq!(kbd.dequeue_scancode(), Some(SCANCODE_POWERUP_STREAM_END));
     assert_eq!(kbd.dequeue_scancode(), None);
+}
+
+#[test]
+fn test_keyboard_protocol_codes() {
+    assert_eq!(SCANCODE_LOST_SYNC, 0xF9);
+    assert_eq!(SCANCODE_SELF_TEST_FAILED, 0xFC);
 }

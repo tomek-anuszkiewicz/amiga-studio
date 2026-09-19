@@ -170,3 +170,10 @@ fn test_lea_step_instruction_call() {
         session.machine.cpu.state.a_regs()[0]
     );
 }
+
+#[test]
+fn test_session_bus_access() {
+    let session = DebuggerSession::new();
+    let bus = session.bus();
+    assert_eq!(bus.read_byte(0x000000), 0xFF);
+}

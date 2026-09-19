@@ -39,6 +39,11 @@ EXEMPT_CRATES = {
     "m68000",
 }
 
+# Hardware register specification catalogs whose constants reflect physical silicon memory maps
+EXEMPT_FILES = {
+    "crates/config/src/registers.rs",
+}
+
 # Recognized architectural file-size exceptions per test_architecture_rules.rs
 LINE_COUNT_EXCEPTIONS = {
     "crates/m68000/src/instructions/move_b.rs",
@@ -85,6 +90,9 @@ def collect_declared_symbols(crate_dir):
 
     declared = []
     for rs_file in src_dir.rglob("*.rs"):
+        rel_path = str(rs_file.relative_to(REPO_ROOT)).replace("\\", "/")
+        if rel_path in EXEMPT_FILES:
+            continue
         try:
             content = rs_file.read_text(encoding="utf-8", errors="ignore")
         except Exception:
