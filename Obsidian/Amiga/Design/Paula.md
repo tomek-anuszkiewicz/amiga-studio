@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "paula"
 status: "active"
 created: 2026-09-06
-updated: 2026-09-12
-related: ["[Floppy.md](Floppy.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CIA.md](CIA.md)", "[SaveState.md](SaveState.md)"]
+updated: 2026-09-19
+related: ["[Floppy.md](Floppy.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CIA.md](CIA.md)", "[SaveState.md](SaveState.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/paula"
   - "crates/audio"
@@ -18,6 +18,7 @@ last_synced_date: "2026-09-19"
 
 > [!NOTE]
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 > Save state structures for Paula are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt priority arbitration (IPL 1–6) are coordinated with [Main loop A500.md](Main%20loop%20A500.md) and [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Disk controller interaction is detailed in [Floppy.md](Floppy.md), and DMA channel arbitration is handled by [Agnus.md](Agnus.md).
 
 ---
@@ -62,6 +63,15 @@ pub struct Paula {
     // ... pot counters, floppy latches, and in-flight mutation pipeline
 }
 ```
+
+### 2.2 Passive Bus Latching & Zero Direct Memory Reads Invariant
+Per [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md) and [General Architecture.md](General%20Architecture.md):
+- **Zero DMA Address Generators:** Paula contains **no DMA pointer registers and no Chip RAM address generation circuitry**. Agnus owns and increments all `AUDxPT` audio pointers and `DSKPT` disk pointers.
+- **Zero Direct Memory Reads:** Paula **never holds references to `PhysicalMemory` and never calls `memory.read()`**.
+- **Passive Data Latching via DMAL & RGA Bus:**
+  - Audio: When Paula's sample period triggers a buffer reload request, Agnus schedules audio DMA in slots 5..8, asserts `DMAL`, places the memory address onto the Chip RAM bus, and asserts `AUDxDAT` (`$0AA`, `$0BA`, `$0CA`, `$0DA`) on the internal `RGA` bus. Paula passively latches the 16-bit word off the data bus into its channel holding register.
+  - Floppy: In slot 4, Agnus transfers MFM words between Chip RAM and Paula's `DSKDAT` (`$026`) holding register over the shared data bus.
+- **Prohibition of Direct Inter-Chip Smuggling:** Paula never directly calls methods on Agnus, Denise, or CPU. All interactions (such as `AUDxDSR` pointer reload strobes and interrupt requests) model physical electric pins coordinated by the machine loop.
 
 ---
 

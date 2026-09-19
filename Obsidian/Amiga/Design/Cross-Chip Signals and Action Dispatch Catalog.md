@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-19
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 ---
 
@@ -16,6 +16,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md
 - **Subsystem Specifications:** [MemoryBus.md](MemoryBus.md) | [Agnus.md](Agnus.md) | [Denise.md](Denise.md) | [Paula.md](Paula.md) | [CIA.md](CIA.md) | [Floppy.md](Floppy.md)
 - **Companion Register Matrix:** [Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)
 - **Hardware Quirks Index:** [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)
+- **Operational Rule:** [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md)
 
 ---
 
@@ -27,6 +28,18 @@ In the Amiga 500 hardware architecture, cross-chip communication does not use a 
 > **The Closed-Set Invariant:**
 > Over 90% of custom register writes stay entirely within the silicon boundaries of the chip that owns them (e.g. palette colors stay in Denise, audio volume stays in Paula).
 > Only a strictly finite set of ~8 to 10 hardware signals ever cross physical chip boundaries to influence another subsystem.
+
+### 1.1 Prohibition of Direct Inter-Chip Shortcuts ("No Signal Smuggling")
+
+Emulation code must strictly adhere to the physical bus and signal model:
+1. **Zero Direct Inter-Chip Coupling:** Subsystems (`Agnus`, `Denise`, `Paula`, `CIA`, `CPU`) must **never** hold direct references or invoke mutating methods directly on one another.
+2. **Agnus Bus Mastership:** Agnus is the **sole DMA address generator** for Chip RAM. It owns all DMA pointers (`BPLxPT`, `SPRxPT`, `AUDxPT`, `DSKPT`, `COPxLC`, `BLTxPT`).
+3. **Passive Data Latching (Zero Direct Memory Reads in Denise & Paula):**
+   - Specialized chips never call `memory.read()` or hold slices into Chip RAM.
+   - Agnus drives the Chip RAM address and the internal Register Address (`RGA`) bus.
+   - The memory bus outputs the 16-bit word onto the shared data bus.
+   - The receiving chip (`Denise` for `BPLxDAT`/`SPRxDAT`, `Paula` for `AUDxDAT`/`DSKDAT`) passively latches the word from the data bus upon matching its `RGA` strobe.
+4. **Discrete Electronic Lines:** Cross-chip triggers (`DMAL`, `_BLITINT`, `AUDxDSR`, `_VSYNC`, `_HSYNC`, IPL) model physical copper traces routed via the top-level machine loop and memory bus.
 
 This catalog establishes the definitive inventory of cross-chip boundary signals, their calibrated propagation latencies, conflict resolution behavior during in-flight writes, and their target action methods.
 

@@ -7274,3 +7274,29 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: 100% compliant.
   - `python tools/harness/audit_code_quality.py --all`: 0 dead, 0 zombies, 0 visibility leaks, 0 file size/stale exception violations.
 
+---
+
+### [2026-09-19 10:52 CEST] — Hardware Bus Topology & Inter-Chip Signal Isolation Invariant
+- **Affected Subsystems**:
+  - `.agents/rules/hardware-bus-topology.md`: Created dedicated operational rule governing physical bus topology and signal boundaries.
+  - `AGENTS.md`: Indexed rule in Section 1 and updated Section 2 item 3 (Agnus DMA address mastership and zero signal smuggling).
+  - `Obsidian/Amiga/Design/General Architecture.md`: Added Section 1.1 detailing the 3-bus architecture (Chip RAM Address Bus, RGA Bus, Shared Data Bus) and strict prohibition of direct inter-chip shortcuts.
+  - `Obsidian/Amiga/Design/Cross-Chip Signals and Action Dispatch Catalog.md`: Codified Section 1.1 on prohibition of direct inter-chip simulation and the physical bus strobe model.
+  - `Obsidian/Amiga/Design/MemoryBus.md`: Formalized Custom Chip DMA Bus Signaling with full RGA Bus and passive data latching specifications.
+  - `Obsidian/Amiga/Design/Agnus.md`: Added Section 5.0 establishing Agnus as the exclusive DMA address master and RGA bus driver.
+  - `Obsidian/Amiga/Design/Denise.md`: Added Section 2.2 establishing Denise as a passive bus latch receiver with zero direct memory reads.
+  - `Obsidian/Amiga/Design/Paula.md`: Added Section 2.2 establishing Paula as a passive bus latch receiver with zero direct memory reads.
+- **What Was Changed (The Concrete Reality)**:
+  - Codified the core hardware invariant:
+    1. *Prohibition of Direct Inter-Chip Shortcuts:* Custom chips (`Agnus`, `Denise`, `Paula`, `CIAs`, `CPU`) must never call peer methods directly, pass shared mutable state, or bypass motherboard bus lines.
+    2. *Agnus as Sole DMA Address Generator:* All Chip RAM DMA pointer registers (`BPLxPT`, `SPRxPT`, `AUDxPT`, `DSKPT`, `COPxLC`, `BLTxPT`) are owned and incremented exclusively by Agnus. Agnus places memory addresses onto the Chip RAM address bus and simultaneously drives the internal Register Address (`RGA8..1`) bus during assigned horizontal scanline DMA slots.
+    3. *Passive Data Latching in Specialized Chips:* Specialized chips (`Denise`, `Paula`) contain zero DMA address generators and never directly read or write `PhysicalMemory`. They passively latch data words off the shared 16-bit data bus when Agnus asserts their assigned `RGA` register strobes (`BPLxDAT`, `SPRxDAT`, `AUDxDAT`, `DSKDAT`).
+    4. *Discrete Signal Lines:* Cross-chip lines (`DMAL`, `_BLITINT`, `AUDxDSR`, `_VSYNC`, `_HSYNC`, IPL) model physical copper traces routed via the machine coordinator.
+- **Architectural Rationale & Trade-Offs**:
+  - Direct software shortcuts (e.g. specialized chips reaching into memory or invoking peer methods) violate physical electronic causality, break cycle-exact DMA contention modeling ($C = C_0 + 2 \times \text{wait\_states}$)\), and make save state serialization fragile. Enforcing physical bus boundaries ensures that chip implementations accurately reflect real hardware silicon.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: 20/20 tests passed.
+  - `python tools/harness/pre_flight.py`: 100% compliant (`AGENTS.md` at 13,525 bytes, strictly $\le 14,000$ B).
+  - `cargo fmt --all -- --check`: 100% compliant.
+
+

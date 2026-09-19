@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "agnus"
 status: "active"
 created: 2026-09-06
-updated: 2026-09-14
-related: ["[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Denise.md](Denise.md)"]
+updated: 2026-09-19
+related: ["[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Denise.md](Denise.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/agnus"
   - "crates/copper"
@@ -20,6 +20,7 @@ last_synced_date: "2026-09-19"
 
 > [!NOTE]
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 > Save state structures for Agnus are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt delivery are governed by [Main loop A500.md](Main%20loop%20A500.md). Video synchronization is coordinated with [Denise.md](Denise.md) and DMA audio/disk cycles with [Paula.md](Paula.md).
 
 ---
@@ -233,6 +234,12 @@ flowchart LR
     SLOTS --> EVEN["Even Slots (0, 2, 4..52):\nReserved for 68000 CPU"]
     SLOTS --> RESID["Remaining Even/Odd Slots:\nCopper, Blitter, CPU"]
 ```
+
+### 5.0 Exclusive DMA Address Mastership & RGA Bus Driver Invariant
+Per [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md) and [General Architecture.md](General%20Architecture.md), Agnus is the **sole bus master and memory address generator** for Chip RAM DMA.
+- **Ownership of DMA Pointers:** Agnus owns and manages all pointer registers: `BPLxPT` (Bitplanes 1..6), `SPRxPT` (Sprites 0..7), `AUDxPT` (Audio 0..3), `DSKPT` (Floppy Disk), `COPxLC` (Copper), and `BLTxPT` (Blitter channels A..D).
+- **Bus Driving Mechanics:** On each active DMA slot, Agnus places the memory address onto the Chip RAM address bus and asserts the target register offset on the internal Register Address (`RGA8..1`) bus.
+- **Zero Memory Access in Target Chips:** Peer chips (`Denise`, `Paula`) contain **zero DMA address generation logic and zero direct references to `PhysicalMemory`**. They passively latch incoming words from the shared data bus upon matching their assigned `RGA` strobe. Direct method calls or memory reads between peer chips are strictly prohibited.
 
 ### 5.1 8-Tier Master DMA Priority Hierarchy
 Agnus resolves bus mastership on every single Color Clock cycle according to a strict 8-tier priority hierarchy (Commodore HRM Figure 6-9):

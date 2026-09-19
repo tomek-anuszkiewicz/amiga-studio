@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-09-12
-related: ["[Agnus.md](Agnus.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Joystick.md](Joystick.md)", "[Mouse.md](Mouse.md)"]
+updated: 2026-09-19
+related: ["[Agnus.md](Agnus.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Joystick.md](Joystick.md)", "[Mouse.md](Mouse.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/denise"
   - "crates/sprites"
@@ -19,6 +19,7 @@ last_synced_date: "2026-09-19"
 
 > [!NOTE]
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 > Detailed game port pinouts and host input bindings are documented in [Joystick.md](Joystick.md) and [Mouse.md](Mouse.md). Raster beam tracking is driven by [Agnus.md](Agnus.md), and display output feeds the frontend in [GUI.md](GUI.md) and [GUI Specification.md](GUI%20Specification.md).
 
 ---
@@ -60,6 +61,13 @@ pub struct Denise {
     // ... collision registers, window coordinates, and in-flight mutation pipeline
 }
 ```
+
+### 2.2 Passive Bus Latching & Zero Direct Memory Reads Invariant
+Per [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md) and [General Architecture.md](General%20Architecture.md):
+- **Zero DMA Address Generators:** Denise contains **no DMA pointer registers and no address generation circuitry**. All bitplane pointers (`BPLxPT`) and sprite pointers (`SPRxPT`) physically reside inside Agnus.
+- **Zero Direct Memory Reads:** Denise **never holds a reference to `PhysicalMemory` and never executes `memory.read()`**.
+- **Passive Data Latching:** During bitplane and sprite DMA time slots, Agnus drives the Chip RAM address and asserts `BPLxDAT` (`$110`..`$11A`) or `SPRxDAT`/`POS`/`CTL` (`$140`..`$17E`) on the internal `RGA` bus. Denise passively latches the 16-bit word off the shared data bus into its holding registers (`write_bpldat`, `sprites.write_reg`).
+- **Prohibition of Direct Inter-Chip Smuggling:** Denise never directly calls methods on Agnus, Paula, or CPU. All synchronization occurs through beam coordinates and bus strobes routed by the top-level machine coordinator.
 
 ---
 

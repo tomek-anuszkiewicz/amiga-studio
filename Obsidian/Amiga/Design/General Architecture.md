@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-16
+updated: 2026-09-19
 related: ["[Main loop A500.md](Main%20loop%20A500.md)", "[Game Ports.md](Game%20Ports.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Testing Strategy and Quality Assurance.md](Testing%20Strategy%20and%20Quality%20Assurance.md)"]
 ---
 
@@ -14,6 +14,7 @@ related: ["[Main loop A500.md](Main%20loop%20A500.md)", "[Game Ports.md](Game%20
 
 > [!NOTE]
 > Project-wide engineering constraints, Rust coding guidelines, and WASM requirements are defined in [AGENTS.md](../../../AGENTS.md).
+> Detailed inter-chip signal propagation rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md) and [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md).
 
 ---
 
@@ -21,7 +22,7 @@ related: ["[Main loop A500.md](Main%20loop%20A500.md)", "[Game Ports.md](Game%20
 
 The emulator is organized around a top-level machine struct named A500, which owns all subsystems and manages coordination without circular handles:
 
-`mermaid
+```mermaid
 graph TD
     A500["A500 Machine Loop"] --> CPU["CPU (Motorola 68000)"]
     A500 --> BUS["MemoryBus (24-bit / 16-bit)"]
@@ -34,11 +35,57 @@ graph TD
 
     BUS <--> AGNUS
     BUS <--> CPU
-`
+```
 
 - **Top-Level Machine (A500)**: Controls stepping (single CCK, multi-cycle, or full video frame), reset lines, and interrupt priority arbitration (IPL 1–6).
 - **Decoupled Modules**: Subsystems do not hold references or callbacks to one another; signals and bus requests are driven in the main machine loop and MemoryBus.
 - **Circuit Simulation & Signal Propagation**: Hardware components model physical circuit delay. Changes to register latches take effect on subsequent clock phases/cycles rather than propagating instantaneously across chips.
+
+### 1.1 Physical Bus Topology & Inter-Chip Isolation Invariant
+
+In the physical Commodore Amiga 500 architecture, custom chips do not share an open software memory bus, nor do they communicate via dynamic callbacks or mutual references. The system strictly adheres to three immutable physical hardware rules:
+
+```mermaid
+flowchart TD
+    subgraph AGNUS_BLOCK ["Agnus (Exclusive Bus Master & Address Generator)"]
+        AGNUS_DMA["DMA Channel Pointers\n(BPLxPT, SPRxPT, AUDxPT, DSKPT)"]
+        RGA_GEN["Register Address Generator\n(RGA8..1 Bus Driver)"]
+    end
+
+    subgraph BUSES ["Physical Motherboard Bus Infrastructure"]
+        ADDR_BUS["Chip RAM Address Bus (DRA19..0)"]
+        RGA_BUS["Internal RGA Bus (RGA8..1)"]
+        DATA_BUS["16-bit Bidirectional Data Bus (D15..0)"]
+    end
+
+    subgraph MEM ["Physical Memory"]
+        CRAM["Chip RAM (512 KB / 1 MB)"]
+    end
+
+    subgraph RECEIVERS ["Specialized Custom Chips (Passive Bus Latchers)"]
+        DENISE["Denise\nLatches BPLxDAT, SPRxDAT\n(Zero Direct Memory Reads)"]
+        PAULA["Paula\nLatches AUDxDAT, DSKDAT\n(Zero Direct Memory Reads)"]
+    end
+
+    AGNUS_DMA -->|Drives Memory Address| ADDR_BUS
+    RGA_GEN -->|Drives Register Offset| RGA_BUS
+    ADDR_BUS --> CRAM
+    CRAM -->|Places Word onto Bus| DATA_BUS
+    RGA_BUS -->|Strobe Match| DENISE
+    RGA_BUS -->|Strobe Match / DMAL| PAULA
+    DATA_BUS -->|Latched by Strobe| DENISE
+    DATA_BUS -->|Latched by Strobe| PAULA
+```
+
+1. **Strict Prohibition of Direct Cross-Chip Signal Smuggling:**
+   - Custom chips (`Agnus`, `Denise`, `Paula`, `CIAs`, `CPU`) **must never** hold direct pointers or invoke mutating methods directly on each other.
+   - All inter-chip interactions (DMA requests, interrupt lines, blanking, strobes) represent physical copper PCB traces coordinated through the machine loop and `MemoryBus`.
+2. **Agnus as the Exclusive DMA Address Master:**
+   - Agnus is the **sole bus master and address generator** for all autonomous Chip RAM DMA channels (Bitplanes, Sprites, Audio, Floppy Disk, Copper, and Blitter).
+   - Agnus places the memory address onto the Chip RAM address bus and simultaneously asserts the target custom register offset onto the internal Register Address (`RGA`) bus.
+3. **Specialized Custom Chips as Passive Bus Latchers (Zero Direct Memory Reads):**
+   - Neither **Denise** nor **Paula** possesses DMA address generation circuits, and neither holds pointers to `PhysicalMemory`.
+   - Specialized chips **never initiate autonomous memory reads**. During an assigned DMA slot, the memory system reads the 16-bit word from Chip RAM onto the shared data bus, and the receiving chip passively latches the word into its internal holding register (`BPLxDAT`, `SPRxDAT`, `AUDxDAT`, `DSKDAT`) upon matching its `RGA` strobe.
 
 ---
 

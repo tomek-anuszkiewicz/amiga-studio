@@ -212,14 +212,18 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
 - **The "Slow RAM" Trade-Off:** It has the speed disadvantages of Chip RAM (bus contention stalls), but none of the privileges (no chipset DMA visibility). Only the 68000 CPU can use it for program code and variables. *(On ECS Agnus 8372A with A500 Rev 6A motherboard jumper JP2 reconfigured, this physical RAM is remapped to `$080000-$0FFFFF`, promoting it to true 1 MB Chip RAM).*
 - **Intrinsic Bank Contention:** In Solution B, `SLOW_RAM_HANDLER` and `CHIP_RAM_HANDLER` check `bus.chip_ram_blocked` and return `BusResult::WaitState` directly within their handler functions, while `FAST_RAM_HANDLER` and `KICKSTART_ROM_HANDLER` never inspect contention. Bus arbitration queries `is_chip_ram_target(addr)` in $O(1)$ by matching the bank classification without runtime range checks.
 
-### Paula & Custom Chip DMA Bus Signaling (DMAL & RGA Bus)
-- **Agnus as Master DMA Scheduler:** Paula contains no autonomous DMA bus master or address generation circuits. Agnus acts as the master DMA address generator and bus arbiter for the entire system.
-- **Dedicated Time Slots:** On every horizontal scanline, Agnus allocates fixed memory cycles: `CCK 4` (Floppy Disk DMA) and `CCK 5..8` (Audio Channels 0, 1, 2, 3).
-- **Physical Signalling Pins:**
+### Custom Chip DMA Bus Signaling (DMAL & RGA Bus Architecture)
+- **Agnus as Exclusive DMA Address Generator:** Paula, Denise, and CIA contain no autonomous DMA bus master or address generation circuits. Agnus acts as the exclusive DMA address generator and bus arbiter for the entire system, owning all pointers (`BPLxPT`, `SPRxPT`, `AUDxPT`, `DSKPT`, `COPxLC`, `BLTxPT`).
+- **Physical Signalling & Bus Lines:**
+  - **`DRA19..0` (Chip RAM Address Bus):** Agnus places the memory address onto the Chip RAM multiplexed address lines during the assigned DMA slot.
+  - **`RGA(8:1)` (Register Address Bus — Denise & Paula pins):** Agnus drives the target custom register offset on the internal Register Address bus:
+    - When `RGA` corresponds to `BPL1DAT`..`BPL6DAT` (`$110`..`$11A`), **Denise** latches the 16-bit bitplane word from the shared data bus (`D15..D0`).
+    - When `RGA` corresponds to `SPR0DAT`/`SPR0POS`..`SPR7DAT`/`SPR7CTL` (`$140`..`$17E`), **Denise** latches the 16-bit sprite data word from the shared data bus.
+    - When `RGA` corresponds to `AUD0DAT`..`AUD3DAT` (`$0AA`, `$0BA`, `$0CA`, `$0DA`), **Paula** latches the 16-bit audio sample word from the shared data bus into the respective audio channel holding latch.
+    - When `RGA` corresponds to `DSKDAT` (`$026`), **Paula** transfers a 16-bit word between the floppy MFM serializer/deserializer and the data bus.
   - **`DMAL` (DMA Line — Paula pin 12):** Agnus asserts `DMAL` to notify Paula that the current bus cycle is dedicated to a Paula DMA transfer.
-  - **`RGA(8:1)` (Register Address Bus — Paula pins 19..26):** Agnus drives the target custom register offset on the internal Register Address bus:
-    - When `RGA` corresponds to `AUD0DAT`..`AUD3DAT` (`$0AA`, `$0BA`, `$0CA`, `$0DA`), Paula latches the 16-bit word from the shared data bus (`DRD15..DRD0`) into the respective audio channel holding latch.
-    - When `RGA` corresponds to `DSKDAT` (`$026`), Paula transfers a 16-bit word between the floppy MFM serializer/deserializer and the data bus.
+- **Strict Invariant (Zero Direct Memory Reads in Specialized Chips):** Neither Denise nor Paula holds references to `PhysicalMemory` or calls `memory.read()`. They are strictly passive bus latchers triggered by Agnus-driven memory and RGA bus cycles.
+- **Prohibition of Direct Inter-Chip Shortcuts:** Direct method calls, shared state, or synthetic backchannels between custom chips are forbidden; all inter-chip coordination models physical bus lines per [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 
 ### DMA Arbitration Fields
 Expose raw field to simulate Agnus cycle stealing directly with zero method overhead:
