@@ -53,6 +53,13 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Zero Inline Tests:** `#[cfg(test)] mod tests` in production `src/` files is strictly forbidden.
 - **1:1 Multi-Module Parity:** Multi-module crates maintain dedicated unit test files mirroring submodules.
 
+### Pillar 7: Path Privacy & Host Isolation (`--path-privacy`)
+- **Zero Hardcoded Paths:** Verifies zero host/user paths (e.g. `D:\...`, `/home/...`) in workspace code per [`.agents/rules/no-external-paths.md`](../../rules/no-external-paths.md).
+
+### Pillar 8: Condition Soup & Explaining Variables (`--conditions`)
+- **Self-Documenting Boolean Logic:** Scans for dense compound conditionals (`if (a || b) && c && d`) that should be decomposed into named explaining variables (`let is_ready = ...;`) or domain predicate methods per [`.agents/rules/performance-and-readability.md`](../../rules/performance-and-readability.md).
+- **Prohibition of Multi-Clause Clutter:** Flags conditionals with mixed nested operators or $\ge 3$ connectives to ensure code reads like declarative hardware specification prose.
+
 ---
 
 ## 3. CLI Audit Workflow
@@ -78,6 +85,9 @@ python tools/harness/audit_code_quality.py --antipatterns
 
 # Audit external test suite organization
 python tools/harness/audit_code_quality.py --tests
+
+# Audit condition soup and boolean clarity
+python tools/harness/audit_code_quality.py --conditions
 
 # Machine-readable JSON export
 python tools/harness/audit_code_quality.py --all --json > quality_report.json

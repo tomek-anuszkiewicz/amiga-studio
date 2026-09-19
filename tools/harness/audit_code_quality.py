@@ -631,8 +631,86 @@ def scan_path_privacy(target_crate=None):
     return issues
 
 
+def scan_condition_soup(target_crate=None):
+    """
+    Scans crate source files for complex, multi-clause compound boolean conditionals
+    (e.g. mixed nested &&/|| with parentheses or >= 3 boolean operators) that lack
+    explaining variables per .agents/rules/performance-and-readability.md.
+    """
+    crates = (
+        [CRATES_DIR / target_crate]
+        if target_crate
+        else [p for p in CRATES_DIR.iterdir() if p.is_dir() and (p / "Cargo.toml").exists()]
+    )
+    issues = []
+
+    exempt_files = {
+        "crates/cpu/src/micro/dispatch_table.rs",
+    }
+
+    for c in crates:
+        src_dir = c / "src"
+        if not src_dir.exists():
+            continue
+
+        for f in src_dir.rglob("*.rs"):
+            rel = f.relative_to(REPO_ROOT).as_posix()
+            if rel in exempt_files:
+                continue
+
+            try:
+                content = f.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+
+            # Strip comments to avoid false positives on commented logic
+            clean_lines = []
+            in_block_comment = False
+            for line in content.splitlines():
+                if in_block_comment:
+                    if "*/" in line:
+                        in_block_comment = False
+                        line = line.split("*/", 1)[1]
+                    else:
+                        clean_lines.append("")
+                        continue
+                if "/*" in line and "*/" not in line:
+                    in_block_comment = True
+                    line = line.split("/*", 1)[0]
+                elif "//" in line:
+                    line = line.split("//", 1)[0]
+                clean_lines.append(line)
+
+            clean_text = "\n".join(clean_lines)
+
+            for m in re.finditer(r'\b(if|while)\s+([^\{]+)\{', clean_text):
+                cond = m.group(2).strip()
+                if cond.startswith("let ") or "let " in cond:
+                    continue
+
+                and_count = cond.count("&&")
+                or_count = cond.count("||")
+                has_mixed_nesting = "(" in cond and and_count >= 1 and or_count >= 1
+
+                if and_count + or_count >= 3 or has_mixed_nesting:
+                    line_idx = content[: m.start()].count("\n") + 1
+                    first_line = cond.split("\n")[0].strip()
+                    issues.append({
+                        "type": "compound_condition_soup",
+                        "file": rel,
+                        "line": line_idx,
+                        "keyword": m.group(1),
+                        "snippet": first_line[:80],
+                        "recommendation": "Decompose compound boolean condition into named explaining variables or domain predicate methods.",
+                    })
+
+    return issues
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, inlining guidelines, antipatterns, test suites, and path privacy.")
+    parser = argparse.ArgumentParser(
+        description="Audit dead code, minimum visibility leaks, SRP cohesion, inlining guidelines, antipatterns, test suites, path privacy, and boolean conditions."
+    )
     parser.add_argument("--all", action="store_true", help="Run all code quality audits")
     parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
     parser.add_argument("--visibility", action="store_true", help="Run least visibility scanner")
@@ -641,12 +719,23 @@ def main():
     parser.add_argument("--antipatterns", action="store_true", help="Run macro and const-generic antipattern checks")
     parser.add_argument("--tests", action="store_true", help="Run external test suite and inline test scanner")
     parser.add_argument("--path-privacy", action="store_true", help="Run path privacy and host isolation scanner")
+    parser.add_argument("--conditions", action="store_true", help="Run condition soup & boolean clarity scanner")
     parser.add_argument("--crate", help="Filter audit to a specific crate")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     args = parser.parse_args()
 
     # Default to --all if no specific mode selected
-    if not (args.all or args.dead_code or args.visibility or args.srp or args.inlining or args.antipatterns or args.tests or args.path_privacy):
+    if not (
+        args.all
+        or args.dead_code
+        or args.visibility
+        or args.srp
+        or args.inlining
+        or args.antipatterns
+        or args.tests
+        or args.path_privacy
+        or args.conditions
+    ):
         args.all = True
 
     dead, zombies = ([], [])
@@ -677,6 +766,10 @@ def main():
     if args.all or args.path_privacy:
         privacy_issues = scan_path_privacy(args.crate)
 
+    condition_issues = []
+    if args.all or args.conditions:
+        condition_issues = scan_condition_soup(args.crate)
+
     if args.json:
         out = {
             "dead_code": dead,
@@ -687,6 +780,7 @@ def main():
             "antipattern_issues": antipattern_issues,
             "test_suite_issues": test_suite_issues,
             "path_privacy_issues": privacy_issues,
+            "condition_issues": condition_issues,
         }
         print(json.dumps(out, indent=2))
         return
@@ -767,8 +861,24 @@ def main():
             for issue in privacy_issues:
                 print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} (found '{issue['pattern']}') -> {issue['recommendation']}")
 
+    if args.all or args.conditions:
+        print(f"\n[8. CONDITION SOUP & SELF-DOCUMENTING BOOLEAN LOGIC]")
+        if not condition_issues:
+            print("  - Status: [PASS] All conditionals use clean explaining variables and domain predicates.")
+        else:
+            print(f"  - Status: [WARN] {len(condition_issues)} compound condition(s) detected without explaining variables:")
+            for issue in condition_issues[:15]:
+                print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} (`{issue['keyword']}`) -> {issue['snippet']}")
+                print(f"      -> {issue['recommendation']}")
+            if len(condition_issues) > 15:
+                print(f"    * ... and {len(condition_issues) - 15} more")
+
     print("\n" + "=" * 76)
-    print(f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(inlining_issues)} inlining issues, {len(antipattern_issues)} antipattern issues, {len(test_suite_issues)} test suite issues, {len(privacy_issues)} path privacy issues.")
+    print(
+        f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, "
+        f"{len(srp_issues)} cohesion issues, {len(inlining_issues)} inlining issues, {len(antipattern_issues)} antipattern issues, "
+        f"{len(test_suite_issues)} test suite issues, {len(privacy_issues)} path privacy issues, {len(condition_issues)} condition soup issues."
+    )
     print("=" * 76)
 
 

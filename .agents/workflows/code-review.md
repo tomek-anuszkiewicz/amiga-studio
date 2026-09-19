@@ -59,6 +59,7 @@ Audit the diff against the guidelines in `AGENTS.md`:
 - [ ] Zero allocations: no `Vec`, `Box`, `String`, or `format!` in `step()`, `step_cck()`, or memory paths.
 - [ ] Endianness Bypass: bitwise operations (`AND`, `OR`, `EOR`, `NOT`, `CLR`) avoid redundant byte swapping in hot loops.
 - [ ] **Readability, Zero Macros & No Const-Generic Handlers**: code is clean, idiomatic Rust, self-documenting, completely free of custom macros (`macro_rules!`), and free of const-generic handler matrices (`<const N: ...>`) in favor of concrete specialized functions.
+- [ ] **Self-Documenting Boolean Logic**: compound boolean conditions (`if (a || b) && c && d`) are decomposed into named explaining variables (`let is_ready = ...;`) or domain predicate methods, with zero raw condition soup.
 
 ### C. Inlining Strategy
 - [ ] `#[inline]` on public accessors, single-expression helpers, forwarding wrappers, and cross-crate conversions.

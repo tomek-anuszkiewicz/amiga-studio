@@ -44,6 +44,7 @@ High performance must **NEVER** be an excuse for unreadable, cryptic, or spaghet
 3. **Strict Prohibition of User-Defined Macros (`macro_rules!` Forbidden):** Custom macros are strictly forbidden across the codebase. In the era of LLMs, code generation is cheap, eliminating the historical need for macro deduplication. Macros break IDE code navigation (Go to Definition, Find References, Call Hierarchy), obscure call sites, produce confusing compiler diagnostics, and add unnecessary mental complexity. All repetitive code, static dispatch tables, and handlers must be written as explicit, self-documenting Rust functions, direct calls, or standard `const fn` arrays.
 4. **Prohibition of Const-Generic Functions with Constant Parameters:** Using generic functions where generic parameters are constants (e.g. `fn op_foo<const S: usize, const M: usize>(...)`) is forbidden for instruction handlers, decoding, and core execution paths. Const-generic combinatorics obscure concrete execution flow, complicate backtraces and interactive debugging, and introduce cognitive overhead. In the era of LLMs, code generation is cheap—write explicit, concrete, specialized functions or direct flattened control flows instead of abstract const-generic templates.
 5. **Self-Documenting Code:** Write code that reads like hardware specifications. A developer reading the CPU or Blitter core should immediately understand the circuit intent.
+6. **Self-Documenting Boolean Logic & Prohibition of Condition Soup:** Multi-clause compound boolean conditions (`if (a || b) && c && d`) force readers to mentally reverse-engineer circuit states and are strictly prohibited in control flow. Decompose compound conditionals into named local boolean bindings (`let step_has_work = ...; let step_completed = ...;`) or lightweight `#[inline(always)]` domain predicate methods (`step.has_work()`, `self.is_active()`). Control flow statements must read like declarative prose (`if step_has_work && step_completed && sequence_did_not_branch { ... }`). Accompany non-obvious silicon hardware states with concise 1-line comments explaining the *hardware rule*, not just restating the syntax.
 
 ---
 
@@ -59,6 +60,7 @@ During `/code-review`, verify:
 - [ ] Are dual-memory instructions (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`) using `addr1` and `addr2` with direct `WRITE_ADDR2_*` writes and zero scratch juggling / `destination >>= 16`?
 - [ ] For word and long dual-memory operations, is destination address calculation deferred to CCK2 of the source read to guarantee hardware Address Error invariance?
 - [ ] Are ALU and effective address calculations fused onto 2-clock CCK phases (`alu_fn`) rather than using zero-clock dispatch steps?
+- [ ] Are compound boolean conditions decomposed into named explaining variables or domain predicate methods, with zero raw condition soup?
 - [ ] Is the code clear, well-structured, self-documenting, and free of cryptic tricks?
 
 ---

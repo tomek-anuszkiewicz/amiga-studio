@@ -7772,6 +7772,22 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p agnus`: All 2 test suites (22 tests) passed.
   - `cargo test -p test_runner --test test_dma_cartesian`: All 19 Cartesian DMA contention permutation sweeps passed (39.07s).
 
+---
+
+### [2026-09-19 15:05 CEST] — Institutionalized Self-Documenting Boolean Logic Across Rules, Skills, and Automated Quality Audits
+
+- **Files Modified**:
+  - `.agents/rules/performance-and-readability.md`: Added Section 3.6 explicitly prohibiting compound condition soup (`if (a || b) && c && d`) and mandating named explaining variables or `#[inline(always)]` domain predicate methods. Added review checklist gate in Section 4.
+  - `.agents/workflows/code-review.md`: Embedded Self-Documenting Boolean Logic review gate in Section 2.B of the Code Review Checklist.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Formally codified Pillar 7 (Path Privacy) and Pillar 8 (Condition Soup & Explaining Variables) under `--conditions` in the audit playbook.
+  - `tools/harness/audit_code_quality.py`: Implemented `scan_condition_soup()` detecting nested mixed operators and multi-clause boolean expressions ($\ge 3$ connectives) lacking explaining variables. Wired into `--conditions`, `--all`, and JSON reporting.
+- **Architectural Rationale & Trade-Offs**:
+  - *Full Quality Loop:* Standardizing clean boolean logic requires a complete feedback loop: codifying the invariant in the operational rule, enforcing it during manual/agentic reviews (`/code-review`), and providing an automated sentinel in the quality auditor (`audit_code_quality.py --conditions`) so that complex condition soup cannot silently accumulate in the codebase.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_code_quality.py --conditions`: Verified scanner execution across all workspace crates (identified 24 candidate locations across legacy modules).
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly.
+
+
 
 
 
