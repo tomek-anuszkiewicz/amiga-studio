@@ -7320,3 +7320,30 @@ Every future modification or implementation task must append an entry following 
 
 
 
+---
+
+### [2026-09-19 11:20 CEST] — Tripartite Quality Auditing Deconstruction (audit-code-quality, audit-docs-quality, audit-hardware-quality)
+- **Affected Subsystems**:
+  - `tools/harness`
+  - `.agents/workflows`
+  - `.agents/skills`
+  - `docs`
+- **What Was Changed (The Concrete Reality)**:
+  - Decomposed monolithic audit-code-quality into three orthogonal domain-specific quality auditors:
+  - 1. audit-code-quality (tools/harness/audit_code_quality.py): Focused strictly on Rust code quality (dead code, test zombies, minimum visibility, SRP / 800-line ceilings, inlining guidelines, macro/const-generic prohibitions, external test suite parity)
+  - 2. audit-docs-quality (tools/harness/audit_docs_quality.py): Dedicated documentation and agent governance auditor (Obsidian design doc sync & code drift, vault link integrity, constitutional size ceilings AGENTS.md <= 14KB & rules <= 23KB, skills catalog sync docs/ai_agents.md, two-way script locality, workflow-skill governance, YAML frontmatter compliance)
+  - 3. audit-hardware-quality (tools/harness/audit_hardware_quality.py): Dedicated hardware architectural and silicon fidelity auditor (bus topology, Agnus DMA address mastership, passive chip latching, zero inter-chip signal smuggling, CCK stepping, floating open bus 0xFF, Big-Endian safety, dual staging registers, Tier 2 integration coverage)
+  - Created companion workflows (.agents/workflows/audit-docs-quality.md, .agents/workflows/audit-hardware-quality.md) and skills (.agents/skills/audit-docs-quality/SKILL.md, .agents/skills/audit-hardware-quality/SKILL.md)
+  - Updated docs/ai_agents.md, AGENTS.md, and sync-design-docs to connect with the decoupled toolchain.
+- **Architectural Rationale & Trade-Offs**:
+  - Clear separation of concerns: code analysis
+  - documentation governance
+  - and hardware circuit fidelity have fundamentally different lifecycles and validation targets. Decoupling them allows fast
+  - targeted audits during feature implementation
+  - documentation updates
+  - or hardware timing reviews.
+- **Verification & Test Results**:
+  - All 3 auditing tools pass cleanly (0 issues in audit-docs-quality
+  - 0 issues in audit-hardware-quality
+  - 0 dead code/zombies/visibility leaks in audit-code-quality). All 20 architecture tests passed in test_architecture_rules
+  - pre_flight.py 100% compliant.

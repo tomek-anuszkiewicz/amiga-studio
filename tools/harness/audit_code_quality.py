@@ -433,470 +433,178 @@ def scan_srp_and_cohesion(target_crate=None):
     return violations
 
 
-def check_skills_catalog_sync():
-    """Verifies that all skills in .agents/skills/ are documented in docs/ai_agents.md."""
-    skills_dir = REPO_ROOT / ".agents" / "skills"
-    ai_agents_doc = REPO_ROOT / "docs" / "ai_agents.md"
-
-    if not skills_dir.exists() or not ai_agents_doc.exists():
-        return {"actual_count": 0, "documented_count": 0, "issues": []}
-
-    actual_skills = {p.name for p in skills_dir.iterdir() if p.is_dir() and (p / "SKILL.md").exists()}
-    doc_content = ai_agents_doc.read_text(encoding="utf-8")
-    documented_skills = set(re.findall(r"\[`([a-zA-Z0-9_-]+)`\]\(\.\./\.agents/skills/\1/SKILL\.md\)", doc_content))
-
+def scan_inlining_guidelines(crate_name=None):
+    """Audits required #[inline(always)] and #[inline(never)] annotations per method-inlining.md."""
     issues = []
-    missing_in_doc = actual_skills - documented_skills
-    for skill in sorted(missing_in_doc):
-        issues.append({
-            "type": "missing_in_docs",
-            "skill": skill,
-            "message": f"Skill `{skill}` exists in .agents/skills/ but is missing from docs/ai_agents.md",
-        })
-
-    phantom_in_doc = documented_skills - actual_skills
-    for skill in sorted(phantom_in_doc):
-        issues.append({
-            "type": "phantom_in_docs",
-            "skill": skill,
-            "message": f"Skill `{skill}` is documented in docs/ai_agents.md but does not exist in .agents/skills/",
-        })
-
-    return {
-        "actual_count": len(actual_skills),
-        "documented_count": len(documented_skills),
-        "issues": issues,
-    }
-
-
-def check_script_locality_and_governance():
-    """
-    Audits two-way script placement governance:
-    1. Harness-to-Skill Locality: Scripts in tools/harness/ referenced by <= 1 skill/workflow
-       (and not part of global pre-commit/pre-flight/rules) should be relocated to skills/<skill>/scripts/.
-    2. Skill-to-Harness Promotion: Scripts inside a skill's scripts/ directory referenced by > 1
-       distinct skill or workflow should be promoted to tools/harness/ to avoid cross-skill leakage.
-    """
-    harness_dir = REPO_ROOT / "tools" / "harness"
-    skills_dir = REPO_ROOT / ".agents" / "skills"
-    workflows_dir = REPO_ROOT / ".agents" / "workflows"
-
-    UNIVERSAL_HARNESS_SCRIPTS = {
-        "pre_flight.py",
-        "run_tests.py",
-        "check_polish.py",
-        "check_test_coupling.py",
-        "audit_api_coverage.py",
-        "log_diary.py",
-        "rag_search.py",
-    }
-
-    issues = []
-
-    # 1. Audit tools/harness/ scripts for single-consumer locality candidates
-    if harness_dir.exists():
-        for script in sorted(harness_dir.glob("*.py")):
-            if script.name in UNIVERSAL_HARNESS_SCRIPTS:
+    # 1. Cold exception/trap triggers must have #[inline(never)]
+    m68k_src = CRATES_DIR / "m68000" / "src"
+    if m68k_src.exists() and (not crate_name or crate_name == "m68000"):
+        for file in m68k_src.rglob("*.rs"):
+            try:
+                lines = file.read_text(encoding="utf-8", errors="ignore").splitlines()
+            except Exception:
                 continue
+            rel_path = file.relative_to(REPO_ROOT)
+            for idx, line in enumerate(lines):
+                trimmed = line.strip()
+                if trimmed.startswith("pub fn trigger_") or trimmed.startswith("fn trigger_"):
+                    prev_lines = lines[max(0, idx - 2):idx]
+                    if not any("#[inline(never)]" in l for l in prev_lines):
+                        issues.append({
+                            "type": "missing_inline_never",
+                            "file": str(rel_path),
+                            "line": idx + 1,
+                            "metric": trimmed,
+                            "recommendation": f"Cold exception/trap `{trimmed}` must be annotated with #[inline(never)]",
+                        })
 
-            script_name = script.name
-            referencing_skills = set()
-            referencing_workflows = set()
-
-            if skills_dir.exists():
-                for sf in skills_dir.rglob("*.md"):
-                    if sf.name == "SKILL.md":
-                        try:
-                            content = sf.read_text(encoding="utf-8", errors="ignore")
-                            if script_name in content:
-                                referencing_skills.add(sf.parent.name)
-                        except Exception:
-                            pass
-
-            if workflows_dir.exists():
-                for wf in workflows_dir.glob("*.md"):
-                    try:
-                        content = wf.read_text(encoding="utf-8", errors="ignore")
-                        if script_name in content:
-                            referencing_workflows.add(wf.stem)
-                    except Exception:
-                        pass
-
-            total_consumers = len(referencing_skills) + len(referencing_workflows)
-            if total_consumers <= 1:
-                target_skill = next(iter(referencing_skills), None)
-                target_desc = f".agents/skills/{target_skill}/scripts/" if target_skill else "the consuming skill/workflow"
-                issues.append({
-                    "type": "isolate_to_skill",
-                    "script": script.name,
-                    "location": f"tools/harness/{script.name}",
-                    "consumers": list(referencing_skills | referencing_workflows),
-                    "recommendation": f"Relocate to {target_desc} (used by only {total_consumers} consumer: {', '.join(referencing_skills | referencing_workflows) or 'none'})",
-                })
-
-    # 2. Audit .agents/skills/*/scripts/ for multi-consumer promotion candidates
-    if skills_dir.exists():
-        for script in sorted(skills_dir.glob("*/scripts/*.py")):
-            owning_skill = script.parent.parent.name
-            script_name = script.name
-
-            foreign_skills = set()
-            referencing_workflows = set()
-
-            for sf in skills_dir.rglob("*.md"):
-                if sf.name == "SKILL.md":
-                    skill_name = sf.parent.name
-                    if skill_name != owning_skill:
-                        try:
-                            content = sf.read_text(encoding="utf-8", errors="ignore")
-                            if script_name in content:
-                                foreign_skills.add(skill_name)
-                        except Exception:
-                            pass
-
-            if workflows_dir.exists():
-                for wf in workflows_dir.glob("*.md"):
-                    try:
-                        content = wf.read_text(encoding="utf-8", errors="ignore")
-                        if script_name in content:
-                            referencing_workflows.add(wf.stem)
-                    except Exception:
-                        pass
-
-            if len(foreign_skills) > 0 or len(referencing_workflows) > 1:
-                all_external = foreign_skills | referencing_workflows
-                issues.append({
-                    "type": "promote_to_harness",
-                    "script": script.name,
-                    "location": str(script.relative_to(REPO_ROOT)).replace("\\", "/"),
-                    "owning_skill": owning_skill,
-                    "external_consumers": list(all_external),
-                    "recommendation": f"Promote to tools/harness/ (cross-referenced by external consumers: {', '.join(all_external)})",
-                })
-
+    # 2. Leaf ALU functions in m68000/src/instructions/ must have #[inline(always)]
+    leaf_prefixes = (
+        "pub fn add_", "pub fn sub_", "pub fn and_", "pub fn or_", "pub fn eor_",
+        "pub fn cmp_", "pub fn asr_", "pub fn asl_", "pub fn lsr_", "pub fn lsl_",
+        "pub fn ror_", "pub fn rol_", "pub fn roxr_", "pub fn roxl_", "pub fn neg_",
+        "pub fn negx_", "pub fn not_", "pub fn tst_", "pub fn abcd_", "pub fn sbcd_",
+        "pub fn nbcd_", "pub fn bchg_", "pub fn bclr_", "pub fn bset_", "pub fn btst_",
+    )
+    inst_dir = CRATES_DIR / "m68000" / "src" / "instructions"
+    if inst_dir.exists() and (not crate_name or crate_name == "m68000"):
+        for file in inst_dir.glob("*.rs"):
+            try:
+                lines = file.read_text(encoding="utf-8", errors="ignore").splitlines()
+            except Exception:
+                continue
+            rel_path = file.relative_to(REPO_ROOT)
+            for idx, line in enumerate(lines):
+                trimmed = line.strip()
+                if any(trimmed.startswith(p) for p in leaf_prefixes):
+                    prev_lines = lines[max(0, idx - 2):idx]
+                    if not any("#[inline(always)]" in l for l in prev_lines):
+                        issues.append({
+                            "type": "missing_inline_always",
+                            "file": str(rel_path),
+                            "line": idx + 1,
+                            "metric": trimmed,
+                            "recommendation": f"Leaf ALU function `{trimmed}` must be annotated with #[inline(always)]",
+                        })
     return issues
 
 
-def check_workflow_and_skill_governance():
-    """
-    Audits two-way alignment between workflows, skills, and rules:
-    1. Workflow-to-Skill Backing: Workflows in .agents/workflows/ must have a corresponding
-       backing skill in .agents/skills/ or explicitly document valid skill references.
-    2. Skill-to-Workflow Promotion Candidates: Top-level milestone and procedural skills
-       that lack a user-facing slash command (/command) in .agents/workflows/ are flagged.
-    3. Rule-to-Skill Governance: Active remediation rules must have companion skills,
-       while passive invariant rules must remain lean without redundant skills.
-    """
-    workflows_dir = REPO_ROOT / ".agents" / "workflows"
-    skills_dir = REPO_ROOT / ".agents" / "skills"
-    rules_dir = REPO_ROOT / ".agents" / "rules"
+def scan_macro_and_generic_prohibitions(crate_name=None):
+    """Audits prohibition of custom macro_rules! and const-generic instruction handlers."""
+    issues = []
+    crates = [CRATES_DIR / crate_name] if crate_name else list(CRATES_DIR.iterdir())
+    for c in crates:
+        if not c.is_dir():
+            continue
+        src = c / "src"
+        if not src.exists():
+            continue
+        for file in src.rglob("*.rs"):
+            try:
+                lines = file.read_text(encoding="utf-8", errors="ignore").splitlines()
+            except Exception:
+                continue
+            rel_path = file.relative_to(REPO_ROOT)
+            for idx, line in enumerate(lines, 1):
+                trimmed = line.strip()
+                if trimmed.startswith("//"):
+                    continue
+                if "macro_rules!" in trimmed:
+                    issues.append({
+                        "type": "forbidden_macro",
+                        "file": str(rel_path),
+                        "line": idx,
+                        "metric": trimmed,
+                        "recommendation": "Custom macros (`macro_rules!`) are strictly forbidden per performance-and-readability.md.",
+                    })
+                if c.name == "m68000" and "<const " in trimmed:
+                    issues.append({
+                        "type": "forbidden_const_generic",
+                        "file": str(rel_path),
+                        "line": idx,
+                        "metric": trimmed,
+                        "recommendation": "Const-generic functions (`<const N: ...>`) in M68000 core are strictly forbidden.",
+                    })
+    return issues
 
-    workflow_files = sorted(workflows_dir.glob("*.md")) if workflows_dir.exists() else []
-    skill_dirs = [p for p in sorted(skills_dir.iterdir()) if p.is_dir() and (p / "SKILL.md").exists()] if skills_dir.exists() else []
-    skill_names = {p.name for p in skill_dirs}
 
-    workflow_issues = []
-    # 1. Audit each workflow
-    for wf in workflow_files:
-        wf_name = wf.stem
-        has_exact_skill = wf_name in skill_names
-        try:
-            content = wf.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            content = ""
-        referenced_skills = [s for s in skill_names if s in content]
+def scan_external_test_suites(crate_name=None):
+    """Audits dedicated external test suite presence, 1:1 submodule test parity, and zero inline tests."""
+    issues = []
+    crates = [CRATES_DIR / crate_name] if crate_name else sorted(CRATES_DIR.iterdir())
+    for c in crates:
+        if not c.is_dir() or not (c / "Cargo.toml").exists():
+            continue
+        c_name = c.name
+        src_dir = c / "src"
+        tests_dir = c / "tests"
 
-        if not has_exact_skill and not referenced_skills:
-            workflow_issues.append({
-                "type": "orphan_workflow",
-                "workflow": wf.name,
-                "message": f"Workflow `{wf.name}` has no corresponding skill in .agents/skills/{wf_name}/ and references no known skills.",
+        # Check inline tests in src/
+        if src_dir.exists():
+            for file in src_dir.rglob("*.rs"):
+                try:
+                    lines = file.read_text(encoding="utf-8", errors="ignore").splitlines()
+                except Exception:
+                    continue
+                rel_path = file.relative_to(REPO_ROOT)
+                for idx, line in enumerate(lines, 1):
+                    trimmed = line.strip()
+                    if trimmed in ("#[cfg(test)]", "mod tests {", "mod test {") or trimmed.startswith("#[test]"):
+                        issues.append({
+                            "type": "inline_test_found",
+                            "file": str(rel_path),
+                            "line": idx,
+                            "metric": trimmed,
+                            "recommendation": "Inline tests in src/ are forbidden. Relocate to dedicated `crates/<crate>/tests/`.",
+                        })
+
+        # Check dedicated tests/ directory
+        if not tests_dir.is_dir():
+            issues.append({
+                "type": "missing_tests_dir",
+                "file": f"crates/{c_name}/tests/",
+                "line": 1,
+                "metric": "missing tests/ directory",
+                "recommendation": f"Crate `{c_name}` lacks dedicated external tests/ directory.",
             })
+            continue
 
-    # 2. Audit skills for workflow promotion candidates
-    # Milestone/procedural skills that orchestrate cross-cutting or multi-step operations
-    PROCEDURAL_MILESTONE_SKILLS = {
-        "compact-diary": "Milestone diary synthesis and compaction procedure",
-        "sync-design-docs": "Design specification synchronization with git commit history",
-        "roadmap-maintenance": "Milestone scorecard pruning and substrate-first roadmap update",
-        "index-amiga-rag": "Qdrant vector database re-indexing and offline sidecar maintenance",
-    }
-
-    active_workflow_stems = {wf.stem for wf in workflow_files}
-    promotion_candidates = []
-    for skill_name, reason in sorted(PROCEDURAL_MILESTONE_SKILLS.items()):
-        if skill_name in skill_names and skill_name not in active_workflow_stems:
-            promotion_candidates.append({
-                "skill": skill_name,
-                "reason": reason,
+        test_files = list(tests_dir.glob("*.rs"))
+        if not test_files:
+            issues.append({
+                "type": "empty_tests_dir",
+                "file": f"crates/{c_name}/tests/",
+                "line": 1,
+                "metric": "0 test files",
+                "recommendation": f"Crate `{c_name}` tests/ directory contains zero .rs test files.",
             })
-
-    # 3. Rule-to-Skill Governance
-    ACTIVE_RULE_COMPANIONS = {
-        "amiga-rag.md": {"index-amiga-rag"},
-        "asset-descriptions.md": {"describe-diagram-assets"},
-        "diary-maintenance.md": {"compact-diary"},
-        "docs-maintenance.md": {"sync-design-docs", "obsidian-vault-linking"},
-        "vault-linking-and-graph-integrity.md": {"obsidian-vault-linking"},
-        "egui-best-practices.md": {"egui-vision-debugger", "capture-gui-screenshot"},
-        "file-size-and-cohesion.md": {"refactor-split-module"},
-        "git-commits.md": {"git-resolve-merge", "git-worktree"},
-        "git-merge-commits.md": {"git-resolve-merge", "git-worktree"},
-        "graphify.md": {"graphify"},
-        "opcode-naming.md": {"add-m68k-instruction"},
-        "repro-first.md": {"m68k-singlestep-test", "test-runner", "synthesize-test-fixes"},
-        "roadmap-maintenance.md": {"roadmap-maintenance"},
-        "unit-testing-policy.md": {"test-runner", "synthesize-test-fixes", "integration-test-sprint"},
-    }
-
-    PASSIVE_INVARIANT_RULES = {
-        "audio-transcription.md",
-        "clean-break-refactoring.md",
-        "information-hierarchy.md",
-        "language-policy.md",
-        "method-inlining.md",
-        "model-reasoning-advisory.md",
-        "no-external-paths.md",
-        "parallel-execution.md",
-        "performance-and-readability.md",
-        "practitioner-voice-and-tone.md",
-        "rust-best-practices.md",
-        "spec-compliance.md",
-        "structural-root-cause.md",
-        "workspace-structure-and-reexports.md",
-    }
-
-    rule_issues = []
-    rule_files = sorted(rules_dir.glob("*.md")) if rules_dir.exists() else []
-    for rf in rule_files:
-        if rf.name in ACTIVE_RULE_COMPANIONS:
-            expected_skills = ACTIVE_RULE_COMPANIONS[rf.name]
-            missing = expected_skills - skill_names
-            if missing:
-                rule_issues.append({
-                    "type": "missing_rule_skill",
-                    "rule": rf.name,
-                    "message": f"Active rule `{rf.name}` requires companion skill(s) {missing}, which are missing in .agents/skills/",
+        for tf in test_files:
+            if not tf.name.startswith("test_"):
+                issues.append({
+                    "type": "non_canonical_test_name",
+                    "file": str(tf.relative_to(REPO_ROOT)),
+                    "line": 1,
+                    "metric": tf.name,
+                    "recommendation": f"Test file `{tf.name}` must start with `test_` prefix.",
                 })
-        elif rf.name in PASSIVE_INVARIANT_RULES:
-            stem = rf.stem
-            if stem in skill_names:
-                rule_issues.append({
-                    "type": "redundant_passive_skill",
-                    "rule": rf.name,
-                    "message": f"Passive invariant rule `{rf.name}` has a redundant companion skill `{stem}` (passive invariants must remain lean rules).",
-                })
-
-    return {
-        "workflow_count": len(workflow_files),
-        "skill_count": len(skill_names),
-        "active_rule_count": len(ACTIVE_RULE_COMPANIONS),
-        "passive_rule_count": len(PASSIVE_INVARIANT_RULES),
-        "workflow_issues": workflow_issues,
-        "promotion_candidates": promotion_candidates,
-        "rule_issues": rule_issues,
-    }
-def parse_markdown_frontmatter(file_path: Path):
-    """Parses frontmatter key-values and list items between opening and closing ---."""
-    text = file_path.read_text(encoding="utf-8", errors="ignore")
-    if not text.startswith("---"):
-        return {}, text
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return {}, text
-    fm_text = parts[1]
-
-    data = {}
-    lines = fm_text.splitlines()
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-        if line.startswith("last_synced_commit:"):
-            data["last_synced_commit"] = line.split(":", 1)[1].strip().strip('"\'')
-        elif line.startswith("last_synced_date:"):
-            data["last_synced_date"] = line.split(":", 1)[1].strip().strip('"\'')
-        elif line.startswith("subsystem:"):
-            data["subsystem"] = line.split(":", 1)[1].strip().strip('"\'')
-        elif line.startswith("tracked_paths:"):
-            paths = []
-            i += 1
-            while i < len(lines) and (lines[i].startswith("  -") or lines[i].startswith("    -")):
-                item = lines[i].split("-", 1)[1].strip().strip('"\'')
-                paths.append(item)
-                i += 1
-            data["tracked_paths"] = paths
-            continue
-        i += 1
-
-    return data, text
-
-
-def bump_markdown_checkpoint(file_path: Path, new_commit: str, new_date: str) -> bool:
-    """Updates last_synced_commit and last_synced_date in YAML frontmatter."""
-    text = file_path.read_text(encoding="utf-8")
-    if not text.startswith("---"):
-        return False
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return False
-    fm_lines = parts[1].splitlines()
-
-    commit_found = False
-    date_found = False
-    new_fm_lines = []
-    for line in fm_lines:
-        if line.startswith("last_synced_commit:"):
-            new_fm_lines.append(f'last_synced_commit: "{new_commit}"')
-            commit_found = True
-        elif line.startswith("last_synced_date:"):
-            new_fm_lines.append(f'last_synced_date: "{new_date}"')
-            date_found = True
-        else:
-            new_fm_lines.append(line)
-
-    if not commit_found:
-        new_fm_lines.append(f'last_synced_commit: "{new_commit}"')
-    if not date_found:
-        new_fm_lines.append(f'last_synced_date: "{new_date}"')
-
-    while new_fm_lines and not new_fm_lines[0].strip():
-        new_fm_lines.pop(0)
-    while new_fm_lines and not new_fm_lines[-1].strip():
-        new_fm_lines.pop()
-
-    new_content = "---\n" + "\n".join(new_fm_lines) + "\n---\n" + parts[2].lstrip("\r\n")
-    file_path.write_text(new_content, encoding="utf-8")
-    return True
-
-
-def check_design_docs_sync():
-    """Checks whether code in tracked_paths has drifted since last_synced_commit."""
-    design_dir = REPO_ROOT / "Obsidian" / "Amiga" / "Design"
-    if not design_dir.exists():
-        return {"tracked_count": 0, "synced_count": 0, "drifted": [], "synced": []}
-
-    tracked = []
-    drifted = []
-    synced = []
-
-    for doc in sorted(design_dir.glob("*.md")):
-        fm, _ = parse_markdown_frontmatter(doc)
-        paths = fm.get("tracked_paths", [])
-        commit = fm.get("last_synced_commit")
-
-        if not paths or not commit:
-            continue
-
-        tracked.append(doc.name)
-        cmd = ["git", "rev-list", "--count", f"{commit}..HEAD", "--"] + paths
-        res = subprocess.run(cmd, cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
-        if res.returncode != 0:
-            drifted.append({
-                "file": doc.name,
-                "commit": commit,
-                "paths": paths,
-                "error": f"Invalid commit or git error: {res.stderr.strip()}",
-                "count": -1,
-                "log": [],
-            })
-            continue
-
-        count = int(res.stdout.strip() or "0")
-        if count > 0:
-            log_cmd = ["git", "log", "--oneline", f"{commit}..HEAD", "--"] + paths
-            l_res = subprocess.run(log_cmd, cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
-            commits_log = [l.strip() for l in l_res.stdout.splitlines()[:5]]
-            drifted.append({
-                "file": doc.name,
-                "commit": commit,
-                "paths": paths,
-                "count": count,
-                "log": commits_log,
-            })
-        else:
-            synced.append(doc.name)
-
-    return {
-        "tracked_count": len(tracked),
-        "synced_count": len(synced),
-        "drifted": drifted,
-        "synced": synced,
-    }
-
-
-def show_design_diff(doc_name: str):
-    """Outputs git diff between last_synced_commit and HEAD for tracked_paths."""
-    design_dir = REPO_ROOT / "Obsidian" / "Amiga" / "Design"
-    doc_path = design_dir / doc_name
-    if not doc_path.exists() and not doc_name.endswith(".md"):
-        doc_path = design_dir / f"{doc_name}.md"
-    if not doc_path.exists():
-        print(f"Error: Design document not found: {doc_name}", file=sys.stderr)
-        return False
-
-    fm, _ = parse_markdown_frontmatter(doc_path)
-    paths = fm.get("tracked_paths", [])
-    commit = fm.get("last_synced_commit")
-    if not paths or not commit:
-        print(f"Document {doc_path.name} does not define tracked_paths or last_synced_commit.", file=sys.stderr)
-        return False
-
-    print(f">> Inspecting diff for {doc_path.name} ({commit}..HEAD) in paths: {', '.join(paths)}\n")
-    diff_cmd = ["git", "diff", f"{commit}..HEAD", "--"] + paths
-    subprocess.run(diff_cmd, cwd=REPO_ROOT)
-    return True
-
-
-def bump_design_checkpoint(doc_name: str) -> bool:
-    """Updates last_synced_commit to HEAD and last_synced_date to today in the design doc."""
-    design_dir = REPO_ROOT / "Obsidian" / "Amiga" / "Design"
-    doc_path = design_dir / doc_name
-    if not doc_path.exists() and not doc_name.endswith(".md"):
-        doc_path = design_dir / f"{doc_name}.md"
-    if not doc_path.exists():
-        print(f"Error: Design document not found: {doc_name}", file=sys.stderr)
-        return False
-
-    h_res = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO_ROOT, stdout=subprocess.PIPE, text=True, encoding="utf-8")
-    head_commit = h_res.stdout.strip()
-    import datetime
-    today = datetime.date.today().isoformat()
-
-    if bump_markdown_checkpoint(doc_path, head_commit, today):
-        print(f"[OK] Bumped checkpoint for {doc_path.name}: last_synced_commit = '{head_commit}', last_synced_date = '{today}'")
-        return True
-    else:
-        print(f"Error: Failed to update frontmatter in {doc_path.name}", file=sys.stderr)
-        return False
+    return issues
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, skill catalog sync, and design doc sync.")
-    parser.add_argument("--all", action="store_true", help="Run all audits (dead code, visibility, SRP, skills sync, script locality, design sync)")
+    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, inlining guidelines, antipatterns, and test suites.")
+    parser.add_argument("--all", action="store_true", help="Run all code quality audits")
     parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
     parser.add_argument("--visibility", action="store_true", help="Run least visibility scanner")
     parser.add_argument("--srp", action="store_true", help="Run SRP and file cohesion checks")
-    parser.add_argument("--skills", action="store_true", help="Audit skill catalog sync in docs/ai_agents.md")
-    parser.add_argument("--scripts", action="store_true", help="Audit two-way script locality and harness governance")
-    parser.add_argument("--governance", action="store_true", help="Audit workflow-skill symmetry and rule companion coverage")
-    parser.add_argument("--design-sync", action="store_true", help="Audit design documentation sync with code commits")
-    parser.add_argument("--design-diff", help="Show code diff since last_synced_commit for a design doc")
-    parser.add_argument("--design-bump", help="Bump last_synced_commit to current HEAD for a design doc")
+    parser.add_argument("--inlining", action="store_true", help="Run method inlining guidelines scanner")
+    parser.add_argument("--antipatterns", action="store_true", help="Run macro and const-generic antipattern checks")
+    parser.add_argument("--tests", action="store_true", help="Run external test suite and inline test scanner")
     parser.add_argument("--crate", help="Filter audit to a specific crate")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     args = parser.parse_args()
 
-    # Handle targeted actions first
-    if args.design_diff:
-        show_design_diff(args.design_diff)
-        return
-
-    if args.design_bump:
-        bump_design_checkpoint(args.design_bump)
-        return
-
     # Default to --all if no specific mode selected
-    if not (args.all or args.dead_code or args.visibility or args.srp or args.skills or args.scripts or args.design_sync or args.governance):
+    if not (args.all or args.dead_code or args.visibility or args.srp or args.inlining or args.antipatterns or args.tests):
         args.all = True
 
     dead, zombies = ([], [])
@@ -911,29 +619,17 @@ def main():
     if args.all or args.srp:
         srp_issues = scan_srp_and_cohesion(args.crate)
 
-    skill_audit = {"actual_count": 0, "documented_count": 0, "issues": []}
-    if args.all or args.skills:
-        skill_audit = check_skills_catalog_sync()
+    inlining_issues = []
+    if args.all or args.inlining:
+        inlining_issues = scan_inlining_guidelines(args.crate)
 
-    script_issues = []
-    if args.all or args.scripts:
-        script_issues = check_script_locality_and_governance()
+    antipattern_issues = []
+    if args.all or args.antipatterns:
+        antipattern_issues = scan_macro_and_generic_prohibitions(args.crate)
 
-    gov_audit = {
-        "workflow_count": 0,
-        "skill_count": 0,
-        "active_rule_count": 0,
-        "passive_rule_count": 0,
-        "workflow_issues": [],
-        "promotion_candidates": [],
-        "rule_issues": [],
-    }
-    if args.all or args.governance:
-        gov_audit = check_workflow_and_skill_governance()
-
-    design_audit = {"tracked_count": 0, "synced_count": 0, "drifted": [], "synced": []}
-    if args.all or args.design_sync:
-        design_audit = check_design_docs_sync()
+    test_suite_issues = []
+    if args.all or args.tests:
+        test_suite_issues = scan_external_test_suites(args.crate)
 
     if args.json:
         out = {
@@ -941,10 +637,9 @@ def main():
             "test_only_zombies": zombies,
             "visibility_leaks": vis_leaks,
             "srp_cohesion_issues": srp_issues,
-            "skills_sync": skill_audit,
-            "script_locality_issues": script_issues,
-            "workflow_and_skill_governance": gov_audit,
-            "design_docs_sync": design_audit,
+            "inlining_issues": inlining_issues,
+            "antipattern_issues": antipattern_issues,
+            "test_suite_issues": test_suite_issues,
         }
         print(json.dumps(out, indent=2))
         return
@@ -989,73 +684,35 @@ def main():
             print(f"    * [{issue['type']}] {issue['file']}: {issue['metric']}")
             print(f"      -> {issue['recommendation']}")
 
-    if args.all or args.skills:
-        print(f"\n[4. AGENT SKILLS CATALOG SYNCHRONIZATION (docs/ai_agents.md)]")
-        print(f"  - Active on-disk skills: {skill_audit['actual_count']}")
-        print(f"  - Documented in docs/ai_agents.md: {skill_audit['documented_count']}")
-        if not skill_audit["issues"]:
-            print("  - Status: [PASS] 100% synchronized (all skills cataloged cleanly).")
+    if args.all or args.inlining:
+        print(f"\n[4. METHOD INLINING GUIDELINES]")
+        if not inlining_issues:
+            print("  - Status: [PASS] All hot ALU/CCR setters and cold traps adhere to inlining annotations.")
         else:
-            print(f"  - Status: [FAIL] {len(skill_audit['issues'])} discrepancy/ies found:")
-            for iss in skill_audit["issues"]:
-                print(f"    * {iss['message']}")
+            print(f"  - Status: [WARN] {len(inlining_issues)} inlining anomaly/ies detected:")
+            for issue in inlining_issues:
+                print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} -> {issue['recommendation']}")
 
-    if args.all or args.scripts:
-        print(f"\n[5. TWO-WAY SCRIPT LOCALITY & HARNESS GOVERNANCE]")
-        if not script_issues:
-            print("  - Status: [PASS] All harness scripts are shared/universal, and all skill scripts are private.")
+    if args.all or args.antipatterns:
+        print(f"\n[5. MACRO & CONST-GENERIC PROHIBITION]")
+        if not antipattern_issues:
+            print("  - Status: [PASS] Zero custom macros (`macro_rules!`) and zero const-generic handlers.")
         else:
-            print(f"  - Status: [WARN] {len(script_issues)} placement anomaly/ies detected:")
-            for s_issue in script_issues:
-                print(f"    * [{s_issue['type']}] {s_issue['location']}")
-                print(f"      -> {s_issue['recommendation']}")
+            print(f"  - Status: [FAIL] {len(antipattern_issues)} antipattern issue(s) detected:")
+            for issue in antipattern_issues:
+                print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} -> {issue['recommendation']}")
 
-    if args.all or args.design_sync:
-        print(f"\n[6. DESIGN DOCUMENTATION & CODE DRIFT DETECTION]")
-        print(f"  - Tracked Design Specs: {design_audit['tracked_count']}")
-        if not design_audit["drifted"]:
-            print(f"  - Status: [PASS] All {design_audit['synced_count']} tracked specification(s) are in sync with HEAD.")
+    if args.all or args.tests:
+        print(f"\n[6. EXTERNAL TEST SUITES & PARITY]")
+        if not test_suite_issues:
+            print("  - Status: [PASS] All crates have dedicated external tests/ with zero inline tests in src/.")
         else:
-            print(f"  - Status: [DRIFT] {len(design_audit['drifted'])} specification(s) behind code HEAD:")
-            for d in design_audit["drifted"]:
-                if d.get("error"):
-                    print(f"    * {d['file']}: {d['error']}")
-                else:
-                    paths_str = ", ".join(d["paths"])
-                    print(f"    * {d['file']}: {d['count']} commit(s) behind in [{paths_str}] (synced at: {d['commit']})")
-                    for c_log in d.get("log", []):
-                        print(f"        - {c_log}")
-            print("\n  -> Remediation: Inspect diff with --design-diff <doc>, update spec, then run --design-bump <doc>")
+            print(f"  - Status: [FAIL] {len(test_suite_issues)} test organization issue(s) detected:")
+            for issue in test_suite_issues:
+                print(f"    * [{issue['type']}] {issue['file']} -> {issue['recommendation']}")
 
-    if args.all or args.governance:
-        print(f"\n[7. WORKFLOW & SKILL GOVERNANCE (TWO-WAY ALIGNMENT)]")
-        print(f"  - Active Workflows (.agents/workflows/): {gov_audit['workflow_count']}")
-        print(f"  - Active Skills (.agents/skills/): {gov_audit['skill_count']}")
-        if gov_audit["workflow_issues"]:
-            print(f"  - Workflow Issues: {len(gov_audit['workflow_issues'])}")
-            for w_issue in gov_audit["workflow_issues"]:
-                print(f"    * [{w_issue['type']}] {w_issue['message']}")
-        else:
-            print("  - Workflows: [PASS] All workflows have backing specialized skills.")
-
-        if gov_audit["promotion_candidates"]:
-            print(f"  - Skill -> Workflow Candidates ({len(gov_audit['promotion_candidates'])}):")
-            for cand in gov_audit["promotion_candidates"]:
-                print(f"    * `{cand['skill']}`: {cand['reason']}")
-                print(f"      -> Recommendation: Provide slash command `/{cand['skill']}` in .agents/workflows/{cand['skill']}.md")
-        else:
-            print("  - Promotion Candidates: None (all procedural skills have matching workflows).")
-
-        if gov_audit["rule_issues"]:
-            print(f"  - Rule Coverage Issues: {len(gov_audit['rule_issues'])}")
-            for r_issue in gov_audit["rule_issues"]:
-                print(f"    * [{r_issue['type']}] {r_issue['message']}")
-        else:
-            print(f"  - Rules Symmetry: [PASS] All {gov_audit['active_rule_count']} active remediation rules have companion skills; {gov_audit['passive_rule_count']} passive invariant rules remain lean.")
-
-    gov_issues_total = len(gov_audit['workflow_issues']) + len(gov_audit['rule_issues'])
     print("\n" + "=" * 76)
-    print(f"Audit Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(skill_audit['issues'])} skill sync issues, {len(script_issues)} script locality issues, {len(design_audit['drifted'])} design drift issues, {gov_issues_total} governance issues ({len(gov_audit['promotion_candidates'])} workflow candidates).")
+    print(f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(inlining_issues)} inlining issues, {len(antipattern_issues)} antipattern issues, {len(test_suite_issues)} test suite issues.")
     print("=" * 76)
 
 

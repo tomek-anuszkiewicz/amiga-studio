@@ -1,11 +1,11 @@
 ---
 name: audit-code-quality
-description: Deep architectural code quality audit and remediation covering dead code, test-only zombies, minimum visibility leaks, and SRP cohesion across workspace crates.
+description: Deep architectural code quality audit and remediation covering dead code, test-only zombies, minimum visibility leaks, SRP cohesion, inlining, and test parity across workspace crates.
 ---
 
 # Recipe: Architectural Code Quality Auditor & Pruning Playbook
 
-This skill provides a comprehensive, on-demand procedure across the Rust workspace to audit code rot, prune dead and zombie code, enforce the Principle of Minimum Visibility, and maintain structural cohesion (Single Responsibility Principle).
+This skill provides a comprehensive, on-demand procedure across the Rust workspace to audit code rot, prune dead and zombie code, enforce the Principle of Minimum Visibility, maintain structural cohesion (Single Responsibility Principle), verify method inlining, and enforce external test suite parity.
 
 ---
 
@@ -17,7 +17,7 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 
 ---
 
-## 2. The Seven Quality Audit Pillars
+## 2. The Six Code Quality Pillars
 
 ### Pillar 1: Dead Code & Test-Only Zombies
 1. **Completely Dead Symbols (💀):**
@@ -40,45 +40,27 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Source File Ceilings:** Files in `crates/*/src/` exceeding the **800-line ceiling** (per [`.agents/rules/file-size-and-cohesion.md`](../../rules/file-size-and-cohesion.md)).
 - **Unencapsulated "God Structs":** Structs declaring $> 12$ public fields, signaling mixed concerns or lack of domain groupings.
 
-### Pillar 4: Agent Skills Catalog Synchronization (`docs/ai_agents.md`)
-- **Complete Skill Index Integrity:** Every active skill directory under `.agents/skills/` containing a `SKILL.md` must be cataloged in [`docs/ai_agents.md`](../../../docs/ai_agents.md).
-- **Zero Phantom References:** Every skill linked in `docs/ai_agents.md` must actually exist on disk.
-- **Audit Verification:** Verified automatically via `--skills` or `--all`. When drift is detected, add missing skills to the appropriate domain section in `docs/ai_agents.md` or prune deleted skills.
+### Pillar 4: Method Inlining Guidelines (`--inlining`)
+- **`#[inline(always)]`**: Reserved for hot arithmetic/logic and CCR flag calculations ($X, N, Z, V, C$) executed on every single clock cycle per [`.agents/rules/method-inlining.md`](../../rules/method-inlining.md).
+- **`#[inline(never)]`**: Mandatory on cold exception and trap triggers (`trigger_address_error`, `trigger_bus_error`, `trigger_illegal_instruction`). Keeping complex frame construction out-of-line keeps hot paths clean.
 
-### Pillar 5: Two-Way Script Locality & Harness Governance
-- **Harness Reservation:** `tools/harness/` is reserved strictly for universal, shared infrastructure used across multiple subsystems (pre-flight gates, git hooks, universal test runners, global rules).
-- **Rule A (Specialized Locality):** Any script in `tools/harness/` referenced by $\le 1$ skill or workflow (and not part of global pre-commit/pre-flight) must be relocated to `.agents/skills/<skill>/scripts/`.
-- **Rule B (Shared Promotion):** Any script inside `.agents/skills/<skill>/scripts/` referenced by $> 1$ distinct skills or workflows must be promoted into `tools/harness/` to avoid cross-skill leakage.
-- **Audit Verification:** Verified automatically via `--scripts` or `--all`.
+### Pillar 5: Macro & Const-Generic Prohibitions (`--antipatterns`)
+- **Prohibition of User-Defined Macros:** Custom `macro_rules!` are strictly forbidden across workspace crates per [`.agents/rules/performance-and-readability.md`](../../rules/performance-and-readability.md).
+- **Prohibition of Const-Generics for Opcodes:** Instruction handlers and decoding must not use `<const N: ...>` generic templates in `m68000`.
 
-### Pillar 6: Design Documentation & Code Drift Detection (`--design-sync`)
-- **Deterministic Git Checkpoints:** Every code-backed design specification in `Obsidian/Amiga/Design/` records `tracked_paths` and `last_synced_commit` in its YAML frontmatter.
-- **Automated Drift Detection:** `audit_code_quality.py` computes `git rev-list --count <last_synced_commit>..HEAD -- <tracked_paths>` to identify specifications whose underlying Rust crates have moved forward without review.
-- **Differential Inspection:** Inspect the exact code diff since the last synchronization via `--design-diff <doc>`.
-- **Checkpoint Stamping:** Once the specification is updated (or verified to still be accurate), stamp the HEAD commit via `--design-bump <doc>`.
-- **Audit Verification:** Verified automatically via `--design-sync` or `--all`.
-
-### Pillar 7: Workflow, Skill & Rule Governance (Two-Way Alignment, `--governance`)
-- **Workflow-to-Skill Backing:** Every interactive slash command workflow in `.agents/workflows/` must have a companion specialized skill in `.agents/skills/` or explicitly declare its underlying skills.
-- **Skill-to-Workflow Promotion Candidates:** Milestone, batch, or multi-step maintenance procedures (`compact-diary`, `sync-design-docs`, `roadmap-maintenance`, `index-amiga-rag`) that operate across the repository are candidate workflows deserving dedicated `/slash-command` entrypoints in `.agents/workflows/`.
-- **Rule-to-Skill Governance:**
-  - Active remediation rules (e.g. `file-size-and-cohesion`, `diary-maintenance`, `docs-maintenance`) must have corresponding executable skills in `.agents/skills/`.
-  - Passive invariant rules (e.g. `language-policy`, `no-external-paths`, `spec-compliance`, `performance-and-readability`) must remain lean architectural constraints without redundant companion skills.
-- **Audit Verification:** Verified automatically via `--governance` or `--all`.
+### Pillar 6: Dedicated External Test Suites & Parity (`--tests`)
+- **Dedicated External Tests:** All tests must reside strictly in `crates/<crate>/tests/` with canonical `test_<name>.rs` filenames per [`.agents/rules/unit-testing-policy.md`](../../rules/unit-testing-policy.md).
+- **Zero Inline Tests:** `#[cfg(test)] mod tests` in production `src/` files is strictly forbidden.
+- **1:1 Multi-Module Parity:** Multi-module crates maintain dedicated unit test files mirroring submodules.
 
 ---
 
 ## 3. CLI Audit Workflow
 
-Execute the unified code quality auditor via Python harness:
-
-### A. Full Workspace Deep Audit
 ```powershell
+# Full workspace deep code quality audit
 python tools/harness/audit_code_quality.py --all
-```
 
-### B. Targeted Subsystem Audits
-```powershell
 # Audit dead code & zombies in a specific crate
 python tools/harness/audit_code_quality.py --dead-code --crate paula
 
@@ -88,27 +70,16 @@ python tools/harness/audit_code_quality.py --visibility
 # Audit SRP and file sizes
 python tools/harness/audit_code_quality.py --srp
 
-# Audit agent skills catalog synchronization in docs/ai_agents.md
-python tools/harness/audit_code_quality.py --skills
+# Audit method inlining compliance
+python tools/harness/audit_code_quality.py --inlining
 
-# Audit two-way script locality and harness placement governance
-python tools/harness/audit_code_quality.py --scripts
+# Audit macro and const-generic prohibitions
+python tools/harness/audit_code_quality.py --antipatterns
 
-# Audit workflow-skill symmetry and rule companion coverage
-python tools/harness/audit_code_quality.py --governance
+# Audit external test suite organization
+python tools/harness/audit_code_quality.py --tests
 
-# Audit design specifications drift against code crates
-python tools/harness/audit_code_quality.py --design-sync
-
-# Inspect git diff for a drifted design specification
-python tools/harness/audit_code_quality.py --design-diff Denise.md
-
-# Bump checkpoint of a verified design specification to HEAD
-python tools/harness/audit_code_quality.py --design-bump Denise.md
-```
-
-### C. Machine-Readable JSON Export
-```powershell
+# Machine-readable JSON export
 python tools/harness/audit_code_quality.py --all --json > quality_report.json
 ```
 
@@ -128,57 +99,6 @@ For each symbol reported under `[TEST-ONLY ZOMBIES]`:
 
 ### Step 2: Safe Clean-Break Deletion
 1. Delete confirmed dead symbols in `crates/<crate>/src/`.
-2. Delete orphaned test assertions/cases in `crates/<crate>/tests/`.
-3. Verify that test deletions do not violate the unit testing density invariant in [`.agents/rules/unit-testing-policy.md`](../../rules/unit-testing-policy.md) ($\ge 2$ tests, $\ge 10$ assertions per crate).
-
-### Step 3: Visibility Demotion
-1. Demote over-exposed `pub` functions unreferenced outside their crate to `pub(crate)`.
-2. Demote over-exposed helpers unreferenced outside their defining file to private `fn`.
-3. Encapsulate crate-internal submodules from `pub mod` to `pub(crate) mod`.
-
----
-
-## 5. Semantic SRP Review (The Agent's Cognitive Role)
-
-While static scripts flag quantitative metrics (lines > 800, public fields > 12), **evaluating SRP requires semantic domain reasoning by the Agent**:
-
-1. **Hotspot Inspection:**
-   When `audit_code_quality.py` flags an oversized file or a struct with mixed responsibilities, read the source to identify distinct conceptual domains.
-2. **Domain Boundary Identification:**
-   For example, in `crates/physical_memory/src/map.rs`:
-   - **Responsibility A (Dispatch Infrastructure):** 64 KB memory bank callback dispatch table (`MemoryBank`, `BankHandler`).
-   - **Responsibility B (System Topology Presets):** Machine preset topologies (`build_preset_bank_map`, `BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`).
-3. **Decomposition Proposal & Execution:**
-   - Extract secondary domain into a dedicated cohesive submodule (`presets.rs`).
-   - Maintain 3-tier re-exports at the crate root (`src/<crate>.rs`) for zero downstream breaking changes.
-   - Add 1:1 modular unit test parity (`tests/test_presets.rs`).
-   - Delegate execution to [`refactor-split-module`](../refactor-split-module/SKILL.md).
-
----
-
-## 6. Verification Gate & Definition of Done
-
-After completing auditing, pruning, or visibility adjustments, always verify workspace integrity:
-```powershell
-cargo fmt --all -- --check
-python tools/harness/pre_flight.py
-python tools/harness/run_tests.py --unit
-python tools/harness/run_tests.py --integration
-```
-Ensure all quality gates and architecture rules pass with 100% green status.
-
-### Standard Audit Report Format
-```markdown
-### 🛡️ Code Quality Audit & Pruning Report
-- **Scope Scanned:** `<scope>`
-- **Dead Code Pruned:** <count> symbols
-- **Test-Only Zombies Handled:** <count> retained (Host I/O) / <count> pruned
-- **Visibility Demoted:** <count> symbols (`pub` -> `pub(crate)` / private)
-- **SRP / Cohesion Decompositions:** <count> files/structs
-- **Skills Catalog Sync:** [PASS (all synchronized) | <count> discrepancies]
-- **Script Locality & Governance:** [PASS (all properly placed) | <count> anomalies]
-- **Workflow & Skill Governance:** [PASS (all synchronized) | <count> issues (<count> candidates)]
-- **Design Specs Sync:** [PASS (all synchronized) | <count> drifted]
-- **Verification:** `pre_flight.py` (PASS), `cargo test` (PASS)
-```
-
+2. Delete orphaned test assertions/functions in `crates/<crate>/tests/`.
+3. Run `cargo check --workspace` to verify zero unbroken callers remain.
+4. Run `python tools/harness/pre_flight.py` to confirm workspace compiles cleanly.

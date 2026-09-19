@@ -60,13 +60,14 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 ### A. CPU & Hardware Emulation
 - [`add-m68k-instruction`](../.agents/skills/add-m68k-instruction/SKILL.md): Step-by-step recipe for implementing new M68000 instructions (decoding, CCK micro-steps, inlined CCR flags, and single-step test validation).
 - [`m68k-singlestep-test`](../.agents/skills/m68k-singlestep-test/SKILL.md): Diagnostic runbook for running, isolating, and troubleshooting Tom Harte physical silicon single-step hardware test failures.
+- [`audit-hardware-quality`](../.agents/skills/audit-hardware-quality/SKILL.md): Comprehensive hardware architectural and silicon fidelity audit covering bus topology, Agnus DMA mastership, passive chip latching, CCK timing, and silicon invariants.
 
 ### B. Quality Assurance, Performance & Refactoring
 - [`code-review`](../.agents/skills/code-review/SKILL.md): Comprehensive 14-point audit checklist for code quality, file sizes ($\le 800$ lines), inlining, zero runtime panics, and spec compliance.
 - [`test-runner`](../.agents/skills/test-runner/SKILL.md): Standardized test execution across all 4 tiers, `.test_results/` snapshot management, and automated differential regression telemetry.
 - [`integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md): 4-Iteration Cascading Verification Protocol runbook for multi-chip integration test suites, failure clustering, and 2–3 attempt limits.
 - [`synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md): Post-facto root-cause consolidation using the 3-Column Diagnostic Matrix (`[Symptom] | [Location] | [Mechanism]`) to replace scattered local workarounds with a unified upstream hardware model.
-- [`audit-code-quality`](../.agents/skills/audit-code-quality/SKILL.md): Comprehensive on-demand code quality auditor and pruning playbook covering dead code, test-only zombies, minimum visibility leaks, SRP cohesion, and skill catalog synchronization.
+- [`audit-code-quality`](../.agents/skills/audit-code-quality/SKILL.md): Comprehensive on-demand code quality auditor and pruning playbook covering dead code, test-only zombies, minimum visibility leaks, SRP cohesion, inlining, and test parity.
 - [`refactor-split-module`](../.agents/skills/refactor-split-module/SKILL.md): Decompose oversized Rust source files (> 800 lines) into cohesive submodules while preserving 3-tier re-exports.
 - [`profile-external`](../.agents/skills/profile-external/SKILL.md): Profile Amiga 500 emulator execution hot paths using external sampling profilers (`samply` / Firefox Profiler) and verify throughput against Git-tracked baselines.
 - [`egui-vision-debugger`](../.agents/skills/egui-vision-debugger/SKILL.md): Headless visual inspection and autonomous self-healing skill for the `egui` frontend using `gui-inspector` (`egui_kittest` + `wgpu`) and Agent Multimodal Vision to diagnose layout squishing, splitter contention, and focus lifecycles.
@@ -83,6 +84,7 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`author-methodology-doc`](../.agents/skills/author-methodology-doc/SKILL.md): Author, audit, or restructure narrative articles, methodology documents, essays, and retrospective devlogs (e.g. `docs/how_this_emulator_was_written.md`) using the 6-layer Inverted Pyramid hierarchy.
 - [`html-to-markdown`](../.agents/skills/html-to-markdown/SKILL.md): Standardized toolchain for converting legacy Word HTML, vintage web documentation, and technical HTML articles into clean, publication-grade Obsidian Markdown with asset extraction, layout unnesting, and anchor link validation.
 - [`graphify`](../.agents/skills/graphify/SKILL.md): Persistent code knowledge graph navigation, call hierarchy tracing, and scoped subtree updates (`crates/` vs `ref_src/`).
+- [`audit-docs-quality`](../.agents/skills/audit-docs-quality/SKILL.md): Comprehensive documentation, Obsidian vault linking, constitutional size limits, and agent governance quality audit playbook.
 
 ### D. Git & Worktree Orchestration
 - [`git-worktree`](../.agents/skills/git-worktree/SKILL.md): Create, synchronize, and tear down isolated Git worktrees with automatic physical copying of ignored test assets and `.env` (Zero NTFS Junctions).
@@ -97,7 +99,9 @@ Developers trigger high-level orchestration directly in the IDE chat UI using sl
 | Slash Command | Workflow File | Primary Purpose |
 | :--- | :--- | :--- |
 | **`/code-review`** | [`code-review.md`](../.agents/workflows/code-review.md) | Comprehensive 14-point pre-commit and milestone architectural compliance audit. |
-| **`/audit-code-quality`** | [`audit-code-quality.md`](../.agents/workflows/audit-code-quality.md) | Full-workspace architectural audit (dead code, zombies, visibility, SRP, design sync, governance). |
+| **`/audit-code-quality`** | [`audit-code-quality.md`](../.agents/workflows/audit-code-quality.md) | Full-workspace Rust code quality audit (dead code, zombies, visibility, SRP, inlining, test parity). |
+| **`/audit-docs-quality`** | [`audit-docs-quality.md`](../.agents/workflows/audit-docs-quality.md) | Full-repository documentation and governance audit (design sync, vault links, size limits, skills catalog). |
+| **`/audit-hardware-quality`** | [`audit-hardware-quality.md`](../.agents/workflows/audit-hardware-quality.md) | Full-workspace hardware architectural audit (bus topology, Agnus DMA mastership, passive latching, CCK). |
 | **`/test-runner`** | [`test-runner.md`](../.agents/workflows/test-runner.md) | Standardized test suite execution, `.test_results/` snapshot rotation, and automated regression diffing. |
 | **`/integration-test-sprint`** | [`integration-test-sprint.md`](../.agents/workflows/integration-test-sprint.md) | 4-iteration cascading verification sweep, failure clustering, and 2–3 attempt time-boxing. |
 | **`/synthesize-test-fixes`** | [`synthesize-test-fixes.md`](../.agents/workflows/synthesize-test-fixes.md) | Post-facto git diff audit, 3-column diagnostic matrix construction, and root-cause consolidation into upstream substrate crates. |

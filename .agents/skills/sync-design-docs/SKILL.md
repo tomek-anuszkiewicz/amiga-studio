@@ -24,7 +24,7 @@ Activate this skill whenever:
 ### Step 1: Detect Drift via Audit Engine
 Run the automated design synchronization auditor to identify all specifications whose tracked Rust crates have evolved:
 ```powershell
-python tools/harness/audit_code_quality.py --design-sync
+python tools/harness/audit_docs_quality.py --design-sync
 ```
 
 Tracked specifications and their corresponding paths include:
@@ -45,7 +45,7 @@ Tracked specifications and their corresponding paths include:
 ### Step 2: Inspect Crate Git Diff Since Checkpoint
 For any drifted specification, inspect the exact code changes made to its tracked paths since the last recorded synchronization checkpoint:
 ```powershell
-python tools/harness/audit_code_quality.py --design-diff Denise.md
+python tools/harness/audit_docs_quality.py --design-diff Denise.md
 ```
 
 ### Step 3: Synchronize Architectural Reality
@@ -76,7 +76,7 @@ cargo test -p test_runner --test test_architecture_rules -- test_obsidian_design
 ### Step 7: Stamp the Git Checkpoint
 Once the specification is updated (or confirmed to still accurately reflect the code), stamp its frontmatter checkpoint to HEAD:
 ```powershell
-python tools/harness/audit_code_quality.py --design-bump Denise.md
+python tools/harness/audit_docs_quality.py --design-bump Denise.md
 ```
 Re-run `--design-sync` to verify that 100% of tracked specifications are in sync.
 

@@ -13,12 +13,12 @@ Use this workflow to audit code-backed design specifications in `Obsidian/Amiga/
 When invoked without parameters:
 1. **Detect Code-Documentation Drift:**
    ```powershell
-   python tools/harness/audit_code_quality.py --design-sync
+   python tools/harness/audit_docs_quality.py --design-sync
    ```
 2. **Inspect Diffs for Drifted Specifications:**
    For each drifted document reported:
    ```powershell
-   python tools/harness/audit_code_quality.py --design-diff <doc_name>
+   python tools/harness/audit_docs_quality.py --design-diff <doc_name>
    ```
 3. **Synchronize Specification Content:**
    - Update register bitfields, timing constants, clock phases (`CCK1`/`CCK2`), and bus arbitration rules.
@@ -27,7 +27,7 @@ When invoked without parameters:
 4. **Bump Checkpoint to HEAD:**
    Once verified or updated:
    ```powershell
-   python tools/harness/audit_code_quality.py --design-bump <doc_name>
+   python tools/harness/audit_docs_quality.py --design-bump <doc_name>
    ```
 5. **Verify Quality & Link Integrity:**
    ```powershell
@@ -40,15 +40,15 @@ When invoked without parameters:
 ## 2. Targeted Commands
 - **Audit Drift Status:**
   ```powershell
-  python tools/harness/audit_code_quality.py --design-sync
+  python tools/harness/audit_docs_quality.py --design-sync
   ```
 - **Inspect Specific Spec Diff:**
   ```powershell
-  python tools/harness/audit_code_quality.py --design-diff Denise.md
+  python tools/harness/audit_docs_quality.py --design-diff Denise.md
   ```
 - **Bump Verified Spec Checkpoint:**
   ```powershell
-  python tools/harness/audit_code_quality.py --design-bump Denise.md
+  python tools/harness/audit_docs_quality.py --design-bump Denise.md
   ```
 
 ---
