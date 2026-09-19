@@ -7059,11 +7059,12 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_code_quality.py --scripts`: Verified 0 placement anomalies across both directions (PASS).
   - `python tools/harness/pre_flight.py`: All 5 pre-flight gates passed cleanly.
 
+---
 
-
-
-
-
-
-
-
+### [2026-09-19 02:35 CEST] — Synchronized MemoryBus.md with Modular presets.rs Decomposition
+- **Subsystems Affected**:
+  - `Obsidian/Amiga/Design/MemoryBus.md`: Updated Section 2.1 to reflect the SRP decomposition of bank mapping (linking `crates/physical_memory/src/presets.rs` for precalculated static topology arrays `BANK_MAP_BARE`, `BANK_MAP_STANDARD`, and `BANK_MAP_EXPANDED` alongside `map.rs` for dispatch infrastructure). Bumped `last_synced_commit` to `658f2ea` and `updated: 2026-09-19`.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules -- test_obsidian_design_docs_links_integrity`: Passed (0 broken links).
+  - `python tools/harness/audit_code_quality.py --design-sync`: Verified 19/19 tracked specifications in sync with HEAD (PASS).
+  - `python tools/harness/pre_flight.py`: All 5 pre-flight gates passed cleanly.

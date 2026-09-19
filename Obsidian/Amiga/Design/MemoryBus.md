@@ -1,4 +1,5 @@
 ---
+
 title: "Amiga 500 MemoryBus Architecture & Bus Topology"
 aliases: ["MemoryBus", "Gary", "Address Map", "Bus Arbitration", "Bus Topology"]
 tags: ["amiga", "design", "physical_memory", "memory_bus", "chip_ram", "gary"]
@@ -6,12 +7,12 @@ category: "Design"
 subsystem: "physical_memory"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-14
+updated: 2026-09-19
 related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/memory_bus"
   - "crates/physical_memory"
-last_synced_commit: "a4f9f76"
+last_synced_commit: "658f2ea"
 last_synced_date: "2026-09-19"
 ---
 # Amiga 500 MemoryBus Architecture & Bus Topology
@@ -63,7 +64,7 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
 - **Direct Function Pointer Method Dispatch**: Mimicking the CPU's direct opcode table (`[OpcodeHandler; 65536]`), `bank_map` is a 256-entry array of `BankHandler` structs containing direct function pointers (`BankReadByteFn`, `BankWriteByteFn`, `BankReadWordFn`, `BankWriteWordFn`) returning `BusResult<T>` directly. Implementation resides in [`crates/physical_memory/src/map.rs`](../../../crates/physical_memory/src/map.rs).
 - **Native 16-Bit Word Accesses**: In accordance with the 68000's physical 16-bit wide data bus, word transfers (instruction fetches, stack frames, 16-bit operands) execute directly via `read_word` and `write_word` function pointers, reading or writing aligned 16-bit words directly without decomposing into two separate 8-bit indirect function calls.
 - **Zero Outer Contention Branches (Solution B)**: Memory accesses execute directly through table indexing `(self.bank_map[(addr >> 16) as usize].read_byte)(self, addr)` or `read_word`. Contention is an intrinsic physical property evaluated directly by individual bank handlers (Chip RAM and Slow RAM check `bus.chip_ram_blocked`; Fast RAM, ROM, and Open Bus never branch on contention). Outer bus methods perform zero contention checks.
-- **Zero Runtime Setup (`static`/`const`)**: Precalculated as compile-time `static` arrays (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), eliminating all initialization loops or runtime reallocation overhead.
+- **Zero Runtime Setup (`static`/`const`)**: Precalculated as compile-time `static` arrays (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), eliminating all initialization loops or runtime reallocation overhead. Topology presets reside in [`crates/physical_memory/src/presets.rs`](../../../crates/physical_memory/src/presets.rs).
 - **Direct Dispatch in `PhysicalMemory`**:
   - `$00..=$07`: `CHIP_RAM_HANDLER`
   - `$20..=$5F`: `FAST_RAM_HANDLER` (4 MB, active in `ExpandedPowerUser`)
