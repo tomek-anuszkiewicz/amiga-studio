@@ -10,7 +10,7 @@ updated: 2026-09-12
 related: ["[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/cia"
-last_synced_commit: "a4f9f76"
+last_synced_commit: "03da398"
 last_synced_date: "2026-09-19"
 ---
 # MOS 8520 Complex Interface Adapters (CIA-A & CIA-B) Specification

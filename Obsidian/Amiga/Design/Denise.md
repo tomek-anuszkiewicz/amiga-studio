@@ -12,7 +12,7 @@ tracked_paths:
   - "crates/denise"
   - "crates/sprites"
   - "crates/frame_builder"
-last_synced_commit: "a4f9f76"
+last_synced_commit: "03da398"
 last_synced_date: "2026-09-19"
 ---
 # Denise (MOS 8362 / 8373) Architecture & Hardware Specification

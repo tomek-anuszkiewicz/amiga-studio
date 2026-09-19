@@ -10,7 +10,7 @@ updated: 2026-09-12
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 tracked_paths:
   - "crates/config"
-last_synced_commit: "a4f9f76"
+last_synced_commit: "03da398"
 last_synced_date: "2026-09-19"
 ---
 # Amiga 500 Configuration Specification (`A500Config`)

@@ -11,7 +11,7 @@ related: ["[Floppy.md](Floppy.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop 
 tracked_paths:
   - "crates/paula"
   - "crates/audio"
-last_synced_commit: "a4f9f76"
+last_synced_commit: "03da398"
 last_synced_date: "2026-09-19"
 ---
 # Paula (MOS 8364) Architecture & Hardware Specification
