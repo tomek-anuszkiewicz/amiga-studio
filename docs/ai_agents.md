@@ -97,6 +97,13 @@ Developers trigger high-level orchestration directly in the IDE chat UI using sl
 | Slash Command | Workflow File | Primary Purpose |
 | :--- | :--- | :--- |
 | **`/code-review`** | [`code-review.md`](../.agents/workflows/code-review.md) | Comprehensive 14-point pre-commit and milestone architectural compliance audit. |
+| **`/audit-code-quality`** | [`audit-code-quality.md`](../.agents/workflows/audit-code-quality.md) | Full-workspace architectural audit (dead code, zombies, visibility, SRP, design sync, governance). |
 | **`/test-runner`** | [`test-runner.md`](../.agents/workflows/test-runner.md) | Standardized test suite execution, `.test_results/` snapshot rotation, and automated regression diffing. |
 | **`/integration-test-sprint`** | [`integration-test-sprint.md`](../.agents/workflows/integration-test-sprint.md) | 4-iteration cascading verification sweep, failure clustering, and 2–3 attempt time-boxing. |
 | **`/synthesize-test-fixes`** | [`synthesize-test-fixes.md`](../.agents/workflows/synthesize-test-fixes.md) | Post-facto git diff audit, 3-column diagnostic matrix construction, and root-cause consolidation into upstream substrate crates. |
+| **`/graphify`** | [`graphify.md`](../.agents/workflows/graphify.md) | AST knowledge graph queries, call hierarchy extraction, and scoped subtree re-indexing. |
+| **`/compact-diary`** | [`compact-diary.md`](../.agents/workflows/compact-diary.md) | Milestone synthesis and compaction of historical chronological entries in DIARY.md. |
+| **`/sync-design-docs`** | [`sync-design-docs.md`](../.agents/workflows/sync-design-docs.md) | Audit and synchronize Obsidian design specifications with active Rust code commits and bump checkpoints. |
+| **`/roadmap-maintenance`** | [`roadmap-maintenance.md`](../.agents/workflows/roadmap-maintenance.md) | Prune completed steps from ROADMAP.md (zero retention) and apply substrate-first causal renumbering. |
+| **`/index-amiga-rag`** | [`index-amiga-rag.md`](../.agents/workflows/index-amiga-rag.md) | Incremental vector re-indexing of Amiga hardware manuals and Obsidian notes into local Qdrant database. |
+

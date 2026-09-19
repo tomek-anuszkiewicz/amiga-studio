@@ -7136,3 +7136,21 @@ Every future modification or implementation task must append an entry following 
   - pre_flight.py passed
   - test_architecture_rules 19/19 passed
   - audit_code_quality.py --governance verified clean
+---
+
+### [2026-09-19 03:22 CEST] — Workflows: Promoted 4 Milestone Procedures to First-Class Slash Commands
+- **Affected Subsystems**:
+  - `.agents/workflows`
+  - `docs/ai_agents.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Created .agents/workflows/compact-diary.md (/compact-diary)
+  - Created .agents/workflows/sync-design-docs.md (/sync-design-docs)
+  - Created .agents/workflows/roadmap-maintenance.md (/roadmap-maintenance)
+  - Created .agents/workflows/index-amiga-rag.md (/index-amiga-rag)
+  - Updated docs/ai_agents.md workflow catalog to 10 active slash commands
+- **Architectural Rationale & Trade-Offs**:
+  - Empowers user with direct IDE slash command execution for key milestone processes while maintaining 100% two-way workflow-to-skill backing symmetry
+- **Verification & Test Results**:
+  - audit_code_quality.py --governance reports 0 candidates and 0 issues
+  - pre_flight.py passed
+  - test_architecture_rules passed 19/19
