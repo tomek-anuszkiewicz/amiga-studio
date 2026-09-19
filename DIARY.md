@@ -7480,3 +7480,31 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_code_quality.py --path-privacy`: 0 path privacy issues across 295 Rust files.
   - `python tools/harness/audit_code_quality.py --all`: 7/7 pillars passed cleanly (0 dead, 0 zombies, 0 visibility leaks, 0 inlining issues, 0 antipatterns, 0 test issues, 0 path privacy issues).
   - `python tools/harness/pre_flight.py`: 100% compliant.
+
+---
+
+### [2026-09-19 12:38 CEST] — Decomposed Custom Chip Design Specifications (Copper, Blitter, DMA, Sprites, Frame Buffer, Audio)
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/Copper.md`: Authored dedicated 1:1 specification for `crates/copper` covering 3-instruction set (`MOVE`, `WAIT`, `SKIP`), `CDANG` danger mode, wake-up lead timing, and VBL resets.
+  - `Obsidian/Amiga/Design/Blitter.md`: Authored dedicated 1:1 specification for `crates/blitter` covering 4-channel DMA block moves, 256 minterm truth tables, barrel shifting, area fill, and Bresenham line drawing.
+  - `Obsidian/Amiga/Design/DMA.md`: Authored dedicated 1:1 specification for `crates/dma` covering 227.5 CCK horizontal slot scheduling, 8-tier priority hierarchy, Blitter Nasty vs Normal 3-cycle CPU starvation counters, and Chip RAM wait states.
+  - `Obsidian/Amiga/Design/Sprites.md`: Authored dedicated 1:1 specification for `crates/sprites` covering 8 hardware sprites, 9-bit coordinate extraction, attached pairs (15-color mode), multiplexing, and priority mixing.
+  - `Obsidian/Amiga/Design/Frame Buffer.md`: Authored dedicated 1:1 specification for `crates/frame_builder` covering 32-bit ARGB raster composition, discrete R-2R resistor ladder DAC physics, absence of broadcast gamma pre-correction, and studio quantization.
+  - `Obsidian/Amiga/Design/Audio.md`: Authored dedicated 1:1 specification for `crates/audio` covering 4-channel DMA audio, period clock dividers, volume scaling, cross-channel modulation, and analog low-pass filtering.
+  - `Obsidian/Amiga/Design/Agnus.md`: Streamlined to retain master coordinator role (beam counters, chip revisions, register dispatch, write mutation buffer) with re-export links to `Copper.md`, `Blitter.md`, and `DMA.md`.
+  - `Obsidian/Amiga/Design/Denise.md`: Streamlined to retain display modes, palettes, and collision detection with re-export links to `Sprites.md` and `Frame Buffer.md`.
+  - `Obsidian/Amiga/Design/Paula.md`: Streamlined to retain central interrupt multiplexer (IPL 1..6), UART, and floppy MFM controller with re-export links to `Audio.md`.
+  - `tools/harness/audit_docs_quality.py`: Registered all 6 new specifications in `DESIGN_DOC_GOVERNANCE_MAP`.
+  - `.agents/rules/hardware-bus-topology.md`: Delegated authoritative hardware specifications to include the 6 new sub-chip documents.
+- **What Was Changed (The Concrete Reality)**:
+  - Decomposed monolithic custom chip documents into modular, 1:1 crate-aligned design specifications adhering strictly to the Inverted Pyramid model and dual-layer vault linking standard.
+  - Updated frontmatter tracking paths so that each specification monitors its dedicated workspace crate.
+  - Verified 100% link integrity and zero broken links across 39 design specifications and 995 links.
+- **Architectural Rationale & Trade-Offs**:
+  - *1:1 Workspace Parity:* Achieves precise alignment between the decoupled Rust workspace crate structure and documentation vault, eliminating bloated 35KB+ monolithic documents.
+  - *Governance Integrity:* Every extracted sub-crate is now explicitly governed and tested under Pillar 1 (code drift detection) and Pillar 8 (rule delegation).
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py`: All 10 pillars passed cleanly with 0 issues (39 specs, 995 links, 100% rule reflection, 100% semantic parity).
+  - `python tools/harness/pre_flight.py`: All quality gates passed cleanly.
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
+

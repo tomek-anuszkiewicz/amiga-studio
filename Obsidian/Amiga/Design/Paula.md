@@ -1,17 +1,16 @@
 ---
 title: "Paula (MOS 8364) Architecture & Hardware Specification"
-aliases: ["Paula", "MOS 8364", "Audio", "UART", "Floppy Controller"]
-tags: ["amiga", "design", "paula", "audio", "uart", "floppy"]
+aliases: ["Paula", "MOS 8364", "UART", "Floppy Controller"]
+tags: ["amiga", "design", "paula", "interrupts", "uart", "floppy"]
 category: "Design"
 subsystem: "paula"
 status: "active"
 created: 2026-09-06
 updated: 2026-09-19
-related: ["[Floppy.md](Floppy.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CIA.md](CIA.md)", "[SaveState.md](SaveState.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
+related: ["[Audio.md](Audio.md)", "[Floppy.md](Floppy.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CIA.md](CIA.md)", "[SaveState.md](SaveState.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/paula"
-  - "crates/audio"
-last_synced_commit: "03da398"
+last_synced_commit: "0fcd519"
 last_synced_date: "2026-09-19"
 ---
 # Paula (MOS 8364) Architecture & Hardware Specification
@@ -19,7 +18,8 @@ last_synced_date: "2026-09-19"
 > [!NOTE]
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
 > Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
-> Save state structures for Paula are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt priority arbitration (IPL 1–6) are coordinated with [Main loop A500.md](Main%20loop%20A500.md) and [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Disk controller interaction is detailed in [Floppy.md](Floppy.md), and DMA channel arbitration is handled by [Agnus.md](Agnus.md).
+> Save state structures for Paula are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt priority arbitration (IPL 1–6) are coordinated with [Main loop A500.md](Main%20loop%20A500.md) and [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md). Disk controller interaction is detailed in [Floppy.md](Floppy.md), and DMA channel arbitration is handled by [Agnus.md](Agnus.md) and [DMA.md](DMA.md).
+> 4-channel audio sample streaming is specified in [Audio.md](Audio.md).
 
 ---
 
@@ -29,7 +29,7 @@ Paula is the multi-function sound generator, floppy disk interface, serial commu
 
 ```mermaid
 flowchart TD
-    PAULA["Paula (MOS 8364)"] --> AUDIO["4-Channel DMA Audio\n(Channels 0..3, Left/Right Stereo)"]
+    PAULA["Paula (MOS 8364)"] --> AUDIO["4-Channel DMA Audio\n(crates/audio)"]
     PAULA --> FLOPPY["Floppy Disk MFM Controller\n(DSKDAT, DSKSYN, DSKLEN)"]
     PAULA --> UART["Serial Port UART\n(SERDAT, SERPER, 9-bit Framing)"]
     PAULA --> INTR["Central Interrupt Multiplexer\n(14 Sources -> Levels 1..6 -> IPL Out)"]
@@ -69,8 +69,8 @@ Per [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md
 - **Zero DMA Address Generators:** Paula contains **no DMA pointer registers and no Chip RAM address generation circuitry**. Agnus owns and increments all `AUDxPT` audio pointers and `DSKPT` disk pointers.
 - **Zero Direct Memory Reads:** Paula **never holds references to `PhysicalMemory` and never calls `memory.read()`**.
 - **Passive Data Latching via DMAL & RGA Bus:**
-  - Audio: When Paula's sample period triggers a buffer reload request, Agnus schedules audio DMA in slots 5..8, asserts `DMAL`, places the memory address onto the Chip RAM bus, and asserts `AUDxDAT` (`$0AA`, `$0BA`, `$0CA`, `$0DA`) on the internal `RGA` bus. Paula passively latches the 16-bit word off the data bus into its channel holding register.
-  - Floppy: In slot 4, Agnus transfers MFM words between Chip RAM and Paula's `DSKDAT` (`$026`) holding register over the shared data bus.
+  - Audio: When Paula's sample period triggers a buffer reload request, Agnus schedules audio DMA in slots 13..19, asserts `DMAL`, places the memory address onto the Chip RAM bus, and asserts `AUDxDAT` (`$0AA`, `$0BA`, `$0CA`, `$0DA`) on the internal `RGA` bus. Paula passively latches the 16-bit word off the data bus into its channel holding register.
+  - Floppy: In slots 7, 9, 11, Agnus transfers MFM words between Chip RAM and Paula's `DSKDAT` (`$026`) holding register over the shared data bus.
 - **Prohibition of Direct Inter-Chip Smuggling:** Paula never directly calls methods on Agnus, Denise, or CPU. All interactions (such as `AUDxDSR` pointer reload strobes and interrupt requests) model physical electric pins coordinated by the machine loop.
 
 ---
@@ -119,47 +119,13 @@ Paula registers are mapped in the Custom Chip space (`$DFF008`–`$DFF032`, `$DF
 
 ---
 
-## 4. 4-Channel DMA Audio Engine
+## 4. Subordinate Audio Engine (`crates/audio`)
 
-Paula houses 4 independent DMA sound channels producing 8-bit signed PCM output:
-
-```mermaid
-flowchart TD
-    DMA["Agnus DMA (AUDxLC/LEN)"] --> FIFO["Channel FIFO\n(AUDxDAT 16-Bit Holding Latch)"]
-    PER["Period Counter (AUDxPER)\nDecrements every CCK"] --> SAMPLE["Sample Clock Trigger\nfs = 3.55 MHz / AUDxPER"]
-    FIFO --> SAMPLE
-    SAMPLE --> VOL["Volume DAC (AUDxVOL: 0..64)"]
-    
-    VOL --> CH0["Channel 0 (Right)"]
-    VOL --> CH1["Channel 1 (Left)"]
-    VOL --> CH2["Channel 2 (Left)"]
-    VOL --> CH3["Channel 3 (Right)"]
-    
-    CH0 & CH3 --> MIX_R["Right Stereo Output\n+ Low-Pass Filter"]
-    CH1 & CH2 --> MIX_L["Left Stereo Output\n+ Low-Pass Filter"]
-```
-
-### 4.1 Sample Clocking & Period Formula
-- The audio period counter decrements once every **Color Clock (CCK)**.
-- When the period counter reaches zero, the channel outputs the next 8-bit sample byte and reloads from `AUDxPER`.
-- **Sample Rate Equations:**
-  $$f_{\text{sample}} = \frac{3,546,895\ \text{Hz}}{\text{period}} \quad (\text{PAL}) \qquad f_{\text{sample}} = \frac{3,579,545\ \text{Hz}}{\text{period}} \quad (\text{NTSC})$$
-- **Hardware Period Limits:**
-  - Minimum supported period: **$124$ CCKs** ($\approx 28.86\ \text{kHz}$ max sample rate under PAL).
-  - Maximum period: **$65,535$ CCKs** ($\approx 54.1\ \text{Hz}$).
-
-### 4.2 Stereo Channel Assignment & Volume Scaling
-- **Left Channel:** Audio Channel 1 and Audio Channel 2.
-- **Right Channel:** Audio Channel 0 and Audio Channel 3.
-- **Volume:** Controlled by bits 5–0 of `AUDxVOL` ($0$ = mute, $64$ = maximum amplitude).
-
-### 4.3 Modulation via `ADKCON`
-- Channel 0 can modulate Channel 1 (frequency or amplitude modulation).
-- Channel 2 can modulate Channel 3 (frequency or amplitude modulation).
-
-### 4.4 Hardware Audio Filters
-- **Fixed RC Low-Pass Filter:** 2-pole analog filter with a fixed cutoff frequency of $\approx 7\ \text{kHz}$.
-- **Switchable "LED" Filter:** Additional 1-pole low-pass filter with a cutoff frequency of $\approx 4.4\ \text{kHz}$. Controlled directly by **CIA-A Port A bit 1** (`_LED`). Setting the bit low enables the filter and dims the power LED; setting it high disables the filter and brightens the LED.
+Paula houses 4 independent DMA sound channels producing 8-bit signed PCM output across stereo Left (Channels 1 & 2) and Right (Channels 0 & 3) channels.
+- **Sample Rates:** Clocked by Color Clock period dividers: $f = 3,546,895\ \text{Hz} / \text{period}$ (PAL).
+- **Volume & Modulation:** 6-bit linear volume scaling ($0..64$) and cross-channel frequency/amplitude modulation via `ADKCON`.
+- **Filtering:** Fixed 7 kHz 2-pole RC filter and switchable 4.4 kHz LED filter (controlled by CIA-A Port A bit 1 `_LED`).
+- *Authoritative Specification:* See [Audio.md](Audio.md).
 
 ---
 
@@ -231,7 +197,9 @@ Both `INTENA` (`$DFF09A`) and `INTREQ` (`$DFF09C`) use bit 15 as an atomic contr
 
 ## 9. Reference Documentation & Upstream Ground Truth
 
-- [Amiga Hardware Reference Manual: Chapter 5 (Audio Hardware)](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md): Authoritative specification for 4-channel DMA audio, period clock dividers, volume control, and channel modulation.
+- [Audio Architecture Specification](Audio.md): 4-channel DMA audio engine, volume scaling, period counters, and BLEP synthesis.
+- [Floppy Subsystem Specification](Floppy.md): MFM decoding, drive mechanics, and sector formats.
+- [Amiga Hardware Reference Manual: Chapter 5 (Audio Hardware)](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md): Authoritative specification for 4-channel DMA audio.
 - [Amiga Hardware Reference Manual: Chapter 7 (System Control Hardware)](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): Interrupt multiplexing logic, priority level encoding (IPL 1–6), `INTENA`, and `INTREQ` control bits.
 - [Amiga Hardware Reference Manual: Chapter 8 (Interface Hardware)](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): UART serial communication registers (`SERDAT`, `SERPER`) and floppy disk read/write timing.
 - [Amiga Hardware Reference Manual: Appendix B (Register Summary)](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Bitfield layouts and access modes for all Paula custom chip registers (`$DFF008`–`$DFF032`, `$DFF09A`–`$DFF0DE`).

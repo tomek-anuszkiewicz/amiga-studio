@@ -647,8 +647,14 @@ def check_frontmatter_compliance():
 DESIGN_DOC_GOVERNANCE_MAP = {
     # Subsystems & Bus Topology
     "Agnus.md": ("hardware-bus-topology.md", "Agnus DMA address mastership and custom chip execution"),
+    "Copper.md": ("hardware-bus-topology.md", "Copper coprocessor state machine, MOVE, WAIT, SKIP"),
+    "Blitter.md": ("hardware-bus-topology.md", "4-channel DMA Blitter, 256 minterms ALU, Bresenham line drawing"),
+    "DMA.md": ("hardware-bus-topology.md", "DMA channel arbitration, 227.5 CCK slot scheduling, and Agnus address mastership"),
     "Denise.md": ("hardware-bus-topology.md", "Denise display pipeline, bitplanes, and passive RGA latching"),
+    "Sprites.md": ("hardware-bus-topology.md", "Denise 8 hardware sprites, position comparators, attached pairs"),
+    "Frame Buffer.md": ("hardware-bus-topology.md", "Denise raster scanline pixel compositor, RGB palette DAC, and ARGB frame buffer"),
     "Paula.md": ("hardware-bus-topology.md", "Paula audio and interrupt handling"),
+    "Audio.md": ("hardware-bus-topology.md", "Paula 4-channel DMA audio engine, volume scaling, period counters"),
     "CIA.md": ("hardware-bus-topology.md", "8520 CIA timers, TOD counters, and peripheral handshaking"),
     "Floppy.md": ("hardware-bus-topology.md", "Floppy drive subsystem, MFM encoding, and DMA transfers"),
     "MemoryBus.md": ("hardware-bus-topology.md", "Address decoding, bus arbitration, and wait states"),

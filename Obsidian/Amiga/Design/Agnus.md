@@ -1,19 +1,16 @@
 ---
 title: "Agnus (MOS 8370 / 8371 / 8372A) Architecture & Hardware Specification"
-aliases: ["Agnus", "MOS 8370", "MOS 8371", "MOS 8372A", "Copper", "Blitter"]
-tags: ["amiga", "design", "agnus", "copper", "blitter", "dma"]
+aliases: ["Agnus", "MOS 8370", "MOS 8371", "MOS 8372A"]
+tags: ["amiga", "design", "agnus", "dma", "beam"]
 category: "Design"
 subsystem: "agnus"
 status: "active"
 created: 2026-09-06
 updated: 2026-09-19
-related: ["[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Denise.md](Denise.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
+related: ["[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[DMA.md](DMA.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[SaveState.md](SaveState.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/agnus"
-  - "crates/copper"
-  - "crates/blitter"
-  - "crates/dma"
-last_synced_commit: "03da398"
+last_synced_commit: "0fcd519"
 last_synced_date: "2026-09-19"
 ---
 # Agnus (MOS 8370 / 8371 / 8372A) Architecture & Hardware Specification
@@ -22,6 +19,7 @@ last_synced_date: "2026-09-19"
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
 > Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 > Save state structures for Agnus are specified in [SaveState.md](SaveState.md). Machine stepping and interrupt delivery are governed by [Main loop A500.md](Main%20loop%20A500.md). Video synchronization is coordinated with [Denise.md](Denise.md) and DMA audio/disk cycles with [Paula.md](Paula.md).
+> Subordinate coprocessors and scheduling are specified in dedicated companion documents: [Copper.md](Copper.md), [Blitter.md](Blitter.md), and [DMA.md](DMA.md).
 
 ---
 
@@ -221,154 +219,31 @@ impl BeamCounter {
 
 ---
 
-## 5. DMA Channel Arbitration & Slot Schedule
+## 5. Subordinate Coprocessors & Subsystems
 
-Agnus acts as the hardware arbiter for Chip RAM. Each horizontal scanline ($227.5$ CCKs) is partitioned into dedicated DMA time slots:
+Agnus encapsulates three specialized companion engines, fully specified in their respective architecture documents:
 
-```mermaid
-flowchart LR
-    SLOTS["Scanline 227.5 CCKs"] --> REFR["CCK 1, 3, 5, 226:\n4 Refresh Slots (Odd Cycles)"]
-    SLOTS --> DISK_AUD["CCK 7..19 Odd:\n3 Floppy + 4 Audio Slots"]
-    SLOTS --> SPR["CCK 21..51 Odd:\n16 Sprite Slots (8 Sprites x 2 words)"]
-    SLOTS --> BPL["CCK 28..D0:\nDisplay Bitplane DMA (Up to 6 words)"]
-    SLOTS --> EVEN["Even Slots (0, 2, 4..52):\nReserved for 68000 CPU"]
-    SLOTS --> RESID["Remaining Even/Odd Slots:\nCopper, Blitter, CPU"]
-```
+### 5.1 DMA Arbitration & Slot Scheduling
+- **Master DMA Address Generator:** Agnus drives Chip RAM memory addresses and RGA bus register strobes across all channels.
+- **Scanline Partitioning:** 227.5 CCK horizontal schedule allocating fixed slots for Refresh, Floppy, Audio, and Sprites, dynamic slots for Bitplanes, and residual cycles for Copper, Blitter, and CPU.
+- **Contention Management:** Monitors Chip RAM blocking and arbitrates Blitter Nasty vs Normal mode with 3-cycle CPU starvation yield.
+- *Authoritative Specification:* See [DMA.md](DMA.md).
 
-### 5.0 Exclusive DMA Address Mastership & RGA Bus Driver Invariant
-Per [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md) and [General Architecture.md](General%20Architecture.md), Agnus is the **sole bus master and memory address generator** for Chip RAM DMA.
-- **Ownership of DMA Pointers:** Agnus owns and manages all pointer registers: `BPLxPT` (Bitplanes 1..6), `SPRxPT` (Sprites 0..7), `AUDxPT` (Audio 0..3), `DSKPT` (Floppy Disk), `COPxLC` (Copper), and `BLTxPT` (Blitter channels A..D).
-- **Bus Driving Mechanics:** On each active DMA slot, Agnus places the memory address onto the Chip RAM address bus and asserts the target register offset on the internal Register Address (`RGA8..1`) bus.
-- **Zero Memory Access in Target Chips:** Peer chips (`Denise`, `Paula`) contain **zero DMA address generation logic and zero direct references to `PhysicalMemory`**. They passively latch incoming words from the shared data bus upon matching their assigned `RGA` strobe. Direct method calls or memory reads between peer chips are strictly prohibited.
+### 5.2 Copper Display Coprocessor
+- **Synchronized Coprocessor:** Executes 32-bit instructions (`MOVE`, `WAIT`, `SKIP`) in lockstep with the raster beam.
+- **Danger Mode Protection:** Manages `CDANG` register write permissions below `$DFF080` via `COPCON`.
+- **List Pointers & Strobes:** Manages `COP1LC`, `COP2LC`, `COPJMP1`, `COPJMP2`, and VBlank reset.
+- *Authoritative Specification:* See [Copper.md](Copper.md).
 
-### 5.1 8-Tier Master DMA Priority Hierarchy
-Agnus resolves bus mastership on every single Color Clock cycle according to a strict 8-tier priority hierarchy (Commodore HRM Figure 6-9):
-
-1. **DRAM Refresh (`CCK 1, 3, 5, 226/0xE2`):** 4 dedicated odd-cycle memory slots per scanline during horizontal blanking and line end. Unconditionally locks the Chip RAM bus.
-2. **Floppy Disk DMA (`CCK 7, 9, 11`):** 3 dedicated odd memory cycles per scanline when disk DMA is enabled (`DMACON` bit 4 `DSKEN`) and active (`dskpt != 0`).
-3. **Audio DMA (`CCK 13, 15, 17, 19`):** 4 dedicated odd cycles (1 for each audio channel `AUD0`–`AUD3`) per scanline when enabled (`DMACON` bit 0 `AUD0EN`..bit 3 `AUD3EN`).
-4. **Bitplane DMA (`DDFSTRT`..=`DDFSTOP`):** Dynamically scheduled in the display data fetch window according to resolution and plane count (`BPLCON0`):
-   - **Low-Res (1–4 planes):** Even phases (0, 2, 4, 6) claim planes 1–4. Odd phases remain free for the CPU.
-   - **Low-Res (5–6 planes):** Cycle stealing active. Odd phases 1 and 3 are stolen by planes 5 and 6 (stealing 25% or 50% of CPU slots). Odd phases 5 and 7 remain free.
-   - **Hi-Res (1–4 planes):** Double data rate. Planes 1–4 consume both even and odd cycles. 4-plane Hi-Res claims 100% of bus bandwidth in the display window, causing complete CPU lockout.
-5. **Sprite DMA (`CCK 21..=51` odd cycles):** 16 odd memory cycles (2 words per sprite for `SPR0`–`SPR7`, slots 21&23 for Sp0, 25&27 for Sp1, ..., 49&51 for Sp7) per scanline when enabled (`DMACON` bit 5 `SPREN`).
-6. **Copper Coprocessor:** Active when Copper DMA is enabled (`DMACON` bit 7 `COPEN`) and the Copper is actively fetching instruction words (not waiting on beam position or halted).
-7. **Blitter:** Active when Blitter DMA is enabled (`DMACON` bit 6 `BLTEN`) and Blitter is busy (`is_busy == true`):
-   - **Blitter Nasty Mode (`DMACON` bit 10 `BLTPRI == 1`):** The Blitter claims all available bus cycles (both even and odd), locking out the CPU completely while active.
-   - **Normal Mode (`BLTPRI == 0`):** Agnus monitors CPU starvation. If custom chip DMA or Blitter starves the CPU for 3 consecutive cycles, Agnus forces the Blitter to yield the 4th cycle unconditionally to the CPU (`DmaChannel::Cpu`), and the starvation counter resets.
-8. **Motorola 68000 CPU:** Granted bus mastership whenever no higher-priority custom chip channel claims the cycle. Even cycles throughout horizontal blanking (0, 2, 4, 6..52) remain completely unallocated to fixed DMA channels and are available for CPU bus cycles with zero wait states.
-
-### 5.2 Dynamic Slot Release & Pointer Progression
-- **Dynamic Slot Release:** If a fixed time-slot channel is disabled in `DMACON` or inactive (e.g. disk pointer zero or sprite DMA disabled), the cycle is immediately released down the hierarchy to Copper, Blitter, or CPU.
-- **Physical Address Pointer Advancement:** When a custom channel (`Bitplane`, `Sprite`, `Audio`) is granted a bus slot, Agnus advances its corresponding physical pointer (`bplpt[p]`, `sprpt[s]`, `audpt[c]`) by 2 bytes within the Chip RAM space (`& 0x0007_FFFE`).
-
-### 5.3 Chip RAM Contention & Bus Wait-State Assertion
-Agnus communicates contention state directly to the memory subsystem via `self.chip_ram_blocked`:
-- When `owner != DmaChannel::Cpu`, `chip_ram_blocked` is asserted (`true`).
-- `machine_loop` propagates `chip_ram_blocked` to `PhysicalMemory`.
-- Any CPU bus cycle targeting Chip RAM (`$000000-$07FFFF`) or Slow RAM (`$C00000-$C7FFFF`) receives `BusResult::WaitState`, stalling the 68000 micro-step execution until the bus is released.
-- **Fast RAM Immunity:** CPU accesses to Auto-Config Fast RAM (`$200000-$9FFFFF`) bypass Chip RAM arbitration entirely, executing with zero wait states even under 100% DMA bus saturation.
-
-### 5.4 Delayed Mutation Propagation Pipeline
-In Agnus, writes to control registers (`DMACON`, `BLTCON0/1`, `COPCON`) or strobes (`COPJMP1/2`, `BLTSIZE`) do not take instantaneous cross-chip effect:
-- **Read is NOW**: Reading `DMACONR`, `VHPOSR`, or `VPOSR` returns the currently active, latched state immediately on the current cycle.
-- **Write is Staged**: Writes enter an inline, fixed-capacity pipeline (`[Option<DelayedMutation>; 64]`, sized by `AGNUS_MUTATION_CAPACITY`).
-- Each CCK step decrements `remaining_cck`. When it reaches zero, the mutated value commits to the active register (e.g. updating DMA channel enables or triggering the Copper program counter reload).
-- **Zero Allocations & Save State Persistence**: The mutation array contains no heap allocations and is serialized into `AgnusState`, preserving determinism across save/restore cycles.
-
-### 5.5 DMA Word Routing via Central Machine Loop
-To preserve strictly decoupled ownership and eliminate circular references:
-- **Agnus Fetches from Chip RAM:** During designated DMA slots (Floppy slot 4, Audio slots 5..8, Sprites slots 12..27, Bitplanes, Blitter), Agnus addresses `PhysicalMemory` directly using internal pointers (`dskpt`, `audpt[ch]`, `sprpt[i]`, `bplpt[i]`).
-- **Machine Loop Routing:** The fetched 16-bit word is routed through `machine_loop` into the target subsystem's holding latches:
-  - Audio DMA words are transferred to Paula: `paula.audio.set_dat(channel, word)`.
-  - Floppy DMA words are transferred to Paula: `paula.dskdat = word` (or in write mode, Paula provides data to Agnus).
-  - Sprite DMA words are routed to Denise sprite shift registers.
-  - Bitplane DMA words are routed to Denise bitplane serializers.
-- **Channel Event Signals:** When a channel completes or requires buffer loop (`AUDxDSR` in audio, `_BLITINT` in Blitter), the subsystem asserts an event flag, which `machine_loop` passes back to Agnus to reload pointers (`audpt = audlc`) and Paula to assert interrupt requests (`INTREQ`).
+### 5.3 4-Channel Blitter
+- **Bit-Block Transferrer:** 4 DMA channels (A, B, C, D) supporting arbitrary rectangle copies, 256 boolean minterms, and sub-word barrel shifting.
+- **Vector Line Drawing:** Hardware Bresenham line drawer with slope accumulators and octant direction control.
+- **Area Fill & Zero Detect:** Inclusive/exclusive area filling and Zero flag evaluation.
+- *Authoritative Specification:* See [Blitter.md](Blitter.md).
 
 ---
 
-## 6. Copper Coprocessor
-
-The Copper is an autonomous programmable display coprocessor synchronized with the raster beam.
-
-```mermaid
-stateDiagram-v2
-    [*] --> FetchOpcode: Vertical Blank (COP1LC loaded)
-    FetchOpcode --> DecodeInstruction
-    DecodeInstruction --> ExecuteMove: Bit 0 = 0
-    DecodeInstruction --> CheckWaitOrSkip: Bit 0 = 1
-    CheckWaitOrSkip --> ExecuteWait: Bit 0 of Word 2 = 0
-    CheckWaitOrSkip --> ExecuteSkip: Bit 0 of Word 2 = 1
-    ExecuteMove --> FetchOpcode
-    ExecuteWait --> Waiting: VPOS/HPOS < Target
-    Waiting --> FetchOpcode: VPOS/HPOS >= Target
-    ExecuteSkip --> FetchOpcode: Skip Next if Beam >= Target
-```
-
-### 6.1 Instruction Set (3 Instructions, 32 Bits Each)
-1. **`MOVE` (Word 1: `$0000_0000_RRRR_RRR0`, Word 2: `DDDD_DDDD_DDDD_DDDD`):**
-   - Writes immediate 16-bit value `D` to custom register offset `R` (`$DFF000 + R`).
-   - **Copper Danger Mode (`CDANG` in `COPCON`):**
-     - If `CDANG == 0`, writes to registers below `$DFF080` (such as Blitter registers `$DFF040`–`$DFF074`) are locked out and executed as no-ops.
-     - If `CDANG == 1`, the Copper can write to any custom register.
-2. **`WAIT` (Word 1: `VVVV_VVVV_HHHH_HHH1`, Word 2: `BMVV_VVVV_HHHH_HHH0`):**
-   - Halts the Copper until `(VPOS, HPOS)` matches or exceeds the specified target position masked by word 2.
-   - `B` bit (bit 15 of word 2): When set, Copper waits for Blitter Done (`BLTDONE`).
-3. **`SKIP` (Word 1: `VVVV_VVVV_HHHH_HHH1`, Word 2: `BMVV_VVVV_HHHH_HHH1`):**
-   - Compares the beam position to target. If current position is greater than or equal to target, skips the next 32-bit instruction.
-
-### 6.2 Restart & Interrupts
-- At the start of vertical blanking (line 0), Agnus automatically resets the Copper program counter to `COP1LC`.
-- Writes to `COPJMP1` (`$DFF088`) force an immediate reload from `COP1LC`.
-- Writes to `COPJMP2` (`$DFF08A`) force an immediate reload from `COP2LC`.
-- Writing to a Copper register can trigger the `COPER` interrupt in Paula (Level 3).
-
----
-
-## 7. 4-Channel Blitter (Bit-Block Transferrer)
-
-The Blitter is a high-speed hardware block mover with an integrated ALU supporting boolean logic operations, arbitrary bit shifts, and Bresenham vector line drawing:
-
-```mermaid
-flowchart TD
-    SRC_A["Channel A\n(Shift 0..15 + Masks)"] --> ALU["256-Minterm\nLogic Generator (LF0..LF7)"]
-    SRC_B["Channel B\n(Shift 0..15)"] --> ALU
-    SRC_C["Channel C\n(Background)"] --> ALU
-    ALU --> DEST_D["Channel D\n(Chip RAM Destination)"]
-    ALU --> ZERO["Zero Detect Flag (Z)"]
-```
-
-### 7.1 Architecture & Operations
-- **4 DMA Channels:**
-  - **Channel A:** Source operand, line drawing pattern, and mask source.
-  - **Channel B:** Source operand, texture/pattern, bit shifter.
-  - **Channel C:** Background operand for cookie-cut blits.
-  - **Channel D:** Destination operand written to Chip RAM.
-- **256 Minterm Generator:**
-  - Bits 7–0 of `BLTCON0` (`LF0`–`LF7`) select any of the 256 boolean logic equations combining inputs A, B, and C:
-    $$D = f(A, B, C)$$
-  - Standard copy $D = A$: `$09F0` in `BLTCON0`.
-  - Cookie-cut blit $D = (A \land B) \lor (\neg A \land C)$: `$0CA0` in `BLTCON0`.
-- **Barrel Shifters:**
-  - Channel A shift ($0..15$ bits) set via `BLTCON0` bits 12–15.
-  - Channel B shift ($0..15$ bits) set via `BLTCON1` bits 12–15.
-- **First & Last Word Masks:**
-  - `BLTAFWM`: Bitmask ANDed with the first word of each row on channel A.
-  - `BLTALWM`: Bitmask ANDed with the last word of each row on channel A.
-- **Addressing & Modulos:**
-  - Pointers `BLTAPT`, `BLTBPT`, `BLTCPT`, `BLTDPT` advance by 2 bytes after each word transfer.
-  - At the end of each row, signed modulos `BLTAMOD`, `BLTBMOD`, `BLTCMOD`, `BLTDMOD` are added.
-  - **Ascending vs Descending Mode:** Controlled by `BLTCON1` bit 1 (`DESC`). When set, pointers decrement, enabling safe overlapping memory copies without corruption.
-- **Bresenham Line Drawing Mode:**
-  - Enabled via `BLTCON1` bit 0 (`LINE`).
-  - Implements hardware single-pixel line drawing between arbitrary $(X_1, Y_1)$ and $(X_2, Y_2)$ coordinates using Bresenham slope error accumulators.
-- **Zero Detect (`BLTCON0` bit 13):**
-  - Evaluates all words written to destination D. If all bits are zero, the `Z` flag remains set; cleared if any bit is 1.
-
----
-
-## 8. Reset Defaults & Coordination
+## 6. Reset Defaults & Coordination
 
 - **`DMACON` (`$DFF096`):** Reset to **`$0000`** (all DMA channels disabled). Agnus immediately releases the Chip RAM bus, ensuring the CPU has unblocked access.
 - **`COPCON` (`$DFF02E`):** Reset to **`$0000`** (`CDANG = 0`, Copper danger registers protected).
@@ -377,10 +252,12 @@ flowchart TD
 
 ---
 
-## 9. Reference Documentation & Upstream Ground Truth
+## 7. Reference Documentation & Upstream Ground Truth
 
-- [Amiga Hardware Reference Manual: Chapter 2 (Coprocessor Hardware)](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md): Authoritative specification for Copper instruction formats (`MOVE`, `WAIT`, `SKIP`), bus timing, and danger register protection (`COPCON`).
-- [Amiga Hardware Reference Manual: Chapter 6 (Blitter Hardware)](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md): Circuit principles for 4-channel DMA Blitter, 256 minterm truth table generator (`BLTCON0`), shifters, and Bresenham line drawing.
+- [Copper Architecture Specification](Copper.md): Comprehensive 3-instruction coprocessor state machine and timing.
+- [Blitter Architecture Specification](Blitter.md): 4-channel DMA block transferrer, minterms, and Bresenham line mode.
+- [DMA Architecture & Scheduling](DMA.md): 227.5 CCK horizontal slot scheduling and 8-tier priority hierarchy.
+- [Amiga Hardware Reference Manual: Chapter 2 (Coprocessor Hardware)](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md): Authoritative specification for Copper instruction formats (`MOVE`, `WAIT`, `SKIP`).
+- [Amiga Hardware Reference Manual: Chapter 6 (Blitter Hardware)](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md): Circuit principles for 4-channel DMA Blitter, minterm generator (`BLTCON0`), shifters, and line drawing.
 - [Amiga Hardware Reference Manual: Appendix B (Register Summary)](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Complete memory-mapped address order table and bitfield masks for all Agnus registers (`$DFF000`–`$DFF07E`).
-- [vAmiga Copper Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/Copper/Copper.cpp): Cycle-exact state machine model for Copper instruction decode, comparator logic, and DMA slot fetches.
-- [vAmiga Blitter Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/Blitter/Blitter.cpp): Reference pipeline implementation for multi-channel DMA blits, shift logic, and mask application.
+- [vAmiga Agnus Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/Agnus/Agnus.cpp): Reference coordinator implementation for beam counters and custom register access.
