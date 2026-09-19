@@ -42,7 +42,7 @@ The architecture mirrors the physical two-level microcode design of the Motorola
 4. **Pre-Allocated CPU-Level Prefetch Array**:
    `prefetch: [u16; 2]` and `ir: u16` are fixed fields inside `CpuState` (modeling hardware registers `IRC`, `IR`, and `IRD`). Zero dynamic queues.
 5. **Parametric, Bus-Free ALU Function Pointers (`AluFn`)**:
-   ALU steps do **not** take `MemoryBus`. By the time the ALU executes, all operands have already arrived in `CpuState` (`prefetch[0]`, `last_read`, or `d[]/a[]`). ALU functions take `(&mut CpuState, reg_src: u8, reg_dst: u8)`. This parameterization collapses 8–64 repetitive opcode functions into **one shared, elegant function per operation**.
+   ALU steps do **not** take `MemoryBus`. By the time the ALU executes, all operands have already arrived in `CpuState` (`prefetch`, `last_read`, or `d[]/a[]`). ALU functions take `(&mut CpuState, reg_src: u8, reg_dst: u8)`. This parameterization collapses 8–64 repetitive opcode functions into **one shared, elegant function per operation**.
 6. **Fused CCK ALU Micro-Operations (Zero-Overhead Internal Operations)**:
    ALU calculations, condition code flag updates, and Effective Address arithmetic are fused directly onto native 2-clock Color Clock phases (`MicroStep.alu_fn`) where operand data has arrived (e.g. CCK2 read idle `BUS_READ_IDLE`, CCK1 extension fetch, or internal 2-clock processing phases). This eliminates separate 0-clock dispatch steps and redundant state machine iterations while guaranteeing 100% cycle-exact execution, Address Error verification, and Chip RAM DMA contention timing. Standalone 0-clock micro-steps (`base_clocks: 0`) are reserved exclusively for dynamic countdown delay loops (`clocks_remaining` in `MUL`/`DIV`/shifts) or single-instruction branch slice trampolines (`Bcc`/`DBcc`/`Scc`).
 7. **Data Output Buffer (`write_buffer: u32`) & Exact Write Strobe Preservation**:
@@ -87,7 +87,7 @@ The microcode data structures and static lookup tables are implemented in [`crat
 
 ### 2.1 The `AluFn` Function Pointer (Pure Internal CPU Operation)
 
-Because all memory operands are already latched into `CpuState` (`prefetch[0]`, `last_read`, or `d[]/a[]`) before the ALU step runs, `AluFn` does **not** take `MemoryBus`. ALU handlers execute purely internally, operating directly on `CpuState` with pre-decoded register indices:
+Because all memory operands are already latched into `CpuState` (`prefetch`, `last_read`, or `d[]/a[]`) before the ALU step runs, `AluFn` does **not** take `MemoryBus`. ALU handlers execute purely internally, operating directly on `CpuState` with pre-decoded register indices:
 - Signature: `fn(state: &mut CpuState, reg_src: u8, reg_dst: u8)`
 - Implementation: [`crates/cpu/src/micro/engine.rs`](../../../crates/cpu/src/micro/engine.rs) and [`crates/cpu/src/micro/types.rs`](../../../crates/cpu/src/micro/types.rs).
 
@@ -211,7 +211,7 @@ On the Amiga 500, the 4-clock M68000 bus cycle maps to **two Color Clock phases 
 ```
 
 - **READ Cycles (`BusReadByte`, `BusReadWord`, `BusReadLongHigh`, `BusReadLongLow`, `FetchExtension`, `PrefetchNextOpcodeAndRetire`):**
-  - **CCK1 (S0–S3):** Bus read attempt via `bus.read_word(addr)` or `bus.read_byte(addr)`. If `BusResult::WaitState` $\to$ insert wait state (CPU stalls in CCK1). If `BusResult::Ready(data)` $\to$ stores data directly into `source`, `destination`, `prefetch[0]`, or `irc`, advancing `phase = CCK2`.
+  - **CCK1 (S0–S3):** Bus read attempt via `bus.read_word(addr)` or `bus.read_byte(addr)`. If `BusResult::WaitState` $\to$ insert wait state (CPU stalls in CCK1). If `BusResult::Ready(data)` $\to$ stores data directly into `source`, `destination`, `prefetch`, or `irc`, advancing `phase = CCK2`.
   - **CCK2 (S4–S7):** **Do nothing on the bus!** Physical Chip RAM is already released for custom chip DMA (Blitter, Copper). The CPU records the transaction directly from the target register, finishes the 4-clock cycle (or prefetch retirement), and advances to the next micro-step (`phase = CCK1`).
 - **WRITE Cycles (`BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, `BusWriteLongLow`, `BusPushStackHigh`, `BusPushStackLow`):**
   - **CCK1 (S0–S3):** **CPU does not touch the bus!** Internal address propagation only. Chip RAM remains completely free for Agnus DMA. Advances `phase = CCK2`.
@@ -291,7 +291,7 @@ Field: Unused   R/W    I/N    FC2   FC1   FC0
 
 ### 5.1 The Two-Word Pipeline Refill
 
-In normal sequential execution, instructions end with `PrefetchNextOpcodeAndRetire`, shifting `ir = prefetch[0]`, `prefetch[0] = last_read`, and `pc += 2`.
+In normal sequential execution, instructions end with `PrefetchNextOpcodeAndRetire`, shifting `ir = prefetch`, `prefetch = last_read`, and `pc += 2`.
 
 When control flow changes (`JMP`, `JSR`, `RTS`, `BRA`, taken `Bcc`):
 - The existing prefetch pipeline contents are **flushed**.
@@ -301,7 +301,7 @@ When control flow changes (`JMP`, `JSR`, `RTS`, `BRA`, taken `Bcc`):
      - Data is latched into `state.micro.scratch_prefetch` (the new opcode).
   2. **Refill Bus Cycle 2 (`PrefetchTargetAndRetire`)**:
      - Bus read from `ea_addr + 2` (4 CPU clocks / 2 CCKs).
-     - Data is latched into `state.prefetch[0]`.
+     - Data is latched into `state.prefetch`.
      - `state.ir` is loaded with `scratch_prefetch`.
      - `state.pc` is initialized to `ea_addr + 4`.
      - Instruction retires with target refill (`step_cck` returns `true`).
@@ -380,8 +380,8 @@ Consider **`ADD.W D0, (d16, A0)`** (Add data register `D0` to memory operand at 
 ```mermaid
 flowchart TD
     subgraph S0["Step 0: Fetch Extension & Calculate EA (4 Clocks / 2 CCKs)"]
-        EA["Address Unit (AU):<br/>ea_addr = A0 + (prefetch[0] as i16)"]
-        FetchExt["Bus Read at PC:<br/>prefetch[0] = next word<br/>PC += 2"]
+        EA["Address Unit (AU):<br/>ea_addr = A0 + (prefetch as i16)"]
+        FetchExt["Bus Read at PC:<br/>prefetch = next word<br/>PC += 2"]
         EA --- FetchExt
     end
 
@@ -407,11 +407,11 @@ flowchart TD
 #### Detailed Clock-by-Clock Cycle Breakdown:
 1. **The Prefetch Reality at Instruction Start**:
    - The opcode `$D168` is in `IR`.
-   - Because the *previous* instruction concluded with an opcode prefetch, **the displacement word `d16` is ALREADY resident in `state.prefetch[0]` with 0 latency!**
+   - Because the *previous* instruction concluded with an opcode prefetch, **the displacement word `d16` is ALREADY resident in `state.prefetch` with 0 latency!**
 2. **Step 0: `FetchExtension` with `ea_calc_d16_an` (4 clocks / 2 CCKs)**:
-   - The AU calculates: `ea_addr = A0.wrapping_add((prefetch[0] as i16) as u32)`.
+   - The AU calculates: `ea_addr = A0.wrapping_add((prefetch as i16) as u32)`.
    - The bus controller fetches the next word from `PC` into `last_read` (advancing `PC += 2`).
-   - At CCK2, `prefetch[0] = last_read`.
+   - At CCK2, `prefetch = last_read`.
 3. **Step 1: `BusReadWord` (4 clocks / 2 CCKs)**:
    - Reads the 16-bit word from memory at `ea_addr` into `last_read`.
 4. **Step 2: `Alu` (`alu_add_rmw_w`) (0 CCKs Instantaneous)**:
@@ -443,7 +443,7 @@ When an instruction uses **Address Register Indirect with Index and 8-Bit Displa
 ```mermaid
 flowchart TD
     subgraph P["Instruction Start (Opcode in IR)"]
-        IR["IR = $D070 (Opcode)<br/>prefetch[0] = Extension Word (8-bit disp + D1.W)"]
+        IR["IR = $D070 (Opcode)<br/>prefetch = Extension Word (8-bit disp + D1.W)"]
     end
 
     subgraph S0["Step 0: AU 3-Input Add Calculation (2 Clocks / 1 CCK)"]
@@ -451,7 +451,7 @@ flowchart TD
     end
 
     subgraph S1["Step 1-2: Fetch Extension Word (4 Clocks / 2 CCKs)"]
-        FetchExt["FETCH_EXT_READ & FINISH:<br/>prefetch[0] = next word (PC+4)<br/>PC += 2"]
+        FetchExt["FETCH_EXT_READ & FINISH:<br/>prefetch = next word (PC+4)<br/>PC += 2"]
     end
 
     subgraph S2["Step 3-4: Read Memory Operand (4 Clocks / 2 CCKs)"]
@@ -459,7 +459,7 @@ flowchart TD
     end
 
     subgraph S3["Step 5-6: Opcode Prefetch, ALU & Retirement (4 Clocks / 2 CCKs)"]
-        Prefetch["PREFETCH_NEXT_READ (alu_add_w) & RETIRE:<br/>D0 = D0 + source, set CCR<br/>Refill IR and prefetch[0]<br/>Retire! (Total: 14 clocks / 7 CCKs)"]
+        Prefetch["PREFETCH_NEXT_READ (alu_add_w) & RETIRE:<br/>D0 = D0 + source, set CCR<br/>Refill IR and prefetch<br/>Retire! (Total: 14 clocks / 7 CCKs)"]
     end
 
     P --> S0 --> S1 --> S2 --> S3
@@ -467,10 +467,10 @@ flowchart TD
 
 | Step | Action | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `step_alu`<br/>*(with `ea_calc_src_idx_an`)* | 2 (1 CCK) | AU decodes `prefetch[0]`: extracts `disp8 = +8`, `Xn = D1.W`, and sets `ea_addr = A0 + D1.W + 8`. Consumes 2 clocks (1 CCK) idle AU addition. |
-| **1-2** | `FETCH_EXT_READ`<br/>`FETCH_EXT_FINISH` | 4 (2 CCKs) | Reads extension word from `PC` into `prefetch[0]`, `PC += 2`. |
+| **0** | `step_alu`<br/>*(with `ea_calc_src_idx_an`)* | 2 (1 CCK) | AU decodes `prefetch`: extracts `disp8 = +8`, `Xn = D1.W`, and sets `ea_addr = A0 + D1.W + 8`. Consumes 2 clocks (1 CCK) idle AU addition. |
+| **1-2** | `FETCH_EXT_READ`<br/>`FETCH_EXT_FINISH` | 4 (2 CCKs) | Reads extension word from `PC` into `prefetch`, `PC += 2`. |
 | **3-4** | `READ_SRC_WORD`<br/>`BUS_READ_IDLE` | 4 (2 CCKs) | Reads 16-bit operand from `ea_addr` into `source`. |
-| **5-6** | `PREFETCH_NEXT_READ`<br/>`BUS_READ_IDLE` | 4 (2 CCKs) | Computes `D0 = D0 + source`, sets CCR flags, refills `IR` and `prefetch[0]`, and retires! |
+| **5-6** | `PREFETCH_NEXT_READ`<br/>`BUS_READ_IDLE` | 4 (2 CCKs) | Computes `D0 = D0 + source`, sets CCR flags, refills `IR` and `prefetch`, and retires! |
 
 **Total Duration**: $4\ (\text{FetchExtension}) + 2\ (\text{Internal Delay}) + 4\ (\text{BusReadWord}) + 0\ (\text{ALU}) + 4\ (\text{Prefetch}) = \mathbf{14\ \text{CPU clocks}}\ (7\ \text{CCKs})$!
 
@@ -570,7 +570,7 @@ On physical M68000 hardware, the internal ALU/bus microcode writes the 3-word fr
 13. `Step 13 (READ_TARGET_OPCODE_READ)`: CCK1 of reading target opcode into `irc`.
 14. `Step 14 (BUS_READ_IDLE)`: CCK2 of reading target opcode (bus free for Agnus DMA).
 15. `Step 15 (ALU_IDLE)`: 2 internal clocks before prefetch (internal ALU delay).
-16. `Step 16 (PREFETCH_TARGET_READ)`: CCK1 of reading target + 2 into `prefetch[0]`.
+16. `Step 16 (PREFETCH_TARGET_READ)`: CCK1 of reading target + 2 into `prefetch`.
 17. `Step 17 (PREFETCH_TARGET_FINISH)`: CCK2 of reading target + 2 (sets `target_refill = true`, triggers clean instruction retirement).
 
 - **Total Duration**:
@@ -633,7 +633,7 @@ The full CCK stepping engine is implemented in [`crates/cpu/src/micro/engine.rs`
    - **CCK1 (Phase 1):** Read steps (`step_bus_read_*`) issue `bus.read_word(addr)` / `bus.read_byte(addr)`. If `BusResult::WaitState`, the CPU stalls without advancing `micro_step` (returns `false`). If `BusResult::Ready(data)`, samples memory data into `source` / `destination` / `prefetch` / `irc` and advances to CCK2 (`micro_step += 1`). For write actions, `step_bus_write_idle` does not touch the bus (bus idle for DMA) and simply advances to CCK2 (`micro_step += 1`).
    - **CCK2 (Phase 2):** Write steps (`step_bus_write_dst_*`) issue `bus.write_word(addr, val)` / `bus.write_byte(addr, val)`. If `BusResult::WaitState`, stalls without committing (returns `false`). If `BusResult::Ready(())`, commits data, records transaction, and advances `micro_step += 1`, completing the 4-clock bus cycle. Read finish steps (`step_bus_read_*_finish`) log the transaction, release the bus for Agnus DMA, and advance `micro_step += 1`.
 4. **Pipeline Advance & Instruction Retirement:**
-   - On retirement, shifts `ir = prefetch[0]`, `prefetch[0] = scratch_prefetch` (or target prefetch), advances `pc += 2`, updates `instruction_pc = pc - 4`, updates `current_steps`, and returns `true`. Multi-cycle instruction steps call `step_instruction(&mut self, bus) -> u32` (or `step_opcode`) to loop over `step_cck_internal` to retirement and return total CPU clocks consumed.
+   - On retirement, shifts `ir = prefetch`, `prefetch = scratch_prefetch` (or target prefetch), advances `pc += 2`, updates `instruction_pc = pc - 4`, updates `current_steps`, and returns `true`. Multi-cycle instruction steps call `step_instruction(&mut self, bus) -> u32` (or `step_opcode`) to loop over `step_cck_internal` to retirement and return total CPU clocks consumed.
 
 ---
 
@@ -653,7 +653,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 | Step | Action | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
 | **0** | `Alu` | **0 (Instant)** | Calls `alu_add_w(&mut state, 1, 0)`. Computes `D0 = D0 + D1`, sets CCR flags ($X, N, Z, V, C$). |
-| **1** | `PrefetchNextOpcodeAndRetire` | 4 (2 CCKs) | Schedules bus read at `PC`. Updates `prefetch[0] = last_read`. Latching new `IR`, `PC += 2`, retires! |
+| **1** | `PrefetchNextOpcodeAndRetire` | 4 (2 CCKs) | Schedules bus read at `PC`. Updates `prefetch = last_read`. Latching new `IR`, `PC += 2`, retires! |
 
 ---
 
@@ -668,7 +668,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 | :---: | :--- | :---: | :--- |
 | **0** | `FetchExtension` | 4 (2 CCKs) | Bus read at `PC`, advances `PC += 2`. Latching immediate word `#$0042` into `last_read`. |
 | **1** | `Alu` | **0 (Instant)** | Calls `alu_ori_b(&mut state, 0, 0)`. Computes `D0 = D0 \| imm`, updates CCR flags. |
-| **2** | `PrefetchNextOpcodeAndRetire` | 4 (2 CCKs) | Bus read at `PC`. Latching next opcode into `IR`, `prefetch[0] = last_read`, `PC += 2`, retires! |
+| **2** | `PrefetchNextOpcodeAndRetire` | 4 (2 CCKs) | Bus read at `PC`. Latching next opcode into `IR`, `prefetch = last_read`, `PC += 2`, retires! |
 
 ---
 
@@ -718,7 +718,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 
 #### Archetype 5A: `ADD.W D0, (d16, A0)` (Opcode `$D168` — Memory RMW with Displacement)
 - **Total Duration**: 16 CPU clocks (8 CCKs).
-- **Prefetch**: Displacement `d16` in `prefetch[0]`; fetches next extension, then reads memory, then opcode prefetch before write!
+- **Prefetch**: Displacement `d16` in `prefetch`; fetches next extension, then reads memory, then opcode prefetch before write!
 - **Result Writing**: Commits modified word to `ea_addr` in the final step.
 
 | Step | Action | Clocks | Description / Bus Transaction |
@@ -735,8 +735,8 @@ The table below catalogs representative micro-step sequences for each fundamenta
 
 | Step | Action | Clocks | Description / Bus Transaction |
 | :---: | :--- | :---: | :--- |
-| **0** | `FetchExtension` | 4 (2 CCKs) | Latches immediate: `scratch[0] = prefetch[0]`. Reads `d16` from `PC` into `prefetch[0]`, `PC += 2`. |
-| **1** | `FetchExtension` | 4 (2 CCKs) | AU computes `ea_addr = A0 + d16`. Reads next word from `PC` into `prefetch[0]`, `PC += 2`. |
+| **0** | `FetchExtension` | 4 (2 CCKs) | Latches immediate: `scratch[0] = prefetch`. Reads `d16` from `PC` into `prefetch`, `PC += 2`. |
+| **1** | `FetchExtension` | 4 (2 CCKs) | AU computes `ea_addr = A0 + d16`. Reads next word from `PC` into `prefetch`, `PC += 2`. |
 | **2** | `BusReadWord` | 4 (2 CCKs) | Reads memory operand from `ea_addr` into `last_read`. |
 | **3** | `Alu` | **0 (Instant)** | Computes `res = last_read + (scratch[0] as u16)`, updates CCR, sets `write_buffer = res as u32`. |
 | **4** | `BusPrefetchToScratch` | 4 (2 CCKs) | **RMW Quirk:** Prefetches next opcode from `PC` into `scratch_prefetch`. |
@@ -803,7 +803,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 | :---: | :--- | :---: | :--- |
 | **0** | `BranchEval` | **0 (Instant)** | Evaluates condition code.<br/>- **Taken**: sets `current_steps = &STEPS_BRANCH_TAKEN`, `micro_step = 0`. *(Total: 10 clocks)*<br/>- **Not Taken**: sets `current_steps = &STEPS_BRANCH_NOT_TAKEN_SHORT`, `micro_step = 0`. *(Total: 8 clocks)* |
 | **1 (Taken)** | `BusReadTargetOpcode` | 4 (2 CCKs) | **Refill 1:** Reads target opcode from `ea_addr` into `scratch_prefetch`. |
-| **2 (Taken)** | `PrefetchTargetAndRetire` | 4 (2 CCKs) | **Refill 2:** Reads `ea_addr + 2`. Sets `IR = scratch_prefetch`, `prefetch[0] = last_read`, `PC = ea_addr + 4`, and retires! *(Total: 10 clocks)* |
+| **2 (Taken)** | `PrefetchTargetAndRetire` | 4 (2 CCKs) | **Refill 2:** Reads `ea_addr + 2`. Sets `IR = scratch_prefetch`, `prefetch = last_read`, `PC = ea_addr + 4`, and retires! *(Total: 10 clocks)* |
 | **3 (Not Taken)** | `PrefetchNextOpcodeAndRetire` | 4 (2 CCKs) | Performs standard sequential prefetch from `PC`, advancing to next instruction. Retires! *(Total: 8 clocks)* |
 
 #### Archetype 9B: `BEQ.W <disp16>` (Opcode `$6700` — Word Branch)
@@ -883,7 +883,7 @@ The table below catalogs representative micro-step sequences for each fundamenta
 | **20** | `READ_TARGET_OPCODE_READ` | 2 (CCK1) | **Refill 1:** Reads first instruction opcode of handler from `ea_addr`. |
 | **21** | `BUS_READ_IDLE` | 2 (CCK2) | Target opcode read completion (bus free for Agnus DMA). |
 | **22** | `ALU_IDLE` | 2 (CCK1/2) | 2-clock internal hardware pipeline alignment delay. |
-| **23** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads second instruction word from `ea_addr + 2` into `prefetch[0]`. |
+| **23** | `PREFETCH_TARGET_READ` | 2 (CCK1) | **Refill 2:** Reads second instruction word from `ea_addr + 2` into `prefetch`. |
 | **24** | `PREFETCH_TARGET_FINISH` | 2 (CCK2) | Arms `target_refill = true`, latches `IR = irc`, sets `PC = ea_addr + 4`, retires exception! |
 
 

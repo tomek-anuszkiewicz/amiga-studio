@@ -17,7 +17,7 @@ pub const PREFETCH_NEXT_READ: MicroStep = MicroStep::cck(Cpu::step_prefetch_next
 /// CCK1: Instruction extension word read from PC
 pub const FETCH_EXT_READ: MicroStep = MicroStep::cck(Cpu::step_fetch_extension_read);
 
-/// CCK2: Instruction extension word finish (latches into prefetch[0], PC += 2)
+/// CCK2: Instruction extension word finish (latches into prefetch, PC += 2)
 pub const FETCH_EXT_FINISH: MicroStep = MicroStep::cck(Cpu::step_fetch_extension_finish);
 
 /// CCK1: Prefetch next opcode directly to IRC
@@ -327,7 +327,7 @@ pub const ALU_IDLE_128CLK: MicroStep = MicroStep {
 // Prefetch Queue Refill Building Blocks (SR / CCR Modifications)
 // ============================================================================
 
-/// CCK1: Refills first word of prefetch queue from PC - 2 directly into `prefetch[0]`
+/// CCK1: Refills first word of prefetch queue from PC - 2 directly into `prefetch`
 pub const REFILL_FIRST_READ: MicroStep = MicroStep::cck(Cpu::step_bus_read_refill_first);
 
 /// CCK1: Refills second word of prefetch queue from PC directly into `micro.irc`

@@ -50,7 +50,7 @@ pub fn alu_adda_l_mem_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_adda_w_imm_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.prefetch[0] as i16 as i32) as u32;
+    let s = (state.prefetch as i16 as i32) as u32;
     let d = state.read_a(reg_dst as usize);
     state.write_a(reg_dst as usize, d.wrapping_add(s));
 }

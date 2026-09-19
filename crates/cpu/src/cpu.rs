@@ -100,9 +100,8 @@ impl Cpu {
         // Prime prefetch pipeline
         self.state.ir = bus.read_word_debug(self.state.pc);
         self.state.pc = self.state.pc.wrapping_add(2);
-        self.state.prefetch[0] = bus.read_word_debug(self.state.pc);
+        self.state.prefetch = bus.read_word_debug(self.state.pc);
         self.state.pc = self.state.pc.wrapping_add(2);
-        self.state.prefetch[1] = 0;
 
         // Initiate the initial instruction descriptor immediately so CPU micro-state is fully ready
         self.initiate_current_instruction();
@@ -267,8 +266,8 @@ impl Cpu {
             self.state.ir = new_ir;
             self.state.pc = target.wrapping_add(4);
         } else if !self.state.micro.prefetch_retired {
-            self.state.ir = self.state.prefetch[0];
-            self.state.prefetch[0] = self.state.micro.irc;
+            self.state.ir = self.state.prefetch;
+            self.state.prefetch = self.state.micro.irc;
             self.state.pc = self.state.pc.wrapping_add(2);
         }
         self.state.instruction_pc = self.state.pc.wrapping_sub(4);
@@ -369,7 +368,7 @@ impl Cpu {
     }
 
     /// Test & Debugger helper: Sets the Program Counter to `target_pc` and primes
-    /// the 2-word prefetch queue (`ir` and `prefetch[0]`) via non-intrusive debug reads.
+    /// the 2-word prefetch queue (`ir` and `prefetch`) via non-intrusive debug reads.
     ///
     /// This bypasses the 68000 vector table cold reset sequence to allow immediate
     /// execution in unit tests or synthetic debugger harnesses.
@@ -379,7 +378,7 @@ impl Cpu {
         self.state.pc = target_pc;
         self.state.ir = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);
-        self.state.prefetch[0] = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
+        self.state.prefetch = bus.read_word_debug(self.state.pc & 0x00FF_FFFF);
         self.state.pc = self.state.pc.wrapping_add(2);
         self.state.micro.reset();
         self.initiate_current_instruction();

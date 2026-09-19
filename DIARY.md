@@ -7818,6 +7818,36 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed (including Obsidian link integrity and size constraints).
   - `python tools/harness/pre_flight.py`: All quality gates passed cleanly.
 
+---
+
+### [2026-09-19 15:40 CEST] — Refactored CpuState.prefetch from [u16; 2] to u16 Across Entire Workspace
+
+- **Files Modified**:
+  - `crates/cpu/src/state.rs`: Refactored `pub prefetch: [u16; 2]` to `pub prefetch: u16` (lookahead prefetch queue register `IR`), eliminated vestigial 2-word array, and updated default initialization to `prefetch: 0`.
+  - `crates/cpu/src/cpu.rs`: Updated `Cpu::reset()`, `retire_current_instruction()`, and `set_pc_and_prime_prefetch()` to use scalar `self.state.prefetch` and removed dead `prefetch[1] = 0;` assignments.
+  - `crates/cpu/src/micro/step_execution.rs`: Replaced `self.state.prefetch[0]` with `self.state.prefetch` in extension word fetching (`step_fetch_extension_read`) and pipeline retirement (`step_prefetch_irc_finish`).
+  - `crates/cpu/src/micro/step_control.rs`: Replaced `self.state.prefetch[0]` with `self.state.prefetch` in target branch refill (`step_prefetch_target_read`) and status register refill (`step_bus_read_refill_first`).
+  - `crates/cpu/src/micro/ea.rs`: Replaced 19 occurrences of `state.prefetch[0]` with `state.prefetch` in effective address and operand decoding (`ea_calc_src_d16_an`, `ea_calc_src_idx_an`, `ea_calc_absw`, `ea_calc_absl_*`, `ea_calc_imm_*`, `ea_calc_pea_*`, etc.).
+  - `crates/cpu/src/micro/common.rs`: Updated documentation comments from `prefetch[0]` to `prefetch`.
+  - `crates/cpu/src/instructions/*.rs`: Updated 30 instruction implementations (`add`, `adda`, `addi`, `and`, `andi`, `bcc`, `bchg`, `bclr`, `bra`, `bset`, `bsr`, `btst`, `chk`, `cmp`, `cmpa`, `cmpi`, `dbcc`, `eori`, `jsr`, `link`, `move_b`, `move_w`, `movea`, `movem`, `or`, `ori`, `stop`, `sub`, `suba`, `subi`) replacing `state.prefetch[0]` with `state.prefetch`.
+  - `crates/cpu/tests/`: Updated `test_addressing.rs`, `test_cck_bus.rs`, and `test_micro_archetypes.rs` replacing `prefetch[0]` with `prefetch`.
+  - `crates/test_runner/`: Updated `runner.rs` and `dma_harness.rs` to map Tom Harte's JSON `prefetch[1]` directly to `cpu.state.prefetch` and removed dead `prefetch[1] = 0;`. Updated `test_singlestep.rs` removing vestigial `prefetch[1]` assignment.
+  - `crates/debugger/tests/test_loader.rs` & `crates/gui/tests/test_gui.rs`: Updated assertions from `prefetch[0]` to `prefetch`.
+  - `tools/harness/audit_docs_quality.py`: Added missing signature mappings for `Reset Vector Fetch & Double Bus Fault` and `Two-Word Prefetch Ahead-Offset ($PC = \text{Opcode} + 4$)` quirks, restoring 100% semantic verification parity across all 10 documentation quality pillars.
+  - `Obsidian/Amiga/Design/`: Synchronized `CPU Motorola M68000.md`, `CPU Micro-Step State Machine.md`, `CPU SingleStepTests.md`, `Main loop A500.md`, and `MemoryBus.md` to reflect scalar `prefetch: u16` and clarify the 3-stage silicon pipeline (`ir: u16` = `IRD`, `prefetch: u16` = `IR`, `micro.irc: u16` = `IRC`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean-Break Elimination of Ghost State:* In Motorola 68000 silicon, the instruction pipeline consists of three 16-bit registers: `IRD` (executing opcode), `IR` (next queued word), and `IRC` (bus input capture latch). Because the emulator already represented `IRD` in `state.ir` and `IRC` in `state.micro.irc`, defining `state.prefetch` as `[u16; 2]` created a phantom 4th half-register where index `[1]` was perpetually set to 0 and never read. Refactoring `prefetch` to a scalar `u16` eliminates this historical artifact from Tom Harte JSON schema copying, cleans up 177 indexing call sites, reduces the memory footprint of `CpuState`, and brings our code and documentation into true alignment with physical silicon reality.
+- **Verification & Test Results**:
+  - `cargo check --workspace --tests`: Passed with zero warnings.
+  - `cargo test -p cpu`: All 6 test suites (54 tests) passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 21 tests passed cleanly.
+  - `cargo test -p test_runner --test test_singlestep`: All 127 single-step CPU silicon test suites passed.
+  - `cargo test -p test_runner --test test_dma_cartesian`: All 19 cartesian DMA contention tests passed.
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/harness/pre_flight.py`: All 5 pre-flight quality gates passed.
+  - `python tools/harness/audit_docs_quality.py`: 10/10 quality pillars passed with 0 issues detected.
+
+
 
 
 

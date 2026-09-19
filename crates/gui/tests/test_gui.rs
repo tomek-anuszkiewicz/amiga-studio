@@ -61,7 +61,7 @@ fn test_binary_loader_and_prefetch_priming() {
 
     // Prefetch verification
     assert_eq!(cpu.state.ir, 0x4E71);
-    assert_eq!(cpu.state.prefetch[0], 0x4E71);
+    assert_eq!(cpu.state.prefetch, 0x4E71);
     assert_eq!(cpu.state.pc, 0x002004); // Next prefetch target
 }
 

@@ -44,7 +44,7 @@ pub fn alu_move_w_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_move_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = state.prefetch[0];
+    let val = state.prefetch;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
     state.set_d_word(reg_dst as usize, val);
 }
@@ -155,7 +155,7 @@ const READ_SRC_IDLE_MOVE_W: MicroStep = MicroStep {
 };
 
 pub fn alu_move_w_src_imm(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let val = state.prefetch[0];
+    let val = state.prefetch;
     state.set_ccr_nz_clear_vc((val as i16) < 0, val == 0);
     state.micro.destination = val as u32;
 }

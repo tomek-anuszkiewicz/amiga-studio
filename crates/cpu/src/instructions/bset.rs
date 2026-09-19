@@ -66,18 +66,18 @@ pub fn alu_bset_b_imm_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 // ============================================================================
 
 pub fn latch_bit_imm(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let imm = (state.prefetch[0] & 0xFF) as u32;
+    let imm = (state.prefetch & 0xFF) as u32;
     state.micro.source = imm;
 }
 
 pub fn latch_bit_imm_calc_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let imm = (state.prefetch[0] & 0xFF) as u32;
+    let imm = (state.prefetch & 0xFF) as u32;
     state.micro.source = imm;
     ea::ea_calc_dst_ai(state, 0, reg_dst);
 }
 
 pub fn latch_bit_imm_calc_pi(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let imm = (state.prefetch[0] & 0xFF) as u32;
+    let imm = (state.prefetch & 0xFF) as u32;
     state.micro.source = imm;
     ea::ea_calc_dst_pi_b(state, 0, reg_dst);
 }

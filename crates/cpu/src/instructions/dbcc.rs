@@ -41,7 +41,7 @@ pub fn alu_dbcc(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
         let new_val = val.wrapping_sub(1);
         let orig = state.d_long(reg_dst as usize);
         if new_val != 0xFFFF {
-            let disp = state.prefetch[0] as i16 as i32;
+            let disp = state.prefetch as i16 as i32;
             let base_pc = state.pc.wrapping_sub(2);
             let target_pc = base_pc.wrapping_add(disp as u32);
             state.micro.ea_addr = target_pc;

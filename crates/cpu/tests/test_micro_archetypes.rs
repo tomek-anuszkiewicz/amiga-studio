@@ -29,7 +29,7 @@ fn setup_test_machine(base_pc: u32) -> (Cpu, PhysicalMemory) {
 fn prime_prefetch(cpu: &mut Cpu, bus: &mut PhysicalMemory) {
     let pc = cpu.state.pc;
     cpu.state.ir = bus.read_word_debug(pc);
-    cpu.state.prefetch[0] = bus.read_word_debug(pc.wrapping_add(2));
+    cpu.state.prefetch = bus.read_word_debug(pc.wrapping_add(2));
     cpu.state.pc = pc.wrapping_add(4);
 }
 

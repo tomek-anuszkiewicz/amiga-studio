@@ -74,8 +74,8 @@ pub struct CpuState {
     /// - User Byte / CCR (Bits 0-7): Extend (X, bit 4), Negative (N, bit 3), Zero (Z, bit 2), Overflow (V, bit 1), Carry (C, bit 0)
     pub sr: u16,
 
-    /// Internal Prefetch Queue [IRC (Capture), IRD (Decode)]
-    pub prefetch: [u16; 2],
+    /// Lookahead Prefetch Queue Register (models 16-bit hardware IR holding extension word or next opcode)
+    pub prefetch: u16,
 
     /// Instruction Register (active 16-bit instruction being executed)
     pub ir: u16,
@@ -115,7 +115,7 @@ impl Default for CpuState {
             ssp: 0,
             pc: 0,
             sr: SR_RESET_DEFAULT,
-            prefetch: [0; 2],
+            prefetch: 0,
             ir: 0,
             ipl: 0,
             instruction_pc: 0,

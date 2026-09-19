@@ -447,21 +447,21 @@ impl Cpu {
                 self.state.write_a(reg_dst, addr);
                 self.state.micro.ea_addr = addr;
                 self.state.pc = self.state.pc.wrapping_add(2);
-                self.state.ir = self.state.prefetch[0];
-                self.state.prefetch[0] = self.state.micro.irc;
+                self.state.ir = self.state.prefetch;
+                self.state.prefetch = self.state.micro.irc;
                 self.state.micro.prefetch_retired = true;
                 BusResult::Ready(())
             }
         }
     }
 
-    /// CCK1: Extension word fetch from PC directly into `self.state.prefetch[0]`
+    /// CCK1: Extension word fetch from PC directly into `self.state.prefetch`
     pub fn step_fetch_extension_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.pc & 0x00FF_FFFF;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.prefetch[0] = data;
+                self.state.prefetch = data;
                 BusResult::Ready(())
             }
         }
@@ -487,8 +487,8 @@ impl Cpu {
 
     /// CCK2: Prefetch to IRC finish - advances prefetch pipeline into IR
     pub fn step_prefetch_irc_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        self.state.ir = self.state.prefetch[0];
-        self.state.prefetch[0] = self.state.micro.irc;
+        self.state.ir = self.state.prefetch;
+        self.state.prefetch = self.state.micro.irc;
         self.state.pc = self.state.pc.wrapping_add(2);
         self.state.micro.prefetch_retired = true;
         BusResult::Ready(())

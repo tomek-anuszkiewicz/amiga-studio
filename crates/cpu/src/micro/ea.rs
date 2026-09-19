@@ -81,13 +81,13 @@ pub fn ea_calc_src_pd_l(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
 
 /// Address Register Indirect with Displacement: (d16, An) -> ea_addr = An + disp16
 pub fn ea_calc_src_d16_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    let disp = (state.prefetch[0] as i16) as i32;
+    let disp = (state.prefetch as i16) as i32;
     state.micro.ea_addr = state.read_a(reg_src as usize).wrapping_add(disp as u32);
 }
 
 /// Address Register Indirect with Index: (d8, An, Xn) -> ea_addr = An + Xn + disp8
 pub fn ea_calc_src_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    let ext = state.prefetch[0];
+    let ext = state.prefetch;
     let disp8 = (ext & 0xFF) as i8 as i32;
     let xn = read_index_reg(state, ext);
     let an = state.read_a(reg_src as usize);
@@ -96,40 +96,40 @@ pub fn ea_calc_src_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
 
 /// Absolute Short: (xxx).W -> ea_addr = sign_extend(word)
 pub fn ea_calc_absw(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let word = state.prefetch[0] as i16 as i32 as u32;
+    let word = state.prefetch as i16 as i32 as u32;
     state.micro.ea_addr = word;
 }
 
 /// Absolute Long Cycle 1: High word -> latch in ea_high
 pub fn ea_calc_absl_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.ea_high = (state.prefetch[0] as u32) << 16;
+    state.micro.ea_high = (state.prefetch as u32) << 16;
 }
 
 /// Absolute Long Cycle 2: Low word -> assemble into ea_addr
 pub fn ea_calc_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.ea_addr = state.micro.ea_high | (state.prefetch[0] as u32);
+    state.micro.ea_addr = state.micro.ea_high | (state.prefetch as u32);
 }
 
 /// Immediate Word: latch prefetch[0] into micro.source
 pub fn ea_calc_imm_w(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.source = state.prefetch[0] as u32;
+    state.micro.source = state.prefetch as u32;
 }
 
 /// Immediate Long Cycle 1: High word -> latch in source
 pub fn ea_calc_imm_l_hi(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let hi = (state.prefetch[0] as u32) << 16;
+    let hi = (state.prefetch as u32) << 16;
     state.micro.source = hi;
 }
 
 /// Immediate Long Cycle 2: Low word -> assemble into source
 pub fn ea_calc_imm_l_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let val = state.micro.source | (state.prefetch[0] as u32);
+    let val = state.micro.source | (state.prefetch as u32);
     state.micro.source = val;
 }
 
 /// Program Counter with Displacement: (d16, PC) -> ea_addr = PC + disp16
 pub fn ea_calc_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let disp = (state.prefetch[0] as i16) as i32;
+    let disp = (state.prefetch as i16) as i32;
     // PC points to extension word address (PC - 2 from the current advancing PC)
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.ea_addr = base_pc.wrapping_add(disp as u32);
@@ -137,7 +137,7 @@ pub fn ea_calc_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
 /// Program Counter with Index: (d8, PC, Xn) -> ea_addr = PC + Xn + disp8
 pub fn ea_calc_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let ext = state.prefetch[0];
+    let ext = state.prefetch;
     let disp8 = (ext & 0xFF) as i8 as i32;
     let xn = read_index_reg(state, ext);
     let base_pc = state.pc.wrapping_sub(2);
@@ -212,13 +212,13 @@ pub fn ea_calc_dst_pd_l(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 /// Destination Address Register Indirect with Displacement: (d16, An) -> ea_addr = An + disp16
 pub fn ea_calc_dst_d16_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let disp = (state.prefetch[0] as i16) as i32;
+    let disp = (state.prefetch as i16) as i32;
     state.micro.ea_addr = state.read_a(reg_dst as usize).wrapping_add(disp as u32);
 }
 
 /// Destination Address Register Indirect with Index: (d8, An, Xn) -> ea_addr = An + Xn + disp8
 pub fn ea_calc_dst_idx_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let ext = state.prefetch[0];
+    let ext = state.prefetch;
     let disp8 = (ext & 0xFF) as i8 as i32;
     let xn = read_index_reg(state, ext);
     let an = state.read_a(reg_dst as usize);
@@ -237,14 +237,14 @@ pub fn ea_calc_pea_ai(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
 
 /// PEA (d16, An): destination = An + disp16
 pub fn ea_calc_pea_d16_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    let disp = (state.prefetch[0] as i16) as i32;
+    let disp = (state.prefetch as i16) as i32;
     let ea = state.read_a(reg_src as usize).wrapping_add(disp as u32);
     state.micro.destination = ea;
 }
 
 /// PEA (d8, An, Xn): destination = An + Xn + disp8
 pub fn ea_calc_pea_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    let ext = state.prefetch[0];
+    let ext = state.prefetch;
     let disp8 = (ext & 0xFF) as i8 as i32;
     let xn = read_index_reg(state, ext);
     let an = state.read_a(reg_src as usize);
@@ -254,19 +254,19 @@ pub fn ea_calc_pea_idx_an(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
 
 /// PEA (xxx).W: destination = sign_extend(word)
 pub fn ea_calc_pea_absw(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let ea = state.prefetch[0] as i16 as i32 as u32;
+    let ea = state.prefetch as i16 as i32 as u32;
     state.micro.destination = ea;
 }
 
 /// PEA (xxx).L: assemble low word into destination
 pub fn ea_calc_pea_absl_lo(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let ea = state.micro.ea_high | (state.prefetch[0] as u32);
+    let ea = state.micro.ea_high | (state.prefetch as u32);
     state.micro.destination = ea;
 }
 
 /// PEA (d16, PC): destination = PC + disp16
 pub fn ea_calc_pea_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let disp = (state.prefetch[0] as i16) as i32;
+    let disp = (state.prefetch as i16) as i32;
     let base_pc = state.pc.wrapping_sub(2);
     let ea = base_pc.wrapping_add(disp as u32);
     state.micro.destination = ea;
@@ -274,7 +274,7 @@ pub fn ea_calc_pea_d16_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
 /// PEA (d8, PC, Xn): destination = PC + Xn + disp8
 pub fn ea_calc_pea_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let ext = state.prefetch[0];
+    let ext = state.prefetch;
     let disp8 = (ext & 0xFF) as i8 as i32;
     let xn = read_index_reg(state, ext);
     let base_pc = state.pc.wrapping_sub(2);

@@ -38,7 +38,7 @@ pub fn alu_move_b_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_move_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let val = (state.prefetch[0] & 0xFF) as u8;
+    let val = (state.prefetch & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
     state.set_d_byte(reg_dst as usize, val);
 }
@@ -110,7 +110,7 @@ pub fn alu_move_b_src_mem(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub fn alu_move_b_src_imm(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let val = (state.prefetch[0] & 0xFF) as u8;
+    let val = (state.prefetch & 0xFF) as u8;
     state.set_ccr_nz_clear_vc((val as i8) < 0, val == 0);
     state.micro.destination = val as u32;
 }

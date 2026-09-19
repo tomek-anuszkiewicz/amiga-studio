@@ -22,7 +22,7 @@ fn test_inject_binary_with_auto_prime() {
     // Verify PC primed: after prefetch of 2 words, PC is at $001004, IR is $4E71, IRC is $4E75
     assert_eq!(cpu.state.pc, 0x001004);
     assert_eq!(cpu.state.ir, 0x4E71);
-    assert_eq!(cpu.state.prefetch[0], 0x4E75);
+    assert_eq!(cpu.state.prefetch, 0x4E75);
 
     // Verify SP auto-initialized to 512KB Chip RAM top ($080000)
     assert_eq!(cpu.state.a_regs()[7], 0x080000);

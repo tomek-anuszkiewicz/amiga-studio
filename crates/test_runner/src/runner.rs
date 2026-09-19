@@ -110,8 +110,7 @@ pub fn run_single_test_detail_with_bus(
         cpu.state.pc = test.initial.pc;
     }
     cpu.state.ir = (test.initial.prefetch[0] & 0xFFFF) as u16;
-    cpu.state.prefetch[0] = (test.initial.prefetch[1] & 0xFFFF) as u16;
-    cpu.state.prefetch[1] = 0;
+    cpu.state.prefetch = (test.initial.prefetch[1] & 0xFFFF) as u16;
 
     // Execute instruction
     let actual_clocks = cpu.step_instruction(bus);

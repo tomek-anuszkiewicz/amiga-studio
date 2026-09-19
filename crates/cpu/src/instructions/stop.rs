@@ -22,7 +22,7 @@ pub fn alu_stop(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
         state.micro.clocks_remaining = 0;
         return;
     }
-    let imm = state.prefetch[0];
+    let imm = state.prefetch;
     state.set_sr(imm);
     state.stopped = true;
     state.micro.prefetch_retired = true;

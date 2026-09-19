@@ -37,7 +37,7 @@ The CPU exposes a fully queryable, read-only state snapshot (`CpuState`) for ins
 | **`ssp`** ($SSP$) | 32-bit | Supervisor Stack Pointer | Banked $A_7$ when running in Supervisor Mode ($SR.S = 1$). |
 | **`pc`** ($PC$) | 32-bit | Program Counter | Points to instruction memory. 24-bit physical address space on MC68000; internally 32-bit wide. |
 | **`sr`** ($SR$) | 16-bit | Status Register | High byte: System Byte (Trace, Supervisor, Interrupt Mask). Low byte: Condition Code Register (CCR). |
-| **`prefetch[0..=1]`** | $2 \times 16$-bit | Instruction Prefetch Queue | Models hardware `IRC` (Capture) and `IRD` (Decode) holding staged instruction words. |
+| **`prefetch`** | 16-bit | Lookahead Prefetch Register | Models hardware `IR` holding the next staged instruction word (extension word or lookahead opcode) behind active `ir` (`IRD`). |
 | **`ir`** ($IR$) | 16-bit | Instruction Register | Holds the opcode currently being executed. Immutable during micro-steps. |
 | **`step`** | 16-bit | Sub-Cycle Phase / Step Index | Index within current micro-step sequence across Color Clock phases (CCK1/CCK2). |
 | **`ipl`** ($IPL$) | 8-bit | Interrupt Priority Level | Sampled interrupt priority lines (0..7) driven by Paula/arbitration. |
@@ -119,10 +119,11 @@ The MC68000 exclusively supports the 16-bit **Brief Extension Word**:
 
 The Motorola 68000 utilizes an overlapped, pipelined instruction prefetch mechanism. Execution of an instruction does not wait for opcode fetching; instead, memory bus fetching and ALU execution overlap concurrently across Color Clock phases.
 
-#### A. The Two-Word Prefetch Queue (`IR` + `prefetch[0]`)
+#### A. The Two-Word Prefetch Queue (`ir` + `prefetch`)
 Before **any** instruction can begin execution, the 68000 prefetch FIFO must be completely full:
-- **`IR` (Instruction Register, 16-bit):** Holds the opcode currently being decoded and executed.
-- **`prefetch[0]` (Instruction Register Capture / `IRC`, 16-bit):** Holds the next lookahead word read from memory.
+- **`ir` (Instruction Register, 16-bit):** Holds the opcode currently being decoded and executed (`IRD`).
+- **`prefetch` (Lookahead Prefetch Register / `IR`, 16-bit):** Holds the next lookahead word read from memory.
+- **`micro.irc` (Instruction Register Capture / `IRC`, 16-bit):** Captures incoming bus data during micro-step execution.
 
 During reset or after any pipeline flush (e.g. taken branch/jump), the processor primes the pipeline via two consecutive bus reads:
 ```text
@@ -132,13 +133,13 @@ Memory Stream:
   $001004:  4240  (CLR.W  D0     - 3rd instruction)
 
 Reset / Pipeline Priming Sequence:
-1. Bus reads $001000 -> latched into IR.            Hardware PC advances to $001002.
-2. Bus reads $001002 -> latched into prefetch[0].   Hardware PC advances to $001004.
+1. Bus reads $001000 -> latched into ir.          Hardware PC advances to $001002.
+2. Bus reads $001002 -> latched into prefetch.    Hardware PC advances to $001004.
 ```
 
 When execution of `NOP` begins at `$001000`:
-- The active opcode `$4E71` is in `IR`.
-- The next opcode `$3200` (`$001002`) is **already read into the CPU** and resides in `prefetch[0]`.
+- The active opcode `$4E71` is in `ir`.
+- The next opcode `$3200` (`$001002`) is **already read into the CPU** and resides in `prefetch`.
 - The physical hardware Program Counter register (`state.pc`) is **already pointing to `$001004`**.
 
 #### B. Architectural Program Counter vs Hardware Bus PC
@@ -161,7 +162,7 @@ A common misconception is that the advanced hardware `PC` causes subroutine call
    - The ALU computes $\text{Return Address} = PC_{\text{hardware}} - 2 = \text{Opcode} + 2$.
    - Pushes the exact address of the following instruction onto the stack.
 2. **Multi-Word Calls (`JSR $2000.W`, `BSR.W`):**
-   - The CPU consumes the extension word from `prefetch[0]`, advancing hardware `PC` to $\text{Opcode} + 4$.
+   - The CPU consumes the extension word from `prefetch`, advancing hardware `PC` to $\text{Opcode} + 4$.
    - Pushes $PC_{\text{hardware}}$ directly, which points exactly past the 4-byte instruction.
 3. **PC-Relative Addressing (`d16, PC`):**
    - Per Motorola PRM, the base address for `(d16, PC)` is the instruction address plus two ($PC_{\text{hardware}} - 2$), corresponding to the address where the displacement word was fetched.
@@ -337,7 +338,7 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
   - If `BusResult::WaitState` (Chip RAM access blocked by active Agnus DMA):
     - **Action:** CPU stalls at CCK1. Does NOT advance micro-step. Repeats CCK1 read step on next clock.
   - If `BusResult::Ready(data)`:
-    - Data is stored directly into the target register (`source`, `destination`, `prefetch[0]`, or `irc`); CPU advances to the CCK2 finish step.
+    - Data is stored directly into the target register (`source`, `destination`, `prefetch`, or `irc`); CPU advances to the CCK2 finish step.
 - **CCK2 (S4–S7):**
   - Physical bus is already idle/released for custom chip DMA. The transaction is recorded directly from the target register, completing the bus cycle and advancing to the next micro-step.
 

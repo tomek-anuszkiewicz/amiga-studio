@@ -14,7 +14,7 @@ pub fn alu_bra_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub fn alu_bra_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let disp = state.prefetch[0] as i16 as i32;
+    let disp = state.prefetch as i16 as i32;
     let base_pc = state.pc.wrapping_sub(2);
     state.micro.ea_addr = base_pc.wrapping_add(disp as u32);
 }

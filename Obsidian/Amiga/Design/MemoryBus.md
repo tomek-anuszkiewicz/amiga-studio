@@ -97,7 +97,7 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
 The Motorola 68000 bus cycle spans 4 CPU clocks ($S_0$ through $S_7$), which maps to two Color Clock slots (CCK / 3.54 MHz): **Phase 1 / CCK1 (S0–S3)** and **Phase 2 / CCK2 (S4–S7)**.
 
 While the CPU requires 2 Color Clocks to complete an instruction bus transaction, **Amiga Chip RAM can complete a physical access in just 1 Color Clock (280 ns)**. The hardware exploits this difference to interleave access 50/50 between CPU and custom chip DMA:
-- **Read Cycle:** At CCK1, the CPU asserts address and strobes. Gary arbitrates access against Agnus DMA. At CCK2 ($S_6$), data is driven onto $D_0–D_{15}$ and sampled directly into the CPU's internal register (`source`, `destination`, `prefetch[0]`, or `irc`). No artificial intermediate bus latch is needed.
+- **Read Cycle:** At CCK1, the CPU asserts address and strobes. Gary arbitrates access against Agnus DMA. At CCK2 ($S_6$), data is driven onto $D_0–D_{15}$ and sampled directly into the CPU's internal register (`source`, `destination`, `prefetch`, or `irc`). No artificial intermediate bus latch is needed.
 - **Write Cycle:** At CCK1, the CPU drives address and data onto pins (`BusCycle`). At CCK2, Gary asserts $\overline{\text{DTACK}}$ (or withholds it if Agnus DMA is active), and the write commits directly to physical Chip RAM.
 
 Maintain the following internal bus state:

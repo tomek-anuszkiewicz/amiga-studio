@@ -778,8 +778,7 @@ fn test_stop() {
     cpu.state.set_supervisor(true);
     cpu.state.set_sr(0x2700);
     cpu.state.ir = 0x4E72; // STOP #$2000
-    cpu.state.prefetch[0] = 0x2000;
-    cpu.state.prefetch[1] = 0x4E71;
+    cpu.state.prefetch = 0x2000;
 
     cpu.step_instruction(&mut bus);
     assert!(cpu.state.stopped);

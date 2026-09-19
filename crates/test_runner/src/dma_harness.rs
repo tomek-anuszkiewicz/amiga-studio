@@ -399,6 +399,5 @@ fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
         cpu.state.pc = test.initial.pc;
     }
     cpu.state.ir = (test.initial.prefetch[0] & 0xFFFF) as u16;
-    cpu.state.prefetch[0] = (test.initial.prefetch[1] & 0xFFFF) as u16;
-    cpu.state.prefetch[1] = 0;
+    cpu.state.prefetch = (test.initial.prefetch[1] & 0xFFFF) as u16;
 }

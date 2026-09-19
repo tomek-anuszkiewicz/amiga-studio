@@ -170,7 +170,7 @@ On real Amiga hardware, **all resets start CPU execution from address `$000000` 
      - Bus cycles 1–2 (4 CCK): Fetch initial 32-bit `SSP` from `$000000-$000003`.
      - Bus cycles 3–4 (4 CCK): Fetch initial 32-bit `PC` from `$000004-$000007`.
      - Bus cycles 5–6 (4 CCK): Prefetch first instruction word at `PC` into `IR`; increment `PC += 2`.
-     - Bus cycles 7–8 (4 CCK): Prefetch second instruction word at `PC` into `IRC` (`prefetch[0]`); increment `PC += 2`.
+     - Bus cycles 7–8 (4 CCK): Prefetch second instruction word at `PC` into `IRC` (`prefetch`); increment `PC += 2`.
      - Cycles 9–10: Internal dispatch and microcode initialization.
      - *Double Bus Fault:* If a bus error or address error (odd vector) occurs during the reset vector fetch, the CPU enters the **HALTED** state and permanently tri-states its bus until an external hardware reset occurs.
 

@@ -97,7 +97,7 @@ pub fn alu_chk_mem(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn latch_imm_chk(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.source = state.prefetch[0] as u32;
+    state.micro.source = state.prefetch as u32;
 }
 
 // ============================================================================

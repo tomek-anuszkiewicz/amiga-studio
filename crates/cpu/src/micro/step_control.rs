@@ -29,7 +29,7 @@ impl Cpu {
         }
     }
 
-    /// CCK1: Reads second word of target pipeline directly into `self.state.prefetch[0]`
+    /// CCK1: Reads second word of target pipeline directly into `self.state.prefetch`
     pub fn step_prefetch_target_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro.ea_addr.wrapping_add(2);
         if (addr & 1) != 0 {
@@ -39,7 +39,7 @@ impl Cpu {
         match bus.read_word(addr & 0x00FF_FFFF) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.prefetch[0] = data;
+                self.state.prefetch = data;
                 BusResult::Ready(())
             }
         }
@@ -406,7 +406,7 @@ impl Cpu {
     // Prefetch Queue Refill Handlers (SR / CCR Modifications)
     // ========================================================================
 
-    /// CCK1: Refills first word of prefetch queue from PC - 2 directly into `prefetch[0]`
+    /// CCK1: Refills first word of prefetch queue from PC - 2 directly into `prefetch`
     pub fn step_bus_read_refill_first(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.pc.wrapping_sub(2);
         if (addr & 1) != 0 {
@@ -416,7 +416,7 @@ impl Cpu {
         match bus.read_word(addr & 0x00FF_FFFF) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
-                self.state.prefetch[0] = data;
+                self.state.prefetch = data;
                 BusResult::Ready(())
             }
         }

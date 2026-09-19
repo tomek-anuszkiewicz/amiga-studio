@@ -109,7 +109,7 @@ pub fn alu_add_l_mem_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_add_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = (state.prefetch[0] & 0xFF) as u8;
+    let s = (state.prefetch & 0xFF) as u8;
     let d = (state.d_long(reg_dst as usize) & 0xFF) as u8;
     let res = add_b(state, s, d);
     let orig = state.d_long(reg_dst as usize);
@@ -117,7 +117,7 @@ pub fn alu_add_b_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_add_w_imm_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let s = state.prefetch[0];
+    let s = state.prefetch;
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
     let res = add_w(state, s, d);
     let orig = state.d_long(reg_dst as usize);

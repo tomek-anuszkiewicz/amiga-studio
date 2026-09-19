@@ -1062,6 +1062,8 @@ def check_semantic_quirks_coverage():
         "Keyboard Caps Lock Latch State Machine": ["caps_lock", "test_keyboard_caps_lock_toggle"],
         "Keyboard Serial Handshake Delay": ["WaitingHandshake", "test_keyboard_step_handshake"],
         "Linear Resistor DAC & Absence of Gamma Pre-Correction": ["color", "palette", "test_pixel_pipeline", "quantize"],
+        "Reset Vector Fetch & Double Bus Fault": ["test_cpu_reset_unaligned_pc_triggers_double_bus_fault", "double_bus_fault", "halted"],
+        "Two-Word Prefetch Ahead-Offset ($PC = \\text{Opcode} + 4$)": ["prefetch", "wrapping_sub(4)", "instruction_pc", "test_addressing"],
     }
 
     issues = []

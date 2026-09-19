@@ -15,7 +15,7 @@ use physical_memory::{AddressBus, BusResult};
 
 /// Latches the 16-bit register mask extension word into movem_mask and resets transfer state
 pub fn alu_movem_fetch_mask(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.movem_mask = state.prefetch[0];
+    state.micro.movem_mask = state.prefetch;
     state.micro.movem_state = 0;
 }
 

@@ -131,7 +131,7 @@ fn test_cycle_counter_monotonic_accumulation() {
 
     cpu.state.pc = 0x1000;
     cpu.state.ir = 0x4E71;
-    cpu.state.prefetch[0] = 0x4E71;
+    cpu.state.prefetch = 0x4E71;
     cpu.state.pc = 0x1004;
 
     // Step first NOP: should take 4 CPU clocks (2 CCK steps)
