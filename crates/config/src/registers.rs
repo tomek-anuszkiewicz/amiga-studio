@@ -23,6 +23,8 @@ pub mod custom_reg {
         pub const DSKPTH: u16 = 0x020;
         /// Disk track buffer pointer low
         pub const DSKPTL: u16 = 0x022;
+        /// DRAM refresh pointer (internal test)
+        pub const REFPTR: u16 = 0x028;
         /// Vertical position write (high bits)
         pub const VPOSW: u16 = 0x02A;
         /// Vertical and horizontal position write

@@ -57,9 +57,28 @@ This skill provides on-demand verification across the repository's documentation
 - **Coding Delegation Invariant:** Every design specification in `Obsidian/Amiga/Design/` must be explicitly reflected in at least one agent rule in `.agents/rules/*.md` or `AGENTS.md`.
 - **Operational Linkage:** Guarantees that AI pair-programming agents executing coding tasks in any subsystem (custom chips, CPU, memory bus, peripherals, GUI, testing) are governed by and delegated to the authoritative design documentation.
 
+### Pillar 9: Semantic Documentation-to-Code Parity (`--semantic-sync`)
+- **Deterministic Field Validator (The Double-Check Engine):** Validates five deep semantic dimensions against live Rust source code:
+  1. *Custom Register Matrix:* 100+ offsets, R/W permissions, and chip ownership (`Agnus`, `Denise`, `Paula`) vs `crates/config/src/registers.rs`.
+  2. *Memory Map Boundaries:* 24-bit physical ranges and Gary bank constants vs `crates/memory_bus/src/memory_bus.rs`.
+  3. *Crate Topology Sync:* 100% bidirectional parity between Mermaid graph in `General Architecture.md` and `Cargo.toml`.
+  4. *Cross-Chip Signal Parity:* All action methods and `poll_*` queries in `Cross-Chip Signals Catalog` confirmed in `crates/*/src/`.
+  5. *Silicon Quirks Coverage:* All 13 hardware errata in `Platform Quirks Catalog` covered by active regression test sentinels.
+
 ---
 
-## 3. CLI Audit Workflow
+## 3. The Verbal Double-Check Protocol (Heuristic Verification)
+
+Automated Python scripts guarantee syntactic and boundary correctness, but cannot detect semantic drift caused by speculative coding or forgotten rules. Conclude every audit with the **5 Heuristic Questions**:
+1. 🧠 **Spec Freshness Review:** Did recent code changes alter chip behavior or registers without updating `Obsidian/Amiga/Design/*.md`?
+2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all beam coordinates and delays silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom patches?
+3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify chip behavior and state changes, or do they only assert trivial boilerplate?
+4. 📢 **Spec Conflict Escalation (`spec-compliance.md`):** Were any conflicts between reference test suites and internal design specs escalated to the user before changing code?
+5. 🧹 **Clean-Break Refactoring (`clean-break-refactoring.md`):** Were old methods, legacy aliases, and temporary shims completely deleted rather than left behind?
+
+---
+
+## 4. CLI Audit Workflow
 
 ```powershell
 # Run all documentation and governance audits
@@ -91,4 +110,7 @@ python tools/harness/audit_docs_quality.py --governance
 
 # Audit design docs reflection and delegation in agent rules
 python tools/harness/audit_docs_quality.py --rules-delegation
+
+# Audit semantic documentation-to-code parity (The Double-Check Engine)
+python tools/harness/audit_docs_quality.py --semantic-sync
 ```

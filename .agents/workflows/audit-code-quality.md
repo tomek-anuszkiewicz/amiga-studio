@@ -69,7 +69,18 @@ Follow the detailed playbooks in [`.agents/skills/audit-code-quality/SKILL.md`](
 
 ---
 
-## 4. Output Contract
+## 4. The Verbal Double-Check (Self-Audit & Heuristic Verification)
+
+Beyond mechanical script passes, explicitly review the **5 Non-Negotiable Conscience Questions**:
+1. 🧠 **Spec Freshness Review:** Did code refactoring or pruning introduce behavior changes not yet updated in `Obsidian/Amiga/Design/*.md`?
+2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all clock delays, cycle counts, and beam offsets silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom nudges?
+3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify chip behavior and state changes, or do they only assert trivial boilerplate?
+4. 📢 **Spec Conflict Escalation (`spec-compliance.md`):** Were any conflicts between reference test suites and internal design specs escalated to the user before changing code?
+5. 🧹 **Clean-Break Refactoring (`clean-break-refactoring.md`):** Were old methods, legacy aliases, and temporary shims completely deleted rather than left behind?
+
+---
+
+## 5. Output Contract
 Conclude with the standardized summary report:
 ```markdown
 ### 🛡️ Code Quality Audit & Pruning Report
@@ -81,5 +92,6 @@ Conclude with the standardized summary report:
 - **Inlining Guidelines:** [PASS | <count> anomalies]
 - **Anti-Pattern Prohibitions:** [PASS | <count> violations]
 - **External Test Suites & Parity:** [PASS | <count> issues]
+- **Verbal Double-Check Conscience Review:** [CONFIRMED - 5/5 heuristics verified]
 - **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
 ```

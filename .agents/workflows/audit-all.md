@@ -27,7 +27,7 @@ python tools/harness/audit_code_quality.py --all
 ```powershell
 python tools/harness/audit_docs_quality.py --all
 ```
-*Validates:* Obsidian design spec sync, vault link integrity, document size ceilings (`AGENTS.md` $\le 14$ KB), skills catalog sync, script locality, workflow symmetry, YAML frontmatter, and design spec reflection in agent rules.
+*Validates:* Obsidian design spec sync, vault link integrity, document size ceilings (`AGENTS.md` $\le 14$ KB), skills catalog sync, script locality, workflow symmetry, YAML frontmatter, design spec rules delegation, and semantic documentation-to-code parity (registers, memory map, crate topology, signals, quirks).
 
 ### Step 3: Execute Hardware Silicon Compliance Audit
 ```powershell
@@ -41,6 +41,14 @@ python tools/harness/pre_flight.py
 ```
 *Validates:* Code formatting (`cargo fmt`), change-coupling gate, public API coverage, and all 20 automated architecture tests in `test_architecture_rules.rs`.
 
+### Step 5: Execute Verbal Double-Check (Anti-Drift Conscience)
+Before delivering the final verdict, explicitly review the **5 Heuristic Conscience Questions**:
+1. 🧠 **Spec Freshness:** Did recent code changes alter chip behavior or registers without updating `Obsidian/Amiga/Design/*.md`?
+2. 🚫 **Anti-Nudge (`structural-root-cause.md`):** Are all beam coordinates and delays silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom patches?
+3. 🔬 **Assertion Integrity (`unit-testing-policy.md`):** Do tests genuinely exercise register side-effects, or are they vacuous assertions?
+4. 📢 **Spec Escalation (`spec-compliance.md`):** Were conflicts between external test vectors and internal specs escalated to the user before editing code?
+5. 🧹 **Clean-Break Refactoring (`clean-break-refactoring.md`):** Were old methods and legacy shims completely deleted?
+
 ---
 
 ## 2. Pillar Coverage Matrix
@@ -48,7 +56,7 @@ python tools/harness/pre_flight.py
 | Quality Audit System | CLI Tool | Primary Invariants Verified |
 | :--- | :--- | :--- |
 | **Rust Code Quality** | `tools/harness/audit_code_quality.py` | Dead code, zombie tests, visibility leaks, SRP limits, inlining annotations, macro/generic bans, dedicated test parity |
-| **Docs & Governance** | `tools/harness/audit_docs_quality.py` | Obsidian design sync, vault link integrity, rule size ceilings, skills catalog sync, script locality, rules delegation |
+| **Docs & Governance** | `tools/harness/audit_docs_quality.py` | Obsidian design sync, vault link integrity, rule size ceilings, skills catalog sync, script locality, rules delegation, semantic doc-to-code parity |
 | **Hardware Compliance** | `tools/harness/audit_hardware_quality.py` | Motherboard bus topology, Agnus DMA mastership, passive latching, CCK stepping, open bus `$FF`, Big-Endian safety, Tier 2 tests |
 
 ---
@@ -61,8 +69,10 @@ Conclude execution with the unified quality dashboard:
 ### 🛡️ Comprehensive Quality Audit Dashboard (audit-all)
 - **Rust Code Quality (`audit_code_quality.py`):** [PASS | <count> issues]
 - **Documentation & Governance (`audit_docs_quality.py`):** [PASS | <count> issues]
+  * Semantic Doc-to-Code Double-Check: [PASS - registers, memory map, crate topology, signals, quirks]
 - **Hardware Silicon Compliance (`audit_hardware_quality.py`):** [PASS | <count> issues]
 - **Pre-Flight Quality Gate (`pre_flight.py`):** [PASS | <count> issues]
+- **Verbal Double-Check Conscience Review:** [CONFIRMED - 5/5 heuristics verified]
 - **Overall Verdict:** [PASS - 0 violations detected | REMEDIATION REQUIRED]
 ```
 

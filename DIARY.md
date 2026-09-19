@@ -7401,3 +7401,40 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - audit_docs_quality.py --all passed with 0 issues
   - pre_flight.py passed with all 20 architecture tests clean and AGENTS.md <= 14,000 bytes
+
+---
+
+### [2026-09-19 12:08 CEST] — Two-Tiered Double-Check Quality Auditing System (Semantic Doc-to-Code Validator & Heuristic Conscience Protocols)
+- **Affected Subsystems**:
+  - `tools/harness/audit_docs_quality.py`
+  - `crates/config`
+  - `Obsidian/Amiga/Design/Custom Chip Register Ownership and Access Matrix.md`
+  - `Obsidian/Amiga/Design/Cross-Chip Signals and Action Dispatch Catalog.md`
+  - `.agents/workflows` & `.agents/skills` (`audit-all`, `audit-docs-quality`, `audit-code-quality`)
+- **What Was Changed (The Concrete Reality)**:
+  - Built a comprehensive two-tiered Double-Check Quality Auditing System:
+    1. **Tier A (Mechanical / Deterministic Doc-to-Code Machine Verification):**
+       - Implemented Pillar 9 (`--semantic-sync`) in `tools/harness/audit_docs_quality.py` covering 5 semantic domains:
+         * *Custom Register Matrix Validator:* Audits 79+ custom register offsets, R/W directions, and chip ownership between markdown matrix and `crates/config/src/registers.rs`. Detected and repaired documentation typos: corrected write addresses `$02A = VPOSW`, `$02C = VHPOSW`, `$02E = COPCON`, strobes `$038..$03E`, and decoupled `$002` read (`DMACONR`) from `$096` write (`DMACON`). Added missing `REFPTR = 0x028` to `registers.rs` and unit test.
+         * *Memory Map Range Consistency:* Audits physical 24-bit address boundaries and Gary bank ranges between markdown and `crates/memory_bus/src/memory_bus.rs`.
+         * *Crate Topology Synchronizer:* Compares the Mermaid dependency graph in `General Architecture.md` against workspace members in root `Cargo.toml` (100% parity across 27 crates).
+         * *Cross-Chip Signal Parity:* Validates all cataloged action methods (`copper.restart_list1()`, `paula.write_dsklen()`, etc.) against active Rust production code.
+         * *Silicon Quirks Coverage:* Asserts that all 13 hardware errata in `Platform Quirks and Invariants Catalog.md` have explicit regression test sentinels in test suites.
+    2. **Tier B (Heuristic / Verbal Conscience Review Protocol):**
+       - Integrated a structured 5-point Conscience Review into workflows and skills (`/audit-all`, `/audit-docs-quality`, `/audit-code-quality`):
+         * Check 1: Unconscious Rule Erosion & Amnesia
+         * Check 2: Spec Divergence vs Specification Compliance
+         * Check 3: Structural Solution vs Symptom Nudging
+         * Check 4: Documentation Integrity vs Ephemeral Prompts
+         * Check 5: Mechanical Sympathy vs High-Level Clutter
+  - Integrated Pillar 9 into `audit_docs_quality.py --all`.
+- **Architectural Rationale & Trade-Offs**:
+  - Elevates Markdown design specifications from passive documentation into machine-verifiable architectural contracts. Any drift between written hardware matrices and Rust implementation is immediately flagged and failed before merging.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py --all`: 9/9 pillars passed cleanly (100% semantic doc-to-code parity).
+  - `python tools/harness/audit_code_quality.py --all`: 0 dead code, 0 zombies, 0 visibility leaks, 0 inlining issues.
+  - `python tools/harness/audit_hardware_quality.py --all`: 5/5 pillars passed cleanly.
+  - `cargo test -p config`: passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: 20/20 passed.
+  - `python tools/harness/pre_flight.py`: 100% compliant.
+

@@ -67,6 +67,10 @@ When invoked without parameters:
    ```powershell
    python tools/harness/audit_docs_quality.py --rules-delegation
    ```
+- **Audit Semantic Documentation-to-Code Parity (Double-Check Engine):**
+   ```powershell
+   python tools/harness/audit_docs_quality.py --semantic-sync
+   ```
 
 ---
 
@@ -79,10 +83,22 @@ Follow the detailed playbooks in [`.agents/skills/audit-docs-quality/SKILL.md`](
 5. **Script Locality & Harness Governance:** Relocate single-consumer scripts to `.agents/skills/<skill>/scripts/` and promote multi-consumer scripts to `tools/harness/`.
 6. **Workflow & Rule Governance:** Provide companion slash-commands for procedural skills and ensure all active remediation rules maintain companion skills.
 7. **Design Docs Reflection in Rules:** Ensure every living design specification in `Obsidian/Amiga/Design/` is explicitly referenced in its governing agent rule so pair-programming agents are delegated to the specification during coding.
+8. **Semantic Parity Discrepancies:** Reconcile hexadecimal offsets, register names, memory boundaries, or crate topologies between `Obsidian/Amiga/Design/` and Rust code in `crates/` to eliminate subtle documentation bugs.
 
 ---
 
-## 4. Output Contract
+## 4. The Verbal Double-Check (Self-Audit & Heuristic Verification)
+
+Beyond deterministic script passes, the auditor (agent or human) must explicitly verify the **5 Non-Negotiable Conscience Questions**:
+1. 🧠 **Spec Freshness Review:** Did any implementation or refactoring in recent turns introduce subtle behavioral shifts, register side-effects, or new constants not yet recorded in `Obsidian/Amiga/Design/*.md`?
+2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all beam coordinates, cycle counters, and branch thresholds derived from physical silicon specs rather than empirical $\pm 1$ / $\pm 2$ symptom nudges?
+3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify register mutations and state machine progressions, or do they contain trivial/placeholder assertions?
+4. 📢 **Spec Conflict Escalation (`spec-compliance.md`):** If an external test vector or reference emulator diverged from our specifications, was it escalated to the user before changing code?
+5. 🧹 **Clean-Break Refactoring (`clean-break-refactoring.md`):** Were old methods, legacy aliases, and temporary shims completely deleted rather than left behind?
+
+---
+
+## 5. Output Contract
 Conclude with the standardized summary report:
 ```markdown
 ### 📚 Documentation & Governance Quality Audit Report
@@ -94,5 +110,7 @@ Conclude with the standardized summary report:
 - **Workflow & Skill Governance:** [PASS | <count> issues (<count> candidates)]
 - **Frontmatter Compliance:** [PASS | <count> missing frontmatter]
 - **Design Docs to Rules Reflection:** [PASS | <count> unreflected] (verified <count> specs)
+- **Semantic Documentation-to-Code:** [PASS | <count> discrepancies] (registers, memory map, crate topology, signals, quirks)
+- **Verbal Double-Check Conscience Review:** [CONFIRMED - 5/5 heuristics verified]
 - **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
 ```
