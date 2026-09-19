@@ -7068,3 +7068,20 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules -- test_obsidian_design_docs_links_integrity`: Passed (0 broken links).
   - `python tools/harness/audit_code_quality.py --design-sync`: Verified 19/19 tracked specifications in sync with HEAD (PASS).
   - `python tools/harness/pre_flight.py`: All 5 pre-flight gates passed cleanly.
+---
+
+### [2026-09-19 02:39 CEST] — Prune Subagent Scaffolding and Establish Native Agents Declarations
+- **Affected Subsystems**:
+  - `rules`
+  - `agents`
+  - `workflows`
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned Section 4 (The Subagent Delegation & Return Contract Standard) from .agents/rules/parallel-execution.md
+  - Streamlined parallel-execution.md to focus on multi-session workflows, inner-loop test filters, async tasks, and quiet logging
+  - Created .agents/agents.json registering .agents/agents for Antigravity subagent discovery
+  - Created declarative .agents/agents/code_reviewer/agent.md subagent definition
+- **Architectural Rationale & Trade-Offs**:
+  - Eliminated dead prompt-level subagent boilerplate that could not be executed programmatically
+  - aligning the parallel execution rule with active capabilities while establishing the native Antigravity subagent discovery structure (agents.json and agent.md) for empirical validation.
+- **Verification & Test Results**:
+  - pre_flight.py and test_architecture_rules passed cleanly.
