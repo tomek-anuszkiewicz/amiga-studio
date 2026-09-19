@@ -7682,7 +7682,26 @@ Every future modification or implementation task must append an entry following 
   - *Lean Governance & Zero Wrapper Friction:* The meta-orchestrator added maintenance coupling across multiple index files whenever specialized audits evolved. Because full sweeps can be requested naturally through verbal prompts or running the targeted suites as needed, eliminating `audit-all` simplifies the workflow surface area without any loss of auditing power.
 - **Verification & Test Results**:
   - `python tools/harness/audit_docs_quality.py --all`: 10/10 pillars passed cleanly with 0 issues (26 skills, 13 workflows synchronized).
-  - `python tools/harness/pre_flight.py`: 5/5 quality gates passed cleanly (AGENTS.md ceiling: 13,770 <= 14,000 bytes, 21 architecture tests passed).
+### [2026-09-19 13:58] - feat(docs): implement dual-tier code drift tolerance policy to eliminate empty documentation sync commits
+
+- **Files Modified**:
+  - `tools/harness/audit_docs_quality.py`: Updated Pillar 1 (`check_design_docs_sync`, `bump_design_checkpoint`, and `main`) to implement a dual-tier tolerance policy (`MAX_DRIFT_COMMITS = 100`, `MAX_DRIFT_DAYS = 30`), classifying tracked specifications into `synced`, `tolerated`, and `stale`. Added `--strict` CLI flag.
+  - `.agents/rules/docs-maintenance.md`: Updated Section 4 to codify the dual-tier model (immediate substantive atomic bundling vs periodic staleness threshold) and established the invariant prohibiting empty sync-only commits.
+  - `.agents/workflows/sync-design-docs.md`: Clarified that specifications within active tolerance do not require emergency bumping, and checkpoints must be committed atomically with substantive markdown updates.
+  - `.agents/skills/sync-design-docs/SKILL.md`: Aligned Step 1 and Step 7 with the 100-commit / 30-day grace tolerance and zero empty sync commits rule.
+- **What Was Changed (The Concrete Reality)**:
+  - Addressed the root cause behind noise in Git history (e.g. commits `271375a`, `83a9a2b`, `437b2cf`), where developers and autonomous agents felt forced to mechanically bump `last_synced_commit` without changing any documentation content merely to appease `audit_docs_quality.py`.
+  - Replaced the rigid 0-commit threshold in `audit_docs_quality.py` with a pragmatic dual-tier tolerance policy:
+    1. **Tier 1 (Substantive Sync):** Whenever an architectural document is actually modified or clarified, its checkpoint is bumped and committed *together* with the substantive doc improvements.
+    2. **Tier 2 (Grace Tolerance Window):** Routine code refactoring, test additions, or internal helper changes in tracked crates are tolerated without failing audits as long as they are $\le 100$ commits behind HEAD and $\le 30$ days since the last formal review.
+  - Documents within tolerance are reported as `[PASS / TOLERATED]`, preventing false-positive audit failures and eliminating empty frontmatter-only commits. Only truly stale specifications ($>100$ commits or $>30$ days) trigger an audit failure requiring architectural review.
+- **Architectural Rationale & Trade-Offs**:
+  - *Signal-to-Noise Ratio in Version Control:* Git history should reflect genuine engineering evolution. Standalone commits whose diff contains only a hash update add zero technical insight while cluttering `git log`, `git blame`, and PR reviews. The 100-commit / 30-day grace window ensures specifications remain tethered to code reality via periodic heartbeats while giving day-to-day development complete freedom from artificial friction.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py --all`: 10/10 pillars passed cleanly with 0 issues (26 tracked design specs in sync/tolerance, 0 stale).
+  - `python tools/harness/audit_docs_quality.py --design-sync`: Verified clean reporting of synced and tolerated categories.
+  - `python tools/harness/pre_flight.py`: 5/5 quality gates passed cleanly (100% formatting, AGENTS.md <= 14KB ceiling, 21 architecture tests passed).
+
 
 
 

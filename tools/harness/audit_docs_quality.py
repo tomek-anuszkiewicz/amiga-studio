@@ -5,6 +5,7 @@ audit_docs_quality.py - Comprehensive On-Demand Documentation & Governance Audit
 Audits nine critical documentation and agent governance dimensions across the repository:
 1. Design Documentation & Code Drift Detection:
    - Tracks git commits between `last_synced_commit` and HEAD across `tracked_paths` in Obsidian design specs.
+   - Applies dual-tier tolerance policy: 100 commits and 30-day grace window before flagging stale specifications.
    - Provides diff inspection (`--design-diff`) and checkpoint bumping (`--design-bump`).
 2. Obsidian Vault Linking & Graph Integrity:
    - Verifies zero broken relative markdown links in `Obsidian/Amiga/Design/`.
@@ -56,6 +57,8 @@ def find_repo_root() -> Path:
 REPO_ROOT = find_repo_root()
 MAX_AGENTS_MD_BYTES = 14000
 MAX_RULE_FILE_BYTES = 23000
+MAX_DRIFT_COMMITS = 100
+MAX_DRIFT_DAYS = 30
 
 # ---------------------------------------------------------------------------
 # Pillar 1: Design Documentation & Code Drift Detection
@@ -140,58 +143,113 @@ def bump_markdown_checkpoint(file_path: Path, new_commit: str, new_date: str) ->
     return True
 
 
-def check_design_docs_sync():
-    """Checks whether code in tracked_paths has drifted since last_synced_commit."""
+def check_design_docs_sync(strict: bool = False):
+    """
+    Checks whether code in tracked_paths has drifted since last_synced_commit.
+    - synced: 0 commits drift
+    - tolerated: 1 <= count < MAX_DRIFT_COMMITS and age <= MAX_DRIFT_DAYS (active development within grace window)
+    - stale: count >= MAX_DRIFT_COMMITS or age > MAX_DRIFT_DAYS or git error (requires review & bump)
+    """
     design_dir = REPO_ROOT / "Obsidian" / "Amiga" / "Design"
     if not design_dir.exists():
-        return {"tracked_count": 0, "synced_count": 0, "drifted": [], "synced": []}
+        return {
+            "tracked_count": 0,
+            "synced_count": 0,
+            "tolerated_count": 0,
+            "stale_count": 0,
+            "synced": [],
+            "tolerated": [],
+            "stale": [],
+            "drifted": [],
+        }
 
     tracked = []
-    drifted = []
     synced = []
+    tolerated = []
+    stale = []
+    today = datetime.date.today()
 
     for doc in sorted(design_dir.glob("*.md")):
         fm, _ = parse_markdown_frontmatter(doc)
         paths = fm.get("tracked_paths", [])
         commit = fm.get("last_synced_commit")
+        date_str = fm.get("last_synced_date")
 
         if not paths or not commit:
             continue
 
         tracked.append(doc.name)
+
+        days_elapsed = None
+        if date_str:
+            try:
+                c_date = datetime.date.fromisoformat(date_str)
+                days_elapsed = (today - c_date).days
+            except (ValueError, TypeError):
+                days_elapsed = None
+
         cmd = ["git", "rev-list", "--count", f"{commit}..HEAD", "--"] + paths
         res = subprocess.run(cmd, cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
         if res.returncode != 0:
-            drifted.append({
+            stale.append({
                 "file": doc.name,
                 "commit": commit,
+                "date": date_str,
                 "paths": paths,
                 "error": f"Invalid commit or git error: {res.stderr.strip()}",
                 "count": -1,
+                "days": days_elapsed,
+                "reasons": ["Invalid commit hash or git error"],
                 "log": [],
             })
             continue
 
         count = int(res.stdout.strip() or "0")
-        if count > 0:
+        if count == 0:
+            synced.append(doc.name)
+        else:
             log_cmd = ["git", "log", "--oneline", f"{commit}..HEAD", "--"] + paths
             l_res = subprocess.run(log_cmd, cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
             commits_log = [l.strip() for l in l_res.stdout.splitlines()[:5]]
-            drifted.append({
+
+            is_stale = False
+            reasons = []
+            if strict:
+                is_stale = True
+                reasons.append(f"{count} commit(s) behind HEAD (strict mode)")
+            else:
+                if count >= MAX_DRIFT_COMMITS:
+                    is_stale = True
+                    reasons.append(f"{count} commits behind HEAD (threshold: {MAX_DRIFT_COMMITS})")
+                if days_elapsed is not None and days_elapsed > MAX_DRIFT_DAYS:
+                    is_stale = True
+                    reasons.append(f"{days_elapsed} days since audit (threshold: {MAX_DRIFT_DAYS} days)")
+
+            item = {
                 "file": doc.name,
                 "commit": commit,
+                "date": date_str,
                 "paths": paths,
                 "count": count,
+                "days": days_elapsed,
+                "reasons": reasons,
                 "log": commits_log,
-            })
-        else:
-            synced.append(doc.name)
+            }
+
+            if is_stale:
+                stale.append(item)
+            else:
+                tolerated.append(item)
 
     return {
         "tracked_count": len(tracked),
         "synced_count": len(synced),
-        "drifted": drifted,
+        "tolerated_count": len(tolerated),
+        "stale_count": len(stale),
         "synced": synced,
+        "tolerated": tolerated,
+        "stale": stale,
+        "drifted": stale,
     }
 
 
@@ -239,6 +297,8 @@ def bump_design_checkpoint(doc_name: str) -> bool:
     success = bump_markdown_checkpoint(doc_path, head_commit, today_str)
     if success:
         print(f">> Successfully bumped {doc_path.name} checkpoint to {head_commit[:10]} ({today_str})")
+        print("   [Notice] Checkpoint bumps should accompany substantive documentation updates.")
+        print("   Do not commit empty frontmatter-only updates unless resolving a genuinely stale (>100 commits / >30 days) spec.")
     else:
         print(f"Error: Could not update frontmatter for {doc_path.name}", file=sys.stderr)
     return success
@@ -1207,6 +1267,7 @@ def main():
     parser.add_argument("--rules-delegation", action="store_true", help="Audit that design specifications are reflected and delegated in agent rules")
     parser.add_argument("--semantic-sync", action="store_true", help="Audit semantic consistency between documentation and code (Double-Check engine)")
     parser.add_argument("--rule-coverage", action="store_true", help="Audit 100% rule audit coverage and governance invariants (Pillar 10)")
+    parser.add_argument("--strict", action="store_true", help="Enforce 0-commit strict drift check (disables grace tolerance window)")
 
     args = parser.parse_args()
 
@@ -1235,26 +1296,36 @@ def main():
     # 1. Design Docs Sync
     if run_all or args.design_sync:
         print("\n[1. DESIGN SPECIFICATIONS & CODE DRIFT DETECTION]")
-        sync_res = check_design_docs_sync()
-        drifted = sync_res["drifted"]
+        strict_mode = getattr(args, "strict", False)
+        sync_res = check_design_docs_sync(strict=strict_mode)
         tracked_count = sync_res["tracked_count"]
         synced_count = sync_res["synced_count"]
+        tolerated = sync_res["tolerated"]
+        stale = sync_res["stale"]
 
         print(f"  - Tracked Design Specs: {tracked_count}")
-        if drifted:
-            total_issues += len(drifted)
-            print(f"  - Status: [DRIFTED] {len(drifted)} document(s) behind active code:")
-            for item in drifted:
+        print(f"  - In Sync with HEAD (0 drift): {synced_count}")
+        print(f"  - Within Active Tolerance (<{MAX_DRIFT_COMMITS} commits, <{MAX_DRIFT_DAYS} days): {len(tolerated)}")
+        if tolerated and args.design_sync:
+            for item in tolerated:
+                age_info = f", audited {item['days']}d ago" if item.get('days') is not None else ""
+                print(f"    * {item['file']}: {item['count']} commit(s) behind HEAD{age_info}")
+
+        if stale:
+            total_issues += len(stale)
+            print(f"  - Status: [FAIL] {len(stale)} document(s) stale and require review:")
+            for item in stale:
                 if item.get("error"):
                     print(f"    * {item['file']}: {item['error']}")
                 else:
-                    print(f"    * {item['file']}: {item['count']} commit(s) behind HEAD")
-                    for log_line in item["log"]:
+                    reasons_str = ", ".join(item.get("reasons", []))
+                    print(f"    * {item['file']}: {reasons_str}")
+                    for log_line in item.get("log", []):
                         print(f"        {log_line}")
                     print(f"      -> Inspect diff: python tools/harness/audit_docs_quality.py --design-diff {item['file']}")
                     print(f"      -> Bump checkpoint: python tools/harness/audit_docs_quality.py --design-bump {item['file']}")
         else:
-            print(f"  - Status: [PASS] All {synced_count} tracked specification(s) in sync with HEAD.")
+            print(f"  - Status: [PASS] All {tracked_count} tracked specification(s) in sync or within active tolerance (0 stale).")
 
     # 2. Obsidian Vault Links
     if run_all or args.vault_links:

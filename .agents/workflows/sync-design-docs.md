@@ -11,24 +11,27 @@ Use this workflow to audit code-backed design specifications in `Obsidian/Amiga/
 
 ## 1. Zero-Parameter Run (`/sync-design-docs`)
 When invoked without parameters:
-1. **Detect Code-Documentation Drift:**
+1. **Detect Code-Documentation Drift & Staleness:**
    ```powershell
    python tools/harness/audit_docs_quality.py --design-sync
    ```
-2. **Inspect Diffs for Drifted Specifications:**
-   For each drifted document reported:
+   - Specifications within the grace tolerance window ($\le 100$ commits, $\le 30$ days) are reported as `[PASS / TOLERATED]` and do not require emergency bumping.
+   - Specifications flagged as `[STALE]` ($>100$ commits or $>30$ days without audit) or those undergoing active architectural updates must be audited.
+2. **Inspect Diffs for Stale / Updated Specifications:**
+   For each specification needing reconciliation:
    ```powershell
    python tools/harness/audit_docs_quality.py --design-diff <doc_name>
    ```
-3. **Synchronize Specification Content:**
+3. **Synchronize Specification Content (Substantive Edits):**
    - Update register bitfields, timing constants, clock phases (`CCK1`/`CCK2`), and bus arbitration rules.
    - Prune obsolete draft code or speculative pseudo-code.
    - Maintain dual-layer linking and inverted pyramid hierarchy.
-4. **Bump Checkpoint to HEAD:**
-   Once verified or updated:
+4. **Bump Checkpoint to HEAD & Commit Atomically:**
+   Once verified or substantively updated:
    ```powershell
    python tools/harness/audit_docs_quality.py --design-bump <doc_name>
    ```
+   **Zero Empty Sync Commits:** Commit the checkpoint bump *together* with the substantive markdown edits in a single atomic commit. Never create standalone commits that solely bump frontmatter hashes.
 5. **Verify Quality & Link Integrity:**
    ```powershell
    python tools/harness/pre_flight.py
@@ -38,7 +41,7 @@ When invoked without parameters:
 ---
 
 ## 2. Targeted Commands
-- **Audit Drift Status:**
+- **Audit Drift Status (with Tolerance):**
   ```powershell
   python tools/harness/audit_docs_quality.py --design-sync
   ```
@@ -46,7 +49,7 @@ When invoked without parameters:
   ```powershell
   python tools/harness/audit_docs_quality.py --design-diff Denise.md
   ```
-- **Bump Verified Spec Checkpoint:**
+- **Bump Verified Spec Checkpoint (with Substantive Changes):**
   ```powershell
   python tools/harness/audit_docs_quality.py --design-bump Denise.md
   ```
@@ -55,11 +58,11 @@ When invoked without parameters:
 
 ## 3. Execution Runbook
 Follow the operational procedure in [`.agents/skills/sync-design-docs/SKILL.md`](../skills/sync-design-docs/SKILL.md):
-1. **Audit:** Run `--design-sync` to list specifications behind HEAD.
+1. **Audit:** Run `--design-sync` to list specifications behind HEAD (identifying stale specs exceeding 100 commits or 30 days).
 2. **Inspect:** Run `--design-diff <doc>` to view exact Rust crate commits.
 3. **Update:** Modify markdown under `Obsidian/Amiga/Design/` ensuring exhaustive technical depth.
 4. **Prune:** Eliminate raw code duplication and speculative snippets.
-5. **Checkpoint:** Stamp current HEAD commit via `--design-bump <doc>`.
+5. **Checkpoint:** Stamp current HEAD commit via `--design-bump <doc>` and commit together with substantive doc changes.
 
 ---
 

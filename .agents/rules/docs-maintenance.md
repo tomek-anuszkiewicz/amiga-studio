@@ -33,23 +33,35 @@ Design specifications and reference manuals in [`Obsidian/Amiga/Design/`](../../
 
 ---
 
-## 4. Deterministic Git Commit Checkpoints (`last_synced_commit`)
+## 4. Deterministic Git Commit Checkpoints (`last_synced_commit`) & Dual-Tier Synchronization
 
 Every code-backed architectural specification under [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design/) maintains a cryptographic review trail in its YAML frontmatter:
 - `tracked_paths`: list of relative repository directories whose Rust code backs the specification (e.g. `["crates/denise/src", "crates/sprites/src"]`).
 - `last_synced_commit`: short or full Git commit hash at which the document was last audited and confirmed to match code reality.
 - `last_synced_date`: ISO date (`YYYY-MM-DD`) of the last audit.
 
-### Audit & Checkpoint Bumping:
+### A. Dual-Tier Synchronization Architecture:
+1. **Tier 1: Atomic Substantive Synchronization (Immediate Bundling):**
+   - Whenever an architectural specification is genuinely authored, updated, or clarified (e.g. registers added, timing tables adjusted, behavioral quirks documented), `last_synced_commit` and `last_synced_date` **must be updated within that exact same commit**.
+   - **Zero Empty Sync Commits:** Standalone commits containing only frontmatter `last_synced_commit` changes without substantive markdown content improvements are strictly prohibited during normal development.
+2. **Tier 2: Grace Tolerance Window & Periodic Staleness Heartbeat:**
+   - Routine code changes in `tracked_paths` (refactorings, internal helpers, test additions) that do not alter documented architecture are normal and expected.
+   - Code drift is permitted within an allowable grace window:
+     - **Commit Threshold:** $\le 100$ commits since `last_synced_commit`.
+     - **Calendar Threshold:** $\le 30$ calendar days since `last_synced_date`.
+   - Tracked specifications within this tolerance window pass quality audits (`[PASS / TOLERATED]`) and do not fail `audit_docs_quality.py`.
+   - Only when a specification exceeds either threshold ($>100$ commits or $>30$ days without an audit) is it marked as `[STALE]`, triggering an audit issue that prompts a formal architectural review.
+
+### B. Audit & Checkpoint Bumping:
 1. **Automated Drift Detection:** Verified by Pillar 1 of `audit-docs-quality`:
    ```powershell
    python tools/harness/audit_docs_quality.py --design-sync
    ```
-2. **Differential Review:** When drift is detected, inspect the code diff since the checkpoint:
+2. **Differential Review:** When a document is stale or being updated, inspect the code diff since the checkpoint:
    ```powershell
    python tools/harness/audit_docs_quality.py --design-diff <doc_name>
    ```
-3. **Checkpoint Stamping:** Once the document is synchronized or confirmed accurate, stamp the new HEAD commit:
+3. **Checkpoint Stamping:** Once the document is updated with substantive changes (or verified after exceeding the 100-commit / 30-day threshold), stamp the new HEAD commit:
    ```powershell
    python tools/harness/audit_docs_quality.py --design-bump <doc_name>
    ```
