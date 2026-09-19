@@ -41,7 +41,7 @@ The CPU exposes a fully queryable, read-only state snapshot (`CpuState`) for ins
 | **`ir`** ($IR$) | 16-bit | Instruction Register | Holds the opcode currently being executed. Immutable during micro-steps. |
 | **`step`** | 16-bit | Sub-Cycle Phase / Step Index | Index within current micro-step sequence across Color Clock phases (CCK1/CCK2). |
 | **`ipl`** ($IPL$) | 8-bit | Interrupt Priority Level | Sampled interrupt priority lines (0..7) driven by Paula/arbitration. |
-| **`instruction_pc`** | 32-bit | Instruction Base PC | $PC + 2$ at instruction start; recorded for exception stack frames. |
+| **`instruction_pc`** | 32-bit | Architectural Opcode PC | $PC_{\text{hardware}} - 4$ at instruction retirement; represents the base memory address of the executing opcode word (used by GUI disassembler, debugger, breakpoints, and exception vectors). |
 | **`stopped`** | bool | STOP Instruction Latch | Processor halted awaiting interrupt higher than current interrupt mask. |
 | **`halted`** | bool | Double Bus Fault Latch | Processor halted due to catastrophic hardware failure / reset. |
 | **`micro`** | `CpuMicroState` | Execution Micro-State | Tracks Color Clock phase, latched bus words, Data Output Buffer, and wait cycles. |
@@ -114,6 +114,59 @@ The MC68000 exclusively supports the 16-bit **Brief Extension Word**:
 3. **24-bit Physical Address Truncation:**
    - Internal address registers and arithmetic are full 32-bit. However, the physical MC68000 address bus only routes 24 bits ($A_1-A_{23}$ plus $\overline{UDS}/\overline{LDS}$).
    - All physical bus transactions must mask addresses to 24 bits (`addr & 0x00FF_FFFF`).
+
+### 1.3 Two-Word Prefetch Pipeline Architecture & Program Counter Dynamics
+
+The Motorola 68000 utilizes an overlapped, pipelined instruction prefetch mechanism. Execution of an instruction does not wait for opcode fetching; instead, memory bus fetching and ALU execution overlap concurrently across Color Clock phases.
+
+#### A. The Two-Word Prefetch Queue (`IR` + `prefetch[0]`)
+Before **any** instruction can begin execution, the 68000 prefetch FIFO must be completely full:
+- **`IR` (Instruction Register, 16-bit):** Holds the opcode currently being decoded and executed.
+- **`prefetch[0]` (Instruction Register Capture / `IRC`, 16-bit):** Holds the next lookahead word read from memory.
+
+During reset or after any pipeline flush (e.g. taken branch/jump), the processor primes the pipeline via two consecutive bus reads:
+```text
+Memory Stream:
+  $001000:  4E71  (NOP           - 1st instruction)
+  $001002:  3200  (MOVE.W D0, D1 - 2nd instruction)
+  $001004:  4240  (CLR.W  D0     - 3rd instruction)
+
+Reset / Pipeline Priming Sequence:
+1. Bus reads $001000 -> latched into IR.            Hardware PC advances to $001002.
+2. Bus reads $001002 -> latched into prefetch[0].   Hardware PC advances to $001004.
+```
+
+When execution of `NOP` begins at `$001000`:
+- The active opcode `$4E71` is in `IR`.
+- The next opcode `$3200` (`$001002`) is **already read into the CPU** and resides in `prefetch[0]`.
+- The physical hardware Program Counter register (`state.pc`) is **already pointing to `$001004`**.
+
+#### B. Architectural Program Counter vs Hardware Bus PC
+Because the physical hardware `PC` continuously runs 2 words (4 bytes) ahead on the address bus:
+$$\mathbf{PC_{\text{hardware}} = \text{Opcode Address} + 4}$$
+
+To present an intuitive, correct view to programmers, disassemblers, debuggers, and test suites, the state maintains a dedicated architectural field:
+$$\mathbf{\text{instruction\_pc} = PC_{\text{hardware}} - 4}$$
+
+At the end of every instruction, `retire_current_instruction()` updates:
+```rust
+self.state.instruction_pc = self.state.pc.wrapping_sub(4);
+```
+This guarantees that `instruction_pc` always points to the first byte of the active instruction being displayed or executed, while `state.pc` accurately reflects the silicon memory bus address pins.
+
+#### C. Subroutine Return Addresses (`JSR` / `BSR`) and Stack Pushes
+A common misconception is that the advanced hardware `PC` causes subroutine calls or exceptions to push distant return addresses onto the stack. In reality, the microcode offsets the hardware `PC` to calculate the exact return address:
+1. **1-Word Calls (`JSR (An)`, `BSR.S`):**
+   - Hardware `PC` is at $\text{Opcode} + 4$.
+   - The ALU computes $\text{Return Address} = PC_{\text{hardware}} - 2 = \text{Opcode} + 2$.
+   - Pushes the exact address of the following instruction onto the stack.
+2. **Multi-Word Calls (`JSR $2000.W`, `BSR.W`):**
+   - The CPU consumes the extension word from `prefetch[0]`, advancing hardware `PC` to $\text{Opcode} + 4$.
+   - Pushes $PC_{\text{hardware}}$ directly, which points exactly past the 4-byte instruction.
+3. **PC-Relative Addressing (`d16, PC`):**
+   - Per Motorola PRM, the base address for `(d16, PC)` is the instruction address plus two ($PC_{\text{hardware}} - 2$), corresponding to the address where the displacement word was fetched.
+4. **Bus Error & Address Error Stack Frames:**
+   - As documented in Section 5.3 of the *Motorola 68000 User's Manual*, the PC saved on the stack for Vector 2 and 3 can be **2 to 10 bytes beyond** the address of the instruction that caused the fault, reflecting the advanced state of the prefetch queue when the bus fault occurred.
 
 ---
 

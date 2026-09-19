@@ -7805,6 +7805,20 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/check_test_coupling.py`: Coupling verified cleanly for `cpu`.
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly.
 
+---
+
+### [2026-09-19 15:20 CEST] — Documented Two-Word Prefetch Queue Architecture and Program Counter Dynamics
+
+- **Files Modified**:
+  - `Obsidian/Amiga/Design/CPU Motorola M68000.md`: Updated `instruction_pc` description in Section 1.1 table; added Section 1.3 (*Two-Word Prefetch Pipeline Architecture & Program Counter Dynamics*) detailing the physical `IR` + `IRC` FIFO queue, the $+4$ hardware PC ahead-offset, architectural `instruction_pc` derivation, subroutine return address calculations (`JSR`/`BSR`), and exception stack frame behaviors.
+  - `Obsidian/Amiga/Design/Platform Quirks and Invariants Catalog.md`: Added Section 2 table entry for *Two-Word Prefetch Ahead-Offset ($PC = \text{Opcode} + 4$)* establishing the anti-tamper invariant for `state.pc` vs `instruction_pc` and preventing erroneous "off-by-four bug" refactorings.
+- **Architectural Rationale & Trade-Offs**:
+  - *Eliminating Counter-Intuitive Confusion:* The Motorola 68000's physical prefetch pipeline constantly reads 2 words (4 bytes) ahead of active execution. Because the hardware `PC` points to the next bus prefetch ($A+4$) while programmers expect the address of the opcode ($A$), developers and AI agents frequently perceive `instruction_pc = pc.wrapping_sub(4)` as a defect. Formally documenting both the architectural baseline in `CPU Motorola M68000.md` and the anti-tamper trap in `Platform Quirks and Invariants Catalog.md` guarantees that future contributors immediately understand the mechanical silicon necessity of this design.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed (including Obsidian link integrity and size constraints).
+  - `python tools/harness/pre_flight.py`: All quality gates passed cleanly.
+
+
 
 
 
