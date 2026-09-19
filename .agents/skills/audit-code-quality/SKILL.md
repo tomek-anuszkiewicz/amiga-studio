@@ -17,7 +17,7 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 
 ---
 
-## 2. The Five Quality Audit Pillars
+## 2. The Seven Quality Audit Pillars
 
 ### Pillar 1: Dead Code & Test-Only Zombies
 1. **Completely Dead Symbols (💀):**
@@ -58,6 +58,14 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Checkpoint Stamping:** Once the specification is updated (or verified to still be accurate), stamp the HEAD commit via `--design-bump <doc>`.
 - **Audit Verification:** Verified automatically via `--design-sync` or `--all`.
 
+### Pillar 7: Workflow, Skill & Rule Governance (Two-Way Alignment, `--governance`)
+- **Workflow-to-Skill Backing:** Every interactive slash command workflow in `.agents/workflows/` must have a companion specialized skill in `.agents/skills/` or explicitly declare its underlying skills.
+- **Skill-to-Workflow Promotion Candidates:** Milestone, batch, or multi-step maintenance procedures (`compact-diary`, `sync-design-docs`, `roadmap-maintenance`, `index-amiga-rag`) that operate across the repository are candidate workflows deserving dedicated `/slash-command` entrypoints in `.agents/workflows/`.
+- **Rule-to-Skill Governance:**
+  - Active remediation rules (e.g. `file-size-and-cohesion`, `diary-maintenance`, `docs-maintenance`) must have corresponding executable skills in `.agents/skills/`.
+  - Passive invariant rules (e.g. `language-policy`, `no-external-paths`, `spec-compliance`, `performance-and-readability`) must remain lean architectural constraints without redundant companion skills.
+- **Audit Verification:** Verified automatically via `--governance` or `--all`.
+
 ---
 
 ## 3. CLI Audit Workflow
@@ -85,6 +93,9 @@ python tools/harness/audit_code_quality.py --skills
 
 # Audit two-way script locality and harness placement governance
 python tools/harness/audit_code_quality.py --scripts
+
+# Audit workflow-skill symmetry and rule companion coverage
+python tools/harness/audit_code_quality.py --governance
 
 # Audit design specifications drift against code crates
 python tools/harness/audit_code_quality.py --design-sync
@@ -166,6 +177,7 @@ Ensure all quality gates and architecture rules pass with 100% green status.
 - **SRP / Cohesion Decompositions:** <count> files/structs
 - **Skills Catalog Sync:** [PASS (all synchronized) | <count> discrepancies]
 - **Script Locality & Governance:** [PASS (all properly placed) | <count> anomalies]
+- **Workflow & Skill Governance:** [PASS (all synchronized) | <count> issues (<count> candidates)]
 - **Design Specs Sync:** [PASS (all synchronized) | <count> drifted]
 - **Verification:** `pre_flight.py` (PASS), `cargo test` (PASS)
 ```

@@ -497,8 +497,125 @@ def check_script_locality_and_governance():
     return issues
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, skill catalog sync, and script locality.")
+def check_workflow_and_skill_governance():
+    """
+    Audits two-way alignment between workflows, skills, and rules:
+    1. Workflow-to-Skill Backing: Workflows in .agents/workflows/ must have a corresponding
+       backing skill in .agents/skills/ or explicitly document valid skill references.
+    2. Skill-to-Workflow Promotion Candidates: Top-level milestone and procedural skills
+       that lack a user-facing slash command (/command) in .agents/workflows/ are flagged.
+    3. Rule-to-Skill Governance: Active remediation rules must have companion skills,
+       while passive invariant rules must remain lean without redundant skills.
+    """
+    workflows_dir = REPO_ROOT / ".agents" / "workflows"
+    skills_dir = REPO_ROOT / ".agents" / "skills"
+    rules_dir = REPO_ROOT / ".agents" / "rules"
+
+    workflow_files = sorted(workflows_dir.glob("*.md")) if workflows_dir.exists() else []
+    skill_dirs = [p for p in sorted(skills_dir.iterdir()) if p.is_dir() and (p / "SKILL.md").exists()] if skills_dir.exists() else []
+    skill_names = {p.name for p in skill_dirs}
+
+    workflow_issues = []
+    # 1. Audit each workflow
+    for wf in workflow_files:
+        wf_name = wf.stem
+        has_exact_skill = wf_name in skill_names
+        try:
+            content = wf.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            content = ""
+        referenced_skills = [s for s in skill_names if s in content]
+
+        if not has_exact_skill and not referenced_skills:
+            workflow_issues.append({
+                "type": "orphan_workflow",
+                "workflow": wf.name,
+                "message": f"Workflow `{wf.name}` has no corresponding skill in .agents/skills/{wf_name}/ and references no known skills.",
+            })
+
+    # 2. Audit skills for workflow promotion candidates
+    # Milestone/procedural skills that orchestrate cross-cutting or multi-step operations
+    PROCEDURAL_MILESTONE_SKILLS = {
+        "compact-diary": "Milestone diary synthesis and compaction procedure",
+        "sync-design-docs": "Design specification synchronization with git commit history",
+        "roadmap-maintenance": "Milestone scorecard pruning and substrate-first roadmap update",
+        "index-amiga-rag": "Qdrant vector database re-indexing and offline sidecar maintenance",
+    }
+
+    active_workflow_stems = {wf.stem for wf in workflow_files}
+    promotion_candidates = []
+    for skill_name, reason in sorted(PROCEDURAL_MILESTONE_SKILLS.items()):
+        if skill_name in skill_names and skill_name not in active_workflow_stems:
+            promotion_candidates.append({
+                "skill": skill_name,
+                "reason": reason,
+            })
+
+    # 3. Rule-to-Skill Governance
+    ACTIVE_RULE_COMPANIONS = {
+        "amiga-rag.md": {"index-amiga-rag"},
+        "asset-descriptions.md": {"describe-diagram-assets"},
+        "diary-maintenance.md": {"compact-diary"},
+        "docs-maintenance.md": {"sync-design-docs", "obsidian-vault-linking"},
+        "vault-linking-and-graph-integrity.md": {"obsidian-vault-linking"},
+        "egui-best-practices.md": {"egui-vision-debugger", "capture-gui-screenshot"},
+        "file-size-and-cohesion.md": {"refactor-split-module"},
+        "git-commits.md": {"git-resolve-merge", "git-worktree"},
+        "git-merge-commits.md": {"git-resolve-merge", "git-worktree"},
+        "graphify.md": {"graphify"},
+        "opcode-naming.md": {"add-m68k-instruction"},
+        "repro-first.md": {"m68k-singlestep-test", "test-runner", "synthesize-test-fixes"},
+        "roadmap-maintenance.md": {"roadmap-maintenance"},
+        "unit-testing-policy.md": {"test-runner", "synthesize-test-fixes", "integration-test-sprint"},
+    }
+
+    PASSIVE_INVARIANT_RULES = {
+        "audio-transcription.md",
+        "clean-break-refactoring.md",
+        "information-hierarchy.md",
+        "language-policy.md",
+        "method-inlining.md",
+        "model-reasoning-advisory.md",
+        "no-external-paths.md",
+        "parallel-execution.md",
+        "performance-and-readability.md",
+        "practitioner-voice-and-tone.md",
+        "rust-best-practices.md",
+        "spec-compliance.md",
+        "structural-root-cause.md",
+        "workspace-structure-and-reexports.md",
+    }
+
+    rule_issues = []
+    rule_files = sorted(rules_dir.glob("*.md")) if rules_dir.exists() else []
+    for rf in rule_files:
+        if rf.name in ACTIVE_RULE_COMPANIONS:
+            expected_skills = ACTIVE_RULE_COMPANIONS[rf.name]
+            missing = expected_skills - skill_names
+            if missing:
+                rule_issues.append({
+                    "type": "missing_rule_skill",
+                    "rule": rf.name,
+                    "message": f"Active rule `{rf.name}` requires companion skill(s) {missing}, which are missing in .agents/skills/",
+                })
+        elif rf.name in PASSIVE_INVARIANT_RULES:
+            stem = rf.stem
+            if stem in skill_names:
+                rule_issues.append({
+                    "type": "redundant_passive_skill",
+                    "rule": rf.name,
+                    "message": f"Passive invariant rule `{rf.name}` has a redundant companion skill `{stem}` (passive invariants must remain lean rules).",
+                })
+
+    return {
+        "workflow_count": len(workflow_files),
+        "skill_count": len(skill_names),
+        "active_rule_count": len(ACTIVE_RULE_COMPANIONS),
+        "passive_rule_count": len(PASSIVE_INVARIANT_RULES),
+        "workflow_issues": workflow_issues,
+        "promotion_candidates": promotion_candidates,
+        "rule_issues": rule_issues,
+    }
 def parse_markdown_frontmatter(file_path: Path):
     """Parses frontmatter key-values and list items between opening and closing ---."""
     text = file_path.read_text(encoding="utf-8", errors="ignore")
@@ -676,6 +793,7 @@ def main():
     parser.add_argument("--srp", action="store_true", help="Run SRP and file cohesion checks")
     parser.add_argument("--skills", action="store_true", help="Audit skill catalog sync in docs/ai_agents.md")
     parser.add_argument("--scripts", action="store_true", help="Audit two-way script locality and harness governance")
+    parser.add_argument("--governance", action="store_true", help="Audit workflow-skill symmetry and rule companion coverage")
     parser.add_argument("--design-sync", action="store_true", help="Audit design documentation sync with code commits")
     parser.add_argument("--design-diff", help="Show code diff since last_synced_commit for a design doc")
     parser.add_argument("--design-bump", help="Bump last_synced_commit to current HEAD for a design doc")
@@ -693,7 +811,7 @@ def main():
         return
 
     # Default to --all if no specific mode selected
-    if not (args.all or args.dead_code or args.visibility or args.srp or args.skills or args.scripts or args.design_sync):
+    if not (args.all or args.dead_code or args.visibility or args.srp or args.skills or args.scripts or args.design_sync or args.governance):
         args.all = True
 
     dead, zombies = ([], [])
@@ -716,6 +834,18 @@ def main():
     if args.all or args.scripts:
         script_issues = check_script_locality_and_governance()
 
+    gov_audit = {
+        "workflow_count": 0,
+        "skill_count": 0,
+        "active_rule_count": 0,
+        "passive_rule_count": 0,
+        "workflow_issues": [],
+        "promotion_candidates": [],
+        "rule_issues": [],
+    }
+    if args.all or args.governance:
+        gov_audit = check_workflow_and_skill_governance()
+
     design_audit = {"tracked_count": 0, "synced_count": 0, "drifted": [], "synced": []}
     if args.all or args.design_sync:
         design_audit = check_design_docs_sync()
@@ -728,6 +858,7 @@ def main():
             "srp_cohesion_issues": srp_issues,
             "skills_sync": skill_audit,
             "script_locality_issues": script_issues,
+            "workflow_and_skill_governance": gov_audit,
             "design_docs_sync": design_audit,
         }
         print(json.dumps(out, indent=2))
@@ -811,8 +942,35 @@ def main():
                         print(f"        - {c_log}")
             print("\n  -> Remediation: Inspect diff with --design-diff <doc>, update spec, then run --design-bump <doc>")
 
+    if args.all or args.governance:
+        print(f"\n[7. WORKFLOW & SKILL GOVERNANCE (TWO-WAY ALIGNMENT)]")
+        print(f"  - Active Workflows (.agents/workflows/): {gov_audit['workflow_count']}")
+        print(f"  - Active Skills (.agents/skills/): {gov_audit['skill_count']}")
+        if gov_audit["workflow_issues"]:
+            print(f"  - Workflow Issues: {len(gov_audit['workflow_issues'])}")
+            for w_issue in gov_audit["workflow_issues"]:
+                print(f"    * [{w_issue['type']}] {w_issue['message']}")
+        else:
+            print("  - Workflows: [PASS] All workflows have backing specialized skills.")
+
+        if gov_audit["promotion_candidates"]:
+            print(f"  - Skill -> Workflow Candidates ({len(gov_audit['promotion_candidates'])}):")
+            for cand in gov_audit["promotion_candidates"]:
+                print(f"    * `{cand['skill']}`: {cand['reason']}")
+                print(f"      -> Recommendation: Provide slash command `/{cand['skill']}` in .agents/workflows/{cand['skill']}.md")
+        else:
+            print("  - Promotion Candidates: None (all procedural skills have matching workflows).")
+
+        if gov_audit["rule_issues"]:
+            print(f"  - Rule Coverage Issues: {len(gov_audit['rule_issues'])}")
+            for r_issue in gov_audit["rule_issues"]:
+                print(f"    * [{r_issue['type']}] {r_issue['message']}")
+        else:
+            print(f"  - Rules Symmetry: [PASS] All {gov_audit['active_rule_count']} active remediation rules have companion skills; {gov_audit['passive_rule_count']} passive invariant rules remain lean.")
+
+    gov_issues_total = len(gov_audit['workflow_issues']) + len(gov_audit['rule_issues'])
     print("\n" + "=" * 76)
-    print(f"Audit Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(skill_audit['issues'])} skill sync issues, {len(script_issues)} script locality issues, {len(design_audit['drifted'])} design drift issues.")
+    print(f"Audit Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(skill_audit['issues'])} skill sync issues, {len(script_issues)} script locality issues, {len(design_audit['drifted'])} design drift issues, {gov_issues_total} governance issues ({len(gov_audit['promotion_candidates'])} workflow candidates).")
     print("=" * 76)
 
 

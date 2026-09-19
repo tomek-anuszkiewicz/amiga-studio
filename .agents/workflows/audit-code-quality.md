@@ -47,6 +47,10 @@ When invoked without parameters:
   ```powershell
   python tools/harness/audit_code_quality.py --skills --scripts
   ```
+- **Audit Workflow-Skill Symmetry & Rule Coverage:**
+  ```powershell
+  python tools/harness/audit_code_quality.py --governance
+  ```
 
 ---
 
@@ -56,6 +60,7 @@ Follow the detailed playbooks in `.agents/skills/audit-code-quality/SKILL.md`:
 2. **Visibility Demotion:** Demote over-exposed symbols to `pub(crate)` or private `fn`.
 3. **SRP Decompositions:** Decompose oversized files (> 800 lines) into submodules using `.agents/skills/refactor-split-module/SKILL.md`.
 4. **Design Sync:** Update drifted specifications and bump checkpoint commits via `--design-bump <doc>`.
+5. **Workflow & Skill Governance:** Promote identified milestone skills to first-class `.agents/workflows/<name>.md` workflows, and ensure active rules maintain backing skills.
 
 ---
 
@@ -70,6 +75,7 @@ Conclude with the standardized summary report:
 - **SRP / Cohesion Decompositions:** <count> files/structs
 - **Skills Catalog Sync:** [PASS | <count> discrepancies]
 - **Script Locality & Governance:** [PASS | <count> anomalies]
+- **Workflow & Skill Governance:** [PASS | <count> issues (<count> candidates)]
 - **Design Specs Sync:** [PASS | <count> drifted]
 - **Verification:** `pre_flight.py` (PASS), `cargo test` (PASS)
 ```

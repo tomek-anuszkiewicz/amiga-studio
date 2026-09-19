@@ -7116,3 +7116,23 @@ Every future modification or implementation task must append an entry following 
   - providing immediate invocation of the 6 audit pillars.
 - **Verification & Test Results**:
   - pre_flight.py and test_architecture_rules passed cleanly.
+---
+
+### [2026-09-19 03:11 CEST] — Quality Auditor: Added Pillar 7 for Workflow, Skill & Rule Governance
+- **Affected Subsystems**:
+  - `tools/harness/audit_code_quality.py`
+  - `.agents/skills/audit-code-quality`
+  - `.agents/workflows/audit-code-quality`
+- **What Was Changed (The Concrete Reality)**:
+  - Integrated check_workflow_and_skill_governance() as Pillar 7 in audit_code_quality.py
+  - Audits workflow-to-skill backing, skill-to-workflow promotion candidates, and active vs passive rule companion coverage
+  - Updated audit-code-quality skill and workflow documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Establishes automated two-way alignment across workflows
+  - skills
+  - and rules
+  - preventing orphan workflows and classifying active rules vs lean passive invariants
+- **Verification & Test Results**:
+  - pre_flight.py passed
+  - test_architecture_rules 19/19 passed
+  - audit_code_quality.py --governance verified clean
