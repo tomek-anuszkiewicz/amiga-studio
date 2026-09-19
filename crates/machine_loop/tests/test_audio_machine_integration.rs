@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Paula Audio Machine Loop Integration Tests
 //!
 //! Tests audio channel DMA streaming from Chip RAM, period clock division,

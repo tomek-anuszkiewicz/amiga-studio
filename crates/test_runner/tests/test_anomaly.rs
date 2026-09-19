@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for M68000 Benchmark Anomaly Detection & Regression Diffing
 //!
 //! Tests Type A, Type B, Type C, and execution timeout classifications,

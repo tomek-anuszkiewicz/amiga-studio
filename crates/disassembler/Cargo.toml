@@ -11,3 +11,6 @@ path = "src/disassembler.rs"
 
 [dependencies]
 # Pure zero-dependency crate
+
+[lints]
+workspace = true

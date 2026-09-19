@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Deterministic PRNG & Domain Clamping Unit & Integration Tests
 //!
 //! Validates XorShift64 sequence determinism against canonical seed BENCH_PRNG_SEED,

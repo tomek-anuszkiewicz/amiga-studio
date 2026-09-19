@@ -10,24 +10,24 @@ All Rust code across the Amiga 500 emulator workspace must strictly adhere to th
 ---
 
 ## 1. Safety & Error Discipline
-- **Zero Host Panics on Guest Code:** Runtime emulation code (`step()`, memory accesses, interrupt handling, chip registers) must **never** call `.unwrap()` or `.expect()`. Handle open bus, unaligned access, or invalid opcodes defensively.
+- **Zero Host Panics on Guest Code:** Runtime emulation code (`step()`, memory accesses, interrupt handling, chip registers) must **never** call `.unwrap()`, `.expect()`, or `panic!()`. Handle open bus, unaligned access, or invalid opcodes defensively. Mechanically enforced in production code (`crates/*/src/`) via compiler lints `clippy::unwrap_used = "deny"`, `clippy::expect_used = "deny"`, and `clippy::panic = "deny"`. Integration test suites (`crates/*/tests/*.rs`) are exempt via `#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]`.
 - **Wrapping Arithmetic:** In emulator ALU and cycle counting, always use explicit wrapping arithmetic (`wrapping_add`, `wrapping_sub`, `wrapping_shl`, `wrapping_shr`) to avoid debug overflow panics.
 - **Explicit Bit Masking:** Explicitly mask results (`& 0xFF`, `& 0xFFFF`, `& 0xFFFFFF`) when truncating registers or memory addresses.
 
 ---
 
 ## 2. Explicitness & Code Clarity
-- **Strict Prohibition of User-Defined Macros (`macro_rules!` Forbidden):** Custom macros are forbidden across the codebase. Write explicit, self-documenting Rust functions, direct calls, or compile-time `const fn` arrays.
-- **Prohibition of Const-Generic Functions with Constant Parameters:** Const generics (`<const N: usize>`) are forbidden for instruction handlers, decoding logic, and execution paths. Write concrete, specialized functions.
+- **Strict Prohibition of User-Defined Macros (`macro_rules!` Forbidden):** Custom macros are forbidden across the codebase. Write explicit, self-documenting Rust functions, direct calls, or compile-time `const fn` arrays. Enforced via `test_architecture_rules.rs`.
+- **Prohibition of Const-Generic Functions with Constant Parameters:** Const generics (`<const N: usize>`) are forbidden for instruction handlers, decoding logic, and execution paths. Write concrete, specialized functions. Enforced via `test_architecture_rules.rs`.
 - **No Clever Obscurity:** Prioritize readability and direct 1:1 hardware traceability over cryptic micro-optimizations that LLVM already handles.
 
 ---
 
 ## 3. Ownership & Memory Hierarchy
-- **Zero Circular Handles:** Never use `Rc<RefCell<...>>` or raw pointers between sibling subsystems. All subsystems are owned directly by the top-level machine (`A500` or `EmulatorApp`).
-- **Big-Endian Guest vs Little-Endian Host:** Never perform pointer casts or `transmute` on guest memory buffers. Always use explicit byte conversion helpers (`u16::from_be_bytes`, `u32::from_be_bytes`).
-- **Zero Allocations in Hot Paths:** Hot execution paths must perform zero dynamic heap allocations (`Vec`, `Box`, `String`, `format!`). Use fixed-capacity arrays or in-place state.
-- **Borrow Views over Containers:** Functions inspecting buffers or sequences must accept borrowed slices (`&[T]`, `&mut [T]`) rather than concrete heap containers (`&Vec<T>`, `&mut Vec<T>`). Accept `&str` instead of `&String`. Enforced at compiler/AST level via `clippy::ptr_arg`.
+- **Zero Circular Handles & Multi-Threading Primitives:** Never use `Rc`, `RefCell`, `Arc`, `Mutex`, `RwLock`, `mpsc::Sender`, or `mpsc::Receiver` between subsystems or in machine state. Multi-threading primitives and thread spawning (`std::thread::spawn`) are strictly forbidden in core machine logic. All subsystems are owned directly by the top-level machine (`A500` or `EmulatorApp`). Mechanically enforced via `clippy::disallowed_types` and `clippy::disallowed_methods`.
+- **Big-Endian Guest vs Little-Endian Host:** Never perform pointer casts or `transmute` on guest memory buffers. Always use explicit byte conversion helpers (`u16::from_be_bytes`, `u32::from_be_bytes`). Enforced via `clippy::cast_ptr_alignment = "deny"` and `clippy::transmute_ptr_to_ptr = "deny"`.
+- **Zero Allocations in Hot Paths:** Hot execution paths must perform zero dynamic heap allocations (`Vec`, `Box`, `String`, `format!`). Use fixed-capacity arrays or in-place state. Enforced via `clippy::vec_box = "deny"` and `clippy::box_collection = "deny"`.
+- **Borrow Views over Containers:** Functions inspecting buffers or sequences must accept borrowed slices (`&[T]`, `&mut [T]`) rather than concrete heap containers (`&Vec<T>`, `&mut Vec<T>`). Accept `&str` instead of `&String`. Enforced at compiler/AST level via `clippy::ptr_arg = "deny"`.
 
 ---
 
@@ -196,9 +196,12 @@ impl ChannelConfig {
 
 ---
 
-## 7. Trait Derives & Default Discipline
-- **Default for Parameterless Constructors:** Always implement or derive `Default` if a parameterless constructor (`new()`) exists, ensuring `new()` delegates to `Self::default()`. Enforced at compiler/AST level via `clippy::new_without_default`.
-- **Mandatory Debug Trait:** All public enums and structs must derive `Debug`. Enforced at compiler level via `missing_debug_implementations`.
+## 7. Trait Derives, Constructors & Constructor Discipline
+- **Default for Parameterless Constructors:** Always implement or derive `Default` if a parameterless constructor (`new()`) exists, ensuring `new()` delegates to `Self::default()`. Enforced at compiler/AST level via `clippy::new_without_default = "deny"`.
+- **Constructors Returning Self:** Any method named `new` must return `Self`. Enforced via `clippy::new_ret_no_self = "deny"`.
+- **Derive Clone on Copy:** Never manually implement `Clone` when the type implements `Copy`. Enforced via `clippy::expl_impl_clone_on_copy = "deny"`.
+- **Derivable Implementations:** Prefer `#[derive(Default)]` over manual implementations when all fields implement `Default`. Enforced via `clippy::derivable_impls = "warn"`.
+- **Mandatory Debug Trait:** All public enums and structs must derive `Debug`. Enforced at compiler level via `missing_debug_implementations = "warn"`.
 
 ---
 

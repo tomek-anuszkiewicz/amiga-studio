@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Dedicated unit tests for Blitter phases and Table 6.2 channel cycle sequencing
 
 use blitter::{barrel_shift, word_phases, BlitterPhase};

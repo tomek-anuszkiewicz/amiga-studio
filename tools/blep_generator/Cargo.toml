@@ -6,3 +6,6 @@ authors = ["Amiga Emulator Project"]
 description = "Band-Limited Step (BLEP) table generator and audio filter model for Amiga Paula emulation"
 
 [dependencies]
+
+[lints]
+workspace = true

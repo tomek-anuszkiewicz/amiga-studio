@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for Real-Time Clock space in PhysicalMemory
 //!
 //! Verifies that PhysicalMemory treats Bank 0xDC as open bus space (returning $FF)

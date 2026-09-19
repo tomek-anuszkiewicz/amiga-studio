@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use cpu::CpuState;
 use debugger::temporal::TemporalHistory;
 use debugger::trace::{TraceRingBuffer, TRACE_BUFFER_SIZE};

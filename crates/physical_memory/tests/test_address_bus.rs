@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 
 #[test]

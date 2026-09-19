@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! vAmigaTS Denise Subsystem Verification
 //!
 //! Executes cycle-exact Denise test suites from `ref_src/vAmigaTS/Denise`

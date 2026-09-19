@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Copper Advanced Control Flow Whole-Machine Integration Tests
 //!
 //! Verifies Copper SKIP instruction condition evaluation (skip taken vs fallthrough)

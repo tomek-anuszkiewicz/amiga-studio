@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use floppy::{
     decode_amiga_sector, decode_mfm_long, encode_amiga_sector, encode_mfm_long, FloppyController,
     MfmError, FORMATTED_DISK_BYTES, RAW_MFM_SECTOR_BYTES, SECTORS_PER_TRACK, SECTOR_DATA_BYTES,

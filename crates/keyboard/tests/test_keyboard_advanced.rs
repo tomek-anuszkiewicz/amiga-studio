@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use keyboard::{
     Keyboard, KeyboardTransmissionState, SCANCODE_BUFFER_OVERFLOW, SCANCODE_CAPS_LOCK,
     SCANCODE_CTRL, SCANCODE_LOST_SYNC, SCANCODE_L_AMIGA, SCANCODE_POWERUP_STREAM_END,

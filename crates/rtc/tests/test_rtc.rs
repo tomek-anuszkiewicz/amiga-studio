@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for OKI MSM6242B Real-Time Clock logic in isolation
 
 use config::RtcModel;

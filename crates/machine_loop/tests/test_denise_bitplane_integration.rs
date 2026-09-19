@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Denise Bitplane & Display Window Whole-Machine Integration Tests
 //!
 //! Verifies display window (DIWSTRT/DIWSTOP) clipping, BPLCON0 bitplane mode configuration,

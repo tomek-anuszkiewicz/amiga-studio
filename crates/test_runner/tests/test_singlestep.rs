@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use test_runner::is_cmpm_postinc_opcode;
 use test_runner::runner::{run_test_file_filtered_with_mode, run_test_file_with_mode, VerifyMode};
 use test_runner::schema::SingleStepTest;

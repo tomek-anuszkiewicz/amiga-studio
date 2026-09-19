@@ -12,3 +12,6 @@ audio = { workspace = true }
 config = { workspace = true }
 interrupts = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+
+[lints]
+workspace = true

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit and Integration Tests for Amiga Game Ports Subsystem
 //!
 //! Validates pluggable port configuration, Denise JOYxDAT decoding,

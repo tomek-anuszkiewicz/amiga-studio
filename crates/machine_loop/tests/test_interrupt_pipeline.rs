@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! End-to-End Machine Loop Interrupt Pipeline Integration Tests
 //!
 //! Tests complete multi-chip interrupt signaling: from peripheral trigger

@@ -9,3 +9,6 @@ path = "src/blitter.rs"
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
+
+[lints]
+workspace = true

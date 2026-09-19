@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! =========================================================================================
 //! ⚠️ ANTI-TAMPER POLICY & INVARIANCE CONTRACT:
 //! DO NOT MODIFY GOLDEN_ROW_HASHES_324 TO "FIX" A FAILING TEST!

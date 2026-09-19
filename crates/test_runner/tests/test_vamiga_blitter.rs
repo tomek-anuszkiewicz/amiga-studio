@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! vAmigaTS Blitter Subsystem Verification
 //!
 //! Executes cycle-exact Blitter test suites from `ref_src/vAmigaTS/Agnus/Blitter`

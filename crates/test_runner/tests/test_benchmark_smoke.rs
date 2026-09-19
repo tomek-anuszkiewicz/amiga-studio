@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Smoke & Verification Test for M68000 Instruction Benchmarking Engine
 
 use cpu::Cpu;

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Integration & Unit Tests for Motherboard MemoryBus Router
 //!
 //! Validates 24-bit physical address routing across PhysicalMemory,

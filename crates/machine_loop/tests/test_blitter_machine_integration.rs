@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Blitter & Machine Loop Integration Tests
 //!
 //! Tests Blitter 2D memory operations (copy, fill), Chip RAM mutation,

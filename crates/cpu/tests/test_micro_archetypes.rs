@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Cycle-exact micro-step instruction decomposition unit tests
 //!
 //! Verifies the 6 representative archetypes of Step 1 in ROADMAP.md:

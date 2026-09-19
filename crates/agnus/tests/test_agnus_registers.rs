@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use agnus::{Agnus, AgnusModel, PAL_LINE_CCKS, VHPOSR_PIPELINE_LEAD_CCKS};
 
 #[test]

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Golden Master Execution Trace Regression Test Suite
 //!
 //! Validates that all 108 synthesized benchmark programs produce deterministic,

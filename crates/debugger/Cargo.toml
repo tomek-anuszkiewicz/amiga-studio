@@ -15,3 +15,6 @@ machine_loop = { workspace = true }
 physical_memory = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+
+[lints]
+workspace = true

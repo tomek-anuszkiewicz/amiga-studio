@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use cpu::micro::ea;
 use cpu::{Cpu, CpuState};
 use physical_memory::PhysicalMemory;

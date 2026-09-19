@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use config::BeamPosition;
 use frame_builder::{
     is_in_display_window, rgb444_to_argb32, FrameBuilder, FRAME_BUFFER_PIXELS, MAX_FRAME_HEIGHT,

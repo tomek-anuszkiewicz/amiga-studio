@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use agnus::{Agnus, AgnusModel, NTSC_LONG_LINE_CCKS, NTSC_SHORT_LINE_CCKS, PAL_LINE_CCKS};
 
 #[test]

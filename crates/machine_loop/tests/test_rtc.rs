@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Integration tests for the OKI MSM6242B Real-Time Clock (RTC) subsystem via A500Machine
 //!
 //! Verifies odd-byte address decoding, BCD conversion, 24/12h mode, HOLD latching,

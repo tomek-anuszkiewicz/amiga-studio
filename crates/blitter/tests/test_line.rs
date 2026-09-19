@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit Tests for Agnus Blitter Bresenham Line Drawing Engine
 //!
 //! Validates `LineDrawer`, octant direction stepping, error accumulator progression,

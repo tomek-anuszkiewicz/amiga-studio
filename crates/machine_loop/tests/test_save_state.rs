@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Integration tests for Amiga 500 Save State Serialization and Restoration
 
 use config::{A500Config, A500Preset, VideoStandard};

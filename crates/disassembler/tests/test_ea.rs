@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use disassembler::{
     bcc_condition_name, dbcc_condition_name, format_ea, format_immediate, format_movem_reg_list,
     scc_condition_name,

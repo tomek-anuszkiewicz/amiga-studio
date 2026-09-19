@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for DebuggerSession save state and quick-slot features
 
 use config::{A500Config, A500Preset, VideoStandard};

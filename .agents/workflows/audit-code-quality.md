@@ -15,11 +15,15 @@ When invoked without parameters:
    ```powershell
    python tools/harness/audit_code_quality.py --all
    ```
-2. **Execute Pre-Flight Quality Gate:**
+2. **Execute Workspace Compiler & Clippy Lints:**
+   ```powershell
+   cargo clippy --workspace --all-targets
+   ```
+3. **Execute Pre-Flight Quality Gate:**
    ```powershell
    python tools/harness/pre_flight.py
    ```
-3. **Execute Architecture Rules:**
+4. **Execute Architecture Rules:**
    ```powershell
    cargo test -p test_runner --test test_architecture_rules -- --quiet
    ```
@@ -35,29 +39,25 @@ When invoked without parameters:
    ```powershell
    python tools/harness/audit_code_quality.py --visibility
    ```
-- **Audit SRP & 800-Line File Ceilings:**
+- **Audit Struct Cohesion (> 12 public fields):**
    ```powershell
    python tools/harness/audit_code_quality.py --srp
    ```
-- **Audit Method Inlining Guidelines (`#[inline(always)]` / `#[inline(never)]`):**
+- **Audit Compound Condition Soup & Boolean Clarity:**
    ```powershell
-   python tools/harness/audit_code_quality.py --inlining
-   ```
-- **Audit Prohibited Macros & Const-Generics:**
-   ```powershell
-   python tools/harness/audit_code_quality.py --antipatterns
-   ```
-- **Audit Dedicated External Test Suites & Submodule Parity:**
-   ```powershell
-   python tools/harness/audit_code_quality.py --tests
+   python tools/harness/audit_code_quality.py --conditions
    ```
 - **Audit Method Naming & Accessor Conventions (`get_` forbidden, `is_`/`has_`/`can_` booleans, `set_` setters, slice getters):**
    ```powershell
    python tools/harness/audit_code_quality.py --accessors
    ```
-- **Audit Compiler AST Invariants (`ptr_arg`, `new_without_default`, `missing_debug_implementations`):**
+- **Audit Workspace Clippy & Compiler Invariants (zero unwraps, disallowed types, etc.):**
    ```powershell
-   cargo clippy --workspace -- -A warnings -D clippy::ptr_arg -D clippy::new_without_default -D missing_debug_implementations
+   cargo clippy --workspace --all-targets
+   ```
+- **Audit Automated Architecture Rules (inlining, macros, const-generics, test layouts, file sizes):**
+   ```powershell
+   cargo test -p test_runner --test test_architecture_rules -- --quiet
    ```
 - **Audit Specific Crate:**
    ```powershell
@@ -71,11 +71,11 @@ Follow the detailed playbooks in [`.agents/skills/audit-code-quality/SKILL.md`](
 1. **Test-Only Zombies:** Distinguish external Host I/O boundaries from dead internal scaffolding. Prune dead symbols and orphaned test cases.
 2. **Visibility Demotion:** Demote over-exposed symbols to `pub(crate)` or private `fn`.
 3. **SRP Decompositions:** Decompose oversized files (> 800 lines) into submodules using [`.agents/skills/refactor-split-module/SKILL.md`](../skills/refactor-split-module/SKILL.md).
-4. **Inlining Alignment:** Add mandatory `#[inline(always)]` to hot leaf ALU/CCR functions and `#[inline(never)]` to cold exception trigger handlers per [`.agents/rules/method-inlining.md`](../rules/method-inlining.md).
-5. **Anti-Pattern Elimination:** Replace any ad-hoc macros (`macro_rules!`) and const-generic templates with concrete, explicit functions.
-6. **Test Organization:** Move any inline tests in `src/` to `tests/` and maintain 1:1 test file parity in multi-module crates per [`.agents/rules/unit-testing-policy.md`](../rules/unit-testing-policy.md).
+4. **Inlining Alignment:** Add mandatory `#[inline(always)]` to hot leaf ALU/CCR functions and `#[inline(never)]` to cold exception trigger handlers per [`.agents/rules/method-inlining.md`](../rules/method-inlining.md) (enforced via `test_architecture_rules`).
+5. **Anti-Pattern Elimination:** Replace any ad-hoc macros (`macro_rules!`) and const-generic templates with concrete, explicit functions (enforced via `test_architecture_rules`).
+6. **Test Organization:** Move any inline tests in `src/` to `tests/` and maintain 1:1 test file parity in multi-module crates per [`.agents/rules/unit-testing-policy.md`](../rules/unit-testing-policy.md) (enforced via `test_architecture_rules`).
 7. **Struct Encapsulation, Accessors & Collection Slices:** Enforce Category A (POD) and Category B (Complex) encapsulation rules per [`.agents/rules/rust-best-practices.md`](../rules/rust-best-practices.md), eliminating raw public fields. Enforce Method Naming & Accessor Conventions: standard getters must match the field name without `get_` prefix (`<field>(&self)`), boolean getters must start with `is_` (or retain `has_`/`can_`), setters must start with `set_<field>`, and collection getters must return borrowed slices (`&[T]` / `&mut [T]`) rather than concrete containers (`&Vec<T>`).
-8. **Compiler-Grade AST Invariants & Trait Discipline:** Enforce borrow views over containers (`&[T]`, `&str` rather than `&Vec<T>`, `&String`) via `clippy::ptr_arg`, parameterless constructor `Default` delegation via `clippy::new_without_default`, and mandatory `Debug` derives on all public enums and structs via `missing_debug_implementations` (verified via `check_clippy_invariants` in `pre_flight.py`).
+8. **Compiler-Grade AST Invariants & Workspace Lints:** Enforce borrow views over containers (`&[T]`, `&str` rather than `&Vec<T>`, `&String`) via `clippy::ptr_arg`, parameterless constructor `Default` delegation via `clippy::new_without_default`, zero unwraps/panics in production code via `clippy::unwrap_used` / `clippy::panic`, disallowed types/methods, and mandatory `Debug` derives on all public enums and structs via `missing_debug_implementations` (verified via `cargo clippy --workspace --all-targets` and `check_clippy_invariants` in `pre_flight.py`).
 
 ---
 
@@ -107,13 +107,12 @@ Conclude with the standardized summary report:
 - **Dead Code Pruned:** <count> symbols
 - **Test-Only Zombies Handled:** <count> retained (Host I/O) / <count> pruned
 - **Visibility Demoted:** <count> symbols (`pub` -> `pub(crate)` / private)
-- **SRP / Cohesion Decompositions:** <count> files/structs
-- **Inlining Guidelines:** [PASS | <count> anomalies]
-- **Anti-Pattern Prohibitions:** [PASS | <count> violations]
-- **External Test Suites & Parity:** [PASS | <count> issues]
+- **Struct Cohesion Anomalies:** <count> structs (> 12 fields)
+- **Condition Soup Anomalies:** <count> compound conditions
 - **Accessor & Naming Conventions:** [PASS | <count> violations]
-- **Clippy AST Invariants:** [PASS | <count> violations]
+- **Workspace Clippy & Compiler Lints:** [PASS | <count> violations]
+- **Architecture Rules (`test_architecture_rules`):** [PASS | 21/21 tests passed]
 - **Verbal Double-Check Conscience Review:** [CONFIRMED - 7/7 heuristics verified]
-- **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
+- **Verification:** `pre_flight.py` (PASS), `cargo clippy` (PASS), `test_architecture_rules` (PASS)
 ```
 

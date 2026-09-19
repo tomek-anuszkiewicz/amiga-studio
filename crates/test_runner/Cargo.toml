@@ -21,3 +21,6 @@ config = { workspace = true }
 [[bench]]
 name = "bench_instructions"
 harness = false
+
+[lints]
+workspace = true

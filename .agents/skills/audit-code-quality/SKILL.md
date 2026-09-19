@@ -36,32 +36,16 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Over-Exposed `pub(crate)` / `pub` Items:** Symbols whose callers reside strictly within their defining file. Demote to private `fn`.
 - **Encapsulated Internal Modules:** Submodules (e.g. `instructions`, `decoders`, internal callbacks) declared `pub mod` that should be `pub(crate) mod`.
 
-### Pillar 3: Single Responsibility Principle (SRP) & Structural Cohesion
-- **Source File Ceilings:** Files in `crates/*/src/` exceeding the **800-line ceiling** (per [`.agents/rules/file-size-and-cohesion.md`](../../rules/file-size-and-cohesion.md)).
+### Pillar 3: Struct Cohesion & Single Responsibility
 - **Unencapsulated "God Structs":** Structs declaring $> 12$ public fields, signaling mixed concerns or lack of domain groupings.
+- **Source File Ceilings:** Files in `crates/*/src/` exceeding the **800-line ceiling** (mechanically enforced via `cargo test -p test_runner --test test_architecture_rules`).
 
-### Pillar 4: Method Inlining Guidelines (`--inlining`)
-- **`#[inline(always)]`**: Reserved for hot arithmetic/logic and CCR flag calculations ($X, N, Z, V, C$) executed on every single clock cycle per [`.agents/rules/method-inlining.md`](../../rules/method-inlining.md).
-- **`#[inline(never)]`**: Mandatory on cold exception and trap triggers (`trigger_address_error`, `trigger_bus_error`, `trigger_illegal_instruction`). Keeping complex frame construction out-of-line keeps hot paths clean.
-
-### Pillar 5: Macro & Const-Generic Prohibitions (`--antipatterns`)
-- **Prohibition of User-Defined Macros:** Custom `macro_rules!` are strictly forbidden across workspace crates per [`.agents/rules/performance-and-readability.md`](../../rules/performance-and-readability.md).
-- **Prohibition of Const-Generics for Opcodes:** Instruction handlers and decoding must not use `<const N: ...>` generic templates in `m68000`.
-
-### Pillar 6: Dedicated External Test Suites & Parity (`--tests`)
-- **Dedicated External Tests:** All tests must reside strictly in `crates/<crate>/tests/` with canonical `test_<name>.rs` filenames per [`.agents/rules/unit-testing-policy.md`](../../rules/unit-testing-policy.md).
-- **Zero Inline Tests:** `#[cfg(test)] mod tests` in production `src/` files is strictly forbidden.
-- **1:1 Multi-Module Parity:** Multi-module crates maintain dedicated unit test files mirroring submodules.
-
-### Pillar 7: Path Privacy & Host Isolation (`--path-privacy`)
-- **Zero Hardcoded Paths:** Verifies zero host/user paths (e.g. `D:\...`, `/home/...`) in workspace code per [`.agents/rules/no-external-paths.md`](../../rules/no-external-paths.md).
-
-### Pillar 8: Condition Soup & Explaining Variables (`--conditions`)
+### Pillar 4: Condition Soup & Explaining Variables (`--conditions`)
 - **Self-Documenting Boolean Logic:** Scans for dense compound conditionals (`if (a || b) && c && d`) that should be decomposed into named explaining variables (`let is_ready = ...;`) or domain predicate methods per [`.agents/rules/performance-and-readability.md`](../../rules/performance-and-readability.md).
 - **Prohibition of Multi-Clause Clutter:** Flags conditionals with mixed nested operators or $\ge 3$ connectives to ensure code reads like declarative hardware specification prose.
 - **Short-Circuit Preservation Invariant:** Explaining variables must never eagerly evaluate sub-expressions or function calls that would otherwise be avoided via boolean short-circuit evaluation (`&&`, `||`) or branched execution (`match`).
 
-### Pillar 9: Struct Encapsulation & Accessor Discipline (--accessors)
+### Pillar 5: Struct Encapsulation & Accessor Discipline (`--accessors`)
 - **Zero Raw Public Fields:** All struct fields must remain strictly private per [`.agents/rules/rust-best-practices.md`](../../rules/rust-best-practices.md). Raw public fields leak internal representation and bypass domain invariants.
 - **Category A (Value Objects / POD Structs):** Pure data structs (primitives, raw numbers, small `Copy` types):
   - Make all fields private.
@@ -81,11 +65,20 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
   4. **Collection Getters (Slice Views):** Getters exposing internal buffers or sequences must return borrowed slices (`&[T]` or `&mut [T]`), never references to concrete containers (`&Vec<T>`). Example: Field `data: Vec<i16>` -> getter `pub fn data(&self) -> &[i16]`.
 - **Verification Method:** Verified directly via `python tools/harness/audit_code_quality.py --accessors` alongside Agent cognitive inference for domain-specific invariant validation.
 
-### Pillar 10: Compiler-Grade AST Invariants & Trait Discipline
-- **Borrow Views over Containers:** Functions inspecting buffers or sequences must accept borrowed slices (`&[T]`, `&mut [T]`) rather than concrete heap containers (`&Vec<T>`, `&mut Vec<T>`), and accept `&str` instead of `&String`. Enforced with 100% AST accuracy via `clippy::ptr_arg`.
-- **Default for Parameterless Constructors:** Always implement or derive `Default` if a parameterless constructor (`new()`) exists, ensuring `new()` delegates to `Self::default()`. Enforced at AST level via `clippy::new_without_default`.
-- **Mandatory Debug Trait:** All public enums and structs must derive `Debug`. Enforced at compiler level via `missing_debug_implementations`.
-- **Verification Gate:** Enforced on every build via `check_clippy_invariants()` in `tools/harness/pre_flight.py`.
+### Pillar 6: Compiler-Grade AST Invariants & Workspace Lints
+- **Zero Host Panics on Guest Code:** Denied in production code via `clippy::unwrap_used = "deny"`, `clippy::expect_used = "deny"`, and `clippy::panic = "deny"`. (Integration tests exempt via `#![allow(...)]`).
+- **Disallowed Abstractions & Concurrency:** Blocked via `clippy::disallowed_types` (`Rc`, `RefCell`, `Arc`, `Mutex`, `RwLock`, `mpsc::Sender`, `mpsc::Receiver`) and `clippy::disallowed_methods` (`std::thread::spawn`).
+- **Borrow Views over Containers:** Functions inspecting buffers or sequences must accept borrowed slices (`&[T]`, `&mut [T]`) rather than concrete heap containers (`&Vec<T>`, `&mut Vec<T>`), and accept `&str` instead of `&String`. Enforced via `clippy::ptr_arg = "deny"`.
+- **Constructor & Derives Discipline:** Enforced via `clippy::new_without_default = "deny"`, `clippy::new_ret_no_self = "deny"`, `clippy::expl_impl_clone_on_copy = "deny"`, and `missing_debug_implementations = "warn"`.
+- **Verification Gate:** Enforced on every build via `cargo clippy --workspace --all-targets` and `check_clippy_invariants()` in `tools/harness/pre_flight.py`.
+
+### Pillar 7: Automated Architecture Guardrails
+- **Method Inlining Guidelines:** Verified via `test_inlining_guidelines_compliance` in `test_architecture_rules.rs`.
+- **Macro & Const-Generic Prohibitions:** Verified via `test_zero_user_defined_macros` and `test_zero_const_generic_handlers`.
+- **Dedicated External Test Suites & Parity:** Verified via `test_every_crate_has_dedicated_external_tests_suite`, `test_canonical_test_file_naming_convention`, and `test_zero_inline_tests_in_crates_src`.
+- **Path Privacy & Host Isolation:** Verified via `test_no_external_hardcoded_paths`.
+- **Source File Size Limits (800 lines):** Verified via `test_file_size_limits` and `test_no_stale_line_count_exceptions`.
+- **Verification Gate:** Enforced via `cargo test -p test_runner --test test_architecture_rules`.
 
 ---
 
@@ -95,32 +88,26 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 # Full workspace deep code quality audit
 python tools/harness/audit_code_quality.py --all
 
+# Workspace-wide Clippy and compiler invariants
+cargo clippy --workspace --all-targets
+
+# Automated architecture rules
+cargo test -p test_runner --test test_architecture_rules -- --quiet
+
 # Audit dead code & zombies in a specific crate
 python tools/harness/audit_code_quality.py --dead-code --crate paula
 
 # Audit only visibility leaks across the workspace
 python tools/harness/audit_code_quality.py --visibility
 
-# Audit SRP and file sizes
+# Audit struct cohesion (> 12 public fields)
 python tools/harness/audit_code_quality.py --srp
-
-# Audit method inlining compliance
-python tools/harness/audit_code_quality.py --inlining
-
-# Audit macro and const-generic prohibitions
-python tools/harness/audit_code_quality.py --antipatterns
-
-# Audit external test suite organization
-python tools/harness/audit_code_quality.py --tests
 
 # Audit condition soup and boolean clarity
 python tools/harness/audit_code_quality.py --conditions
 
 # Audit struct accessors and method naming conventions
 python tools/harness/audit_code_quality.py --accessors
-
-# Verify compiler-grade AST invariants (Borrow Views, Default, Debug)
-cargo clippy --workspace -- -A warnings -D clippy::ptr_arg -D clippy::new_without_default -D missing_debug_implementations
 
 # Machine-readable JSON export
 python tools/harness/audit_code_quality.py --all --json > quality_report.json

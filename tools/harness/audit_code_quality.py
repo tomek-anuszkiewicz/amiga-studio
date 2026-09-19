@@ -2,7 +2,7 @@
 """
 audit_code_quality.py - Comprehensive On-Demand Code Quality Auditor
 
-Audits three critical architectural dimensions across workspace crates:
+Audits five architectural dimensions across workspace crates:
 1. Dead Code & Test-Only Zombies:
    - Completely dead symbols (0 callers anywhere).
    - Test-only zombie symbols (0 callers in production crates/*/src/, only called in tests/).
@@ -10,22 +10,19 @@ Audits three critical architectural dimensions across workspace crates:
    - Over-exposed `pub` items that are only called within their own defining crate (should be `pub(crate)`).
    - Over-exposed `pub`/`pub(crate)` items that are only called within their own defining file (should be private).
    - Over-exposed `pub mod` declarations whose items are never referenced externally.
-3. Single Responsibility Principle & Cohesion:
-   - Source files exceeding 800 lines in crates/*/src/ (referencing architecture rule exceptions).
+3. Struct Cohesion & Single Responsibility:
    - Structs with excessive public fields (> 12) indicating potential "God Structs" or unencapsulated state.
-4. Method Inlining Guidelines:
-   - Evaluates #[inline(always)] on hot ALU/CCR setters and #[inline(never)] on cold traps.
-5. Macro & Const-Generic Prohibitions:
-   - Zero macro_rules! and zero const-generic function handlers.
-6. External Test Suites & Parity:
-   - Verifies external tests/ layout and test_ canonical naming.
-7. Path Privacy & Host Isolation:
-   - Scans crates for hardcoded host paths, user directories, or external private paths.
-8. Method Naming & Accessor Conventions:
+4. Condition Soup & Self-Documenting Boolean Logic:
+   - Complex compound boolean conditions needing named explaining variables or domain predicate methods.
+5. Method Naming & Accessor Conventions:
    - Evaluates standard getters matching field name without `get_` prefix.
    - Evaluates boolean getters starting with `is_` (or `has_`/`can_`) and zero duplicate prefixes.
    - Evaluates setters starting with `set_<field>`.
    - Evaluates collection getters returning borrowed slices rather than concrete container references (&Vec<T>).
+
+Note: Inlining rules, macro/const-generic prohibitions, external test directory layouts, path privacy,
+and 800-line file size limits are verified directly via `cargo test -p test_runner --test test_architecture_rules`
+and `cargo clippy --workspace --all-targets`.
 """
 
 import argparse
@@ -90,19 +87,6 @@ HOST_IO_AND_SPEC_SYMBOLS = {
     "set_disk_byte", "poll_dsksyn_irq",
     # Sprite pipeline evaluation
     "evaluate_pixel",
-}
-
-# Recognized architectural file-size exceptions per file-size-and-cohesion.md & test_architecture_rules.rs
-LINE_COUNT_EXCEPTIONS = {
-    "crates/cpu/src/instructions/move_b.rs",
-    "crates/cpu/src/instructions/move_w.rs",
-    "crates/cpu/src/instructions/move_l.rs",
-    "crates/cpu/src/instructions/add.rs",
-    "crates/cpu/src/instructions/sub.rs",
-    "crates/cpu/src/instructions/and.rs",
-    "crates/cpu/src/instructions/or.rs",
-    "crates/cpu/src/instructions/cmpi.rs",
-    "crates/cpu/src/micro/dispatch_table.rs",
 }
 
 # Standard trait and lifecycle boilerplate methods to ignore
@@ -368,18 +352,6 @@ def scan_srp_and_cohesion(target_crate=None):
             except Exception:
                 continue
 
-            line_count = len(lines)
-
-            # File size check (> 800 lines)
-            if line_count > 800 and rel_path not in LINE_COUNT_EXCEPTIONS:
-                violations.append({
-                    "type": "file_size",
-                    "crate": crate_dir.name,
-                    "file": rel_path,
-                    "metric": f"{line_count} lines (> 800 limit)",
-                    "recommendation": "Decompose into cohesive submodules per file-size-and-cohesion.md",
-                })
-
             # Check for structs with excessive public fields (> 12)
             struct_name = None
             struct_pub_fields = 0
@@ -417,223 +389,7 @@ def scan_srp_and_cohesion(target_crate=None):
                     elif re.match(r"^\s*pub\s+[a-zA-Z0-9_]+\s*:", line):
                         struct_pub_fields += 1
 
-    # Check for stale or missing exceptions in LINE_COUNT_EXCEPTIONS
-    if not target_crate:
-        for exc_path_str in sorted(LINE_COUNT_EXCEPTIONS):
-            exc_path = REPO_ROOT / exc_path_str
-            if not exc_path.exists():
-                violations.append({
-                    "type": "missing_line_count_exception",
-                    "crate": exc_path_str.split("/")[1] if "/" in exc_path_str else "",
-                    "file": exc_path_str,
-                    "metric": "File does not exist on disk",
-                    "recommendation": "Exception entry is obsolete; requires explicit user command to prune.",
-                })
-            else:
-                try:
-                    exc_lines = len(exc_path.read_text(encoding="utf-8", errors="ignore").splitlines())
-                    if exc_lines <= 800:
-                        violations.append({
-                            "type": "stale_line_count_exception",
-                            "crate": exc_path_str.split("/")[1] if "/" in exc_path_str else "",
-                            "file": exc_path_str,
-                            "metric": f"{exc_lines} lines (<= 800 limit)",
-                            "recommendation": "File has been modularized and no longer exceeds 800 lines; requires explicit user command to prune from LINE_COUNT_EXCEPTIONS.",
-                        })
-                except Exception:
-                    pass
-
     return violations
-
-
-def scan_inlining_guidelines(crate_name=None):
-    """Audits required #[inline(always)] and #[inline(never)] annotations per method-inlining.md."""
-    issues = []
-    # 1. Cold exception/trap triggers must have #[inline(never)]
-    m68k_src = CRATES_DIR / "cpu" / "src"
-    if m68k_src.exists() and (not crate_name or crate_name == "cpu"):
-        for file in m68k_src.rglob("*.rs"):
-            try:
-                lines = file.read_text(encoding="utf-8", errors="ignore").splitlines()
-            except Exception:
-                continue
-            rel_path = file.relative_to(REPO_ROOT)
-            for idx, line in enumerate(lines):
-                trimmed = line.strip()
-                if trimmed.startswith("pub fn trigger_") or trimmed.startswith("fn trigger_"):
-                    prev_lines = lines[max(0, idx - 2):idx]
-                    if not any("#[inline(never)]" in l for l in prev_lines):
-                        issues.append({
-                            "type": "missing_inline_never",
-                            "file": str(rel_path),
-                            "line": idx + 1,
-                            "metric": trimmed,
-                            "recommendation": f"Cold exception/trap `{trimmed}` must be annotated with #[inline(never)]",
-                        })
-
-    # 2. Leaf ALU functions in cpu/src/instructions/ must have #[inline(always)]
-    leaf_prefixes = (
-        "pub fn add_", "pub fn sub_", "pub fn and_", "pub fn or_", "pub fn eor_",
-        "pub fn cmp_", "pub fn asr_", "pub fn asl_", "pub fn lsr_", "pub fn lsl_",
-        "pub fn ror_", "pub fn rol_", "pub fn roxr_", "pub fn roxl_", "pub fn neg_",
-        "pub fn negx_", "pub fn not_", "pub fn tst_", "pub fn abcd_", "pub fn sbcd_",
-        "pub fn nbcd_", "pub fn bchg_", "pub fn bclr_", "pub fn bset_", "pub fn btst_",
-    )
-    inst_dir = CRATES_DIR / "cpu" / "src" / "instructions"
-    if inst_dir.exists() and (not crate_name or crate_name == "cpu"):
-        for file in inst_dir.glob("*.rs"):
-            try:
-                lines = file.read_text(encoding="utf-8", errors="ignore").splitlines()
-            except Exception:
-                continue
-            rel_path = file.relative_to(REPO_ROOT)
-            for idx, line in enumerate(lines):
-                trimmed = line.strip()
-                if any(trimmed.startswith(p) for p in leaf_prefixes):
-                    prev_lines = lines[max(0, idx - 2):idx]
-                    if not any("#[inline(always)]" in l for l in prev_lines):
-                        issues.append({
-                            "type": "missing_inline_always",
-                            "file": str(rel_path),
-                            "line": idx + 1,
-                            "metric": trimmed,
-                            "recommendation": f"Leaf ALU function `{trimmed}` must be annotated with #[inline(always)]",
-                        })
-    return issues
-
-
-def scan_macro_and_generic_prohibitions(crate_name=None):
-    """Audits prohibition of custom macro_rules! and const-generic instruction handlers."""
-    issues = []
-    crates = [CRATES_DIR / crate_name] if crate_name else list(CRATES_DIR.iterdir())
-    for c in crates:
-        if not c.is_dir():
-            continue
-        src = c / "src"
-        if not src.exists():
-            continue
-        for file in src.rglob("*.rs"):
-            try:
-                lines = file.read_text(encoding="utf-8", errors="ignore").splitlines()
-            except Exception:
-                continue
-            rel_path = file.relative_to(REPO_ROOT)
-            for idx, line in enumerate(lines, 1):
-                trimmed = line.strip()
-                if trimmed.startswith("//"):
-                    continue
-                if "macro_rules!" in trimmed:
-                    issues.append({
-                        "type": "forbidden_macro",
-                        "file": str(rel_path),
-                        "line": idx,
-                        "metric": trimmed,
-                        "recommendation": "Custom macros (`macro_rules!`) are strictly forbidden per performance-and-readability.md.",
-                    })
-                if c.name == "cpu" and "<const " in trimmed:
-                    issues.append({
-                        "type": "forbidden_const_generic",
-                        "file": str(rel_path),
-                        "line": idx,
-                        "metric": trimmed,
-                        "recommendation": "Const-generic functions (`<const N: ...>`) in M68000 core are strictly forbidden.",
-                    })
-    return issues
-
-
-def scan_external_test_suites(crate_name=None):
-    """Audits dedicated external test suite presence, 1:1 submodule test parity, and zero inline tests."""
-    issues = []
-    crates = [CRATES_DIR / crate_name] if crate_name else sorted(CRATES_DIR.iterdir())
-    for c in crates:
-        if not c.is_dir() or not (c / "Cargo.toml").exists():
-            continue
-        c_name = c.name
-        src_dir = c / "src"
-        tests_dir = c / "tests"
-
-        # Check inline tests in src/
-        if src_dir.exists():
-            for file in src_dir.rglob("*.rs"):
-                try:
-                    lines = file.read_text(encoding="utf-8", errors="ignore").splitlines()
-                except Exception:
-                    continue
-                rel_path = file.relative_to(REPO_ROOT)
-                for idx, line in enumerate(lines, 1):
-                    trimmed = line.strip()
-                    if trimmed in ("#[cfg(test)]", "mod tests {", "mod test {") or trimmed.startswith("#[test]"):
-                        issues.append({
-                            "type": "inline_test_found",
-                            "file": str(rel_path),
-                            "line": idx,
-                            "metric": trimmed,
-                            "recommendation": "Inline tests in src/ are forbidden. Relocate to dedicated `crates/<crate>/tests/`.",
-                        })
-
-        # Check dedicated tests/ directory
-        if not tests_dir.is_dir():
-            issues.append({
-                "type": "missing_tests_dir",
-                "file": f"crates/{c_name}/tests/",
-                "line": 1,
-                "metric": "missing tests/ directory",
-                "recommendation": f"Crate `{c_name}` lacks dedicated external tests/ directory.",
-            })
-            continue
-
-        test_files = list(tests_dir.glob("*.rs"))
-        if not test_files:
-            issues.append({
-                "type": "empty_tests_dir",
-                "file": f"crates/{c_name}/tests/",
-                "line": 1,
-                "metric": "0 test files",
-                "recommendation": f"Crate `{c_name}` tests/ directory contains zero .rs test files.",
-            })
-        for tf in test_files:
-            if not tf.name.startswith("test_"):
-                issues.append({
-                    "type": "non_canonical_test_name",
-                    "file": str(tf.relative_to(REPO_ROOT)),
-                    "line": 1,
-                    "recommendation": f"Test file `{tf.name}` must start with `test_` prefix.",
-                })
-    return issues
-
-
-def scan_path_privacy(target_crate=None):
-    """
-    Scans crate source and test files for hardcoded host paths, user directories,
-    or external private folder references per .agents/rules/no-external-paths.md.
-    """
-    crates = [CRATES_DIR / target_crate] if target_crate else [p for p in CRATES_DIR.iterdir() if p.is_dir() and (p / "Cargo.toml").exists()]
-    forbidden_patterns = ["C:\\Users\\", "C:/Users/", "/home/", "Google Drive"]
-
-    issues = []
-    for c in crates:
-        for f in c.rglob("*.rs"):
-            if f.name == "test_architecture_rules.rs":
-                continue
-            try:
-                content = f.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                continue
-
-            for line_idx, line in enumerate(content.splitlines(), start=1):
-                for pat in forbidden_patterns:
-                    if pat in line:
-                        rel = f.relative_to(REPO_ROOT).as_posix()
-                        issues.append({
-                            "type": "hardcoded_external_path",
-                            "file": rel,
-                            "line": line_idx,
-                            "pattern": pat,
-                            "snippet": line.strip(),
-                            "recommendation": f"Replace hardcoded host path pattern `{pat}` with generic placeholder or relative configuration.",
-                        })
-
-    return issues
 
 
 def scan_condition_soup(target_crate=None):
@@ -881,16 +637,12 @@ def scan_accessor_conventions(target_crate=None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Audit dead code, minimum visibility leaks, SRP cohesion, inlining guidelines, antipatterns, test suites, path privacy, and boolean conditions."
+        description="Audit dead code, minimum visibility leaks, struct cohesion, boolean conditions, and accessor conventions."
     )
     parser.add_argument("--all", action="store_true", help="Run all code quality audits")
     parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
     parser.add_argument("--visibility", action="store_true", help="Run least visibility scanner")
-    parser.add_argument("--srp", action="store_true", help="Run SRP and file cohesion checks")
-    parser.add_argument("--inlining", action="store_true", help="Run method inlining guidelines scanner")
-    parser.add_argument("--antipatterns", action="store_true", help="Run macro and const-generic antipattern checks")
-    parser.add_argument("--tests", action="store_true", help="Run external test suite and inline test scanner")
-    parser.add_argument("--path-privacy", action="store_true", help="Run path privacy and host isolation scanner")
+    parser.add_argument("--srp", action="store_true", help="Run struct cohesion checks")
     parser.add_argument("--conditions", action="store_true", help="Run condition soup & boolean clarity scanner")
     parser.add_argument("--accessors", action="store_true", help="Run method naming and accessor convention checks")
     parser.add_argument("--crate", help="Filter audit to a specific crate")
@@ -903,10 +655,6 @@ def main():
         or args.dead_code
         or args.visibility
         or args.srp
-        or args.inlining
-        or args.antipatterns
-        or args.tests
-        or args.path_privacy
         or args.conditions
         or args.accessors
     ):
@@ -924,22 +672,6 @@ def main():
     if args.all or args.srp:
         srp_issues = scan_srp_and_cohesion(args.crate)
 
-    inlining_issues = []
-    if args.all or args.inlining:
-        inlining_issues = scan_inlining_guidelines(args.crate)
-
-    antipattern_issues = []
-    if args.all or args.antipatterns:
-        antipattern_issues = scan_macro_and_generic_prohibitions(args.crate)
-
-    test_suite_issues = []
-    if args.all or args.tests:
-        test_suite_issues = scan_external_test_suites(args.crate)
-
-    privacy_issues = []
-    if args.all or args.path_privacy:
-        privacy_issues = scan_path_privacy(args.crate)
-
     condition_issues = []
     if args.all or args.conditions:
         condition_issues = scan_condition_soup(args.crate)
@@ -954,10 +686,6 @@ def main():
             "test_only_zombies": zombies,
             "visibility_leaks": vis_leaks,
             "srp_cohesion_issues": srp_issues,
-            "inlining_issues": inlining_issues,
-            "antipattern_issues": antipattern_issues,
-            "test_suite_issues": test_suite_issues,
-            "path_privacy_issues": privacy_issues,
             "condition_issues": condition_issues,
             "accessor_issues": accessor_issues,
         }
@@ -971,7 +699,7 @@ def main():
             pass
 
     print("=" * 76)
-    print(" AMIGA 500 EMULATOR: DEEP ARCHITECTURAL CODE QUALITY AUDIT")
+    print(" AMIGA 500 EMULATOR: ARCHITECTURAL CODE QUALITY AUDIT")
     print("=" * 76)
 
     if args.all or args.dead_code:
@@ -998,50 +726,17 @@ def main():
             print(f"    * ... and {len(vis_leaks) - 15} more")
 
     if args.all or args.srp:
-        print(f"\n[3. SINGLE RESPONSIBILITY & COHESION]")
-        print(f"  - Structural anomalies: {len(srp_issues)} issue(s)")
-        for issue in srp_issues:
-            print(f"    * [{issue['type']}] {issue['file']}: {issue['metric']}")
-            print(f"      -> {issue['recommendation']}")
-
-    if args.all or args.inlining:
-        print(f"\n[4. METHOD INLINING GUIDELINES]")
-        if not inlining_issues:
-            print("  - Status: [PASS] All hot ALU/CCR setters and cold traps adhere to inlining annotations.")
+        print(f"\n[3. STRUCT COHESION & ENCAPSULATION]")
+        if not srp_issues:
+            print("  - Status: [PASS] Zero structs with excessive public fields (> 12).")
         else:
-            print(f"  - Status: [WARN] {len(inlining_issues)} inlining anomaly/ies detected:")
-            for issue in inlining_issues:
-                print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} -> {issue['recommendation']}")
-
-    if args.all or args.antipatterns:
-        print(f"\n[5. MACRO & CONST-GENERIC PROHIBITION]")
-        if not antipattern_issues:
-            print("  - Status: [PASS] Zero custom macros (`macro_rules!`) and zero const-generic handlers.")
-        else:
-            print(f"  - Status: [FAIL] {len(antipattern_issues)} antipattern issue(s) detected:")
-            for issue in antipattern_issues:
-                print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} -> {issue['recommendation']}")
-
-    if args.all or args.tests:
-        print(f"\n[6. EXTERNAL TEST SUITES & PARITY]")
-        if not test_suite_issues:
-            print("  - Status: [PASS] All crates have dedicated external tests/ with zero inline tests in src/.")
-        else:
-            print(f"  - Status: [FAIL] {len(test_suite_issues)} test organization issue(s) detected:")
-            for issue in test_suite_issues:
-                print(f"    * [{issue['type']}] {issue['file']} -> {issue['recommendation']}")
-
-    if args.all or args.path_privacy:
-        print(f"\n[7. PATH PRIVACY & HOST ISOLATION]")
-        if not privacy_issues:
-            print("  - Status: [PASS] Zero hardcoded user/host paths in workspace crates.")
-        else:
-            print(f"  - Status: [FAIL] {len(privacy_issues)} path privacy violation(s) detected:")
-            for issue in privacy_issues:
-                print(f"    * [{issue['type']}] {issue['file']}:{issue['line']} (found '{issue['pattern']}') -> {issue['recommendation']}")
+            print(f"  - Structural anomalies: {len(srp_issues)} issue(s)")
+            for issue in srp_issues:
+                print(f"    * [{issue['type']}] {issue['file']}: {issue['metric']}")
+                print(f"      -> {issue['recommendation']}")
 
     if args.all or args.conditions:
-        print(f"\n[8. CONDITION SOUP & SELF-DOCUMENTING BOOLEAN LOGIC]")
+        print(f"\n[4. CONDITION SOUP & SELF-DOCUMENTING BOOLEAN LOGIC]")
         if not condition_issues:
             print("  - Status: [PASS] All conditionals use clean explaining variables and domain predicates.")
         else:
@@ -1053,7 +748,7 @@ def main():
                 print(f"    * ... and {len(condition_issues) - 15} more")
 
     if args.all or args.accessors:
-        print(f"\n[9. METHOD NAMING & ACCESSOR CONVENTIONS]")
+        print(f"\n[5. METHOD NAMING & ACCESSOR CONVENTIONS]")
         if not accessor_issues:
             print("  - Status: [PASS] All getters and setters adhere to method naming conventions (no get_ prefix, is_/has_/can_ booleans, set_ setters, slice view collection getters).")
         else:
@@ -1067,8 +762,7 @@ def main():
     print("\n" + "=" * 76)
     print(
         f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, "
-        f"{len(srp_issues)} cohesion issues, {len(inlining_issues)} inlining issues, {len(antipattern_issues)} antipattern issues, "
-        f"{len(test_suite_issues)} test suite issues, {len(privacy_issues)} path privacy issues, {len(condition_issues)} condition soup issues, "
+        f"{len(srp_issues)} struct cohesion issues, {len(condition_issues)} condition soup issues, "
         f"{len(accessor_issues)} accessor issues."
     )
     print("=" * 76)

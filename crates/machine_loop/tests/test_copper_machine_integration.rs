@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Copper & Machine Loop Integration Tests
 //!
 //! Tests Copper coprocessor list execution, beam position synchronization (WAIT),

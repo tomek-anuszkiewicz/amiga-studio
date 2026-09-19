@@ -1,3 +1,10 @@
+#![allow(
+    unsafe_code,
+    clippy::cast_ptr_alignment,
+    clippy::unwrap_used,
+    clippy::expect_used
+)]
+
 pub mod benchmark;
 pub mod diagnostic;
 pub mod dma_harness;

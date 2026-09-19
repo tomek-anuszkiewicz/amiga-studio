@@ -10,3 +10,6 @@ path = "src/cia.rs"
 [dependencies]
 config = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+
+[lints]
+workspace = true

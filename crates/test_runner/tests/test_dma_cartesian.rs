@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Cartesian DMA Contention & Address Permutation Stress Test Suite
 //!
 //! Validates cycle-exact M68000 micro-stepping and MemoryBus invariants across the full

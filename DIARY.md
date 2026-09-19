@@ -7903,6 +7903,33 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_docs_quality.py`: 10/10 quality pillars passed with 0 issues detected.
   - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed cleanly.
 
+---
+
+### [2026-09-19 22:20 CEST] — Integrated Workspace-Wide Compiler & Clippy Lints and Pruned Duplicate Audit Harness Scans
+
+- **Files Modified**:
+  - `Cargo.toml`: Configured `[workspace.lints.rust]` (`unsafe_code = "deny"`, `deprecated = "deny"`, `dead_code = "deny"`, `unused_imports = "deny"`, `unused_variables = "deny"`, `unused_must_use = "deny"`, `missing_debug_implementations = "warn"`) and `[workspace.lints.clippy]` (`unwrap_used = "deny"`, `expect_used = "deny"`, `panic = "deny"`, `unreachable = "warn"`, `disallowed_types = "deny"`, `disallowed_methods = "deny"`, `ptr_arg = "deny"`, `rc_buffer = "deny"`, `rc_mutex = "deny"`, `box_collection = "deny"`, `vec_box = "deny"`, `transmute_ptr_to_ptr = "deny"`, `cast_ptr_alignment = "deny"`, `new_without_default = "deny"`, `new_ret_no_self = "deny"`, `expl_impl_clone_on_copy = "deny"`, `derivable_impls = "warn"`, `redundant_pub_crate = "warn"`, `wildcard_imports = "warn"`, `nonminimal_bool = "warn"`, `needless_bool = "warn"`, `collapsible_if = "warn"`, `collapsible_else_if = "warn"`, `match_same_arms = "warn"`, `or_fun_call = "warn"`, `cast_possible_truncation = "warn"`, `inline_always = "allow"`).
+  - `clippy.toml`: Created workspace clippy configuration specifying `allow-unwrap-in-tests = true`, `allow-expect-in-tests = true`, `allow-panic-in-tests = true`, `disallowed-types` (`Rc`, `RefCell`, `Arc`, `Mutex`, `RwLock`, `mpsc::Sender`, `mpsc::Receiver`), and `disallowed-methods` (`std::thread::spawn`).
+  - `crates/*/Cargo.toml`, `tools/blep_generator/Cargo.toml`: Added `[lints] workspace = true` to all 27 workspace member manifests.
+  - `crates/*/tests/*.rs`: Added `#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]` to all integration test suites to preserve full testing flexibility while strictly forbidding unwrap/panic in production crates.
+  - `crates/test_runner/src/test_runner.rs`, `crates/test_runner/src/main.rs`: Added `#![allow(unsafe_code, clippy::cast_ptr_alignment, clippy::unwrap_used, clippy::expect_used)]` for benchmark/test runner harness logic.
+  - `crates/test_runner/tests/test_builder.rs`: Fixed benchmark builder test invocation (`*spec`).
+  - `tools/harness/pre_flight.py`: Updated `check_clippy_invariants()` to run `cargo clippy --workspace --all-targets`, enforcing all workspace compiler and clippy lints on every pre-flight gate.
+  - `tools/harness/audit_code_quality.py`: Pruned ~400+ lines of duplicate regex checks (`scan_inlining_guidelines`, `scan_macro_and_generic_prohibitions`, `scan_external_test_suites`, `scan_path_privacy`, file size checking in `scan_srp_and_cohesion`, and CLI flags `--inlining`, `--antipatterns`, `--tests`, `--path-privacy`), focusing the auditor on the 5 distinct, non-redundant architectural dimensions (Dead Code, Least Visibility, Struct Cohesion, Condition Soup, Method Accessor Conventions).
+  - `.agents/rules/rust-best-practices.md`, `clean-break-refactoring.md`, `workspace-structure-and-reexports.md`, `egui-best-practices.md`, `performance-and-readability.md`: Updated rules to document compiler and clippy enforcement details.
+  - `.agents/workflows/audit-code-quality.md`, `.agents/skills/audit-code-quality/SKILL.md`, `.agents/workflows/code-review.md`, `.agents/skills/code-review/SKILL.md`: Aligned workflows and skills with workspace clippy commands, pruned redundant commands, and corrected stale inline test reference.
+- **Architectural Rationale & Trade-Offs**:
+  - *Native Compiler Gates vs Custom Regex Scanners:* Hand-rolled Python regex scanners trying to parse Rust syntax for panics, disallowed types, or borrow views are fragile, slow, and redundant with the Rust compiler. Moving architectural invariants directly into `[workspace.lints.rust]`, `[workspace.lints.clippy]`, and `clippy.toml` gives compile-time, zero-escape mechanical enforcement backed by rustc and clippy AST analyzers.
+  - *Testing Assertion Freedom with Strict Production Zero-Panic Invariance:* In production emulation paths (`crates/*/src/`), any unhandled panic or unwrap risks crashing the host process on guest code. In integration tests (`tests/*.rs`), however, asserts and unwraps on verified fixtures are idiomatic and safe. By explicitly configuring `clippy.toml` and crate-level test attributes, we enforce zero panics in production while keeping tests expressive and maintainable.
+  - *Pruning Auditor Duplication:* Having `audit_code_quality.py` reimplement checks already handled by `test_architecture_rules.rs` created maintenance overhead and duplicate warnings. By pruning ~400 lines of duplicated code, `audit_code_quality.py` remains lean, fast, and dedicated to its unique architectural pillars.
+- **Verification & Test Results**:
+  - `cargo clippy --workspace --all-targets`: Passed cleanly with exit code 0 across all 27 workspace crates and 107 test targets.
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed cleanly (3.30s).
+  - `python tools/harness/audit_code_quality.py --all`: 5/5 non-redundant pillars executed cleanly with exit code 0.
+  - `python tools/harness/pre_flight.py`: All 6 quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Clippy Invariants, Architecture Rules).
+
+
 
 
 

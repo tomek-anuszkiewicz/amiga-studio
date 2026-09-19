@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! MOS 8520 CIA Whole-Machine Loop Integration Tests
 //!
 //! Verifies CIA-A and CIA-B timer underflows, Paula INTREQ cross-chip signaling,

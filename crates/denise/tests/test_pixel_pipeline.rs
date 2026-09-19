@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use config::DeniseModel;
 use denise::{decode_dual_playfield, decode_ehb, decode_ham6, frame_builder, Denise};
 

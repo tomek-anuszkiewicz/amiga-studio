@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use egui::{Event, Key, Modifiers, RawInput};
 use gui::{AppTheme, DisasmEditState, EditRegister, EmulatorApp, ViewMode};
 use std::path::PathBuf;

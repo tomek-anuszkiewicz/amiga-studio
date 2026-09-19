@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use audio::{Audio, StereoSample, AUDIO_RING_BUFFER_CAPACITY};
 
 #[test]

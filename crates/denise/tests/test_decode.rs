@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for Denise pixel decoding routines (HAM6, EHB, Dual Playfield)
 
 use denise::{decode_dual_playfield, decode_ehb, decode_ham6, COLOR_PALETTE_SIZE};

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Comprehensive Tests for Custom Chip Register Wiring & Cross-Chip Signals
 //!
 //! Validates live composite read path (DSKBYTR, CLXDAT), open-bus $FFFF enforcement

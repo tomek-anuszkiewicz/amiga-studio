@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use cpu::Cpu;
 use debugger::loader::{inject_binary, DEFAULT_TARGET_ADDRESS};
 use physical_memory::PhysicalMemory;

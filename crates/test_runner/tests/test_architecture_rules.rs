@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Automated Architecture & Engineering Rules Validation Tests
 //!
 //! Enforces guidelines from AGENTS.md and .agents/rules/:

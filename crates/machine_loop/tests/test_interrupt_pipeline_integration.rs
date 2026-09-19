@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Interrupt Pipeline & Priority Arbitration Whole-Machine Integration Tests
 //!
 //! Verifies Paula INTENA/INTREQ priority encoding, master INTEN masking,

@@ -73,7 +73,7 @@ Tier 3: Contained Sub-Components (rtc, copper, blitter, audio_dacs)
 | :--- | :--- | :--- |
 | **Namespaced Module** | `pub use child_crate;` | When the child crate contains multiple types, registers, states, or enums (e.g. `pub use rtc;`). |
 | **Primary Type Shortcut** | `pub use child_crate::MainStruct;` | For the 1–2 most prominent structs to prevent verbose typing (e.g. `pub use rtc::RtcMsm6242b;`). |
-| **Avoid Wildcard Roots** | ❌ `pub use child_crate::*;` | Do not glob-reexport child crates at the root to prevent naming collisions (e.g. two crates defining `State`). |
+| **Avoid Wildcard Roots** | ❌ `pub use child_crate::*;` | Do not glob-reexport child crates at the root to prevent naming collisions (e.g. two crates defining `State`). Enforced via `clippy::wildcard_imports = "warn"`. |
 
 ---
 
@@ -125,7 +125,7 @@ To improve searchability, eliminate ambiguous file tabs in editors, and guarante
    - Re-exports via `pub use` are strictly reserved for the crate's documented API consumed by peer crates or host frontends.
    - Never re-export internal helpers, callbacks, or execution archetypes.
 3. **Visibility Leak Prevention**:
-   - Items must be declared with the narrowest visibility under which they function. Avoid defaulting to `pub` so the compiler and automated linters can accurately surface dead or zombie code.
+   - Items must be declared with the narrowest visibility under which they function. Avoid defaulting to `pub` so the compiler and automated linters can accurately surface dead or zombie code. Redundant visibility scopes are flagged via `clippy::redundant_pub_crate = "warn"`.
 
 ---
 

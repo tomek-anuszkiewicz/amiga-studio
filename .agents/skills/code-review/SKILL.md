@@ -19,13 +19,14 @@ This skill guides an agent (or subagent reviewer) through performing a strict po
 
 ## Review Procedure
 
-### Step 1: Automated Architecture & Formatting Verification
-Verify formatting compliance and run the automated architectural test suite in `test_runner`:
+### Step 1: Automated Architecture, Compiler & Formatting Verification
+Verify formatting compliance, run compiler/clippy verification, and run the automated architectural test suite in `test_runner`:
 ```powershell
 cargo fmt --all -- --check
+cargo clippy --workspace --all-targets
 cargo test -p test_runner --test test_architecture_rules
 ```
-If formatting checks or any architecture tests fail, review is immediately blocked until the violation is resolved (format via `cargo fmt --all`).
+If formatting checks, clippy lints, or any architecture tests fail, review is immediately blocked until the violation is resolved (format via `cargo fmt --all`).
 
 ### Step 2: Diff Inspection (`git diff`)
 Analyze all modified and added files using `git diff`:
@@ -56,7 +57,7 @@ Analyze all modified and added files using `git diff`:
    - Ensure all micro-steps where the memory bus does not perform an active transfer or address strobe explicitly feature `IDLE` (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`).
    - Strictly prohibit anonymous idle structs (`MicroStep { bus_fn: None, alu_fn: None, ... }`) and legacy aliases (`READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`, `REFILL_FIRST_FINISH`, `REFILL_SECOND_FINISH`).
 12. **Comprehensive Unit Test Coverage**:
-   - Verify that every newly created or modified Rust source file containing testable domain logic, state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests (`tests/<module_name>.rs` or inline `#[cfg(test)] mod tests`).
+   - Verify that every newly created or modified Rust source file containing testable domain logic, state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests strictly in dedicated external test files (`crates/<crate>/tests/test_<name>.rs` per `unit-testing-policy.md`; zero inline tests in `src/`).
    - Modules must not be declared complete without tests covering happy paths, boundary conditions, zero/empty states, and failure modes.
 13. **Language Policy & English Purity**:
    - Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, or inline comments (per `language-policy.md`).
@@ -78,6 +79,7 @@ Provide the audit report using the following standard template:
 ```markdown
 ### 🛡️ Code & Architecture Compliance Review:
 - [ ] **Code Formatting Compliance:** `cargo fmt --all -- --check` passed cleanly across workspace.
+- [ ] **Compiler & Clippy Compliance:** `cargo clippy --workspace --all-targets` passed cleanly (zero warnings/errors).
 - [ ] **Architecture Test Suite:** `cargo test -p test_runner --test test_architecture_rules` passed.
 - [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests in `crates/*/tests/` (zero inline tests in `src/`).
 - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.

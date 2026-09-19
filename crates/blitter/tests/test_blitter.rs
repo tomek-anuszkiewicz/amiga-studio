@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use blitter::{apply_fill, barrel_shift, eval_minterm, Blitter};
 
 #[test]

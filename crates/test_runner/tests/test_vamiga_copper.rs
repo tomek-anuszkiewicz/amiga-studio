@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! vAmigaTS Copper Coprocessor Subsystem Verification
 //!
 //! Executes cycle-exact Copper test suites from `ref_src/vAmigaTS/Agnus/Copper`

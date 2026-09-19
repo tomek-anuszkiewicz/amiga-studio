@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Headless Integration & Unit Tests for Amiga 500 Developer Studio (gui)
 
 use cpu::Cpu;

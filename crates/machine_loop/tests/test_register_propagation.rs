@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use config::{A500Config, VideoStandard};
 use machine_loop::BusResult;
 use machine_loop::{A500Machine, AddressBus};

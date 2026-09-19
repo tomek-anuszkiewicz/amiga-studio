@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use cpu::Cpu;
 use debugger::{assemble_instruction, disassemble, Debugger};
 use physical_memory::PhysicalMemory;

@@ -16,3 +16,6 @@ paula = { workspace = true }
 cia = { workspace = true }
 rtc = { workspace = true }
 config = { workspace = true }
+
+[lints]
+workspace = true

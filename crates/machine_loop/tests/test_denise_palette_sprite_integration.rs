@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Denise Palette & Sprite Machine Loop Integration Tests
 //!
 //! Tests full 32-entry color palette batch writes through the mutation delay pipeline,

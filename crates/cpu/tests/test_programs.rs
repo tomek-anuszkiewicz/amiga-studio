@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Multi-Instruction Program & Control Flow Integration Tests
 //!
 //! Tests realistic multi-instruction sequences running against a live Amiga `MemoryBus`

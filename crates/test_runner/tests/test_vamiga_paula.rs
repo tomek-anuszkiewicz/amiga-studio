@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! vAmigaTS Paula Audio & Interrupts Subsystem Verification
 //!
 //! Executes cycle-exact Paula test suites from `ref_src/vAmigaTS/Paula`

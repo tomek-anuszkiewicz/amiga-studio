@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Benchmark JSON Report Verification & Cross-Format Parity Test Suite
 //!
 //! Validates that the hierarchical JSON report (`m68k_benchmark.json`) adheres

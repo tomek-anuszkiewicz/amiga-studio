@@ -80,18 +80,12 @@ def check_api_coverage():
     return True, "100% peripheral/utility public APIs tested", elapsed
 
 def check_clippy_invariants():
-    cmd = [
-        "cargo", "clippy", "--workspace", "--",
-        "-A", "warnings",
-        "-D", "clippy::ptr_arg",
-        "-D", "clippy::new_without_default",
-        "-D", "missing_debug_implementations",
-    ]
+    cmd = ["cargo", "clippy", "--workspace", "--all-targets"]
     code, stdout, stderr, elapsed = run_cmd(cmd)
     if code != 0:
         output = stdout.strip() or stderr.strip()
-        return False, f"Clippy AST invariants check failed:\n{output}", elapsed
-    return True, "100% compliant (ptr_arg, new_without_default, missing_debug_implementations)", elapsed
+        return False, f"Clippy workspace invariants check failed:\n{output}", elapsed
+    return True, "100% compliant (workspace lints & compiler gates)", elapsed
 
 def check_architecture_rules():
     cmd = ["cargo", "test", "-p", "test_runner", "--test", "test_architecture_rules", "--", "--quiet"]

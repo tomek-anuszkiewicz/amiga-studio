@@ -26,9 +26,10 @@ To ensure objective compliance and prevent confirmation bias:
 
 
 ## 1. Automated Architecture & Formatting Verification
-Execute formatting check and the automated architectural test suite:
+Execute formatting check, compiler/clippy verification, and the automated architectural test suite:
 ```powershell
 cargo fmt --all -- --check
+cargo clippy --workspace --all-targets
 cargo test -p test_runner --test test_architecture_rules
 ```
 Ensure all rules pass:

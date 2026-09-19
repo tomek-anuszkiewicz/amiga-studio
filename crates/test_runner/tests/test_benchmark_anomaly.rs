@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Thorough Benchmark Empirical Anomaly & Architecture Invariant Regression Test Suite
 //!
 //! Validates empirical performance bounds on the high-precision `--thorough` benchmark dataset:

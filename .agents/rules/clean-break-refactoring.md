@@ -35,7 +35,7 @@ Unless the user **explicitly** requests backward compatibility in their prompt (
 
 ### E. Zero `#[deprecated]` Annotations
 - **Forbidden:** Slapping `#[deprecated]` on dead or obsolete code to avoid updating callers.
-- **Required:** In a closed monorepo, deprecated code is pure technical debt. Delete obsolete code completely.
+- **Required:** In a closed monorepo, deprecated code is pure technical debt. Delete obsolete code completely. Mechanically enforced via `deprecated = "deny"` in root `Cargo.toml [workspace.lints.rust]`, causing any use of deprecated items to immediately fail the build.
 
 ---
 

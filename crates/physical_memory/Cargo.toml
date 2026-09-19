@@ -12,3 +12,6 @@ config = { workspace = true }
 rtc = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+
+[lints]
+workspace = true

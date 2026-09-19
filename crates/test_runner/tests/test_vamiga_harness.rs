@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! vAmigaTS Test Harness Unit & Integration Tests
 //!
 //! Validates ADF Sector 2 direct-injection payload extraction,

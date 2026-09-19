@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use cpu::{Cpu, MicroStep};
 use physical_memory::{BusResult, PhysicalMemory};
 

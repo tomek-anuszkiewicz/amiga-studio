@@ -10,3 +10,6 @@ path = "src/dma.rs"
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 config = { workspace = true }
+
+[lints]
+workspace = true

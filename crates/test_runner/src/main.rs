@@ -1,3 +1,5 @@
+#![allow(unsafe_code, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! CLI tool for inspecting SingleStepTest results, coverage summaries, and regression diffs
 
 use std::collections::HashSet;

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Verification of M68000 public API surface and encapsulation integrity
 
 use cpu::{Cpu, OPCODE_DESCRIPTOR_TABLE};

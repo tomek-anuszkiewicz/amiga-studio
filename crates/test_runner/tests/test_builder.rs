@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for M68000 Benchmark Program Builder & Strategy Synthesis
 //!
 //! Validates unrolled block generation, PRNG memory buffers, cascading stacks,
@@ -123,7 +125,7 @@ fn test_builder_injection_into_cpu_and_bus() {
 #[test]
 fn test_benchmark_program_builder_debug_derive() {
     let spec = find_spec_by_id("ARITH-02").expect("ARITH-02 must exist");
-    let builder = BenchmarkProgramBuilder::new(spec);
+    let builder = BenchmarkProgramBuilder::new(*spec);
     let debug_str = format!("{:?}", builder);
     assert!(debug_str.contains("BenchmarkProgramBuilder"));
 }

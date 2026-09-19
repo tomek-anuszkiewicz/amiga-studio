@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! DMA Switching & Electronic Signal Propagation Machine Loop Integration Tests
 //!
 //! Tests DMACON bitwise SET/CLR semantics across all peer chips,

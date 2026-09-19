@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Chipset Benchmark & Baseline Regression Sentinel Tests
 
 use std::path::PathBuf;

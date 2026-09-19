@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Blitter Nasty Contention & Fast RAM Concurrency Whole-Machine Integration Tests
 //!
 //! Verifies that active Blitter Nasty mode (BLTPRI) locks CPU accesses out of Chip RAM

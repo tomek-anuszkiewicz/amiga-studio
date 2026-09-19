@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Motorola 68000 Autovector Interrupts & Exception Processing Tests
 //!
 //! Validates cycle-exact autovector interrupts (Levels 1..7, vectors 25..31),

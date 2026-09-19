@@ -11,7 +11,7 @@ All user interface code in the Amiga 500 emulator (`crates/desktop_gui`) must st
 
 ## 1. Architectural Model & Concurrency
 - **Synchronous Direct-State Pull:** Panels directly query emulator state (`&CpuState`, `&mut MemoryBus`, `&mut Debugger`) on render. The emulator core never "notifies" or sends events/callbacks to the UI.
-- **Zero Asynchrony / Zero Message Passing:** No channels (`mpsc`), no async runtimes (`tokio`), and no observer patterns. Execution and UI rendering proceed in a synchronous, deterministic loop.
+- **Zero Asynchrony / Zero Message Passing:** No channels (`mpsc`), no async runtimes (`tokio`), and no observer patterns. Execution and UI rendering proceed in a synchronous, deterministic loop. Mechanically enforced via `clippy::disallowed_types` (`mpsc::Sender`, `mpsc::Receiver`, `Arc`, `Mutex`, `RwLock`) and `clippy::disallowed_methods` (`std::thread::spawn`).
 - **Single-Threaded Time-Slicing:** When the emulator is running, execute a bounded slice of cycles (e.g. 1/60th second of PAL CCKs or up to 10,000 instructions) per GUI frame. This keeps the window 100% responsive and enables seamless compilation to WebAssembly (`wasm32-unknown-unknown`).
 
 ---
