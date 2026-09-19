@@ -154,7 +154,7 @@ fn assemble_mnemonic(input: &str, pc: u32) -> Result<Vec<u16>, String> {
             "NEG" => 0x4400,
             "NOT" => 0x4600,
             "TST" => 0x4A00,
-            _ => unreachable!(),
+            _ => return Err(format!("Unsupported unary operation: {base_mnem}")),
         };
         let mut words =
             vec![base_code | (size_bits << 6) | ((ea_mode as u16) << 3) | (ea_reg as u16)];
@@ -305,7 +305,11 @@ fn assemble_mnemonic(input: &str, pc: u32) -> Result<Vec<u16>, String> {
             "MULS" => 0xC1C0,
             "DIVU" => 0x80C0,
             "DIVS" => 0x81C0,
-            _ => unreachable!(),
+            _ => {
+                return Err(format!(
+                    "Unsupported multiply/divide operation: {base_mnem}"
+                ))
+            }
         };
         let mut words =
             vec![base_code | ((dn as u16) << 9) | ((ea_mode as u16) << 3) | (ea_reg as u16)];
@@ -459,7 +463,7 @@ fn assemble_alu(
         "SUB" => 0x9u16,
         "AND" => 0xCu16,
         "ADD" => 0xDu16,
-        _ => unreachable!(),
+        _ => return Err(format!("Unsupported ALU operation: {base_mnem}")),
     };
 
     let (sz_code, is_word, is_long) = match size_opt {

@@ -81,7 +81,7 @@ missing_debug_implementations = "deny"
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
-unreachable = "warn"
+unreachable = "deny"
 
 # Architectural integrity & disallowed abstractions
 disallowed_types = "deny"

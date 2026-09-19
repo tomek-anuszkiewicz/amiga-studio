@@ -10,7 +10,7 @@ All Rust code across the Amiga 500 emulator workspace must strictly adhere to th
 ---
 
 ## 1. Safety & Error Discipline
-- **Zero Host Panics on Guest Code:** Runtime emulation code (`step()`, memory accesses, interrupt handling, chip registers) must **never** call `.unwrap()`, `.expect()`, or `panic!()`. Handle open bus, unaligned access, or invalid opcodes defensively. Mechanically enforced in production code (`crates/*/src/`) via compiler lints `clippy::unwrap_used = "deny"`, `clippy::expect_used = "deny"`, and `clippy::panic = "deny"`. Integration test suites (`crates/*/tests/*.rs`) are exempt via `#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]`.
+- **Zero Host Panics on Guest Code:** Runtime emulation code (`step()`, memory accesses, interrupt handling, chip registers) must **never** call `.unwrap()`, `.expect()`, `panic!()`, or `unreachable!()`. Handle open bus, unaligned access, or invalid opcodes defensively. Mechanically enforced in production code (`crates/*/src/`) via compiler lints `clippy::unwrap_used = "deny"`, `clippy::expect_used = "deny"`, `clippy::panic = "deny"`, and `clippy::unreachable = "deny"`. Integration test suites (`crates/*/tests/*.rs`) are exempt via `#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]`.
 - **Wrapping Arithmetic:** In emulator ALU and cycle counting, always use explicit wrapping arithmetic (`wrapping_add`, `wrapping_sub`, `wrapping_shl`, `wrapping_shr`) to avoid debug overflow panics.
 - **Explicit Bit Masking:** Explicitly mask results (`& 0xFF`, `& 0xFFFF`, `& 0xFFFFFF`) when truncating registers or memory addresses.
 

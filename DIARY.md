@@ -7942,7 +7942,29 @@ Every future modification or implementation task must append an entry following 
   - `cargo fmt --all -- --check`: 100% compliant.
   - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed cleanly.
   - `cargo test -p test_runner --test test_dma_cartesian test_preflight_debug_derive`: Passed cleanly with 0 errors.
+---
+
+### [2026-09-19 22:41 CEST] — Promoted Unreachable Lint to Deny and Eliminated All Unhandled Fallback Panics
+
+- **Files Modified**:
+  - `Cargo.toml`: Promoted `unreachable = "deny"` in `[workspace.lints.clippy]`.
+  - `.agents/rules/rust-best-practices.md`: Updated Section 1 (Zero Host Panics on Guest Code) to document mechanical enforcement via `clippy::unreachable = "deny"`.
+  - `crates/cpu/src/state.rs`: Replaced `_ => unreachable!()` in `test_condition()` with defensive `_ => false`.
+  - `crates/cpu/tests/test_micro_archetypes.rs`: Added `test_condition_evaluation_and_defensive_bounds` verifying condition code evaluation and zero host panics.
+  - `crates/debugger/src/assembler.rs`: Replaced 3 `_ => unreachable!()` arms with descriptive `Err(...)` returns for unsupported ALU, unary, and multiply/divide mnemonics.
+  - `crates/debugger/tests/test_assembler.rs`: Added `test_assemble_invalid_mnemonic_returns_err` verifying error returns instead of panics.
+  - `crates/disassembler/src/alu.rs`: Replaced `_ => unreachable!()` in ALU operation group decoding with default `_ => "OR"` fallback.
+  - `crates/disassembler/tests/test_alu.rs`: Added `test_disassemble_standard_alu_ops` verifying ALU group decoding.
+- **Architectural Rationale & Trade-Offs**:
+  - *Closing the Zero-Host-Panic Loophole:* In systems emulation, `unreachable!()` in match arms creates latent points of catastrophic host failure when encountering malformed guest opcodes or unhandled states. Replacing them with defensive error returns (`Result::Err`) or default branches ensures open-bus or invalid instruction vectors execute without crashing the emulator process.
+  - *Complete Eradication:* Clippy and ripgrep audits confirmed 0 occurrences of `unreachable!` remaining across all workspace crates and tools.
+- **Verification & Test Results**:
+  - `cargo clippy --workspace --all-targets -- -D clippy::unreachable`: 100% compliant with 0 errors.
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/harness/check_test_coupling.py`: Coupling verified for modified crates (cpu, debugger, disassembler).
+  - `cargo test -p cpu -p debugger -p disassembler`: All unit tests passed cleanly.
   - `python tools/harness/pre_flight.py --quick`: All 5 quick pre-flight quality gates passed cleanly.
+
 
 
 

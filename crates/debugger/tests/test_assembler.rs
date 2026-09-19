@@ -363,3 +363,9 @@ fn test_roundtrip_assemble_and_disassemble() {
         }
     }
 }
+
+#[test]
+fn test_assemble_invalid_mnemonic_returns_err() {
+    assert!(assemble_instruction("INVALID.W D0, D1", 0x1000).is_err());
+    assert!(assemble_instruction("UNKNOWN (A0)", 0x1000).is_err());
+}

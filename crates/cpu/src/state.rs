@@ -419,7 +419,7 @@ impl CpuState {
             0x0D => (n && !v) || (!n && v),             // Less Than (LT)
             0x0E => (n && v && !z) || (!n && !v && !z), // Greater Than (GT)
             0x0F => z || (n && !v) || (!n && v),        // Less or Equal (LE)
-            _ => unreachable!(),
+            _ => false,
         }
     }
 

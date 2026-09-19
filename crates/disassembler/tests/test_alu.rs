@@ -231,3 +231,22 @@ fn test_disassemble_immediate_arithmetic() {
     assert_eq!(d.operands, "#$0020, D0");
     assert_eq!(b, 4);
 }
+
+#[test]
+fn test_disassemble_standard_alu_ops() {
+    let mem = [
+        0xD041, // ADD.W D1, D0
+        0x9041, // SUB.W D1, D0
+        0xC041, // AND.W D1, D0
+        0x8041, // OR.W  D1, D0
+    ];
+    let read = |pc: u32| mem[((pc - 0x1000) / 2) as usize];
+    let (d, _) = disassemble(0x1000, read);
+    assert_eq!(d.mnemonic, "ADD.W");
+    let (d, _) = disassemble(0x1002, read);
+    assert_eq!(d.mnemonic, "SUB.W");
+    let (d, _) = disassemble(0x1004, read);
+    assert_eq!(d.mnemonic, "AND.W");
+    let (d, _) = disassemble(0x1006, read);
+    assert_eq!(d.mnemonic, "OR.W");
+}

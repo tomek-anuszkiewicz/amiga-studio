@@ -405,3 +405,16 @@ fn test_micro_step_predicates_and_work_detection() {
         "Empty step without ALU callback cannot be instantaneous"
     );
 }
+
+#[test]
+fn test_condition_evaluation_and_defensive_bounds() {
+    let state = cpu::CpuState::default();
+    assert!(
+        state.eval_condition(0x00),
+        "Condition 0 (True) must be true"
+    );
+    assert!(
+        !state.eval_condition(0x01),
+        "Condition 1 (False) must be false"
+    );
+}

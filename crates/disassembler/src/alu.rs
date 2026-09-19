@@ -226,8 +226,7 @@ pub(crate) fn try_disassemble_alu(
             0xD => "ADD",
             0x9 => "SUB",
             0xC => "AND",
-            0x8 => "OR",
-            _ => unreachable!(),
+            _ => "OR",
         };
         let reg_d = ((op >> 9) & 7) as u8;
         let opmode = ((op >> 6) & 7) as u8;
