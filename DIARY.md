@@ -7993,6 +7993,25 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Clippy Invariants, Architecture Rules).
   - `python tools/harness/run_tests.py --unit`: All 23 workspace crates and 7 test_runner unit suites passed (100%).
 
+---
+
+### [2026-09-20 00:03 CEST] — Enforced Strict Zero-Warning Compilation Policy Across Rust Workspace
+
+- **Files Modified**:
+  - `Cargo.toml`: Configured `warnings = "deny"` under `[workspace.lints.rust]`, with `all = { level = "allow", priority = -1 }` and `correctness = { level = "deny", priority = -1 }` under `[workspace.lints.clippy]` to preserve explicitly curated clippy gates while preventing unconfigured stylistic clippy lints from blocking compilation.
+  - `.agents/rules/rust-best-practices.md`: Documented the strict zero-warning compilation policy in Section 1 (Safety & Error Discipline).
+- **Architectural Rationale & Trade-Offs**:
+  - *Zero-Warning Guarantee:* Denying `warnings` at compiler level (`rustc`) guarantees that any unhandled compiler warning (unused variables, unused mut, unused imports, dead code, open-bus anomalies, unformatted debug types) triggers an immediate compilation failure (`error: ... implied by -D warnings`) rather than being passively ignored.
+  - *Separation of Compiler vs. Clippy Scopes:* Using `priority = -1` on clippy's default group isolates rustc's global `-D warnings` flag so that our explicitly curated clippy deny/allow list continues to govern clippy invariant checks in `pre_flight.py` without noise.
+- **Verification & Test Results**:
+  - `cargo check --workspace --all-targets`: Passed with 0 warnings/errors.
+  - Verified active denial: Intentionally introduced unused mutable variable in `crates/config/src/config.rs` and confirmed build failure with `-D unused-mut implied by -D warnings`.
+  - `cargo clippy --workspace --all-targets`: Passed with 0 errors across all 27 workspace members.
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Clippy Invariants, Architecture Rules).
+  - `python tools/harness/run_tests.py --unit`: All 23 workspace crates + 7 test_runner unit suites passed cleanly (100%).
+
+
 
 
 

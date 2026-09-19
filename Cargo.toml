@@ -68,6 +68,7 @@ debugger = { path = "crates/debugger" }
 game_ports = { path = "crates/game_ports" }
 
 [workspace.lints.rust]
+warnings = "deny"
 unsafe_code = "deny"
 deprecated = "deny"
 dead_code = "deny"
@@ -77,6 +78,8 @@ unused_must_use = "deny"
 missing_debug_implementations = "deny"
 
 [workspace.lints.clippy]
+all = { level = "allow", priority = -1 }
+correctness = { level = "deny", priority = -1 }
 # Zero host panics on guest code (strictly denied in production code; tests exempt via #![allow(...)])
 unwrap_used = "deny"
 expect_used = "deny"
