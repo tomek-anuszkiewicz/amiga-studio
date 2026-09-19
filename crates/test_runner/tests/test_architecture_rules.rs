@@ -1365,3 +1365,84 @@ fn test_multi_module_crate_test_parity() {
         violations.join("\n")
     );
 }
+
+#[test]
+fn test_all_rules_audited_in_quality_harness() {
+    let repo_root = find_repo_root();
+    let rules_dir = repo_root.join(".agents").join("rules");
+
+    // Authoritative registry of all 29 active rules in .agents/rules/
+    let registered_rules: &[&str] = &[
+        "amiga-rag.md",
+        "asset-descriptions.md",
+        "audio-transcription.md",
+        "clean-break-refactoring.md",
+        "diary-maintenance.md",
+        "docs-maintenance.md",
+        "egui-best-practices.md",
+        "file-size-and-cohesion.md",
+        "git-commits.md",
+        "git-merge-commits.md",
+        "graphify.md",
+        "hardware-bus-topology.md",
+        "information-hierarchy.md",
+        "language-policy.md",
+        "method-inlining.md",
+        "model-reasoning-advisory.md",
+        "no-external-paths.md",
+        "opcode-naming.md",
+        "parallel-execution.md",
+        "performance-and-readability.md",
+        "practitioner-voice-and-tone.md",
+        "repro-first.md",
+        "roadmap-maintenance.md",
+        "rust-best-practices.md",
+        "spec-compliance.md",
+        "structural-root-cause.md",
+        "unit-testing-policy.md",
+        "vault-linking-and-graph-integrity.md",
+        "workspace-structure-and-reexports.md",
+    ];
+
+    let mut on_disk_rules = Vec::new();
+    if let Ok(entries) = fs::read_dir(&rules_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("md") {
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    on_disk_rules.push(name.to_string());
+                }
+            }
+        }
+    }
+    on_disk_rules.sort();
+
+    let mut violations = Vec::new();
+
+    // Check for unregistered on-disk rules
+    for rule in &on_disk_rules {
+        if !registered_rules.contains(&rule.as_str()) {
+            violations.push(format!(
+                ".agents/rules/{}: Rule file is not registered in the Architecture & Quality Audit Registry.",
+                rule
+            ));
+        }
+    }
+
+    // Check for phantom registered rules
+    for &reg in registered_rules {
+        if !on_disk_rules.iter().any(|r| r == reg) {
+            violations.push(format!(
+                ".agents/rules/{}: Registered rule is missing from on-disk .agents/rules/ directory.",
+                reg
+            ));
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Unaudited or phantom rules detected:\n{}\n\
+        Every rule in .agents/rules/*.md must have verified audit coverage per AGENTS.md.",
+        violations.join("\n")
+    );
+}

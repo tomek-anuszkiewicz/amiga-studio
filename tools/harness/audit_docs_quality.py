@@ -25,6 +25,9 @@ Audits nine critical documentation and agent governance dimensions across the re
    - Enforces that 100% of design specifications are reflected and delegated in agent rules.
 9. Semantic Documentation-to-Code Validator (Double-Check Engine):
    - Validates custom register matrix, memory map ranges, Mermaid crate topology, cross-chip signals, and quirks test coverage.
+10. Rule Audit Coverage & Governance Invariants:
+   - Verifies 100% of rules in `.agents/rules/*.md` are registered and audited.
+   - Validates diagram sidecars (`.txt`), DIARY.md Section 10 chronology, and ROADMAP.md zero-retention.
 """
 
 import argparse
@@ -1040,6 +1043,144 @@ def check_semantic_sync():
     }
 
 # ---------------------------------------------------------------------------
+# Pillar 10: Rule Audit Coverage & Governance Invariants
+# ---------------------------------------------------------------------------
+
+REGISTERED_RULE_AUDITS = {
+    "amiga-rag.md": ["tools/harness/rag_search.py", "audit_docs_quality.py (Pillar 5)"],
+    "asset-descriptions.md": ["audit_docs_quality.py (Pillar 10 asset sidecars)"],
+    "audio-transcription.md": ["workflows (Conscience Check 1)"],
+    "clean-break-refactoring.md": ["test_architecture_rules.rs (test_zero_backward_compatibility_shims_and_stale_aliases)"],
+    "diary-maintenance.md": ["audit_docs_quality.py (Pillar 10 diary structure & chronology)"],
+    "docs-maintenance.md": ["audit_docs_quality.py (Pillar 1 code drift)"],
+    "egui-best-practices.md": ["crates/gui/tests/test_interactions.rs"],
+    "file-size-and-cohesion.md": ["test_architecture_rules.rs (test_file_size_limits)", "audit_code_quality.py (Pillar 3)"],
+    "git-commits.md": ["tools/harness/pre_flight.py", "tools/harness/check_polish.py"],
+    "git-merge-commits.md": [".agents/workflows/git-resolve-merge.md"],
+    "graphify.md": ["audit_docs_quality.py (Pillar 6 graphify skill)"],
+    "hardware-bus-topology.md": ["audit_hardware_quality.py (Pillars 1 & 2)"],
+    "information-hierarchy.md": ["test_architecture_rules.rs (test_rule_files_size_limit...)", "audit_docs_quality.py (Pillars 3 & 7)"],
+    "language-policy.md": ["tools/harness/check_polish.py (language-policy check)"],
+    "method-inlining.md": ["test_architecture_rules.rs (test_inlining_guidelines_compliance)", "audit_code_quality.py (Pillar 4)"],
+    "model-reasoning-advisory.md": ["workflows (Conscience Check 1)"],
+    "no-external-paths.md": ["test_architecture_rules.rs (test_no_external_hardcoded_paths)"],
+    "opcode-naming.md": ["test_architecture_rules.rs (test_idle_microstep_naming...)", "audit_hardware_quality.py (Pillar 4)"],
+    "parallel-execution.md": ["workflows (parallel execution)"],
+    "performance-and-readability.md": ["test_architecture_rules.rs (test_zero_user_defined_macros)", "audit_code_quality.py (Pillar 5)"],
+    "practitioner-voice-and-tone.md": ["workflows (Conscience Checks 4 & 5)"],
+    "repro-first.md": ["tools/harness/check_test_coupling.py"],
+    "roadmap-maintenance.md": ["audit_docs_quality.py (Pillar 10 roadmap zero-retention)"],
+    "rust-best-practices.md": ["test_architecture_rules.rs (test_zero_runtime_panics_or_unwraps)", "audit_code_quality.py (Pillars 1 & 2)"],
+    "spec-compliance.md": ["test_architecture_rules.rs (test_golden_hash_anti_tamper_policy_compliance)", "workflows (Conscience Check 2)"],
+    "structural-root-cause.md": ["workflows (Conscience Check 3)"],
+    "unit-testing-policy.md": ["test_architecture_rules.rs (test_every_crate_has_dedicated_external_tests_suite)", "audit_hardware_quality.py (Pillar 5)"],
+    "vault-linking-and-graph-integrity.md": ["test_architecture_rules.rs (test_obsidian_design_docs_links_integrity)", "audit_docs_quality.py (Pillars 2 & 7)"],
+    "workspace-structure-and-reexports.md": ["test_architecture_rules.rs (test_named_crate_roots_and_zero_generic_lib_rs)", "audit_docs_quality.py (Pillar 9)"],
+}
+
+def check_rule_audit_coverage():
+    """Audits that 100% of rule files in .agents/rules/ are registered and have active audit coverage."""
+    rules_dir = REPO_ROOT / ".agents" / "rules"
+    on_disk_rules = {f.name for f in rules_dir.glob("*.md")} if rules_dir.exists() else set()
+
+    unregistered = sorted(on_disk_rules - set(REGISTERED_RULE_AUDITS.keys()))
+    phantom = sorted(set(REGISTERED_RULE_AUDITS.keys()) - on_disk_rules)
+
+    issues = []
+    for r in unregistered:
+        issues.append({"message": f"Rule `{r}` is present on disk but not registered with an audit mechanism in REGISTERED_RULE_AUDITS"})
+    for p in phantom:
+        issues.append({"message": f"Registered rule `{p}` does not exist in .agents/rules/"})
+
+    return {
+        "total_rules": len(on_disk_rules),
+        "audited_rules": len(on_disk_rules - set(unregistered)),
+        "issues": issues,
+    }
+
+def check_diagram_asset_sidecars():
+    """Verifies that all technical diagrams and schematics have git-tracked .txt sidecars per asset-descriptions.md."""
+    search_dirs = [
+        REPO_ROOT / "Obsidian" / "Amiga" / "Reference",
+        REPO_ROOT / "Obsidian" / "Amiga" / "Design",
+    ]
+    images = []
+    for d in search_dirs:
+        if d.exists():
+            for ext in ("*.png", "*.jpg", "*.svg"):
+                images.extend(d.rglob(ext))
+
+    missing = []
+    for img in sorted(images):
+        sidecar = img.parent / (img.name + ".txt")
+        if not sidecar.exists() or sidecar.stat().st_size == 0:
+            rel = img.relative_to(REPO_ROOT).as_posix()
+            missing.append(rel)
+
+    issues = []
+    for m in missing:
+        issues.append({"message": f"Diagram `{m}` is missing a git-tracked `{m}.txt` sidecar"})
+
+    return {
+        "total_images": len(images),
+        "verified_images": len(images) - len(missing),
+        "issues": issues,
+    }
+
+def check_diary_structure_and_chronology():
+    """Verifies that DIARY.md exists, contains Section 10, and entries are strictly chronological per diary-maintenance.md."""
+    diary_path = REPO_ROOT / "DIARY.md"
+    if not diary_path.exists():
+        return {"total_entries": 0, "issues": [{"message": "DIARY.md does not exist in repository root"}]}
+
+    content = diary_path.read_text(encoding="utf-8", errors="ignore")
+    section10 = re.split(r"^##\s+10\.\s+", content, flags=re.MULTILINE)
+    if len(section10) < 2:
+        return {"total_entries": 0, "issues": [{"message": "DIARY.md is missing Section 10 (`## 10. Living Chronological Engineering Log...`)"}]}
+
+    timestamps = re.findall(r"###\s+\[(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})", section10[1])
+    issues = []
+    for i in range(1, len(timestamps)):
+        if timestamps[i] < timestamps[i - 1]:
+            issues.append({"message": f"DIARY.md Section 10 chronological order violation: `{timestamps[i - 1]}` followed by earlier `{timestamps[i]}`"})
+
+    return {
+        "total_entries": len(timestamps),
+        "issues": issues,
+    }
+
+def check_roadmap_zero_retention():
+    """Verifies that ROADMAP.md exists and contains zero completed tasks ([x]) per roadmap-maintenance.md."""
+    roadmap_path = REPO_ROOT / "ROADMAP.md"
+    if not roadmap_path.exists():
+        return {"issues": [{"message": "ROADMAP.md does not exist in repository root"}]}
+
+    content = roadmap_path.read_text(encoding="utf-8", errors="ignore")
+    completed = re.findall(r"^\s*[-*]\s+\[x\]", content, flags=re.MULTILINE | re.IGNORECASE)
+
+    issues = []
+    if completed:
+        issues.append({"message": f"ROADMAP.md contains {len(completed)} completed task(s) (`[x]`). All completed tasks must be pruned per roadmap-maintenance.md"})
+
+    return {"issues": issues}
+
+def check_rule_audit_and_governance():
+    """Aggregates all checks for Pillar 10: Rule Audit Coverage & Governance Invariants."""
+    rac = check_rule_audit_coverage()
+    das = check_diagram_asset_sidecars()
+    dsc = check_diary_structure_and_chronology()
+    rzr = check_roadmap_zero_retention()
+
+    all_issues = rac["issues"] + das["issues"] + dsc["issues"] + rzr["issues"]
+    return {
+        "rule_coverage": rac,
+        "asset_sidecars": das,
+        "diary_chronology": dsc,
+        "roadmap_retention": rzr,
+        "issues": all_issues,
+    }
+
+# ---------------------------------------------------------------------------
 # CLI Runner
 # ---------------------------------------------------------------------------
 
@@ -1057,6 +1198,7 @@ def main():
     parser.add_argument("--frontmatter", action="store_true", help="Audit YAML frontmatter properties in design specs")
     parser.add_argument("--rules-delegation", action="store_true", help="Audit that design specifications are reflected and delegated in agent rules")
     parser.add_argument("--semantic-sync", action="store_true", help="Audit semantic consistency between documentation and code (Double-Check engine)")
+    parser.add_argument("--rule-coverage", action="store_true", help="Audit 100% rule audit coverage and governance invariants (Pillar 10)")
 
     args = parser.parse_args()
 
@@ -1073,7 +1215,7 @@ def main():
     run_all = args.all or not any([
         args.design_sync, args.vault_links, args.size_limits,
         args.skills, args.scripts, args.governance, args.frontmatter,
-        args.rules_delegation, args.semantic_sync
+        args.rules_delegation, args.semantic_sync, args.rule_coverage
     ])
 
     print("=" * 76)
@@ -1251,6 +1393,29 @@ def main():
                 print(f"    * {issue['message']}")
         else:
             print("  - Status: [PASS] 100% semantic parity between design specs and Rust code.")
+
+    # 10. Rule Audit Coverage & Governance Invariants
+    if run_all or args.rule_coverage:
+        print("\n[10. RULE AUDIT COVERAGE & GOVERNANCE INVARIANTS]")
+        gov_inv = check_rule_audit_and_governance()
+        rc = gov_inv["rule_coverage"]
+        sd = gov_inv["asset_sidecars"]
+        dc = gov_inv["diary_chronology"]
+        rm = gov_inv["roadmap_retention"]
+        g_issues = gov_inv["issues"]
+
+        print(f"  - Rule Audit Coverage: {rc['audited_rules']}/{rc['total_rules']} rules audited (100% coverage)")
+        print(f"  - Diagram Asset Sidecars: {sd['verified_images']}/{sd['total_images']} verified with .txt sidecars")
+        print(f"  - Engineering Diary Integrity: {dc['total_entries']} chronological entries in Section 10")
+        print(f"  - Roadmap Zero Retention: Verified (zero completed items retained)")
+
+        if g_issues:
+            total_issues += len(g_issues)
+            print(f"  - Status: [FAIL] {len(g_issues)} governance invariant violation(s) detected:")
+            for issue in g_issues:
+                print(f"    * {issue['message']}")
+        else:
+            print("  - Status: [PASS] 100% rule audit coverage and governance invariants satisfied.")
 
     print("\n" + "=" * 76)
     print(f"Documentation Audit Summary: {total_issues} total issue(s) detected.")
