@@ -260,3 +260,34 @@ fn test_instruction_unaligned_read_address_error() {
     assert_eq!(cpu.state.prefetch[0], 0x4E71);
     assert_eq!(cpu.state.pc, 0x002004);
 }
+
+#[test]
+fn test_eval_condition_all_codes() {
+    let mut cpu = Cpu::new();
+    // Condition 0: T (always true)
+    assert!(cpu.state.eval_condition(0x00));
+    // Condition 1: F (always false)
+    assert!(!cpu.state.eval_condition(0x01));
+
+    // Test Carry / Zero combinations for HI (0x02), LS (0x03), CC (0x04), CS (0x05)
+    cpu.state.set_ccr_xnzvc(false, false, false, false, false);
+    assert!(cpu.state.eval_condition(0x02)); // HI: !C & !Z
+    assert!(!cpu.state.eval_condition(0x03)); // LS: C | Z
+    assert!(cpu.state.eval_condition(0x04)); // CC: !C
+    assert!(!cpu.state.eval_condition(0x05)); // CS: C
+
+    // Test Signed comparisons GE (0x0C), LT (0x0D), GT (0x0E), LE (0x0F)
+    // N=1, V=1 -> N == V
+    cpu.state.set_ccr_xnzvc(false, true, false, true, false);
+    assert!(cpu.state.eval_condition(0x0C)); // GE
+    assert!(!cpu.state.eval_condition(0x0D)); // LT
+    assert!(cpu.state.eval_condition(0x0E)); // GT (!Z)
+    assert!(!cpu.state.eval_condition(0x0F)); // LE (!Z & N==V)
+
+    // N=1, V=0 -> N != V
+    cpu.state.set_ccr_xnzvc(false, true, false, false, false);
+    assert!(!cpu.state.eval_condition(0x0C)); // GE
+    assert!(cpu.state.eval_condition(0x0D)); // LT
+    assert!(!cpu.state.eval_condition(0x0E)); // GT
+    assert!(cpu.state.eval_condition(0x0F)); // LE
+}

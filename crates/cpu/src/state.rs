@@ -303,10 +303,7 @@ impl CpuState {
     /// according to M68000 priority rules (ipl > mask || ipl == 7 for NMI).
     #[inline(always)]
     pub fn is_interrupt_pending(&self) -> Option<u8> {
-        let is_nmi = self.ipl == 7;
-        let exceeds_priority_mask = self.ipl > self.interrupt_mask() && self.ipl > 0;
-
-        if is_nmi || exceeds_priority_mask {
+        if (self.ipl > self.interrupt_mask() && self.ipl > 0) || self.ipl == 7 {
             Some(self.ipl)
         } else {
             None
@@ -406,22 +403,22 @@ impl CpuState {
         let n = self.get_n();
 
         match cond & 0x0F {
-            0x00 => true,           // True (T) / BRA
-            0x01 => false,          // False (F)
-            0x02 => !c && !z,       // High (HI)
-            0x03 => c || z,         // Low or Same (LS)
-            0x04 => !c,             // Carry Clear (CC / HS)
-            0x05 => c,              // Carry Set (CS / LO)
-            0x06 => !z,             // Not Equal (NE)
-            0x07 => z,              // Equal (EQ)
-            0x08 => !v,             // Overflow Clear (VC)
-            0x09 => v,              // Overflow Set (VS)
-            0x0A => !n,             // Plus (PL)
-            0x0B => n,              // Minus (MI)
-            0x0C => n == v,         // Greater or Equal (GE): N == V
-            0x0D => n != v,         // Less Than (LT): N != V
-            0x0E => (n == v) && !z, // Greater Than (GT): (N == V) & !Z
-            0x0F => z || (n != v),  // Less or Equal (LE): Z | (N != V)
+            0x00 => true,                               // True (T) / BRA
+            0x01 => false,                              // False (F)
+            0x02 => !c && !z,                           // High (HI)
+            0x03 => c || z,                             // Low or Same (LS)
+            0x04 => !c,                                 // Carry Clear (CC / HS)
+            0x05 => c,                                  // Carry Set (CS / LO)
+            0x06 => !z,                                 // Not Equal (NE)
+            0x07 => z,                                  // Equal (EQ)
+            0x08 => !v,                                 // Overflow Clear (VC)
+            0x09 => v,                                  // Overflow Set (VS)
+            0x0A => !n,                                 // Plus (PL)
+            0x0B => n,                                  // Minus (MI)
+            0x0C => (n && v) || (!n && !v),             // Greater or Equal (GE)
+            0x0D => (n && !v) || (!n && v),             // Less Than (LT)
+            0x0E => (n && v && !z) || (!n && !v && !z), // Greater Than (GT)
+            0x0F => z || (n && !v) || (!n && v),        // Less or Equal (LE)
             _ => unreachable!(),
         }
     }

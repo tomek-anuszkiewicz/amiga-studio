@@ -701,7 +701,7 @@ def scan_condition_soup(target_crate=None):
                         "line": line_idx,
                         "keyword": m.group(1),
                         "snippet": first_line[:80],
-                        "recommendation": "Decompose compound boolean condition into named explaining variables or domain predicate methods.",
+                        "recommendation": "Decompose compound boolean condition into named explaining variables or domain predicate methods, preserving short-circuit evaluation without eager speculative computation.",
                     })
 
     return issues

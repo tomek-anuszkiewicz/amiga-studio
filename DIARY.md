@@ -7787,6 +7787,25 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_code_quality.py --conditions`: Verified scanner execution across all workspace crates (identified 24 candidate locations across legacy modules).
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly.
 
+---
+
+### [2026-09-19 15:15 CEST] — Reverted Eager State Evaluation in eval_condition/is_interrupt_pending and Codified Short-Circuit Preservation Invariant
+
+- **Files Modified**:
+  - `crates/cpu/src/state.rs`: Reverted `eval_condition()` and `is_interrupt_pending()` to eliminate eager speculative calculation of variables, strictly preserving boolean short-circuiting (`&&`, `||`) and branch-specific lazy evaluation.
+  - `crates/cpu/tests/test_addressing.rs`: Added unit test `test_eval_condition_all_codes` validating all condition codes under the restored implementation.
+  - `.agents/rules/performance-and-readability.md`: Added Section 3.7 explicitly establishing the *Prohibition of Eager Speculative Variable Calculation (Preserve Short-Circuiting)* and added a verification gate to Section 4.
+  - `.agents/workflows/code-review.md`: Updated Section 2.B checklist to require verifying that explaining variables do not bypass short-circuit evaluation.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Documented the Short-Circuit Preservation Invariant in Pillar 8.
+  - `tools/harness/audit_code_quality.py`: Updated remediation advice in `scan_condition_soup()` to emphasize short-circuit preservation.
+- **Architectural Rationale & Trade-Offs**:
+  - *Short-Circuit & Lazy Evaluation Invariant:* While decomposing compound conditions into named variables improves readability, naively extracting sub-expressions upfront causes eager evaluation of operations that would otherwise be skipped via short-circuiting or branched execution. Explaining variables must strictly be limited to values already computed, unconditionally required, or extracted inside the branch where they are actually consumed.
+- **Verification & Test Results**:
+  - `cargo test -p cpu`: All 6 test suites (54 tests) passed.
+  - `python tools/harness/check_test_coupling.py`: Coupling verified cleanly for `cpu`.
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly.
+
+
 
 
 
