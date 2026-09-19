@@ -635,6 +635,112 @@ def check_frontmatter_compliance():
     }
 
 # ---------------------------------------------------------------------------
+# Pillar 8: Design Documentation Reflection & Delegation in Agent Rules
+# ---------------------------------------------------------------------------
+
+DESIGN_DOC_GOVERNANCE_MAP = {
+    # Subsystems & Bus Topology
+    "Agnus.md": ("hardware-bus-topology.md", "Agnus DMA address mastership and custom chip execution"),
+    "Denise.md": ("hardware-bus-topology.md", "Denise display pipeline, bitplanes, and passive RGA latching"),
+    "Paula.md": ("hardware-bus-topology.md", "Paula audio and interrupt handling"),
+    "CIA.md": ("hardware-bus-topology.md", "8520 CIA timers, TOD counters, and peripheral handshaking"),
+    "Floppy.md": ("hardware-bus-topology.md", "Floppy drive subsystem, MFM encoding, and DMA transfers"),
+    "MemoryBus.md": ("hardware-bus-topology.md", "Address decoding, bus arbitration, and wait states"),
+    "Main loop A500.md": ("hardware-bus-topology.md", "Color clock CCK stepping and subsystem coordination"),
+    "Custom Chip Register Ownership and Access Matrix.md": ("hardware-bus-topology.md", "Custom chip register read/write privileges and strobe routing"),
+    "Cross-Chip Signals and Action Dispatch Catalog.md": ("hardware-bus-topology.md", "Inter-chip signal dispatch and decoupled interrupt routing"),
+    "SaveState.md": ("hardware-bus-topology.md", "Hardware circuit simulation state serialization"),
+    # Peripherals
+    "Keyboard.md": ("hardware-bus-topology.md", "Keyboard matrix, handshaking, and CIA-A serial shift register"),
+    "Mouse.md": ("hardware-bus-topology.md", "Mouse quadrature counter registers and game port latching"),
+    "Joystick.md": ("hardware-bus-topology.md", "Digital joystick direction switches and fire button routing"),
+    "Game Ports.md": ("hardware-bus-topology.md", "Port 1/2 controller pinouts and POTGO resistance measuring"),
+    "RTC.md": ("unit-testing-policy.md", "Ricoh RP5C01 / Oki MSM6242 real-time clock registers"),
+    # CPU & Execution
+    "CPU Motorola M68000.md": ("opcode-naming.md", "M68000 programmer model and execution semantics"),
+    "CPU Micro-Step State Machine.md": ("opcode-naming.md", "Bus cycle phases CCK1/CCK2 and IDLE micro-steps"),
+    "CPU SingleStepTests.md": ("opcode-naming.md", "Tom Harte silicon validation test suite"),
+    "CPU Instruction Benchmarking.md": ("performance-and-readability.md", "Instruction cycle timings and empirical benchmarks"),
+    "CPU Instruction Benchmark Catalog.md": ("performance-and-readability.md", "Golden instruction cycle counts and catalog"),
+    "CPU Instruction Benchmark Strategies.md": ("performance-and-readability.md", "Contention-free benchmark harness strategies"),
+    "CPU Benchmark Analysis Guide.md": ("performance-and-readability.md", "Cycle timing discrepancy triage and analysis"),
+    "Performance Profiling and Optimization Strategy.md": ("performance-and-readability.md", "Host CPU execution efficiency and profiler metrics"),
+    # Frontend, GUI & Debugger
+    "GUI.md": ("egui-best-practices.md", "Immediate-mode egui Developer Studio"),
+    "GUI Specification.md": ("egui-best-practices.md", "View modes, panel docks, and layout stability"),
+    "egui Guidelines.md": ("egui-best-practices.md", "Zero-alloc UI rendering and synchronous state pull"),
+    "Debugger.md": ("egui-best-practices.md", "Disassembly view, memory hex editors, and breakpoints"),
+    # System & Quality Guidelines
+    "General Architecture.md": ("workspace-structure-and-reexports.md", "Workspace crate dependency topology and named roots"),
+    "Configuration.md": ("workspace-structure-and-reexports.md", "Decoupled machine configuration and video standards"),
+    "Rust Guidelines.md": ("rust-best-practices.md", "Safe borrowing, zero unwraps, and numeric wrapping"),
+    "Testing Strategy and Quality Assurance.md": ("unit-testing-policy.md", "3-tier testing taxonomy and change-coupling"),
+    "Platform Quirks and Invariants Catalog.md": ("spec-compliance.md", "Amiga 500 silicon traps and hardware quirks"),
+    "vAmigaTS Verification Scorecard.md": ("spec-compliance.md", "vAmigaTS verification scorecard and pass rates"),
+}
+
+def check_design_docs_to_rules_reflection():
+    """Audits that every Obsidian design specification is reflected and delegated in agent rules."""
+    design_dir = REPO_ROOT / "Obsidian" / "Amiga" / "Design"
+    rules_dir = REPO_ROOT / ".agents" / "rules"
+    agents_md = REPO_ROOT / "AGENTS.md"
+
+    if not design_dir.exists():
+        return {"total_docs": 0, "reflected_count": 0, "issues": []}
+
+    md_files = sorted(design_dir.glob("*.md"))
+
+    rule_texts = {}
+    if rules_dir.exists():
+        for rf in rules_dir.glob("*.md"):
+            try:
+                rule_texts[rf.name] = rf.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                pass
+    if agents_md.exists():
+        try:
+            rule_texts["AGENTS.md"] = agents_md.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            pass
+
+    combined_rule_text = "\n".join(rule_texts.values())
+
+    issues = []
+    reflected_count = 0
+
+    for doc in md_files:
+        doc_name = doc.name
+        doc_stem = doc.stem
+        encoded_stem = doc_stem.replace(" ", "%20")
+        is_referenced = (
+            doc_name in combined_rule_text
+            or f"Design/{doc_name}" in combined_rule_text
+            or f"Design/{doc_stem}" in combined_rule_text
+            or f"Design/{encoded_stem}" in combined_rule_text
+            or f"/{doc_name}" in combined_rule_text
+        )
+
+        governing_rule, domain_desc = DESIGN_DOC_GOVERNANCE_MAP.get(
+            doc_name, ("docs-maintenance.md", "General architectural design")
+        )
+
+        if is_referenced:
+            reflected_count += 1
+        else:
+            issues.append({
+                "doc": doc_name,
+                "governing_rule": governing_rule,
+                "domain": domain_desc,
+                "message": f"Design spec `{doc_name}` ({domain_desc}) is not reflected or delegated in agent rules. Delegate in `.agents/rules/{governing_rule}`.",
+            })
+
+    return {
+        "total_docs": len(md_files),
+        "reflected_count": reflected_count,
+        "issues": issues,
+    }
+
+# ---------------------------------------------------------------------------
 # CLI Runner
 # ---------------------------------------------------------------------------
 
@@ -648,8 +754,9 @@ def main():
     parser.add_argument("--size-limits", action="store_true", help="Audit AGENTS.md and rule file size ceilings")
     parser.add_argument("--skills", action="store_true", help="Audit agent skills catalog synchronization in docs/ai_agents.md")
     parser.add_argument("--scripts", action="store_true", help="Audit two-way script locality and harness placement governance")
-    parser.add_argument("--governance", action="store_true", help="Audit workflow-skill symmetry and rule coverage")
-    parser.add_argument("--frontmatter", action="store_true", help="Audit YAML frontmatter across Obsidian design specs")
+    parser.add_argument("--governance", action="store_true", help="Audit workflow-skill parity and active rule companion skills")
+    parser.add_argument("--frontmatter", action="store_true", help="Audit YAML frontmatter properties in design specs")
+    parser.add_argument("--rules-delegation", action="store_true", help="Audit that design specifications are reflected and delegated in agent rules")
 
     args = parser.parse_args()
 
@@ -803,6 +910,21 @@ def main():
                 print(f"    ... and {len(fm_issues) - 10} more frontmatter issues.")
         else:
             print("  - Status: [PASS] All design specs define valid YAML frontmatter properties.")
+
+    # 8. Design Docs Reflection in Rules
+    if run_all or args.rules_delegation:
+        print("\n[8. DESIGN DOCS TO AGENT RULES REFLECTION & DELEGATION]")
+        ref_res = check_design_docs_to_rules_reflection()
+        r_issues = ref_res["issues"]
+        print(f"  - Inspected Design Specs: {ref_res['total_docs']}")
+        print(f"  - Reflected in Agent Rules: {ref_res['reflected_count']}")
+        if r_issues:
+            total_issues += len(r_issues)
+            print(f"  - Status: [UNREFLECTED] {len(r_issues)} design spec(s) lack agent rule delegation:")
+            for item in r_issues:
+                print(f"    * {item['doc']}: {item['message']}")
+        else:
+            print("  - Status: [PASS] 100% of design specifications are reflected and delegated in agent rules.")
 
     print("\n" + "=" * 76)
     print(f"Documentation Audit Summary: {total_issues} total issue(s) detected.")

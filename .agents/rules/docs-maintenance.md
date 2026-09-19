@@ -41,17 +41,17 @@ Every code-backed architectural specification under [`Obsidian/Amiga/Design/`](.
 - `last_synced_date`: ISO date (`YYYY-MM-DD`) of the last audit.
 
 ### Audit & Checkpoint Bumping:
-1. **Automated Drift Detection:** Verified by Pillar 6 of `audit-code-quality`:
+1. **Automated Drift Detection:** Verified by Pillar 1 of `audit-docs-quality`:
    ```powershell
-   python tools/harness/audit_code_quality.py --design-sync
+   python tools/harness/audit_docs_quality.py --design-sync
    ```
 2. **Differential Review:** When drift is detected, inspect the code diff since the checkpoint:
    ```powershell
-   python tools/harness/audit_code_quality.py --design-diff <doc_name>
+   python tools/harness/audit_docs_quality.py --design-diff <doc_name>
    ```
 3. **Checkpoint Stamping:** Once the document is synchronized or confirmed accurate, stamp the new HEAD commit:
    ```powershell
-   python tools/harness/audit_code_quality.py --design-bump <doc_name>
+   python tools/harness/audit_docs_quality.py --design-bump <doc_name>
    ```
 4. **Meta Notes Exemption:** Conceptual design notes that do not map to concrete crates (e.g. `Rust Guidelines.md`, `Testing Strategy and Quality Assurance.md`) omit `tracked_paths` and are safely skipped by the drift detector.
 
@@ -70,6 +70,14 @@ All modifications to design specifications must adhere strictly to the YAML fron
 
 ---
 
-## 7. Execution Skill: `sync-design-docs`
+## 7. Design Documentation Reflection & Delegation in Agent Rules
+
+Design specifications under [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design/) serve as the authoritative architectural ground truth. To guarantee that autonomous pair-programming agents strictly follow these specifications during coding tasks, every design specification and its architectural domain must be explicitly reflected in agent rules (`.agents/rules/*.md` and `AGENTS.md`) with explicit operational delegation and links:
+- **Zero Unreflected Design Specs:** Every living design specification in `Obsidian/Amiga/Design/` must be referenced in its governing agent rule so agents are directed to the specification when implementing or refactoring code in that domain.
+- **Continuous Audit:** Automated governance audits (`python tools/harness/audit_docs_quality.py --rules-delegation`) enforce 100% reflection and alert on any unreflected design documents with actionable remediation recommendations.
+
+---
+
+## 8. Execution Skill: `sync-design-docs`
 
 - Follow the operational procedure in [`sync-design-docs`](../skills/sync-design-docs/SKILL.md) to inspect git diffs, update affected living specifications, prune speculative draft snippets, update Mermaid dependency graphs, stamp git checkpoints, and verify linking integrity.

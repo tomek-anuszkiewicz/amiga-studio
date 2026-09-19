@@ -144,3 +144,11 @@ Whenever resolving a bug, timing divergence, or instruction failure, follow the 
 ## 8. Execution Skills for Testing
 - **CPU Silicon Cycle Verification:** Follow [`m68k-singlestep-test`](../skills/m68k-singlestep-test/SKILL.md) when validating instructions against Tom Harte physical silicon vectors (`SingleStepTests-680x0`).
 
+---
+
+## 9. Authoritative Testing Specifications & Delegation
+
+When designing test harnesses, test tier taxonomies, or peripheral test coverage, agents must adhere to:
+- [`Testing Strategy and Quality Assurance.md`](../../Obsidian/Amiga/Design/Testing%20Strategy%20and%20Quality%20Assurance.md): 3-tier testing taxonomy, test runner architecture, and change coupling.
+- [`RTC.md`](../../Obsidian/Amiga/Design/RTC.md): Real-Time Clock testing strategies, leap year algorithms, and register conversions.
+

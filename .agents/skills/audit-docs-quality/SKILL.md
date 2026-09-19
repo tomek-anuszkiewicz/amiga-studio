@@ -53,6 +53,10 @@ This skill provides on-demand verification across the repository's documentation
 - **Line 1 Frontmatter:** Every specification under `Obsidian/Amiga/Design/` must define YAML frontmatter starting on Line 1 with `tags: [spec, ...]`.
 - **Inverted Pyramid:** Decisive architectural conclusions, invariants, and memory maps presented in opening 20–50 lines before implementation details.
 
+### Pillar 8: Design Docs to Agent Rules Reflection & Delegation (`--rules-delegation`)
+- **Coding Delegation Invariant:** Every design specification in `Obsidian/Amiga/Design/` must be explicitly reflected in at least one agent rule in `.agents/rules/*.md` or `AGENTS.md`.
+- **Operational Linkage:** Guarantees that AI pair-programming agents executing coding tasks in any subsystem (custom chips, CPU, memory bus, peripherals, GUI, testing) are governed by and delegated to the authoritative design documentation.
+
 ---
 
 ## 3. CLI Audit Workflow
@@ -84,4 +88,7 @@ python tools/harness/audit_docs_quality.py --scripts
 
 # Audit workflow and skill governance
 python tools/harness/audit_docs_quality.py --governance
+
+# Audit design docs reflection and delegation in agent rules
+python tools/harness/audit_docs_quality.py --rules-delegation
 ```

@@ -61,3 +61,14 @@ During `/code-review`, verify:
 - [ ] Are ALU and effective address calculations fused onto 2-clock CCK phases (`alu_fn`) rather than using zero-clock dispatch steps?
 - [ ] Is the code clear, well-structured, self-documenting, and free of cryptic tricks?
 
+---
+
+## 5. Authoritative Performance & Benchmarking Specifications & Delegation
+
+When profiling host CPU performance, auditing instruction cycle counts, or evaluating benchmarks, agents must adhere to:
+- [`CPU Instruction Benchmarking.md`](../../Obsidian/Amiga/Design/CPU%20Instruction%20Benchmarking.md): Cycle timing models, instruction throughput, and empirical benchmarks.
+- [`CPU Instruction Benchmark Catalog.md`](../../Obsidian/Amiga/Design/CPU%20Instruction%20Benchmark%20Catalog.md): Golden instruction cycle counts catalog and validation suites.
+- [`CPU Instruction Benchmark Strategies.md`](../../Obsidian/Amiga/Design/CPU%20Instruction%20Benchmark%20Strategies.md): Contention-free benchmark harness strategies and execution modes.
+- [`CPU Benchmark Analysis Guide.md`](../../Obsidian/Amiga/Design/CPU%20Benchmark%20Analysis%20Guide.md): Cycle timing discrepancy analysis and triage playbook.
+- [`Performance Profiling and Optimization Strategy.md`](../../Obsidian/Amiga/Design/Performance%20Profiling%20and%20Optimization%20Strategy.md): Host CPU execution profiling, cache locality, and zero-allocation runtime metrics.
+

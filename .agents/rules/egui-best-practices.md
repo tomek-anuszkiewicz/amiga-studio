@@ -75,3 +75,13 @@ The emulator frontend serves not only as an execution viewer, but as an **intera
 ## 7. Execution Skill: `egui-vision-debugger`
 
 For visual layout audits, responsive resizing tests (1024x600, 800x600), splitter hover verification, and offscreen screenshot diagnostics, follow the operational recipe in [`egui-vision-debugger`](../skills/egui-vision-debugger/SKILL.md).
+
+---
+
+## 8. Authoritative Frontend Design Specifications & Delegation
+
+When designing GUI layouts, panel hierarchies, or debugger widgets, agents must adhere to:
+- [`GUI.md`](../../Obsidian/Amiga/Design/GUI.md): High-level Developer Studio architecture and component model.
+- [`GUI Specification.md`](../../Obsidian/Amiga/Design/GUI%20Specification.md): Panel layout dimensions, view modes (`Developer` vs `ScreenOnly`), and docking behavior.
+- [`egui Guidelines.md`](../../Obsidian/Amiga/Design/egui%20Guidelines.md): Immediate-mode styling, zero-allocation rendering, and input event routing.
+- [`Debugger.md`](../../Obsidian/Amiga/Design/Debugger.md): Disassembly inspection, breakpoint evaluation, and register editing interfaces.

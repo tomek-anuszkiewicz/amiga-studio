@@ -74,3 +74,12 @@ When implementing, modifying, or reviewing custom chip interaction code:
 - [ ] Does Agnus exclusively own and increment all DMA pointers (`BPLxPT`, `SPRxPT`, `AUDxPT`, `DSKPT`, `COPxLC`, `BLTxPT`)?
 - [ ] Do `Denise` and `Paula` receive DMA data exclusively through register bus writes/latches, with zero direct reads from `PhysicalMemory`?
 - [ ] Are all cross-chip signals (interrupts, strobes, sync pulses) routed through the machine coordinator according to physical propagation delays?
+
+---
+
+## 6. Authoritative Hardware Specifications & Delegation
+
+When implementing or refactoring custom chips, motherboard bus routing, or peripheral interfaces, agents must strictly adhere to the authoritative architectural specifications in `Obsidian/Amiga/Design/`:
+- **Custom Chip Architecture:** [`Agnus.md`](../../Obsidian/Amiga/Design/Agnus.md), [`Denise.md`](../../Obsidian/Amiga/Design/Denise.md), [`Paula.md`](../../Obsidian/Amiga/Design/Paula.md), [`CIA.md`](../../Obsidian/Amiga/Design/CIA.md), [`Floppy.md`](../../Obsidian/Amiga/Design/Floppy.md).
+- **Motherboard & Bus Routing:** [`MemoryBus.md`](../../Obsidian/Amiga/Design/MemoryBus.md), [`Main loop A500.md`](../../Obsidian/Amiga/Design/Main%20loop%20A500.md), [`Custom Chip Register Ownership and Access Matrix.md`](../../Obsidian/Amiga/Design/Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md), [`Cross-Chip Signals and Action Dispatch Catalog.md`](../../Obsidian/Amiga/Design/Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md), [`SaveState.md`](../../Obsidian/Amiga/Design/SaveState.md).
+- **Peripherals & Controller Ports:** [`Keyboard.md`](../../Obsidian/Amiga/Design/Keyboard.md), [`Mouse.md`](../../Obsidian/Amiga/Design/Mouse.md), [`Joystick.md`](../../Obsidian/Amiga/Design/Joystick.md), [`Game Ports.md`](../../Obsidian/Amiga/Design/Game%20Ports.md).

@@ -7367,3 +7367,20 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - python tools/harness/audit_all.py passed cleanly (code: 19.46s, docs: 0.85s, hardware: 0.11s, 0 total violations)
   - python tools/harness/pre_flight.py passed with all 20 architecture tests clean and AGENTS.md <= 14,000 bytes
+---
+
+### [2026-09-19 11:29 CEST] — Audit Docs Quality: Pillar 8 Design Docs Reflection in Agent Rules
+- **Affected Subsystems**:
+  - `Quality Assurance`
+  - `Agent Governance`
+  - `Documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Implemented Pillar 8 in tools/harness/audit_docs_quality.py (--rules-delegation) auditing that all 33 Obsidian design specifications are reflected and delegated in agent rules
+  - Updated .agents/rules/*.md (hardware-bus-topology, opcode-naming, performance-and-readability, egui-best-practices, workspace-structure-and-reexports, rust-best-practices, unit-testing-policy, spec-compliance, docs-maintenance) with authoritative specification links
+  - Updated audit-docs-quality workflow and skill
+- **Architectural Rationale & Trade-Offs**:
+  - Ensures that autonomous AI pair-programming agents executing coding tasks in any subsystem are governed by and delegated to living architectural specifications under Obsidian/Amiga/Design/
+- **Verification & Test Results**:
+  - python tools/harness/audit_docs_quality.py --all passed with 33/33 (100%) design specifications reflected
+  - python tools/harness/audit_all.py passed cleanly in 20.72s with 0 violations
+  - pre_flight.py 100% compliant

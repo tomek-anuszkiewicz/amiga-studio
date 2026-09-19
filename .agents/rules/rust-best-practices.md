@@ -52,4 +52,11 @@ All Rust code across the Amiga 500 emulator workspace must strictly adhere to th
 - **Placement & Structure:** Unit tests must be placed strictly in dedicated test files under `crates/<crate>/tests/test_<name>.rs` per `unit-testing-policy.md` (zero inline tests in `src/`).
 - **Pragmatic Scope:** Pure struct declarations or thin forwarders without branching or business logic may rely on parent integration tests. However, any module implementing algorithms, parsing, state mutations, filtering, statistics, or hardware circuits must have dedicated unit tests verifying happy paths, boundary conditions, zero/empty states, and failure modes.
 
+---
+
+## 7. Authoritative Rust Design Specifications & Delegation
+
+When designing Rust data models, trait interfaces, and systems boundaries, agents must adhere to:
+- [`Rust Guidelines.md`](../../Obsidian/Amiga/Design/Rust%20Guidelines.md): Project-wide Rust systems idioms, memory layout patterns, and error handling architecture.
+
 

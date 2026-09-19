@@ -127,4 +127,12 @@ To improve searchability, eliminate ambiguous file tabs in editors, and guarante
 3. **Visibility Leak Prevention**:
    - Items must be declared with the narrowest visibility under which they function. Avoid defaulting to `pub` so the compiler and automated linters can accurately surface dead or zombie code.
 
+---
+
+## 8. Authoritative Architectural Specifications & Delegation
+
+When defining crate boundaries, top-level machine dependencies, or system configuration, agents must adhere to:
+- [`General Architecture.md`](../../Obsidian/Amiga/Design/General%20Architecture.md): Workspace crate dependency graph, ownership hierarchy, and execution flow.
+- [`Configuration.md`](../../Obsidian/Amiga/Design/Configuration.md): Decoupled machine configuration, chipset profiles (OCS/ECS), and video standards.
+
 

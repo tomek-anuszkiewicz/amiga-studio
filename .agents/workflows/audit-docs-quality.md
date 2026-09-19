@@ -63,6 +63,10 @@ When invoked without parameters:
    ```powershell
    python tools/harness/audit_docs_quality.py --frontmatter
    ```
+- **Audit Design Docs Reflection & Delegation in Agent Rules:**
+   ```powershell
+   python tools/harness/audit_docs_quality.py --rules-delegation
+   ```
 
 ---
 
@@ -74,6 +78,7 @@ Follow the detailed playbooks in [`.agents/skills/audit-docs-quality/SKILL.md`](
 4. **Skills Catalog Drift:** Add missing skills or prune deleted skills in [`docs/ai_agents.md`](../../docs/ai_agents.md).
 5. **Script Locality & Harness Governance:** Relocate single-consumer scripts to `.agents/skills/<skill>/scripts/` and promote multi-consumer scripts to `tools/harness/`.
 6. **Workflow & Rule Governance:** Provide companion slash-commands for procedural skills and ensure all active remediation rules maintain companion skills.
+7. **Design Docs Reflection in Rules:** Ensure every living design specification in `Obsidian/Amiga/Design/` is explicitly referenced in its governing agent rule so pair-programming agents are delegated to the specification during coding.
 
 ---
 
@@ -88,5 +93,6 @@ Conclude with the standardized summary report:
 - **Script Locality & Harness Governance:** [PASS | <count> anomalies]
 - **Workflow & Skill Governance:** [PASS | <count> issues (<count> candidates)]
 - **Frontmatter Compliance:** [PASS | <count> missing frontmatter]
+- **Design Docs to Rules Reflection:** [PASS | <count> unreflected] (verified <count> specs)
 - **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
 ```
