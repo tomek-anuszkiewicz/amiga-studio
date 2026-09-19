@@ -40,6 +40,10 @@ Emulation code must strictly adhere to the physical bus and signal model:
    - The memory bus outputs the 16-bit word onto the shared data bus.
    - The receiving chip (`Denise` for `BPLxDAT`/`SPRxDAT`, `Paula` for `AUDxDAT`/`DSKDAT`) passively latches the word from the data bus upon matching its `RGA` strobe.
 4. **Discrete Electronic Lines:** Cross-chip triggers (`DMAL`, `_BLITINT`, `AUDxDSR`, `_VSYNC`, `_HSYNC`, IPL) model physical copper traces routed via the top-level machine loop and memory bus.
+5. **Motherboard Simulator & Post-CCK `poll_*` Signal Dispatch:**
+   - The top-level machine loop (`MachineLoop`) acts as the physical motherboard PCB simulator.
+   - After each Color Clock, `MachineLoop` queries subsystem output pins using explicit `poll_*` methods (e.g. `agnus.poll_blitter_irq()`, `agnus.poll_copper_write()`, `agnus.poll_bpl_dma()`, `paula.poll_audio_restart()`, `floppy.poll_dskblk_irq()`, `cia_a.irq_pending()`).
+   - `MachineLoop` then routes the sampled events directly to target subsystem input handlers (e.g. `paula.set_interrupt_request()`, `denise.write_bpldat()`, `agnus.reload_audio_ptr()`). No chip ever reaches outside its struct.
 
 This catalog establishes the definitive inventory of cross-chip boundary signals, their calibrated propagation latencies, conflict resolution behavior during in-flight writes, and their target action methods.
 

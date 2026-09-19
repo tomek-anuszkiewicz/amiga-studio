@@ -7299,4 +7299,24 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: 100% compliant (`AGENTS.md` at 13,525 bytes, strictly $\le 14,000$ B).
   - `cargo fmt --all -- --check`: 100% compliant.
 
+---
+
+### [2026-09-19 11:06 CEST] — MachineLoop Motherboard PCB Simulator & Post-CCK `poll_*` Signal Dispatch Architecture
+- **Affected Subsystems**:
+  - `.agents/rules/hardware-bus-topology.md`: Added Section 1.1 defining `MachineLoop` as the physical motherboard PCB simulator with post-cycle `poll_*` signal interrogation and routing.
+  - `Obsidian/Amiga/Design/General Architecture.md`: Added Section 1.1 Item 4 establishing the motherboard `poll_*` coordination architecture.
+  - `Obsidian/Amiga/Design/Main loop A500.md`: Added Section 3.1 defining the concrete 4-step motherboard execution cycle: Execute Subsystem $\to$ Poll Output Pins $\to$ Route to Target Inputs $\to$ Central Interrupt & CPU Delivery.
+  - `Obsidian/Amiga/Design/Cross-Chip Signals and Action Dispatch Catalog.md`: Codified Item 5 in Section 1.1 establishing that all cross-chip action dispatches are coordinated via `MachineLoop` post-CCK polling methods.
+- **What Was Changed (The Concrete Reality)**:
+  - Formulated the exact motherboard coordinator model:
+    1. *MachineLoop as Motherboard:* `MachineLoop` (`A500Machine`) represents the physical motherboard PCB simulator. All copper traces, interrupt lines, DMA strobes, and bus events route through it.
+    2. *Post-Cycle Output Polling (`poll_*`):* After a chip completes its CCK step, it does not push notifications or call peer methods. Instead, `MachineLoop` interrogates its updated output pins via dedicated polling methods (`poll_blitter_irq()`, `poll_vblank_irq()`, `poll_copper_write()`, `poll_bpl_dma()`, `poll_audio_restart()`, `poll_dskblk_irq()`, `irq_pending()`).
+    3. *Motherboard Action Routing:* `MachineLoop` passes the sampled electrical states directly to target subsystem inputs (`set_interrupt_request()`, `write_bpldat()`, `reload_audio_ptr()`, `map_chip_ram_to_low_memory()`).
+- **Architectural Rationale & Trade-Offs**:
+  - Replaces implicit or ad-hoc backchannels with explicit, deterministic, and testable motherboard polling. Eliminates circular dependencies and reflects physical electronic PCB trace routing.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: 20/20 passed.
+  - `python tools/harness/pre_flight.py`: 100% compliant.
+
+
 

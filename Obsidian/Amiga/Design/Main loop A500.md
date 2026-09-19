@@ -84,6 +84,26 @@ The main loop provides three levels of stepping granularity:
    - Executes a designated number of Color Clocks in a loop.
 3. **Full Video Frame Step (`step_frame`)**:
    - Executes until Denise / Agnus completes a full vertical frame (VBlank transition).
+
+---
+
+### 3.1 Motherboard PCB Simulation & Post-CCK `poll_*` Signal Dispatch
+
+The `MachineLoop` (`A500Machine`) acts as the physical motherboard PCB simulator, coordinating all electronic traces between chips without allowing direct inter-chip calls:
+1. **Isolated Subsystem Execution:** In `step_subsystems_cck()`, each subsystem executes its internal logic for the current CCK phase (`agnus.step_cck_ram()`, `denise.step_cck()`, `paula.step_cck()`, `cia_a.step_cck()`, `cia_b.step_cck()`).
+2. **Motherboard Output Polling (`poll_*`):** Subsystems never push events or invoke methods on peers. Instead, `MachineLoop` queries the updated state of output pins using explicit `poll_*` methods:
+   - `agnus.poll_blitter_irq()`: Samples physical `_BLITINT` line.
+   - `agnus.poll_vblank_irq()`: Samples physical `_VSYNC` line.
+   - `agnus.poll_copper_write()`: Samples active Copper bus register writes.
+   - `agnus.poll_bpl_dma()`: Samples bitplane data words fetched for Denise.
+   - `paula.poll_audio_restart(ch)`: Samples audio channel DMA restart request (`AUDxDSR`).
+   - `floppy.poll_dskblk_irq()`: Samples disk block DMA completion line.
+   - `cia_a.irq_pending()` / `cia_b.irq_pending()`: Samples CIA active `/IRQ` lines.
+3. **Motherboard Action Routing:** `MachineLoop` routes the sampled electrical transitions to the target chip's input latches (e.g. `paula.set_interrupt_request()`, `denise.write_bpldat()`, `agnus.reload_audio_ptr()`).
+4. **Central Arbitration & CPU Delivery:** `MachineLoop` calculates `resolve_ipl()` and sets `cpu.state.ipl` before stepping the 68000 CPU bus cycle.
+
+---
+
 ## 4. Interrupt Arbitration Pipeline
 
 On each CCK step (`step_subsystems_cck`), the main loop coordinates interrupt requests across chips, multiplexing physical IRQ lines through Paula, validating `INTENA`, and presenting the highest unmasked priority level to the M68000:

@@ -11,6 +11,17 @@ In the physical Amiga 500 motherboard architecture, custom chips do not share me
 - **Strict Prohibition of Ad-Hoc Inter-Chip Backchannels:** Passing state, event notifications, or triggers between chips via private struct fields or synthetic backchannels is forbidden.
 - **Physical Wire & Bus Routing:** All inter-chip interactions—including DMA channel triggers, interrupt lines (`_INTREQ`, IPL 1..6), reset strobes, raster beam synchronization, and clock ticks—must be routed exclusively through the top-level machine loop and `MemoryBus` modeling physical PCB copper traces.
 
+### 1.1 The `MachineLoop` Motherboard Coordinator & Poll-Based Signal Routing
+- **Motherboard PCB Simulation:** The top-level machine struct (`MachineLoop` / `A500Machine`) acts as the physical motherboard PCB simulator. All electronic copper traces, pin connections, and cross-chip signal paths run through it.
+- **Post-Cycle State Querying via `poll_*` Methods:**
+  - Individual custom chips and coprocessors execute their internal logic for the current Color Clock (`step_cck()` or `step_cck_ram()`).
+  - Upon cycle completion, chips do not push events or mutate peer chips. Instead, `MachineLoop` queries the chip's updated output pins using explicit polling methods:
+    - **Agnus:** `poll_blitter_irq()`, `poll_vblank_irq()`, `poll_copper_write()`, `poll_bpl_dma()`
+    - **Paula / Floppy:** `poll_audio_restart()`, `poll_dskblk_irq()`
+    - **CIAs:** `irq_pending()`, `ovl_transition()`
+  - Based on the polled pin states, `MachineLoop` routes the signals to the appropriate target subsystem's input methods (e.g. `paula.set_interrupt_request()`, `denise.write_bpldat()`, `agnus.reload_audio_ptr()`, `physical_memory.map_chip_ram_to_low_memory()`).
+- **Strict Information Flow Invariant:** Information flow between chips is strictly **Execute Cycle $\to$ Motherboard Polls Outputs $\to$ Motherboard Drives Target Inputs**. No chip ever reaches outside its own boundaries.
+
 ---
 
 ## 2. Agnus Bus Mastership & Exclusive DMA Address Generation
