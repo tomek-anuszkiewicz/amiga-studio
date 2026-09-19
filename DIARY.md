@@ -7611,7 +7611,29 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p paula`: 14/14 unit tests passed.
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
   - `python tools/harness/pre_flight.py`: 5/5 quality gates passed cleanly.
-  - `python tools/harness/audit_docs_quality.py --all`: 10/10 pillars passed cleanly with 0 issues (1015 links verified).
+---
+
+### [2026-09-19 13:40 CEST] — Agnus.md Semantic Parity Enrichment & Beam Register Inversion Resolution
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/Agnus.md`: Completed full bidirectional semantic parity remediation following `/audit-semantic-parity agnus`:
+    1. Resolved critical hardware address inversion: Corrected `$DFF004` to `VPOSR` and `$DFF006` to `VHPOSR` across all tables, diagrams, and section headings (previously inverted).
+    2. Fixed PAL vs NTSC scanline timing claims: Clarified that PAL scanlines are uniformly fixed at 227 CCKs ($312 \times 227 = 70,824$ CCKs/frame), whereas NTSC alternates between 227 and 228 CCKs via the `LOL` long line toggle bit ($262 \times 227.5 = 59,605$ CCKs/frame).
+    3. Pruned ghost code snippet: Replaced obsolete `chips/agnus/beam.rs` and phantom `BeamCounter` struct with active `crates/agnus/src/agnus.rs` pipeline logic.
+    4. Documented silicon beam readout pipeline: Added exact specifications for `VHPOSR_PIPELINE_LEAD_CCKS = 5` (Agnus internal beam counter leading display beam by 5 CCKs) and `VHPOSR_VERTICAL_SETTLE_CCKS = 1` (vertical ripple counter settling during line wrap).
+    5. Completed exhaustive register memory map: Added all missing Agnus-decoded registers to Table 3 (`DSKPTH`/`DSKPTL` $020/$022, `AUD0LCH`..`AUD3LCL` $0A0–$0D2, `DDFSTRT`/`DDFSTOP` $092/$094, `BPL1MOD`/`BPL2MOD` $108/$10A, `BPL1PTH`..`BPL6PTL` $0E0–$0F6, `SPRxPTH`..`SPRxPTL` $120–$13E, `BPLCON0` $100).
+    6. Added complete bitfield layout and master gate logic for `DMACON` ($096) and `DMACONR` ($002) including `BBUSY` (bit 14) and `BZERO` (bit 13).
+    7. Specified autonomous DMA address mastership: Documented pointer progression and modulo arithmetic for `bplpt`, `sprpt`, `audpt`, and `dskpt`, along with `pending_bpl_dma` polling protocol.
+    8. Added physical cross-chip signal interconnect table and Mermaid flow: Documented `_BLITINT` (bit 6), `_VSYNC` (bit 5 + CIA-A TOD), `_HSYNC` (CIA-B TOD), and audio pointer reload handshakes.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated high-risk documentation bugs where `VPOSR` and `VHPOSR` addresses were swapped, preventing developer and LLM reasoning confusion.
+  - Achieved 100% bidirectional parity between `crates/agnus` and `Obsidian/Amiga/Design/Agnus.md`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Silicon Accuracy:* Inverting the primary beam registers in design specifications directly conflicts with the Amiga Hardware Reference Manual and M68000 bus reads. Aligning the spec with `crates/config/src/registers.rs` and `crates/agnus/src/agnus.rs` enforces zero-hallucination standards.
+  - *Exhaustive Ownership:* Agnus is the exclusive DMA address master. Documenting the complete suite of DMA pointer registers (`bplpt`, `sprpt`, `audpt`, `dskpt`) in `Agnus.md` reinforces the decoupled bus topology where Denise and Paula are passive data latchers.
+- **Verification & Test Results**:
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed cleanly in 2.67s.
+  - `python tools/harness/audit_docs_quality.py --all`: 10/10 pillars passed cleanly with 0 issues (1028 links verified).
+
 
 
 
