@@ -40,7 +40,7 @@ The M68000 core models execution via the **Cycle-Exact Micro-Step State Machine*
 5. **Strict Prohibitions**:
    - Zero custom macros (`macro_rules!` is strictly forbidden).
    - Zero const-generic matrices (`fn op<const S: usize>` is strictly forbidden).
-   - **Strict Flat Instruction Hierarchy**: Every instruction must reside in a single flat file `crates/m68000/src/instructions/<mnemonic>.rs`. Subdirectories under `instructions/` are strictly forbidden. If an instruction exceeds 800 lines due to exhaustive addressing modes (e.g. `add.rs`, `sub.rs`, `and.rs`), it must remain a single flat file and be registered under `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`. Other non-instruction source files $\le 800$ lines.
+   - **Strict Flat Instruction Hierarchy**: Every instruction must reside in a single flat file `crates/cpu/src/instructions/<mnemonic>.rs`. Subdirectories under `instructions/` are strictly forbidden. If an instruction exceeds 800 lines due to exhaustive addressing modes (e.g. `add.rs`, `sub.rs`, `and.rs`), it must remain a single flat file and be registered under `LINE_COUNT_EXCEPTIONS` in `test_architecture_rules.rs`. Other non-instruction source files $\le 800$ lines.
 
 ---
 

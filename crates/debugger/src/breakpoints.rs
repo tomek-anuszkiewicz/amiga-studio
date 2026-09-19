@@ -3,7 +3,7 @@
 //! Supports PC execution breakpoints, memory range watchpoints (Read/Write/Any),
 //! and register-based conditional expressions for targeted hardware debugging.
 
-use m68000::CpuState;
+use cpu::CpuState;
 
 /// Watchpoint memory access type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

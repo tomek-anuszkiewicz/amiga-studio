@@ -824,6 +824,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpu"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.13.1",
+ "physical_memory",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -893,8 +903,8 @@ name = "debugger"
 version = "0.1.0"
 dependencies = [
  "config",
+ "cpu",
  "disassembler",
- "m68000",
  "machine_loop",
  "physical_memory",
  "serde",
@@ -1659,12 +1669,12 @@ version = "0.1.0"
 dependencies = [
  "config",
  "console_error_panic_hook",
+ "cpu",
  "debugger",
  "eframe",
  "egui",
  "egui_kittest",
  "image",
- "m68000",
  "physical_memory",
  "rfd",
  "rtc",
@@ -2078,29 +2088,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
-name = "m68000"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.13.1",
- "physical_memory",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "machine_loop"
 version = "0.1.0"
 dependencies = [
  "agnus",
  "cia",
  "config",
+ "cpu",
  "denise",
  "flate2",
  "floppy",
  "game_ports",
  "joystick",
  "keyboard",
- "m68000",
  "memory_bus",
  "mouse",
  "paula",
@@ -3461,10 +3461,10 @@ name = "test_runner"
 version = "0.1.0"
 dependencies = [
  "config",
+ "cpu",
  "debugger",
  "disassembler",
  "flate2",
- "m68000",
  "machine_loop",
  "physical_memory",
  "serde",

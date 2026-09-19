@@ -1,5 +1,5 @@
+use cpu::Cpu;
 use debugger::{Debugger, DebuggerSession};
-use m68000::Cpu;
 use physical_memory::{BusResult, PhysicalMemory};
 
 #[test]

@@ -1,5 +1,5 @@
+use cpu::Cpu;
 use debugger::{assemble_instruction, disassemble, Debugger};
-use m68000::Cpu;
 use physical_memory::PhysicalMemory;
 
 #[test]
@@ -103,8 +103,8 @@ fn test_assembler_primitives() {
 
 #[test]
 fn test_temporal_history_capacity_and_navigation() {
+    use cpu::CpuState;
     use debugger::temporal::{TemporalHistory, PAL_FRAME_CCK};
-    use m68000::CpuState;
 
     let mut history = TemporalHistory::new(250_000);
     assert_eq!(history.capacity(), 250_000);
@@ -162,10 +162,10 @@ fn test_temporal_history_capacity_and_navigation() {
 
 #[test]
 fn test_conditional_breakpoints_and_watchpoints() {
+    use cpu::CpuState;
     use debugger::{
         BreakpointCondition, BreakpointManager, ConditionOp, ConditionRegister, WatchAccess,
     };
-    use m68000::CpuState;
 
     let mut bpm = BreakpointManager::new();
     let mut state = CpuState::default();

@@ -1,11 +1,11 @@
 //! Headless Integration & Unit Tests for Amiga 500 Developer Studio (gui)
 
+use cpu::Cpu;
 use debugger::inject_binary;
 use debugger::temporal::TemporalHistory;
 use debugger::Debugger;
 use gui::theme::AppTheme;
 use gui::ViewMode;
-use m68000::Cpu;
 use physical_memory::PhysicalMemory;
 
 #[test]
@@ -14,7 +14,7 @@ fn test_temporal_history_ring_buffer() {
     assert_eq!(history.len(), 0);
     assert!(history.is_empty());
 
-    let state = m68000::CpuState::default();
+    let state = cpu::CpuState::default();
 
     // Push 3 entries
     history.record(10, 0x1000, 0x4E71, state.clone());

@@ -4,7 +4,7 @@
 //! statistical loop with compiler optimization defenses and NOP baseline subtraction
 //! per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
 
-use m68000::Cpu;
+use cpu::Cpu;
 use physical_memory::PhysicalMemory;
 use std::path::{Path, PathBuf};
 use std::time::Instant;

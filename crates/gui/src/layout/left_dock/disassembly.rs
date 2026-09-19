@@ -4,9 +4,9 @@
 //! and in-place instruction editing with byte size invariance enforcement.
 
 use crate::theme::ColorTokens;
+use cpu::Cpu;
 use debugger::{assemble_instruction, disassemble, find_aligned_disassembly_start, Debugger};
 use egui::{RichText, Ui};
-use m68000::Cpu;
 use physical_memory::PhysicalMemory;
 
 /// State for inline instruction editing in disassembly table

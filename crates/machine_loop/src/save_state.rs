@@ -9,10 +9,10 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use config::{A500Config, VideoStandard};
+use cpu::CpuState;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use m68000::CpuState;
 use physical_memory::PhysicalMemory;
 use serde::{Deserialize, Serialize};
 

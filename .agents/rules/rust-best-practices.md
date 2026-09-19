@@ -32,7 +32,7 @@ All Rust code across the Amiga 500 emulator workspace must strictly adhere to th
 
 ## 4. Module Cohesion & File Sizing
 - Keep Rust source files under **800 lines** in `crates/*/src/` (unless covered by registered exceptions in `LINE_COUNT_EXCEPTIONS`).
-- Maintain a flat instruction hierarchy directly under `crates/m68000/src/instructions/<mnemonic>.rs` with zero subdirectories.
+- Maintain a flat instruction hierarchy directly under `crates/cpu/src/instructions/<mnemonic>.rs` with zero subdirectories.
 - Workspace layout under `crates/*` must remain strictly flat (3-tier re-export strategy).
 
 ---

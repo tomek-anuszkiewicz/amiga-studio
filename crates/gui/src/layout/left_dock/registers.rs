@@ -3,8 +3,8 @@
 //! Live D0-D7, A0-A7, PC, SR, CCR condition code LED toggles, interactive editing, and diff highlighting.
 
 use crate::theme::ColorTokens;
+use cpu::{Cpu, CpuState};
 use egui::{Color32, RichText, Ui};
-use m68000::{Cpu, CpuState};
 use physical_memory::PhysicalMemory;
 
 /// Register identifier for interactive inline editing

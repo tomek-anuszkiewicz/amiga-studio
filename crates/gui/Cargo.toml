@@ -24,7 +24,7 @@ egui = { version = "0.31", default-features = true }
 config = { path = "../config" }
 rtc = { path = "../rtc" }
 physical_memory = { path = "../physical_memory" }
-m68000 = { path = "../m68000" }
+cpu = { path = "../cpu" }
 debugger = { path = "../debugger" }
 serde = { workspace = true }
 

@@ -9,7 +9,7 @@ created: 2026-08-31
 updated: 2026-09-14
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 tracked_paths:
-  - "crates/m68000"
+  - "crates/cpu"
 last_synced_commit: "03da398"
 last_synced_date: "2026-09-19"
 ---
@@ -25,7 +25,7 @@ last_synced_date: "2026-09-19"
 
 ## 1. CPU State & Register Architecture
 
-The CPU exposes a fully queryable, read-only state snapshot (`CpuState`) for inspection, debugging, and save states. The complete implementation resides in [`crates/m68000/src/state.rs`](../../../crates/m68000/src/state.rs).
+The CPU exposes a fully queryable, read-only state snapshot (`CpuState`) for inspection, debugging, and save states. The complete implementation resides in [`crates/cpu/src/state.rs`](../../../crates/cpu/src/state.rs).
 
 ### 1.1 Complete M68000 Programmer's Model & State Fields
 
@@ -66,7 +66,7 @@ Field:  T    0    S    0    0   I2   I1   I0    0    0    0    X    N    Z    V 
   - **Bit 0 (`C`)**: Carry flag (set on borrow or carry out).
 
 #### Host Hardware Efficiency: Branchless Condition Code Setters
-To avoid host branch mispredictions in hot execution paths, the core employs direct branchless bitwise CCR updates (`set_ccr_xnzvc`, `set_ccr_nzvc`, `set_ccr_nz_clear_vc`, `set_ccr_nzc_clear_v`, `set_ccr_z_only`, `set_ccr_raw`). All CCR setter methods are marked `#[inline(always)]` in [`crates/m68000/src/state.rs`](../../../crates/m68000/src/state.rs).
+To avoid host branch mispredictions in hot execution paths, the core employs direct branchless bitwise CCR updates (`set_ccr_xnzvc`, `set_ccr_nzvc`, `set_ccr_nz_clear_vc`, `set_ccr_nzc_clear_v`, `set_ccr_z_only`, `set_ccr_raw`). All CCR setter methods are marked `#[inline(always)]` in [`crates/cpu/src/state.rs`](../../../crates/cpu/src/state.rs).
 
 ### 1.2 Complete M68000 Addressing Modes Specification
 
@@ -150,7 +150,7 @@ force the host CPU through 8–15 conditional branches per emulated instruction.
 
 #### Direct-Threaded / Table-Driven Opcode Dispatch
 To maximize host throughput, verified reference emulators (Musashi via `m68kmake`, WinUAE via `gencpu`, and Moira via C++ template specialization) structure the CPU core as **direct, flattened code flows**:
-- **65,536-Entry Direct Descriptor Table (`OPCODE_DESCRIPTOR_TABLE: [OpcodeDescriptor; 65536]`):** Every 16-bit opcode indexes directly into a precalculated array of static opcode descriptors (`crates/m68000/src/micro/dispatch_table.rs`). Each entry contains a reference to an immutable slice of specialized atomic `MicroStep`s, along with pre-decoded register indices (`reg_src`, `reg_dst`).
+- **65,536-Entry Direct Descriptor Table (`OPCODE_DESCRIPTOR_TABLE: [OpcodeDescriptor; 65536]`):** Every 16-bit opcode indexes directly into a precalculated array of static opcode descriptors (`crates/cpu/src/micro/dispatch_table.rs`). Each entry contains a reference to an immutable slice of specialized atomic `MicroStep`s, along with pre-decoded register indices (`reg_src`, `reg_dst`).
 - **Cached Slice Pointer Dispatch (`current_steps`):**
   - Upon opcode prefetch and retirement, `state.micro.current_steps` caches the slice pointer directly from `OPCODE_DESCRIPTOR_TABLE[ir]`. All subsequent CCK ticks during the instruction index `current_steps[micro_step]` directly, completely eliminating 65,536-entry table lookups in the hot execution loop.
   - Micro-steps cleanly decouple atomic bus cycles (`BusReadWord`, `BusWriteByte`, `BusWriteWord`, `BusWriteLongHigh`, etc.) from parametric, bus-free ALU operations (`AluFn`).
@@ -302,7 +302,7 @@ Memory access is mapped to Color Clock phases (**CCK1** and **CCK2**):
 > [!NOTE]
 > For the complete, dedicated microcode architectural blueprint, specialized atomic bus primitives, strobe semantics, and cycle traces across all 10 instruction classes, see [[CPU Micro-Step State Machine.md]].
 
-Instruction execution is driven via a cycle-exact micro-step state machine clocked at Color Clock (CCK) granularity (2 CPU clocks per CCK, 4 clocks per bus cycle). The execution engine and micro-state tracking are implemented in [`crates/m68000/src/micro/engine.rs`](../../../crates/m68000/src/micro/engine.rs) and [`crates/m68000/src/core.rs`](../../../crates/m68000/src/core.rs).
+Instruction execution is driven via a cycle-exact micro-step state machine clocked at Color Clock (CCK) granularity (2 CPU clocks per CCK, 4 clocks per bus cycle). The execution engine and micro-state tracking are implemented in [`crates/cpu/src/micro/engine.rs`](../../../crates/cpu/src/micro/engine.rs) and [`crates/cpu/src/cpu.rs`](../../../crates/cpu/src/cpu.rs).
 
 - **Execution Micro-State (`CpuMicroState`):**
   - `source`: Explicit 32-bit storage for ALU source operand (incoming bus data is stored directly here on CCK1).
@@ -577,17 +577,17 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
 
 ### 7.13 Modular Per-Mnemonic Instruction Architecture & Single-Mnemonic Dispatch
 
-The entire M68000 instruction set is organized into dedicated, single-responsibility files directly under [`crates/m68000/src/instructions/`](../../../crates/m68000/src/instructions/) following strict architectural rules:
+The entire M68000 instruction set is organized into dedicated, single-responsibility files directly under [`crates/cpu/src/instructions/`](../../../crates/cpu/src/instructions/) following strict architectural rules:
 
 - **1:1 Mnemonic-to-File Hierarchy & Zero Subdirectories Mandate:**
   - Every distinct M68000 instruction mnemonic has its own dedicated flat `.rs` file (e.g. `add.rs`, `sub.rs`, `mulu.rs`, `muls.rs`, `divu.rs`, `divs.rs`, `link.rs`, `unlk.rs`, `abcd.rs`, `sbcd.rs`, `nbcd.rs`, `trapv.rs`, `rtr.rs`, `rte.rs`, `stop.rs`, `reset.rs`, `move_usp.rs`, `bra.rs`, `bsr.rs`, `bcc.rs`, `asl.rs`, `asr.rs`, etc.).
-  - **Zero Subdirectories:** Creating subdirectories or multi-file submodules under `crates/m68000/src/instructions/` is strictly forbidden. The hierarchy must remain 100% flat; any nested subdirectory at any depth causes `cargo test -p test_runner --test test_architecture_rules` to fail immediately.
+  - **Zero Subdirectories:** Creating subdirectories or multi-file submodules under `crates/cpu/src/instructions/` is strictly forbidden. The hierarchy must remain 100% flat; any nested subdirectory at any depth causes `cargo test -p test_runner --test test_architecture_rules` to fail immediately.
   - **Elimination of Legacy Umbrella Files:** Disparate instructions are never grouped into composite umbrella modules. All legacy multi-instruction files have been decomposed:
-    - `mul.rs` $\rightarrow$ [`mulu.rs`](../../../crates/m68000/src/instructions/mulu.rs), [`muls.rs`](../../../crates/m68000/src/instructions/muls.rs)
-    - `div.rs` $\rightarrow$ [`divu.rs`](../../../crates/m68000/src/instructions/divu.rs), [`divs.rs`](../../../crates/m68000/src/instructions/divs.rs) (shared zero-divide exception micro-step sequences centralized in [`micro/common.rs`](../../../crates/m68000/src/micro/common.rs))
-    - `link_unlk.rs` $\rightarrow$ [`link.rs`](../../../crates/m68000/src/instructions/link.rs), [`unlk.rs`](../../../crates/m68000/src/instructions/unlk.rs)
-    - `bcd.rs` $\rightarrow$ [`abcd.rs`](../../../crates/m68000/src/instructions/abcd.rs), [`sbcd.rs`](../../../crates/m68000/src/instructions/sbcd.rs), [`nbcd.rs`](../../../crates/m68000/src/instructions/nbcd.rs)
-    - `privileged.rs` $\rightarrow$ [`trapv.rs`](../../../crates/m68000/src/instructions/trapv.rs), [`rtr.rs`](../../../crates/m68000/src/instructions/rtr.rs), [`rte.rs`](../../../crates/m68000/src/instructions/rte.rs), [`stop.rs`](../../../crates/m68000/src/instructions/stop.rs), [`reset.rs`](../../../crates/m68000/src/instructions/reset.rs), [`move_usp.rs`](../../../crates/m68000/src/instructions/move_usp.rs)
+    - `mul.rs` $\rightarrow$ [`mulu.rs`](../../../crates/cpu/src/instructions/mulu.rs), [`muls.rs`](../../../crates/cpu/src/instructions/muls.rs)
+    - `div.rs` $\rightarrow$ [`divu.rs`](../../../crates/cpu/src/instructions/divu.rs), [`divs.rs`](../../../crates/cpu/src/instructions/divs.rs) (shared zero-divide exception micro-step sequences centralized in [`micro/common.rs`](../../../crates/cpu/src/micro/common.rs))
+    - `link_unlk.rs` $\rightarrow$ [`link.rs`](../../../crates/cpu/src/instructions/link.rs), [`unlk.rs`](../../../crates/cpu/src/instructions/unlk.rs)
+    - `bcd.rs` $\rightarrow$ [`abcd.rs`](../../../crates/cpu/src/instructions/abcd.rs), [`sbcd.rs`](../../../crates/cpu/src/instructions/sbcd.rs), [`nbcd.rs`](../../../crates/cpu/src/instructions/nbcd.rs)
+    - `privileged.rs` $\rightarrow$ [`trapv.rs`](../../../crates/cpu/src/instructions/trapv.rs), [`rtr.rs`](../../../crates/cpu/src/instructions/rtr.rs), [`rte.rs`](../../../crates/cpu/src/instructions/rte.rs), [`stop.rs`](../../../crates/cpu/src/instructions/stop.rs), [`reset.rs`](../../../crates/cpu/src/instructions/reset.rs), [`move_usp.rs`](../../../crates/cpu/src/instructions/move_usp.rs)
   - **Justified Exceptions:**
     - `move_sr_ccr.rs`: Tightly coupled status register transfers sharing underlying privilege check and CCR/SR state latching (`MOVE to CCR`, `MOVE from SR`, `MOVE to SR`).
     - `logic_sr_ccr.rs`: Immediate status operations with identical privilege validation (`ANDI/EORI/ORI to CCR/SR`).
@@ -642,7 +642,7 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
   - Interrupts are sampled at instruction boundaries (during `retire_current_instruction()`) and while the CPU is suspended by the `STOP` instruction (`state.stopped = true`).
 - **Autovector Exception Micro-Step Pipeline (44 CPU Clocks / 22 CCKs):**
   - The Amiga 500 hardware asserts the $\overline{\text{VPA}}$ (Valid Peripheral Address) pin during interrupt acknowledge cycles ($A_{19}-A_{16} = 1111_2$), forcing the 68000 to generate an autovector exception according to the interrupt level ($24 + \text{level}$, Vectors 25 through 31 at physical addresses $\$000064$ through $\$00007C$).
-  - Modeled by the cycle-exact sequence `STEPS_INTERRUPT` in [`crates/m68000/src/micro/common.rs`](../../../crates/m68000/src/micro/common.rs):
+  - Modeled by the cycle-exact sequence `STEPS_INTERRUPT` in [`crates/cpu/src/micro/common.rs`](../../../crates/cpu/src/micro/common.rs):
     1. **`ALU_INTERRUPT_INIT` (2 clocks):** Samples `ipl`, determines return PC (`state.pc` if waking from STOP, otherwise `state.instruction_pc`), saves old $SR$, switches to Supervisor mode ($S=1, T=0$), raises interrupt mask to `level`, calculates vector address, and clears `state.stopped`.
     2. **`ALU_IDLE_8CLK` (8 clocks):** Internal priority arbitration and exception setup latency.
     3. **`BUS_WRITE_IDLE` + `BUS_READ_IDLE` (4 clocks):** IACK CPU space cycle simulation (Address $A_1-A_3 = \text{level}, \overline{\text{VPA}}$ asserted).
@@ -662,5 +662,5 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
 - [68000 User's Manual: Section 8 (16-Bit Instruction Timing Tables)](../Reference/68000%20User's%20Manual/08%20-%20Section%208%20-%2016-Bit%20Instruction%20Execution%20Timing%20%26%20Bus%20Tables.md): Standard clock cycle tables, effective address calculation times, and bus read/write operation counts.
 - [Instruction Prefetch on the Motorola 68000 Processor](../Reference/Instruction%20Prefetch%20on%20the%20Motorola%2068000%20Processor.md): Hardware prefetch queue behavior (`IRC`/`IRD`), extension word capture timing, and branch target refills.
 - [Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis](../Reference/Motorola%2068000%20DIVU%20%26%20DIVS%20Cycle-Accurate%20Timing%20Analysis.md): Microcode division loop mechanics, quotient bit evaluations, and hardware execution cycle formulas.
-- [M68000 Crate Source Implementation](../../../crates/m68000/src/m68000.rs): Living Rust implementation of the cycle-exact CPU core, micro-step dispatch, and instruction handlers.
+- [M68000 Crate Source Implementation](../../../crates/cpu/src/cpu.rs): Living Rust implementation of the cycle-exact CPU core, micro-step dispatch, and instruction handlers.
 

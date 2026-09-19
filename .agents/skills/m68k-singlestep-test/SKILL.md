@@ -172,6 +172,6 @@ When reporting single-step test results or analyzing failing vectors, format fin
 - **State Discrepancy:**
   - **CCR Diff:** `<flag>`: expected `<val>`, got `<val>`
   - **Register Diff:** `<reg>`: expected `$HEX`, got `$HEX`
-- **Root Cause & Code Location:** [`<file>.rs:L<line>`](file:///crates/m68000/src/instructions/<file>.rs#L<line>) — `<concise_explanation>`
+- **Root Cause & Code Location:** [`<file>.rs:L<line>`](file:///crates/cpu/src/instructions/<file>.rs#L<line>) — `<concise_explanation>`
 ```
 

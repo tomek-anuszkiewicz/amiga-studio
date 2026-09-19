@@ -3,7 +3,7 @@
 use crate::breakpoints::BreakpointManager;
 use crate::trace::TraceRingBuffer;
 use crate::{disassemble, Disassembly};
-use m68000::Cpu;
+use cpu::Cpu;
 use physical_memory::PhysicalMemory;
 
 /// Fine-grained execution stepping modes

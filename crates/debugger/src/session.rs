@@ -10,7 +10,7 @@ use physical_memory::PhysicalMemory;
 use crate::loader::inject_binary;
 use crate::stepping::Debugger;
 use crate::temporal::{TemporalHistory, DEFAULT_TEMPORAL_CAPACITY, PAL_FRAME_CCK};
-use m68000::CpuState;
+use cpu::CpuState;
 
 /// Complete headless execution session and machine controller
 #[derive(Debug, Clone)]

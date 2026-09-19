@@ -43,7 +43,7 @@ Every design document in `Obsidian/Amiga/Design/` must maintain two distinct, co
 
 1. **Layer 1: Contextual Inline Navigational Links:**
    - Embedded directly into body paragraphs, data flow explanations, and register breakdowns at the precise moments concepts, components, or micro-steps are introduced or referenced.
-   - Cross-link to related subsystem design docs (`[Agnus.md](Agnus.md)`, `[MemoryBus.md](MemoryBus.md)`), system rules (`[`performance-and-readability.md`](../../../.agents/rules/performance-and-readability.md)`), and concrete Rust implementation source files (`[`crates/m68000/src/state.rs`](../../../crates/m68000/src/state.rs)`).
+   - Cross-link to related subsystem design docs (`[Agnus.md](Agnus.md)`, `[MemoryBus.md](MemoryBus.md)`), system rules (`[`performance-and-readability.md`](../../../.agents/rules/performance-and-readability.md)`), and concrete Rust implementation source files (`[`crates/cpu/src/state.rs`](../../../crates/cpu/src/state.rs)`).
    - Links should be natural, high-signal, and informative.
 
 2. **Layer 2: Structural Referential Section at Bottom (`## Reference Documentation & Upstream Ground Truth`):**
@@ -84,7 +84,7 @@ All links in `Obsidian/Amiga/Design/` must adhere to mathematically verified rel
 | :--- | :--- | :--- |
 | **Sibling Design Doc** | `[File.md](File.md)` or `[Title](File.md)` | `[Agnus.md](Agnus.md)` |
 | **Hardware Reference Manual** | `[Title](../Reference/<Folder>/<File>.md)` | `[HRM Ch 2](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md)` |
-| **Workspace Crates** | `[`crates/<crate>/...`](../../../crates/<crate>/...)` | `[`crates/m68000/src/m68000.rs`](../../../crates/m68000/src/m68000.rs)` |
+| **Workspace Crates** | `[`crates/<crate>/...`](../../../crates/<crate>/...)` | `[`crates/cpu/src/cpu.rs`](../../../crates/cpu/src/cpu.rs)` |
 | **Operational Rules** | `[`rule.md`](../../../.agents/rules/<rule>.md)` | `[`docs-maintenance.md`](../../../.agents/rules/docs-maintenance.md)` |
 | **Reference Source (`ref_src`)** | `[`ref_src/...`](../../../ref_src/<path>)` | `[`vAmiga Agnus`](../../../ref_src/vAmiga-4.5/Core/Chips/Agnus/Copper.cpp)` |
 | **Root Docs (`AGENTS.md`, `ROADMAP.md`)**| `[Doc](../../../<Doc>.md)` | `[AGENTS.md](../../../AGENTS.md)` |

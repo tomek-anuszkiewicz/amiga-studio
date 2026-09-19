@@ -108,7 +108,7 @@ To keep the codebase maintainable and prevent monolithic files:
 - **300–600 lines:** Sweet spot combining types, enums, and operational logic.
 - **600–800 lines:** Review trigger for separable submodules.
 - **> 800 lines:** Split mandate into cohesive submodules, unless covered by registered exceptions in `test_architecture_rules.rs` (`LINE_COUNT_EXCEPTIONS`).
-- **1:1 Flat Instruction Files:** Every distinct CPU mnemonic resides in its own dedicated flat file directly under `crates/m68000/src/instructions/<mnemonic>.rs` with zero subdirectories.
+- **1:1 Flat Instruction Files:** Every distinct CPU mnemonic resides in its own dedicated flat file directly under `crates/cpu/src/instructions/<mnemonic>.rs` with zero subdirectories.
 
 ---
 

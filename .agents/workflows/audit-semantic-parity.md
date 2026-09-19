@@ -31,7 +31,7 @@ Execute directly in the agent session using:
 - `frame_builder`: [`crates/frame_builder`](../../crates/frame_builder) $\leftrightarrow$ [`Frame Buffer.md`](../../Obsidian/Amiga/Design/Frame%20Buffer.md)
 - `memory_bus`: [`crates/memory_bus`](../../crates/memory_bus) $\leftrightarrow$ [`MemoryBus.md`](../../Obsidian/Amiga/Design/MemoryBus.md)
 - `cia`: [`crates/cia`](../../crates/cia) $\leftrightarrow$ [`CIA.md`](../../Obsidian/Amiga/Design/CIA.md)
-- `m68000`: [`crates/m68000`](../../crates/m68000) $\leftrightarrow$ [`CPU Motorola M68000.md`](../../Obsidian/Amiga/Design/CPU%20Motorola%20M68000.md)
+- `m68000`: [`crates/cpu`](../../crates/cpu) $\leftrightarrow$ [`CPU Motorola M68000.md`](../../Obsidian/Amiga/Design/CPU%20Motorola%20M68000.md)
 - `machine_loop`: [`crates/machine_loop`](../../crates/machine_loop) $\leftrightarrow$ [`Main loop A500.md`](../../Obsidian/Amiga/Design/Main%20loop%20A500.md)
 
 *Default (no argument):* If no target is specified, the agent identifies recently modified subsystems from `git status` / `git diff --stat` or audits the primary coordinator (`paula` or `agnus`).

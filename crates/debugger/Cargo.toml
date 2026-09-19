@@ -10,7 +10,7 @@ path = "src/debugger.rs"
 [dependencies]
 config = { workspace = true }
 disassembler = { workspace = true }
-m68000 = { workspace = true }
+cpu = { workspace = true }
 machine_loop = { workspace = true }
 physical_memory = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

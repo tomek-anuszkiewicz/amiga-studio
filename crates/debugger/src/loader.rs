@@ -3,7 +3,7 @@
 //! Handles injecting raw M68000 binary machine code into physical memory
 //! and setting the Program Counter with prefetch priming.
 
-use m68000::Cpu;
+use cpu::Cpu;
 use physical_memory::PhysicalMemory;
 
 /// Default target RAM address for synthetic binaries ($001000)

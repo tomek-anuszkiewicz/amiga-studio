@@ -40,7 +40,7 @@ related: ["[SiblingDoc.md](SiblingDoc.md)"]
 
 ### Step 2: Weave Contextual Inline Links (Layer 1)
 - Contextually embed links directly into prose, block diagrams, and register breakdowns where components are first introduced.
-- Cross-link to related subsystem design docs (`[Agnus.md](Agnus.md)`), system rules (`[`performance-and-readability.md`](../../../.agents/rules/performance-and-readability.md)`), and Rust source files (`[`crates/m68000/src/state.rs`](../../../crates/m68000/src/state.rs)`).
+- Cross-link to related subsystem design docs (`[Agnus.md](Agnus.md)`), system rules (`[`performance-and-readability.md`](../../../.agents/rules/performance-and-readability.md)`), and Rust source files (`[`crates/cpu/src/state.rs`](../../../crates/cpu/src/state.rs)`).
 - Keep links natural, high-signal, and informative.
 
 ### Step 3: Audit Structural Reference Section (Layer 2)

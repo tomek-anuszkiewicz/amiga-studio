@@ -88,8 +88,8 @@ The agent authored and maintained every unit test, multi-chip integration test, 
 
 ### Flat Code Layout, Rich Compile-Time Ownership
 One foundational design choice was keeping the codebase structure intentionally flat:
-- **Flat Crate Layout:** All 26 crates live directly under `crates/*` (e.g. `crates/m68000`, `crates/memory_bus`, `crates/debugger`, `crates/gui`).
-- **Flat Modules:** CPU instructions reside directly under `crates/m68000/src/instructions/<mnemonic>.rs` without nested directories.
+- **Flat Crate Layout:** All 26 crates live directly under `crates/*` (e.g. `crates/cpu`, `crates/memory_bus`, `crates/debugger`, `crates/gui`).
+- **Flat Modules:** CPU instructions reside directly under `crates/cpu/src/instructions/<mnemonic>.rs` without nested directories.
 
 While the file layout is flat, the ownership graph within is strict. Shared mutable pointers (`Rc<RefCell<...>>`) are strictly banned. The top-level machine struct owns subsystems directly, modeling bus contention and co-processor scheduling through unidirectional borrows and calibrated event queues.
 

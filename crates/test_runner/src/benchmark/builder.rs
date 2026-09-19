@@ -4,7 +4,7 @@
 //! cascading stacks, and PRNG memory buffers directly in Rust memory per
 //! Obsidian/Amiga/Design/CPU Instruction Benchmark Strategies.md.
 
-use m68000::Cpu;
+use cpu::Cpu;
 use physical_memory::PhysicalMemory;
 
 use super::catalog::{BenchmarkSpec, BenchmarkStrategy};

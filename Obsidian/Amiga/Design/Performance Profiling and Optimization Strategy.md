@@ -57,7 +57,7 @@ graph TD
 ## 2. Prohibition of Intrusive Hot-Path Probes
 
 - **The Observer Effect in Emulation:** Calling host timer APIs (`std::time::Instant::now()`, `QueryPerformanceCounter`) inside per-CCK execution loops (`step_cck`, `step_subsystems_cck`) incurs a severe measurement penalty (~20–80 ns per call). On a 3.54 MHz Color Clock model, probes alter instruction scheduling and prevent LLVM from performing cross-function inlining optimizations.
-- **Architectural Policy:** Core emulation crates (`crates/agnus`, `crates/denise`, `crates/paula`, `crates/m68000`, `crates/memory_bus`) must remain **100% free of measurement probes**. Profiling must never alter the production execution path.
+- **Architectural Policy:** Core emulation crates (`crates/agnus`, `crates/denise`, `crates/paula`, `crates/cpu`, `crates/memory_bus`) must remain **100% free of measurement probes**. Profiling must never alter the production execution path.
 
 ---
 

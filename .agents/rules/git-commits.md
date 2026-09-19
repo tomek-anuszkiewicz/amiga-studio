@@ -46,7 +46,7 @@ Separate accumulated changes into distinct, focused commits using targeted stagi
    - Changes to `.agents/rules/*.md`, `.agents/skills/`, `.agents/workflows/`, or `AGENTS.md`.
    - Commit type: `chore(rules): ...` or `docs(rules): ...`
 3. **Core Subsystem Implementation & Bug Fixes:**
-   - Changes to `crates/m68000/`, `crates/memory_bus/`, `crates/agnus/`, etc.
+   - Changes to `crates/cpu/`, `crates/memory_bus/`, `crates/agnus/`, etc.
    - Commit type: `feat(<subsystem>): ...` or `fix(<subsystem>): ...` or `refactor(<subsystem>): ...`
 4. **Architecture Guardrails & Test Harnesses:**
    - Changes to `crates/test_runner/tests/test_architecture_rules.rs` or shared testing fixtures.

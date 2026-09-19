@@ -41,7 +41,7 @@ TIER1_UNIT_CRATES = [
     "interrupts",
     "joystick",
     "keyboard",
-    "m68000",
+    "cpu",
     "mouse",
     "paula",
     "physical_memory",

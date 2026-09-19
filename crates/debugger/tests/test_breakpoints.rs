@@ -1,7 +1,7 @@
+use cpu::CpuState;
 use debugger::{
     BreakpointCondition, BreakpointManager, ConditionOp, ConditionRegister, WatchAccess,
 };
-use m68000::CpuState;
 
 #[test]
 fn test_condition_register_evaluation() {

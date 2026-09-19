@@ -32,7 +32,7 @@ Analyze all modified and added files using `git diff`:
 1. **Zero Panics**: Search for `.unwrap()` or `.expect(` in `crates/*/src/`. Emulated guest execution must never crash or panic the host.
 2. **Endianness**: Verify Big-Endian multi-byte decoding (`u16::from_be_bytes`, `u32::from_be_bytes`).
 3. **Wrapping Math**: Check ALU operations and cycle additions for wrapping arithmetic (`wrapping_add`, `wrapping_sub`).
-4. **Rust Source File Sizes & Flat Instructions**: Ensure no Rust source file in `crates/*/src/` exceeds 800 lines (excluding recognized exceptions in `LINE_COUNT_EXCEPTIONS`). Confirm strict flat instruction hierarchy: zero subdirectories in `crates/m68000/src/instructions/` (all instructions are single `<mnemonic>.rs` files, 1:1 mnemonic alignment, zero umbrella files like `mul.rs`, `div.rs`, `link_unlk.rs`, `bcd.rs`, `privileged.rs`). Technical documentation and specifications have NO line count limits.
+4. **Rust Source File Sizes & Flat Instructions**: Ensure no Rust source file in `crates/*/src/` exceeds 800 lines (excluding recognized exceptions in `LINE_COUNT_EXCEPTIONS`). Confirm strict flat instruction hierarchy: zero subdirectories in `crates/cpu/src/instructions/` (all instructions are single `<mnemonic>.rs` files, 1:1 mnemonic alignment, zero umbrella files like `mul.rs`, `div.rs`, `link_unlk.rs`, `bcd.rs`, `privileged.rs`). Technical documentation and specifications have NO line count limits.
 5. **Host CPU Performance & Readability**:
    - Verify branch-minimization: hot loops favor flattened dispatch instead of nested `match`/`if` cascades ("code may be expansive").
    - Verify zero-allocations in hot execution paths (no `Vec`, `Box`, `format!`, dynamic boxed iterators).
@@ -87,7 +87,7 @@ Provide the audit report using the following standard template:
 - [ ] **Decoupled SaveState:** Subsystem state derives `Serialize`/`Deserialize`, zero circular references (`Rc<RefCell>`).
 - [ ] **Anti-Hack & Spec Integrity:** Zero ad-hoc test workarounds; hardware specifications followed strictly.
 - [ ] **Anti-Tamper & Golden Hash Invariance:** Zero blind updates to golden master hashes (`GOLDEN_*_HASH`), reference cycle counts, or test fixtures to silence failing tests.
-- [ ] **Rust File Size, Cohesion & Flat Instructions:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Zero subdirectories in `crates/m68000/src/instructions/` (strict flat instruction hierarchy, 1:1 mnemonic files, zero umbrella files). Technical documentation has no line limits.
+- [ ] **Rust File Size, Cohesion & Flat Instructions:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Zero subdirectories in `crates/cpu/src/instructions/` (strict flat instruction hierarchy, 1:1 mnemonic files, zero umbrella files). Technical documentation has no line limits.
 - [ ] **Inlining Strategy:** Cross-crate `#[inline]`, CCR `#[inline(always)]`, cold paths `#[inline(never)]`.
 - [ ] **Defect Retrospection & Prevention:** Root cause analyzed, regression tests added, systemic safeguards/docs updated (if bug fix).
 - [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, completed roadmap steps deleted (zero `[COMPLETED]` markers in Section 2), and `DIARY.md` chronological changelog updated.

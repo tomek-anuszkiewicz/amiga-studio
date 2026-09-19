@@ -254,7 +254,7 @@ def check_silicon_invariants():
 
     # 2. Endianness: Zero host pointer transmutes in core crates
     core_crates = [
-        "m68000", "physical_memory", "memory_bus", "copper", "blitter",
+        "cpu", "physical_memory", "memory_bus", "copper", "blitter",
         "agnus", "denise", "paula", "cia", "machine_loop"
     ]
     for crate in core_crates:
@@ -296,7 +296,7 @@ def check_silicon_invariants():
 
     # 3. Dual staging registers in M68000 dual-memory instructions
     dual_memory_instructions = ["cmpm.rs", "abcd.rs", "sbcd.rs", "addx.rs", "subx.rs"]
-    m68k_inst_dir = CRATES_DIR / "m68000" / "src" / "instructions"
+    m68k_inst_dir = CRATES_DIR / "cpu" / "src" / "instructions"
     if m68k_inst_dir.exists():
         for inst_file in dual_memory_instructions:
             p = m68k_inst_dir / inst_file
@@ -305,7 +305,7 @@ def check_silicon_invariants():
                 if "addr1" not in text or "addr2" not in text:
                     issues.append({
                         "type": "missing_dual_staging",
-                        "file": f"crates/m68000/src/instructions/{inst_file}",
+                        "file": f"crates/cpu/src/instructions/{inst_file}",
                         "line": 1,
                         "message": f"Dual-memory instruction `{inst_file}` does not utilize standard dual staging registers (`addr1`, `addr2`)",
                     })

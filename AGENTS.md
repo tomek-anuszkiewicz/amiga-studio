@@ -102,7 +102,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Mandatory Formatting:** `cargo fmt --all -- --check`.
 - **Pre-Flight Gate:** Run `python tools/harness/pre_flight.py` (checks formatting, size, and architecture rules).
 - **Automated Architecture Tests:** Pass `cargo test -p test_runner --test test_architecture_rules` (file sizes, zero panics/macros/generics, IDLE micro-steps, zero inline tests, inlining, links).
-- **Single-Step CPU Validation:** Run `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep` on any `crates/m68000` changes.
+- **Single-Step CPU Validation:** Run `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep` on any `crates/cpu` changes.
 - **Cartesian DMA Contention:** Run `cargo test -p test_runner --test test_dma_cartesian` on CPU/bus changes ($C = C_0 + 2 \times \text{wait\_states}$).
 - **Repro-First Defect Resolution:** Author an isolated failing reproduction test in `tests/` before editing production code per [`repro-first.md`](.agents/rules/repro-first.md).
 - **Unit Testing Policy:** Mandatory unit test coverage for functional/utility logic and headless integration tests for GUI per [`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md).

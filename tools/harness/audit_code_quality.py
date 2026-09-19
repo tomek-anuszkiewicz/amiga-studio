@@ -43,8 +43,8 @@ CRATES_DIR = REPO_ROOT / "crates"
 
 # Crates or modules with special execution models (e.g. 65,536-entry function pointer dispatch tables)
 EXEMPT_CRATES = {
-    # m68000 instruction handlers are referenced via compile-time function pointer table
-    "m68000",
+    # cpu instruction handlers are referenced via compile-time function pointer table
+    "cpu",
     # test_runner is a dedicated test harness and verification crate, not production code
     "test_runner",
 }
@@ -89,15 +89,15 @@ HOST_IO_AND_SPEC_SYMBOLS = {
 
 # Recognized architectural file-size exceptions per file-size-and-cohesion.md & test_architecture_rules.rs
 LINE_COUNT_EXCEPTIONS = {
-    "crates/m68000/src/instructions/move_b.rs",
-    "crates/m68000/src/instructions/move_w.rs",
-    "crates/m68000/src/instructions/move_l.rs",
-    "crates/m68000/src/instructions/add.rs",
-    "crates/m68000/src/instructions/sub.rs",
-    "crates/m68000/src/instructions/and.rs",
-    "crates/m68000/src/instructions/or.rs",
-    "crates/m68000/src/instructions/cmpi.rs",
-    "crates/m68000/src/micro/dispatch_table.rs",
+    "crates/cpu/src/instructions/move_b.rs",
+    "crates/cpu/src/instructions/move_w.rs",
+    "crates/cpu/src/instructions/move_l.rs",
+    "crates/cpu/src/instructions/add.rs",
+    "crates/cpu/src/instructions/sub.rs",
+    "crates/cpu/src/instructions/and.rs",
+    "crates/cpu/src/instructions/or.rs",
+    "crates/cpu/src/instructions/cmpi.rs",
+    "crates/cpu/src/micro/dispatch_table.rs",
 }
 
 # Standard trait and lifecycle boilerplate methods to ignore
@@ -445,8 +445,8 @@ def scan_inlining_guidelines(crate_name=None):
     """Audits required #[inline(always)] and #[inline(never)] annotations per method-inlining.md."""
     issues = []
     # 1. Cold exception/trap triggers must have #[inline(never)]
-    m68k_src = CRATES_DIR / "m68000" / "src"
-    if m68k_src.exists() and (not crate_name or crate_name == "m68000"):
+    m68k_src = CRATES_DIR / "cpu" / "src"
+    if m68k_src.exists() and (not crate_name or crate_name == "cpu"):
         for file in m68k_src.rglob("*.rs"):
             try:
                 lines = file.read_text(encoding="utf-8", errors="ignore").splitlines()
@@ -466,7 +466,7 @@ def scan_inlining_guidelines(crate_name=None):
                             "recommendation": f"Cold exception/trap `{trimmed}` must be annotated with #[inline(never)]",
                         })
 
-    # 2. Leaf ALU functions in m68000/src/instructions/ must have #[inline(always)]
+    # 2. Leaf ALU functions in cpu/src/instructions/ must have #[inline(always)]
     leaf_prefixes = (
         "pub fn add_", "pub fn sub_", "pub fn and_", "pub fn or_", "pub fn eor_",
         "pub fn cmp_", "pub fn asr_", "pub fn asl_", "pub fn lsr_", "pub fn lsl_",
@@ -474,8 +474,8 @@ def scan_inlining_guidelines(crate_name=None):
         "pub fn negx_", "pub fn not_", "pub fn tst_", "pub fn abcd_", "pub fn sbcd_",
         "pub fn nbcd_", "pub fn bchg_", "pub fn bclr_", "pub fn bset_", "pub fn btst_",
     )
-    inst_dir = CRATES_DIR / "m68000" / "src" / "instructions"
-    if inst_dir.exists() and (not crate_name or crate_name == "m68000"):
+    inst_dir = CRATES_DIR / "cpu" / "src" / "instructions"
+    if inst_dir.exists() and (not crate_name or crate_name == "cpu"):
         for file in inst_dir.glob("*.rs"):
             try:
                 lines = file.read_text(encoding="utf-8", errors="ignore").splitlines()
@@ -525,7 +525,7 @@ def scan_macro_and_generic_prohibitions(crate_name=None):
                         "metric": trimmed,
                         "recommendation": "Custom macros (`macro_rules!`) are strictly forbidden per performance-and-readability.md.",
                     })
-                if c.name == "m68000" and "<const " in trimmed:
+                if c.name == "cpu" and "<const " in trimmed:
                     issues.append({
                         "type": "forbidden_const_generic",
                         "file": str(rel_path),

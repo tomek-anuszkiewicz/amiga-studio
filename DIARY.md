@@ -7702,6 +7702,31 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_docs_quality.py --design-sync`: Verified clean reporting of synced and tolerated categories.
   - `python tools/harness/pre_flight.py`: 5/5 quality gates passed cleanly (100% formatting, AGENTS.md <= 14KB ceiling, 21 architecture tests passed).
 
+---
+
+### [2026-09-19 14:15 CEST] — Renamed Crate m68000 to cpu and Unified Named Crate Root (Merged core.rs into cpu.rs)
+- **Subsystems Affected**:
+  - `crates/cpu/`: Renamed crate directory from `crates/m68000` to `crates/cpu`. Set package name to `cpu` and `[lib] path = "src/cpu.rs"`.
+  - `crates/cpu/src/cpu.rs`: Unified crate entry point by merging `m68000.rs` root module declarations and re-exports with `core.rs` (`Cpu` struct, `reset`, `step_cck`, `advance_clocks`, etc.), creating a cohesive ~370-line file adhering to Named Crate Root mandate and <=800 lines ceiling.
+  - `crates/cpu/src/instructions/*.rs`: Updated 68 instruction handlers to import `use crate::Cpu;` directly instead of `use crate::core::Cpu;`.
+  - `crates/cpu/src/state.rs`: Preserved as dedicated submodule (`cpu::state::CpuState`, re-exported at root) maintaining clean separation of data/registers (438 lines) from execution logic.
+  - `Cargo.toml`: Updated workspace members (`crates/cpu`) and workspace dependencies (`cpu = { path = "crates/cpu" }`).
+  - `crates/machine_loop/`, `crates/debugger/`, `crates/test_runner/`, `crates/gui/`: Switched dependencies and imports from `m68000::*` to `cpu::*`.
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Updated crate whitelist, instruction paths, and static dispatch table references to `cpu`.
+  - `tools/harness/`: Updated `run_tests.py`, `audit_hardware_quality.py`, `audit_code_quality.py`, and `audit_api_coverage.py`.
+  - `AGENTS.md`, `.agents/rules/*.md`, `.agents/skills/*`, `.agents/workflows/*`: Synchronized crate references and documentation.
+  - `Obsidian/Amiga/Design/*.md`: Updated architectural diagrams, crate inventory, and file links from `crates/m68000` to `crates/cpu`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of Naming Stutter & Subsystem Symmetry:* Previously, `crates/m68000` had a 34-line forwarder `m68000.rs` delegating to `core.rs`, creating awkward `cpu::core::Cpu` indirection. Merging `core.rs` into `crates/cpu/src/cpu.rs` brings the CPU subsystem into 1:1 structural symmetry with all other custom chip peers (`agnus.rs` -> `struct Agnus`, `denise.rs` -> `struct Denise`, `paula.rs` -> `struct Paula`, `cia.rs` -> `struct Cia`).
+  - *Clean-Break Atomic Cutover:* Executed monolithic migration with zero legacy shims (`pub mod m68000`) or import aliases per `.agents/rules/clean-break-refactoring.md`.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,767 bytes, Test Coupling across 6 modified crates, API Coverage 100%, 21 Architecture Rules).
+  - `cargo test -p cpu`: All 51 unit tests passed.
+  - `python tools/harness/run_tests.py --unit`: All 23 workspace crates + 7 test_runner unit suites passed (11.07s).
+  - `python tools/harness/run_tests.py --integration`: All Tier 2 integration tests passed (4.72s).
+  - `cargo test -p test_runner --test test_dma_cartesian`: All 19 Cartesian DMA contention permutation sweeps passed (41.10s).
+
+
 
 
 

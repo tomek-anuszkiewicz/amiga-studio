@@ -1,6 +1,6 @@
 //! Fixed-size 1024-entry execution trace ring buffer
 
-use m68000::CpuState;
+use cpu::CpuState;
 use serde::{Deserialize, Serialize};
 
 pub const TRACE_BUFFER_SIZE: usize = 1024;

@@ -1,6 +1,6 @@
+use cpu::CpuState;
 use debugger::temporal::TemporalHistory;
 use debugger::trace::{TraceRingBuffer, TRACE_BUFFER_SIZE};
-use m68000::CpuState;
 
 #[test]
 fn test_trace_ring_buffer_wrapping_and_indexing() {

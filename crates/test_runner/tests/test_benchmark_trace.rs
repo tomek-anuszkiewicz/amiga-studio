@@ -199,7 +199,7 @@ fn test_all_benchmark_execution_traces_against_golden_hashes() {
                    ACTION REQUIRED:\n\
                    1. Run: cargo run -p test_runner --release -- bench --dump-traces --filter \"{}\"\n\
                    2. Inspect git diff for tests/benchmarks/traces/{}.trace to locate the exact diverged cycle/register.\n\
-                   3. Fix the underlying regression in crates/m68000/ or crates/physical_memory/.\n",
+                   3. Fix the underlying regression in crates/cpu/ or crates/physical_memory/.\n",
                 spec.id, spec.representative_syntax, expected_hash, actual_hash, spec.id, spec.id
             ));
             continue;

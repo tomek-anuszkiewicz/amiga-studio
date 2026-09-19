@@ -6,12 +6,12 @@
 pub use agnus::{self, blitter, copper, dma};
 pub use cia;
 pub use config;
+pub use cpu;
 pub use denise::{self, frame_builder, sprites};
 pub use floppy;
 pub use game_ports;
 pub use joystick;
 pub use keyboard;
-pub use m68000;
 pub use memory_bus;
 pub use memory_bus::MemoryBus;
 pub use mouse;
@@ -23,7 +23,7 @@ pub mod save_state;
 pub use save_state::*;
 
 use config::A500Config;
-use m68000::Cpu;
+use cpu::Cpu;
 
 /// Top-level Amiga 500 machine struct orchestrating all subsystems
 #[derive(Debug, Clone)]

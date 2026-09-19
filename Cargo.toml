@@ -21,7 +21,7 @@ members = [
     "crates/rtc",
     "crates/physical_memory",
     "crates/memory_bus",
-    "crates/m68000",
+    "crates/cpu",
     "crates/disassembler",
     "crates/debugger",
     "crates/gui",
@@ -62,7 +62,7 @@ machine_loop = { path = "crates/machine_loop" }
 rtc = { path = "crates/rtc" }
 physical_memory = { path = "crates/physical_memory" }
 memory_bus = { path = "crates/memory_bus" }
-m68000 = { path = "crates/m68000" }
+cpu = { path = "crates/cpu" }
 disassembler = { path = "crates/disassembler" }
 debugger = { path = "crates/debugger" }
 game_ports = { path = "crates/game_ports" }

@@ -1,5 +1,5 @@
+use cpu::Cpu;
 use debugger::loader::{inject_binary, DEFAULT_TARGET_ADDRESS};
-use m68000::Cpu;
 use physical_memory::PhysicalMemory;
 
 #[test]

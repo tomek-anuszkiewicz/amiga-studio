@@ -1,6 +1,6 @@
 //! Smoke & Verification Test for M68000 Instruction Benchmarking Engine
 
-use m68000::Cpu;
+use cpu::Cpu;
 use physical_memory::PhysicalMemory;
 use test_runner::benchmark::{
     filter_specs, find_spec_by_id, total_benchmark_specs_count, BenchmarkConfig, BenchmarkProfile,

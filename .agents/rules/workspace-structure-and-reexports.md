@@ -6,7 +6,7 @@ description: Workspace flat crate layout in crates/* and 3-tier re-export (pub u
 # Workspace Flat Layout & 3-Tier Re-Export (`pub use`) Strategy
 
 ## 1. Core Principle: Flat on Disk, Hierarchical in Code
-In this repository, all crate directories in `crates/*` remain **strictly flat** (e.g. `crates/config`, `crates/rtc`, `crates/memory_bus`, `crates/m68000`).
+In this repository, all crate directories in `crates/*` remain **strictly flat** (e.g. `crates/config`, `crates/rtc`, `crates/memory_bus`, `crates/cpu`).
 Architectural ownership, containment, and subsystem boundaries are expressed **in Rust code via `pub use` re-exports**, never through deeply nested directories.
 
 ---
@@ -58,7 +58,7 @@ Tier 3: Contained Sub-Components (rtc, copper, blitter, audio_dacs)
   // In crates/a500/src/a500.rs (future)
   pub use config;
   pub use memory_bus;
-  pub use m68000;
+  pub use cpu;
   pub use agnus;
   pub use denise;
   pub use paula;
@@ -104,7 +104,7 @@ In this closed repository with zero external downstream semver consumers, all re
 
 To improve searchability, eliminate ambiguous file tabs in editors, and guarantee consistent 1:1 crate-to-root alignment:
 1. **Named Entry Points**:
-   - Every library crate under `crates/<crate_name>/` must name its root entry point file `src/<crate_name>.rs` matching the crate directory name (e.g. `crates/agnus/src/agnus.rs`, `crates/m68000/src/m68000.rs`).
+   - Every library crate under `crates/<crate_name>/` must name its root entry point file `src/<crate_name>.rs` matching the crate directory name (e.g. `crates/agnus/src/agnus.rs`, `crates/cpu/src/cpu.rs`).
    - The crate's `Cargo.toml` must explicitly configure the library target path:
      ```toml
      [lib]

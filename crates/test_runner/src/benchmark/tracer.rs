@@ -7,8 +7,8 @@
 use std::fs;
 use std::path::Path;
 
+use cpu::Cpu;
 use disassembler::disassemble;
-use m68000::Cpu;
 use physical_memory::PhysicalMemory;
 
 use super::builder::{

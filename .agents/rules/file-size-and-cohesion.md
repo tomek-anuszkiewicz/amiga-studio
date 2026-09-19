@@ -1,6 +1,6 @@
 ---
 trigger: model_decision
-description: Rust source file size limits (<= 800 lines in crates/*/src/), cohesion rules, and flat 1:1 opcode hierarchy under crates/m68000/src/instructions/.
+description: Rust source file size limits (<= 800 lines in crates/*/src/), cohesion rules, and flat 1:1 opcode hierarchy under crates/cpu/src/instructions/.
 ---
 
 # Module Cohesion & Rust Source File Size Guidelines (`.rs` Files Only)
@@ -65,11 +65,11 @@ Split regardless of line count when:
 - In-file unit tests grow beyond ~150–200 lines (move to `tests/*.rs`).
 - Sub-features are completely independent (e.g. Paula's audio DACs vs floppy disk controller vs UART).
 
-## 6. Strict Flat Instruction Hierarchy (`crates/m68000/src/instructions/`)
+## 6. Strict Flat Instruction Hierarchy (`crates/cpu/src/instructions/`)
 The instruction directory is governed by a **strict flat hierarchy rule**:
 1. **Zero Subdirectories in `instructions/`**:
-   - Creating subdirectories or multi-file submodules under `crates/m68000/src/instructions/` (such as `instructions/add/`, `instructions/cmpi/`, `instructions/mul/`) is **strictly forbidden**.
-   - All instruction files must reside flat directly under `crates/m68000/src/instructions/<mnemonic>.rs`.
+   - Creating subdirectories or multi-file submodules under `crates/cpu/src/instructions/` (such as `instructions/add/`, `instructions/cmpi/`, `instructions/mul/`) is **strictly forbidden**.
+   - All instruction files must reside flat directly under `crates/cpu/src/instructions/<mnemonic>.rs`.
 2. **Strict 1:1 Mnemonic Alignment**:
    - Each M68000 instruction mnemonic must have its own dedicated `.rs` file directly under `instructions/`.
    - Bundling multiple distinct mnemonics into legacy umbrella files (such as `mul.rs`, `div.rs`, `link_unlk.rs`, `bcd.rs`, `privileged.rs`) is strictly forbidden.

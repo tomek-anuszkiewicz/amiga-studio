@@ -30,7 +30,7 @@ python tools/harness/audit_docs_quality.py --design-sync
 - **Stale ($> 100$ commits or $> 30$ days without audit):** Specifications exceeding the threshold are flagged as `[STALE]`, requiring inspection and reconciliation.
 
 Tracked specifications and their corresponding paths include:
-- `crates/m68000/` $\to$ `CPU Motorola M68000.md`, `CPU Micro-Step State Machine.md`
+- `crates/cpu/` $\to$ `CPU Motorola M68000.md`, `CPU Micro-Step State Machine.md`
 - `crates/memory_bus/` $\to$ `MemoryBus.md`
 - `crates/agnus/` $\to$ `Agnus.md`
 - `crates/denise/` $\to$ `Denise.md`

@@ -27,7 +27,7 @@ const LINE_COUNT_EXCEPTIONS: &[&str] = &[
 
 /// Core emulation crates where `.unwrap()` and `.expect()` are strictly forbidden in runtime code.
 const CORE_EMULATION_CRATES: &[&str] = &[
-    "m68000",
+    "cpu",
     "physical_memory",
     "memory_bus",
     "config",
@@ -336,7 +336,7 @@ fn test_zero_user_defined_macros() {
 #[test]
 fn test_zero_const_generic_handlers() {
     let repo_root = find_repo_root();
-    let m68k_src = repo_root.join("crates").join("m68000").join("src");
+    let m68k_src = repo_root.join("crates").join("cpu").join("src");
     let mut files_to_check = Vec::new();
     collect_rs_files(&m68k_src, &mut files_to_check);
 
@@ -373,7 +373,7 @@ fn test_audit_micro_step_coverage() {
     let mut micro_covered = 0;
 
     for op in 0..=65535usize {
-        let desc = &m68000::micro::OPCODE_DESCRIPTOR_TABLE[op];
+        let desc = &cpu::micro::OPCODE_DESCRIPTOR_TABLE[op];
         if !desc.steps.is_empty() {
             micro_covered += 1;
         }
@@ -413,7 +413,7 @@ fn test_inlining_guidelines_compliance() {
 
     // 1. Cold exception/trap trigger paths must have #[inline(never)]
     let mut m68k_files = Vec::new();
-    collect_rs_files(&repo_root.join("crates/m68000/src"), &mut m68k_files);
+    collect_rs_files(&repo_root.join("crates/cpu/src"), &mut m68k_files);
 
     for file in &m68k_files {
         let content = fs::read_to_string(file).expect("Failed to read file");
@@ -445,7 +445,7 @@ fn test_inlining_guidelines_compliance() {
         "pub fn set_ccr_z_only",
         "pub fn set_ccr_v_clear_c",
     ];
-    let state_rs = repo_root.join("crates/m68000/src/state.rs");
+    let state_rs = repo_root.join("crates/cpu/src/state.rs");
     let content = fs::read_to_string(&state_rs).expect("Failed to read state.rs");
     let lines: Vec<&str> = content.lines().collect();
     for setter in &ccr_setters {
@@ -497,7 +497,7 @@ fn test_inlining_guidelines_compliance() {
         "pub fn bset_",
         "pub fn btst_",
     ];
-    let inst_dir = repo_root.join("crates/m68000/src/instructions");
+    let inst_dir = repo_root.join("crates/cpu/src/instructions");
     let mut inst_files = Vec::new();
     collect_rs_files(&inst_dir, &mut inst_files);
 
@@ -545,12 +545,12 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
     let repo_root = find_repo_root();
     let inst_dir = repo_root
         .join("crates")
-        .join("m68000")
+        .join("cpu")
         .join("src")
         .join("instructions");
     assert!(
         inst_dir.exists(),
-        "M68000 instructions directory does not exist: {}",
+        "CPU instructions directory does not exist: {}",
         inst_dir.display()
     );
 
@@ -559,7 +559,7 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
     collect_subdirectories_recursive(&inst_dir, &repo_root, &mut subdirectories);
     assert!(
         subdirectories.is_empty(),
-        "Architecture Rule Violation: Subdirectories in `crates/m68000/src/instructions/` are strictly forbidden per AGENTS.md.\n\
+        "Architecture Rule Violation: Subdirectories in `crates/cpu/src/instructions/` are strictly forbidden per AGENTS.md.\n\
         All instructions must be flat `<mnemonic>.rs` files directly under `instructions/`.\n\
         Found subdirectories:\n{}",
         subdirectories.join("\n")
@@ -584,7 +584,7 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
     }
     assert!(
         forbidden_found.is_empty(),
-        "Architecture Rule Violation: Legacy bundled instruction file(s) found in `crates/m68000/src/instructions/`:\n\
+        "Architecture Rule Violation: Legacy bundled instruction file(s) found in `crates/cpu/src/instructions/`:\n\
         {:?}\n\
         Instructions must adhere to 1:1 mnemonic-to-file mapping (e.g. mulu.rs/muls.rs, divu.rs/divs.rs, link.rs/unlk.rs, abcd.rs/sbcd.rs/nbcd.rs, trapv.rs/rtr.rs/rte.rs/stop.rs/reset.rs/move_usp.rs).",
         forbidden_found
@@ -602,7 +602,7 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
     }
     assert!(
         non_rs_files.is_empty(),
-        "Architecture Rule Violation: Found non-Rust source file(s) in `crates/m68000/src/instructions/`:\n{}",
+        "Architecture Rule Violation: Found non-Rust source file(s) in `crates/cpu/src/instructions/`:\n{}",
         non_rs_files.join("\n")
     );
 }
@@ -612,7 +612,7 @@ fn test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs() {
     let repo_root = find_repo_root();
     let inst_dir = repo_root
         .join("crates")
-        .join("m68000")
+        .join("cpu")
         .join("src")
         .join("instructions");
     let mut inst_files = Vec::new();
@@ -685,7 +685,7 @@ fn test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs() {
 
     assert!(
         violations.is_empty(),
-        "Architecture Rule Violation: Non-standard or anonymous idle micro-step usage found in `crates/m68000/src/instructions/`:\n\
+        "Architecture Rule Violation: Non-standard or anonymous idle micro-step usage found in `crates/cpu/src/instructions/`:\n\
         All micro-steps performing no active memory bus transfer must use standardized constants with `IDLE` in their name.\n\
         Violations:\n{}",
         violations.join("\n")
@@ -1083,7 +1083,7 @@ fn test_zero_backward_compatibility_shims_and_stale_aliases() {
                         .unwrap_or("")
                         .trim_end_matches('{')
                         .trim();
-                    // Legitimate namespace modules (function_code in arbitration, micro in m68000)
+                    // Legitimate namespace modules (function_code in arbitration, micro in cpu)
                     if mod_name == "micro" || mod_name == "function_code" {
                         continue;
                     }

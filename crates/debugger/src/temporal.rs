@@ -5,7 +5,7 @@
 //! Supports dynamic capacity scaling (>=1s PAL execution, ~250,000+ frames),
 //! on/off recording toggles, multi-granularity navigation, and CCK cycle search.
 
-use m68000::CpuState;
+use cpu::CpuState;
 
 /// Single temporal snapshot entry in the history ring buffer
 #[derive(Debug, Clone, PartialEq, Eq)]

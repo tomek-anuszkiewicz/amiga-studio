@@ -3,7 +3,7 @@
 //! Validates unrolled block generation, PRNG memory buffers, cascading stacks,
 //! subroutine linkage, and CPU/Bus memory injection across all benchmark strategies.
 
-use m68000::Cpu;
+use cpu::Cpu;
 use physical_memory::PhysicalMemory;
 use test_runner::benchmark::builder::{
     BenchmarkProgramBuilder, BENCH_ENTRY_PC, BENCH_EXIT_PC, BENCH_RAM_BUFFER_A0,
