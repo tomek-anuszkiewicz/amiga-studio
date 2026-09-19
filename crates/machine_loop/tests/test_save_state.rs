@@ -36,9 +36,10 @@ fn test_save_state_json_roundtrip() {
     assert_eq!(state.cpu, restored.cpu);
     assert_eq!(state.agnus, restored.agnus);
     assert_eq!(state.denise, restored.denise);
-    assert_eq!(state.paula, restored.paula);
     assert_eq!(state.cia_a, restored.cia_a);
     assert_eq!(state.cia_b, restored.cia_b);
+    assert_eq!(state.game_ports, restored.game_ports);
+    assert_eq!(state.paula.serial_port, restored.paula.serial_port);
     assert_eq!(state, restored);
 }
 

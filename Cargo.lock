@@ -2103,7 +2103,6 @@ dependencies = [
  "m68000",
  "memory_bus",
  "mouse",
- "parallel_port",
  "paula",
  "physical_memory",
  "rtc",
@@ -2646,13 +2645,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "parallel_port"
-version = "0.1.0"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2695,7 +2687,6 @@ dependencies = [
  "config",
  "interrupts",
  "serde",
- "serial_port",
 ]
 
 [[package]]
@@ -3209,13 +3200,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.5",
-]
-
-[[package]]
-name = "serial_port"
-version = "0.1.0"
-dependencies = [
- "serde",
 ]
 
 [[package]]

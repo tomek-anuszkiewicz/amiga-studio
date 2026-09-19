@@ -44,22 +44,22 @@ Paula is partitioned into focused, decoupled workspace crates under `crates/`:
 ```
 crates/
 ├── audio/             // 4-channel DMA audio engine, volume scaling, period counters, BLEP synthesis
-├── serial_port/       // RS-232 UART transceiver (SERDAT, SERPER, 9-bit framing)
 ├── interrupts/        // Central interrupt priority controller (INTENA, INTREQ, 14->6 encoder)
-└── paula/             // Paula coordinator, register routing, and DMA/pipeline delay staging
+└── paula/             // Paula coordinator, serial UART transceiver (src/serial.rs), register routing, and DMA/pipeline delay staging
 ```
 
 ### 2.1 Logical Subsystem Containment & Re-Exports
-In accordance with the 3-tier re-export hierarchy, `crates/paula` owns and re-exports its companion crates:
+In accordance with the 3-tier re-export hierarchy, `crates/paula` owns and re-exports its companion crates and internal serial module:
 ```rust
 pub use audio;
 pub use interrupts;
 pub use interrupts::InterruptController;
-pub use serial_port;
+pub mod serial;
+pub use serial::SerialPort;
 
 pub struct Paula {
     pub audio: audio::Audio,
-    pub serial_port: serial_port::SerialPort,
+    pub serial_port: serial::SerialPort,
     pub interrupts: interrupts::InterruptController,
     pub adkcon: u16,
     // ... pot counters, floppy latches, and in-flight mutation pipeline

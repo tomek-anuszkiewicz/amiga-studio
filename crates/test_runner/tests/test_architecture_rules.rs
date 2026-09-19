@@ -45,11 +45,10 @@ const CORE_EMULATION_CRATES: &[&str] = &[
     "denise",
     "audio",
     "floppy",
-    "serial_port",
+    "interrupts",
     "paula",
     "keyboard",
     "game_ports",
-    "parallel_port",
     "cia",
     "machine_loop",
 ];
@@ -1340,6 +1339,10 @@ fn test_multi_module_crate_test_parity() {
                 "test_physical_memory.rs",
                 "test_presets.rs",
             ],
+        ),
+        (
+            "paula",
+            &["test_paula.rs", "test_paula_registers.rs", "test_serial.rs"],
         ),
     ];
 

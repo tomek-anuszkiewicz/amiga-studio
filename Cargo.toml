@@ -13,11 +13,9 @@ members = [
     "crates/denise",
     "crates/audio",
     "crates/floppy",
-    "crates/serial_port",
     "crates/interrupts",
     "crates/paula",
     "crates/keyboard",
-    "crates/parallel_port",
     "crates/cia",
     "crates/machine_loop",
     "crates/rtc",
@@ -56,11 +54,9 @@ joystick = { path = "crates/joystick" }
 denise = { path = "crates/denise" }
 audio = { path = "crates/audio" }
 floppy = { path = "crates/floppy" }
-serial_port = { path = "crates/serial_port" }
 interrupts = { path = "crates/interrupts" }
 paula = { path = "crates/paula" }
 keyboard = { path = "crates/keyboard" }
-parallel_port = { path = "crates/parallel_port" }
 cia = { path = "crates/cia" }
 machine_loop = { path = "crates/machine_loop" }
 rtc = { path = "crates/rtc" }

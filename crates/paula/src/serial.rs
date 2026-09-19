@@ -1,4 +1,4 @@
-//! Amiga RS-232 Serial Port Subsystem
+//! Amiga RS-232 Serial Port Subsystem (Paula UART)
 //!
 //! Models the Paula UART transceiver, baud rate divisor (SERPER),
 //! transmit/receive registers (SERDAT/SERDATR), and CIA-B RS-232 handshakes.

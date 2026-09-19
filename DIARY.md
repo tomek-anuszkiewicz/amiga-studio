@@ -7558,5 +7558,36 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly.
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
 
+---
+
+### [2026-09-19 13:25 CEST] — Consolidated serial_port into paula and Retired parallel_port Micro-Crate
+- **Affected Subsystems**:
+  - `crates/paula`: Created `src/serial.rs` containing `SerialPort` UART transceiver and migrated comprehensive unit tests to `tests/test_serial.rs`. Removed dependency on `serial_port`.
+  - `crates/serial_port`: Completely deleted obsolete 68-line micro-crate.
+  - `crates/parallel_port`: Completely deleted obsolete 56-line micro-crate (8-bit bidirectional data lines and handshakes are directly serviced by CIA-A Port B and CIA-B Port A).
+  - `crates/machine_loop`: Removed phantom `parallel_port` field from `A500Machine` and `A500State`, pruned re-export, and updated `tests/test_save_state.rs`.
+  - `Cargo.toml`: Pruned `serial_port` and `parallel_port` from workspace members and dependencies.
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Updated `CORE_EMULATION_CRATES` (removed `serial_port`/`parallel_port`, added `interrupts`) and enforced 1:1 test parity for `paula/src/serial.rs` via `test_multi_module_crate_test_parity`.
+  - `tools/harness/run_tests.py`: Updated `TIER1_UNIT_CRATES` (removed `serial_port`/`parallel_port`, added `interrupts`).
+  - `tools/harness/audit_api_coverage.py`: Removed `serial_port` and `parallel_port` from strict peripheral coverage list.
+  - `Obsidian/Amiga/Design/General Architecture.md`, `Paula.md`, `Interrupts.md`, `SaveState.md`: Updated architecture diagrams, crate tables, and snippets to reflect consolidated topology with 100% Mermaid-Cargo parity.
+  - `ROADMAP.md`: Updated flat workspace crate count summary.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated crate fragmentation and overhead associated with two trivial micro-crates (56 and 68 lines of code).
+  - Aligned Paula's codebase with physical silicon reality: Paula houses the UART transceiver die circuits (`SERDAT`, `SERDATR`, `SERPER`), while parallel port lines are external pins of the CIAs.
+- **Architectural Rationale & Trade-Offs**:
+  - *Preventing Crate Proliferation:* Standalone Cargo crates incur compilation units, dependency trees, metadata passes, and maintenance burden across test harnesses and CI scripts. A 68-line UART transceiver does not justify a freestanding crate when its host chip is Paula.
+  - *Clean-Break Refactoring:* Followed the zero-shim mandate by completely removing the crate directories and references across the workspace rather than leaving deprecated aliases.
+- **Verification & Test Results**:
+  - `cargo test -p paula`: 14/14 tests passed (including all 4 UART tests in `test_serial.rs`).
+  - `cargo test -p machine_loop`: 63/63 integration tests passed (including save state roundtrips).
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
+  - `python tools/harness/pre_flight.py`: All 5 quality gates passed cleanly.
+  - `python tools/harness/audit_docs_quality.py`: 10/10 pillars passed cleanly with 0 issues (26 crates, 100% Mermaid-Cargo parity).
+  - `python tools/harness/audit_hardware_quality.py`: 5/5 pillars passed cleanly with 0 issues.
+  - `python tools/harness/audit_api_coverage.py --strict`: Passed across 25 crates.
+  - `python tools/harness/run_tests.py --unit`: 23 crates + 7 test_runner unit suites passed in 15.29s.
+
+
 
 

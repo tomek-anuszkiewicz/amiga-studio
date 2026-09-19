@@ -1,4 +1,4 @@
-use serial_port::SerialPort;
+use paula::serial::SerialPort;
 
 #[test]
 fn test_serial_port_reset_and_tbe_status() {

@@ -141,7 +141,7 @@ pub use interrupts::InterruptController;
 
 pub struct Paula {
     pub audio: audio::Audio,
-    pub serial_port: serial_port::SerialPort,
+    pub serial_port: serial::SerialPort,
     pub interrupts: interrupts::InterruptController,
     // ...
 }

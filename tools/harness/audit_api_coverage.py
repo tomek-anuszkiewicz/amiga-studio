@@ -101,7 +101,7 @@ def main():
 
     # In strict mode, fail if any peripheral or utility crate has untested public methods
     strict_crates = {
-        "joystick", "mouse", "parallel_port", "serial_port", "frame_builder",
+        "joystick", "mouse", "frame_builder",
         "keyboard", "game_ports", "rtc"
     }
 

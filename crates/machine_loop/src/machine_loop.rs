@@ -15,8 +15,7 @@ pub use m68000;
 pub use memory_bus;
 pub use memory_bus::MemoryBus;
 pub use mouse;
-pub use parallel_port;
-pub use paula::{self, audio, serial_port};
+pub use paula::{self, audio};
 pub use physical_memory;
 pub use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 pub use rtc;
@@ -59,8 +58,6 @@ pub struct A500Machine {
     pub keyboard: keyboard::Keyboard,
     /// Amiga dual controller game ports (Port 1 Mouse / Port 2 Joystick)
     pub game_ports: game_ports::GamePorts,
-    /// Centronics 8-bit parallel printer port interface
-    pub parallel_port: parallel_port::ParallelPort,
 }
 
 impl A500Machine {
@@ -94,7 +91,6 @@ impl A500Machine {
         let floppy = floppy::FloppyController::new();
         let keyboard = keyboard::Keyboard::new();
         let game_ports = game_ports::GamePorts::new();
-        let parallel_port = parallel_port::ParallelPort::new();
 
         let mut machine = Self {
             config,
@@ -110,7 +106,6 @@ impl A500Machine {
             floppy,
             keyboard,
             game_ports,
-            parallel_port,
         };
         machine.poll_peripheral_pins();
         machine.cpu.state.ipl = machine.resolve_ipl();
@@ -129,7 +124,6 @@ impl A500Machine {
         self.floppy.reset();
         self.keyboard.reset();
         self.game_ports.reset();
-        self.parallel_port.reset();
         self.cpu.reset(&mut self.physical_memory);
         self.poll_peripheral_pins();
         self.cpu.state.ipl = self.resolve_ipl();
@@ -147,7 +141,6 @@ impl A500Machine {
         self.floppy.reset();
         self.keyboard.reset();
         self.game_ports.reset();
-        self.parallel_port.reset();
         self.cpu.reset_warm(&mut self.physical_memory);
         self.poll_peripheral_pins();
         self.cpu.state.ipl = self.resolve_ipl();
@@ -164,7 +157,6 @@ impl A500Machine {
         self.cia_b.reset();
         self.floppy.reset();
         self.game_ports.reset();
-        self.parallel_port.reset();
         self.poll_peripheral_pins();
         self.cpu.state.ipl = self.resolve_ipl();
     }
@@ -496,7 +488,6 @@ impl A500Machine {
             floppy: self.floppy.clone(),
             keyboard: self.keyboard.clone(),
             game_ports: self.game_ports.clone(),
-            parallel_port: self.parallel_port.clone(),
         }
     }
 
@@ -544,7 +535,6 @@ impl A500Machine {
         self.floppy = state.floppy.clone();
         self.keyboard = state.keyboard.clone();
         self.game_ports = state.game_ports.clone();
-        self.parallel_port = state.parallel_port.clone();
 
         // 8. Re-poll peripheral pins to establish consistent signal line levels
         self.poll_peripheral_pins();

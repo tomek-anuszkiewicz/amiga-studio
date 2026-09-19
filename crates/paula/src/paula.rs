@@ -6,7 +6,8 @@
 pub use audio;
 pub use interrupts;
 pub use interrupts::InterruptController;
-pub use serial_port;
+pub mod serial;
+pub use serial::SerialPort;
 
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
@@ -20,7 +21,7 @@ pub struct Paula {
     /// 4-channel DMA audio subsystem
     pub audio: audio::Audio,
     /// RS-232 serial UART transceiver
-    pub serial_port: serial_port::SerialPort,
+    pub serial_port: serial::SerialPort,
     /// Central interrupt priority controller (INTENA / INTREQ / IPL 1..6)
     pub interrupts: interrupts::InterruptController,
     /// Audio / Disk / UART Control register (ADKCON / ADKCONR at $DFF09E / $DFF010)
@@ -69,7 +70,7 @@ impl Paula {
     pub fn new() -> Self {
         Self {
             audio: audio::Audio::new(),
-            serial_port: serial_port::SerialPort::new(),
+            serial_port: serial::SerialPort::new(),
             interrupts: interrupts::InterruptController::new(),
             adkcon: 0,
             pot0dat: 0,

@@ -72,8 +72,6 @@ pub struct A500State {
     pub keyboard: keyboard::Keyboard,
     /// Dual Atari 9-pin controller game ports
     pub game_ports: game_ports::GamePorts,
-    /// Centronics parallel printer port
-    pub parallel_port: parallel_port::ParallelPort,
 }
 
 /// Errors that can occur during save state serialization, deserialization, or verification

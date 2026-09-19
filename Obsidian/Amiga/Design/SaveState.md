@@ -76,8 +76,6 @@ pub struct A500State {
     pub keyboard: keyboard::Keyboard,
     /// Dual Atari 9-pin controller game ports
     pub game_ports: game_ports::GamePorts,
-    /// Centronics parallel printer port
-    pub parallel_port: parallel_port::ParallelPort,
 }
 
 /// Metadata header identifying state compatibility and machine configuration.

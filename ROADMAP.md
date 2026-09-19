@@ -32,7 +32,7 @@ This document outlines the phased development plan, hardware milestones, verific
 - **Repository Sanitization & History Scrubbing (Completed Baseline Deliverable):**
   - Full Git history audit, Conventional Commits normalization, pruning of 146 empty/redundant commits (preserving author/committer timestamps), and deep asset purge (decoupling `ref_src`, PDFs, schematics, and caches), shrinking repository packfile from ~2.8 GB to 4.43 MB (99.8% reduction).
 - **Custom Chipset Integration & Autonomous Execution Engines (Completed Baseline Deliverable):**
-  - Scaffolded 17 flat workspace crates (`copper`, `blitter`, `dma`, `agnus`, `sprites`, `frame_builder`, `mouse`, `joystick`, `denise`, `audio`, `floppy`, `serial_port`, `paula`, `keyboard`, `parallel_port`, `cia`, `machine_loop`) with zero circular references and parameter-based borrow splitting.
+  - Scaffolded 16 flat workspace crates (`copper`, `blitter`, `dma`, `agnus`, `sprites`, `frame_builder`, `mouse`, `joystick`, `denise`, `audio`, `floppy`, `interrupts`, `paula`, `keyboard`, `cia`, `machine_loop`) with zero circular references and parameter-based borrow splitting.
   - Complete custom chip hardware registers with calibrated CCK electronic propagation delay pipelines ($K$-phase latency) and zero-cost stack-allocated `MemoryBus<'a>` router decoding Custom Chips (`$DF`), CIAs (`$BF`), and RTC (`$DC`).
   - Action dispatch pipeline bridging register writes to strongly-typed subsystem methods (`FloppyDrive`, `Blitter`, `Audio`, `Copper`, `Denise`).
   - Decoupled `A500State` serialization supporting referenced/self-contained modes, JSON and gzip compression (<50 KB), and 5-slot in-memory quick-save ring buffer with Developer Studio UI integration (`F6`/`F9`).
