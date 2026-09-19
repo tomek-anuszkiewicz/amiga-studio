@@ -7588,6 +7588,32 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_api_coverage.py --strict`: Passed across 25 crates.
   - `python tools/harness/run_tests.py --unit`: 23 crates + 7 test_runner unit suites passed in 15.29s.
 
+---
+
+### [2026-09-19 13:35 CEST] — Paula.md Semantic Parity Enrichment & Interrupt Delegation Streamlining
+- **Affected Subsystems**:
+  - `Obsidian/Amiga/Design/Paula.md`: Completed all 4 approved remediations from `/audit-semantic-parity paula`:
+    1. Added missing analog potentiometer registers (`POT0DAT` $012, `POT1DAT` $014, `POTGOR` $016, `POTGO` $034) to Section 3 register table and documented `POTGO` in Section 3.1 propagation latency (2 CCK delay).
+    2. Documented physical silicon 2-write arming sequence for `DSKLEN` (`dmaen -> dma_armed -> dma_active`) and `DSKBYTR` Clear-on-Read side-effect behavior (reading $01A clears bit 15 `DSKBYT`) along with composite status flags in Section 5.
+    3. Resolved DMA pointer ownership contradiction by removing Agnus DMA pointer registers `DSKPTH`/`DSKPTL` ($020/$022) from Paula's write table, perfectly aligning with the Section 2.2 passive bus latching invariant.
+    4. Streamlined Section 7 (Central Interrupt Priority Multiplexer) to a lean 5-line summary delegating 100% of interrupt architecture details to `Interrupts.md`.
+    5. Added dedicated Section 8 for Analog Potentiometer Counters & Proportional Inputs, and updated Section 1 Mermaid topology with the potentiometer interface branch.
+  - `.agents/skills/audit-semantic-parity/SKILL.md`: Updated serial port primary crate path from `crates/serial_port` to `crates/paula` (`src/serial.rs`).
+- **What Was Changed (The Concrete Reality)**:
+  - Brought `Paula.md` into 100% bidirectional semantic parity with `crates/paula`.
+  - Eliminated redundant 6-level interrupt priority table and atomic SET/CLR definitions from `Paula.md`, delegating authority exclusively to `Interrupts.md`.
+  - Removed ghost registers `DSKPTH`/`DSKPTL` from Paula's register table, acknowledging Agnus's exclusive ownership of DMA address generation.
+- **Architectural Rationale & Trade-Offs**:
+  - *Non-Redundancy & Inverted Pyramid:* Dual maintenance of the 14-source interrupt priority table across both `Paula.md` and `Interrupts.md` creates specification drift and maintenance friction. Clear delegation preserves single-responsibility scoping.
+  - *Silicon Truth:* Reflecting Agnus DMA address mastership and Paula's passive latching model in register documentation reinforces the emulator's core architectural bus topology.
+- **Verification & Test Results**:
+  - `cargo check --workspace --tests`: Passed in 0.60s.
+  - `cargo test -p paula`: 14/14 unit tests passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
+  - `python tools/harness/pre_flight.py`: 5/5 quality gates passed cleanly.
+  - `python tools/harness/audit_docs_quality.py --all`: 10/10 pillars passed cleanly with 0 issues (1015 links verified).
+
+
 
 
 

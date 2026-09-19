@@ -67,7 +67,7 @@ When auditing a subsystem, inspect its corresponding Rust crate and Obsidian des
 | **Paula Coordinator** | `crates/paula` | `Obsidian/Amiga/Design/Paula.md` |
 | **Audio Engine** | `crates/audio` | `Obsidian/Amiga/Design/Audio.md` |
 | **Floppy Controller** | `crates/floppy` | `Obsidian/Amiga/Design/Floppy.md` |
-| **Serial Port** | `crates/serial_port` | `Obsidian/Amiga/Design/Paula.md` |
+| **Serial Port** | `crates/paula` (`src/serial.rs`) | `Obsidian/Amiga/Design/Paula.md` |
 | **Agnus Coordinator** | `crates/agnus` | `Obsidian/Amiga/Design/Agnus.md` |
 | **Copper Coprocessor**| `crates/copper` | `Obsidian/Amiga/Design/Copper.md` |
 | **Blitter Engine** | `crates/blitter` | `Obsidian/Amiga/Design/Blitter.md` |
