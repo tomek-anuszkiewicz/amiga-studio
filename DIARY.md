@@ -7022,6 +7022,22 @@ Every future modification or implementation task must append an entry following 
   - `python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --skills`: Verified 23/23 skills synchronized (0 missing, 0 phantom).
   - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,802 bytes, Test-Coupling, API Coverage 100%, 19 Architecture Rules).
 
+---
+
+### [2026-09-19 02:15 CEST] — Codified Two-Way Script Locality & Harness Governance into audit-code-quality
+- **Subsystems Affected**:
+  - `.agents/skills/audit-code-quality/scripts/audit_code_quality.py`: Added `check_script_locality_and_governance()` and `--scripts` CLI flag (also included in `--all`). Enforces bidirectional script placement:
+    1. *Harness-to-Skill Locality:* Flags any script in `tools/harness/` referenced by $\le 1$ skill or workflow (and not part of global pre-flight/git hooks/universal rules) for localization into `.agents/skills/<skill>/scripts/`.
+    2. *Skill-to-Harness Promotion:* Flags any script in `.agents/skills/<skill>/scripts/` referenced by $> 1$ distinct skills or workflows for promotion into shared `tools/harness/`.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Added Pillar 5 ("Two-Way Script Locality & Harness Governance"), updated CLI usage examples, and updated subagent return contract.
+  - `tools/harness/check_polish.py`: Whitelisted common file extensions and path/glob patterns (`*.py`, `*.rs`, etc.) to eliminate false-positive Polish detections on technical file globs.
+- **Architectural Rationale & Trade-Offs**:
+  - *Bidirectional Governance:* Prevents two opposite failure modes in script organization: (a) dumping single-purpose, private scripts into shared `tools/harness/` (polluting the core verification harness), and (b) keeping cross-cutting utilities hidden inside one skill where other skills/workflows develop tight cross-skill couplings.
+- **Verification & Test Results**:
+  - `python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --scripts`: Verified 0 placement anomalies across both directions (PASS).
+  - `python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --all`: Verified complete 5-pillar audit execution in 2.2s.
+  - `python tools/harness/pre_flight.py`: All 5 gates passed (Formatting, AGENTS.md 13,802 bytes, Test-Coupling, API Coverage 100%, 19 Architecture Rules).
+
 
 
 

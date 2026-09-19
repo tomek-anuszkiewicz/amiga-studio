@@ -62,6 +62,8 @@ TECHNICAL_WHITELIST = {
     "lores", "hires", "shres", "pal", "ntsc", "kickstart", "workbench",
     "fastram", "chipram", "slowram", "autoconfig", "zorro", "rom", "ram",
     "byte", "word", "long", "prefetch", "substep", "microstep", "micro",
+    # Common file extensions and format suffixes
+    "py", "rs", "toml", "json", "yaml", "yml", "md", "txt", "html", "css", "js", "sh", "ps1", "bat", "lock",
     # Amiga custom chip registers (all chipsets)
     "bltcon0", "bltcon1", "bltafwm", "bltalwm", "bltcpt", "bltcptl", "bltcpth",
     "bltbpt", "bltbptl", "bltbpth", "bltapt", "bltaptl", "bltapth", "bltdpt", "bltdptl", "bltdpth",
@@ -150,8 +152,8 @@ def detect_polish_in_text(text: str):
         # 1. Quoted phrase inspection (e.g. "przeczekać burzę", "pętla opóźniająca")
         quoted_matches = re.findall(r'["\']([^"\']{4,})["\']', line)
         for q in quoted_matches:
-            # Skip if quoted string is all caps (assembly mnemonics like "DBNE")
-            if q.isupper():
+            # Skip if quoted string is all caps (assembly mnemonics like "DBNE") or file/glob paths
+            if q.isupper() or q.startswith("*.") or re.match(r"^[\*a-zA-Z0-9_\-\./\\]+\.[a-zA-Z0-9]+$", q):
                 continue
             tokens = re.findall(r"\b[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+\b", q)
             non_en = [

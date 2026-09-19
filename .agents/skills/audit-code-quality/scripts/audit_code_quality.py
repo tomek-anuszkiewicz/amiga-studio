@@ -387,19 +387,128 @@ def check_skills_catalog_sync():
     }
 
 
+def check_script_locality_and_governance():
+    """
+    Audits two-way script placement governance:
+    1. Harness-to-Skill Locality: Scripts in tools/harness/ referenced by <= 1 skill/workflow
+       (and not part of global pre-commit/pre-flight/rules) should be relocated to skills/<skill>/scripts/.
+    2. Skill-to-Harness Promotion: Scripts inside a skill's scripts/ directory referenced by > 1
+       distinct skill or workflow should be promoted to tools/harness/ to avoid cross-skill leakage.
+    """
+    harness_dir = REPO_ROOT / "tools" / "harness"
+    skills_dir = REPO_ROOT / ".agents" / "skills"
+    workflows_dir = REPO_ROOT / ".agents" / "workflows"
+
+    UNIVERSAL_HARNESS_SCRIPTS = {
+        "pre_flight.py",
+        "run_tests.py",
+        "check_polish.py",
+        "check_test_coupling.py",
+        "audit_api_coverage.py",
+        "log_diary.py",
+        "rag_search.py",
+    }
+
+    issues = []
+
+    # 1. Audit tools/harness/ scripts for single-consumer locality candidates
+    if harness_dir.exists():
+        for script in sorted(harness_dir.glob("*.py")):
+            if script.name in UNIVERSAL_HARNESS_SCRIPTS:
+                continue
+
+            script_name = script.name
+            referencing_skills = set()
+            referencing_workflows = set()
+
+            if skills_dir.exists():
+                for sf in skills_dir.rglob("*.md"):
+                    if sf.name == "SKILL.md":
+                        try:
+                            content = sf.read_text(encoding="utf-8", errors="ignore")
+                            if script_name in content:
+                                referencing_skills.add(sf.parent.name)
+                        except Exception:
+                            pass
+
+            if workflows_dir.exists():
+                for wf in workflows_dir.glob("*.md"):
+                    try:
+                        content = wf.read_text(encoding="utf-8", errors="ignore")
+                        if script_name in content:
+                            referencing_workflows.add(wf.stem)
+                    except Exception:
+                        pass
+
+            total_consumers = len(referencing_skills) + len(referencing_workflows)
+            if total_consumers <= 1:
+                target_skill = next(iter(referencing_skills), None)
+                target_desc = f".agents/skills/{target_skill}/scripts/" if target_skill else "the consuming skill/workflow"
+                issues.append({
+                    "type": "isolate_to_skill",
+                    "script": script.name,
+                    "location": f"tools/harness/{script.name}",
+                    "consumers": list(referencing_skills | referencing_workflows),
+                    "recommendation": f"Relocate to {target_desc} (used by only {total_consumers} consumer: {', '.join(referencing_skills | referencing_workflows) or 'none'})",
+                })
+
+    # 2. Audit .agents/skills/*/scripts/ for multi-consumer promotion candidates
+    if skills_dir.exists():
+        for script in sorted(skills_dir.glob("*/scripts/*.py")):
+            owning_skill = script.parent.parent.name
+            script_name = script.name
+
+            foreign_skills = set()
+            referencing_workflows = set()
+
+            for sf in skills_dir.rglob("*.md"):
+                if sf.name == "SKILL.md":
+                    skill_name = sf.parent.name
+                    if skill_name != owning_skill:
+                        try:
+                            content = sf.read_text(encoding="utf-8", errors="ignore")
+                            if script_name in content:
+                                foreign_skills.add(skill_name)
+                        except Exception:
+                            pass
+
+            if workflows_dir.exists():
+                for wf in workflows_dir.glob("*.md"):
+                    try:
+                        content = wf.read_text(encoding="utf-8", errors="ignore")
+                        if script_name in content:
+                            referencing_workflows.add(wf.stem)
+                    except Exception:
+                        pass
+
+            if len(foreign_skills) > 0 or len(referencing_workflows) > 1:
+                all_external = foreign_skills | referencing_workflows
+                issues.append({
+                    "type": "promote_to_harness",
+                    "script": script.name,
+                    "location": str(script.relative_to(REPO_ROOT)).replace("\\", "/"),
+                    "owning_skill": owning_skill,
+                    "external_consumers": list(all_external),
+                    "recommendation": f"Promote to tools/harness/ (cross-referenced by external consumers: {', '.join(all_external)})",
+                })
+
+    return issues
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, and skill catalog sync.")
-    parser.add_argument("--all", action="store_true", help="Run all audits (dead code, visibility, SRP, skills sync)")
+    parser = argparse.ArgumentParser(description="Audit dead code, minimum visibility leaks, SRP cohesion, skill catalog sync, and script locality.")
+    parser.add_argument("--all", action="store_true", help="Run all audits (dead code, visibility, SRP, skills sync, script locality)")
     parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
     parser.add_argument("--visibility", action="store_true", help="Run least visibility scanner")
     parser.add_argument("--srp", action="store_true", help="Run SRP and file cohesion checks")
     parser.add_argument("--skills", action="store_true", help="Audit skill catalog sync in docs/ai_agents.md")
+    parser.add_argument("--scripts", action="store_true", help="Audit two-way script locality and harness governance")
     parser.add_argument("--crate", help="Filter audit to a specific crate")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     args = parser.parse_args()
 
     # Default to --all if no specific mode selected
-    if not (args.all or args.dead_code or args.visibility or args.srp or args.skills):
+    if not (args.all or args.dead_code or args.visibility or args.srp or args.skills or args.scripts):
         args.all = True
 
     dead, zombies = ([], [])
@@ -418,6 +527,10 @@ def main():
     if args.all or args.skills:
         skill_audit = check_skills_catalog_sync()
 
+    script_issues = []
+    if args.all or args.scripts:
+        script_issues = check_script_locality_and_governance()
+
     if args.json:
         out = {
             "dead_code": dead,
@@ -425,6 +538,7 @@ def main():
             "visibility_leaks": vis_leaks,
             "srp_cohesion_issues": srp_issues,
             "skills_sync": skill_audit,
+            "script_locality_issues": script_issues,
         }
         print(json.dumps(out, indent=2))
         return
@@ -480,8 +594,18 @@ def main():
             for iss in skill_audit["issues"]:
                 print(f"    * {iss['message']}")
 
+    if args.all or args.scripts:
+        print(f"\n[5. TWO-WAY SCRIPT LOCALITY & HARNESS GOVERNANCE]")
+        if not script_issues:
+            print("  - Status: [PASS] All harness scripts are shared/universal, and all skill scripts are private.")
+        else:
+            print(f"  - Status: [WARN] {len(script_issues)} placement anomaly/ies detected:")
+            for s_issue in script_issues:
+                print(f"    * [{s_issue['type']}] {s_issue['location']}")
+                print(f"      -> {s_issue['recommendation']}")
+
     print("\n" + "=" * 76)
-    print(f"Audit Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(skill_audit['issues'])} skill sync issues.")
+    print(f"Audit Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, {len(srp_issues)} cohesion issues, {len(skill_audit['issues'])} skill sync issues, {len(script_issues)} script locality issues.")
     print("=" * 76)
 
 

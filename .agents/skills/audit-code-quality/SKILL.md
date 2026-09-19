@@ -17,7 +17,7 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 
 ---
 
-## 2. The Four Quality Audit Pillars
+## 2. The Five Quality Audit Pillars
 
 ### Pillar 1: Dead Code & Test-Only Zombies
 1. **Completely Dead Symbols (💀):**
@@ -45,6 +45,12 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Zero Phantom References:** Every skill linked in `docs/ai_agents.md` must actually exist on disk.
 - **Audit Verification:** Verified automatically via `--skills` or `--all`. When drift is detected, add missing skills to the appropriate domain section in `docs/ai_agents.md` or prune deleted skills.
 
+### Pillar 5: Two-Way Script Locality & Harness Governance
+- **Harness Reservation:** `tools/harness/` is reserved strictly for universal, shared infrastructure used across multiple subsystems (pre-flight gates, git hooks, universal test runners, global rules).
+- **Rule A (Specialized Locality):** Any script in `tools/harness/` referenced by $\le 1$ skill or workflow (and not part of global pre-commit/pre-flight) must be relocated to `.agents/skills/<skill>/scripts/`.
+- **Rule B (Shared Promotion):** Any script inside `.agents/skills/<skill>/scripts/` referenced by $> 1$ distinct skills or workflows must be promoted into `tools/harness/` to avoid cross-skill leakage.
+- **Audit Verification:** Verified automatically via `--scripts` or `--all`.
+
 ---
 
 ## 3. CLI Audit Workflow
@@ -69,6 +75,9 @@ python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --srp
 
 # Audit agent skills catalog synchronization in docs/ai_agents.md
 python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --skills
+
+# Audit two-way script locality and harness placement governance
+python .agents/skills/audit-code-quality/scripts/audit_code_quality.py --scripts
 ```
 
 ### C. Machine-Readable JSON Export
@@ -160,5 +169,6 @@ Ensure all quality gates and architecture rules pass with 100% green status.
   - **Visibility Demoted:** <count> symbols (`pub` -> `pub(crate)` / private)
   - **SRP / Cohesion Decompositions:** <count> files/structs
   - **Skills Catalog Sync:** [PASS (all synchronized) | <count> discrepancies]
+  - **Script Locality & Governance:** [PASS (all properly placed) | <count> anomalies]
   - **Verification:** `pre_flight.py` (PASS), `cargo test` (PASS)
   ```
