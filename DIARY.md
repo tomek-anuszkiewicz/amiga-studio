@@ -8151,6 +8151,28 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, API coverage, Clippy, architecture rules).
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed.
 
+---
+
+### [2026-09-20 14:02 CEST] — Semantic Parity Audit & Remediation: CPU Micro-Step State Machine Specifications
+
+- **Files Modified**:
+  - `Obsidian/Amiga/Design/CPU Micro-Step State Machine.md`:
+    - Section 1–8: Eliminated all ghost prototype identifiers (`write_buffer` -> `destination`, `last_read` -> `source`, `scratch_prefetch` -> `irc`, `scratch[0]` -> `movem_mask`, `PrefetchNextOpcodeAndRetire` -> `PREFETCH_NEXT_READ & retire_current_instruction()`).
+    - Section 1.1: Replaced references to obsolete `step_read_word_at`/`step_write_word_at` with direct 2-phase CCK read/write transactions (`step_bus_read_src_word`, `step_bus_write_dst_word`).
+    - Section 2.6: Removed non-existent predecrement long read constants (`READ_ADDR1_PD_LONG_*`, `READ_ADDR2_PD_LONG_*`).
+    - Section 3: Replaced ghost type signature `StepFn` with `BusFn = fn(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()>`, decoupling the state machine from concrete `MemoryBus`.
+    - Section 6.1: Removed non-existent `step_opcode` alias; specified canonical `step_instruction(&mut self, bus: &mut dyn AddressBus) -> u32`.
+    - Section 7: Completely overhauled archetypal micro-step traces across Classes 1 to 11 (`ADD`, `ORI`, `MOVE.W`, `MOVE.L`, `ADD` RMW, `ADDI` RMW, `JSR`, `RTS`, `JMP`, `Bcc`, `DIVU`, `MOVEM`), mapping every operation to canonical 2-clock CCK micro-steps (`MicroStep` / `common::*`) with fused `alu_fn` and exact register names.
+    - Frontmatter: Bumped `last_synced_commit` to current verified commit checkpoint (`cff10c82a3`).
+- **Architectural Rationale & Trade-Offs**:
+  - *Full Microcode Parity:* Synchronizing the microcode specification with the live Rust execution engine in `crates/cpu/src/micro/` guarantees that architects and AI pair programmers work from an exact 1:1 reflection of physical 68000 micro-operations without ghost artifacts from early prototypes.
+  - *Fused CCK Model Cohesion:* Aligning Classes 1 through 11 with the 2-clock Color Clock phase model (`BUS_READ_IDLE`, `BUS_WRITE_IDLE`, `FETCH_EXT_READ`, `PREFETCH_IRC_READ`) eliminates contradictions between the high-level description and low-level step tables.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py --all`: 100% pass across all 10 documentation quality pillars (0 issues, 26/26 specs in sync).
+  - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, API coverage, Clippy, architecture rules).
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed.
+
+
 
 
 
