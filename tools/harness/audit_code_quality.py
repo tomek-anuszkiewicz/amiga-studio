@@ -2,7 +2,7 @@
 """
 audit_code_quality.py - Comprehensive On-Demand Code Quality Auditor
 
-Audits five architectural dimensions across workspace crates:
+Audits four architectural dimensions across workspace crates:
 1. Dead Code & Test-Only Zombies:
    - Completely dead symbols (0 callers anywhere).
    - Test-only zombie symbols (0 callers in production crates/*/src/, only called in tests/).
@@ -10,11 +10,9 @@ Audits five architectural dimensions across workspace crates:
    - Over-exposed `pub` items that are only called within their own defining crate (should be `pub(crate)`).
    - Over-exposed `pub`/`pub(crate)` items that are only called within their own defining file (should be private).
    - Over-exposed `pub mod` declarations whose items are never referenced externally.
-3. Struct Cohesion & Single Responsibility:
-   - Structs with excessive public fields (> 12) indicating potential "God Structs" or unencapsulated state.
-4. Condition Soup & Self-Documenting Boolean Logic:
+3. Condition Soup & Self-Documenting Boolean Logic:
    - Complex compound boolean conditions needing named explaining variables or domain predicate methods.
-5. Method Naming & Accessor Conventions:
+4. Method Naming & Accessor Conventions:
    - Evaluates standard getters matching field name without `get_` prefix.
    - Evaluates boolean getters starting with `is_` (or `has_`/`can_`) and zero duplicate prefixes.
    - Evaluates setters starting with `set_<field>`.
@@ -99,7 +97,6 @@ BOILERPLATE_NAMES = {
 RE_PUB_FN = re.compile(r"^\s*(?:#\[.*?\]\s*)*pub\s+(?:const\s+|unsafe\s+)?fn\s+([a-zA-Z0-9_]+)\b")
 RE_PUB_CRATE_FN = re.compile(r"^\s*(?:#\[.*?\]\s*)*pub\s*\(\s*crate\s*\)\s+(?:const\s+|unsafe\s+)?fn\s+([a-zA-Z0-9_]+)\b")
 RE_PUB_CONST = re.compile(r"^\s*(?:#\[.*?\]\s*)*pub\s+const\s+([A-Z0-9_]+)\b")
-RE_PUB_STRUCT = re.compile(r"^\s*(?:#\[.*?\]\s*)*pub\s+struct\s+([a-zA-Z0-9_]+)\b")
 RE_PUB_MOD = re.compile(r"^\s*pub\s+mod\s+([a-zA-Z0-9_]+)\s*;")
 
 
@@ -329,67 +326,6 @@ def scan_least_visibility(target_crate=None):
             })
 
     return visibility_leaks
-
-
-def scan_srp_and_cohesion(target_crate=None):
-    """Scans for file-size and structural cohesion anomalies."""
-    violations = []
-
-    for crate_dir in sorted(CRATES_DIR.iterdir()):
-        if not crate_dir.is_dir() or not (crate_dir / "Cargo.toml").exists():
-            continue
-        if target_crate and crate_dir.name != target_crate:
-            continue
-
-        src_dir = crate_dir / "src"
-        if not src_dir.exists():
-            continue
-
-        for rs_file in src_dir.rglob("*.rs"):
-            rel_path = str(rs_file.relative_to(REPO_ROOT)).replace("\\", "/")
-            try:
-                lines = rs_file.read_text(encoding="utf-8", errors="ignore").splitlines()
-            except Exception:
-                continue
-
-            # Check for structs with excessive public fields (> 12)
-            struct_name = None
-            struct_pub_fields = 0
-            in_struct = False
-
-            for line in lines:
-                m_st = RE_PUB_STRUCT.match(line)
-                if m_st:
-                    if struct_name and struct_pub_fields > 12:
-                        violations.append({
-                            "type": "excessive_pub_fields",
-                            "crate": crate_dir.name,
-                            "file": rel_path,
-                            "metric": f"`{struct_name}` has {struct_pub_fields} public fields",
-                            "recommendation": "Encapsulate fields with methods or group into domain sub-structs",
-                        })
-                    struct_name = m_st.group(1)
-                    struct_pub_fields = 0
-                    in_struct = "{" in line
-                    continue
-
-                if in_struct:
-                    if line.strip().startswith("}"):
-                        if struct_name and struct_pub_fields > 12:
-                            violations.append({
-                                "type": "excessive_pub_fields",
-                                "crate": crate_dir.name,
-                                "file": rel_path,
-                                "metric": f"`{struct_name}` has {struct_pub_fields} public fields",
-                                "recommendation": "Encapsulate fields with methods or group into domain sub-structs",
-                            })
-                        in_struct = False
-                        struct_name = None
-                        struct_pub_fields = 0
-                    elif re.match(r"^\s*pub\s+[a-zA-Z0-9_]+\s*:", line):
-                        struct_pub_fields += 1
-
-    return violations
 
 
 def scan_condition_soup(target_crate=None):
@@ -637,12 +573,11 @@ def scan_accessor_conventions(target_crate=None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Audit dead code, minimum visibility leaks, struct cohesion, boolean conditions, and method naming & accessor conventions."
+        description="Audit dead code, minimum visibility leaks, boolean conditions, and method naming & accessor conventions."
     )
     parser.add_argument("--all", action="store_true", help="Run all code quality audits")
     parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
     parser.add_argument("--visibility", action="store_true", help="Run least visibility scanner")
-    parser.add_argument("--srp", action="store_true", help="Run struct cohesion checks")
     parser.add_argument("--conditions", action="store_true", help="Run condition soup & boolean clarity scanner")
     parser.add_argument("--accessors", action="store_true", help="Run method naming and accessor convention checks")
     parser.add_argument("--crate", help="Filter audit to a specific crate")
@@ -654,7 +589,6 @@ def main():
         args.all
         or args.dead_code
         or args.visibility
-        or args.srp
         or args.conditions
         or args.accessors
     ):
@@ -667,10 +601,6 @@ def main():
     vis_leaks = []
     if args.all or args.visibility:
         vis_leaks = scan_least_visibility(args.crate)
-
-    srp_issues = []
-    if args.all or args.srp:
-        srp_issues = scan_srp_and_cohesion(args.crate)
 
     condition_issues = []
     if args.all or args.conditions:
@@ -685,7 +615,6 @@ def main():
             "dead_code": dead,
             "test_only_zombies": zombies,
             "visibility_leaks": vis_leaks,
-            "srp_cohesion_issues": srp_issues,
             "condition_issues": condition_issues,
             "accessor_issues": accessor_issues,
         }
@@ -725,18 +654,8 @@ def main():
         if len(vis_leaks) > 15:
             print(f"    * ... and {len(vis_leaks) - 15} more")
 
-    if args.all or args.srp:
-        print(f"\n[3. STRUCT COHESION & ENCAPSULATION]")
-        if not srp_issues:
-            print("  - Status: [PASS] Zero structs with excessive public fields (> 12).")
-        else:
-            print(f"  - Structural anomalies: {len(srp_issues)} issue(s)")
-            for issue in srp_issues:
-                print(f"    * [{issue['type']}] {issue['file']}: {issue['metric']}")
-                print(f"      -> {issue['recommendation']}")
-
     if args.all or args.conditions:
-        print(f"\n[4. CONDITION SOUP & SELF-DOCUMENTING BOOLEAN LOGIC]")
+        print(f"\n[3. CONDITION SOUP & SELF-DOCUMENTING BOOLEAN LOGIC]")
         if not condition_issues:
             print("  - Status: [PASS] All conditionals use clean explaining variables and domain predicates.")
         else:
@@ -748,7 +667,7 @@ def main():
                 print(f"    * ... and {len(condition_issues) - 15} more")
 
     if args.all or args.accessors:
-        print(f"\n[5. METHOD NAMING & ACCESSOR CONVENTIONS]")
+        print(f"\n[4. METHOD NAMING & ACCESSOR CONVENTIONS]")
         if not accessor_issues:
             print("  - Status: [PASS] All getters and setters adhere to method naming conventions (no get_ prefix, is_/has_/can_ booleans, set_ setters, slice view collection getters).")
         else:
@@ -762,7 +681,7 @@ def main():
     print("\n" + "=" * 76)
     print(
         f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, "
-        f"{len(srp_issues)} struct cohesion issues, {len(condition_issues)} condition soup issues, "
+        f"{len(condition_issues)} condition soup issues, "
         f"{len(accessor_issues)} method naming & accessor issues."
     )
     print("=" * 76)

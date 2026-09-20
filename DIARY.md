@@ -8063,6 +8063,27 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 runner suites.
   - `python tools/harness/pre_flight.py`: 100% pass on formatting, change coupling, API coverage, and ceiling gates.
 
+---
+
+### [2026-09-20 13:35 CEST] — Clean-Break Retirement of Single Responsibility (<= 12 Public Fields) Rule Across Audit Harness & Docs
+
+- **Files Modified**:
+  - `tools/harness/audit_code_quality.py`: Removed `RE_PUB_STRUCT`, deleted `scan_srp_and_cohesion()`, removed `--srp` CLI flag, and consolidated active audit reporting into 4 canonical pillars (Dead Code & Zombies, Minimum Visibility, Condition Soup, Accessor Conventions). Cleaned up JSON export schema and summary reporting.
+  - `tools/harness/audit_docs_quality.py`: Updated `REGISTERED_RULE_AUDITS` for `file-size-and-cohesion.md` to map strictly to `test_architecture_rules.rs (test_file_size_limits)` without stale auditor pillar references. Synchronized pillar numbers for `performance-and-readability.md` and `rust-best-practices.md`.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Removed unencapsulated "God Structs" (> 12 public fields) heuristic from Pillar 3, renumbered remaining quality pillars to 6, and removed `--srp` from CLI examples.
+  - `.agents/workflows/audit-code-quality.md`: Removed `--srp` command from targeted audit section.
+- **Architectural Rationale & Trade-Offs**:
+  - *Silicon Hardware Modeling Reality:* In a cycle-exact emulator, custom chip structs (`Agnus`, `Blitter`, `Denise`, `Paula`, `Cia`, `AudioChannel`, `CpuMicroState`) directly model physical silicon registers, internal latches, and serializable save-state snapshots (`serde::Serialize`/`Deserialize`). Enforcing an arbitrary OOP ceiling of $\le 12$ public fields forced artificial nesting indirection, degraded hot color-clock loop performance, and triggered 16 false-alarm warnings.
+  - *Module-Level Aspect Boundaries:* Single Responsibility Principle in this codebase is strictly anchored at the module and aspect level by the 800-line source file ceiling per `.agents/rules/file-size-and-cohesion.md`, mechanically verified via `cargo test -p test_runner --test test_architecture_rules`.
+  - *Clean-Break Refactoring:* In accordance with `clean-break-refactoring.md` and explicit user approval, the rule and `--srp` flag were completely retired without leaving backward-compatibility shims, allowlists, or legacy residue.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_code_quality.py --all`: 0 dead symbols, 0 zombies, 0 visibility leaks, 0 false-alarm struct cohesion issues.
+  - `python tools/harness/audit_code_quality.py --all --json`: Valid JSON output confirming clean schema.
+  - `cargo clippy --workspace --all-targets`: Passed with 0 warnings/errors.
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed.
+  - `python tools/harness/audit_docs_quality.py --all`: 100% doc governance pass rate (0 issues).
+  - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly.
+
 
 
 

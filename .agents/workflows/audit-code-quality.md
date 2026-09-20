@@ -39,10 +39,6 @@ When invoked without parameters:
    ```powershell
    python tools/harness/audit_code_quality.py --visibility
    ```
-- **Audit Struct Cohesion (> 12 public fields):**
-   ```powershell
-   python tools/harness/audit_code_quality.py --srp
-   ```
 - **Audit Compound Condition Soup & Boolean Clarity:**
    ```powershell
    python tools/harness/audit_code_quality.py --conditions

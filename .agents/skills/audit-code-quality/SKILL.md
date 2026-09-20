@@ -17,7 +17,7 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 
 ---
 
-## 2. The Seven Code Quality Pillars
+## 2. The Six Code Quality Pillars
 
 ### Pillar 1: Dead Code & Test-Only Zombies
 1. **Completely Dead Symbols (💀):**
@@ -36,16 +36,12 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Over-Exposed `pub(crate)` / `pub` Items:** Symbols whose callers reside strictly within their defining file. Demote to private `fn`.
 - **Encapsulated Internal Modules:** Submodules (e.g. `instructions`, `decoders`, internal callbacks) declared `pub mod` that should be `pub(crate) mod`.
 
-### Pillar 3: Struct Cohesion & Single Responsibility
-- **Unencapsulated "God Structs":** Structs declaring $> 12$ public fields, signaling mixed concerns or lack of domain groupings.
-- **Source File Ceilings:** Files in `crates/*/src/` exceeding the **800-line ceiling** (mechanically enforced via `cargo test -p test_runner --test test_architecture_rules`).
-
-### Pillar 4: Condition Soup & Explaining Variables (`--conditions`)
+### Pillar 3: Condition Soup & Explaining Variables (`--conditions`)
 - **Self-Documenting Boolean Logic:** Scans for dense compound conditionals (`if (a || b) && c && d`) that should be decomposed into named explaining variables (`let is_ready = ...;`) or domain predicate methods per [`.agents/rules/performance-and-readability.md`](../../rules/performance-and-readability.md).
 - **Prohibition of Multi-Clause Clutter:** Flags conditionals with mixed nested operators or $\ge 3$ connectives to ensure code reads like declarative hardware specification prose.
 - **Short-Circuit Preservation Invariant:** Explaining variables must never eagerly evaluate sub-expressions or function calls that would otherwise be avoided via boolean short-circuit evaluation (`&&`, `||`) or branched execution (`match`).
 
-### Pillar 5: Method Naming & Accessor Conventions (`--accessors`)
+### Pillar 4: Method Naming & Accessor Conventions (`--accessors`)
 - **Method Naming & Accessor Conventions:**
   1. **Standard Getters:** Must exactly match the field name (do NOT use a `get_` prefix). Pattern: `pub const fn <field>(&self) -> T` (or `&T` if non-Copy).
   2. **Boolean Getters:** Must start with the `is_` prefix (or retain natural boolean prefixes like `has_`, `can_` if already present in the field name). If field is named `enabled: bool` -> getter is `pub const fn is_enabled(&self) -> bool`. If field already has `is_` (e.g. `is_active: bool`), do not duplicate it (`pub const fn is_active(&self) -> bool`).
@@ -53,14 +49,14 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
   4. **Collection Getters (Slice Views):** Getters exposing internal buffers or sequences must return borrowed slices (`&[T]` or `&mut [T]`), never references to concrete containers (`&Vec<T>`). Example: Field `data: Vec<i16>` -> getter `pub fn data(&self) -> &[i16]`.
 - **Verification Method:** Verified directly via `python tools/harness/audit_code_quality.py --accessors`.
 
-### Pillar 6: Compiler-Grade AST Invariants & Workspace Lints
+### Pillar 5: Compiler-Grade AST Invariants & Workspace Lints
 - **Zero Host Panics on Guest Code:** Denied in production code via `clippy::unwrap_used = "deny"`, `clippy::expect_used = "deny"`, and `clippy::panic = "deny"`. (Integration tests exempt via `#![allow(...)]`).
 - **Disallowed Abstractions & Concurrency:** Blocked via `clippy::disallowed_types` (`Rc`, `RefCell`, `Arc`, `Mutex`, `RwLock`, `mpsc::Sender`, `mpsc::Receiver`) and `clippy::disallowed_methods` (`std::thread::spawn`).
 - **Borrow Views over Containers:** Functions inspecting buffers or sequences must accept borrowed slices (`&[T]`, `&mut [T]`) rather than concrete heap containers (`&Vec<T>`, `&mut Vec<T>`), and accept `&str` instead of `&String`. Enforced via `clippy::ptr_arg = "deny"`.
 - **Constructor & Derives Discipline:** Enforced via `clippy::new_without_default = "deny"`, `clippy::new_ret_no_self = "deny"`, `clippy::expl_impl_clone_on_copy = "deny"`, and `missing_debug_implementations = "warn"`.
 - **Verification Gate:** Enforced on every build via `cargo clippy --workspace --all-targets` and `check_clippy_invariants()` in `tools/harness/pre_flight.py`.
 
-### Pillar 7: Automated Architecture Guardrails
+### Pillar 6: Automated Architecture Guardrails
 - **Method Inlining Guidelines:** Verified via `test_inlining_guidelines_compliance` in `test_architecture_rules.rs`.
 - **Macro & Const-Generic Prohibitions:** Verified via `test_zero_user_defined_macros` and `test_zero_const_generic_handlers`.
 - **Dedicated External Test Suites & Parity:** Verified via `test_every_crate_has_dedicated_external_tests_suite`, `test_canonical_test_file_naming_convention`, and `test_zero_inline_tests_in_crates_src`.
@@ -87,9 +83,6 @@ python tools/harness/audit_code_quality.py --dead-code --crate paula
 
 # Audit only visibility leaks across the workspace
 python tools/harness/audit_code_quality.py --visibility
-
-# Audit struct cohesion (> 12 public fields)
-python tools/harness/audit_code_quality.py --srp
 
 # Audit condition soup and boolean clarity
 python tools/harness/audit_code_quality.py --conditions
