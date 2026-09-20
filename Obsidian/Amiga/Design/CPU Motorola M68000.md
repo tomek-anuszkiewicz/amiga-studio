@@ -10,12 +10,12 @@ updated: 2026-09-14
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
 tracked_paths:
   - "crates/cpu"
-last_synced_commit: "03da398"
-last_synced_date: "2026-09-19"
+last_synced_commit: "9558483973639a25211924cab2ddea208895723e"
+last_synced_date: "2026-09-20"
 ---
 # Motorola 68000 CPU Design Specification
 
-- **Module Location:** `m68000/`
+- **Module Location:** `crates/cpu/`
 - **Execution Model:** Cycle-exact micro-operations mapped to Color Clock phases (**CCK1** and **CCK2**).
 - **Bus Interface:** Interacts with memory strictly via [MemoryBus.md](MemoryBus.md), handling `BusResult::WaitState` and executing direct 2-phase Color Clock read/write transactions (`step_bus_read_word`, `step_bus_write_word`, etc.).
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md) (wrapping arithmetic, Big-Endian decoding, zero panics).
@@ -380,14 +380,16 @@ Instruction execution is driven via a cycle-exact micro-step state machine clock
   - `ssp_base`: Base supervisor stack pointer snapshot at the start of exception frame stacking.
 
 - **Unified Control Model (Zero `StepResult` Overhead):**
-  - **`StepFn = fn(&mut Cpu, &mut MemoryBus) -> BusResult<()>`**: Micro-step handlers only report bus readiness (`BusResult::Ready(())` or `BusResult::WaitState`).
-  - **`step_cck(&mut self, bus: &mut MemoryBus) -> bool`**: Executes a single CCK color clock cycle (~280 ns) and returns `true` when the instruction completes/retires, `false` otherwise. Performs boundary validation and initiates uninitialized instructions.
-  - **`step_cck_internal(&mut self, bus: &mut MemoryBus) -> bool`**: Internal hot-loop primitive executing micro-steps directly without redundant boundary checks.
-  - **`step_instruction(&mut self, bus: &mut MemoryBus) -> u32`**: Steps through an entire instruction/opcode to retirement, returning the exact CPU clock cycles consumed.
+  - **`BusFn = fn(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()>`**: Micro-step handlers report bus readiness (`BusResult::Ready(())` or `BusResult::WaitState`) against any decoupled `AddressBus`.
+  - **`step_cck(&mut self, bus: &mut dyn AddressBus) -> bool`**: Executes a single CCK color clock cycle (~280 ns) and returns `true` when the instruction completes/retires, `false` otherwise. Performs boundary validation and initiates uninitialized instructions.
+  - **`step_cck_internal(&mut self, bus: &mut dyn AddressBus) -> bool`**: Internal hot-loop primitive executing micro-steps directly without redundant boundary checks.
+  - **`step_instruction(&mut self, bus: &mut dyn AddressBus) -> u32`**: Steps through an entire instruction/opcode to retirement, returning the exact CPU clock cycles consumed.
+  - **`rehydrate_micro_steps(&mut self)`**: Post-deserialization rehydration method that restores the cached `&'static [MicroStep]` slice pointer (`current_steps`) from `OPCODE_DESCRIPTOR_TABLE[ir]` following a save-state restore.
+  - **`set_pc_and_prime_prefetch(&mut self, target_pc: u32, bus: &mut dyn AddressBus)`**: Synthetic pre-execution helper used by debugger and unit test suites; sets `instruction_pc` and `pc`, and primes the 2-word prefetch queue (`ir` and `prefetch`) directly without cold reset overhead.
   - **State flags**: Halted and Stopped states are queried directly on `cpu.state.halted` and `cpu.state.stopped`.
 
-#### Specialized Direct Micro-Step Execution Handlers (`StepFn`)
-To eliminate nested dynamic runtime size checks and dynamic branching (`match`) in the hot execution loop, micro-step operations are specialized directly into atomic function pointers (`StepFn = fn(&mut Cpu, &mut MemoryBus) -> BusResult<()>`):
+#### Specialized Direct Micro-Step Execution Handlers (`BusFn`)
+To eliminate nested dynamic runtime size checks and dynamic branching (`match`) in the hot execution loop, micro-step operations are specialized directly into atomic function pointers (`BusFn = fn(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()>`):
 - **Operand Reads:** `Cpu::step_bus_read_src_byte`, `Cpu::step_bus_read_src_word`, `Cpu::step_bus_read_src_long_high`, `Cpu::step_bus_read_src_long_low`, `Cpu::step_bus_read_dst_byte`, `Cpu::step_bus_read_dst_word`, `Cpu::step_bus_read_dst_long_high`, `Cpu::step_bus_read_dst_long_low`.
 - **Dual Staged Reads & Writes:** `Cpu::step_bus_read_addr1_*`, `Cpu::step_bus_read_addr2_*`, `Cpu::step_bus_write_addr2_*`.
 - **Operand Writes:** `Cpu::step_bus_write_dst_byte`, `Cpu::step_bus_write_dst_word`, `Cpu::step_bus_write_dst_long_high`, `Cpu::step_bus_write_dst_long_low`.
@@ -459,6 +461,25 @@ SP + 12: [ Low 16 bits of Program Counter (PC) ]
   - Bits 2–0: Function Code bits ($FC_2, FC_1, FC_0$).
 - Vector address is loaded from `$00000C` (Vector 3), and execution resumes in supervisor mode ($S=1, T=0$).
 
+### 5.2 Privilege Violation (Vector 8) Microcode Pipeline
+When a privileged instruction (`RESET`, `STOP`, `RTE`, `MOVE to SR`, `ANDI/EORI/ORI to SR`, `MOVE USP`) is executed in User Mode ($SR.S = 0$), the processor traps to Vector 8 (`$000020`) consuming exactly 34 CPU clocks (17 CCKs) via `STEPS_PRIVILEGE_VIOLATION`:
+1. **`ALU_PRIVILEGE_VIOLATION_INIT` (2 clocks):** Saves return PC (`instruction_pc`) in `source`, old SR in `destination`, switches to Supervisor mode ($S=1, T=0$), and loads Vector 8 address (`$000020`) into `ea_addr`.
+2. **`ALU_IDLE` (2 clocks):** Internal exception setup latency.
+3. **Stack Frame Pushes (12 clocks):** Pushes return PC low word to $SP-2$, old SR to $SP-6$, and return PC high word to $SP-4$, committing $SP \leftarrow SP - 6$.
+4. **Vector Fetch (8 clocks):** Reads high and low words of handler address from `$000020` into `ea_addr`.
+5. **Prefetch Target Refill (10 clocks):** Reads first target opcode from `ea_addr` and prefetches second word from `ea_addr + 2`, transferring control to the exception handler.
+
+### 5.3 Divide-by-Zero (Vector 5) Microcode Pipeline
+When `DIVU` or `DIVS` encounters a zero divisor (`source == 0`), the ALU halts division and triggers Vector 5 (`$000014`) consuming 38 CPU clocks via `STEPS_DIV_ZERO`:
+1. **`ALU_IDLE_8CLK` (8 clocks):** Internal division zero-detection latency.
+2. **Setup:** Updates SR flags ($N, Z, V, C$ cleared, $X$ preserved), switches to Supervisor mode ($S=1, T=0$), snapshots return PC and old SR.
+3. **Stack Frame Pushes (12 clocks):** Pushes standard 3-word exception frame ($SP-2$ PC low, $SP-6$ SR, $SP-4$ PC high).
+4. **Vector Fetch (8 clocks):** Reads 32-bit vector from `$000014`.
+5. **Prefetch Target Refill (10 clocks):** Refills 2-word pipeline from target address.
+
+### 5.4 Double Bus Fault on Odd Reset Vector 1
+During cold or warm reset exception processing, if the initial Program Counter read from Vector 1 (`$000004`) has bit 0 set (`pc & 1 != 0`), instruction prefetch cannot proceed across the 16-bit data bus. Because an Address Error occurs during reset exception processing itself, the MC68000 silicon triggers an immediate **Double Bus Fault**, permanently halting the CPU (`state.halted = true`) until external hardware reset.
+
 ---
 
 ## 6. Reset Procedure & Hardware Pin Signaling
@@ -474,8 +495,8 @@ On both **Cold** and **Warm** reset, the CPU execution flow begins at vector `$0
 1. **Overlay Active:** Low-memory overlay (`_OVL`) routes `$000000-$07FFFF` to Kickstart ROM.
 2. **Status Register:** Set to `$2700` ($S=1, T=0, I=7$).
 3. **Fetch Initial SSP:** Read 32-bit value from `$000000` into `ssp` (active `A7`).
-4. **Fetch Initial PC:** Read 32-bit value from `$000004` into `pc`.
-5. **Fill Prefetch:** Read word at `pc` into `ir`, increment `pc += 2`; read word at `pc` into `irc`, increment `pc += 2`.
+4. **Fetch Initial PC:** Read 32-bit value from `$000004` into `pc` and `instruction_pc`. If `pc & 1 != 0` (odd address), the processor cannot prefetch across the 16-bit bus, immediately halting the CPU (`halted = true`) via Double Bus Fault.
+5. **Fill Prefetch:** Read word at `pc` into `ir`, increment `pc += 2`; read word at `pc` into `prefetch` (lookahead prefetch register), increment `pc += 2`.
 6. **Execution:** Begin execution at `pc` in Kickstart ROM.
    - Kickstart inspects RAM contents for magic resident checksums to determine whether to perform a warm reboot or cold boot.
 

@@ -8131,6 +8131,27 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, API coverage, Clippy, architecture rules).
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed.
 
+---
+
+### [2026-09-20 13:51 CEST] — Semantic Parity Audit & Remediation: M68000 CPU Specifications
+
+- **Files Modified**:
+  - `Obsidian/Amiga/Design/CPU Motorola M68000.md`:
+    - Frontmatter & Header: Corrected `Module Location` from legacy `m68000/` to canonical `crates/cpu/`.
+    - Section 3.3: Corrected ghost type signature `StepFn = fn(&mut Cpu, &mut MemoryBus) -> BusResult<()>` to canonical `BusFn = fn(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusResult<()>`, documenting architectural decoupling from concrete `MemoryBus`. Updated method signatures (`step_cck`, `step_cck_internal`, `step_instruction`) to accept `&mut dyn AddressBus`.
+    - Section 3.3: Documented post-deserialization lifecycle method `rehydrate_micro_steps(&mut self)` and debugger/test harness helper `set_pc_and_prime_prefetch(&mut self, target_pc: u32, bus: &mut dyn AddressBus)`.
+    - Section 5: Added Section 5.2 documenting Privilege Violation (`STEPS_PRIVILEGE_VIOLATION`, Vector 8, 34 CPU clocks / 17 CCKs) and Section 5.3 documenting Divide-by-Zero (`STEPS_DIV_ZERO`, Vector 5, 38 CPU clocks). Added Section 5.4 documenting MC68000 silicon Double Bus Fault on odd initial Program Counter (`pc & 1 != 0`).
+    - Section 6.1: Aligned cold/warm reset sequence Step 4 (documenting Double Bus Fault on odd PC) and Step 5 (documenting lookahead prefetch register latching into `state.prefetch` rather than `irc`).
+    - Frontmatter: Bumped `last_synced_commit` to current verified checkpoint.
+- **Architectural Rationale & Trade-Offs**:
+  - *Zero Ghost Residue & Trait Decoupling:* Replacing obsolete `StepFn` and concrete `MemoryBus` references with `BusFn` and `dyn AddressBus` reinforces the repository's strict bus topology and decoupling invariants.
+  - *Silicon Exception Fidelity:* Documenting the exact microcode pipelines for Privilege Violation (34 clocks), Divide-by-Zero (38 clocks), and reset-phase Double Bus Faults ensures that the CPU specification matches Tom Harte silicon ground truth and live Rust execution models.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py --all`: 100% pass across all 10 documentation quality pillars (0 issues, 26/26 specs in sync).
+  - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, API coverage, Clippy, architecture rules).
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed.
+
+
 
 
 
