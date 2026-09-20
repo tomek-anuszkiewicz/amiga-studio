@@ -32,7 +32,7 @@ The CPU exposes a fully queryable, read-only state snapshot (`CpuState`) for ins
 | Register / Field | Width | Description | Hardware Behavior / Access Rules |
 | :--- | :---: | :--- | :--- |
 | **`d[0..=7]`** ($D_0-D_7$) | 32-bit | Data Registers | General data registers. Supports Byte, Word, and Long transfers. Low-size writes preserve unaffected high bits. Encapsulated via `d_byte`, `set_d_byte`, `d_word`, `set_d_word`, `d_long`, `set_d_long`. |
-| **`a[0..=7]`** ($A_0-A_7$) | 32-bit | Address Registers | Base, pointer, and software stack registers. Byte accesses are invalid. Word writes are sign-extended to 32 bits before committing via `write_a` / `set_a_long`. $A_7$ holds the currently active stack pointer ($USP$ or $SSP$). |
+| **`a[0..=7]`** ($A_0-A_7$) | 32-bit | Address Registers | Base, pointer, and software stack registers. Byte accesses are invalid. Word writes are sign-extended to 32 bits before committing via `set_a_long`. Encapsulated via `a_word`, `a_long`, `set_a_long`. $A_7$ holds the currently active stack pointer ($USP$ or $SSP$). |
 | **`usp`** ($USP$) | 32-bit | User Stack Pointer | Banked $A_7$ when running in User Mode ($SR.S = 0$). |
 | **`ssp`** ($SSP$) | 32-bit | Supervisor Stack Pointer | Banked $A_7$ when running in Supervisor Mode ($SR.S = 1$). |
 | **`pc`** ($PC$) | 32-bit | Program Counter | Points to instruction memory. 24-bit physical address space on MC68000; internally 32-bit wide. |

@@ -35,13 +35,13 @@ pub fn alu_addq_l_imm_dn(state: &mut CpuState, imm: u8, reg_dst: u8) {
 }
 
 pub fn alu_addq_w_imm_an(state: &mut CpuState, imm: u8, reg_dst: u8) {
-    let a = state.read_a(reg_dst as usize);
-    state.write_a(reg_dst as usize, a.wrapping_add(imm as u32));
+    let a = state.a_long(reg_dst as usize);
+    state.set_a_long(reg_dst as usize, a.wrapping_add(imm as u32));
 }
 
 pub fn alu_addq_l_imm_an(state: &mut CpuState, imm: u8, reg_dst: u8) {
-    let a = state.read_a(reg_dst as usize);
-    state.write_a(reg_dst as usize, a.wrapping_add(imm as u32));
+    let a = state.a_long(reg_dst as usize);
+    state.set_a_long(reg_dst as usize, a.wrapping_add(imm as u32));
 }
 
 pub fn alu_addq_b_imm_mem(state: &mut CpuState, imm: u8, _reg_dst: u8) {

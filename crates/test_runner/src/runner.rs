@@ -124,7 +124,7 @@ pub fn run_single_test_detail_with_bus(
         test.final_state.d7,
     ];
     for i in 0..8 {
-        let val = cpu.state.d_regs()[i];
+        let val = cpu.state.d_long(i);
         if val != expected_d[i] {
             failure.diffs.push(StateDiff::DataRegister {
                 reg: i,
@@ -145,7 +145,7 @@ pub fn run_single_test_detail_with_bus(
         test.final_state.a6,
     ];
     for i in 0..7 {
-        let val = cpu.state.a_regs()[i];
+        let val = cpu.state.a_long(i);
         if val != expected_a[i] {
             failure.diffs.push(StateDiff::AddressRegister {
                 reg: i,

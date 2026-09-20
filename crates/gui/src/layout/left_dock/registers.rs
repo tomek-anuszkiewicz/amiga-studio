@@ -72,8 +72,8 @@ pub(crate) fn render_registers(
                     .spacing([10.0, 4.0])
                     .show(ui, |ui| {
                         for i in 0..8 {
-                            let val = state.d_regs()[i];
-                            let changed = prev_state.map_or(false, |p| p.d_regs()[i] != val);
+                            let val = state.d_long(i);
+                            let changed = prev_state.map_or(false, |p| p.d_long(i) != val);
                             let col = diff_color(changed);
 
                             ui.monospace(D_LABELS[i]).on_hover_text(D_TOOLTIPS[i]);
@@ -159,8 +159,8 @@ pub(crate) fn render_registers(
                     .spacing([10.0, 4.0])
                     .show(ui, |ui| {
                         for i in 0..8 {
-                            let val = state.a_regs()[i];
-                            let changed = prev_state.map_or(false, |p| p.a_regs()[i] != val);
+                            let val = state.a_long(i);
+                            let changed = prev_state.map_or(false, |p| p.a_long(i) != val);
                             let col = diff_color(changed);
 
                             let is_sup = (state.sr & 0x2000) != 0;

@@ -425,7 +425,7 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
                 let reg_dst = self.state.micro.reg_dst as usize;
-                self.state.write_a(reg_dst, addr);
+                self.state.set_a_long(reg_dst, addr);
                 BusResult::Ready(())
             }
         }
@@ -444,7 +444,7 @@ impl Cpu {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
                 let reg_dst = self.state.micro.reg_dst as usize;
-                self.state.write_a(reg_dst, addr);
+                self.state.set_a_long(reg_dst, addr);
                 self.state.micro.ea_addr = addr;
                 self.state.pc = self.state.pc.wrapping_add(2);
                 self.state.ir = self.state.prefetch;

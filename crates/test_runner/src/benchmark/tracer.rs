@@ -194,26 +194,20 @@ pub fn trace_program(program: &BenchmarkProgram, max_steps: usize) -> BenchmarkT
         let mut reg_deltas = Vec::new();
 
         // Check Data Registers
-        let d_now = cpu.state.d_regs();
-        let d_before = cpu_before.state.d_regs();
         for i in 0..8 {
-            if d_now[i] != d_before[i] {
-                reg_deltas.push(format!(
-                    "D{}: 0x{:08X} -> 0x{:08X}",
-                    i, d_before[i], d_now[i]
-                ));
+            let before = cpu_before.state.d_long(i);
+            let now = cpu.state.d_long(i);
+            if now != before {
+                reg_deltas.push(format!("D{}: 0x{:08X} -> 0x{:08X}", i, before, now));
             }
         }
 
         // Check Address Registers
-        let a_now = cpu.state.a_regs();
-        let a_before = cpu_before.state.a_regs();
         for i in 0..8 {
-            if a_now[i] != a_before[i] {
-                reg_deltas.push(format!(
-                    "A{}: 0x{:08X} -> 0x{:08X}",
-                    i, a_before[i], a_now[i]
-                ));
+            let before = cpu_before.state.a_long(i);
+            let now = cpu.state.a_long(i);
+            if now != before {
+                reg_deltas.push(format!("A{}: 0x{:08X} -> 0x{:08X}", i, before, now));
             }
         }
 
@@ -275,8 +269,8 @@ pub fn trace_program(program: &BenchmarkProgram, max_steps: usize) -> BenchmarkT
         initial_d,
         initial_a,
         steps,
-        final_d: *cpu.state.d_regs(),
-        final_a: *cpu.state.a_regs(),
+        final_d: std::array::from_fn(|i| cpu.state.d_long(i)),
+        final_a: std::array::from_fn(|i| cpu.state.a_long(i)),
         final_sr: cpu.state.sr,
         final_pc: cpu.state.instruction_pc,
         total_guest_cycles: total_cycles,

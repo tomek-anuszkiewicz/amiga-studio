@@ -208,7 +208,7 @@ pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.set_supervisor(true);
     state.sr &= !SR_T;
 
-    let ssp = state.read_a(7);
+    let ssp = state.a_long(7);
     if (ssp & 1) != 0 {
         state.halted = true;
     }

@@ -8289,3 +8289,34 @@ Every future modification or implementation task must append an entry following 
   - audit_code_quality.py passed with 0 issues
   - audit_docs_quality.py passed with 0 issues
   - test_architecture_rules passed 21/21 tests.
+
+---
+
+### [2026-09-20 15:25 CEST] — Refactored `CpuState` Register Accessors to Canonical `d_long`/`set_d_long` and `a_long`/`set_a_long`
+
+- **Files Modified**:
+  - `crates/cpu/src/state.rs`: Permanently pruned bulk slice getters `d_regs()` and `a_regs()`, and legacy helpers `read_a()` and `write_a()`. Implemented direct canonical single-register accessors `a_long(&self, reg: usize) -> u32` and `set_a_long(&mut self, reg: usize, val: u32)`. Updated `a_word` to delegate to `self.a_long(reg) as u16`.
+  - `crates/cpu/src/instructions/*` (`add.rs`, `adda.rs`, `addq.rs`, `cmp.rs`, `cmpa.rs`, `jsr.rs`, `lea.rs`, `move_b.rs`, `move_l.rs`, `move_usp.rs`, `move_w.rs`, `movea.rs`, `movem.rs`, `sub.rs`, `suba.rs`, `subq.rs`): Migrated all internal address register accesses to canonical `a_long()` and `set_a_long()`.
+  - `crates/cpu/src/micro/*` (`common.rs`, `ea.rs`, `step_control.rs`, `step_execution.rs`): Replaced all `read_a` and `write_a` invocations with `a_long` and `set_a_long`.
+  - `crates/cpu/tests/*`: Updated `test_programs.rs`, `test_visibility.rs`, `test_addressing.rs`, `test_interrupts.rs`, and `test_micro_archetypes.rs` to use canonical single-register accessors.
+  - `crates/debugger/src/loader.rs` & `crates/debugger/tests/*`: Migrated SP zero-checks and assertions from `a_regs()[7]` to `a_long(7)` and trace reads to `a_long()`.
+  - `crates/gui/src/layout/left_dock/registers.rs` & `crates/gui/tests/test_interactions.rs`: Updated data and address register grids to read values and evaluate diff highlights via `state.d_long(i)` and `state.a_long(i)`.
+  - `crates/machine_loop/tests/*`: Updated `test_reset.rs` zero-register checks to loop over `d_long(i)` and `a_long(i)`. Corrected `test_save_state.rs` deterministic stepping roundtrip to map chip RAM and execute active NOP sequence.
+  - `crates/test_runner/src/*`: Migrated `runner.rs`, `dma_harness.rs`, and benchmark `runner.rs`/`tracer.rs` to use `d_long` and `a_long`. Updated `test_builder.rs` to verify canonical accessors.
+  - `Obsidian/Amiga/Design/CPU Motorola M68000.md`, `GUI Specification.md`, and `.agents/skills/add-m68k-instruction/SKILL.md`: Updated documentation and instruction implementation recipes to reflect canonical `d_long`/`set_d_long` and `a_long`/`set_a_long` conventions.
+- **Architectural Rationale & Trade-Offs**:
+  - *Clean-Break Refactoring & API Orthogonality:* Symmetrical naming across data and address registers (`d_long`/`set_d_long`, `a_long`/`set_a_long`) eliminates confusing aliases (`read_a` vs `a_long`, `write_a` vs `set_a_long`). Removing bulk array slice views (`d_regs`, `a_regs`) prevents internal representation leaks and forces all consumers to access registers through encapsulated, single-register methods with bounded index access.
+  - *Zero Legacy Shims:* All callers across the workspace cut over in a single atomic pass, adhering strictly to the Clean-Break Refactoring rule.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/harness/pre_flight.py`: All pre-flight quality gates PASSED (formatting, AGENTS.md ceiling <= 14KB, test coupling, API coverage 100%, Clippy, architecture rules 21/21).
+  - `cargo test -p cpu`: 57/57 unit tests passed.
+  - `cargo test -p debugger`: 43/43 unit tests passed.
+  - `cargo test -p gui`: 50/50 headless integration tests passed.
+  - `cargo test -p machine_loop`: 70/70 integration tests passed.
+  - `cargo test -p test_runner --test test_builder`: 7/7 tests passed.
+  - `python tools/harness/run_tests.py --unit`: Tier 1 passed (23 crates + 7 test_runner unit suites).
+  - `python tools/harness/run_tests.py --integration`: Tier 2 passed (memory_bus, machine_loop, debugger, gui).
+  - `python tools/harness/audit_code_quality.py --all`: 0 dead symbols, 0 zombies, 0 visibility leaks, 0 method naming issues.
+  - `python tools/harness/audit_docs_quality.py`: 10/10 pillars PASSED (0 issues).
+

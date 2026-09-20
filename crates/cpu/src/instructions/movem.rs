@@ -210,14 +210,14 @@ pub const fn decode_movem_steps(
 fn movem_read_reg(state: &CpuState, is_predec: bool, bit_idx: u8) -> u32 {
     if is_predec {
         if bit_idx < 8 {
-            state.read_a((7 - bit_idx) as usize)
+            state.a_long((7 - bit_idx) as usize)
         } else {
             state.d_long((15 - bit_idx) as usize)
         }
     } else if bit_idx < 8 {
         state.d_long(bit_idx as usize)
     } else {
-        state.read_a((bit_idx - 8) as usize)
+        state.a_long((bit_idx - 8) as usize)
     }
 }
 
@@ -226,7 +226,7 @@ fn movem_write_reg(state: &mut CpuState, bit_idx: u8, val: u32) {
     if bit_idx < 8 {
         state.set_d_long(bit_idx as usize, val);
     } else {
-        state.write_a((bit_idx - 8) as usize, val);
+        state.set_a_long((bit_idx - 8) as usize, val);
     }
 }
 
@@ -263,7 +263,7 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusRes
             if is_predec {
                 cpu.trigger_address_error(ea.wrapping_sub(2), false, false);
             } else if is_postinc {
-                cpu.state.write_a(reg_ea, ea.wrapping_add(2));
+                cpu.state.set_a_long(reg_ea, ea.wrapping_add(2));
                 cpu.trigger_address_error(ea, true, false);
             } else {
                 cpu.trigger_address_error(ea, !is_reg_to_mem, false);
@@ -287,7 +287,7 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusRes
             }
         } else {
             if is_postinc {
-                cpu.state.write_a(reg_ea, cpu.state.micro.ea_addr);
+                cpu.state.set_a_long(reg_ea, cpu.state.micro.ea_addr);
             }
             cpu.state.micro.movem_state = 0;
             cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);
@@ -426,7 +426,7 @@ pub fn execute_movem_transfer(cpu: &mut Cpu, bus: &mut dyn AddressBus) -> BusRes
                 }
             } else {
                 if is_predec {
-                    cpu.state.write_a(reg_ea, cpu.state.micro.ea_addr);
+                    cpu.state.set_a_long(reg_ea, cpu.state.micro.ea_addr);
                 }
                 cpu.state.micro.movem_state = 0;
                 cpu.state.micro.micro_step = cpu.state.micro.micro_step.wrapping_add(1);

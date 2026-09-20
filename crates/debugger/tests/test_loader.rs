@@ -10,7 +10,7 @@ fn test_inject_binary_with_auto_prime() {
     let mut cpu = Cpu::new();
 
     // SP is 0 initially in raw Cpu::new()
-    assert_eq!(cpu.state.a_regs()[7], 0);
+    assert_eq!(cpu.state.a_long(7), 0);
 
     // Code: NOP ($4E71), RTS ($4E75)
     let code: [u8; 4] = [0x4E, 0x71, 0x4E, 0x75];
@@ -27,7 +27,7 @@ fn test_inject_binary_with_auto_prime() {
     assert_eq!(cpu.state.prefetch, 0x4E75);
 
     // Verify SP auto-initialized to 512KB Chip RAM top ($080000)
-    assert_eq!(cpu.state.a_regs()[7], 0x080000);
+    assert_eq!(cpu.state.a_long(7), 0x080000);
     assert_eq!(cpu.state.ssp, 0x080000);
 }
 
@@ -48,5 +48,5 @@ fn test_inject_binary_without_auto_prime_preserves_cpu() {
 
     // CPU state was untouched
     assert_eq!(cpu.state.pc, 0x005000);
-    assert_eq!(cpu.state.a_regs()[7], 0x004000);
+    assert_eq!(cpu.state.a_long(7), 0x004000);
 }

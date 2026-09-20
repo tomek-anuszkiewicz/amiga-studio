@@ -87,16 +87,20 @@ fn test_cold_reset_full_flow() {
     assert_eq!(machine.cia_a.ddra, 0x00, "CIA-A DDRA must be reset to 0");
 
     // Verify CPU registers zeroed
-    assert_eq!(
-        machine.cpu.state.d_regs(),
-        &[0; 8],
-        "CPU data registers D0-D7 must be cleared to 0 on cold reset"
-    );
-    assert_eq!(
-        &machine.cpu.state.a_regs()[0..7],
-        &[0; 7],
-        "CPU address registers A0-A6 must be cleared to 0 on cold reset"
-    );
+    for i in 0..8 {
+        assert_eq!(
+            machine.cpu.state.d_long(i),
+            0,
+            "CPU data register D{i} must be cleared to 0 on cold reset"
+        );
+    }
+    for i in 0..7 {
+        assert_eq!(
+            machine.cpu.state.a_long(i),
+            0,
+            "CPU address register A{i} must be cleared to 0 on cold reset"
+        );
+    }
     assert_eq!(
         machine.cpu.state.sr, 0x2700,
         "CPU Status Register must be reset to supervisor mask 7 ($2700)"
@@ -334,7 +338,7 @@ fn test_cpu_reset_instruction_privilege_violation() {
     // Setup CPU in user mode (S = 0)
     machine.cpu.state.ssp = 0x005000;
     machine.cpu.state.usp = 0x003000;
-    machine.cpu.state.write_a(7, 0x003000);
+    machine.cpu.state.set_a_long(7, 0x003000);
     machine.cpu.state.sr = 0x0000; // User mode
     machine
         .cpu

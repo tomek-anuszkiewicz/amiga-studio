@@ -212,8 +212,8 @@ fn trace_program<F>(
             );
             let a_str = format!(
                 "A0:{:06X} A1:{:06X}",
-                session.machine.cpu.state.read_a(0),
-                session.machine.cpu.state.read_a(1),
+                session.machine.cpu.state.a_long(0),
+                session.machine.cpu.state.a_long(1),
             );
             println!(
                 "#{:<5} ${:06X}   {:<30} {:<24} {:<20}",

@@ -139,7 +139,7 @@ fn test_benchmark_program_builder_debug_derive() {
 }
 
 #[test]
-fn test_builder_cpu_registers_slice_views() {
+fn test_builder_cpu_registers_canonical_accessors() {
     let spec = find_spec_by_id("ARITH-02").expect("ARITH-02 must exist");
     let program = BenchmarkProgramBuilder::new(spec.clone()).build();
 
@@ -148,14 +148,12 @@ fn test_builder_cpu_registers_slice_views() {
 
     program.inject_into(&mut cpu, &mut bus);
 
-    let d_slice = cpu.state.d_regs();
-    let a_slice = cpu.state.a_regs();
     for i in 0..8 {
-        assert_eq!(d_slice[i], program.initial_d[i]);
+        assert_eq!(cpu.state.d_long(i), program.initial_d[i]);
         if i == 7 {
-            assert_eq!(a_slice[7], program.initial_ssp);
+            assert_eq!(cpu.state.a_long(7), program.initial_ssp);
         } else {
-            assert_eq!(a_slice[i], program.initial_a[i]);
+            assert_eq!(cpu.state.a_long(i), program.initial_a[i]);
         }
     }
 }

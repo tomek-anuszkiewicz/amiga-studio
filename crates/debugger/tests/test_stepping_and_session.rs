@@ -177,7 +177,7 @@ fn test_lea_step_instruction_call() {
         "After step_instruction: pc={:06X}, instruction_pc={:06X}, a0={:08X}",
         session.machine.cpu.state.pc,
         session.machine.cpu.state.instruction_pc,
-        session.machine.cpu.state.a_regs()[0]
+        session.machine.cpu.state.a_long(0)
     );
 }
 

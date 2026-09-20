@@ -17,43 +17,43 @@ use crate::Cpu;
 
 pub fn alu_cmpa_w_dn_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let s = (state.d_long(reg_src as usize) as i16 as i32) as u32;
-    let d = state.read_a(reg_dst as usize);
+    let d = state.a_long(reg_dst as usize);
     cmp_l(state, s, d);
 }
 
 pub fn alu_cmpa_w_an_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let s = (state.read_a(reg_src as usize) as i16 as i32) as u32;
-    let d = state.read_a(reg_dst as usize);
+    let s = (state.a_long(reg_src as usize) as i16 as i32) as u32;
+    let d = state.a_long(reg_dst as usize);
     cmp_l(state, s, d);
 }
 
 pub fn alu_cmpa_l_dn_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let s = state.d_long(reg_src as usize);
-    let d = state.read_a(reg_dst as usize);
+    let d = state.a_long(reg_dst as usize);
     cmp_l(state, s, d);
 }
 
 pub fn alu_cmpa_l_an_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let s = state.read_a(reg_src as usize);
-    let d = state.read_a(reg_dst as usize);
+    let s = state.a_long(reg_src as usize);
+    let d = state.a_long(reg_dst as usize);
     cmp_l(state, s, d);
 }
 
 pub fn alu_cmpa_w_mem_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = (state.micro.source as i16 as i32) as u32;
-    let d = state.read_a(reg_dst as usize);
+    let d = state.a_long(reg_dst as usize);
     cmp_l(state, s, d);
 }
 
 pub fn alu_cmpa_l_mem_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = state.micro.source;
-    let d = state.read_a(reg_dst as usize);
+    let d = state.a_long(reg_dst as usize);
     cmp_l(state, s, d);
 }
 
 pub fn alu_cmpa_w_imm_an(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let s = (state.prefetch as i16 as i32) as u32;
-    let d = state.read_a(reg_dst as usize);
+    let d = state.a_long(reg_dst as usize);
     cmp_l(state, s, d);
 }
 

@@ -304,8 +304,8 @@ fn diff_cpu_and_ram(
 ) -> Vec<StateDiff> {
     let mut diffs = Vec::new();
     for i in 0..8 {
-        let actual = cpu.state.d_regs()[i];
-        let expected = golden_state.d_regs()[i];
+        let actual = cpu.state.d_long(i);
+        let expected = golden_state.d_long(i);
         if actual != expected {
             diffs.push(StateDiff::DataRegister {
                 reg: i,
@@ -315,8 +315,8 @@ fn diff_cpu_and_ram(
         }
     }
     for i in 0..7 {
-        let actual = cpu.state.a_regs()[i];
-        let expected = golden_state.a_regs()[i];
+        let actual = cpu.state.a_long(i);
+        let expected = golden_state.a_long(i);
         if actual != expected {
             diffs.push(StateDiff::AddressRegister {
                 reg: i,

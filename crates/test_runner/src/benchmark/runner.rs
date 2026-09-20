@@ -540,11 +540,11 @@ fn execute_pass_inner(
 
     // Compiler Optimization Defense: Pass CPU reference and computed CRC through black_box
     let mut crc: u64 = 0;
-    for &d in cpu.state.d_regs() {
-        crc ^= d as u64;
+    for i in 0..8 {
+        crc ^= cpu.state.d_long(i) as u64;
     }
-    for &a in cpu.state.a_regs() {
-        crc ^= a as u64;
+    for i in 0..8 {
+        crc ^= cpu.state.a_long(i) as u64;
     }
     crc ^= (cpu.state.sr as u64) << 16;
     crc ^= cpu.state.pc as u64;

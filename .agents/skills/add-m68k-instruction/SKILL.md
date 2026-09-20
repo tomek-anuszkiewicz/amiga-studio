@@ -32,7 +32,7 @@ The M68000 core models execution via the **Cycle-Exact Micro-Step State Machine*
    - Memory read operand: `state.micro.source` (or `state.micro.destination` for RMW destination).
    - Immediate operand: `state.prefetch[0]` (low byte/word) or `state.micro.source` (long).
    - Quick immediate: passed directly as `reg_src: u8`.
-   - Data / Address registers: read via accessors `state.d_*()` or `state.read_a()`.
+   - Data / Address registers: read via accessors `state.d_*()` or `state.a_long()`.
    `AluFn` signature: `fn(&mut CpuState, reg_src: u8, reg_dst: u8)`.
 4. **65,536 Static Descriptor Table (`OPCODE_DESCRIPTOR_TABLE`)**:
    Every 16-bit opcode maps to an `OpcodeDescriptor { steps: &'static [MicroStep], reg_src: u8, reg_dst: u8 }`.
@@ -415,7 +415,7 @@ Registers in `CpuState` are strictly private fields. Always use size-specific ac
   - Long: `state.d_long(i) -> u32` / `state.set_d_long(i, val)`.
 - **Address Registers ($A_0$–$A_7$)**:
   - Word: `state.a_word(i) -> u16` / `state.set_a_word(i, val)` (automatically sign-extends 16-bit to 32-bit).
-  - Long: `state.read_a(i) -> u32` / `state.write_a(i, val)` (automatically synchronizes $A_7$ USP/SSP).
+  - Long: `state.a_long(i) -> u32` / `state.set_a_long(i, val)`.
   - Byte operations on $A_n$ do not exist in the M68000 ISA.
 
 ---

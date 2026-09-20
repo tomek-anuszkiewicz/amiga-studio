@@ -57,13 +57,11 @@ fn test_register_by_register_initialization() {
         let val = 0x1000_0000 + (i as u32);
         state.set_d_long(i, val);
         assert_eq!(state.d_long(i), val);
-        assert_eq!(state.d_regs()[i], val);
     }
 
     for i in 0..8 {
         let val = 0x2000_0000 + (i as u32);
         state.set_a_long(i, val);
         assert_eq!(state.a_long(i), val);
-        assert_eq!(state.a_regs()[i], val);
     }
 }

@@ -383,7 +383,7 @@ fn test_startup_clean_memory() {
     // Verify startup PC counter points to $000000 (0th cell) with valid SSP ($080000) and primed prefetch
     assert_eq!(app.session.machine.cpu.state.instruction_pc, 0x000000);
     assert_eq!(app.session.machine.cpu.state.pc, 0x000004);
-    assert_eq!(app.session.machine.cpu.state.a_regs()[7], 0x080000);
+    assert_eq!(app.session.machine.cpu.state.a_long(7), 0x080000);
     assert_eq!(app.session.machine.cpu.state.ssp, 0x080000);
     assert!(
         app.session.machine.cpu.state.ir == 0xFFFF

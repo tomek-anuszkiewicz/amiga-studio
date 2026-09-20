@@ -14,7 +14,7 @@ fn setup_test_machine() -> (Cpu, PhysicalMemory) {
     bus.map_chip_ram_to_low_memory();
     let mut cpu = Cpu::new();
     cpu.state.ssp = 0x070000;
-    cpu.state.write_a(7, 0x070000);
+    cpu.state.set_a_long(7, 0x070000);
     cpu.state.sr = 0x2000; // Supervisor mode, Interrupt Mask = 0
     (cpu, bus)
 }
@@ -64,7 +64,7 @@ fn test_autovector_level_4_audio_irq() {
     // CPU should now be at entry of ISR ($002000)
     assert_eq!(cpu.state.instruction_pc, 0x002000);
     // Stack should have been decremented by 6 bytes
-    assert_eq!(cpu.state.read_a(7), 0x06FFFA);
+    assert_eq!(cpu.state.a_long(7), 0x06FFFA);
     // Interrupt mask should now be 4
     assert_eq!(cpu.state.interrupt_mask(), 4);
     // Supervisor bit should be set
@@ -80,7 +80,7 @@ fn test_autovector_level_4_audio_irq() {
     // Step 4: Execute RTE
     cpu.step_instruction(&mut bus);
     // Stack restored
-    assert_eq!(cpu.state.read_a(7), 0x070000);
+    assert_eq!(cpu.state.a_long(7), 0x070000);
     // Mask restored to 0
     assert_eq!(cpu.state.interrupt_mask(), 0);
     // PC returned to $001002 (MOVEQ #1, D0)

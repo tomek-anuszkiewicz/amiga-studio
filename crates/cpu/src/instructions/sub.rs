@@ -64,7 +64,7 @@ pub fn alu_sub_w_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_sub_w_an_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let s = (state.read_a(reg_src as usize) & 0xFFFF) as u16;
+    let s = (state.a_long(reg_src as usize) & 0xFFFF) as u16;
     let d = (state.d_long(reg_dst as usize) & 0xFFFF) as u16;
     let res = sub_w(state, s, d);
     let orig = state.d_long(reg_dst as usize);
@@ -79,7 +79,7 @@ pub fn alu_sub_l_dn_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 }
 
 pub fn alu_sub_l_an_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let s = state.read_a(reg_src as usize);
+    let s = state.a_long(reg_src as usize);
     let d = state.d_long(reg_dst as usize);
     let res = sub_l(state, s, d);
     state.set_d_long(reg_dst as usize, res);

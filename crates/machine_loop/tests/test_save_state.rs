@@ -73,6 +73,13 @@ fn test_save_state_deterministic_stepping_roundtrip() {
         VideoStandard::Pal,
     ));
 
+    let code = [0x4E, 0x71, 0x60, 0xFE]; // NOP; BRA *-0
+    machine.physical_memory.map_chip_ram_to_low_memory();
+    machine.physical_memory.write_bytes_debug(0x001000, &code);
+    machine
+        .cpu
+        .set_pc_and_prime_prefetch(0x001000, &mut machine.physical_memory);
+
     // 1. Advance machine by 300 CCKs
     machine.step_cycles(300);
 

@@ -57,8 +57,8 @@ impl Cpu {
 
     /// CCK1: Decrements SP -= 4, validates alignment, and idles bus for high word write
     pub fn step_bus_push_stack_high_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7).wrapping_sub(4);
-        self.state.write_a(7, sp);
+        let sp = self.state.a_long(7).wrapping_sub(4);
+        self.state.set_a_long(7, sp);
         if (sp & 1) != 0 {
             self.trigger_address_error(sp, false, false);
             return BusResult::Ready(());
@@ -68,7 +68,7 @@ impl Cpu {
 
     /// CCK2: Writes high word of destination to SP
     pub fn step_bus_push_stack_high_write(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7) & 0x00FF_FFFF;
+        let sp = self.state.a_long(7) & 0x00FF_FFFF;
         let val = ((self.state.micro.destination >> 16) & 0xFFFF) as u16;
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -78,7 +78,7 @@ impl Cpu {
 
     /// CCK2: Writes low word of destination to SP + 2
     pub fn step_bus_push_stack_low_write(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp_low = self.state.read_a(7).wrapping_add(2) & 0x00FF_FFFF;
+        let sp_low = self.state.a_long(7).wrapping_add(2) & 0x00FF_FFFF;
         let val = (self.state.micro.destination & 0xFFFF) as u16;
         match bus.write_word(sp_low, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -92,7 +92,7 @@ impl Cpu {
 
     /// CCK1: Reads high word of return PC from (SP) into `ea_high`
     pub fn step_bus_pop_stack_high_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7);
+        let sp = self.state.a_long(7);
         if (sp & 1) != 0 {
             self.trigger_address_error(sp, true, false);
             return BusResult::Ready(());
@@ -108,14 +108,14 @@ impl Cpu {
 
     /// CCK2: Latches high word of return PC, advances SP += 2
     pub fn step_bus_pop_stack_high_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7);
-        self.state.write_a(7, sp.wrapping_add(2));
+        let sp = self.state.a_long(7);
+        self.state.set_a_long(7, sp.wrapping_add(2));
         BusResult::Ready(())
     }
 
     /// CCK1: Reads low word of return PC from (SP) and combines into `ea_addr`
     pub fn step_bus_pop_stack_low_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7);
+        let sp = self.state.a_long(7);
         if (sp & 1) != 0 {
             self.trigger_address_error(sp, true, false);
             return BusResult::Ready(());
@@ -131,8 +131,8 @@ impl Cpu {
 
     /// CCK2: Latches full return PC into `ea_addr`, advances SP += 2
     pub fn step_bus_pop_stack_low_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7);
-        self.state.write_a(7, sp.wrapping_add(2));
+        let sp = self.state.a_long(7);
+        self.state.set_a_long(7, sp.wrapping_add(2));
         BusResult::Ready(())
     }
 
@@ -142,7 +142,7 @@ impl Cpu {
 
     /// CCK1: Validates stack alignment and idles bus for return PC low word write to SP - 2
     pub fn step_bus_write_trap_pclo_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7).wrapping_sub(2);
+        let sp = self.state.a_long(7).wrapping_sub(2);
         if (sp & 1) != 0 {
             self.trigger_address_error(sp, false, false);
             return BusResult::Ready(());
@@ -152,7 +152,7 @@ impl Cpu {
 
     /// CCK2: Writes return PC low word to SP - 2
     pub fn step_bus_write_trap_pclo_write(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7).wrapping_sub(2) & 0x00FF_FFFF;
+        let sp = self.state.a_long(7).wrapping_sub(2) & 0x00FF_FFFF;
         let val = (self.state.micro.source & 0xFFFF) as u16;
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -162,7 +162,7 @@ impl Cpu {
 
     /// CCK1: Validates stack alignment and idles bus for old SR write to SP - 6
     pub fn step_bus_write_trap_sr_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7).wrapping_sub(6);
+        let sp = self.state.a_long(7).wrapping_sub(6);
         if (sp & 1) != 0 {
             self.trigger_address_error(sp, false, false);
             return BusResult::Ready(());
@@ -172,7 +172,7 @@ impl Cpu {
 
     /// CCK2: Writes old SR to SP - 6
     pub fn step_bus_write_trap_sr_write(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7).wrapping_sub(6) & 0x00FF_FFFF;
+        let sp = self.state.a_long(7).wrapping_sub(6) & 0x00FF_FFFF;
         let val = (self.state.micro.destination & 0xFFFF) as u16;
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
@@ -182,7 +182,7 @@ impl Cpu {
 
     /// CCK1: Validates stack alignment and idles bus for return PC high word write to SP - 4
     pub fn step_bus_write_trap_pchi_idle(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7).wrapping_sub(4);
+        let sp = self.state.a_long(7).wrapping_sub(4);
         if (sp & 1) != 0 {
             self.trigger_address_error(sp, false, false);
             return BusResult::Ready(());
@@ -192,13 +192,13 @@ impl Cpu {
 
     /// CCK2: Writes return PC high word to SP - 4 and commits updated SP = SP - 6
     pub fn step_bus_write_trap_pchi_write(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp_base = self.state.read_a(7);
+        let sp_base = self.state.a_long(7);
         let sp = sp_base.wrapping_sub(4) & 0x00FF_FFFF;
         let val = ((self.state.micro.source >> 16) & 0xFFFF) as u16;
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.write_a(7, sp_base.wrapping_sub(6));
+                self.state.set_a_long(7, sp_base.wrapping_sub(6));
                 BusResult::Ready(())
             }
         }
@@ -396,7 +396,7 @@ impl Cpu {
         match bus.write_word(sp, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
-                self.state.write_a(7, sp_base.wrapping_sub(14));
+                self.state.set_a_long(7, sp_base.wrapping_sub(14));
                 BusResult::Ready(())
             }
         }
@@ -444,7 +444,7 @@ impl Cpu {
 
     /// CCK1: Reads status word from (SP) into `micro.source`
     pub fn step_bus_pop_stack_sr_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7);
+        let sp = self.state.a_long(7);
         if (sp & 1) != 0 {
             self.trigger_address_error(sp, true, false);
             return BusResult::Ready(());
@@ -460,23 +460,23 @@ impl Cpu {
 
     /// CCK2: Latches status word into `micro.source`, advances SP += 2
     pub fn step_bus_pop_stack_sr_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7);
-        self.state.write_a(7, sp.wrapping_add(2));
+        let sp = self.state.a_long(7);
+        self.state.set_a_long(7, sp.wrapping_add(2));
         BusResult::Ready(())
     }
 
     /// CCK2: Latches full return PC and sets restored SR for RTE, advances SP += 2
     pub fn step_bus_pop_stack_rte_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7);
-        self.state.write_a(7, sp.wrapping_add(2));
+        let sp = self.state.a_long(7);
+        self.state.set_a_long(7, sp.wrapping_add(2));
         self.state.set_sr(self.state.micro.source as u16);
         BusResult::Ready(())
     }
 
     /// CCK2: Latches low byte of status word into CCR, advances SP += 2
     pub fn step_bus_pop_stack_ccr_finish(&mut self, _bus: &mut dyn AddressBus) -> BusResult<()> {
-        let sp = self.state.read_a(7);
-        self.state.write_a(7, sp.wrapping_add(2));
+        let sp = self.state.a_long(7);
+        self.state.set_a_long(7, sp.wrapping_add(2));
         self.state.set_ccr((self.state.micro.source & 0xFF) as u8);
         BusResult::Ready(())
     }

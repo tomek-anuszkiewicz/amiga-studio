@@ -17,7 +17,7 @@ fn setup_test_machine() -> A500Machine {
 
     // Setup supervisor stack pointer at top of 512KB Chip RAM
     machine.cpu.state.ssp = 0x070000;
-    machine.cpu.state.write_a(7, 0x070000);
+    machine.cpu.state.set_a_long(7, 0x070000);
     machine.cpu.state.sr = 0x2000; // Supervisor mode, Interrupt Mask = 0
     machine
 }

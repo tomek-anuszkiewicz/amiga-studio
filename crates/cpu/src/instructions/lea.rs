@@ -21,7 +21,7 @@ use crate::Cpu;
 // ============================================================================
 
 pub fn alu_lea_ai(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let ea = state.read_a(reg_src as usize);
+    let ea = state.a_long(reg_src as usize);
     state.set_a_long(reg_dst as usize, ea);
 }
 

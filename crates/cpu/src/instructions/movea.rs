@@ -15,22 +15,22 @@ use crate::Cpu;
 
 pub fn alu_movea_w_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.d_word(reg_src as usize) as i16 as i32) as u32;
-    state.write_a(reg_dst as usize, val);
+    state.set_a_long(reg_dst as usize, val);
 }
 
 pub fn alu_movea_w_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = (state.a_word(reg_src as usize) as i16 as i32) as u32;
-    state.write_a(reg_dst as usize, val);
+    state.set_a_long(reg_dst as usize, val);
 }
 
 pub fn alu_movea_w_mem(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let val = (state.micro.source as i16 as i32) as u32;
-    state.write_a(reg_dst as usize, val);
+    state.set_a_long(reg_dst as usize, val);
 }
 
 pub fn alu_movea_w_imm(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let val = (state.prefetch as i16 as i32) as u32;
-    state.write_a(reg_dst as usize, val);
+    state.set_a_long(reg_dst as usize, val);
 }
 
 // ============================================================================
@@ -39,17 +39,17 @@ pub fn alu_movea_w_imm(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 pub fn alu_movea_l_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = state.d_long(reg_src as usize);
-    state.write_a(reg_dst as usize, val);
+    state.set_a_long(reg_dst as usize, val);
 }
 
 pub fn alu_movea_l_an(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let val = state.read_a(reg_src as usize);
-    state.write_a(reg_dst as usize, val);
+    let val = state.a_long(reg_src as usize);
+    state.set_a_long(reg_dst as usize, val);
 }
 
 pub fn alu_movea_l_mem(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let val = state.micro.source;
-    state.write_a(reg_dst as usize, val);
+    state.set_a_long(reg_dst as usize, val);
 }
 
 // ============================================================================

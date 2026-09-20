@@ -173,33 +173,19 @@ impl CpuState {
     /// Reads lowest 16 bits of address register An
     #[inline(always)]
     pub fn a_word(&self, reg: usize) -> u16 {
-        self.read_a(reg) as u16
+        self.a_long(reg) as u16
     }
 
     /// Reads full 32-bit value of address register An
     #[inline(always)]
     pub fn a_long(&self, reg: usize) -> u32 {
-        self.read_a(reg)
+        self.a[reg]
     }
 
     /// Writes full 32-bit value of address register An
     #[inline(always)]
     pub fn set_a_long(&mut self, reg: usize, val: u32) {
-        self.write_a(reg, val);
-    }
-
-    // --- Full Array Accessors (Test Harness & State Snapshots) ---
-
-    /// Read-only slice view of all 8 data registers D0-D7 (used in test runners, debugger, and state comparison)
-    #[inline(always)]
-    pub fn d_regs(&self) -> &[u32; 8] {
-        &self.d
-    }
-
-    /// Read-only slice view of all 8 address registers A0-A7 (used in test runners, debugger, and state comparison)
-    #[inline(always)]
-    pub fn a_regs(&self) -> &[u32; 8] {
-        &self.a
+        self.a[reg] = val;
     }
 
     /// Clears data registers D0-D7, address registers A0-A7, and USP to zero
@@ -208,18 +194,6 @@ impl CpuState {
         self.d.fill(0);
         self.a.fill(0);
         self.usp = 0;
-    }
-
-    /// Read address register by index (0-7 returns A0-A7)
-    #[inline(always)]
-    pub fn read_a(&self, idx: usize) -> u32 {
-        self.a[idx]
-    }
-
-    /// Write address register by index (0-7 writes A0-A7)
-    #[inline(always)]
-    pub fn write_a(&mut self, idx: usize, val: u32) {
-        self.a[idx] = val;
     }
 
     /// Transitions or sets supervisor mode, swapping active A7 with stored USP/SSP if privilege changes
