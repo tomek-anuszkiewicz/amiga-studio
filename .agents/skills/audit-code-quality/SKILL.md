@@ -94,7 +94,7 @@ python tools/harness/audit_code_quality.py --srp
 # Audit condition soup and boolean clarity
 python tools/harness/audit_code_quality.py --conditions
 
-# Audit struct accessors and method naming conventions
+# Audit method naming and accessor conventions
 python tools/harness/audit_code_quality.py --accessors
 
 # Machine-readable JSON export

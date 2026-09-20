@@ -81,18 +81,12 @@ Follow the detailed playbooks in [`.agents/skills/audit-code-quality/SKILL.md`](
 
 ## 4. The Verbal Double-Check (Self-Audit & Heuristic Verification)
 
-Beyond mechanical script passes, explicitly review the **7 Non-Negotiable Conscience Questions** (driven by Agent cognitive inference; zero Python scripts required):
+Beyond mechanical script passes, explicitly review the **5 Non-Negotiable Conscience Questions** (driven by Agent cognitive inference; zero Python scripts required):
 1. 🧠 **Spec Freshness Review:** Did code refactoring or pruning introduce behavior changes not yet updated in `Obsidian/Amiga/Design/*.md`?
 2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all clock delays, cycle counts, and beam offsets silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom nudges?
 3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify chip behavior and state changes, or do they only assert trivial boilerplate?
 4. 📢 **Spec Conflict Escalation (`spec-compliance.md`):** Were any conflicts between reference test suites and internal design specs escalated to the user before changing code?
 5. 🧹 **Clean-Break Refactoring (`clean-break-refactoring.md`):** Were old methods, legacy aliases, and temporary shims completely deleted rather than left behind?
-6. 🔒 **Method Naming & Accessor Review (`rust-best-practices.md`):**
-   - **Method Naming & Accessor Conventions:** Standard getters match field name without `get_` prefix (`<field>(&self)`), boolean getters start with `is_` / `has_` / `can_` (zero duplicate prefixes), setters start with `set_`, and collection getters return slice views (`&[T]`, `&mut [T]`).
-7. 🧩 **Compiler AST & Trait Discipline Review (`rust-best-practices.md`):**
-   - Do functions inspecting sequences take borrowed slices (`&[T]`, `&str`) rather than concrete containers (`&Vec<T>`, `&String`)?
-   - Do parameterless constructors (`new()`) delegate to `Self::default()`?
-   - Do all public structs and enums derive `Debug`?
 
 ---
 
@@ -106,10 +100,10 @@ Conclude with the standardized summary report:
 - **Visibility Demoted:** <count> symbols (`pub` -> `pub(crate)` / private)
 - **Struct Cohesion Anomalies:** <count> structs (> 12 fields)
 - **Condition Soup Anomalies:** <count> compound conditions
-- **Accessor & Naming Conventions:** [PASS | <count> violations]
+- **Method Naming & Accessor Conventions:** [PASS | <count> violations]
 - **Workspace Clippy & Compiler Lints:** [PASS | <count> violations]
 - **Architecture Rules (`test_architecture_rules`):** [PASS | 21/21 tests passed]
-- **Verbal Double-Check Conscience Review:** [CONFIRMED - 7/7 heuristics verified]
+- **Verbal Double-Check Conscience Review:** [CONFIRMED - 5/5 heuristics verified]
 - **Verification:** `pre_flight.py` (PASS), `cargo clippy` (PASS), `test_architecture_rules` (PASS)
 ```
 

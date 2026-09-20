@@ -637,7 +637,7 @@ def scan_accessor_conventions(target_crate=None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Audit dead code, minimum visibility leaks, struct cohesion, boolean conditions, and accessor conventions."
+        description="Audit dead code, minimum visibility leaks, struct cohesion, boolean conditions, and method naming & accessor conventions."
     )
     parser.add_argument("--all", action="store_true", help="Run all code quality audits")
     parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
@@ -763,7 +763,7 @@ def main():
     print(
         f"Code Quality Summary: {len(dead)} dead, {len(zombies)} zombies, {len(vis_leaks)} visibility leaks, "
         f"{len(srp_issues)} struct cohesion issues, {len(condition_issues)} condition soup issues, "
-        f"{len(accessor_issues)} accessor issues."
+        f"{len(accessor_issues)} method naming & accessor issues."
     )
     print("=" * 76)
 

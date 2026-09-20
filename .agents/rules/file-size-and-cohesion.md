@@ -47,7 +47,7 @@ Splitting these files hurts performance, breaks static table locality, and damag
 2. **Exhaustive linear instruction decoders or atomic hardware circuit state machines**: Sequential execution flows where splitting clock cycle phases across files obscures circuit timing (e.g., `add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`, `move_b.rs`, `move_w.rs`, `move_l.rs`).
 
 ### Two-Way Exception Governance & Prohibition of Silent Mutations
-Modifications to `LINE_COUNT_EXCEPTIONS` (in `crates/test_runner/tests/test_architecture_rules.rs` and `tools/harness/audit_code_quality.py`) are strictly governed:
+Modifications to `LINE_COUNT_EXCEPTIONS` (in `crates/test_runner/tests/test_architecture_rules.rs`) are strictly governed:
 1. **Zero Autonomous Additions:**
    - When a file exceeds 800 lines, the agent is **strictly prohibited from autonomously adding it to `LINE_COUNT_EXCEPTIONS`** to silence CI failures.
    - The agent must decompose the file per Section 5/Section 7, or present the issue to the user with exact metrics and await an explicit user command to grant an exception.

@@ -8026,6 +8026,23 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Clippy Invariants, Architecture Rules: 21/21 passed).
   - `cargo check --workspace --all-targets`: Passed with 0 errors/warnings.
 
+---
+
+### [2026-09-20 12:37 CEST] — Pruned Inference-Based Duplicates from Code Quality Workflow and Harmonized Rules & Skills
+
+- **Files Modified**:
+  - `.agents/workflows/audit-code-quality.md`: Pruned duplicate Questions 6 (Method Naming & Accessor Review) and 7 (Compiler AST & Trait Discipline Review) from Section 4 ("The Verbal Double-Check"), refocusing the conscience review strictly on 5 non-scriptable qualitative architectural heuristics. Standardized report line in Section 5 to `Method Naming & Accessor Conventions` and updated conscience review count to `5/5`.
+  - `.agents/rules/file-size-and-cohesion.md`: Pruned stale reference to `tools/harness/audit_code_quality.py` from Section 4 (Line 50), confirming `crates/test_runner/tests/test_architecture_rules.rs` as the sole authority for `LINE_COUNT_EXCEPTIONS`.
+  - `.agents/skills/audit-code-quality/SKILL.md`: Standardized CLI comment to `Audit method naming and accessor conventions`.
+  - `tools/harness/audit_code_quality.py`: Harmonized argument parser description and summary output string to consistently use canonical title `method naming & accessor conventions`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of Script vs. Inference Redundancy:* Method naming/accessors and compiler trait lints are already deterministically verified via mechanical tooling (`tools/harness/audit_code_quality.py --accessors`, `cargo clippy`, `pre_flight.py`). Duplicating them in the cognitive-inference verbal review added cognitive noise without providing additional defect detection.
+  - *Unified Heuristic Scoping:* Aligning `/audit-code-quality` to 5 genuine qualitative conscience questions creates symmetrical parity with `/audit-docs-quality` (5/5).
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: Passed cleanly across all 6 gates (100% compliant, 21/21 architecture rules passed).
+  - `python tools/harness/audit_code_quality.py --help`: Verified standardized parser description.
+
+
 
 
 
