@@ -8216,3 +8216,29 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_docs_quality.py --all`: 100% pass across all 10 pillars (18/18 silicon quirks verified with test sentinels).
   - `python tools/harness/pre_flight.py`: 100% compliant across formatting, AGENTS.md limits, Clippy, and architecture tests (21/21 passed).
 
+---
+
+### [2026-09-20 14:50 CEST] — Consolidated CPU State Restoration: Introduced `Cpu::restore_state` & Purged `rehydrate_micro_steps`
+
+- **Files Modified**:
+  - `crates/cpu/src/cpu.rs`: Added `restore_state(&mut self, state: CpuState)` unifying state assignment with opcode dispatch table micro-step slice rehydration; permanently removed standalone `rehydrate_micro_steps(&mut self)`.
+  - `crates/cpu/tests/test_visibility.rs`: Updated rehydration integration test to verify `cpu.restore_state(state)` and micro-step slice repopulation.
+  - `crates/machine_loop/src/machine_loop.rs`: Consolidated two-step `cpu.state = ...; cpu.rehydrate_micro_steps();` into single atomic call `self.cpu.restore_state(state.cpu.clone())` in `A500Machine::load_state()`.
+  - `crates/machine_loop/tests/test_save_state.rs`: Added regression assertion verifying micro-step slice rehydration post-restore.
+  - `crates/debugger/src/session.rs`: Migrated `scrub_to_frame` and `jump_to_live_head` to use `cpu.restore_state()`.
+  - `crates/debugger/tests/test_stepping_and_session.rs`: Added assertions verifying CPU micro-step rehydration on temporal scrubbing and return to live head.
+  - `crates/gui/src/layout/left_dock/disassembly.rs`: Migrated historical pass rewind points to use `cpu.restore_state()`.
+  - `crates/gui/tests/test_interactions.rs`: Added assertions verifying micro-step slice rehydration during time-travel navigation.
+  - `Obsidian/Amiga/Design/CPU Motorola M68000.md`: Synchronized Section 3.3 public API listing to document `restore_state(&mut self, state: CpuState)`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Atomic State Restoration:* State restoration previously required two decoupled calls (`self.cpu.state = state.cpu.clone(); self.cpu.rehydrate_micro_steps();`). Failing to call `rehydrate_micro_steps` left `current_steps` pointing to empty execution slices, creating subtle runtime bugs. Encapsulating state restoration and microcode pointer rehydration into `Cpu::restore_state()` provides complete atomic safety.
+  - *Clean-Break Refactoring:* In accordance with [.agents/rules/clean-break-refactoring.md](.agents/rules/clean-break-refactoring.md), `rehydrate_micro_steps` was removed without backwards-compatibility shims or legacy aliases.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: Passed.
+  - `cargo test -p cpu --test test_visibility`: 3/3 passed.
+  - `cargo test -p machine_loop --test test_save_state`: 8/8 passed.
+  - `cargo test -p debugger --test test_debugger_save_state`: 4/4 passed.
+  - `cargo test -p gui --test test_interactions`: 38/38 passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
+  - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, test coupling, API coverage, Clippy, architecture rules).
+

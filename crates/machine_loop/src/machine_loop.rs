@@ -522,8 +522,7 @@ impl A500Machine {
         self.cck = state.cck;
 
         // 6. Restore CPU state and re-hydrate static micro-step pointers
-        self.cpu.state = state.cpu.clone();
-        self.cpu.rehydrate_micro_steps();
+        self.cpu.restore_state(state.cpu.clone());
 
         // 7. Restore Custom Chips & Peripherals
         self.rtc = state.rtc.clone();

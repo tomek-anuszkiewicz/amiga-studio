@@ -234,7 +234,7 @@ impl DebuggerSession {
             if self.temporal.scrub_cursor.is_none() && self.live_cpu_state.is_none() {
                 self.live_cpu_state = Some(self.machine.cpu.state.clone());
             }
-            self.machine.cpu.state = frame.state.clone();
+            self.machine.cpu.restore_state(frame.state.clone());
             self.temporal.scrub_cursor = Some(index);
         }
     }
@@ -242,7 +242,7 @@ impl DebuggerSession {
     /// Exits history scrub mode and returns to live head
     pub fn jump_to_live_head(&mut self) {
         if let Some(live) = self.live_cpu_state.take() {
-            self.machine.cpu.state = live;
+            self.machine.cpu.restore_state(live);
         }
         self.temporal.scrub_cursor = None;
     }

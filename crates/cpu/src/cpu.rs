@@ -309,9 +309,11 @@ impl Cpu {
         self.state.micro.clocks_remaining = 0;
     }
 
-    /// Re-hydrates cached micro-step function pointers from the static dispatch table after deserialization
+    /// Restores the CPU architectural and micro-state from a snapshot,
+    /// re-hydrating ephemeral static execution pointers from the dispatch table.
     #[inline]
-    pub fn rehydrate_micro_steps(&mut self) {
+    pub fn restore_state(&mut self, state: CpuState) {
+        self.state = state;
         let desc = &crate::micro::dispatch_table::OPCODE_DESCRIPTOR_TABLE[self.state.ir as usize];
         if !desc.steps.is_empty() {
             self.state.micro.current_steps = desc.steps;

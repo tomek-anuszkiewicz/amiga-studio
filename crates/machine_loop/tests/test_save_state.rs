@@ -88,6 +88,12 @@ fn test_save_state_deterministic_stepping_roundtrip() {
         .load_state(&snapshot)
         .expect("Failed to restore save state");
 
+    // 4b. Verify that Cpu::restore_state re-hydrated the static micro-step slice
+    assert!(
+        !machine.cpu.state.micro.current_steps.is_empty(),
+        "Micro-step slice must be re-hydrated by restore_state on load_state"
+    );
+
     // 5. Step forward the exact same 600 CCKs to produce branch B
     machine.step_cycles(600);
     let state_b = machine.save_state();

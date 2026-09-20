@@ -384,7 +384,7 @@ Instruction execution is driven via a cycle-exact micro-step state machine clock
   - **`step_cck(&mut self, bus: &mut dyn AddressBus) -> bool`**: Executes a single CCK color clock cycle (~280 ns) and returns `true` when the instruction completes/retires, `false` otherwise. Performs boundary validation and initiates uninitialized instructions.
   - **`step_cck_internal(&mut self, bus: &mut dyn AddressBus) -> bool`**: Internal hot-loop primitive executing micro-steps directly without redundant boundary checks.
   - **`step_instruction(&mut self, bus: &mut dyn AddressBus) -> u32`**: Steps through an entire instruction/opcode to retirement, returning the exact CPU clock cycles consumed.
-  - **`rehydrate_micro_steps(&mut self)`**: Post-deserialization rehydration method that restores the cached `&'static [MicroStep]` slice pointer (`current_steps`) from `OPCODE_DESCRIPTOR_TABLE[ir]` following a save-state restore.
+  - **`restore_state(&mut self, state: CpuState)`**: Restores the CPU architectural and micro-state from a snapshot, automatically re-hydrating the cached `&'static [MicroStep]` execution slice pointer (`current_steps`) from `OPCODE_DESCRIPTOR_TABLE[ir]` without requiring external two-step hydration.
   - **`set_pc_and_prime_prefetch(&mut self, target_pc: u32, bus: &mut dyn AddressBus)`**: Synthetic pre-execution helper used by debugger and unit test suites; sets `instruction_pc` and `pc`, and primes the 2-word prefetch queue (`ir` and `prefetch`) directly without cold reset overhead.
   - **State flags**: Halted and Stopped states are queried directly on `cpu.state.halted` and `cpu.state.stopped`.
 

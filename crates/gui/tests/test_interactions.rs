@@ -333,6 +333,10 @@ fn test_simulated_temporal_time_travel_navigation() {
     // Step backward 1 frame in history (from live head index 1 to index 0)
     app.session.step_backward();
     assert_eq!(app.session.temporal.scrub_cursor, Some(0));
+    assert!(
+        !app.session.machine.cpu.state.micro.current_steps.is_empty(),
+        "Scrubbing backward must re-hydrate CPU micro-steps via restore_state"
+    );
 
     // Render frame to ensure UI reflects scrub state without panics
     let _ = ctx.run(RawInput::default(), |ctx| {
@@ -342,6 +346,10 @@ fn test_simulated_temporal_time_travel_navigation() {
     // Return to live head
     app.session.jump_to_live_head();
     assert_eq!(app.session.temporal.scrub_cursor, None);
+    assert!(
+        !app.session.machine.cpu.state.micro.current_steps.is_empty(),
+        "Returning to live head must re-hydrate CPU micro-steps via restore_state"
+    );
 }
 
 #[test]

@@ -60,9 +60,17 @@ fn test_debugger_session_full_lifecycle() {
     // Time travel
     session.step_backward();
     assert_eq!(session.temporal.scrub_cursor, Some(0));
+    assert!(
+        !session.machine.cpu.state.micro.current_steps.is_empty(),
+        "Scrubbing backward must re-hydrate CPU micro-steps via restore_state"
+    );
 
     session.step_forward();
     assert_eq!(session.temporal.scrub_cursor, None); // Live head
+    assert!(
+        !session.machine.cpu.state.micro.current_steps.is_empty(),
+        "Returning to live head must re-hydrate CPU micro-steps via restore_state"
+    );
 
     // Free run slice
     session.toggle_run();

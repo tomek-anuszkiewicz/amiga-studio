@@ -410,7 +410,7 @@ pub(crate) fn render_disassembly(
                                 {
                                     if let Some((last_idx, _)) = historical_passes.last() {
                                         if let Some(target_frame) = temporal.scrub_to_index(*last_idx) {
-                                            cpu.state = target_frame.state.clone();
+                                            cpu.restore_state(target_frame.state.clone());
                                         }
                                     }
                                 }
@@ -458,7 +458,7 @@ pub(crate) fn render_disassembly(
                                         let item_label = format!("Pass #{} (CCK: {})", pass_num + 1, cck);
                                         if ui.button(item_label).clicked() {
                                             if let Some(target_frame) = temporal.scrub_to_index(*hist_idx) {
-                                                cpu.state = target_frame.state.clone();
+                                                cpu.restore_state(target_frame.state.clone());
                                             }
                                             ui.close_menu();
                                         }

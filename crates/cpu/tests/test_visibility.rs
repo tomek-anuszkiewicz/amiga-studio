@@ -2,7 +2,7 @@
 
 //! Verification of M68000 public API surface and encapsulation integrity
 
-use cpu::{Cpu, OPCODE_DESCRIPTOR_TABLE};
+use cpu::{Cpu, CpuState, OPCODE_DESCRIPTOR_TABLE};
 
 #[test]
 fn test_m68000_public_api_surface_and_encapsulation() {
@@ -20,10 +20,11 @@ fn test_m68000_public_api_surface_and_encapsulation() {
 }
 
 #[test]
-fn test_m68000_core_rehydration_and_state() {
+fn test_m68000_core_restore_state_and_rehydration() {
     let mut cpu = Cpu::new();
-    cpu.state.ir = 0x4E71; // NOP
-    cpu.rehydrate_micro_steps();
+    let mut state = CpuState::default();
+    state.ir = 0x4E71; // NOP
+    cpu.restore_state(state);
     assert!(!cpu.state.micro.current_steps.is_empty());
 }
 
