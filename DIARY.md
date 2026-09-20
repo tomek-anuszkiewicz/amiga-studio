@@ -8264,3 +8264,28 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, test coupling, API coverage, Clippy, architecture rules).
 
 
+---
+
+### [2026-09-20 15:06 CEST] — Reconciliation of Audit Workflows, Compiler/Clippy Gates, and Governance Rules
+- **Affected Subsystems**:
+  - `tools/harness/audit_hardware_quality.py`
+  - `.agents/workflows/audit-*.md`
+  - `.agents/rules/docs-maintenance.md`
+  - `.agents/rules/unit-testing-policy.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Pruned redundant unwrap and transmute regex checks from audit_hardware_quality.py
+  - Removed orphaned Struct Cohesion (> 12 fields) metric from audit-code-quality.md
+  - Removed duplicate test_architecture_rules runs from workflows
+  - Codified Two-Way Script Locality and Skills Catalog sync in docs-maintenance.md
+  - Codified Test-Only Zombie triage in unit-testing-policy.md
+- **Architectural Rationale & Trade-Offs**:
+  - Establishes a clean division of labor between compiler-grade gates (Tier 0)
+  - automated architecture tests (Tier 1)
+  - and specialized audits (Tier 2)
+  - eliminating duplicate passes and aligning rules with audit checks.
+- **Verification & Test Results**:
+  - pre_flight.py passed
+  - audit_hardware_quality.py passed with 0 issues
+  - audit_code_quality.py passed with 0 issues
+  - audit_docs_quality.py passed with 0 issues
+  - test_architecture_rules passed 21/21 tests.

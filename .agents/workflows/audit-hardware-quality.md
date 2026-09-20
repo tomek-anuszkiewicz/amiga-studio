@@ -15,13 +15,9 @@ When invoked without parameters:
    ```powershell
    python tools/harness/audit_hardware_quality.py --all
    ```
-2. **Execute Pre-Flight Quality Gate:**
+2. **Execute Pre-Flight Quality Gate (includes automated architecture tests):**
    ```powershell
    python tools/harness/pre_flight.py
-   ```
-3. **Execute Architecture Rules:**
-   ```powershell
-   cargo test -p test_runner --test test_architecture_rules -- --quiet
    ```
 
 ---
@@ -67,7 +63,7 @@ Conclude with the standardized summary report:
 - **Bus Topology & Signal Isolation:** [PASS | <count> violations] (zero direct cross-chip calls)
 - **Agnus DMA Mastership & Passive Latching:** [PASS | <count> violations] (Denise & Paula passive)
 - **Color Clock (CCK) Stepping:** [PASS | <count> violations]
-- **Silicon Quirks & Memory Architecture:** [PASS | <count> violations] (open bus $FF, zero host transmutes, dual staging, zero unwraps)
+- **Silicon Quirks & Memory Architecture:** [PASS | <count> violations] (open bus $FF, dual staging addr1/addr2)
 - **Whole-Machine Loop Tier 2 Integration:** [PASS | <count> missing suites]
-- **Verification:** `pre_flight.py` (PASS), `test_architecture_rules` (PASS)
+- **Verification:** `pre_flight.py` (PASS)
 ```

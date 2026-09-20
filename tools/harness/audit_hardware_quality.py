@@ -252,49 +252,7 @@ def check_silicon_invariants():
                 "message": "MemoryBus does not appear to return 0xFF for floating unmapped reads per spec-compliance.md",
             })
 
-    # 2. Endianness: Zero host pointer transmutes in core crates
-    core_crates = [
-        "cpu", "physical_memory", "memory_bus", "copper", "blitter",
-        "agnus", "denise", "paula", "cia", "machine_loop"
-    ]
-    for crate in core_crates:
-        src_dir = CRATES_DIR / crate / "src"
-        if not src_dir.exists():
-            continue
-
-        for rs_file in src_dir.rglob("*.rs"):
-            try:
-                content = rs_file.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                continue
-
-            rel_path = rs_file.relative_to(REPO_ROOT)
-            for idx, line in enumerate(content.splitlines(), 1):
-                trimmed = line.strip()
-                if trimmed.startswith("//") or trimmed.startswith("/*"):
-                    continue
-
-                if "transmute" in trimmed and ("*const" in trimmed or "*mut" in trimmed):
-                    issues.append({
-                        "type": "endianness_bypass_transmute",
-                        "file": str(rel_path),
-                        "line": idx,
-                        "message": f"Potentially unsafe host-endian pointer transmute in {rel_path}:{idx}: `{trimmed}`",
-                    })
-
-                # Check for runtime panics (.unwrap() / .expect())
-                if (".unwrap()" in trimmed or ".expect(" in trimmed) and not rs_file.name.startswith("test_"):
-                    # Exclude comments
-                    code_part = trimmed.split("//")[0]
-                    if ".unwrap()" in code_part or ".expect(" in code_part:
-                        issues.append({
-                            "type": "runtime_panic",
-                            "file": str(rel_path),
-                            "line": idx,
-                            "message": f"Runtime panic (.unwrap() / .expect()) in core emulation crate ({rel_path}:{idx})",
-                        })
-
-    # 3. Dual staging registers in M68000 dual-memory instructions
+    # 2. Dual staging registers in M68000 dual-memory instructions
     dual_memory_instructions = ["cmpm.rs", "abcd.rs", "sbcd.rs", "addx.rs", "subx.rs"]
     m68k_inst_dir = CRATES_DIR / "cpu" / "src" / "instructions"
     if m68k_inst_dir.exists():
@@ -360,7 +318,7 @@ def main():
     parser.add_argument("--topology", action="store_true", help="Audit hardware bus topology and inter-chip signal isolation")
     parser.add_argument("--dma-mastership", action="store_true", help="Audit Agnus DMA address mastership and passive chip latching")
     parser.add_argument("--cck-timing", action="store_true", help="Audit Color Clock (CCK) stepping interfaces")
-    parser.add_argument("--silicon-invariants", action="store_true", help="Audit floating open bus, endianness, dual staging, and zero unwraps")
+    parser.add_argument("--silicon-invariants", action="store_true", help="Audit floating open bus and dual staging registers")
     parser.add_argument("--tier2-coverage", action="store_true", help="Audit Tier 2 whole-machine loop integration test coverage")
 
     args = parser.parse_args()
@@ -422,7 +380,7 @@ def main():
             for issue in silicon_issues:
                 print(f"    * {issue['message']}")
         else:
-            print("  - Status: [PASS] 100% compliant (open bus 0xFF, zero host transmutes, dual staging, zero unwraps).")
+            print("  - Status: [PASS] 100% compliant (open bus 0xFF, dual staging addr1/addr2).")
 
     # 5. Tier 2 Integration Coverage
     if run_all or args.tier2_coverage:

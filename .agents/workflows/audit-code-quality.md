@@ -19,13 +19,9 @@ When invoked without parameters:
    ```powershell
    cargo clippy --workspace --all-targets
    ```
-3. **Execute Pre-Flight Quality Gate:**
+3. **Execute Pre-Flight Quality Gate (includes automated architecture tests):**
    ```powershell
    python tools/harness/pre_flight.py
-   ```
-4. **Execute Architecture Rules:**
-   ```powershell
-   cargo test -p test_runner --test test_architecture_rules -- --quiet
    ```
 
 ---
@@ -94,12 +90,10 @@ Conclude with the standardized summary report:
 - **Dead Code Pruned:** <count> symbols
 - **Test-Only Zombies Handled:** <count> retained (Host I/O) / <count> pruned
 - **Visibility Demoted:** <count> symbols (`pub` -> `pub(crate)` / private)
-- **Struct Cohesion Anomalies:** <count> structs (> 12 fields)
 - **Condition Soup Anomalies:** <count> compound conditions
 - **Method Naming & Accessor Conventions:** [PASS | <count> violations]
 - **Workspace Clippy & Compiler Lints:** [PASS | <count> violations]
 - **Architecture Rules (`test_architecture_rules`):** [PASS | 21/21 tests passed]
 - **Verbal Double-Check Conscience Review:** [CONFIRMED - 5/5 heuristics verified]
-- **Verification:** `pre_flight.py` (PASS), `cargo clippy` (PASS), `test_architecture_rules` (PASS)
+- **Verification:** `pre_flight.py` (PASS), `cargo clippy` (PASS)
 ```
-

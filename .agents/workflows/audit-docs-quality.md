@@ -15,13 +15,9 @@ When invoked without parameters:
    ```powershell
    python tools/harness/audit_docs_quality.py --all
    ```
-2. **Execute Pre-Flight Quality Gate:**
+2. **Execute Pre-Flight Quality Gate (includes automated architecture tests):**
    ```powershell
    python tools/harness/pre_flight.py
-   ```
-3. **Execute Architecture Rules:**
-   ```powershell
-   cargo test -p test_runner --test test_architecture_rules -- --quiet
    ```
 
 ---

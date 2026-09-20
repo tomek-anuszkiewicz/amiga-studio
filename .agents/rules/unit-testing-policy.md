@@ -25,6 +25,17 @@ Every non-UI functional module, utility class, parser, decoder, evaluator, data 
    - **Binary Loaders:** Test RAM injection, overlay toggling, prefetch priming, and entry point setup.
    - **Hardware Timers & RTC:** Test BCD conversion, leap year calculation, clock division, and rollover.
 
+3. **Test-Only Zombie Scaffolding Triage & Host I/O Boundaries:**
+   - **Prohibition of Internal Test-Only Zombies:** Unit and integration tests must verify code that is active in the production machine loop or public API. Writing unit tests for dead internal methods that have zero callers in `crates/*/src/` creates "Test-Only Zombies (🧟)" that mask obsolete scaffolding. Dead internal helpers and their orphaned tests must be purged together via clean-break refactoring.
+   - **Legitimate Host I/O Boundary Exception:** The only methods permitted to have callers in `tests/` without callers in `src/` are intentional external Host I/O boundaries designed for host runners, frontends, or debuggers:
+     - Host keyboard injection (`key_down`, `key_up`, `queue_powerup_stream`)
+     - Host peripheral plugging (`plug_port1`, `plug_port2`)
+     - Host floppy drive insertion (`insert_disk`, `eject_disk`)
+     - Host display and frame extraction (`extract_vamiga_raw_viewport`, `is_in_display_window`)
+     - Host audio sample draining (`pop_sample`, `samples_available`)
+     - Host debugger controls & state snapshots (`toggle_pc_breakpoint`, `save_state_to_json`, `set_time`)
+   - Continuous enforcement is conducted via `python tools/harness/audit_code_quality.py --dead-code`.
+
 ---
 
 ## 2. Whole-Machine Loop Integration Mandate (Tier 2 Custom Chip Verification)

@@ -94,3 +94,22 @@ Design specifications under [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Desi
 
 - Follow the operational procedure in [`sync-design-docs`](../skills/sync-design-docs/SKILL.md) to inspect git diffs, update affected living specifications, prune speculative draft snippets, update Mermaid dependency graphs, stamp git checkpoints, and verify linking integrity.
 - Follow the operational procedure in [`audit-semantic-parity`](../skills/audit-semantic-parity/SKILL.md) to conduct inference-driven bidirectional audits evaluating code-to-docs parity (blind spots, undocumented logic) and docs-to-code parity (hallucinations, ghost features, spec drift).
+
+---
+
+## 9. Two-Way Script Locality & Harness Placement Governance
+
+To prevent script sprawl and maintain clear boundaries between global infrastructure and specialized procedures:
+- **`tools/harness/` Reservation:** `tools/harness/` is reserved strictly for universal, shared infrastructure used across multiple subsystems (pre-flight gates, pre-commit hooks, universal test runners, and workspace-wide rules).
+- **Rule A (Specialized Locality):** Any script in `tools/harness/` referenced by $\le 1$ skill or workflow (and not part of global pre-commit/pre-flight) must be relocated to `.agents/skills/<skill>/scripts/`.
+- **Rule B (Shared Promotion):** Any script inside `.agents/skills/<skill>/scripts/` referenced by $> 1$ distinct skills or workflows must be promoted into `tools/harness/` to avoid cross-skill coupling.
+- **Continuous Audit:** Enforced via `python tools/harness/audit_docs_quality.py --scripts`.
+
+---
+
+## 10. Agent Skills Catalog Synchronization & Workflow-Skill Symmetry
+
+The agent tooling catalog must stay synchronized with repository disk reality at all times:
+- **Skills Catalog Integrity (`docs/ai_agents.md`):** Every active skill directory under `.agents/skills/` containing a `SKILL.md` must be documented in [`docs/ai_agents.md`](../../docs/ai_agents.md). Adding or removing a skill requires an immediate corresponding update to `docs/ai_agents.md` (zero phantom links permitted).
+- **Workflow-to-Skill Backing:** Every workflow in `.agents/workflows/` must have a companion specialized skill in `.agents/skills/` or explicitly declare its underlying backing skills.
+- **Continuous Audit:** Enforced via `python tools/harness/audit_docs_quality.py --skills` and `python tools/harness/audit_docs_quality.py --governance`.
