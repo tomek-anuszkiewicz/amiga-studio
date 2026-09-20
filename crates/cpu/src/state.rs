@@ -196,27 +196,10 @@ impl CpuState {
         }
     }
 
-    /// Reads full 32-bit value of active stack pointer A7
-    #[inline(always)]
-    pub fn a7(&self) -> u32 {
-        self.a_long(7)
-    }
-
-    /// Writes full 32-bit value of active stack pointer A7
-    #[inline(always)]
-    pub fn set_a7(&mut self, val: u32) {
-        self.set_a_long(7, val);
-    }
-
     /// Returns the User Stack Pointer (USP).
-    /// If currently in User mode, returns active A7.
     #[inline(always)]
     pub fn usp(&self) -> u32 {
-        if (self.sr & SR_S) == 0 {
-            self.a[7]
-        } else {
-            self.usp
-        }
+        self.usp
     }
 
     /// Sets the User Stack Pointer (USP).
@@ -230,14 +213,9 @@ impl CpuState {
     }
 
     /// Returns the Supervisor Stack Pointer (SSP).
-    /// If currently in Supervisor mode, returns active A7.
     #[inline(always)]
     pub fn ssp(&self) -> u32 {
-        if (self.sr & SR_S) != 0 {
-            self.a[7]
-        } else {
-            self.ssp
-        }
+        self.ssp
     }
 
     /// Sets the Supervisor Stack Pointer (SSP).
@@ -259,27 +237,19 @@ impl CpuState {
         self.ssp = 0;
     }
 
-    /// Atomically transitions supervisor mode bit and swaps active A7 with stored USP/SSP if changed
-    #[inline(always)]
-    fn update_supervisor_mode(&mut self, new_s: bool) {
-        let old_s = (self.sr & SR_S) != 0;
-        if old_s != new_s {
-            if new_s {
-                self.sr |= SR_S;
-                self.usp = self.a[7];
-                self.a[7] = self.ssp;
-            } else {
-                self.sr &= !SR_S;
-                self.ssp = self.a[7];
-                self.a[7] = self.usp;
-            }
-        }
-    }
-
     /// Transitions or sets supervisor mode, swapping active A7 with stored USP/SSP if privilege changes
     #[inline]
     pub fn set_supervisor(&mut self, supervisor: bool) {
-        self.update_supervisor_mode(supervisor);
+        let old_s = (self.sr & SR_S) != 0;
+        if old_s != supervisor {
+            if supervisor {
+                self.sr |= SR_S;
+                self.a[7] = self.ssp;
+            } else {
+                self.sr &= !SR_S;
+                self.a[7] = self.usp;
+            }
+        }
     }
 
     /// Returns the full 16-bit Status Register (SR)
@@ -293,7 +263,7 @@ impl CpuState {
     pub fn set_sr(&mut self, new_sr: u16) {
         let masked_sr = new_sr & SR_MASK;
         let new_s = (masked_sr & SR_S) != 0;
-        self.update_supervisor_mode(new_s);
+        self.set_supervisor(new_s);
         self.sr = masked_sr;
     }
 

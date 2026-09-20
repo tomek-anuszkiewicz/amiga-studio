@@ -29,6 +29,11 @@ fn test_inject_binary_with_auto_prime() {
     // Verify SP auto-initialized to 512KB Chip RAM top ($080000)
     assert_eq!(cpu.state.a_long(7), 0x080000);
     assert_eq!(cpu.state.ssp(), 0x080000);
+
+    // If SP is already non-zero, auto-prime should preserve existing a_long(7)
+    cpu.state.set_a_long(7, 0x070000);
+    let _ = inject_binary(&mut cpu, &mut bus, DEFAULT_TARGET_ADDRESS, &code, true);
+    assert_eq!(cpu.state.a_long(7), 0x070000);
 }
 
 #[test]

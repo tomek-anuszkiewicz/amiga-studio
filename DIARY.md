@@ -8342,3 +8342,21 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/run_tests.py --harness`: Tier 3 (Cartesian DMA contention 20/20, architecture rules 21/21, benchmark smoke) PASSED.
   - `cargo test -p test_runner --test test_singlestep`: 127/127 SingleStep silicon test suites PASSED.
 
+---
+
+### [2026-09-20 16:20 CEST] — Streamlined `CpuState` Stack Pointer API: Canonical `a_long(7)`, Invariant Field Returns (`usp`/`ssp`), and Unified `set_supervisor`
+
+- **Files Modified**:
+  - `crates/cpu/src/state.rs`: Purged redundant `a7()` and `set_a7()` methods in favor of canonical `a_long(7)` and `set_a_long(7, val)`. Simplified `usp(&self) -> u32` and `ssp(&self) -> u32` to return `self.usp` and `self.ssp` directly with zero runtime branching, leveraging the invariant that `set_a_long` keeps active and inactive stack pointers synchronized at all times. Consolidated mode transition logic into `set_supervisor(&mut self, supervisor: bool)` and eliminated `update_supervisor_mode`, pruning redundant stack pointer copies during privilege level swaps.
+  - `crates/cpu/tests/test_state.rs`: Migrated all test assertions and mutations from `a7()` / `set_a7(...)` to `a_long(7)` and `set_a_long(7, val)`.
+  - `crates/debugger/src/loader.rs` & `crates/debugger/tests/test_loader.rs`: Updated binary loader SP zero-check and initialization from `cpu.state.a7()` / `set_a7()` to canonical `a_long(7)` and `set_a_long(7, val)`, adding test verification for non-zero pre-existing SP preservation.
+- **Architectural Rationale & Trade-Offs**:
+  - *Orthogonal API & Minimal Surface:* Eliminates redundant convenience aliases (`a7`/`set_a7`) in favor of uniform single-register accessors (`a_long`/`set_a_long`).
+  - *Invariant-Driven Simplification:* Because `set_a_long(7, val)` updates the respective `usp` or `ssp` backing field on every write and `set_supervisor` swaps active `a[7]`, `self.usp` and `self.ssp` are permanently authoritative, allowing the getters to return stored values unconditionally without evaluating `SR_S`.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `cargo test -p cpu`: 7/7 unit tests in `test_state.rs` and 64/64 total CPU tests passed.
+  - `cargo test -p debugger`: 43/43 unit tests passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architectural tests passed.
+
+

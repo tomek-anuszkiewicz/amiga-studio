@@ -15,18 +15,16 @@ fn test_stack_pointer_synchronization_in_supervisor_mode() {
     state.set_ssp(0x080000);
     assert_eq!(state.ssp(), 0x080000);
     assert_eq!(state.a_long(7), 0x080000);
-    assert_eq!(state.a7(), 0x080000);
     assert_eq!(state.usp(), 0);
 
     // Modifying A7 via set_a_long(7, ...) must synchronize SSP
     state.set_a_long(7, 0x07FFFE);
     assert_eq!(state.a_long(7), 0x07FFFE);
-    assert_eq!(state.a7(), 0x07FFFE);
     assert_eq!(state.ssp(), 0x07FFFE);
     assert_eq!(state.usp(), 0);
 
-    // Modifying A7 via set_a7(...) must also synchronize SSP
-    state.set_a7(0x07FFFC);
+    // Modifying A7 must also synchronize SSP
+    state.set_a_long(7, 0x07FFFC);
     assert_eq!(state.a_long(7), 0x07FFFC);
     assert_eq!(state.ssp(), 0x07FFFC);
     assert_eq!(state.usp(), 0);
@@ -48,19 +46,17 @@ fn test_stack_pointer_synchronization_in_user_mode() {
     state.set_supervisor(false);
     assert!(!state.is_supervisor());
     assert_eq!(state.a_long(7), 0x003000);
-    assert_eq!(state.a7(), 0x003000);
     assert_eq!(state.usp(), 0x003000);
     assert_eq!(state.ssp(), 0x080000);
 
     // Modifying A7 via set_a_long(7, ...) must synchronize USP
     state.set_a_long(7, 0x002FFE);
     assert_eq!(state.a_long(7), 0x002FFE);
-    assert_eq!(state.a7(), 0x002FFE);
     assert_eq!(state.usp(), 0x002FFE);
     assert_eq!(state.ssp(), 0x080000); // SSP untouched
 
-    // Modifying A7 via set_a7(...) must synchronize USP
-    state.set_a7(0x002FFC);
+    // Modifying A7 must synchronize USP
+    state.set_a_long(7, 0x002FFC);
     assert_eq!(state.a_long(7), 0x002FFC);
     assert_eq!(state.usp(), 0x002FFC);
     assert_eq!(state.ssp(), 0x080000);
