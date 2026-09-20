@@ -8011,6 +8011,22 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Clippy Invariants, Architecture Rules).
   - `python tools/harness/run_tests.py --unit`: All 23 workspace crates + 7 test_runner unit suites passed cleanly (100%).
 
+---
+
+### [2026-09-20 12:06 CEST] — Removed Category A & B Struct Encapsulation Rules from Rules, Skills, and Workflows
+
+- **Files Modified**:
+  - `.agents/rules/rust-best-practices.md`: Removed Category A (POD / Value Objects) and Category B (Complex Structs) boilerplate encapsulation rules and the absolute prohibition on raw public fields. Renamed Section 6 to `Method Naming & Accessor Conventions`, preserving standard getter naming (`<field>(&self)` without `get_`), boolean prefixes (`is_`/`has_`/`can_`), setter prefixes (`set_<field>`), and collection slice views (`&[T]`, `&mut [T]`).
+  - `.agents/skills/audit-code-quality/SKILL.md`: Updated Pillar 5 to `Pillar 5: Method Naming & Accessor Conventions (--accessors)`, adjusted pillar count to Seven, and removed Section 5 (`Struct Encapsulation & Accessor Remediation Playbook`).
+  - `.agents/workflows/audit-code-quality.md`: Updated Step 7 in Section 3 and Conscience Question 6 in Section 4 to eliminate Category A/B encapsulation and raw public field checks while maintaining method naming and accessor conventions.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of OOP Getter/Setter Boilerplate on POD Structs:* In systems programming and cycle-exact emulator design, pure data transfer objects, coordinates, audio samples, and bus states legitimately expose public fields. Forcing private fields and mechanical boilerplate getters/setters adds syntactic noise without domain benefits.
+  - *Preservation of API Consistency:* Retained method naming conventions (prohibition of `get_` prefix, boolean naming, `set_` setters, and slice views over concrete containers) to ensure idiomatic Rust API ergonomics across public and crate interfaces.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All 6 pre-flight quality gates passed cleanly (Formatting, AGENTS.md ceiling, Test Coupling, API Coverage, Clippy Invariants, Architecture Rules: 21/21 passed).
+  - `cargo check --workspace --all-targets`: Passed with 0 errors/warnings.
+
+
 
 
 

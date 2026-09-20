@@ -17,7 +17,7 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 
 ---
 
-## 2. The Nine Code Quality Pillars
+## 2. The Seven Code Quality Pillars
 
 ### Pillar 1: Dead Code & Test-Only Zombies
 1. **Completely Dead Symbols (💀):**
@@ -45,25 +45,13 @@ This skill provides a comprehensive, on-demand procedure across the Rust workspa
 - **Prohibition of Multi-Clause Clutter:** Flags conditionals with mixed nested operators or $\ge 3$ connectives to ensure code reads like declarative hardware specification prose.
 - **Short-Circuit Preservation Invariant:** Explaining variables must never eagerly evaluate sub-expressions or function calls that would otherwise be avoided via boolean short-circuit evaluation (`&&`, `||`) or branched execution (`match`).
 
-### Pillar 5: Struct Encapsulation & Accessor Discipline (`--accessors`)
-- **Zero Raw Public Fields:** All struct fields must remain strictly private per [`.agents/rules/rust-best-practices.md`](../../rules/rust-best-practices.md). Raw public fields leak internal representation and bypass domain invariants.
-- **Category A (Value Objects / POD Structs):** Pure data structs (primitives, raw numbers, small `Copy` types):
-  - Make all fields private.
-  - Provide `pub const fn new(...) -> Self`.
-  - Add `#[inline(always)] pub const fn <field>(&self)` getters (return `T` if `Copy`, else `&T`).
-  - Add `#[inline(always)] pub const fn set_<field>(&mut self, val: T)` setters.
-  - Derive `Debug, Clone, Copy, PartialEq, Eq` when possible.
-- **Category B (All Remaining / Complex Structs):** Structs with allocations, handles, non-primitive state, or business logic invariants:
-  - All fields must remain strictly private.
-  - Provide appropriate constructors (`new` or fallible `try_new` with validation).
-  - Accessors: `pub const fn <field>(&self) -> &T` if compile-time evaluatable, otherwise `pub fn <field>(&self) -> &T`.
-  - Setters: Only provide if explicitly required by domain logic, enforcing necessary invariants and validations.
+### Pillar 5: Method Naming & Accessor Conventions (`--accessors`)
 - **Method Naming & Accessor Conventions:**
   1. **Standard Getters:** Must exactly match the field name (do NOT use a `get_` prefix). Pattern: `pub const fn <field>(&self) -> T` (or `&T` if non-Copy).
   2. **Boolean Getters:** Must start with the `is_` prefix (or retain natural boolean prefixes like `has_`, `can_` if already present in the field name). If field is named `enabled: bool` -> getter is `pub const fn is_enabled(&self) -> bool`. If field already has `is_` (e.g. `is_active: bool`), do not duplicate it (`pub const fn is_active(&self) -> bool`).
   3. **Setters:** Must start with the `set_` prefix followed by the field name. Pattern: `pub const fn set_<field>(&mut self, value: T)`.
   4. **Collection Getters (Slice Views):** Getters exposing internal buffers or sequences must return borrowed slices (`&[T]` or `&mut [T]`), never references to concrete containers (`&Vec<T>`). Example: Field `data: Vec<i16>` -> getter `pub fn data(&self) -> &[i16]`.
-- **Verification Method:** Verified directly via `python tools/harness/audit_code_quality.py --accessors` alongside Agent cognitive inference for domain-specific invariant validation.
+- **Verification Method:** Verified directly via `python tools/harness/audit_code_quality.py --accessors`.
 
 ### Pillar 6: Compiler-Grade AST Invariants & Workspace Lints
 - **Zero Host Panics on Guest Code:** Denied in production code via `clippy::unwrap_used = "deny"`, `clippy::expect_used = "deny"`, and `clippy::panic = "deny"`. (Integration tests exempt via `#![allow(...)]`).
@@ -133,29 +121,6 @@ For each symbol reported under `[TEST-ONLY ZOMBIES]`:
 3. Run `cargo check --workspace` to verify zero unbroken callers remain.
 4. Run `python tools/harness/pre_flight.py` to confirm workspace compiles cleanly.
 
----
 
-## 5. Struct Encapsulation & Accessor Remediation Playbook (--accessors)
-
-Follow this systematic procedure when remediating unencapsulated structs and public fields:
-
-### Step 1: Classify Struct Category
-1. **Category A (Value Objects / POD Structs):** Pure data structs (primitives, coordinates, RGB/audio samples, raw numeric pairs).
-2. **Category B (Complex / Invariant Structs):** Structs containing allocations (`Vec`), handles, non-primitive state, or business logic invariants.
-
-### Step 2: Safe Encapsulation Remediation
-1. Make all fields private (remove `pub` from field declarations).
-2. For Category A:
-   - Provide `pub const fn new(...) -> Self`.
-   - Provide standard getters matching field name without `get_` prefix (`#[inline(always)] pub const fn <field>(&self)`).
-   - Provide boolean getters starting with `is_` (e.g. `is_enabled(&self) -> bool`, retaining `has_`/`can_`).
-   - Provide setters starting with `set_` (`#[inline(always)] pub const fn set_<field>(&mut self, val: T)`).
-   - Derive `Debug, Clone, Copy, PartialEq, Eq` when possible.
-3. For Category B:
-   - Provide `new` or `try_new` constructors enforcing domain invariants.
-   - Provide `pub const fn <field>(&self) -> &T` or `pub fn <field>(&self) -> &T` reference getters matching field name without `get_` prefix.
-   - Add setters only when explicitly required by domain logic, prefixed with `set_<field>`, enforcing necessary validations.
-4. Update all call sites across `crates/*/src/` and `crates/*/tests/` to use accessors and constructors.
-5. Verify via `python tools/harness/audit_code_quality.py --accessors`, `cargo check --workspace`, and `python tools/harness/pre_flight.py`.
 
 
