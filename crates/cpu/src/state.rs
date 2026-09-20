@@ -312,7 +312,7 @@ impl CpuState {
 
     /// Returns the 8-bit Condition Code Register (lower byte of SR, bits 0..=4)
     #[inline(always)]
-    pub fn get_ccr(&self) -> u8 {
+    pub fn ccr(&self) -> u8 {
         (self.sr & 0x001F) as u8
     }
 
@@ -370,37 +370,37 @@ impl CpuState {
     // --- Condition Code Helpers ---
 
     #[inline(always)]
-    pub fn get_x(&self) -> bool {
+    pub fn is_x(&self) -> bool {
         (self.sr & CCR_X) != 0
     }
 
     #[inline(always)]
-    pub fn get_n(&self) -> bool {
+    pub fn is_n(&self) -> bool {
         (self.sr & CCR_N) != 0
     }
 
     #[inline(always)]
-    pub fn get_z(&self) -> bool {
+    pub fn is_z(&self) -> bool {
         (self.sr & CCR_Z) != 0
     }
 
     #[inline(always)]
-    pub fn get_v(&self) -> bool {
+    pub fn is_v(&self) -> bool {
         (self.sr & CCR_V) != 0
     }
 
     #[inline(always)]
-    pub fn get_c(&self) -> bool {
+    pub fn is_c(&self) -> bool {
         (self.sr & CCR_C) != 0
     }
 
     /// Evaluates M68000 branch/conditional tests (conditions 0000..1111)
     #[inline(always)]
     pub fn eval_condition(&self, cond: u8) -> bool {
-        let c = self.get_c();
-        let v = self.get_v();
-        let z = self.get_z();
-        let n = self.get_n();
+        let c = self.is_c();
+        let v = self.is_v();
+        let z = self.is_z();
+        let n = self.is_n();
 
         match cond & 0x0F {
             0x00 => true,                        // True (T) / BRA

@@ -33,7 +33,7 @@ pub static ALU_CHECK_PRIVILEGE: MicroStep = MicroStep {
 
 pub fn alu_ori_to_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let imm = (state.micro.source & 0x1F) as u8;
-    state.set_ccr(state.get_ccr() | imm);
+    state.set_ccr(state.ccr() | imm);
 }
 
 pub static ALU_ORI_TO_CCR_8CLK: MicroStep = MicroStep {
@@ -87,7 +87,7 @@ pub static STEPS_ORI_TO_SR: [MicroStep; 8] = [
 
 pub fn alu_andi_to_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let imm = (state.micro.source & 0x1F) as u8;
-    state.set_ccr(state.get_ccr() & imm);
+    state.set_ccr(state.ccr() & imm);
 }
 
 pub static ALU_ANDI_TO_CCR_8CLK: MicroStep = MicroStep {
@@ -141,7 +141,7 @@ pub static STEPS_ANDI_TO_SR: [MicroStep; 8] = [
 
 pub fn alu_eori_to_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let imm = (state.micro.source & 0x1F) as u8;
-    state.set_ccr(state.get_ccr() ^ imm);
+    state.set_ccr(state.ccr() ^ imm);
 }
 
 pub static ALU_EORI_TO_CCR_8CLK: MicroStep = MicroStep {

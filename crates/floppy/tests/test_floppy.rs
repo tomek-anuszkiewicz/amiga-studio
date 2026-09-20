@@ -122,3 +122,23 @@ fn test_floppy_drive_step_and_track0() {
     controller.drives[0].step_pulse(false);
     assert!(controller.drives[0].is_track0());
 }
+
+#[test]
+fn test_floppy_track_data_and_dma() {
+    let mut controller = FloppyController::new();
+    let adf_data = vec![0x55; 901_120];
+    controller.drives[0].insert_disk(&adf_data);
+    controller.drives[0].selected = true;
+    controller.drives[0].set_motor(true);
+
+    let mut chip_ram = vec![0u8; 0x1000];
+    controller.dskpt = 0x0000;
+    let mut dsklen = 0x8004; // Write to RAM, 4 words
+    let mut dma_active = true;
+    let dsksyn = 0x4489;
+    let adkcon = 0x0400; // WORDSYNC enabled
+
+    controller.step_cck_ram(&mut chip_ram, adkcon, dsksyn, &mut dsklen, &mut dma_active);
+    assert_eq!(controller.drives[0].cylinder, 0);
+    assert_eq!(controller.drives[0].side, 0);
+}

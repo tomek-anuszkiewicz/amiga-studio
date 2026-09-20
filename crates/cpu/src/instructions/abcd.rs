@@ -22,7 +22,7 @@ use crate::Cpu;
 
 #[inline(always)]
 pub fn abcd_b(state: &mut CpuState, src: u8, dst: u8) -> u8 {
-    let x_in = if state.get_x() { 1_u16 } else { 0_u16 };
+    let x_in = if state.is_x() { 1_u16 } else { 0_u16 };
     let lo1 = (src & 0x0F) as u16;
     let hi1 = (src & 0xF0) as u16;
     let lo2 = (dst & 0x0F) as u16;
@@ -41,7 +41,7 @@ pub fn abcd_b(state: &mut CpuState, src: u8, dst: u8) -> u8 {
     let res = (newv & 0xFF) as u8;
     let vflg = ((tmp_newv & 0x80) == 0) && ((newv & 0x80) != 0);
     let nflg = (res & 0x80) != 0;
-    let zflg = if res != 0 { false } else { state.get_z() };
+    let zflg = if res != 0 { false } else { state.is_z() };
     state.set_ccr_xnzvc(cflg, nflg, zflg, vflg, cflg);
     res
 }

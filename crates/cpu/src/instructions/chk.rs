@@ -81,7 +81,7 @@ fn execute_chk(state: &mut CpuState, bound: i16, reg_dst: u8) {
     } else {
         // No trap: Motorola PRM defines N as undefined. On 68000 silicon,
         // N preserves its prior value, while Z, V, and C are cleared.
-        let prior_n = state.get_n();
+        let prior_n = state.is_n();
         state.set_ccr_nz_clear_vc(prior_n, false);
     }
 }

@@ -15,39 +15,39 @@ use crate::Cpu;
 
 #[inline(always)]
 pub fn addx_b(state: &mut CpuState, s: u8, d: u8) -> u8 {
-    let x = if state.get_x() { 1 } else { 0 };
+    let x = if state.is_x() { 1 } else { 0 };
     let (res1, c1) = d.overflowing_add(s);
     let (res, c2) = res1.overflowing_add(x);
     let c = c1 || c2;
     let v = ((!(s ^ d) & (d ^ res)) & 0x80) != 0;
     let n = (res & 0x80) != 0;
-    let z = if res != 0 { false } else { state.get_z() };
+    let z = if res != 0 { false } else { state.is_z() };
     state.set_ccr_xnzvc(c, n, z, v, c);
     res
 }
 
 #[inline(always)]
 pub fn addx_w(state: &mut CpuState, s: u16, d: u16) -> u16 {
-    let x = if state.get_x() { 1 } else { 0 };
+    let x = if state.is_x() { 1 } else { 0 };
     let (res1, c1) = d.overflowing_add(s);
     let (res, c2) = res1.overflowing_add(x);
     let c = c1 || c2;
     let v = ((!(s ^ d) & (d ^ res)) & 0x8000) != 0;
     let n = (res & 0x8000) != 0;
-    let z = if res != 0 { false } else { state.get_z() };
+    let z = if res != 0 { false } else { state.is_z() };
     state.set_ccr_xnzvc(c, n, z, v, c);
     res
 }
 
 #[inline(always)]
 pub fn addx_l(state: &mut CpuState, s: u32, d: u32) -> u32 {
-    let x = if state.get_x() { 1 } else { 0 };
+    let x = if state.is_x() { 1 } else { 0 };
     let (res1, c1) = d.overflowing_add(s);
     let (res, c2) = res1.overflowing_add(x);
     let c = c1 || c2;
     let v = ((!(s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
     let n = (res & 0x8000_0000) != 0;
-    let z = if res != 0 { false } else { state.get_z() };
+    let z = if res != 0 { false } else { state.is_z() };
     state.set_ccr_xnzvc(c, n, z, v, c);
     res
 }

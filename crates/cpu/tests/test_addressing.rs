@@ -124,10 +124,12 @@ fn test_move_instruction() {
     let clocks = cpu.step_instruction(&mut bus);
     assert_eq!(clocks, 4);
     assert_eq!(cpu.state.d_word(1), 0x1234);
-    assert!(!cpu.state.get_n());
-    assert!(!cpu.state.get_z());
-    assert!(!cpu.state.get_v());
-    assert!(!cpu.state.get_c());
+    assert!(!cpu.state.is_n());
+    assert!(!cpu.state.is_z());
+    assert!(!cpu.state.is_v());
+    assert!(!cpu.state.is_c());
+    assert!(!cpu.state.is_x());
+    assert_eq!(cpu.state.ccr(), 0);
 }
 
 #[test]
@@ -147,8 +149,8 @@ fn test_add_sub_ccr() {
     let clocks = cpu.step_instruction(&mut bus);
     assert_eq!(clocks, 8);
     assert_eq!(cpu.state.d_long(1), 15);
-    assert!(!cpu.state.get_c());
-    assert!(!cpu.state.get_z());
+    assert!(!cpu.state.is_c());
+    assert!(!cpu.state.is_z());
 }
 
 #[test]
@@ -189,8 +191,8 @@ fn test_logic_and_shifts() {
     let clocks1 = cpu.step_instruction(&mut bus);
     assert_eq!(clocks1, 4);
     assert_eq!(cpu.state.d_word(1), 0x00FF);
-    assert!(!cpu.state.get_n());
-    assert!(!cpu.state.get_z());
+    assert!(!cpu.state.is_n());
+    assert!(!cpu.state.is_z());
 
     // ASL.W #2, D1 (Opcode: 0xE541) (count=2, ASL, Word, reg 1)
     cpu.state.micro.reset();
@@ -216,7 +218,7 @@ fn test_bit_manipulation() {
     cpu.state.prefetch = 0x4E71;
     let clocks1 = cpu.step_instruction(&mut bus);
     assert_eq!(clocks1, 8);
-    assert!(cpu.state.get_z()); // bit 4 was 0, so Z=1
+    assert!(cpu.state.is_z()); // bit 4 was 0, so Z=1
     assert_eq!(cpu.state.d_long(1), 0x0000_0010);
 
     // Second BSET D0, D1 -> bit 4 is already 1 so Z=0
@@ -225,7 +227,7 @@ fn test_bit_manipulation() {
     cpu.state.prefetch = 0x4E71;
     let clocks2 = cpu.step_instruction(&mut bus);
     assert_eq!(clocks2, 8);
-    assert!(!cpu.state.get_z()); // bit 4 was 1, so Z=0
+    assert!(!cpu.state.is_z()); // bit 4 was 1, so Z=0
     assert_eq!(cpu.state.d_long(1), 0x0000_0010);
 }
 

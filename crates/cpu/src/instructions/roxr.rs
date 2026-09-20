@@ -18,12 +18,12 @@ use crate::Cpu;
 pub fn roxr_b(state: &mut CpuState, count: u32, val: u8) -> u8 {
     let msb = (val & 0x80) != 0;
     if count == 0 {
-        let x = state.get_x();
+        let x = state.is_x();
         state.set_ccr_nzvc(msb, val == 0, false, x);
         return val;
     }
     let mut v = val;
-    let mut x = state.get_x();
+    let mut x = state.is_x();
     for _ in 0..count {
         let old_lsb = (v & 1) != 0;
         v = (v >> 1) | if x { 0x80 } else { 0 };
@@ -38,12 +38,12 @@ pub fn roxr_b(state: &mut CpuState, count: u32, val: u8) -> u8 {
 pub fn roxr_w(state: &mut CpuState, count: u32, val: u16) -> u16 {
     let msb = (val & 0x8000) != 0;
     if count == 0 {
-        let x = state.get_x();
+        let x = state.is_x();
         state.set_ccr_nzvc(msb, val == 0, false, x);
         return val;
     }
     let mut v = val;
-    let mut x = state.get_x();
+    let mut x = state.is_x();
     for _ in 0..count {
         let old_lsb = (v & 1) != 0;
         v = (v >> 1) | if x { 0x8000 } else { 0 };
@@ -58,12 +58,12 @@ pub fn roxr_w(state: &mut CpuState, count: u32, val: u16) -> u16 {
 pub fn roxr_l(state: &mut CpuState, count: u32, val: u32) -> u32 {
     let msb = (val & 0x8000_0000) != 0;
     if count == 0 {
-        let x = state.get_x();
+        let x = state.is_x();
         state.set_ccr_nzvc(msb, val == 0, false, x);
         return val;
     }
     let mut v = val;
-    let mut x = state.get_x();
+    let mut x = state.is_x();
     for _ in 0..count {
         let old_lsb = (v & 1) != 0;
         v = (v >> 1) | if x { 0x8000_0000 } else { 0 };

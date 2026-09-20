@@ -123,7 +123,7 @@ impl FloppyDrive {
 
     /// Returns a slice to the unencoded 5632-byte track data if a disk is inserted
     #[inline]
-    fn get_current_track_data(&self) -> Option<&[u8]> {
+    fn current_track_data(&self) -> Option<&[u8]> {
         let track_idx = self.current_track_index();
         let start = track_idx * (SECTORS_PER_TRACK * SECTOR_DATA_BYTES);
         let end = start + (SECTORS_PER_TRACK * SECTOR_DATA_BYTES);
@@ -318,7 +318,7 @@ impl FloppyController {
     fn load_current_track_mfm(&mut self) {
         for drive in &self.drives {
             if drive.selected {
-                if let Some(track_data) = drive.get_current_track_data() {
+                if let Some(track_data) = drive.current_track_data() {
                     let track_idx = drive.current_track_index() as u8;
                     self.mfm_track_buffer = encode_amiga_track(track_idx, track_data);
                     return;

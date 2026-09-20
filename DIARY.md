@@ -8042,6 +8042,27 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: Passed cleanly across all 6 gates (100% compliant, 21/21 architecture rules passed).
   - `python tools/harness/audit_code_quality.py --help`: Verified standardized parser description.
 
+---
+
+### [2026-09-20 13:02 CEST] — Remediation of Pillar 5 Method Naming and Accessor Conventions (Zero Forbidden `get_` Getters)
+
+- **Files Modified**:
+  - `crates/cpu/src/state.rs`: Renamed `get_ccr(&self)` to `ccr(&self)` (no `get_` prefix on standard getters per Rust API guidelines) and renamed condition code getters `get_x`, `get_n`, `get_z`, `get_v`, `get_c` to canonical boolean predicates `is_x`, `is_n`, `is_z`, `is_v`, `is_c`. Updated internal callers in `eval_condition(&self)`.
+  - `crates/cpu/src/instructions/logic_sr_ccr.rs`: Updated `state.get_ccr()` to `state.ccr()` across ORI/ANDI/EORI to CCR handlers.
+  - `crates/cpu/src/instructions/abcd.rs`, `crates/cpu/src/instructions/addx.rs`, `crates/cpu/src/instructions/chk.rs`, `crates/cpu/src/instructions/negx.rs`, `crates/cpu/src/instructions/roxl.rs`, `crates/cpu/src/instructions/roxr.rs`, `crates/cpu/src/instructions/sbcd.rs`, `crates/cpu/src/instructions/subx.rs`, `crates/cpu/src/instructions/trapv.rs`: Clean-break workspace cutover from `get_x/n/z/v` to `is_x/n/z/v`.
+  - `crates/cpu/tests/test_addressing.rs`: Updated unit assertions to use `is_n/z/v/c/x` and added explicit verification for `cpu.state.ccr()`.
+  - `crates/floppy/src/floppy.rs`: Renamed `get_current_track_data(&self)` to `current_track_data(&self)` and updated caller in `load_current_track_mfm()`.
+  - `crates/floppy/tests/test_floppy.rs`: Added `test_floppy_track_data_and_dma` verifying track encoding and DMA stepping, maintaining test change coupling compliance.
+- **Architectural Rationale & Trade-Offs**:
+  - *Idiomatic Rust Accessor Alignment:* In standard Rust and `rust-best-practices.md`, simple getters do not carry the `get_` prefix (which is reserved for fallible slice/map indexing). Standard getters match the property name (`ccr()`, `current_track_data()`), and boolean getters carry `is_*` (`is_x()`, `is_z()`), while setters retain `set_*`.
+  - *Clean-Break Workspace Cutover:* In accordance with `clean-break-refactoring.md`, zero legacy aliases were retained, cutting over all instruction handlers and test suites atomically.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_code_quality.py --accessors`: Verified 0 accessor issues (Status: `[PASS]`).
+  - `cargo clippy --workspace --all-targets`: Clean compilation with 0 warnings or errors.
+  - `cargo test -p test_runner --test test_architecture_rules`: All 21 architecture tests passed.
+  - `python tools/harness/run_tests.py --unit`: 100% pass across all 23 crates + 7 runner suites.
+  - `python tools/harness/pre_flight.py`: 100% pass on formatting, change coupling, API coverage, and ceiling gates.
+
 
 
 

@@ -14,7 +14,7 @@ use crate::state::{vector, CpuState, SR_T};
 // ============================================================================
 
 pub fn alu_trapv_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    if state.get_v() {
+    if state.is_v() {
         state.micro.current_steps = &STEPS_TRAPV_EXCEPTION;
         state.micro.micro_step = 0;
         state.micro.clocks_remaining = 0;
