@@ -67,7 +67,7 @@ Field:  T    0    S    0    0   I2   I1   I0    0    0    0    X    N    Z    V 
   - **Bit 0 (`C`)**: Carry flag (set on borrow or carry out).
 
 #### Host Hardware Efficiency: Branchless Condition Code Setters
-To avoid host branch mispredictions in hot execution paths, the core employs direct branchless bitwise CCR updates (`set_ccr_xnzvc`, `set_ccr_nzvc`, `set_ccr_nz_clear_vc`, `set_ccr_nzc_clear_v`, `set_ccr_z_only`, `set_ccr_raw`). All CCR setter methods are marked `#[inline(always)]` in [`crates/cpu/src/state.rs`](../../../crates/cpu/src/state.rs).
+To avoid host branch mispredictions in hot execution paths, the core employs direct branchless bitwise CCR updates (`set_ccr`, `set_ccr_xnzvc`, `set_ccr_nzvc`, `set_ccr_nz_clear_vc`, `set_ccr_z_only`, `set_ccr_v_clear_c`). All CCR setter methods are marked `#[inline(always)]` in [`crates/cpu/src/state.rs`](../../../crates/cpu/src/state.rs).
 
 ### 1.2 Complete M68000 Addressing Modes Specification
 
@@ -395,7 +395,7 @@ To eliminate nested dynamic runtime size checks and dynamic branching (`match`) 
 - **Multi-Register Block Transfers:** `crate::instructions::movem::execute_movem_transfer`.
 
 #### Pipeline & Dispatch Table Invariants
-1. **Immutable `ir` During Micro-Steps:** The 65,536-entry static descriptor table (`OPCODE_DESCRIPTOR_TABLE`) is indexed upon instruction prefetch to cache `current_steps: &'static [MicroStep]`. Intermediate multi-step operations (e.g. `JSR` or taken `Bcc`) must never overwrite `cpu.state.ir` before final retirement. Target opcodes are staged in `scratch_prefetch` or `TargetRefill { target, new_ir }`, and committed to `cpu.state.ir` only upon retirement.
+1. **Immutable `ir` During Micro-Steps:** The 65,536-entry static descriptor table (`OPCODE_DESCRIPTOR_TABLE`) is indexed upon instruction prefetch to cache `current_steps: &'static [MicroStep]`. Intermediate multi-step operations (e.g. `JSR` or taken `Bcc`) must never overwrite `cpu.state.ir` before final retirement. Target opcodes are captured directly into `state.micro.irc` with `state.micro.target_refill = true`, and committed to `cpu.state.ir` only upon retirement in `retire_current_instruction()`.
 2. **32-Bit Internal Program Counter:** The MC68000 Program Counter register is 32-bit wide internally. Across branch and jump target refills, `pc` is computed as `target.wrapping_add(4)` without 24-bit truncation mask `& 0x00FF_FFFF` (matching verified hardware tests in SingleStepTests).
 3. **Control Addressing Modes Alignment:** Control addressing modes in `PEA` and `LEA` compute effective addresses without checking word alignment. Odd addresses can be pushed onto the stack by `PEA` without generating Vector 3 Address Error. Only an unaligned Stack Pointer ($SP$) during stack writeback triggers an Address Error.
 
@@ -568,19 +568,19 @@ Bit manipulation instructions evaluate individual bit positions:
 Motorola 68000 Group 0xE encompasses four operation types across register and memory forms: Arithmetic Shift (`ASL`/`ASR`), Logical Shift (`LSL`/`LSR`), Rotate with Extend (`ROXL`/`ROXR`), and Rotate without Extend (`ROL`/`ROR`).
 
 - **Register Shift Micro-Step Pipeline & Clocks ($6/8 + 2n$):**
-  - **Prefetch Bus Cycle First:** On real silicon (verified by Tom Harte test vectors), the CPU initiates the next instruction opcode prefetch during micro-step 0 (`cpu.initiate_prefetch()`, 4 clocks / 2 CCKs).
+  - **Prefetch Bus Cycle First:** On real silicon (verified by Tom Harte test vectors), the CPU initiates the next instruction opcode prefetch during micro-step 0 (`common::PREFETCH_NEXT_READ`, 4 clocks / 2 CCKs).
   - **Internal Idle Clocks:** The execution unit schedules internal processing clocks based on operand size and shift count:
     - **Byte / Word:** $idle\_clocks = 2 + 2 \times count$ (Total execution time: $6 + 2n$ clocks).
     - **Long (32-bit):** $idle\_clocks = 4 + 2 \times count$ (Total execution time: $8 + 2n$ clocks).
-  - **Retirement:** Micro-step 2 marks standard sequential prefetch retirement (`mark_standard_prefetch_retire()`), advancing the program counter.
+  - **Retirement:** Micro-step 2 marks standard sequential prefetch retirement (`common::BUS_READ_IDLE`), completing the prefetch into `state.micro.irc` and calling `retire_current_instruction()` to advance the program counter.
 
 - **Memory Shift Micro-Step Pipeline (Class 0 Read-Modify-Write):**
   - Memory shifts are strictly **Word size** and shift by **1 bit** only (`count = 1`).
   - Follows the standard 3-step RMW sub-cycle sequence:
     - **Step 1 (Read):** Read 16-bit word from effective address memory via linear EA resolution.
-    - **Step 2 (Prefetch & Compute):** Perform 1-bit shift, evaluate condition codes, initiate next opcode prefetch, and latch modified word in internal scratch.
+    - **Step 2 (Prefetch & Compute):** Perform 1-bit shift, evaluate condition codes, initiate next opcode prefetch, and latch modified word into `state.micro.destination`.
     - **Step 3 (Writeback):** Write modified 16-bit word back to the target memory address via bus write cycle.
-  - Concludes with pipeline refill from scratch prefetch latch. Total duration: 12–16 clocks depending on addressing mode (e.g. `(An)` is 12 clocks, `-(An)` is 14 clocks).
+  - Concludes with pipeline retirement from `state.micro.irc`. Total duration: 12–16 clocks depending on addressing mode (e.g. `(An)` is 12 clocks, `-(An)` is 14 clocks).
 
 - **Shift Count Modulo:**
   - When the shift count is held in a data register, the CPU evaluates only the lower 6 bits (`count % 64` / `count & 63`).
@@ -652,7 +652,7 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
 - **Class 0 RMW Memory Writeback Sequence (`AND`, `OR`, `EOR`, `NOT` to `<ea>`):**
   - Memory-destination logical operations follow the Class 0 Read-Modify-Write sub-cycle pipeline in `and.rs`, `or.rs`, `eor.rs`, and `not.rs`:
     - **Step 1 (Read):** Read operand from effective address memory.
-    - **Step 2 (Prefetch & Compute):** Perform bitwise operation, compute condition codes ($N, Z, V=0, C=0$), initiate prefetch of next opcode, and store result in internal scratch register.
+    - **Step 2 (Prefetch & Compute):** Perform bitwise operation, compute condition codes ($N, Z, V=0, C=0$), initiate prefetch of next opcode, and store result into `state.micro.destination`.
     - **Step 3+ (Writeback):** Commit modified value to target memory address (for 32-bit `Long` size: write low word to $addr + 2$, followed by high word write to $addr$).
     - Pipeline retires with next instruction opcode already latched into $IR$.
 - **Bit Manipulation Cycle Timings (Tom Harte Silicon Verified):**
@@ -697,7 +697,7 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
   - **Phase 1: Source Effective Address Resolution & Read:**
     - Resolves source operand using compile-time constants `SRC_M` (mode) and `src_reg`.
     - Handles address error detection, extension word fetches, and pipeline sequencing.
-    - Operands are staged in `cpu.scratch`.
+    - Operands are staged in `state.micro.source`.
   - **Phase 2: Destination Effective Address Resolution & Write:**
     - **Register Destination (`Dn`):** Directly commits staged operand into target register. Evaluates condition codes for `MOVE` ($N = \text{MSB}$, $Z = \text{val} == 0$, $V = 0$, $C = 0$, $X$ preserved).
     - **Address Register Destination (`An` via `movea.rs`):** Sign-extends Word size and leaves CCR untouched.

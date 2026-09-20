@@ -8105,6 +8105,33 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed cleanly.
   - `python tools/harness/pre_flight.py`: 100% compliant across formatting, AGENTS.md ceiling, API coverage, Clippy invariants, and architecture tests.
 
+---
+
+### [2026-09-20 13:45 CEST] — Reverse Parity Remediation: Pruning Ghost Features in M68000 CPU Specifications
+
+- **Files Modified**:
+  - `Obsidian/Amiga/Design/CPU Motorola M68000.md`:
+    - Section 1.1: Pruned non-existent CCR setter methods `set_ccr_raw` and `set_ccr_nzc_clear_v`; aligned list to active methods in `crates/cpu/src/state.rs` (`set_ccr`, `set_ccr_xnzvc`, `set_ccr_nzvc`, `set_ccr_nz_clear_vc`, `set_ccr_z_only`, `set_ccr_v_clear_c`).
+    - Section 3.3: Pruned speculative struct `TargetRefill { target, new_ir }` and field `scratch_prefetch`; aligned to live architecture where target opcodes are captured directly into `state.micro.irc` with flag `state.micro.target_refill = true`, committed to `cpu.state.ir` on retirement via `retire_current_instruction()`.
+    - Section 7.5: Pruned ghost functions `cpu.initiate_prefetch()` and `mark_standard_prefetch_retire()`; replaced with `common::PREFETCH_NEXT_READ`, `common::BUS_READ_IDLE`, and `retire_current_instruction()`. Replaced legacy "internal scratch" and "scratch prefetch latch" with canonical `state.micro.destination` and `state.micro.irc`.
+    - Section 7.12 & 7.13: Replaced obsolete `internal scratch register` and `cpu.scratch` references with canonical micro-state registers `state.micro.destination` and `state.micro.source`.
+  - `Obsidian/Amiga/Design/CPU Micro-Step State Machine.md`:
+    - Section 1:
+      - Invariant 4: Corrected `prefetch: [u16; 2]` to scalar `prefetch: u16` (`CpuState`) and `irc: u16` (`CpuMicroState`), matching real hardware registers `IR`, `IRD`, and `IRC`.
+      - Invariant 5: Removed non-existent field `last_read`; clarified operand arrival into `CpuMicroState` registers (`source`, `destination`, `addr1`, `addr2`).
+      - Invariant 7: Replaced non-existent `state.micro.write_buffer: u32` with canonical `state.micro.destination: u32`.
+      - Invariant 12: Replaced `scratch[0]` with canonical `state.micro.movem_mask`.
+      - Invariant 13: Replaced obsolete names `EXCEPTION_GROUP0_STEPS` / `EXCEPTION_GROUP1_STEPS` with actual static slice arrays `STEPS_ADDRESS_ERROR`, `STEPS_INTERRUPT`, `STEPS_PRIVILEGE_VIOLATION`, `STEPS_ZERO_DIVIDE`.
+    - Section 2.3: Replaced non-existent pseudo-functions `step_write_word_at`, `step_write_byte_at`, `step_read_word_at`, `step_read_byte_at` with actual execution primitives: `ALU callbacks (AluFn)`, `ALU_IDLE_*`, `step_bus_write_trap_*`, `step_bus_write_aerr_*`, and `step_bus_read_vector_*`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of Ghost Residue & Speculative Pseudo-Code:* Speculative abstractions and draft function signatures that never materialized in the implementation create confusion, mislead agents into inventing non-existent APIs, and degrade code navigation. Bringing specifications into 100% bidirectional parity with the underlying Rust implementation establishes a single authoritative source of truth.
+  - *Direct Latch & Dual Staging Fidelity:* Documenting canonical micro-state registers (`source`, `destination`, `irc`, `movem_mask`) instead of vague "scratch buffers" reinforces the physical electronic causality modeled by the emulator core.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py --all`: 100% pass rate across all 10 documentation quality pillars (0 issues).
+  - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, API coverage, Clippy, architecture rules).
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed.
+
+
 
 
 
