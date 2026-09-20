@@ -8172,31 +8172,28 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, API coverage, Clippy, architecture rules).
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed.
 
+---
 
+### [2026-09-20 14:15 CEST] — Consolidated M68000 Silicon Quirks Catalog & Streamlined CPU Specifications
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- **Files Modified**:
+  - `Obsidian/Amiga/Design/Platform Quirks and Invariants Catalog.md`:
+    - Section 2: Added `Provenance & Source` classification column with 3 explicit tiers: Category A (Motorola PRM/UM), Category B (Micro-Bus Specs), Category C (Silicon Reality).
+    - Section 2: Corrected line 51 erratum erroneously categorizing `CMPA` as CCR-immune (removed `CMPA` and clarified that address modifications `MOVEA`/`ADDA`/`SUBA`/`ADDQ`/`SUBQ` leave CCR flags untouched while `CMPA` compares and updates $N, Z, V, C$).
+    - Section 2: Enriched the table with 3 additional silicon quirks from the live CPU implementation:
+      1. Post-Increment `(An)+` Address Error AGU Register Commitment asymmetry (reads commit $An \leftarrow An + \text{inc}$; writes do not).
+      2. `ASR` Count $\ge$ Width Silicon Exhaustion ($C = 0, X = 0$).
+      3. `MOVE` to Predecrement `-(An)` Prefetch Inversion & Bus Ordering (prefetch precedes write on Byte/Word stores).
+    - Frontmatter: Bumped `updated` to `2026-09-20`.
+  - `Obsidian/Amiga/Design/CPU Motorola M68000.md`:
+    - Frontmatter: Added `Platform Quirks and Invariants Catalog.md` to `related:` and bumped `updated` to `2026-09-20`.
+    - Section 7: Added a prominent note callout linking to the centralized Platform Quirks Catalog.
+    - Section 7.5: Replaced verbose silicon exhaustion text with a concise pointer to Platform Quirks Catalog.
+    - Section 7.6: Streamlined Address Error specification to focus on architectural Program/Data Space selection ($FC = 2/6$ vs $1/5$), delegating physical AGU register commitment and predecrement prefetch inversion to Platform Quirks Catalog.
+    - Section 7: Removed redundant sub-sections 7.7 (`ASR`), 7.8 (`MOVE -(An)`), and 7.11 (`Post-Increment (An)+`), eliminating content duplication across specifications per Information Hierarchy guidelines. Renumbered remaining sections cleanly to 7.7–7.12.
+- **Architectural Rationale & Trade-Offs**:
+  - *Single Source of Truth for Silicon Quirks:* Housing detailed silicon anomalies in [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md) while keeping subsystem design documents focused on their primary architectural responsibilities enforces strict conceptual boundaries and eliminates out-of-sync duplicate sprawl.
+  - *Provenance Transparency:* Explicitly tagging each quirk with its provenance (official PRM vs. bus cycle sheets vs. reverse-engineered silicon) helps architects and AI pair programmers distinguish intentional architectural invariants from physical silicon errata.
+- **Verification & Test Results**:
+  - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, API coverage, Clippy, architecture rules).
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed (including Obsidian design docs link integrity check).

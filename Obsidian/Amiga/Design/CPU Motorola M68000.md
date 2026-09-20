@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-14
-related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+updated: 2026-09-20
+related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/cpu"
 last_synced_commit: "9558483973639a25211924cab2ddea208895723e"
@@ -528,6 +528,9 @@ The `RESET` instruction is a privileged M68000 instruction that asserts the exte
 
 ## 7. M68000 Instruction & Hardware Silicon Quirks
 
+> [!NOTE] Centralized Silicon Quirks Catalog
+> Comprehensive physical silicon idiosyncrasies, micro-architectural traps (such as Post-Increment `(An)+` AGU commitment asymmetry, `ASR` count $\ge$ width register exhaustion, and `MOVE to -(An)` prefetch inversion), and motherboard circuit errata are centralized in [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md#2-motorola-68000-silicon-quirks--cpu-pipeline-traps).
+
 ### 7.1 TAS (Test And Set) Read-Modify-Write Hardware Bug
 
 The `TAS` instruction tests a byte operand, updates the condition codes, and sets high bit 7 to 1:
@@ -617,58 +620,31 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
 - **`ASL` Sticky Overflow ($V$) Quirk:**
   - In Arithmetic Shift Left, the $V$ flag indicates whether the sign bit changed.
   - In multi-bit shifts, if the sign bit (MSB) changes at **any intermediate bit shift step**, $V$ is set to `1` and **latches high (sticky)**, remaining `1` even if subsequent shift steps restore the sign bit.
+- **`ASR` Count $\ge$ Width Silicon Exhaustion:**
+  - When shift count exceeds operand width, physical shifter pipeline exhaustion forces $C=0, X=0$ per [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md#2-motorola-68000-silicon-quirks--cpu-pipeline-traps).
 
-### 7.6 Address Error (Vector 3) Program Space Selection & Silicon Divergences
+### 7.6 Address Error (Vector 3) Program Space Selection (FC 2 / 6)
 
 - **Function Code Selection on Address Error:**
   - If the unaligned word/long access was triggered by a **PC-relative addressing mode** (`(d16, PC)` or `(d8, PC, Xn)`), the CPU asserts **Program Space** ($FC = 2$ in User mode, $FC = 6$ in Supervisor mode).
   - For standard data memory operands, the CPU asserts **Data Space** ($FC = 1$ in User mode, $FC = 5$ in Supervisor mode).
-- **Postincrement `(An)+` AGU Read vs. Write Silicon Behavior:**
-  - **READ from `(An)+`:** The Address Generation Unit (AGU) increments $A_n$ as the read bus cycle begins. On real 68000 silicon (Tom Harte test vectors), if the read address is unaligned, $A_n$ has already been committed and incremented prior to triggering the Address Error trap.
-  - **WRITE to `(An)+`:** The processor checks alignment before postincrementing; if unaligned, $A_n$ is **never** incremented.
+- **AGU Register Commitment & Predecrement Bus Inversion:**
+  - Detailed physical silicon rules governing `(An)+` read/write commitment asymmetry and `MOVE ..., -(An)` prefetch-before-write sequencing reside in [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md#2-motorola-68000-silicon-quirks--cpu-pipeline-traps).
 
-### 7.7 ASR (Arithmetic Shift Right) Count > Width Silicon Exhaustion
-
-- When the shift count exceeds the operand width ($count \ge 8$ for Byte, $\ge 16$ for Word, $\ge 32$ for Long):
-  - **Real MC68000 Silicon (verified by Tom Harte test suite):** The shift register exhausts its internal latch pipeline, forcing both **$C = 0$** and **$X = 0$**, even when shifting negative numbers filled with replicated sign bits (`1`).
-  - *Emulator Resolution:* The core strictly implements real silicon behavior ($C=0, X=0$).
-
-### 7.8 MOVE to Predecrement `-(An)` Prefetch Inversion & Bus Ordering
-
-- On real MC68000 hardware, destination write ordering and instruction prefetch exhibit distinct behaviors across operand sizes:
-  - **Byte and Word (`MOVE.b`, `MOVE.w ..., -(An)`):**
-    - The CPU prefetches the next instruction word **before** initiating the destination write bus cycle.
-    - If the destination write triggers an Address Error:
-      - The Instruction Register ($IR$) pushed into the 7-word exception stack frame is the **prefetched instruction word**, not the current `MOVE` opcode.
-      - $A_n$ is decremented by 2 by the AGU and remains decremented in the final register state.
-  - **Long (`MOVE.l ..., -(An)`):**
-    - The write bus cycles occur before instruction prefetch completion; the opcode itself is pushed as the faulting $IR$.
-    - **Bus Write Ordering:** The 32-bit transfer is executed decrementing low word first to $A_n - 2$, then high word to $A_n - 4$.
-    - If $A_n$ is odd, the initial write cycle faults immediately at $A_n - 2$.
-    - On real silicon (Tom Harte), $A_n$ remains decremented by 2 ($A_n - 2$).
-
-### 7.9 MOVE.l 32-Bit Memory-to-Memory CCR Evaluation
+### 7.7 MOVE.l 32-Bit Memory-to-Memory CCR Evaluation
 
 - In 32-bit `MOVE.l <ea>, (An)` transfers:
   - **Real MC68000 Silicon:** Condition codes reflect the full 32-bit transfer ($N = \text{bit } 31$, $Z = \text{value } == 0$).
   - *Emulator Resolution:* The core strictly implements the full 32-bit condition code evaluation matching real silicon.
 
-### 7.10 Branch & Control Flow Odd Target Address Error (FC 2 / 6)
+### 7.8 Branch & Control Flow Odd Target Address Error (FC 2 / 6)
 
 - When `BRA`, `Bcc`, `JMP`, or `JSR` evaluates a target address with an odd destination (`target & 1 != 0`):
   - The MC68000 halts instruction execution and immediately triggers an **Address Error exception (Vector 3)**.
   - Because the instruction fetch pipeline caused the fault, the CPU asserts **Program Space** ($FC = 2$ in User mode, $FC = 6$ in Supervisor mode) in the exception status word.
   - The pushed program counter in the stack frame points to the instruction boundary or target address.
 
-### 7.11 Post-Increment `(An)+` Address Error AGU Register Commitment
-
-- When resolving Post-Increment addressing modes (`(An)+`, including `CMPM (Ay)+, (Ax)+`):
-  - **Silicon Reality (Tom Harte SingleStepTests):** The M68000 Address Generation Unit (AGU) computes the operand address from $A_n$ and simultaneously advances $A_n \leftarrow A_n + \text{increment}$ (2 for word/byte-A7, 4 for long).
-  - If the computed base address is odd (`addr & 1 != 0`) for word or long accesses, the Address Error exception triggers on the bus read/write cycle.
-  - Crucially, $A_n$ **remains updated with the incremented value** in the final register state.
-  - *Emulator Resolution:* In all linear EA resolvers (`ea.rs`) and specialized instructions (`cmpm.rs`), the address register update occurs prior to checking unaligned address error traps.
-
-### 7.12 Class 0 Read-Modify-Write (RMW) & Bit Manipulation Silicon Timings
+### 7.9 Class 0 Read-Modify-Write (RMW) & Bit Manipulation Silicon Timings
 
 - **Class 0 RMW Memory Writeback Sequence (`AND`, `OR`, `EOR`, `NOT` to `<ea>`):**
   - Memory-destination logical operations follow the Class 0 Read-Modify-Write sub-cycle pipeline in `and.rs`, `or.rs`, `eor.rs`, and `not.rs`:
@@ -689,7 +665,7 @@ Motorola 68000 Group 0xE encompasses four operation types across register and me
     - `BCLR #imm, Dm`: 14 clocks (4 extension read + 4 prefetch + 6 internal idle).
     - Memory targets: Extension word fetch, effective address read, prefetch, and byte writeback.
 
-### 7.13 Modular Per-Mnemonic Instruction Architecture & Single-Mnemonic Dispatch
+### 7.10 Modular Per-Mnemonic Instruction Architecture & Single-Mnemonic Dispatch
 
 The entire M68000 instruction set is organized into dedicated, single-responsibility files directly under [`crates/cpu/src/instructions/`](../../../crates/cpu/src/instructions/) following strict architectural rules:
 
@@ -724,7 +700,7 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
     - **Address Register Destination (`An` via `movea.rs`):** Sign-extends Word size and leaves CCR untouched.
     - **Memory Destination (`(An)`, `(An)+`, `-(An)`, `(d16,An)`, `(d8,An,Xn)`, `(xxx).w`, `(xxx).l`):** Resolves destination memory address, checks 16/32-bit word alignment, triggers Address Error (Vector 3) if unaligned, initiates write bus cycles, and latches prefetch according to hardware ordering (e.g. `-(An)` prefetch-before-write sequence).
 
-### 7.14 Extended Arithmetic, Shifts, and Control Flow
+### 7.11 Extended Arithmetic, Shifts, and Control Flow
 
 - **Extended Arithmetic (`addx.rs`, `subx.rs`):**
   - **Z-Flag Retention Quirk:** The $Z$ condition code flag is cleared if the arithmetic result is non-zero, but **preserved intact** if the result is zero, enabling seamless chaining across multi-precision additions/subtractions.
@@ -748,7 +724,7 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
   - **TRAP (Trap Exception Processing):** 34 clocks (17 CCKs). Pushes return PC and SR to supervisor stack ($SSP$), switches to supervisor mode ($S=1, T=0$), fetches exception vector from `$000080 + \text{vec} \times 4$, and initiates double prefetch refill.
   - **Address Error (Vector 3) & 32-bit Target Fidelity:** Target addresses and stack values retain full 32-bit register width without artificial 24-bit truncation (`& 0x00FF_FFFF`), ensuring cycle-exact diagnostic and stack frame fidelity matching Tom Harte silicon test vectors.
 
-### 7.15 Autovector Interrupt Processing & STOP Instruction Awakening
+### 7.12 Autovector Interrupt Processing & STOP Instruction Awakening
 
 - **Interrupt Priority Levels (IPL 1–7):**
   - M68000 samples the 3-bit interrupt priority lines $\overline{\text{IPL0}}-\overline{\text{IPL2}}$ (driven in the emulator by `state.ipl` via `resolve_ipl()`).
