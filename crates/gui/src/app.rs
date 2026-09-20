@@ -429,7 +429,7 @@ impl EmulatorApp {
                                 self.session.machine.physical_memory.chip_ram_blocked,
                                 self.session.instructions_executed,
                                 self.session.machine.cpu.state.cycle_counter as u64 / 2,
-                                self.session.machine.cpu.state.sr,
+                                self.session.machine.cpu.state.sr(),
                             );
                             if self.show_microcode {
                                 ui.add_space(3.0);

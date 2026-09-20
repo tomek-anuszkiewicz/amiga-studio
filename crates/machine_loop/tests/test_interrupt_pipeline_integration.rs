@@ -153,7 +153,7 @@ fn test_cpu_autovector_exception_dispatch() {
     );
 
     // Verify CPU SR interrupt mask was raised to at least 3
-    let mask = (harness.machine.cpu.state.sr >> 8) & 0x07;
+    let mask = harness.machine.cpu.state.interrupt_mask();
     assert!(
         mask >= 3,
         "CPU interrupt mask in SR should be raised to >= 3"

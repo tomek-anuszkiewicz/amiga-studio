@@ -13,9 +13,8 @@ fn setup_test_machine() -> (Cpu, PhysicalMemory) {
     let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
     let mut cpu = Cpu::new();
-    cpu.state.ssp = 0x070000;
-    cpu.state.set_a_long(7, 0x070000);
-    cpu.state.sr = 0x2000; // Supervisor mode, Interrupt Mask = 0
+    cpu.state.set_sr(0x2000); // Supervisor mode, Interrupt Mask = 0
+    cpu.state.set_ssp(0x070000);
     (cpu, bus)
 }
 

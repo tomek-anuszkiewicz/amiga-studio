@@ -126,7 +126,7 @@ fn test_program_conditional_branch_loop() {
     assert_eq!(cpu.state.d_long(0), 15, "D0 must equal sum 1..5 = 15");
     assert_eq!(cpu.state.d_long(1), 0, "Counter D1 must reach 0");
     assert!(
-        (cpu.state.sr & 0x04) != 0,
+        cpu.state.is_z(),
         "Zero flag (Z) must be set after SUBQ reaches 0"
     );
 }
@@ -214,9 +214,8 @@ fn test_program_subroutine_call_and_return() {
 
     // Set initial Stack Pointer (SSP/USP)
     let initial_sp = 0x004000;
-    cpu.state.ssp = initial_sp;
-    cpu.state.usp = initial_sp;
-    cpu.state.set_a_long(7, initial_sp);
+    cpu.state.set_ssp(initial_sp);
+    cpu.state.set_usp(initial_sp);
 
     cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
 
@@ -261,9 +260,8 @@ fn test_program_stack_frame_link_unlk() {
     load_program(&mut bus, 0x001000, &code);
 
     let initial_sp = 0x004000;
-    cpu.state.ssp = initial_sp;
-    cpu.state.usp = initial_sp;
-    cpu.state.set_a_long(7, initial_sp);
+    cpu.state.set_ssp(initial_sp);
+    cpu.state.set_usp(initial_sp);
     cpu.state.set_a_long(6, 0x00000000); // Initial A6
 
     cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
@@ -320,10 +318,9 @@ fn test_program_trap_exception_and_rte() {
 
     let ssp = 0x005000;
     let usp = 0x003000;
-    cpu.state.ssp = ssp;
-    cpu.state.usp = usp;
-    cpu.state.set_a_long(7, usp);
-    cpu.state.sr = 0x0000; // User mode (S=0)
+    cpu.state.set_sr(0x0000); // User mode (S=0)
+    cpu.state.set_ssp(ssp);
+    cpu.state.set_usp(usp);
 
     cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
 
@@ -342,7 +339,7 @@ fn test_program_trap_exception_and_rte() {
         usp,
         "USP must remain balanced after TRAP and RTE"
     );
-    assert_eq!(cpu.state.ssp, ssp, "SSP must be balanced after RTE");
+    assert_eq!(cpu.state.ssp(), ssp, "SSP must be balanced after RTE");
 }
 
 // ============================================================================
@@ -375,9 +372,8 @@ fn test_program_divide_by_zero_exception() {
     set_vector(&mut bus, 5, 0x002500); // Vector 5 = Divide by zero
 
     let ssp = 0x005000;
-    cpu.state.ssp = ssp;
     cpu.state.set_supervisor(true);
-    cpu.state.set_a_long(7, ssp);
+    cpu.state.set_ssp(ssp);
 
     cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
 
@@ -429,10 +425,9 @@ fn test_program_privilege_violation_exception() {
 
     let ssp = 0x005000;
     let usp = 0x003000;
-    cpu.state.ssp = ssp;
-    cpu.state.usp = usp;
-    cpu.state.set_a_long(7, usp);
-    cpu.state.sr = 0x0000; // User mode (S=0)
+    cpu.state.set_sr(0x0000); // User mode (S=0)
+    cpu.state.set_ssp(ssp);
+    cpu.state.set_usp(usp);
 
     cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
 
@@ -486,9 +481,8 @@ fn test_program_address_error_recovery() {
     set_vector(&mut bus, 3, 0x002800); // Vector 3 = Address Error
 
     let initial_ssp = 0x005000;
-    cpu.state.ssp = initial_ssp;
     cpu.state.set_supervisor(true);
-    cpu.state.set_a_long(7, initial_ssp);
+    cpu.state.set_ssp(initial_ssp);
 
     cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
 
@@ -803,7 +797,7 @@ fn test_program_bcd_arithmetic() {
 
     let (mut cpu, mut bus) = setup_machine();
     load_program(&mut bus, 0x001000, &code);
-    cpu.state.sr &= !0x0015; // Ensure X, Z, C flags are 0
+    cpu.state.set_sr(cpu.state.sr() & !0x0015); // Ensure X, Z, C flags are 0
     cpu.set_pc_and_prime_prefetch(0x001000, &mut bus);
 
     execute_instructions(&mut cpu, &mut bus, 3);

@@ -195,7 +195,7 @@ fn test_simulated_register_inline_editing() {
     let _ = ctx.run(input_enter_sr, |ctx| {
         app.update_ui(ctx);
     });
-    assert_eq!(app.session.machine.cpu.state.sr, 0x2700);
+    assert_eq!(app.session.machine.cpu.state.sr(), 0x2700);
     assert_eq!(app.active_reg_edit, None);
 }
 
@@ -384,7 +384,7 @@ fn test_startup_clean_memory() {
     assert_eq!(app.session.machine.cpu.state.instruction_pc, 0x000000);
     assert_eq!(app.session.machine.cpu.state.pc, 0x000004);
     assert_eq!(app.session.machine.cpu.state.a_long(7), 0x080000);
-    assert_eq!(app.session.machine.cpu.state.ssp, 0x080000);
+    assert_eq!(app.session.machine.cpu.state.ssp(), 0x080000);
     assert!(
         app.session.machine.cpu.state.ir == 0xFFFF
             || app.session.machine.cpu.state.ir == 0x0000
@@ -409,19 +409,21 @@ fn test_startup_clean_memory() {
 fn test_ccr_led_badges_interactive_toggle() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
-    app.session.machine.cpu.state.sr = 0x2700; // All CCR flags (0x1F) are 0
+    app.session.machine.cpu.state.set_sr(0x2700); // All CCR flags (0x1F) are 0
 
     let _ = ctx.run(RawInput::default(), |ctx| {
         app.update_ui(ctx);
     });
 
     // Toggle Z flag (bit 2, mask 0x04)
-    app.session.machine.cpu.state.sr ^= 0x04;
-    assert_eq!(app.session.machine.cpu.state.sr & 0x04, 0x04);
+    let cur_sr = app.session.machine.cpu.state.sr();
+    app.session.machine.cpu.state.set_sr(cur_sr ^ 0x04);
+    assert_eq!(app.session.machine.cpu.state.sr() & 0x04, 0x04);
 
     // Toggle X flag (bit 4, mask 0x10)
-    app.session.machine.cpu.state.sr ^= 0x10;
-    assert_eq!(app.session.machine.cpu.state.sr & 0x10, 0x10);
+    let cur_sr = app.session.machine.cpu.state.sr();
+    app.session.machine.cpu.state.set_sr(cur_sr ^ 0x10);
+    assert_eq!(app.session.machine.cpu.state.sr() & 0x10, 0x10);
 }
 
 #[test]

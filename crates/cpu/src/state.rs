@@ -60,19 +60,19 @@ pub struct CpuState {
     /// Address Registers A0-A7 (32-bit each, private). A7 holds the active stack pointer (USP or SSP).
     a: [u32; 8],
 
-    /// User Stack Pointer (stored A7 when Supervisor bit S = 0)
-    pub usp: u32,
+    /// User Stack Pointer (stored A7 when Supervisor bit S = 0, private)
+    usp: u32,
 
-    /// Supervisor Stack Pointer (stored A7 when Supervisor bit S = 1)
-    pub ssp: u32,
+    /// Supervisor Stack Pointer (stored A7 when Supervisor bit S = 1, private)
+    ssp: u32,
 
     /// Program Counter (24-bit physical addressing on MC68000)
     pub pc: u32,
 
-    /// Status Register (16-bit):
+    /// Status Register (16-bit, private):
     /// - System Byte (Bits 8-15): Trace (T, bit 15), Supervisor (S, bit 13), Interrupt Mask (I2-I0, bits 10-8)
     /// - User Byte / CCR (Bits 0-7): Extend (X, bit 4), Negative (N, bit 3), Zero (Z, bit 2), Overflow (V, bit 1), Carry (C, bit 0)
-    pub sr: u16,
+    sr: u16,
 
     /// Lookahead Prefetch Queue Register (models 16-bit hardware IR holding extension word or next opcode)
     pub prefetch: u16,
@@ -182,70 +182,147 @@ impl CpuState {
         self.a[reg]
     }
 
-    /// Writes full 32-bit value of address register An
+    /// Writes full 32-bit value of address register An.
+    /// If modifying A7, automatically synchronizes SSP (if supervisor) or USP (if user).
     #[inline(always)]
     pub fn set_a_long(&mut self, reg: usize, val: u32) {
         self.a[reg] = val;
+        if reg == 7 {
+            if (self.sr & SR_S) != 0 {
+                self.ssp = val;
+            } else {
+                self.usp = val;
+            }
+        }
     }
 
-    /// Clears data registers D0-D7, address registers A0-A7, and USP to zero
+    /// Reads full 32-bit value of active stack pointer A7
+    #[inline(always)]
+    pub fn a7(&self) -> u32 {
+        self.a_long(7)
+    }
+
+    /// Writes full 32-bit value of active stack pointer A7
+    #[inline(always)]
+    pub fn set_a7(&mut self, val: u32) {
+        self.set_a_long(7, val);
+    }
+
+    /// Returns the User Stack Pointer (USP).
+    /// If currently in User mode, returns active A7.
+    #[inline(always)]
+    pub fn usp(&self) -> u32 {
+        if (self.sr & SR_S) == 0 {
+            self.a[7]
+        } else {
+            self.usp
+        }
+    }
+
+    /// Sets the User Stack Pointer (USP).
+    /// If currently in User mode, also updates active A7.
+    #[inline(always)]
+    pub fn set_usp(&mut self, val: u32) {
+        self.usp = val;
+        if (self.sr & SR_S) == 0 {
+            self.a[7] = val;
+        }
+    }
+
+    /// Returns the Supervisor Stack Pointer (SSP).
+    /// If currently in Supervisor mode, returns active A7.
+    #[inline(always)]
+    pub fn ssp(&self) -> u32 {
+        if (self.sr & SR_S) != 0 {
+            self.a[7]
+        } else {
+            self.ssp
+        }
+    }
+
+    /// Sets the Supervisor Stack Pointer (SSP).
+    /// If currently in Supervisor mode, also updates active A7.
+    #[inline(always)]
+    pub fn set_ssp(&mut self, val: u32) {
+        self.ssp = val;
+        if (self.sr & SR_S) != 0 {
+            self.a[7] = val;
+        }
+    }
+
+    /// Clears data registers D0-D7, address registers A0-A7, USP, and SSP to zero
     #[inline]
     pub fn clear_registers(&mut self) {
         self.d.fill(0);
         self.a.fill(0);
         self.usp = 0;
+        self.ssp = 0;
     }
 
-    /// Transitions or sets supervisor mode, swapping active A7 with stored USP/SSP if privilege changes
-    #[inline]
-    pub fn set_supervisor(&mut self, supervisor: bool) {
-        let is_super = (self.sr & SR_S) != 0;
-        if is_super == supervisor {
-            return;
-        }
-        if supervisor {
-            self.sr |= SR_S;
-            self.usp = self.a[7];
-            self.a[7] = self.ssp;
-        } else {
-            self.sr &= !SR_S;
-            self.ssp = self.a[7];
-            self.a[7] = self.usp;
-        }
-    }
-
-    /// Updates Status Register (SR) and swaps active A7 with stored USP/SSP if the Supervisor bit changes
-    #[inline]
-    pub fn set_sr(&mut self, new_sr: u16) {
-        let masked_sr = new_sr & SR_MASK;
+    /// Atomically transitions supervisor mode bit and swaps active A7 with stored USP/SSP if changed
+    #[inline(always)]
+    fn update_supervisor_mode(&mut self, new_s: bool) {
         let old_s = (self.sr & SR_S) != 0;
-        let new_s = (masked_sr & SR_S) != 0;
-        self.sr = masked_sr;
         if old_s != new_s {
             if new_s {
+                self.sr |= SR_S;
                 self.usp = self.a[7];
                 self.a[7] = self.ssp;
             } else {
+                self.sr &= !SR_S;
                 self.ssp = self.a[7];
                 self.a[7] = self.usp;
             }
         }
     }
 
-    /// Flushes the live active stack pointer (`a[7]`) into `ssp` (if supervisor) or `usp` (if user)
+    /// Transitions or sets supervisor mode, swapping active A7 with stored USP/SSP if privilege changes
     #[inline]
-    pub fn sync_stack_pointers(&mut self) {
-        if (self.sr & SR_S) != 0 {
-            self.ssp = self.a[7];
-        } else {
-            self.usp = self.a[7];
-        }
+    pub fn set_supervisor(&mut self, supervisor: bool) {
+        self.update_supervisor_mode(supervisor);
+    }
+
+    /// Returns the full 16-bit Status Register (SR)
+    #[inline(always)]
+    pub fn sr(&self) -> u16 {
+        self.sr
+    }
+
+    /// Updates Status Register (SR), masks undefined bits, and swaps active A7 if the Supervisor bit changes
+    #[inline]
+    pub fn set_sr(&mut self, new_sr: u16) {
+        let masked_sr = new_sr & SR_MASK;
+        let new_s = (masked_sr & SR_S) != 0;
+        self.update_supervisor_mode(new_s);
+        self.sr = masked_sr;
     }
 
     /// Returns true if CPU is running in Supervisor mode
-    #[inline]
+    #[inline(always)]
     pub fn is_supervisor(&self) -> bool {
         (self.sr & SR_S) != 0
+    }
+
+    /// Returns true if the Trace bit (T) is set in SR
+    #[inline(always)]
+    pub fn is_trace(&self) -> bool {
+        (self.sr & SR_T) != 0
+    }
+
+    /// Sets or clears the Trace bit (T) in SR
+    #[inline(always)]
+    pub fn set_trace(&mut self, trace: bool) {
+        if trace {
+            self.sr |= SR_T;
+        } else {
+            self.sr &= !SR_T;
+        }
+    }
+
+    /// Clears the Trace bit (T) in SR
+    #[inline(always)]
+    pub fn clear_trace(&mut self) {
+        self.set_trace(false);
     }
 
     /// Returns the 3-bit interrupt priority mask from SR (bits 8..=10, levels 0..=7)

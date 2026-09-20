@@ -68,7 +68,7 @@ fn test_archetype1_move_reg_to_reg_4_clocks() {
     );
     assert_eq!(cpu.state.d_long(1), 0x0000_5678);
     assert_eq!(
-        cpu.state.sr & 0x1F,
+        cpu.state.ccr(),
         0x00,
         "CCR: N=0, Z=0, V=0, C=0 for positive non-zero"
     );
@@ -245,7 +245,7 @@ fn test_archetype5_bcc_untaken_8_clocks() {
     bus.write_word_debug(0x001004, 0x4E71);
 
     // Clear Z flag in CCR
-    cpu.state.sr &= !0x04;
+    cpu.state.set_ccr_z_only(false);
     prime_prefetch(&mut cpu, &mut bus);
 
     let clocks = cpu.step_instruction(&mut bus);

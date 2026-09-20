@@ -28,7 +28,7 @@ fn test_inject_binary_with_auto_prime() {
 
     // Verify SP auto-initialized to 512KB Chip RAM top ($080000)
     assert_eq!(cpu.state.a_long(7), 0x080000);
-    assert_eq!(cpu.state.ssp, 0x080000);
+    assert_eq!(cpu.state.ssp(), 0x080000);
 }
 
 #[test]

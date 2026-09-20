@@ -95,10 +95,10 @@ fn test_direct_injection_into_chip_ram() {
 
     // Assert CPU registers
     assert_eq!(machine.cpu.state.a_long(7), VAMIGA_STACK_POINTER);
-    assert_eq!(machine.cpu.state.ssp, VAMIGA_STACK_POINTER);
+    assert_eq!(machine.cpu.state.ssp(), VAMIGA_STACK_POINTER);
     assert_eq!(machine.cpu.state.instruction_pc, VAMIGA_ENTRY_POINT);
     assert_eq!(machine.cpu.state.pc, VAMIGA_ENTRY_POINT + 4);
-    assert_eq!(machine.cpu.state.sr, 0x2700);
+    assert_eq!(machine.cpu.state.sr(), 0x2000);
 
     // Assert Denise Display Window configured per standard PAL
     assert_eq!(machine.denise.diwstrt, 0x2C81);

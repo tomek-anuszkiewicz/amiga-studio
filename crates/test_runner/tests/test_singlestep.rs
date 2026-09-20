@@ -784,7 +784,7 @@ fn test_stop() {
 
     cpu.step_instruction(&mut bus);
     assert!(cpu.state.stopped);
-    assert_eq!(cpu.state.sr, 0x2000);
+    assert_eq!(cpu.state.sr(), 0x2000);
 }
 
 #[test]

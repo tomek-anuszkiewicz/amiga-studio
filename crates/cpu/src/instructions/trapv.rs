@@ -7,7 +7,7 @@
 
 use crate::micro::common;
 use crate::micro::types::MicroStep;
-use crate::state::{vector, CpuState, SR_T};
+use crate::state::{vector, CpuState};
 
 // ============================================================================
 // Micro-Step ALU Callbacks: TRAPV
@@ -36,9 +36,9 @@ pub static STEPS_TRAPV: [MicroStep; 3] = [
 pub fn alu_trapv_exception_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let vector_addr = vector::addr(vector::TRAPV);
     let return_pc = state.pc.wrapping_sub(2);
-    let old_sr = state.sr;
+    let old_sr = state.sr();
     state.set_supervisor(true);
-    state.sr &= !SR_T;
+    state.clear_trace();
     state.micro.source = return_pc;
     state.micro.destination = old_sr as u32;
     state.micro.ea_addr = vector_addr;

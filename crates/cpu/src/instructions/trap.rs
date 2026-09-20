@@ -6,7 +6,7 @@
 
 use crate::micro::common;
 use crate::micro::types::MicroStep;
-use crate::state::{vector, CpuState, SR_T};
+use crate::state::{vector, CpuState};
 
 /// Initial setup for TRAP exception: saves old SR, switches to supervisor
 pub fn alu_trap_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
@@ -15,10 +15,10 @@ pub fn alu_trap_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let vector_addr = vector::addr(vector::TRAP_BASE + vec);
     let base_pc = state.pc.wrapping_sub(2);
     let return_pc = base_pc;
-    let old_sr = state.sr;
+    let old_sr = state.sr();
     // Switch to supervisor mode (S=1, T=0)
     state.set_supervisor(true);
-    state.sr &= !SR_T;
+    state.clear_trace();
     state.micro.source = return_pc;
     state.micro.destination = old_sr as u32;
     state.micro.ea_addr = vector_addr;

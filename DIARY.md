@@ -8320,3 +8320,25 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_code_quality.py --all`: 0 dead symbols, 0 zombies, 0 visibility leaks, 0 method naming issues.
   - `python tools/harness/audit_docs_quality.py`: 10/10 pillars PASSED (0 issues).
 
+### 2026-09-20: Encapsulation of `CpuState` Stack Pointers (`usp`, `ssp`), Status Register (`sr`), and Bidirectional $A_7$ Synchronization
+- **Scope & Affected Subsystems**: `crates/cpu`, `crates/debugger`, `crates/gui`, `crates/machine_loop`, `crates/test_runner`.
+- **Key Modifications**:
+  - `crates/cpu/src/state.rs`: Encapsulated `usp`, `ssp`, and `sr` as private fields. Made active $A_7$ (`a[7]`) the single source of truth for the currently selected mode ($S=1 \implies SSP$, $S=0 \implies USP$).
+  - `crates/cpu/src/state.rs`: Updated `set_a_long(7, val)` to automatically synchronize the corresponding inactive bank (`ssp` if $S=1$ or `usp` if $S=0$), guaranteeing that modifying $A_7$ never leaves stack pointer mirrors stale. Added `a7(&self) -> u32` and `set_a7(&mut self, val: u32)`.
+  - `crates/cpu/src/state.rs`: Added encapsulated accessors `usp(&self) -> u32`, `set_usp(&mut self, val: u32)`, `ssp(&self) -> u32`, `set_ssp(&mut self, val: u32)`. When modifying the currently active mode's stack pointer via `set_ssp` or `set_usp`, active $A_7$ is updated synchronously.
+  - `crates/cpu/src/state.rs`: Added `sr(&self) -> u16`, `set_sr(&mut self, val: u16)`, `set_supervisor(&mut self, supervisor: bool)`, and trace bit helpers (`is_trace(&self) -> bool`, `set_trace(&mut self, trace: bool)`, `clear_trace(&mut self)`).
+  - `crates/cpu/src/state.rs`: Unified supervisor mode transitions in `update_supervisor_mode(&mut self, new_s: bool)`. When the $S$ bit transitions, active $A_7$ and the stored inactive bank are atomically exchanged, eliminating desynchronization.
+  - `crates/cpu/src/state.rs`: Updated `clear_registers()` to clear `d`, `a`, `usp`, and `ssp`. Purged obsolete `sync_stack_pointers()` across the entire repository.
+  - `crates/cpu/src/instructions/*` & `crates/cpu/src/micro/common.rs`: Updated `move_usp.rs`, `logic_sr_ccr.rs`, `move_sr_ccr.rs`, `chk.rs`, `trap.rs`, `trapv.rs`, and micro-operation exception helpers to use domain methods (`set_usp`, `usp`, `sr`, `clear_trace`).
+  - `crates/cpu/tests/test_state.rs`: Created dedicated unit test suite covering stack pointer synchronization in supervisor and user modes, atomic mode swaps, `SR_MASK` enforcement, trace bit helpers, `clear_registers`, and Serde roundtrip.
+  - `crates/debugger/*`, `crates/gui/*`, `crates/machine_loop/tests/*`, and `crates/test_runner/*`: Migrated all direct field accesses on `.sr`, `.ssp`, `.usp` to encapsulated methods.
+- **Architectural Rationale & Trade-Offs**:
+  - *Structural Root Cause Resolution:* Eliminated ad-hoc calls to `sync_stack_pointers()`. Making fields private and unifying transitions under `update_supervisor_mode` makes it impossible for external callers, instructions, or test harnesses to desynchronize $A_7$, $USP$, and $SSP$.
+  - *Clean-Break Refactoring:* Removed `sync_stack_pointers()` without legacy shims, executing an immediate full-workspace cutover.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `python tools/harness/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting, AGENTS.md ceiling <= 14KB, test coupling, API coverage 100%, Clippy, architecture rules 21/21).
+  - `python tools/harness/run_tests.py --all`: Tier 1 (23 crates + 7 test_runner suites) and Tier 2 (memory_bus, machine_loop, debugger, gui) PASSED.
+  - `python tools/harness/run_tests.py --harness`: Tier 3 (Cartesian DMA contention 20/20, architecture rules 21/21, benchmark smoke) PASSED.
+  - `cargo test -p test_runner --test test_singlestep`: 127/127 SingleStep silicon test suites PASSED.
+

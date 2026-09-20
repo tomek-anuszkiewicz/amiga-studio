@@ -20,7 +20,7 @@ pub fn alu_move_to_usp(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
         state.micro.clocks_remaining = 0;
         return;
     }
-    state.usp = state.a_long(reg_src as usize);
+    state.set_usp(state.a_long(reg_src as usize));
 }
 
 pub static ALU_MOVE_TO_USP: MicroStep = MicroStep {
@@ -42,7 +42,7 @@ pub fn alu_move_from_usp(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
         state.micro.clocks_remaining = 0;
         return;
     }
-    state.set_a_long(reg_dst as usize, state.usp);
+    state.set_a_long(reg_dst as usize, state.usp());
 }
 
 pub static ALU_MOVE_FROM_USP: MicroStep = MicroStep {

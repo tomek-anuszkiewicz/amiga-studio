@@ -168,11 +168,11 @@ fn test_cpu_reset_status_and_vectors() {
     let mut cpu = Cpu::new();
     cpu.reset(&mut bus);
 
-    assert_eq!(cpu.state.sr, cpu::SR_RESET_DEFAULT);
-    assert_eq!(cpu.state.sr, 0x2700);
+    assert_eq!(cpu.state.sr(), cpu::SR_RESET_DEFAULT);
+    assert_eq!(cpu.state.sr(), 0x2700);
     assert!(cpu.state.is_supervisor());
     assert_eq!(cpu.state.interrupt_mask(), 7);
-    assert_eq!(cpu.state.ssp, 0x0007_0000);
+    assert_eq!(cpu.state.ssp(), 0x0007_0000);
     assert_eq!(cpu.state.instruction_pc, 0x0000_1000);
     assert_eq!(cpu.state.pc, 0x0000_1004); // Prefetch pipeline primed 2 words forward
 
@@ -207,7 +207,7 @@ fn test_function_code_constants_and_helpers() {
     assert_eq!(prog_fc(&state), function_code::SUPERVISOR_PROGRAM);
 
     // User mode (clear S bit)
-    state.sr &= !cpu::SR_S;
+    state.set_supervisor(false);
     assert!(!state.is_supervisor());
     assert_eq!(data_fc(&state), function_code::USER_DATA);
     assert_eq!(prog_fc(&state), function_code::USER_PROGRAM);
@@ -226,22 +226,22 @@ fn test_cpu_reset_and_reset_warm() {
     let mut cpu = Cpu::new();
     cpu.state.set_d_long(0, 0x12345678);
     cpu.state.set_a_long(0, 0x9ABCDEF0);
-    cpu.state.usp = 0x00054321;
+    cpu.state.set_usp(0x00054321);
 
     // Warm reset preserves D/A registers and USP
     cpu.reset_warm(&mut bus);
     assert_eq!(cpu.state.d_long(0), 0x12345678);
     assert_eq!(cpu.state.a_long(0), 0x9ABCDEF0);
-    assert_eq!(cpu.state.usp, 0x00054321);
-    assert_eq!(cpu.state.ssp, 0x00070000);
+    assert_eq!(cpu.state.usp(), 0x00054321);
+    assert_eq!(cpu.state.ssp(), 0x00070000);
     assert_eq!(cpu.state.instruction_pc, 0x00002000);
 
     // Standard reset zeroes data/address registers and USP
     cpu.reset(&mut bus);
     assert_eq!(cpu.state.d_long(0), 0);
     assert_eq!(cpu.state.a_long(0), 0);
-    assert_eq!(cpu.state.usp, 0);
-    assert_eq!(cpu.state.ssp, 0x00070000);
+    assert_eq!(cpu.state.usp(), 0);
+    assert_eq!(cpu.state.ssp(), 0x00070000);
     assert_eq!(cpu.state.instruction_pc, 0x00002000);
 }
 

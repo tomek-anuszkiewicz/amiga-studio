@@ -65,7 +65,7 @@ impl Cpu {
     }
 
     fn reset_internal(&mut self, bus: &mut dyn AddressBus) {
-        self.state.sr = crate::state::SR_RESET_DEFAULT;
+        self.state.set_sr(crate::state::SR_RESET_DEFAULT);
         self.state.stopped = false;
         self.state.halted = false;
         self.state.reset_line_asserted = false;
@@ -76,8 +76,8 @@ impl Cpu {
         let ssp_addr = crate::state::vector::addr(crate::state::vector::RESET_SSP);
         let ssp_hi = bus.read_word_debug(ssp_addr);
         let ssp_lo = bus.read_word_debug(ssp_addr + 2);
-        self.state.ssp = ((ssp_hi as u32) << 16) | (ssp_lo as u32);
-        self.state.set_a_long(7, self.state.ssp);
+        let initial_ssp = ((ssp_hi as u32) << 16) | (ssp_lo as u32);
+        self.state.set_ssp(initial_ssp);
 
         // Fetch initial PC from Vector 1 ($000004)
         let pc_addr = crate::state::vector::addr(crate::state::vector::RESET_PC);

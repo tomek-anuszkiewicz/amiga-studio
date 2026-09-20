@@ -212,10 +212,11 @@ pub fn trace_program(program: &BenchmarkProgram, max_steps: usize) -> BenchmarkT
         }
 
         // Check SR
-        if cpu.state.sr != cpu_before.state.sr {
+        if cpu.state.sr() != cpu_before.state.sr() {
             reg_deltas.push(format!(
                 "SR: 0x{:04X} -> 0x{:04X}",
-                cpu_before.state.sr, cpu.state.sr
+                cpu_before.state.sr(),
+                cpu.state.sr()
             ));
         }
 
@@ -271,7 +272,7 @@ pub fn trace_program(program: &BenchmarkProgram, max_steps: usize) -> BenchmarkT
         steps,
         final_d: std::array::from_fn(|i| cpu.state.d_long(i)),
         final_a: std::array::from_fn(|i| cpu.state.a_long(i)),
-        final_sr: cpu.state.sr,
+        final_sr: cpu.state.sr(),
         final_pc: cpu.state.instruction_pc,
         total_guest_cycles: total_cycles,
         terminated_cleanly,

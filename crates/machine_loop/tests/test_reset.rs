@@ -102,7 +102,8 @@ fn test_cold_reset_full_flow() {
         );
     }
     assert_eq!(
-        machine.cpu.state.sr, 0x2700,
+        machine.cpu.state.sr(),
+        0x2700,
         "CPU Status Register must be reset to supervisor mask 7 ($2700)"
     );
     assert_eq!(
@@ -204,7 +205,8 @@ fn test_warm_reset_full_flow() {
         "A1 must be preserved on warm reset"
     );
     assert_eq!(
-        machine.cpu.state.sr, 0x2700,
+        machine.cpu.state.sr(),
+        0x2700,
         "CPU SR must be reset to supervisor mask 7 ($2700)"
     );
     assert_eq!(
@@ -254,7 +256,7 @@ fn test_cpu_reset_instruction_external_propagation() {
     machine
         .cpu
         .set_pc_and_prime_prefetch(0x001000, &mut machine.physical_memory);
-    machine.cpu.state.sr = 0x2700;
+    machine.cpu.state.set_sr(0x2700);
 
     // Step the RESET instruction through all sub-cycle microsteps
     machine.step_instruction();
@@ -336,10 +338,10 @@ fn test_cpu_reset_instruction_privilege_violation() {
     machine.agnus.dma.write_dmacon(0x8200);
 
     // Setup CPU in user mode (S = 0)
-    machine.cpu.state.ssp = 0x005000;
-    machine.cpu.state.usp = 0x003000;
+    machine.cpu.state.set_ssp(0x005000);
+    machine.cpu.state.set_usp(0x003000);
     machine.cpu.state.set_a_long(7, 0x003000);
-    machine.cpu.state.sr = 0x0000; // User mode
+    machine.cpu.state.set_sr(0x0000); // User mode
     machine
         .cpu
         .set_pc_and_prime_prefetch(0x001000, &mut machine.physical_memory);
@@ -409,7 +411,8 @@ fn test_keyboard_ctrl_amiga_amiga_warm_reset() {
         "Palette must be reset on keyboard warm reset"
     );
     assert_eq!(
-        machine.cpu.state.sr, 0x2700,
+        machine.cpu.state.sr(),
+        0x2700,
         "CPU SR must be restored to $2700"
     );
 }
@@ -450,7 +453,8 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
         "Kickstart mode must engage low-memory boot overlay on cold reset"
     );
     assert_eq!(
-        machine.cpu.state.ssp, 0x00080000,
+        machine.cpu.state.ssp(),
+        0x00080000,
         "SSP must be loaded from Kickstart ROM vector"
     );
     assert_eq!(

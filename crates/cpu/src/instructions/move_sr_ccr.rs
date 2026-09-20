@@ -424,7 +424,7 @@ pub static STEPS_MOVE_TO_SR_IMM: [MicroStep; 8] = [
 
 pub fn alu_move_from_sr_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let orig = state.d_long(reg_dst as usize);
-    state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (state.sr as u32));
+    state.set_d_long(reg_dst as usize, (orig & !0xFFFF) | (state.sr() as u32));
 }
 
 pub static ALU_MOVE_FROM_SR_DN: MicroStep = MicroStep {
@@ -440,7 +440,7 @@ pub static STEPS_MOVE_FROM_SR_DN: [MicroStep; 3] = [
 ];
 
 pub fn alu_move_from_sr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    state.micro.destination = state.sr as u32;
+    state.micro.destination = state.sr() as u32;
 }
 
 pub static STEPS_MOVE_FROM_SR_AI: [MicroStep; 6] = [

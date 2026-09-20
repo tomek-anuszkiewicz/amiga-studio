@@ -84,11 +84,6 @@ pub fn run_single_test_detail_with_bus(
     cpu.state.set_d_long(5, test.initial.d5);
     cpu.state.set_d_long(6, test.initial.d6);
     cpu.state.set_d_long(7, test.initial.d7);
-    let initial_sp = if (test.initial.sr & 0x2000) != 0 {
-        test.initial.ssp
-    } else {
-        test.initial.usp
-    };
     cpu.state.set_a_long(0, test.initial.a0);
     cpu.state.set_a_long(1, test.initial.a1);
     cpu.state.set_a_long(2, test.initial.a2);
@@ -96,10 +91,9 @@ pub fn run_single_test_detail_with_bus(
     cpu.state.set_a_long(4, test.initial.a4);
     cpu.state.set_a_long(5, test.initial.a5);
     cpu.state.set_a_long(6, test.initial.a6);
-    cpu.state.set_a_long(7, initial_sp);
-    cpu.state.usp = test.initial.usp;
-    cpu.state.ssp = test.initial.ssp;
-    cpu.state.sr = test.initial.sr;
+    cpu.state.set_sr(test.initial.sr);
+    cpu.state.set_usp(test.initial.usp);
+    cpu.state.set_ssp(test.initial.ssp);
     if is_harte {
         cpu.state.pc = test.initial.pc.wrapping_add(4);
     } else {
@@ -110,7 +104,6 @@ pub fn run_single_test_detail_with_bus(
 
     // Execute instruction
     let actual_clocks = cpu.step_instruction(bus);
-    cpu.state.sync_stack_pointers();
 
     // Verify Data Registers
     let expected_d = [
@@ -156,24 +149,24 @@ pub fn run_single_test_detail_with_bus(
     }
 
     // Verify Stack Pointers
-    if cpu.state.usp != test.final_state.usp {
+    if cpu.state.usp() != test.final_state.usp {
         failure.diffs.push(StateDiff::UserStackPointer {
-            actual: cpu.state.usp,
+            actual: cpu.state.usp(),
             expected: test.final_state.usp,
         });
     }
-    if cpu.state.ssp != test.final_state.ssp {
+    if cpu.state.ssp() != test.final_state.ssp {
         failure.diffs.push(StateDiff::SupervisorStackPointer {
-            actual: cpu.state.ssp,
+            actual: cpu.state.ssp(),
             expected: test.final_state.ssp,
         });
     }
 
     // Verify Status Register (CCR flags)
-    if cpu.state.sr != test.final_state.sr {
-        let (summary, flags_diff) = format_ccr_diff(cpu.state.sr, test.final_state.sr);
+    if cpu.state.sr() != test.final_state.sr {
+        let (summary, flags_diff) = format_ccr_diff(cpu.state.sr(), test.final_state.sr);
         failure.diffs.push(StateDiff::StatusRegister {
-            actual: cpu.state.sr,
+            actual: cpu.state.sr(),
             expected: test.final_state.sr,
             details: summary,
             diverging_flags: flags_diff,
@@ -198,7 +191,7 @@ pub fn run_single_test_detail_with_bus(
         if actual_byte != expected_byte {
             // Note: In the Address Error Internal Information Word at SSP+1, the lower nibble
             // (I/N and Function Code bits) is masked out for hardware invariance.
-            if addr == cpu.state.ssp.wrapping_add(1)
+            if addr == cpu.state.ssp().wrapping_add(1)
                 && (actual_byte & 0xF0) == (expected_byte & 0xF0)
             {
                 continue;
@@ -207,16 +200,17 @@ pub fn run_single_test_detail_with_bus(
             // exhibit variations in the pushed instruction register (SSP+6..=SSP+7).
             if is_harte
                 && file_path.contains("MOVE.w")
-                && (addr == cpu.state.ssp
-                    || addr == cpu.state.ssp.wrapping_add(1)
-                    || addr == cpu.state.ssp.wrapping_add(6)
-                    || addr == cpu.state.ssp.wrapping_add(7))
+                && (addr == cpu.state.ssp()
+                    || addr == cpu.state.ssp().wrapping_add(1)
+                    || addr == cpu.state.ssp().wrapping_add(6)
+                    || addr == cpu.state.ssp().wrapping_add(7))
             {
                 continue;
             }
             // Note: In M68000 Address Error stack frame, the PC pushed at SSP+10..=SSP+13
             // exhibits documented pipeline stage variations across real silicon captures.
-            if addr >= cpu.state.ssp.wrapping_add(10) && addr <= cpu.state.ssp.wrapping_add(13) {
+            if addr >= cpu.state.ssp().wrapping_add(10) && addr <= cpu.state.ssp().wrapping_add(13)
+            {
                 continue;
             }
             failure.diffs.push(StateDiff::RamByte {

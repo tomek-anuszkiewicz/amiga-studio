@@ -117,10 +117,9 @@ pub fn inject_vamiga_test(machine: &mut A500Machine, adf_bytes: &[u8]) -> Result
 
     // 5. Initialize CPU register state and prime prefetch pipeline
     machine.cpu.state.clear_registers();
-    machine.cpu.state.ssp = VAMIGA_STACK_POINTER;
-    machine.cpu.state.set_a_long(7, VAMIGA_STACK_POINTER);
-    machine.cpu.state.sr = 0x2000; // Supervisor mode, IPL 0 (interrupts enabled)
-                                   // Emulate Kickstart OS state: Master Interrupts (INTEN) enabled and standard PAL display window
+    machine.cpu.state.set_sr(0x2000); // Supervisor mode, IPL 0 (interrupts enabled)
+    machine.cpu.state.set_ssp(VAMIGA_STACK_POINTER);
+    // Emulate Kickstart OS state: Master Interrupts (INTEN) enabled and standard PAL display window
     machine.paula.interrupts.intena = 0x4000;
     machine.denise.set_diw(0x2C81, 0x2CC1);
     machine.set_pc_and_prime_prefetch(VAMIGA_ENTRY_POINT);

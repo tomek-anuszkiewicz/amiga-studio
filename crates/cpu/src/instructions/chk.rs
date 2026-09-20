@@ -52,9 +52,9 @@ pub static STEPS_CHK_TRAP: [MicroStep; 16] = [
 
 #[inline(never)]
 pub fn trigger_chk_trap(state: &mut CpuState) {
-    let old_sr = state.sr;
+    let old_sr = state.sr();
     state.set_supervisor(true);
-    state.sr &= !0x8000;
+    state.clear_trace();
 
     let return_pc = state.pc.wrapping_sub(2);
     state.micro.source = return_pc;

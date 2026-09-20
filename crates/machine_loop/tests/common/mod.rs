@@ -42,9 +42,8 @@ impl MachineHarness {
         machine.physical_memory.map_chip_ram_to_low_memory();
 
         // Supervisor stack pointer at top of 512KB Chip RAM ($070000)
-        machine.cpu.state.ssp = 0x070000;
-        machine.cpu.state.set_a_long(7, 0x070000);
-        machine.cpu.state.sr = 0x2000; // Supervisor mode, Interrupt Mask = 0
+        machine.cpu.state.set_sr(0x2000); // Supervisor mode, Interrupt Mask = 0
+        machine.cpu.state.set_ssp(0x070000);
 
         Self { machine }
     }

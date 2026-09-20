@@ -102,8 +102,8 @@ fn test_builder_injection_into_cpu_and_bus() {
     program.inject_into(&mut cpu, &mut bus);
 
     // 1. Check CPU register state
-    assert_eq!(cpu.state.sr, program.initial_sr);
-    assert_eq!(cpu.state.ssp, program.initial_ssp);
+    assert_eq!(cpu.state.sr(), program.initial_sr);
+    assert_eq!(cpu.state.ssp(), program.initial_ssp);
     for i in 0..8 {
         assert_eq!(cpu.state.d_long(i), program.initial_d[i]);
         if i == 7 {

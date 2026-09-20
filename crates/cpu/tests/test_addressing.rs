@@ -59,10 +59,9 @@ fn test_unaligned_address_error() {
     bus.write_word_debug(0x002002, 0x4E71);
 
     let mut cpu = Cpu::new();
-    cpu.state.sr = 0x0000; // User mode (S=0)
-    cpu.state.ssp = 0x004000;
-    cpu.state.usp = 0x003000;
-    cpu.state.set_a_long(7, 0x003000);
+    cpu.state.set_sr(0x0000); // User mode (S=0)
+    cpu.state.set_ssp(0x004000);
+    cpu.state.set_usp(0x003000);
     cpu.state.instruction_pc = 0x001000;
     cpu.state.ir = 0x3010; // MOVE.W (A0), D0
     cpu.trigger_address_error(0x001001, true, false);
@@ -76,7 +75,7 @@ fn test_unaligned_address_error() {
         cpu.state.is_supervisor(),
         "CPU must switch to supervisor mode"
     );
-    assert_eq!(cpu.state.sr & 0x8000, 0, "Trace bit must be cleared");
+    assert!(!cpu.state.is_trace(), "Trace bit must be cleared");
 
     let ssp = cpu.state.a_long(7);
     assert_eq!(
@@ -245,9 +244,8 @@ fn test_instruction_unaligned_read_address_error() {
     bus.write_word_debug(0x002002, 0x4E71);
 
     let mut cpu = Cpu::new();
-    cpu.state.sr = 0x2000; // Supervisor mode
-    cpu.state.ssp = 0x004000;
-    cpu.state.set_a_long(7, 0x004000);
+    cpu.state.set_sr(0x2000); // Supervisor mode
+    cpu.state.set_ssp(0x004000);
     cpu.state.set_a_long(0, 0x001001); // Odd address in A0!
 
     // MOVE.W (A0), D0 (Opcode: 0x3010)

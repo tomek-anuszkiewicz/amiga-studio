@@ -73,7 +73,6 @@ pub fn run_preflight(test: &SingleStepTest) -> PreFlight {
             break;
         }
     }
-    golden_cpu.state.sync_stack_pointers();
     let base_clocks = golden_cpu.cycle_counter() as u32;
     let golden_state = golden_cpu.state.clone();
 
@@ -232,7 +231,6 @@ pub fn run_dma_full_cartesian_permutation(
                     break;
                 }
             }
-            cpu.state.sync_stack_pointers();
 
             // 1. Assert Cycle Invariance
             let actual_clocks = cpu.cycle_counter() as u32;
@@ -325,22 +323,22 @@ fn diff_cpu_and_ram(
             });
         }
     }
-    if cpu.state.usp != golden_state.usp {
+    if cpu.state.usp() != golden_state.usp() {
         diffs.push(StateDiff::UserStackPointer {
-            actual: cpu.state.usp,
-            expected: golden_state.usp,
+            actual: cpu.state.usp(),
+            expected: golden_state.usp(),
         });
     }
-    if cpu.state.ssp != golden_state.ssp {
+    if cpu.state.ssp() != golden_state.ssp() {
         diffs.push(StateDiff::SupervisorStackPointer {
-            actual: cpu.state.ssp,
-            expected: golden_state.ssp,
+            actual: cpu.state.ssp(),
+            expected: golden_state.ssp(),
         });
     }
-    if cpu.state.sr != golden_state.sr {
+    if cpu.state.sr() != golden_state.sr() {
         diffs.push(StateDiff::StatusRegister {
-            actual: cpu.state.sr,
-            expected: golden_state.sr,
+            actual: cpu.state.sr(),
+            expected: golden_state.sr(),
             details: "SR changed under DMA contention".to_string(),
             diverging_flags: vec![],
         });
@@ -373,11 +371,6 @@ fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
     cpu.state.set_d_long(5, test.initial.d5);
     cpu.state.set_d_long(6, test.initial.d6);
     cpu.state.set_d_long(7, test.initial.d7);
-    let initial_sp = if (test.initial.sr & 0x2000) != 0 {
-        test.initial.ssp
-    } else {
-        test.initial.usp
-    };
     cpu.state.set_a_long(0, test.initial.a0);
     cpu.state.set_a_long(1, test.initial.a1);
     cpu.state.set_a_long(2, test.initial.a2);
@@ -385,10 +378,9 @@ fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
     cpu.state.set_a_long(4, test.initial.a4);
     cpu.state.set_a_long(5, test.initial.a5);
     cpu.state.set_a_long(6, test.initial.a6);
-    cpu.state.set_a_long(7, initial_sp);
-    cpu.state.usp = test.initial.usp;
-    cpu.state.ssp = test.initial.ssp;
-    cpu.state.sr = test.initial.sr;
+    cpu.state.set_sr(test.initial.sr);
+    cpu.state.set_usp(test.initial.usp);
+    cpu.state.set_ssp(test.initial.ssp);
     let is_harte = test.name.contains('[');
     if is_harte {
         cpu.state.pc = test.initial.pc.wrapping_add(4);

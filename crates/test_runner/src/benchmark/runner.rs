@@ -546,7 +546,7 @@ fn execute_pass_inner(
     for i in 0..8 {
         crc ^= cpu.state.a_long(i) as u64;
     }
-    crc ^= (cpu.state.sr as u64) << 16;
+    crc ^= (cpu.state.sr() as u64) << 16;
     crc ^= cpu.state.pc as u64;
     std::hint::black_box(crc);
 

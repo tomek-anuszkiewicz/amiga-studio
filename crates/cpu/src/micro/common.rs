@@ -4,7 +4,7 @@
 //! across all Motorola 68000 instructions.
 
 use super::types::MicroStep;
-use crate::state::{vector, CpuState, SR_T};
+use crate::state::{vector, CpuState};
 use crate::Cpu;
 
 // ============================================================================
@@ -204,9 +204,9 @@ pub const VECTOR_ADDRESS_ERROR: u32 = vector::addr(vector::ADDRESS_ERROR);
 /// Sets supervisor mode (S=1, T=0), checks for double-bus fault,
 /// snapshots SSP, return PC, old SR, and sets vector address ($00000C).
 pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let old_sr = state.sr;
+    let old_sr = state.sr();
     state.set_supervisor(true);
-    state.sr &= !SR_T;
+    state.clear_trace();
 
     let ssp = state.a_long(7);
     if (ssp & 1) != 0 {
@@ -357,9 +357,9 @@ pub const POP_STACK_CCR_FINISH: MicroStep = MicroStep::cck(Cpu::step_bus_pop_sta
 pub fn alu_privilege_violation_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let vector_addr = vector::addr(vector::PRIVILEGE_VIOLATION);
     let return_pc = state.instruction_pc;
-    let old_sr = state.sr;
+    let old_sr = state.sr();
     state.set_supervisor(true);
-    state.sr &= !SR_T;
+    state.clear_trace();
     state.micro.source = return_pc;
     state.micro.destination = old_sr as u32;
     state.micro.ea_addr = vector_addr;
@@ -417,11 +417,11 @@ pub static STEPS_DIV_ZERO: [MicroStep; 16] = [
 
 #[inline(never)]
 pub fn trigger_divide_by_zero(state: &mut CpuState) {
-    let old_sr = state.sr;
+    let old_sr = state.sr();
     let updated_sr = old_sr & !0x000F;
-    state.sr = updated_sr;
+    state.set_sr(updated_sr);
     state.set_supervisor(true);
-    state.sr &= !SR_T;
+    state.clear_trace();
 
     state.micro.source = state.instruction_pc;
     state.micro.destination = updated_sr as u32;
@@ -450,10 +450,10 @@ pub fn alu_interrupt_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     } else {
         state.instruction_pc
     };
-    let old_sr = state.sr;
+    let old_sr = state.sr();
 
     state.set_supervisor(true);
-    state.sr &= !SR_T;
+    state.clear_trace();
     state.set_interrupt_mask(level);
 
     state.micro.source = return_pc;
