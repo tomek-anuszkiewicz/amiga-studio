@@ -8084,6 +8084,28 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_docs_quality.py --all`: 100% doc governance pass rate (0 issues).
   - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly.
 
+---
+
+### [2026-09-20 13:40 CEST] — Forward Parity Remediation: M68000 CPU Design Specifications Synchronization
+
+- **Files Modified**:
+  - `Obsidian/Amiga/Design/CPU Motorola M68000.md`:
+    - Section 1.1: Added `reset_line_asserted: bool` (external bidirectional `_RESET` pin latch) and `cycle_counter: u64` (master CPU cycle accumulator) to the `CpuState` fields table. Cleaned up `a[0..=7]` description to reference full 32-bit sign-extended commitment via `write_a` / `set_a_long` (pruned ghost method `set_a_word`). Removed obsolete ghost field `step` (which resides in `state.micro.micro_step`).
+    - Section 2: Replaced obsolete draft type `MemoryBusResult::Blocked` with canonical `BusResult::WaitState`.
+    - Section 3.3: Enriched `CpuMicroState` field inventory with dual staging registers `addr1` and `addr2`, pre-decoded register indices `reg_src` and `reg_dst`, cached slice pointer `current_steps`, and Group 0 exception framing fields `fault_addr`, `info_word`, and `ssp_base`. Pruned ghost method alias `step_opcode` and aligned specialized bus handler catalog with canonical `step_bus_read_src_*`, `step_bus_read_addr1_*`, and `step_bus_write_addr2_*` naming.
+    - Section 6: Expanded into Section 6.1, 6.2, and 6.3 documenting bidirectional `_RESET` pin dynamics, `RESET` instruction assertion (`reset_line_asserted`) signaling external device reset without resetting CPU registers or RAM, and added the System Reset Comparison Matrix.
+  - `Obsidian/Amiga/Design/CPU Micro-Step State Machine.md`:
+    - Section 2.3: Added specialized Dual Staged Operands category table documenting `step_bus_read_addr1_*`, `step_bus_read_addr2_*`, and `step_bus_write_addr2_*` bus cycle primitives.
+    - Section 2.4: Synchronized `CpuMicroState` field specification by adding `fault_addr`, `info_word`, `ssp_base`, `target_refill`, and `prefetch_retired`, while pruning obsolete draft field `read_to_dest`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of Forward Parity Blind Spots:* As revealed during `/audit-semantic-parity`, our living design specifications omitted several crucial hardware latches (`reset_line_asserted`) and execution primitives (`addr1`/`addr2` dual staging registers) that had been implemented and verified in the Rust core. Aligning the documentation ensures that future AI pair-programming agents and human architects have complete visibility into the cycle-exact execution model.
+  - *Elimination of Ghost Residue:* Pruning non-existent accessor methods (`set_a_word`), obsolete bus types (`MemoryBusResult::Blocked`), and ghost aliases (`step_opcode`) prevents speculative coding and maintains absolute fidelity between specifications and code.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py --all`: 100% pass across all 10 pillars (0 issues detected).
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed cleanly.
+  - `python tools/harness/pre_flight.py`: 100% compliant across formatting, AGENTS.md ceiling, API coverage, Clippy invariants, and architecture tests.
+
+
 
 
 

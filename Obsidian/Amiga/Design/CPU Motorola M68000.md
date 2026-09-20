@@ -32,19 +32,20 @@ The CPU exposes a fully queryable, read-only state snapshot (`CpuState`) for ins
 | Register / Field | Width | Description | Hardware Behavior / Access Rules |
 | :--- | :---: | :--- | :--- |
 | **`d[0..=7]`** ($D_0-D_7$) | 32-bit | Data Registers | General data registers. Supports Byte, Word, and Long transfers. Low-size writes preserve unaffected high bits. Encapsulated via `d_byte`, `set_d_byte`, `d_word`, `set_d_word`, `d_long`, `set_d_long`. |
-| **`a[0..=7]`** ($A_0-A_7$) | 32-bit | Address Registers | Base, pointer, and software stack registers. Byte accesses are invalid. Word writes are sign-extended to 32 bits (`set_a_word`). $A_7$ holds the currently active stack pointer ($USP$ or $SSP$). |
+| **`a[0..=7]`** ($A_0-A_7$) | 32-bit | Address Registers | Base, pointer, and software stack registers. Byte accesses are invalid. Word writes are sign-extended to 32 bits before committing via `write_a` / `set_a_long`. $A_7$ holds the currently active stack pointer ($USP$ or $SSP$). |
 | **`usp`** ($USP$) | 32-bit | User Stack Pointer | Banked $A_7$ when running in User Mode ($SR.S = 0$). |
 | **`ssp`** ($SSP$) | 32-bit | Supervisor Stack Pointer | Banked $A_7$ when running in Supervisor Mode ($SR.S = 1$). |
 | **`pc`** ($PC$) | 32-bit | Program Counter | Points to instruction memory. 24-bit physical address space on MC68000; internally 32-bit wide. |
 | **`sr`** ($SR$) | 16-bit | Status Register | High byte: System Byte (Trace, Supervisor, Interrupt Mask). Low byte: Condition Code Register (CCR). |
 | **`prefetch`** | 16-bit | Lookahead Prefetch Register | Models hardware `IR` holding the next staged instruction word (extension word or lookahead opcode) behind active `ir` (`IRD`). |
 | **`ir`** ($IR$) | 16-bit | Instruction Register | Holds the opcode currently being executed. Immutable during micro-steps. |
-| **`step`** | 16-bit | Sub-Cycle Phase / Step Index | Index within current micro-step sequence across Color Clock phases (CCK1/CCK2). |
 | **`ipl`** ($IPL$) | 8-bit | Interrupt Priority Level | Sampled interrupt priority lines (0..7) driven by Paula/arbitration. |
 | **`instruction_pc`** | 32-bit | Architectural Opcode PC | $PC_{\text{hardware}} - 4$ at instruction retirement; represents the base memory address of the executing opcode word (used by GUI disassembler, debugger, breakpoints, and exception vectors). |
 | **`stopped`** | bool | STOP Instruction Latch | Processor halted awaiting interrupt higher than current interrupt mask. |
 | **`halted`** | bool | Double Bus Fault Latch | Processor halted due to catastrophic hardware failure / reset. |
-| **`micro`** | `CpuMicroState` | Execution Micro-State | Tracks Color Clock phase, latched bus words, Data Output Buffer, and wait cycles. |
+| **`reset_line_asserted`** | bool | External _RESET Pin Latch | Asserted by privileged `RESET` instruction to signal external chip/CIA reset via machine coordinator without resetting CPU state or RAM. |
+| **`cycle_counter`** | 64-bit | Master CPU Cycle Counter | Monotonic accumulator of total elapsed CPU clock cycles since reset; queried via `cycle_counter()`, advanced by `advance_clocks(clocks)`, reset by `reset_cycle_counter()`. |
+| **`micro`** | `CpuMicroState` | Execution Micro-State | Tracks Color Clock phase, `micro_step` index, latched bus words, dual staging registers (`addr1`, `addr2`), Data Output Buffer, and wait cycles. |
 
 #### Status Register (SR) Bit Allocation
 
@@ -189,7 +190,7 @@ The emulator does **NOT** rely on a static cycle lookup table. Cycles are calcul
 3. **Branch Conditions:**
    - `Bcc`: 10 clocks if branch taken, 8 clocks if not taken.
 4. **Bus Wait State Accumulation:**
-   - Every CCK cycle where `MemoryBus` returns `MemoryBusResult::Blocked` adds exactly **1 CCK (2 CPU clocks)** to the instruction's total duration.
+   - Every CCK cycle where `MemoryBus` returns `BusResult::WaitState` adds exactly **1 CCK (2 CPU clocks)** to the instruction's total duration.
 
 ### 2.1 Modern Host CPU Pipelining & Direct Code Flow Architecture
 
@@ -363,26 +364,34 @@ Instruction execution is driven via a cycle-exact micro-step state machine clock
   - `destination`: Explicit 32-bit storage for ALU destination operand and write-back data (bus write cycles read directly from here).
   - `irc`: Instruction Register Capture — physical 68000 prefetch latch holding prefetched opcodes before retirement into IR.
   - `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
+  - `addr1`: Dual Staging Register 1 ($X_1$) — pre-staged effective address for multi-phase and dual-memory transfers (e.g. source EA or high-word split EA in `CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`).
+  - `addr2`: Dual Staging Register 2 ($X_2$) — pre-staged effective address for multi-phase transfers (e.g. destination EA or low-word split EA).
   - `ea_high`: High word of 32-bit absolute addresses (`(xxx).L`) or high address for split accesses.
+  - `reg_src`, `reg_dst`: Pre-decoded source and destination register indices ($0..7$ for $D_n/A_n$).
   - `movem_mask`: 16-bit register transfer mask for `MOVEM`.
   - `movem_state`: Multi-cycle transfer state for `MOVEM` (bit 0 tracks CCK1 vs CCK2 sub-phase).
   - `clocks_remaining`: Remaining CPU clocks for the active micro-step countdown (0 when completed or between steps).
   - `micro_step`: Index of the currently executing micro-operation within the active opcode sequence.
+  - `current_steps`: Cached slice pointer to the active opcode's compiled micro-step sequence (`&'static [MicroStep]`).
   - `target_refill`: Indicates whether instruction retirement must perform a branch/jump target refill.
   - `prefetch_retired`: Indicates whether prefetch pipeline has already retired into IR during microcode execution.
+  - `fault_addr`: Latched memory address that triggered Group 0 Address Error / Bus Error exception.
+  - `info_word`: 16-bit Internal Information Word ($R/\overline{W}$, $I/N$, Function Code bits $FC_0-FC_2$) for 7-word exception frame.
+  - `ssp_base`: Base supervisor stack pointer snapshot at the start of exception frame stacking.
 
 - **Unified Control Model (Zero `StepResult` Overhead):**
   - **`StepFn = fn(&mut Cpu, &mut MemoryBus) -> BusResult<()>`**: Micro-step handlers only report bus readiness (`BusResult::Ready(())` or `BusResult::WaitState`).
   - **`step_cck(&mut self, bus: &mut MemoryBus) -> bool`**: Executes a single CCK color clock cycle (~280 ns) and returns `true` when the instruction completes/retires, `false` otherwise. Performs boundary validation and initiates uninitialized instructions.
   - **`step_cck_internal(&mut self, bus: &mut MemoryBus) -> bool`**: Internal hot-loop primitive executing micro-steps directly without redundant boundary checks.
-  - **`step_instruction(&mut self, bus: &mut MemoryBus) -> u32` / `step_opcode`**: Steps through an entire instruction/opcode to retirement, returning the exact CPU clock cycles consumed.
+  - **`step_instruction(&mut self, bus: &mut MemoryBus) -> u32`**: Steps through an entire instruction/opcode to retirement, returning the exact CPU clock cycles consumed.
   - **State flags**: Halted and Stopped states are queried directly on `cpu.state.halted` and `cpu.state.stopped`.
 
 #### Specialized Direct Micro-Step Execution Handlers (`StepFn`)
 To eliminate nested dynamic runtime size checks and dynamic branching (`match`) in the hot execution loop, micro-step operations are specialized directly into atomic function pointers (`StepFn = fn(&mut Cpu, &mut MemoryBus) -> BusResult<()>`):
-- **Operand Reads:** `Cpu::step_bus_read_byte`, `Cpu::step_bus_read_word`, `Cpu::step_bus_read_long_high`, `Cpu::step_bus_read_long_low`.
-- **Operand Writes:** `Cpu::step_bus_write_byte` (preserves unaddressed byte in 16-bit cell), `Cpu::step_bus_write_word`, `Cpu::step_bus_write_long_high`, `Cpu::step_bus_write_long_low`.
-- **Stack & Control Flow:** `Cpu::step_bus_pop_stack`, `Cpu::step_bus_push_stack_high`, `Cpu::step_bus_push_stack_low`, `Cpu::step_bus_read_target_opcode`, `Cpu::step_prefetch_target_and_retire`.
+- **Operand Reads:** `Cpu::step_bus_read_src_byte`, `Cpu::step_bus_read_src_word`, `Cpu::step_bus_read_src_long_high`, `Cpu::step_bus_read_src_long_low`, `Cpu::step_bus_read_dst_byte`, `Cpu::step_bus_read_dst_word`, `Cpu::step_bus_read_dst_long_high`, `Cpu::step_bus_read_dst_long_low`.
+- **Dual Staged Reads & Writes:** `Cpu::step_bus_read_addr1_*`, `Cpu::step_bus_read_addr2_*`, `Cpu::step_bus_write_addr2_*`.
+- **Operand Writes:** `Cpu::step_bus_write_dst_byte`, `Cpu::step_bus_write_dst_word`, `Cpu::step_bus_write_dst_long_high`, `Cpu::step_bus_write_dst_long_low`.
+- **Stack & Control Flow:** `Cpu::step_bus_pop_stack_*`, `Cpu::step_bus_push_stack_*`, `Cpu::step_bus_read_target_opcode_*`, `Cpu::step_prefetch_target_*`.
 - **Multi-Register Block Transfers:** `crate::instructions::movem::execute_movem_transfer`.
 
 #### Pipeline & Dispatch Table Invariants
@@ -452,7 +461,13 @@ SP + 12: [ Low 16 bits of Program Counter (PC) ]
 
 ---
 
-## 6. Reset Procedure (Cold and Warm)
+## 6. Reset Procedure & Hardware Pin Signaling
+
+The Motorola 68000 features a dedicated bidirectional `_RESET` pin that operates in two distinct electronic modes:
+1. **Input Mode (Cold & Warm System Reset):** An external active-low signal drives `_RESET` (along with `_HALT`), forcing processor initialization.
+2. **Output Mode (Instruction Reset):** Executing the privileged `RESET` opcode drives `_RESET` low as an output, resetting peripheral devices without resetting the CPU core.
+
+### 6.1 Cold and Warm CPU Reset Sequences
 
 On both **Cold** and **Warm** reset, the CPU execution flow begins at vector `$000000`:
 
@@ -463,6 +478,30 @@ On both **Cold** and **Warm** reset, the CPU execution flow begins at vector `$0
 5. **Fill Prefetch:** Read word at `pc` into `ir`, increment `pc += 2`; read word at `pc` into `irc`, increment `pc += 2`.
 6. **Execution:** Begin execution at `pc` in Kickstart ROM.
    - Kickstart inspects RAM contents for magic resident checksums to determine whether to perform a warm reboot or cold boot.
+
+### 6.2 The `RESET` Instruction & External Pin Signaling (`reset_line_asserted`)
+
+The `RESET` instruction is a privileged M68000 instruction that asserts the external `_RESET` line for 124 clock cycles (total instruction duration: 132 CPU clocks / 66 CCKs):
+- **Privilege Gate:** If executed in User Mode ($SR.S = 0$), the processor immediately aborts execution and triggers a **Privilege Violation exception (Vector 8)** without asserting the reset pin.
+- **CPU State Invariance:** When executed in Supervisor Mode ($SR.S = 1$), CPU data/address registers ($D_0-D_7, A_0-A_7$), stack pointers ($USP, SSP$), Program Counter ($PC$), and Status Register ($SR$) are **completely unaffected**. The processor simply executes internal idle clocks and sequential opcode prefetch.
+- **Decoupled Pin Latching (`reset_line_asserted`):**
+  - In `crates/cpu/src/instructions/reset.rs`, `alu_reset()` latches `state.reset_line_asserted = true`.
+  - The top-level machine loop coordinator (`crates/machine_loop/src/machine_loop.rs`) samples this line during its Color Clock progression.
+  - When asserted, `machine_loop` invokes `reset_external_devices()`, resetting Agnus, Denise, Paula, CIAs, and re-engaging the Gary boot overlay (`_OVL`) without touching RAM or CPU registers, cleanly decoupling microcode execution from machine-level coordination.
+
+### 6.3 System Reset Comparison Matrix
+
+| Feature / State | Cold Reset (`reset()`) | Warm Reset (`reset_warm()`) | Instruction Reset (`RESET` Opcode) |
+| :--- | :--- | :--- | :--- |
+| **Trigger Origin** | Power-on / Host UI cold start | Keyboard combo (`Ctrl+Amiga+Amiga`) / host warm reboot | Guest program executing privileged `RESET` opcode |
+| **Data Registers ($D_0-D_7$)** | Cleared to `$00000000` | **Preserved intact** | **Preserved intact** |
+| **Address Registers ($A_0-A_6, USP$)**| Cleared to `$00000000` | **Preserved intact** | **Preserved intact** |
+| **Supervisor SP ($SSP / A_7$)** | Reloaded from Vector 0 (`$000000`) | Reloaded from Vector 0 (`$000000`) | **Preserved intact** |
+| **Program Counter ($PC$)** | Reloaded from Vector 1 (`$000004`) | Reloaded from Vector 1 (`$000004`) | Advances sequentially to next instruction |
+| **Status Register ($SR$)** | Set to `$2700` | Set to `$2700` | **Preserved intact** |
+| **Physical RAM** | Initialized / cleared | **Preserved intact** | **Preserved intact** |
+| **Custom Chips & CIAs** | Reset to defaults | Reset to defaults | Reset to defaults (`reset_external_devices()`) |
+| **Gary Boot Overlay (`_OVL`)**| Asserted (Kickstart overlay active) | Asserted (Kickstart overlay active) | Asserted (re-engages overlay) |
 
 ---
 

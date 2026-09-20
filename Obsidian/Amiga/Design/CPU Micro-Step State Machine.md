@@ -107,6 +107,7 @@ By decomposing 4-clock bus cycles into native 2-clock slices ($1\ \text{MicroSte
 | Category | Primitives (CCK1 / CCK2 Slices) | Hardware Operation & Bus Semantics |
 | :--- | :--- | :--- |
 | **Operand Reads (Data Space)** | `step_bus_read_src_word`, `step_bus_read_src_byte`, `step_bus_read_dst_word`, `step_bus_read_dst_byte`, `step_bus_read_src_long_high`, `step_bus_read_src_long_low`, `step_bus_read_dst_long_high`, `step_bus_read_dst_long_low` | **CCK1**: Reads from `ea_addr`. Stalls if Chip RAM blocked. Latches into `source`/`destination`.<br>**CCK2** (`BUS_READ_IDLE`): Physical bus free for Agnus DMA (`bus_fn: None`). |
+| **Dual Staged Operands (Data Space)** | `step_bus_read_addr1_byte`, `step_bus_read_addr1_word`, `step_bus_read_addr1_long_high`, `step_bus_read_addr1_long_low`, `step_bus_read_addr2_byte`, `step_bus_read_addr2_word`, `step_bus_read_addr2_long_high`, `step_bus_read_addr2_long_low`, `step_bus_write_addr2_byte`, `step_bus_write_addr2_word` | Dedicated 2-clock bus handlers operating directly over dual staging registers `addr1` and `addr2` for dual-memory instructions (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`). |
 | **Operand Writes (Data Space)** | `BUS_WRITE_IDLE`, `step_bus_write_dst_word`, `step_bus_write_dst_byte`, `step_bus_write_dst_long_high`, `step_bus_write_dst_long_low` | **CCK1** (`BUS_WRITE_IDLE`): Internal setup; physical bus free for Agnus DMA (`bus_fn: None`).<br>**CCK2**: Drives data from `destination` to memory. Stalls if wait states asserted. Retires if final step. |
 | **Stack Operations (Data Space)** | `step_bus_push_stack_high_idle`, `step_bus_push_stack_high_write`, `step_bus_push_stack_low_write`, `step_bus_pop_stack_high_read`, `step_bus_pop_stack_high_finish`, `step_bus_pop_stack_low_read`, `step_bus_pop_stack_low_finish` | Stack reads and pushes over `SP` ($A_7$). Validates address alignment, adjusts SP, and transfers high/low words across CCK1/CCK2 phases. |
 | **Prefetch & Refill (Program Space)** | `step_fetch_extension_read`, `step_fetch_extension_finish`, `step_prefetch_irc_read`, `step_prefetch_irc_finish`, `step_prefetch_next_read`, `BUS_READ_IDLE`, `step_bus_read_target_opcode_read`, `step_prefetch_target_read`, `step_prefetch_target_finish` | Reads from `pc` or branch target in Program Space ($FC_2$ / $FC_6$). Refills pipeline across 2-clock phases and manages standard or target retirement. |
@@ -121,16 +122,20 @@ Embedded in `CpuState` to track sub-cycle progress across Color Clock phases wit
 - `destination`: Explicit 32-bit storage for ALU destination operand and write-back data (bus write cycles read directly from here).
 - `irc`: Instruction Register Capture — physical 68000 prefetch latch holding prefetched opcodes before retirement into IR.
 - `ea_addr`: Resolved effective memory address for operands or branch/jump targets.
-- `addr1`: Dual Staging Register 1 ($X_1$) — pre-staged address for multi-phase transfers (e.g. source EA or high-word split EA).
+- `addr1`: Dual Staging Register 1 ($X_1$) — pre-staged address for multi-phase and dual-memory transfers (e.g. source EA or high-word split EA in `CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`).
 - `addr2`: Dual Staging Register 2 ($X_2$) — pre-staged address for multi-phase transfers (e.g. destination EA or low-word split EA).
 - `ea_high`: High word of 32-bit absolute addresses (`(xxx).L`) or high address for split accesses.
 - `movem_mask`: 16-bit register transfer mask for `MOVEM`.
 - `movem_state`: Multi-cycle transfer progress state for `MOVEM` (bit 0 tracks CCK1 vs CCK2 sub-phase).
 - `clocks_remaining`: Clocks remaining for the active micro-step countdown (0 when completed or between steps, decrements by 2 on each CCK).
-- `current_steps`: Cached slice pointer to active opcode's `&'static [MicroStep]`.
+- `current_steps`: Cached slice pointer to active opcode's compiled micro-step sequence (`&'static [MicroStep]`).
 - `micro_step`: Step index within the current instruction's micro-operation sequence.
 - `reg_src`, `reg_dst`: Pre-decoded register indices ($0..7$ for $D_n / A_n$).
-- `read_to_dest`: Indicates whether the active CCK1 read was targeted to `destination` (true) or `source` (false) for CCK2 logging.
+- `target_refill`: Indicates whether instruction retirement must perform a branch/jump target refill.
+- `prefetch_retired`: Indicates whether prefetch pipeline has already retired into IR during microcode execution.
+- `fault_addr`: Latched memory address that triggered Group 0 Address Error / Bus Error exception.
+- `info_word`: 16-bit Internal Information Word ($R/\overline{W}$, $I/N$, Function Code bits $FC_0-FC_2$) for 7-word exception frame.
+- `ssp_base`: Base supervisor stack pointer snapshot at the start of exception frame stacking.
 
 ### 2.5 The 65,536 Static Dispatch Universe (`OPCODE_DESCRIPTOR_TABLE`)
 
