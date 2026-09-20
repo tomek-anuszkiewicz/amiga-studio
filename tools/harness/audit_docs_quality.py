@@ -1049,13 +1049,17 @@ def check_semantic_quirks_coverage():
         test_files_content[test_path] = test_path.read_text(encoding="utf-8", errors="ignore")
 
     quirk_signatures = {
-        "Class 0 RMW Prefetch Order": ["BusPrefetchToScratch", "prefetch", "test_singlestep"],
+        "Class 0 RMW Prefetch Order": ["PREFETCH_IRC", "BusPrefetchToScratch", "prefetch", "test_singlestep"],
         "A7 Stack Pointer Byte Alignment": ["test_move", "test_singlestep", "SP", "A7"],
         "Multi-Precision $Z$-Flag Retention (`ADDX`/`SUBX`/`NEGX`)": ["addx", "subx", "negx"],
+        "Address Register Direct CCR Immunity & Sign Extension": ["adda", "suba", "movea", "cmpa"],
         "Address Register Direct CCR Immunity": ["adda", "suba", "movea", "cmpa"],
         "ASL Sticky Overflow ($V$)": ["asl", "overflow", "test_asl"],
         "Dual-Memory Address Error Deferral": ["addr1", "addr2", "test_address_error", "test_architecture_rules"],
         "Multi-Cycle Division Overflow CCR Quirk": ["divu", "divs", "overflow"],
+        "Post-Increment `(An)+` Address Error AGU Register Commitment": ["cmpm", "test_cmpm", "test_singlestep", "ea_calc"],
+        "`ASR` Count $\\ge$ Width Silicon Exhaustion ($C=0, X=0$)": ["test_asr", "asr", "test_singlestep"],
+        "`MOVE` to Predecrement `-(An)` Prefetch Inversion & Bus Ordering": ["predecrement", "test_move", "test_singlestep"],
         "TAS Read-Modify-Write Silicon Erratum": ["TAS", "tas", "test_singlestep", "is_tas"],
         "Floppy Shared Motor Line Wiring": ["motor_on", "handle_ciab_port_b_write", "test_ciab_port_b_motor"],
         "Floppy Disk Change Flip-Flop (`_CHNG`)": ["is_disk_changed", "step_pulse", "test_disk_change_flip_flop"],

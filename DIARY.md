@@ -8197,3 +8197,22 @@ Every future modification or implementation task must append an entry following 
 - **Verification & Test Results**:
   - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, API coverage, Clippy, architecture rules).
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architecture tests passed (including Obsidian design docs link integrity check).
+
+---
+
+### [2026-09-20 14:18 CEST] — Remediated Ghost Identifiers in Class 0 RMW & Clarified Fast RAM TAS Erratum
+
+- **Files Modified**:
+  - `Obsidian/Amiga/Design/Platform Quirks and Invariants Catalog.md`:
+    - Section 2: Updated `Class 0 RMW Prefetch Order` implementation invariant to state that the microcode pipeline initiates `PREFETCH_IRC_READ` & `PREFETCH_IRC_FINISH` into `state.micro.irc` before executing `WRITE_DST_*`, completely eliminating legacy prototype names `BusPrefetchToScratch` and `BusWrite`.
+    - Section 3: Clarified `TAS Read-Modify-Write Silicon Erratum` to specify that `TAS` functions correctly and updates bit 7 only in Fast RAM (`$200000-$9FFFFF`); on Chip RAM (`$000000-$07FFFF`) and Slow RAM (`$C00000-$C7FFFF`), the write phase is dropped by Gary/Agnus, updating CCR while leaving memory bit 7 unmodified.
+  - `tools/harness/audit_docs_quality.py`:
+    - Updated `quirk_signatures` to accept `PREFETCH_IRC` for `Class 0 RMW Prefetch Order`.
+    - Synchronized quirk signature validators for renamed `Address Register Direct CCR Immunity & Sign Extension` and 3 newly consolidated silicon quirks (`Post-Increment (An)+`, `ASR Count >= Width`, `MOVE to Predecrement -(An)`), achieving 18/18 (100%) regression test sentinel coverage.
+- **Architectural Rationale & Trade-Offs**:
+  - *Unified Microcode Vocabulary:* Eliminating outdated prototype names (`BusPrefetchToScratch`) ensures that the quirks catalog uses the identical canonical vocabulary (`MicroStep`, `common::*`) established across the Rust CPU core and design specs.
+  - *A500 Memory Map Disambiguation:* Explicitly differentiating Fast RAM (where unbroken RMW succeeds) from Chip/Slow RAM (where Gary/Agnus suppresses the write) ensures accurate physical Amiga 500 circuit understanding.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py --all`: 100% pass across all 10 pillars (18/18 silicon quirks verified with test sentinels).
+  - `python tools/harness/pre_flight.py`: 100% compliant across formatting, AGENTS.md limits, Clippy, and architecture tests (21/21 passed).
+
