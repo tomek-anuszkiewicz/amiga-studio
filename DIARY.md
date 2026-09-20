@@ -8242,3 +8242,25 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 passed.
   - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, test coupling, API coverage, Clippy, architecture rules).
 
+---
+
+### [2026-09-20 15:05 CEST] — Pruned Bulk Register Mutators (`set_d_regs`, `set_a_regs`) in Favor of Canonical Register-by-Register Operations
+
+- **Files Modified**:
+  - `crates/cpu/src/state.rs`: Pruned `set_d_regs(&mut self, [u32; 8])` and `set_a_regs(&mut self, [u32; 8])` bulk mutator methods; updated header to `Full Array Accessors (Test Harness & State Snapshots)`.
+  - `crates/cpu/tests/test_visibility.rs`: Added `test_register_by_register_initialization` verifying register-by-register mutation of $D_0-D_7$ and $A_0-A_7$ via `set_d_long` and `set_a_long` across all indices $0..=7$.
+  - `crates/test_runner/src/runner.rs`: Replaced bulk setter calls with unrolled `set_d_long(0..=7, ...)` and `set_a_long(0..=7, ...)`, eliminating intermediate stack array construction.
+  - `crates/test_runner/src/dma_harness.rs`: Replaced bulk setter calls with unrolled `set_d_long(0..=7, ...)` and `set_a_long(0..=7, ...)`.
+  - `crates/test_runner/src/benchmark/builder.rs`: Replaced bulk setter calls with register-by-register iteration over $D_0-D_7$ and $A_0-A_7$.
+  - `crates/test_runner/tests/test_builder.rs`: Added assertions verifying injected register states for $D_0-D_7$ and $A_0-A_7$.
+- **Architectural Rationale & Trade-Offs**:
+  - *Elimination of Redundant API Surface:* `set_d_regs` and `set_a_regs` were only used in test harnesses and required allocating temporary arrays `[test.initial.d0, ...]` on the stack before copying them into `state.d` and `state.a`. Mutating registers directly via canonical `set_d_long` and `set_a_long` methods is more direct and eliminates redundant methods.
+  - *Clean-Break Refactoring:* In accordance with [.agents/rules/clean-break-refactoring.md](.agents/rules/clean-break-refactoring.md), the bulk setters were pruned workspace-wide with zero deprecated aliases or shims.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: Passed.
+  - `cargo test -p cpu`: 53/53 tests passed.
+  - `cargo test -p test_runner --test test_builder`: 6/6 passed.
+  - `cargo test -p test_runner --test test_singlestep`: 127/127 passed.
+  - `python tools/harness/pre_flight.py`: All pre-flight quality gates passed cleanly (formatting, AGENTS.md ceiling, test coupling, API coverage, Clippy, architecture rules).
+
+

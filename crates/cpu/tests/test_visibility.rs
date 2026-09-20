@@ -48,3 +48,22 @@ fn test_condition_gt_evaluation() {
     cpu.state.set_ccr_nzvc(false, true, false, false);
     assert!(!cpu.state.eval_condition(0x0E));
 }
+
+#[test]
+fn test_register_by_register_initialization() {
+    let mut state = CpuState::default();
+
+    for i in 0..8 {
+        let val = 0x1000_0000 + (i as u32);
+        state.set_d_long(i, val);
+        assert_eq!(state.d_long(i), val);
+        assert_eq!(state.d_regs()[i], val);
+    }
+
+    for i in 0..8 {
+        let val = 0x2000_0000 + (i as u32);
+        state.set_a_long(i, val);
+        assert_eq!(state.a_long(i), val);
+        assert_eq!(state.a_regs()[i], val);
+    }
+}

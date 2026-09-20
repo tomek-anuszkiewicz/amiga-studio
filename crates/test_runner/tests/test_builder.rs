@@ -104,6 +104,14 @@ fn test_builder_injection_into_cpu_and_bus() {
     // 1. Check CPU register state
     assert_eq!(cpu.state.sr, program.initial_sr);
     assert_eq!(cpu.state.ssp, program.initial_ssp);
+    for i in 0..8 {
+        assert_eq!(cpu.state.d_long(i), program.initial_d[i]);
+        if i == 7 {
+            assert_eq!(cpu.state.a_long(7), program.initial_ssp);
+        } else {
+            assert_eq!(cpu.state.a_long(i), program.initial_a[i]);
+        }
+    }
 
     // 2. Prefetch priming reads 2 words from entry_pc, advancing PC by 4
     assert_eq!(cpu.state.pc, program.entry_pc + 4);
@@ -128,4 +136,26 @@ fn test_benchmark_program_builder_debug_derive() {
     let builder = BenchmarkProgramBuilder::new(*spec);
     let debug_str = format!("{:?}", builder);
     assert!(debug_str.contains("BenchmarkProgramBuilder"));
+}
+
+#[test]
+fn test_builder_cpu_registers_slice_views() {
+    let spec = find_spec_by_id("ARITH-02").expect("ARITH-02 must exist");
+    let program = BenchmarkProgramBuilder::new(spec.clone()).build();
+
+    let mut cpu = Cpu::new();
+    let mut bus = PhysicalMemory::new();
+
+    program.inject_into(&mut cpu, &mut bus);
+
+    let d_slice = cpu.state.d_regs();
+    let a_slice = cpu.state.a_regs();
+    for i in 0..8 {
+        assert_eq!(d_slice[i], program.initial_d[i]);
+        if i == 7 {
+            assert_eq!(a_slice[7], program.initial_ssp);
+        } else {
+            assert_eq!(a_slice[i], program.initial_a[i]);
+        }
+    }
 }

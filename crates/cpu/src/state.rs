@@ -188,7 +188,7 @@ impl CpuState {
         self.write_a(reg, val);
     }
 
-    // --- Full Array Accessors & Bulk Mutators (Test Harness & State Snapshots) ---
+    // --- Full Array Accessors (Test Harness & State Snapshots) ---
 
     /// Read-only slice view of all 8 data registers D0-D7 (used in test runners, debugger, and state comparison)
     #[inline(always)]
@@ -200,19 +200,6 @@ impl CpuState {
     #[inline(always)]
     pub fn a_regs(&self) -> &[u32; 8] {
         &self.a
-    }
-
-    /// Bulk initialization of data registers D0-D7 (used in test harnesses and state restoration)
-    #[inline]
-    pub fn set_d_regs(&mut self, regs: [u32; 8]) {
-        self.d = regs;
-    }
-
-    /// Bulk initialization of address registers A0-A7, synchronizing active stack pointer (used in test harnesses and state restoration)
-    #[inline]
-    pub fn set_a_regs(&mut self, regs: [u32; 8]) {
-        self.a = regs;
-        self.sync_stack_pointers();
     }
 
     /// Clears data registers D0-D7, address registers A0-A7, and USP to zero

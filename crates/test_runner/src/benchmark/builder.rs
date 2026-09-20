@@ -58,8 +58,10 @@ impl BenchmarkProgram {
         // Set initial CPU registers
         cpu.state.sr = self.initial_sr;
         cpu.state.ssp = self.initial_ssp;
-        cpu.state.set_d_regs(self.initial_d);
-        cpu.state.set_a_regs(self.initial_a);
+        for i in 0..8 {
+            cpu.state.set_d_long(i, self.initial_d[i]);
+            cpu.state.set_a_long(i, self.initial_a[i]);
+        }
         cpu.state.set_a_long(7, self.initial_ssp);
         cpu.state.stopped = false;
         cpu.state.halted = false;

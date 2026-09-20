@@ -76,31 +76,27 @@ pub fn run_single_test_detail_with_bus(
     } else {
         bus.enable_transaction_recording(false);
     }
-    cpu.state.set_d_regs([
-        test.initial.d0,
-        test.initial.d1,
-        test.initial.d2,
-        test.initial.d3,
-        test.initial.d4,
-        test.initial.d5,
-        test.initial.d6,
-        test.initial.d7,
-    ]);
+    cpu.state.set_d_long(0, test.initial.d0);
+    cpu.state.set_d_long(1, test.initial.d1);
+    cpu.state.set_d_long(2, test.initial.d2);
+    cpu.state.set_d_long(3, test.initial.d3);
+    cpu.state.set_d_long(4, test.initial.d4);
+    cpu.state.set_d_long(5, test.initial.d5);
+    cpu.state.set_d_long(6, test.initial.d6);
+    cpu.state.set_d_long(7, test.initial.d7);
     let initial_sp = if (test.initial.sr & 0x2000) != 0 {
         test.initial.ssp
     } else {
         test.initial.usp
     };
-    cpu.state.set_a_regs([
-        test.initial.a0,
-        test.initial.a1,
-        test.initial.a2,
-        test.initial.a3,
-        test.initial.a4,
-        test.initial.a5,
-        test.initial.a6,
-        initial_sp,
-    ]);
+    cpu.state.set_a_long(0, test.initial.a0);
+    cpu.state.set_a_long(1, test.initial.a1);
+    cpu.state.set_a_long(2, test.initial.a2);
+    cpu.state.set_a_long(3, test.initial.a3);
+    cpu.state.set_a_long(4, test.initial.a4);
+    cpu.state.set_a_long(5, test.initial.a5);
+    cpu.state.set_a_long(6, test.initial.a6);
+    cpu.state.set_a_long(7, initial_sp);
     cpu.state.usp = test.initial.usp;
     cpu.state.ssp = test.initial.ssp;
     cpu.state.sr = test.initial.sr;
