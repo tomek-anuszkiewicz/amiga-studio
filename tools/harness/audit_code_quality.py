@@ -45,9 +45,10 @@ CRATES_DIR = REPO_ROOT / "crates"
 # Populated once on first call to get_file_corpus_cached().
 _CORPUS_CACHE: dict = {}
 
-# Module-level symbol-reference cache: maps symbol_name -> list[(file, line)].
-# Avoids re-running regex over all files for every symbol encountered by multiple pillars.
-_SYMBOL_REF_CACHE: dict = {}
+# Module-level inverted index cache: built once across all files in a single pass.
+# Maps identifier -> [(file_path, line_num, is_reexport)] for prod and test corpora.
+# Turns symbol reference counting from O(symbols x files) -> O(files + symbols).
+_INVERTED_INDEX_CACHE: dict = {}
 
 # Crates or modules with special execution models (e.g. 65,536-entry function pointer dispatch tables)
 EXEMPT_CRATES = {
@@ -106,6 +107,8 @@ RE_PUB_FN = re.compile(r"^\s*(?:#\[.*?\]\s*)*pub\s+(?:const\s+|unsafe\s+)?fn\s+(
 RE_PUB_CRATE_FN = re.compile(r"^\s*(?:#\[.*?\]\s*)*pub\s*\(\s*crate\s*\)\s+(?:const\s+|unsafe\s+)?fn\s+([a-zA-Z0-9_]+)\b")
 RE_PUB_CONST = re.compile(r"^\s*(?:#\[.*?\]\s*)*pub\s+const\s+([A-Z0-9_]+)\b")
 RE_PUB_MOD = re.compile(r"^\s*pub\s+mod\s+([a-zA-Z0-9_]+)\s*;")
+# Matches all Rust identifiers (min 2 chars to skip noise like single-letter loop vars).
+RE_IDENTIFIER = re.compile(r"\b([a-zA-Z_][a-zA-Z0-9_]+)\b")
 
 
 def build_file_corpus():
@@ -132,15 +135,50 @@ def get_file_corpus_cached():
     return _CORPUS_CACHE["prod"], _CORPUS_CACHE["test"]
 
 
+def _build_index_for_corpus(file_list: list) -> dict:
+    """Scans files once, returning identifier -> [(file_path, line_num, is_reexport)]."""
+    index: dict = {}
+    for file_path in file_list:
+        try:
+            text = file_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        for line_num, line in enumerate(text.splitlines(), 1):
+            is_reexport = "pub use " in line
+            for m in RE_IDENTIFIER.finditer(line):
+                token = m.group(1)
+                if token not in index:
+                    index[token] = []
+                index[token].append((file_path, line_num, is_reexport))
+    return index
+
+
+def build_inverted_index_cached(prod_files: list, test_files: list) -> tuple:
+    """Builds prod/test inverted indexes in a single file-system pass; cached for the process lifetime."""
+    if not _INVERTED_INDEX_CACHE:
+        _INVERTED_INDEX_CACHE["prod"] = _build_index_for_corpus(prod_files)
+        _INVERTED_INDEX_CACHE["test"] = _build_index_for_corpus(test_files)
+    return _INVERTED_INDEX_CACHE["prod"], _INVERTED_INDEX_CACHE["test"]
+
+
 def count_symbol_references_cached(symbol_name, prod_files, test_files, def_file, def_line):
-    """Wraps count_symbol_references with a module-level memo keyed by (symbol, def_file, def_line)."""
-    cache_key = (symbol_name, str(def_file), def_line)
-    if cache_key not in _SYMBOL_REF_CACHE:
-        all_files = prod_files + test_files
-        prod_callers = count_symbol_references(symbol_name, prod_files, def_file, def_line)
-        test_callers = count_symbol_references(symbol_name, test_files, def_file, def_line)
-        _SYMBOL_REF_CACHE[cache_key] = (prod_callers, test_callers)
-    return _SYMBOL_REF_CACHE[cache_key]
+    """O(1) symbol lookup via inverted index; filters definition line and re-export lines."""
+    prod_idx, test_idx = build_inverted_index_cached(prod_files, test_files)
+
+    def filter_refs(raw: list) -> list:
+        result = []
+        for file_path, line_num, is_reexport in raw:
+            if file_path == def_file and line_num == def_line:
+                continue
+            if is_reexport:
+                continue
+            result.append((file_path, line_num))
+        return result
+
+    return (
+        filter_refs(prod_idx.get(symbol_name, [])),
+        filter_refs(test_idx.get(symbol_name, [])),
+    )
 
 
 def collect_declared_symbols(crate_dir):
