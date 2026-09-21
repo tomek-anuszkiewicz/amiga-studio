@@ -20,16 +20,16 @@ Then manually inspect `git diff` for the 7 checks that cannot be automated:
 ## Manual Diff Checklist (Non-Automated)
 
 ### A. Endianness & Systems Safety
-- [ ] Zero `transmute` or host-endian pointer casts on guest memory buffers.
 - [ ] All multi-byte guest values use explicit `from_be_bytes` / `to_be_bytes` — no implicit host-endian reinterpretation.
 - [ ] ALU and cycle counter operations use wrapping arithmetic (`wrapping_add`, `wrapping_sub`) — no silent overflow.
+
+> `transmute_ptr_to_ptr`, `cast_ptr_alignment`, `Rc`/`RefCell`/`Arc`/`Mutex` are already `deny` in `Cargo.toml` — Clippy catches them at compile time.
 
 ### B. WASM Portability (Core Crates Only)
 - [ ] Zero `std::time::Instant`, `std::thread`, `std::fs` calls in `crates/cpu/`, `crates/memory_bus/`, `crates/agnus/`, `crates/denise/`, `crates/paula/`, `crates/cia/`.
   *(Clippy catches this only when cross-compiling for `wasm32`.)*
 
 ### C. Architecture Boundaries
-- [ ] Zero `Rc<RefCell<_>>` between peer subsystems — all chip coordination flows through the machine loop and `MemoryBus`.
 - [ ] New subsystem state structs implement `serde::Serialize` and `serde::Deserialize` (save-state contract).
 
 ### D. Defect Retrospection (Bug Fixes & Refactors Only)
