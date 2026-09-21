@@ -141,6 +141,17 @@ def check_hardware_quality_milestone():
         return False, f"Hardware quality milestone check failed:\n{output}", elapsed
     return True, "Pillars 3, 4, 5 compliant (CCK timing, quirks, Tier 2 integration)", elapsed
 
+POLISH_CHECK_SCRIPT = Path(__file__).resolve().parent / "check_polish.py"
+
+def check_polish_language():
+    if not POLISH_CHECK_SCRIPT.exists():
+        return False, f"Polish check script not found at {POLISH_CHECK_SCRIPT}", 0.0
+    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(POLISH_CHECK_SCRIPT), "--git"])
+    if code != 0:
+        output = stdout.strip() or stderr.strip()
+        return False, f"Language policy check failed:\n{output}", elapsed
+    return True, "100% compliant (strict English across additions)", elapsed
+
 def check_docs_quality():
     if not DOCS_QUALITY_SCRIPT.exists():
         return False, f"Docs quality script not found at {DOCS_QUALITY_SCRIPT}", 0.0
@@ -169,6 +180,7 @@ def main():
             ("Hardware Quality (Milestone: Pillars 3-5)", check_hardware_quality_milestone),
             ("Code Quality (Milestone: Pillars 3 & 4)", check_code_quality_milestone),
             ("Docs Quality & Governance (10 Pillars)", check_docs_quality),
+            ("Strict English Policy", check_polish_language),
         ]
     else:
         print(f">> Running {'Quick ' if quick_mode else ''}Per-Commit Quality Gates...")

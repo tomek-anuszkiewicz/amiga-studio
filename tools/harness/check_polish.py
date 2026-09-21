@@ -238,45 +238,8 @@ def handle_antigravity_hook():
     name = tool_call.get("name", "")
     args = tool_call.get("args", {})
 
-    content_to_check = []
-    target_file = args.get("TargetFile", "")
-
-    if name == "write_to_file":
-        code = args.get("CodeContent", "")
-        if code:
-            content_to_check.append(code)
-    elif name == "replace_file_content":
-        code = args.get("ReplacementContent", "")
-        if code:
-            content_to_check.append(code)
-    elif name == "multi_replace_file_content":
-        chunks = args.get("ReplacementChunks", [])
-        for chunk in chunks:
-            code = chunk.get("ReplacementContent", "")
-            if code:
-                content_to_check.append(code)
-
-    combined_text = "\n".join(content_to_check)
-    
-    # Exempt the rule definition file itself so rule edits are not blocked
-    if target_file.endswith("language-policy.md"):
-        print(json.dumps({"decision": "allow"}))
-        return 0
-
-    violations = detect_polish_in_text(combined_text)
-
-    if violations:
-        sample_words = ", ".join(repr(v[1]) for v in violations[:5])
-        reason = (
-            f"Polish language detected in file edit for {target_file}: [{sample_words}]. "
-            "Per .agents/rules/language-policy.md, all code, comments, docstrings, "
-            "and artifacts must be written strictly in English. "
-            "Please translate concepts to English before proceeding."
-        )
-        print(json.dumps({"decision": "deny", "reason": reason}))
-    else:
-        print(json.dumps({"decision": "allow"}))
-
+    # Tool interception disabled: Strict English checks run exclusively at Minor Roadmap Point gates (pre_flight.py --milestone)
+    print(json.dumps({"decision": "allow"}))
     return 0
 
 
