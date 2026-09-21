@@ -8380,5 +8380,19 @@ Every future modification or implementation task must append an entry following 
   - `python tools/harness/audit_docs_quality.py`: 10/10 pillars PASSED (30/30 rules audited, 0 issues).
   - `python tools/harness/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting, AGENTS.md 13,832 B <= 14KB ceiling, test coupling, API coverage 100%, Clippy, architecture rules 21/21).
 
+---
+
+### [2026-09-21 10:35 CEST] — Restructured ROADMAP.md into a Standardized Executable Nested Hierarchy
+
+- **Files Modified**:
+  - `ROADMAP.md`: Restructured the entire roadmap into a standardized, hierarchical nested list format. Standardized Section 1 by incorporating the delivered vAmigaTS Test Runner & Verification Infrastructure (v1.0) into Completed Baseline Deliverables. Formulated the explicit *Agent Execution & Step Completion Protocol (Mandatory Contract)* at the top of Section 2. Standardized every executable sub-step across Steps 1–7, Section 3.5, and Section 4.1 into a 3-tier schema (`Objective`, `Actionable Scope`, `Verification Gate`). Corrected all out-of-sync numbering (`Step 3.x` under Step 4, `Step 4.x` under Step 5, etc.) into contiguous indices.
+- **Architectural Rationale & Trade-Offs**:
+  - *Unambiguous Agent Actionability:* Eliminates mixed formatting styles (ad-hoc bullet lists, numbered paragraphs, mismatched prefixes) so autonomous AI agents clearly recognize the achievement of each milestone and understand the exact 5-step post-completion protocol (pass gates, log in DIARY.md, prune ROADMAP.md, update baseline, renumber contiguously).
+  - *Context Hygiene & Zero Retention:* Enforces `.agents/rules/roadmap-maintenance.md` by moving completed infrastructure to Section 1 baseline deliverables and keeping Section 2 strictly as a forward-looking active backlog.
+- **Verification & Test Results**:
+  - `python tools/harness/audit_docs_quality.py`: 10/10 pillars PASSED (Pillar 10 Roadmap Zero Retention confirmed, 0 issues).
+  - `python tools/harness/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting, AGENTS.md 13,832 B <= 14,000 ceiling, test coupling, API coverage 100%, Clippy, architecture rules 21/21).
+
+
 
 
