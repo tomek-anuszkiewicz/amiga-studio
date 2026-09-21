@@ -1,6 +1,6 @@
 ---
-trigger: always_on
-description: Information hierarchy, inverted pyramid structure, constitutional AGENTS.md size ceiling (<= 14,000 bytes), and non-redundancy policy.
+trigger: model_decision
+description: Information hierarchy, inverted pyramid structure, constitutional AGENTS.md size ceiling (<= 14,000 bytes), and non-redundancy policy. Load on major roadmap milestones and doc restructuring tasks.
 ---
 
 # Information Hierarchy, Inverted Pyramid & Document Limits Rule
