@@ -97,6 +97,6 @@ Never commit to any branch (especially `master`) without running the repository 
 
 ---
 
-## 6. On-Demand Review Workflow: `/code-review`
+## 6. On-Demand Review Workflow: `/audit-code-quality`
 
-Run [`/code-review`](../workflows/code-review.md) only when explicitly requested by the user or before a major architectural branch merge. **Not required** for routine commits or minor roadmap milestones.
+Run [`/audit-code-quality`](../workflows/audit-code-quality.md) (Section 4: Manual Diff Checklist) only when explicitly requested by the user or before a major architectural branch merge. **Not required** for routine commits or minor roadmap milestones.

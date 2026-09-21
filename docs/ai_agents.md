@@ -64,7 +64,6 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`audit-hardware-quality`](../.agents/skills/audit-hardware-quality/SKILL.md): Comprehensive hardware architectural and silicon fidelity audit covering bus topology, Agnus DMA mastership, passive chip latching, CCK timing, and silicon invariants.
 
 ### B. Quality Assurance, Performance & Refactoring
-- [`code-review`](../.agents/skills/code-review/SKILL.md): Comprehensive 14-point audit checklist for code quality, file sizes ($\le 800$ lines), inlining, zero runtime panics, and spec compliance.
 - [`test-runner`](../.agents/skills/test-runner/SKILL.md): Standardized test execution across all 4 tiers, `.test_results/` snapshot management, and automated differential regression telemetry.
 - [`integration-test-sprint`](../.agents/skills/integration-test-sprint/SKILL.md): 4-Iteration Cascading Verification Protocol runbook for multi-chip integration test suites, failure clustering, and 2–3 attempt limits.
 - [`synthesize-test-fixes`](../.agents/skills/synthesize-test-fixes/SKILL.md): Post-facto root-cause consolidation using the 3-Column Diagnostic Matrix (`[Symptom] | [Location] | [Mechanism]`) to replace scattered local workarounds with a unified upstream hardware model.
@@ -100,8 +99,7 @@ Developers trigger high-level orchestration directly in the IDE chat UI using sl
 
 | Slash Command | Workflow File | Primary Purpose |
 | :--- | :--- | :--- |
-| **`/code-review`** | [`code-review.md`](../.agents/workflows/code-review.md) | Comprehensive 14-point pre-commit and milestone architectural compliance audit. |
-| **`/audit-code-quality`** | [`audit-code-quality.md`](../.agents/workflows/audit-code-quality.md) | Full-workspace Rust code quality audit (dead code, zombies, visibility, SRP, inlining, test parity). |
+| **`/audit-code-quality`** | [`audit-code-quality.md`](../.agents/workflows/audit-code-quality.md) | Full-workspace Rust code quality audit (dead code, zombies, visibility, SRP, inlining, test parity) + on-demand manual diff checklist (endianness, WASM portability, Serde save-state, defect retrospection). |
 | **`/audit-docs-quality`** | [`audit-docs-quality.md`](../.agents/workflows/audit-docs-quality.md) | Full-repository documentation and governance audit (design sync, vault links, size limits, skills catalog). |
 | **`/audit-semantic-parity`** | [`audit-semantic-parity.md`](../.agents/workflows/audit-semantic-parity.md) | Inference-driven bidirectional code-to-docs and docs-to-code semantic parity audit. |
 | **`/audit-hardware-quality`** | [`audit-hardware-quality.md`](../.agents/workflows/audit-hardware-quality.md) | Full-workspace hardware architectural audit (bus topology, Agnus DMA mastership, passive latching, CCK). |
