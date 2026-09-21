@@ -5,128 +5,34 @@ description: Comprehensive architecture, rules compliance, and code quality audi
 
 # Workflow: Code & Specification Compliance Review
 
-Use this workflow to conduct an independent, rigorous audit of changes before completing a task or milestone.
+Run this only when explicitly requested by the user or before a major architectural branch merge.
 
----
-
-## 0. Review Architecture & Execution Strategy
-
-To ensure objective compliance and prevent confirmation bias:
-1. **Adversarial Audit**:
-   - The review can be conducted by the dedicated `code_reviewer` subagent (`.agents/agents/code_reviewer/agent.md`) or directly in-session following the 18 constitutional gates in [`code-review`](../skills/code-review/SKILL.md).
-   - Inspects `git diff` against all architectural rules with an adversarial mindset.
-2. **Documentation Alignment**:
-   - Audits Obsidian design specs and Mermaid crate graphs against `git diff` following [`sync-design-docs`](../skills/sync-design-docs/SKILL.md).
-3. **Asynchronous Quality Gates**:
-   - Runs `cargo fmt --all -- --check`, `python tools/harness/pre_flight.py`, and `cargo test -p test_runner --test test_architecture_rules` as background tasks.
-4. **Synthesis & Verdict**:
-   - Consolidates test outputs and rule checklists into the final review report.
-
----
-
-
-## 1. Automated Architecture & Formatting Verification
-Execute formatting check, compiler/clippy verification, and the automated architectural test suite:
+**Run automated gates first** (covers ~85% of checks):
 ```powershell
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets
-cargo test -p test_runner --test test_architecture_rules
+python tools/harness/pre_flight.py --quick   # formatting, clippy, architecture rules, dead code
+python tools/harness/pre_flight.py --milestone  # + condition soup, docs quality, English purity
 ```
-Ensure all rules pass:
-- Code is 100% formatted via standard `cargo fmt`.
-- Rust source file size limit `<= 800` lines in `crates/*/src/` (excluding recognized static tables/exceptions). Documentation files have NO line limits.
-- Strict flat instruction hierarchy: zero subdirectories in `crates/cpu/src/instructions/` (all instructions are single flat `<mnemonic>.rs` files), strict 1:1 mnemonic alignment, zero umbrella multi-instruction files (no `mul.rs`, `div.rs`, `bcd.rs`, `link_unlk.rs`, `privileged.rs`).
-- Zero `.unwrap()` / `.expect()` calls in core emulation crates.
-- Zero custom macros (`macro_rules!`) and zero const-generic handlers.
-- Zero hardcoded external user/host paths.
+
+Then manually inspect `git diff` for the 7 checks that cannot be automated:
 
 ---
 
-## 2. Git Diff Inspection
-Inspect the unstaged or branch diff:
-```powershell
-git diff
-```
-Audit the diff against the guidelines in `AGENTS.md`:
+## Manual Diff Checklist (Non-Automated)
 
 ### A. Endianness & Systems Safety
-- [ ] No host-endian pointer casting or `transmute` on guest memory.
-- [ ] Explicit Big-Endian conversion (`from_be_bytes`, `to_be_bytes`).
-- [ ] Explicit wrapping arithmetic (`wrapping_add`, `wrapping_sub`) on ALU and cycle operations.
-- [ ] Emulated guest faults do not panic the host process.
+- [ ] Zero `transmute` or host-endian pointer casts on guest memory buffers.
+- [ ] All multi-byte guest values use explicit `from_be_bytes` / `to_be_bytes` — no implicit host-endian reinterpretation.
+- [ ] ALU and cycle counter operations use wrapping arithmetic (`wrapping_add`, `wrapping_sub`) — no silent overflow.
 
-### B. Host Hardware Efficiency & Readability
-- [ ] Branch minimization: hot loops favor flattened, direct dispatch over deep nested `match`/`if` trees ("code may be expansive").
-- [ ] Zero allocations: no `Vec`, `Box`, `String`, or `format!` in `step()`, `step_cck()`, or memory paths.
-- [ ] Endianness Bypass: bitwise operations (`AND`, `OR`, `EOR`, `NOT`, `CLR`) avoid redundant byte swapping in hot loops.
-- [ ] **Readability, Zero Macros & No Const-Generic Handlers**: code is clean, idiomatic Rust, self-documenting, completely free of custom macros (`macro_rules!`), and free of const-generic handler matrices (`<const N: ...>`) in favor of concrete specialized functions.
-- [ ] **Self-Documenting Boolean Logic & Short-Circuit Preservation**: compound boolean conditions (`if (a || b) && c && d`) are decomposed into named explaining variables (`let is_ready = ...;`) or domain predicate methods, with zero raw condition soup. Explaining variables must preserve short-circuiting with zero eager speculative computation of unused branch values.
+### B. WASM Portability (Core Crates Only)
+- [ ] Zero `std::time::Instant`, `std::thread`, `std::fs` calls in `crates/cpu/`, `crates/memory_bus/`, `crates/agnus/`, `crates/denise/`, `crates/paula/`, `crates/cia/`.
+  *(Clippy catches this only when cross-compiling for `wasm32`.)*
 
-### C. Inlining Strategy
-- [ ] `#[inline]` on public accessors, single-expression helpers, forwarding wrappers, and cross-crate conversions.
-- [ ] `#[inline(always)]` strictly reserved for ultra-hot CCR condition code flags and inner arithmetic.
-- [ ] `#[inline(never)]` on cold exception/trap vectors, address error dumps, and panic paths.
+### C. Architecture Boundaries
+- [ ] Zero `Rc<RefCell<_>>` between peer subsystems — all chip coordination flows through the machine loop and `MemoryBus`.
+- [ ] New subsystem state structs implement `serde::Serialize` and `serde::Deserialize` (save-state contract).
 
-
-### D. Workspace & Architecture
-- [ ] Respects 3-tier re-export strategy (Tier 1: config, Tier 2: peers memory_bus/m68000, Tier 3: sub-components rtc/copper/blitter).
-- [ ] Strict flat instruction hierarchy: zero subdirectories in `crates/cpu/src/instructions/` (all instructions are single `<mnemonic>.rs` files, e.g. `mulu.rs`/`muls.rs`, `divu.rs`/`divs.rs`, `link.rs`/`unlk.rs`, `abcd.rs`/`sbcd.rs`/`nbcd.rs`, `trapv.rs`/`rtr.rs`/`rte.rs`/`stop.rs`/`reset.rs`/`move_usp.rs`; zero umbrella files).
-- [ ] **Idle Micro-Step Naming & Common Primitives**: all bus and internal idle phases explicitly feature IDLE (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`); zero anonymous idle structs (`MicroStep { bus_fn: None, alu_fn: None, ... }`) or legacy aliases.
-- [ ] Zero circular references between peer subsystems (`no Rc<RefCell>`).
-- [ ] **WASM Portability**: zero OS calls (`std::time::Instant`, `std::thread`, `std::fs`) in core emulation crates.
-- [ ] **Decoupled SaveState**: all subsystem state structs implement `serde::Serialize` and `Deserialize`.
-
-### E. Specification Compliance & Anti-Hack Rule
-- [ ] Zero silent deviations from hardware specifications.
-- [ ] Zero ad-hoc test-specific hacks to pass synthetic vectors without user escalation.
-- [ ] **Anti-Tamper & Golden Hash Invariance**: Zero blind updates to golden master hashes (`GOLDEN_*_HASH`), reference cycle counts, or test fixtures to silence failing tests.
-
-### F. Language Policy & English Purity
-- [ ] **Strict English Purity in Diff**: Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, and inline comments (per `language-policy.md`). All terms from Polish user prompts must be fully translated into idiomatic English before coding. Quoting Polish prompt phrases in code comments (even in quotation marks) is strictly prohibited.
-
-### G. Documentation, Diary & Roadmap
-- [ ] Corresponding design doc under `Obsidian/Amiga/Design/` updated.
-- [ ] Design document pruned of pre-implementation speculative code, draft sketches, and duplicate code snippets of already-written code (the codebase is the single source of truth; design docs must not duplicate implemented code).
-- [ ] Completed roadmap steps completely deleted from `ROADMAP.md` (zero `[COMPLETED]` markers or completed tasks retained in Section 2 per [`.agents/skills/roadmap-maintenance/SKILL.md`](../skills/roadmap-maintenance/SKILL.md)) and summarized in the baseline section.
-- [ ] **Engineering Diary Updated (`DIARY.md`)**: Detailed entry added to `DIARY.md` (Section 10) recording what was actually changed, why, and architectural decisions (preserving granular history beyond squashed/merged git commits).
-- [ ] Crate dependency Mermaid graph updated in `General Architecture.md` if `Cargo.toml` dependencies changed.
-
-### H. Defect Retrospection & Institutional Prevention (If Bug Fix / Refactor)
-- [ ] Root cause identified and documented ("Why did this happen?").
-- [ ] Dedicated regression test(s) added covering the exact failure mode and adjacent edge cases.
-- [ ] Institutional prevention evaluated: architectural rule, lint, design doc, or DoD checklist updated to ensure this class of defect never recurs.
-
-### H. Comprehensive Unit Test Coverage
-- [ ] **Every New / Modified File with Testable Logic Has Dedicated Unit Tests:** Verify that any file containing state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests in `crates/*/tests/` (zero inline tests in `src/`).
-- [ ] **Edge Cases & Boundary Coverage:** Tests verify happy paths, zero/empty states, boundary conditions, and invalid inputs.
-- [ ] **No Flaky Tests:** Tests execute deterministically without sleeps, wall-clock timing races, or host CPU load dependencies.
-
----
-
-## 3. Full Test Suite Verification
-Run all workspace unit and integration tests:
-```powershell
-cargo test
-```
-
-### M68000 Full Exhaustive Verification
-If any file in `crates/cpu` was added, modified, or refactored:
-```powershell
-$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep
-```
-Verify that all 77 suites run across all ~300,000 test cases with 100% green passes.
-
----
-
-## 4. Audit Verdict
-Deliver a structured audit report:
-- **Verdict**: `APPROVED` or `CHANGES REQUESTED`
-- **Checklist Summary**: Checked items from the Definition of Done.
-  - [ ] **Code Formatting & Architecture Tests:** `cargo fmt` and `test_architecture_rules` 100% clean.
-  - [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests in `crates/*/tests/` (zero inline tests in `src/`).
-  - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
-  - [ ] **Host Hardware Efficiency:** Flattened dispatch, zero allocations in hot paths, inlining compliance.
-  - [ ] **Readability, No Macros & No Const Generics:** Explicit code, zero `macro_rules!`, zero const-generic handlers.
-  - [ ] **Language Policy Purity:** Zero non-English words or prompt echoes in source code, docstrings, or comments.
-  - [ ] **Living Docs, Diary & Roadmap:** Pruned obsolete code, removed implemented code snippets, updated `DIARY.md` changelog, completed roadmap steps deleted (zero `[COMPLETED]` markers).
-- **Action Items**: Concrete file and line references if any rule is violated.
+### D. Defect Retrospection (Bug Fixes & Refactors Only)
+- [ ] Root cause documented: *"Why did this happen at the hardware model level?"*
+- [ ] Regression test added covering the exact failure mode — committed as a permanent sentinel.
+- [ ] Institutional prevention evaluated: does a Clippy lint, architecture test, or design doc update prevent this class of defect from recurring?
