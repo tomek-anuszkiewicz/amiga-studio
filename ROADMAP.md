@@ -89,6 +89,43 @@ When an agent finishes any numbered item:
 
 ### Step 1: Clean-Slate Custom Chipset Spec Reset & Self-Bootstrapped Verification (Immediate Primary Focus)
 
+- **0.1: MachineLoop Code Review & Architecture Orientation**
+  - **Objective:** Read and understand the current `crates/machine_loop` implementation end-to-end before making any changes to the chipset. Establish a mental model of the actual execution path, bus arbitration sequence, and poll-based signal routing as it exists today vs. the HRM spec.
+  - **Actionable Scope:**
+    - Trace the main step loop: chip step order, CCK phase progression, poll-and-route signal flow.
+    - Identify structural gaps, stale scaffolding, or deviations from the hardware-bus-topology rule.
+    - Produce a short written summary of findings (inline comments or Obsidian note); no production code changes.
+  - **Verification Gate:**
+    - Agent written orientation summary committed to `Obsidian/Amiga/Design/MachineLoop Architecture Review.md`.
+
+- **0.2: Test Suite Review & Structural Orientation**
+  - **Objective:** Understand the current state of all test crates (`test_runner`, per-crate `tests/`) — what is covered, what is missing, what is structurally sound vs. accidental.
+  - **Actionable Scope:**
+    - Catalogue existing L1/L2/L3 tests per subsystem.
+    - Identify zombie tests, coverage gaps, and coupling violations.
+    - Decide if any structural rework (file layout, harness helpers) is needed before the HRM-aligned test sprint.
+  - **Verification Gate:**
+    - `python tools/harness/audit_code_quality.py --dead-code`
+    - Written gap matrix committed to `Obsidian/Amiga/Design/Test Coverage Matrix.md`.
+
+- **0.3: Profiling Infrastructure — `cargo flamegraph` Feasibility & Manual Workflow**
+  - **Objective:** Establish whether `cargo flamegraph` (based on `perf` / `dtrace` / `samply`) is viable on this host; document the manual workflow if so.
+  - **Actionable Scope:**
+    - Attempt `cargo flamegraph --bin <emulator_binary>` on a headless run; capture a sample SVG.
+    - If blocked by OS/permission constraints, fall back to `samply` (see `profile-external` skill).
+    - Document the working invocation, post-processing steps, and baseline throughput in `Obsidian/Amiga/Design/CPU Instruction Benchmarking.md`.
+  - **Verification Gate:**
+    - At least one flamegraph SVG committed to `Obsidian/Amiga/Design/assets/`.
+
+- **0.4: Profiling Infrastructure — `cargo-profiler` / `perf` Feasibility & Manual Workflow**
+  - **Objective:** Evaluate `cargo-profiler` (callgrind / cachegrind backend) as a complementary profiling tool to flamegraph.
+  - **Actionable Scope:**
+    - Attempt `cargo profiler callgrind --bin <emulator_binary>` and capture annotated output.
+    - Compare hot-symbol lists with flamegraph findings.
+    - Document limitations (WASM incompatibility, Windows availability) and recommended host platform.
+  - **Verification Gate:**
+    - Callgrind output or documented limitation note committed to benchmarking doc.
+
 - **1.1: Strategic Clean-Slate Reset of Custom Chips & Machine Loop (Baseline HRM Spec Alignment)**
   - **Objective:** Cleanse and reset `crates/machine_loop` and all specialized custom chip subsystems (`agnus`, `denise`, `paula`, `cia`, `copper`, `blitter`, `floppy`) outside the CPU and physical memory to pure HRM architectural specifications, purging accumulated legacy scaffolding.
   - **Actionable Scope:**
@@ -98,6 +135,28 @@ When an agent finishes any numbered item:
   - **Verification Gate:**
     - `cargo check --workspace`
     - `cargo test -p test_runner --test test_architecture_rules`
+
+- **1.1a: Signal Propagation Documentation Audit & Hardening**
+  - **Objective:** Ensure that all agent governance files (rules, skills, workflows, design docs) accurately and completely describe the two signal propagation mechanisms so any future agent has zero ambiguity about how to implement them correctly.
+  - **Actionable Scope:**
+    - **Register-write propagation:** Verify that `hardware-bus-topology.md`, relevant design specs, and `MachineLoop` documentation clearly describe what happens clock-phase by clock-phase when a CPU or DMA write lands in a custom chip register (e.g. `COLOR00`, `BPLCON0`, `INTENA`). Update or author missing sections.
+    - **Special inter-chip signal lines:** Verify documentation for DMA request/grant (`RGA` bus), interrupt lines (`_IPL0`–`_IPL2`, `_INTREQ`/`_INTENA` propagation through Paula → CIA → CPU), and any other active signal paths (e.g. blitter busy, disk DMA, copper WAIT/SKIP). Ensure polling methods and timing are documented with cycle-phase precision.
+    - Sync any divergence between documentation and actual `MachineLoop` poll-and-route implementation found in step 0.1.
+  - **Verification Gate:**
+    - `python tools/harness/pre_flight.py --milestone` (Docs Quality pillar).
+    - All updated design docs have `last_verified_commit` checkpoint bumped.
+
+- **1.1b: HRM-Aligned Subsystem Test Suite Authoring**
+  - **Objective:** Write a clean, authoritative test suite for each custom chip subsystem derived strictly from the Amiga Hardware Reference Manual — not from source code inference. Tests must be simple, register-behavioral, and free from cycle-exact timing complexity.
+  - **Actionable Scope:**
+    - One test file per subsystem: `test_agnus.rs`, `test_denise.rs`, `test_paula.rs`, `test_cia.rs`, `test_copper.rs`, `test_blitter.rs`.
+    - Each test: write a register value → advance minimum required clocks → assert observable output or state. No multi-chip timing chains in L1 tests.
+    - Simple inter-subsystem interaction tests (L2): focus on the cleanest signal paths — e.g. CIA timer overflow → Paula `_INT` → CPU IPL change. Prefer to write inter-chip tests and any required implementation changes during horizontal blanking (hblank return) when bus is idle, to minimize contention complexity.
+    - Do **not** target vAmigaTS or silicon-level cycle accuracy in this step — that is Step 1.3.
+  - **Verification Gate:**
+    - `python tools/harness/pre_flight.py --quick`
+    - `cargo test -p test_runner --test test_architecture_rules`
+    - All new test files pass with ≥ 2 `#[test]` functions and ≥ 10 assertions per subsystem per unit-testing-policy.
 
 - **1.2: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
   - **Objective:** Operationalize the authentic floppy disk subsystem and Kickstart ROM overlay bootloader sequence to load and execute genuine Amiga programs from disk images (`.adf`).
