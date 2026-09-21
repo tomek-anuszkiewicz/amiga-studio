@@ -246,30 +246,6 @@ def collect_declared_symbols(crate_dir):
     return declared
 
 
-def count_symbol_references(symbol_name, files, def_file, def_line):
-    """Counts references to symbol_name across files, excluding definition and re-exports."""
-    pattern = re.compile(rf"\b{re.escape(symbol_name)}\b")
-    callers = []
-
-    for file_path in files:
-        try:
-            text = file_path.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            continue
-
-        if symbol_name not in text:
-            continue
-
-        for line_num, line in enumerate(text.splitlines(), 1):
-            if file_path == def_file and line_num == def_line:
-                continue
-            if "pub use " in line and symbol_name in line:
-                continue
-            if pattern.search(line):
-                callers.append((file_path, line_num))
-
-    return callers
-
 
 def scan_dead_and_zombie_code(target_crate=None):
     """Detects completely dead code (0 callers) and test-only zombie code."""
