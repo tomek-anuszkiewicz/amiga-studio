@@ -114,3 +114,38 @@ Developers trigger high-level orchestration directly in the IDE chat UI using sl
 | **`/roadmap-maintenance`** | [`roadmap-maintenance.md`](../.agents/workflows/roadmap-maintenance.md) | Prune completed steps from ROADMAP.md (zero retention) and apply substrate-first causal renumbering. |
 | **`/index-amiga-rag`** | [`index-amiga-rag.md`](../.agents/workflows/index-amiga-rag.md) | Incremental vector re-indexing of Amiga hardware manuals and Obsidian notes into local Qdrant database. |
 
+---
+
+## 5. Native Subagents (`.agents/agents/`)
+
+Subagents run in their own **isolated context windows**, shielding the main architect
+session from token-heavy bulk processing (OCR floods, multi-page markdown dumps, graph
+traversals). Each subagent is invoked by the parent session and returns only a compact,
+high-signal verdict or diff.
+
+| Subagent | File | Context Profile | Primary Responsibility |
+| :--- | :--- | :--- | :--- |
+| **`cpu_verifier`** | [`cpu_verifier/agent.md`](../.agents/agents/cpu_verifier/agent.md) | 🔬 Precision / Low volume | Tom Harte single-step silicon test execution, cycle-exact ALU/CCR verification, and timing regression isolation. |
+| **`code_reviewer`** | [`code_reviewer/agent.md`](../.agents/agents/code_reviewer/agent.md) | 🔍 Adversarial / Medium volume | 18-point pre-commit and architectural compliance audit against AGENTS.md rules, file size limits, and inlining policy. |
+| **`vision_analyst`** | [`vision_analyst/agent.md`](../.agents/agents/vision_analyst/agent.md) | 🖼️ Multimodal / Medium volume | Circuit schematic interpretation, timing diagram analysis, and `egui` visual layout debugging via multimodal vision. |
+| **`doc_curator`** | [`doc_curator/agent.md`](../.agents/agents/doc_curator/agent.md) | 📐 Structural / Low volume | Semantic parity between `Obsidian/Amiga/Design/` specs and Rust code, vault graph integrity, ROADMAP.md pruning, DIARY.md compaction. |
+| **`doc_ingestor`** | [`doc_ingestor/agent.md`](../.agents/agents/doc_ingestor/agent.md) | 📦 Heavy data / Isolated | PDF/HTML → Markdown conversion of reference manuals, circuit schematic vision sidecars, and Qdrant vector reindexing. |
+
+### Documentation Subagent Split: Why Two Agents?
+
+The `doc_curator` / `doc_ingestor` split is a deliberate context isolation boundary:
+
+```
+Main Session (Lead Architect)
+    │
+    ├─▶ doc_curator   ← Semantic spec sync, vault links, ROADMAP, DIARY
+    │      Context: structural & precision-oriented; low raw text volume
+    │
+    └─▶ doc_ingestor  ← PDF/HTML conversion, schematic sidecars, RAG reindex
+           Context: token-heavy bulk processing (OCR, multi-page markdown)
+                    isolated entirely in its own window
+```
+
+**Rule of thumb:**
+- If the task involves reading and reasoning about *existing* architectural specs → `doc_curator`.
+- If the task involves *transforming raw external data* (manuals, PDFs, HTML archives) into Obsidian Markdown → `doc_ingestor`.
