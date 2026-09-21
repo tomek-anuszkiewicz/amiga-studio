@@ -100,10 +100,8 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 ## 4. Quality Assurance & Definition of Done
 
 - **Per-Commit Gate (Routine Micro-Commits):**
-  - Formatting (`cargo fmt --all -- --check`) and Clippy (`cargo clippy --workspace --all-targets`).
-  - Unit tests in `tests/` with change coupling per [`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md).
-  - Pre-flight quick gate: `python tools/harness/pre_flight.py --quick` (formatting, size limits, test coupling, API coverage, clippy, Code Quality 1-2, Hardware Quality 1-2).
-  - Automated architecture tests: `cargo test -p test_runner --test test_architecture_rules`.
+  - Pre-flight quick gate: `python tools/harness/pre_flight.py --quick` (formatting, AGENTS.md ceiling, test coupling, API coverage, clippy, Code Quality 1-2, Hardware Quality 1-2).
+  - Automated architecture tests: `cargo test -p test_runner --test test_architecture_rules` *(not included in `--quick`; must be run separately)*.
   - Atomic commit following Conventional Commits in strict English per [`git-commits.md`](.agents/rules/git-commits.md).
   - *Routine commits do not require diary logging, design doc edits, or roadmap pruning.*
 - **Minor Roadmap Point & Milestone Gates (Step 1.1, 1.2, 2.1...):**
