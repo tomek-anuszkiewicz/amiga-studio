@@ -158,7 +158,20 @@ When an agent finishes any numbered item:
     - `cargo test -p test_runner --test test_architecture_rules`
     - All new test files pass with ≥ 2 `#[test]` functions and ≥ 10 assertions per subsystem per unit-testing-policy.
 
+- **1.1c: Lockstep Differential Tracer vs. vAmiga (Contingency)**
+  - **Trigger:** Only if HRM-aligned tests (1.1b) fail to isolate a regression — i.e. tests pass but behavior diverges from reference in ways not yet covered by the test suite.
+  - **Objective:** Build a cycle-exact co-simulation harness that runs the same ROM/ADF through both this emulator and vAmiga in lockstep, dumps a full machine state snapshot at every CCK boundary, and reports the first divergence point with a structured diff.
+  - **Actionable Scope:**
+    - Add a `StepTracer` trait (or feature-gated callback) to `MachineLoop`: at each `step_cck()`, serialize `CpuState` + all chip register banks into a compact binary or JSON snapshot. All state structs already implement `serde::Serialize` — snapshot is essentially `serde_json::to_string(&machine.snapshot())`.
+    - Wire vAmiga's existing headless state-dump mode (`ref_src/vAmiga`) to emit equivalent snapshots at the same CCK boundaries.
+    - Harness (`tools/harness/lockstep_diff.py`): load both snapshot streams, walk them in parallel, and stop at the first CCK where any field diverges — output: `CCK #N | field | expected (vAmiga) | actual (ours)`.
+    - Keep tracer behind a feature flag (`--features tracer`) so zero overhead in production builds.
+  - **Verification Gate:**
+    - Tracer successfully identifies the CCK and field of a known injected regression (synthetic test).
+    - `cargo test -p test_runner --test test_lockstep_tracer` (smoke test against a trivial ROM loop).
+
 - **1.2: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
+
   - **Objective:** Operationalize the authentic floppy disk subsystem and Kickstart ROM overlay bootloader sequence to load and execute genuine Amiga programs from disk images (`.adf`).
   - **Actionable Scope:**
     - Implement `DF0:` drive mechanics, MFM track deserializer, and DMA track streaming.
