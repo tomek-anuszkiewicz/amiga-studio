@@ -112,7 +112,6 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
   - Design docs sync & checkpoint bump per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md).
   - Log milestone completion in [DIARY.md](DIARY.md) (Section 10) via `tools/harness/log_diary.py` and run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) on major phase completions.
   - Prune completed steps from [ROADMAP.md](ROADMAP.md) (zero retention) per [`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md).
-  - Milestone Review: Run [`/code-review`](.agents/workflows/code-review.md).
 - **Verification Suites & Invariants:**
   - Single-Step CPU Validation: Run `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep` on any `crates/cpu` changes.
   - Cartesian DMA Contention: Run `cargo test -p test_runner --test test_dma_cartesian` on CPU/bus changes ($C = C_0 + 2 \times \text{wait\_states}$).

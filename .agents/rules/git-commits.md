@@ -97,6 +97,6 @@ Never commit to any branch (especially `master`) without running the repository 
 
 ---
 
-## 6. Execution Workflow: `/code-review`
+## 6. On-Demand Review Workflow: `/code-review`
 
-Before creating milestone commits or integrating substantial features, run the independent `/code-review` workflow ([`.agents/workflows/code-review.md`](../workflows/code-review.md)) to comprehensively audit git diffs against architectural rules, file size limits, inlining annotations, and documentation integrity.
+When requested by the user or before major architectural merges, you may run the independent `/code-review` workflow ([`.agents/workflows/code-review.md`](../workflows/code-review.md)) to audit git diffs against architectural rules, file size limits, inlining annotations, and documentation integrity. Routine commits and minor roadmap milestones do not mandate this step.

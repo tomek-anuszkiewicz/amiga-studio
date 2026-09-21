@@ -80,7 +80,7 @@ This document outlines the phased development plan, hardware milestones, verific
 Every actionable item in this roadmap represents an achievable milestone with an explicit **Objective**, **Actionable Scope**, and **Verification Gate**.
 When an agent finishes any numbered item:
 1. **Pass Verification Gate**: Run the specified commands and ensure all tests, linters, and pre-flight gates pass.
-2. **Log in DIARY.md**: Append the technical narrative, design rationale, and modified files to Section 10 per `.agents/rules/diary-maintenance.md`.
+2. **Log in DIARY.md**: Append the milestone narrative, design rationale, and modified files to Section 10 using `python tools/harness/log_diary.py`.
 3. **Prune Active Item from ROADMAP.md**: Completely delete the finished item or sub-step text from Section 2 per `.agents/rules/roadmap-maintenance.md` (zero retention of completed items in the active backlog).
 4. **Update Section 1 Baseline**: If an entire Step or major architectural capability was delivered, summarize it concisely in Section 1 ("Completed Baseline Deliverables").
 5. **Renumber Contiguously**: Ensure remaining steps and sub-steps remain contiguously indexed ($1, 2, 3\dots$) to eliminate gaps.

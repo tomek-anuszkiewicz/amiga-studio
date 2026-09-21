@@ -35,8 +35,6 @@ Whenever completing a minor roadmap step (e.g. Step 1.1, 1.2, 2.1) or major mile
    - Record the completed roadmap step in [`DIARY.md`](../../DIARY.md) (Section 10) using `python tools/harness/log_diary.py`.
 5. **Major Milestone Compaction (`compact-diary`):**
    - Upon concluding full milestone phases, invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) to synthesize older completed milestone entries into high-level architectural digests.
-6. **Milestone Review Protocol (`/code-review`):**
-   - Run the `/code-review` workflow to audit the diff with a clean context before final user hand-off.
 
 ---
 
