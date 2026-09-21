@@ -130,6 +130,7 @@ high-signal verdict or diff.
 | **`vision_analyst`** | [`vision_analyst/agent.md`](../.agents/agents/vision_analyst/agent.md) | 🖼️ Multimodal / Medium volume | Circuit schematic interpretation, timing diagram analysis, and `egui` visual layout debugging via multimodal vision. |
 | **`doc_curator`** | [`doc_curator/agent.md`](../.agents/agents/doc_curator/agent.md) | 📐 Structural / Low volume | Semantic parity between `Obsidian/Amiga/Design/` specs and Rust code, vault graph integrity, ROADMAP.md pruning, DIARY.md compaction. |
 | **`doc_ingestor`** | [`doc_ingestor/agent.md`](../.agents/agents/doc_ingestor/agent.md) | 📦 Heavy data / Isolated | PDF/HTML → Markdown conversion of reference manuals, circuit schematic vision sidecars, and Qdrant vector reindexing. |
+| **`tech_writer`** | [`tech_writer/agent.md`](../.agents/agents/tech_writer/agent.md) | ✍️ Narrative / Medium volume | Long-form retrospective essays, engineering devlogs, and methodology documents under `docs/` using practitioner voice and 6-layer Inverted Pyramid. |
 
 ### Documentation Subagent Split: Why Two Agents?
 
@@ -141,11 +142,15 @@ Main Session (Lead Architect)
     ├─▶ doc_curator   ← Semantic spec sync, vault links, ROADMAP, DIARY
     │      Context: structural & precision-oriented; low raw text volume
     │
-    └─▶ doc_ingestor  ← PDF/HTML conversion, schematic sidecars, RAG reindex
-           Context: token-heavy bulk processing (OCR, multi-page markdown)
-                    isolated entirely in its own window
+    ├─▶ doc_ingestor  ← PDF/HTML conversion, schematic sidecars, RAG reindex
+    │      Context: token-heavy bulk processing (OCR, multi-page markdown)
+    │               isolated entirely in its own window
+    │
+    └─▶ tech_writer   ← Retrospective essays, devlogs, methodology docs
+           Context: narrative prose; mines DIARY.md for architectural history
 ```
 
 **Rule of thumb:**
-- If the task involves reading and reasoning about *existing* architectural specs → `doc_curator`.
-- If the task involves *transforming raw external data* (manuals, PDFs, HTML archives) into Obsidian Markdown → `doc_ingestor`.
+- Reasoning about *existing* architectural specs → `doc_curator`.
+- *Transforming raw external data* (manuals, PDFs, HTML archives) → `doc_ingestor`.
+- *Narrating architectural decisions* as long-form prose for human readers → `tech_writer`.
