@@ -394,20 +394,10 @@ fn test_audit_micro_step_coverage() {
     );
 }
 
-#[test]
-fn test_code_formatting_compliance() {
-    let repo_root = find_repo_root();
-    let status = std::process::Command::new("cargo")
-        .args(["fmt", "--all", "--", "--check"])
-        .current_dir(&repo_root)
-        .status()
-        .expect("Failed to execute `cargo fmt` check");
-
-    assert!(
-        status.success(),
-        "Architecture Rule Violation: Code is not formatted according to `cargo fmt`. Run `cargo fmt --all` to resolve formatting issues."
-    );
-}
+// NOTE: `cargo fmt --all -- --check` is intentionally NOT run here.
+// Spawning a child `cargo` process inside `cargo test` causes redundant toolchain
+// invocations and can race with the parent cargo build. Formatting compliance is
+// exclusively enforced by `pre_flight.py --quick` (step: check_formatting).
 
 #[test]
 fn test_inlining_guidelines_compliance() {

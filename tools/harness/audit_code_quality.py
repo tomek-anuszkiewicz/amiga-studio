@@ -41,6 +41,14 @@ def find_repo_root() -> Path:
 REPO_ROOT = find_repo_root()
 CRATES_DIR = REPO_ROOT / "crates"
 
+# Module-level corpus cache: avoids re-scanning the repository on every pillar call.
+# Populated once on first call to get_file_corpus_cached().
+_CORPUS_CACHE: dict = {}
+
+# Module-level symbol-reference cache: maps symbol_name -> list[(file, line)].
+# Avoids re-running regex over all files for every symbol encountered by multiple pillars.
+_SYMBOL_REF_CACHE: dict = {}
+
 # Crates or modules with special execution models (e.g. 65,536-entry function pointer dispatch tables)
 EXEMPT_CRATES = {
     # cpu instruction handlers are referenced via compile-time function pointer table
@@ -113,6 +121,26 @@ def build_file_corpus():
             prod_files.append(rs_file)
 
     return prod_files, test_files
+
+
+def get_file_corpus_cached():
+    """Returns (prod_files, test_files) from cache; builds once on first call."""
+    if not _CORPUS_CACHE:
+        prod_files, test_files = build_file_corpus()
+        _CORPUS_CACHE["prod"] = prod_files
+        _CORPUS_CACHE["test"] = test_files
+    return _CORPUS_CACHE["prod"], _CORPUS_CACHE["test"]
+
+
+def count_symbol_references_cached(symbol_name, prod_files, test_files, def_file, def_line):
+    """Wraps count_symbol_references with a module-level memo keyed by (symbol, def_file, def_line)."""
+    cache_key = (symbol_name, str(def_file), def_line)
+    if cache_key not in _SYMBOL_REF_CACHE:
+        all_files = prod_files + test_files
+        prod_callers = count_symbol_references(symbol_name, prod_files, def_file, def_line)
+        test_callers = count_symbol_references(symbol_name, test_files, def_file, def_line)
+        _SYMBOL_REF_CACHE[cache_key] = (prod_callers, test_callers)
+    return _SYMBOL_REF_CACHE[cache_key]
 
 
 def collect_declared_symbols(crate_dir):
@@ -207,7 +235,7 @@ def count_symbol_references(symbol_name, files, def_file, def_line):
 
 def scan_dead_and_zombie_code(target_crate=None):
     """Detects completely dead code (0 callers) and test-only zombie code."""
-    prod_files, test_files = build_file_corpus()
+    prod_files, test_files = get_file_corpus_cached()
     all_declared = []
 
     for crate_dir in sorted(CRATES_DIR.iterdir()):
@@ -228,8 +256,9 @@ def scan_dead_and_zombie_code(target_crate=None):
         def_file = sym["file"]
         def_line = sym["line"]
 
-        prod_callers = count_symbol_references(name, prod_files, def_file, def_line)
-        test_callers = count_symbol_references(name, test_files, def_file, def_line)
+        prod_callers, test_callers = count_symbol_references_cached(
+            name, prod_files, test_files, def_file, def_line
+        )
 
         sym_info = {
             "name": name,
@@ -255,7 +284,7 @@ def scan_dead_and_zombie_code(target_crate=None):
 
 def scan_least_visibility(target_crate=None):
     """Detects symbols with over-broad visibility (pub instead of pub(crate) or private)."""
-    prod_files, test_files = build_file_corpus()
+    prod_files, test_files = get_file_corpus_cached()
     all_declared = []
 
     for crate_dir in sorted(CRATES_DIR.iterdir()):
@@ -279,8 +308,9 @@ def scan_least_visibility(target_crate=None):
         def_line = sym["line"]
         defining_crate = sym["crate"]
 
-        prod_callers = count_symbol_references(name, prod_files, def_file, def_line)
-        test_callers = count_symbol_references(name, test_files, def_file, def_line)
+        prod_callers, test_callers = count_symbol_references_cached(
+            name, prod_files, test_files, def_file, def_line
+        )
 
         if len(prod_callers) == 0:
             continue
