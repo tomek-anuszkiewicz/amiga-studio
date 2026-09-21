@@ -7,20 +7,21 @@ All agentic pair-programming and automated modifications must adhere strictly to
 
 ## 1. Operating & Behavioral Rules (`.agents/rules/`)
 
-Operational rules are modularized under `.agents/rules/` with single-responsibility scoping across two tiers:
+Operational rules are modularized under `.agents/rules/` across two tiers:
 
 ### A. Universal Invariants (`trigger: always_on`)
 - **Audio Voice Transcription** ([`audio-transcription.md`](.agents/rules/audio-transcription.md)): Mandatory spoken language transcript echo before responses.
-- **Dynamic Model Advisory** ([`model-reasoning-advisory.md`](.agents/rules/model-reasoning-advisory.md)): Advice on switching between `Medium` and `High`/`Pro` reasoning.
-- **Hardware Bus Topology** ([`hardware-bus-topology.md`](.agents/rules/hardware-bus-topology.md)): Agnus DMA address mastership, passive custom chip latching, zero inter-chip signal smuggling.
+- **Dynamic Model Advisory** ([`model-reasoning-advisory.md`](.agents/rules/model-reasoning-advisory.md)): Advisory on `Medium` vs `High`/`Pro` reasoning.
+- **Hardware Bus Topology** ([`hardware-bus-topology.md`](.agents/rules/hardware-bus-topology.md)): Agnus DMA address mastership, passive latching, zero inter-chip signal smuggling.
 - **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
-- **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user escalation before code changes.
-- **Hardware Efficiency & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros/const-generics, zero runtime heap allocations in hot paths.
+- **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user escalation.
+- **Hardware Efficiency & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros/const-generics, zero hot-path heap allocations.
 - **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Pre-task conceptual retrieval, CLI vector search (`tools/harness/rag_search.py`).
 - **Information Hierarchy & Limits** ([`information-hierarchy.md`](.agents/rules/information-hierarchy.md)): Inverted pyramid model, AGENTS.md ceiling ($\le 14,000$ bytes), non-redundancy.
-- **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit tests in dedicated `tests/` directories; zero inline tests in `src/`.
-- **Immediate Atomic Commits** ([`git-commits.md`](.agents/rules/git-commits.md)): Mandatory atomic commit after every completed task; Conventional Commits and pre-commit gates.
+- **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit tests in dedicated `tests/`; zero inline tests in `src/`.
+- **Immediate Atomic Commits** ([`git-commits.md`](.agents/rules/git-commits.md)): Mandatory atomic commit after every task; Conventional Commits.
 - **Structural Root-Cause Resolution** ([`structural-root-cause.md`](.agents/rules/structural-root-cause.md)): Mandatory structural fixes; prohibition of local symptom patches (nudges, ad-hoc regexes).
+- **Strict Scope Discipline** ([`strict-scope-discipline.md`](.agents/rules/strict-scope-discipline.md)): Minimal diffs, task containment, zero unsolicited refactoring, delivered vs suggested reporting.
 - **Clean-Break Refactoring** ([`clean-break-refactoring.md`](.agents/rules/clean-break-refactoring.md)): Zero legacy aliases/shims, complete workspace cutover on changes.
 
 ### B. Domain-Specific Rules (`trigger: model_decision`)

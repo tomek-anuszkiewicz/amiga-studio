@@ -1403,6 +1403,7 @@ fn test_all_rules_audited_in_quality_harness() {
         "roadmap-maintenance.md",
         "rust-best-practices.md",
         "spec-compliance.md",
+        "strict-scope-discipline.md",
         "structural-root-cause.md",
         "unit-testing-policy.md",
         "vault-linking-and-graph-integrity.md",

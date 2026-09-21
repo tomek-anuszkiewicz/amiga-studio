@@ -44,6 +44,9 @@ When an anomaly is observed or reported (e.g. *"chapter title has a space in the
 2. **Never Patch Just the Specific Reported Instance:**
    - Do not write code that specifically checks for the exact word, register, or page that was pointed out.
    - Generalize the observation: what systematic defect in the upstream pipeline allowed this state to occur?
+3. **Scope Containment vs. Causal Mechanism Fidelity:**
+   - "Assume systematic scope" applies strictly to the **causal mechanism** of the fix (trace the physical clock phase, state machine, or shared pipeline stage; never mask defects with coordinate nudges or isolated `if` branches).
+   - It is **never a license for spatial task expansion**. Do not unilaterally rewrite adjacent instructions, sibling opcodes, or unrelated modules. If a systematic defect spans multiple modules outside the task's perimeter, fix the shared engine or escalate the wider scope to the user under recommendations per [`strict-scope-discipline.md`](strict-scope-discipline.md).
 
 ---
 

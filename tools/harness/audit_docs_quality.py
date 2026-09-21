@@ -632,6 +632,7 @@ def check_workflow_and_skill_governance():
         "practitioner-voice-and-tone.md",
         "rust-best-practices.md",
         "spec-compliance.md",
+        "strict-scope-discipline.md",
         "structural-root-cause.md",
         "workspace-structure-and-reexports.md",
     }
@@ -1146,6 +1147,7 @@ REGISTERED_RULE_AUDITS = {
     "roadmap-maintenance.md": ["audit_docs_quality.py (Pillar 10 roadmap zero-retention)"],
     "rust-best-practices.md": ["test_architecture_rules.rs (test_zero_runtime_panics_or_unwraps)", "audit_code_quality.py (Pillars 1, 2, & 4)"],
     "spec-compliance.md": ["test_architecture_rules.rs (test_golden_hash_anti_tamper_policy_compliance)", "workflows (Conscience Check 2)"],
+    "strict-scope-discipline.md": ["test_architecture_rules.rs", "workflows (Conscience Check)"],
     "structural-root-cause.md": ["workflows (Conscience Check 3)"],
     "unit-testing-policy.md": ["test_architecture_rules.rs (test_every_crate_has_dedicated_external_tests_suite)", "audit_hardware_quality.py (Pillar 5)"],
     "vault-linking-and-graph-integrity.md": ["test_architecture_rules.rs (test_obsidian_design_docs_links_integrity)", "audit_docs_quality.py (Pillars 2 & 7)"],

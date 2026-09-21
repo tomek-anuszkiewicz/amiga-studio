@@ -20,6 +20,7 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **Information Hierarchy (`information-hierarchy.md`):** Inverted pyramid structure, leading with key architectural conclusions.
 - **Practitioner Voice & Tone (`practitioner-voice-and-tone.md`):** Hands-on lead architect persona, in-depth tech blog standard, and zero academic/dissertation jargon.
 - **Structural Root-Cause Resolution (`structural-root-cause.md`):** Mandatory structural upstream fixes; strict prohibition of local symptom patches.
+- **Strict Scope Discipline (`strict-scope-discipline.md`):** Strict task boundary, minimal necessary diffs, zero unsolicited refactoring, and delivered vs suggested reporting.
 
 ---
 

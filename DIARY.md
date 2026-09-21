@@ -8359,4 +8359,26 @@ Every future modification or implementation task must append an entry following 
   - `cargo test -p debugger`: 43/43 unit tests passed.
   - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architectural tests passed.
 
+---
+
+### [2026-09-21 10:20 CEST] — Codified Strict Scope Discipline & Harmonized Root-Cause Resolution
+
+- **Files Modified / Added**:
+  - `.agents/rules/strict-scope-discipline.md`: [NEW] Codified universal operational invariant enforcing strict task containment, the minimal necessary diff principle, prohibition of unsolicited drive-by refactoring or sibling defect fixes, and mandatory turn completion reporting (Delivered Changes vs Observed Opportunities & Future Recommendations).
+  - `.agents/rules/structural-root-cause.md`: Clarified Section 3 ("Assume Systematic Scope") to explicitly decouple causal mechanism fidelity (forbidding coordinate nudges, ad-hoc regexes, and symptom masking) from spatial task scope expansion (forbidding unsolicited rewrites of adjacent working opcodes/modules).
+  - `AGENTS.md`: Registered `strict-scope-discipline.md` in Section 1.A Universal Invariants, with tight description maintenance to remain safely under the constitutional 14,000-byte ceiling (13,832 bytes).
+  - `docs/ai_agents.md`: Registered `strict-scope-discipline.md` in Section 1 ("Architectural Guardrails & Invariants").
+  - `crates/test_runner/tests/test_architecture_rules.rs`: Registered `strict-scope-discipline.md` in `registered_rules` in `test_all_rules_audited_in_quality_harness`.
+  - `tools/harness/audit_docs_quality.py`: Registered `strict-scope-discipline.md` in `PASSIVE_INVARIANT_RULES` and `REGISTERED_RULE_AUDITS`.
+- **Architectural Rationale & Trade-Offs**:
+  - *Anti-Scope Creep Guardrail:* Eliminates LLM agent tendencies to expand tasks, perform drive-by cleanups, or bundle unrequested refactorings into discrete prompt requests.
+  - *Decoupled Causal Fidelity from Task Perimeter:* Guarantees hardware fidelity without allowing the agent to unilaterally rewrite sibling instructions or modules.
+  - *Transparent Governance:* Mandates structured end-of-turn reporting distinguishing delivered tasks from suggested future opportunities.
+- **Verification & Test Results**:
+  - `cargo fmt --all -- --check`: 100% compliant.
+  - `cargo test -p test_runner --test test_architecture_rules`: 21/21 architectural tests passed.
+  - `python tools/harness/audit_docs_quality.py`: 10/10 pillars PASSED (30/30 rules audited, 0 issues).
+  - `python tools/harness/pre_flight.py`: All Pre-Flight Quality Gates PASSED (formatting, AGENTS.md 13,832 B <= 14KB ceiling, test coupling, API coverage 100%, Clippy, architecture rules 21/21).
+
+
 
