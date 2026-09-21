@@ -12,12 +12,10 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 ### A. Universal Invariants (`trigger: always_on`)
 - **Audio Voice Transcription** ([`audio-transcription.md`](.agents/rules/audio-transcription.md)): Mandatory spoken language transcript echo before responses.
 - **Dynamic Model Advisory** ([`model-reasoning-advisory.md`](.agents/rules/model-reasoning-advisory.md)): Advisory on `Medium` vs `High`/`Pro` reasoning.
-- **Hardware Bus Topology** ([`hardware-bus-topology.md`](.agents/rules/hardware-bus-topology.md)): Agnus DMA address mastership, passive latching, zero inter-chip signal smuggling.
 - **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
 - **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user escalation.
 - **Hardware Efficiency & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros/const-generics, zero hot-path heap allocations.
 - **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Pre-task conceptual retrieval, CLI vector search (`tools/harness/rag_search.py`).
-- **Information Hierarchy & Limits** ([`information-hierarchy.md`](.agents/rules/information-hierarchy.md)): Inverted pyramid model, AGENTS.md ceiling ($\le 14,000$ bytes), non-redundancy.
 - **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit tests in dedicated `tests/`; zero inline tests in `src/`.
 - **Immediate Atomic Commits** ([`git-commits.md`](.agents/rules/git-commits.md)): Mandatory atomic commit after every task; Conventional Commits.
 - **Structural Root-Cause Resolution** ([`structural-root-cause.md`](.agents/rules/structural-root-cause.md)): Mandatory structural fixes; prohibition of local symptom patches (nudges, ad-hoc regexes).
@@ -26,8 +24,10 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 
 ### B. Domain-Specific Rules (`trigger: model_decision`)
 - **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Strict English for responses, plans, artifacts, code, and commit messages.
+- **Hardware Bus Topology** ([`hardware-bus-topology.md`](.agents/rules/hardware-bus-topology.md)): Agnus DMA address mastership, passive latching, zero inter-chip signal smuggling. Continuous + Per-Commit: AST verified in `pre_flight.py --quick` (Hardware Quality Pillar 1 & 2).
 - **Design Docs Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Sync `Obsidian/Amiga/Design/` specs with code; prune draft proposals.
 - **Roadmap Maintenance** ([`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md)): Substrate-first ordering, zero completed items retention in `ROADMAP.md`.
+- **Information Hierarchy & Limits** ([`information-hierarchy.md`](.agents/rules/information-hierarchy.md)): Inverted pyramid model, AGENTS.md ceiling ($\le 14,000$ bytes), non-redundancy.
 - **Vault Linking & Graph Integrity** ([`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md)): Line 1 YAML properties, dual-layer linking, zero broken links.
 - **Source File Size & Cohesion** ([`file-size-and-cohesion.md`](.agents/rules/file-size-and-cohesion.md)): Source files $\le 800$ lines in `crates/*/src/`, single responsibility.
 - **Opcode Naming & Micro-Steps** ([`opcode-naming.md`](.agents/rules/opcode-naming.md)): Canonical `IDLE` micro-steps, 1:1 opcode files, dual staging registers (`addr1`/`addr2`).

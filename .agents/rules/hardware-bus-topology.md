@@ -1,4 +1,10 @@
+---
+trigger: model_decision
+description: Agnus exclusive DMA mastership; Denise/Paula passive latching; zero inter-chip pointer smuggling; motherboard bus routing. Mechanically enforced by pre_flight.py --quick Hardware Quality Pillars 1 & 2.
+---
+
 # Strict Hardware Bus Topology & Inter-Chip Signal Isolation Rule
+
 
 This rule governs the physical electronic bus model, DMA address mastership, and signal propagation boundaries between custom chips, CPU, and memory across the emulator.
 

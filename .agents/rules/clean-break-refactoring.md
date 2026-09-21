@@ -1,4 +1,10 @@
+---
+trigger: always_on
+description: Zero legacy aliases, forwarding wrappers, deprecated annotations, or dual-path fallbacks. Complete workspace-wide cutover on every rename or redesign.
+---
+
 # Clean-Break Refactoring & Zero Unsolicited Backward Compatibility
+
 
 This rule governs all code refactoring, API renaming, structural modifications, and architectural redesigns across the entire repository.
 
