@@ -604,7 +604,6 @@ def check_workflow_and_skill_governance():
     ACTIVE_RULE_COMPANIONS = {
         "amiga-rag.md": {"index-amiga-rag"},
         "asset-descriptions.md": {"describe-diagram-assets"},
-        "diary-maintenance.md": {"compact-diary"},
         "docs-maintenance.md": {"sync-design-docs", "obsidian-vault-linking", "audit-docs-quality", "audit-semantic-parity"},
         "vault-linking-and-graph-integrity.md": {"obsidian-vault-linking", "audit-docs-quality"},
         "egui-best-practices.md": {"egui-vision-debugger", "capture-gui-screenshot"},
@@ -1126,7 +1125,6 @@ REGISTERED_RULE_AUDITS = {
     "asset-descriptions.md": ["audit_docs_quality.py (Pillar 10 asset sidecars)"],
     "audio-transcription.md": ["workflows (Conscience Check 1)"],
     "clean-break-refactoring.md": ["test_architecture_rules.rs (test_zero_backward_compatibility_shims_and_stale_aliases)"],
-    "diary-maintenance.md": ["audit_docs_quality.py (Pillar 10 diary structure & chronology)"],
     "docs-maintenance.md": ["audit_docs_quality.py (Pillar 1 code drift)"],
     "egui-best-practices.md": ["crates/gui/tests/test_interactions.rs"],
     "file-size-and-cohesion.md": ["test_architecture_rules.rs (test_file_size_limits)"],

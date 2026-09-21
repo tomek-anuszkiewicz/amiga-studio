@@ -27,7 +27,6 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 ### B. Domain-Specific Rules (`trigger: model_decision`)
 - **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Strict English for responses, plans, artifacts, code, and commit messages.
 - **Design Docs Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Sync `Obsidian/Amiga/Design/` specs with code; prune draft proposals.
-- **Engineering Diary** ([`diary-maintenance.md`](.agents/rules/diary-maintenance.md)): Mandatory chronological narrative logging in `DIARY.md` (Section 10).
 - **Roadmap Maintenance** ([`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md)): Substrate-first ordering, zero completed items retention in `ROADMAP.md`.
 - **Vault Linking & Graph Integrity** ([`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md)): Line 1 YAML properties, dual-layer linking, zero broken links.
 - **Source File Size & Cohesion** ([`file-size-and-cohesion.md`](.agents/rules/file-size-and-cohesion.md)): Source files $\le 800$ lines in `crates/*/src/`, single responsibility.
@@ -100,19 +99,25 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 
 ## 4. Quality Assurance & Definition of Done
 
-- **Mandatory Formatting:** `cargo fmt --all -- --check`.
-- **Pre-Flight Gate:** Run `python tools/harness/pre_flight.py` (checks formatting, size, and architecture rules).
-- **Automated Architecture Tests:** Pass `cargo test -p test_runner --test test_architecture_rules` (file sizes, zero panics/macros/generics, IDLE micro-steps, zero inline tests, inlining, links).
-- **Single-Step CPU Validation:** Run `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep` on any `crates/cpu` changes.
-- **Cartesian DMA Contention:** Run `cargo test -p test_runner --test test_dma_cartesian` on CPU/bus changes ($C = C_0 + 2 \times \text{wait\_states}$).
-- **Repro-First Defect Resolution:** Author an isolated failing reproduction test in `tests/` before editing production code per [`repro-first.md`](.agents/rules/repro-first.md).
-- **Unit Testing Policy:** Mandatory unit test coverage for functional/utility logic and headless integration tests for GUI per [`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md).
-- **Obsidian Design Docs:** Update design documents in [Obsidian/Amiga/Design](Obsidian/Amiga/Design) per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md) and [`vault-linking-and-graph-integrity.md`](.agents/rules/vault-linking-and-graph-integrity.md).
-- **Engineering Diary:** Log changes and rationale in [DIARY.md](DIARY.md) (Section 10) per [`diary-maintenance.md`](.agents/rules/diary-maintenance.md).
-- **Roadmap Maintenance:** Prune completed tasks from [ROADMAP.md](ROADMAP.md) (zero completed items retained) per [`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md).
-- **Milestone Gates:** Run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) alongside the quality audits ([`audit-code-quality`](.agents/skills/audit-code-quality/SKILL.md), [`audit-docs-quality`](.agents/skills/audit-docs-quality/SKILL.md), [`audit-hardware-quality`](.agents/skills/audit-hardware-quality/SKILL.md), [`audit-semantic-parity`](.agents/skills/audit-semantic-parity/SKILL.md)) upon major milestone completion.
-- **Prohibition of Blind Golden Hash Modifications**: Zero silent edits to golden hashes/constants per [`spec-compliance.md`](.agents/rules/spec-compliance.md).
-- **Milestone Review:** Run [`/code-review`](.agents/workflows/code-review.md) before declaring roadmap milestones complete.
+- **Per-Commit Gate (Routine Micro-Commits):**
+  - Formatting (`cargo fmt --all -- --check`) and Clippy (`cargo clippy --workspace --all-targets`).
+  - Unit tests in `tests/` with change coupling per [`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md).
+  - Pre-flight quick gate: `python tools/harness/pre_flight.py --quick` (formatting, size limits, test coupling, API coverage, clippy, Code Quality 1-2, Hardware Quality 1-2).
+  - Automated architecture tests: `cargo test -p test_runner --test test_architecture_rules`.
+  - Atomic commit following Conventional Commits in strict English per [`git-commits.md`](.agents/rules/git-commits.md).
+  - *Routine commits do not require diary logging, design doc edits, or roadmap pruning.*
+- **Minor Roadmap Point & Milestone Gates (Step 1.1, 1.2, 2.1...):**
+  - Milestone pre-flight: `python tools/harness/pre_flight.py --milestone` (Code Quality 3-4, Hardware Quality 3-5, Docs Quality 100%).
+  - Semantic parity: run [`audit-semantic-parity`](.agents/skills/audit-semantic-parity/SKILL.md) on modified subsystems.
+  - Design docs sync & checkpoint bump per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md).
+  - Log milestone completion in [DIARY.md](DIARY.md) (Section 10) via `tools/harness/log_diary.py` and run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) on major phase completions.
+  - Prune completed steps from [ROADMAP.md](ROADMAP.md) (zero retention) per [`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md).
+  - Milestone Review: Run [`/code-review`](.agents/workflows/code-review.md).
+- **Verification Suites & Invariants:**
+  - Single-Step CPU Validation: Run `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep` on any `crates/cpu` changes.
+  - Cartesian DMA Contention: Run `cargo test -p test_runner --test test_dma_cartesian` on CPU/bus changes ($C = C_0 + 2 \times \text{wait\_states}$).
+  - Repro-First Defect Resolution: Author an isolated failing reproduction test in `tests/` before editing production code per [`repro-first.md`](.agents/rules/repro-first.md).
+  - Prohibition of Blind Golden Hash Modifications: Zero silent edits to golden hashes/constants per [`spec-compliance.md`](.agents/rules/spec-compliance.md).
 
 ---
 

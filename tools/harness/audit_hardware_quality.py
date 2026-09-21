@@ -315,6 +315,8 @@ def check_tier2_integration_coverage():
 def main():
     parser = argparse.ArgumentParser(description="Amiga 500 Hardware Architecture & Silicon Compliance Auditor")
     parser.add_argument("--all", action="store_true", help="Run all hardware architecture audits")
+    parser.add_argument("--per-commit", action="store_true", help="Audit per-commit hardware quality (Pillars 1 & 2: topology & DMA mastership)")
+    parser.add_argument("--milestone", action="store_true", help="Audit milestone hardware quality (Pillars 3, 4, 5: CCK timing, silicon invariants, tier 2 coverage)")
     parser.add_argument("--topology", action="store_true", help="Audit hardware bus topology and inter-chip signal isolation")
     parser.add_argument("--dma-mastership", action="store_true", help="Audit Agnus DMA address mastership and passive chip latching")
     parser.add_argument("--cck-timing", action="store_true", help="Audit Color Clock (CCK) stepping interfaces")
@@ -323,9 +325,18 @@ def main():
 
     args = parser.parse_args()
 
+    if args.per_commit:
+        args.topology = True
+        args.dma_mastership = True
+    if args.milestone:
+        args.cck_timing = True
+        args.silicon_invariants = True
+        args.tier2_coverage = True
+
     run_all = args.all or not any([
         args.topology, args.dma_mastership,
-        args.cck_timing, args.silicon_invariants, args.tier2_coverage
+        args.cck_timing, args.silicon_invariants, args.tier2_coverage,
+        args.per_commit, args.milestone
     ])
 
     print("=" * 76)

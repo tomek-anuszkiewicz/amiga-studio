@@ -3,15 +3,38 @@ name: compact-diary
 description: Compact and synthesize older chronological entries in DIARY.md into concise high-level architectural digests.
 ---
 
-# Recipe: Compacting DIARY.md Upon Major Milestone Completion
+# Recipe: Engineering Diary Maintenance & Milestone Compaction (`DIARY.md`)
 
-This skill defines the standardized procedure for auditing, synthesizing, and compacting historical engineering entries in [DIARY.md](../../../DIARY.md) (Section 10) after reaching major roadmap milestones.
+This skill defines the standardized procedure for logging milestone completions and compacting historical engineering entries in [DIARY.md](../../../DIARY.md) (Section 10).
 
 ---
 
-## 1. When to Trigger This Skill
+## 1. Milestone Engineering Diary Logging Protocol
 
-- **Mandatory Trigger:** Completion of a major milestone in [ROADMAP.md](../../../ROADMAP.md) (e.g. Step 1: Standalone CPU Program Execution, Step 2: CPU Footprint Audit, Phase 1 Custom Chipset milestones).
+Whenever an agent finishes a minor roadmap point (e.g. Step 1.1, 1.2, 2.1) or major architectural milestone:
+- **Mandatory Milestone Trigger:** Append a detailed narrative entry to [`DIARY.md`](../../../DIARY.md) under Section 10 (Living Chronological Engineering Log). Routine micro-commits do not require diary logging.
+- **Deterministic Logging Tool (`tools/harness/log_diary.py`):**
+  Always use the deterministic CLI tool to eliminate prompt bloat:
+  ```powershell
+  python tools/harness/log_diary.py \
+    --title "<Title>" \
+    --subsystems "<crates/..., rules/...>" \
+    --changes "<bullet 1>; <bullet 2>" \
+    --rationale "<rationale>" \
+    --results "<test verification>"
+  ```
+- **Standard Entry Structure:**
+  Every log entry under Section 10 must systematically document:
+  1. **Affected Subsystems:** Crates, modules, rules, or design notes modified.
+  2. **What Was Changed (The Concrete Reality):** Specific code modifications, data structures, algorithms, or mechanics introduced or refactored.
+  3. **Why It Was Done & Architectural Rationale:** The problem statement, edge cases discovered, user directives, and trade-offs behind the solution.
+  4. **Verification & Test Results:** Specific test suites executed and verified (e.g. `pre_flight.py --milestone`, SingleStepTests, formatting checks).
+
+---
+
+## 2. When to Trigger Historical Diary Compaction
+
+- **Mandatory Trigger:** Completion of a major milestone in [ROADMAP.md](../../../ROADMAP.md) (e.g. Phase 1 Custom Chipset milestones).
 - **Goal:** Prevent token bloat and maintain scannability while permanently safeguarding the architectural rationale, problem-solving insights, and evolutionary context of the emulator.
 
 ---

@@ -1382,7 +1382,6 @@ fn test_all_rules_audited_in_quality_harness() {
         "asset-descriptions.md",
         "audio-transcription.md",
         "clean-break-refactoring.md",
-        "diary-maintenance.md",
         "docs-maintenance.md",
         "egui-best-practices.md",
         "file-size-and-cohesion.md",

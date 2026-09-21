@@ -80,16 +80,20 @@ All commit messages must be written in **strict English** per [`.agents/rules/la
 
 Never commit to any branch (especially `master`) without running the repository quality gate:
 
-1. **Code Formatting:**
+1. **Pre-Flight Quick Gate:**
    ```powershell
-   cargo fmt --all -- --check
+   python tools/harness/pre_flight.py --quick
    ```
+   *Verifies:* code formatting (`cargo fmt`), `AGENTS.md` size ceiling, test coupling in `tests/`, public API coverage, Clippy invariants, Hardware Quality (Pillars 1 & 2), and Code Quality (Pillars 1 & 2).
 2. **Automated Architecture Tests:**
    ```powershell
    cargo test -p test_runner --test test_architecture_rules
    ```
 3. **Subsystem Test Suites:**
    - Execute relevant unit/integration tests for the modified crates before committing.
+
+> [!NOTE]
+> Routine commits do not require diary logging, design documentation updates, or roadmap pruning. Those occur strictly upon completing minor roadmap points or milestones.
 
 ---
 

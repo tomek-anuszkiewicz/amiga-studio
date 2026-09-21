@@ -57,6 +57,10 @@ def check_agents_md():
 TEST_COUPLING_SCRIPT = Path(__file__).resolve().parent / "check_test_coupling.py"
 API_COVERAGE_SCRIPT = Path(__file__).resolve().parent / "audit_api_coverage.py"
 
+CODE_QUALITY_SCRIPT = Path(__file__).resolve().parent / "audit_code_quality.py"
+HARDWARE_QUALITY_SCRIPT = Path(__file__).resolve().parent / "audit_hardware_quality.py"
+DOCS_QUALITY_SCRIPT = Path(__file__).resolve().parent / "audit_docs_quality.py"
+
 def check_test_coupling(staged=False):
     if not TEST_COUPLING_SCRIPT.exists():
         return False, f"Test coupling script not found at {TEST_COUPLING_SCRIPT}", 0.0
@@ -101,21 +105,84 @@ def check_architecture_rules():
             break
     return True, summary, elapsed
 
+def check_code_quality_per_commit():
+    if not CODE_QUALITY_SCRIPT.exists():
+        return False, f"Code quality script not found at {CODE_QUALITY_SCRIPT}", 0.0
+    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(CODE_QUALITY_SCRIPT), "--per-commit", "--strict"])
+    if code != 0:
+        output = stdout.strip() or stderr.strip()
+        return False, f"Code quality per-commit check failed:\n{output}", elapsed
+    return True, "Pillars 1 & 2 compliant (zero dead code, zero visibility leaks)", elapsed
+
+def check_hardware_quality_per_commit():
+    if not HARDWARE_QUALITY_SCRIPT.exists():
+        return False, f"Hardware quality script not found at {HARDWARE_QUALITY_SCRIPT}", 0.0
+    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(HARDWARE_QUALITY_SCRIPT), "--per-commit"])
+    if code != 0:
+        output = stdout.strip() or stderr.strip()
+        return False, f"Hardware quality per-commit check failed:\n{output}", elapsed
+    return True, "Pillars 1 & 2 compliant (topology isolation & DMA mastership)", elapsed
+
+def check_code_quality_milestone():
+    if not CODE_QUALITY_SCRIPT.exists():
+        return False, f"Code quality script not found at {CODE_QUALITY_SCRIPT}", 0.0
+    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(CODE_QUALITY_SCRIPT), "--milestone", "--strict"])
+    if code != 0:
+        output = stdout.strip() or stderr.strip()
+        return False, f"Code quality milestone check failed:\n{output}", elapsed
+    return True, "Pillars 3 & 4 compliant (condition soup & accessors)", elapsed
+
+def check_hardware_quality_milestone():
+    if not HARDWARE_QUALITY_SCRIPT.exists():
+        return False, f"Hardware quality script not found at {HARDWARE_QUALITY_SCRIPT}", 0.0
+    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(HARDWARE_QUALITY_SCRIPT), "--milestone"])
+    if code != 0:
+        output = stdout.strip() or stderr.strip()
+        return False, f"Hardware quality milestone check failed:\n{output}", elapsed
+    return True, "Pillars 3, 4, 5 compliant (CCK timing, quirks, Tier 2 integration)", elapsed
+
+def check_docs_quality():
+    if not DOCS_QUALITY_SCRIPT.exists():
+        return False, f"Docs quality script not found at {DOCS_QUALITY_SCRIPT}", 0.0
+    code, stdout, stderr, elapsed = run_cmd([sys.executable, str(DOCS_QUALITY_SCRIPT)])
+    if code != 0:
+        output = stdout.strip() or stderr.strip()
+        return False, f"Docs quality audit failed:\n{output}", elapsed
+    return True, "10/10 pillars 100% compliant", elapsed
+
 def main():
     quick_mode = "--quick" in sys.argv
+    milestone_mode = "--milestone" in sys.argv
     staged_mode = "--staged" in sys.argv or quick_mode
-    print(f">> Running {'Quick ' if quick_mode else ''}Pre-Flight Quality Gates...")
-    
-    gates = [
-        ("Formatting", check_formatting),
-        ("AGENTS.md Ceiling", check_agents_md),
-        ("Test Coupling", lambda: check_test_coupling(staged=staged_mode)),
-        ("API Coverage", check_api_coverage),
-        ("Clippy Invariants", check_clippy_invariants),
-    ]
-    
-    if not quick_mode:
-        gates.append(("Architecture Rules", check_architecture_rules))
+
+    if milestone_mode:
+        print(">> Running Minor Roadmap Point Milestone Quality Gates...")
+        gates = [
+            ("Formatting", check_formatting),
+            ("AGENTS.md Ceiling", check_agents_md),
+            ("Test Coupling", lambda: check_test_coupling(staged=False)),
+            ("API Coverage", check_api_coverage),
+            ("Clippy Invariants", check_clippy_invariants),
+            ("Architecture Rules", check_architecture_rules),
+            ("Hardware Quality (Per-Commit: Pillars 1 & 2)", check_hardware_quality_per_commit),
+            ("Code Quality (Per-Commit: Pillars 1 & 2)", check_code_quality_per_commit),
+            ("Hardware Quality (Milestone: Pillars 3-5)", check_hardware_quality_milestone),
+            ("Code Quality (Milestone: Pillars 3 & 4)", check_code_quality_milestone),
+            ("Docs Quality & Governance (10 Pillars)", check_docs_quality),
+        ]
+    else:
+        print(f">> Running {'Quick ' if quick_mode else ''}Per-Commit Quality Gates...")
+        gates = [
+            ("Formatting", check_formatting),
+            ("AGENTS.md Ceiling", check_agents_md),
+            ("Test Coupling", lambda: check_test_coupling(staged=staged_mode)),
+            ("API Coverage", check_api_coverage),
+            ("Clippy Invariants", check_clippy_invariants),
+            ("Hardware Quality (Pillars 1 & 2)", check_hardware_quality_per_commit),
+            ("Code Quality (Pillars 1 & 2)", check_code_quality_per_commit),
+        ]
+        if not quick_mode:
+            gates.append(("Architecture Rules", check_architecture_rules))
         
     failed = []
     results = []
@@ -131,10 +198,11 @@ def main():
     print("\n" + "\n".join(results) + "\n")
     
     if failed:
-        print(f"[FAIL] Pre-Flight FAILED on {len(failed)} gate(s): {', '.join(failed)}")
+        print(f"[FAIL] Quality Gates FAILED on {len(failed)} gate(s): {', '.join(failed)}")
         sys.exit(1)
     else:
-        print("[OK] All Pre-Flight Quality Gates PASSED cleanly!")
+        mode_label = "Milestone" if milestone_mode else "Per-Commit"
+        print(f"[OK] All {mode_label} Quality Gates PASSED cleanly!")
         sys.exit(0)
 
 if __name__ == "__main__":

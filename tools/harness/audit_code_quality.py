@@ -576,17 +576,29 @@ def main():
         description="Audit dead code, minimum visibility leaks, boolean conditions, and method naming & accessor conventions."
     )
     parser.add_argument("--all", action="store_true", help="Run all code quality audits")
+    parser.add_argument("--per-commit", action="store_true", help="Run per-commit audits (Pillars 1 & 2: dead code & least visibility)")
+    parser.add_argument("--milestone", action="store_true", help="Run milestone audits (Pillars 3 & 4: condition soup & accessors)")
     parser.add_argument("--dead-code", action="store_true", help="Run dead code & zombie scanner")
     parser.add_argument("--visibility", action="store_true", help="Run least visibility scanner")
     parser.add_argument("--conditions", action="store_true", help="Run condition soup & boolean clarity scanner")
     parser.add_argument("--accessors", action="store_true", help="Run method naming and accessor convention checks")
+    parser.add_argument("--strict", action="store_true", help="Exit with non-zero exit code if issues are found")
     parser.add_argument("--crate", help="Filter audit to a specific crate")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     args = parser.parse_args()
 
+    if args.per_commit:
+        args.dead_code = True
+        args.visibility = True
+    if args.milestone:
+        args.conditions = True
+        args.accessors = True
+
     # Default to --all if no specific mode selected
     if not (
         args.all
+        or args.per_commit
+        or args.milestone
         or args.dead_code
         or args.visibility
         or args.conditions
@@ -685,6 +697,11 @@ def main():
         f"{len(accessor_issues)} method naming & accessor issues."
     )
     print("=" * 76)
+
+    if args.strict:
+        failures = len(dead) + len(zombies) + len(vis_leaks)
+        if failures > 0:
+            sys.exit(1)
 
 
 if __name__ == "__main__":

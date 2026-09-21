@@ -13,6 +13,7 @@ This rule governs the continuous synchronization, cleanup, and maintenance of te
 
 Whenever implementing, refactoring, or modifying any subsystem in this repository:
 - You **must update the corresponding design document in [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design/)** whenever any architectural decision, timing model, data structure, register bitfield, or hardware quirk has changed or was clarified.
+- **Milestone & Architectural Change Synchronization:** Formal design documentation updates and checkpoint bumping (`last_synced_commit`) occur upon completing **minor roadmap points** (e.g. Step 1.1, 1.2, 2.1) or when a genuine architectural design change occurs. Routine intermediate commits (bug fixes, internal refactorings, unit test additions) are fully covered by the Tier 2 Grace Tolerance Window ($\le 100$ commits, $\le 30$ days) and do not require per-commit documentation editing.
 - The design specifications in `Obsidian/Amiga/Design/` are living, permanent specifications and must always stay synchronized with the active code.
 
 ---
