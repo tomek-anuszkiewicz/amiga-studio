@@ -6,11 +6,13 @@
     Provisions external test assets and AI knowledge bases:
     -Test     : Verifies and provisions physical silicon SingleStepTests test vectors and regression media.
     -Graphify : Generates and updates AST-level code knowledge graph (graphify-out/) for structural queries (alias: -Graph).
-    -All      : Executes test suites and Graphify AST bootstrapping (tests -> Graphify).
+    -Rag      : Indexes Amiga documentation into the local RAG database (aliases: -Doc, -Qdrant).
+    -All      : Executes test suites, Graphify AST, and RAG documentation bootstrapping (tests -> Graphify -> RAG).
 
 .EXAMPLE
     .\tools\bootstrap.ps1 -Test
     .\tools\bootstrap.ps1 -Graphify
+    .\tools\bootstrap.ps1 -Rag
     .\tools\bootstrap.ps1 -All
 #>
 
@@ -19,6 +21,8 @@ param(
     [switch]$Test,
     [Alias("Graph")]
     [switch]$Graphify,
+    [Alias("Doc", "Qdrant")]
+    [switch]$Rag,
     [switch]$Ref,
     [string]$RefItem,
     [Alias("AllMirrors")]
@@ -41,14 +45,15 @@ function Show-Usage {
     Write-Host "Usage:"
     Write-Host "  .\tools\bootstrap.ps1 -Test     : Provision hardware test vectors (SingleStepTests, vAmiga, AmigaTestKit)"
     Write-Host "  .\tools\bootstrap.ps1 -Graphify : Provision code knowledge graph (Graphify AST extraction)"
+    Write-Host "  .\tools\bootstrap.ps1 -Rag      : Index Amiga docs, design notes, and references into the RAG database"
     Write-Host "  .\tools\bootstrap.ps1 -Ref      : Provision external reference materials into temp/ (PDFs, HTML crawls)"
-    Write-Host "  .\tools\bootstrap.ps1 -All      : Provision all components (tests -> Graphify AST)"
+    Write-Host "  .\tools\bootstrap.ps1 -All      : Provision all components (tests -> Graphify AST -> RAG docs)"
     Write-Host ""
 }
 
 if ($ExtractOnly) { $Ref = $true }
 
-if (-not $Test -and -not $Graphify -and -not $Ref -and -not $All) {
+if (-not $Rag -and -not $Test -and -not $Graphify -and -not $Ref -and -not $All) {
     Show-Usage
     exit 0
 }
@@ -56,6 +61,7 @@ if (-not $Test -and -not $Graphify -and -not $Ref -and -not $All) {
 $TotalSteps = 0
 if ($Test -or $All) { $TotalSteps++ }
 if ($Graphify -or $All) { $TotalSteps++ }
+if ($Rag -or $All) { $TotalSteps++ }
 if ($Ref) { $TotalSteps++ }
 $CurrentStep = 1
 
@@ -216,6 +222,41 @@ if ($Graphify -or $All) {
             Write-Host "Code knowledge graph updated successfully in graphify-out/." -ForegroundColor Green
         } else {
             Write-Warning "Graphify update exited with code $LASTEXITCODE."
+        }
+    }
+}
+
+# -----------------------------------------------------------------------------
+# Tier 3: Knowledge & Documentation Bootstrap (-Rag / -All)
+# -----------------------------------------------------------------------------
+if ($Rag -or $All) {
+    Write-Host ""
+    Write-Host "[$CurrentStep/$TotalSteps] Bootstrapping Amiga RAG Documentation..." -ForegroundColor Green
+    Write-Host "--------------------------------------------------------------" -ForegroundColor DarkGray
+    $CurrentStep++
+
+    $RagQdrantCommand = Get-Command rag_qdrant -ErrorAction SilentlyContinue
+    if (-not $RagQdrantCommand) {
+        Write-Warning "rag_qdrant CLI is not found on PATH. Install it before running -Rag."
+    } else {
+        $AmigaDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga"
+        $IndexCommands = @(
+            @($RepoRoot, "--source", "amiga", "--include-dirs", "docs"),
+            @($AmigaDocumentationRoot, "--source", "amiga", "--include-dirs", "Design", "Reference")
+        )
+        $IndexingSucceeded = $true
+
+        foreach ($IndexArguments in $IndexCommands) {
+            & $RagQdrantCommand.Path @IndexArguments
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "rag_qdrant indexing exited with code $LASTEXITCODE."
+                $IndexingSucceeded = $false
+                break
+            }
+        }
+
+        if ($IndexingSucceeded) {
+            Write-Host "Amiga RAG documentation bootstrap completed successfully." -ForegroundColor Green
         }
     }
 }

@@ -6267,3 +6267,21 @@ Every future modification or implementation task must append an entry following 
   - `skill-creator/scripts/quick_validate.py .agents/skills/index-amiga-rag`: passed.
   - `cargo fmt --all -- --check`, `cargo test -p test_runner --test test_architecture_rules`, and `tools/harness/pre_flight.py`: passed.
   - Live indexing was not run because the current shell does not expose the external `rag_qdrant` command on `PATH`.
+
+---
+
+### [2026-09-22 14:48 CEST] - Restore RAG Bootstrap Tier
+- **Affected Subsystems**:
+  - `tools/bootstrap.ps1`: Restored the `-Rag` switch, its aliases, progress accounting, help text, and `-All` sequencing.
+  - `tools/amiga-rag-mcp-server/README.md`: Documented the operator bootstrap entry point alongside the MCP integration.
+  - `tools/amiga-rag-mcp-server/tests/test_bootstrap_contract.py`: Added a command-boundary regression test for the bootstrap tier.
+- **What Was Changed (The Concrete Reality)**:
+  - `tools/bootstrap.ps1 -Rag` resolves `rag_qdrant` from `PATH` and incrementally indexes `docs`, then `Obsidian/Amiga/Design` and `Obsidian/Amiga/Reference`, under the `amiga` source tag.
+  - `tools/bootstrap.ps1 -All` now runs test setup, Graphify, and the restored RAG tier in that order.
+- **Why It Was Done & Architectural Rationale**:
+  - The operator bootstrap path now uses the same public CLI and scoped document contract as the MCP server, with no dependency on the retired in-repository indexer.
+- **Verification & Test Results**:
+  - PowerShell syntax parsing passed.
+  - A temporary PATH-resolved `rag_qdrant` command confirmed both scoped CLI calls and successful `-Rag` completion.
+  - The Python regression suite could not run because this environment has neither a `python` command nor an installed Python interpreter behind `py`.
+  - Live indexing was not run because the installed `rag_qdrant` PowerShell launcher is blocked by the current script-signature policy.

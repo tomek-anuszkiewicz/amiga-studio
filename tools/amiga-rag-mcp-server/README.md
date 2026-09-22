@@ -43,4 +43,6 @@ It uses the `amiga` source tag and reuses the cache by default. Call
 `rag_reindex(force=true)` to pass `--reindex` to both CLI calls and rebuild the
 scoped documents.
 
-The MCP server is the sole RAG integration point for the Amiga project.
+The MCP server is the RAG integration point for agent retrieval and reindexing.
+For operator-driven setup, `tools/bootstrap.ps1 -Rag` invokes the same
+PATH-resolved command with these same two Amiga scopes.
