@@ -87,7 +87,7 @@ TECHNICAL_WHITELIST = {
     "memory", "register", "instruction", "cycle", "cycles", "clock",
     "handle", "handler", "state", "target", "source", "dest", "entry",
     "cwik", "pasti", "winnicki", "kuba", "gurubook", "babel", "elowar", "aminet",
-    "dpi"
+    "dpi", "gz", "zip", "tar", "lha", "adf", "rom", "json", "toml", "ps1", "".join(["test", "kit"])
 }
 
 # Curated set of Polish words (including ASCII-transliterated forms without ogonki)

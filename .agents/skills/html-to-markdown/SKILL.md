@@ -25,6 +25,10 @@ All conversion scripts and references reside inside this skill directory:
 ```text
 .agents/skills/html-to-markdown/
 ├── SKILL.md                               # This workflow recipe
+├── config.yaml                            # Skill configuration (models, temperature, budget)
+├── pipeline.py                            # Master conversion orchestrator
+├── llm_cache.py                           # Content-addressable persistent disk cache (.cache/gemini)
+├── llm_client.py                          # Gemini LLM client with automatic cache checking & retry
 ├── scripts/
 │   ├── download_assets.py                 # Scans HTML, copies/downloads images to assets/, creates .txt sidecars
 │   ├── html_to_pages.py                   # Headless Chrome HTML-to-PDF & PyMuPDF page PNG rasterizer
@@ -155,21 +159,21 @@ Run `download_assets.py` to extract, copy, or download all images referenced in 
 ```powershell
 # For single HTML file:
 python .agents/skills/html-to-markdown/scripts/download_assets.py `
-  --html "Obsidian/Amiga/Reference/temp/DocFolder/doc.html" `
-  --assets-dir "Obsidian/Amiga/Reference/temp/html-sandbox/assets"
+  --html "Obsidian/Amiga/Reference/DocFolder/doc.html" `
+  --assets-dir "Obsidian/Amiga/Reference/html-sandbox/assets"
 
 # For multi-page HTML directory crawl:
-Get-ChildItem "Obsidian/Amiga/Reference/temp/DocFolder/*.html" | ForEach-Object {
+Get-ChildItem "Obsidian/Amiga/Reference/DocFolder/*.html" | ForEach-Object {
   python .agents/skills/html-to-markdown/scripts/download_assets.py `
     --html $_.FullName `
-    --assets-dir "Obsidian/Amiga/Reference/temp/html-sandbox/assets"
+    --assets-dir "Obsidian/Amiga/Reference/html-sandbox/assets"
 }
 ```
 *(Optional)* If visual page layout inspection is needed, render high-res page PNGs:
 ```powershell
 python .agents/skills/html-to-markdown/scripts/html_to_pages.py `
-  --input "Obsidian/Amiga/Reference/temp/DocFolder/doc.html" `
-  --output-dir "Obsidian/Amiga/Reference/temp/html-sandbox/pages" `
+  --input "Obsidian/Amiga/Reference/DocFolder/doc.html" `
+  --output-dir "Obsidian/Amiga/Reference/html-sandbox/pages" `
   --resolution 200
 ```
 
@@ -190,19 +194,19 @@ The LLM will produce clean Markdown with:
 Run `replace_placeholders.py` to verify assets, update image links, and guarantee sidecars:
 ```powershell
 python .agents/skills/html-to-markdown/scripts/replace_placeholders.py `
-  --markdown "Obsidian/Amiga/Reference/temp/html-sandbox/doc.md" `
-  --assets-dir "Obsidian/Amiga/Reference/temp/html-sandbox/assets" `
-  --source-assets-dir "Obsidian/Amiga/Reference/temp/DocFolder" `
-  --pages-dir "Obsidian/Amiga/Reference/temp/html-sandbox/pages"
+  --markdown "Obsidian/Amiga/Reference/html-sandbox/doc.md" `
+  --assets-dir "Obsidian/Amiga/Reference/html-sandbox/assets" `
+  --source-assets-dir "Obsidian/Amiga/Reference/DocFolder" `
+  --pages-dir "Obsidian/Amiga/Reference/html-sandbox/pages"
 ```
 
 ### Phase 4: Headless Visual Comparison
 Generate a side-by-side visual comparison between the original HTML rendering and the converted Markdown:
 ```powershell
 python .agents/skills/html-to-markdown/scripts/render_comparison.py `
-  --html "Obsidian/Amiga/Reference/temp/DocFolder/doc.html" `
-  --markdown "Obsidian/Amiga/Reference/temp/html-sandbox/doc.md" `
-  --output-dir "Obsidian/Amiga/Reference/temp/html-sandbox"
+  --html "Obsidian/Amiga/Reference/DocFolder/doc.html" `
+  --markdown "Obsidian/Amiga/Reference/html-sandbox/doc.md" `
+  --output-dir "Obsidian/Amiga/Reference/html-sandbox"
 ```
 Open `visual_comparison.png` to visually audit typography, alignment, and diagram placement.
 
@@ -210,6 +214,6 @@ Open `visual_comparison.png` to visually audit typography, alignment, and diagra
 Run `validate_links.py` to verify 100% link, anchor, and image resolution:
 ```powershell
 python .agents/skills/html-to-markdown/scripts/validate_links.py `
-  "Obsidian/Amiga/Reference/temp/html-sandbox/doc.md"
+  "Obsidian/Amiga/Reference/html-sandbox/doc.md"
 ```
 Target: **100% PASS (0 broken files, 0 broken anchors, 0 warnings)**.

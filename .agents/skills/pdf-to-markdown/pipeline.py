@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-pipeline.py: Master CLI Orchestrator for the 13-Stage PDF-to-Markdown Pipeline.
+pipeline.py: Master CLI Orchestrator for the 14-Stage PDF-to-Markdown Pipeline.
 """
 
 import argparse
@@ -105,18 +105,26 @@ STAGE_REGISTRY: List[Dict[str, Any]] = [
     },
     {
         "id": "12",
-        "dir": "12_refine_first_chapter_name",
-        "script": "refine_name.py",
-        "desc": "Refine canonical name of first chapter",
-        "targets": ["12_refine_first_chapter_name"],
+        "dir": "12_generate_properties",
+        "script": "generate_properties.py",
+        "desc": "Generate publication-grade Obsidian YAML properties with LLM",
+        "targets": ["12_generate_properties"],
         "inspect": ("*.md", "Markdown files"),
     },
     {
         "id": "13",
-        "dir": "13_link_toc",
+        "dir": "13_refine_first_chapter_name",
+        "script": "refine_name.py",
+        "desc": "Refine canonical name of first chapter",
+        "targets": ["13_refine_first_chapter_name"],
+        "inspect": ("*.md", "Markdown files"),
+    },
+    {
+        "id": "14",
+        "dir": "14_link_toc",
         "script": "link_toc.py",
         "desc": "Fuzzy header matching & TOC wikilink conversion",
-        "targets": ["13_link_toc", "__OUTPUT_DIR__"],
+        "targets": ["14_link_toc", "__OUTPUT_DIR__"],
         "inspect": ("*.md", "Markdown files"),
     },
 ]
@@ -139,6 +147,8 @@ def update_status(
     details: str = "",
     duration_seconds: Optional[float] = None,
     llm_calls: Optional[int] = None,
+    llm_cached_calls: Optional[int] = None,
+    llm_time_seconds: Optional[float] = None,
 ):
     data = {}
     if status_file.exists():
@@ -155,6 +165,10 @@ def update_status(
         entry["duration_seconds"] = duration_seconds
     if llm_calls is not None or "llm_calls" not in entry:
         entry["llm_calls"] = llm_calls if llm_calls is not None else 0
+    if llm_cached_calls is not None or "llm_cached_calls" not in entry:
+        entry["llm_cached_calls"] = llm_cached_calls if llm_cached_calls is not None else 0
+    if llm_time_seconds is not None or "llm_time_seconds" not in entry:
+        entry["llm_time_seconds"] = llm_time_seconds if llm_time_seconds is not None else 0.0
 
     status_file.parent.mkdir(parents=True, exist_ok=True)
     with open(status_file, "w", encoding="utf-8") as f:
@@ -228,7 +242,7 @@ def run_stage(
             cmd.extend(["--page-ranges", str(page_ranges)])
     elif stage_num == "11":
         cmd.extend(["--output-dir", str(workspace_dir / "11_emit_markdown")])
-    elif stage_num == "13" and output_dir:
+    elif stage_num == "14" and output_dir:
         cmd.extend(["--output-dir", str(output_dir)])
 
     if verbose:
@@ -242,44 +256,73 @@ def run_stage(
     try:
         stage_metrics_file.unlink(missing_ok=True)
         with open(stage_metrics_file, "w", encoding="utf-8") as f:
-            json.dump({"llm_calls": 0}, f)
+            json.dump({"llm_calls": 0, "llm_cached_calls": 0, "llm_time_seconds": 0.0}, f)
     except Exception:
         pass
 
     env = os.environ.copy()
     env["LLM_STAGE_METRICS_FILE"] = str(stage_metrics_file)
 
-    def read_and_clean_metrics() -> int:
-        calls = 0
+    def read_and_clean_metrics() -> dict:
+        m = {"llm_calls": 0, "llm_cached_calls": 0, "llm_time_seconds": 0.0}
         if stage_metrics_file.exists():
             try:
                 with open(stage_metrics_file, "r", encoding="utf-8") as f:
-                    calls = json.load(f).get("llm_calls", 0)
+                    data = json.load(f)
+                    m["llm_calls"] = int(data.get("llm_calls", 0))
+                    m["llm_cached_calls"] = int(data.get("llm_cached_calls", 0))
+                    m["llm_time_seconds"] = float(data.get("llm_time_seconds", 0.0))
                 stage_metrics_file.unlink(missing_ok=True)
             except Exception:
                 pass
-        return calls
+        return m
 
     update_status(status_file, stage_num, "running")
     start_time = time.time()
     try:
         subprocess.run(cmd, env=env, check=True)
         duration = round(time.time() - start_time, 2)
-        calls = read_and_clean_metrics()
-        update_status(status_file, stage_num, "success", duration_seconds=duration, llm_calls=calls)
-        print(f"[*] Stage {stage_num} finished in {duration:.2f}s with {calls} LLM call(s).")
+        m = read_and_clean_metrics()
+        update_status(
+            status_file,
+            stage_num,
+            "success",
+            duration_seconds=duration,
+            llm_calls=m["llm_calls"],
+            llm_cached_calls=m["llm_cached_calls"],
+            llm_time_seconds=m["llm_time_seconds"],
+        )
+        print(f"[*] Stage {stage_num} finished in {duration:.2f}s (LLM API: {m['llm_calls']}, Cache: {m['llm_cached_calls']}).")
         return True
     except subprocess.CalledProcessError as e:
         duration = round(time.time() - start_time, 2)
-        calls = read_and_clean_metrics()
-        print(f"[!] Stage {stage_num} failed with return code {e.returncode} ({duration:.2f}s, {calls} LLM calls)", file=sys.stderr)
-        update_status(status_file, stage_num, "failed", f"Exit code {e.returncode}", duration_seconds=duration, llm_calls=calls)
+        m = read_and_clean_metrics()
+        print(f"[!] Stage {stage_num} failed with return code {e.returncode} ({duration:.2f}s, LLM API: {m['llm_calls']}, Cache: {m['llm_cached_calls']})", file=sys.stderr)
+        update_status(
+            status_file,
+            stage_num,
+            "failed",
+            f"Exit code {e.returncode}",
+            duration_seconds=duration,
+            llm_calls=m["llm_calls"],
+            llm_cached_calls=m["llm_cached_calls"],
+            llm_time_seconds=m["llm_time_seconds"],
+        )
         return False
     except Exception as e:
         duration = round(time.time() - start_time, 2)
-        calls = read_and_clean_metrics()
-        print(f"[!] Stage {stage_num} encountered exception: {e} ({duration:.2f}s, {calls} LLM calls)", file=sys.stderr)
-        update_status(status_file, stage_num, "failed", str(e), duration_seconds=duration, llm_calls=calls)
+        m = read_and_clean_metrics()
+        print(f"[!] Stage {stage_num} encountered exception: {e} ({duration:.2f}s, LLM API: {m['llm_calls']}, Cache: {m['llm_cached_calls']})", file=sys.stderr)
+        update_status(
+            status_file,
+            stage_num,
+            "failed",
+            str(e),
+            duration_seconds=duration,
+            llm_calls=m["llm_calls"],
+            llm_cached_calls=m["llm_cached_calls"],
+            llm_time_seconds=m["llm_time_seconds"],
+        )
         return False
 
 
@@ -313,7 +356,7 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Optional[Path]):
                 status_data = json.load(f)
             if status_data:
                 print("\n---------------- Stage Statistics ----------------")
-                total_duration, total_calls = 0.0, 0
+                total_duration, total_calls, total_cached = 0.0, 0, 0
                 for s in STAGE_REGISTRY:
                     num = s["id"]
                     if num in status_data:
@@ -324,14 +367,17 @@ def print_pipeline_status(workspace_dir: Path, output_dir: Optional[Path]):
                         if dur is not None:
                             total_duration += dur
                         calls = st.get("llm_calls", 0)
+                        cached = st.get("llm_cached_calls", 0)
                         total_calls += calls
-                        print(f"Stage {num} ({s['dir']:<28}): {status:<8} | Time: {dur_str:>8} | LLM: {calls:>4} call(s)")
-                print(f"Total Measured Time: {total_duration:.2f}s | Total LLM Calls: {total_calls}")
+                        total_cached += cached
+                        print(f"Stage {num} ({s['dir']:<28}): {status:<8} | Time: {dur_str:>8} | LLM API: {calls:>4} | Cache: {cached:>4}")
+                print(f"Total Measured Time: {total_duration:.2f}s | Total LLM API Calls: {total_calls} | Total Cache Hits: {total_cached}")
                 print("--------------------------------------------------")
         except Exception:
             pass
 
     print("==================================================\n")
+
 
 
 def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], start_idx: int, status_file: Path):
@@ -371,7 +417,7 @@ def clean_downstream_stages(workspace_dir: Path, output_dir: Optional[Path], sta
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Master 13-Stage PDF-to-Markdown Pipeline Orchestrator")
+    parser = argparse.ArgumentParser(description="Master 14-Stage PDF-to-Markdown Pipeline Orchestrator")
     parser.add_argument("--pdf", type=str, help="Path to input technical PDF document")
     parser.add_argument("--workspace", type=str, default=None, help="Workspace directory for intermediate data")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory for generated Markdown files")
@@ -435,11 +481,12 @@ def main():
 
     # Snapshot config into workspace
     workspace_config_path = workspace_dir / "config.yaml"
-    try:
-        shutil.copyfile(config_source_path, workspace_config_path)
-    except Exception as e:
-        print(f"[!] Error snapshotting config to workspace {workspace_config_path}: {e}", file=sys.stderr)
-        sys.exit(1)
+    if config_source_path.resolve() != workspace_config_path.resolve():
+        try:
+            shutil.copyfile(config_source_path, workspace_config_path)
+        except Exception as e:
+            print(f"[!] Error snapshotting config to workspace {workspace_config_path}: {e}", file=sys.stderr)
+            sys.exit(1)
     config_path = workspace_config_path
 
     output_dir = None
@@ -447,7 +494,7 @@ def main():
         output_dir = Path(args.output_dir).resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
     elif book_dir:
-        output_dir = (book_dir / "output_markdown").resolve()
+        output_dir = book_dir.resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.status:
@@ -522,6 +569,14 @@ def main():
         if not success:
             print(f"\n[!] Pipeline halted at Stage {s_info['id']} due to failure.", file=sys.stderr)
             sys.exit(1)
+
+    if output_dir:
+        out_assets = output_dir / "assets"
+        if out_assets.exists() and not any(out_assets.iterdir()):
+            try:
+                out_assets.rmdir()
+            except Exception:
+                pass
 
     print("\n[+] Selected pipeline stages completed successfully!")
 

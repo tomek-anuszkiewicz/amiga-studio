@@ -1,0 +1,199 @@
+<#
+.SYNOPSIS
+    Repository bootstrap coordinator for the Amiga 500 emulator.
+
+.DESCRIPTION
+    Coordinates the provisioning of external hardware test suites, AI code knowledge
+    graphs, local RAG vector documentation, and external reference documentation.
+
+    Delegates execution to modular standalone bootstrap scripts:
+    - Tier 1: Hardware Verification & External Sources (-Sources -> tools/bootstrap/bootstrap_sources.ps1)
+    - Tier 2: AST-Level Code Knowledge Graph (-Graphify -> tools/bootstrap/bootstrap_graphify.ps1)
+    - Tier 3: External Reference Documentation & Scans (-Documentation -> tools/bootstrap/bootstrap_documentation.ps1)
+    - Tier 4: AI Knowledge & Qdrant RAG Vector Index (-Rag -> tools/bootstrap/bootstrap_rag.ps1)
+
+    NOTE: Bootstrapping is NOT required to build, test, or run the emulator.
+    A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'.
+
+.PARAMETER Sources
+    Verifies and provisions physical silicon SingleStepTests 68000 test vectors,
+    AmigaTestKit ADF, and reference emulators in ref_src/. Delegates to
+    tools/bootstrap_sources.ps1.
+
+.PARAMETER Graphify
+    Generates and updates the AST-level code knowledge graph in graphify-out/ for
+    structural queries, call hierarchies, and architectural navigation.
+    Delegates to tools/bootstrap_graphify.ps1. Alias: -Graph.
+
+.PARAMETER Rag
+    Indexes Commodore hardware reference manuals, PRMs, and Obsidian architecture
+    notes into the local Qdrant vector database (http://localhost:6333, collection: amiga).
+    Delegates to tools/bootstrap_rag.ps1. Alias: -Qdrant.
+
+.PARAMETER Documentation
+    Provisions raw external reference documentation (PDF scans, microarchitectural guides,
+    and multi-page HTML crawls) into Obsidian/Amiga/Reference/. Delegates to
+    tools/bootstrap_documentation.ps1.
+
+.PARAMETER Markdown
+    When bootstrapping documentation (-Documentation), converts downloaded
+    reference scans and crawls into publication-grade Markdown directly within their target
+    directories. Aliases: -Convert, -Process.
+
+.PARAMETER All
+    Executes all 4 bootstrap tiers in physical causal order:
+    (-Sources -> -Graphify -> -Documentation -> -Rag).
+
+.EXAMPLE
+    .\tools\bootstrap\bootstrap.ps1 -Sources
+    Provision external hardware test vectors and sources (SingleStepTests, vAmiga).
+
+.EXAMPLE
+    .\tools\bootstrap\bootstrap.ps1 -Graphify
+    Update AST code knowledge graph in graphify-out/.
+
+.EXAMPLE
+    .\tools\bootstrap\bootstrap.ps1 -Rag
+    Index Obsidian technical documentation into the local Qdrant vector database.
+
+.EXAMPLE
+    .\tools\bootstrap\bootstrap.ps1 -Documentation
+    Download all external reference documentation into Obsidian/Amiga/Reference/.
+
+.EXAMPLE
+    .\tools\bootstrap\bootstrap.ps1 -Documentation -Markdown
+    Download and convert external reference documentation into publication-grade Markdown.
+
+.EXAMPLE
+    .\tools\bootstrap\bootstrap.ps1 -All
+    Run all primary bootstrap tiers (sources -> Graphify AST -> RAG documentation).
+#>
+
+[CmdletBinding()]
+param(
+    [switch]$Sources,
+    [Alias("Graph")]
+    [switch]$Graphify,
+    [Alias("Qdrant")]
+    [switch]$Rag,
+    [switch]$Documentation,
+    [Alias("Convert", "Process")]
+    [switch]$Markdown,
+    [switch]$All
+)
+
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+
+function Show-Usage {
+    Write-Host ""
+    Write-Host "Amiga 500 Emulator Repository Bootstrapper" -ForegroundColor Cyan
+    Write-Host "=========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "NOTE: Bootstrapping is NOT required to build or run the emulator!" -ForegroundColor Yellow
+    Write-Host "      A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'."
+    Write-Host ""
+    Write-Host "Usage:" -ForegroundColor White
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Sources         : Provision external test sources & vectors (SingleStepTests, vAmiga)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Graphify        : Provision code knowledge graph (Graphify AST extraction)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Documentation   : Provision external reference materials (PDFs, HTML crawls)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Rag             : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -All             : Provision all 4 tiers in causal order (sources -> graph -> docs -> RAG)"
+    Write-Host ""
+    Write-Host "Options:" -ForegroundColor White
+    Write-Host "  -Sources                 : Verify & unpack SingleStepTests 68000 test vectors"
+    Write-Host "  -Graphify                : Update AST code knowledge graph (alias: -Graph)"
+    Write-Host "  -Documentation           : Download external reference materials into Reference/"
+    Write-Host "  -Markdown                : Convert downloaded materials into publication-grade Markdown (aliases: -Convert, -Process)"
+    Write-Host "  -Rag                     : Index Obsidian docs into Qdrant (alias: -Qdrant)"
+    Write-Host "  -All                     : Run all 4 tiers in causal order (-Sources, -Graphify, -Documentation, -Rag)"
+    Write-Host ""
+}
+
+if ($Markdown) { $Documentation = $true }
+
+if (-not $Rag -and -not $Sources -and -not $Graphify -and -not $Documentation -and -not $All) {
+    Show-Usage
+    exit 0
+}
+
+$TotalSteps = 0
+if ($Sources -or $All) { $TotalSteps++ }
+if ($Graphify -or $All) { $TotalSteps++ }
+if ($Documentation -or $All) { $TotalSteps++ }
+if ($Rag -or $All) { $TotalSteps++ }
+$CurrentStep = 1
+
+# -----------------------------------------------------------------------------
+# Tier 1: Verification & External Sources Bootstrap (-Sources / -All)
+# -----------------------------------------------------------------------------
+if ($Sources -or $All) {
+    Write-Host ""
+    Write-Host "[$CurrentStep/$TotalSteps] Delegating to External Sources Bootstrapper..." -ForegroundColor Green
+    Write-Host "-------------------------------------------------------------" -ForegroundColor DarkGray
+    $CurrentStep++
+
+    $SourcesScript = Join-Path $PSScriptRoot "bootstrap_sources.ps1"
+    if (-not (Test-Path $SourcesScript)) {
+        Write-Error "bootstrap_sources.ps1 not found at: $SourcesScript"
+    } else {
+        & $SourcesScript
+    }
+}
+
+# -----------------------------------------------------------------------------
+# Tier 2: Code Knowledge Graph Bootstrap (-Graphify / -All)
+# -----------------------------------------------------------------------------
+if ($Graphify -or $All) {
+    Write-Host ""
+    Write-Host "[$CurrentStep/$TotalSteps] Delegating to Code Knowledge Graph Bootstrapper..." -ForegroundColor Green
+    Write-Host "-----------------------------------------------------------------" -ForegroundColor DarkGray
+    $CurrentStep++
+
+    $GraphifyScript = Join-Path $PSScriptRoot "bootstrap_graphify.ps1"
+    if (-not (Test-Path $GraphifyScript)) {
+        Write-Error "bootstrap_graphify.ps1 not found at: $GraphifyScript"
+    } else {
+        & $GraphifyScript
+    }
+}
+
+# -----------------------------------------------------------------------------
+# Tier 3: External Reference Documentation Bootstrap (-Documentation / -All)
+# -----------------------------------------------------------------------------
+if ($Documentation -or $All) {
+    Write-Host ""
+    Write-Host "[$CurrentStep/$TotalSteps] Delegating to External Documentation Bootstrapper..." -ForegroundColor Green
+    Write-Host "-------------------------------------------------------------------" -ForegroundColor DarkGray
+    $CurrentStep++
+
+    $DocScript = Join-Path $PSScriptRoot "bootstrap_documentation.ps1"
+    if (-not (Test-Path $DocScript)) {
+        Write-Error "bootstrap_documentation.ps1 not found at: $DocScript"
+    } else {
+        $DocParams = @{ All = $true }
+        if ($Markdown) {
+            $DocParams["Markdown"] = $true
+        }
+        & $DocScript @DocParams
+    }
+}
+
+# -----------------------------------------------------------------------------
+# Tier 4: Knowledge & Documentation Bootstrap (-Rag / -All)
+# -----------------------------------------------------------------------------
+if ($Rag -or $All) {
+    Write-Host ""
+    Write-Host "[$CurrentStep/$TotalSteps] Delegating to AI Documentation Bootstrapper..." -ForegroundColor Green
+    Write-Host "--------------------------------------------------------" -ForegroundColor DarkGray
+    $CurrentStep++
+
+    $RagScript = Join-Path $PSScriptRoot "bootstrap_rag.ps1"
+    if (-not (Test-Path $RagScript)) {
+        Write-Error "bootstrap_rag.ps1 not found at: $RagScript"
+    } else {
+        & $RagScript
+    }
+}
+
+Write-Host ""
+Write-Host "Bootstrap procedure finished." -ForegroundColor Cyan

@@ -41,6 +41,8 @@ def proofread_title_llm(raw_title: str, gemini: GeminiClient) -> str:
         "You are an expert technical editor. Correct any OCR typos, accidental split words, or weird spacing "
         "in this chapter/section title. Do not change the wording or meaning; only fix OCR errors and broken words "
         "(e.g. 'HARDW ARE' -> 'HARDWARE', 'COPROC ESSOR' -> 'COPROCESSOR', 'PLAYF IELD' -> 'PLAYFIELD'). "
+        "Motorola processor model numbers end in numeric zeros, NEVER the letter 'O' "
+        "(e.g. 'MC68000' not 'MC68OOO', 'MC68HC000' not 'MC68HCOOO', 'MC68EC000' not 'MC68ECOOO'). "
         "Return ONLY the clean corrected title text without quotes, markdown formatting, or explanation:\n\n"
         f"{raw_title}"
     )
@@ -51,6 +53,28 @@ def proofread_title_llm(raw_title: str, gemini: GeminiClient) -> str:
     except Exception as e:
         print(f"[!] Warning: LLM title proofreading failed for '{raw_title}': {e}")
     return raw_title
+
+
+def determine_section_title_llm(raw_title: str, raw_slug: str, sample_text: str, gemini: GeminiClient) -> str:
+    """Queries Gemini to dynamically determine the canonical, publication-grade title based on section content."""
+    prompt = (
+        "You are an expert technical book editor. Determine the canonical, professional title for this section "
+        "of a technical manual based on its actual content.\n\n"
+        f"Preliminary Title: {raw_title}\n"
+        f"Section Slug: {raw_slug}\n"
+        f"Content Excerpt:\n```markdown\n{sample_text[:1500]}\n```\n\n"
+        "Return ONLY the clean canonical title string (e.g. 'Preface and Front Matter', 'Table of Contents', 'Publication Colophon') "
+        "without quotes, markdown formatting, or explanation:"
+    )
+    try:
+        c_title = gemini.generate_text(prompt, stage="10_proofread_stream").strip().strip('"').strip("'")
+        if c_title and len(c_title) < 100:
+            if raw_slug == "preface" and "table of contents" in c_title.lower():
+                return "Front Matter"
+            return c_title
+    except Exception as e:
+        print(f"[!] Warning: LLM title determination failed for '{raw_title}': {e}")
+    return raw_title if (raw_slug != "preface" or "table of contents" not in raw_title.lower()) else "Front Matter"
 
 
 def proofread_node_text(text: str, gemini: GeminiClient, base_prompt: str) -> str:
@@ -76,6 +100,7 @@ def process_proofread_stream(
 ):
     output_dir.mkdir(parents=True, exist_ok=True)
     out_assets = output_dir / "assets"
+    out_assets.mkdir(parents=True, exist_ok=True)
 
     # Clean previous outputs in output_dir
     for old_json in output_dir.glob("*.json"):
@@ -126,25 +151,52 @@ def process_proofread_stream(
                 break
 
     if src_assets and src_assets.exists():
-        for asset_f in src_assets.glob("*"):
-            if asset_f.is_file():
-                out_assets.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(asset_f, out_assets / asset_f.name)
+        for asset_file in src_assets.glob("*"):
+            if asset_file.is_file():
+                shutil.copy2(asset_file, out_assets / asset_file.name)
 
-    # Initialize Gemini client
-    gemini = None
-    base_prompt = ""
-    if not skip_llm:
-        gemini = GeminiClient(config) if GeminiClient else None
-        prompt_file = Path(__file__).resolve().parent / "prompt.md"
-        if prompt_file.exists():
-            base_prompt = prompt_file.read_text(encoding="utf-8")
+    gemini = GeminiClient(config)
+    prompt_file = Path(__file__).resolve().parent / "prompt.md"
+    base_prompt = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
 
     concurrency = int(config.get("llm", {}).get("concurrency", 8))
-    if gemini and gemini.is_available():
-        print(f"[*] Stream Proofreading LLM active ({gemini.default_model}). Processing {len(manifest)} partitions (concurrency={concurrency})...")
-    else:
-        print(f"[*] Stream Proofreading LLM offline or skipped. Normalizing streams directly...")
+    print(f"[*] Stream Proofreading LLM active ({gemini.default_model}). Processing {len(manifest)} partitions (concurrency={concurrency})...")
+
+    title_map = {}
+    if manifest:
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _proofread_single_title(entry):
+            raw_title = entry.get("title", "")
+            raw_slug = entry.get("slug", "")
+            idx = entry.get("index", 0)
+            key = (idx, raw_slug)
+
+            # Sample text from chapter JSON to assist dynamic title determination
+            sample_text = ""
+            json_candidate = input_dir / f"{idx:02d}_{raw_slug}.json"
+            if not json_candidate.exists():
+                json_candidate = workspace_dir / entry.get("json_file", "")
+            if json_candidate.exists():
+                try:
+                    with open(json_candidate, "r", encoding="utf-8") as f:
+                        sample_nodes = json.load(f)
+                    informative_nodes = [n for n in sample_nodes if n.get("type") not in ("thumb_index", "header", "footer")]
+                    if not informative_nodes:
+                        informative_nodes = sample_nodes
+                    sample_text = " ".join([n.get("raw_text", "") or n.get("rendered_markdown", "") for n in informative_nodes[:10]])
+                except Exception:
+                    pass
+
+            if idx == 0 or raw_slug in ("preface", "toc"):
+                return key, determine_section_title_llm(raw_title, raw_slug, sample_text, gemini)
+            elif raw_title:
+                return key, proofread_title_llm(raw_title, gemini)
+            return key, raw_title
+
+        with ThreadPoolExecutor(max_workers=min(len(manifest), concurrency)) as executor:
+            title_results = list(executor.map(_proofread_single_title, manifest))
+        title_map = dict(title_results)
 
     updated_manifest = []
 
@@ -171,10 +223,8 @@ def process_proofread_stream(
         with open(json_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
 
-        # 1. Proofread and correct chapter title
-        corrected_title = raw_title
-        if gemini and gemini.is_available() and not skip_llm and raw_title:
-            corrected_title = proofread_title_llm(raw_title, gemini)
+        # 1. Proofread and correct chapter title using composite key
+        corrected_title = title_map.get((idx, raw_slug), raw_title)
 
         # 2. Harmonize with primary heading node and update node rendered_markdown
         ch_sub = re.match(r"^chapter\s+\d+[:\s]+(.*)$", corrected_title, re.IGNORECASE)
@@ -206,7 +256,17 @@ def process_proofread_stream(
 
         target_file_slug = f"{idx:02d}_{new_slug}"
         out_json_name = f"{target_file_slug}.json"
-        target_md_name = f"{target_file_slug}.md"
+
+        # Format canonical publication-grade markdown filename matching {idx:02d} - {Title}.md
+        clean_title_name = re.sub(r'[:/\\|]', ' - ', corrected_title)
+        clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
+        clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
+        target_md_name = f"{idx:02d} - {clean_title_name}.md" if clean_title_name else f"{target_file_slug}.md"
+
+        # Prevent duplicate target filenames across partitions in the manifest
+        existing_targets = [e.get("target_md_file") for e in updated_manifest]
+        if target_md_name in existing_targets:
+            target_md_name = f"{idx:02d} - {new_slug.replace('_', ' ').title()}.md"
 
         # 4. Save proofread nodes to output_dir
         out_json_path = output_dir / out_json_name
@@ -244,8 +304,6 @@ def main():
     parser.add_argument("--input-dir", type=str, default=None, help="Input directory (defaults to workspace/09_transform_prose)")
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory (defaults to workspace/10_proofread_stream)")
     parser.add_argument("--config", type=str, required=True, help="Path to config.yaml")
-    parser.add_argument("--skip-llm", action="store_true", help="Skip LLM proofreading and normalize streams directly")
-
     args = parser.parse_args()
     workspace_dir = Path(args.workspace)
     input_dir = Path(args.input_dir) if args.input_dir else (workspace_dir / "09_transform_prose")
@@ -264,8 +322,7 @@ def main():
         workspace_dir,
         input_dir,
         output_dir,
-        config,
-        skip_llm=args.skip_llm
+        config
     )
 
 

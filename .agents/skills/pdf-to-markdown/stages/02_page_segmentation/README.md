@@ -6,6 +6,7 @@ Analyzes each page vertically from top to bottom, classifying bands into explici
 - `footer`: Page numbers, publisher bottom lines.
 - `toc_header`: Banner title introducing the Table of Contents (e.g. "TABLE OF CONTENTS").
 - `toc`: Table of contents listings and page references.
+- `thumb_index`: Printed edge tabs, chapter bookmark tabs, and thumb navigation markers along page margins.
 - `heading`: Chapter, section, and subsection headings.
 - `prose`: Running narrative body paragraphs.
 - `code_block`: Monospace assembly, C, or command listings.

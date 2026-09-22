@@ -1,10 +1,18 @@
 # Graphic Classification Triage Prompt
 
 Analyze this technical graphic.
-Determine the most appropriate representation format:
-1. `mermaid`: Is it a flowchart, state transition machine, sequence diagram, or high-level functional block chart that is best expressed as executable Mermaid diagram code?
-2. `ascii_art`: Is it a register bitfield layout, memory map, data structure bit/byte breakdown, packet/frame layout, or simple structural diagram that is best converted into clean, readable ASCII art?
-3. `schematic`: Is it a detailed electrical/logic circuit schematic, analog timing waveform graph, complex IC pin wiring, photograph, or book cover art that must be preserved as an image?
+Determine the most appropriate representation format following this strict precedence:
+
+1. `mermaid` (DEFAULT for relationships, computation, and data flow):
+   - Mandatory for all calculation graphs, effective address generation trees, arithmetic flowcharts ($+$, $\times$, pointers to memory), functional block diagrams, state transition machines, sequence timing relationships, or decision flowcharts.
+   - If a diagram shows values moving, summing, scaling, indexing, or pointing to memory addresses, ALWAYS choose `mermaid`.
+
+2. `ascii_art` (Strictly for static binary layouts):
+   - Exclusively for bitfield register structures (e.g. 16/32-bit registers showing bit 15 down to 0 with bit names inside the cells), memory maps showing numerical address ranges, packet frame byte structures, or monospace character grids where rigid horizontal column alignment of bits/bytes is mandatory.
+   - NEVER use `ascii_art` for arithmetic computation trees, data movement, or address generation graphs.
+
+3. `schematic` (Preserve as original image):
+   - Detailed electrical/logic circuit gate schematics, analog timing waveform graphs, complex IC pin wiring, photographs, or book cover art that cannot be cleanly modeled as a diagram.
 
 Return a strict JSON object:
 ```json

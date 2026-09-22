@@ -13,9 +13,12 @@ Typical outcomes:
 - If the file primarily contains the Table of Contents:
   - `title`: `"Table of Contents"`
   - `slug`: `"table_of_contents"`
-- If the file contains Preface and Table of Contents:
-  - `title`: `"Preface and Table of Contents"`
-  - `slug`: `"preface_and_contents"`
+- If the file primarily contains book cover illustration, publication notices, copyright colophon, or preface:
+  - `title`: `"Front Matter"` (or `"Preface and Front Matter"`)
+  - `slug`: `"front_matter"`
+- If the file combines Front Matter and Table of Contents:
+  - `title`: `"Table of Contents and Front Matter"`
+  - `slug`: `"contents_and_front_matter"`
 - If the file is purely an introductory chapter:
   - `title`: `"Introduction"`
   - `slug`: `"introduction"`
@@ -24,8 +27,8 @@ Typical outcomes:
 Return a strict JSON object:
 ```json
 {
-  "title": "Table of Contents",
-  "slug": "table_of_contents",
-  "explanation": "Content predominantly consists of the master table of contents list with links."
+  "title": "Table of Contents and Front Matter",
+  "slug": "contents_and_front_matter",
+  "explanation": "Content combines the publication frontispiece, copyright notice, and table of contents."
 }
 ```

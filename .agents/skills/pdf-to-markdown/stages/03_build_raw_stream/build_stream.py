@@ -70,8 +70,8 @@ def build_raw_stream(workspace_dir: Path, config: dict):
         except Exception:
             pass
 
-    padding = config.get("render", {}).get("padding_margin_ratio", 0.10)
-    all_nodes = extract_assets_for_nodes(workspace_dir, all_nodes, padding_ratio=padding, assets_dir=raw_assets_dir)
+    dpi = config.get("render", {}).get("dpi", 300)
+    all_nodes = extract_assets_for_nodes(workspace_dir, all_nodes, assets_dir=raw_assets_dir, dpi=dpi)
     raw_stream_path = raw_dir / "raw_stream.json"
     with open(raw_stream_path, "w", encoding="utf-8") as f:
         json.dump(all_nodes, f, indent=2)

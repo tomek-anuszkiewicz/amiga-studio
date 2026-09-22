@@ -69,9 +69,7 @@ def process_tables(workspace_dir: Path, config: dict):
         prompt_path = Path(__file__).resolve().parent / "prompt_markdown_table.md"
     base_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
 
-    gemini = GeminiClient(config) if GeminiClient else None
-    if not gemini or not gemini.is_available():
-        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 07 table transformation.")
+    gemini = GeminiClient(config)
 
     from concurrent.futures import ThreadPoolExecutor
 
@@ -81,72 +79,101 @@ def process_tables(workspace_dir: Path, config: dict):
     chapter_files = sorted(list(input_dir.glob("*.json")))
     transformed_count = 0
 
-    def _render_table_task(task):
-        idx, raw_text, png_path = task
-        full_prompt = f"{base_prompt}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
-        if png_path and png_path.exists():
-            rendered = gemini.generate_vision(full_prompt, image_path=png_path, stage="07_transform_tables")
-        else:
-            rendered = gemini.generate_text(full_prompt, stage="07_transform_tables")
-        return idx, rendered
+    chapters = {}
+    all_tasks = []
 
     for c_file in chapter_files:
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
+        chapters[c_file] = nodes
 
-        tasks = []
         for idx, node in enumerate(nodes):
             if node.get("type") != "table":
                 continue
             if node.get("continuation_status") == "continuation":
+                node["rendered_markdown"] = ""
                 continue
 
             raw_text = node.get("raw_text", "")
+            image_paths = []
             if node.get("continuation_status") == "head" and "merged_nodes" in node:
                 child_texts = []
+                if node.get("png_path"):
+                    p = workspace_dir / node["png_path"]
+                    if p.exists():
+                        image_paths.append(p)
                 for other in nodes:
                     if other.get("node_id") in node["merged_nodes"] and other.get("node_id") != node["node_id"]:
-                        child_texts.append(other.get("raw_text", ""))
+                        if other.get("type") == "table":
+                            child_texts.append(other.get("raw_text", ""))
+                            if other.get("png_path"):
+                                p = workspace_dir / other["png_path"]
+                                if p.exists():
+                                    image_paths.append(p)
                 if child_texts:
                     raw_text = raw_text + "\n" + "\n".join(child_texts)
+            else:
+                png_rel = node.get("png_path")
+                if png_rel:
+                    p = workspace_dir / png_rel
+                    if p.exists():
+                        image_paths.append(p)
 
-            png_rel = node.get("png_path")
-            png_path = workspace_dir / png_rel if png_rel else None
-            tasks.append((idx, raw_text, png_path))
+            png_arg = image_paths if len(image_paths) > 1 else (image_paths[0] if image_paths else None)
+            all_tasks.append((c_file, idx, raw_text, png_arg))
 
-        if tasks:
-            with ThreadPoolExecutor(max_workers=min(len(tasks), concurrency)) as executor:
-                results = list(executor.map(_render_table_task, tasks))
+    def _render_table_task(task):
+        c_file, idx, raw_text, png_arg = task
+        extra_hint = ""
+        if isinstance(png_arg, (list, tuple)) and len(png_arg) > 1:
+            extra_hint = f"\n\nNote: This table spans {len(png_arg)} consecutive pages. Merge all rows from all pages into a SINGLE unified continuous table. Drop redundant repeated header rows between pages."
+        full_prompt = f"{base_prompt}{extra_hint}\n\n## Input Table Raw Text:\n```text\n{raw_text}\n```"
+        if png_arg:
+            rendered = gemini.generate_vision(full_prompt, image_path=png_arg, stage="07_transform_tables")
+        else:
+            rendered = gemini.generate_text(full_prompt, stage="07_transform_tables")
+        return c_file, idx, rendered
 
-            for idx, rendered in results:
-                node = nodes[idx]
-                if rendered:
-                    node["rendered_markdown"] = rendered.strip() + "\n"
-                    node_id = node.get("node_id")
-                    if node_id:
-                        for asset_file in out_assets_dir.glob(f"asset_{node_id}.*"):
+    if all_tasks:
+        print(f"[*] Transforming {len(all_tasks)} tables across {len(chapters)} chapters (concurrency={concurrency})...")
+        with ThreadPoolExecutor(max_workers=min(len(all_tasks), concurrency)) as executor:
+            results = list(executor.map(_render_table_task, all_tasks))
+
+        for c_file, idx, rendered in results:
+            node = chapters[c_file][idx]
+            if rendered:
+                node["rendered_markdown"] = rendered.strip() + "\n"
+                node_id = node.get("node_id")
+                if node_id:
+                    for asset_file in out_assets_dir.glob(f"asset_{node_id}.*"):
+                        try:
+                            asset_file.unlink()
+                        except Exception:
+                            pass
+                if "merged_nodes" in node:
+                    for m_id in node["merged_nodes"]:
+                        for asset_file in out_assets_dir.glob(f"asset_{m_id}.*"):
                             try:
                                 asset_file.unlink()
                             except Exception:
                                 pass
-                    if "merged_nodes" in node:
-                        for m_id in node["merged_nodes"]:
-                            for asset_file in out_assets_dir.glob(f"asset_{m_id}.*"):
-                                try:
-                                    asset_file.unlink()
-                                except Exception:
-                                    pass
-                    node["png_path"] = None
-                    node["svg_path"] = None
-                    node["raw_text_path"] = None
-                else:
-                    asset_ref = node.get("svg_path") or node.get("png_path") or ""
-                    node["rendered_markdown"] = f"![Table]({asset_ref})\n"
-                transformed_count += 1
+                node["png_path"] = None
+                node["svg_path"] = None
+                node["raw_text_path"] = None
+            else:
+                asset_ref = node.get("svg_path") or node.get("png_path") or ""
+                node["rendered_markdown"] = f"![Table]({asset_ref})\n"
+            transformed_count += 1
 
+    for c_file, nodes in chapters.items():
+        purged_nodes = [
+            n for n in nodes
+            if n.get("continuation_status") != "absorbed_caption"
+            and n.get("type") != "caption_continuation"
+        ]
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:
-            json.dump(nodes, f, indent=2)
+            json.dump(purged_nodes, f, indent=2)
 
     print(f"[+] Stage 07 complete. Transformed {transformed_count} table blocks into {out_dir}.")
 
@@ -184,7 +211,8 @@ def prepare_table_tasks(workspace_dir: Path) -> int:
                 child_texts = []
                 for other in nodes:
                     if other.get("node_id") in node["merged_nodes"] and other.get("node_id") != node_id:
-                        child_texts.append(other.get("raw_text", ""))
+                        if other.get("type") == "table":
+                            child_texts.append(other.get("raw_text", ""))
                 if child_texts:
                     raw_text = raw_text + "\n" + "\n".join(child_texts)
 
@@ -297,9 +325,14 @@ def apply_table_tasks(workspace_dir: Path) -> int:
                     node["svg_path"] = None
                     node["raw_text_path"] = None
 
+        purged_nodes = [
+            n for n in nodes
+            if n.get("continuation_status") != "absorbed_caption"
+            and n.get("type") != "caption_continuation"
+        ]
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:
-            json.dump(nodes, f, indent=2)
+            json.dump(purged_nodes, f, indent=2)
 
     print(f"[+] Applied {applied_count} table tasks to {out_dir}.")
     return applied_count

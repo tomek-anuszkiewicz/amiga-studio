@@ -3,9 +3,9 @@
     Automated bootstrapper for external Amiga reference documentation.
 
 .DESCRIPTION
-    Fetches raw, unprocessed external reference materials (PDFs, multi-page HTML
-    crawls, and AmigaGuide archives) into:
-        Obsidian/Amiga/Reference/temp/<Document_Name>/
+    Fetches raw, unprocessed external reference materials (PDF scans, microarchitectural
+    guides, and multi-page HTML crawls) into:
+        Obsidian/Amiga/Reference/<Document_Name>/
 
     Features:
     - Multi-source resilience: 2-3 verified mirrors per document with automated failover.
@@ -13,48 +13,87 @@
       for comprehensive testing or archival redundancy.
     - Full web crawling for multi-page articles (e.g. Kuba Winnicki's 16-page 'Achtung! Amiga').
     - Clear error reporting if all mirror sources for an item are unavailable.
-    - Intentional Git visibility: temp/ is not hidden by .gitignore so temporary raw assets
-      remain explicitly visible in git status until inspected, processed, or deleted.
 
 .PARAMETER All
-    Downloads all configured reference materials.
+    Downloads all configured reference materials in the catalog.
 
-.PARAMETER Item
-    Downloads a specific document by name or alias (e.g. "Hardware Reference Manual", "Prefetch").
+.PARAMETER Destination
+    Custom destination directory (defaults to Obsidian/Amiga/Reference).
 
 .PARAMETER AllSources
     Downloads from ALL mirrors and sources for each document, rather than stopping after
-    the first successful mirror. Also aliased as -AllMirrors.
-
-.PARAMETER Destination
-    Custom destination directory (defaults to Obsidian/Amiga/Reference/temp).
+    the first successful mirror. Alias: -AllMirrors.
 
 .PARAMETER Force
     Forces re-download even if target file already exists and byte size matches.
 
-.PARAMETER List
-    Displays the catalog of reference documents and their configured mirrors.
+.PARAMETER Markdown
+    Processes downloaded reference documentation (PDF scans, microarchitectural guides,
+    and HTML crawls) into publication-grade Markdown directly within their target directories.
+    Aliases: -Convert, -Process.
+
+.PARAMETER Hrm
+    Processes only the Commodore Amiga Hardware Reference Manual.
+
+.PARAMETER Trm
+    Processes only the A500 A2000 Technical Reference Manual.
+
+.PARAMETER Prm
+    Processes only the 68000 Programmer's Reference Manual.
+
+.PARAMETER Um
+    Processes only the 68000 User's Manual.
+
+.PARAMETER Prefetch
+    Processes only Jorge Cwik's Instruction Prefetch study.
+
+.PARAMETER Undocumented
+    Processes only Kuba Winnicki's Undocumented Features of OCS, ECS, and AGA.
+
+.PARAMETER Help
+    Displays usage instructions and parameter descriptions. Aliases: -h, -?, --help.
 
 .EXAMPLE
-    .\tools\bootstrap_reference.ps1 -List
-    .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual"
-    .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual" -AllSources
-    .\tools\bootstrap_reference.ps1 -All -AllSources
-    .\tools\bootstrap_reference.ps1 -ExtractOnly
-    .\tools\bootstrap_reference.ps1 -Item "Hardware Reference Manual" -NoExtract
+    .\tools\bootstrap_documentation.ps1 -List
+    Displays catalog of reference documents and mirror sources.
+
+.EXAMPLE
+    .\tools\bootstrap_documentation.ps1 -All
+    Downloads all configured reference materials in failover mode.
+
+.EXAMPLE
+    .\tools\bootstrap_documentation.ps1 -All -Markdown
+    Downloads and converts all reference materials into publication-grade Markdown.
+
+.EXAMPLE
+    .\tools\bootstrap_documentation.ps1 -Hrm -Markdown
+    Downloads and converts only the Hardware Reference Manual into Markdown.
+
+.EXAMPLE
+    .\tools\bootstrap_documentation.ps1 -Help
+    Displays available parameters, flags, and usage examples.
 #>
 
 [CmdletBinding()]
 param(
     [switch]$All,
-    [string]$Item,
     [string]$Destination,
     [Alias("AllMirrors")]
     [switch]$AllSources,
     [switch]$Force,
     [switch]$List,
-    [switch]$NoExtract,
-    [switch]$ExtractOnly
+    [Alias("Convert", "Process")]
+    [switch]$Markdown,
+    [switch]$Hrm,
+    [switch]$Trm,
+    [switch]$Prm,
+    [switch]$Um,
+    [switch]$Prefetch,
+    [switch]$Undocumented,
+    [Alias("h", "?")]
+    [switch]$Help,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$RemainingArgs
 )
 
 # -----------------------------------------------------------------------------
@@ -64,9 +103,9 @@ param(
 # Allow fallback for archival servers with legacy or self-signed certificates
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
-$RepoRoot = Split-Path -Parent $PSScriptRoot
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (-not $Destination) {
-    $Destination = Join-Path $RepoRoot "Obsidian\Amiga\Reference\temp"
+    $Destination = Join-Path $RepoRoot "Obsidian\Amiga\Reference"
 }
 
 $DefaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -251,6 +290,38 @@ $Catalog = @(
 # Helper Functions
 # -----------------------------------------------------------------------------
 
+function Show-Usage {
+    Write-Host ""
+    Write-Host "Amiga Reference Documentation Bootstrapper" -ForegroundColor Cyan
+    Write-Host "==========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "NOTE: Downloads raw, unprocessed reference materials into Obsidian/Amiga/Reference/." -ForegroundColor Yellow
+    Write-Host "      Reference files are ignored by Git and do not affect emulator execution."
+    Write-Host ""
+    Write-Host "Usage:" -ForegroundColor White
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -List                : Show all documents and configured mirrors"
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -All                 : Download all reference materials (failover mode)"
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -All -Markdown       : Download and convert all materials into Markdown"
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -Hrm -Markdown       : Download and convert only Hardware Reference Manual"
+    Write-Host "  .\tools\bootstrap_documentation.ps1 -Help                : Display this usage and parameter list"
+    Write-Host ""
+    Write-Host "Available Parameters:" -ForegroundColor White
+    Write-Host "  -List                    : Display catalog of reference documents and mirrors"
+    Write-Host "  -All                     : Process all reference materials in the catalog"
+    Write-Host "  -Markdown                : Convert downloaded documents to publication-grade Markdown (aliases: -Convert, -Process)"
+    Write-Host "  -Hrm                     : Process only Hardware Reference Manual"
+    Write-Host "  -Trm                     : Process only A500 A2000 Technical Reference Manual"
+    Write-Host "  -Prm                     : Process only 68000 Programmer's Reference Manual"
+    Write-Host "  -Um                      : Process only 68000 User's Manual"
+    Write-Host "  -Prefetch                : Process only Instruction Prefetch study"
+    Write-Host "  -Undocumented            : Process only Undocumented features of OCS, ECS, AGA"
+    Write-Host "  -Destination <path>      : Custom destination directory (defaults to Obsidian/Amiga/Reference)"
+    Write-Host "  -AllSources              : Download from all mirrors for redundancy (alias: -AllMirrors)"
+    Write-Host "  -Force                   : Re-download even if target file already exists"
+    Write-Host "  -Help                    : Display this usage and parameter list (aliases: -h, -?, --help)"
+    Write-Host ""
+}
+
 function Show-CatalogList {
     Write-Host ""
     Write-Host "Amiga Reference Documentation Catalog & Mirror Matrix" -ForegroundColor Cyan
@@ -259,7 +330,7 @@ function Show-CatalogList {
     foreach ($item in $Catalog) {
         Write-Host "[$($item.Id)] $($item.Name)" -ForegroundColor Green
         Write-Host "    Description : $($item.Description)" -ForegroundColor White
-        Write-Host "    Directory   : temp\$($item.Folder)\" -ForegroundColor DarkGray
+        Write-Host "    Directory   : Reference\$($item.Folder)\" -ForegroundColor DarkGray
         Write-Host "    Mirrors ($($item.Mirrors.Count) configured):" -ForegroundColor Yellow
         $idx = 1
         foreach ($m in $item.Mirrors) {
@@ -275,6 +346,9 @@ function Show-CatalogList {
 
 function Ensure-StagingReadme {
     param([string]$TempDir)
+    if ($TempDir -notlike "*temp*") {
+        return
+    }
     if (-not (Test-Path $TempDir)) {
         New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
     }
@@ -283,140 +357,14 @@ function Ensure-StagingReadme {
         $Content = @'
 # Temporary External Reference Staging Directory
 
-This directory contains raw, unprocessed external reference materials (PDF scans, HTML crawls, and archives) downloaded by `tools/bootstrap_reference.ps1` (or `tools/bootstrap.ps1 -Ref`).
+This directory contains raw, unprocessed external reference materials (PDF scans, HTML crawls, and archives) downloaded by `tools/bootstrap/bootstrap_documentation.ps1` (or `tools/bootstrap/bootstrap.ps1 -Doc`).
 
 ## Operational Guidelines
 - **Safe to Delete:** You can safely delete this directory or any subfolder at any time. It has zero impact on compiling, testing, or running the emulator.
 - **Git Visibility:** This directory is intentionally **NOT** listed in `.gitignore`. When files are downloaded, it appears in `git status` as untracked files to ensure developers have visual confirmation of temporary downloaded materials.
-- **Archive Extraction:** Archives (`.lha`, `.lzh`, `.zip`, `.tar.gz`) are automatically unpacked into their respective reference directories by `tools/bootstrap_reference.ps1` using native Windows `tar.exe` (bsdtar with libarchive) or `Expand-Archive`.
 - **Processing:** Converted markdown specifications live in the parent `Obsidian/Amiga/Reference/` directory and are tracked in Git.
 '@
         Set-Content -Path $ReadmePath -Value $Content -Encoding UTF8
-    }
-}
-
-function Expand-ReferenceArchive {
-    param(
-        [string]$ArchiveFilePath,
-        [string]$DestinationDir,
-        [switch]$Force,
-        [string[]]$CleanupPatterns
-    )
-
-    if (-not (Test-Path $ArchiveFilePath)) { return }
-    if (-not (Test-Path $DestinationDir)) {
-        New-Item -ItemType Directory -Path $DestinationDir -Force | Out-Null
-    }
-
-    $FileName = [System.IO.Path]::GetFileName($ArchiveFilePath)
-    $Ext = [System.IO.Path]::GetExtension($ArchiveFilePath).ToLower()
-    $KnownArchiveExtensions = @(".lha", ".lzh", ".zip", ".tar", ".gz", ".tgz")
-
-    if ($Ext -notin $KnownArchiveExtensions) {
-        return
-    }
-
-    $tarCmd = Get-Command tar.exe -ErrorAction SilentlyContinue
-
-    # Check if already unpacked unless -Force is requested
-    if (-not $Force -and $tarCmd) {
-        $firstEntry = (& tar.exe -tf "$ArchiveFilePath" 2>&1 | Where-Object { $_ -and -not $_.EndsWith('/') } | Select-Object -First 1)
-        if ($firstEntry) {
-            $checkPath = Join-Path $DestinationDir $firstEntry
-            if (Test-Path $checkPath) {
-                Write-Host "  [SKIP] Archive already unpacked: $FileName" -ForegroundColor DarkGray
-                if ($CleanupPatterns) {
-                    foreach ($pat in $CleanupPatterns) {
-                        $filesToRemove = Get-ChildItem -Path $DestinationDir -Filter $pat -File -ErrorAction SilentlyContinue
-                        foreach ($remFile in $filesToRemove) {
-                            Remove-Item -Path $remFile.FullName -Force -ErrorAction SilentlyContinue
-                        }
-                    }
-                }
-                return
-            }
-        }
-    }
-
-    Write-Host "  Extracting archive: $FileName..." -ForegroundColor Cyan
-
-    $extracted = $false
-
-    # 1. Primary: Windows native tar.exe (bsdtar with libarchive supports LHA, LZH, ZIP, TAR, GZ, TGZ)
-    if ($tarCmd) {
-        try {
-            $prevEap = $ErrorActionPreference
-            $ErrorActionPreference = "Continue"
-            & tar.exe -xf "$ArchiveFilePath" -C "$DestinationDir" 2>&1 | Out-Null
-            $ErrorActionPreference = $prevEap
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "  [OK] Unpacked $FileName into: $DestinationDir" -ForegroundColor Green
-                $extracted = $true
-            }
-        } catch {
-            Write-Warning "  tar.exe failed to extract $($FileName): $($_.Exception.Message)"
-        }
-    }
-
-    # 2. Fallback for .zip: PowerShell built-in Expand-Archive
-    if (-not $extracted -and $Ext -eq ".zip") {
-        try {
-            Expand-Archive -Path $ArchiveFilePath -DestinationPath $DestinationDir -Force:$Force
-            Write-Host "  [OK] Unpacked $FileName with Expand-Archive into: $DestinationDir" -ForegroundColor Green
-            $extracted = $true
-        } catch {
-            Write-Warning "  Expand-Archive failed: $($_.Exception.Message)"
-        }
-    }
-
-    # 3. Fallback for 7z if available on PATH
-    if (-not $extracted) {
-        $7zCmd = Get-Command 7z.exe -ErrorAction SilentlyContinue
-        if ($7zCmd) {
-            try {
-                $yFlag = if ($Force) { "-y" } else { "-aoa" }
-                & 7z.exe x "$ArchiveFilePath" "-o$DestinationDir" $yFlag | Out-Null
-                if ($LASTEXITCODE -eq 0) {
-                    Write-Host "  [OK] Unpacked $FileName with 7-Zip into: $DestinationDir" -ForegroundColor Green
-                    $extracted = $true
-                }
-            } catch {
-                Write-Warning "  7z.exe failed to extract $($FileName): $($_.Exception.Message)"
-            }
-        }
-    }
-
-    if ($extracted -and $CleanupPatterns) {
-        Write-Host "  Applying post-extraction cleanup..." -ForegroundColor DarkGray
-        foreach ($pat in $CleanupPatterns) {
-            $filesToRemove = Get-ChildItem -Path $DestinationDir -Filter $pat -File -ErrorAction SilentlyContinue
-            foreach ($remFile in $filesToRemove) {
-                Remove-Item -Path $remFile.FullName -Force -ErrorAction SilentlyContinue
-                Write-Host "    [REMOVED] $($remFile.Name)" -ForegroundColor DarkGray
-            }
-        }
-    }
-
-    if (-not $extracted) {
-        Write-Warning "  Could not extract $FileName. Please ensure Windows tar.exe (native in Windows 10/11) or 7-Zip is available."
-    }
-}
-
-function Expand-DirectoryArchives {
-    param(
-        [string]$TargetDir,
-        [switch]$Force,
-        [string[]]$CleanupPatterns
-    )
-
-    if (-not (Test-Path $TargetDir)) { return }
-
-    $ArchiveExtensions = @("*.lha", "*.lzh", "*.zip", "*.tar", "*.tar.gz", "*.tgz")
-    foreach ($pattern in $ArchiveExtensions) {
-        $archives = Get-ChildItem -Path $TargetDir -Filter $pattern -File -ErrorAction SilentlyContinue
-        foreach ($archive in $archives) {
-            Expand-ReferenceArchive -ArchiveFilePath $archive.FullName -DestinationDir $TargetDir -Force:$Force -CleanupPatterns $CleanupPatterns
-        }
     }
 }
 
@@ -425,8 +373,7 @@ function Download-SingleFile {
         [hashtable]$Item,
         [string]$TargetDir,
         [bool]$ForceDownload,
-        [bool]$AllSourcesMode,
-        [bool]$AutoExtract = $true
+        [bool]$AllSourcesMode
     )
 
     $FinalTargetPath = Join-Path $TargetDir $Item.TargetFile
@@ -455,9 +402,6 @@ function Download-SingleFile {
             $CurrentSize = (Get-Item $ActualDestPath).Length
             if ($CurrentSize -ge $MinExpected) {
                 Write-Host "  [SKIP] Already present ($($mirror.Name)): $ActualFileName ($([math]::Round($CurrentSize / 1MB, 2)) MB)" -ForegroundColor DarkGray
-                if ($AutoExtract) {
-                    Expand-ReferenceArchive -ArchiveFilePath $ActualDestPath -DestinationDir $TargetDir -Force:$ForceDownload -CleanupPatterns $Item.CleanupPatterns
-                }
                 $AnySuccess = $true
                 if (-not $AllSourcesMode) {
                     return $true
@@ -500,9 +444,6 @@ function Download-SingleFile {
 
             if ($totalBytes -ge $MinExpected) {
                 Write-Host "  [OK] Downloaded successfully: $ActualFileName ($([math]::Round($totalBytes / 1MB, 2)) MB)" -ForegroundColor Green
-                if ($AutoExtract) {
-                    Expand-ReferenceArchive -ArchiveFilePath $ActualDestPath -DestinationDir $TargetDir -Force:$ForceDownload -CleanupPatterns $Item.CleanupPatterns
-                }
                 $AnySuccess = $true
                 if (-not $AllSourcesMode) {
                     return $true
@@ -652,79 +593,155 @@ function Download-CrawlItem {
     return $false
 }
 
+function Convert-ToMarkdown {
+    param(
+        [hashtable]$Item,
+        [string]$TargetDir
+    )
+
+    Write-Host "  Converting '$($Item.Name)' to publication-grade Markdown..." -ForegroundColor Cyan
+    Write-Host "    Target Directory: $TargetDir" -ForegroundColor DarkGray
+
+    $Success = $false
+    if ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.pdf") {
+        $PdfScript = Join-Path $RepoRoot ".agents\skills\pdf-to-markdown\pipeline.py"
+        $PdfConfig = Join-Path $RepoRoot ".agents\skills\pdf-to-markdown\config.yaml"
+        $PdfSource = Join-Path $TargetDir $Item.TargetFile
+        $Workspace = Join-Path $TargetDir "workspace"
+
+        if (-not (Test-Path $PdfSource)) {
+            Write-Error "PDF source not found: $PdfSource"
+            return $false
+        }
+
+        $cmdArgs = @(
+            $PdfScript,
+            "--pdf", $PdfSource,
+            "--workspace", $Workspace,
+            "--output-dir", $TargetDir,
+            "--config", $PdfConfig
+        )
+        try {
+            & python $cmdArgs
+            $Success = ($LASTEXITCODE -eq 0)
+        }
+        catch {
+            Write-Error "Failed to execute pdf-to-markdown pipeline: $_"
+            $Success = $false
+        }
+    }
+    elseif ($Item.Type -eq "SingleFile" -and $Item.TargetFile -like "*.html") {
+        $HtmlScript = Join-Path $RepoRoot ".agents\skills\html-to-markdown\pipeline.py"
+        $HtmlSource = Join-Path $TargetDir $Item.TargetFile
+
+        if (-not (Test-Path $HtmlSource)) {
+            Write-Error "HTML source not found: $HtmlSource"
+            return $false
+        }
+
+        $cmdArgs = @(
+            $HtmlScript,
+            "--input", $HtmlSource,
+            "--output-dir", $TargetDir,
+            "--document-name", $Item.Name
+        )
+        try {
+            & python $cmdArgs
+            $Success = ($LASTEXITCODE -eq 0)
+        }
+        catch {
+            Write-Error "Failed to execute html-to-markdown pipeline: $_"
+            $Success = $false
+        }
+    }
+    elseif ($Item.Type -eq "Crawl") {
+        $HtmlScript = Join-Path $RepoRoot ".agents\skills\html-to-markdown\pipeline.py"
+        $CrawlSource = Join-Path $TargetDir "live"
+        if (-not (Test-Path $CrawlSource)) {
+            $CrawlSource = $TargetDir
+        }
+
+        $cmdArgs = @(
+            $HtmlScript,
+            "--input", $CrawlSource,
+            "--output-dir", $TargetDir,
+            "--document-name", $Item.Name
+        )
+        try {
+            & python $cmdArgs
+            $Success = ($LASTEXITCODE -eq 0)
+        }
+        catch {
+            Write-Error "Failed to execute html-to-markdown pipeline: $_"
+            $Success = $false
+        }
+    }
+
+    if ($Success) {
+        Write-Host "  [OK] Converted successfully: '$($Item.Name)'" -ForegroundColor Green
+    } else {
+        Write-Error "  [FAILED] Markdown conversion failed for: '$($Item.Name)'"
+    }
+
+    return $Success
+}
+
 # -----------------------------------------------------------------------------
 # Main Execution Logic
 # -----------------------------------------------------------------------------
+
+# Handle help request explicitly (-Help, -h, -?, --help)
+$IsHelpRequested = $Help -or ($RemainingArgs -contains "--help") -or ($RemainingArgs -contains "-help") -or ($RemainingArgs -contains "help") -or ($RemainingArgs -contains "-h") -or ($RemainingArgs -contains "-?")
+if ($IsHelpRequested) {
+    Show-Usage
+    exit 0
+}
 
 if ($List) {
     Show-CatalogList
     exit 0
 }
 
-# Auto-promote -AllSources to -All if no specific -Item is requested
-if ($AllSources -and -not $Item) {
+# Auto-promote -AllSources or -Force to -All
+if ($AllSources -or $Force) {
     $All = $true
 }
 
-if (-not $All -and -not $Item -and -not $ExtractOnly) {
-    Write-Host ""
-    Write-Host "Amiga Reference Bootstrapper" -ForegroundColor Cyan
-    Write-Host "============================" -ForegroundColor Cyan
-    Write-Host "Usage:"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -List        : Show all documents and configured mirrors"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -Item <name> : Download specific document"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -All         : Download all reference materials"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -AllSources  : Download from ALL mirrors for each document"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -ExtractOnly : Unpack existing archives without downloading"
-    Write-Host "  .\tools\bootstrap_reference.ps1 -NoExtract   : Download archives without unpacking them"
-    Write-Host ""
+# Determine which documents to process
+$SelectedIds = @()
+if ($Hrm)          { $SelectedIds += "hrm" }
+if ($Trm)          { $SelectedIds += "trm" }
+if ($Prm)          { $SelectedIds += "prm" }
+if ($Um)           { $SelectedIds += "um" }
+if ($Prefetch)     { $SelectedIds += "prefetch" }
+if ($Undocumented) { $SelectedIds += "undocumented" }
+
+$HasExplicitAction = $All -or $Markdown -or ($SelectedIds.Count -gt 0)
+if (-not $HasExplicitAction) {
+    Show-Usage
     exit 0
 }
 
 Ensure-StagingReadme -TempDir $Destination
 
-$ItemsToProcess = @()
-if ($All -or ($Item -and ($Item.ToLower() -eq "-all" -or $Item.ToLower() -eq "all"))) {
-    $ItemsToProcess = $Catalog
-} elseif ($Item) {
-    $SearchTerm = $Item.ToLower()
-    $Matched = $Catalog | Where-Object {
-        $_.Id.ToLower() -eq $SearchTerm -or
-        $_.Name.ToLower().Contains($SearchTerm) -or
-        $_.Folder.ToLower().Contains($SearchTerm)
+$ItemsToProcess = @(
+    if ($SelectedIds.Count -gt 0) {
+        $Catalog | Where-Object { $SelectedIds -contains $_.Id }
+    } else {
+        $Catalog
     }
-    if (-not $Matched) {
-        Write-Error "No catalog entry matching '$Item'. Run with -List to inspect available items."
-        exit 1
-    }
-    $ItemsToProcess = @($Matched)
-} elseif ($ExtractOnly) {
-    $ItemsToProcess = $Catalog
-}
-
-if ($ExtractOnly) {
-    Write-Host ""
-    Write-Host "Extracting Reference Archives..." -ForegroundColor Cyan
-    Write-Host "Destination : $Destination" -ForegroundColor DarkGray
-    Write-Host "Items count : $($ItemsToProcess.Count)" -ForegroundColor DarkGray
-    Write-Host ""
-
-    foreach ($entry in $ItemsToProcess) {
-        $ItemTargetDir = Join-Path $Destination $entry.Folder
-        Write-Host "Checking archives for '$($entry.Name)'..." -ForegroundColor Yellow
-        Expand-DirectoryArchives -TargetDir $ItemTargetDir -Force:$Force -CleanupPatterns $entry.CleanupPatterns
-        Write-Host ""
-    }
-
-    Write-Host "Archive extraction completed." -ForegroundColor Green
-    exit 0
-}
+)
 
 Write-Host ""
 Write-Host "Bootstrapping External Amiga Reference Materials" -ForegroundColor Cyan
 Write-Host "Destination : $Destination" -ForegroundColor DarkGray
 Write-Host "Items count : $($ItemsToProcess.Count)" -ForegroundColor DarkGray
 Write-Host "Mode        : $(if ($AllSources) { 'All Mirrors & Sources (Redundancy Mode)' } else { 'Failover Mode (First Success)' })" -ForegroundColor Yellow
+if ($Markdown) {
+    Write-Host "Action      : Download & Convert to Publication-Grade Markdown" -ForegroundColor Green
+} else {
+    Write-Host "Action      : Download Raw Scans & Crawls" -ForegroundColor White
+}
 Write-Host ""
 
 $HasErrors = $false
@@ -738,26 +755,36 @@ foreach ($entry in $ItemsToProcess) {
         New-Item -ItemType Directory -Path $ItemTargetDir -Force | Out-Null
     }
 
-    $Success = $false
+    $DownloadSuccess = $false
     if ($entry.Type -eq "Crawl") {
-        $Success = Download-CrawlItem -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
+        $DownloadSuccess = Download-CrawlItem -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
     } else {
-        $Success = Download-SingleFile -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources -AutoExtract (-not $NoExtract)
+        $DownloadSuccess = Download-SingleFile -Item $entry -TargetDir $ItemTargetDir -ForceDownload $Force -AllSourcesMode $AllSources
     }
 
-    if (-not $Success) {
+    if (-not $DownloadSuccess) {
         $HasErrors = $true
+    }
+    elseif ($Markdown) {
+        $ConvertSuccess = Convert-ToMarkdown -Item $entry -TargetDir $ItemTargetDir
+        if (-not $ConvertSuccess) {
+            $HasErrors = $true
+        }
     }
     Write-Host ""
 }
 
 if ($HasErrors) {
-    Write-Error "One or more reference downloads failed. Review warnings and errors above."
+    Write-Error "One or more reference downloads or Markdown conversions failed. Review warnings and errors above."
     exit 1
 } else {
-    Write-Host "All requested reference documentation items provisioned successfully." -ForegroundColor Green
+    if ($Markdown) {
+        Write-Host "All requested reference documentation items provisioned and converted to Markdown successfully." -ForegroundColor Green
+    } else {
+        Write-Host "All requested reference documentation items provisioned successfully." -ForegroundColor Green
+    }
     Write-Host ""
-    Write-Host "NOTE: Check 'git status' to inspect untracked downloaded assets in:" -ForegroundColor Yellow
-    Write-Host "      Obsidian/Amiga/Reference/temp/" -ForegroundColor White
+    Write-Host "NOTE: Reference materials provisioned directly into:" -ForegroundColor Yellow
+    Write-Host "      Obsidian/Amiga/Reference/" -ForegroundColor White
     exit 0
 }

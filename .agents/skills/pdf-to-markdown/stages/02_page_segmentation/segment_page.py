@@ -60,7 +60,7 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
 
     if not blocks_summary:
         # Check if this text-empty page contains a visual graphic (e.g. book cover, full-page illustration/schematic)
-        if gemini and gemini.is_available() and png_path and png_path.exists():
+        if png_path and png_path.exists():
             empty_prompt_file = Path(__file__).resolve().parent / "prompt_empty_page.md"
             vision_prompt = empty_prompt_file.read_text(encoding="utf-8") if empty_prompt_file.exists() else ""
             res = gemini.generate_json(vision_prompt, image_path=png_path)
@@ -80,7 +80,8 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
                     "bbox": bbox,
                     "bbox_norm": g_bbox_norm,
                     "heading_level": None,
-                    "raw_text": ""
+                    "raw_text": "",
+                    "metadata": {"caption": caption}
                 }]
         return []
 
@@ -94,14 +95,35 @@ def classify_page_with_gemini(page_data: dict, png_path: Optional[Path], gemini:
 
     classifications = gemini.generate_json(prompt, image_path=png_path if png_path and png_path.exists() else None, stage="02_page_segmentation")
     type_map = {}
-    if isinstance(classifications, list):
-        for item in classifications:
-            if isinstance(item, dict) and "idx" in item:
-                type_map[item["idx"]] = (
-                    item.get("type", "prose"),
-                    item.get("heading_level"),
-                    item.get("graphic_bbox_norm")
-                )
+
+    # Check if Gemini flagged this entire page as a book cover or full-page illustration with overlaid text
+    if isinstance(classifications, dict):
+        if classifications.get("is_full_page_graphic", False):
+            graphic_caption = classifications.get("graphic_caption") or "Book Cover Illustration"
+            print(f"[*] Page {page_num}: Detected full-page cover graphic ('{graphic_caption}'). Suppressing individual text blocks.")
+            return [{
+                "segment_id": f"page_{page_num:04d}_seg_001",
+                "page": page_num,
+                "type": "graphic",
+                "bbox": [0.0, 0.0, round(page_w, 2), round(page_h, 2)],
+                "bbox_norm": [0.0, 0.0, 1.0, 1.0],
+                "heading_level": None,
+                "raw_text": "",
+                "metadata": {"caption": graphic_caption}
+            }]
+        items = classifications.get("segments", [])
+    elif isinstance(classifications, list):
+        items = classifications
+    else:
+        items = []
+
+    for item in items:
+        if isinstance(item, dict) and "idx" in item:
+            type_map[item["idx"]] = (
+                item.get("type", "prose"),
+                item.get("heading_level"),
+                item.get("graphic_bbox_norm")
+            )
 
     segments = []
     seg_counter = 1
@@ -159,9 +181,7 @@ def process_segmentation(workspace_dir: Path, config: dict):
         manifest = json.load(f)
 
     total_pages = manifest["total_pages"]
-    gemini = GeminiClient(config) if GeminiClient else None
-    if not gemini or not gemini.is_available():
-        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 02 segmentation.")
+    gemini = GeminiClient(config)
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 

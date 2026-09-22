@@ -33,15 +33,13 @@ You are given:
    - When a prose paragraph starts with a run-in section title (e.g. a section number and all-caps title ending in a period or colon, such as `1.2.3.4 ACCRUED EXCEPTION BYTE.` or `1.2.3.2 QUOTIENT BYTE.`), format ONLY the title prefix in bold up to the period/colon (e.g. `**1.2.3.4 ACCRUED EXCEPTION BYTE.** The AEXC byte contains...`).
    - NEVER format the entire paragraph as bold or as a markdown heading tag (`#`, `##`, `###`).
 
-7. **Obsidian Callouts for Advisories, Asides, and Warnings**:
-   - Obsidian supports rich native callouts (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`).
-   - When a paragraph or block represents an advisory note, informational aside, coding tip, mandatory prerequisite, or hardware warning/hazard, format it as an appropriate native Obsidian callout rather than plain text.
-   - Select the callout type semantically to match the gravity and intent of the advisory:
-     - `> [!NOTE]` or `> [!INFO]` for general informational notes, supplementary explanations, and technical remarks.
-     - `> [!TIP]` for practical advice, optimizations, or programming tricks.
-     - `> [!IMPORTANT]` for essential prerequisites, required steps, and mandatory hardware rules.
-     - `> [!WARNING]` or `> [!CAUTION]` for operational hazards, bus contention risks, or destructive pitfalls.
-   - Retain 100% of the original text content. Prefix every line of the callout with `>`.
+7. **Prohibition of Spontaneous Callouts**:
+   - You must **NEVER** wrap text into Obsidian callout boxes (`> [!NOTE]`, `> [!WARNING]`, etc.) on your own initiative.
+   - Standard narrative paragraphs, historical context, IEEE standard explanations, and background terminology notes must strictly remain regular Markdown prose paragraphs.
+   - Do not invent callout syntax (`> [!...]`) for explanatory text. Callouts are assembled deterministically by the pipeline based on visual layout.
+
+8. **Processor Model Numbers (OCR Typo Correction)**:
+   - Motorola processor model numbers end in numeric digits (zeros), NEVER the capital letter 'O' (e.g. `MC68000` NOT `MC68OOO`, `MC68HC000` NOT `MC68HCOOO`, `MC68EC000` NOT `MC68ECOOO`, `MC68008` NOT `MC68OO8`, `MC68010` NOT `MC68O1O`, `68000` NOT `68OOO`). They are microprocessors, so they end in numeric zeros.
 
 ## Output Format:
 Return strictly the formatted Markdown text for the node.

@@ -26,7 +26,13 @@ except ImportError:
     GeminiClient = None
 
 
-def check_continuation_with_gemini(node_a: dict, node_b: dict, gemini: Optional[GeminiClient], prompt_template: str) -> bool:
+def check_continuation_with_gemini(
+    node_a: dict,
+    node_b: dict,
+    gemini: Optional[GeminiClient],
+    prompt_template: str,
+    caption_hint: Optional[str] = None,
+) -> bool:
     """
     Uses Gemini LLM to analyze candidate adjacent table/graphic blocks across page boundaries.
     """
@@ -45,7 +51,7 @@ def check_continuation_with_gemini(node_a: dict, node_b: dict, gemini: Optional[
     if not text_a or not text_b:
         return False
 
-    if gemini and gemini.is_available() and prompt_template:
+    if prompt_template:
         sample_a = text_a if len(text_a) <= 800 else f"{text_a[:350]}\n...\n{text_a[-400:]}"
         sample_b = text_b if len(text_b) <= 800 else f"{text_b[:500]}\n...\n{text_b[-250:]}"
         prompt = (
@@ -55,6 +61,9 @@ def check_continuation_with_gemini(node_a: dict, node_b: dict, gemini: Optional[
             f"## Block B (Page {page_b}, Type: {node_b.get('type')}):\n"
             f"```text\n{sample_b}\n```\n"
         )
+        if caption_hint:
+            prompt += f"\n## Preceding Continuation Caption on Page {page_b}:\n```text\n{caption_hint}\n```\n"
+
         res = gemini.generate_json(prompt)
         if isinstance(res, dict) and res.get("is_continuation"):
             return True
@@ -75,19 +84,21 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
     prompt_path = Path(__file__).resolve().parent / "prompt_continuation.md"
     prompt_template = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
 
-    gemini = GeminiClient(config) if GeminiClient else None
-    if not gemini or not gemini.is_available():
-        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 06 continuation detection.")
+    gemini = GeminiClient(config)
 
     chapter_files = sorted(list(input_dir.glob("*.json")))
-    print(f"[*] Detecting continuations across {len(chapter_files)} chapter files using Gemini...")
+    from concurrent.futures import ThreadPoolExecutor
 
-    total_continuations = 0
-    group_counter = 1
+    concurrency = int(config.get("llm", {}).get("concurrency", 8))
+    print(f"[*] Detecting continuations across {len(chapter_files)} chapter files using Gemini (concurrency={concurrency})...")
 
-    for c_file in chapter_files:
+    def _process_chapter(c_file_and_idx):
+        c_file, ch_idx = c_file_and_idx
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
+
+        ch_continuations = 0
+        group_counter = 1
 
         i = 0
         while i < len(nodes) - 1:
@@ -98,13 +109,31 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
 
             # Forward scan for multi-page continuation chain
             head_node = curr_node
+            prev_in_chain = curr_node
             j = i + 1
             while j < len(nodes):
-                candidate = nodes[j]
-                prev_in_chain = nodes[j - 1]
-                if check_continuation_with_gemini(prev_in_chain, candidate, gemini, prompt_template):
+                cap_node = None
+                candidate = None
+                advance_step = 1
+
+                if (
+                    nodes[j].get("type") == "caption_continuation"
+                    and j + 1 < len(nodes)
+                    and nodes[j + 1].get("type") == prev_in_chain.get("type")
+                ):
+                    cap_node = nodes[j]
+                    candidate = nodes[j + 1]
+                    advance_step = 2
+                elif nodes[j].get("type") == prev_in_chain.get("type"):
+                    candidate = nodes[j]
+                    advance_step = 1
+                else:
+                    break
+
+                caption_hint = cap_node.get("raw_text", "").strip() if cap_node else None
+                if check_continuation_with_gemini(prev_in_chain, candidate, gemini, prompt_template, caption_hint=caption_hint):
                     if not head_node.get("continuation_status"):
-                        group_id = f"table_group_{group_counter:04d}"
+                        group_id = f"table_group_{ch_idx:02d}_{group_counter:04d}"
                         group_counter += 1
                         head_node["continuation_status"] = "head"
                         head_node["is_head"] = True
@@ -114,6 +143,13 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
                         for p in ("svg_path", "png_path", "raw_text_path"):
                             if head_node.get(p):
                                 head_node["merged_assets"].append(head_node[p])
+
+                    if cap_node:
+                        cap_node["continuation_status"] = "absorbed_caption"
+                        cap_node["is_head"] = False
+                        cap_node["continued_from"] = head_node["node_id"]
+                        cap_node["continuation_group_id"] = head_node["continuation_group_id"]
+                        head_node["merged_nodes"].append(cap_node["node_id"])
 
                     head_node["merged_nodes"].append(candidate["node_id"])
                     for p in ("svg_path", "png_path", "raw_text_path"):
@@ -125,9 +161,10 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
                     candidate["continued_from"] = head_node["node_id"]
                     candidate["continuation_group_id"] = head_node["continuation_group_id"]
 
-                    total_continuations += 1
+                    ch_continuations += 1
                     print(f"    Linked continuation: {candidate['node_id']} (Page {candidate['page']}) -> {head_node['node_id']} (Page {head_node['page']})")
-                    j += 1
+                    prev_in_chain = candidate
+                    j += advance_step
                 else:
                     break
 
@@ -138,6 +175,12 @@ def process_chapter_continuations(workspace_dir: Path, config: dict):
         with open(target_file, "w", encoding="utf-8") as f:
             json.dump(nodes, f, indent=2)
 
+        return ch_continuations
+
+    with ThreadPoolExecutor(max_workers=min(len(chapter_files), max(1, concurrency))) as executor:
+        results = list(executor.map(_process_chapter, [(cf, idx + 1) for idx, cf in enumerate(chapter_files)]))
+
+    total_continuations = sum(results)
     print(f"[+] Stage 06 complete. Emitted {len(chapter_files)} chapters to {out_dir} with {total_continuations} continuations.")
 
 
@@ -162,13 +205,26 @@ def prepare_continuation_tasks(workspace_dir: Path) -> int:
 
         for i in range(len(nodes) - 1):
             curr_node = nodes[i]
-            next_node = nodes[i + 1]
+            if curr_node.get("type") != "table":
+                continue
 
-            if curr_node.get("type") == "table" and next_node.get("type") == "table":
+            cap_node = None
+            next_node = None
+            if i + 1 < len(nodes) and nodes[i + 1].get("type") == "table":
+                next_node = nodes[i + 1]
+            elif (
+                i + 2 < len(nodes)
+                and nodes[i + 1].get("type") == "caption_continuation"
+                and nodes[i + 2].get("type") == "table"
+            ):
+                cap_node = nodes[i + 1]
+                next_node = nodes[i + 2]
+
+            if next_node:
                 page_a = curr_node.get("page", 0)
                 page_b = next_node.get("page", 0)
                 if page_b == page_a + 1:
-                    is_cont = are_tables_likely_continuation(curr_node, next_node)
+                    is_cont = are_tables_likely_continuation(curr_node, next_node) or (cap_node is not None)
                     candidates.append({
                         "candidate_id": f"cont_{cand_counter:04d}",
                         "chapter_file": c_file.name,
@@ -178,7 +234,8 @@ def prepare_continuation_tasks(workspace_dir: Path) -> int:
                         "tail_node_id": next_node["node_id"],
                         "tail_page": page_b,
                         "tail_snippet": next_node.get("raw_text", "")[:200],
-                        "is_continuation": is_cont
+                        "cap_node_id": cap_node["node_id"] if cap_node else None,
+                        "is_continuation": is_cont,
                     })
                     cand_counter += 1
 
@@ -226,6 +283,7 @@ def apply_continuation_tasks(workspace_dir: Path) -> int:
         for item in items:
             head_id = item["head_node_id"]
             tail_id = item["tail_node_id"]
+            cap_id = item.get("cap_node_id")
 
             if head_id in node_map and tail_id in node_map:
                 group_id = f"table_group_{group_counter:04d}"
@@ -237,7 +295,16 @@ def apply_continuation_tasks(workspace_dir: Path) -> int:
                 head_n["continuation_status"] = "head"
                 head_n["is_head"] = True
                 head_n["continuation_group_id"] = group_id
-                head_n["merged_nodes"] = [head_id, tail_id]
+                merged = [head_id]
+                if cap_id and cap_id in node_map:
+                    cap_n = node_map[cap_id]
+                    cap_n["continuation_status"] = "absorbed_caption"
+                    cap_n["is_head"] = False
+                    cap_n["continued_from"] = head_id
+                    cap_n["continuation_group_id"] = group_id
+                    merged.append(cap_id)
+                merged.append(tail_id)
+                head_n["merged_nodes"] = merged
 
                 merged_assets = []
                 for p in ("svg_path", "png_path", "raw_text_path"):

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-llm_client.py: Unified Gemini LLM client for pdf-to-markdown stages.
-Uses google.genai SDK with gemini-3.8-flash and thinking_level='medium'.
+llm_client.py: Unified Gemini LLM client for html-to-markdown skill.
+Uses google.genai SDK with gemini-3.8-flash and thinking_budget=0.
+Integrates with llm_cache.py for automatic content-addressable caching.
 """
 
 import atexit
@@ -91,7 +92,6 @@ def _dump_metrics():
 
 atexit.register(_dump_metrics)
 
-
 _call_counter = 0
 _call_counter_lock = threading.Lock()
 
@@ -101,7 +101,6 @@ def _next_call_id() -> int:
     with _call_counter_lock:
         _call_counter += 1
         return _call_counter
-
 
 
 class GeminiClient:
@@ -150,7 +149,7 @@ class GeminiClient:
 
     def _init_client(self):
         if not self.api_key:
-            raise RuntimeError("GEMINI_API_KEY environment variable is required for pdf-to-markdown pipeline.")
+            raise RuntimeError("GEMINI_API_KEY environment variable is required for GeminiClient.")
         from google import genai
         self.client = genai.Client(api_key=self.api_key)
 
@@ -328,7 +327,6 @@ class GeminiClient:
             f"Last error: {last_error}"
         )
 
-
     def generate_json(self, prompt: str, image_path: Optional[Path] = None, model: str = None, stage: Optional[str] = None, thinking_budget: Optional[int] = None):
         import json
         import re
@@ -339,20 +337,17 @@ class GeminiClient:
             if fence_match:
                 text = fence_match.group(1).strip()
 
-            # 1. Direct parse with strict=False (allows control chars)
             try:
                 return json.loads(text, strict=False)
             except Exception:
                 pass
 
-            # 2. Repair naked unescaped backslashes (e.g. \a, \alpha, \ ) common in math/OCR
             repaired = re.sub(r'\\([^"\\/bfnrtu])', r'\\\\\1', text)
             try:
                 return json.loads(repaired, strict=False)
             except Exception:
                 pass
 
-            # 3. Bracket extraction with repair
             bracket_match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", text)
             if bracket_match:
                 cand = bracket_match.group(1)
@@ -364,7 +359,6 @@ class GeminiClient:
 
             raise ValueError(f"No valid JSON found in response:\n{text[:400]}")
 
-        # Try with response_mime_type="application/json", retrying up to 2 times on parsing failure
         last_parse_error = None
         for attempt in range(2):
             raw = (
@@ -380,7 +374,6 @@ class GeminiClient:
             except Exception as e:
                 last_parse_error = e
                 print(f"[!] Warning: JSON parse failed (attempt {attempt+1}/2): {e}. Retrying with plain text mode...")
-                # Second attempt fallback to unconstrained text mode
                 try:
                     raw_fallback = (
                         self.generate_vision(prompt, image_path, model=model, stage=stage, thinking_budget=thinking_budget)

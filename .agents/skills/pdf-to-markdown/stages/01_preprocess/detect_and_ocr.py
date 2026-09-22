@@ -119,6 +119,17 @@ def detect_and_ocr_pages(
     # Filter target pages
     target_pages = parse_page_ranges(page_ranges) if page_ranges else None
 
+    # Load configuration and check concurrency
+    cfg_dict = {}
+    if config_path and Path(config_path).is_file():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                cfg_dict = yaml.safe_load(f) or {}
+        except Exception as e:
+            print(f"[!] Error loading config at {config_path}: {e}", file=sys.stderr)
+
+    concurrency = int(cfg_dict.get("llm", {}).get("concurrency", 8)) if cfg_dict else 8
+
     gemini = None
     scanned_count = 0
     skipped_count = 0
@@ -132,6 +143,7 @@ def detect_and_ocr_pages(
         except Exception:
             pass
 
+    ocr_tasks = []
     for jf in json_files:
         try:
             with open(jf, "r", encoding="utf-8") as f:
@@ -162,106 +174,114 @@ def detect_and_ocr_pages(
             print(f"  [!] Page {page_num:04d}: Scanned page missing PNG at {png_path.name}, skipping OCR")
             continue
 
-        print(f"  [SCAN] Page {page_num:04d}: Scanned page detected ({len(blocks)} blocks, {total_chars} chars). Running Gemini Vision OCR...")
+        ocr_tasks.append((jf, page_data, png_path, page_num, len(blocks), total_chars))
 
-        if gemini is None:
-            if GeminiClient is None:
-                print("[!] Error: GeminiClient unavailable. Check llm_client.py dependencies.", file=sys.stderr)
-                return False
-            cfg_dict = {}
-            if config_path and Path(config_path).is_file():
-                try:
-                    with open(config_path, "r", encoding="utf-8") as f:
-                        cfg_dict = yaml.safe_load(f) or {}
-                except Exception as e:
-                    print(f"[!] Error loading config at {config_path}: {e}", file=sys.stderr)
-            if not cfg_dict or "llm" not in cfg_dict:
-                print(f"[!] Error: Valid configuration with 'llm' section required for OCR at {config_path}", file=sys.stderr)
-                return False
-            gemini = GeminiClient(cfg_dict)
-            if not gemini.is_available():
-                print("[!] Error: Gemini API key not configured or client offline.", file=sys.stderr)
-                return False
+    if ocr_tasks:
+        if not cfg_dict or "llm" not in cfg_dict:
+            print(f"[!] Error: Valid configuration with 'llm' section required for OCR at {config_path}", file=sys.stderr)
+            return False
+        gemini = GeminiClient(cfg_dict)
 
-        try:
-            ocr_response = gemini.generate_json(prompt_text, image_path=png_path, stage="01_preprocess")
-        except Exception as e:
-            print(f"  [!] Page {page_num:04d}: Gemini OCR extraction failed: {e}. Preserving as visual fallback.", file=sys.stderr)
-            page_data["blocks"] = []
-            page_data["page_type"] = "pure_graphic"
-            page_data["caption"] = f"Page {page_num} (Visual fallback)"
-            with open(page_json_path, "w", encoding="utf-8") as f:
-                json.dump(page_data, f, indent=2)
-            continue
+        print(f"[*] Dispatching Gemini Vision OCR for {len(ocr_tasks)} scanned pages (concurrency={concurrency})...")
 
-        page_type = "text_page"
-        caption = None
-        blocks_data = []
+        from concurrent.futures import ThreadPoolExecutor, as_completed
 
-        if isinstance(ocr_response, dict):
-            page_type = ocr_response.get("page_type", "text_page")
-            caption = ocr_response.get("caption")
-            blocks_data = ocr_response.get("blocks", [])
-        elif isinstance(ocr_response, list):
-            blocks_data = ocr_response
-        else:
-            print(f"  [!] Page {page_num:04d}: Gemini OCR did not return expected JSON, skipping")
-            continue
+        def _process_single_ocr(task):
+            jf, page_data, png_path, page_num, block_count, char_count = task
+            try:
+                ocr_response = gemini.generate_json(prompt_text, image_path=png_path, stage="01_preprocess")
+            except Exception as e:
+                print(f"  [!] Page {page_num:04d}: Gemini OCR extraction failed: {e}. Preserving as visual fallback.", file=sys.stderr)
+                page_data["blocks"] = []
+                page_data["page_type"] = "pure_graphic"
+                page_data["caption"] = f"Page {page_num} (Visual fallback)"
+                with open(jf, "w", encoding="utf-8") as f:
+                    json.dump(page_data, f, indent=2)
+                return page_num, "pure_graphic", 0, None, False
 
-        page_w = float(page_data.get("width", 612.0))
-        page_h = float(page_data.get("height", 792.0))
-        new_blocks = []
+            page_type = "text_page"
+            caption = None
+            blocks_data = []
 
-        if page_type == "blank":
-            print(f"  [BLANK] Page {page_num:04d}: Classified as blank page -> 0 text blocks")
-            page_data["blocks"] = []
-            page_data["page_type"] = "blank"
-        elif page_type == "pure_graphic":
-            cap_str = f" ({caption})" if caption else ""
-            print(f"  [GRAPHIC] Page {page_num:04d}: Classified as pure artwork/diagram{cap_str} -> Preserving as visual asset")
-            page_data["blocks"] = []
-            page_data["page_type"] = "pure_graphic"
-            if caption:
-                page_data["caption"] = caption
-        else:
-            for idx, item in enumerate(blocks_data):
-                if not isinstance(item, dict):
-                    continue
-                text = item.get("text", "").strip()
-                if not text:
-                    continue
-
-                x0, y0, x1, y1 = parse_ocr_bounding_box(item)
-
-                bbox = [
-                    round(x0 * page_w, 2),
-                    round(y0 * page_h, 2),
-                    round(x1 * page_w, 2),
-                    round(y1 * page_h, 2),
-                ]
-
-                new_blocks.append({
-                    "bbox": bbox,
-                    "text": text + "\n",
-                    "block_id": idx,
-                    "type": 0,
-                    "bbox_norm": [round(x0, 4), round(y0, 4), round(x1, 4), round(y1, 4)],
-                })
-
-            page_data["blocks"] = new_blocks
-            page_data["page_type"] = "text_page"
-
-        try:
-            with open(jf, "w", encoding="utf-8") as f:
-                json.dump(page_data, f, indent=2)
-            scanned_count += 1
-            total_ocr_blocks += len(new_blocks)
-            if page_type == "text_page":
-                print(f"  [+] Page {page_num:04d}: OCR populated {len(new_blocks)} text blocks -> Saved {jf.name}")
+            if isinstance(ocr_response, dict):
+                page_type = ocr_response.get("page_type", "text_page")
+                caption = ocr_response.get("caption")
+                blocks_data = ocr_response.get("blocks", [])
+            elif isinstance(ocr_response, list):
+                blocks_data = ocr_response
             else:
-                print(f"  [+] Page {page_num:04d}: Marked as {page_type} -> Saved {jf.name}")
-        except Exception as err:
-            print(f"[!] Error writing {jf.name}: {err}", file=sys.stderr)
+                print(f"  [!] Page {page_num:04d}: Gemini OCR did not return expected JSON, skipping")
+                return page_num, "error", 0, None, False
+
+            page_w = float(page_data.get("width", 612.0))
+            page_h = float(page_data.get("height", 792.0))
+            new_blocks = []
+
+            if page_type == "blank":
+                page_data["blocks"] = []
+                page_data["page_type"] = "blank"
+            elif page_type == "pure_graphic":
+                page_data["blocks"] = []
+                page_data["page_type"] = "pure_graphic"
+                if caption:
+                    page_data["caption"] = caption
+            else:
+                for idx, item in enumerate(blocks_data):
+                    if not isinstance(item, dict):
+                        continue
+                    text = item.get("text", "").strip()
+                    if not text:
+                        continue
+
+                    x0, y0, x1, y1 = parse_ocr_bounding_box(item)
+
+                    bbox = [
+                        round(x0 * page_w, 2),
+                        round(y0 * page_h, 2),
+                        round(x1 * page_w, 2),
+                        round(y1 * page_h, 2),
+                    ]
+
+                    new_blocks.append({
+                        "bbox": bbox,
+                        "text": text + "\n",
+                        "block_id": idx,
+                        "type": 0,
+                        "bbox_norm": [round(x0, 4), round(y0, 4), round(x1, 4), round(y1, 4)],
+                    })
+
+                page_data["blocks"] = new_blocks
+                page_data["page_type"] = "text_page"
+
+            try:
+                with open(jf, "w", encoding="utf-8") as f:
+                    json.dump(page_data, f, indent=2)
+                return page_num, page_type, len(new_blocks), caption, True
+            except Exception as err:
+                print(f"[!] Error writing {jf.name}: {err}", file=sys.stderr)
+                return page_num, "write_error", 0, None, False
+
+        completed_ocr = 0
+        workers = min(len(ocr_tasks), max(1, concurrency))
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(_process_single_ocr, task): task[3] for task in ocr_tasks}
+            for future in as_completed(futures):
+                p_num = futures[future]
+                try:
+                    page_num, page_type, block_count, caption, ok = future.result()
+                    completed_ocr += 1
+                    if ok:
+                        scanned_count += 1
+                        total_ocr_blocks += block_count
+                        if page_type == "text_page":
+                            print(f"  [+] Page {page_num:04d}: OCR populated {block_count} text blocks ({completed_ocr}/{len(ocr_tasks)})")
+                        elif page_type == "blank":
+                            print(f"  [BLANK] Page {page_num:04d}: Classified as blank page ({completed_ocr}/{len(ocr_tasks)})")
+                        elif page_type == "pure_graphic":
+                            cap_str = f" ({caption})" if caption else ""
+                            print(f"  [GRAPHIC] Page {page_num:04d}: Classified as pure artwork/diagram{cap_str} ({completed_ocr}/{len(ocr_tasks)})")
+                except Exception as err:
+                    print(f"  [!] Exception during OCR on page {p_num}: {err}", file=sys.stderr)
 
     # Refresh pages_manifest.json if any pages were modified by OCR
     if scanned_count > 0:

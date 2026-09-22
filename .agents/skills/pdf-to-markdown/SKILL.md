@@ -1,6 +1,6 @@
 ---
 name: pdf-to-markdown
-description: Convert technical PDF manuals and reference books into publication-grade Obsidian Markdown using a modular 12-stage stream-based pipeline driven by the Agent.
+description: Convert technical PDF manuals and reference books into publication-grade Obsidian Markdown using a modular 14-stage stream-based pipeline driven by the Agent.
 ---
 
 # Recipe: Modular PDF-to-Markdown Conversion Pipeline (Agent-Driven)
@@ -9,7 +9,7 @@ This skill converts complex technical PDF documents (such as Amiga hardware refe
 
 It is architected around an **Agent-Driven Hybrid Model**:
 - **Deterministic Python Scripts** handle mechanical tasks (page extraction, 300 DPI rendering, text geometry, asset slicing with 10% margins, stream stitching, chapter partitioning, Markdown emission, and TOC link resolution).
-- **The Agent** acts as the cognitive engine and orchestrator (segmentation validation, multi-page continuation reasoning, table formatting, flowchart-to-Mermaid transcription, RAG sidecar authorship, prose polish, and opening title refinement), eliminating any requirement for external API keys (`GEMINI_API_KEY`).
+- **Gemini LLM & Multimodal Vision** serves as the mandatory cognitive engine across all stages (via `llm_client.py` powered by `google-genai`), providing high-fidelity OCR text extraction, visual zone segmentation, multi-page continuation resolution, table structuring, flowchart/Mermaid transcription, stream proofreading, and publication-grade Obsidian properties generation with zero offline fallbacks.
 
 ---
 
@@ -57,8 +57,10 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │   └── README.md
     │
     ├── 08_transform_graphics/
-    │   ├── transform_graphics.py            # Worker for graphics (prepares workspace/tasks/graphics/ & applies back)
-    │   ├── prompt_mermaid.md                # Flowcharts & state machines -> Mermaid + ASCII callout
+    │   ├── transform_graphics.py            # Worker for graphics (Mermaid, clean ASCII bitfields, schematics)
+    │   ├── prompt_triage.md                 # Triage classifier (Mermaid precedence vs clean ASCII bitfields vs schematics)
+    │   ├── prompt_mermaid.md                # Dataflow & calculation trees -> Mermaid + collapsible ASCII callout
+    │   ├── prompt_ascii_art.md              # Compact register bitfield boxes (zero leader lines) + structured tables/lists
     │   ├── prompt_rag_sidecar.md            # Technical signal/timing breakdown for RAG (.png.txt)
     │   └── README.md
     │
@@ -73,15 +75,20 @@ It is architected around an **Agent-Driven Hybrid Model**:
     │   └── README.md
     │
     ├── 11_emit_markdown/
-    │   ├── emit_markdown.py                 # Emits one .md file per partition ({index:02d}_{slug}.md); ignores toc_header
+    │   ├── emit_markdown.py                 # Emits clean Markdown files per partition ({index:02d}_{slug}.md); ignores toc_header
     │   └── README.md
     │
-    ├── 12_refine_first_chapter_name/
+    ├── 12_generate_properties/
+    │   ├── generate_properties.py           # Generates publication-grade Obsidian YAML properties (title, book, chapter, tags) with LLM
+    │   ├── prompt.md                        # Guidelines for inferring book title and chapter metadata
+    │   └── README.md
+    │
+    ├── 13_refine_first_chapter_name/
     │   ├── refine_name.py                   # Inspects first chapter content & sets canonical title/slug
     │   ├── prompt.md                        # Evaluation guidelines for opening sections
     │   └── README.md
     │
-    └── 13_link_toc/
+    └── 14_link_toc/
         ├── link_toc.py                      # Fuzzy header matcher across all .md files; converts TOC lines to wikilinks; strips markers
         └── README.md
 ```
@@ -156,8 +163,9 @@ python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --pr
 ```
 - For each `{node_id}.json` in `<WORKSPACE>/tasks/graphics/`:
   - View image using `view_file` on `png_path`.
-  - If it is a flowchart/state machine, write a Mermaid diagram with collapsible ASCII callout in `{node_id}.md`.
-  - If it is a schematic/timing diagram, author a comprehensive technical description in `{node_id}.sidecar.txt` for RAG vector search.
+  - If it is a calculation tree, dataflow, address generation graph, or state machine: use Mermaid with collapsible ASCII callout in `{node_id}.md`.
+  - If it is a register bitfield: use a compact 3–4 line ASCII box (zero leader lines) followed by a structured Markdown table or list.
+  - If it is an electrical schematic, waveform, or pinout: author a comprehensive technical description in `{node_id}.sidecar.txt` for RAG vector search and preserve the image embed.
 - Apply graphics:
 ```powershell
 python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --apply-stage 08
@@ -173,14 +181,14 @@ python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --fr
 python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 10 --to-stage 10
 ```
 
-### Phase E: Markdown Emission & First Chapter Refinement (Stages 11 – 12)
+### Phase E: Markdown Emission & Properties Generation (Stages 11 – 12)
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --from-stage 11 --to-stage 12
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --config "<CONFIG>" --from-stage 11 --to-stage 12
 ```
 
-### Phase F: Final TOC Wikilinking (Stage 13)
+### Phase F: First Chapter Refinement & Final TOC Wikilinking (Stages 13 – 14)
 ```powershell
-python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --output-dir "<OUTPUT_DIR>" --from-stage 13 --to-stage 13
+python .agents/skills/pdf-to-markdown/pipeline.py --workspace "<WORKSPACE>" --output-dir "<OUTPUT_DIR>" --config "<CONFIG>" --from-stage 13 --to-stage 14
 ```
 
 ---

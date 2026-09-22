@@ -166,12 +166,17 @@ def partition_chapters(workspace_dir: Path, config: dict):
         with open(target_path, "w", encoding="utf-8") as f:
             json.dump(part["nodes"], f, indent=2)
 
+        clean_title_name = re.sub(r'[:/\\|]', ' - ', part['title'])
+        clean_title_name = re.sub(r'[*?"<>]', '', clean_title_name)
+        clean_title_name = re.sub(r'\s+', ' ', clean_title_name).strip(' -.')
+        target_md_name = f"{idx:02d} - {clean_title_name}.md" if clean_title_name else f"{file_slug}.md"
+
         manifest.append({
             "index": idx,
             "slug": part["slug"],
             "title": part["title"],
             "json_file": f"05_chapter_partition/{file_name}",
-            "target_md_file": f"{file_slug}.md",
+            "target_md_file": target_md_name,
             "node_count": len(part["nodes"])
         })
         print(f"    Partition {idx:02d}: {part['title']} ({len(part['nodes'])} nodes) -> {file_name}")

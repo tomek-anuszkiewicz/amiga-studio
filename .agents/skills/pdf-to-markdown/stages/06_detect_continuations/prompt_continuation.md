@@ -11,8 +11,9 @@ Determine whether Block B is a direct continuation of Block A.
 
 ### Table Continuation Indicators:
 1. **Identical Column Schema**: Block B has the exact same number of columns or continuation of field structures as Block A.
-2. **Continued Data Rows**: The first rows of Block B continue data items (e.g. sequentially increasing memory addresses, register offsets, or alphabetical parameter lists) without a new standalone table caption.
+2. **Continued Data Rows**: The rows of Block B continue data items (e.g. sequentially increasing memory addresses, register offsets, or alphabetical parameter lists).
 3. **Repeated Header with Continuation Tag**: Block B repeats the header row from Block A, optionally appended with "(continued)".
+4. **Preceding Continuation Caption**: A `caption_continuation` block (e.g. 'Table 3-1. Notational Conventions (Continued)', 'Table 3-1 (Concluded)') precedes Block B on Page N+1, confirming it continues the preceding table.
 
 ### Graphic Continuation Indicators:
 1. **Multi-Page Schematic**: A wide block diagram or schematic split across facing pages.

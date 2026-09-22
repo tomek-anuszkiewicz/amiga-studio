@@ -1,7 +1,7 @@
 # Amiga 500 Emulator Architectural & Engineering Guidelines
 
 This repository contains the cycle-exact Amiga 500 emulator written in Rust.
-All agentic pair-programming and automated modifications must adhere strictly to the architectural constraints, execution model, and coding guidelines detailed below.
+All agentic pair-programming and automated modifications must adhere to the architectural constraints, execution model, and coding guidelines detailed below.
 
 ---
 
@@ -10,6 +10,7 @@ All agentic pair-programming and automated modifications must adhere strictly to
 Operational rules are modularized under `.agents/rules/` with single-responsibility scoping across two tiers:
 
 ### A. Universal Invariants (`trigger: always_on`)
+- **Prime Directives** ([`prime-directives.md`](.agents/rules/prime-directives.md)): Invariant modeling, explicit request before editing, and exhaustive workspace search.
 - **Audio Voice Transcription** ([`audio-transcription.md`](.agents/rules/audio-transcription.md)): Mandatory spoken language transcript echo before responses.
 - **Dynamic Model Advisory** ([`model-reasoning-advisory.md`](.agents/rules/model-reasoning-advisory.md)): Proactive advice on switching between `Medium` and `High`/`Pro` reasoning.
 - **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
@@ -64,14 +65,14 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
    - Subsystem state structs (`CpuState`, custom chip states) are decoupled from runtime handles, fully queryable (read-only snapshots), and implement `serde::Serialize` and `serde::Deserialize`.
 
 5. **Substrate-First Invariant (Physical Causal Ordering)**:
-   - Subsystem implementation, roadmaps, and verification plans strictly follow physical electronic causality: Layer 0 (Bus Arbitration, Clock Phases, Contention) $\to$ Layer 1 (Autonomous DMA: Copper, Blitter) $\to$ Layer 2 (Display Pipeline: Denise) $\to$ Layer 3 (Peripherals: Paula, CIAs) $\to$ Layer 4 (Firmware & Exec). Zero folder-tree taxonomic planning.
+   - Subsystem implementation, roadmaps, and verification plans follow physical electronic causality: Layer 0 (Bus Arbitration, Clock Phases, Contention) $\to$ Layer 1 (Autonomous DMA: Copper, Blitter) $\to$ Layer 2 (Display Pipeline: Denise) $\to$ Layer 3 (Peripherals: Paula, CIAs) $\to$ Layer 4 (Firmware & Exec). Zero folder-tree taxonomic planning.
 
 ---
 
 ## 3. Rust Systems & Machine Invariants
 
 1. **Guest vs Host Endianness**:
-   - Motorola 68000 is **strictly Big-Endian**; modern host machines are Little-Endian.
+   - Motorola 68000 is **Big-Endian**; modern host machines are Little-Endian.
    - **Never** perform host-endian pointer casting or `transmute` on guest memory buffers.
    - Decode/encode multi-byte values using explicit endian conversion helpers (`u16::from_be_bytes`, `u32::from_be_bytes`, `val.to_be_bytes()`).
    - *Endianness Bypass*: Bitwise operations (`AND`, `OR`, `EOR`, `NOT`), zeroing (`CLR`), and memory block transfers (DMA, `MOVEM`, `MOVE (An), (Am)`) commute with byte reversal and can bypass endian swapping in hot paths.

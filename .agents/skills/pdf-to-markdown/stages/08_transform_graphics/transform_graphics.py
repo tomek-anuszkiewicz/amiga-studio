@@ -74,9 +74,7 @@ def process_graphics(workspace_dir: Path, config: dict):
                 shutil.copy2(f, out_assets_dir / f.name)
     assets_dir = out_assets_dir
 
-    gemini = GeminiClient(config) if GeminiClient else None
-    if not gemini or not gemini.is_available():
-        raise RuntimeError("GEMINI_API_KEY environment variable is required for Stage 08 graphics transformation.")
+    gemini = GeminiClient(config)
 
     triage_prompt_path = Path(__file__).resolve().parent / "prompt_triage.md"
     triage_prompt = triage_prompt_path.read_text(encoding="utf-8") if triage_prompt_path.exists() else ""
@@ -102,7 +100,7 @@ def process_graphics(workspace_dir: Path, config: dict):
     sidecar_count = 0
 
     def _transform_graphic_task(task):
-        idx, node, has_dedicated_caption = task
+        c_file, idx, node, has_dedicated_caption = task
         node_id = node.get("node_id", "asset")
         page_num = node.get("page", 1)
         raw_text = node.get("raw_text", "")
@@ -117,23 +115,24 @@ def process_graphics(workspace_dir: Path, config: dict):
         graphic_type = triage.get("type", "schematic") if isinstance(triage, dict) else "schematic"
 
         # Check for genuine figure caption from raw_text or separate caption nodes
-        fig_match = re.search(r"(Figure\s+\d+[\-\.]\d+[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
+        fig_match = re.search(r"(Figure\s+[A-Z0-9]+(?:[\-\.][A-Z0-9]+)?[:\s][^\n\r]+)", raw_text, re.IGNORECASE)
         genuine_caption = fig_match.group(1).strip() if fig_match else None
         if not genuine_caption and raw_text.strip():
-            fig_lines = [l.strip() for l in raw_text.splitlines() if l.strip().lower().startswith("figure")]
+            fig_lines = [l.strip() for l in raw_text.splitlines() if re.match(r"^Figure\s+[A-Z0-9]", l.strip(), re.IGNORECASE)]
             if fig_lines:
                 genuine_caption = fig_lines[0]
         if genuine_caption:
             genuine_caption = re.sub(r"[\[\]|]", "", genuine_caption)
 
         # Metadata title strictly for RAG sidecar (never injected as visible body text if absent from book)
-        sidecar_title = genuine_caption or (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
+        node_meta_caption = node.get("metadata", {}).get("caption")
+        sidecar_title = genuine_caption or node_meta_caption or (triage.get("caption") if isinstance(triage, dict) else None) or f"Figure on page {page_num}"
         sidecar_title = re.sub(r"[\[\]|]", "", sidecar_title)
 
         if graphic_type == "mermaid" and png_path and png_path.exists() and mermaid_prompt:
             mermaid_res = gemini.generate_vision(f"{mermaid_prompt}\n\nDiagram Labels:\n{raw_text}", png_path, stage="08_transform_graphics")
             if mermaid_res:
-                return idx, {
+                return c_file, idx, {
                     "rendered_markdown": mermaid_res.strip() + "\n\n",
                     "prune_image": True,
                     "sidecar_name": None,
@@ -149,7 +148,7 @@ def process_graphics(workspace_dir: Path, config: dict):
             full_ascii_prompt = f"{ascii_prompt}\n\nCaption Guideline: {caption_hint}\n\nExtracted Labels:\n{raw_text}"
             ascii_res = gemini.generate_vision(full_ascii_prompt, png_path, stage="08_transform_graphics")
             if ascii_res:
-                return idx, {
+                return c_file, idx, {
                     "rendered_markdown": ascii_res.strip() + "\n\n",
                     "prune_image": True,
                     "sidecar_name": None,
@@ -179,51 +178,56 @@ def process_graphics(workspace_dir: Path, config: dict):
                 f"Labels:\n{raw_text}\n"
             )
 
-        return idx, {
+        return c_file, idx, {
             "rendered_markdown": rendered_md,
             "prune_image": False,
             "sidecar_name": sidecar_name,
             "sidecar_text": sidecar_text,
         }
 
+    chapters = {}
+    all_tasks = []
+
     for c_file in chapter_files:
         with open(c_file, "r", encoding="utf-8") as f:
             nodes = json.load(f)
+        chapters[c_file] = nodes
 
-        tasks = []
         for idx, node in enumerate(nodes):
             if node.get("type") != "graphic":
                 continue
             has_dedicated_caption = any(n.get("type") == "caption" and n.get("page") == node.get("page") for n in nodes)
-            tasks.append((idx, node, has_dedicated_caption))
+            all_tasks.append((c_file, idx, node, has_dedicated_caption))
 
-        if tasks:
-            with ThreadPoolExecutor(max_workers=min(len(tasks), concurrency)) as executor:
-                results = list(executor.map(_transform_graphic_task, tasks))
+    if all_tasks:
+        print(f"[*] Transforming {len(all_tasks)} graphics across {len(chapters)} chapters (concurrency={concurrency})...")
+        with ThreadPoolExecutor(max_workers=min(len(all_tasks), concurrency)) as executor:
+            results = list(executor.map(_transform_graphic_task, all_tasks))
 
-            for idx, res in results:
-                node = nodes[idx]
-                node_id = node.get("node_id", "asset")
-                node["rendered_markdown"] = res["rendered_markdown"]
-                if res["prune_image"]:
-                    for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
-                        try:
-                            asset_f.unlink()
-                        except Exception:
-                            pass
-                    node["png_path"] = None
-                    node["svg_path"] = None
-                    node["sidecar_path"] = None
-                else:
-                    sidecar_name = res["sidecar_name"]
-                    sidecar_text = res["sidecar_text"]
-                    sidecar_path = assets_dir / sidecar_name
-                    with open(sidecar_path, "w", encoding="utf-8") as sf:
-                        sf.write(sidecar_text)
-                    node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{sidecar_name}"
-                    sidecar_count += 1
-                transformed_count += 1
+        for c_file, idx, res in results:
+            node = chapters[c_file][idx]
+            node_id = node.get("node_id", "asset")
+            node["rendered_markdown"] = res["rendered_markdown"]
+            if res["prune_image"]:
+                for asset_f in out_assets_dir.glob(f"asset_{node_id}.*"):
+                    try:
+                        asset_f.unlink()
+                    except Exception:
+                        pass
+                node["png_path"] = None
+                node["svg_path"] = None
+                node["sidecar_path"] = None
+            else:
+                sidecar_name = res["sidecar_name"]
+                sidecar_text = res["sidecar_text"]
+                sidecar_path = assets_dir / sidecar_name
+                with open(sidecar_path, "w", encoding="utf-8") as sf:
+                    sf.write(sidecar_text)
+                node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{sidecar_name}"
+                sidecar_count += 1
+            transformed_count += 1
 
+    for c_file, nodes in chapters.items():
         target_file = out_dir / c_file.name
         with open(target_file, "w", encoding="utf-8") as f:
             json.dump(nodes, f, indent=2)

@@ -12,10 +12,10 @@ You are given:
 3. **Multi-line Cell Entries**: Use `<br>` within `<td>` for cells containing multiple lines or split sub-items.
 4. **Code & Hex Values**: Wrap register names and hex offsets in `<code>...</code>` (e.g. `<code>$DFF096</code>`).
 5. **Unicode Symbols**: Use standard HTML entities or Unicode characters (`&rarr;`, `&plusmn;`, `&Omega;`) instead of markdown math inside HTML tables (as CommonMark does not parse KaTeX inside table cells).
+6. **Theme-Adaptive Borders & Zero Hardcoded Colors**: Strictly prohibited from using legacy `border="1"` or hardcoded color values (e.g. `border: 1px solid black`). If custom cell or sub-diagram borders are needed, use `border: 1px solid var(--table-border-color, currentColor);`.
 
 ## Output Format:
 Return strictly the semantic HTML table block:
-```html
 <table>
   <thead>
     <tr>
@@ -35,4 +35,3 @@ Return strictly the semantic HTML table block:
     <td>Blitter control register 0</td>
   </tr>
 </table>
-```

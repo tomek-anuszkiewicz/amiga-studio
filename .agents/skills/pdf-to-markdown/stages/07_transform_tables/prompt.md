@@ -34,5 +34,12 @@ ONLY IF the table is a simple, flat rectangular grid with NO merged cells, NO ro
 ### 3. Anti-Merge Invariant for Stacked Subsections:
 - If the extracted data contains multiple separate numeric sample arrays or subsections vertically stacked under individual titles (such as 256 Byte Sample, 128 Byte Sample), DO NOT combine them horizontally into a single wide table. Preserve each distinctly under its subtitle (`### <Sample Name>`).
 
+### 4. Theme-Adaptive Styling (Obsidian & GitHub Dark/Light Mode Invariant):
+- **Zero Hardcoded Colors:** Strictly prohibited from using hardcoded color names or hex values in inline styles (e.g. `border: 1px solid black`, `color: #000000`, `background: white`). Hardcoded colors break Obsidian dark mode.
+- **Zero Legacy Border Attributes:** Strictly prohibited from using legacy HTML border attributes like `border="1"` or `frame="..."`. Let Obsidian and GitHub stylesheets control table boundaries.
+- **Adaptive Borders for Nested Bitfields:** If a nested bitfield layout or sub-table cell requires explicit borders, use theme-adaptive CSS:
+  `style="border: 1px solid var(--table-border-color, currentColor); padding: 2px 8px;"`.
+- **Bitfield Diagram Layout:** For bitfield layout diagrams inside tables (e.g. bit positions above named fields like `s`, `e`, `f`), format as a nested table with `style="border-collapse: collapse; margin: 8px auto; text-align: center;"`, where bit number cells have `border: none; font-size: smaller;` and field cells have `border: 1px solid var(--table-border-color, currentColor);`.
+
 ## Output Format:
 Return strictly the table markup (HTML or GFM) with no conversational wrapper.

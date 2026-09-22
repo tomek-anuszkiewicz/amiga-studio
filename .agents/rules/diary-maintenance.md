@@ -30,6 +30,10 @@ To prevent context bloat and eliminate reading the 90+ KB `DIARY.md` file into c
     --results "<test verification>"
   ```
 - The tool automatically computes the current timestamp (`### [YYYY-MM-DD HH:MM CEST] — <Title>`), formats all 4 required sections, and appends the entry cleanly in 0.05s without prompt overhead.
+- **Lifecycle Integration & Git Staging Order:**
+  - Execute `log_diary.py` **prior to creating the Git commit** once verification and test suites have passed.
+  - Stage the updated `DIARY.md` directly alongside the modified source code, unit tests, and design notes in the primary atomic commit per the **Cohesive Unit** protocol in [`.agents/rules/git-commits.md`](git-commits.md).
+  - Never commit the implementation first and leave `DIARY.md` to be committed as an orphan trailing `docs(diary): ...` commit.
 
 ---
 
