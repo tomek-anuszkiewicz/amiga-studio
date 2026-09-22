@@ -34,6 +34,8 @@ When invoked without parameters:
   ```powershell
   rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
   ```
+  The CLI recursively includes Design and Reference Markdown while skipping
+  `.obsidian` and other technical/private directories.
 - **Check Collection Status:**
   ```powershell
   rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json

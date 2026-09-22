@@ -8921,3 +8921,19 @@ Every future modification or implementation task must append an entry following 
   - Python syntax compilation and PowerShell syntax parsing passed
   - tools/harness/pre_flight.py --quick passed
   - cargo test -p test_runner --test test_architecture_rules passed (20 tests).
+---
+
+### [2026-09-22 16:30 CEST] — RAG CLI: Document Obsidian Root Exclusions
+- **Affected Subsystems**:
+  - `.agents/rules/amiga-rag.md`
+  - `RAG workflow documentation`
+  - `bootstrap compatibility help`
+- **What Was Changed (The Concrete Reality)**:
+  - Clarified that indexing Obsidian/Amiga recursively includes Design and Reference Markdown while the CLI automatically excludes .obsidian and other technical/private directories.
+- **Architectural Rationale & Trade-Offs**:
+  - The root-level CLI invocation remains correct
+  - documentation must state its real scan boundary rather than implying that every descendant is indexed.
+- **Verification & Test Results**:
+  - tools/harness/pre_flight.py --quick passed
+  - cargo test -p test_runner --test test_architecture_rules passed (20 tests)
+  - git diff --check passed.

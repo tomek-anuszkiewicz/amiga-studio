@@ -38,7 +38,7 @@ RAG_INDEX_JSON=<shared-rag-index-state-file>
 `rag_reindex()` invokes `rag_qdrant` only for the Amiga documentation scopes:
 
 - repository `docs`
-- every Markdown file below `Obsidian/Amiga`
+- Markdown below `Obsidian/Amiga`, including Design and Reference while the CLI excludes `.obsidian` and other technical directories
 
 It uses the `amiga` source tag and passes `RAG_INDEX_JSON` to every invocation.
 The CLI hashes every Markdown file on each run and has no forced-reindex mode.

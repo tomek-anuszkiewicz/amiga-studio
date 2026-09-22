@@ -283,7 +283,8 @@ Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active 
     - At the end of a documentation batch, run the canonical CLI commands. SHA-256 caching skips unchanged files; there is no file-save watcher.
 - **Provisioning & Manual Reindexing:**
   ```powershell
-  # Set the shared CLI state file, then index all Amiga project Markdown:
+  # Set the shared CLI state file, then index project Markdown. The Obsidian
+  # root includes Design and Reference but excludes .obsidian automatically:
   $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
   rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
   rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON

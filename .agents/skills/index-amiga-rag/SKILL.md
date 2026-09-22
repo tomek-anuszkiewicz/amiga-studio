@@ -32,7 +32,8 @@ If diagrams, pinouts, or circuit schematics were modified or added, generate or 
 ### Step 2: Incrementally Index the Supported Scopes
 Set `RAG_INDEX_JSON` to the shared state file, then run both commands from the
 repository root. The CLI recursively scans Markdown and processes only files
-whose SHA-256 hash changed:
+whose SHA-256 hash changed. The `Obsidian/Amiga` root includes Design and
+Reference while excluding `.obsidian` and other technical/private directories:
 
 ```powershell
 $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"

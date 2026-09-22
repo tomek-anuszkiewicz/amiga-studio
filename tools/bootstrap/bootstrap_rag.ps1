@@ -4,8 +4,9 @@
 
 .DESCRIPTION
     This compatibility entry point delegates directly to rag_qdrant. It indexes
-    repository docs and every Markdown file below Obsidian/Amiga. The CLI
-    requires RAG_INDEX_JSON to identify its shared incremental state file.
+    repository docs plus Markdown below Obsidian/Amiga, including Design and
+    Reference while excluding .obsidian and other technical directories. The
+    CLI requires RAG_INDEX_JSON to identify its shared incremental state file.
 
 .PARAMETER CheckOnly
     Report Qdrant status without indexing documents.
