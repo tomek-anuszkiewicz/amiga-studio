@@ -4,20 +4,17 @@
 
 .DESCRIPTION
     This compatibility entry point delegates directly to rag_qdrant. It indexes
-    repository docs plus Design and Reference below Obsidian/Amiga. The CLI
-    reuses its SHA-256 cache unless -Reindex is supplied.
+    repository docs and every Markdown file below Obsidian/Amiga. The CLI
+    requires RAG_INDEX_JSON to identify its shared incremental state file.
 
 .PARAMETER CheckOnly
     Report Qdrant status without indexing documents.
 
-.PARAMETER Reindex
-    Force both supported scopes to be rebuilt, bypassing the SHA-256 cache.
 #>
 
 [CmdletBinding()]
 param(
-    [switch]$CheckOnly,
-    [switch]$Reindex
+    [switch]$CheckOnly
 )
 
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -28,22 +25,25 @@ if (-not $RagQdrantCommand) {
     exit 1
 }
 
+$RagIndexJson = $env:RAG_INDEX_JSON
+if ([string]::IsNullOrWhiteSpace($RagIndexJson)) {
+    Write-Error "RAG_INDEX_JSON must name the shared rag_qdrant state file before indexing Amiga documentation."
+    exit 1
+}
+
 if ($CheckOnly) {
-    & $RagQdrantCommand.Path --status
+    & $RagQdrantCommand.Path --status --index-json $RagIndexJson
     exit $LASTEXITCODE
 }
 
 $AmigaDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga"
+$RepositoryDocumentationRoot = Join-Path $RepoRoot "docs"
 $IndexCommands = @(
-    @($RepoRoot, "--source", "amiga", "--include-dirs", "docs"),
-    @($AmigaDocumentationRoot, "--source", "amiga", "--include-dirs", "Design", "Reference")
+    @($RepositoryDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson),
+    @($AmigaDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson)
 )
 
 foreach ($IndexArguments in $IndexCommands) {
-    if ($Reindex) {
-        $IndexArguments += "--reindex"
-    }
-
     & $RagQdrantCommand.Path @IndexArguments
     if ($LASTEXITCODE -ne 0) {
         Write-Error "rag_qdrant indexing failed with exit code $LASTEXITCODE."
@@ -51,5 +51,5 @@ foreach ($IndexArguments in $IndexCommands) {
     }
 }
 
-& $RagQdrantCommand.Path --status
+& $RagQdrantCommand.Path --status --index-json $RagIndexJson
 exit $LASTEXITCODE

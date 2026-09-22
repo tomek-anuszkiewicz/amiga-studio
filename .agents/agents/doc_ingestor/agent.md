@@ -50,13 +50,13 @@ not architectural judgement.
    - After ingestion or any modification to files under `Obsidian/Amiga/Reference/` or
      `Obsidian/Amiga/Design/`, trigger incremental reindexing:
      ```powershell
-     rag_qdrant . --source amiga --include-dirs docs
-     rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
+     rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
+     rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
      ```
    - Verify the updated collection with:
      ```powershell
-     rag_qdrant --status
-     rag_qdrant search "<ingested topic>" --source amiga --limit 2 --json
+     rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json
+     rag_qdrant search "<ingested topic>" --source amiga --limit 2 --index-json $env:RAG_INDEX_JSON --json
      ```
    - Report the number of new vectors indexed and any embedding errors.
 

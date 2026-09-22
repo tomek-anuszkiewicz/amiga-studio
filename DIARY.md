@@ -8897,3 +8897,27 @@ Every future modification or implementation task must append an entry following 
   - Python syntax compilation passed
   - tools/harness/pre_flight.py --quick passed
   - cargo test -p test_runner --test test_architecture_rules passed (20 tests).
+---
+
+### [2026-09-22 16:22 CEST] — RAG CLI: Adopt Mandatory Index State Contract
+- **Affected Subsystems**:
+  - `tools/amiga-rag-mcp-server`
+  - `tools/bootstrap.ps1`
+  - `.agents/rules/amiga-rag.md`
+  - `RAG operator documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Adopted --index-json on every rag_qdrant operation
+  - replaced include-directory filtering with recursive docs and Obsidian/Amiga roots
+  - removed the retired force-reindex path
+  - restored the supported comma-separated source filter
+  - removed the obsolete sidecar indexer harness and corrected sidecar documentation.
+- **Architectural Rationale & Trade-Offs**:
+  - The updated public CLI owns shared state through a required index JSON file
+  - scans Markdown recursively
+  - and does not ingest image sidecars. The MCP adapter and bootstrap scripts must expose that exact contract without hidden compatibility behavior.
+- **Verification & Test Results**:
+  - Captured updated rag_qdrant help and JSON error behavior
+  - 14 MCP and bootstrap contract tests passed
+  - Python syntax compilation and PowerShell syntax parsing passed
+  - tools/harness/pre_flight.py --quick passed
+  - cargo test -p test_runner --test test_architecture_rules passed (20 tests).

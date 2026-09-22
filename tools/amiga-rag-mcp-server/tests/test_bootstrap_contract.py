@@ -27,6 +27,7 @@ class BootstrapRagContractTests(unittest.TestCase):
             environment = os.environ.copy()
             environment["PATH"] = f"{temporary_directory}{os.pathsep}{environment['PATH']}"
             environment["RAG_QDRANT_LOG"] = str(command_log)
+            environment["RAG_INDEX_JSON"] = str(temporary_root / "rag-index.json")
 
             completed = subprocess.run(
                 [
@@ -49,8 +50,8 @@ class BootstrapRagContractTests(unittest.TestCase):
             self.assertEqual(
                 command_log.read_text(encoding="utf-8").splitlines(),
                 [
-                    f'{REPOSITORY_ROOT} --source amiga --include-dirs docs',
-                    f'{REPOSITORY_ROOT / "Obsidian" / "Amiga"} --source amiga --include-dirs Design Reference',
+                    f'{REPOSITORY_ROOT / "docs"} --source amiga --index-json {temporary_root / "rag-index.json"}',
+                    f'{REPOSITORY_ROOT / "Obsidian" / "Amiga"} --source amiga --index-json {temporary_root / "rag-index.json"}',
                 ],
             )
 
@@ -74,6 +75,7 @@ class BootstrapRagContractTests(unittest.TestCase):
             environment = os.environ.copy()
             environment["PATH"] = f"{temporary_directory}{os.pathsep}{environment['PATH']}"
             environment["RAG_QDRANT_LOG"] = str(command_log)
+            environment["RAG_INDEX_JSON"] = str(temporary_root / "rag-index.json")
 
             completed = subprocess.run(
                 [
@@ -95,9 +97,9 @@ class BootstrapRagContractTests(unittest.TestCase):
             self.assertEqual(
                 command_log.read_text(encoding="utf-8").splitlines(),
                 [
-                    f'{REPOSITORY_ROOT} --source amiga --include-dirs docs',
-                    f'{REPOSITORY_ROOT / "Obsidian" / "Amiga"} --source amiga --include-dirs Design Reference',
-                    "--status",
+                    f'{REPOSITORY_ROOT / "docs"} --source amiga --index-json {temporary_root / "rag-index.json"}',
+                    f'{REPOSITORY_ROOT / "Obsidian" / "Amiga"} --source amiga --index-json {temporary_root / "rag-index.json"}',
+                    f'--status --index-json {temporary_root / "rag-index.json"}',
                 ],
             )
 

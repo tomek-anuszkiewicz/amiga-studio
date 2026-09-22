@@ -28,20 +28,23 @@ Ensure `rag_qdrant` is available on `PATH`, then register the server in the Amig
 }
 ```
 
+Create the ignored project `.env` file with the CLI state-file location shared
+by every command operating on `projects_docs`:
+
+```dotenv
+RAG_INDEX_JSON=<shared-rag-index-state-file>
+```
+
 `rag_reindex()` invokes `rag_qdrant` only for the Amiga documentation scopes:
 
 - repository `docs`
-- `Obsidian/Amiga/Design`
-- `Obsidian/Amiga/Reference`
+- every Markdown file below `Obsidian/Amiga`
 
-It uses the `amiga` source tag and lets the CLI reuse its cache by default. Call
-`rag_reindex(force=true)` to pass `--reindex` to both CLI calls and rebuild the
-scoped documents.
+It uses the `amiga` source tag and passes `RAG_INDEX_JSON` to every invocation.
+The CLI hashes every Markdown file on each run and has no forced-reindex mode.
 
-When the MCP `rag_search` tool receives multiple source tags, it invokes one
-valid `rag_qdrant search ... --source NAME --json` command per tag and combines
-the returned hits. This mirrors the CLI's single-source option rather than
-inventing a comma-separated source syntax.
+When the MCP `rag_search` tool receives multiple source tags, it passes the
+deduplicated tags as the CLI's supported comma-separated `--source` value.
 
 The MCP server is the RAG integration point for agent retrieval and reindexing.
 For operator-driven setup, `tools/bootstrap.ps1 -Rag` invokes the same

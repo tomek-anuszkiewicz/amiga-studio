@@ -5,7 +5,7 @@ description: Re-index Amiga hardware manuals and Obsidian design notes into loca
 
 # Workflow: Index Amiga RAG Knowledge Base
 
-Use this workflow to execute incremental vector ingestion of Amiga hardware manuals, technical reference documentation, and visual diagram sidecars into the local Qdrant vector database (`amiga` collection).
+Use this workflow to execute incremental vector ingestion of Amiga hardware manuals and technical reference documentation into the local Qdrant `projects_docs` collection under the `amiga` source tag.
 
 ---
 
@@ -14,16 +14,17 @@ When invoked without parameters:
 1. **Audit Diagram Sidecars:**
    - Ensure every modified or added diagram has an accurate Git-tracked `<image>.txt` sidecar.
 2. **Execute Incremental Vector Ingestion:**
-   - Runs incremental ingestion using the local SHA256 hash cache (skipping unchanged content instantly):
+   - Sets the CLI state file and runs incremental ingestion (skipping unchanged Markdown hashes):
      ```powershell
-     rag_qdrant . --source amiga --include-dirs docs
-     rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
+     $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
+     rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
+     rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
      ```
 3. **Verify Database Health & Status:**
    - Checks Qdrant collection vector counts and status:
      ```powershell
-     rag_qdrant --status
-     rag_qdrant --list-sources
+     rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json
+     rag_qdrant --list-sources --index-json $env:RAG_INDEX_JSON --json
      ```
 
 ---
@@ -31,24 +32,21 @@ When invoked without parameters:
 ## 2. Targeted Ingestion Commands
 - **Index Amiga Design and Reference Documents:**
   ```powershell
-  rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
+  rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
   ```
 - **Check Collection Status:**
   ```powershell
-  rag_qdrant --status
+  rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json
   ```
-- **Force a Scoped Rebuild (exceptional only):**
-  ```powershell
-  rag_qdrant . --source amiga --include-dirs docs --reindex
-  rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference --reindex
-  ```
+- **State Management:** The CLI state file records hashes, sources, and chunk
+  counts. It is required on every command and the CLI has no forced-reindex mode.
 
 ---
 
 ## 3. Execution Runbook
 Follow the operational procedure in [`.agents/skills/index-amiga-rag/SKILL.md`](../skills/index-amiga-rag/SKILL.md):
 1. **Sidecar Verification:** Ensure circuit diagrams and timing charts have accompanying `<image>.txt` technical sidecars per [`.agents/rules/asset-descriptions.md`](../rules/asset-descriptions.md).
-2. **Incremental Indexing:** Run the two canonical `rag_qdrant` commands to ingest changed documents and sidecars into Qdrant under the `amiga` source.
+2. **Incremental Indexing:** Run the two canonical `rag_qdrant` commands to ingest changed Markdown into Qdrant under the `amiga` source. The CLI does not ingest image sidecars.
 3. **Status Query:** Confirm health, source counts, and retrieval of a distinctive phrase through `rag_qdrant`.
 
 ---

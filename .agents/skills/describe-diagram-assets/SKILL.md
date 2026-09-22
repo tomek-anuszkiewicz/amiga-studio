@@ -1,6 +1,6 @@
 ---
 name: describe-diagram-assets
-description: Inspect circuit diagrams via multimodal vision, author technical sidecars (<image>.txt), and sync RAG cache.
+description: Inspect circuit diagrams via multimodal vision and author technical sidecars (<image>.txt).
 ---
 
 # Recipe: Technical Diagram & Asset Sidecar Generation
@@ -13,14 +13,12 @@ This skill provides the standard operational procedure for generating and synchr
 
 Activate this skill whenever:
 - Adding, replacing, or updating technical diagrams, waveforms, or pinouts in `Obsidian/Amiga/Reference/*/assets/`.
-- Preparing documentation assets for offline RAG indexing via `rag_qdrant`.
 - Running an asset audit to verify all documentation diagrams have corresponding `.txt` sidecars.
 
 ---
 
 ## 2. Tooling & Asset Registry
 
-- **Indexer CLI:** `rag_qdrant`; it owns the SHA-256 cache and detects changed sidecars during incremental indexing.
 - **Vision Inspection:** Native `view_file` tool (consuming IDE multimodal vision, 100% offline with zero external cloud API keys).
 
 ---
@@ -56,20 +54,14 @@ Create or update `<image_path>.txt` immediately alongside the image file, follow
 - Architectural Summary: <Core physical takeaway, cycle-exact timing rules, and hardware circuit behavior>
 ```
 
-### Step 4: Incrementally Index the Updated Sidecars
-The CLI records hashes while indexing; do not edit its cache directly:
-```powershell
-rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
-```
+### Step 4: Keep Sidecars as Repository Documentation
+`rag_qdrant` indexes Markdown only; it does not read image or `.txt` sidecar
+content. Keep a sidecar accurate and Git-tracked for human and agent inspection.
+If the surrounding Markdown changed, use `index-amiga-rag` to index that Markdown.
 
 ### Step 5: Verification & Version Control
 1. Re-run the missing-sidecar command from Step 1 and inspect updated diagrams visually.
-2. Verify the index and a distinctive sidecar phrase:
-   ```powershell
-   rag_qdrant --status
-   rag_qdrant search "<distinctive sidecar phrase>" --source amiga --limit 2 --json
-   ```
-3. Ensure both the diagram and its `<image_path>.txt` sidecar are tracked in Git.
+2. Ensure both the diagram and its `<image_path>.txt` sidecar are tracked in Git.
 
 ---
 
@@ -80,5 +72,5 @@ rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
 - **Asset Processed:** `<image_path>`
 - **Generated Sidecar:** [`<image_path>.txt`](file:///<image_path>.txt)
 - **Extracted Signals / Pinouts:** `<comma_separated_signals>` (e.g. `_AS`, `_DTACK`, `_BERR`, `IPL0-IPL2`)
-- **Index Status:** Incremental `rag_qdrant` run completed and retrieval was verified.
+- **Index Status:** Sidecar retained as repository documentation; the Markdown-only CLI does not index it.
 ```

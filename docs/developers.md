@@ -251,7 +251,7 @@ Provisions and indexes the local vector database for AI-assisted pair-programmin
 **What It Does:**
 - Spawns the local Qdrant container on `http://localhost:6333` (via Docker).
 - Uses local FastEmbed (`BAAI/bge-small-en-v1.5`) to embed hardware manuals (`Obsidian/Amiga/Reference/`) and architectural notes (`Obsidian/Amiga/Design/`) into the unified `amiga` collection.
-- Maintains `amiga_rag_cache.json` for fast sub-second incremental reindexing.
+- Requires `RAG_INDEX_JSON` to name the state file used for incremental reindexing.
 - For query tools, CLI commands, and FastMCP details, see [Chapter 5: Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag).
 
 <a id="code-knowledge-graph-setup-graphify"></a>
@@ -273,34 +273,35 @@ Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active 
 
 <a id="6-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a><a id="6-domain-hardware-knowledge--local-vector-rag-amiga-rag"></a><a id="5-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a><a id="5-domain-hardware-knowledge--local-vector-rag-amiga-rag"></a><a id="a-domain-hardware-knowledge-local-vector-rag-amiga-rag"></a>
 ## 5. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
-- **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `amiga`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
+- **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `projects_docs`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
 - **Vector Database Architecture:**
   - Local Qdrant instance on `http://localhost:6333`.
-  - Unified `amiga` collection partitioned by source tags: `amiga` for hardware reference manuals, `obsidian` for architectural design notes.
+  - Unified `projects_docs` collection partitioned by source tags: `amiga` for hardware reference manuals, `obsidian` for architectural design notes.
   - Local FastEmbed (`BAAI/bge-small-en-v1.5`), 100% offline with zero external cloud API keys required.
-  - Incremental cache `amiga_rag_cache.json` tracks SHA-256 hashes of individual files, reindexing modified documents in $< 1$ second while skipping unchanged files.
+  - The CLI state file named by `RAG_INDEX_JSON` tracks SHA-256 hashes of individual files, reindexing modified documents while skipping unchanged files.
   - **Incremental Reindexing Trigger ([`amiga-rag.md`](../.agents/rules/amiga-rag.md)):**
     - At the end of a documentation batch, run the canonical CLI commands. SHA-256 caching skips unchanged files; there is no file-save watcher.
 - **Provisioning & Manual Reindexing:**
   ```powershell
-  # Incrementally index all Amiga project documentation:
-  rag_qdrant . --source amiga --include-dirs docs
-  rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
+  # Set the shared CLI state file, then index all Amiga project Markdown:
+  $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
+  rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
+  rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
   ```
 - **Query Tools & FastMCP:**
   - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "obsidian"])`.
   - Fast CLI search across hardware manuals:
     ```powershell
-    python tools/harness/rag_search.py "Agnus blitter line mode minterm" --source amiga
+    rag_qdrant search "Agnus blitter line mode minterm" --source amiga --limit 5 --index-json $env:RAG_INDEX_JSON --json
     ```
   - Fast CLI search across architectural design specs:
     ```powershell
-    python tools/harness/rag_search.py "Color Clock CCK phases memory bus wait states" --source obsidian
+    rag_qdrant search "Color Clock CCK phases memory bus wait states" --source obsidian --limit 5 --index-json $env:RAG_INDEX_JSON --json
     ```
   - Check database status and document/source counts:
     ```powershell
-    rag_qdrant --status
-    rag_qdrant --list-sources
+    rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json
+    rag_qdrant --list-sources --index-json $env:RAG_INDEX_JSON --json
     ```
 
 ---

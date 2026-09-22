@@ -1,24 +1,24 @@
 ---
 trigger: model_decision
-description: Inspect diagrams and generate Git-tracked sidecar text descriptions (.txt) using Agent native multimodal vision for Amiga RAG MCP retrieval.
+description: Inspect diagrams and generate Git-tracked sidecar text descriptions (.txt) using Agent native multimodal vision.
 ---
 
 ## Diagram & Asset Sidecar Descriptions
 
 All circuit diagrams, timing diagrams, pinouts, and architecture schematics in documentation assets (e.g. `Obsidian/Amiga/Reference/*/assets/`) maintain corresponding Git-tracked text description files: `<image_path>.txt`.
 
-These sidecar files enrich Amiga RAG MCP retrieval with diagram details without requiring cloud APIs or runtime OCR.
+These sidecar files preserve diagram details without requiring cloud APIs or runtime OCR. The current `rag_qdrant` CLI indexes Markdown only and does not consume sidecar content.
 
 ### Change Detection
 - An image requires a description when its `<image_path>.txt` sidecar is missing or no longer accurately reflects the image.
-- The standalone indexing tool maintains its own hash cache; Amiga project workflows do not access that cache directly.
+- The standalone indexing tool maintains Markdown hashes in the state file named by `RAG_INDEX_JSON`; Amiga project workflows do not access that state directly.
 
 ### Execution Skill
-- Follow the standardized operational recipe in [`describe-diagram-assets`](../skills/describe-diagram-assets/SKILL.md) to inspect unindexed diagrams, generate `<image_path>.txt` sidecars, and synchronize the RAG cache.
+- Follow the standardized operational recipe in [`describe-diagram-assets`](../skills/describe-diagram-assets/SKILL.md) to inspect diagrams and generate `<image_path>.txt` sidecars.
 
 ### Generation Workflow (Agent Native Multimodal Vision)
 When requested by the user or when assets are modified:
-1. Identify unindexed images using `AssetsManager.get_unindexed_images()`.
+1. Identify images without companion sidecars using the PowerShell command in `describe-diagram-assets`.
 2. Inspect the image natively using `view_file` (consuming Antigravity IDE's internal multimodal model quota, not external API keys).
 3. Generate a structured, factual technical description adhering to this standard:
    ```markdown
@@ -29,4 +29,4 @@ When requested by the user or when assets are modified:
    - Architectural Summary: <Core engineering takeaway and cycle-exact behavior>
    ```
 4. Save the description into `<image_path>.txt`.
-5. Keep both image and sidecar `.txt` version-controlled in Git so the MCP knowledge source can retrieve the associated context after its normal ingestion lifecycle.
+5. Keep both image and sidecar `.txt` version-controlled in Git for direct human and agent inspection.

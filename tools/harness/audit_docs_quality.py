@@ -462,7 +462,6 @@ def check_script_locality_and_governance():
         "audit_docs_quality.py",
         "audit_hardware_quality.py",
         "log_diary.py",
-        "rag_search.py",
     }
 
     issues = []
@@ -585,7 +584,7 @@ def check_workflow_and_skill_governance():
         "compact-diary": "Milestone diary synthesis and compaction procedure",
         "sync-design-docs": "Design specification synchronization with git commit history",
         "roadmap-maintenance": "Milestone scorecard pruning and substrate-first roadmap update",
-        "index-amiga-rag": "Qdrant vector database re-indexing and offline sidecar maintenance",
+        "index-amiga-rag": "Qdrant vector database indexing through the public CLI",
         "audit-code-quality": "Rust codebase quality, dead code, visibility, and SRP audit",
         "audit-docs-quality": "Documentation, vault linking, and governance quality audit",
         "audit-hardware-quality": "Hardware architectural bus topology and silicon compliance audit",
@@ -1121,7 +1120,7 @@ def check_semantic_sync():
 # ---------------------------------------------------------------------------
 
 REGISTERED_RULE_AUDITS = {
-    "amiga-rag.md": ["tools/harness/rag_search.py", "audit_docs_quality.py (Pillar 5)"],
+    "amiga-rag.md": ["rag_qdrant", "audit_docs_quality.py (Pillar 5)"],
     "asset-descriptions.md": ["audit_docs_quality.py (Pillar 10 asset sidecars)"],
     "audio-transcription.md": ["workflows (Conscience Check 1)"],
     "clean-break-refactoring.md": ["test_architecture_rules.rs (test_zero_backward_compatibility_shims_and_stale_aliases)"],

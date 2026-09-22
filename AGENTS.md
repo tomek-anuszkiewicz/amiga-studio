@@ -120,7 +120,7 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 
 ## 5. Knowledge Base & Reference Navigation
 
-- **Knowledge Retrieval Precedence**: Mandatory `graphify query` before viewing source files and `python tools/harness/rag_search.py` before opening reference manuals per [`graphify.md`](.agents/rules/graphify.md) and [`amiga-rag.md`](.agents/rules/amiga-rag.md).
+- **Knowledge Retrieval Precedence**: Mandatory `graphify query` before viewing source files and `rag_qdrant search ... --index-json $env:RAG_INDEX_JSON --json` before opening reference manuals per [`graphify.md`](.agents/rules/graphify.md) and [`amiga-rag.md`](.agents/rules/amiga-rag.md).
 - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
 - **Platform Quirks & Invariants**: Centralized hardware silicon idiosyncrasies reside in [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md).
 - **Official Hardware Documentation**: Hardware manuals and PRMs reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) (searchable via `rag_search`).

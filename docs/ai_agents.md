@@ -30,7 +30,7 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `projects_docs`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
 - **Project Integration ([`amiga-rag.md`](../.agents/rules/amiga-rag.md)):**
   - The `rag_qdrant` CLI is the canonical index and retrieval interface; the MCP server is an optional adapter.
-  - After supported documentation changes, incrementally index `docs` and `Obsidian/Amiga/{Design,Reference}` with the two commands in `index-amiga-rag`. Use `--reindex` only for a complete scoped rebuild.
+  - After supported documentation changes, set `RAG_INDEX_JSON` and incrementally index `docs` plus `Obsidian/Amiga` with the two commands in `index-amiga-rag`. The CLI recursively scans Markdown and has no `--reindex` mode.
 - **Trusted Data Boundary & Provenance:**
   - The local RAG vector store and Graphify AST graphs operate exclusively on a trusted local boundary.
   - Only authoritative Commodore/Motorola hardware reference manuals and internal design specs should be placed in `Obsidian/Amiga/`.
@@ -76,9 +76,9 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`sync-design-docs`](../.agents/skills/sync-design-docs/SKILL.md): Synchronize Obsidian design specifications with active codebase changes, prune draft code, and update crate graphs.
 - [`roadmap-maintenance`](../.agents/skills/roadmap-maintenance/SKILL.md): Systematic maintenance and substrate-first ordering of `ROADMAP.md` with zero retention of completed items.
 - [`compact-diary`](../.agents/skills/compact-diary/SKILL.md): Milestone compaction procedure synthesizing older chronological log entries in [DIARY.md](../DIARY.md) into concise architectural digests while preserving key evolutionary rationale and verified results.
-- [`describe-diagram-assets`](../.agents/skills/describe-diagram-assets/SKILL.md): Inspect circuit diagrams via multimodal vision, author technical sidecars (`<image>.txt`), and sync RAG cache.
+- [`describe-diagram-assets`](../.agents/skills/describe-diagram-assets/SKILL.md): Inspect circuit diagrams via multimodal vision and author technical sidecars (`<image>.txt`).
 - [`pdf-to-markdown`](../.agents/skills/pdf-to-markdown/SKILL.md): High-fidelity document conversion toolchain (PyMuPDF chapter splitting, figure cropping, SVG vectorization, and table stitching) for technical reference manuals.
-- [`index-amiga-rag`](../.agents/skills/index-amiga-rag/SKILL.md): MCP-only guidance for project documentation retrieval and sidecar preparation.
+- [`index-amiga-rag`](../.agents/skills/index-amiga-rag/SKILL.md): CLI-first guidance for project Markdown retrieval and incremental indexing.
 - [`author-methodology-doc`](../.agents/skills/author-methodology-doc/SKILL.md): Author, audit, or restructure narrative articles, methodology documents, essays, and retrospective devlogs (e.g. `docs/how_this_emulator_was_written.md`) using the 6-layer Inverted Pyramid hierarchy.
 - [`html-to-markdown`](../.agents/skills/html-to-markdown/SKILL.md): Standardized toolchain for converting legacy Word HTML, vintage web documentation, and technical HTML articles into clean, publication-grade Obsidian Markdown with asset extraction, layout unnesting, and anchor link validation.
 - [`graphify`](../.agents/skills/graphify/SKILL.md): Persistent code knowledge graph navigation, call hierarchy tracing, and scoped subtree updates (`crates/` vs `ref_src/`).

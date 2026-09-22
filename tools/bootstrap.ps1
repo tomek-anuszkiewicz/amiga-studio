@@ -239,10 +239,17 @@ if ($Rag -or $All) {
     if (-not $RagQdrantCommand) {
         Write-Warning "rag_qdrant CLI is not found on PATH. Install it before running -Rag."
     } else {
+        $RagIndexJson = $env:RAG_INDEX_JSON
+        if ([string]::IsNullOrWhiteSpace($RagIndexJson)) {
+            Write-Warning "RAG_INDEX_JSON must name the shared rag_qdrant state file before running -Rag."
+            return
+        }
+
+        $RepositoryDocumentationRoot = Join-Path $RepoRoot "docs"
         $AmigaDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga"
         $IndexCommands = @(
-            @($RepoRoot, "--source", "amiga", "--include-dirs", "docs"),
-            @($AmigaDocumentationRoot, "--source", "amiga", "--include-dirs", "Design", "Reference")
+            @($RepositoryDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson),
+            @($AmigaDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson)
         )
         $IndexingSucceeded = $true
 

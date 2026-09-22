@@ -456,7 +456,7 @@ To achieve cycle-exact accuracy and debug complex game/demo edge cases, the proj
     - Refine and calibrate Markdown files per `.agents/rules/vault-linking-and-graph-integrity.md` (inverted pyramid, dual-layer linking).
     - Re-bootstrap into RAG and verify improved agent comprehension and code generation accuracy.
   - **Verification Gate:**
-    - Verified retrieval precision and accuracy across test query sets via `python tools/harness/rag_search.py`.
+    - Verify retrieval precision and accuracy across test query sets via `rag_qdrant search ... --index-json $env:RAG_INDEX_JSON --json`.
 
 - **3.5.3: Staged Clean-Room Reconstruction & Autonomous Documentation-to-Code Regeneration Testing**
   - **Objective:** Test and validate the end-to-end capability of an autonomous AI agent to reconstruct emulator subsystems directly from design documentation and rules.
