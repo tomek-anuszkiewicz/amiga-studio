@@ -72,7 +72,7 @@ Whenever creating isolated worktrees for feature branches or subagent parallel t
 2. **Strict Worktree Isolation & Zero-Junction Invariant:**
    - **Strict Prohibition of NTFS Junctions and Directory Links:** Never use NTFS directory junctions (`New-Item -ItemType Junction`, `mklink /J`) or symbolic links across worktrees or repositories. Every worktree must remain 100% self-contained with independent physical storage. Shared directory portals risk cross-branch contamination of AST caches (`graphify-out`), test fixtures, or concurrent edits.
    - **Independent Physical Copies:** Ignored test suites (`ref_src/`, `tools/AmigaTestKit/`, `Obsidian/Amiga/Reference/`, `tests/singlestep/`, `tests/benchmarks/`) and `.env` are physically copied into independent directories.
-   - **Local Knowledge Graphs:** `graphify-out` must never be linked or shared across worktrees; each branch maintains its own local AST knowledge graph authentic to its code.
+   - **Local Knowledge Graphs:** `graphify-out` must never be linked or shared across worktrees. Physically copy it as an initial seed, then run `graphify update .` in the target worktree so each branch maintains a local AST knowledge graph authentic to its code.
    - Always invoke the automated tool:
      ```powershell
      .\tools\git\worktree.ps1 add <branch-name>

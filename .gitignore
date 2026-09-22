@@ -72,6 +72,7 @@ tests/singlestep/
 /Obsidian/Amiga/Reference/.cache/
 
 # Graphify AST knowledge graph database, semantic indices, and architecture maps.
+# Physically copied as a seed for new worktrees, then refreshed locally with graphify update.
 /graphify-out/
 
 # Keir Fraser Amiga Test Kit floppy disk images (.adf), debug symbols, and release docs.

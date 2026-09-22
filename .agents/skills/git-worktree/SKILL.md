@@ -33,7 +33,7 @@ Activate this skill whenever:
      - `tools/AmigaTestKit/` (test floppy ADFs)
      - `tests/singlestep/` & `tests/benchmarks/` (test baseline outputs)
      - `.env` (environment configuration, `RAG_CACHE_FILE`)
-   - **Local Knowledge Graphs:** `graphify-out` is strictly local to each repository and must never be linked or copied across worktrees.
+   - **Local Knowledge Graphs:** Physically copy `graphify-out/` into each new worktree as a fast initial graph seed. Never link or share it. Immediately run `graphify update .` in the target worktree so the copied graph reflects that checkout.
    - **Mandatory Script Use:** Always use `.\tools\git\worktree.ps1` to create and tear down worktrees. The script automatically executes multi-threaded physical copying of necessary test assets into standalone directories.
 
 3. **Isolated Cargo Build Cache:**
@@ -56,8 +56,8 @@ To branch from a specific base branch:
 The script will:
 1. Determine the main repository root.
 2. Create the worktree at the sibling path `../<repo_name>-<branch_name>`.
-3. Copy test fixtures into independent physical directories.
-4. Copy `.env`.
+3. Copy test fixtures, reference documentation, and `graphify-out/` into independent physical directories.
+4. Copy `.env` and run `graphify update .` in the new worktree.
 
 ### Step 2: Working Within the Worktree
 Inform the user of the created path. When executing commands in the worktree, pass the worktree path as the working directory (`Cwd`):
@@ -66,7 +66,7 @@ cargo test -p <crate>
 ```
 
 ### Step 3: Repairing / Synchronizing an Active Worktree
-If an existing worktree was created without the script and is missing `.env` or `ref_src/`:
+If an existing worktree was created without the script and is missing `.env`, `ref_src/`, or `graphify-out/`:
 ```powershell
 .\tools\git\worktree.ps1 sync
 ```

@@ -85,7 +85,7 @@ Operational procedures and recipes are modularized under [`.agents/skills/`](../
 - [`audit-semantic-parity`](../.agents/skills/audit-semantic-parity/SKILL.md): Inference-driven bidirectional semantic audit evaluating code-to-docs parity (blind spots, undocumented code) and docs-to-code parity (hallucinations, ghost features, spec drift).
 
 ### D. Git & Worktree Orchestration
-- [`git-worktree`](../.agents/skills/git-worktree/SKILL.md): Create, synchronize, and tear down isolated Git worktrees with automatic physical copying of ignored test assets and `.env` (Zero NTFS Junctions).
+- [`git-worktree`](../.agents/skills/git-worktree/SKILL.md): Create, synchronize, and tear down isolated Git worktrees with automatic physical copying of ignored test assets, `.env`, and a `graphify-out/` seed followed by `graphify update .` (Zero NTFS Junctions).
 - [`git-resolve-merge`](../.agents/skills/git-resolve-merge/SKILL.md): Resolve 3-way Git merge conflicts holistically in isolated worktrees with mandatory merge commits and regression verification.
 
 ---

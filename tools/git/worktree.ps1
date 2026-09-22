@@ -4,8 +4,9 @@
 
 .DESCRIPTION
     Creates, removes, or synchronizes Git worktrees located as sibling directories in the
-    parent folder. Copies required test assets and .env into independent physical directories,
-    strictly avoiding NTFS directory junctions or symbolic links to preserve total repository isolation.
+    parent folder. Copies required test assets, .env, and the Graphify graph seed into independent
+    physical directories, then refreshes the graph in the target worktree. It strictly avoids NTFS
+    directory junctions or symbolic links to preserve total repository isolation.
 
 .EXAMPLE
     .\tools\git\worktree.ps1 add feature-blitter
@@ -57,8 +58,32 @@ function Get-IgnoredAssetDirectoryDefinitions {
         "tests/singlestep",
         "tests/benchmarks/quick",
         "tests/benchmarks/standard",
-        "tests/benchmarks/thorough"
+        "tests/benchmarks/thorough",
+        "graphify-out"
     )
+}
+
+function Update-WorktreeGraph {
+    param(
+        [string]$WorktreeRoot
+    )
+
+    $graphifyCommand = Get-Command graphify -ErrorAction SilentlyContinue
+    if (-not $graphifyCommand) {
+        Write-Warning "graphify CLI is not available; copied graphify-out was not refreshed. Run 'graphify update .' inside the worktree when Graphify is available."
+        return
+    }
+
+    Write-Host ">> Refreshing Graphify knowledge graph in $WorktreeRoot..." -ForegroundColor Cyan
+    Push-Location $WorktreeRoot
+    try {
+        & $graphifyCommand.Path update .
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "graphify update exited with code $LASTEXITCODE in $WorktreeRoot."
+        }
+    } finally {
+        Pop-Location
+    }
 }
 
 function Get-IgnoredCopyDefinitions {
@@ -168,6 +193,7 @@ switch ($Action) {
         }
 
         Copy-WorktreeAssets -SourceRoot $mainRepo -TargetRoot $targetPath
+        Update-WorktreeGraph -WorktreeRoot $targetPath
 
         Write-Host "`n>> Worktree created successfully!" -ForegroundColor Green
         Write-Host "   Path:   $targetPath"
@@ -178,6 +204,7 @@ switch ($Action) {
     "sync" {
         Write-Host ">> Synchronizing ignored assets for active repository: $currentRepo" -ForegroundColor Cyan
         Copy-WorktreeAssets -SourceRoot $mainRepo -TargetRoot $currentRepo
+        Update-WorktreeGraph -WorktreeRoot $currentRepo
         Write-Host "`n>> Sync complete!" -ForegroundColor Green
     }
 
