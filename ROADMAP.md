@@ -89,6 +89,26 @@ When an agent finishes any numbered item:
 
 ### Step 1: Clean-Slate Custom Chipset Spec Reset & Self-Bootstrapped Verification (Immediate Primary Focus)
 
+- **0.0a: Gemini Conversion Workflow Audit & Manual-Handoff Map**
+  - **Objective:** Establish exactly when the HTML and PDF conversion workflows invoke Gemini, what each stage is expected to write, and which outputs require an agent's manual editing, review, or recovery before source-faithful conversion begins.
+  - **Actionable Scope:**
+    - Trace the active table and graphics paths in both conversion workflows, including configured vision calls, generated artefacts, task preparation/application modes, and fallbacks.
+    - Separate automatic persisted output from intended-but-unwritten output; a prompt, model response, or task directory alone does not count as completed automation.
+    - Document the manual handoff for every missing, ambiguous, or non-source-faithful result, including the exact artefact that must be reviewed or authored.
+  - **Verification Gate:**
+    - A workflow map committed to `Obsidian/Amiga/Design/Conversion Workflow and Manual Handoffs.md` identifies, for both workflows, when Gemini runs, what it writes, and what remains manual.
+
+- **0.0b: Asset Description Bootstrap and RAG Decision Contract**
+  - **Objective:** Run one visual-asset bootstrap pass before bulk document conversion so retained visuals are justified, searchable, and accompanied by faithful Markdown fallbacks.
+  - **Actionable Scope:**
+    - Use `.agents/rules/asset-descriptions.md` and the `describe-diagram-assets` skill to decide whether images and diagrams convey non-redundant information worth retaining.
+    - Record the approved asset representation contract in the conversion bootstrap plan before bulk conversion begins.
+    - For retained HTML tables, preserve the HTML and add an equivalent GFM table in a collapsed Markdown block. For retained images, create same-basename `.txt` descriptions and repeat each description in a collapsed Markdown block. For ASCII art, retain the art and add a collapsed structural description.
+    - Assess description quality for RAG: each description must state the visual's purpose, named elements, and material spatial, logical, or timing relationships, rather than only repeating a caption or OCR labels.
+    - Perform this pass once during conversion bootstrap, not page by page; repeat it only if the source assets or conversion contract changes.
+  - **Verification Gate:**
+    - A representative rendered table, image, and ASCII-art sample (where present) proves that the fallback, sidecar, and collapsed descriptions exist and match.
+
 - **0.1: MachineLoop Code Review & Architecture Orientation**
   - **Objective:** Read and understand the current `crates/machine_loop` implementation end-to-end before making any changes to the chipset. Establish a mental model of the actual execution path, bus arbitration sequence, and poll-based signal routing as it exists today vs. the HRM spec.
   - **Actionable Scope:**

@@ -24,6 +24,7 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 
 ### B. Domain-Specific Rules (`trigger: model_decision`)
 - **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Strict English for responses, plans, artifacts, code, and commit messages.
+- **Asset Descriptions & Markdown Fallbacks** ([`asset-descriptions.md`](.agents/rules/asset-descriptions.md)): One-time conversion-bootstrap contract for visual relevance, RAG sidecars, and collapsible Markdown fallbacks.
 - **Hardware Bus Topology** ([`hardware-bus-topology.md`](.agents/rules/hardware-bus-topology.md)): Agnus DMA address mastership, passive latching, zero inter-chip signal smuggling. Continuous + Per-Commit: AST verified in `pre_flight.py --quick` (Hardware Quality Pillar 1 & 2).
 - **Design Docs Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Sync `Obsidian/Amiga/Design/` specs with code; prune draft proposals.
 - **Roadmap Maintenance** ([`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md)): Substrate-first ordering, zero completed items retention in `ROADMAP.md`.

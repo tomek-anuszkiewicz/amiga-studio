@@ -602,6 +602,7 @@ def check_workflow_and_skill_governance():
 
     ACTIVE_RULE_COMPANIONS = {
         "amiga-rag.md": {"index-amiga-rag"},
+        "asset-descriptions.md": {"describe-diagram-assets"},
         "docs-maintenance.md": {"sync-design-docs", "obsidian-vault-linking", "audit-docs-quality", "audit-semantic-parity"},
         "vault-linking-and-graph-integrity.md": {"obsidian-vault-linking", "audit-docs-quality"},
         "egui-best-practices.md": {"egui-vision-debugger", "capture-gui-screenshot"},
@@ -1120,6 +1121,7 @@ def check_semantic_sync():
 
 REGISTERED_RULE_AUDITS = {
     "amiga-rag.md": ["rag_qdrant", "audit_docs_quality.py (Pillar 5)"],
+    "asset-descriptions.md": ["audit_docs_quality.py (Pillars 6 & 10)", "test_architecture_rules.rs (rule registry)"],
     "audio-transcription.md": ["workflows (Conscience Check 1)"],
     "clean-break-refactoring.md": ["test_architecture_rules.rs (test_zero_backward_compatibility_shims_and_stale_aliases)"],
     "docs-maintenance.md": ["audit_docs_quality.py (Pillar 1 code drift)"],
