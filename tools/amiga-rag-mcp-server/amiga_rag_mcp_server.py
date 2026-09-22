@@ -1,19 +1,16 @@
-"""FastMCP server for Amiga project RAG retrieval and scoped indexing."""
+"""FastMCP adapter for the PATH-resolved ``rag_qdrant`` CLI."""
 
-import os
 from pathlib import Path
 from typing import List, Optional, Union
 
 from fastmcp import FastMCP
 
-from amiga_indexing import build_index_commands
-from environment import load_environment_file
+from amiga_indexing import build_index_commands, build_search_commands, combine_search_results
 from rag_qdrant_command import RagQdrantCommandError, run_rag_qdrant, run_rag_qdrant_json
 
 
 mcp = FastMCP("amiga-rag")
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-load_environment_file(PROJECT_ROOT / ".env")
 
 
 @mcp.tool()
@@ -23,18 +20,15 @@ def rag_search(
     limit: int = 5,
 ) -> str:
     """Search documentation in the shared RAG collection by source tag."""
-    arguments = ["search", query, "--limit", str(limit), "--json"]
-    if isinstance(sources, str) and sources.strip():
-        arguments.extend(["--source", sources])
-    elif isinstance(sources, list):
-        source_tags = [source.strip() for source in sources if isinstance(source, str) and source.strip()]
-        if source_tags:
-            arguments.extend(["--source", ",".join(source_tags)])
-
     try:
-        results = run_rag_qdrant_json(arguments)
+        responses = [
+            run_rag_qdrant_json(arguments)
+            for arguments in build_search_commands(query, sources, limit)
+        ]
     except RagQdrantCommandError as error:
         return f"Error during RAG search: {error}"
+
+    results = combine_search_results(responses, limit)
 
     if not results:
         return f"No relevant documentation found for query: '{query}'."
@@ -103,9 +97,6 @@ def rag_reindex(force: bool = False) -> str:
     Set ``force`` to true to rebuild all files rather than using the shared
     SHA-256 cache.
     """
-    if not os.environ.get("RAG_CACHE_FILE", "").strip():
-        return "RAG indexing requires RAG_CACHE_FILE to be set in the project .env file."
-
     try:
         outputs = [
             run_rag_qdrant(command, timeout_seconds=1800)

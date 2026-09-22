@@ -8880,3 +8880,20 @@ Every future modification or implementation task must append an entry following 
   - A temporary PATH-resolved `rag_qdrant` command confirmed both scoped CLI calls and successful `-Rag` completion.
   - The Python regression suite could not run because this environment has neither a `python` command nor an installed Python interpreter behind `py`.
   - Live indexing was not run because the installed `rag_qdrant` PowerShell launcher is blocked by the current script-signature policy.
+---
+
+### [2026-09-22 15:36 CEST] — RAG MCP: Make the CLI the Sole Runtime Authority
+- **Affected Subsystems**:
+  - `tools/amiga-rag-mcp-server`
+- **What Was Changed (The Concrete Reality)**:
+  - Removed the legacy .env and RAG_CACHE_FILE gate
+  - converted multi-source MCP searches into one valid rag_qdrant CLI command per source tag
+  - added command-construction regression coverage and updated operator documentation.
+- **Architectural Rationale & Trade-Offs**:
+  - The installed rag_qdrant CLI owns cache and collection configuration and accepts one source tag per search. The MCP server remains a thin adapter
+  - so it must neither impose hidden cache configuration nor invent comma-separated source syntax.
+- **Verification & Test Results**:
+  - 11 MCP and bootstrap command-contract tests passed
+  - Python syntax compilation passed
+  - tools/harness/pre_flight.py --quick passed
+  - cargo test -p test_runner --test test_architecture_rules passed (20 tests).
