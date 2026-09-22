@@ -1,11 +1,12 @@
 """JSON command adapter for the Amiga RAG MCP server."""
 
 import json
+import os
 import subprocess
 from typing import Any, Callable, List
 
 
-RAG_QDRANT_COMMAND = "rag_qdrant"
+RAG_QDRANT_COMMAND = "rag_qdrant.bat" if os.name == "nt" else "rag_qdrant"
 
 
 class RagQdrantCommandError(RuntimeError):

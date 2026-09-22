@@ -16,7 +16,7 @@ sys.path.insert(0, str(SERVER_ROOT))
 
 from amiga_indexing import build_index_commands, build_search_command
 from environment import load_environment_file
-from rag_qdrant_command import run_rag_qdrant, run_rag_qdrant_json
+from rag_qdrant_command import RAG_QDRANT_COMMAND, run_rag_qdrant, run_rag_qdrant_json
 
 
 class FakeMCP:
@@ -41,6 +41,11 @@ class CommandContractTests(unittest.TestCase):
             if original_module is not None:
                 sys.modules["amiga_rag_mcp_server"] = original_module
 
+    def test_path_command_uses_a_windows_batch_wrapper(self):
+        expected_command = "rag_qdrant.bat" if os.name == "nt" else "rag_qdrant"
+
+        self.assertEqual(RAG_QDRANT_COMMAND, expected_command)
+
     def test_path_command_runner_decodes_json_response(self):
         calls = []
 
@@ -56,7 +61,7 @@ class CommandContractTests(unittest.TestCase):
         self.assertEqual(result, [{"source": "amiga"}])
         self.assertEqual(
             calls[0][0],
-            ["rag_qdrant", "search", "Copper timing", "--index-json", "index.json", "--json"],
+            [RAG_QDRANT_COMMAND, "search", "Copper timing", "--index-json", "index.json", "--json"],
         )
         self.assertTrue(calls[0][1]["capture_output"])
 
@@ -64,7 +69,7 @@ class CommandContractTests(unittest.TestCase):
         def runner(command, **kwargs):
             self.assertEqual(
                 command,
-                ["rag_qdrant", "docs", "--source", "amiga", "--index-json", "index.json"],
+                [RAG_QDRANT_COMMAND, "docs", "--source", "amiga", "--index-json", "index.json"],
             )
             self.assertEqual(kwargs["timeout"], 1800)
             return SimpleNamespace(returncode=0, stdout="Indexed 3 files\n", stderr="")
