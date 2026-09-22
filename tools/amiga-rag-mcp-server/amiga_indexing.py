@@ -18,7 +18,14 @@ def build_index_commands(repository_root: Path, index_json: str) -> List[List[st
             index_json,
         ],
         [
-            str(repository_root / "Obsidian" / "Amiga"),
+            str(repository_root / "Obsidian" / "Amiga" / "Design"),
+            "--source",
+            AMIGA_SOURCE,
+            "--index-json",
+            index_json,
+        ],
+        [
+            str(repository_root / "Obsidian" / "Amiga" / "Reference"),
             "--source",
             AMIGA_SOURCE,
             "--index-json",

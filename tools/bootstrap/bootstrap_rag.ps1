@@ -4,8 +4,8 @@
 
 .DESCRIPTION
     This compatibility entry point delegates directly to rag_qdrant. It indexes
-    repository docs plus Markdown below Obsidian/Amiga, including Design and
-    Reference while excluding .obsidian and other technical directories. The
+    repository docs plus the explicit Obsidian/Amiga/Design and
+    Obsidian/Amiga/Reference Markdown scopes. The
     CLI requires RAG_INDEX_JSON to identify its shared incremental state file.
 
 .PARAMETER CheckOnly
@@ -37,11 +37,13 @@ if ($CheckOnly) {
     exit $LASTEXITCODE
 }
 
-$AmigaDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga"
 $RepositoryDocumentationRoot = Join-Path $RepoRoot "docs"
+$DesignDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga\Design"
+$ReferenceDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga\Reference"
 $IndexCommands = @(
     @($RepositoryDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson),
-    @($AmigaDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson)
+    @($DesignDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson),
+    @($ReferenceDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson)
 )
 
 foreach ($IndexArguments in $IndexCommands) {

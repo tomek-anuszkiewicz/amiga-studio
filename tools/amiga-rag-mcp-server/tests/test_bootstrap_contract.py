@@ -51,7 +51,8 @@ class BootstrapRagContractTests(unittest.TestCase):
                 command_log.read_text(encoding="utf-8").splitlines(),
                 [
                     f'{REPOSITORY_ROOT / "docs"} --source amiga --index-json {temporary_root / "rag-index.json"}',
-                    f'{REPOSITORY_ROOT / "Obsidian" / "Amiga"} --source amiga --index-json {temporary_root / "rag-index.json"}',
+                    f'{REPOSITORY_ROOT / "Obsidian" / "Amiga" / "Design"} --source amiga --index-json {temporary_root / "rag-index.json"}',
+                    f'{REPOSITORY_ROOT / "Obsidian" / "Amiga" / "Reference"} --source amiga --index-json {temporary_root / "rag-index.json"}',
                 ],
             )
 
@@ -98,7 +99,8 @@ class BootstrapRagContractTests(unittest.TestCase):
                 command_log.read_text(encoding="utf-8").splitlines(),
                 [
                     f'{REPOSITORY_ROOT / "docs"} --source amiga --index-json {temporary_root / "rag-index.json"}',
-                    f'{REPOSITORY_ROOT / "Obsidian" / "Amiga"} --source amiga --index-json {temporary_root / "rag-index.json"}',
+                    f'{REPOSITORY_ROOT / "Obsidian" / "Amiga" / "Design"} --source amiga --index-json {temporary_root / "rag-index.json"}',
+                    f'{REPOSITORY_ROOT / "Obsidian" / "Amiga" / "Reference"} --source amiga --index-json {temporary_root / "rag-index.json"}',
                     f'--status --index-json {temporary_root / "rag-index.json"}',
                 ],
             )

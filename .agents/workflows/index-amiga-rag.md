@@ -16,7 +16,8 @@ When invoked without parameters:
      ```powershell
      $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
      rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
-     rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
+     rag_qdrant "Obsidian/Amiga/Design" --source amiga --index-json $env:RAG_INDEX_JSON
+     rag_qdrant "Obsidian/Amiga/Reference" --source amiga --index-json $env:RAG_INDEX_JSON
      ```
 2. **Verify Database Health & Status:**
    - Checks Qdrant collection vector counts and status:
@@ -30,10 +31,11 @@ When invoked without parameters:
 ## 2. Targeted Ingestion Commands
 - **Index Amiga Design and Reference Documents:**
   ```powershell
-  rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
+  rag_qdrant "Obsidian/Amiga/Design" --source amiga --index-json $env:RAG_INDEX_JSON
+  rag_qdrant "Obsidian/Amiga/Reference" --source amiga --index-json $env:RAG_INDEX_JSON
   ```
-  The CLI recursively includes Design and Reference Markdown while skipping
-  `.obsidian` and other technical/private directories.
+  The two explicit scopes exclude `.obsidian` without relying on a parent-root
+  exclusion rule.
 - **Check Collection Status:**
   ```powershell
   rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json
@@ -45,7 +47,7 @@ When invoked without parameters:
 
 ## 3. Execution Runbook
 Follow the operational procedure in [`.agents/skills/index-amiga-rag/SKILL.md`](../skills/index-amiga-rag/SKILL.md):
-1. **Incremental Indexing:** Run the two canonical `rag_qdrant` commands to ingest changed Markdown into Qdrant under the `amiga` source.
+1. **Incremental Indexing:** Run the three canonical `rag_qdrant` commands to ingest changed Markdown into Qdrant under the `amiga` source.
 2. **Status Query:** Confirm health, source counts, and retrieval of a distinctive phrase through `rag_qdrant`.
 
 ---

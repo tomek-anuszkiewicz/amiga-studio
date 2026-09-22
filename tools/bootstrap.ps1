@@ -246,10 +246,12 @@ if ($Rag -or $All) {
         }
 
         $RepositoryDocumentationRoot = Join-Path $RepoRoot "docs"
-        $AmigaDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga"
+        $DesignDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga\Design"
+        $ReferenceDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga\Reference"
         $IndexCommands = @(
             @($RepositoryDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson),
-            @($AmigaDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson)
+            @($DesignDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson),
+            @($ReferenceDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson)
         )
         $IndexingSucceeded = $true
 

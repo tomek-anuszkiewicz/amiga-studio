@@ -134,7 +134,7 @@ def rag_status() -> str:
 
 @mcp.tool()
 def rag_reindex() -> str:
-    """Incrementally index docs and Obsidian/Amiga under source ``amiga``."""
+    """Incrementally index docs, Design, and Reference under source ``amiga``."""
     index_json = configured_index_json()
     if index_json is None:
         return "RAG commands require RAG_INDEX_JSON to name the shared CLI state file."
@@ -149,8 +149,8 @@ def rag_reindex() -> str:
 
     output = "\n".join(line for result in outputs for line in result.splitlines() if line.strip())
     if not output:
-        return "Amiga RAG incremental index completed for docs and Obsidian/Amiga."
-    return f"Amiga RAG incremental index completed for docs and Obsidian/Amiga.\n{output}"
+        return "Amiga RAG incremental index completed for docs, Design, and Reference."
+    return f"Amiga RAG incremental index completed for docs, Design, and Reference.\n{output}"
 
 
 if __name__ == "__main__":

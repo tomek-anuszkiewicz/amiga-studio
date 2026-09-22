@@ -51,7 +51,8 @@ not architectural judgement.
      `Obsidian/Amiga/Design/`, trigger incremental reindexing:
      ```powershell
      rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
-     rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
+     rag_qdrant "Obsidian/Amiga/Design" --source amiga --index-json $env:RAG_INDEX_JSON
+     rag_qdrant "Obsidian/Amiga/Reference" --source amiga --index-json $env:RAG_INDEX_JSON
      ```
    - Verify the updated collection with:
      ```powershell

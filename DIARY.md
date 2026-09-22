@@ -8958,3 +8958,20 @@ Every future modification or implementation task must append an entry following 
   - syntax-only compilation passed for changed Python tools
   - cargo test -p test_runner --test test_architecture_rules passed (20 tests)
   - git diff --check passed.
+---
+
+### [2026-09-22 16:40 CEST] — Split Amiga RAG indexing into explicit scopes
+- **Affected Subsystems**:
+  - `RAG CLI bootstrap`
+  - `FastMCP adapter`
+  - `developer documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Replaced the Obsidian/Amiga parent-root index command with explicit Design and Reference calls
+  - aligned both bootstrap entry points, the MCP adapter, instructions, and contract tests.
+- **Architectural Rationale & Trade-Offs**:
+  - Explicit roots make the indexed corpus auditable and exclude .obsidian by scope rather than implicit filtering.
+- **Verification & Test Results**:
+  - 14 focused RAG MCP and bootstrap contract tests passed
+  - PowerShell syntax validation passed
+  - architecture rules passed (20)
+  - quick pre-commit gates passed.

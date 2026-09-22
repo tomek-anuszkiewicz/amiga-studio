@@ -78,7 +78,7 @@ class CommandContractTests(unittest.TestCase):
             "Indexed 3 files\n",
         )
 
-    def test_indexing_uses_recursive_roots_and_shared_state_file(self):
+    def test_indexing_uses_explicit_scopes_and_shared_state_file(self):
         repository_root = Path("repository")
 
         self.assertEqual(
@@ -86,7 +86,14 @@ class CommandContractTests(unittest.TestCase):
             [
                 ["repository\\docs", "--source", "amiga", "--index-json", "index.json"],
                 [
-                    str(repository_root / "Obsidian" / "Amiga"),
+                    str(repository_root / "Obsidian" / "Amiga" / "Design"),
+                    "--source",
+                    "amiga",
+                    "--index-json",
+                    "index.json",
+                ],
+                [
+                    str(repository_root / "Obsidian" / "Amiga" / "Reference"),
                     "--source",
                     "amiga",
                     "--index-json",

@@ -27,15 +27,16 @@ This skill defines the Amiga project workflow for indexing technical Markdown th
 ## 3. Step-by-Step Execution Workflow
 
 ### Step 1: Incrementally Index the Supported Scopes
-Set `RAG_INDEX_JSON` to the shared state file, then run both commands from the
-repository root. The CLI recursively scans Markdown and processes only files
-whose SHA-256 hash changed. The `Obsidian/Amiga` root includes Design and
-Reference while excluding `.obsidian` and other technical/private directories:
+Set `RAG_INDEX_JSON` to the shared state file, then run all three commands from
+the repository root. The CLI recursively scans Markdown and processes only
+files whose SHA-256 hash changed. Index the Design and Reference roots
+explicitly; do not index the `Obsidian/Amiga` parent directory.
 
 ```powershell
 $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
 rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
-rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
+rag_qdrant "Obsidian/Amiga/Design" --source amiga --index-json $env:RAG_INDEX_JSON
+rag_qdrant "Obsidian/Amiga/Reference" --source amiga --index-json $env:RAG_INDEX_JSON
 ```
 
 There is no forced-reindex mode; changed files replace their old vectors and
