@@ -29,8 +29,8 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 ### A. Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)
 - **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `projects_docs`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
 - **Project Integration ([`amiga-rag.md`](../.agents/rules/amiga-rag.md)):**
-  - The Amiga project retrieves trusted documentation solely through its MCP server.
-  - The project MCP server owns scoped indexing and cache use. Run `rag_reindex()` after supported documentation changes; use `rag_reindex(force=true)` only for a complete scoped rebuild.
+  - The `rag_qdrant` CLI is the canonical index and retrieval interface; the MCP server is an optional adapter.
+  - After supported documentation changes, incrementally index `docs` and `Obsidian/Amiga/{Design,Reference}` with the two commands in `index-amiga-rag`. Use `--reindex` only for a complete scoped rebuild.
 - **Trusted Data Boundary & Provenance:**
   - The local RAG vector store and Graphify AST graphs operate exclusively on a trusted local boundary.
   - Only authoritative Commodore/Motorola hardware reference manuals and internal design specs should be placed in `Obsidian/Amiga/`.

@@ -13,26 +13,30 @@ This skill provides the standard operational procedure for generating and synchr
 
 Activate this skill whenever:
 - Adding, replacing, or updating technical diagrams, waveforms, or pinouts in `Obsidian/Amiga/Reference/*/assets/`.
-- Preparing documentation assets for offline RAG indexing via `amiga_rag`.
+- Preparing documentation assets for offline RAG indexing via `rag_qdrant`.
 - Running an asset audit to verify all documentation diagrams have corresponding `.txt` sidecars.
 
 ---
 
 ## 2. Tooling & Asset Registry
 
-- **Assets Manager CLI:** `python tools/rag/rag_qdrant/assets_manager.py`
-- **Cache File:** Defined by `RAG_CACHE_FILE` in `.env` (default: `amiga_rag_cache.json`).
+- **Indexer CLI:** `rag_qdrant`; it owns the SHA-256 cache and detects changed sidecars during incremental indexing.
 - **Vision Inspection:** Native `view_file` tool (consuming IDE multimodal vision, 100% offline with zero external cloud API keys).
 
 ---
 
 ## 3. Step-by-Step Execution Workflow
 
-### Step 1: Detect Unindexed or Outdated Diagram Assets
-Run the asset manager to list all images whose SHA256 hash is missing or mismatched:
+### Step 1: Detect Missing or Outdated Diagram Sidecars
+List images without companion sidecars:
 ```powershell
-python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --list-unindexed
+Get-ChildItem "Obsidian/Amiga" -Recurse -File |
+  Where-Object { $_.Extension -in '.png', '.jpg', '.jpeg', '.webp', '.svg' } |
+  Where-Object { -not (Test-Path "$($_.FullName).txt") } |
+  Select-Object -ExpandProperty FullName
 ```
+
+When an image changed, inspect it and update its existing sidecar if the description is no longer accurate.
 
 ### Step 2: Inspect Image with Multimodal Vision
 For each unindexed asset:
@@ -52,15 +56,20 @@ Create or update `<image_path>.txt` immediately alongside the image file, follow
 - Architectural Summary: <Core physical takeaway, cycle-exact timing rules, and hardware circuit behavior>
 ```
 
-### Step 4: Record Hash in RAG Cache
-Register the generated sidecar in `RAG_CACHE_FILE` using the assets manager:
+### Step 4: Incrementally Index the Updated Sidecars
+The CLI records hashes while indexing; do not edit its cache directly:
 ```powershell
-python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --update-cache
+rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
 ```
 
 ### Step 5: Verification & Version Control
-1. Verify that `python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --list-unindexed` reports 0 unindexed assets.
-2. Ensure both the diagram and its `<image_path>.txt` sidecar are tracked in Git.
+1. Re-run the missing-sidecar command from Step 1 and inspect updated diagrams visually.
+2. Verify the index and a distinctive sidecar phrase:
+   ```powershell
+   rag_qdrant --status
+   rag_qdrant search "<distinctive sidecar phrase>" --source amiga --limit 2 --json
+   ```
+3. Ensure both the diagram and its `<image_path>.txt` sidecar are tracked in Git.
 
 ---
 
@@ -71,5 +80,5 @@ python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --update-cache
 - **Asset Processed:** `<image_path>`
 - **Generated Sidecar:** [`<image_path>.txt`](file:///<image_path>.txt)
 - **Extracted Signals / Pinouts:** `<comma_separated_signals>` (e.g. `_AS`, `_DTACK`, `_BERR`, `IPL0-IPL2`)
-- **Cache Hash Status:** Updated in `RAG_CACHE_FILE` (`assets_manager.py` PASS).
+- **Index Status:** Incremental `rag_qdrant` run completed and retrieval was verified.
 ```

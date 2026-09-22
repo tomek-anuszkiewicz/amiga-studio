@@ -45,7 +45,7 @@ You are the authoritative custodian of this emulator's architectural truth. Your
 
 ## Out of Scope (Delegate to `doc_ingestor`)
 - Raw PDF/HTML → Markdown conversion of reference manuals.
-- Qdrant vector reindexing (`tools/rag/bin/amiga_rag.ps1`).
+- Qdrant vector reindexing (`rag_qdrant`).
 - Circuit schematic vision sidecar generation (`<image>.txt`).
 
 ## Skills to Invoke

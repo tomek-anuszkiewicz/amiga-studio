@@ -279,16 +279,13 @@ Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active 
   - Unified `amiga` collection partitioned by source tags: `amiga` for hardware reference manuals, `obsidian` for architectural design notes.
   - Local FastEmbed (`BAAI/bge-small-en-v1.5`), 100% offline with zero external cloud API keys required.
   - Incremental cache `amiga_rag_cache.json` tracks SHA-256 hashes of individual files, reindexing modified documents in $< 1$ second while skipping unchanged files.
-- **Automated Reindexing Trigger ([`amiga-rag.md`](../.agents/rules/amiga-rag.md)):**
-  - Reindexing is **fully automated**: whenever hardware documentation, reference guides, or design notes under `Obsidian/Amiga/` are added, modified, or reorganized, incremental reindexing is triggered automatically.
+  - **Incremental Reindexing Trigger ([`amiga-rag.md`](../.agents/rules/amiga-rag.md)):**
+    - At the end of a documentation batch, run the canonical CLI commands. SHA-256 caching skips unchanged files; there is no file-save watcher.
 - **Provisioning & Manual Reindexing:**
   ```powershell
-  # Set up Qdrant Docker container and index all documentation:
-  .\tools\bootstrap\bootstrap.ps1 -Rag
-
-  # Or trigger incremental reindexing directly:
-  .\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga/Reference" --source amiga
-  .\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga/Design" --source obsidian
+  # Incrementally index all Amiga project documentation:
+  rag_qdrant . --source amiga --include-dirs docs
+  rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
   ```
 - **Query Tools & FastMCP:**
   - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "obsidian"])`.
@@ -300,9 +297,10 @@ Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active 
     ```powershell
     python tools/harness/rag_search.py "Color Clock CCK phases memory bus wait states" --source obsidian
     ```
-  - Check database status and document count:
+  - Check database status and document/source counts:
     ```powershell
-    python tools/rag/rag_qdrant/cli.py status
+    rag_qdrant --status
+    rag_qdrant --list-sources
     ```
 
 ---

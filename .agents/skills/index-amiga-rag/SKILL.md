@@ -1,11 +1,11 @@
 ---
 name: index-amiga-rag
-description: Prepare Amiga documentation for retrieval through the project-specific RAG MCP server.
+description: Prepare and incrementally index Amiga documentation through the project RAG CLI.
 ---
 
-# Recipe: Amiga RAG MCP Retrieval & Asset Preparation
+# Recipe: Amiga RAG CLI Indexing & Asset Preparation
 
-This skill defines the Amiga project workflow for preparing technical references and diagrams for retrieval through the registered RAG MCP server. It does not invoke the standalone indexing implementation directly.
+This skill defines the Amiga project workflow for preparing technical references and diagrams for retrieval through the `rag_qdrant` command-line tool. The MCP server is an optional adapter for agent retrieval; it is not the indexing authority.
 
 ---
 
@@ -16,11 +16,11 @@ This skill defines the Amiga project workflow for preparing technical references
 
 ---
 
-## 2. Project Retrieval Interface
+## 2. Project Indexing Interface
 
-- **MCP Server:** [`tools/amiga-rag-mcp-server/`](../../../tools/amiga-rag-mcp-server/) provides `rag_search`, `rag_list_sources`, `rag_status`, and `rag_reindex`.
-- **Collection:** The MCP server retrieves from the shared `projects_docs` collection.
-- **Scope:** The Amiga project does not import, launch, or configure the standalone indexing implementation.
+- **CLI:** `rag_qdrant` is the canonical indexing, health, and search interface. It must be available on `PATH`.
+- **Collection:** The CLI operates on the shared `projects_docs` collection.
+- **MCP Server:** [`tools/amiga-rag-mcp-server/`](../../../tools/amiga-rag-mcp-server/) delegates to the same CLI when MCP retrieval is available.
 
 ---
 
@@ -29,8 +29,20 @@ This skill defines the Amiga project workflow for preparing technical references
 ### Step 1: Prepare Diagram & Asset Sidecars
 If diagrams, pinouts, or circuit schematics were modified or added, generate or update each companion `<image_path>.txt` description sidecar per [`.agents/rules/asset-descriptions.md`](../../rules/asset-descriptions.md).
 
-### Step 2: Verify Retrieval Through MCP
-Run `rag_reindex()` to incrementally index the supported Amiga project scopes: `docs`, `Obsidian/Amiga/Design`, and `Obsidian/Amiga/Reference`. Use `rag_reindex(force=true)` only to rebuild those scopes while bypassing the shared SHA-256 cache. Then query a distinctive heading or phrase through `rag_search(query="<topic>", sources=["amiga"])`.
+### Step 2: Incrementally Index the Supported Scopes
+Run both commands from the repository root. They reuse the SHA-256 cache and therefore process only changed files:
 
-### Step 3: Verify MCP Health
-Use `rag_status` and `rag_list_sources` to confirm the registered Amiga RAG MCP server can access the shared collection.
+```powershell
+rag_qdrant . --source amiga --include-dirs docs
+rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
+```
+
+Use `--reindex` on both commands only for a complete scoped rebuild that intentionally bypasses the cache.
+
+### Step 3: Verify Index Health and Retrieval
+
+```powershell
+rag_qdrant --status
+rag_qdrant --list-sources
+rag_qdrant search "<distinctive heading or phrase>" --source amiga --limit 2 --json
+```

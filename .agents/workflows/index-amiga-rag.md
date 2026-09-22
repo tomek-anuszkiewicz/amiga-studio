@@ -12,35 +12,35 @@ Use this workflow to execute incremental vector ingestion of Amiga hardware manu
 ## 1. Zero-Parameter Run (`/index-amiga-rag`)
 When invoked without parameters:
 1. **Audit Diagram Sidecars:**
-   - Detects any unindexed images or circuit schematics in `Obsidian/Amiga`:
-     ```powershell
-     python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --list-unindexed
-     ```
+   - Ensure every modified or added diagram has an accurate Git-tracked `<image>.txt` sidecar.
 2. **Execute Incremental Vector Ingestion:**
    - Runs incremental ingestion using the local SHA256 hash cache (skipping unchanged content instantly):
      ```powershell
-     .\tools\rag\bin\amiga_rag.ps1 . --source amiga
+     rag_qdrant . --source amiga --include-dirs docs
+     rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
      ```
 3. **Verify Database Health & Status:**
    - Checks Qdrant collection vector counts and status:
      ```powershell
-     python tools/rag/rag_qdrant/indexer.py --status
+     rag_qdrant --status
+     rag_qdrant --list-sources
      ```
 
 ---
 
 ## 2. Targeted Ingestion Commands
-- **Index Specific Vault Directory:**
+- **Index Amiga Design and Reference Documents:**
   ```powershell
-  python tools/rag/rag_qdrant/indexer.py "Obsidian/Amiga/Reference" --source amiga
+  rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference
   ```
 - **Check Collection Status:**
   ```powershell
-  python tools/rag/rag_qdrant/indexer.py --status
+  rag_qdrant --status
   ```
-- **Check Unindexed Diagram Assets:**
+- **Force a Scoped Rebuild (exceptional only):**
   ```powershell
-  python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --list-unindexed
+  rag_qdrant . --source amiga --include-dirs docs --reindex
+  rag_qdrant "Obsidian/Amiga" --source amiga --include-dirs Design Reference --reindex
   ```
 
 ---
@@ -48,8 +48,8 @@ When invoked without parameters:
 ## 3. Execution Runbook
 Follow the operational procedure in [`.agents/skills/index-amiga-rag/SKILL.md`](../skills/index-amiga-rag/SKILL.md):
 1. **Sidecar Verification:** Ensure circuit diagrams and timing charts have accompanying `<image>.txt` technical sidecars per [`.agents/rules/asset-descriptions.md`](../rules/asset-descriptions.md).
-2. **Incremental Indexing:** Ingest changed documents and sidecars into Qdrant (`http://localhost:6333`, collection: `amiga`).
-3. **Status Query:** Confirm points count matches indexed chunks.
+2. **Incremental Indexing:** Run the two canonical `rag_qdrant` commands to ingest changed documents and sidecars into Qdrant under the `amiga` source.
+3. **Status Query:** Confirm health, source counts, and retrieval of a distinctive phrase through `rag_qdrant`.
 
 ---
 
