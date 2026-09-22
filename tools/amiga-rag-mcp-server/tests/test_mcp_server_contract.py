@@ -110,14 +110,14 @@ class CommandContractTests(unittest.TestCase):
 
     def test_multisource_search_uses_the_cli_comma_separated_filter(self):
         self.assertEqual(
-            build_search_command("Copper timing", ["amiga", "obsidian", "amiga"], 2, "index.json"),
+            build_search_command("Copper timing", ["amiga", "devnotes", "amiga"], 2, "index.json"),
             [
                 "search",
                 "Copper timing",
                 "--index-json",
                 "index.json",
                 "--source",
-                "amiga,obsidian",
+                "amiga,devnotes",
                 "--limit",
                 "2",
                 "--json",
@@ -138,10 +138,10 @@ class CommandContractTests(unittest.TestCase):
             os.environ["RAG_INDEX_JSON"] = "index.json"
             server.run_rag_qdrant_json = lambda arguments: calls.append(arguments) or []
 
-            self.assertIn("No relevant documentation found", server.rag_search("Copper timing", ["amiga", "obsidian"]))
+            self.assertIn("No relevant documentation found", server.rag_search("Copper timing", ["amiga", "devnotes"]))
             self.assertEqual(
                 calls,
-                [["search", "Copper timing", "--index-json", "index.json", "--source", "amiga,obsidian", "--limit", "5", "--json"]],
+                [["search", "Copper timing", "--index-json", "index.json", "--source", "amiga,devnotes", "--limit", "5", "--json"]],
             )
         finally:
             if original_index_json is None:

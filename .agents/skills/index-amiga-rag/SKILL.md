@@ -11,8 +11,9 @@ This skill defines the Amiga project workflow for indexing technical Markdown th
 
 ## 1. When to Trigger This Skill
 
-- **Trigger:** Modifications, additions, or renames within [Obsidian/Amiga/Reference/](../../../Obsidian/Amiga/Reference/) (e.g. Motorola 68000 PRM, Commodore Amiga Hardware Reference Manual, Amiga Guru Book, and hardware architecture guides).
-- **Goal:** Preserve accurate project Markdown so the Amiga RAG MCP can retrieve trustworthy context after its normal ingestion lifecycle.
+- **Trigger:** Immediately after a successful `audit-docs-quality` run under the same conditions: major milestone completion, specification updates, or a documentation/governance review.
+- **Order:** Repair and validate the documentation first; then run this skill to index the resulting accepted Markdown.
+- **Goal:** Preserve accurate project Markdown so the Amiga RAG MCP can retrieve trustworthy `amiga` context after its normal ingestion lifecycle.
 
 ---
 
@@ -21,6 +22,7 @@ This skill defines the Amiga project workflow for indexing technical Markdown th
 - **CLI:** `rag_qdrant` is the canonical indexing, health, and search interface. It must be available on `PATH`.
 - **Collection:** The CLI operates on the shared `projects_docs` collection.
 - **MCP Server:** [`tools/amiga-rag-mcp-server/`](../../../tools/amiga-rag-mcp-server/) delegates to the same CLI when MCP retrieval is available.
+- **External Notes Boundary:** `devnotes` belongs to a separate project and is retrieval-only here. This skill never indexes it.
 
 ---
 

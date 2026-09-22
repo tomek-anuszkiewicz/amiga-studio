@@ -249,7 +249,8 @@ Provisions and indexes the local vector database for AI-assisted pair-programmin
 ```
 
 **What It Does:**
-- Spawns the local Qdrant container on `http://localhost:6333` (via Docker).
+- Ensures that the local Docker-managed Qdrant container is running on `http://localhost:6333`.
+- Uses the persistent `amiga-rag-qdrant-storage` Docker volume by default. Set `AMIGA_QDRANT_CONTAINER` or `AMIGA_QDRANT_IMAGE` only when an operator needs a different container name or image.
 - Uses local FastEmbed (`BAAI/bge-small-en-v1.5`) to embed hardware manuals (`Obsidian/Amiga/Reference/`) and architectural notes (`Obsidian/Amiga/Design/`) into the unified `amiga` collection.
 - Requires `RAG_INDEX_JSON` to name the state file used for incremental reindexing.
 - For query tools, CLI commands, and FastMCP details, see [Chapter 5: Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag).
@@ -276,7 +277,7 @@ Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active 
 - **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `projects_docs`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
 - **Vector Database Architecture:**
   - Local Qdrant instance on `http://localhost:6333`.
-  - Unified `projects_docs` collection partitioned by source tags: `amiga` for hardware reference manuals, `obsidian` for architectural design notes.
+  - Unified `projects_docs` collection partitioned by source tags: `amiga` for this repository's manuals and design specifications, `devnotes` for separately maintained developer notes.
   - Local FastEmbed (`BAAI/bge-small-en-v1.5`), 100% offline with zero external cloud API keys required.
   - The CLI state file named by `RAG_INDEX_JSON` tracks SHA-256 hashes of individual files, reindexing modified documents while skipping unchanged files.
   - **Incremental Reindexing Trigger ([`amiga-rag.md`](../.agents/rules/amiga-rag.md)):**
@@ -290,14 +291,14 @@ Generates the Abstract Syntax Tree (AST) code knowledge graph connecting active 
   rag_qdrant "Obsidian/Amiga/Reference" --source amiga --index-json $env:RAG_INDEX_JSON
   ```
 - **Query Tools & FastMCP:**
-  - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "obsidian"])`.
+   - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "devnotes"])`. The Amiga project only retrieves `devnotes`; its owning project indexes it.
   - Fast CLI search across hardware manuals:
     ```powershell
     rag_qdrant search "Agnus blitter line mode minterm" --source amiga --limit 5 --index-json $env:RAG_INDEX_JSON --json
     ```
   - Fast CLI search across architectural design specs:
     ```powershell
-    rag_qdrant search "Color Clock CCK phases memory bus wait states" --source obsidian --limit 5 --index-json $env:RAG_INDEX_JSON --json
+    rag_qdrant search "Color Clock CCK phases memory bus wait states" --source devnotes --limit 5 --index-json $env:RAG_INDEX_JSON --json
     ```
   - Check database status and document/source counts:
     ```powershell

@@ -32,6 +32,16 @@ if ([string]::IsNullOrWhiteSpace($RagIndexJson)) {
     exit 1
 }
 
+$QdrantBootstrapScript = Join-Path $PSScriptRoot "ensure_qdrant.ps1"
+if (-not (Test-Path $QdrantBootstrapScript)) {
+    Write-Error "Qdrant bootstrap helper is missing: $QdrantBootstrapScript"
+    exit 1
+}
+. $QdrantBootstrapScript
+if (-not (Ensure-AmigaQdrantContainer)) {
+    exit 1
+}
+
 if ($CheckOnly) {
     & $RagQdrantCommand.Path --status --index-json $RagIndexJson
     exit $LASTEXITCODE

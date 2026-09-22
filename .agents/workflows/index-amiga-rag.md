@@ -5,13 +5,15 @@ description: Re-index Amiga hardware manuals and Obsidian design notes into loca
 
 # Workflow: Index Amiga RAG Knowledge Base
 
-Use this workflow to execute incremental vector ingestion of Amiga hardware manuals and technical reference documentation into the local Qdrant `projects_docs` collection under the `amiga` source tag.
+Use this workflow immediately after a successful [`/audit-docs-quality`](audit-docs-quality.md) run to execute incremental vector ingestion of accepted Amiga hardware manuals and technical reference documentation into the local Qdrant `projects_docs` collection under the `amiga` source tag. It has the same trigger conditions as `/audit-docs-quality`: milestone completion, specification updates, and documentation or governance review.
 
 ---
 
 ## 1. Zero-Parameter Run (`/index-amiga-rag`)
 When invoked without parameters:
-1. **Execute Incremental Vector Ingestion:**
+1. **Confirm the Documentation Audit Precondition:**
+   - Run this workflow only after `/audit-docs-quality` has completed successfully in the current documentation-maintenance sequence.
+2. **Execute Incremental Vector Ingestion:**
    - Sets the CLI state file and runs incremental ingestion (skipping unchanged Markdown hashes):
      ```powershell
      $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
@@ -19,7 +21,7 @@ When invoked without parameters:
      rag_qdrant "Obsidian/Amiga/Design" --source amiga --index-json $env:RAG_INDEX_JSON
      rag_qdrant "Obsidian/Amiga/Reference" --source amiga --index-json $env:RAG_INDEX_JSON
      ```
-2. **Verify Database Health & Status:**
+3. **Verify Database Health & Status:**
    - Checks Qdrant collection vector counts and status:
      ```powershell
      rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json
@@ -47,8 +49,11 @@ When invoked without parameters:
 
 ## 3. Execution Runbook
 Follow the operational procedure in [`.agents/skills/index-amiga-rag/SKILL.md`](../skills/index-amiga-rag/SKILL.md):
-1. **Incremental Indexing:** Run the three canonical `rag_qdrant` commands to ingest changed Markdown into Qdrant under the `amiga` source.
-2. **Status Query:** Confirm health, source counts, and retrieval of a distinctive phrase through `rag_qdrant`.
+1. **Ordering:** Run after a successful `/audit-docs-quality`; do not index documentation that has failed its audit.
+2. **Incremental Indexing:** Run the three canonical `rag_qdrant` commands to ingest changed Markdown into Qdrant under the `amiga` source.
+3. **Status Query:** Confirm health, source counts, and retrieval of a distinctive phrase through `rag_qdrant`.
+
+`devnotes` is maintained by another project and is retrieval-only in this repository. This workflow must never index, rename, or otherwise mutate that source.
 
 ---
 

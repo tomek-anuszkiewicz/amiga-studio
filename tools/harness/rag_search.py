@@ -18,7 +18,7 @@ def main():
     parser.add_argument("query", help="Query text to use with the Amiga RAG MCP tool")
     parser.add_argument(
         "-s", "--source",
-        choices=["amiga", "obsidian", "all"],
+        choices=["amiga", "devnotes", "all"],
         default="all",
         help="Knowledge source to pass to the MCP tool"
     )

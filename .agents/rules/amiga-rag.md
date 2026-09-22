@@ -1,23 +1,25 @@
 ---
 trigger: always_on
-description: Amiga RAG knowledge base tools and mandatory pre-task conceptual retrieval (source = "obsidian").
+description: Amiga RAG knowledge base tools and mandatory pre-task conceptual retrieval (source = "devnotes").
 ---
 
-## Amiga RAG Knowledge Base (Amiga Docs + Obsidian)
+## Amiga RAG Knowledge Base (Amiga Docs + Developer Notes)
 
 You have access to a local knowledge base through the `rag_qdrant` command-line tool. When registered, the Amiga RAG MCP server exposes an optional adapter with `rag_search`, `rag_list_sources`, `rag_status`, and `rag_reindex`.
 
 Knowledge Sources Configuration:
 - The Qdrant database hosts the unified `projects_docs` collection containing two distinct knowledge sources:
   - `amiga`: Official Amiga technical documentation, Commodore hardware reference manuals, and chip specifications.
-  - `obsidian`: General architecture guidelines, systems design philosophy, operator mental models, and personal research notes.
+  - `devnotes`: General architecture guidelines, systems design philosophy, operator mental models, and personal research notes maintained by a separate project.
 
-Mandatory Pre-Task Conceptual Retrieval (`source = "obsidian"`):
+`devnotes` is retrieval-only for this repository. Its separate owning project indexes and maintains that source; no Amiga indexing command may write to it.
+
+Mandatory Pre-Task Conceptual Retrieval (`source = "devnotes"`):
 - **Task Inception & Planning Rule**: Whenever starting a new feature, refactoring, architectural decision, or non-trivial task (during the research, planning, or design deliberation phase before writing code):
-  1. **Query Obsidian Architecture Knowledge**:
-     - Actively query the local RAG knowledge base targeting the user's architectural knowledge vault:
-       - Via the Amiga RAG MCP tool: `rag_search(query="<task-topic-or-architecture-concept>", sources=["obsidian"])`
-     - For tasks involving hardware chipsets, query both or combine queries (`sources=["amiga", "obsidian"]`).
+  1. **Query Developer Notes Architecture Knowledge**:
+     - Actively query the local RAG knowledge base targeting the separately maintained developer-notes source:
+       - Via the Amiga RAG MCP tool: `rag_search(query="<task-topic-or-architecture-concept>", sources=["devnotes"])`
+     - For tasks involving hardware chipsets, query both or combine queries (`sources=["amiga", "devnotes"]`).
   2. **Context Integration**:
      - Evaluate the retrieved context snippets for relevant architectural principles, operator heuristics, systems design guidance, or ergonomics.
      - Weave applicable insights directly into the reasoning, implementation plan (`implementation_plan.md`), or design approach.
@@ -26,7 +28,7 @@ Mandatory Pre-Task Conceptual Retrieval (`source = "obsidian"`):
 
 Division of Responsibility between RAG and Graphify:
 - **Use Graphify** (`graphify query`, `graphify path`, `graphify explain`): For questions about code structure, AST, relationships between source files in this repository, call hierarchies, and architecture.
-- **Use RAG** (MCP `rag_search`): For domain knowledge, hardware specifications (OCS/ECS/AGA), register definitions, AmigaOS libraries (Exec, Graphics, Intuition), data formats, and personal Obsidian research notes.
+- **Use RAG** (MCP `rag_search`): For domain knowledge, hardware specifications (OCS/ECS/AGA), register definitions, AmigaOS libraries (Exec, Graphics, Intuition), data formats, and developer notes.
 - **Use Both**: When implementing or debugging a feature — first consult RAG to understand the hardware/library specs and design principles, then consult Graphify to locate and navigate the corresponding code in this repository.
 - If search results include diagram or image file paths, reference them or use `view_file` when helpful.
 - When the user asks about the RAG database state, call `rag_status` or `rag_list_sources`.

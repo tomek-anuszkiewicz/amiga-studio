@@ -245,6 +245,16 @@ if ($Rag -or $All) {
             return
         }
 
+        $QdrantBootstrapScript = Join-Path $PSScriptRoot "bootstrap\ensure_qdrant.ps1"
+        if (-not (Test-Path $QdrantBootstrapScript)) {
+            Write-Error "Qdrant bootstrap helper is missing: $QdrantBootstrapScript"
+            exit 1
+        }
+        . $QdrantBootstrapScript
+        if (-not (Ensure-AmigaQdrantContainer)) {
+            exit 1
+        }
+
         $RepositoryDocumentationRoot = Join-Path $RepoRoot "docs"
         $DesignDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga\Design"
         $ReferenceDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga\Reference"

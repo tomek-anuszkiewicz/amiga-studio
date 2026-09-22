@@ -30,12 +30,12 @@ All automated modifications and agent sessions must strictly adhere to [`AGENTS.
 - **Knowledge Base Scope:** Connects to local Qdrant database (`http://localhost:6333`, collection: `projects_docs`), indexing Commodore Hardware Reference Manuals, M68000 PRMs, technical specs, and design specs under `Obsidian/Amiga/`.
 - **Project Integration ([`amiga-rag.md`](../.agents/rules/amiga-rag.md)):**
   - The `rag_qdrant` CLI is the canonical index and retrieval interface; the MCP server is an optional adapter.
-  - After supported documentation changes, set `RAG_INDEX_JSON` and incrementally index `docs`, `Obsidian/Amiga/Design`, and `Obsidian/Amiga/Reference` with the three commands in `index-amiga-rag`. Do not index the `Obsidian/Amiga` parent; the CLI has no `--reindex` mode.
+  - After a successful `audit-docs-quality` run under its normal trigger conditions, set `RAG_INDEX_JSON` and incrementally index `docs`, `Obsidian/Amiga/Design`, and `Obsidian/Amiga/Reference` with the three commands in `index-amiga-rag`. Do not index the `Obsidian/Amiga` parent; the CLI has no `--reindex` mode.
 - **Trusted Data Boundary & Provenance:**
   - The local RAG vector store and Graphify AST graphs operate exclusively on a trusted local boundary.
   - Only authoritative Commodore/Motorola hardware reference manuals and internal design specs should be placed in `Obsidian/Amiga/`.
   - Pinned upstreams in `tools/bootstrap.ps1` and strict architectural isolation between guest 68000 emulation and host LLM prompting prevent indirect prompt injection risks.
-- **Query Tools:** Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "obsidian"])`.
+  - **Query Tools:** Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "devnotes"])`. `devnotes` is maintained by a separate project and is retrieval-only here.
 
 ### B. Code Structure & Relationships: AST Knowledge Graph (`graphify`)
 - **What is Indexed:** Graphify parses Abstract Syntax Trees (AST), symbol relationships, and call hierarchies across two distinct codebases:

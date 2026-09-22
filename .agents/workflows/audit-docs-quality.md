@@ -19,6 +19,9 @@ When invoked without parameters:
    ```powershell
    python tools/harness/pre_flight.py
    ```
+3. **Index the Accepted Documentation:**
+   - Only after both preceding steps succeed, invoke [`/index-amiga-rag`](index-amiga-rag.md).
+   - This ordering guarantees that RAG receives repaired, validated documentation rather than audit findings or stale drafts.
 
 ---
 
