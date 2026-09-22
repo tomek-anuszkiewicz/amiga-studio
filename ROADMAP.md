@@ -99,15 +99,19 @@ When an agent finishes any numbered item:
     - A workflow map committed to `Obsidian/Amiga/Design/Conversion Workflow and Manual Handoffs.md` identifies, for both workflows, when Gemini runs, what it writes, and what remains manual.
 
 - **0.0b: Asset Description Bootstrap and RAG Decision Contract**
-  - **Objective:** Run one visual-asset bootstrap pass before bulk document conversion so retained visuals are justified, searchable, and accompanied by faithful Markdown fallbacks.
+  - **Objective:** Run one visual-asset bootstrap pass before bulk document conversion so retained visuals are justified, searchable, and accompanied by faithful Markdown fallbacks; select the document-processing model and pipeline from comparable evidence.
   - **Actionable Scope:**
     - Use `.agents/rules/asset-descriptions.md` and the `describe-diagram-assets` skill to decide whether images and diagrams convey non-redundant information worth retaining.
+    - On RunPod, evaluate `olmOCR` and Docling with code enrichment, formula enrichment, picture classification, and picture description enabled; record their source-faithfulness, structured-output quality, runtime, and failure modes on the same representative inputs.
+    - Treat the existing local Docling run as a limited-feature baseline; do not equate it with the fully enriched RunPod evaluation.
+    - Define and implement a follow-up processing stage for tables, ASCII art, and comparable structure that neither candidate preserves faithfully enough on its own.
+    - Choose the model and final processing pipeline from the evaluation results, including the custom stage's contribution, before bulk conversion begins.
     - Record the approved asset representation contract in the conversion bootstrap plan before bulk conversion begins.
     - For retained HTML tables, preserve the HTML and add an equivalent GFM table in a collapsed Markdown block. For retained images, create same-basename `.txt` descriptions and repeat each description in a collapsed Markdown block. For ASCII art, retain the art and add a collapsed structural description.
     - Assess description quality for RAG: each description must state the visual's purpose, named elements, and material spatial, logical, or timing relationships, rather than only repeating a caption or OCR labels.
     - Perform this pass once during conversion bootstrap, not page by page; repeat it only if the source assets or conversion contract changes.
   - **Verification Gate:**
-    - A representative rendered table, image, and ASCII-art sample (where present) proves that the fallback, sidecar, and collapsed descriptions exist and match.
+    - A reproducible comparison report for `olmOCR` and fully enriched Docling, plus representative rendered table, image, and ASCII-art samples, proves the selected pipeline, custom processing stage, fallback, sidecar, and collapsed descriptions are faithful and match.
 
 - **0.1: MachineLoop Code Review & Architecture Orientation**
   - **Objective:** Read and understand the current `crates/machine_loop` implementation end-to-end before making any changes to the chipset. Establish a mental model of the actual execution path, bus arbitration sequence, and poll-based signal routing as it exists today vs. the HRM spec.
