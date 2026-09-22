@@ -14,95 +14,10 @@ use serde::{Deserialize, Serialize};
 pub const COLOR_PALETTE_SIZE: usize = 32;
 
 /// Fixed-capacity in-flight register mutation buffer for Denise (covers 32 colors + controls)
-pub const DENISE_MUTATION_CAPACITY: usize = 64;
+const DENISE_MUTATION_CAPACITY: usize = 64;
 
-/// Decodes a HAM6 pixel given raw bitplane data and previous held RGB color
-#[inline(always)]
-pub fn decode_ham6(
-    planes_data: u8,
-    palette: &[u16; COLOR_PALETTE_SIZE],
-    held_rgb: &mut u16,
-) -> u16 {
-    let ctrl = (planes_data >> 4) & 0x03;
-    let data = (planes_data & 0x0F) as u16;
-
-    let r = (*held_rgb >> 8) & 0xF;
-    let g = (*held_rgb >> 4) & 0xF;
-    let b = *held_rgb & 0xF;
-
-    match ctrl {
-        0 => {
-            let col = palette[data as usize] & 0x0FFF;
-            *held_rgb = col;
-            col
-        }
-        1 => {
-            let col = (r << 8) | (g << 4) | data;
-            *held_rgb = col;
-            col
-        }
-        2 => {
-            let col = (data << 8) | (g << 4) | b;
-            *held_rgb = col;
-            col
-        }
-        3 => {
-            let col = (r << 8) | (data << 4) | b;
-            *held_rgb = col;
-            col
-        }
-        _ => *held_rgb,
-    }
-}
-
-/// Decodes an Extra Half-Brite (EHB) pixel given raw bitplane data
-#[inline(always)]
-pub fn decode_ehb(planes_data: u8, palette: &[u16; COLOR_PALETTE_SIZE]) -> u16 {
-    let idx = (planes_data & 0x1F) as usize;
-    let col = palette[idx];
-    if (planes_data & 0x20) != 0 {
-        let r = ((col >> 8) & 0xF) >> 1;
-        let g = ((col >> 4) & 0xF) >> 1;
-        let b = (col & 0xF) >> 1;
-        (r << 8) | (g << 4) | b
-    } else {
-        col
-    }
-}
-
-/// Decodes a Dual Playfield pixel given raw bitplane data and PF2 priority flag
-#[inline(always)]
-pub fn decode_dual_playfield(
-    planes_data: u8,
-    palette: &[u16; COLOR_PALETTE_SIZE],
-    pf2_priority: bool,
-) -> u16 {
-    let pf1_idx = (planes_data & 0x01)
-        | (((planes_data >> 2) & 0x01) << 1)
-        | (((planes_data >> 4) & 0x01) << 2);
-
-    let pf2_idx = ((planes_data >> 1) & 0x01)
-        | (((planes_data >> 3) & 0x01) << 1)
-        | (((planes_data >> 5) & 0x01) << 2);
-
-    let pf1_col = if pf1_idx != 0 {
-        Some(palette[pf1_idx as usize])
-    } else {
-        None
-    };
-
-    let pf2_col = if pf2_idx != 0 {
-        Some(palette[8 + pf2_idx as usize])
-    } else {
-        None
-    };
-
-    if pf2_priority {
-        pf2_col.or(pf1_col).unwrap_or(palette[0])
-    } else {
-        pf1_col.or(pf2_col).unwrap_or(palette[0])
-    }
-}
+pub mod decode;
+pub use decode::{decode_dual_playfield, decode_ehb, decode_ham6};
 
 /// Denise video display processor state
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -428,6 +343,36 @@ impl Denise {
                     };
                     self.frame_builder.set_pixel(cck_base_x + 4, y, px4);
                     self.frame_builder.set_pixel(cck_base_x + 5, y, px5);
+
+                    let (px6, px7) = if self.hflop && vflop {
+                        if hires {
+                            let p4 = self.shift_pixel();
+                            let p5 = self.shift_pixel();
+                            let px6 = if p4 != 0 {
+                                frame_builder::rgb444_to_argb32(self.decode_pixel(p4))
+                            } else {
+                                backdrop
+                            };
+                            let px7 = if p5 != 0 {
+                                frame_builder::rgb444_to_argb32(self.decode_pixel(p5))
+                            } else {
+                                backdrop
+                            };
+                            (px6, px7)
+                        } else {
+                            let p2 = self.shift_pixel();
+                            if p2 != 0 {
+                                let argb = frame_builder::rgb444_to_argb32(self.decode_pixel(p2));
+                                (argb, argb)
+                            } else {
+                                (backdrop, backdrop)
+                            }
+                        }
+                    } else {
+                        (backdrop, backdrop)
+                    };
+                    self.frame_builder.set_pixel(cck_base_x + 6, y, px6);
+                    self.frame_builder.set_pixel(cck_base_x + 7, y, px7);
                     self.pipeline_pixels_valid = [false, false];
                 }
             } else {
@@ -457,13 +402,6 @@ impl Denise {
             due[i] = *item;
         }
         due
-    }
-
-    /// Loads 6 parallel bitplane words into active shift registers
-    #[inline]
-    pub fn load_bitplane_data(&mut self, data: [u16; 6]) {
-        self.bpldat = data;
-        self.shifters = data;
     }
 
     /// Writes a 16-bit word into BPLxDAT ($110 + plane * 2).
@@ -523,38 +461,6 @@ impl Denise {
         }
     }
 
-    /// Renders a full horizontal scanline of bitplane word blocks into FrameBuilder
-    pub fn render_scanline(&mut self, vpos: u16, word_blocks: &[[u16; 6]]) {
-        self.last_ham_rgb = self.color[0];
-        let pf1_delay = (self.bplcon1 & 0x0F) as usize;
-        let hires = self.is_hires();
-        let scale = if hires { 2 } else { 1 };
-
-        let mut pixel_x = 0usize;
-
-        let backdrop_argb = frame_builder::rgb444_to_argb32(self.color[0]);
-        for _ in 0..(pf1_delay * scale) {
-            self.frame_builder
-                .set_pixel(pixel_x, vpos as usize, backdrop_argb);
-            pixel_x += 1;
-        }
-
-        for block in word_blocks {
-            self.load_bitplane_data(*block);
-
-            for _ in 0..16 {
-                let pixel_data = self.shift_pixel();
-                let rgb = self.decode_pixel(pixel_data);
-                let argb = frame_builder::rgb444_to_argb32(rgb);
-
-                for _ in 0..scale {
-                    self.frame_builder.set_pixel(pixel_x, vpos as usize, argb);
-                    pixel_x += 1;
-                }
-            }
-        }
-    }
-
     /// Action method: sets BPLCON0 and updates active display mode flags
     #[inline]
     pub fn set_bplcon0(&mut self, val: u16) {
@@ -563,22 +469,14 @@ impl Denise {
 
     /// Action method: sets BPLCON1 horizontal scroll offsets
     #[inline]
-    pub fn set_bplcon1(&mut self, val: u16) {
+    fn set_bplcon1(&mut self, val: u16) {
         self.bplcon1 = val;
     }
 
     /// Action method: sets BPLCON2 priority flags
     #[inline]
-    pub fn set_bplcon2(&mut self, val: u16) {
+    fn set_bplcon2(&mut self, val: u16) {
         self.bplcon2 = val;
-    }
-
-    /// Action method: sets an individual RGB444 color palette entry
-    #[inline]
-    pub fn set_color(&mut self, index: usize, rgb: u16) {
-        if index < COLOR_PALETTE_SIZE {
-            self.color[index] = rgb & 0x0FFF;
-        }
     }
 
     /// Action method: sets display window clipping coordinates
@@ -602,13 +500,13 @@ impl Denise {
 
     /// Returns true if Hold-And-Modify (HAM) mode is enabled
     #[inline]
-    pub fn is_ham(&self) -> bool {
+    fn is_ham(&self) -> bool {
         (self.bplcon0 & 0x0800) != 0
     }
 
     /// Returns true if Dual Playfield mode is enabled
     #[inline]
-    pub fn is_dual_playfield(&self) -> bool {
+    fn is_dual_playfield(&self) -> bool {
         (self.bplcon0 & 0x0400) != 0
     }
 
@@ -718,21 +616,39 @@ impl Denise {
         }
     }
 
-    /// Writes to color palette register directly (COLOR00..COLOR31 at $DFF180..$DFF1BE)
-    #[inline]
-    pub fn write_color(&mut self, index: usize, val: u16) {
-        if index < COLOR_PALETTE_SIZE {
-            self.color[index] = val & 0x0FFF;
-        }
+    /// Reads Joystick/Mouse 0 data register (JOY0DAT at $DFF00A)
+    #[inline(always)]
+    pub fn joy0dat(&self) -> u16 {
+        self.joy0dat
     }
 
-    /// Reads color palette register (12-bit RGB444)
-    #[inline]
-    pub fn read_color(&self, index: usize) -> u16 {
-        if index < COLOR_PALETTE_SIZE {
-            self.color[index]
-        } else {
-            0
-        }
+    /// Reads Joystick/Mouse 0 data register without side-effects for debugging
+    #[inline(always)]
+    pub fn joy0dat_debug(&self) -> u16 {
+        self.joy0dat
+    }
+
+    /// Reads Joystick/Mouse 1 data register (JOY1DAT at $DFF00C)
+    #[inline(always)]
+    pub fn joy1dat(&self) -> u16 {
+        self.joy1dat
+    }
+
+    /// Reads Joystick/Mouse 1 data register without side-effects for debugging
+    #[inline(always)]
+    pub fn joy1dat_debug(&self) -> u16 {
+        self.joy1dat
+    }
+
+    /// Reads Collision Data register with clear-on-read side-effect (CLXDAT at $DFF00E)
+    #[inline(always)]
+    pub fn clxdat(&mut self) -> u16 {
+        self.read_clxdat()
+    }
+
+    /// Reads Collision Data register without clearing for debugging (CLXDAT at $DFF00E)
+    #[inline(always)]
+    pub fn clxdat_debug(&self) -> u16 {
+        self.clxdat
     }
 }

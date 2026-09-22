@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use config::DeniseModel;
 use denise::{decode_dual_playfield, decode_ehb, decode_ham6, frame_builder, Denise};
 
@@ -54,11 +56,11 @@ fn test_bitplane_serialization_and_palette_lookup() {
     assert!(!denise.is_hires());
 
     // Setup color palette
-    denise.set_color(0, 0x000); // Black
-    denise.set_color(1, 0xF00); // Red
-    denise.set_color(2, 0x0F0); // Green
-    denise.set_color(3, 0x00F); // Blue
-    denise.set_color(15, 0xFFF); // White
+    denise.color[0] = 0x000; // Black
+    denise.color[1] = 0xF00; // Red
+    denise.color[2] = 0x0F0; // Green
+    denise.color[3] = 0x00F; // Blue
+    denise.color[15] = 0xFFF; // White
 
     // Bitplane word test:
     // Pixel 0: plane 0 = 1, planes 1..3 = 0 -> color 1 (Red)
@@ -70,7 +72,8 @@ fn test_bitplane_serialization_and_palette_lookup() {
     let p2 = 0b0001_0000_0000_0000u16;
     let p3 = 0b0001_0000_0000_0000u16;
 
-    denise.load_bitplane_data([p0, p1, p2, p3, 0, 0]);
+    denise.bpldat = [p0, p1, p2, p3, 0, 0];
+    denise.shifters = [p0, p1, p2, p3, 0, 0];
 
     // Pixel 0
     let pix0 = denise.shift_pixel();
@@ -175,34 +178,11 @@ fn test_dual_playfield_layering_and_priority() {
 }
 
 #[test]
-fn test_render_scanline_with_fine_scrolling() {
-    let mut denise = Denise::new(DeniseModel::Ocs8362);
-    denise.set_bplcon0(0x2200); // 2 bitplanes
-    denise.set_color(0, 0x000); // Black backdrop
-    denise.set_color(1, 0xFFF); // White
-
-    // BPLCON1 = 4 (4-pixel fine scroll delay)
-    denise.set_bplcon1(0x0004);
-
-    let block = [0xFFFF, 0x0000, 0, 0, 0, 0]; // 16 white pixels
-    denise.render_scanline(100, &[block]);
-
-    // Pixels 0..4 should be black backdrop (fine scroll delay padding)
-    for x in 0..4 {
-        assert_eq!(denise.frame_builder.get_pixel(x, 100), 0xFF00_0000);
-    }
-    // Pixels 4..20 should be white (0xFFF0F0F0)
-    for x in 4..20 {
-        assert_eq!(denise.frame_builder.get_pixel(x, 100), 0xFFF0_F0F0);
-    }
-}
-
-#[test]
 fn test_pipeline_pixels_latency_and_backdrop_immediacy() {
     let mut denise = Denise::new(DeniseModel::Ocs8362);
     denise.set_bplcon0(0x1200); // 1 bitplane, low-res
-    denise.set_color(0, 0xF00); // Red backdrop
-    denise.set_color(1, 0x0F0); // Green foreground
+    denise.color[0] = 0xF00; // Red backdrop
+    denise.color[1] = 0x0F0; // Green foreground
     denise.frame_builder.dma_enabled = true;
     denise.set_diw(0x2C81, 0x2CC1); // Standard PAL display window
 
@@ -276,4 +256,54 @@ fn test_pipeline_pixels_latency_and_backdrop_immediacy() {
         green_argb,
         "px1 of subsequent CCK should receive staged trailing foreground pixel"
     );
+}
+
+#[test]
+fn test_scanline_end_cck_226_pixels_termination() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.set_bplcon0(0x1200); // 1 bitplane, low-res
+    denise.color[0] = 0xF00; // Red backdrop
+    denise.frame_builder.dma_enabled = true;
+    denise.write_bpldat(0, 0xFFFF); // Armed
+    assert!(denise.bpl_armed);
+
+    // Step at the end of scanline (hpos = 226)
+    let beam_end = config::BeamPosition::new(226, 50, false);
+    denise.step_cck(beam_end);
+
+    let red_argb = frame_builder::rgb444_to_argb32(0xF00);
+    // Pixels 908..911 belong to CCK 227 trailing end of line
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 4, 50), red_argb);
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 5, 50), red_argb);
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 6, 50), red_argb);
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 7, 50), red_argb);
+}
+
+#[test]
+fn test_scanline_end_open_diw_renders_bitplanes() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.set_bplcon0(0x1200); // 1 bitplane, low-res
+    denise.color[0] = 0xF00; // Red backdrop
+    denise.color[1] = 0x0F0; // Green foreground
+    denise.frame_builder.dma_enabled = true;
+    denise.write_bpldat(0, 0xFFFF); // Armed with solid 1s
+    assert!(denise.bpl_armed);
+
+    // DIW open from hstart=0x02 to hstop=0x1C8 (> 0x1C7, does not close within scanline)
+    denise.set_diw(0x2C02, 0x2CC8);
+
+    // Step to start of line, then arm bitplanes with solid 1s
+    denise.step_cck(config::BeamPosition::new(0, 50, false));
+    denise.write_bpldat(0, 0xFFFF);
+    assert!(denise.bpl_armed);
+
+    // Step to CCK 224 to trigger shifter reload (224 % 8 == 0)
+    denise.step_cck(config::BeamPosition::new(224, 50, false));
+    let beam_end = config::BeamPosition::new(226, 50, false);
+    denise.step_cck(beam_end);
+
+    let green_argb = frame_builder::rgb444_to_argb32(0x0F0);
+    // Because DIW remained open, trailing pixels 910 and 911 must render active bitplanes
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 6, 50), green_argb);
+    assert_eq!(denise.frame_builder.get_pixel(226 * 4 + 7, 50), green_argb);
 }

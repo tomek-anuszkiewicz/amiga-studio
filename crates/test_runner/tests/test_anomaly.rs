@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for M68000 Benchmark Anomaly Detection & Regression Diffing
 //!
 //! Tests Type A, Type B, Type C, and execution timeout classifications,
@@ -5,8 +7,17 @@
 
 use test_runner::benchmark::anomaly::{
     evaluate_anomaly, evaluate_historical_diff, evaluate_historical_ratio_diff, AnomalyType,
-    RegressionStatus,
+    AnomalyVerdict, RegressionStatus,
 };
+
+#[test]
+fn test_anomaly_verdict_default() {
+    let verdict = AnomalyVerdict::default();
+    assert!(!verdict.is_anomaly);
+    assert!(verdict.anomaly_types.is_empty());
+    assert!(verdict.delta_vs_baseline_pct.is_none());
+    assert!(verdict.notes.is_empty());
+}
 
 #[test]
 fn test_anomaly_normal_execution() {

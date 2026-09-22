@@ -4,8 +4,8 @@
 //! statistical loop with compiler optimization defenses and NOP baseline subtraction
 //! per Obsidian/Amiga/Design/CPU Instruction Benchmarking.md.
 
-use m68000::Cpu;
-use physical_memory::MemoryBus;
+use cpu::Cpu;
+use physical_memory::PhysicalMemory;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -41,14 +41,6 @@ impl BenchmarkProfile {
             Self::Quick => 15,
             Self::Standard => 1_428,
             Self::Thorough => 14_285,
-        }
-    }
-
-    pub const fn dir_name(&self) -> &'static str {
-        match self {
-            Self::Quick => "quick",
-            Self::Standard => "standard",
-            Self::Thorough => "thorough",
         }
     }
 
@@ -143,7 +135,7 @@ pub fn run_benchmark_suite(config: &BenchmarkConfig) -> Result<BenchmarkSuiteRep
         .copied()
         .ok_or_else(|| "BASE-00 specification missing".to_string())?;
 
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     if config.verbose {
@@ -431,7 +423,7 @@ pub fn execute_single_spec(
     passes_count: usize,
     iterations: usize,
     cpu: &mut Cpu,
-    bus: &mut MemoryBus,
+    bus: &mut PhysicalMemory,
     family_baseline_ns_cck: Option<f64>,
     register_baseline_ns_op: Option<f64>,
 ) -> BenchmarkExecutionResult {
@@ -516,7 +508,7 @@ fn execute_pass_inner(
     program: &super::builder::BenchmarkProgram,
     iterations: usize,
     cpu: &mut Cpu,
-    bus: &mut MemoryBus,
+    bus: &mut PhysicalMemory,
 ) -> (f64, bool) {
     let max_cycles = (program.total_cck_per_pass.max(1_000) * 10) as u64;
     let mut has_timed_out = false;
@@ -548,13 +540,13 @@ fn execute_pass_inner(
 
     // Compiler Optimization Defense: Pass CPU reference and computed CRC through black_box
     let mut crc: u64 = 0;
-    for &d in cpu.state.d_regs() {
-        crc ^= d as u64;
+    for i in 0..8 {
+        crc ^= cpu.state.d_long(i) as u64;
     }
-    for &a in cpu.state.a_regs() {
-        crc ^= a as u64;
+    for i in 0..8 {
+        crc ^= cpu.state.a_long(i) as u64;
     }
-    crc ^= (cpu.state.sr as u64) << 16;
+    crc ^= (cpu.state.sr() as u64) << 16;
     crc ^= cpu.state.pc as u64;
     std::hint::black_box(crc);
 

@@ -4,19 +4,19 @@
 //! split odd/even MFM encoding/decoding, 32-bit XOR checksums, and sync word ($4489) detection.
 
 /// Standard Amiga sync mark word ($4489)
-pub const MFM_SYNC_WORD: u16 = 0x4489;
+const MFM_SYNC_WORD: u16 = 0x4489;
 
 /// Standard raw MFM sector size in bytes (sync + header + label + checksums + data)
 pub const RAW_MFM_SECTOR_BYTES: usize = 1088;
 
 /// Standard Amiga unencoded sector payload size in bytes
-pub const SECTOR_PAYLOAD_BYTES: usize = 512;
+const SECTOR_PAYLOAD_BYTES: usize = 512;
 
 /// Standard number of sectors per track in Double Density disks
 pub const SECTORS_PER_TRACK: usize = 11;
 
 /// Standard raw MFM track size in bytes (11 sectors + inter-sector gaps)
-pub const RAW_MFM_TRACK_BYTES: usize = 12668;
+pub(crate) const RAW_MFM_TRACK_BYTES: usize = 12668;
 
 /// Errors that can occur during MFM decoding
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,7 +54,7 @@ pub fn encode_mfm_long(payload: u32) -> (u32, u32) {
 
 /// Computes the 32-bit XOR checksum over an array of 32-bit MFM longwords
 #[inline]
-pub fn calculate_mfm_checksum(words: &[u32]) -> u32 {
+fn calculate_mfm_checksum(words: &[u32]) -> u32 {
     words.iter().fold(0u32, |acc, &val| acc ^ val)
 }
 
@@ -229,7 +229,7 @@ pub fn decode_amiga_sector(raw: &[u8]) -> Result<(u8, u8, [u8; 512]), MfmError> 
 }
 
 /// Encodes an entire 5632-byte unencoded track into a standard raw MFM track buffer
-pub fn encode_amiga_track(track: u8, track_data: &[u8]) -> Vec<u8> {
+pub(crate) fn encode_amiga_track(track: u8, track_data: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(RAW_MFM_TRACK_BYTES);
 
     // Pre-track gap preamble (approx 500 bytes of MFM clock pattern $AAAA)

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use debugger::DebuggerSession;
 use std::fs;
 use std::path::Path;

@@ -60,44 +60,6 @@ impl VamigaCategory {
             _ => None,
         }
     }
-
-    /// Determines if a relative test path matches this category
-    pub fn matches_rel_path(&self, rel_path: &Path) -> bool {
-        if *self == Self::All {
-            return true;
-        }
-
-        let comps: Vec<String> = rel_path
-            .components()
-            .map(|c| c.as_os_str().to_string_lossy().to_ascii_lowercase())
-            .collect();
-
-        if comps.is_empty() {
-            return false;
-        }
-
-        match self {
-            Self::Copper => {
-                comps[0] == "agnus" && comps.get(1).map(|s| s.as_str()) == Some("copper")
-            }
-            Self::Blitter => {
-                comps[0] == "agnus" && comps.get(1).map(|s| s.as_str()) == Some("blitter")
-            }
-            Self::Agnus => {
-                comps[0] == "agnus"
-                    && comps.get(1).map(|s| s.as_str()) != Some("copper")
-                    && comps.get(1).map(|s| s.as_str()) != Some("blitter")
-            }
-            Self::Denise => comps[0] == "denise",
-            Self::Paula => comps[0] == "paula",
-            Self::Cpu => comps[0] == "cpu",
-            Self::Cia => comps[0] == "cia",
-            Self::Mainboard => comps[0] == "mainboard",
-            Self::Memory => comps[0] == "memory",
-            Self::Misc => comps[0] == "misc",
-            Self::All => true,
-        }
-    }
 }
 
 /// Explicit architectural rationale for deferring a test from Phase 1 OCS Baseline

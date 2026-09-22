@@ -1,63 +1,45 @@
 ---
 trigger: always_on
-description: High-performance systems programming, host hardware efficiency, zero runtime heap allocations, and zero user-defined macros/const-generics.
+description: >
+  Zero-allocation hot paths, zero macro_rules!, zero const-generic handlers,
+  no cascaded runtime branches, intelligent inlining, and self-documenting
+  boolean logic. Full audit checklist in audit-code-quality workflow;
+  CPU micro-step CCK details in add-m68k-instruction skill.
 ---
 
-# High Performance & Host Hardware Efficiency (with Zero Readability Compromise)
+# High Performance & Readability — Core Invariants
 
-## 1. The Host Hardware Reality (Hardware-Aligned Execution)
-Modern host CPUs (x86_64, aarch64) are deeply pipelined superscalar architectures:
-- **Branch Predictability:** Avoid unpredictable runtime branches in hot paths. Cascaded dynamic conditionals flush execution pipelines.
-- **Contiguous Memory & Locality:** Sequential, flat array structures and compact data layouts outperform pointer chasing and scattered dynamic allocations.
-- **Compact Hot Path:** Keep the primary instruction execution loop clean and linear, moving cold error paths out-of-line.
+## Hot Path Constraints (All Emulation Crates)
+- **Zero heap allocation** in `step()`, `step_cck()`, memory access, interrupt polling:
+  no `Vec::new`, `Box::new`, `format!`, `String` inside the execution loop.
+- **No cascaded runtime branches** in hot paths — avoid `match opcode { match size { match ea_mode { } } }`.
+  Favor flat dispatch or compile-time specialized handlers.
+- **Contiguous memory layouts:** flat arrays over pointer-chased dynamic structures.
 
----
+## Inlining Policy
+- `#[inline(always)]` — ultra-hot ALU and CCR flag calculations only.
+- `#[inline]` — lightweight public getters and cross-crate forwarding wrappers.
+- `#[inline(never)]` — mandatory on cold exception/trap paths to keep the hot dispatch linear.
+- No forced inlining on functions > 15–20 lines of control flow.
 
-## 2. Core Performance Principles
+## Strict Code Prohibitions (Compiler-Enforced via Clippy)
+- **Zero `macro_rules!`** across the entire workspace. Write explicit specialized functions.
+- **Zero const-generic instruction handlers** (`fn op<const S: usize>()`). Write concrete functions.
+- **No condition soup:** decompose multi-clause `&&`/`||` chains into named explaining variables
+  or domain predicate methods (`self.is_active()`, `step.has_work()`).
+- **No eager speculative variable computation:** explaining variables must not force evaluation
+  of sub-expressions that boolean short-circuit (`&&`, `||`) would otherwise skip.
 
-### A. Flatten Execution & Eliminate Cascaded Runtime Branches
-- Avoid nested dynamic conditionals in hot paths (e.g. `match opcode { ... match size { ... match ea_mode { ... } } }`).
-- **Code may be expansive ("rozległy"):** Favor specialized code generation or dedicated direct handlers (e.g., the 65,536-entry static dispatch table) where addressing mode, register, and operation size are baked in at compile time, eliminating runtime branch evaluation.
+## Readability Non-Negotiable
+- Code reads like a hardware specification — name the register, the clock phase, the signal.
+- No clever micro-optimizations that LLVM already handles.
+- Accompany non-obvious silicon states with a 1-line comment explaining the *hardware rule*.
 
-### B. Intelligent Inlining & Lean Hot Paths
-- **`#[inline(always)]`**: Reserved for ultra-hot arithmetic/logic and CCR flag calculations ($X, N, Z, V, C$) executed on every single clock cycle.
-- **`#[inline]`**: For lightweight public getters, forwarding wrappers, and cross-crate helpers so LLVM can optimize across crate boundaries.
-- **`#[inline(never)]`**: Mandatory on cold exception paths (Address Error vector 3, Illegal instruction traps, bus fault dumps). Keeping complex recovery logic out-of-line keeps the hot dispatch path linear and prevents code bloat.
-- **No Inlining on Large Handlers**: Functions with > 15–20 lines of control flow or targets of indirect function pointers must not be forced inline.
+## CPU Micro-Step Details (M68000 — Closed Gate)
+CCK phase fusion, dual staging (`addr1`/`addr2`), `WRITE_ADDR2_*` write patterns, Address Error
+invariance, and IDLE constant naming apply exclusively to `crates/cpu/`. Consult the
+[`add-m68k-instruction`](../skills/add-m68k-instruction/SKILL.md) skill when working there.
 
-
-### C. Zero Allocation in Emulation Loop
-- Strictly zero dynamic heap allocations (`Vec::new`, `Box::new`, `format!`, `String`) inside `step()`, `step_cck()`, memory access, or interrupt polling.
-
-### D. Fused CCK ALU Micro-Operations & Dual Staging (`addr1`, `addr2`)
-- **Fuse ALU into 2-Clock CCK Phases:** Fuse ALU calculations, CCR updates, and Effective Address arithmetic directly into `MicroStep.alu_fn` of natural 2-clock Color Clock phases (`BUS_READ_IDLE`, `BUS_WRITE_IDLE`, prefetch/extension steps) rather than introducing separate zero-clock micro-steps.
-- **Dual Staging Architecture:** For dual-memory instructions (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`), use dedicated staging registers `state.micro.addr1` and `state.micro.addr2`.
-- **Address Error Invariance:** Byte operations may calculate both addresses upfront. Word and long operations **must** defer destination address calculation to the CCK2 idle phase of the source read, ensuring unaligned source reads trigger Address Error with the destination register completely untouched.
-- **Direct Staged Writes:** Target memory writes directly via `WRITE_ADDR2_BYTE`, `WRITE_ADDR2_WORD`, `WRITE_ADDR2_PD_LONG_LOW`, and `WRITE_ADDR2_PD_LONG_HIGH`. Never juggle temporary pointers in `scratch[0..2]`, shift `destination >>= 16`, or use pointer-swapping helpers (`set_write_hi`).
-
----
-
-## 3. The Non-Negotiable Constraint: Readability Without Compromise
-High performance must **NEVER** be an excuse for unreadable, cryptic, or spaghetti code:
-1. **No Clever Obscurity:** Do not sacrifice clarity for micro-optimizations that LLVM already handles.
-2. **Clean Rust Idioms:** Use descriptive types, strong typing, meaningful enum variants, and clear data flow.
-3. **Strict Prohibition of User-Defined Macros (`macro_rules!` Forbidden):** Custom macros are strictly forbidden across the codebase. In the era of LLMs, code generation is cheap, eliminating the historical need for macro deduplication. Macros break IDE code navigation (Go to Definition, Find References, Call Hierarchy), obscure call sites, produce confusing compiler diagnostics, and add unnecessary mental complexity. All repetitive code, static dispatch tables, and handlers must be written as explicit, self-documenting Rust functions, direct calls, or standard `const fn` arrays.
-4. **Prohibition of Const-Generic Functions with Constant Parameters:** Using generic functions where generic parameters are constants (e.g. `fn op_foo<const S: usize, const M: usize>(...)`) is forbidden for instruction handlers, decoding, and core execution paths. Const-generic combinatorics obscure concrete execution flow, complicate backtraces and interactive debugging, and introduce cognitive overhead. In the era of LLMs, code generation is cheap—write explicit, concrete, specialized functions or direct flattened control flows instead of abstract const-generic templates.
-5. **Self-Documenting Code:** Write code that reads like hardware specifications. A developer reading the CPU or Blitter core should immediately understand the circuit intent.
-
----
-
-## 4. Code Review Checklist (Performance & Readability)
-During `/code-review`, verify:
-- [ ] Are cascaded dynamic `match` / `if` checks in hot loops avoided in favor of direct dispatch or flattened handlers?
-- [ ] Are cold exception paths (e.g. stack frame creation, traps) annotated with `#[inline(never)]`?
-- [ ] Are hot flag/ALU calculations annotated with `#[inline(always)]`?
-- [ ] Is the hot path 100% allocation-free?
-- [ ] Is the code completely free of custom macros (`macro_rules!`)?
-- [ ] Are opcode handlers and execution paths free of const-generic functions (`<const N: ...>`) in favor of concrete specialized functions?
-- [ ] Are all bus and internal idle cycles explicitly named with IDLE (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`), with zero anonymous idle structs or legacy finish aliases?
-- [ ] Are dual-memory instructions (`CMPM`, `ABCD`, `SBCD`, `ADDX`, `SUBX`) using `addr1` and `addr2` with direct `WRITE_ADDR2_*` writes and zero scratch juggling / `destination >>= 16`?
-- [ ] For word and long dual-memory operations, is destination address calculation deferred to CCK2 of the source read to guarantee hardware Address Error invariance?
-- [ ] Are ALU and effective address calculations fused onto 2-clock CCK phases (`alu_fn`) rather than using zero-clock dispatch steps?
-- [ ] Is the code clear, well-structured, self-documenting, and free of cryptic tricks?
-
+## Code Review Checklist
+Full performance & readability audit checklist → [`/audit-code-quality`](../workflows/audit-code-quality.md) workflow (Section 4).
+Benchmarking specs → `Obsidian/Amiga/Design/CPU Instruction Benchmarking.md`.

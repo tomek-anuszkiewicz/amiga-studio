@@ -5,7 +5,7 @@ description: M68000 opcode naming conventions, canonical IDLE micro-step constan
 
 # M68000 Opcode Handler Naming & Bitfield Decoding Rules
 
-This rule enforces total naming consistency and architectural alignment across the 65,536-entry static descriptor table (`crates/m68000/src/micro/dispatch_table.rs`) and all per-mnemonic instruction execution modules in `crates/m68000`.
+This rule enforces total naming consistency and architectural alignment across the 65,536-entry static descriptor table (`crates/cpu/src/micro/dispatch_table.rs`) and all per-mnemonic instruction execution modules in `crates/cpu`.
 
 ---
 
@@ -130,3 +130,12 @@ To prevent naming divergence across thousands of generated handlers, only the fo
 ## 5. Execution Skill: `add-m68k-instruction`
 
 When implementing a new opcode, addressing mode, or instruction family, follow the step-by-step recipe in [`add-m68k-instruction`](../skills/add-m68k-instruction/SKILL.md) for flat linear opcode dispatch, inlined CCR calculations, CCK cycle phase modeling, prefetch advancement, and SingleStepTest silicon verification.
+
+---
+
+## 6. Authoritative CPU Design Specifications & Delegation
+
+When implementing or refactoring M68000 micro-steps, instruction decoding, or silicon test validation, agents must consult and adhere to:
+- [`CPU Motorola M68000.md`](../../Obsidian/Amiga/Design/CPU%20Motorola%20M68000.md): Architectural programmer model, registers, ALU semantics, and addressing modes.
+- [`CPU Micro-Step State Machine.md`](../../Obsidian/Amiga/Design/CPU%20Micro-Step%20State%20Machine.md): Bus cycle phases (CCK1/CCK2), natural 2-clock execution, and prefetch pipelining.
+- [`CPU SingleStepTests.md`](../../Obsidian/Amiga/Design/CPU%20SingleStepTests.md): Tom Harte physical silicon vector verification harness.

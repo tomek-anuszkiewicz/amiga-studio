@@ -9,3 +9,6 @@ path = "src/joystick.rs"
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
+
+[lints]
+workspace = true

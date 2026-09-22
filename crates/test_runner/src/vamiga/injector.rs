@@ -89,8 +89,8 @@ pub fn inject_vamiga_test(machine: &mut A500Machine, adf_bytes: &[u8]) -> Result
         return Err("ADF file too short to contain Sector 2 payload".to_string());
     }
 
-    // 1. Cold reset and map Chip RAM to low memory
-    machine.reset_cold();
+    // 1. Reset and map Chip RAM to low memory
+    machine.reset();
     machine.physical_memory.map_chip_ram_to_low_memory();
 
     // 2. Slice Sector 2 payload ($000400) directly into Chip RAM at $00070000
@@ -117,16 +117,11 @@ pub fn inject_vamiga_test(machine: &mut A500Machine, adf_bytes: &[u8]) -> Result
 
     // 5. Initialize CPU register state and prime prefetch pipeline
     machine.cpu.state.clear_registers();
-    machine.cpu.state.ssp = VAMIGA_STACK_POINTER;
-    machine.cpu.state.set_a_long(7, VAMIGA_STACK_POINTER);
-    machine.cpu.state.sr = 0x2000; // Supervisor mode, IPL 0 (interrupts enabled)
-                                   // Emulate Kickstart OS state: Master Interrupts (INTEN) enabled and standard PAL display window
-    machine.paula.intena = 0x4000;
+    machine.cpu.state.set_sr(0x2000); // Supervisor mode, IPL 0 (interrupts enabled)
+    machine.cpu.state.set_ssp(VAMIGA_STACK_POINTER);
+    // Emulate Kickstart OS state: Master Interrupts (INTEN) enabled and standard PAL display window
+    machine.paula.interrupts.intena = 0x4000;
     machine.denise.set_diw(0x2C81, 0x2CC1);
-    machine.agnus.diwstrt = 0x2C81;
-    machine.agnus.diwstop = 0x2CC1;
-    machine.agnus.dma.set_diwstrt(0x2C81);
-    machine.agnus.dma.set_diwstop(0x2CC1);
     machine.set_pc_and_prime_prefetch(VAMIGA_ENTRY_POINT);
 
     Ok(())

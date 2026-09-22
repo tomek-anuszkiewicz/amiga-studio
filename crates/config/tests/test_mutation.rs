@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 
 #[test]

@@ -19,20 +19,21 @@ This skill guides an agent (or subagent reviewer) through performing a strict po
 
 ## Review Procedure
 
-### Step 1: Automated Architecture & Formatting Verification
-Verify formatting compliance and run the automated architectural test suite in `test_runner`:
+### Step 1: Automated Architecture, Compiler & Formatting Verification
+Verify formatting compliance, run compiler/clippy verification, and run the automated architectural test suite in `test_runner`:
 ```powershell
 cargo fmt --all -- --check
+cargo clippy --workspace --all-targets
 cargo test -p test_runner --test test_architecture_rules
 ```
-If formatting checks or any architecture tests fail, review is immediately blocked until the violation is resolved (format via `cargo fmt --all`).
+If formatting checks, clippy lints, or any architecture tests fail, review is immediately blocked until the violation is resolved (format via `cargo fmt --all`).
 
 ### Step 2: Diff Inspection (`git diff`)
 Analyze all modified and added files using `git diff`:
 1. **Zero Panics**: Search for `.unwrap()` or `.expect(` in `crates/*/src/`. Emulated guest execution must never crash or panic the host.
 2. **Endianness**: Verify Big-Endian multi-byte decoding (`u16::from_be_bytes`, `u32::from_be_bytes`).
 3. **Wrapping Math**: Check ALU operations and cycle additions for wrapping arithmetic (`wrapping_add`, `wrapping_sub`).
-4. **Rust Source File Sizes & Flat Instructions**: Ensure no Rust source file in `crates/*/src/` exceeds 800 lines (excluding recognized exceptions in `LINE_COUNT_EXCEPTIONS`). Confirm strict flat instruction hierarchy: zero subdirectories in `crates/m68000/src/instructions/` (all instructions are single `<mnemonic>.rs` files, 1:1 mnemonic alignment, zero umbrella files like `mul.rs`, `div.rs`, `link_unlk.rs`, `bcd.rs`, `privileged.rs`). Technical documentation and specifications have NO line count limits.
+4. **Rust Source File Sizes & Flat Instructions**: Ensure no Rust source file in `crates/*/src/` exceeds 800 lines (excluding recognized exceptions in `LINE_COUNT_EXCEPTIONS`). Confirm strict flat instruction hierarchy: zero subdirectories in `crates/cpu/src/instructions/` (all instructions are single `<mnemonic>.rs` files, 1:1 mnemonic alignment, zero umbrella files like `mul.rs`, `div.rs`, `link_unlk.rs`, `bcd.rs`, `privileged.rs`). Technical documentation and specifications have NO line count limits.
 5. **Host CPU Performance & Readability**:
    - Verify branch-minimization: hot loops favor flattened dispatch instead of nested `match`/`if` cascades ("code may be expansive").
    - Verify zero-allocations in hot execution paths (no `Vec`, `Box`, `format!`, dynamic boxed iterators).
@@ -56,7 +57,7 @@ Analyze all modified and added files using `git diff`:
    - Ensure all micro-steps where the memory bus does not perform an active transfer or address strobe explicitly feature `IDLE` (`common::BUS_READ_IDLE`, `common::BUS_WRITE_IDLE`, `common::ALU_IDLE*`).
    - Strictly prohibit anonymous idle structs (`MicroStep { bus_fn: None, alu_fn: None, ... }`) and legacy aliases (`READ_WORD_FINISH`, `PREFETCH_NEXT_RETIRE`, `REFILL_FIRST_FINISH`, `REFILL_SECOND_FINISH`).
 12. **Comprehensive Unit Test Coverage**:
-   - Verify that every newly created or modified Rust source file containing testable domain logic, state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests (`tests/<module_name>.rs` or inline `#[cfg(test)] mod tests`).
+   - Verify that every newly created or modified Rust source file containing testable domain logic, state machines, hardware models, math/ALU operations, algorithms, statistics, parsers, or program builders has dedicated unit tests strictly in dedicated external test files (`crates/<crate>/tests/test_<name>.rs` per `unit-testing-policy.md`; zero inline tests in `src/`).
    - Modules must not be declared complete without tests covering happy paths, boundary conditions, zero/empty states, and failure modes.
 13. **Language Policy & English Purity**:
    - Verify that `git diff` introduces ZERO non-English words, identifiers, or prompt echoes in source code, docstrings, or inline comments (per `language-policy.md`).
@@ -78,6 +79,7 @@ Provide the audit report using the following standard template:
 ```markdown
 ### 🛡️ Code & Architecture Compliance Review:
 - [ ] **Code Formatting Compliance:** `cargo fmt --all -- --check` passed cleanly across workspace.
+- [ ] **Compiler & Clippy Compliance:** `cargo clippy --workspace --all-targets` passed cleanly (zero warnings/errors).
 - [ ] **Architecture Test Suite:** `cargo test -p test_runner --test test_architecture_rules` passed.
 - [ ] **Unit Test Coverage:** Every module with testable logic has dedicated unit tests in `crates/*/tests/` (zero inline tests in `src/`).
 - [ ] **Zero Panics & Endianness:** No `.unwrap()` in runtime, explicit Big-Endian conversion & wrapping math.
@@ -87,7 +89,7 @@ Provide the audit report using the following standard template:
 - [ ] **Decoupled SaveState:** Subsystem state derives `Serialize`/`Deserialize`, zero circular references (`Rc<RefCell>`).
 - [ ] **Anti-Hack & Spec Integrity:** Zero ad-hoc test workarounds; hardware specifications followed strictly.
 - [ ] **Anti-Tamper & Golden Hash Invariance:** Zero blind updates to golden master hashes (`GOLDEN_*_HASH`), reference cycle counts, or test fixtures to silence failing tests.
-- [ ] **Rust File Size, Cohesion & Flat Instructions:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Zero subdirectories in `crates/m68000/src/instructions/` (strict flat instruction hierarchy, 1:1 mnemonic files, zero umbrella files). Technical documentation has no line limits.
+- [ ] **Rust File Size, Cohesion & Flat Instructions:** All Rust source files in `crates/*/src/` <= 800 lines (or recognized exception). Zero subdirectories in `crates/cpu/src/instructions/` (strict flat instruction hierarchy, 1:1 mnemonic files, zero umbrella files). Technical documentation has no line limits.
 - [ ] **Inlining Strategy:** Cross-crate `#[inline]`, CCR `#[inline(always)]`, cold paths `#[inline(never)]`.
 - [ ] **Defect Retrospection & Prevention:** Root cause analyzed, regression tests added, systemic safeguards/docs updated (if bug fix).
 - [ ] **Design Docs Pruning, Roadmap & Diary:** Living docs updated, speculative code pruned, code snippets removed, completed roadmap steps deleted (zero `[COMPLETED]` markers in Section 2), and `DIARY.md` chronological changelog updated.
@@ -99,29 +101,3 @@ Provide the audit report using the following standard template:
 **Verdict:** [APPROVED | CHANGES REQUESTED]
 **Observations / Required Actions:** (if any)
 ```
-
----
-
-## 4. Execution Mode: Subagent Delegation
-
-- **Execution Host:** **Isolated Subagent** (child context sandbox).
-- **Model Tier:** `Gemini Pro High` (Adversarial, rigorous, bias-free compliance auditing).
-- **Context Savings:** Isolates lengthy git diff inspections, deep AST checks, and line-by-line verification from the main conversation.
-- **Subagent Task Template:**
-  - `TaskName`: "Adversarial Code & Architecture Review"
-  - `TaskSummary`: "Performs independent, strict compliance audit of git diff against constitutional rules and tests."
-  - `Prompt`:
-    ```markdown
-    Conduct an adversarial code and architecture audit of the recent changes.
-    Follow .agents/skills/code-review/SKILL.md:
-    1. Check git diff against all constitutional gates.
-    2. Ensure zero inline tests in `crates/*/src/` (tests must be in dedicated `crates/*/tests/`).
-    3. Run `cargo test -p test_runner --test test_architecture_rules`.
-    4. Check file size limits (<= 800 lines) and AGENTS.md ceiling (<= 14,000 bytes).
-    5. Return strictly the formal Code Review Audit Report below.
-    ```
-- **Return Contract (Mandatory Structured Output):**
-  The subagent must conclude with the standard `### 🛡️ Code & Architecture Compliance Review` report containing:
-  - All 18 checkboxes verified `[x]`.
-  - Concrete file/line markdown links for any flagged observations.
-  - Final Verdict: `APPROVED` or `CHANGES REQUESTED`.

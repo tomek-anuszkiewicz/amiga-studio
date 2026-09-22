@@ -1,10 +1,12 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use cpu::Cpu;
 use debugger::{assemble_instruction, disassemble, Debugger};
-use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 #[test]
 fn test_disassembler_primitives() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     // 1. NOP ($4E71)
@@ -30,7 +32,7 @@ fn test_disassembler_primitives() {
 
 #[test]
 fn test_debugger_trace_buffer_and_breakpoints() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
@@ -103,8 +105,8 @@ fn test_assembler_primitives() {
 
 #[test]
 fn test_temporal_history_capacity_and_navigation() {
+    use cpu::CpuState;
     use debugger::temporal::{TemporalHistory, PAL_FRAME_CCK};
-    use m68000::CpuState;
 
     let mut history = TemporalHistory::new(250_000);
     assert_eq!(history.capacity(), 250_000);
@@ -162,10 +164,10 @@ fn test_temporal_history_capacity_and_navigation() {
 
 #[test]
 fn test_conditional_breakpoints_and_watchpoints() {
+    use cpu::CpuState;
     use debugger::{
         BreakpointCondition, BreakpointManager, ConditionOp, ConditionRegister, WatchAccess,
     };
-    use m68000::CpuState;
 
     let mut bpm = BreakpointManager::new();
     let mut state = CpuState::default();
@@ -244,7 +246,7 @@ fn test_debugger_session_controller() {
     assert_eq!(session.instructions_executed, 1 + executed as u64);
 
     // Reset cold
-    session.reset_cold();
+    session.reset();
     assert_eq!(session.instructions_executed, 0);
     assert_eq!(session.temporal.len(), 0);
     assert!(!session.is_running);

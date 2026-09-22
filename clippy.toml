@@ -1,0 +1,23 @@
+# Configuration for Clippy lints enforcing architectural rules
+
+# Allow unwrap, expect, and panic in tests while denying in production code
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+
+# Enforces: AGENTS.md, rust-best-practices.md Section 3 (Zero Circular Handles)
+# and egui-best-practices.md (Zero Asynchrony / Single-Threaded Core)
+disallowed-types = [
+    { path = "std::rc::Rc", reason = "Forbidden: Sibling subsystems must not share reference-counted pointers; use top-level decoupled ownership (AGENTS.md)" },
+    { path = "std::cell::RefCell", reason = "Forbidden: Sibling subsystems must not share mutable interior cells; use explicit loan/context passing (AGENTS.md)" },
+    { path = "std::sync::Arc", reason = "Forbidden: Core emulator is strictly single-threaded and synchronous (AGENTS.md)" },
+    { path = "std::sync::Mutex", reason = "Forbidden: Core emulator is strictly single-threaded and synchronous (AGENTS.md)" },
+    { path = "std::sync::RwLock", reason = "Forbidden: Core emulator is strictly single-threaded and synchronous (AGENTS.md)" },
+    { path = "std::sync::mpsc::Sender", reason = "Forbidden: UI and emulator core communicate via synchronous state pull, not channels (egui-best-practices.md)" },
+    { path = "std::sync::mpsc::Receiver", reason = "Forbidden: UI and emulator core communicate via synchronous state pull, not channels (egui-best-practices.md)" },
+]
+
+# Enforces: egui-best-practices.md (Zero Thread Spawning in core/GUI)
+disallowed-methods = [
+    { path = "std::thread::spawn", reason = "Forbidden: Emulator and GUI execute in a single-threaded, synchronous time-sliced loop (egui-best-practices.md)" },
+]

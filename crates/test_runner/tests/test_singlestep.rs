@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use test_runner::is_cmpm_postinc_opcode;
 use test_runner::runner::{run_test_file_filtered_with_mode, run_test_file_with_mode, VerifyMode};
 use test_runner::schema::SingleStepTest;
@@ -770,20 +772,19 @@ fn test_move_from_usp() {
 
 #[test]
 fn test_stop() {
-    use m68000::Cpu;
-    use physical_memory::MemoryBus;
+    use cpu::Cpu;
+    use physical_memory::PhysicalMemory;
 
     let mut cpu = Cpu::new();
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     cpu.state.set_supervisor(true);
     cpu.state.set_sr(0x2700);
     cpu.state.ir = 0x4E72; // STOP #$2000
-    cpu.state.prefetch[0] = 0x2000;
-    cpu.state.prefetch[1] = 0x4E71;
+    cpu.state.prefetch = 0x2000;
 
     cpu.step_instruction(&mut bus);
     assert!(cpu.state.stopped);
-    assert_eq!(cpu.state.sr, 0x2000);
+    assert_eq!(cpu.state.sr(), 0x2000);
 }
 
 #[test]

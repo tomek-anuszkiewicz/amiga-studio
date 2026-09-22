@@ -1,10 +1,12 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use config::A500Config;
 use machine_loop::A500Machine;
 
 #[test]
 fn test_keyboard_scancode_delivery_to_cia_and_level2_irq() {
     let mut machine = A500Machine::new(A500Config::default());
-    machine.reset_cold();
+    machine.reset();
 
     // Enable CIA-A SDR interrupt in ICR: $80 | 0x08 = $88
     machine.cia_a.write_register(0xD, 0x88);
@@ -52,7 +54,7 @@ fn test_keyboard_scancode_delivery_to_cia_and_level2_irq() {
 #[test]
 fn test_cia_a_tod_vblank_ticking_and_cia_b_tod_hsync_ticking() {
     let mut machine = A500Machine::new(A500Config::default());
-    machine.reset_cold();
+    machine.reset();
 
     machine.cia_a.tod = 0;
     machine.cia_b.tod = 0;
@@ -74,9 +76,11 @@ fn test_cia_a_tod_vblank_ticking_and_cia_b_tod_hsync_ticking() {
 #[test]
 fn test_keyboard_ctrl_amiga_amiga_warm_reset_in_machine_loop() {
     let mut machine = A500Machine::new(A500Config::default());
-    machine.reset_cold();
+    machine.reset();
     let dummy_rom = [0x55; 512 * 1024];
-    machine.physical_memory.inject_kickstart_rom(&dummy_rom);
+    machine
+        .physical_memory
+        .write_bytes_debug(0xF80000, &dummy_rom);
 
     // Disengage overlay (PRA bit 0 = 1)
     machine.cia_a.write_register(0x0, 0x01);

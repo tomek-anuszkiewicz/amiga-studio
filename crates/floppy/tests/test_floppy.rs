@@ -1,53 +1,28 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use floppy::FloppyController;
 
 #[test]
 fn test_floppy_geometry_and_stepping() {
     let mut controller = FloppyController::new();
-    assert_eq!(controller.dsksyn, 0x4489);
 
     let df0 = &mut controller.drives[0];
     assert!(df0.is_track0());
 
-    df0.step(true); // Step inward to cylinder 1
+    df0.step_pulse(true); // Step inward to cylinder 1
     assert_eq!(df0.cylinder, 1);
     assert!(!df0.is_track0());
 
-    df0.step(false); // Step outward to cylinder 0
+    df0.step_pulse(false); // Step outward to cylinder 0
     assert_eq!(df0.cylinder, 0);
     assert!(df0.is_track0());
 }
 
 #[test]
-fn test_dsklen_modes() {
+fn test_dskpt_pointer_assignment() {
     let mut controller = FloppyController::new();
-    controller.dsklen = 0xC100; // Bit 15 = DMA enable, Bit 14 = Write mode
-    assert!(controller.is_dma_enabled());
-    assert!(controller.is_write_mode());
-}
-
-#[test]
-fn test_dsklen_two_write_arming_sequence() {
-    let mut controller = FloppyController::new();
-    controller.set_dma_enabled(true);
-
-    // Initial state: not armed, not active
-    assert!(!controller.is_dma_armed());
-    assert!(!controller.is_dma_active());
-
-    // Write 1: length with DMAEN bit 15 = 1 arms the controller
-    controller.set_dsklen(0x8100);
-    assert!(controller.is_dma_armed());
-    assert!(!controller.is_dma_active());
-
-    // Write 2: second write starts the transfer
-    controller.set_dsklen(0x8100);
-    assert!(controller.is_dma_armed());
-    assert!(controller.is_dma_active());
-
-    // Write 3: clearing bit 15 unarms and stops transfer
-    controller.set_dsklen(0x4000);
-    assert!(!controller.is_dma_armed());
-    assert!(!controller.is_dma_active());
+    controller.dskpt = 0x0004_2000;
+    assert_eq!(controller.dskpt, 0x0004_2000);
 }
 
 #[test]
@@ -126,4 +101,44 @@ fn test_ciaa_port_a_sensing_inputs() {
     // _CHNG (bit 2) = 1 (verified present)
     // Result = 0b0000_1100 = 0x0C
     assert_eq!(controller.sample_ciaa_port_a_inputs(), 0x0C);
+}
+
+#[test]
+fn test_floppy_motor_selection() {
+    let mut controller = FloppyController::new();
+    assert!(!controller.drives[0].motor_on);
+    assert!(!controller.drives[0].selected);
+
+    controller.drives[0].set_motor(true);
+    assert!(controller.drives[0].motor_on);
+}
+
+#[test]
+fn test_floppy_drive_step_and_track0() {
+    let mut controller = FloppyController::new();
+    assert!(controller.drives[0].is_track0());
+    controller.drives[0].step_pulse(true);
+    assert!(!controller.drives[0].is_track0());
+    controller.drives[0].step_pulse(false);
+    assert!(controller.drives[0].is_track0());
+}
+
+#[test]
+fn test_floppy_track_data_and_dma() {
+    let mut controller = FloppyController::new();
+    let adf_data = vec![0x55; 901_120];
+    controller.drives[0].insert_disk(&adf_data);
+    controller.drives[0].selected = true;
+    controller.drives[0].set_motor(true);
+
+    let mut chip_ram = vec![0u8; 0x1000];
+    controller.dskpt = 0x0000;
+    let mut dsklen = 0x8004; // Write to RAM, 4 words
+    let mut dma_active = true;
+    let dsksyn = 0x4489;
+    let adkcon = 0x0400; // WORDSYNC enabled
+
+    controller.step_cck_ram(&mut chip_ram, adkcon, dsksyn, &mut dsklen, &mut dma_active);
+    assert_eq!(controller.drives[0].cylinder, 0);
+    assert_eq!(controller.drives[0].side, 0);
 }

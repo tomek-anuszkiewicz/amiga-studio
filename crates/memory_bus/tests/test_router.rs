@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Integration & Unit Tests for Motherboard MemoryBus Router
 //!
 //! Validates 24-bit physical address routing across PhysicalMemory,
@@ -7,7 +9,6 @@ use agnus::Agnus;
 use cia::{Cia, CiaId};
 use config::{A500Config, RtcModel, VideoStandard};
 use denise::{Denise, DeniseModel};
-use floppy::FloppyController;
 use memory_bus::MemoryBus;
 use paula::Paula;
 use physical_memory::{AddressBus, BusResult, PhysicalMemory};
@@ -21,7 +22,6 @@ struct TestMotherboard {
     cia_a: Cia,
     cia_b: Cia,
     rtc: RtcMsm6242b,
-    floppy: FloppyController,
 }
 
 impl TestMotherboard {
@@ -36,7 +36,6 @@ impl TestMotherboard {
             cia_a: Cia::new(CiaId::A),
             cia_b: Cia::new(CiaId::B),
             rtc: RtcMsm6242b::new(RtcModel::Msm6242b),
-            floppy: FloppyController::new(),
         }
     }
 
@@ -49,7 +48,6 @@ impl TestMotherboard {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            floppy: &mut self.floppy,
         }
     }
 }
@@ -90,15 +88,9 @@ fn test_custom_register_broadcast_and_routing() {
         "Agnus must stage DMACON write in mutation pipeline"
     );
 
-    // Step 2 CCKs: Agnus mutation matures and broadcasts to Paula and subsystems
-    let due1 = mb.agnus.step_cck();
-    for item in due1.iter().flatten() {
-        mb.router().dispatch_agnus_action(item.0, item.1);
-    }
-    let due2 = mb.agnus.step_cck();
-    for item in due2.iter().flatten() {
-        mb.router().dispatch_agnus_action(item.0, item.1);
-    }
+    // Step 2 CCKs: Agnus mutation matures and enables Copper DMA
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
     assert!(mb.agnus.copper.dma_enabled, "Copper DMA must be enabled");
 }
 
@@ -127,7 +119,8 @@ fn test_cia_address_decoding() {
 #[test]
 fn test_ciaa_port_a_overlay_toggle() {
     let mut mb = TestMotherboard::new();
-    mb.mem.inject_kickstart_rom(&[0x11, 0x22, 0x33, 0x44]);
+    mb.mem
+        .write_bytes_debug(0xF80000, &[0x11, 0x22, 0x33, 0x44]);
     mb.mem.map_kickstart_to_low_memory();
 
     let mut bus = mb.router();
@@ -151,4 +144,51 @@ fn test_rtc_odd_byte_routing() {
 
     // Non-RTC register address in bank $DC returns floating open bus
     assert_eq!(bus.read_byte(0xDC0040), BusResult::Ready(0xFF));
+}
+
+#[test]
+fn test_direct_custom_and_cia_register_writes() {
+    let mut mb = TestMotherboard::new();
+    {
+        let mut bus = mb.router();
+        // Denise: COLOR00 ($DFF180)
+        let _ = bus.write_word(0xDFF180, 0x0F00);
+        // Paula: INTENA ($DFF09A) - set bit 15 (SET) | bit 14 (INTEN) | bit 0 (TBE) = 0xC001
+        let _ = bus.write_word(0xDFF09A, 0xC001);
+        // Agnus: BLTCON0 ($DFF040)
+        let _ = bus.write_word(0xDFF040, 0x09F0);
+        // Shared: BPLCON0 ($DFF100)
+        let _ = bus.write_word(0xDFF100, 0x1200);
+        // CIA-A: CRA ($BFEE01)
+        let _ = bus.write_byte(0xBFEE01, 0x55);
+        // CIA-B: CRB ($BFDF00)
+        let _ = bus.write_byte(0xBFDF00, 0xAA);
+    }
+
+    assert_eq!(mb.denise.color[0], 0x0F00);
+    // Step Paula 1 CCK so staged INTENA write matures
+    let _ = mb.paula.step_cck();
+    assert_eq!(mb.paula.interrupts.intena, 0x4001);
+    // Step Agnus 2 CCKs so staged BLTCON0 write matures
+    let _ = mb.agnus.step_cck();
+    let _ = mb.agnus.step_cck();
+    assert_eq!(mb.agnus.blitter.bltcon0, 0x09F0);
+    assert_eq!(mb.cia_a.cra, 0x55);
+    assert_eq!(mb.cia_b.crb, 0xAA);
+}
+
+#[test]
+fn test_memory_bus_open_bus_read_byte() {
+    let mut mb = TestMotherboard::new();
+    let mut bus = mb.router();
+    let res = bus.read_byte(0x200000);
+    assert_eq!(res, BusResult::Ready(0xFF));
+}
+
+#[test]
+fn test_memory_bus_debug_derive() {
+    let mut mb = TestMotherboard::new();
+    let bus = mb.router();
+    let debug_str = format!("{:?}", bus);
+    assert!(debug_str.contains("MemoryBus"));
 }

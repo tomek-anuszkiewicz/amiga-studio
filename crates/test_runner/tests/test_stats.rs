@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for M68000 Benchmark Statistical Analysis & Tukey Outlier Filtering
 //!
 //! Validates percentile calculation, Tukey's fences outlier rejection,

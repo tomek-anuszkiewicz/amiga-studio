@@ -16,13 +16,15 @@ floppy = { workspace = true }
 game_ports = { workspace = true }
 joystick = { workspace = true }
 keyboard = { workspace = true }
-m68000 = { workspace = true }
+cpu = { workspace = true }
 physical_memory = { workspace = true }
 memory_bus = { workspace = true }
 mouse = { workspace = true }
-parallel_port = { workspace = true }
 paula = { workspace = true }
 rtc = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 flate2 = { workspace = true }
+
+[lints]
+workspace = true

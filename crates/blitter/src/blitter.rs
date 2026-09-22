@@ -194,44 +194,6 @@ impl Blitter {
         self.bltpri = enabled;
     }
 
-    /// Synchronizes channel pointers from Agnus registers
-    #[inline]
-    pub fn sync_pointers(&mut self, apt: u32, bpt: u32, cpt: u32, dpt: u32) {
-        self.bltapt = apt;
-        self.bltbpt = bpt;
-        self.bltcpt = cpt;
-        self.bltdpt = dpt;
-    }
-
-    /// Synchronizes control registers and channel modulos from Agnus
-    #[inline]
-    pub fn sync_controls(
-        &mut self,
-        con0: u16,
-        con1: u16,
-        afwm: u16,
-        alwm: u16,
-        amod: i16,
-        bmod: i16,
-        cmod: i16,
-        dmod: i16,
-    ) {
-        self.bltcon0 = con0;
-        self.bltcon1 = con1;
-        self.bltafwm = afwm;
-        self.bltalwm = alwm;
-        self.bltamod = amod;
-        self.bltbmod = bmod;
-        self.bltcmod = cmod;
-        self.bltdmod = dmod;
-    }
-
-    /// Triggers a new blit operation by writing BLTSIZE
-    #[inline]
-    pub fn start_blit(&mut self, bltsize: u16) {
-        self.trigger_blit(bltsize);
-    }
-
     /// Action method: triggers blit execution when BLTSIZE matures
     pub fn trigger_blit(&mut self, bltsize: u16) {
         self.bltsize = bltsize;
@@ -314,7 +276,7 @@ impl Blitter {
 
     /// Returns the active micro-phase sequence for a word in Area Mode according to HRM Table 6.2
     #[inline]
-    pub fn active_word_phases(&self) -> ([BlitterPhase; 4], u8) {
+    fn active_word_phases(&self) -> ([BlitterPhase; 4], u8) {
         let use_a = (self.bltcon0 & 0x0800) != 0;
         let use_b = (self.bltcon0 & 0x0400) != 0;
         let use_c = (self.bltcon0 & 0x0200) != 0;
@@ -557,17 +519,5 @@ impl Blitter {
                 self.step_area_cycle(chip_ram);
             }
         }
-    }
-
-    /// Synchronously executes an Area Blit to completion
-    #[inline]
-    pub fn execute_area_blit(&mut self, chip_ram: &mut [u8]) {
-        self.execute_blit(chip_ram);
-    }
-
-    /// Synchronously executes a Line Blit to completion
-    #[inline]
-    pub fn execute_line_blit(&mut self, chip_ram: &mut [u8]) {
-        self.execute_blit(chip_ram);
     }
 }

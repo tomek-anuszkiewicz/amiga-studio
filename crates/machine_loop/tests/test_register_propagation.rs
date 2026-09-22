@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use config::{A500Config, VideoStandard};
 use machine_loop::BusResult;
 use machine_loop::{A500Machine, AddressBus};
@@ -94,8 +96,8 @@ fn test_paula_interrupt_cascade_to_cpu_ipl() {
 
     // Step 1 CCK: writes mature and commit in Paula, immediately updating CPU IPL!
     machine.step_cck();
-    assert_eq!(machine.paula.intena, 0x4020);
-    assert_eq!(machine.paula.intreq, 0x0020);
+    assert_eq!(machine.paula.interrupts.intena, 0x4020);
+    assert_eq!(machine.paula.interrupts.intreq, 0x0020);
     assert_eq!(machine.cpu.state.ipl, 3);
 }
 
@@ -116,4 +118,50 @@ fn test_bus_custom_registers_snapshot_sync_and_open_bus() {
     // Reading write-only register (e.g. BPLCON0 at $DFF100) returns 0xFFFF (open bus)
     let bplcon0_read = machine.memory_bus().read_word(0xDFF100).ok().unwrap();
     assert_eq!(bplcon0_read, 0xFFFF);
+}
+
+#[test]
+fn test_write_custom_word_and_byte_methods() {
+    let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+
+    // Test write_custom_word directly on A500
+    machine.write_custom_word(0x180, 0x0F00);
+    assert_eq!(machine.denise.color[0], 0x0F00);
+
+    // Test write_custom_byte with byte duplication
+    machine.write_custom_byte(0xDFF182, 0x33);
+    assert_eq!(machine.denise.color[1], 0x0333);
+}
+
+#[test]
+fn test_dmacon_sync_to_denise_sprites_and_frame_builder() {
+    let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+
+    // Initially both sprite and frame builder DMA are disabled
+    assert!(!machine.denise.sprites.dma_enabled);
+    assert!(!machine.denise.frame_builder.dma_enabled);
+
+    // Write DMACON = SET DMAEN (bit 9) + SPREN (bit 5) + BPLEN (bit 8) -> 0x8320
+    machine.write_custom_word(0x096, 0x8320);
+
+    // Step 2 CCKs for DMACON write to mature in Agnus and sync to Denise
+    machine.step_cck();
+    machine.step_cck();
+
+    assert!(machine.denise.sprites.dma_enabled);
+    assert!(machine.denise.frame_builder.dma_enabled);
+
+    // Clear SPREN (bit 5)
+    machine.write_custom_word(0x096, 0x0020);
+    machine.step_cck();
+    machine.step_cck();
+
+    assert!(!machine.denise.sprites.dma_enabled);
+    assert!(machine.denise.frame_builder.dma_enabled);
+
+    // Direct sync_dmacon() method verification on machine loop
+    machine.agnus.dmacon = 0;
+    machine.sync_dmacon();
+    assert!(!machine.denise.sprites.dma_enabled);
+    assert!(!machine.denise.frame_builder.dma_enabled);
 }

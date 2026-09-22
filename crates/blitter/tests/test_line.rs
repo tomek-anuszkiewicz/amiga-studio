@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit Tests for Agnus Blitter Bresenham Line Drawing Engine
 //!
 //! Validates `LineDrawer`, octant direction stepping, error accumulator progression,
@@ -114,12 +116,12 @@ fn test_blitter_line_mode_execution() {
     blit.bltalwm = 0xFFFF;
 
     // Start line blit with 10 pixels (length 10)
-    blit.start_blit((10 << 6) | 2); // 10 lines, width 2 words
+    blit.trigger_blit((10 << 6) | 2); // 10 lines, width 2 words
     assert!(blit.is_busy);
     assert_ne!(blit.bltcon1 & 0x0001, 0);
 
     // Execute line blit
-    blit.execute_line_blit(&mut ram);
+    blit.execute_blit(&mut ram);
 
     // Blitter should have finished and asserted BLITINT
     assert!(!blit.is_busy);
@@ -142,8 +144,8 @@ fn test_line_mode_channel_c_disabled_preserves_chold() {
     blit.bltcpt = 0x0020;
     blit.bltdpt = 0x0020;
 
-    blit.start_blit((4 << 6) | 2);
-    blit.execute_line_blit(&mut ram);
+    blit.trigger_blit((4 << 6) | 2);
+    blit.execute_blit(&mut ram);
 
     // When channel C is disabled, chold must retain its preserved value (0x1234), NOT overwritten with bltcdat
     assert_eq!(blit.chold, 0x1234);

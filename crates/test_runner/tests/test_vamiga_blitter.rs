@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! vAmigaTS Blitter Subsystem Verification
 //!
 //! Executes cycle-exact Blitter test suites from `ref_src/vAmigaTS/Agnus/Blitter`
@@ -39,8 +41,9 @@ fn test_vamiga_blitter_bbusy0_execution() {
     }
 
     assert!(
-        result.passed || result.mismatched_pixels < 204_060,
-        "bbusy0 rendered output should run and generate diagnostic comparison"
+        result.passed || result.mismatched_pixels < 5_000,
+        "bbusy0 rendered output should run with < 5000 mismatched pixels (got {})",
+        result.mismatched_pixels
     );
 }
 

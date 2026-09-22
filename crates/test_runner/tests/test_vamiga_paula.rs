@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! vAmigaTS Paula Audio & Interrupts Subsystem Verification
 //!
 //! Executes cycle-exact Paula test suites from `ref_src/vAmigaTS/Paula`
@@ -42,4 +44,12 @@ fn test_vamiga_paula_audtim1_execution() {
         result.passed || result.mismatched_pixels < 204_060,
         "audtim1 rendered output should match or be diagnostic"
     );
+}
+
+#[test]
+fn test_vamiga_injector_initializes_paula_interrupts() {
+    let mut machine = machine_loop::A500Machine::new(config::A500Config::default());
+    let adf = vec![0u8; 0x1000];
+    test_runner::inject_vamiga_test(&mut machine, &adf).expect("Injection should succeed");
+    assert_eq!(machine.paula.interrupts.intena, 0x4000);
 }

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! End-to-End Machine Loop Interrupt Pipeline Integration Tests
 //!
 //! Tests complete multi-chip interrupt signaling: from peripheral trigger
@@ -14,9 +16,8 @@ fn setup_test_machine() -> A500Machine {
     machine.physical_memory.map_chip_ram_to_low_memory();
 
     // Setup supervisor stack pointer at top of 512KB Chip RAM
-    machine.cpu.state.ssp = 0x070000;
-    machine.cpu.state.write_a(7, 0x070000);
-    machine.cpu.state.sr = 0x2000; // Supervisor mode, Interrupt Mask = 0
+    machine.cpu.state.set_sr(0x2000); // Supervisor mode, Interrupt Mask = 0
+    machine.cpu.state.set_ssp(0x070000);
     machine
 }
 
@@ -61,10 +62,10 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
     // 4. Enable Paula interrupts: Master enable (bit 14) + Audio Channel 0 (bit 7)
     // Write INTENA ($DFF09A) = 0xC080 (SET bit 15 | INTEN bit 14 | AUD0 bit 7)
     machine.paula.write_intena(0xC080);
-    assert_eq!(machine.paula.intena & 0x4080, 0x4080);
+    assert_eq!(machine.paula.interrupts.intena & 0x4080, 0x4080);
 
     // 5. Trigger Paula Audio Channel 0 buffer finish (AUD0DSR)
-    machine.paula.audio.trigger_buffer_finish(0);
+    machine.paula.audio.channels[0].restart_strobe = true;
 
     // Step machine Color Clocks until CPU completes NOP and enters the ISR at $002000
     let mut cck_count = 0;
@@ -85,7 +86,7 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
     assert!(machine.cpu.state.is_supervisor());
 
     // Clear Paula INTREQ bit 7 inside the handler to prevent infinite loop
-    machine.paula.clear_interrupt_request(0x0080);
+    machine.paula.write_intreq(0x0080);
 
     // 6. Step through ISR: execute MOVEQ #42, D1
     machine.step_instruction();
@@ -138,7 +139,7 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
 
     // Verify CIA-A asserts IRQ and Paula reflects PORTS bit 3
     assert!(machine.cia_a.irq_pending());
-    assert_eq!(machine.paula.intreq & 0x0008, 0x0008);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0008, 0x0008);
     assert_eq!(machine.cpu.state.ipl, 2);
 
     // Step until CPU enters the ISR at $003000
@@ -157,7 +158,7 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
 
     // Acknowledge CIA interrupt by reading ICR (clears IRQ line)
     machine.cia_a.read_register(0xD);
-    machine.paula.clear_interrupt_request(0x0008);
+    machine.paula.write_intreq(0x0008);
 
     // Step through ISR: execute MOVEQ #88, D2
     machine.step_instruction();
@@ -193,14 +194,14 @@ fn test_end_to_end_vblank_interrupt_to_cpu() {
 
     // Step machine until VBlank IRQ is asserted
     let mut cck_count = 0;
-    while (machine.paula.intreq & 0x0020) == 0 {
+    while (machine.paula.interrupts.intreq & 0x0020) == 0 {
         machine.step_cck();
         cck_count += 1;
         assert!(cck_count < 200, "Timed out waiting for VBlank INTREQ");
     }
 
     // Verify VBlank asserted
-    assert_eq!(machine.paula.intreq & 0x0020, 0x0020);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0020, 0x0020);
     assert_eq!(machine.cpu.state.ipl, 3);
 
     // Step CPU until it enters the ISR at $004000
@@ -218,7 +219,7 @@ fn test_end_to_end_vblank_interrupt_to_cpu() {
     assert_eq!(machine.cpu.state.interrupt_mask(), 3);
 
     // Clear VERTB request
-    machine.paula.clear_interrupt_request(0x0020);
+    machine.paula.write_intreq(0x0020);
 
     // Step through ISR: execute MOVEQ #99, D3
     machine.step_instruction();
@@ -244,7 +245,7 @@ fn test_master_intena_masking_suppresses_cpu_interrupt() {
     machine.paula.write_intena(0x8080);
 
     // Assert Paula Audio Channel 0 request
-    machine.paula.audio.trigger_buffer_finish(0);
+    machine.paula.audio.channels[0].restart_strobe = true;
 
     // Step machine
     for _ in 0..20 {
@@ -252,7 +253,7 @@ fn test_master_intena_masking_suppresses_cpu_interrupt() {
     }
 
     // INTREQ bit 7 is set, but because INTEN is 0, IPL remains 0
-    assert_eq!(machine.paula.intreq & 0x0080, 0x0080);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0080, 0x0080);
     assert_eq!(machine.cpu.state.ipl, 0);
     // CPU continues normal execution without entering ISR
     assert_ne!(machine.cpu.state.instruction_pc, 0x002000);

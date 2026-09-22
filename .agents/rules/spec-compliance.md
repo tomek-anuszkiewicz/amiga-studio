@@ -36,3 +36,11 @@ No code may deviate from existing documentation without an explicit, recorded de
   2. Escalate the proposed timing change to the user.
   3. Only update golden constants after explicit user approval.
 
+---
+
+## 5. Authoritative Baseline Specifications & Scorecards
+
+When validating hardware compliance and regression benchmarks, agents must consult:
+- [`Platform Quirks and Invariants Catalog.md`](../../Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md): Centralized repository of silicon idiosyncrasies, non-intuitive timings, and hardware anti-tamper invariants.
+- [`vAmigaTS Verification Scorecard.md`](../../Obsidian/Amiga/Design/vAmigaTS%20Verification%20Scorecard.md): Authoritative ground-truth pass rates and regression benchmark history.
+

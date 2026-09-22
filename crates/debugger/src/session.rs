@@ -5,12 +5,12 @@
 
 use config::A500Config;
 use machine_loop::{A500Machine, A500State, SaveStateError};
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 use crate::loader::inject_binary;
 use crate::stepping::Debugger;
 use crate::temporal::{TemporalHistory, DEFAULT_TEMPORAL_CAPACITY, PAL_FRAME_CCK};
-use m68000::CpuState;
+use cpu::CpuState;
 
 /// Complete headless execution session and machine controller
 #[derive(Debug, Clone)]
@@ -70,16 +70,10 @@ impl DebuggerSession {
         Self::from_config(A500Config::default())
     }
 
-    /// Direct reference to the machine's memory bus
+    /// Direct reference to the machine's physical memory
     #[inline]
-    pub fn bus(&self) -> &MemoryBus {
+    pub fn bus(&self) -> &PhysicalMemory {
         &self.machine.physical_memory
-    }
-
-    /// Direct mutable reference to the machine's memory bus
-    #[inline]
-    pub fn bus_mut(&mut self) -> &mut MemoryBus {
-        &mut self.machine.physical_memory
     }
 
     /// Captures a 256-byte snapshot of memory around `base_addr` for diff highlighting
@@ -196,7 +190,7 @@ impl DebuggerSession {
     }
 
     /// Rewinds by N steps in execution history
-    pub fn step_backward_n(&mut self, delta: usize) {
+    fn step_backward_n(&mut self, delta: usize) {
         if let Some(target_idx) = self.temporal.step_back_n(delta) {
             self.scrub_to_frame(target_idx);
         }
@@ -240,7 +234,7 @@ impl DebuggerSession {
             if self.temporal.scrub_cursor.is_none() && self.live_cpu_state.is_none() {
                 self.live_cpu_state = Some(self.machine.cpu.state.clone());
             }
-            self.machine.cpu.state = frame.state.clone();
+            self.machine.cpu.restore_state(frame.state.clone());
             self.temporal.scrub_cursor = Some(index);
         }
     }
@@ -248,7 +242,7 @@ impl DebuggerSession {
     /// Exits history scrub mode and returns to live head
     pub fn jump_to_live_head(&mut self) {
         if let Some(live) = self.live_cpu_state.take() {
-            self.machine.cpu.state = live;
+            self.machine.cpu.restore_state(live);
         }
         self.temporal.scrub_cursor = None;
     }
@@ -261,13 +255,10 @@ impl DebuggerSession {
         }
     }
 
-    /// Cold-resets the A500 machine
-    pub fn reset_cold(&mut self) {
+    /// Resets the A500 machine
+    pub fn reset(&mut self) {
         self.is_running = false;
-        self.machine.reset_cold();
-        if !self.machine.physical_memory.is_kickstart_loaded() {
-            self.machine.physical_memory.map_chip_ram_to_low_memory();
-        }
+        self.machine.reset();
         self.temporal.clear();
         self.debugger.trace.clear();
         self.debugger.current_cck = 0;
@@ -280,9 +271,6 @@ impl DebuggerSession {
     pub fn reset_warm(&mut self) {
         self.is_running = false;
         self.machine.reset_warm();
-        if !self.machine.physical_memory.is_kickstart_loaded() {
-            self.machine.physical_memory.map_chip_ram_to_low_memory();
-        }
         self.prev_cpu_state = None;
         self.live_cpu_state = None;
     }
@@ -301,11 +289,6 @@ impl DebuggerSession {
     /// Saves the current machine state into an `A500State` snapshot
     pub fn save_state(&self) -> A500State {
         self.machine.save_state()
-    }
-
-    /// Saves the machine state in self-contained mode (embedding Kickstart ROM)
-    pub fn save_state_self_contained(&self) -> A500State {
-        self.machine.save_state_self_contained()
     }
 
     /// Restores machine state from an `A500State` snapshot and synchronizes debugger tracking

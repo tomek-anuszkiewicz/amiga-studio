@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Thorough Benchmark Empirical Anomaly & Architecture Invariant Regression Test Suite
 //!
 //! Validates empirical performance bounds on the high-precision `--thorough` benchmark dataset:
@@ -215,7 +217,7 @@ fn test_thorough_benchmark_empirical_anomalies_and_invariants() {
             .collect();
         panic!(
             "\n🚨 SEVERE ANOMALIES DETECTED IN THOROUGH BENCHMARK ({} specifications flagged):\n{}\n\
-             ACTION: Investigate instruction implementation in crates/m68000/src/instructions/ for branch stalls or inlining defects.\n",
+             ACTION: Investigate instruction implementation in crates/cpu/src/instructions/ for branch stalls or inlining defects.\n",
             anomalies.len(),
             details.join("\n")
         );

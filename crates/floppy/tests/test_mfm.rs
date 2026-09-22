@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use floppy::{
     decode_amiga_sector, decode_mfm_long, encode_amiga_sector, encode_mfm_long, FloppyController,
     MfmError, FORMATTED_DISK_BYTES, RAW_MFM_SECTOR_BYTES, SECTORS_PER_TRACK, SECTOR_DATA_BYTES,
@@ -101,31 +103,21 @@ fn test_amiga_track_dma_stream_and_sync() {
     assert!(controller.drives[0].selected);
     assert!(controller.drives[0].motor_on);
 
-    // Enable DMA in DMACON
-    controller.set_dma_enabled(true);
-
-    // Set ADKCON with WORDSYNC (bit 10 = $0400)
-    controller.set_adkcon(0x0400);
-
     // Set DSKPT to 0x1000 in Chip RAM
-    controller.set_dskpt(0x1000);
+    controller.dskpt = 0x1000;
 
-    // Arm and start DMA via 2-write DSKLEN sequence: transfer 100 words
-    controller.set_dsklen(0x8000 | 100); // Write 1: arm
-    assert!(controller.is_dma_armed());
-    assert!(!controller.is_dma_active());
-
-    controller.set_dsklen(0x8000 | 100); // Write 2: activate
-    assert!(controller.is_dma_active());
+    // Arm and start DMA: transfer 100 words with WORDSYNC ($0400) and sync word $4489
+    let mut dsklen = 0x8000 | 100;
+    let mut dma_active = true;
 
     // Step DMA until transfer completes
     let mut cycles = 0;
-    while controller.is_dma_active() && cycles < 1000 {
-        controller.step_cck_ram(&mut chip_ram);
+    while dma_active && cycles < 1000 {
+        controller.step_cck_ram(&mut chip_ram, 0x0400, 0x4489, &mut dsklen, &mut dma_active);
         cycles += 1;
     }
 
-    assert!(!controller.is_dma_active(), "DMA should have completed");
+    assert!(!dma_active, "DMA should have completed");
     assert!(
         controller.wordsync_matched,
         "Sync word $4489 should have been matched"
@@ -155,14 +147,13 @@ fn test_dskbytr_clear_on_read() {
     let adf_image = vec![0x77u8; FORMATTED_DISK_BYTES];
     controller.drives[0].insert_disk(&adf_image);
     controller.handle_ciab_port_b_write(0b0111_0111);
-    controller.set_dma_enabled(true);
-    controller.set_dskpt(0x0200);
+    controller.dskpt = 0x0200;
 
     // Read 2 words
-    controller.set_dsklen(0x8002);
-    controller.set_dsklen(0x8002);
+    let mut dsklen = 0x8002;
+    let mut dma_active = true;
 
-    controller.step_cck_ram(&mut chip_ram);
+    controller.step_cck_ram(&mut chip_ram, 0x0000, 0x4489, &mut dsklen, &mut dma_active);
 
     // DSKBYTR should have bit 15 (DSKBYT) set
     assert_ne!(
@@ -185,4 +176,15 @@ fn test_dskbytr_clear_on_read() {
         0,
         "Bit 15 should be cleared after read"
     );
+}
+
+#[test]
+fn test_dskbytr_peek_and_read_data_bits() {
+    let mut controller = FloppyController::new();
+    controller.dskbytr = 0x90A5; // DSKBYT | WORDEQUAL | byte 0xA5
+
+    assert_eq!(controller.peek_dskbytr(), 0x90A5);
+    assert_eq!(controller.read_dskbytr(), 0x90A5);
+    // Bit 15 cleared after read
+    assert_eq!(controller.peek_dskbytr(), 0x10A5);
 }

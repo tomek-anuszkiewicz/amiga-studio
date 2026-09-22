@@ -5,7 +5,7 @@
 use crate::app::EmulatorApp;
 use egui::{Color32, RichText, Ui};
 
-pub fn render_trace_log(app: &mut EmulatorApp, ui: &mut Ui) {
+pub(crate) fn render_trace_log(app: &mut EmulatorApp, ui: &mut Ui) {
     egui::CollapsingHeader::new(RichText::new("📜 Execution Trace Log").strong())
         .default_open(true)
         .show(ui, |ui| {

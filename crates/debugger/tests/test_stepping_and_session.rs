@@ -1,10 +1,12 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use cpu::Cpu;
 use debugger::{Debugger, DebuggerSession};
-use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::{BusResult, PhysicalMemory};
 
 #[test]
 fn test_debugger_stepping_and_breakpoints() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     bus.map_chip_ram_to_low_memory();
 
     let mut cpu = Cpu::new();
@@ -58,9 +60,17 @@ fn test_debugger_session_full_lifecycle() {
     // Time travel
     session.step_backward();
     assert_eq!(session.temporal.scrub_cursor, Some(0));
+    assert!(
+        !session.machine.cpu.state.micro.current_steps.is_empty(),
+        "Scrubbing backward must re-hydrate CPU micro-steps via restore_state"
+    );
 
     session.step_forward();
     assert_eq!(session.temporal.scrub_cursor, None); // Live head
+    assert!(
+        !session.machine.cpu.state.micro.current_steps.is_empty(),
+        "Returning to live head must re-hydrate CPU micro-steps via restore_state"
+    );
 
     // Free run slice
     session.toggle_run();
@@ -71,12 +81,59 @@ fn test_debugger_session_full_lifecycle() {
     // Warm reset
     session.reset_warm();
     assert!(!session.is_running);
+    assert!(session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
 
     // Cold reset
-    session.reset_cold();
+    session.reset();
     assert_eq!(session.instructions_executed, 0);
     assert_eq!(session.temporal.len(), 0);
     assert_eq!(session.debugger.trace.len(), 0);
+    assert!(session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
+}
+
+#[test]
+fn test_debugger_session_reset_and_overlay_lifecycle() {
+    let mut session = DebuggerSession::new();
+    // Default session creation begins with cold reset -> overlay active
+    assert!(session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
+
+    // Loading binary via inject_binary() disengages boot overlay for synthetic test execution
+    let code: [u8; 4] = [0x4E, 0x71, 0x4E, 0x71]; // NOP, NOP
+    session.load_binary(0x001000, &code, true);
+    assert!(!session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
+
+    // Warm reset re-engages overlay per hardware reality
+    session.reset_warm();
+    assert!(session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
+
+    // Loading another binary disengages overlay again
+    session.load_binary(0x001000, &code, true);
+    assert!(!session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
+
+    // Cold reset re-engages overlay per hardware reality
+    session.reset();
+    assert!(session
+        .machine
+        .physical_memory
+        .is_low_memory_overlay_active());
 }
 
 #[test]
@@ -120,6 +177,24 @@ fn test_lea_step_instruction_call() {
         "After step_instruction: pc={:06X}, instruction_pc={:06X}, a0={:08X}",
         session.machine.cpu.state.pc,
         session.machine.cpu.state.instruction_pc,
-        session.machine.cpu.state.a_regs()[0]
+        session.machine.cpu.state.a_long(0)
     );
+}
+
+#[test]
+fn test_session_bus_access() {
+    let session = DebuggerSession::new();
+    let bus = session.bus();
+    // In unpopulated mode with boot overlay active, offset 0..3 is synthetic boot vector (SSP = $00080000),
+    // and unmapped ROM space beyond the vector table returns open bus ($FF).
+    assert_eq!(bus.read_byte(0x000000), BusResult::Ready(0x00));
+    assert_eq!(bus.read_byte(0x000001), BusResult::Ready(0x08));
+    assert_eq!(bus.read_byte(0x000008), BusResult::Ready(0xFF));
+}
+
+#[test]
+fn test_session_temporal_step_navigation() {
+    let mut session = DebuggerSession::new();
+    session.step_backward();
+    session.step_forward();
 }

@@ -34,7 +34,7 @@ pub enum LayoutTier {
 }
 
 impl LayoutTier {
-    pub fn from_width(width: f32) -> Self {
+    fn from_width(width: f32) -> Self {
         if width >= 1680.0 {
             LayoutTier::FullHdWide
         } else if width >= 1200.0 {
@@ -46,7 +46,7 @@ impl LayoutTier {
 }
 
 /// Maximum instructions executed per GUI frame during free-running emulation
-pub const MAX_INSTRUCTIONS_PER_FRAME: usize = 5000;
+const MAX_INSTRUCTIONS_PER_FRAME: usize = 5000;
 
 /// App display mode: Developer Studio vs Clean Standalone Game Mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -98,6 +98,7 @@ impl Default for UserPreferences {
 }
 
 /// Central Amiga 500 Emulator GUI Application (View Layer)
+#[derive(Debug)]
 pub struct EmulatorApp {
     /// Headless machine execution controller & model
     pub session: DebuggerSession,
@@ -217,7 +218,7 @@ impl EmulatorApp {
     }
 
     /// Opens the native file chooser dialog for binary injection
-    pub fn open_load_binary_dialog(&mut self) {
+    pub(crate) fn open_load_binary_dialog(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let file = rfd::FileDialog::new()
@@ -233,7 +234,7 @@ impl EmulatorApp {
     }
 
     /// Handles global keyboard shortcuts
-    pub fn handle_keyboard_shortcuts(&mut self, ctx: &egui::Context) {
+    fn handle_keyboard_shortcuts(&mut self, ctx: &egui::Context) {
         let input = ctx.input(|i| i.clone());
 
         let toggle_view_mode = input.key_pressed(egui::Key::F12)
@@ -285,9 +286,9 @@ impl EmulatorApp {
             self.session.temporal.toggle_recording();
         }
 
-        // Ctrl + R: Reset Cold
+        // Ctrl + R: Reset
         if input.modifiers.command && input.key_pressed(egui::Key::R) {
-            self.session.reset_cold();
+            self.session.reset();
         }
 
         // Ctrl + O: Load Binary
@@ -425,17 +426,17 @@ impl EmulatorApp {
                             render_engine_status(
                                 ui,
                                 &tokens,
-                                self.session.machine.physical_memory.is_chip_ram_locked(),
+                                self.session.machine.physical_memory.chip_ram_blocked,
                                 self.session.instructions_executed,
                                 self.session.machine.cpu.state.cycle_counter as u64 / 2,
-                                self.session.machine.cpu.state.sr,
+                                self.session.machine.cpu.state.sr(),
                             );
                             if self.show_microcode {
                                 ui.add_space(3.0);
                                 render_microcode(
                                     ui,
                                     &self.session.machine.cpu.state,
-                                    self.session.machine.physical_memory.is_chip_ram_locked(),
+                                    self.session.machine.physical_memory.chip_ram_blocked,
                                 );
                             }
                         });

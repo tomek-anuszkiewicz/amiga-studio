@@ -1,9 +1,17 @@
+#![allow(
+    unsafe_code,
+    clippy::cast_ptr_alignment,
+    clippy::unwrap_used,
+    clippy::expect_used
+)]
+
 pub mod benchmark;
 pub mod diagnostic;
 pub mod dma_harness;
 pub mod reporter;
 pub mod runner;
 pub mod schema;
+pub mod test_memory_bus;
 pub mod transactions;
 pub mod vamiga;
 
@@ -17,5 +25,8 @@ pub use runner::{
     run_test_file_filtered_with_mode, VerifyMode,
 };
 pub use schema::{CpuTestState, SingleStepTest};
-pub use transactions::{match_transactions, parse_transactions, ExpectedTransaction};
+pub use test_memory_bus::{MemoryType, TestMemoryBus, TestMemoryStorage, FLAT_TEST_RAM_SIZE};
+pub use transactions::{
+    match_transactions, parse_transactions, BusAccessSize, ExpectedTransaction, RecordedTransaction,
+};
 pub use vamiga::*;

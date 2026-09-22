@@ -4,10 +4,10 @@
 //! and in-place instruction editing with byte size invariance enforcement.
 
 use crate::theme::ColorTokens;
+use cpu::Cpu;
 use debugger::{assemble_instruction, disassemble, find_aligned_disassembly_start, Debugger};
 use egui::{RichText, Ui};
-use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 /// State for inline instruction editing in disassembly table
 #[derive(Debug, Clone)]
@@ -17,10 +17,10 @@ pub struct DisasmEditState {
     pub error: Option<String>,
 }
 
-pub fn render_disassembly(
+pub(crate) fn render_disassembly(
     ui: &mut Ui,
     cpu: &mut Cpu,
-    bus: &mut MemoryBus,
+    bus: &mut PhysicalMemory,
     debugger: &mut Debugger,
     temporal: &mut debugger::temporal::TemporalHistory,
     goto_addr_str: &mut String,
@@ -410,7 +410,7 @@ pub fn render_disassembly(
                                 {
                                     if let Some((last_idx, _)) = historical_passes.last() {
                                         if let Some(target_frame) = temporal.scrub_to_index(*last_idx) {
-                                            cpu.state = target_frame.state.clone();
+                                            cpu.restore_state(target_frame.state.clone());
                                         }
                                     }
                                 }
@@ -458,7 +458,7 @@ pub fn render_disassembly(
                                         let item_label = format!("Pass #{} (CCK: {})", pass_num + 1, cck);
                                         if ui.button(item_label).clicked() {
                                             if let Some(target_frame) = temporal.scrub_to_index(*hist_idx) {
-                                                cpu.state = target_frame.state.clone();
+                                                cpu.restore_state(target_frame.state.clone());
                                             }
                                             ui.close_menu();
                                         }

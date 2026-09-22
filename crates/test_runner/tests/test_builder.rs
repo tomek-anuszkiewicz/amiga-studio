@@ -1,10 +1,12 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for M68000 Benchmark Program Builder & Strategy Synthesis
 //!
 //! Validates unrolled block generation, PRNG memory buffers, cascading stacks,
 //! subroutine linkage, and CPU/Bus memory injection across all benchmark strategies.
 
-use m68000::Cpu;
-use physical_memory::MemoryBus;
+use cpu::Cpu;
+use physical_memory::PhysicalMemory;
 use test_runner::benchmark::builder::{
     BenchmarkProgramBuilder, BENCH_ENTRY_PC, BENCH_EXIT_PC, BENCH_RAM_BUFFER_A0,
     BENCH_RAM_BUFFER_A1, BENCH_STACK_TOP,
@@ -95,13 +97,21 @@ fn test_builder_injection_into_cpu_and_bus() {
     let program = BenchmarkProgramBuilder::new(spec.clone()).build();
 
     let mut cpu = Cpu::new();
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
 
     program.inject_into(&mut cpu, &mut bus);
 
     // 1. Check CPU register state
-    assert_eq!(cpu.state.sr, program.initial_sr);
-    assert_eq!(cpu.state.ssp, program.initial_ssp);
+    assert_eq!(cpu.state.sr(), program.initial_sr);
+    assert_eq!(cpu.state.ssp(), program.initial_ssp);
+    for i in 0..8 {
+        assert_eq!(cpu.state.d_long(i), program.initial_d[i]);
+        if i == 7 {
+            assert_eq!(cpu.state.a_long(7), program.initial_ssp);
+        } else {
+            assert_eq!(cpu.state.a_long(i), program.initial_a[i]);
+        }
+    }
 
     // 2. Prefetch priming reads 2 words from entry_pc, advancing PC by 4
     assert_eq!(cpu.state.pc, program.entry_pc + 4);
@@ -118,4 +128,32 @@ fn test_builder_injection_into_cpu_and_bus() {
     assert_eq!(bus.chip_ram[exit + 1], 0x72);
     assert_eq!(bus.chip_ram[exit + 2], 0x27);
     assert_eq!(bus.chip_ram[exit + 3], 0x00);
+}
+
+#[test]
+fn test_benchmark_program_builder_debug_derive() {
+    let spec = find_spec_by_id("ARITH-02").expect("ARITH-02 must exist");
+    let builder = BenchmarkProgramBuilder::new(*spec);
+    let debug_str = format!("{:?}", builder);
+    assert!(debug_str.contains("BenchmarkProgramBuilder"));
+}
+
+#[test]
+fn test_builder_cpu_registers_canonical_accessors() {
+    let spec = find_spec_by_id("ARITH-02").expect("ARITH-02 must exist");
+    let program = BenchmarkProgramBuilder::new(spec.clone()).build();
+
+    let mut cpu = Cpu::new();
+    let mut bus = PhysicalMemory::new();
+
+    program.inject_into(&mut cpu, &mut bus);
+
+    for i in 0..8 {
+        assert_eq!(cpu.state.d_long(i), program.initial_d[i]);
+        if i == 7 {
+            assert_eq!(cpu.state.a_long(7), program.initial_ssp);
+        } else {
+            assert_eq!(cpu.state.a_long(i), program.initial_a[i]);
+        }
+    }
 }

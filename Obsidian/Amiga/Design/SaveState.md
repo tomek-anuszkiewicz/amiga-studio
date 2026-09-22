@@ -8,8 +8,11 @@ status: "active"
 created: 2026-08-31
 updated: 2026-09-14
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Agnus.md](Agnus.md)"]
+tracked_paths:
+  - "crates/machine_loop/src/save_state.rs"
+last_synced_commit: "e10f5085c8a0526c8a5ca03bf29eefdc32b34805"
+last_synced_date: "2026-09-19"
 ---
-
 # Amiga 500 Save State Architecture & Serialization Specification
 
 > [!NOTE]
@@ -73,8 +76,6 @@ pub struct A500State {
     pub keyboard: keyboard::Keyboard,
     /// Dual Atari 9-pin controller game ports
     pub game_ports: game_ports::GamePorts,
-    /// Centronics parallel printer port
-    pub parallel_port: parallel_port::ParallelPort,
 }
 
 /// Metadata header identifying state compatibility and machine configuration.
@@ -523,4 +524,4 @@ flowchart TD
 ## 5. Reference Documentation & Upstream Ground Truth
 
 - [vAmiga Snapshot Component Implementation](../../../ref_src/vAmiga-4.5/Core/Media/Snapshot.cpp): Snapshot serializer for Amiga hardware state, block headers, and uncompressed RAM payloads.
-- [CPU State Snapshot Implementation Source](../../../crates/m68000/src/state.rs): Living Rust `CpuState` data structures implementing Serde serialization and deserialization.
+- [CPU State Snapshot Implementation Source](../../../crates/cpu/src/state.rs): Living Rust `CpuState` data structures implementing Serde serialization and deserialization.

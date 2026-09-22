@@ -9,10 +9,10 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use config::{A500Config, VideoStandard};
+use cpu::CpuState;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use m68000::CpuState;
 use physical_memory::PhysicalMemory;
 use serde::{Deserialize, Serialize};
 
@@ -39,10 +39,6 @@ pub struct SaveStateHeader {
     pub slow_ram_size: usize,
     /// Configured Fast RAM size in bytes (0 to 8,388,608)
     pub fast_ram_size: usize,
-    /// Kickstart ROM verification checksum (IEEE 802.3 CRC32)
-    pub kickstart_crc32: u32,
-    /// True if Kickstart ROM bytes are embedded inside the state (self-contained mode)
-    pub is_self_contained: bool,
 }
 
 /// Master state container representing a full Amiga 500 machine snapshot
@@ -76,8 +72,6 @@ pub struct A500State {
     pub keyboard: keyboard::Keyboard,
     /// Dual Atari 9-pin controller game ports
     pub game_ports: game_ports::GamePorts,
-    /// Centronics parallel printer port
-    pub parallel_port: parallel_port::ParallelPort,
 }
 
 /// Errors that can occur during save state serialization, deserialization, or verification
@@ -92,8 +86,6 @@ pub enum SaveStateError {
         expected_chip: usize,
         actual_chip: usize,
     },
-    /// Active Kickstart ROM checksum does not match save state ROM checksum
-    KickstartMismatch { expected_crc: u32, actual_crc: u32 },
     /// Serialization error
     SerializationFailed(String),
     /// Deserialization error
@@ -121,15 +113,6 @@ impl fmt::Display for SaveStateError {
                 write!(
                     f,
                     "Memory size mismatch: state has {expected_chip} bytes Chip RAM, machine has {actual_chip} bytes"
-                )
-            }
-            Self::KickstartMismatch {
-                expected_crc,
-                actual_crc,
-            } => {
-                write!(
-                    f,
-                    "Kickstart ROM mismatch: state expected CRC ${expected_crc:08X}, active ROM CRC is ${actual_crc:08X}"
                 )
             }
             Self::SerializationFailed(msg) => write!(f, "Save state serialization failed: {msg}"),
@@ -194,7 +177,7 @@ impl A500State {
     }
 
     /// Saves the snapshot to a file (compressed if path ends in .gz / .a500z or requested)
-    pub fn save_to_file(
+    pub(crate) fn save_to_file(
         &self,
         path: impl AsRef<Path>,
         compressed: bool,
@@ -214,18 +197,4 @@ impl A500State {
         let bytes = std::fs::read(path).map_err(|e| SaveStateError::IoError(e.to_string()))?;
         Self::from_bytes(&bytes)
     }
-}
-
-/// Standard IEEE 802.3 CRC32 checksum calculator for Kickstart ROM verification
-#[inline]
-pub fn compute_crc32(data: &[u8]) -> u32 {
-    let mut crc: u32 = 0xFFFF_FFFF;
-    for &byte in data {
-        crc ^= byte as u32;
-        for _ in 0..8 {
-            let mask = (crc & 1).wrapping_neg();
-            crc = (crc >> 1) ^ (0xEDB8_8320 & mask);
-        }
-    }
-    !crc
 }

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use agnus::{Agnus, AgnusModel, PAL_LINE_CCKS, VHPOSR_PIPELINE_LEAD_CCKS};
 
 #[test]
@@ -150,5 +152,59 @@ fn test_agnus_canonical_register_constants() {
     assert_eq!(
         agnus.read_register(custom_reg::DMACONR) & dmacon::DMAEN,
         dmacon::DMAEN
+    );
+}
+
+#[test]
+fn test_agnus_ignores_denise_only_registers() {
+    let agnus = Agnus::new(AgnusModel::OcsPal8371);
+    // DIWSTRT ($08E), DIWSTOP ($090), and BPLCON1 ($102) are Denise-only registers per HRM Appendix A.
+    // Reading them on Agnus returns open bus 0xFFFF.
+    assert_eq!(agnus.read_register(0x08E), 0xFFFF);
+    assert_eq!(agnus.read_register(0x090), 0xFFFF);
+    assert_eq!(agnus.read_register(0x102), 0xFFFF);
+}
+
+#[test]
+fn test_agnus_copper_strobe_copjmp() {
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    agnus.copper.cop1lc = 0x0004_0000;
+    agnus.copper.cop2lc = 0x0006_0000;
+
+    agnus.strobe_copjmp1();
+    assert_eq!(agnus.copper.cop_pc, 0x0004_0000);
+
+    agnus.strobe_copjmp2();
+    assert_eq!(agnus.copper.cop_pc, 0x0006_0000);
+
+    assert_eq!(agnus.dmaconr(), agnus.dmaconr_debug());
+    assert_eq!(agnus.vposr(), agnus.vposr_debug());
+    assert_eq!(agnus.vhposr(), agnus.vhposr_debug());
+}
+
+#[test]
+fn test_is_dma_enabled_requires_master_and_channel() {
+    use config::mask::dmacon;
+
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    // Channel set, but master DMAEN cleared
+    agnus.commit_register_write(0x096, dmacon::SET_CLR | dmacon::COPEN);
+    assert!(
+        !agnus.is_dma_enabled(dmacon::COPEN),
+        "DMA must be false when master DMAEN is off"
+    );
+
+    // Enable master DMAEN
+    agnus.commit_register_write(0x096, dmacon::SET_CLR | dmacon::DMAEN);
+    assert!(
+        agnus.is_dma_enabled(dmacon::COPEN),
+        "DMA must be true when master DMAEN and channel are on"
+    );
+
+    // Disable channel
+    agnus.commit_register_write(0x096, dmacon::COPEN);
+    assert!(
+        !agnus.is_dma_enabled(dmacon::COPEN),
+        "DMA must be false when channel is cleared"
     );
 }

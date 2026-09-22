@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! MOS 8520 CIA Whole-Machine Loop Integration Tests
 //!
 //! Verifies CIA-A and CIA-B timer underflows, Paula INTREQ cross-chip signaling,
@@ -11,7 +13,7 @@ fn test_cia_a_timer_underflow_triggers_level2_interrupt() {
     let mut harness = MachineHarness::new();
 
     // 1. Unmask Level 2 PORTS interrupt in Paula INTENA (bit 3 + master bit 14 = 0x4008)
-    harness.machine.dispatch_custom_write(0x09A, 0xC008); // SET/CLR + INTEN + PORTS
+    harness.machine.write_custom_word(0x09A, 0xC008); // SET/CLR + INTEN + PORTS
 
     // 2. Configure CIA-A Timer A:
     // Latch = 5 E-Clocks (each E-Clock = 5 CCKs -> 25 CCKs total)
@@ -43,7 +45,7 @@ fn test_cia_a_timer_underflow_triggers_level2_interrupt() {
 
     // Verify Paula INTREQ received PORTS interrupt (bit 3 = 0x0008)
     assert_ne!(
-        harness.machine.paula.intreq & 0x0008,
+        harness.machine.paula.interrupts.intreq & 0x0008,
         0,
         "Paula INTREQ bit 3 (PORTS) should be asserted"
     );
@@ -61,7 +63,7 @@ fn test_cia_b_timer_underflow_triggers_level6_interrupt() {
     let mut harness = MachineHarness::new();
 
     // 1. Unmask Level 6 EXTER interrupt in Paula INTENA (bit 13 + master bit 14 = 0x6000)
-    harness.machine.dispatch_custom_write(0x09A, 0xE000); // SET/CLR + INTEN + EXTER
+    harness.machine.write_custom_word(0x09A, 0xE000); // SET/CLR + INTEN + EXTER
 
     // 2. Configure CIA-B Timer A for 4 E-Clocks
     harness.machine.cia_b.commit_register_write(0x04, 4); // TALO
@@ -82,7 +84,7 @@ fn test_cia_b_timer_underflow_triggers_level6_interrupt() {
     // Verify CIA-B IRQ and Paula EXTER (bit 13)
     assert!(harness.machine.cia_b.irq_pending());
     assert_ne!(
-        harness.machine.paula.intreq & 0x2000,
+        harness.machine.paula.interrupts.intreq & 0x2000,
         0,
         "Paula INTREQ bit 13 (EXTER) should be asserted"
     );

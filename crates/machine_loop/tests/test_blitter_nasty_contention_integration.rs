@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Blitter Nasty Contention & Fast RAM Concurrency Whole-Machine Integration Tests
 //!
 //! Verifies that active Blitter Nasty mode (BLTPRI) locks CPU accesses out of Chip RAM
@@ -24,20 +26,20 @@ fn test_blitter_nasty_blocks_chip_ram_and_allows_fast_ram() {
 
     // Setup Blitter for a 20-word transfer in Chip RAM
     // BLTCON0: Minterm 0xCA (D = A), use channel A and D (0x09CA)
-    harness.machine.dispatch_custom_write(0x040, 0x09CA);
-    harness.machine.dispatch_custom_write(0x042, 0x0000); // BLTCON1
-    harness.machine.dispatch_custom_write(0x050, 0x001000); // BLTAPTH/L
-    harness.machine.dispatch_custom_write(0x054, 0x002000); // BLTDPTH/L
-    harness.machine.dispatch_custom_write(0x064, 0); // BLTAMOD
-    harness.machine.dispatch_custom_write(0x066, 0); // BLTDMOD
+    harness.machine.write_custom_word(0x040, 0x09CA);
+    harness.machine.write_custom_word(0x042, 0x0000); // BLTCON1
+    harness.machine.write_custom_word(0x050, 0x001000); // BLTAPTH/L
+    harness.machine.write_custom_word(0x054, 0x002000); // BLTDPTH/L
+    harness.machine.write_custom_word(0x064, 0); // BLTAMOD
+    harness.machine.write_custom_word(0x066, 0); // BLTDMOD
 
     // Enable Blitter Nasty in DMACON: SET | DMAEN | BLTEN | BLTPRI -> 0x8640
     harness
         .machine
-        .dispatch_custom_write(0x096, 0x8000 | 0x0200 | 0x0040 | 0x0400);
+        .write_custom_word(0x096, 0x8000 | 0x0200 | 0x0040 | 0x0400);
 
     // Start Blitter: 10 lines x 2 words = 20 words
-    harness.machine.dispatch_custom_write(0x058, (10 << 6) | 2);
+    harness.machine.write_custom_word(0x058, (10 << 6) | 2);
 
     // Step 2 CCKs for registers to commit and Blitter to engage
     harness.step_cck(2);
@@ -118,11 +120,11 @@ fn test_blitter_nasty_fast_ram_cpu_concurrency() {
     harness.machine.cpu.state.set_d_long(0, 0);
 
     // Setup a long Blitter transfer in Chip RAM: 200 lines x 2 words = 400 words
-    harness.machine.dispatch_custom_write(0x040, 0x09CA);
-    harness.machine.dispatch_custom_write(0x050, 0x001000);
-    harness.machine.dispatch_custom_write(0x054, 0x002000);
-    harness.machine.dispatch_custom_write(0x096, 0x8640); // SET + DMAEN + BLTEN + BLTPRI
-    harness.machine.dispatch_custom_write(0x058, (200 << 6) | 2);
+    harness.machine.write_custom_word(0x040, 0x09CA);
+    harness.machine.write_custom_word(0x050, 0x001000);
+    harness.machine.write_custom_word(0x054, 0x002000);
+    harness.machine.write_custom_word(0x096, 0x8640); // SET + DMAEN + BLTEN + BLTPRI
+    harness.machine.write_custom_word(0x058, (200 << 6) | 2);
     harness.step_cck(2);
 
     assert!(harness.machine.agnus.blitter.is_busy);

@@ -5,7 +5,7 @@
 use crate::app::EmulatorApp;
 use crate::theme::AppTheme;
 
-pub fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
+pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
     egui::TopBottomPanel::top("top_menu_bar")
         .frame(egui::Frame::menu(&ctx.style()))
         .show(ctx, |ui| {
@@ -21,8 +21,8 @@ pub fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 
                     ui.separator();
 
-                    if ui.button("🔄 Reset Cold (Ctrl+R)").clicked() {
-                        app.session.reset_cold();
+                    if ui.button("🔄 Reset (Ctrl+R)").clicked() {
+                        app.session.reset();
                         ui.close_menu();
                     }
 
@@ -234,14 +234,14 @@ pub fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 }
 
 /// Saves snapshot to an in-memory quick-save slot (1..=5)
-pub fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
+pub(crate) fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
     if let Ok(()) = app.session.save_quick_slot(slot) {
         app.toast_message = Some((format!("Quick-saved to Slot #{slot}"), 180));
     }
 }
 
 /// Restores snapshot from an in-memory quick-save slot (1..=5)
-pub fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
+pub(crate) fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
     if let Ok(()) = app.session.load_quick_slot(slot) {
         app.disassembly_view_addr = None;
         app.toast_message = Some((format!("Restored from Slot #{slot}"), 180));
@@ -249,7 +249,7 @@ pub fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
 }
 
 /// Opens native file chooser dialog to save an A500 state file
-pub fn open_save_state_dialog(app: &mut EmulatorApp) {
+pub(crate) fn open_save_state_dialog(app: &mut EmulatorApp) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let file = rfd::FileDialog::new()
@@ -266,7 +266,7 @@ pub fn open_save_state_dialog(app: &mut EmulatorApp) {
 }
 
 /// Opens native file chooser dialog to load an A500 state file
-pub fn open_load_state_dialog(app: &mut EmulatorApp) {
+pub(crate) fn open_load_state_dialog(app: &mut EmulatorApp) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let file = rfd::FileDialog::new()

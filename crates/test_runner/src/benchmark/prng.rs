@@ -51,12 +51,6 @@ impl XorShift64 {
         (self.next_u64() & 0xFFFF) as u16
     }
 
-    /// Generates the next pseudo-random 8-bit unsigned integer
-    #[inline]
-    pub fn next_u8(&mut self) -> u8 {
-        (self.next_u64() & 0xFF) as u8
-    }
-
     /// Fills a memory buffer with pseudo-random bytes
     pub fn fill_bytes(&mut self, buf: &mut [u8]) {
         for chunk in buf.chunks_exact_mut(8) {

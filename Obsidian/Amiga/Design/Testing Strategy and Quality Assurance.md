@@ -187,6 +187,9 @@ graph TD
    - Verify that earlier passing tests have not regressed.
    - Log all newly passed tests and quantitative pass rates in [DIARY.md](../../../DIARY.md).
 
+> [!TIP]
+> **Interactive Sprint Workflow:** The 4-iteration cascading protocol is driven interactively via the [`/integration-test-sprint`](../../../.agents/workflows/integration-test-sprint.md) slash command (backed by the [`integration-test-sprint` skill](../../../.agents/skills/integration-test-sprint/SKILL.md)), interfacing with [`/test-runner`](../../../.agents/workflows/test-runner.md) for execution telemetry and automated regression diffs.
+
 ---
 
 ## 4. Post-Discovery Architecture Cleanup (The "Anti-Patchwork" Protocol)
@@ -194,6 +197,16 @@ graph TD
 A critical failure mode in autonomous AI emulation development is **ad-hoc patch creep**: accumulating local `if`-statements, artificial cycle offsets, and special-case branches to force individual tests to pass. This destroys code readability, degrades host CPU branch predictability, and breaks adjacent test cases.
 
 To ensure clean, maintainable architecture, every verification phase must conclude with the **Post-Discovery Architecture Cleanup**:
+
+### The 3-Column Diagnostic Matrix
+
+To isolate the common denominator without getting lost in granular file diffs, populate the 3-column diagnostic matrix across all modified areas:
+
+| 1. Test / Symptom Verified | 2. Patch Location | 3. Mechanism Applied (Local Workaround) |
+| :--- | :--- | :--- |
+| *e.g. Copper WAIT triggered 1 cycle early* | `crates/copper/src/copper.rs` | *Added artificial offset +1 CCK to comparator* |
+| *e.g. Background color changed 1 pixel early* | `crates/denise/src/denise.rs` | *Added 1-cycle holding latch on COLOR00 write* |
+| *e.g. Audio DMA interrupt fired before fetch ended* | `crates/paula/src/audio.rs` | *Added delay cycle to AUDxDSR assertion* |
 
 ### Step-by-Step Cleanup Workflow:
 
@@ -208,7 +221,7 @@ To ensure clean, maintainable architecture, every verification phase must conclu
      - `crates/agnus/`: Raster beam counters, LOF/LOL interlacing, mutation pipeline delays.
      - `crates/denise/`: Palette write latency, DIW/DDF window logic, bitplane serialization.
      - `crates/memory_bus/`: Chip RAM contention, wait-states, open bus floating behavior.
-3. **First-Principles Hardware Law Identification**:
+3. **First-Principles Hardware Law Identification (Common Denominator)**:
    - Review all modified lines across the diff from an end-to-end architectural perspective:
      - *Why were these separate adjustments needed?*
      - *Is there a single physical hardware reality (e.g. bus sampling on the falling edge of CCK2, synchronous signal latching, DMA slot parity) that explains all observed discrepancies?*
@@ -216,6 +229,9 @@ To ensure clean, maintainable architecture, every verification phase must conclu
    - Eliminate every ad-hoc `if` condition added during test exploration.
    - Implement the identified underlying physical hardware rule cleanly in the appropriate core crate (`memory_bus`, `machine_loop`, `agnus`).
    - Re-verify that all passing tests continue to pass without a single special-case conditional.
+
+> [!TIP]
+> **Interactive Synthesis Workflow:** The Anti-Patchwork Protocol and 3-column matrix synthesis is automated via the [`/synthesize-test-fixes`](../../../.agents/workflows/synthesize-test-fixes.md) slash command and backed by the [`synthesize-test-fixes` skill](../../../.agents/skills/synthesize-test-fixes/SKILL.md).
 
 ---
 
@@ -263,6 +279,9 @@ When building, extending, or refactoring any part of the emulator, execute tests
 | [`tools/harness/check_test_coupling.py`](../../../tools/harness/check_test_coupling.py) | Verifies that changes to `crates/<crate>/src/` are coupled with changes to `crates/<crate>/tests/`. | Git pre-commit hook |
 | [`tools/harness/audit_api_coverage.py`](../../../tools/harness/audit_api_coverage.py) | Statically verifies that public functions (`pub fn`) are referenced and tested in unit/integration suites. | Pre-flight gate (`--strict`) |
 | [`crates/test_runner/tests/test_architecture_rules.rs`](../../../crates/test_runner/tests/test_architecture_rules.rs) | 20 automated tests validating architectural rules, test naming, and multi-module parity. | `cargo test` & pre-flight gate |
+| [`/test-runner`](../../../.agents/workflows/test-runner.md) | Standardized execution runner across tiers, writing snapshots to `.test_results/` and diffing regressions. | Developer slash command & CI |
+| [`/integration-test-sprint`](../../../.agents/workflows/integration-test-sprint.md) | Orchestrates the 4-iteration cascading verification sweep and failure cluster triage. | Developer slash command |
+| [`/synthesize-test-fixes`](../../../.agents/workflows/synthesize-test-fixes.md) | Audits recent test patches, builds the 3-column diagnostic matrix, and synthesizes root causes into upstream crates. | Developer slash command |
 
 ---
 

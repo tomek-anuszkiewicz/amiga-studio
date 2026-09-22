@@ -246,6 +246,6 @@ The 68000 executes `DIVS` by converting both dividend and divisor into their abs
   - [CPU Motorola M68000.md](../Design/CPU%20Motorola%20M68000.md): Architectural design document for the living Rust CPU core in this repository.
   - [CPU Micro-Step State Machine.md](../Design/CPU%20Micro-Step%20State%20Machine.md): Micro-step archetype, bus cycles, and execution phases.
 - **Living Rust CPU Implementations:**
-  - [`crates/m68000/src/instructions/divu.rs`](../../../crates/m68000/src/instructions/divu.rs): Rust implementation of `DIVU` and `calc_divu_internal_clocks()`.
-  - [`crates/m68000/src/instructions/divs.rs`](../../../crates/m68000/src/instructions/divs.rs): Rust implementation of `DIVS` and `calc_divs_internal_clocks()`.
+  - [`crates/cpu/src/instructions/divu.rs`](../../../crates/cpu/src/instructions/divu.rs): Rust implementation of `DIVU` and `calc_divu_internal_clocks()`.
+  - [`crates/cpu/src/instructions/divs.rs`](../../../crates/cpu/src/instructions/divs.rs): Rust implementation of `DIVS` and `calc_divs_internal_clocks()`.
 

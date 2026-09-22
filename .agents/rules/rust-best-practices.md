@@ -7,38 +7,137 @@ description: Rust systems programming best practices, safe borrowing, zero unwra
 
 All Rust code across the Amiga 500 emulator workspace must strictly adhere to these engineering guidelines.
 
+> All rules marked with a lint name are mechanically enforced at compile time via
+> `[workspace.lints.clippy]` and `[workspace.lints.rust]` in `Cargo.toml` and `clippy.toml`.
+> No need to restate enforcement here — the compiler is the gate.
+
 ---
 
 ## 1. Safety & Error Discipline
-- **Zero Host Panics on Guest Code:** Runtime emulation code (`step()`, memory accesses, interrupt handling, chip registers) must **never** call `.unwrap()` or `.expect()`. Handle open bus, unaligned access, or invalid opcodes defensively.
+- **Zero Host Panics on Guest Code:** Runtime emulation code (`step()`, memory accesses, interrupt handling, chip registers) must **never** call `.unwrap()`, `.expect()`, `panic!()`, or `unreachable!()`. Handle open bus, unaligned access, or invalid opcodes defensively. Tests are exempt via `#![allow(clippy::unwrap_used, ...)]`.
 - **Wrapping Arithmetic:** In emulator ALU and cycle counting, always use explicit wrapping arithmetic (`wrapping_add`, `wrapping_sub`, `wrapping_shl`, `wrapping_shr`) to avoid debug overflow panics.
-- **Explicit Bit Masking:** Explicitly mask results (`& 0xFF`, `& 0xFFFF`, `& 0xFFFFFF`) when truncating registers or memory addresses.
+- **Explicit Bit Masking & Natural Hardware Casting:** Explicitly mask results (`& 0xFF`, `& 0xFFFF`, `& 0xFFFFFF`) when isolating register fields or memory bus addresses. `cast_possible_truncation` is intentionally `allow` project-wide to avoid polluting hardware register code with redundant defensive casts.
+- **Strict Zero-Warning Compilation Policy:** All compiler warnings from `rustc` are fatal (`warnings = "deny"` in `Cargo.toml`).
+- **Non-Eager Fallback Closures:** Never evaluate function calls eagerly inside fallback options (`unwrap_or(func())`). Use lazy closure evaluation (`unwrap_or_else(|| func())`).
+- **Boolean Logic Clarity & De-Morgan Simplification:** Keep boolean conditions minimal and declarative (e.g. `(n == v) && !z` for M68000 `GT`).
 
 ---
 
 ## 2. Explicitness & Code Clarity
-- **Strict Prohibition of User-Defined Macros (`macro_rules!` Forbidden):** Custom macros are forbidden across the codebase. Write explicit, self-documenting Rust functions, direct calls, or compile-time `const fn` arrays.
-- **Prohibition of Const-Generic Functions with Constant Parameters:** Const generics (`<const N: usize>`) are forbidden for instruction handlers, decoding logic, and execution paths. Write concrete, specialized functions.
+- **Strict Prohibition of User-Defined Macros (`macro_rules!` Forbidden):** Custom macros are forbidden across the codebase. Write explicit, self-documenting Rust functions, direct calls, or compile-time `const fn` arrays. Enforced via `test_architecture_rules.rs`.
+- **Prohibition of Const-Generic Functions with Constant Parameters:** Const generics (`<const N: usize>`) are forbidden for instruction handlers, decoding logic, and execution paths. Write concrete, specialized functions. Enforced via `test_architecture_rules.rs`.
+- **Explicit Imports (Zero Wildcard Imports):** Wildcard imports (`use module::*;`) obscure symbol origin and break IDE navigation. Explicitly enumerate all imported items (`use module::{ItemA, ItemB};`).
+- **Hardware Architecture Preservation (Disabled Linter Collapsing):** In an emulator, distinct opcode bit patterns or register addresses legitimately share execution logic, and multi-stage hardware timing checks (CCK phases, DMA arbitration) must remain transparently sequential. Clippy's `match_same_arms = "allow"`, `collapsible_if = "allow"`, and `collapsible_else_if = "allow"` are intentionally disabled to prevent linters from destroying 1:1 hardware readability into collapsed condition soup.
 - **No Clever Obscurity:** Prioritize readability and direct 1:1 hardware traceability over cryptic micro-optimizations that LLVM already handles.
 
 ---
 
 ## 3. Ownership & Memory Hierarchy
-- **Zero Circular Handles:** Never use `Rc<RefCell<...>>` or raw pointers between sibling subsystems. All subsystems are owned directly by the top-level machine (`A500` or `EmulatorApp`).
+- **Zero Circular Handles & Multi-Threading Primitives:** Never use `Rc`, `RefCell`, `Arc`, `Mutex`, `RwLock`, `mpsc::Sender`, or `mpsc::Receiver` between subsystems or in machine state. `std::thread::spawn` is forbidden in core machine logic. All subsystems are owned directly by the top-level machine (`A500`).
 - **Big-Endian Guest vs Little-Endian Host:** Never perform pointer casts or `transmute` on guest memory buffers. Always use explicit byte conversion helpers (`u16::from_be_bytes`, `u32::from_be_bytes`).
 - **Zero Allocations in Hot Paths:** Hot execution paths must perform zero dynamic heap allocations (`Vec`, `Box`, `String`, `format!`). Use fixed-capacity arrays or in-place state.
+- **Borrow Views over Containers:** Functions inspecting buffers must accept borrowed slices (`&[T]`, `&mut [T]`) rather than `&Vec<T>`. Accept `&str` instead of `&String`.
 
 ---
 
 ## 4. Module Cohesion & File Sizing
 - Keep Rust source files under **800 lines** in `crates/*/src/` (unless covered by registered exceptions in `LINE_COUNT_EXCEPTIONS`).
-- Maintain a flat instruction hierarchy directly under `crates/m68000/src/instructions/<mnemonic>.rs` with zero subdirectories.
+- Maintain a flat instruction hierarchy directly under `crates/cpu/src/instructions/<mnemonic>.rs` with zero subdirectories.
 - Workspace layout under `crates/*` must remain strictly flat (3-tier re-export strategy).
 
 ---
 
-## 5. Comprehensive Unit Test Coverage
+## 5. Principle of Minimum Visibility (Least Privilege Visibility)
+- **Minimum Required Visibility:** Functions, structs, methods, constants, and modules must strictly use the narrowest visibility under which they currently function.
+- **Private by Default:** All items are private (`fn`, `struct`, `const`) unless access across files is genuinely required.
+- **`pub(crate)` for Internal Collaboration:** Use `pub(crate)` when an item must be shared between modules within the same crate. Never default to `pub` for internal helpers, execution engines, or dispatch callbacks.
+- **`pub` Strictly for External Public API:** Elevate to `pub` only when an item forms part of the crate's documented public surface consumed by downstream peer crates or host frontends (`machine_loop`, `gui`).
+- **Encapsulate Internal Modules:** Crates must never expose internal worker submodules (such as `instructions`, `decoders`, internal callbacks) via `pub mod`. Use `pub(crate) mod` to maintain an uncluttered crate API.
+- **Redundant Visibility Modifiers:** Never add `pub(crate)` qualifiers to items inside an already-private parent module.
+- **Eliminate Visibility Leaks for Dead Code Detection:** Leaking `pub` visibility prevents the Rust compiler and static analysis tools from identifying unused dead code. Restricting visibility ensures dead or zombie code is surfaced immediately.
+
+---
+
+## 6. Method Naming & Accessor Conventions
+
+1. **Standard Getters:**
+   - Must exactly match the field name (do NOT use a `get_` prefix).
+   - Pattern: `pub const fn <field>(&self) -> T` (or `&T` if non-Copy).
+   - Example: Field `sample_rate: u32` -> getter `pub const fn sample_rate(&self) -> u32`.
+
+2. **Boolean Getters:**
+   - Must start with the `is_` prefix (or retain natural boolean prefixes like `has_`, `can_` if already present in the field name).
+   - If the field is named `enabled: bool`, the getter is `pub const fn is_enabled(&self) -> bool`.
+   - If the field already has an `is_` prefix (e.g. `is_active: bool`), do not duplicate it (`pub const fn is_active(&self) -> bool`).
+
+3. **Setters:**
+   - Must start with the `set_` prefix followed by the field name.
+   - Pattern: `pub const fn set_<field>(&mut self, value: T)`.
+   - Example: Field `volume: u8` -> setter `pub const fn set_volume(&mut self, volume: u8)`.
+   - Example (Boolean): Field `enabled: bool` -> setter `pub const fn set_enabled(&mut self, enabled: bool)`.
+
+Example:
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChannelConfig {
+    volume: u8,
+    enabled: bool,
+}
+
+impl ChannelConfig {
+    #[inline(always)]
+    pub const fn new(volume: u8, enabled: bool) -> Self {
+        Self { volume, enabled }
+    }
+
+    // Standard getter (matches field name)
+    #[inline(always)]
+    pub const fn volume(&self) -> u8 {
+        self.volume
+    }
+
+    // Boolean getter (starts with is_)
+    #[inline(always)]
+    pub const fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    // Setters (start with set_)
+    #[inline(always)]
+    pub const fn set_volume(&mut self, volume: u8) {
+        self.volume = volume;
+    }
+
+    #[inline(always)]
+    pub const fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+}
+```
+
+4. **Collection Getters (Slice Views):**
+   - Getters exposing internal buffers or sequences must return borrowed slices (`&[T]` or `&mut [T]`), never references to concrete containers (`&Vec<T>`).
+   - Example: Field `data: Vec<i16>` -> getter `pub fn data(&self) -> &[i16]`.
+
+---
+
+## 7. Trait Derives, Constructors & Constructor Discipline
+- **Default for Parameterless Constructors:** Always implement or derive `Default` if a parameterless constructor (`new()`) exists, ensuring `new()` delegates to `Self::default()`. Enforced at compiler/AST level via `clippy::new_without_default = "deny"`.
+- **Constructors Returning Self:** Any method named `new` must return `Self`. Enforced via `clippy::new_ret_no_self = "deny"`.
+- **Derive Clone on Copy:** Never manually implement `Clone` when the type implements `Copy`. Enforced via `clippy::expl_impl_clone_on_copy = "deny"`.
+- **Derivable Implementations:** Prefer `#[derive(Default)]` over manual implementations when all fields implement `Default`. Enforced via `clippy::derivable_impls = "deny"`.
+- **Mandatory Debug Trait:** All public enums and structs must derive `Debug`. Enforced at compiler level via `missing_debug_implementations = "deny"`.
+
+---
+
+## 8. Comprehensive Unit Test Coverage
 - **Mandatory Unit Tests for Testable Logic:** Every newly created or modified Rust source file containing testable domain logic, algorithmic transformations, state machines, hardware models, statistical calculations, builders, or parsers must have corresponding unit tests.
-- **Placement & Structure:** Unit tests should be implemented either inline as `#[cfg(test)] mod tests { ... }` or in dedicated test targets under `tests/<module_name>.rs` (matching the module name directly).
+- **Placement & Structure:** Unit tests must be placed strictly in dedicated test files under `crates/<crate>/tests/test_<name>.rs` per `unit-testing-policy.md` (zero inline tests in `src/`).
 - **Pragmatic Scope:** Pure struct declarations or thin forwarders without branching or business logic may rely on parent integration tests. However, any module implementing algorithms, parsing, state mutations, filtering, statistics, or hardware circuits must have dedicated unit tests verifying happy paths, boundary conditions, zero/empty states, and failure modes.
 
+---
+
+## 9. Authoritative Rust Design Specifications & Delegation
+
+When designing Rust data models, trait interfaces, and systems boundaries, agents must adhere to:
+- [`Rust Guidelines.md`](../../Obsidian/Amiga/Design/Rust%20Guidelines.md): Project-wide Rust systems idioms, memory layout patterns, and error handling architecture.

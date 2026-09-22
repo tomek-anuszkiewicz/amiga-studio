@@ -16,23 +16,21 @@ use serde::{Deserialize, Serialize};
 /// Maximum horizontal Color Clock cycles per scanline (PAL)
 pub const PAL_LINE_CCKS: u16 = 227;
 /// Total vertical scanlines per frame (PAL)
-pub const PAL_FRAME_LINES: u16 = 312;
-/// Maximum horizontal Color Clock cycles per scanline (NTSC short line)
-pub const NTSC_LINE_CCKS: u16 = 227;
+const PAL_FRAME_LINES: u16 = 312;
 /// Short scanline length in Color Clocks (NTSC standard)
 pub const NTSC_SHORT_LINE_CCKS: u16 = 227;
 /// Long scanline length in Color Clocks (NTSC interlace LOL bit active)
 pub const NTSC_LONG_LINE_CCKS: u16 = 228;
 /// Total vertical scanlines per frame (NTSC)
-pub const NTSC_FRAME_LINES: u16 = 262;
+const NTSC_FRAME_LINES: u16 = 262;
 
 /// Number of Color Clocks that Agnus's internal scheduling counter leads the visible display beam
 pub const VHPOSR_PIPELINE_LEAD_CCKS: u16 = 5;
 /// Number of Color Clocks after line wrap during which the vertical ripple counter is settling
-pub const VHPOSR_VERTICAL_SETTLE_CCKS: u16 = 1;
+const VHPOSR_VERTICAL_SETTLE_CCKS: u16 = 1;
 
 /// Fixed-capacity in-flight register mutation buffer for Agnus (covers all writable registers)
-pub const AGNUS_MUTATION_CAPACITY: usize = 64;
+const AGNUS_MUTATION_CAPACITY: usize = 64;
 
 /// Agnus custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -61,18 +59,12 @@ pub struct Agnus {
     // --- Active Latched Registers (Read is NOW) ---
     /// DMACON / DMACONR ($096 / $002) - active DMA channel enables
     pub dmacon: u16,
-    /// Display Window Start ($08E)
-    pub diwstrt: u16,
-    /// Display Window Stop ($090)
-    pub diwstop: u16,
     /// Display Data Fetch Start ($092)
     pub ddfstrt: u16,
     /// Display Data Fetch Stop ($094)
     pub ddfstop: u16,
     /// Bitplane Control 0 ($100, latched by Agnus for DMA slot count)
     pub bplcon0: u16,
-    /// Bitplane Control 1 ($102)
-    pub bplcon1: u16,
     /// Bitplane Modulo 1 ($108, odd bitplanes)
     pub bpl1mod: i16,
     /// Bitplane Modulo 2 ($10A, even bitplanes)
@@ -116,12 +108,9 @@ impl Agnus {
             chip_ram_blocked: false,
             pending_bpl_dma: None,
             dmacon: 0,
-            diwstrt: 0,
-            diwstop: 0,
             ddfstrt: 0x0038,
             ddfstop: 0x00D0,
             bplcon0: 0,
-            bplcon1: 0,
             bpl1mod: 0,
             bpl2mod: 0,
             bplpt: [0; 6],
@@ -145,12 +134,9 @@ impl Agnus {
         self.chip_ram_blocked = false;
         self.pending_bpl_dma = None;
         self.dmacon = 0;
-        self.diwstrt = 0;
-        self.diwstop = 0;
         self.ddfstrt = 0x0038;
         self.ddfstop = 0x00D0;
         self.bplcon0 = 0;
-        self.bplcon1 = 0;
         self.bpl1mod = 0;
         self.bpl2mod = 0;
         self.bplpt.fill(0);
@@ -413,7 +399,6 @@ impl Agnus {
             custom_reg::COPJMP1 | custom_reg::COPJMP2 => (1, MutationMode::OverwritePending),
             custom_reg::BLTSIZE => (1, MutationMode::OverwritePending),
             custom_reg::BPLCON0 => (4, MutationMode::OverwritePending), // BPLCON0 (Agnus DMA allocation)
-            custom_reg::DIWSTRT | custom_reg::DIWSTOP => (4, MutationMode::OverwritePending),
             custom_reg::DDFSTRT | custom_reg::DDFSTOP => (4, MutationMode::OverwritePending),
             custom_reg::BPL1MOD | custom_reg::BPL2MOD => (2, MutationMode::OverwritePending),
             custom_reg::BLTCON0..=custom_reg::BLTDPTL => (2, MutationMode::OverwritePending),
@@ -474,16 +459,8 @@ impl Agnus {
             custom_reg::COP2LCL => {
                 self.copper.cop2lc = (self.copper.cop2lc & 0xFFFF_0000) | ((val & 0xFFFE) as u32)
             }
-            custom_reg::COPJMP1 => self.copper.restart_list1(),
-            custom_reg::COPJMP2 => self.copper.restart_list2(),
-            custom_reg::DIWSTRT => {
-                self.diwstrt = val;
-                self.dma.set_diwstrt(val);
-            }
-            custom_reg::DIWSTOP => {
-                self.diwstop = val;
-                self.dma.set_diwstop(val);
-            }
+            custom_reg::COPJMP1 => self.strobe_copjmp1(),
+            custom_reg::COPJMP2 => self.strobe_copjmp2(),
             custom_reg::DDFSTRT => {
                 self.ddfstrt = val & 0x00FC;
                 self.dma.set_ddfstrt(val & 0x00FC);
@@ -493,7 +470,6 @@ impl Agnus {
                 self.dma.set_ddfstop(val & 0x00FC);
             }
             custom_reg::BPLCON0 => self.set_bplcon0(val),
-            custom_reg::BPLCON1 => self.bplcon1 = val,
             custom_reg::BPL1MOD => self.bpl1mod = val as i16,
             custom_reg::BPL2MOD => self.bpl2mod = val as i16,
 
@@ -627,13 +603,50 @@ impl Agnus {
     /// Queries whether a specific DMA channel is enabled in DMACON
     #[inline]
     pub fn is_dma_enabled(&self, mask: u16) -> bool {
-        // Master DMAEN (bit 9) must be set
-        (self.dmacon & dmacon::DMAEN) != 0 && (self.dmacon & mask) != 0
+        let master_enabled = (self.dmacon & dmacon::DMAEN) != 0;
+        let channel_enabled = (self.dmacon & mask) != 0;
+        master_enabled && channel_enabled
     }
 
     /// Returns true if Blitter Nasty (BLTPRI, bit 10) is enabled
     #[inline]
     pub fn is_blitter_nasty(&self) -> bool {
         (self.dmacon & dmacon::BLTPRI) != 0
+    }
+
+    /// Triggers COPJMP1 strobe: restarts Copper execution at COP1LC
+    #[inline]
+    pub fn strobe_copjmp1(&mut self) {
+        self.copper.restart_list1();
+    }
+
+    /// Triggers COPJMP2 strobe: restarts Copper execution at COP2LC
+    #[inline]
+    pub fn strobe_copjmp2(&mut self) {
+        self.copper.restart_list2();
+    }
+
+    /// Reads DMA Control and Blitter status (DMACONR at $DFF002)
+    #[inline(always)]
+    pub fn dmaconr(&self) -> u16 {
+        self.read_dmaconr()
+    }
+
+    /// Reads DMA Control and Blitter status without side-effects for debugging
+    #[inline(always)]
+    pub fn dmaconr_debug(&self) -> u16 {
+        self.read_dmaconr()
+    }
+
+    /// Reads Vertical and Horizontal beam position register without side-effects for debugging
+    #[inline(always)]
+    pub fn vhposr_debug(&self) -> u16 {
+        self.vhposr()
+    }
+
+    /// Reads Vertical position register and chip ID without side-effects for debugging
+    #[inline(always)]
+    pub fn vposr_debug(&self) -> u16 {
+        self.vposr()
     }
 }

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Automated Architecture & Engineering Rules Validation Tests
 //!
 //! Enforces guidelines from AGENTS.md and .agents/rules/:
@@ -23,12 +25,11 @@ const LINE_COUNT_EXCEPTIONS: &[&str] = &[
     "and.rs",
     "or.rs",
     "cmpi.rs",
-    "blep_tables.rs",
 ];
 
 /// Core emulation crates where `.unwrap()` and `.expect()` are strictly forbidden in runtime code.
 const CORE_EMULATION_CRATES: &[&str] = &[
-    "m68000",
+    "cpu",
     "physical_memory",
     "memory_bus",
     "config",
@@ -46,11 +47,10 @@ const CORE_EMULATION_CRATES: &[&str] = &[
     "denise",
     "audio",
     "floppy",
-    "serial_port",
+    "interrupts",
     "paula",
     "keyboard",
     "game_ports",
-    "parallel_port",
     "cia",
     "machine_loop",
 ];
@@ -122,6 +122,55 @@ fn test_file_size_limits() {
         violations.is_empty(),
         "Architecture Rule Violation: The following Rust source file(s) exceed the 800-line limit per AGENTS.md:\n{}",
         violations.join("\n")
+    );
+}
+
+#[test]
+fn test_no_stale_line_count_exceptions() {
+    let repo_root = find_repo_root();
+    let crates_dir = repo_root.join("crates");
+    let mut rs_files = Vec::new();
+    collect_rs_files(&crates_dir, &mut rs_files);
+
+    let mut stale_exceptions = Vec::new();
+
+    for &exception_name in LINE_COUNT_EXCEPTIONS {
+        let matching_files: Vec<&PathBuf> = rs_files
+            .iter()
+            .filter(|f| {
+                f.components().any(|c| c.as_os_str() == "src")
+                    && f.file_name().and_then(|n| n.to_str()) == Some(exception_name)
+            })
+            .collect();
+
+        if matching_files.is_empty() {
+            stale_exceptions.push(format!(
+                "Exception '{}' does not match any production file under crates/*/src/",
+                exception_name
+            ));
+            continue;
+        }
+
+        for file in matching_files {
+            let content = fs::read_to_string(file).expect("Failed to read exception file");
+            let line_count = content.lines().count();
+            if line_count <= 800 {
+                let rel_path = file.strip_prefix(&repo_root).unwrap_or(file);
+                stale_exceptions.push(format!(
+                    "{} ({} lines <= 800 limit; exception is stale and requires manual user approval to prune)",
+                    rel_path.display(),
+                    line_count
+                ));
+            }
+        }
+    }
+
+    assert!(
+        stale_exceptions.is_empty(),
+        "Architecture Rule Violation: Found stale or missing LINE_COUNT_EXCEPTIONS.\n\
+         Automated or silent exception list modifications are strictly forbidden.\n\
+         Notify the user for explicit confirmation before removing any entry:\n{}",
+        stale_exceptions.join("\n")
     );
 }
 
@@ -289,7 +338,7 @@ fn test_zero_user_defined_macros() {
 #[test]
 fn test_zero_const_generic_handlers() {
     let repo_root = find_repo_root();
-    let m68k_src = repo_root.join("crates").join("m68000").join("src");
+    let m68k_src = repo_root.join("crates").join("cpu").join("src");
     let mut files_to_check = Vec::new();
     collect_rs_files(&m68k_src, &mut files_to_check);
 
@@ -326,7 +375,7 @@ fn test_audit_micro_step_coverage() {
     let mut micro_covered = 0;
 
     for op in 0..=65535usize {
-        let desc = &m68000::micro::OPCODE_DESCRIPTOR_TABLE[op];
+        let desc = &cpu::micro::OPCODE_DESCRIPTOR_TABLE[op];
         if !desc.steps.is_empty() {
             micro_covered += 1;
         }
@@ -345,20 +394,10 @@ fn test_audit_micro_step_coverage() {
     );
 }
 
-#[test]
-fn test_code_formatting_compliance() {
-    let repo_root = find_repo_root();
-    let status = std::process::Command::new("cargo")
-        .args(["fmt", "--all", "--", "--check"])
-        .current_dir(&repo_root)
-        .status()
-        .expect("Failed to execute `cargo fmt` check");
-
-    assert!(
-        status.success(),
-        "Architecture Rule Violation: Code is not formatted according to `cargo fmt`. Run `cargo fmt --all` to resolve formatting issues."
-    );
-}
+// NOTE: `cargo fmt --all -- --check` is intentionally NOT run here.
+// Spawning a child `cargo` process inside `cargo test` causes redundant toolchain
+// invocations and can race with the parent cargo build. Formatting compliance is
+// exclusively enforced by `pre_flight.py --quick` (step: check_formatting).
 
 #[test]
 fn test_inlining_guidelines_compliance() {
@@ -366,7 +405,7 @@ fn test_inlining_guidelines_compliance() {
 
     // 1. Cold exception/trap trigger paths must have #[inline(never)]
     let mut m68k_files = Vec::new();
-    collect_rs_files(&repo_root.join("crates/m68000/src"), &mut m68k_files);
+    collect_rs_files(&repo_root.join("crates/cpu/src"), &mut m68k_files);
 
     for file in &m68k_files {
         let content = fs::read_to_string(file).expect("Failed to read file");
@@ -398,7 +437,7 @@ fn test_inlining_guidelines_compliance() {
         "pub fn set_ccr_z_only",
         "pub fn set_ccr_v_clear_c",
     ];
-    let state_rs = repo_root.join("crates/m68000/src/state.rs");
+    let state_rs = repo_root.join("crates/cpu/src/state.rs");
     let content = fs::read_to_string(&state_rs).expect("Failed to read state.rs");
     let lines: Vec<&str> = content.lines().collect();
     for setter in &ccr_setters {
@@ -450,7 +489,7 @@ fn test_inlining_guidelines_compliance() {
         "pub fn bset_",
         "pub fn btst_",
     ];
-    let inst_dir = repo_root.join("crates/m68000/src/instructions");
+    let inst_dir = repo_root.join("crates/cpu/src/instructions");
     let mut inst_files = Vec::new();
     collect_rs_files(&inst_dir, &mut inst_files);
 
@@ -498,12 +537,12 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
     let repo_root = find_repo_root();
     let inst_dir = repo_root
         .join("crates")
-        .join("m68000")
+        .join("cpu")
         .join("src")
         .join("instructions");
     assert!(
         inst_dir.exists(),
-        "M68000 instructions directory does not exist: {}",
+        "CPU instructions directory does not exist: {}",
         inst_dir.display()
     );
 
@@ -512,7 +551,7 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
     collect_subdirectories_recursive(&inst_dir, &repo_root, &mut subdirectories);
     assert!(
         subdirectories.is_empty(),
-        "Architecture Rule Violation: Subdirectories in `crates/m68000/src/instructions/` are strictly forbidden per AGENTS.md.\n\
+        "Architecture Rule Violation: Subdirectories in `crates/cpu/src/instructions/` are strictly forbidden per AGENTS.md.\n\
         All instructions must be flat `<mnemonic>.rs` files directly under `instructions/`.\n\
         Found subdirectories:\n{}",
         subdirectories.join("\n")
@@ -537,7 +576,7 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
     }
     assert!(
         forbidden_found.is_empty(),
-        "Architecture Rule Violation: Legacy bundled instruction file(s) found in `crates/m68000/src/instructions/`:\n\
+        "Architecture Rule Violation: Legacy bundled instruction file(s) found in `crates/cpu/src/instructions/`:\n\
         {:?}\n\
         Instructions must adhere to 1:1 mnemonic-to-file mapping (e.g. mulu.rs/muls.rs, divu.rs/divs.rs, link.rs/unlk.rs, abcd.rs/sbcd.rs/nbcd.rs, trapv.rs/rtr.rs/rte.rs/stop.rs/reset.rs/move_usp.rs).",
         forbidden_found
@@ -555,7 +594,7 @@ fn test_flat_instruction_hierarchy_and_zero_subdirectories() {
     }
     assert!(
         non_rs_files.is_empty(),
-        "Architecture Rule Violation: Found non-Rust source file(s) in `crates/m68000/src/instructions/`:\n{}",
+        "Architecture Rule Violation: Found non-Rust source file(s) in `crates/cpu/src/instructions/`:\n{}",
         non_rs_files.join("\n")
     );
 }
@@ -565,7 +604,7 @@ fn test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs() {
     let repo_root = find_repo_root();
     let inst_dir = repo_root
         .join("crates")
-        .join("m68000")
+        .join("cpu")
         .join("src")
         .join("instructions");
     let mut inst_files = Vec::new();
@@ -638,7 +677,7 @@ fn test_idle_microstep_naming_and_prohibition_of_anonymous_idle_structs() {
 
     assert!(
         violations.is_empty(),
-        "Architecture Rule Violation: Non-standard or anonymous idle micro-step usage found in `crates/m68000/src/instructions/`:\n\
+        "Architecture Rule Violation: Non-standard or anonymous idle micro-step usage found in `crates/cpu/src/instructions/`:\n\
         All micro-steps performing no active memory bus transfer must use standardized constants with `IDLE` in their name.\n\
         Violations:\n{}",
         violations.join("\n")
@@ -966,6 +1005,21 @@ fn test_zero_backward_compatibility_shims_and_stale_aliases() {
         "run_dual_test",
     ];
 
+    let forbidden_identifiers = [
+        "reset_cold",
+        "dispatch_custom_write",
+        "dispatch_agnus_action",
+        "dispatch_paula_action",
+        "dispatch_denise_action",
+        "dispatch_cia_action",
+        "propagate_agnus_write",
+        "propagate_paula_write",
+        "propagate_denise_write",
+        "propagate_cia_write",
+        "inject_kickstart_rom",
+        "save_state_self_contained",
+    ];
+
     let mut violations = Vec::new();
 
     for file in rs_files {
@@ -990,6 +1044,16 @@ fn test_zero_backward_compatibility_shims_and_stale_aliases() {
                     ));
                 }
             }
+            for ident in &forbidden_identifiers {
+                if line.contains(ident) {
+                    violations.push(format!(
+                        "{}:{} -> Contains forbidden stale/legacy identifier `{}`",
+                        rel_path.display(),
+                        line_idx + 1,
+                        ident
+                    ));
+                }
+            }
         }
 
         // 2. Check for dummy wrapper modules like `pub mod <name> { pub use ...; }` in crate root
@@ -1011,7 +1075,7 @@ fn test_zero_backward_compatibility_shims_and_stale_aliases() {
                         .unwrap_or("")
                         .trim_end_matches('{')
                         .trim();
-                    // Legitimate namespace modules (function_code in arbitration, micro in m68000)
+                    // Legitimate namespace modules (function_code in arbitration, micro in cpu)
                     if mod_name == "micro" || mod_name == "function_code" {
                         continue;
                     }
@@ -1262,10 +1326,15 @@ fn test_multi_module_crate_test_parity() {
         (
             "physical_memory",
             &[
-                "test_arbitration.rs",
+                "test_address_bus.rs",
                 "test_map.rs",
                 "test_physical_memory.rs",
+                "test_presets.rs",
             ],
+        ),
+        (
+            "paula",
+            &["test_paula.rs", "test_paula_registers.rs", "test_serial.rs"],
         ),
     ];
 
@@ -1288,6 +1357,89 @@ fn test_multi_module_crate_test_parity() {
         violations.is_empty(),
         "Architecture Rule Violation: Missing modular unit test files in multi-module crates:\n{}\n\
         Multi-module crates must maintain 1:1 test parity with dedicated unit test suites for each major algorithmic submodule.",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn test_all_rules_audited_in_quality_harness() {
+    let repo_root = find_repo_root();
+    let rules_dir = repo_root.join(".agents").join("rules");
+
+    // Authoritative registry of all 31 active rules in .agents/rules/
+    let registered_rules: &[&str] = &[
+        "amiga-rag.md",
+        "asset-descriptions.md",
+        "audio-transcription.md",
+        "clean-break-refactoring.md",
+        "diary-maintenance.md",
+        "docs-maintenance.md",
+        "egui-best-practices.md",
+        "file-size-and-cohesion.md",
+        "git-commits.md",
+        "git-merge-commits.md",
+        "graphify.md",
+        "hardware-bus-topology.md",
+        "information-hierarchy.md",
+        "language-policy.md",
+        "method-inlining.md",
+        "model-reasoning-advisory.md",
+        "no-external-paths.md",
+        "opcode-naming.md",
+        "parallel-execution.md",
+        "performance-and-readability.md",
+        "prime-directives.md",
+        "practitioner-voice-and-tone.md",
+        "repro-first.md",
+        "roadmap-maintenance.md",
+        "rust-best-practices.md",
+        "spec-compliance.md",
+        "strict-scope-discipline.md",
+        "structural-root-cause.md",
+        "unit-testing-policy.md",
+        "vault-linking-and-graph-integrity.md",
+        "workspace-structure-and-reexports.md",
+    ];
+
+    let mut on_disk_rules = Vec::new();
+    if let Ok(entries) = fs::read_dir(&rules_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("md") {
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    on_disk_rules.push(name.to_string());
+                }
+            }
+        }
+    }
+    on_disk_rules.sort();
+
+    let mut violations = Vec::new();
+
+    // Check for unregistered on-disk rules
+    for rule in &on_disk_rules {
+        if !registered_rules.contains(&rule.as_str()) {
+            violations.push(format!(
+                ".agents/rules/{}: Rule file is not registered in the Architecture & Quality Audit Registry.",
+                rule
+            ));
+        }
+    }
+
+    // Check for phantom registered rules
+    for &reg in registered_rules {
+        if !on_disk_rules.iter().any(|r| r == reg) {
+            violations.push(format!(
+                ".agents/rules/{}: Registered rule is missing from on-disk .agents/rules/ directory.",
+                reg
+            ));
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "Architecture Rule Violation: Unaudited or phantom rules detected:\n{}\n\
+        Every rule in .agents/rules/*.md must have verified audit coverage per AGENTS.md.",
         violations.join("\n")
     );
 }

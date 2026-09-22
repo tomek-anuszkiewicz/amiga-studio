@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for M68000 Benchmark Results Persistence & Baseline Loading
 //!
 //! Validates timestamp filename formatting, JSON/CSV serialization roundtrips,

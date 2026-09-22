@@ -6,7 +6,7 @@ description: Workspace flat crate layout in crates/* and 3-tier re-export (pub u
 # Workspace Flat Layout & 3-Tier Re-Export (`pub use`) Strategy
 
 ## 1. Core Principle: Flat on Disk, Hierarchical in Code
-In this repository, all crate directories in `crates/*` remain **strictly flat** (e.g. `crates/config`, `crates/rtc`, `crates/memory_bus`, `crates/m68000`).
+In this repository, all crate directories in `crates/*` remain **strictly flat** (e.g. `crates/config`, `crates/rtc`, `crates/memory_bus`, `crates/cpu`).
 Architectural ownership, containment, and subsystem boundaries are expressed **in Rust code via `pub use` re-exports**, never through deeply nested directories.
 
 ---
@@ -34,7 +34,7 @@ Tier 3: Contained Sub-Components (rtc, copper, blitter, audio_dacs)
 
 ### Tier 2: Peer Subsystems (`memory_bus`, `m68000`, `agnus`, `denise`, `paula`, `cia`)
 - All owned as parallel peers by the top-level machine struct (`A500`).
-- **Rule**: Peers **never re-export other peers**. 
+- **Rule**: Peers **never re-export other peers**.
   - `m68000` does not re-export `memory_bus`.
   - `memory_bus` does not re-export `agnus` or `cpu`.
   - Any bus coordination is handled via transient contexts (e.g., `BusContext`) in the top-level machine loop.
@@ -58,7 +58,7 @@ Tier 3: Contained Sub-Components (rtc, copper, blitter, audio_dacs)
   // In crates/a500/src/a500.rs (future)
   pub use config;
   pub use memory_bus;
-  pub use m68000;
+  pub use cpu;
   pub use agnus;
   pub use denise;
   pub use paula;
@@ -73,7 +73,7 @@ Tier 3: Contained Sub-Components (rtc, copper, blitter, audio_dacs)
 | :--- | :--- | :--- |
 | **Namespaced Module** | `pub use child_crate;` | When the child crate contains multiple types, registers, states, or enums (e.g. `pub use rtc;`). |
 | **Primary Type Shortcut** | `pub use child_crate::MainStruct;` | For the 1–2 most prominent structs to prevent verbose typing (e.g. `pub use rtc::RtcMsm6242b;`). |
-| **Avoid Wildcard Roots** | ❌ `pub use child_crate::*;` | Do not glob-reexport child crates at the root to prevent naming collisions (e.g. two crates defining `State`). |
+| **Avoid Wildcard Roots** | ❌ `pub use child_crate::*;` | Do not glob-reexport child crates at the root to prevent naming collisions (e.g. two crates defining `State`). Enforced via `clippy::wildcard_imports = "warn"`. |
 
 ---
 
@@ -104,7 +104,7 @@ In this closed repository with zero external downstream semver consumers, all re
 
 To improve searchability, eliminate ambiguous file tabs in editors, and guarantee consistent 1:1 crate-to-root alignment:
 1. **Named Entry Points**:
-   - Every library crate under `crates/<crate_name>/` must name its root entry point file `src/<crate_name>.rs` matching the crate directory name (e.g. `crates/agnus/src/agnus.rs`, `crates/m68000/src/m68000.rs`).
+   - Every library crate under `crates/<crate_name>/` must name its root entry point file `src/<crate_name>.rs` matching the crate directory name (e.g. `crates/agnus/src/agnus.rs`, `crates/cpu/src/cpu.rs`).
    - The crate's `Cargo.toml` must explicitly configure the library target path:
      ```toml
      [lib]
@@ -114,3 +114,23 @@ To improve searchability, eliminate ambiguous file tabs in editors, and guarante
    - Files named `lib.rs` are **strictly forbidden** anywhere across workspace crates (`crates/`) and helper tools (`tools/`).
    - Enforced by automated architecture test `test_named_crate_roots_and_zero_generic_lib_rs`.
 
+---
+
+## 7. Crate Internal Scoping & Principle of Least Visibility
+
+1. **Curated Public Surface**:
+   - The root file (`src/<crate_name>.rs`) represents the strictly curated public interface of the crate.
+   - Internal implementation submodules (such as `instructions`, `decoders`, bank callbacks, or internal state machines) must be scoped with `pub(crate) mod` or private `mod`, never `pub mod`.
+2. **Re-Export Discipline**:
+   - Re-exports via `pub use` are strictly reserved for the crate's documented API consumed by peer crates or host frontends.
+   - Never re-export internal helpers, callbacks, or execution archetypes.
+3. **Visibility Leak Prevention**:
+   - Items must be declared with the narrowest visibility under which they function. Avoid defaulting to `pub` so the compiler and automated linters can accurately surface dead or zombie code. Redundant visibility scopes are flagged via `clippy::redundant_pub_crate = "warn"`.
+
+---
+
+## 8. Authoritative Architectural Specifications & Delegation
+
+When defining crate boundaries, top-level machine dependencies, or system configuration, agents must adhere to:
+- [`General Architecture.md`](../../Obsidian/Amiga/Design/General%20Architecture.md): Workspace crate dependency graph, ownership hierarchy, and execution flow.
+- [`Configuration.md`](../../Obsidian/Amiga/Design/Configuration.md): Decoupled machine configuration, chipset profiles (OCS/ECS), and video standards.

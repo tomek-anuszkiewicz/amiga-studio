@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use cia::{Cia, CiaId};
 
 #[test]
@@ -25,4 +27,24 @@ fn test_cia_timer_and_icr() {
     // Read ICR clears request
     assert_eq!(cia.read_register(0xD) & 0x81, 0x81);
     assert!(!cia.irq_pending());
+}
+
+#[test]
+fn test_cia_read_register_debug() {
+    let mut cia = Cia::new(CiaId::A);
+    cia.pra = 0x42;
+    assert_eq!(cia.read_register_debug(0), 0x42);
+    assert_eq!(cia.read_register_debug(0), cia.peek_register(0));
+}
+
+#[test]
+fn test_cia_b_initialization() {
+    let cia_b = Cia::new(CiaId::B);
+    assert_eq!(cia_b.id, CiaId::B);
+    assert_eq!(cia_b.icr_mask, 0);
+}
+
+#[test]
+fn test_cia_id_default() {
+    assert_eq!(CiaId::default(), CiaId::A);
 }

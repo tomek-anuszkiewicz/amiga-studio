@@ -3,9 +3,9 @@
 //! Live D0-D7, A0-A7, PC, SR, CCR condition code LED toggles, interactive editing, and diff highlighting.
 
 use crate::theme::ColorTokens;
+use cpu::{Cpu, CpuState};
 use egui::{Color32, RichText, Ui};
-use m68000::{Cpu, CpuState};
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 /// Register identifier for interactive inline editing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,11 +31,11 @@ const D_TOOLTIPS: [&str; 8] = [
 ];
 const A_LABELS: [&str; 8] = ["A0:", "A1:", "A2:", "A3:", "A4:", "A5:", "A6:", "A7:"];
 
-pub fn render_registers(
+pub(crate) fn render_registers(
     ui: &mut Ui,
     tokens: &ColorTokens,
     cpu: &mut Cpu,
-    bus: &mut MemoryBus,
+    bus: &mut PhysicalMemory,
     prev_state: Option<&CpuState>,
     active_reg_edit: &mut Option<(EditRegister, String)>,
 ) {
@@ -72,8 +72,8 @@ pub fn render_registers(
                     .spacing([10.0, 4.0])
                     .show(ui, |ui| {
                         for i in 0..8 {
-                            let val = state.d_regs()[i];
-                            let changed = prev_state.map_or(false, |p| p.d_regs()[i] != val);
+                            let val = state.d_long(i);
+                            let changed = prev_state.map_or(false, |p| p.d_long(i) != val);
                             let col = diff_color(changed);
 
                             ui.monospace(D_LABELS[i]).on_hover_text(D_TOOLTIPS[i]);
@@ -159,11 +159,11 @@ pub fn render_registers(
                     .spacing([10.0, 4.0])
                     .show(ui, |ui| {
                         for i in 0..8 {
-                            let val = state.a_regs()[i];
-                            let changed = prev_state.map_or(false, |p| p.a_regs()[i] != val);
+                            let val = state.a_long(i);
+                            let changed = prev_state.map_or(false, |p| p.a_long(i) != val);
                             let col = diff_color(changed);
 
-                            let is_sup = (state.sr & 0x2000) != 0;
+                            let is_sup = state.is_supervisor();
                             let tooltip = if i == 7 {
                                 if is_sup {
                                     "Address register A7 (Active Supervisor Stack Pointer - SSP)"
@@ -245,17 +245,17 @@ pub fn render_registers(
                     });
 
                 // Inactive stack pointer & active status
-                let is_supervisor = (state.sr & 0x2000) != 0;
+                let is_supervisor = state.is_supervisor();
                 let (alt_label, alt_val, alt_id) = if is_supervisor {
-                    ("Inactive USP:", state.usp, EditRegister::USP)
+                    ("Inactive USP:", state.usp(), EditRegister::USP)
                 } else {
-                    ("Inactive SSP:", state.ssp, EditRegister::SSP)
+                    ("Inactive SSP:", state.ssp(), EditRegister::SSP)
                 };
                 let alt_changed = prev_state.map_or(false, |p| {
                     if is_supervisor {
-                        p.usp != state.usp
+                        p.usp() != state.usp()
                     } else {
-                        p.ssp != state.ssp
+                        p.ssp() != state.ssp()
                     }
                 });
 
@@ -307,9 +307,9 @@ pub fn render_registers(
                                 let clean = buf.trim().trim_start_matches('$');
                                 if let Ok(new_val) = u32::from_str_radix(clean, 16) {
                                     if is_supervisor {
-                                        state.usp = new_val;
+                                        state.set_usp(new_val);
                                     } else {
-                                        state.ssp = new_val;
+                                        state.set_ssp(new_val);
                                     }
                                 }
                                 *active_reg_edit = None;
@@ -410,7 +410,7 @@ pub fn render_registers(
                 });
 
                 ui.horizontal(|ui| {
-                    let sr_changed = prev_state.map_or(false, |p| p.sr != state.sr);
+                    let sr_changed = prev_state.map_or(false, |p| p.sr() != state.sr());
                     ui.monospace("SR:")
                         .on_hover_ui(|ui| {
                             ui.heading("Status Register (SR)");
@@ -447,7 +447,7 @@ pub fn render_registers(
                                 resp.surrender_focus();
                                 let clean = buf.trim().trim_start_matches('$');
                                 if let Ok(new_sr) = u16::from_str_radix(clean, 16) {
-                                    state.sr = new_sr;
+                                    state.set_sr(new_sr);
                                 }
                                 *active_reg_edit = None;
                             }
@@ -455,7 +455,7 @@ pub fn render_registers(
                     } else {
                         let sr_resp = ui.add(
                             egui::Label::new(
-                                RichText::new(format!("${:04X}", state.sr))
+                                RichText::new(format!("${:04X}", state.sr()))
                                     .monospace()
                                     .color(diff_color(sr_changed)),
                             )
@@ -466,12 +466,12 @@ pub fn render_registers(
                             && !ui.input(|i| i.key_pressed(egui::Key::Enter))
                         {
                             *active_reg_edit =
-                                Some((EditRegister::SR, format!("{:04X}", state.sr)));
+                                Some((EditRegister::SR, format!("{:04X}", state.sr())));
                         }
                     }
                 });
 
-                let is_supervisor = (state.sr & 0x2000) != 0;
+                let is_supervisor = state.is_supervisor();
                 let mode_str = if is_supervisor {
                     "Supervisor [S]"
                 } else {
@@ -484,7 +484,7 @@ pub fn render_registers(
                 };
                 ui.colored_label(mode_color, mode_str);
 
-                let ipl = (state.sr >> 8) & 0x07;
+                let ipl = state.interrupt_mask();
                 ui.monospace(format!("IPL Mask: {}", ipl));
             });
 
@@ -504,9 +504,9 @@ pub fn render_registers(
                     ];
 
                     for (name, mask, desc) in flags {
-                        let is_set = (state.sr & mask) != 0;
+                        let is_set = (state.sr() & mask) != 0;
                         let flag_changed =
-                            prev_state.map_or(false, |p| ((p.sr ^ state.sr) & mask) != 0);
+                            prev_state.map_or(false, |p| ((p.sr() ^ state.sr()) & mask) != 0);
 
                         let bg_color = if is_set {
                             tokens.ccr_active_bg
@@ -530,7 +530,7 @@ pub fn render_registers(
                         }
 
                         if ui.add(btn).on_hover_text(desc).clicked() {
-                            state.sr ^= mask; // Toggle bit
+                            state.set_sr(state.sr() ^ mask); // Toggle bit
                         }
                     }
                 });

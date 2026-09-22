@@ -1,4 +1,6 @@
-use agnus::{Agnus, AgnusModel, PAL_LINE_CCKS};
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use agnus::{Agnus, AgnusModel, NTSC_LONG_LINE_CCKS, NTSC_SHORT_LINE_CCKS, PAL_LINE_CCKS};
 
 #[test]
 fn test_agnus_beam_progression() {
@@ -159,7 +161,7 @@ fn test_agnus_blitter_copper_step_order() {
     // Start a 1x1 blit (1 startup cycle + 2 word cycles)
     agnus.blitter.set_dma_enabled(true);
     agnus.blitter.bltcon0 = 0x0000; // ABCD = 0 (2 idle cycles)
-    agnus.blitter.start_blit((1 << 6) | 1);
+    agnus.blitter.trigger_blit((1 << 6) | 1);
     assert!(agnus.blitter.is_busy);
 
     // Step cycle by cycle through Agnus step_cck_ram
@@ -178,4 +180,16 @@ fn test_agnus_blitter_copper_step_order() {
     // Cycle 3: word phase 1 (completes)
     agnus.step_cck_ram(&mut chip_ram);
     assert!(!agnus.blitter.is_busy);
+}
+
+#[test]
+fn test_agnus_ntsc_line_ccks() {
+    assert_eq!(NTSC_SHORT_LINE_CCKS, 227);
+    assert_eq!(NTSC_LONG_LINE_CCKS, 228);
+    assert_eq!(PAL_LINE_CCKS, 227);
+}
+
+#[test]
+fn test_agnus_pipeline_lead_constant() {
+    assert_eq!(agnus::VHPOSR_PIPELINE_LEAD_CCKS, 5);
 }

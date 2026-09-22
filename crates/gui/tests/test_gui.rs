@@ -1,12 +1,14 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Headless Integration & Unit Tests for Amiga 500 Developer Studio (gui)
 
+use cpu::Cpu;
 use debugger::inject_binary;
 use debugger::temporal::TemporalHistory;
 use debugger::Debugger;
 use gui::theme::AppTheme;
 use gui::ViewMode;
-use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 #[test]
 fn test_temporal_history_ring_buffer() {
@@ -14,7 +16,7 @@ fn test_temporal_history_ring_buffer() {
     assert_eq!(history.len(), 0);
     assert!(history.is_empty());
 
-    let state = m68000::CpuState::default();
+    let state = cpu::CpuState::default();
 
     // Push 3 entries
     history.record(10, 0x1000, 0x4E71, state.clone());
@@ -47,7 +49,7 @@ fn test_temporal_history_ring_buffer() {
 
 #[test]
 fn test_binary_loader_and_prefetch_priming() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     // NOP (0x4E71), NOP (0x4E71), RTS (0x4E75)
@@ -61,13 +63,13 @@ fn test_binary_loader_and_prefetch_priming() {
 
     // Prefetch verification
     assert_eq!(cpu.state.ir, 0x4E71);
-    assert_eq!(cpu.state.prefetch[0], 0x4E71);
+    assert_eq!(cpu.state.prefetch, 0x4E71);
     assert_eq!(cpu.state.pc, 0x002004); // Next prefetch target
 }
 
 #[test]
 fn test_debugger_stepping_and_trace_recording() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
     let mut dbg = Debugger::new();
 
@@ -106,7 +108,7 @@ fn test_theme_variants() {
 
 #[test]
 fn test_view_mode_and_arbitrary_binary_loading() {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     // Verify injecting into high custom screen address $070000
@@ -130,7 +132,7 @@ fn test_view_mode_and_arbitrary_binary_loading() {
 fn test_disassembly_instruction_editing_and_size_invariance() {
     use debugger::assemble_instruction;
 
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
 
     // Injected at $001000: MOVE.W D0, D1 (0x3200, 2 bytes)
@@ -163,8 +165,10 @@ fn test_disassembly_instruction_editing_and_size_invariance() {
 #[test]
 fn test_left_dock_registers_and_microcode_rendering() {
     let ctx = egui::Context::default();
-    let mut app = gui::EmulatorApp::default();
-    app.show_microcode = true;
+    let mut app = gui::EmulatorApp {
+        show_microcode: true,
+        ..Default::default()
+    };
 
     // Run frame in Developer mode
     let output = ctx.run(egui::RawInput::default(), |ctx| app.update_ui(ctx));
@@ -172,4 +176,19 @@ fn test_left_dock_registers_and_microcode_rendering() {
         !output.shapes.is_empty(),
         "Left dock with registers and microcode must render valid shapes"
     );
+}
+
+#[test]
+fn test_emulator_app_debug_derive() {
+    let app = gui::EmulatorApp::default();
+    let debug_str = format!("{:?}", app);
+    assert!(debug_str.contains("EmulatorApp"));
+}
+
+#[test]
+fn test_temporal_bar_rendering() {
+    let ctx = egui::Context::default();
+    let mut app = gui::EmulatorApp::default();
+    let output = ctx.run(egui::RawInput::default(), |ctx| app.update_ui(ctx));
+    assert!(!output.shapes.is_empty());
 }

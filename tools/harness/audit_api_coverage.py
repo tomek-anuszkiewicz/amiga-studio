@@ -14,9 +14,9 @@ CRATES_DIR = REPO_ROOT / "crates"
 
 # Known dispatch tables or auto-generated opcode handlers that are executed via tables
 EXEMPT_CRATES = {
-    # m68000 uses a 65,536-entry static fn pointer table (dispatch_table.rs)
+    # cpu uses a 65,536-entry static fn pointer table (dispatch_table.rs)
     # where handlers like op_move_b are called via opcode index, not by direct name.
-    "m68000",
+    "cpu",
 }
 
 # Standard boilerplate methods that don't need explicit name-matching in tests
@@ -101,7 +101,7 @@ def main():
 
     # In strict mode, fail if any peripheral or utility crate has untested public methods
     strict_crates = {
-        "joystick", "mouse", "parallel_port", "serial_port", "frame_builder",
+        "joystick", "mouse", "frame_builder",
         "keyboard", "game_ports", "rtc"
     }
 

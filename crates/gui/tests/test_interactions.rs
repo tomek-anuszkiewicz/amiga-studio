@@ -1,5 +1,7 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use egui::{Event, Key, Modifiers, RawInput};
-use gui::{DisasmEditState, EditRegister, EmulatorApp, ViewMode};
+use gui::{AppTheme, DisasmEditState, EditRegister, EmulatorApp, ViewMode};
 use std::path::PathBuf;
 
 #[test]
@@ -193,7 +195,7 @@ fn test_simulated_register_inline_editing() {
     let _ = ctx.run(input_enter_sr, |ctx| {
         app.update_ui(ctx);
     });
-    assert_eq!(app.session.machine.cpu.state.sr, 0x2700);
+    assert_eq!(app.session.machine.cpu.state.sr(), 0x2700);
     assert_eq!(app.active_reg_edit, None);
 }
 
@@ -331,6 +333,10 @@ fn test_simulated_temporal_time_travel_navigation() {
     // Step backward 1 frame in history (from live head index 1 to index 0)
     app.session.step_backward();
     assert_eq!(app.session.temporal.scrub_cursor, Some(0));
+    assert!(
+        !app.session.machine.cpu.state.micro.current_steps.is_empty(),
+        "Scrubbing backward must re-hydrate CPU micro-steps via restore_state"
+    );
 
     // Render frame to ensure UI reflects scrub state without panics
     let _ = ctx.run(RawInput::default(), |ctx| {
@@ -340,6 +346,10 @@ fn test_simulated_temporal_time_travel_navigation() {
     // Return to live head
     app.session.jump_to_live_head();
     assert_eq!(app.session.temporal.scrub_cursor, None);
+    assert!(
+        !app.session.machine.cpu.state.micro.current_steps.is_empty(),
+        "Returning to live head must re-hydrate CPU micro-steps via restore_state"
+    );
 }
 
 #[test]
@@ -373,17 +383,23 @@ fn test_startup_clean_memory() {
     // Verify startup PC counter points to $000000 (0th cell) with valid SSP ($080000) and primed prefetch
     assert_eq!(app.session.machine.cpu.state.instruction_pc, 0x000000);
     assert_eq!(app.session.machine.cpu.state.pc, 0x000004);
-    assert_eq!(app.session.machine.cpu.state.a_regs()[7], 0x080000);
-    assert_eq!(app.session.machine.cpu.state.ssp, 0x080000);
-    assert_eq!(app.session.machine.cpu.state.ir, 0x0000);
+    assert_eq!(app.session.machine.cpu.state.a_long(7), 0x080000);
+    assert_eq!(app.session.machine.cpu.state.ssp(), 0x080000);
+    assert!(
+        app.session.machine.cpu.state.ir == 0xFFFF
+            || app.session.machine.cpu.state.ir == 0x0000
+            || app.session.machine.cpu.state.ir == 0x0008,
+        "Expected unpopulated Kickstart ROM ($FFFF), zeroed Chip RAM ($0000), or synthetic boot vector ($0008), got ${:04X}",
+        app.session.machine.cpu.state.ir
+    );
     assert_eq!(app.goto_addr_str, "000000");
 
     // Verify memory starts clean zeroed Chip RAM without auto-loaded programs
     for addr in [0x000000, 0x001000, 0x001002, 0x002000, 0x070000] {
         let val = app.session.machine.physical_memory.read_word_debug(addr);
         assert!(
-            val == 0xFFFF || val == 0x0000,
-            "Expected clean/unmapped memory, got ${:04X}",
+            val == 0xFFFF || val == 0x0000 || val == 0x0008,
+            "Expected clean/unmapped memory or boot vector, got ${:04X}",
             val
         );
     }
@@ -393,19 +409,21 @@ fn test_startup_clean_memory() {
 fn test_ccr_led_badges_interactive_toggle() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
-    app.session.machine.cpu.state.sr = 0x2700; // All CCR flags (0x1F) are 0
+    app.session.machine.cpu.state.set_sr(0x2700); // All CCR flags (0x1F) are 0
 
     let _ = ctx.run(RawInput::default(), |ctx| {
         app.update_ui(ctx);
     });
 
     // Toggle Z flag (bit 2, mask 0x04)
-    app.session.machine.cpu.state.sr ^= 0x04;
-    assert_eq!(app.session.machine.cpu.state.sr & 0x04, 0x04);
+    let cur_sr = app.session.machine.cpu.state.sr();
+    app.session.machine.cpu.state.set_sr(cur_sr ^ 0x04);
+    assert_eq!(app.session.machine.cpu.state.sr() & 0x04, 0x04);
 
     // Toggle X flag (bit 4, mask 0x10)
-    app.session.machine.cpu.state.sr ^= 0x10;
-    assert_eq!(app.session.machine.cpu.state.sr & 0x10, 0x10);
+    let cur_sr = app.session.machine.cpu.state.sr();
+    app.session.machine.cpu.state.set_sr(cur_sr ^ 0x10);
+    assert_eq!(app.session.machine.cpu.state.sr() & 0x10, 0x10);
 }
 
 #[test]
@@ -1730,4 +1748,43 @@ fn test_simulated_quick_save_and_load_shortcuts() {
     assert_eq!(app.session.debugger.current_cck, 300);
     assert_eq!(app.session.machine.cck, 300);
     assert!(app.toast_message.as_ref().unwrap().0.contains("Restored"));
+}
+
+#[test]
+fn test_ctrl_r_shortcut_triggers_reset() {
+    let ctx = egui::Context::default();
+    let mut app = EmulatorApp::default();
+
+    for _ in 0..100 {
+        app.session.step_cck();
+    }
+    assert_eq!(app.session.machine.cck, 100);
+
+    let ctrl_r = RawInput {
+        modifiers: Modifiers::COMMAND,
+        events: vec![Event::Key {
+            key: Key::R,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Modifiers::COMMAND,
+        }],
+        ..Default::default()
+    };
+    let _ = ctx.run(ctrl_r, |ctx| {
+        app.update_ui(ctx);
+    });
+
+    assert_eq!(app.session.machine.cck, 0);
+    assert_eq!(app.session.debugger.current_cck, 0);
+}
+
+#[test]
+fn test_theme_toggle_persistence() {
+    let mut app = EmulatorApp::default();
+    assert_eq!(app.theme, AppTheme::Dark);
+    app.theme = AppTheme::Light;
+    assert_eq!(app.theme, AppTheme::Light);
+    app.theme = AppTheme::ClassicWorkbench;
+    assert_eq!(app.theme, AppTheme::ClassicWorkbench);
 }

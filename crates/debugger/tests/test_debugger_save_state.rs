@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit tests for DebuggerSession save state and quick-slot features
 
 use config::{A500Config, A500Preset, VideoStandard};
@@ -137,4 +139,29 @@ fn test_debugger_session_json_and_file() {
     assert_eq!(file_session.debugger.current_cck, 180);
 
     let _ = std::fs::remove_file(&temp_file);
+}
+
+#[test]
+fn test_debugger_session_save_state_preserves_kickstart_rom() {
+    let mut session = DebuggerSession::from_config(A500Config::from_preset(
+        A500Preset::Bare512k,
+        VideoStandard::Pal,
+    ));
+    let dummy_rom = vec![0x33; 256 * 1024];
+    session
+        .machine
+        .physical_memory
+        .write_bytes_debug(0xF80000, &dummy_rom);
+
+    let saved = session.save_state();
+    assert_eq!(saved.physical_memory.kickstart_rom, dummy_rom);
+
+    let mut new_session = DebuggerSession::from_config(A500Config::from_preset(
+        A500Preset::Bare512k,
+        VideoStandard::Pal,
+    ));
+    new_session
+        .load_state(&saved)
+        .expect("Failed to restore session state");
+    assert_eq!(new_session.machine.physical_memory.kickstart_rom, dummy_rom);
 }

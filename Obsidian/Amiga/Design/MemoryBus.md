@@ -6,10 +6,14 @@ category: "Design"
 subsystem: "physical_memory"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-14
+updated: 2026-09-19
 related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[RTC.md](RTC.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
+tracked_paths:
+  - "crates/memory_bus"
+  - "crates/physical_memory"
+last_synced_commit: "859017971b0453661ce25cc2c6f4de6b7475f2df"
+last_synced_date: "2026-09-19"
 ---
-
 # Amiga 500 MemoryBus Architecture & Bus Topology
 
 > [!NOTE]
@@ -56,10 +60,10 @@ related: ["[Agnus.md](Agnus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", 
 
 To eliminate branch mispredictions and cascaded conditional checks in hot memory access loops, the 16 MB physical address space is divided into **256 banks of 64 KB each** ($256 \times 64\text{ KB} = 16\text{ MB}$).
 
-- **Direct Function Pointer Method Dispatch**: Mimicking the CPU's direct opcode table (`[OpcodeHandler; 65536]`), `bank_map` is a 256-entry array of `BankHandler` structs containing direct function pointers (`BankReadByteFn`, `BankWriteByteFn`, `BankReadWordFn`, `BankWriteWordFn`) and a pre-classified contention flag (`is_contended: bool`) targeting specialized 8-bit and 16-bit read/write handlers. Implementation resides in [`crates/physical_memory/src/map.rs`](../../../crates/physical_memory/src/map.rs).
+- **Direct Function Pointer Method Dispatch**: Mimicking the CPU's direct opcode table (`[OpcodeHandler; 65536]`), `bank_map` is a 256-entry array of `BankHandler` structs containing direct function pointers (`BankReadByteFn`, `BankWriteByteFn`, `BankReadWordFn`, `BankWriteWordFn`) returning `BusResult<T>` directly. Implementation resides in [`crates/physical_memory/src/map.rs`](../../../crates/physical_memory/src/map.rs).
 - **Native 16-Bit Word Accesses**: In accordance with the 68000's physical 16-bit wide data bus, word transfers (instruction fetches, stack frames, 16-bit operands) execute directly via `read_word` and `write_word` function pointers, reading or writing aligned 16-bit words directly without decomposing into two separate 8-bit indirect function calls.
-- **Zero Runtime Branches**: Memory accesses execute directly through table indexing `(self.bank_map[(addr >> 16) as usize].read_byte)(self, addr)` or `read_word`. Contention checks query `self.bank_map[(addr >> 16) as usize].is_contended` in $O(1)$ without range arithmetic.
-- **Zero Runtime Setup (`static`/`const`)**: Precalculated as compile-time `static` arrays (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), eliminating all initialization loops or runtime reallocation overhead.
+- **Zero Outer Contention Branches (Solution B)**: Memory accesses execute directly through table indexing `(self.bank_map[(addr >> 16) as usize].read_byte)(self, addr)` or `read_word`. Contention is an intrinsic physical property evaluated directly by individual bank handlers (Chip RAM and Slow RAM check `bus.chip_ram_blocked`; Fast RAM, ROM, and Open Bus never branch on contention). Outer bus methods perform zero contention checks.
+- **Zero Runtime Setup (`static`/`const`)**: Precalculated as compile-time `static` arrays (`BANK_MAP_BARE`, `BANK_MAP_STANDARD`, `BANK_MAP_EXPANDED`), eliminating all initialization loops or runtime reallocation overhead. Topology presets reside in [`crates/physical_memory/src/presets.rs`](../../../crates/physical_memory/src/presets.rs).
 - **Direct Dispatch in `PhysicalMemory`**:
   - `$00..=$07`: `CHIP_RAM_HANDLER`
   - `$20..=$5F`: `FAST_RAM_HANDLER` (4 MB, active in `ExpandedPowerUser`)
@@ -84,7 +88,7 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
   - **Dual Storage Engine Architecture**:
     - `TestMemoryStorage::Sparse`: Powered by `std::collections::HashMap`, used by default in `TestMemoryBus::new()` for arbitrary unmapped defaults (`0xFF` open bus simulation).
     - `TestMemoryStorage::Flat`: Powered by a pre-allocated 16 MB buffer (`Box<[u8]>`) and a dirty address tracking list (`Vec<u32>`), created via `TestMemoryBus::new_flat()`. Provides $O(1)$ array accesses and $O(K)$ resets (`bus.clear()`) between test cases, eliminating all dynamic heap allocations in inner test execution loops.
-  - Both buses implement the unified `AddressBus` trait ([`crates/physical_memory/src/bus_trait.rs`](../../../crates/physical_memory/src/bus_trait.rs)).
+  - Both buses implement the unified `AddressBus` trait ([`crates/physical_memory/src/address_bus.rs`](../../../crates/physical_memory/src/address_bus.rs)).
 
 ---
 
@@ -93,7 +97,7 @@ To eliminate branch mispredictions and cascaded conditional checks in hot memory
 The Motorola 68000 bus cycle spans 4 CPU clocks ($S_0$ through $S_7$), which maps to two Color Clock slots (CCK / 3.54 MHz): **Phase 1 / CCK1 (S0–S3)** and **Phase 2 / CCK2 (S4–S7)**.
 
 While the CPU requires 2 Color Clocks to complete an instruction bus transaction, **Amiga Chip RAM can complete a physical access in just 1 Color Clock (280 ns)**. The hardware exploits this difference to interleave access 50/50 between CPU and custom chip DMA:
-- **Read Cycle:** At CCK1, the CPU asserts address and strobes. Gary arbitrates access against Agnus DMA. At CCK2 ($S_6$), data is driven onto $D_0–D_{15}$ and sampled directly into the CPU's internal register (`source`, `destination`, `prefetch[0]`, or `irc`). No artificial intermediate bus latch is needed.
+- **Read Cycle:** At CCK1, the CPU asserts address and strobes. Gary arbitrates access against Agnus DMA. At CCK2 ($S_6$), data is driven onto $D_0–D_{15}$ and sampled directly into the CPU's internal register (`source`, `destination`, `prefetch`, or `irc`). No artificial intermediate bus latch is needed.
 - **Write Cycle:** At CCK1, the CPU drives address and data onto pins (`BusCycle`). At CCK2, Gary asserts $\overline{\text{DTACK}}$ (or withholds it if Agnus DMA is active), and the write commits directly to physical Chip RAM.
 
 Maintain the following internal bus state:
@@ -101,14 +105,14 @@ Maintain the following internal bus state:
 
 ### Types & Arbitration Primitives
 
-The bus timing and transfer types reside in [`crates/physical_memory/src/arbitration.rs`](../../../crates/physical_memory/src/arbitration.rs):
-- **`BusAccessSize` (`Byte`, `Word`)**: Bus transfer operand widths.
-- **Function Code Lines (`function_code::*`)**: FC0–FC2 qualifiers (`USER_DATA = 1`, `USER_PROGRAM = 2`, `SUPERVISOR_DATA = 5`, `SUPERVISOR_PROGRAM = 6`, `CPU_SPACE = 7`).
+The bus timing and transfer types reside in [`crates/physical_memory/src/address_bus.rs`](../../../crates/physical_memory/src/address_bus.rs):
+- **`BusAccessSize` (`Byte`, `Word`)**: Test-runner bus transfer operand widths defined in [`crates/test_runner/src/transactions.rs`](../../../crates/test_runner/src/transactions.rs).
+- **Function Code Lines (`m68000::function_code::*`)**: FC0–FC2 processor output pins defined in [`crates/cpu/src/state.rs`](../../../crates/cpu/src/state.rs) (`USER_DATA = 1`, `USER_PROGRAM = 2`, `SUPERVISOR_DATA = 5`, `SUPERVISOR_PROGRAM = 6`, `CPU_SPACE = 7`).
 
 ### Direct Passive Bus API & Contention Arbitration
 The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU micro-engine, Copper, Blitter) execute single-cycle or multi-phase bus transactions directly against memory. Contention arbitration is encapsulated within the bus access methods, returning a dedicated `BusResult<T>`:
 
-1. **`BusResult<T>` Return Semantics (Defined in [`crates/physical_memory/src/arbitration.rs`](../../../crates/physical_memory/src/arbitration.rs)):**
+1. **`BusResult<T>` Return Semantics (Defined in [`crates/physical_memory/src/address_bus.rs`](../../../crates/physical_memory/src/address_bus.rs)):**
    - **`BusResult::Ready(T)`**: Bus access completed successfully with requested data (or `()` for write transfers).
    - **`BusResult::WaitState`**: Bus access stalled due to Agnus DMA cycle stealing / Chip RAM contention.
 2. **Direct Memory Access Methods:**
@@ -181,10 +185,10 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
   - Gary's boot overlay routing applies strictly to the **M68000 CPU** bus interface: Gary intercepts CPU bus cycles targeting `$000000-$07FFFF` while `_OVL = 0` and routes them to Kickstart ROM space (`$F80000-$FFFFFF`). This allows the CPU to fetch the initial supervisor stack pointer ($SSP$ at `$000000`) and program counter ($PC$ at `$000004`) from ROM on reset.
   - **Custom Chipset Invariance**: Agnus features its own dedicated DRAM address bus (`DRA0..DRA8`) directly wired to the Chip RAM chips. **Agnus DMA memory cycles do not pass through Gary's `_OVL` multiplexer**.
   - **The Ground Truth:** Even while the boot overlay is active (`_OVL = 0`), any DMA access initiated by the custom chipset (Copper, Blitter, Bitplanes, Sprites, Audio, Disk) to address `$000000` **always accesses physical Chip RAM, never Kickstart ROM**. Only the CPU experiences the Kickstart overlay.
-- **Dynamic 64 KB Bank Swapping & Precalculated Contention:**
+- **Dynamic 64 KB Bank Swapping:**
   - Toggling overlay dynamically swaps banks `0x00..=0x07` in `self.bank_map`:
-    - **Overlay Active (`_OVL = 0`):** Populates `bank_map[0x00..=0x07]` directly with `KICKSTART_ROM_HANDLER` (`MemoryBank::KickstartRom`, `is_contended = false`). Because Kickstart ROM address decoding masks with `rom_len - 1`, address lines `A18..A0` match whether accessed at `$000000` or `$F80000`, requiring zero address translation or separate overlay handlers.
-    - **Overlay Inactive (`_OVL = 1`):** Populates `bank_map[0x00..=0x07]` with `CHIP_RAM_HANDLER` (`MemoryBank::ChipRam`, `is_contended = true`).
+    - **Overlay Active (`_OVL = 0`):** Populates `bank_map[0x00..=0x07]` directly with `KICKSTART_ROM_HANDLER` (`MemoryBank::KickstartRom`). Because Kickstart ROM address decoding masks with `rom_len - 1`, address lines `A18..A0` match whether accessed at `$000000` or `$F80000`, requiring zero address translation or separate overlay handlers.
+    - **Overlay Inactive (`_OVL = 1`):** Populates `bank_map[0x00..=0x07]` with `CHIP_RAM_HANDLER` (`MemoryBank::ChipRam`).
   - This completely eliminates all runtime `if low_memory_overlay` branch evaluations from `read_chip_ram`, `write_chip_ram`, and `is_chip_ram_target`.
 
 ### Kickstart ROM Space ($F80000-$FFFFFF) & Mirroring Rules
@@ -206,22 +210,24 @@ The `MemoryBus` acts as a passive hardware backplane. Subsystem clients (CPU mic
 - **Shared Bus Contention:** Slow RAM physically resides on the shared, multiplexed Chip RAM bus. When the 68000 accesses `$C00000`, Gary coordinates with Agnus and **withholds `_DTACK` whenever Agnus DMA is active**. Thus, CPU accesses to Slow RAM suffer the **exact same wait-state penalties as Chip RAM**.
 - **OCS Agnus Invisibility:** The OCS Fat Agnus (MOS 8370/8371) contains only **19 DRAM address lines (`DRA0..DRA8` multiplexed = $2^{19} = 512\,\text{KB}$)**. Agnus physically cannot generate addresses outside `$000000-$07FFFF`. Therefore, custom chip DMA (Copper, Blitter, Bitplanes, Audio, Disk) **cannot see or access Slow RAM**.
 - **The "Slow RAM" Trade-Off:** It has the speed disadvantages of Chip RAM (bus contention stalls), but none of the privileges (no chipset DMA visibility). Only the 68000 CPU can use it for program code and variables. *(On ECS Agnus 8372A with A500 Rev 6A motherboard jumper JP2 reconfigured, this physical RAM is remapped to `$080000-$0FFFFF`, promoting it to true 1 MB Chip RAM).*
-- **Precalculated Contention:** The `is_contended` flag is precalculated in the 256-entry bank dispatch table: `SLOW_RAM_HANDLER` has `is_contended = true`, `CHIP_RAM_HANDLER` has `is_contended = true`, and `KICKSTART_ROM_HANDLER` has `is_contended = false`. Thus, bus arbitration queries `bank.is_contended` in $O(1)$ without runtime range checks.
+- **Intrinsic Bank Contention:** In Solution B, `SLOW_RAM_HANDLER` and `CHIP_RAM_HANDLER` check `bus.chip_ram_blocked` and return `BusResult::WaitState` directly within their handler functions, while `FAST_RAM_HANDLER` and `KICKSTART_ROM_HANDLER` never inspect contention. Bus arbitration queries `is_chip_ram_target(addr)` in $O(1)$ by matching the bank classification without runtime range checks.
 
-### Paula & Custom Chip DMA Bus Signaling (DMAL & RGA Bus)
-- **Agnus as Master DMA Scheduler:** Paula contains no autonomous DMA bus master or address generation circuits. Agnus acts as the master DMA address generator and bus arbiter for the entire system.
-- **Dedicated Time Slots:** On every horizontal scanline, Agnus allocates fixed memory cycles: `CCK 4` (Floppy Disk DMA) and `CCK 5..8` (Audio Channels 0, 1, 2, 3).
-- **Physical Signalling Pins:**
+### Custom Chip DMA Bus Signaling (DMAL & RGA Bus Architecture)
+- **Agnus as Exclusive DMA Address Generator:** Paula, Denise, and CIA contain no autonomous DMA bus master or address generation circuits. Agnus acts as the exclusive DMA address generator and bus arbiter for the entire system, owning all pointers (`BPLxPT`, `SPRxPT`, `AUDxPT`, `DSKPT`, `COPxLC`, `BLTxPT`).
+- **Physical Signalling & Bus Lines:**
+  - **`DRA19..0` (Chip RAM Address Bus):** Agnus places the memory address onto the Chip RAM multiplexed address lines during the assigned DMA slot.
+  - **`RGA(8:1)` (Register Address Bus — Denise & Paula pins):** Agnus drives the target custom register offset on the internal Register Address bus:
+    - When `RGA` corresponds to `BPL1DAT`..`BPL6DAT` (`$110`..`$11A`), **Denise** latches the 16-bit bitplane word from the shared data bus (`D15..D0`).
+    - When `RGA` corresponds to `SPR0DAT`/`SPR0POS`..`SPR7DAT`/`SPR7CTL` (`$140`..`$17E`), **Denise** latches the 16-bit sprite data word from the shared data bus.
+    - When `RGA` corresponds to `AUD0DAT`..`AUD3DAT` (`$0AA`, `$0BA`, `$0CA`, `$0DA`), **Paula** latches the 16-bit audio sample word from the shared data bus into the respective audio channel holding latch.
+    - When `RGA` corresponds to `DSKDAT` (`$026`), **Paula** transfers a 16-bit word between the floppy MFM serializer/deserializer and the data bus.
   - **`DMAL` (DMA Line — Paula pin 12):** Agnus asserts `DMAL` to notify Paula that the current bus cycle is dedicated to a Paula DMA transfer.
-  - **`RGA(8:1)` (Register Address Bus — Paula pins 19..26):** Agnus drives the target custom register offset on the internal Register Address bus:
-    - When `RGA` corresponds to `AUD0DAT`..`AUD3DAT` (`$0AA`, `$0BA`, `$0CA`, `$0DA`), Paula latches the 16-bit word from the shared data bus (`DRD15..DRD0`) into the respective audio channel holding latch.
-    - When `RGA` corresponds to `DSKDAT` (`$026`), Paula transfers a 16-bit word between the floppy MFM serializer/deserializer and the data bus.
+- **Strict Invariant (Zero Direct Memory Reads in Specialized Chips):** Neither Denise nor Paula holds references to `PhysicalMemory` or calls `memory.read()`. They are strictly passive bus latchers triggered by Agnus-driven memory and RGA bus cycles.
+- **Prohibition of Direct Inter-Chip Shortcuts:** Direct method calls, shared state, or synthetic backchannels between custom chips are forbidden; all inter-chip coordination models physical bus lines per [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 
-### DMA Arbitration Methods
-Expose methods to simulate Agnus cycle stealing:
-- `lock_chip_ram()`: Sets `chip_ram_blocked = true`.
-- `unlock_chip_ram()`: Sets `chip_ram_blocked = false`.
-- `is_chip_ram_locked() -> bool`: Inspection/diagnostic getter querying the raw lock flag. Note: Never used in execution logic; contention is evaluated via `read_*` and `write_*` methods returning `BusResult`.
+### DMA Arbitration Fields
+Expose raw field to simulate Agnus cycle stealing directly with zero method overhead:
+- `chip_ram_blocked: bool`: Direct public flag asserted by Agnus DMA to block CPU Chip RAM accesses (`BusResult::WaitState`).
 
 ### Test Memory & Direct State Injection for Test Runners
 To support headless unit testing, SingleStepTests, and debugger inspection without side effects:

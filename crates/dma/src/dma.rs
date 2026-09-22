@@ -5,17 +5,15 @@
 //! 8-tier priority arbitration, Blitter Nasty vs Normal mode with 3-cycle CPU starvation yield,
 //! and Chip RAM bus contention against the CPU.
 
-use config::mask::{bplcon0, dmacon};
+use config::mask::dmacon;
 use serde::{Deserialize, Serialize};
 
-/// CCK ranges for fixed DMA slots on each horizontal scanline
-pub const HPOS_REFRESH_START: u16 = 0;
-pub const HPOS_REFRESH_END: u16 = 3;
-pub const HPOS_DISK: u16 = 4;
-pub const HPOS_AUDIO_START: u16 = 5;
-pub const HPOS_AUDIO_END: u16 = 8;
-pub const HPOS_SPRITE_START: u16 = 12;
-pub const HPOS_SPRITE_END: u16 = 27;
+/// CCK ranges and slots for fixed DMA channels on each horizontal scanline (Figure 6-9 in Commodore HRM)
+pub const HPOS_REFRESH_SLOTS: [u16; 4] = [1, 3, 5, 0xE2];
+pub const HPOS_DISK_SLOTS: [u16; 3] = [7, 9, 11];
+pub const HPOS_AUDIO_SLOTS: [u16; 4] = [13, 15, 17, 19];
+pub const HPOS_SPRITE_START: u16 = 21;
+pub const HPOS_SPRITE_END: u16 = 51;
 
 /// Normal Blitter mode (BLTPRI = 0) yields to CPU after 3 consecutive memory cycles of CPU starvation
 pub const BLITTER_STARVATION_YIELD_CYCLES: u8 = 3;
@@ -23,10 +21,6 @@ pub const BLITTER_STARVATION_YIELD_CYCLES: u8 = 3;
 /// Default display data fetch boundaries for OCS standard Low-Resolution screen
 pub const DDFSTRT_DEFAULT: u16 = 0x0038;
 pub const DDFSTOP_DEFAULT: u16 = 0x00D0;
-
-/// Default display window coordinates (PAL Standard top-left $2C81, bottom-right $F4C1)
-pub const DIWSTRT_DEFAULT: u16 = 0x2C81;
-pub const DIWSTOP_DEFAULT: u16 = 0xF4C1;
 
 /// Custom chip DMA channels in strict priority order
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -62,10 +56,6 @@ pub struct DmaScheduler {
     pub ddfstrt: u16,
     /// Display Data Fetch Stop ($094, default $00D0)
     pub ddfstop: u16,
-    /// Display Window Start ($08E, default $2C81)
-    pub diwstrt: u16,
-    /// Display Window Stop ($090, default $F4C1)
-    pub diwstop: u16,
     /// Consecutive memory cycles where CPU requested the bus but was held off by normal Blitter (BLTPRI=0)
     pub cpu_starvation_counter: u8,
     /// Channel that currently owns the Chip RAM bus on this cycle
@@ -81,8 +71,6 @@ impl Default for DmaScheduler {
             bplcon0: 0,
             ddfstrt: DDFSTRT_DEFAULT,
             ddfstop: DDFSTOP_DEFAULT,
-            diwstrt: DIWSTRT_DEFAULT,
-            diwstop: DIWSTOP_DEFAULT,
             cpu_starvation_counter: 0,
             current_owner: DmaChannel::Cpu,
             chip_ram_blocked: false,
@@ -102,8 +90,6 @@ impl DmaScheduler {
         self.bplcon0 = 0;
         self.ddfstrt = DDFSTRT_DEFAULT;
         self.ddfstop = DDFSTOP_DEFAULT;
-        self.diwstrt = DIWSTRT_DEFAULT;
-        self.diwstop = DIWSTOP_DEFAULT;
         self.cpu_starvation_counter = 0;
         self.current_owner = DmaChannel::Cpu;
         self.chip_ram_blocked = false;
@@ -127,28 +113,16 @@ impl DmaScheduler {
         self.ddfstop = val;
     }
 
-    /// Sets DIWSTRT register value ($08E)
-    #[inline]
-    pub fn set_diwstrt(&mut self, val: u16) {
-        self.diwstrt = val;
-    }
-
-    /// Sets DIWSTOP register value ($090)
-    #[inline]
-    pub fn set_diwstop(&mut self, val: u16) {
-        self.diwstop = val;
-    }
-
     /// Returns the active number of bitplane DMA channels (0..6)
     #[inline]
     pub fn planecount(&self) -> u8 {
         ((self.bplcon0 >> 12) & 0x07) as u8
     }
 
-    /// Returns true if High-Resolution mode (BPLCON0 bit 15) is active
+    /// Returns true if High-Resolution mode is active (BPLCON0 bit 15)
     #[inline]
     pub fn is_hires(&self) -> bool {
-        (self.bplcon0 & bplcon0::HIRES) != 0
+        (self.bplcon0 & 0x8000) != 0
     }
 
     /// Returns true if the horizontal position is inside the Display Data Fetch window
@@ -173,22 +147,11 @@ impl DmaScheduler {
         block_start == self.ddfstop
     }
 
-    /// Returns true if the vertical position is inside active display scanlines
+    /// Returns true if the vertical position is inside active display scanlines (outside vertical blanking)
     #[inline]
     pub fn is_in_vertical_display(&self, vpos: u16) -> bool {
-        let vstart = (self.diwstrt >> 8) & 0xFF;
-        let vstop_low = (self.diwstop >> 8) & 0xFF;
-        let vstop = if vstop_low < 128 {
-            256 + vstop_low
-        } else {
-            vstop_low
-        };
-        if vstart == 0 && vstop_low == 0 {
-            // Default active range if unconfigured: scanlines 44..300
-            vpos >= 0x2C && vpos < 0x12C
-        } else {
-            vpos >= vstart && vpos < vstop
-        }
+        // Standard PAL active display scanlines: 0x2C (44) .. 0x12C (300)
+        vpos >= 0x2C && vpos < 0x12C
     }
 
     /// Advances DMA scheduler by 1 Color Clock
@@ -238,16 +201,16 @@ impl DmaScheduler {
     }
 
     /// Returns the fixed DMA channel mapped to a horizontal Color Clock slot (HPOS)
-    pub fn fixed_slot_for_hpos(hpos: u16) -> Option<DmaChannel> {
+    fn fixed_slot_for_hpos(hpos: u16) -> Option<DmaChannel> {
         match hpos {
-            HPOS_REFRESH_START..=HPOS_REFRESH_END => Some(DmaChannel::Refresh),
-            HPOS_DISK => Some(DmaChannel::Disk),
-            HPOS_AUDIO_START => Some(DmaChannel::Audio(0)),
-            6 => Some(DmaChannel::Audio(1)),
-            7 => Some(DmaChannel::Audio(2)),
-            HPOS_AUDIO_END => Some(DmaChannel::Audio(3)),
-            HPOS_SPRITE_START..=HPOS_SPRITE_END => {
-                let sprite_num = ((hpos - HPOS_SPRITE_START) / 2) as u8;
+            1 | 3 | 5 | 0xE2 | 0xE3 => Some(DmaChannel::Refresh),
+            7 | 9 | 11 => Some(DmaChannel::Disk),
+            13 => Some(DmaChannel::Audio(0)),
+            15 => Some(DmaChannel::Audio(1)),
+            17 => Some(DmaChannel::Audio(2)),
+            19 => Some(DmaChannel::Audio(3)),
+            21..=51 if (hpos % 2 == 1) => {
+                let sprite_num = ((hpos - 21) / 4) as u8;
                 Some(DmaChannel::Sprite(sprite_num))
             }
             _ => None,
@@ -305,12 +268,12 @@ impl DmaScheduler {
 
     /// Evaluates the strict 8-tier DMA bus priority hierarchy for the active Color Clock cycle:
     ///
-    /// 1. Refresh (unconditional, slots 0..3)
-    /// 2. Floppy Disk (slot 4, if active and enabled)
-    /// 3. Audio 0..3 (slots 5..8, if active and enabled)
+    /// 1. Refresh (unconditional, slots 1, 3, 5, 226/0xE2)
+    /// 2. Floppy Disk (slots 7, 9, 11, if active and enabled)
+    /// 3. Audio 0..3 (slots 13, 15, 17, 19, if active and enabled)
     /// 4. Bitplane 1..6 (DDF window, dynamic based on resolution & planecount)
-    /// 5. Sprite 0..7 (slots 12..27, if enabled)
-    /// 6. Copper (when instruction fetch pending)
+    /// 5. Sprite 0..7 (slots 21..=51 odd, if enabled)
+    /// 6. Copper (when instruction fetch pending, odd cycles only)
     /// 7. Blitter (Blitter Nasty mode awards all remaining cycles; normal mode yields after 3 CPU starvation cycles)
     /// 8. CPU (awarded when no higher priority channel claimed the cycle)
     pub fn arbitrate(
@@ -323,23 +286,26 @@ impl DmaScheduler {
         blitter_wants_bus: bool,
         cpu_wants_bus: bool,
     ) -> DmaChannel {
-        // Priority 1: DRAM Refresh (CCK 0..3) - Unconditional
-        if hpos <= HPOS_REFRESH_END {
+        // Priority 1: DRAM Refresh (CCK 1, 3, 5, 226/0xE2, 227/0xE3) - Unconditional
+        if hpos == 1 || hpos == 3 || hpos == 5 || hpos == 0xE2 || hpos == 0xE3 {
             self.current_owner = DmaChannel::Refresh;
             self.chip_ram_blocked = true;
             return DmaChannel::Refresh;
         }
 
-        // Priority 2: Floppy Disk DMA (CCK 4)
-        if hpos == HPOS_DISK && disk_active && self.is_channel_enabled(DmaChannel::Disk) {
+        // Priority 2: Floppy Disk DMA (CCK 7, 9, 11)
+        if (hpos == 7 || hpos == 9 || hpos == 11)
+            && disk_active
+            && self.is_channel_enabled(DmaChannel::Disk)
+        {
             self.current_owner = DmaChannel::Disk;
             self.chip_ram_blocked = true;
             return DmaChannel::Disk;
         }
 
-        // Priority 3: Audio DMA Channels 0..3 (CCK 5..8)
-        if (HPOS_AUDIO_START..=HPOS_AUDIO_END).contains(&hpos) {
-            let ch = (hpos - HPOS_AUDIO_START) as u8;
+        // Priority 3: Audio DMA Channels 0..3 (CCK 13, 15, 17, 19)
+        if (13..=19).contains(&hpos) && (hpos % 2 == 1) {
+            let ch = ((hpos - 13) / 2) as u8;
             if audio_active[ch as usize] && self.is_channel_enabled(DmaChannel::Audio(ch)) {
                 self.current_owner = DmaChannel::Audio(ch);
                 self.chip_ram_blocked = true;
@@ -354,11 +320,12 @@ impl DmaScheduler {
             return DmaChannel::Bitplane(plane);
         }
 
-        // Priority 5: Hardware Sprite DMA Pairs (CCK 12..27)
-        if (HPOS_SPRITE_START..=HPOS_SPRITE_END).contains(&hpos)
+        // Priority 5: Hardware Sprite DMA Pairs (CCK 21..=51 odd)
+        if (21..=51).contains(&hpos)
+            && (hpos % 2 == 1)
             && self.is_channel_enabled(DmaChannel::Sprite(0))
         {
-            let sprite_num = ((hpos - HPOS_SPRITE_START) / 2) as u8;
+            let sprite_num = ((hpos - 21) / 4) as u8;
             self.current_owner = DmaChannel::Sprite(sprite_num);
             self.chip_ram_blocked = true;
             return DmaChannel::Sprite(sprite_num);
@@ -412,8 +379,8 @@ impl DmaScheduler {
     /// Simplified check returning true if Chip RAM is currently blocked from CPU access
     #[inline]
     pub fn is_chip_ram_blocked(&self, hpos: u16, blitter_busy: bool) -> bool {
-        // DRAM Refresh is unconditional
-        if hpos <= HPOS_REFRESH_END {
+        // DRAM Refresh is unconditional (slots 1, 3, 5, 226/0xE2, 227/0xE3)
+        if hpos == 1 || hpos == 3 || hpos == 5 || hpos == 0xE2 || hpos == 0xE3 {
             return true;
         }
         if !self.is_dma_enabled() {

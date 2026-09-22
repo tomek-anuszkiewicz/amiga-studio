@@ -1,6 +1,6 @@
 ---
 trigger: model_decision
-description: Rust source file size limits (<= 800 lines in crates/*/src/), cohesion rules, and flat 1:1 opcode hierarchy under crates/m68000/src/instructions/.
+description: Rust source file size limits (<= 800 lines in crates/*/src/), cohesion rules, and flat 1:1 opcode hierarchy under crates/cpu/src/instructions/.
 ---
 
 # Module Cohesion & Rust Source File Size Guidelines (`.rs` Files Only)
@@ -43,8 +43,20 @@ A foundational architectural mandate across all workspace crates is organizing c
 
 ## 4. Recognized Exceptions (Permitted to Exceed 800 Lines)
 Splitting these files hurts performance, breaks static table locality, and damages readability:
-1. **Compile-time static dispatch and lookup tables**: e.g., `dispatch_table.rs` (65,536-entry opcode decoding logic, compile-time tables), precalculated BLEP windowed sinc tables, and large mathematical LUTs.
+1. **Compile-time static dispatch and lookup tables**: e.g., `dispatch_table.rs` (65,536-entry opcode decoding logic, compile-time tables) and large mathematical LUTs.
 2. **Exhaustive linear instruction decoders or atomic hardware circuit state machines**: Sequential execution flows where splitting clock cycle phases across files obscures circuit timing (e.g., `add.rs`, `sub.rs`, `and.rs`, `or.rs`, `cmpi.rs`, `move_b.rs`, `move_w.rs`, `move_l.rs`).
+
+### Two-Way Exception Governance & Prohibition of Silent Mutations
+Modifications to `LINE_COUNT_EXCEPTIONS` (in `crates/test_runner/tests/test_architecture_rules.rs`) are strictly governed:
+1. **Zero Autonomous Additions:**
+   - When a file exceeds 800 lines, the agent is **strictly prohibited from autonomously adding it to `LINE_COUNT_EXCEPTIONS`** to silence CI failures.
+   - The agent must decompose the file per Section 5/Section 7, or present the issue to the user with exact metrics and await an explicit user command to grant an exception.
+2. **Zero Autonomous Deletions:**
+   - When a refactored file drops to $\le 800$ lines, the agent is **strictly prohibited from silently pruning it from `LINE_COUNT_EXCEPTIONS`**.
+   - Automated architecture tests (`test_no_stale_line_count_exceptions`) and code quality audits (`[stale_line_count_exception]`) will explicitly fail or warn, alerting the user to decide and authorize the removal.
+3. **Continuous Automated Bidirectional Verification:**
+   - `test_file_size_limits`: Fails if any unexempted production file exceeds 800 lines.
+   - `test_no_stale_line_count_exceptions`: Fails if any file registered in `LINE_COUNT_EXCEPTIONS` has $\le 800$ lines or does not exist on disk.
 
 ## 5. When to Split (Architectural Triggers)
 Split regardless of line count when:
@@ -53,11 +65,11 @@ Split regardless of line count when:
 - In-file unit tests grow beyond ~150–200 lines (move to `tests/*.rs`).
 - Sub-features are completely independent (e.g. Paula's audio DACs vs floppy disk controller vs UART).
 
-## 6. Strict Flat Instruction Hierarchy (`crates/m68000/src/instructions/`)
+## 6. Strict Flat Instruction Hierarchy (`crates/cpu/src/instructions/`)
 The instruction directory is governed by a **strict flat hierarchy rule**:
 1. **Zero Subdirectories in `instructions/`**:
-   - Creating subdirectories or multi-file submodules under `crates/m68000/src/instructions/` (such as `instructions/add/`, `instructions/cmpi/`, `instructions/mul/`) is **strictly forbidden**.
-   - All instruction files must reside flat directly under `crates/m68000/src/instructions/<mnemonic>.rs`.
+   - Creating subdirectories or multi-file submodules under `crates/cpu/src/instructions/` (such as `instructions/add/`, `instructions/cmpi/`, `instructions/mul/`) is **strictly forbidden**.
+   - All instruction files must reside flat directly under `crates/cpu/src/instructions/<mnemonic>.rs`.
 2. **Strict 1:1 Mnemonic Alignment**:
    - Each M68000 instruction mnemonic must have its own dedicated `.rs` file directly under `instructions/`.
    - Bundling multiple distinct mnemonics into legacy umbrella files (such as `mul.rs`, `div.rs`, `link_unlk.rs`, `bcd.rs`, `privileged.rs`) is strictly forbidden.

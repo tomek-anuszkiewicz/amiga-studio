@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Copper & Machine Loop Integration Tests
 //!
 //! Tests Copper coprocessor list execution, beam position synchronization (WAIT),
@@ -31,9 +33,9 @@ fn test_copper_beam_wait_and_palette_mutation() {
     assert_eq!(harness.machine.denise.color[0], 0x0000);
 
     // Enable DMA: Master Enable (bit 9) | Copper Enable (bit 7) -> $8280
-    harness.machine.dispatch_custom_write(0x096, 0x8280);
+    harness.machine.write_custom_word(0x096, 0x8280);
     // Strobe COPJMP1 ($088) to start execution of list 1
-    harness.machine.dispatch_custom_write(0x088, 0x0000);
+    harness.machine.write_custom_word(0x088, 0x0000);
 
     // Step across first 10 scanlines: beam hasn't reached line 15 yet
     harness.step_scanlines(10);
@@ -73,12 +75,12 @@ fn test_copper_dma_toggle_stops_and_resumes_execution() {
     harness.load_copper_list(0x003000, &copper_list);
 
     // Start with Copper DMA enabled
-    harness.machine.dispatch_custom_write(0x096, 0x8280);
-    harness.machine.dispatch_custom_write(0x088, 0x0000);
+    harness.machine.write_custom_word(0x096, 0x8280);
+    harness.machine.write_custom_word(0x088, 0x0000);
 
     // Step to line 5, then DISABLE Copper DMA ($0080 clears bit 7)
     harness.step_until_vpos(5, 2000);
-    harness.machine.dispatch_custom_write(0x096, 0x0080);
+    harness.machine.write_custom_word(0x096, 0x0080);
     harness.step_cck(2);
     assert!(!harness.machine.agnus.copper.dma_enabled);
 
@@ -90,8 +92,8 @@ fn test_copper_dma_toggle_stops_and_resumes_execution() {
     );
 
     // Re-enable Copper DMA ($8080 sets bit 7) and restart list
-    harness.machine.dispatch_custom_write(0x096, 0x8080);
-    harness.machine.dispatch_custom_write(0x088, 0x0000);
+    harness.machine.write_custom_word(0x096, 0x8080);
+    harness.machine.write_custom_word(0x088, 0x0000);
     harness.step_cck(2);
     assert!(harness.machine.agnus.copper.dma_enabled);
 
@@ -117,10 +119,10 @@ fn test_copper_triggers_interrupt_to_cpu() {
     harness.load_copper_list(0x004000, &copper_list);
 
     // Enable Paula Level 3 Interrupts: INTENA ($09A) = $C010 (Master + Copper)
-    harness.machine.dispatch_custom_write(0x09A, 0xC010);
+    harness.machine.write_custom_word(0x09A, 0xC010);
     // Enable Copper DMA
-    harness.machine.dispatch_custom_write(0x096, 0x8280);
-    harness.machine.dispatch_custom_write(0x088, 0x0000);
+    harness.machine.write_custom_word(0x096, 0x8280);
+    harness.machine.write_custom_word(0x088, 0x0000);
 
     // Initial interrupt priority line should be 0
     assert_eq!(harness.machine.resolve_ipl(), 0);
@@ -129,7 +131,7 @@ fn test_copper_triggers_interrupt_to_cpu() {
     harness.step_until_vpos(8, 3000);
 
     // Verify Copper wrote to INTREQ and Paula raised Level 3 IPL
-    assert_eq!(harness.machine.paula.intreq & 0x0010, 0x0010);
+    assert_eq!(harness.machine.paula.interrupts.intreq & 0x0010, 0x0010);
     assert_eq!(
         harness.machine.resolve_ipl(),
         3,

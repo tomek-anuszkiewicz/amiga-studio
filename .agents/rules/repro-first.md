@@ -22,7 +22,7 @@ flowchart LR
 ```
 
 1. **Mandatory Failing Test First (The Red Phase):**
-   - Before modifying any production code in `crates/*/src/`, the agent **must write an isolated reproduction test** in the appropriate test suite under `crates/<crate>/tests/` (e.g. `crates/m68000/tests/test_regressions.rs` or `crates/<crate>/tests/test_<subsystem>.rs`).
+   - Before modifying any production code in `crates/*/src/`, the agent **must write an isolated reproduction test** in the appropriate test suite under `crates/<crate>/tests/` (e.g. `crates/cpu/tests/test_regressions.rs` or `crates/<crate>/tests/test_<subsystem>.rs`).
    - The test must precisely isolate and assert the expected hardware behavior vs the defect.
    - Run `cargo test -p <crate> --test <test_name>` and confirm that the test fails on unmodified production code with the exact expected error.
 

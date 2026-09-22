@@ -3,7 +3,7 @@
 //! Supports PC execution breakpoints, memory range watchpoints (Read/Write/Any),
 //! and register-based conditional expressions for targeted hardware debugging.
 
-use m68000::CpuState;
+use cpu::CpuState;
 
 /// Watchpoint memory access type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,8 +31,8 @@ impl ConditionRegister {
             ConditionRegister::D(idx) => state.d_long(idx as usize),
             ConditionRegister::A(idx) => state.a_long(idx as usize),
             ConditionRegister::PC => state.instruction_pc & 0x00FF_FFFF,
-            ConditionRegister::SR => state.sr as u32,
-            ConditionRegister::CCR => (state.sr & 0x001F) as u32,
+            ConditionRegister::SR => state.sr() as u32,
+            ConditionRegister::CCR => state.ccr() as u32,
         }
     }
 }

@@ -6,15 +6,20 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-09-12
-related: ["[Agnus.md](Agnus.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Joystick.md](Joystick.md)", "[Mouse.md](Mouse.md)"]
+updated: 2026-09-19
+related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[MemoryBus.md](MemoryBus.md)", "[Main loop A500.md](Main%20loop%20A500.md)", "[Joystick.md](Joystick.md)", "[Mouse.md](Mouse.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
+tracked_paths:
+  - "crates/denise"
+last_synced_commit: "0fcd519"
+last_synced_date: "2026-09-19"
 ---
-
 # Denise (MOS 8362 / 8373) Architecture & Hardware Specification
 
 > [!NOTE]
 > System execution constraints, memory bus arbitration, and Color Clock timing are defined in [AGENTS.md](../../../AGENTS.md), [MemoryBus.md](MemoryBus.md), and [Main loop A500.md](Main%20loop%20A500.md).
+> Detailed inter-chip signal rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md).
 > Detailed game port pinouts and host input bindings are documented in [Joystick.md](Joystick.md) and [Mouse.md](Mouse.md). Raster beam tracking is driven by [Agnus.md](Agnus.md), and display output feeds the frontend in [GUI.md](GUI.md) and [GUI Specification.md](GUI%20Specification.md).
+> Hardware sprite multiplexing is specified in [Sprites.md](Sprites.md), and frame buffer generation in [Frame Buffer.md](Frame%20Buffer.md).
 
 ---
 
@@ -55,6 +60,13 @@ pub struct Denise {
     // ... collision registers, window coordinates, and in-flight mutation pipeline
 }
 ```
+
+### 2.2 Passive Bus Latching & Zero Direct Memory Reads Invariant
+Per [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md) and [General Architecture.md](General%20Architecture.md):
+- **Zero DMA Address Generators:** Denise contains **no DMA pointer registers and no address generation circuitry**. All bitplane pointers (`BPLxPT`) and sprite pointers (`SPRxPT`) physically reside inside Agnus.
+- **Zero Direct Memory Reads:** Denise **never holds a reference to `PhysicalMemory` and never executes `memory.read()`**.
+- **Passive Data Latching:** During bitplane and sprite DMA time slots, Agnus drives the Chip RAM address and asserts `BPLxDAT` (`$110`..`$11A`) or `SPRxDAT`/`POS`/`CTL` (`$140`..`$17E`) on the internal `RGA` bus. Denise passively latches the 16-bit word off the shared data bus into its holding registers (`write_bpldat`, `sprites.write_reg`).
+- **Prohibition of Direct Inter-Chip Smuggling:** Denise never directly calls methods on Agnus, Paula, or CPU. All synchronization occurs through beam coordinates and bus strobes routed by the top-level machine coordinator.
 
 ---
 
@@ -118,8 +130,9 @@ flowchart TD
     EHB --> PRIORITY
     HAM --> PRIORITY
     
-    SPRITES["8 Hardware Sprites (SPR0..SPR7)"] --> PRIORITY
+    SPRITES["8 Hardware Sprites (SPR0..SPR7)\n(crates/sprites)"] --> PRIORITY
     PRIORITY --> RGB_OUT["12-Bit RGB444 Video Output"]
+    RGB_OUT --> FB["Raster Frame Builder\n(crates/frame_builder)"]
 ```
 
 ### 4.1 Standard Bitplane Modes
@@ -135,9 +148,8 @@ flowchart TD
 
 ### 4.3 Extra Half-Brite Mode (EHB)
 - Activated when $6$ bitplanes are enabled in Low-Resolution without HAM or Dual Playfield.
-- **Behavior:**
-  - If Bitplane 6 is `0`: Color index ($0..31$) is read directly from `COLOR00`–`COLOR31`.
-  - If Bitplane 6 is `1`: The color index ($0..31$) is retrieved from `COLOR00`–`COLOR31`, but all RGB components are shifted right by 1 ($R/2, G/2, B/2$), creating 32 half-intensity shadow colors for a total of 64 simultaneous colors.
+- If Bitplane 6 is `0`: Color index ($0..31$) is read directly from `COLOR00`–`COLOR31`.
+- If Bitplane 6 is `1`: The color index ($0..31$) is retrieved from `COLOR00`–`COLOR31`, but all RGB components are shifted right by 1 ($R/2, G/2, B/2$), creating 32 half-intensity shadow colors for a total of 64 simultaneous colors.
 
 ### 4.4 Hold-And-Modify Mode (HAM6)
 - Activated via bit 11 (`HOMOD`) in `BPLCON0` with 6 bitplanes active.
@@ -152,23 +164,7 @@ flowchart TD
 
 ---
 
-## 5. Hardware Sprites & Multiplexing
-
-Denise includes 8 independent hardware sprite engines:
-- **Dimensions:** 16 pixels wide, arbitrary vertical height (defined by `VSTART` in `SPRxPOS` and `VSTOP` in `SPRxCTL`).
-- **Color Pairs:** Sprites operate in pairs sharing 4-color palettes:
-  - Sprites 0 & 1: `COLOR16`–`COLOR19`
-  - Sprites 2 & 3: `COLOR20`–`COLOR23`
-  - Sprites 4 & 5: `COLOR24`–`COLOR27`
-  - Sprites 6 & 7: `COLOR28`–`COLOR31`
-- **Attached Sprites (`ATTACH` bit in odd sprite control register):**
-  - Pairs (0+1, 2+3, 4+5, 6+7) can be attached to form a single 16-pixel wide sprite with 4 bitplanes, displaying 15 colors plus transparency from `COLOR16`–`COLOR31`.
-- **Sprite Multiplexing:**
-  - Because sprite start/stop coordinates are re-evaluated scanline by scanline, a single sprite DMA channel can be reused multiple times vertically down the screen by updating `SPRxPOS` and `SPRxCTL` via Copper.
-
----
-
-## 6. Hardware Collision Detection (`CLXDAT` & `CLXCON`)
+## 5. Hardware Collision Detection (`CLXDAT` & `CLXCON`)
 
 Denise tracks physical pixel collisions in hardware during rendering:
 - **`CLXDAT` (`$DFF00E`):** 15-bit read-only latch recording:
@@ -179,44 +175,29 @@ Denise tracks physical pixel collisions in hardware during rendering:
 
 ---
 
-## 7. Game Port Inputs & Coordinate Latches
+## 6. Subordinate Engines & Peripherals
 
-Denise houses the directional and quadrature counters for Game Port 1 and Game Port 2:
-- **`JOY0DAT` (`$DFF00A`):** Port 1 (Mouse / Joy 1) counter. Bits 15–8 track Y quadrature, bits 7–0 track X quadrature.
-- **`JOY1DAT` (`$DFF00C`):** Port 2 (Joy 2 / Mouse 2) counter. Directional switch closures decode into XORed bit pairs.
-- **`POT0DAT` / `POT1DAT` (`$DFF012` / `$DFF014`):** Proportional analog potentiometer counters and right/middle mouse button status via `POTGO` (`$DFF034`).
+Denise encapsulates two specialized display engines:
+
+### 6.1 Hardware Sprites Engine
+- **8 DMA Sprites:** 16-pixel wide hardware sprites with arbitrary vertical height.
+- **Attached Mode:** Pairs (0+1, 2+3, 4+5, 6+7) can combine into 15-color sprites from `COLOR16`–`COLOR31`.
+- **Multiplexing:** Scanline-by-scanline reuse down the screen.
+- *Authoritative Specification:* See [Sprites.md](Sprites.md).
+
+### 6.2 Frame Builder & Video Signal Generation
+- **Raster Compositor:** Assembles pixels, performs Display Window clipping (`DIWSTRT`, `DIWSTOP`), and generates a 32-bit ARGB frame buffer.
+- **Resistor DAC Physics:** Models discrete R-2R ladder (linear voltage 0.0V to 0.7V) and absence of broadcast gamma pre-correction.
+- **Studio Quantization:** $n \times 16$ scaling matching broadcast studio captures.
+- *Authoritative Specification:* See [Frame Buffer.md](Frame%20Buffer.md).
+
+### 6.3 Game Port Inputs
+Denise houses the directional and quadrature counters for Game Port 1 and Game Port 2 (`JOY0DAT`, `JOY1DAT`, `POT0DAT`, `POT1DAT`, `POTGO`).
 - *Detailed Specifications:* See [Mouse.md](Mouse.md) and [Joystick.md](Joystick.md).
 
 ---
 
-## 8. Video Signal Generation, Resistor DAC & CRT Gamma Transfer Physics
-
-The conversion from 12-bit Amiga RGB444 color registers (`COLOR00`–`COLOR31`) to analog display voltages and host 32-bit ARGB frame buffers is governed by physical hardware circuits:
-
-### 8.1 Discrete R-2R Resistor Ladder DAC (Linear Voltage)
-Unlike modern graphics hardware with built-in active DACs or non-linear gamma lookup tables:
-- **Onboard Resistor Network:** In the physical Amiga 500, Denise outputs 4 digital CMOS logic lines per color channel ($R_0..R_3$, $G_0..G_3$, $B_0..B_3$) directly to an external discrete resistor network on the motherboard (R-2R ladder utilizing $270\ \Omega$ and $560\ \Omega$ metal film resistors feeding a standard $75\ \Omega$ termination).
-- **Strictly Linear Voltage Steps:** The resistor network functions as a passive digital-to-analog converter producing 16 strictly equidistant, linear voltage levels from $0.0\text{V}$ (code 0) to $0.7\text{V}$ (code 15) with an exact step voltage of $\Delta V = \frac{0.7\text{V}}{15} \approx 46.67\text{ mV}$.
-
-### 8.2 Absence of Broadcast Gamma Pre-Correction
-In standard analog color television broadcast standards (PAL / NTSC / CCIR System I):
-- **Broadcast Standards (Gamma Pre-Compressed):** Television cameras were legally mandated to apply gamma pre-correction ($\gamma \approx 1/2.2 \approx 0.45$) to the video signal before transmission. Because the human visual system is logarithmically sensitive to luminance in dark regions (Weber-Fechner law) and CRT electron guns exhibit a non-linear power-law characteristic ($I \propto V^\gamma$, where $\gamma \approx 2.2–2.8$), pre-compressing highlights and expanding dark tones ensured that dark values occupied significantly more bandwidth in the transmission channel, suppressing transmission noise in shadows.
-- **The Amiga Reality (Uncorrected Raw Signal):** The Amiga 500 contains **zero gamma correction circuitry**. The video signal emitted from the 23-pin RGB port is raw, uncompressed linear voltage directly proportional to the 4-bit digital register values. Consequently, dark levels occupy the exact same proportional voltage bandwidth as highlight levels (each step is 1/15th of the dynamic range).
-
-### 8.3 CRT Monitor Transfer Function & Shadow Contrast
-When an uncorrected Amiga video signal is plugged directly into a period-accurate analog CRT monitor (such as the Commodore 1084S):
-- **Natural CRT Expansion:** The physical power-law response of the CRT monitor's electron gun ($\gamma_{\text{CRT}} \approx 2.8$) acts directly upon the linear voltage:
-  $$L(n) = L_{\text{max}} \times \left(\frac{n}{15}\right)^{2.8}$$
-- **Crushed Shadows & Retro Contrast:** The lowest DAC steps ($n = 1, 2, 3$) produce negligible physical screen luminance ($L(1) = 0.05\%$, $L(2) = 0.35\%$, $L(3) = 1.1\%$), naturally crushing deep shadows into pitch black, while upper steps ($n = 12..15$) generate over $70\%$ of visible luminance. Amiga pixel artists and game developers calibrated their palette choices specifically against this natural CRT darkening.
-
-### 8.4 Studio Quantization ($n \times 16$) & Host Verification Tolerance ($\pm 1$)
-When digitizing Amiga video frames or comparing emulator output against vAmigaTS golden reference captures (`.raw` RGB24 viewports):
-- **Studio Range Scaling ($n \times 16$):** Rather than naively scaling 4-bit values to 8-bit using bit replication `(n << 4) | n` ($15 \times 17 = 255$), the uncorrected linear DAC voltage maps to 8-bit studio quantization ($n \times 16 \to 0, 16, 32, ..., 240$), matching broadcast studio conventions where nominal peak white is capped at code 240 (`0xF0`).
-- **Chroma Subcarrier Rounding ($\pm 1$ Channel Tolerance):** Analog video modulators (such as the Motorola MC1377P inside the Commodore A520 TV modulator) and frame grabber ADC matrix conversions introduce minor $\pm 1$ LSB chroma rounding (e.g. 239 vs 240, 95 vs 96, 63 vs 64). Frame differencers allow a tolerance of $\pm 1$ per RGB channel (`COLOR_TOLERANCE_PER_CHANNEL = 1`) to ensure deterministic matching against physical silicon captures without spurious 1-LSB noise.
-
----
-
-## 9. Reset Defaults
+## 7. Reset Defaults
 
 - **`BPLCON0` (`$DFF100`):** Reset to **`$0000`** (bitplanes disabled, video generation off).
 - **`COLOR00`–`COLOR31`:** Default to **`$0000`** (black).
@@ -225,9 +206,10 @@ When digitizing Amiga video frames or comparing emulator output against vAmigaTS
 
 ---
 
-## 10. Reference Documentation & Upstream Ground Truth
+## 8. Reference Documentation & Upstream Ground Truth
 
-- [Amiga Hardware Reference Manual: Chapter 3 (Playfield Hardware)](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Authoritative guide for dual-playfield scrolling, bitplane priority multiplexing, color palette selection, HAM6, and EHB video modes.
-- [Amiga Hardware Reference Manual: Chapter 4 (Sprite Hardware)](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md): Hardware specification for 8 DMA sprite channels, sprite pairing (15-color mode), and hardware collision detection (`CLXDAT`).
-- [Amiga Hardware Reference Manual: Appendix B (Register Summary)](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Bitfield layouts and access modes for all Denise custom chip registers (`$DFF0E0`–`$DFF1BE`).
+- [Sprites Architecture Specification](Sprites.md): 8 hardware sprite engines, attached pairs, and position comparators.
+- [Frame Buffer Specification](Frame%20Buffer.md): 32-bit ARGB raster compositor and resistor DAC circuit physics.
+- [Amiga Hardware Reference Manual: Chapter 3 (Playfield Hardware)](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Authoritative guide for dual-playfield scrolling, bitplane priority, HAM6, and EHB video modes.
+- [Amiga Hardware Reference Manual: Chapter 4 (Sprite Hardware)](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md): Hardware specification for 8 DMA sprite channels and collision detection (`CLXDAT`).
 - [vAmiga Denise Component Implementation](../../../ref_src/vAmiga-4.5/Core/Components/Denise/Denise.cpp): Reference C++ pixel pipeline, bitplane serializer, and palette DAC conversion.

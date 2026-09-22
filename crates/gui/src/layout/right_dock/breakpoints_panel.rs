@@ -35,7 +35,7 @@ impl Default for BreakpointFormState {
     }
 }
 
-pub fn render_breakpoints_panel(
+pub(crate) fn render_breakpoints_panel(
     bpm: &mut debugger::BreakpointManager,
     form: &mut BreakpointFormState,
     ui: &mut Ui,

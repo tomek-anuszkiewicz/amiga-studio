@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-14
-updated: 2026-09-14
+updated: 2026-09-19
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 ---
 
@@ -16,6 +16,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md
 - **Subsystem Specifications:** [MemoryBus.md](MemoryBus.md) | [Agnus.md](Agnus.md) | [Denise.md](Denise.md) | [Paula.md](Paula.md) | [CIA.md](CIA.md) | [Floppy.md](Floppy.md)
 - **Companion Register Matrix:** [Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)
 - **Hardware Quirks Index:** [Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)
+- **Operational Rule:** [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md)
 
 ---
 
@@ -27,6 +28,22 @@ In the Amiga 500 hardware architecture, cross-chip communication does not use a 
 > **The Closed-Set Invariant:**
 > Over 90% of custom register writes stay entirely within the silicon boundaries of the chip that owns them (e.g. palette colors stay in Denise, audio volume stays in Paula).
 > Only a strictly finite set of ~8 to 10 hardware signals ever cross physical chip boundaries to influence another subsystem.
+
+### 1.1 Prohibition of Direct Inter-Chip Shortcuts ("No Signal Smuggling")
+
+Emulation code must strictly adhere to the physical bus and signal model:
+1. **Zero Direct Inter-Chip Coupling:** Subsystems (`Agnus`, `Denise`, `Paula`, `CIA`, `CPU`) must **never** hold direct references or invoke mutating methods directly on one another.
+2. **Agnus Bus Mastership:** Agnus is the **sole DMA address generator** for Chip RAM. It owns all DMA pointers (`BPLxPT`, `SPRxPT`, `AUDxPT`, `DSKPT`, `COPxLC`, `BLTxPT`).
+3. **Passive Data Latching (Zero Direct Memory Reads in Denise & Paula):**
+   - Specialized chips never call `memory.read()` or hold slices into Chip RAM.
+   - Agnus drives the Chip RAM address and the internal Register Address (`RGA`) bus.
+   - The memory bus outputs the 16-bit word onto the shared data bus.
+   - The receiving chip (`Denise` for `BPLxDAT`/`SPRxDAT`, `Paula` for `AUDxDAT`/`DSKDAT`) passively latches the word from the data bus upon matching its `RGA` strobe.
+4. **Discrete Electronic Lines:** Cross-chip triggers (`DMAL`, `_BLITINT`, `AUDxDSR`, `_VSYNC`, `_HSYNC`, IPL) model physical copper traces routed via the top-level machine loop and memory bus.
+5. **Motherboard Simulator & Post-CCK `poll_*` Signal Dispatch:**
+   - The top-level machine loop (`MachineLoop`) acts as the physical motherboard PCB simulator.
+   - After each Color Clock, `MachineLoop` queries subsystem output pins using explicit `poll_*` methods (e.g. `agnus.poll_blitter_irq()`, `agnus.poll_copper_write()`, `agnus.poll_bpl_dma()`, `paula.poll_audio_restart()`, `floppy.poll_dskblk_irq()`, `cia_a.irq_pending()`).
+   - `MachineLoop` then routes the sampled events directly to target subsystem input handlers (e.g. `paula.set_interrupt_request()`, `denise.write_bpldat()`, `agnus.reload_audio_ptr()`). No chip ever reaches outside its struct.
 
 This catalog establishes the definitive inventory of cross-chip boundary signals, their calibrated propagation latencies, conflict resolution behavior during in-flight writes, and their target action methods.
 
@@ -80,14 +97,14 @@ The following table documents every cross-chip signal in the Amiga 500:
 | Source Subsystem | Trigger Register / Event | Physical Wire / Bus Signal | Calibrated Delay | Mutation Mode | Target Subsystem | Architectural Action Method | Hardware Consequence |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Agnus** | `DMACON` ($096) write | Internal DMA Control Bus | 2 CCKs | `OverwritePending` | **Agnus** (Copper, Blitter) & **Paula** (Audio, Disk) | `dma.write_dmacon(val)`<br/>`audio.set_dma_enables(...)`<br/>`floppy.set_dma_enabled(...)` | Masters DMA gating across Copper, Blitter, Sprites, Bitplanes, Disk, and Audio. |
-| **Agnus** | `COPJMP1` ($088) strobe | Copper Restart Strobe 1 | 1 CCK | `OverwritePending` | **Copper** | `copper.strobe_jump1(cop1lc)` | Forces Copper program counter to reload from `COP1LC` on the next CCK phase. |
-| **Agnus** | `COPJMP2` ($08A) strobe | Copper Restart Strobe 2 | 1 CCK | `OverwritePending` | **Copper** | `copper.strobe_jump2(cop2lc)` | Forces Copper program counter to reload from `COP2LC` on the next CCK phase. |
+| **Agnus** | `COPJMP1` ($088) strobe | Copper Restart Strobe 1 | 1 CCK | `OverwritePending` | **Copper** | `agnus.strobe_copjmp1()`<br/>`copper.restart_list1()` | Forces Copper program counter to reload from `COP1LC` on the next CCK phase. |
+| **Agnus** | `COPJMP2` ($08A) strobe | Copper Restart Strobe 2 | 1 CCK | `OverwritePending` | **Copper** | `agnus.strobe_copjmp2()`<br/>`copper.restart_list2()` | Forces Copper program counter to reload from `COP2LC` on the next CCK phase. |
 | **Agnus** | `BLTSIZE` ($058) write | Blitter Start Trigger | 1 CCK | `OverwritePending` | **Blitter** | `blitter.sync_pointers(...)`<br/>`blitter.trigger_blit(val)` | Latches dimensions, copies staging pointers from Agnus, and sets `is_busy = true`. |
 | **Agnus** | `DIWSTRT` ($08E) / `DIWSTOP` ($090) | Display Window Clipping Bus | 4 CCKs | `OverwritePending` | **Denise** | `denise.set_diw(strt, stop)` | Configures raster beam horizontal and vertical screen blanking boundaries. |
 | **Agnus** | Blitter operation completes | `_BLITINT` (Interrupt line) | Live | Event Strobe | **Paula** | `paula.set_interrupt_request(0x0040)` | Asserts Level 3 interrupt request (bit 6 of `INTREQ`). |
 | **Denise** | `BPLCON0` ($100) write | Bitplane Mode Bus | 4 CCKs (Agnus) / 1 CCK (Denise) | `OverwritePending` | **Agnus** | `agnus.set_bplcon0(val)` | Agnus allocates 0 to 6 DMA time slots per scanline based on BPL planecount. |
-| **Paula** | `DSKLEN` ($024) write 2 | Disk DMA Arm / Start | 2 CCKs | `OverwritePending` | **FloppyController** | `floppy.set_dsklen(val)` | 2nd consecutive write with bit 15 set activates MFM DMA streaming. |
-| **Paula** | `DSKSYNC` ($07E) write | MFM Word Sync Match | 2 CCKs | `OverwritePending` | **FloppyController** | `floppy.set_dsksyn(val)` | Updates the 16-bit bitstream match pattern (default `$4489`). |
+| **Paula** | `DSKLEN` ($024) write 2 | Disk DMA Arm / Start | 2 CCKs | `OverwritePending` | **Paula** | `paula.write_dsklen(val)` | 2nd consecutive write with bit 15 set activates MFM DMA streaming. |
+| **Paula** | `DSKSYNC` ($07E) write | MFM Word Sync Match | 2 CCKs | `OverwritePending` | **Paula** | `paula.write_register(0x07E, val)` | Updates the 16-bit bitstream match pattern (default `$4489`). |
 | **Paula** | Audio channel sample buffer finishes | `AUDxDSR` (DMA Strobe/Restart) | Live | Event Strobe | **Agnus** | `agnus.reload_audio_ptr(channel)` | Agnus reloads active pointer `audpt[ch] = audlc[ch]` for looping. |
 | **Paula** | Audio buffer finishes or floppy sync matches | `_INT4` / `_INT5` / `_INT1` | Live | Latch | **CPU (68000)** | `machine.resolve_ipl()` -> `cpu.state.ipl` | Updates CPU interrupt priority level (IPL 1..6) based on unmasked `INTREQ`. |
 | **CIA-A** | Port A ($BFE001) bit 0 write | `_OVL` (Low-Memory Overlay) | 5 CCKs (1 E-Clock) | `OverwritePending` | **PhysicalMemory** | `mem.map_chip_ram_to_low_memory()` / `mem.map_kickstart_to_low_memory()` | Unmaps Kickstart ROM from `$000000` after reset vector boot execution. |

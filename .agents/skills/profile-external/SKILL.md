@@ -91,9 +91,9 @@ Because Rust symbols retain their fully qualified crate and module hierarchy, yo
 
 ---
 
-## 6. Extracting Method-Level Profile Breakdowns (`tools/harness/aggregate_profile.py`)
+## 6. Extracting Method-Level Profile Breakdowns (`.agents/skills/profile-external/scripts/aggregate_profile.py`)
 
-To track the exact percentage of time spent across individual chips and modules without adding invasive runtime probes, use `tools/harness/aggregate_profile.py`.
+To track the exact percentage of time spent across individual chips and modules without adding invasive runtime probes, use `.agents/skills/profile-external/scripts/aggregate_profile.py`.
 
 The aggregator inspects external sampling profiler traces (Samply / Firefox Gecko JSON or folded stack traces) and matches call frames against canonical entry methods:
 - **CPU:** `Cpu::step_cck` (`cpu`)
@@ -113,10 +113,10 @@ The aggregator inspects external sampling profiler traces (Samply / Firefox Geck
 ### Aggregation Command:
 ```powershell
 # Parse a profile and view method breakdown table in terminal
-python tools/harness/aggregate_profile.py profile.json --target coptim1
+python .agents/skills/profile-external/scripts/aggregate_profile.py profile.json --target coptim1
 
 # Ingest profile results directly into the golden benchmark baseline
-python tools/harness/aggregate_profile.py profile.json --target coptim1 --update-baseline tests/benchmarks/chipset_benchmark_baseline.json
+python .agents/skills/profile-external/scripts/aggregate_profile.py profile.json --target coptim1 --update-baseline tests/benchmarks/chipset_benchmark_baseline.json
 ```
 
 ---

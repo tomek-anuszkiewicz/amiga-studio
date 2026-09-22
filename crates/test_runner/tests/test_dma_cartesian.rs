@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Cartesian DMA Contention & Address Permutation Stress Test Suite
 //!
 //! Validates cycle-exact M68000 micro-stepping and MemoryBus invariants across the full
@@ -317,4 +319,14 @@ fn test_dma_cartesian_privileged_and_atomic() {
         "EORItoCCR",
         "EORItoSR",
     ]);
+}
+
+#[test]
+fn test_preflight_debug_derive() {
+    use test_runner::dma_harness::{run_preflight, PreFlight};
+    let tests = load_hardware_tests("NOP", 100.0);
+    assert!(!tests.is_empty(), "NOP tests must be loaded");
+    let preflight: PreFlight = run_preflight(&tests[0]);
+    let debug_str = format!("{:?}", preflight);
+    assert!(debug_str.contains("PreFlight"));
 }

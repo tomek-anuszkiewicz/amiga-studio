@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Golden Master Benchmark CSV Structure & Cycle Invariance Regression Test Suite
 //!
 //! Validates that the deterministic columns of benchmark CSV tables:

@@ -24,7 +24,7 @@ egui = { version = "0.31", default-features = true }
 config = { path = "../config" }
 rtc = { path = "../rtc" }
 physical_memory = { path = "../physical_memory" }
-m68000 = { path = "../m68000" }
+cpu = { path = "../cpu" }
 debugger = { path = "../debugger" }
 serde = { workspace = true }
 
@@ -38,3 +38,6 @@ wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1"
 web-sys = { version = "0.3", features = ["Document", "Element", "HtmlCanvasElement", "Window"] }
+
+[lints]
+workspace = true

@@ -5,7 +5,7 @@
 //! Supports dynamic capacity scaling (>=1s PAL execution, ~250,000+ frames),
 //! on/off recording toggles, multi-granularity navigation, and CCK cycle search.
 
-use m68000::CpuState;
+use cpu::CpuState;
 
 /// Single temporal snapshot entry in the history ring buffer
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -179,8 +179,9 @@ impl TemporalHistory {
 
     /// Current chronological index being scrubbed, or live head (len - 1)
     #[inline]
-    pub fn current_cursor_or_head(&self) -> usize {
-        self.scrub_cursor.unwrap_or(self.len().saturating_sub(1))
+    fn current_cursor_or_head(&self) -> usize {
+        self.scrub_cursor
+            .unwrap_or_else(|| self.len().saturating_sub(1))
     }
 
     /// Steps backward by `delta` instructions in history

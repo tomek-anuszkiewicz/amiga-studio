@@ -196,7 +196,7 @@ flowchart TD
    - Load $D_0-D_7$ and $A_0-A_6$.
    - Load $USP$ and $SSP$. Set active $A_7$ based on the Supervisor bit ($S$) in $SR$.
    - Set $SR$ and $PC$.
-   - Prime the internal prefetch buffer with `initial.prefetch[0]` and `initial.prefetch[1]`.
+   - Prime the internal prefetch buffer: `initial.prefetch[0]` into `cpu.state.ir` and `initial.prefetch[1]` into `cpu.state.prefetch`.
 3. **Execute Instruction:**
    - Step the CPU cycle-by-cycle (or CCK-by-CCK) until the current instruction completes.
    - Guard against infinite loops with a timeout threshold (e.g., `length * 2` cycles or max 1,000 cycles).
@@ -239,9 +239,9 @@ The test harness is implemented in the dedicated workspace crate [`crates/test_r
 
 ### 5.2 CPU State Setup & Execution Flow
 Implemented directly in [`crates/test_runner/src/runner.rs`](../../../crates/test_runner/src/runner.rs):
-- Instantiates a clean [`TestMemoryBus`](../../../crates/physical_memory/src/test_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
+- Instantiates a clean [`TestMemoryBus`](../../../crates/test_runner/src/test_memory_bus.rs) and injects initial RAM vectors via `bus.load_test_ram()`.
 - Primes CPU registers $D_0-D_7$, $A_0-A_6$, $USP$, $SSP$, $SR$, and Program Counter (accounting for Tom Harte's $+4$ prefetch offset).
-- Primes prefetch queue registers `ir` and `prefetch[0]`.
+- Primes prefetch queue registers `ir` and `prefetch`.
 - Drives instruction stepping via `cpu.step_instruction(&mut bus)` or CCK-by-CCK via `cpu.step_cck(&mut bus)`.
 
 ---

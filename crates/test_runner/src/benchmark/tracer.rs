@@ -7,9 +7,9 @@
 use std::fs;
 use std::path::Path;
 
+use cpu::Cpu;
 use disassembler::disassemble;
-use m68000::Cpu;
-use physical_memory::MemoryBus;
+use physical_memory::PhysicalMemory;
 
 use super::builder::{
     BenchmarkProgram, BenchmarkProgramBuilder, BENCH_EXIT_PC, BENCH_RAM_BUFFER_A1,
@@ -164,7 +164,7 @@ impl BenchmarkTraceLog {
 
 /// Executes a single pass of the program, tracking register and memory deltas
 pub fn trace_program(program: &BenchmarkProgram, max_steps: usize) -> BenchmarkTraceLog {
-    let mut bus = MemoryBus::new();
+    let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
     program.inject_into(&mut cpu, &mut bus);
 
@@ -194,34 +194,29 @@ pub fn trace_program(program: &BenchmarkProgram, max_steps: usize) -> BenchmarkT
         let mut reg_deltas = Vec::new();
 
         // Check Data Registers
-        let d_now = cpu.state.d_regs();
-        let d_before = cpu_before.state.d_regs();
         for i in 0..8 {
-            if d_now[i] != d_before[i] {
-                reg_deltas.push(format!(
-                    "D{}: 0x{:08X} -> 0x{:08X}",
-                    i, d_before[i], d_now[i]
-                ));
+            let before = cpu_before.state.d_long(i);
+            let now = cpu.state.d_long(i);
+            if now != before {
+                reg_deltas.push(format!("D{}: 0x{:08X} -> 0x{:08X}", i, before, now));
             }
         }
 
         // Check Address Registers
-        let a_now = cpu.state.a_regs();
-        let a_before = cpu_before.state.a_regs();
         for i in 0..8 {
-            if a_now[i] != a_before[i] {
-                reg_deltas.push(format!(
-                    "A{}: 0x{:08X} -> 0x{:08X}",
-                    i, a_before[i], a_now[i]
-                ));
+            let before = cpu_before.state.a_long(i);
+            let now = cpu.state.a_long(i);
+            if now != before {
+                reg_deltas.push(format!("A{}: 0x{:08X} -> 0x{:08X}", i, before, now));
             }
         }
 
         // Check SR
-        if cpu.state.sr != cpu_before.state.sr {
+        if cpu.state.sr() != cpu_before.state.sr() {
             reg_deltas.push(format!(
                 "SR: 0x{:04X} -> 0x{:04X}",
-                cpu_before.state.sr, cpu.state.sr
+                cpu_before.state.sr(),
+                cpu.state.sr()
             ));
         }
 
@@ -275,9 +270,9 @@ pub fn trace_program(program: &BenchmarkProgram, max_steps: usize) -> BenchmarkT
         initial_d,
         initial_a,
         steps,
-        final_d: *cpu.state.d_regs(),
-        final_a: *cpu.state.a_regs(),
-        final_sr: cpu.state.sr,
+        final_d: std::array::from_fn(|i| cpu.state.d_long(i)),
+        final_a: std::array::from_fn(|i| cpu.state.a_long(i)),
+        final_sr: cpu.state.sr(),
         final_pc: cpu.state.instruction_pc,
         total_guest_cycles: total_cycles,
         terminated_cleanly,

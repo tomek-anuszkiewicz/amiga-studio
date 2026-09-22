@@ -8,8 +8,12 @@ status: "active"
 created: 2026-09-04
 updated: 2026-09-12
 related: ["[Game Ports.md](Game%20Ports.md)", "[Mouse.md](Mouse.md)", "[Denise.md](Denise.md)", "[CIA.md](CIA.md)", "[General Architecture.md](General%20Architecture.md)"]
+tracked_paths:
+  - "crates/joystick"
+  - "crates/game_ports"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Amiga 500 Joystick Subsystem & Input Architecture
 
 This document specifies the hardware registers, electrical interface, extended adapter standards, and cross-platform host input abstraction for digital and proportional joysticks in the Amiga 500 emulator.

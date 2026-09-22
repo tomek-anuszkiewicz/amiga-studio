@@ -70,8 +70,6 @@ pub struct Copper {
     pub ir1: u16,
     /// Instruction register 2 (IR2 / cop2ins)
     pub ir2: u16,
-    /// Current instruction latch (legacy alias for ir1)
-    pub copins: u16,
     /// Copper control register ($02E)
     pub copcon: u16,
     /// Copper Danger mode flag (COPCON bit 1: allows writes to $DFF000..$DFF07E)
@@ -99,7 +97,6 @@ impl Copper {
         self.cop_pc = 0;
         self.ir1 = 0;
         self.ir2 = 0;
-        self.copins = 0;
         self.copcon = 0;
         self.cdang = false;
         self.dma_enabled = false;
@@ -117,18 +114,6 @@ impl Copper {
             self.is_waiting = false;
             self.state = CopperState::Idle;
         }
-    }
-
-    /// Sets COP1LC address latch
-    #[inline]
-    pub fn set_cop1lc(&mut self, addr: u32) {
-        self.cop1lc = addr;
-    }
-
-    /// Sets COP2LC address latch
-    #[inline]
-    pub fn set_cop2lc(&mut self, addr: u32) {
-        self.cop2lc = addr;
     }
 
     /// Restarts execution using Copper list 1 (COPJMP1 strobe)
@@ -155,20 +140,6 @@ impl Copper {
         self.dma_enabled && self.is_running && !self.is_waiting
     }
 
-    /// Action method: triggers Copper restart on COP1LC address
-    #[inline]
-    pub fn strobe_jump1(&mut self, addr: u32) {
-        self.cop1lc = addr;
-        self.restart_list1();
-    }
-
-    /// Action method: triggers Copper restart on COP2LC address
-    #[inline]
-    pub fn strobe_jump2(&mut self, addr: u32) {
-        self.cop2lc = addr;
-        self.restart_list2();
-    }
-
     /// Writes COPCON control register
     #[inline]
     pub fn set_copcon(&mut self, val: u16) {
@@ -178,7 +149,7 @@ impl Copper {
 
     /// Evaluates the WAIT / SKIP beam position comparator
     #[inline]
-    pub fn eval_comparator(&self, beam: BeamPosition, blitter_busy: bool) -> bool {
+    fn eval_comparator(&self, beam: BeamPosition, blitter_busy: bool) -> bool {
         let vpos_target = ((self.ir1 >> 8) & 0xFF) as u16;
         let vpos_mask = (((self.ir2 >> 8) & 0x7F) | COPPER_VPOS_FORCE_BIT7) as u16;
 
@@ -290,7 +261,6 @@ impl Copper {
                 }
                 if cck_left <= 1 {
                     self.ir1 = read_chip_ram_word(chip_ram, self.cop_pc);
-                    self.copins = self.ir1;
                     self.cop_pc = self.cop_pc.wrapping_add(2) & COPPER_ADDRESS_MASK_512K;
                     self.state = CopperState::FetchIR2(2);
                 } else {

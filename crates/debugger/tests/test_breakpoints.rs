@@ -1,7 +1,9 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use cpu::CpuState;
 use debugger::{
     BreakpointCondition, BreakpointManager, ConditionOp, ConditionRegister, WatchAccess,
 };
-use m68000::CpuState;
 
 #[test]
 fn test_condition_register_evaluation() {
@@ -12,7 +14,7 @@ fn test_condition_register_evaluation() {
     state.set_a_long(7, 0x0007FFFE);
     state.instruction_pc = 0x001000;
     state.pc = 0x001004; // Hardware prefetch bus PC
-    state.sr = 0x2715; // CCR is lower 5 bits (0x15)
+    state.set_sr(0x2715); // CCR is lower 5 bits (0x15)
 
     assert_eq!(ConditionRegister::D(0).get_value(&state), 0x12345678);
     assert_eq!(ConditionRegister::D(7).get_value(&state), 0x87654321);

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use config::BeamPosition;
 use copper::{Copper, CopperState};
 
@@ -29,7 +31,7 @@ fn test_copper_reset_and_restart() {
 fn test_copper_move_cycle_timing_and_data() {
     let mut cop = Copper::new();
     cop.set_dma_enabled(true);
-    cop.set_cop1lc(0x00010000);
+    cop.cop1lc = 0x00010000;
     cop.restart_list1();
 
     // Copper list with two MOVE instructions:
@@ -76,7 +78,7 @@ fn test_copper_move_cycle_timing_and_data() {
 fn test_copper_danger_mode_cdang_halts_on_violation() {
     let mut cop = Copper::new();
     cop.set_dma_enabled(true);
-    cop.set_cop1lc(0x00010000);
+    cop.cop1lc = 0x00010000;
 
     // Instruction: MOVE $0040, $09F0 (BLTCON0 write)
     let mut ram = vec![0u8; 0x20000];
@@ -110,7 +112,7 @@ fn test_copper_danger_mode_cdang_halts_on_violation() {
 fn test_copper_wait_beam_position() {
     let mut cop = Copper::new();
     cop.set_dma_enabled(true);
-    cop.set_cop1lc(0x00010000);
+    cop.cop1lc = 0x00010000;
     cop.restart_list1();
 
     // WAIT for Line 20 (0x14), HPOS 60 (0x3C | 1 = 0x3D) -> IR1 = 0x143D (bit 0 = 1)
@@ -158,7 +160,7 @@ fn test_copper_wait_beam_position() {
 fn test_copper_wait_bfd_blitter_busy() {
     let mut cop = Copper::new();
     cop.set_dma_enabled(true);
-    cop.set_cop1lc(0x00010000);
+    cop.cop1lc = 0x00010000;
     cop.restart_list1();
 
     // WAIT for Line 10 with BFD == 0 (Bit 15 = 0, waits for Blitter Finished)
@@ -191,7 +193,7 @@ fn test_copper_wait_bfd_blitter_busy() {
 fn test_copper_skip_conditional_bypass() {
     let mut cop = Copper::new();
     cop.set_dma_enabled(true);
-    cop.set_cop1lc(0x00010000);
+    cop.cop1lc = 0x00010000;
 
     // SKIP when VPOS >= 20: Word 1 = 0x1401, Word 2 = 0xFFFF (Bit 0 = 1 -> SKIP)
     // Inst 2 (to be skipped if VPOS >= 20): MOVE $0180, $0111
@@ -235,7 +237,7 @@ fn test_copper_skip_conditional_bypass() {
 fn test_copper_terminator_and_vblank_restart() {
     let mut cop = Copper::new();
     cop.set_dma_enabled(true);
-    cop.set_cop1lc(0x00010000);
+    cop.cop1lc = 0x00010000;
     cop.restart_list1();
 
     // WAIT $FFFF, $FFFE (Standard list terminator)
@@ -266,7 +268,7 @@ fn test_copper_terminator_and_vblank_restart() {
 fn test_copper_wait_vertical_boundary_cross_above_line_128() {
     let mut cop = Copper::new();
     cop.set_dma_enabled(true);
-    cop.set_cop1lc(0x00010000);
+    cop.cop1lc = 0x00010000;
     cop.restart_list1();
 
     // WAIT $FFDF, $FFFE (Cross vertical boundary at line 255, hpos 222)
@@ -293,7 +295,7 @@ fn test_copper_wait_vertical_boundary_cross_above_line_128() {
 fn test_copper_dma_denied_at_cycle_e0() {
     let mut cop = Copper::new();
     cop.set_dma_enabled(true);
-    cop.set_cop1lc(0x00010000);
+    cop.cop1lc = 0x00010000;
     cop.restart_list1();
 
     let mut ram = vec![0u8; 0x20000];
@@ -334,4 +336,24 @@ fn test_copper_canonical_constants() {
     assert_eq!(COPPER_CDANG_REGISTER_LIMIT, 0x0080);
     assert_eq!(COPPER_OCS_MIN_REGISTER_LIMIT, 0x0040);
     assert_eq!(COPPER_ADDRESS_MASK_512K, 0x0007_FFFE);
+}
+
+#[test]
+fn test_copper_registers_canonical_ir1_and_reset() {
+    let mut cop = Copper::new();
+    cop.ir1 = 0x1234;
+    cop.ir2 = 0x5678;
+    cop.reset();
+    assert_eq!(cop.ir1, 0);
+    assert_eq!(cop.ir2, 0);
+    assert_eq!(cop.cop_pc, 0);
+}
+
+#[test]
+fn test_copper_copcon_cdang_setting() {
+    let mut cop = Copper::new();
+    cop.set_copcon(0x0002);
+    assert!(cop.cdang);
+    cop.set_copcon(0x0000);
+    assert!(!cop.cdang);
 }

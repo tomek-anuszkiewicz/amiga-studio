@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Unit Tests for Agnus Blitter 256-Minterm Boolean ALU & Fill Logic
 //!
 //! Validates `eval_minterm` across all 8 truth-table terms, standard Amiga graphic

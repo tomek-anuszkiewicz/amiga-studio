@@ -6,14 +6,15 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-09-16
-related: ["[Main loop A500.md](Main%20loop%20A500.md)", "[Game Ports.md](Game%20Ports.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Testing Strategy and Quality Assurance.md](Testing%20Strategy%20and%20Quality%20Assurance.md)"]
+updated: 2026-09-19
+related: ["[Main loop A500.md](Main%20loop%20A500.md)", "[Game Ports.md](Game%20Ports.md)", "[MemoryBus.md](MemoryBus.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Interrupts.md](Interrupts.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Testing Strategy and Quality Assurance.md](Testing%20Strategy%20and%20Quality%20Assurance.md)"]
 ---
 
 # Amiga 500 General System Architecture
 
 > [!NOTE]
 > Project-wide engineering constraints, Rust coding guidelines, and WASM requirements are defined in [AGENTS.md](../../../AGENTS.md).
+> Detailed inter-chip signal propagation rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md) and [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md).
 
 ---
 
@@ -21,7 +22,7 @@ related: ["[Main loop A500.md](Main%20loop%20A500.md)", "[Game Ports.md](Game%20
 
 The emulator is organized around a top-level machine struct named A500, which owns all subsystems and manages coordination without circular handles:
 
-`mermaid
+```mermaid
 graph TD
     A500["A500 Machine Loop"] --> CPU["CPU (Motorola 68000)"]
     A500 --> BUS["MemoryBus (24-bit / 16-bit)"]
@@ -34,11 +35,61 @@ graph TD
 
     BUS <--> AGNUS
     BUS <--> CPU
-`
+```
 
 - **Top-Level Machine (A500)**: Controls stepping (single CCK, multi-cycle, or full video frame), reset lines, and interrupt priority arbitration (IPL 1–6).
 - **Decoupled Modules**: Subsystems do not hold references or callbacks to one another; signals and bus requests are driven in the main machine loop and MemoryBus.
 - **Circuit Simulation & Signal Propagation**: Hardware components model physical circuit delay. Changes to register latches take effect on subsequent clock phases/cycles rather than propagating instantaneously across chips.
+
+### 1.1 Physical Bus Topology & Inter-Chip Isolation Invariant
+
+In the physical Commodore Amiga 500 architecture, custom chips do not share an open software memory bus, nor do they communicate via dynamic callbacks or mutual references. The system strictly adheres to three immutable physical hardware rules:
+
+```mermaid
+flowchart TD
+    subgraph AGNUS_BLOCK ["Agnus (Exclusive Bus Master & Address Generator)"]
+        AGNUS_DMA["DMA Channel Pointers\n(BPLxPT, SPRxPT, AUDxPT, DSKPT)"]
+        RGA_GEN["Register Address Generator\n(RGA8..1 Bus Driver)"]
+    end
+
+    subgraph BUSES ["Physical Motherboard Bus Infrastructure"]
+        ADDR_BUS["Chip RAM Address Bus (DRA19..0)"]
+        RGA_BUS["Internal RGA Bus (RGA8..1)"]
+        DATA_BUS["16-bit Bidirectional Data Bus (D15..0)"]
+    end
+
+    subgraph MEM ["Physical Memory"]
+        CRAM["Chip RAM (512 KB / 1 MB)"]
+    end
+
+    subgraph RECEIVERS ["Specialized Custom Chips (Passive Bus Latchers)"]
+        DENISE["Denise\nLatches BPLxDAT, SPRxDAT\n(Zero Direct Memory Reads)"]
+        PAULA["Paula\nLatches AUDxDAT, DSKDAT\n(Zero Direct Memory Reads)"]
+    end
+
+    AGNUS_DMA -->|Drives Memory Address| ADDR_BUS
+    RGA_GEN -->|Drives Register Offset| RGA_BUS
+    ADDR_BUS --> CRAM
+    CRAM -->|Places Word onto Bus| DATA_BUS
+    RGA_BUS -->|Strobe Match| DENISE
+    RGA_BUS -->|Strobe Match / DMAL| PAULA
+    DATA_BUS -->|Latched by Strobe| DENISE
+    DATA_BUS -->|Latched by Strobe| PAULA
+```
+
+1. **Strict Prohibition of Direct Cross-Chip Signal Smuggling:**
+   - Custom chips (`Agnus`, `Denise`, `Paula`, `CIAs`, `CPU`) **must never** hold direct pointers or invoke mutating methods directly on each other.
+   - All inter-chip interactions (DMA requests, interrupt lines, blanking, strobes) represent physical copper PCB traces coordinated through the machine loop and `MemoryBus`.
+2. **Agnus as the Exclusive DMA Address Master:**
+   - Agnus is the **sole bus master and address generator** for all autonomous Chip RAM DMA channels (Bitplanes, Sprites, Audio, Floppy Disk, Copper, and Blitter).
+   - Agnus places the memory address onto the Chip RAM address bus and simultaneously asserts the target custom register offset onto the internal Register Address (`RGA`) bus.
+3. **Specialized Custom Chips as Passive Bus Latchers (Zero Direct Memory Reads):**
+   - Neither **Denise** nor **Paula** possesses DMA address generation circuits, and neither holds pointers to `PhysicalMemory`.
+   - Specialized chips **never initiate autonomous memory reads**. During an assigned DMA slot, the memory system reads the 16-bit word from Chip RAM onto the shared data bus, and the receiving chip passively latches the word into its internal holding register (`BPLxDAT`, `SPRxDAT`, `AUDxDAT`, `DSKDAT`) upon matching its `RGA` strobe.
+4. **`MachineLoop` as Motherboard PCB Simulator & Post-CCK `poll_*` Dispatch:**
+   - The top-level machine struct (`MachineLoop` / `A500Machine`) acts as the physical motherboard simulator.
+   - After each Color Clock cycle, the motherboard interrogates subsystem output pins via explicit `poll_*` methods (e.g. `agnus.poll_blitter_irq()`, `agnus.poll_copper_write()`, `agnus.poll_bpl_dma()`, `paula.poll_audio_restart()`, `floppy.poll_dskblk_irq()`, `cia_a.irq_pending()`).
+   - The motherboard routes these events to the target subsystem inputs (e.g. `paula.set_interrupt_request()`, `denise.write_bpldat()`, `agnus.reload_audio_ptr()`). No chip ever notifies or mutates a peer chip directly.
 
 ---
 
@@ -64,7 +115,7 @@ graph TD
         PMEM["physical_memory<br/><code>crates/physical_memory</code>"]:::core
         MBUS["memory_bus<br/><code>crates/memory_bus</code>"]:::core
         RTC["rtc<br/><code>crates/rtc</code>"]:::core
-        CPU["m68000<br/><code>crates/m68000</code>"]:::core
+        CPU["m68000<br/><code>crates/cpu</code>"]:::core
     end
 
     subgraph CustomChips["Custom Chip Coordinators & Coprocessors"]
@@ -79,7 +130,7 @@ graph TD
 
         PAULA["paula<br/><code>crates/paula</code>"]:::chip
         AUD["audio<br/><code>crates/audio</code>"]:::subchip
-        SER["serial_port<br/><code>crates/serial_port</code>"]:::subchip
+        INTR["interrupts<br/><code>crates/interrupts</code>"]:::subchip
 
         CIA["cia (A & B)<br/><code>crates/cia</code>"]:::chip
     end
@@ -90,7 +141,6 @@ graph TD
         JOY["joystick<br/><code>crates/joystick</code>"]:::subchip
         FLP["floppy<br/><code>crates/floppy</code>"]:::periph
         KBD["keyboard<br/><code>crates/keyboard</code>"]:::periph
-        PAR["parallel_port<br/><code>crates/parallel_port</code>"]:::periph
     end
 
     subgraph Diagnostics["Diagnostics, Debugger & GUI"]
@@ -111,7 +161,6 @@ graph TD
     ML --> FLP
     ML --> KBD
     ML --> GP
-    ML --> PAR
     ML --> RTC
 
     %% Logical Containment / Re-exports
@@ -123,7 +172,7 @@ graph TD
     DENISE --> FB
 
     PAULA --> AUD
-    PAULA --> SER
+    PAULA --> INTR
 
     GP --> MOU
     GP --> JOY
@@ -159,16 +208,15 @@ graph TD
 | **denise** | [crates/denise](../../../crates/denise) | Denise (MOS 8362/8373) video processor, bitplanes, palette (`COLOR00`–`COLOR31`), and collision registers. | config, serde |
 | **audio** | [crates/audio](../../../crates/audio) | Paula 4-channel 8-bit DMA audio engine, volume scaling (0..64), and stereo panning. | serde |
 | **floppy** | [crates/floppy](../../../crates/floppy) | 3.5" DD floppy drive mechanics (80 cylinders, 2 heads) and Paula MFM DMA controller. | serde |
-| **serial_port** | [crates/serial_port](../../../crates/serial_port) | Paula RS-232 UART transceiver (`SERDAT`, `SERPER`) and CIA-B handshakes. | serde |
-| **paula** | [crates/paula](../../../crates/paula) | Paula (MOS 8364) chip coordinator and central interrupt multiplexer (`INTENA`/`INTREQ`). | serde |
+| **interrupts** | [crates/interrupts](../../../crates/interrupts) | Central 14-source interrupt priority controller (`INTENA`, `INTREQ`), IPL 1..6 encoder, and atomic SET/CLR bit 15 logic. | serde |
+| **paula** | [crates/paula](../../../crates/paula) | Paula (MOS 8364) chip coordinator, serial UART transceiver, and audio/interrupt staging. | audio, config, interrupts, serde |
 | **keyboard** | [crates/keyboard](../../../crates/keyboard) | MOS 6500/1 keyboard microcontroller, scancode matrix, serial stream, and Ctrl-Amiga-Amiga reset. | serde |
-| **parallel_port** | [crates/parallel_port](../../../crates/parallel_port) | Centronics 8-bit bidirectional parallel printer port and CIA-B handshakes. | serde |
-| **cia** | [crates/cia](../../../crates/cia) | MOS 8520 Complex Interface Adapter (Timers A & B, Ports A & B, TOD, SDR, ICR). | serde |
+| **cia** | [crates/cia](../../../crates/cia) | MOS 8520 Complex Interface Adapter (Timers A & B, Ports A & B / parallel Centronics lines, TOD, SDR, ICR). | serde |
 | **rtc** | [crates/rtc](../../../crates/rtc) | OKI MSM6242B Real-Time Clock & Calendar emulation, BCD latches, civil calendar arithmetic. | config, serde |
 | **physical_memory** | [crates/physical_memory](../../../crates/physical_memory) | 24-bit physical address space, 256-entry 64KB bank table (`addr >> 16`), 2-phase CCK arbitration, open bus emulation. | config, rtc |
 | **memory_bus** | [crates/memory_bus](../../../crates/memory_bus) | Motherboard address router (`MemoryBus<'a>`), dispatching 24-bit address space live to physical storage, custom chips, and peripherals. | agnus, audio, blitter, cia, copper, denise, dma, floppy, frame_builder, paula, physical_memory, rtc, sprites |
-| **m68000** | [crates/m68000](../../../crates/m68000) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | physical_memory |
-| **machine_loop** | [crates/machine_loop](../../../crates/machine_loop) | Tier 0 top-level machine facade owning CPU, memory bus router, monotonic `u64` CCK counter, custom chips, coprocessors, and devices in a flat structure with parameter-based cycle stepping. | agnus, audio, blitter, cia, config, copper, denise, dma, floppy, frame_builder, game_ports, joystick, keyboard, m68000, memory_bus, mouse, parallel_port, paula, physical_memory, rtc, serial_port, sprites, serde |
+| **m68000** | [crates/cpu](../../../crates/cpu) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | physical_memory |
+| **machine_loop** | [crates/machine_loop](../../../crates/machine_loop) | Tier 0 top-level machine facade owning CPU, memory bus router, monotonic `u64` CCK counter, custom chips, coprocessors, and devices in a flat structure with parameter-based cycle stepping. | agnus, audio, blitter, cia, config, copper, denise, dma, floppy, frame_builder, game_ports, joystick, keyboard, m68000, memory_bus, mouse, paula, physical_memory, rtc, sprites, serde |
 | **disassembler** | [crates/disassembler](../../../crates/disassembler) | Cycle-exact M68000 instruction disassembler. | *None* |
 | **debugger** | [crates/debugger](../../../crates/debugger) | Headless inspection and debugging subsystem, temporal time-travel engine, breakpoints, and watchpoints. | m68000, physical_memory, disassembler |
 | **test_runner** | [crates/test_runner](../../../crates/test_runner) | Automated validation against Tom Harte SingleStepTests, cycle-exact benchmarking, and Cartesian DMA contention suite. | m68000, physical_memory, debugger, disassembler |

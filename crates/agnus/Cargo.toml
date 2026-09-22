@@ -13,3 +13,6 @@ blitter = { workspace = true }
 copper = { workspace = true }
 dma = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+
+[lints]
+workspace = true

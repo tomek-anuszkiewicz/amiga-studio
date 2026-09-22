@@ -6,17 +6,16 @@
 pub use agnus::{self, blitter, copper, dma};
 pub use cia;
 pub use config;
+pub use cpu;
 pub use denise::{self, frame_builder, sprites};
 pub use floppy;
 pub use game_ports;
 pub use joystick;
 pub use keyboard;
-pub use m68000;
 pub use memory_bus;
 pub use memory_bus::MemoryBus;
 pub use mouse;
-pub use parallel_port;
-pub use paula::{self, audio, serial_port};
+pub use paula::{self, audio};
 pub use physical_memory;
 pub use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 pub use rtc;
@@ -24,7 +23,7 @@ pub mod save_state;
 pub use save_state::*;
 
 use config::A500Config;
-use m68000::Cpu;
+use cpu::Cpu;
 
 /// Top-level Amiga 500 machine struct orchestrating all subsystems
 #[derive(Debug, Clone)]
@@ -59,8 +58,6 @@ pub struct A500Machine {
     pub keyboard: keyboard::Keyboard,
     /// Amiga dual controller game ports (Port 1 Mouse / Port 2 Joystick)
     pub game_ports: game_ports::GamePorts,
-    /// Centronics 8-bit parallel printer port interface
-    pub parallel_port: parallel_port::ParallelPort,
 }
 
 impl A500Machine {
@@ -75,7 +72,6 @@ impl A500Machine {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            floppy: &mut self.floppy,
         }
     }
 
@@ -84,10 +80,7 @@ impl A500Machine {
     pub fn new(config: A500Config) -> Self {
         let mut cpu = Cpu::new();
         let mut physical_memory = PhysicalMemory::from_config(config.clone());
-        if !physical_memory.is_kickstart_loaded() {
-            physical_memory.map_chip_ram_to_low_memory();
-        }
-        cpu.reset_cold(&mut physical_memory);
+        cpu.reset(&mut physical_memory);
         let agnus = agnus::Agnus::new(config.agnus_model());
         let denise = denise::Denise::new(config.denise_model());
         let paula = paula::Paula::new();
@@ -98,7 +91,6 @@ impl A500Machine {
         let floppy = floppy::FloppyController::new();
         let keyboard = keyboard::Keyboard::new();
         let game_ports = game_ports::GamePorts::new();
-        let parallel_port = parallel_port::ParallelPort::new();
 
         let mut machine = Self {
             config,
@@ -114,7 +106,6 @@ impl A500Machine {
             floppy,
             keyboard,
             game_ports,
-            parallel_port,
         };
         machine.poll_peripheral_pins();
         machine.cpu.state.ipl = machine.resolve_ipl();
@@ -122,11 +113,8 @@ impl A500Machine {
     }
 
     /// Performs cold reset: zeroes RAM, resets all chips and devices to power-on defaults
-    pub fn reset_cold(&mut self) {
-        self.physical_memory.reset_cold();
-        if !self.physical_memory.is_kickstart_loaded() {
-            self.physical_memory.map_chip_ram_to_low_memory();
-        }
+    pub fn reset(&mut self) {
+        self.physical_memory.reset();
         self.cck = 0;
         self.agnus.reset();
         self.denise.reset();
@@ -136,8 +124,7 @@ impl A500Machine {
         self.floppy.reset();
         self.keyboard.reset();
         self.game_ports.reset();
-        self.parallel_port.reset();
-        self.cpu.reset_cold(&mut self.physical_memory);
+        self.cpu.reset(&mut self.physical_memory);
         self.poll_peripheral_pins();
         self.cpu.state.ipl = self.resolve_ipl();
     }
@@ -145,9 +132,6 @@ impl A500Machine {
     /// Performs warm reset: preserves RAM, re-engages overlay, restarts execution
     pub fn reset_warm(&mut self) {
         self.physical_memory.reset_warm();
-        if !self.physical_memory.is_kickstart_loaded() {
-            self.physical_memory.map_chip_ram_to_low_memory();
-        }
         self.cck = 0;
         self.agnus.reset();
         self.denise.reset();
@@ -157,7 +141,6 @@ impl A500Machine {
         self.floppy.reset();
         self.keyboard.reset();
         self.game_ports.reset();
-        self.parallel_port.reset();
         self.cpu.reset_warm(&mut self.physical_memory);
         self.poll_peripheral_pins();
         self.cpu.state.ipl = self.resolve_ipl();
@@ -165,11 +148,8 @@ impl A500Machine {
 
     /// Resets all external devices (custom chips, CIAs, peripherals, overlay)
     /// without modifying RAM or CPU registers/PC. Invoked by M68000 `RESET` instruction.
-    pub fn reset_external_devices(&mut self) {
+    fn reset_external_devices(&mut self) {
         self.physical_memory.map_kickstart_to_low_memory();
-        if !self.physical_memory.is_kickstart_loaded() {
-            self.physical_memory.map_chip_ram_to_low_memory();
-        }
         self.agnus.reset();
         self.denise.reset();
         self.paula.reset();
@@ -177,7 +157,6 @@ impl A500Machine {
         self.cia_b.reset();
         self.floppy.reset();
         self.game_ports.reset();
-        self.parallel_port.reset();
         self.poll_peripheral_pins();
         self.cpu.state.ipl = self.resolve_ipl();
     }
@@ -215,14 +194,16 @@ impl A500Machine {
         let paula_ipl = self.paula.pending_interrupt_level();
         // CIA-A (Level 2) and CIA-B (Level 6) lines pass through Paula INTENA (bits 3 and 13 + master bit 14)
         let cia_a_ipl = if self.cia_a.irq_pending()
-            && (self.paula.intena == 0 || (self.paula.intena & 0x4008) == 0x4008)
+            && (self.paula.interrupts.intena == 0
+                || (self.paula.interrupts.intena & 0x4008) == 0x4008)
         {
             2
         } else {
             0
         };
         let cia_b_ipl = if self.cia_b.irq_pending()
-            && (self.paula.intena == 0 || (self.paula.intena & 0x6000) == 0x6000)
+            && (self.paula.interrupts.intena == 0
+                || (self.paula.interrupts.intena & 0x6000) == 0x6000)
         {
             6
         } else {
@@ -232,38 +213,49 @@ impl A500Machine {
         paula_ipl.max(cia_a_ipl).max(cia_b_ipl)
     }
 
-    /// Dispatches a custom register bus write to the target chip(s) with physical propagation delay.
-    pub fn dispatch_custom_write(&mut self, offset: u16, val: u16) {
-        self.memory_bus().dispatch_custom_write(offset, val);
+    /// Writes a 16-bit word to custom register space with physical propagation delay.
+    #[inline(always)]
+    pub fn write_custom_word(&mut self, offset: u16, val: u16) {
+        self.memory_bus().write_custom_word(offset, val);
     }
 
-    /// Action method dispatch for committed Agnus registers
-    pub fn dispatch_agnus_action(&mut self, reg: u16, val: u16) {
-        self.memory_bus().dispatch_agnus_action(reg, val);
+    /// Writes an 8-bit byte to custom register space with physical byte duplication.
+    #[inline(always)]
+    pub fn write_custom_byte(&mut self, addr: u32, val: u8) {
+        self.memory_bus().write_custom_byte(addr, val);
     }
 
-    /// Action method dispatch for committed Paula registers
-    pub fn dispatch_paula_action(&mut self, reg: u16, val: u16) {
-        self.memory_bus().dispatch_paula_action(reg, val);
-    }
-
-    /// Action method dispatch for committed Denise registers
-    pub fn dispatch_denise_action(&mut self, reg: u16, val: u16) {
-        self.memory_bus().dispatch_denise_action(reg, val);
-    }
-
-    /// Action method dispatch for committed CIA registers
-    pub fn dispatch_cia_action(&mut self, id: cia::CiaId, reg: u8, val: u8) {
-        self.memory_bus().dispatch_cia_action(id, reg, val);
+    /// Synchronizes Denise display pipeline DMA enables from Agnus master DMACON state
+    #[inline(always)]
+    pub fn sync_dmacon(&mut self) {
+        let dmacon = self.agnus.dmacon;
+        let dmaen = (dmacon & config::mask::dmacon::DMAEN) != 0;
+        self.denise
+            .sprites
+            .set_dma_enabled(dmaen && (dmacon & config::mask::dmacon::SPREN) != 0);
+        self.denise
+            .frame_builder
+            .set_dma_enabled(dmaen && (dmacon & config::mask::dmacon::BPLEN) != 0);
     }
 
     /// Polls peripheral sensing lines into CIA input pins and custom chip port latches
     pub fn poll_peripheral_pins(&mut self) {
-        // 1. Floppy disk sensing lines -> CIA-A Port A bits 2..5 (mask 0x3C)
+        // 1. Floppy disk drive control lines <- CIA-B Port B ($BFD100)
+        if let Some(prb) = self.cia_b.poll_prb_output() {
+            self.floppy.handle_ciab_port_b_write(prb);
+        }
+
+        // 2. Floppy disk sensing lines -> CIA-A Port A bits 2..5 (mask 0x3C)
         let floppy_inputs = self.floppy.sample_ciaa_port_a_inputs();
         self.cia_a.set_input_pins_a(floppy_inputs, 0x3C);
 
-        // 2. Game ports fire buttons -> CIA-A Port A bits 6..7 (mask 0xC0, active low)
+        // 3. Floppy MFM stream / byte ready -> Paula DSKBYTR
+        if (self.floppy.dskbytr & 0x8000) != 0 {
+            self.paula.dskbytr = (self.paula.dskbytr & !0x90FF) | (self.floppy.dskbytr & 0x90FF);
+            self.floppy.dskbytr &= !0x8000;
+        }
+
+        // 4. Game ports fire buttons -> CIA-A Port A bits 6..7 (mask 0xC0, active low)
         let mut fire_pins = 0xC0;
         if self.game_ports.fire1_port1() {
             fire_pins &= !0x40; // Bit 6 = /FIR0 (Port 1 left mouse button)
@@ -287,45 +279,48 @@ impl A500Machine {
     /// dispatching matured actions, advancing RTC, and arbitrating interrupts.
     pub fn step_subsystems_cck(&mut self) {
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
-        let agnus_due = self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
-        for item in agnus_due.iter().flatten() {
-            self.dispatch_agnus_action(item.0, item.1);
-        }
+        self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
         if let Some((reg, val)) = self.agnus.poll_copper_write() {
-            self.dispatch_custom_write(reg, val);
+            self.write_custom_word(reg, val);
         }
         if let Some((plane, word)) = self.agnus.poll_bpl_dma() {
             self.denise.write_bpldat(plane as usize, word);
         }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
 
-        // Cross-Chip Signal: Blitter completion (_BLITINT) -> Paula INTREQ bit 6 (mask 0x0040)
+        // Synchronize Denise display pipeline DMA enables from Agnus master DMACON state
+        self.sync_dmacon();
+
+        // Physical Trace: Blitter completion (_BLITINT pin) -> Paula INTREQ bit 6 (mask 0x0040)
         if self.agnus.poll_blitter_irq() {
             self.paula.set_interrupt_request(0x0040);
         }
 
-        // Cross-Chip Signal: Vertical blanking interval -> Paula INTREQ bit 5 (mask 0x0020) & CIA-A TOD tick
+        // Physical Trace: Vertical blanking interval (_VSYNC pin) -> Paula INTREQ bit 5 (mask 0x0020) & CIA-A TOD tick
         if self.agnus.poll_vblank_irq() {
             self.paula.set_interrupt_request(0x0020);
             self.cia_a.tick_tod();
         }
 
-        // 2. Step Denise (steps sprites, frame_builder, video serializer, and mutation pipeline)
+        // 2. Step Denise (steps sprites, frame_builder, and video serializer)
         let beam = self.agnus.beam();
         if beam.hpos == 0 {
-            self.cia_b.tick_tod(); // CIA-B TOD tracks horizontal scanline sync
+            self.cia_b.tick_tod(); // Physical Trace: _HSYNC pin -> CIA-B TOD pin
         }
-        let denise_due = self.denise.step_cck(beam);
-        for item in denise_due.iter().flatten() {
-            self.dispatch_denise_action(item.0, item.1);
-        }
+        self.denise.step_cck(beam);
 
         // 3. Step Paula (steps audio, serial_port, and mutation pipeline)
-        let paula_due = self.paula.step_cck();
-        for item in paula_due.iter().flatten() {
-            self.dispatch_paula_action(item.0, item.1);
-        }
+        self.paula.step_cck();
         self.floppy.step_cck();
+        if self.paula.is_dsk_dma_active() {
+            self.floppy.step_cck_ram(
+                &mut self.physical_memory.chip_ram,
+                self.paula.adkcon,
+                self.paula.dsksync,
+                &mut self.paula.dsklen,
+                &mut self.paula.dma_active,
+            );
+        }
 
         // Cross-Chip Signal: Disk block DMA finished -> Paula INTREQ bit 1 (mask 0x0002)
         if self.floppy.poll_dskblk_irq() {
@@ -346,15 +341,9 @@ impl A500Machine {
             self.cia_a.shift_in_sdr(scancode);
         }
 
-        // 5. Step CIAs and dispatch E-Clock mutations
-        let cia_a_due = self.cia_a.step_cck();
-        for item in cia_a_due.iter().flatten() {
-            self.dispatch_cia_action(cia::CiaId::A, item.0, item.1);
-        }
-        let cia_b_due = self.cia_b.step_cck();
-        for item in cia_b_due.iter().flatten() {
-            self.dispatch_cia_action(cia::CiaId::B, item.0, item.1);
-        }
+        // 5. Step CIAs
+        self.cia_a.step_cck();
+        self.cia_b.step_cck();
 
         // Cross-Chip Signal: CIA-A /IRQ pin -> Paula INTREQ bit 3 (PORTS, mask 0x0008)
         if self.cia_a.irq_pending() {
@@ -416,7 +405,6 @@ impl A500Machine {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            floppy: &mut self.floppy,
         };
         self.cpu.step_cck(&mut bus)
     }
@@ -461,14 +449,12 @@ impl A500Machine {
             cia_a: &mut self.cia_a,
             cia_b: &mut self.cia_b,
             rtc: &mut self.rtc,
-            floppy: &mut self.floppy,
         };
         self.cpu.set_pc_and_prime_prefetch(target_pc, &mut bus);
     }
 
-    /// Captures a complete machine state snapshot in referenced Kickstart ROM mode
+    /// Captures a complete machine state snapshot with fully embedded Kickstart ROM
     pub fn save_state(&self) -> A500State {
-        let kickstart_crc32 = compute_crc32(&self.physical_memory.kickstart_rom);
         let header = SaveStateHeader {
             magic: SAVE_STATE_MAGIC,
             version: SAVE_STATE_VERSION,
@@ -485,20 +471,14 @@ impl A500Machine {
                 .fast_ram
                 .as_ref()
                 .map_or(0, |r| r.len()),
-            kickstart_crc32,
-            is_self_contained: false,
         };
-
-        let mut mem_clone = self.physical_memory.clone();
-        // In referenced mode, do not duplicate Kickstart ROM in the snapshot
-        mem_clone.kickstart_rom = Vec::new();
 
         A500State {
             header,
             cck: self.cck,
             config: self.config.clone(),
             cpu: self.cpu.state.clone(),
-            physical_memory: mem_clone,
+            physical_memory: self.physical_memory.clone(),
             rtc: self.rtc.clone(),
             agnus: self.agnus.clone(),
             denise: self.denise.clone(),
@@ -508,16 +488,7 @@ impl A500Machine {
             floppy: self.floppy.clone(),
             keyboard: self.keyboard.clone(),
             game_ports: self.game_ports.clone(),
-            parallel_port: self.parallel_port.clone(),
         }
-    }
-
-    /// Captures a self-contained state snapshot with embedded Kickstart ROM
-    pub fn save_state_self_contained(&self) -> A500State {
-        let mut state = self.save_state();
-        state.header.is_self_contained = true;
-        state.physical_memory.kickstart_rom = self.physical_memory.kickstart_rom.clone();
-        state
     }
 
     /// Restores a complete machine state snapshot with strict compatibility guards
@@ -544,34 +515,16 @@ impl A500Machine {
             });
         }
 
-        // 4. Verify Kickstart ROM compatibility
-        if state.header.is_self_contained {
-            self.physical_memory.kickstart_rom = state.physical_memory.kickstart_rom.clone();
-        } else if self.physical_memory.is_kickstart_loaded() {
-            let active_crc = compute_crc32(&self.physical_memory.kickstart_rom);
-            if state.header.kickstart_crc32 != 0 && active_crc != state.header.kickstart_crc32 {
-                return Err(SaveStateError::KickstartMismatch {
-                    expected_crc: state.header.kickstart_crc32,
-                    actual_crc: active_crc,
-                });
-            }
-        }
-
-        // 5. Restore Physical Memory (preserving active ROM in referenced mode)
-        let active_rom = self.physical_memory.kickstart_rom.clone();
+        // 4. Restore Physical Memory (unconditionally restoring RAM and Kickstart ROM)
         self.physical_memory = state.physical_memory.clone();
-        if !state.header.is_self_contained {
-            self.physical_memory.kickstart_rom = active_rom;
-        }
 
-        // 6. Restore Master Monotonic Color Clock counter
+        // 5. Restore Master Monotonic Color Clock counter
         self.cck = state.cck;
 
-        // 7. Restore CPU state and re-hydrate static micro-step pointers
-        self.cpu.state = state.cpu.clone();
-        self.cpu.rehydrate_micro_steps();
+        // 6. Restore CPU state and re-hydrate static micro-step pointers
+        self.cpu.restore_state(state.cpu.clone());
 
-        // 8. Restore Custom Chips & Peripherals
+        // 7. Restore Custom Chips & Peripherals
         self.rtc = state.rtc.clone();
         self.agnus = state.agnus.clone();
         self.denise = state.denise.clone();
@@ -581,9 +534,8 @@ impl A500Machine {
         self.floppy = state.floppy.clone();
         self.keyboard = state.keyboard.clone();
         self.game_ports = state.game_ports.clone();
-        self.parallel_port = state.parallel_port.clone();
 
-        // 9. Re-poll peripheral pins to establish consistent signal line levels
+        // 8. Re-poll peripheral pins to establish consistent signal line levels
         self.poll_peripheral_pins();
 
         Ok(())
@@ -593,13 +545,9 @@ impl A500Machine {
     pub fn save_state_to_file(
         &self,
         path: impl AsRef<std::path::Path>,
-        self_contained: bool,
+        _compressed: bool,
     ) -> Result<(), SaveStateError> {
-        let state = if self_contained {
-            self.save_state_self_contained()
-        } else {
-            self.save_state()
-        };
+        let state = self.save_state();
         let path = path.as_ref();
         let is_gz = path
             .extension()

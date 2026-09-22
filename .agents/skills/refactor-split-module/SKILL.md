@@ -21,7 +21,7 @@ Activate this skill whenever:
 ## 2. Decomposition Principles
 
 1. **Strict 800-Line Ceiling:** Every `.rs` file in `crates/*/src/` must remain $\le 800$ lines.
-2. **Flat Instruction Hierarchy:** Under `crates/m68000/src/instructions/`, maintain a flat 1:1 opcode-to-file mapping with zero subdirectories.
+2. **Flat Instruction Hierarchy:** Under `crates/cpu/src/instructions/`, maintain a flat 1:1 opcode-to-file mapping with zero subdirectories.
 3. **3-Tier Re-Export Preservation:** External callers must not experience breaking API changes. Re-export public types from the crate root (`src/<crate>.rs`) via `pub use submodule::TypeName;`.
 4. **Disjoint Borrowing & Zero Allocations:** Ensure split submodules preserve independent field borrowing without requiring `Rc<RefCell<...>>` or heap allocations in hot paths.
 5. **Zero Backward-Compatibility Shims (Atomic Refactoring):** Do not create dummy wrapper modules (`pub mod former { pub use new::*; }`) or import aliases (`use new as old;`) to delay updating callers. Update all consumers across the workspace directly to the new canonical path in the same task.
@@ -84,39 +84,21 @@ Ensure extracted code adheres to project invariants:
 
 ---
 
-## 4. Execution Mode: Subagent Delegation
+## 4. Standard Decomposition Report Format
 
-- **Execution Host:** **Isolated Subagent** (child context sandbox).
-- **Model Tier:** `Gemini Flash Medium`
-- **Context Savings:** Absorbs large source file inspections, iterative `cargo check` compile logs, and intermediate syntax errors during module extraction.
-- **Subagent Task Template:**
-  - `TaskName`: "Decomposing Module: <target_file>"
-  - `TaskSummary`: "Splits an oversized Rust file into cohesive submodules while preserving 3-tier public re-exports and architecture tests."
-  - `Prompt`:
-    ```markdown
-    Decompose oversized module: <TARGET_FILE> (currently > 800 lines).
-    Follow .agents/skills/refactor-split-module/SKILL.md:
-    1. Create submodules under `<target_dir>/<submodule>/`.
-    2. Extract functions/types by domain cohesion.
-    3. Maintain 3-tier `pub use` re-exports in parent `mod.rs` or `<crate>.rs`.
-    4. Verify with `cargo check` and `cargo test -p test_runner --test test_architecture_rules`.
-    5. Return strictly the 1:1 Symbol Relocation Table and line count report below.
-    ```
-- **Return Contract (Mandatory Structured Output):**
-  The subagent must conclude with this exact markdown block:
-  ```markdown
-  ### 🧩 Module Decomposition Report
-  - **Target File:** `<original_file_path>`
-  - **Decomposition Status:** [COMPLETE | REVERTED]
-  - **Resulting Submodules & Line Counts:**
-    | Submodule Path | Line Count | Status ($\le 800$) |
-    | :--- | :--- | :--- |
-    | `crates/.../part1.rs` | 340 lines | ✅ PASS |
-    | `crates/.../part2.rs` | 420 lines | ✅ PASS |
-  - **1:1 Symbol Relocation Table:**
-    | Original Symbol | New Definition Location | Public Re-Export Path |
-    | :--- | :--- | :--- |
-    | `pub struct Foo` | `crates/.../foo.rs` | `crates/.../<crate>.rs::Foo` |
-    | `fn internal_bar` | `crates/.../bar.rs` | `pub(crate) use bar::internal_bar` |
-  - **Architecture Validation:** `test_architecture_rules` passed (0 files exceeding 800 lines).
-  ```
+```markdown
+### 🧩 Module Decomposition Report
+- **Target File:** `<original_file_path>`
+- **Decomposition Status:** [COMPLETE | REVERTED]
+- **Resulting Submodules & Line Counts:**
+  | Submodule Path | Line Count | Status ($\le 800$) |
+  | :--- | :--- | :--- |
+  | `crates/.../part1.rs` | 340 lines | ✅ PASS |
+  | `crates/.../part2.rs` | 420 lines | ✅ PASS |
+- **1:1 Symbol Relocation Table:**
+  | Original Symbol | New Definition Location | Public Re-Export Path |
+  | :--- | :--- | :--- |
+  | `pub struct Foo` | `crates/.../foo.rs` | `crates/.../<crate>.rs::Foo` |
+  | `fn internal_bar` | `crates/.../bar.rs` | `pub(crate) use bar::internal_bar` |
+- **Architecture Validation:** `test_architecture_rules` passed (0 files exceeding 800 lines).
+```

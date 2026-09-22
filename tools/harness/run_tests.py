@@ -38,15 +38,14 @@ TIER1_UNIT_CRATES = [
     "floppy",
     "frame_builder",
     "game_ports",
+    "interrupts",
     "joystick",
     "keyboard",
-    "m68000",
+    "cpu",
     "mouse",
-    "parallel_port",
     "paula",
     "physical_memory",
     "rtc",
-    "serial_port",
     "sprites",
 ]
 

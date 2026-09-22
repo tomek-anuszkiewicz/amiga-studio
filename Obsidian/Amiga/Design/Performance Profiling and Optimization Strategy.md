@@ -8,8 +8,12 @@ status: "active"
 created: 2026-09-14
 updated: 2026-09-16
 related: ["[CPU Instruction Benchmarking.md](CPU%20Instruction%20Benchmarking.md)", "[General Architecture.md](General%20Architecture.md)", "[Main loop A500.md](Main%20loop%20A500.md)"]
+tracked_paths:
+  - "tests/benchmarks"
+  - ".agents/skills/profile-external"
+last_synced_commit: "a4f9f76"
+last_synced_date: "2026-09-19"
 ---
-
 # Performance Profiling & Optimization Strategy
 
 > [!NOTE]
@@ -53,7 +57,7 @@ graph TD
 ## 2. Prohibition of Intrusive Hot-Path Probes
 
 - **The Observer Effect in Emulation:** Calling host timer APIs (`std::time::Instant::now()`, `QueryPerformanceCounter`) inside per-CCK execution loops (`step_cck`, `step_subsystems_cck`) incurs a severe measurement penalty (~20–80 ns per call). On a 3.54 MHz Color Clock model, probes alter instruction scheduling and prevent LLVM from performing cross-function inlining optimizations.
-- **Architectural Policy:** Core emulation crates (`crates/agnus`, `crates/denise`, `crates/paula`, `crates/m68000`, `crates/memory_bus`) must remain **100% free of measurement probes**. Profiling must never alter the production execution path.
+- **Architectural Policy:** Core emulation crates (`crates/agnus`, `crates/denise`, `crates/paula`, `crates/cpu`, `crates/memory_bus`) must remain **100% free of measurement probes**. Profiling must never alter the production execution path.
 
 ---
 
@@ -105,11 +109,11 @@ Modeled after the proven M68000 instruction benchmarking system ([CPU Instructio
   }
   ```
 
-### 3.1 Method-Level Profile Aggregation (`tools/harness/aggregate_profile.py`)
+### 3.1 Method-Level Profile Aggregation (`.agents/skills/profile-external/scripts/aggregate_profile.py`)
 To obtain method and module time distribution without intrusive runtime probes:
 1. Run external sampling profiler (`samply record ...` or `perf record ...`).
 2. Aggregate samples by canonical entry method:
-   - `python tools/harness/aggregate_profile.py <profile_file> --target coptim1 --update-baseline tests/benchmarks/chipset_benchmark_baseline.json`
+   - `python .agents/skills/profile-external/scripts/aggregate_profile.py <profile_file> --target coptim1 --update-baseline tests/benchmarks/chipset_benchmark_baseline.json`
 3. Canonical entry methods:
    - `Cpu::step_cck` (`cpu`)
    - `Agnus::step_cck_ram` (`agnus` -> `Copper::step_cck`, `Blitter::step_cck_ram`, `DmaScheduler::arbitrate`)

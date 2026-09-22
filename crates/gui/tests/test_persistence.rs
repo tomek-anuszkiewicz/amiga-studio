@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Automated Verification of UI Persistence via eframe::Storage
 //!
 //! Tests that user preferences (Theme, ViewMode, Microcode Visibility, Temporal Capacity)

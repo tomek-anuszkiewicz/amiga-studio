@@ -1,11 +1,11 @@
 //! ALU, Compare, Bitwise, Immediate, Multiply/Divide and Shift/Rotate disassembler module
 
-use crate::ea::*;
+use crate::ea::{format_ea, format_immediate};
 
 /// Attempts to disassemble arithmetic, logic, compare, bit, multiply/divide, and shift/rotate instructions.
 ///
 /// Returns `Some((mnemonic, operands))` if decoded, consuming extension words via `next_word`.
-pub fn try_disassemble_alu(
+pub(crate) fn try_disassemble_alu(
     op: u16,
     mut next_word: impl FnMut() -> u16,
 ) -> Option<(&'static str, String)> {
@@ -226,8 +226,7 @@ pub fn try_disassemble_alu(
             0xD => "ADD",
             0x9 => "SUB",
             0xC => "AND",
-            0x8 => "OR",
-            _ => unreachable!(),
+            _ => "OR",
         };
         let reg_d = ((op >> 9) & 7) as u8;
         let opmode = ((op >> 6) & 7) as u8;

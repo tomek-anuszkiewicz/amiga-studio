@@ -7,24 +7,19 @@ use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
 /// Number of Color Clocks per Motorola E-Clock tick (5 CCK = 10 CPU cycles)
-pub const CCK_PER_ECLOCK: u8 = 5;
+const CCK_PER_ECLOCK: u8 = 5;
 
 /// Total number of 8520 registers
-pub const CIA_REGISTER_COUNT: usize = 16;
+const CIA_REGISTER_COUNT: usize = 16;
 
 /// CIA chip identity (CIA-A or CIA-B)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum CiaId {
     /// CIA-A (connected to IRQ level 2, keyboard, game port fire, OVL)
+    #[default]
     A,
     /// CIA-B (connected to IRQ level 6, parallel port, floppy control)
     B,
-}
-
-impl Default for CiaId {
-    fn default() -> Self {
-        CiaId::A
-    }
 }
 
 /// MOS 8520 CIA chip state
@@ -40,6 +35,10 @@ pub struct Cia {
     pub prev_pra: u8,
     /// Previously latched Port B data (for edge / pin transition detection)
     pub prev_prb: u8,
+    /// True if Port A was written and output pins mutated
+    pub pra_mutated: bool,
+    /// True if Port B was written and output pins mutated
+    pub prb_mutated: bool,
     /// Data Direction Register A (DDRA: 1 = output, 0 = input)
     pub ddra: u8,
     /// Data Direction Register B (DDRB: 1 = output, 0 = input)
@@ -98,6 +97,8 @@ impl Cia {
         self.prb = 0;
         self.prev_pra = 0;
         self.prev_prb = 0;
+        self.pra_mutated = false;
+        self.prb_mutated = false;
         self.ddra = 0;
         self.ddrb = 0;
         self.ta_latch = 0xFFFF;
@@ -268,6 +269,12 @@ impl Cia {
         }
     }
 
+    /// Read-only inspection of register without side-effects for debugging
+    #[inline(always)]
+    pub fn read_register_debug(&self, reg: u8) -> u8 {
+        self.peek_register(reg)
+    }
+
     /// Stages a register write with E-Clock delay in the mutation pipeline.
     /// Returns `Some((reg, val))` if committed immediately, or `None` if staged in pipeline.
     pub fn stage_write(
@@ -307,16 +314,40 @@ impl Cia {
         self.pra = (self.pra & !input_mask) | (pins & input_mask);
     }
 
+    /// Polls whether Port A output data was written, clearing the flag and returning the written byte
+    #[inline]
+    pub fn poll_pra_output(&mut self) -> Option<u8> {
+        if self.pra_mutated {
+            self.pra_mutated = false;
+            Some(self.pra)
+        } else {
+            None
+        }
+    }
+
+    /// Polls whether Port B output data was written, clearing the flag and returning the written byte
+    #[inline]
+    pub fn poll_prb_output(&mut self) -> Option<u8> {
+        if self.prb_mutated {
+            self.prb_mutated = false;
+            Some(self.prb)
+        } else {
+            None
+        }
+    }
+
     /// Commits a register write directly into active CIA silicon state
     pub fn commit_register_write(&mut self, reg: u8, val: u8) {
         match reg & 0x0F {
             0x0 => {
                 self.prev_pra = self.pra;
                 self.pra = val;
+                self.pra_mutated = true;
             }
             0x1 => {
                 self.prev_prb = self.prb;
                 self.prb = val;
+                self.prb_mutated = true;
             }
             0x2 => self.ddra = val,
             0x3 => self.ddrb = val,

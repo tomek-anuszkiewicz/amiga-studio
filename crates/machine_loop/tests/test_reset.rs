@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Integration tests for Amiga 500 machine-wide reset sequencing (Step 2.5)
 //!
 //! Validates:
@@ -18,6 +20,7 @@ use machine_loop::{A500Machine, AddressBus};
 fn test_cold_reset_full_flow() {
     let config = A500Config::default();
     let mut machine = A500Machine::new(config);
+    machine.physical_memory.map_chip_ram_to_low_memory();
 
     // 1. Pre-populate RAM buffers
     let _ = machine.memory_bus().write_byte(0x001000, 0xAA);
@@ -43,7 +46,7 @@ fn test_cold_reset_full_flow() {
     assert_eq!(machine.cck, 1000);
 
     // 5. Trigger Cold Reset
-    machine.reset_cold();
+    machine.reset();
 
     // Verify clock counter reset
     assert_eq!(
@@ -51,7 +54,12 @@ fn test_cold_reset_full_flow() {
         "CCK counter must be reset to 0 on cold reset"
     );
 
-    // Verify RAM wiped to zero
+    // Verify boot overlay re-engaged and Chip RAM wiped to zero
+    assert!(
+        machine.physical_memory.is_low_memory_overlay_active(),
+        "Boot overlay must be re-engaged on cold reset"
+    );
+    machine.physical_memory.map_chip_ram_to_low_memory();
     assert_eq!(
         machine.physical_memory.read_byte_debug(0x001000),
         0x00,
@@ -72,22 +80,30 @@ fn test_cold_reset_full_flow() {
         machine.denise.color[0], 0x0000,
         "Palette must be reset to 0"
     );
-    assert_eq!(machine.paula.intena, 0x0000, "INTENA must be reset to 0");
+    assert_eq!(
+        machine.paula.interrupts.intena, 0x0000,
+        "INTENA must be reset to 0"
+    );
     assert_eq!(machine.cia_a.ddra, 0x00, "CIA-A DDRA must be reset to 0");
 
     // Verify CPU registers zeroed
+    for i in 0..8 {
+        assert_eq!(
+            machine.cpu.state.d_long(i),
+            0,
+            "CPU data register D{i} must be cleared to 0 on cold reset"
+        );
+    }
+    for i in 0..7 {
+        assert_eq!(
+            machine.cpu.state.a_long(i),
+            0,
+            "CPU address register A{i} must be cleared to 0 on cold reset"
+        );
+    }
     assert_eq!(
-        machine.cpu.state.d_regs(),
-        &[0; 8],
-        "CPU data registers D0-D7 must be cleared to 0 on cold reset"
-    );
-    assert_eq!(
-        &machine.cpu.state.a_regs()[0..7],
-        &[0; 7],
-        "CPU address registers A0-A6 must be cleared to 0 on cold reset"
-    );
-    assert_eq!(
-        machine.cpu.state.sr, 0x2700,
+        machine.cpu.state.sr(),
+        0x2700,
         "CPU Status Register must be reset to supervisor mask 7 ($2700)"
     );
     assert_eq!(
@@ -104,6 +120,7 @@ fn test_cold_reset_full_flow() {
 fn test_warm_reset_full_flow() {
     let config = A500Config::default();
     let mut machine = A500Machine::new(config);
+    machine.physical_memory.map_chip_ram_to_low_memory();
 
     // 1. Pre-populate RAM buffers
     let _ = machine.memory_bus().write_byte(0x001000, 0x42);
@@ -135,7 +152,12 @@ fn test_warm_reset_full_flow() {
         "CCK counter must be reset to 0 on warm reset"
     );
 
-    // Verify RAM preserved intact
+    // Verify boot overlay re-engaged and Chip RAM preserved intact
+    assert!(
+        machine.physical_memory.is_low_memory_overlay_active(),
+        "Boot overlay must be re-engaged on warm reset"
+    );
+    machine.physical_memory.map_chip_ram_to_low_memory();
     assert_eq!(
         machine.physical_memory.read_byte_debug(0x001000),
         0x42,
@@ -156,7 +178,10 @@ fn test_warm_reset_full_flow() {
         machine.denise.color[0], 0x0000,
         "Palette must be reset to 0"
     );
-    assert_eq!(machine.paula.intena, 0x0000, "INTENA must be reset to 0");
+    assert_eq!(
+        machine.paula.interrupts.intena, 0x0000,
+        "INTENA must be reset to 0"
+    );
 
     // Verify CPU registers preserved intact
     assert_eq!(
@@ -180,7 +205,8 @@ fn test_warm_reset_full_flow() {
         "A1 must be preserved on warm reset"
     );
     assert_eq!(
-        machine.cpu.state.sr, 0x2700,
+        machine.cpu.state.sr(),
+        0x2700,
         "CPU SR must be reset to supervisor mask 7 ($2700)"
     );
     assert_eq!(
@@ -193,6 +219,15 @@ fn test_warm_reset_full_flow() {
 fn test_cpu_reset_instruction_external_propagation() {
     let config = A500Config::default();
     let mut machine = A500Machine::new(config);
+
+    // Populate Kickstart ROM with NOP ($4E71) and MOVEQ #42, D0 ($702A) at offset $1002..$1006
+    // so execution can seamlessly continue when RESET re-engages the Gary boot overlay.
+    let mut rom = vec![0xFF; 262144];
+    rom[0x1000..0x1006].copy_from_slice(&[0x4E, 0x70, 0x4E, 0x71, 0x70, 0x2A]);
+    machine.physical_memory.write_bytes_debug(0xF80000, &rom);
+
+    // Disengage overlay to simulate post-boot state running from Chip RAM
+    machine.physical_memory.map_chip_ram_to_low_memory();
 
     // Code at $001000:
     // $001000: RESET       ; 4E70 (Pushes external _RESET line for 124 clocks)
@@ -221,7 +256,7 @@ fn test_cpu_reset_instruction_external_propagation() {
     machine
         .cpu
         .set_pc_and_prime_prefetch(0x001000, &mut machine.physical_memory);
-    machine.cpu.state.sr = 0x2700;
+    machine.cpu.state.set_sr(0x2700);
 
     // Step the RESET instruction through all sub-cycle microsteps
     machine.step_instruction();
@@ -236,18 +271,23 @@ fn test_cpu_reset_instruction_external_propagation() {
         "Palette must be reset by M68000 RESET instruction"
     );
     assert_eq!(
-        machine.paula.intena, 0x0000,
+        machine.paula.interrupts.intena, 0x0000,
         "INTENA must be reset by M68000 RESET instruction"
     );
 
-    // 2. Verify RAM was NOT touched
+    // 2. Verify Gary boot overlay was re-engaged by RESET line pulse
+    assert!(
+        machine.physical_memory.is_low_memory_overlay_active(),
+        "Gary boot overlay must be re-engaged by M68000 RESET instruction"
+    );
+
+    // 3. Verify Chip RAM was NOT touched
     assert_eq!(
-        machine.physical_memory.read_byte_debug(0x003000),
-        0x77,
+        machine.physical_memory.chip_ram[0x003000], 0x77,
         "RAM must remain undisturbed by M68000 RESET instruction"
     );
 
-    // 3. Verify CPU registers were NOT reset
+    // 4. Verify CPU registers were NOT reset
     assert_eq!(
         machine.cpu.state.d_long(0),
         0x12345678,
@@ -259,7 +299,7 @@ fn test_cpu_reset_instruction_external_propagation() {
         "CPU A0 must remain untouched by RESET instruction"
     );
 
-    // 4. Verify CPU PC advanced past RESET to the next instruction ($001002 NOP)
+    // 5. Verify CPU PC advanced past RESET to the next instruction ($001002 NOP)
     assert_eq!(
         machine.cpu.state.instruction_pc, 0x001002,
         "CPU PC must advance past RESET to the subsequent instruction"
@@ -269,7 +309,7 @@ fn test_cpu_reset_instruction_external_propagation() {
         "Reset line assertion flag must be cleared after dispatch"
     );
 
-    // 5. Verify CPU continues linear execution
+    // 6. Verify CPU continues linear execution (fetching from re-engaged Kickstart ROM)
     machine.step_instruction(); // executes NOP
     assert_eq!(machine.cpu.state.instruction_pc, 0x001004);
 
@@ -281,6 +321,7 @@ fn test_cpu_reset_instruction_external_propagation() {
 fn test_cpu_reset_instruction_privilege_violation() {
     let config = A500Config::default();
     let mut machine = A500Machine::new(config);
+    machine.physical_memory.map_chip_ram_to_low_memory();
 
     // Code at $001000: RESET ($4E70)
     let _ = machine.memory_bus().write_word(0x001000, 0x4E70);
@@ -297,10 +338,10 @@ fn test_cpu_reset_instruction_privilege_violation() {
     machine.agnus.dma.write_dmacon(0x8200);
 
     // Setup CPU in user mode (S = 0)
-    machine.cpu.state.ssp = 0x005000;
-    machine.cpu.state.usp = 0x003000;
-    machine.cpu.state.write_a(7, 0x003000);
-    machine.cpu.state.sr = 0x0000; // User mode
+    machine.cpu.state.set_ssp(0x005000);
+    machine.cpu.state.set_usp(0x003000);
+    machine.cpu.state.set_a_long(7, 0x003000);
+    machine.cpu.state.set_sr(0x0000); // User mode
     machine
         .cpu
         .set_pc_and_prime_prefetch(0x001000, &mut machine.physical_memory);
@@ -325,6 +366,7 @@ fn test_cpu_reset_instruction_privilege_violation() {
 fn test_keyboard_ctrl_amiga_amiga_warm_reset() {
     let config = A500Config::default();
     let mut machine = A500Machine::new(config);
+    machine.physical_memory.map_chip_ram_to_low_memory();
 
     // 1. Pre-populate RAM and custom chips
     let _ = machine.memory_bus().write_byte(0x001000, 0x99);
@@ -350,6 +392,11 @@ fn test_keyboard_ctrl_amiga_amiga_warm_reset() {
         "Keyboard reset line asserted flag must be cleared after handling"
     );
     assert_eq!(machine.cck, 0, "Master CCK must be reset to 0");
+    assert!(
+        machine.physical_memory.is_low_memory_overlay_active(),
+        "Keyboard warm reset must re-engage boot overlay"
+    );
+    machine.physical_memory.map_chip_ram_to_low_memory();
     assert_eq!(
         machine.physical_memory.read_byte_debug(0x001000),
         0x99,
@@ -364,34 +411,31 @@ fn test_keyboard_ctrl_amiga_amiga_warm_reset() {
         "Palette must be reset on keyboard warm reset"
     );
     assert_eq!(
-        machine.cpu.state.sr, 0x2700,
+        machine.cpu.state.sr(),
+        0x2700,
         "CPU SR must be restored to $2700"
     );
 }
 
 #[test]
 fn test_reset_overlay_kickstart_vs_synthetic() {
-    // Case 1: Synthetic test mode (unpopulated / zeroed Kickstart ROM)
+    // Case 1: Unpopulated / default Kickstart ROM
     let mut machine = A500Machine::new(A500Config::default());
     assert!(
-        !machine.physical_memory.is_kickstart_loaded(),
-        "Default config must have unpopulated Kickstart ROM"
-    );
-    assert!(
-        !machine.physical_memory.is_low_memory_overlay_active(),
-        "Synthetic mode must disengage overlay so test RAM at $000000 is accessible"
+        machine.physical_memory.is_low_memory_overlay_active(),
+        "Hardware reset must unconditionally engage low-memory boot overlay"
     );
 
-    machine.reset_cold();
+    machine.reset();
     assert!(
-        !machine.physical_memory.is_low_memory_overlay_active(),
-        "Cold reset in synthetic mode must keep overlay disengaged"
+        machine.physical_memory.is_low_memory_overlay_active(),
+        "Cold reset must unconditionally engage boot overlay"
     );
 
     machine.reset_warm();
     assert!(
-        !machine.physical_memory.is_low_memory_overlay_active(),
-        "Warm reset in synthetic mode must keep overlay disengaged"
+        machine.physical_memory.is_low_memory_overlay_active(),
+        "Warm reset must unconditionally engage boot overlay"
     );
 
     // Case 2: Populated Kickstart ROM mode
@@ -400,21 +444,17 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
     rom[0..4].copy_from_slice(&0x00080000u32.to_be_bytes());
     // Initial PC at $000004: $00FC0002
     rom[4..8].copy_from_slice(&0x00FC0002u32.to_be_bytes());
-    machine.physical_memory.inject_kickstart_rom(&rom);
+    machine.physical_memory.write_bytes_debug(0xF80000, &rom);
 
-    assert!(
-        machine.physical_memory.is_kickstart_loaded(),
-        "Kickstart must now be detected as loaded"
-    );
-
-    // Cold reset engages overlay
-    machine.reset_cold();
+    // Cold reset engages overlay and loads vectors
+    machine.reset();
     assert!(
         machine.physical_memory.is_low_memory_overlay_active(),
         "Kickstart mode must engage low-memory boot overlay on cold reset"
     );
     assert_eq!(
-        machine.cpu.state.ssp, 0x00080000,
+        machine.cpu.state.ssp(),
+        0x00080000,
         "SSP must be loaded from Kickstart ROM vector"
     );
     assert_eq!(

@@ -116,36 +116,17 @@ graph TD
 
 ---
 
-## 5. Execution Mode: Subagent Delegation
+## 5. Completion Report Format
 
-- **Execution Host:** **Isolated Subagent** (child context sandbox).
-- **Model Tier:** `Gemini Flash High (Multimodal Vision)`
-- **Context Savings:** Absorbs 20,000–50,000 multimodal vision tokens, temporary trial images, and compiler recheck output during multi-step layout debugging.
-- **Subagent Task Template:**
-  - `TaskName`: "Debugging egui Layout: <defect_description>"
-  - `TaskSummary`: "Isolates and fixes egui layout, contrast, or interaction bug using gui-inspector offscreen renders."
-  - `Prompt`:
-    ```markdown
-    Fix the egui UI defect described: <DEFECT_DESCRIPTION>.
-    Follow .agents/skills/egui-vision-debugger/SKILL.md:
-    1. Reproduce with `cargo run -p gui --bin gui-inspector -- --scenario <scenario> --output target/gui_captures/<scenario>_repro.png`.
-    2. Inspect via `view_file`.
-    3. Modify code under `crates/gui/src/layout/` or `crates/gui/src/app.rs`.
-    4. Re-run inspector to `target/gui_captures/<scenario>_fixed.png` and verify.
-    5. Add/verify regression test in `crates/gui/tests/test_interactions.rs`.
-    6. Stop and return the structured Return Contract below.
-    ```
-- **Return Contract (Mandatory Structured Output):**
-  The subagent must conclude with this exact markdown block:
-  ```markdown
-  ### 🎨 egui Vision Debugger Completion Report
-  - **Status:** [RESOLVED | FAILED]
-  - **Target Scenario:** `<scenario_name>`
-  - **Final Verified Image Path:** `target/gui_captures/<scenario>_fixed.png`
-  - **Layout Deltas Applied:**
-    | File | Component / Widget | Delta Applied (px / style) |
-    | :--- | :--- | :--- |
-    | `crates/gui/src/layout/...` | Middle Column | Adjusted min_width to 400.0 |
-  - **Automated Regression Test:** `crates/gui/tests/test_interactions.rs::<test_fn>` (PASS)
-  - **Main Agent Action Directive:** Call `view_file("target/gui_captures/<scenario>_fixed.png")` and embed in conversation artifact for user inspection.
-  ```
+```markdown
+### 🎨 egui Vision Debugger Completion Report
+- **Status:** [RESOLVED | FAILED]
+- **Target Scenario:** `<scenario_name>`
+- **Final Verified Image Path:** `target/gui_captures/<scenario>_fixed.png`
+- **Layout Deltas Applied:**
+  | File | Component / Widget | Delta Applied (px / style) |
+  | :--- | :--- | :--- |
+  | `crates/gui/src/layout/...` | Middle Column | Adjusted min_width to 400.0 |
+- **Automated Regression Test:** `crates/gui/tests/test_interactions.rs::<test_fn>` (PASS)
+- **Visual Artifact:** Embed image in conversation artifact for visual verification.
+```

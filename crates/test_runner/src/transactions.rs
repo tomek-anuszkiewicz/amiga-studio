@@ -3,7 +3,23 @@
 //! Compares recorded M68000 CPU bus transactions against silicon reference logs
 //! from Tom Harte SingleStepTests-680x0 physical hardware captures.
 
-use physical_memory::{BusAccessSize, RecordedTransaction};
+use serde::{Deserialize, Serialize};
+
+/// Bus access transfer size for test-runner cycle validation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BusAccessSize {
+    Byte,
+    Word,
+}
+
+/// Simplified recorded CPU bus cycle transaction for test validation
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecordedTransaction {
+    pub is_read: bool,
+    pub addr: u32,
+    pub size: BusAccessSize,
+    pub data: u16,
+}
 
 /// Expected transaction parsed from SingleStepTests JSON
 #[derive(Debug, Clone, PartialEq, Eq)]

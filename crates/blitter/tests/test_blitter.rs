@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use blitter::{apply_fill, barrel_shift, eval_minterm, Blitter};
 
 #[test]
@@ -5,7 +7,7 @@ fn test_blitter_reset_and_start() {
     let mut blit = Blitter::new();
     assert!(!blit.is_busy);
 
-    blit.start_blit(0x0408); // 16 rows, 8 words
+    blit.trigger_blit(0x0408); // 16 rows, 8 words
     assert!(blit.is_busy);
     assert_eq!(blit.bltsize, 0x0408);
 
@@ -285,7 +287,7 @@ fn test_cycle_by_cycle_stepping() {
     blit.bltdpt = 0x40;
 
     // Start 1 row of 1 word (1 startup cycle + 2 memory cycles)
-    blit.start_blit((1 << 6) | 1);
+    blit.trigger_blit((1 << 6) | 1);
     assert!(blit.is_busy);
     assert!(!blit.poll_blit_irq());
 
@@ -343,7 +345,7 @@ fn test_blitter_unconnected_channels_cookie_cut() {
     blit.bltalwm = 0xFFFF;
     blit.bltdpt = 0x20;
 
-    blit.start_blit((1 << 6) | 1);
+    blit.trigger_blit((1 << 6) | 1);
     // Startup
     blit.step_cck_ram(&mut ram);
     // Phase 0: BusIdle
@@ -354,4 +356,21 @@ fn test_blitter_unconnected_channels_cookie_cut() {
 
     let written = u16::from_be_bytes([ram[0x20], ram[0x21]]);
     assert_eq!(written, 0xFFFF);
+}
+
+#[test]
+fn test_blitter_initial_state() {
+    let blit = Blitter::new();
+    assert!(!blit.is_busy);
+    assert!(!blit.dma_enabled);
+    assert_eq!(blit.bltsize, 0);
+}
+
+#[test]
+fn test_blitter_reset_clears_registers() {
+    let mut blit = Blitter::new();
+    blit.bltcon0 = 0xABCD;
+    blit.reset();
+    assert_eq!(blit.bltcon0, 0);
+    assert!(!blit.is_busy);
 }

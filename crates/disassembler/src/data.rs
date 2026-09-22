@@ -1,11 +1,11 @@
 //! Data movement, stack operations, unaries, and single-operand disassembler module
 
-use crate::ea::*;
+use crate::ea::{format_ea, format_movem_reg_list};
 
 /// Attempts to disassemble data movement, register transfer, and unary arithmetic instructions.
 ///
 /// Returns `Some((mnemonic, operands))` if decoded, consuming extension words via `next_word`.
-pub fn try_disassemble_data(
+pub(crate) fn try_disassemble_data(
     op: u16,
     mut next_word: impl FnMut() -> u16,
 ) -> Option<(&'static str, String)> {

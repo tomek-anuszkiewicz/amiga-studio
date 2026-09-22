@@ -1,3 +1,5 @@
+#![allow(unsafe_code, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! CLI tool for inspecting SingleStepTest results, coverage summaries, and regression diffs
 
 use std::collections::HashSet;
@@ -475,7 +477,7 @@ fn run_chipset_benchmarks_cli(args: &[String]) {
             eprintln!("Error recording baseline: {}", e);
             std::process::exit(1);
         }
-    } else if compare || (!record && !compare) {
+    } else if compare || !record {
         println!(
             "[*] Running chipset performance regression audit ({} frames)...",
             frames

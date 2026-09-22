@@ -2,10 +2,10 @@
 //!
 //! Visualizes micro-step state machine, CCK phases, staging registers, and bus contention.
 
+use cpu::CpuState;
 use egui::{Color32, RichText, Ui};
-use m68000::CpuState;
 
-pub fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool) {
+pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool) {
     ui.group(|ui| {
         ui.set_width(ui.available_width());
 

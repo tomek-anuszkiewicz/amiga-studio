@@ -4,8 +4,8 @@
 //! cascading stacks, and PRNG memory buffers directly in Rust memory per
 //! Obsidian/Amiga/Design/CPU Instruction Benchmark Strategies.md.
 
-use m68000::Cpu;
-use physical_memory::MemoryBus;
+use cpu::Cpu;
+use physical_memory::PhysicalMemory;
 
 use super::catalog::{BenchmarkSpec, BenchmarkStrategy};
 use super::prng::XorShift64;
@@ -35,7 +35,7 @@ pub struct BenchmarkProgram {
 
 impl BenchmarkProgram {
     /// Injects the program image, initial CPU register state, and primed prefetch into the machine
-    pub fn inject_into(&self, cpu: &mut Cpu, bus: &mut MemoryBus) {
+    pub fn inject_into(&self, cpu: &mut Cpu, bus: &mut PhysicalMemory) {
         bus.map_chip_ram_to_low_memory();
 
         // Write memory image
@@ -56,11 +56,13 @@ impl BenchmarkProgram {
         }
 
         // Set initial CPU registers
-        cpu.state.sr = self.initial_sr;
-        cpu.state.ssp = self.initial_ssp;
-        cpu.state.set_d_regs(self.initial_d);
-        cpu.state.set_a_regs(self.initial_a);
-        cpu.state.set_a_long(7, self.initial_ssp);
+        cpu.state.set_sr(self.initial_sr);
+        cpu.state.set_ssp(self.initial_ssp);
+        for i in 0..8 {
+            cpu.state.set_d_long(i, self.initial_d[i]);
+            cpu.state.set_a_long(i, self.initial_a[i]);
+        }
+        cpu.state.set_ssp(self.initial_ssp);
         cpu.state.stopped = false;
         cpu.state.halted = false;
 
@@ -74,6 +76,7 @@ impl BenchmarkProgram {
 }
 
 /// Programmatic builder for M68000 benchmark programs
+#[derive(Debug)]
 pub struct BenchmarkProgramBuilder {
     spec: BenchmarkSpec,
     unroll_k: usize,

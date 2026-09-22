@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use denise::{Denise, DeniseModel};
 
 #[test]
@@ -23,11 +25,11 @@ fn test_color_write_immediate_commit_active_cycle() {
 
     // Cycle T: Color DAC palette updates immediately on the active cycle
     assert_eq!(res, Some((0x180, 0x0F00)));
-    assert_eq!(denise.read_color(0), 0x0F00);
+    assert_eq!(denise.color[0], 0x0F00);
 
     // Step 1 CCK (Cycle T+1): color remains active
     denise.step_cck(config::BeamPosition::default());
-    assert_eq!(denise.read_color(0), 0x0F00);
+    assert_eq!(denise.color[0], 0x0F00);
 }
 
 #[test]
@@ -50,4 +52,21 @@ fn test_write_only_registers_read_open_bus() {
     let mut denise = Denise::new(DeniseModel::Ocs8362);
     assert_eq!(denise.read_register(0x100), 0xFFFF);
     assert_eq!(denise.read_register(0x180), 0xFFFF);
+}
+
+#[test]
+fn test_denise_joy_and_clx_getters() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.joy0dat = 0x1234;
+    assert_eq!(denise.joy0dat(), 0x1234);
+    assert_eq!(denise.joy0dat_debug(), 0x1234);
+
+    denise.joy1dat = 0x5678;
+    assert_eq!(denise.joy1dat(), 0x5678);
+    assert_eq!(denise.joy1dat_debug(), 0x5678);
+
+    denise.clxdat = 0x00FF;
+    assert_eq!(denise.clxdat_debug(), 0x00FF);
+    assert_eq!(denise.clxdat(), 0x00FF);
+    assert_eq!(denise.clxdat_debug(), 0x0000);
 }

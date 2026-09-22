@@ -5,7 +5,7 @@
 
 use egui::{pos2, vec2, Color32, Rect, RichText, Stroke};
 
-pub fn render_amiga_screen(ui: &mut egui::Ui, show_floating_debug_btn: bool) -> bool {
+pub(crate) fn render_amiga_screen(ui: &mut egui::Ui, show_floating_debug_btn: bool) -> bool {
     let available = ui.available_size();
     if available.x < 50.0 || available.y < 50.0 {
         return false;

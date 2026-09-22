@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! vAmigaTS Test Runner & Verification Infrastructure Tests
 //!
 //! Validates catalog discovery, test categorization, .retrosh directive parsing,

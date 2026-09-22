@@ -6,7 +6,7 @@
 use crate::app::EmulatorApp;
 use egui::RichText;
 
-pub fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
+pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
     let tokens = app.theme.tokens();
 
     ui.vertical(|ui| {
@@ -122,7 +122,7 @@ pub fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                     .session
                     .temporal
                     .scrub_cursor
-                    .unwrap_or(history_len.saturating_sub(1));
+                    .unwrap_or_else(|| history_len.saturating_sub(1));
                 let mut slider_val = current_pos;
 
                 let cur_frame = app.session.temporal.get_chronological(current_pos);

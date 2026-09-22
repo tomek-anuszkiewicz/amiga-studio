@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use audio::{Audio, StereoSample, AUDIO_RING_BUFFER_CAPACITY};
 
 #[test]
@@ -192,4 +194,12 @@ fn test_audio_ring_buffer_wrapping() {
     let first = audio.pop_sample().unwrap();
     assert_eq!(first.left, 10);
     assert_eq!(first.right, -10);
+}
+
+#[test]
+fn test_audio_channel_restart_strobe_state() {
+    let mut audio = Audio::new();
+    assert!(!audio.channels[0].restart_strobe);
+    audio.channels[0].restart_strobe = true;
+    assert!(audio.channels[0].restart_strobe);
 }

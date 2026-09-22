@@ -73,7 +73,7 @@ impl SpriteChannel {
 
     /// Evaluates vertical comparator at line start
     #[inline]
-    pub fn update_scanline(&mut self, vpos: u16) {
+    fn update_scanline(&mut self, vpos: u16) {
         let vstart = self.vstart();
         let vstop = self.vstop();
         self.is_active_line = vpos >= vstart && vpos < vstop;
@@ -82,7 +82,7 @@ impl SpriteChannel {
 
     /// Checks horizontal comparator against current pixel coordinate
     #[inline]
-    pub fn check_hstart(&mut self, hpos_pixel: u16) {
+    fn check_hstart(&mut self, hpos_pixel: u16) {
         if self.is_active_line && self.is_armed && hpos_pixel == self.hstart() {
             self.shift_a = self.data_a;
             self.shift_b = self.data_b;
@@ -137,15 +137,12 @@ impl Sprites {
         self.clxcon = 0xF000;
     }
 
-    /// Sets the collision control register (CLXCON)
-    #[inline]
-    pub fn set_clxcon(&mut self, val: u16) {
-        self.clxcon = val;
-    }
-
     /// Sets Sprite DMA enabled state from DMACON
     #[inline]
     pub fn set_dma_enabled(&mut self, enabled: bool) {
+        if self.dma_enabled == enabled {
+            return;
+        }
         self.dma_enabled = enabled;
         if !enabled {
             for ch in &mut self.channels {
@@ -162,33 +159,6 @@ impl Sprites {
             for ch in &mut self.channels {
                 ch.update_scanline(beam.vpos);
             }
-        }
-    }
-
-    /// Sets sprite position register (SPRxPOS)
-    #[inline]
-    pub fn set_pos(&mut self, ch: usize, val: u16) {
-        if ch < 8 {
-            self.channels[ch].pos = val;
-        }
-    }
-
-    /// Sets sprite control register (SPRxCTL) - writing disables horizontal comparator
-    #[inline]
-    pub fn set_ctl(&mut self, ch: usize, val: u16) {
-        if ch < 8 {
-            self.channels[ch].ctl = val;
-            self.channels[ch].is_armed = false;
-        }
-    }
-
-    /// Sets sprite image data (SPRxDATA and SPRxDATB) - writing DATA arms comparator
-    #[inline]
-    pub fn set_data(&mut self, ch: usize, data_a: u16, data_b: u16) {
-        if ch < 8 {
-            self.channels[ch].data_a = data_a;
-            self.channels[ch].data_b = data_b;
-            self.channels[ch].is_armed = true;
         }
     }
 

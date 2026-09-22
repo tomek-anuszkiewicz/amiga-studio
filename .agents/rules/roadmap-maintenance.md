@@ -21,16 +21,20 @@ Whenever an agent is 100% certain that a roadmap milestone or step in [`ROADMAP.
 
 ---
 
-## 2. Major Milestone Completion Gates
+## 2. Minor Roadmap Point & Major Milestone Completion Gates
 
-Whenever completing a major milestone (e.g. completing an entire phase or major subsystem block):
+Whenever completing a minor roadmap step (e.g. Step 1.1, 1.2, 2.1) or major milestone block:
 
-1. **Diary Compaction (`compact-diary`):**
-   - Invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) to synthesize older completed milestone entries in [`DIARY.md`](../../DIARY.md) into high-level architectural digests.
-2. **Dead Code Pruning (`prune-dead-code`):**
-   - Invoke the `prune-dead-code` skill ([`.agents/skills/prune-dead-code/`](../skills/prune-dead-code/SKILL.md)) to audit and eliminate unreferenced functions, obsolete constants, unused imports, and superseded scaffolding across workspace crates.
-3. **Milestone Review Protocol (`/code-review`):**
-   - Run the `/code-review` workflow to audit the diff with a clean context before final user hand-off.
+1. **Milestone Quality Gate (`pre_flight.py --milestone`):**
+   - Run `python tools/harness/pre_flight.py --milestone` to verify all 11 quality gates (Clippy, Architecture Rules, Code Quality Pillars 1–4, Hardware Quality Pillars 1–5, and Docs Quality 10 pillars).
+2. **Semantic Parity Audit (`audit-semantic-parity`):**
+   - Run `/audit-semantic-parity` on modified subsystems to verify forward and reverse parity against living design specs.
+3. **Design Documentation Synchronization:**
+   - Update affected design documents under `Obsidian/Amiga/Design/` and stamp Git checkpoints (`audit_docs_quality.py --design-bump <doc>`) per [`docs-maintenance.md`](docs-maintenance.md).
+4. **Milestone Engineering Diary Logging:**
+   - Record the completed roadmap step in [`DIARY.md`](../../DIARY.md) (Section 10) using `python tools/harness/log_diary.py`.
+5. **Major Milestone Compaction (`compact-diary`):**
+   - Upon concluding full milestone phases, invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) to synthesize older completed milestone entries into high-level architectural digests.
 
 ---
 

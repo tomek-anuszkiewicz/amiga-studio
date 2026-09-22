@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use debugger::assemble_instruction;
 
 #[test]
@@ -360,4 +362,10 @@ fn test_roundtrip_assemble_and_disassemble() {
             assert_eq!(dis.operands, exp_ops, "Operands mismatch for '{}'", asm_str);
         }
     }
+}
+
+#[test]
+fn test_assemble_invalid_mnemonic_returns_err() {
+    assert!(assemble_instruction("INVALID.W D0, D1", 0x1000).is_err());
+    assert!(assemble_instruction("UNKNOWN (A0)", 0x1000).is_err());
 }

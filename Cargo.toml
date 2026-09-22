@@ -13,16 +13,15 @@ members = [
     "crates/denise",
     "crates/audio",
     "crates/floppy",
-    "crates/serial_port",
+    "crates/interrupts",
     "crates/paula",
     "crates/keyboard",
-    "crates/parallel_port",
     "crates/cia",
     "crates/machine_loop",
     "crates/rtc",
     "crates/physical_memory",
     "crates/memory_bus",
-    "crates/m68000",
+    "crates/cpu",
     "crates/disassembler",
     "crates/debugger",
     "crates/gui",
@@ -55,19 +54,74 @@ joystick = { path = "crates/joystick" }
 denise = { path = "crates/denise" }
 audio = { path = "crates/audio" }
 floppy = { path = "crates/floppy" }
-serial_port = { path = "crates/serial_port" }
+interrupts = { path = "crates/interrupts" }
 paula = { path = "crates/paula" }
 keyboard = { path = "crates/keyboard" }
-parallel_port = { path = "crates/parallel_port" }
 cia = { path = "crates/cia" }
 machine_loop = { path = "crates/machine_loop" }
 rtc = { path = "crates/rtc" }
 physical_memory = { path = "crates/physical_memory" }
 memory_bus = { path = "crates/memory_bus" }
-m68000 = { path = "crates/m68000" }
+cpu = { path = "crates/cpu" }
 disassembler = { path = "crates/disassembler" }
 debugger = { path = "crates/debugger" }
 game_ports = { path = "crates/game_ports" }
+
+[workspace.lints.rust]
+warnings = "deny"
+unsafe_code = "deny"
+deprecated = "deny"
+dead_code = "deny"
+unused_imports = "deny"
+unused_variables = "deny"
+unused_must_use = "deny"
+missing_debug_implementations = "deny"
+
+[workspace.lints.clippy]
+all = { level = "allow", priority = -1 }
+correctness = { level = "deny", priority = -1 }
+# Zero host panics on guest code (strictly denied in production code; tests exempt via #![allow(...)])
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+unreachable = "deny"
+
+# Architectural integrity & disallowed abstractions
+disallowed_types = "deny"
+disallowed_methods = "deny"
+
+# Memory, ownership and borrowing
+ptr_arg = "deny"
+rc_buffer = "deny"
+rc_mutex = "deny"
+box_collection = "deny"
+vec_box = "deny"
+transmute_ptr_to_ptr = "deny"
+cast_ptr_alignment = "deny"
+
+# Trait derives and constructors
+new_without_default = "deny"
+new_ret_no_self = "deny"
+expl_impl_clone_on_copy = "deny"
+derivable_impls = "deny"
+
+# Visibility and re-exports
+redundant_pub_crate = "deny"
+wildcard_imports = "deny"
+
+# Control flow, boolean logic and performance
+nonminimal_bool = "deny"
+needless_bool = "deny"
+or_fun_call = "deny"
+
+# Disabled - harmful in emulator or obscures physical hardware architecture
+cast_possible_truncation = "allow"
+match_same_arms = "allow"
+collapsible_if = "allow"
+collapsible_else_if = "allow"
+
+# Project-specific override: hot ALU and CCR routines require #[inline(always)]
+inline_always = "allow"
 
 [profile.test]
 opt-level = 0

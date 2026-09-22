@@ -4,13 +4,16 @@
 //! and central interrupt multiplexer (INTENA, INTREQ -> IPL 1..6).
 
 pub use audio;
-pub use serial_port;
+pub use interrupts;
+pub use interrupts::InterruptController;
+pub mod serial;
+pub use serial::SerialPort;
 
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
 /// Fixed-capacity in-flight register mutation buffer for Paula (covers audio, disk, uart, int)
-pub const PAULA_MUTATION_CAPACITY: usize = 32;
+const PAULA_MUTATION_CAPACITY: usize = 32;
 
 /// Paula custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -18,12 +21,9 @@ pub struct Paula {
     /// 4-channel DMA audio subsystem
     pub audio: audio::Audio,
     /// RS-232 serial UART transceiver
-    pub serial_port: serial_port::SerialPort,
-    // --- Active Latched Registers (Read is NOW) ---
-    /// Interrupt Enable register (INTENA / INTENAR at $DFF09A / $DFF01C)
-    pub intena: u16,
-    /// Interrupt Request register (INTREQ / INTREQR at $DFF09C / $DFF01E)
-    pub intreq: u16,
+    pub serial_port: serial::SerialPort,
+    /// Central interrupt priority controller (INTENA / INTREQ / IPL 1..6)
+    pub interrupts: interrupts::InterruptController,
     /// Audio / Disk / UART Control register (ADKCON / ADKCONR at $DFF09E / $DFF010)
     pub adkcon: u16,
 
@@ -38,6 +38,10 @@ pub struct Paula {
     pub dsklen: u16,
     pub dskdat: u16,
     pub dsksync: u16,
+    /// True if DSKLEN write 1 has armed the disk DMA sequence
+    pub dma_armed: bool,
+    /// True if DSKLEN write 2 has activated the disk DMA transfer
+    pub dma_active: bool,
 
     /// Paula-local DMA enables latched from DMACON ($096: AUD0..3EN, DSKEN)
     pub dma_enables: u16,
@@ -48,6 +52,12 @@ pub struct Paula {
     #[serde(with = "config::big_array")]
     pub mutations: [Option<DelayedMutation>; PAULA_MUTATION_CAPACITY],
 }
+
+pub const DSKBYTR_DMAON: u16 = 0x4000;
+pub const DSKBYTR_DISKWRITE: u16 = 0x2000;
+pub const DSKBYTR_DATA_MASK: u16 = 0x90FF;
+pub const DSKLEN_WRITE_FLAG: u16 = 0x4000;
+pub const DSKBYTR_DSKEN: u16 = 0x0010;
 
 impl Default for Paula {
     fn default() -> Self {
@@ -60,9 +70,8 @@ impl Paula {
     pub fn new() -> Self {
         Self {
             audio: audio::Audio::new(),
-            serial_port: serial_port::SerialPort::new(),
-            intena: 0,
-            intreq: 0,
+            serial_port: serial::SerialPort::new(),
+            interrupts: interrupts::InterruptController::new(),
             adkcon: 0,
             pot0dat: 0,
             pot1dat: 0,
@@ -72,6 +81,8 @@ impl Paula {
             dsklen: 0,
             dskdat: 0,
             dsksync: 0x4489,
+            dma_armed: false,
+            dma_active: false,
             dma_enables: 0,
             dma_master: false,
             mutations: [None; PAULA_MUTATION_CAPACITY],
@@ -82,8 +93,7 @@ impl Paula {
     pub fn reset(&mut self) {
         self.audio.reset();
         self.serial_port.reset();
-        self.intena = 0;
-        self.intreq = 0;
+        self.interrupts.reset();
         self.adkcon = 0;
         self.pot0dat = 0;
         self.pot1dat = 0;
@@ -93,6 +103,8 @@ impl Paula {
         self.dsklen = 0;
         self.dskdat = 0;
         self.dsksync = 0x4489;
+        self.dma_armed = false;
+        self.dma_active = false;
         self.dma_enables = 0;
         self.dma_master = false;
         self.mutations = [None; PAULA_MUTATION_CAPACITY];
@@ -133,11 +145,68 @@ impl Paula {
             0x014 => self.pot1dat,
             0x016 => self.potgor,
             0x018 => self.serial_port.serdatr,
-            0x01A => self.dskbytr,
-            0x01C => self.intena,
-            0x01E => self.intreq,
+            0x01A => self.peek_dskbytr(),
+            0x01C => self.interrupts.read_intenar(),
+            0x01E => self.interrupts.read_intreqr(),
             _ => 0xFFFF,
         }
+    }
+
+    /// Action method: writes DSKLEN register following the 2-write arming sequence
+    pub fn write_dsklen(&mut self, val: u16) {
+        self.dsklen = val;
+        let dmaen = (val & 0x8000) != 0;
+        if !dmaen {
+            self.dma_armed = false;
+            self.dma_active = false;
+        } else if !self.dma_armed {
+            self.dma_armed = true;
+        } else {
+            self.dma_active = true;
+        }
+    }
+
+    /// Returns true if disk DMA is active in DSKLEN
+    #[inline]
+    pub fn is_dsk_dma_active(&self) -> bool {
+        self.dma_active
+    }
+
+    /// Returns composite DSKBYTR status with live flags without side effects (for debuggers and peek inspection)
+    #[inline]
+    pub fn peek_dskbytr(&self) -> u16 {
+        self.assemble_dskbytr(self.dskbytr)
+    }
+
+    /// Reads composite live DSKBYTR with Clear-on-Read hardware side-effects (clears bit 15 DSKBYT)
+    #[inline]
+    pub fn read_dskbytr(&mut self) -> u16 {
+        let val = self.peek_dskbytr();
+        self.dskbytr &= !0x8000;
+        val
+    }
+
+    /// Action method: latches a new deserialized MFM byte from the floppy drive bitstream
+    #[inline]
+    pub fn set_disk_byte(&mut self, byte: u8, sync_matched: bool) {
+        let sync_bit = if sync_matched { 0x1000 } else { 0 };
+        self.dskbytr = 0x8000 | sync_bit | (byte as u16);
+    }
+
+    /// Assembles composite live DSKBYTR status from raw read word, DSKLEN, and Paula DMA enables.
+    #[inline]
+    pub fn assemble_dskbytr(&self, floppy_dskbytr: u16) -> u16 {
+        let dmaon = if self.dma_master && (self.dma_enables & DSKBYTR_DSKEN) != 0 {
+            DSKBYTR_DMAON
+        } else {
+            0
+        };
+        let diskwrite = if (self.dsklen & DSKLEN_WRITE_FLAG) != 0 {
+            DSKBYTR_DISKWRITE
+        } else {
+            0
+        };
+        (floppy_dskbytr & DSKBYTR_DATA_MASK) | dmaon | diskwrite
     }
 
     /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
@@ -204,7 +273,7 @@ impl Paula {
             0x030 => self.serial_port.write_serdat(val),
             0x032 => self.serial_port.write_serper(val),
             0x034 => self.potgo = val,
-            0x024 => self.dsklen = val,
+            0x024 => self.write_dsklen(val),
             0x026 => self.dskdat = val,
             0x07E => self.dsksync = val,
 
@@ -277,33 +346,21 @@ impl Paula {
     }
 
     /// Writes INTENA register following SET/CLR bit 15 logic
+    #[inline]
     pub fn write_intena(&mut self, val: u16) {
-        if (val & 0x8000) != 0 {
-            self.intena |= val & 0x7FFF;
-        } else {
-            self.intena &= !(val & 0x7FFF);
-        }
+        self.interrupts.write_intena(val);
     }
 
     /// Writes INTREQ register following SET/CLR bit 15 logic
+    #[inline]
     pub fn write_intreq(&mut self, val: u16) {
-        if (val & 0x8000) != 0 {
-            self.intreq |= val & 0x7FFF;
-        } else {
-            self.intreq &= !(val & 0x7FFF);
-        }
+        self.interrupts.write_intreq(val);
     }
 
     /// Asserts interrupt request bits immediately
     #[inline]
     pub fn set_interrupt_request(&mut self, mask: u16) {
-        self.intreq |= mask & 0x7FFF;
-    }
-
-    /// Clears interrupt request bits immediately
-    #[inline]
-    pub fn clear_interrupt_request(&mut self, mask: u16) {
-        self.intreq &= !(mask & 0x7FFF);
+        self.interrupts.request(mask);
     }
 
     /// Polls and clears the audio DMA restart strobe (`AUDxDSR`) for channel `ch`
@@ -313,42 +370,92 @@ impl Paula {
     }
 
     /// Evaluates pending, enabled interrupt sources and returns the highest active IPL (0..6)
+    #[inline]
     pub fn pending_interrupt_level(&self) -> u8 {
-        // Master interrupt enable bit (INTEN, bit 14)
-        if (self.intena & 0x4000) == 0 {
-            return 0;
-        }
+        self.interrupts.pending_level()
+    }
 
-        let pending = self.intreq & self.intena & 0x3FFF;
-        if pending == 0 {
-            return 0;
-        }
+    /// Reads Audio/Disk Control register (ADKCONR at $DFF010)
+    #[inline(always)]
+    pub fn adkconr(&self) -> u16 {
+        self.adkcon
+    }
 
-        // Level 6: External / CIA-B (bit 13)
-        if (pending & 0x2000) != 0 {
-            return 6;
-        }
-        // Level 5: Disk Sync (bit 12) or Serial Receive (bit 11)
-        if (pending & 0x1800) != 0 {
-            return 5;
-        }
-        // Level 4: Audio channels 0..3 (bits 10..7)
-        if (pending & 0x0780) != 0 {
-            return 4;
-        }
-        // Level 3: Copper (bit 4), VBlank (bit 5), or Blitter (bit 6)
-        if (pending & 0x0070) != 0 {
-            return 3;
-        }
-        // Level 2: Ports / CIA-A (bit 3)
-        if (pending & 0x0008) != 0 {
-            return 2;
-        }
-        // Level 1: Serial Transmit (bit 0), Disk Block (bit 1), Software (bit 2)
-        if (pending & 0x0007) != 0 {
-            return 1;
-        }
+    /// Reads Audio/Disk Control register without side-effects for debugging
+    #[inline(always)]
+    pub fn adkconr_debug(&self) -> u16 {
+        self.adkcon
+    }
 
-        0
+    /// Reads Potentiometer 0 data register (POT0DAT at $DFF012)
+    #[inline(always)]
+    pub fn pot0dat(&self) -> u16 {
+        self.pot0dat
+    }
+
+    /// Reads Potentiometer 0 data register without side-effects for debugging
+    #[inline(always)]
+    pub fn pot0dat_debug(&self) -> u16 {
+        self.pot0dat
+    }
+
+    /// Reads Potentiometer 1 data register (POT1DAT at $DFF014)
+    #[inline(always)]
+    pub fn pot1dat(&self) -> u16 {
+        self.pot1dat
+    }
+
+    /// Reads Potentiometer 1 data register without side-effects for debugging
+    #[inline(always)]
+    pub fn pot1dat_debug(&self) -> u16 {
+        self.pot1dat
+    }
+
+    /// Reads Potentiometer Port control/data register (POTGOR at $DFF016)
+    #[inline(always)]
+    pub fn potgor(&self) -> u16 {
+        self.potgor
+    }
+
+    /// Reads Potentiometer Port control/data register without side-effects for debugging
+    #[inline(always)]
+    pub fn potgor_debug(&self) -> u16 {
+        self.potgor
+    }
+
+    /// Reads Serial port data and status register (SERDATR at $DFF018)
+    #[inline(always)]
+    pub fn serdatr(&self) -> u16 {
+        self.serial_port.serdatr
+    }
+
+    /// Reads Serial port data and status register without side-effects for debugging
+    #[inline(always)]
+    pub fn serdatr_debug(&self) -> u16 {
+        self.serial_port.serdatr
+    }
+
+    /// Reads Interrupt enable register (INTENAR at $DFF01C)
+    #[inline(always)]
+    pub fn intenar(&self) -> u16 {
+        self.interrupts.read_intenar()
+    }
+
+    /// Reads Interrupt enable register without side-effects for debugging
+    #[inline(always)]
+    pub fn intenar_debug(&self) -> u16 {
+        self.interrupts.read_intenar()
+    }
+
+    /// Reads Interrupt request register (INTREQR at $DFF01E)
+    #[inline(always)]
+    pub fn intreqr(&self) -> u16 {
+        self.interrupts.read_intreqr()
+    }
+
+    /// Reads Interrupt request register without side-effects for debugging
+    #[inline(always)]
+    pub fn intreqr_debug(&self) -> u16 {
+        self.interrupts.read_intreqr()
     }
 }

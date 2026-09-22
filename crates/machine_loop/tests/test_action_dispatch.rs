@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use config::{A500Config, VideoStandard};
 use machine_loop::BusResult;
 use machine_loop::{A500Machine, AddressBus};
@@ -11,7 +13,7 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert!(!machine.agnus.blitter.dma_enabled);
     assert!(!machine.agnus.blitter.bltpri);
     assert!(!machine.denise.sprites.dma_enabled);
-    assert!(!machine.floppy.dma_enabled);
+    assert_eq!(machine.paula.dma_enables & paula::DSKBYTR_DSKEN, 0);
     assert!(!machine.denise.frame_builder.dma_enabled);
     for ch in 0..4 {
         assert!(!machine.paula.audio.channels[ch].dma_enabled);
@@ -34,7 +36,7 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert!(machine.agnus.blitter.dma_enabled);
     assert!(!machine.agnus.blitter.bltpri);
     assert!(machine.denise.sprites.dma_enabled);
-    assert!(machine.floppy.dma_enabled);
+    assert_ne!(machine.paula.dma_enables & paula::DSKBYTR_DSKEN, 0);
     assert!(machine.denise.frame_builder.dma_enabled);
     for ch in 0..4 {
         assert!(machine.paula.audio.channels[ch].dma_enabled);
@@ -61,7 +63,7 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert!(!machine.agnus.copper.dma_enabled);
     assert!(!machine.agnus.blitter.dma_enabled);
     assert!(!machine.denise.sprites.dma_enabled);
-    assert!(!machine.floppy.dma_enabled);
+    assert!(!machine.paula.dma_master);
     assert!(!machine.denise.frame_builder.dma_enabled);
     for ch in 0..4 {
         assert!(!machine.paula.audio.channels[ch].dma_enabled);
@@ -228,7 +230,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     );
     machine.step_cck();
     machine.step_cck();
-    assert!(machine.floppy.dma_enabled);
+    assert_ne!(machine.paula.dma_enables & paula::DSKBYTR_DSKEN, 0);
 
     // Test DSKLEN 2-write arming sequence
     // First write: DSKLEN ($DFF024) = 0x9000 (SET bit 15, len = 0x1000)
@@ -239,8 +241,9 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     machine.step_cck();
     machine.step_cck();
 
-    // First write does not arm DMA yet
-    assert!(!machine.floppy.is_dma_active());
+    // First write does not activate DMA yet (armed only)
+    assert!(machine.paula.dma_armed);
+    assert!(!machine.paula.is_dsk_dma_active());
 
     // Second write: DSKLEN = 0x9000
     assert_eq!(
@@ -251,7 +254,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     machine.step_cck();
 
     // Second consecutive write with bit 15 sets dma_active
-    assert!(machine.floppy.is_dma_active());
+    assert!(machine.paula.is_dsk_dma_active());
 }
 
 #[test]
@@ -278,7 +281,7 @@ fn test_blitter_finish_asserts_blitint_and_escalates_ipl() {
 
     // Step 1 CCK: machine loop polls Agnus blitter IRQ, sets Paula INTREQ bit 6, arbitrates IPL to 3
     machine.step_cck();
-    assert_eq!(machine.paula.intreq & 0x0040, 0x0040);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0040, 0x0040);
     assert_eq!(machine.cpu.state.ipl, 3);
 }
 
@@ -312,11 +315,51 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
     machine.agnus.audpt[0] = 0x0002_5100;
 
     // Paula audio channel 0 finishes sample buffer and requests loop restart (AUD0DSR)
-    machine.paula.audio.trigger_buffer_finish(0);
+    machine.paula.audio.channels[0].restart_strobe = true;
 
     // Step 1 CCK: Agnus reloads audpt[0] from audlc[0], Paula asserts INTREQ bit 7, CPU IPL -> 4
     machine.step_cck();
     assert_eq!(machine.agnus.audpt[0], 0x0002_5000);
-    assert_eq!(machine.paula.intreq & 0x0080, 0x0080);
+    assert_eq!(machine.paula.interrupts.intreq & 0x0080, 0x0080);
     assert_eq!(machine.cpu.state.ipl, 4);
+}
+
+#[test]
+fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
+    let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+
+    // Initially, DF0 motor is off
+    assert!(!machine.floppy.drives[0].motor_on);
+
+    // CPU writes to CIA-B PRB ($BFD100) selecting DF0 with motor on: 0x75
+    assert_eq!(
+        machine.memory_bus().write_byte(0xBFD100, 0x75),
+        BusResult::Ready(())
+    );
+
+    // Before stepping, CIA-B has prb_mutated = true
+    assert!(machine.cia_b.prb_mutated);
+
+    // Stepping the machine executes poll_peripheral_pins which polls CIA-B PRB and updates Floppy
+    machine.step_cck();
+    assert!(!machine.cia_b.prb_mutated);
+    assert!(machine.floppy.drives[0].motor_on);
+
+    // Simulate floppy controller shifting in MFM byte 0x42 with sync match (bit 12) and byte ready (bit 15)
+    machine.floppy.dskbytr = 0x9042;
+
+    // Step machine: poll_peripheral_pins transfers byte into Paula and clears bit 15 in floppy
+    machine.step_cck();
+    assert_eq!(machine.floppy.dskbytr & 0x8000, 0);
+    assert_eq!(machine.paula.dskbytr & 0x90FF, 0x9042);
+
+    // CPU reads DSKBYTR from Paula via memory bus
+    let val = match machine.memory_bus().read_word(0xDFF01A) {
+        BusResult::Ready(v) => v,
+        _ => panic!("Expected Ready"),
+    };
+    assert_eq!(val & 0x90FF, 0x9042);
+
+    // Paula bit 15 is cleared on read
+    assert_eq!(machine.paula.dskbytr & 0x8000, 0);
 }

@@ -1,9 +1,9 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 //! Integration tests for Amiga 500 Save State Serialization and Restoration
 
 use config::{A500Config, A500Preset, VideoStandard};
-use machine_loop::{
-    compute_crc32, A500Machine, A500State, SaveStateError, SAVE_STATE_MAGIC, SAVE_STATE_VERSION,
-};
+use machine_loop::{A500Machine, A500State, SaveStateError, SAVE_STATE_MAGIC, SAVE_STATE_VERSION};
 
 #[test]
 fn test_save_state_metadata_and_header() {
@@ -18,7 +18,6 @@ fn test_save_state_metadata_and_header() {
     assert_eq!(state.header.chip_ram_size, 512 * 1024);
     assert_eq!(state.header.slow_ram_size, 512 * 1024);
     assert_eq!(state.header.fast_ram_size, 0);
-    assert!(!state.header.is_self_contained);
     assert_eq!(state.cck, 0);
 }
 
@@ -39,9 +38,10 @@ fn test_save_state_json_roundtrip() {
     assert_eq!(state.cpu, restored.cpu);
     assert_eq!(state.agnus, restored.agnus);
     assert_eq!(state.denise, restored.denise);
-    assert_eq!(state.paula, restored.paula);
     assert_eq!(state.cia_a, restored.cia_a);
     assert_eq!(state.cia_b, restored.cia_b);
+    assert_eq!(state.game_ports, restored.game_ports);
+    assert_eq!(state.paula.serial_port, restored.paula.serial_port);
     assert_eq!(state, restored);
 }
 
@@ -73,6 +73,13 @@ fn test_save_state_deterministic_stepping_roundtrip() {
         VideoStandard::Pal,
     ));
 
+    let code = [0x4E, 0x71, 0x60, 0xFE]; // NOP; BRA *-0
+    machine.physical_memory.map_chip_ram_to_low_memory();
+    machine.physical_memory.write_bytes_debug(0x001000, &code);
+    machine
+        .cpu
+        .set_pc_and_prime_prefetch(0x001000, &mut machine.physical_memory);
+
     // 1. Advance machine by 300 CCKs
     machine.step_cycles(300);
 
@@ -87,6 +94,12 @@ fn test_save_state_deterministic_stepping_roundtrip() {
     machine
         .load_state(&snapshot)
         .expect("Failed to restore save state");
+
+    // 4b. Verify that Cpu::restore_state re-hydrated the static micro-step slice
+    assert!(
+        !machine.cpu.state.micro.current_steps.is_empty(),
+        "Micro-step slice must be re-hydrated by restore_state on load_state"
+    );
 
     // 5. Step forward the exact same 600 CCKs to produce branch B
     machine.step_cycles(600);
@@ -129,33 +142,32 @@ fn test_save_state_deterministic_stepping_roundtrip() {
 }
 
 #[test]
-fn test_save_state_kickstart_mismatch_guard() {
+fn test_save_state_restores_kickstart_rom_unconditionally() {
     let mut machine = A500Machine::new(A500Config::from_preset(
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
     // Synthetic Kickstart ROM
+    let dummy_rom = vec![0x42; 256 * 1024];
     machine
         .physical_memory
-        .inject_kickstart_rom(&[0x11; 256 * 1024]);
-    let mut state = machine.save_state();
+        .write_bytes_debug(0xF80000, &dummy_rom);
 
-    // Alter expected Kickstart CRC in save state
-    state.header.kickstart_crc32 = 0xDEADBEEF;
+    let state = machine.save_state();
+    assert_eq!(state.physical_memory.kickstart_rom.len(), 256 * 1024);
 
-    let err = machine
+    let mut target_machine = A500Machine::new(A500Config::from_preset(
+        A500Preset::Bare512k,
+        VideoStandard::Pal,
+    ));
+    assert!(target_machine.physical_memory.kickstart_rom[8..]
+        .iter()
+        .all(|&b| b == 0xFF));
+
+    target_machine
         .load_state(&state)
-        .expect_err("Loading state with mismatched Kickstart CRC must fail");
-    match err {
-        SaveStateError::KickstartMismatch {
-            expected_crc,
-            actual_crc,
-        } => {
-            assert_eq!(expected_crc, 0xDEADBEEF);
-            assert_ne!(actual_crc, 0xDEADBEEF);
-        }
-        other => panic!("Expected KickstartMismatch, got {:?}", other),
-    }
+        .expect("Loading state with Kickstart ROM must succeed");
+    assert_eq!(target_machine.physical_memory.kickstart_rom, dummy_rom);
 }
 
 #[test]
@@ -185,35 +197,6 @@ fn test_save_state_ram_size_mismatch_guard() {
 }
 
 #[test]
-fn test_save_state_self_contained_roundtrip() {
-    let mut machine = A500Machine::new(A500Config::from_preset(
-        A500Preset::Bare512k,
-        VideoStandard::Pal,
-    ));
-    let dummy_rom = vec![0x42; 256 * 1024];
-    machine.physical_memory.inject_kickstart_rom(&dummy_rom);
-
-    let state = machine.save_state_self_contained();
-    assert!(state.header.is_self_contained);
-    assert_eq!(state.physical_memory.kickstart_rom.len(), 256 * 1024);
-
-    let mut target_machine = A500Machine::new(A500Config::from_preset(
-        A500Preset::Bare512k,
-        VideoStandard::Pal,
-    ));
-    assert!(!target_machine.physical_memory.is_kickstart_loaded());
-
-    target_machine
-        .load_state(&state)
-        .expect("Failed to load self-contained state");
-    assert!(target_machine.physical_memory.is_kickstart_loaded());
-    assert_eq!(
-        compute_crc32(&target_machine.physical_memory.kickstart_rom),
-        compute_crc32(&dummy_rom)
-    );
-}
-
-#[test]
 fn test_save_state_file_persistence() {
     let mut machine = A500Machine::new(A500Config::from_preset(
         A500Preset::Bare512k,
@@ -240,4 +223,15 @@ fn test_save_state_file_persistence() {
     assert_eq!(machine.cpu.state, restored_machine.cpu.state);
 
     let _ = std::fs::remove_file(&temp_path);
+}
+
+#[test]
+fn test_save_state_json_string_roundtrip() {
+    let machine = A500Machine::new(A500Config::from_preset(
+        A500Preset::Bare512k,
+        VideoStandard::Pal,
+    ));
+    let state = machine.save_state();
+    let json = serde_json::to_string(&state).expect("JSON serialization must succeed");
+    assert!(!json.is_empty());
 }

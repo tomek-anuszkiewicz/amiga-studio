@@ -28,9 +28,9 @@ The Amiga custom chipset registers occupy the 512-byte address space `$DFF000..$
 > A single memory address offset often maps to **two completely distinct registers** depending on whether the processor performs a READ or a WRITE.
 > Furthermore, the reading circuit and writing circuit often reside on **physically different silicon chips**!
 >
-> *Example 1:* Reading `$DFF002` reads `DMACONR` from Agnus (and Blitter live status), while writing `$DFF002` writes `DMACON` with SET/CLR bit-15 control logic.
-> *Example 2:* Reading `$DFF006` reads `VHPOSR` from Agnus, while writing `$DFF006` writes `VHPOSW` (test register).
-> *Example 3:* Reading `$DFF010` reads `ADKCONR` from Paula, while writing `$DFF010` is reserved/ignored (the write counterpart `ADKCON` is located at `$DFF09E`).
+> *Example 1:* Reading `$DFF002` reads `DMACONR` from Agnus (and Blitter live status), while the control write `DMACON` is decoded at a completely different offset (`$DFF096`).
+> *Example 2:* Reading `$DFF004`/`$DFF006` reads beam positions `VPOSR`/`VHPOSR` from Agnus, while writing beam test positions `VPOSW`/`VHPOSW` is decoded at `$DFF02A`/`$DFF02C`.
+> *Example 3:* Reading `$DFF010` reads `ADKCONR` from Paula, while writing `ADKCON` is located at `$DFF09E`.
 
 ### Access Mode Classifications
 - **`RO` (Read-Only):** Guest writes are ignored or non-functional.
@@ -61,9 +61,9 @@ Each register belongs strictly to one physical silicon chip:
 | Offset | Read Name (Chip) | Write Name (Chip) | Access Mode | Scope | Delay | Function & Silicon Quirks |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **$000** | `BLTDDAT` (A) | `BLTDDAT` (A) | `RO` / `WO` | Internal | 1 CCK | Blitter destination early data latch (internal test). |
-| **$002** | `DMACONR` (A) | `DMACON` (A) | `RO` / `WO` | Cross-Chip | 2 CCKs | **Read:** DMA control status + Blitter `BBUSY` (bit 15) & `BZERO` (bit 14).<br/>**Write:** SET/CLR (bit 15) DMA enables across all channels. |
-| **$004** | `VPOSR` (A) | `VPOSW` (A) | `RO` / `WO` | Internal | 2 CCKs | **Read:** Vertical beam position high bit, chip ID, and long frame (`LOF`). |
-| **$006** | `VHPOSR` (A) | `VHPOSW` (A) | `RO` / `WO` | Internal | 2 CCKs | **Read:** Vertical ($V_7..V_0$) and Horizontal ($H_8..H_1$) beam position. |
+| **$002** | `DMACONR` (A) | *(Reserved)* | `RO` | Cross-Chip | 2 CCKs | **Read:** DMA control status + Blitter `BBUSY` (bit 15) & `BZERO` (bit 14). (Write is `DMACON` at `$096`). |
+| **$004** | `VPOSR` (A) | *(Reserved)* | `RO` | Internal | 2 CCKs | **Read:** Vertical beam position high bit, chip ID, and long frame (`LOF`). (Write is `VPOSW` at `$02A`). |
+| **$006** | `VHPOSR` (A) | *(Reserved)* | `RO` | Internal | 2 CCKs | **Read:** Vertical ($V_7..V_0$) and Horizontal ($H_8..H_1$) beam position. (Write is `VHPOSW` at `$02C`). |
 | **$008** | *(Open bus $FFFF)* | `DSKDATR` (P) | `WO` | Internal | 1 CCK | Early disk data latch (test). |
 | **$00A** | `JOY0DAT` (D) | *(Reserved)* | `RO` | Internal | Live | Port 1 (Mouse/Joystick) counter (X/Y mouse quadrature counts). |
 | **$00C** | `JOY1DAT` (D) | *(Reserved)* | `RO` | Internal | Live | Port 2 (Joystick) counter. |
@@ -81,12 +81,17 @@ Each register belongs strictly to one physical silicon chip:
 | **$024** | *(Open bus $FFFF)* | `DSKLEN` (P) | `WO` | Cross-Chip | 2 CCKs | Disk length in words. **Requires 2 consecutive writes with bit 15 to arm.** |
 | **$026** | *(Open bus $FFFF)* | `DSKDAT` (P) | `WO` | Internal | 1 CCK | Floppy MFM DMA write data buffer. |
 | **$028** | *(Open bus $FFFF)* | `REFPTR` (A) | `WO` | Internal | 2 CCKs | DRAM refresh pointer (Agnus internal test). |
-| **$02A** | *(Open bus $FFFF)* | `VPTR` (A) | `WO` | Internal | 2 CCKs | Vertical beam position write (Agnus internal test). |
-| **$02C** | *(Open bus $FFFF)* | `COPCON` (A) | `WO` | Cross-Chip | 2 CCKs | Copper control: bit 1 (`CDANG`) enables Copper writes to `$000..$07E`. |
+| **$02A** | *(Open bus $FFFF)* | `VPOSW` (A) | `WO` | Internal | 2 CCKs | Vertical beam position write (Agnus internal test). |
+| **$02C** | *(Open bus $FFFF)* | `VHPOSW` (A) | `WO` | Internal | 2 CCKs | Vertical and horizontal beam position write (Agnus internal test). |
+| **$02E** | *(Open bus $FFFF)* | `COPCON` (A) | `WO` | Cross-Chip | 2 CCKs | Copper control: bit 1 (`CDANG`) enables Copper writes to `$000..$07E`. |
 | **$030** | *(Open bus $FFFF)* | `SERDAT` (P) | `WO` | Internal | 1 CCK | Serial UART transmit data buffer (pipelined). |
 | **$032** | *(Open bus $FFFF)* | `SERPER` (P) | `WO` | Internal | 2 CCKs | Serial UART baud rate period clock divisor. |
 | **$034** | *(Open bus $FFFF)* | `POTGO` (P) | `WO` | Internal | 2 CCKs | Potentiometer charge gate start and pin direction control. |
 | **$036** | `JOYTEST` (D) | `JOYTEST` (D) | `WO` | Internal | Live | Write-only mouse counter quadrature injection register for testing. |
+| **$038** | *(Open bus $FFFF)* | `STREQU` (A) | `STROBE` | Internal | 2 CCKs | Strobe for line equalization (Agnus test). |
+| **$03A** | *(Open bus $FFFF)* | `STRVBL` (A) | `STROBE` | Internal | 2 CCKs | Strobe for vertical blanking (Agnus test). |
+| **$03C** | *(Open bus $FFFF)* | `STRHOR` (A) | `STROBE` | Internal | 2 CCKs | Strobe for horizontal sync (Agnus test). |
+| **$03E** | *(Open bus $FFFF)* | `STRBUS` (A) | `STROBE` | Internal | 2 CCKs | Strobe for bus (Agnus test). |
 
 ---
 

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use disassembler::disassemble;
 
 #[test]
@@ -40,5 +42,21 @@ fn test_disassemble_pc_wrapping_and_offsets() {
     let (d, b) = disassemble(0x00FF_FFFE, read);
     assert_eq!(d.pc, 0x00FF_FFFE);
     assert_eq!(d.mnemonic, "NOP");
+    assert_eq!(b, 2);
+}
+
+#[test]
+fn test_disassemble_clr_l() {
+    let (d, b) = disassemble(0x2000, |_| 0x4280);
+    assert_eq!(d.mnemonic, "CLR.L");
+    assert_eq!(d.operands, "D0");
+    assert_eq!(b, 2);
+}
+
+#[test]
+fn test_disassemble_addq_w() {
+    let (d, b) = disassemble(0x3000, |_| 0x5240);
+    assert_eq!(d.mnemonic, "ADDQ.W");
+    assert_eq!(d.operands, "#1, D0");
     assert_eq!(b, 2);
 }

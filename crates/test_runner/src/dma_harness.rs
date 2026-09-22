@@ -8,9 +8,9 @@
 
 use crate::diagnostic::StateDiff;
 use crate::schema::SingleStepTest;
-use m68000::state::CpuState;
-use m68000::Cpu;
-use physical_memory::{MemoryType, TestMemoryBus};
+use crate::test_memory_bus::{MemoryType, TestMemoryBus};
+use cpu::state::CpuState;
+use cpu::Cpu;
 
 /// Failure diagnostic for DMA contention invariance violation
 #[derive(Debug, Clone)]
@@ -46,6 +46,7 @@ pub struct CartesianPermutationStats {
 impl std::error::Error for DmaContentionFailure {}
 
 /// Pre-flight analysis result capturing golden state and memory contacts
+#[derive(Debug)]
 pub struct PreFlight {
     pub base_clocks: u32,
     pub base_cck_count: u64,
@@ -72,7 +73,6 @@ pub fn run_preflight(test: &SingleStepTest) -> PreFlight {
             break;
         }
     }
-    golden_cpu.state.sync_stack_pointers();
     let base_clocks = golden_cpu.cycle_counter() as u32;
     let golden_state = golden_cpu.state.clone();
 
@@ -231,7 +231,6 @@ pub fn run_dma_full_cartesian_permutation(
                     break;
                 }
             }
-            cpu.state.sync_stack_pointers();
 
             // 1. Assert Cycle Invariance
             let actual_clocks = cpu.cycle_counter() as u32;
@@ -303,8 +302,8 @@ fn diff_cpu_and_ram(
 ) -> Vec<StateDiff> {
     let mut diffs = Vec::new();
     for i in 0..8 {
-        let actual = cpu.state.d_regs()[i];
-        let expected = golden_state.d_regs()[i];
+        let actual = cpu.state.d_long(i);
+        let expected = golden_state.d_long(i);
         if actual != expected {
             diffs.push(StateDiff::DataRegister {
                 reg: i,
@@ -314,8 +313,8 @@ fn diff_cpu_and_ram(
         }
     }
     for i in 0..7 {
-        let actual = cpu.state.a_regs()[i];
-        let expected = golden_state.a_regs()[i];
+        let actual = cpu.state.a_long(i);
+        let expected = golden_state.a_long(i);
         if actual != expected {
             diffs.push(StateDiff::AddressRegister {
                 reg: i,
@@ -324,22 +323,22 @@ fn diff_cpu_and_ram(
             });
         }
     }
-    if cpu.state.usp != golden_state.usp {
+    if cpu.state.usp() != golden_state.usp() {
         diffs.push(StateDiff::UserStackPointer {
-            actual: cpu.state.usp,
-            expected: golden_state.usp,
+            actual: cpu.state.usp(),
+            expected: golden_state.usp(),
         });
     }
-    if cpu.state.ssp != golden_state.ssp {
+    if cpu.state.ssp() != golden_state.ssp() {
         diffs.push(StateDiff::SupervisorStackPointer {
-            actual: cpu.state.ssp,
-            expected: golden_state.ssp,
+            actual: cpu.state.ssp(),
+            expected: golden_state.ssp(),
         });
     }
-    if cpu.state.sr != golden_state.sr {
+    if cpu.state.sr() != golden_state.sr() {
         diffs.push(StateDiff::StatusRegister {
-            actual: cpu.state.sr,
-            expected: golden_state.sr,
+            actual: cpu.state.sr(),
+            expected: golden_state.sr(),
             details: "SR changed under DMA contention".to_string(),
             diverging_flags: vec![],
         });
@@ -364,34 +363,24 @@ fn diff_cpu_and_ram(
 }
 
 fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
-    cpu.state.set_d_regs([
-        test.initial.d0,
-        test.initial.d1,
-        test.initial.d2,
-        test.initial.d3,
-        test.initial.d4,
-        test.initial.d5,
-        test.initial.d6,
-        test.initial.d7,
-    ]);
-    let initial_sp = if (test.initial.sr & 0x2000) != 0 {
-        test.initial.ssp
-    } else {
-        test.initial.usp
-    };
-    cpu.state.set_a_regs([
-        test.initial.a0,
-        test.initial.a1,
-        test.initial.a2,
-        test.initial.a3,
-        test.initial.a4,
-        test.initial.a5,
-        test.initial.a6,
-        initial_sp,
-    ]);
-    cpu.state.usp = test.initial.usp;
-    cpu.state.ssp = test.initial.ssp;
-    cpu.state.sr = test.initial.sr;
+    cpu.state.set_d_long(0, test.initial.d0);
+    cpu.state.set_d_long(1, test.initial.d1);
+    cpu.state.set_d_long(2, test.initial.d2);
+    cpu.state.set_d_long(3, test.initial.d3);
+    cpu.state.set_d_long(4, test.initial.d4);
+    cpu.state.set_d_long(5, test.initial.d5);
+    cpu.state.set_d_long(6, test.initial.d6);
+    cpu.state.set_d_long(7, test.initial.d7);
+    cpu.state.set_a_long(0, test.initial.a0);
+    cpu.state.set_a_long(1, test.initial.a1);
+    cpu.state.set_a_long(2, test.initial.a2);
+    cpu.state.set_a_long(3, test.initial.a3);
+    cpu.state.set_a_long(4, test.initial.a4);
+    cpu.state.set_a_long(5, test.initial.a5);
+    cpu.state.set_a_long(6, test.initial.a6);
+    cpu.state.set_sr(test.initial.sr);
+    cpu.state.set_usp(test.initial.usp);
+    cpu.state.set_ssp(test.initial.ssp);
     let is_harte = test.name.contains('[');
     if is_harte {
         cpu.state.pc = test.initial.pc.wrapping_add(4);
@@ -399,6 +388,5 @@ fn init_cpu_state(cpu: &mut Cpu, test: &SingleStepTest) {
         cpu.state.pc = test.initial.pc;
     }
     cpu.state.ir = (test.initial.prefetch[0] & 0xFFFF) as u16;
-    cpu.state.prefetch[0] = (test.initial.prefetch[1] & 0xFFFF) as u16;
-    cpu.state.prefetch[1] = 0;
+    cpu.state.prefetch = (test.initial.prefetch[1] & 0xFFFF) as u16;
 }
