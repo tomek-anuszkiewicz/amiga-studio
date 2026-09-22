@@ -55,7 +55,7 @@ This rule governs how the agent executes tests, validation suites, and long-runn
 
 2. **Multi-Session Task Separation**:
    - For complex tasks requiring heavy research alongside active coding, recommend or utilize parallel conversation panels:
-     - **Session A (Hardware Research / RAG)**: Queries Amiga hardware reference manuals (`amiga_rag`) and inspects circuit diagrams.
+     - **Session A (Hardware Research / RAG)**: Queries Amiga hardware reference manuals through the Amiga RAG MCP and inspects circuit diagrams.
      - **Session B (Core Implementation)**: Authors instruction micro-steps and specialized handlers in `crates/m68000/`.
      - **Session C (Verification & QA)**: Runs exhaustive test runners and monitors test outputs.
 

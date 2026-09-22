@@ -1,24 +1,17 @@
 ---
 trigger: model_decision
-description: Inspect diagrams and generate Git-tracked sidecar text descriptions (.txt) using Agent native multimodal vision, driven by RAG_CACHE_FILE hashes.
+description: Inspect diagrams and generate Git-tracked sidecar text descriptions (.txt) using Agent native multimodal vision for Amiga RAG MCP retrieval.
 ---
 
 ## Diagram & Asset Sidecar Descriptions
 
 All circuit diagrams, timing diagrams, pinouts, and architecture schematics in documentation assets (e.g. `Obsidian/Amiga/Reference/*/assets/`) maintain corresponding Git-tracked text description files: `<image_path>.txt`.
 
-These sidecar files allow the local RAG indexer (`amiga_rag`) to incorporate rich diagram details into vector embeddings 100% offline without requiring cloud API keys or runtime OCR.
+These sidecar files enrich Amiga RAG MCP retrieval with diagram details without requiring cloud APIs or runtime OCR.
 
-### Change Detection via `RAG_CACHE_FILE`
-- Image indexing status is strictly governed by the centralized RAG cache file (`amiga_rag_cache.json` specified by `RAG_CACHE_FILE` in `.env`).
-- To find assets that need new or updated descriptions, run:
-  ```powershell
-  python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --list-unindexed
-  ```
-- An image requires description when:
-  1. Its SHA256 hash is missing from `image_descriptions` in `CACHE_FILE`.
-  2. Its content hash has changed (`hash_mismatch`).
-  3. Its `<image_path>.txt` sidecar file is missing on disk.
+### Change Detection
+- An image requires a description when its `<image_path>.txt` sidecar is missing or no longer accurately reflects the image.
+- The standalone indexing tool maintains its own hash cache; Amiga project workflows do not access that cache directly.
 
 ### Execution Skill
 - Follow the standardized operational recipe in [`describe-diagram-assets`](../skills/describe-diagram-assets/SKILL.md) to inspect unindexed diagrams, generate `<image_path>.txt` sidecars, and synchronize the RAG cache.
@@ -35,5 +28,5 @@ When requested by the user or when assets are modified:
    - State & Cycle Transitions: <Timing steps, clock edges, wait states, microcode sequence>
    - Architectural Summary: <Core engineering takeaway and cycle-exact behavior>
    ```
-4. Save the description into `<image_path>.txt` and update the SHA256 hash in `RAG_CACHE_FILE` using `AssetsManager.record_description()`.
-5. Keep both image and sidecar `.txt` version-controlled in Git.
+4. Save the description into `<image_path>.txt`.
+5. Keep both image and sidecar `.txt` version-controlled in Git so the MCP knowledge source can retrieve the associated context after its normal ingestion lifecycle.

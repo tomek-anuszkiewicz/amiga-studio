@@ -15,7 +15,7 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 - **Strict Path Privacy** ([`no-external-paths.md`](.agents/rules/no-external-paths.md)): Zero external host paths; use generic placeholders.
 - **Specification Compliance** ([`spec-compliance.md`](.agents/rules/spec-compliance.md)): Zero silent divergence; mandatory user conflict escalation before code changes.
 - **Hardware Efficiency & Readability** ([`performance-and-readability.md`](.agents/rules/performance-and-readability.md)): Flat execution, zero macros, zero const-generics, contiguous execution, and zero runtime heap allocations in hot paths.
-- **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Pre-task conceptual retrieval, CLI vector search (`tools/harness/rag_search.py`), and reference reindexing.
+- **Amiga RAG Knowledge Base** ([`amiga-rag.md`](.agents/rules/amiga-rag.md)): Pre-task conceptual retrieval through the Amiga RAG MCP server.
 - **Information Hierarchy & Limits** ([`information-hierarchy.md`](.agents/rules/information-hierarchy.md)): Inverted pyramid model, constitutional AGENTS.md ceiling ($\le 14,000$ bytes), and non-redundancy.
 - **Unit Testing Policy** ([`unit-testing-policy.md`](.agents/rules/unit-testing-policy.md)): Mandatory unit test coverage for functional/utility logic and public APIs; dedicated `tests/` directories with zero inline tests in `src/`.
 - **Immediate Atomic Commits** ([`git-commits.md`](.agents/rules/git-commits.md)): Mandatory atomic commit after every completed task or refactoring; zero uncommitted changes left across turns; Conventional Commits and pre-commit test gates.
@@ -114,11 +114,11 @@ Operational rules are modularized under `.agents/rules/` with single-responsibil
 
 ## 5. Knowledge Base & Reference Navigation
 
-- **Knowledge Retrieval Precedence**: Mandatory `graphify query` before viewing source files and `python tools/harness/rag_search.py` before opening reference manuals per [`graphify.md`](.agents/rules/graphify.md) and [`amiga-rag.md`](.agents/rules/amiga-rag.md).
+- **Knowledge Retrieval Precedence**: Mandatory `graphify query` before viewing source files and MCP `rag_search` before opening reference manuals per [`graphify.md`](.agents/rules/graphify.md) and [`amiga-rag.md`](.agents/rules/amiga-rag.md).
 - **Design Specifications**: Consult markdown documents under [Obsidian/Amiga/Design](Obsidian/Amiga/Design).
 - **Platform Quirks & Invariants**: Centralized hardware silicon idiosyncrasies reside in [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md).
 - **Official Hardware Documentation**: Hardware manuals and PRMs reside under [Obsidian/Amiga/Reference](Obsidian/Amiga/Reference) (searchable via `rag_search`).
-- **RAG Tooling & Infrastructure**: Ingestion pipeline, CLI (`amiga_rag`), and FastMCP server in [`tools/rag`](tools/rag), backed by Qdrant (`amiga` collection).
+- **RAG Tooling & Infrastructure**: Amiga-focused FastMCP server in [`tools/amiga-rag-mcp-server`](tools/amiga-rag-mcp-server), backed by the shared `projects_docs` collection. Its `rag_reindex` tool indexes the Amiga documentation scopes through the PATH-resolved `rag_qdrant` command.
 - **Reference Emulator Source Code**: Reference emulator (vAmiga) and test suite (vAmigaTS) in [ref_src](ref_src).
 - **Single-Step Test Vectors**: M68000 silicon vectors in [ref_src/SingleStepTests-680x0/68000/v1](ref_src/SingleStepTests-680x0/68000/v1).
 

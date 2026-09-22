@@ -5,10 +5,10 @@ description: Amiga RAG knowledge base tools and mandatory pre-task conceptual re
 
 ## Amiga RAG Knowledge Base (Amiga Docs + Obsidian)
 
-You have access to a local knowledge base via the tools `rag_search`, `rag_list_sources`, and `rag_status`.
+You have access to a local knowledge base via the tools `rag_search`, `rag_list_sources`, `rag_status`, and `rag_reindex`.
 
 Knowledge Sources Configuration:
-- The Qdrant database hosts the unified `amiga` collection containing two distinct knowledge sources:
+- The Qdrant database hosts the unified `projects_docs` collection containing two distinct knowledge sources:
   - `amiga`: Official Amiga technical documentation, Commodore hardware reference manuals, and chip specifications.
   - `obsidian`: General architecture guidelines, systems design philosophy, operator mental models, and personal research notes.
 
@@ -16,8 +16,7 @@ Mandatory Pre-Task Conceptual Retrieval (`source = "obsidian"`):
 - **Task Inception & Planning Rule**: Whenever starting a new feature, refactoring, architectural decision, or non-trivial task (during the research, planning, or design deliberation phase before writing code):
   1. **Query Obsidian Architecture Knowledge**:
      - Actively query the local RAG knowledge base targeting the user's architectural knowledge vault:
-       - Via MCP tool: `rag_search(query="<task-topic-or-architecture-concept>", sources=["obsidian"])`
-       - Or via CLI: `python tools/rag/rag_qdrant/cli.py search "<query>" --source obsidian`
+       - Via the Amiga RAG MCP tool: `rag_search(query="<task-topic-or-architecture-concept>", sources=["obsidian"])`
      - For tasks involving hardware chipsets, query both or combine queries (`sources=["amiga", "obsidian"]`).
   2. **Context Integration**:
      - Evaluate the retrieved context snippets for relevant architectural principles, operator heuristics, systems design guidance, or ergonomics.
@@ -27,40 +26,18 @@ Mandatory Pre-Task Conceptual Retrieval (`source = "obsidian"`):
 
 Division of Responsibility between RAG and Graphify:
 - **Use Graphify** (`graphify query`, `graphify path`, `graphify explain`): For questions about code structure, AST, relationships between source files in this repository, call hierarchies, and architecture.
-- **Use RAG** (`python tools/harness/rag_search.py` or MCP `rag_search`): For domain knowledge, hardware specifications (OCS/ECS/AGA), register definitions, AmigaOS libraries (Exec, Graphics, Intuition), data formats, and personal Obsidian research notes.
+- **Use RAG** (MCP `rag_search`): For domain knowledge, hardware specifications (OCS/ECS/AGA), register definitions, AmigaOS libraries (Exec, Graphics, Intuition), data formats, and personal Obsidian research notes.
 - **Use Both**: When implementing or debugging a feature — first consult RAG to understand the hardware/library specs and design principles, then consult Graphify to locate and navigate the corresponding code in this repository.
 - If search results include diagram or image file paths, reference them or use `view_file` when helpful.
 - When the user asks about the RAG database state, call `rag_status` or `rag_list_sources`.
 
 Mandatory Knowledge Retrieval Precedence (Zero Raw Manual Scanning):
-- **Pre-Search Mandate**: Whenever investigating hardware registers, chip timing (Agnus, Denise, Paula), memory maps, or custom chip architecture:
-  - You **MUST FIRST** query the knowledge base via CLI or MCP:
-    ```powershell
-    python tools/harness/rag_search.py "<query>"
-    ```
-  - For architecture notes: `python tools/harness/rag_search.py "<query>" --source obsidian`
-  - For hardware chip specs: `python tools/harness/rag_search.py "<query>" --source amiga`
-- **Prohibition of Direct Manual Crawling**: Never open large reference manuals under `Obsidian/Amiga/Reference/` via `view_file` or perform wide `grep_search` across manuals without first running `tools/harness/rag_search.py`. Use `view_file` only on the specific targeted section or snippet identified by RAG.
+- **Pre-Search Mandate**: Whenever investigating hardware registers, chip timing (Agnus, Denise, Paula), memory maps, or custom chip architecture, **MUST FIRST** query the Amiga RAG MCP: `rag_search(query="<query>", sources=["amiga"])`.
+- **Prohibition of Direct Manual Crawling**: Never open large reference manuals under `Obsidian/Amiga/Reference/` via `view_file` or perform wide `grep_search` across manuals without first querying the Amiga RAG MCP. Use `view_file` only on the specific targeted section or snippet identified by RAG.
 
-Tooling, Reindexing & Infrastructure:
-- **Tools & MCP Server**: The ingestion pipeline, CLI (`amiga_rag`), and FastMCP server reside in this repository under [`tools/rag/`](tools/rag/) (incremental cache configured in `.env` via `RAG_CACHE_FILE`).
-- **Vector Database**: Connects to the local Qdrant instance (`http://localhost:6333`, collection: `amiga`).
-- **Offline Diagram Vision**: Diagrams and circuit schematics use Git-tracked sidecar text files (`<image>.txt`) generated by the Agent. CLI indexing is 100% offline and requires zero external cloud API keys (see [`.agents/rules/asset-descriptions.md`](.agents/rules/asset-descriptions.md)).
-- To reindex:
-  - Run `.\tools\rag\bin\amiga_rag.ps1 . --source amiga` (indexes repository technical documentation)
-  - Run `.\tools\rag\bin\amiga_rag.ps1 <PATH_TO_VAULT> --source obsidian` (indexes general knowledge notes)
-
-
-Execution & Reindexing Workflows:
-- **Automated Trigger (Changes in `Obsidian/Amiga/Reference/`):** Whenever reference manuals, hardware documentation, or architecture guides under `Obsidian/Amiga/Reference/` are added, edited, or reorganized, execute incremental reindexing to update the Qdrant vector database:
-  ```powershell
-  .\tools\rag\bin\amiga_rag.ps1 . --source amiga
-  ```
-- **Interactive Progress (Recommended)**: Because the agent runs in a headless background daemon and cannot pop GUI windows or inject keystrokes into the user's IDE terminal tab, when the user wants to observe real-time progress, provide the exact terminal command for the user to run directly in their IDE terminal:
-  ```powershell
-  .\tools\rag\bin\amiga_rag.ps1 "Obsidian/Amiga" --source amiga
-  ```
-- **Agent Background Run**: When the user requests the agent to run indexing in the background, run via `run_command` without blocking, directing logs to the task log file.
+Project MCP Infrastructure:
+- **Amiga Integration**: The Amiga project reaches the shared `projects_docs` collection exclusively through [`tools/amiga-rag-mcp-server/`](../../tools/amiga-rag-mcp-server/) and its registered MCP tools. Use `rag_reindex()` after documentation changes; it indexes only `docs`, `Obsidian/Amiga/Design`, and `Obsidian/Amiga/Reference` under the `amiga` source tag. Use `rag_reindex(force=true)` only when a complete scoped rebuild is required.
+- **Offline Diagram Vision**: Diagrams and circuit schematics use Git-tracked sidecar text files (`<image>.txt`) generated by the Agent (see [`.agents/rules/asset-descriptions.md`](asset-descriptions.md)).
 
 
 

@@ -6110,3 +6110,160 @@ Every future modification or implementation task must append an entry following 
   - Junction audit script verified `LinkType=''` across all asset paths in `Amiga`, `amiga-bootstrap`, and `Amiga-OCS`.
   - Quality gates passed cleanly: `python tools/harness/pre_flight.py` (Formatting, AGENTS.md size limit, API coverage, architecture rules).
   - CPU test suite passed: `cargo test -p m68000` (100% pass).
+
+---
+
+### [2026-09-22 12:19 CEST] — RAG Indexer: Simplified Source Discovery Interface
+- **Affected Subsystems**:
+  - `tools/rag/rag_qdrant/arguments.py`: Centralized the supported CLI argument contract.
+  - `tools/rag/rag_qdrant/discovery.py`: Isolated Markdown discovery and its built-in system/privacy safeguards.
+  - `tools/rag/rag_qdrant/cli.py`, `tools/rag/rag_qdrant/indexer.py`, and `tools/rag/README.md`: Removed target-local ignore-file handling and the removed filtering switches.
+  - `tools/rag/tests/test_indexing_contract.py`: Added regression coverage for the simplified CLI and discovery contract.
+- **What Was Changed (The Concrete Reality)**:
+  - Removed `.ragignore` parsing, the `--exclude` option, and the `--no-root-notes` option from the public CLI and indexing API.
+  - Preserved `--include-dirs`, built-in system/privacy exclusions, and automatic indexing of root-level Markdown notes.
+- **Why It Was Done & Architectural Rationale**:
+  - The indexer now exposes one explicit, predictable source-discovery contract without per-directory configuration files or caller-defined exclusion rules.
+- **Verification & Test Results**:
+  - `python -m unittest discover -s tools/rag/tests -v`: 4 tests passed.
+  - `python -m compileall -q tools/rag/rag_qdrant`: passed.
+  - `cargo fmt --all -- --check`: passed.
+  - `cargo test -p test_runner --test test_architecture_rules`: all 19 tests passed.
+  - `python tools/harness/pre_flight.py`: all quality gates passed.
+
+---
+
+### [2026-09-22 12:26 CEST] — RAG Skill: Synchronize Indexing Procedure with CLI Contract
+- **Affected Subsystems**:
+  - `.agents/skills/index-amiga-rag/SKILL.md`: Updated the reusable RAG re-indexing workflow.
+- **What Was Changed (The Concrete Reality)**:
+  - Replaced direct `indexer.py` invocations with the supported PowerShell CLI runner for scoped indexing and collection-health checks.
+  - Documented the current source-discovery contract: no `.ragignore`, `--exclude`, or `--no-root-notes`; root notes remain included; `--include-dirs` remains the optional scope control.
+  - Corrected incremental-cache language and added source-list verification alongside status verification.
+- **Why It Was Done & Architectural Rationale**:
+  - The reusable procedure must invoke the public tool surface and accurately guide future re-indexing after the CLI simplification.
+- **Verification & Test Results**:
+  - `skill-creator/scripts/quick_validate.py .agents/skills/index-amiga-rag`: passed.
+  - Confirmed no unsupported CLI invocation remains in the skill.
+
+---
+
+### [2026-09-22 12:34 CEST] — RAG Tooling: Rename CLI Launchers to rag_qdrant
+- **Affected Subsystems**:
+  - `tools/rag/bin/rag_qdrant.ps1` and `tools/rag/bin/rag_qdrant.bat`: Renamed the supported CLI launchers.
+  - `tools/rag/rag_qdrant/cli.py` and `arguments.py`: Renamed the command shown in help, examples, and error guidance.
+  - `tools/bootstrap.ps1`, `tools/rag/README.md`, `docs/ai_agents.md`, `AGENTS.md`, `.agents/rules/amiga-rag.md`, and `.agents/skills/index-amiga-rag/SKILL.md`: Updated active launcher references.
+  - `tools/rag/tests/test_indexing_contract.py`: Added launcher-name and help-text regression coverage.
+- **What Was Changed (The Concrete Reality)**:
+  - Replaced `amiga_rag.ps1` and `amiga_rag.bat` with `rag_qdrant.ps1` and `rag_qdrant.bat`.
+  - Preserved the `amiga_rag_cache` cache identifier and MCP naming so existing indexed data and integration configuration remain compatible.
+- **Why It Was Done & Architectural Rationale**:
+  - The public launcher and its documentation now match the `rag_qdrant` package name while avoiding an unrelated cache migration.
+- **Verification & Test Results**:
+  - Verified no active launcher reference uses the legacy file names.
+  - PowerShell launcher syntax validation passed.
+  - `python -m unittest discover -s tools/rag/tests -v`: 6 tests passed.
+  - `python -m compileall -q tools/rag/rag_qdrant`: passed.
+  - `skill-creator/scripts/quick_validate.py .agents/skills/index-amiga-rag`: passed.
+
+---
+
+### [2026-09-22 12:51 CEST] — RAG Indexer: Require Explicit Directory Scope
+- **Affected Subsystems**:
+  - `tools/rag/rag_qdrant/arguments.py`, `cli.py`, `discovery.py`, and `indexer.py`: Enforced explicit top-level directory selection for every indexing operation.
+  - `tools/bootstrap.ps1`, `tools/rag/README.md`, `docs/ai_agents.md`, `.agents/rules/amiga-rag.md`, and `.agents/skills/index-amiga-rag/SKILL.md`: Updated commands and operational guidance.
+  - `tools/rag/tests/test_indexing_contract.py`: Added coverage for required directory scope and root-note exclusion.
+- **What Was Changed (The Concrete Reality)**:
+  - Made `--include-dirs` mandatory for indexing, while `--status` and `--list-sources` remain scope-free operations.
+  - Restricted discovery to Markdown files below matching top-level directories and excluded root-level Markdown notes.
+  - Restricted cache pruning to the selected directory scope, preventing one partial run from deleting vectors owned by another selected directory under the same source.
+- **Why It Was Done & Architectural Rationale**:
+  - Explicit scopes make shared multi-source cache files safe and make every indexing operation deliberate and reproducible.
+- **Verification & Test Results**:
+  - `python -m unittest discover -s tools/rag/tests -v`: 7 tests passed.
+  - `python -m compileall -q tools/rag/rag_qdrant`: passed.
+  - `skill-creator/scripts/quick_validate.py .agents/skills/index-amiga-rag`: passed.
+
+---
+
+### [2026-09-22 12:55 CEST] â€” RAG Indexer: Rename Shared Qdrant Collection
+- **Affected Subsystems**:
+  - `tools/rag/rag_qdrant/config.py` and `indexer.py`: Switched the active collection to `projects_docs` and made the file-hash cache collection-aware.
+  - `tools/rag/rag_qdrant/cache.py` and `tools/rag/tests/test_indexing_contract.py`: Added and verified the cache migration contract.
+  - RAG documentation, operational rules, bootstrap output, and the indexing skill: Updated the active collection name.
+- **What Was Changed (The Concrete Reality)**:
+  - The indexer now reads and writes the `projects_docs` collection. Existing vectors in the legacy `amiga` collection are not deleted or modified.
+  - Cache file hashes are tied to their target collection. A legacy cache clears only file hashes and retains image descriptions, causing the next selected indexing scopes to populate `projects_docs` instead of incorrectly skipping unchanged files.
+- **Why It Was Done & Architectural Rationale**:
+  - The shared collection now represents documentation for all projects, while source tags continue to provide precise retrieval filtering without conflating collection identity and document domain.
+- **Verification & Test Results**:
+  - `python -m unittest discover -s tools/rag/tests -v`: 9 tests passed.
+  - `python -m compileall -q tools/rag/rag_qdrant`: passed.
+  - `skill-creator/scripts/quick_validate.py .agents/skills/index-amiga-rag`: passed.
+  - `cargo fmt --all -- --check`, `cargo test -p test_runner --test test_architecture_rules`, and `python tools/harness/pre_flight.py`: passed.
+
+---
+
+### [2026-09-22 13:09 CEST] â€” RAG MCP: Delegate Retrieval to the Public CLI
+- **Affected Subsystems**:
+  - `tools/rag/amiga_mcp_server.py` and `.agents/mcp_config.json`: Renamed the Amiga-specific MCP entry point and configured it as the active server.
+  - `tools/rag/rag_qdrant/cli.py`, `arguments.py`, and `rag_qdrant_command.py`: Added the JSON command contract used by MCP retrieval.
+  - `tools/rag/tests/test_indexing_contract.py` and `tools/rag/README.md`: Added interface coverage and documented the PATH requirement.
+- **What Was Changed (The Concrete Reality)**:
+  - The MCP server now invokes `rag_qdrant` from `PATH` for search, status, and source listing; it no longer imports `KnowledgeIndexer` or Qdrant internals.
+  - `rag_qdrant search QUERY --source <tag[,tag]> --limit <count> --json`, `--status --json`, and `--list-sources --json` provide machine-readable responses.
+- **Why It Was Done & Architectural Rationale**:
+  - Project-specific MCP tools now depend on one supported RAG command contract, preventing the server and indexer internals from drifting independently.
+- **Verification & Test Results**:
+  - `python -m unittest discover -s tools/rag/tests -v`: 12 tests passed.
+  - `python -m compileall -q tools/rag`: passed.
+
+---
+
+### [2026-09-22 13:15 CEST] â€” RAG MCP: Clarify Amiga Server Entry Point
+- **Affected Subsystems**:
+  - `tools/rag/amiga_rag_mcp_server.py`, `.agents/mcp_config.json`, and `tools/rag/README.md`: Renamed the active MCP entry point and every active reference.
+  - `tools/rag/tests/test_indexing_contract.py`: Updated the server-entry-point regression contract.
+- **What Was Changed (The Concrete Reality)**:
+  - Renamed `amiga_mcp_server.py` to `amiga_rag_mcp_server.py` without changing its `rag_qdrant` command integration or MCP tool surface.
+- **Verification & Test Results**:
+  - `python -m unittest discover -s tools/rag/tests -v`: 12 tests passed.
+  - `python -m compileall -q tools/rag`, `cargo fmt --all -- --check`, `cargo test -p test_runner --test test_architecture_rules`, and `python tools/harness/pre_flight.py`: passed.
+
+---
+
+### [2026-09-22 13:30 CEST] â€” RAG Tooling: Split Project MCP Server from Standalone CLI
+- **Affected Subsystems**:
+  - `tools/amiga-rag-mcp-server/`: Created the Amiga-specific FastMCP server root with its own README and dependency declaration.
+  - `tools/rag-qdrant/`: Moved the standalone indexer, launchers, sidecar generator, tests, and CLI documentation out of the former `tools/rag/` root.
+  - `.agents/mcp_config.json`, `AGENTS.md`, rules, skills, bootstrap, harness, and agent documentation: Rewired project RAG guidance to the MCP server only.
+- **What Was Changed (The Concrete Reality)**:
+  - The Amiga project now registers `tools/amiga-rag-mcp-server/amiga_rag_mcp_server.py` and reaches shared documentation through its MCP tools.
+  - The legacy `tools/rag/` directory is gone. `rag_qdrant` is self-contained under `tools/rag-qdrant/`, uses generic source examples, and remains a PATH-resolved dependency of the MCP server.
+  - Removed direct project bootstrap indexing and converted legacy direct-search and indexing guidance to MCP-only workflows.
+- **Why It Was Done & Architectural Rationale**:
+  - Separating project integration from the reusable indexing implementation prevents Amiga-specific configuration, docs, and agent workflows from coupling to Qdrant internals.
+- **Verification & Test Results**:
+  - `python -m unittest discover -s tools/rag-qdrant/tests -v`: 13 tests passed.
+  - `python -m compileall -q tools/rag-qdrant tools/amiga-rag-mcp-server`, PowerShell bootstrap syntax parsing, and both revised skill validations: passed.
+  - `cargo fmt --all -- --check`, `cargo test -p test_runner --test test_architecture_rules`, and `python tools/harness/pre_flight.py`: passed.
+
+---
+
+### [2026-09-22 14:21 CEST] — RAG MCP: Own Scoped Amiga Documentation Indexing
+- **Affected Subsystems**:
+  - `tools/amiga-rag-mcp-server/`: Added cache-environment loading, explicit Amiga indexing scope construction, the `rag_reindex` MCP tool, and command-boundary tests.
+  - `.env`: Added the ignored shared RAG cache location required by the external `rag_qdrant` command.
+  - Agent rules, RAG skills, and operator documentation: Replaced the retired external-ingestion handoff with the MCP-owned reindex workflow.
+  - `tools/rag-qdrant/`: Removed the in-repository standalone command-line tool, including its launchers, indexer, and sidecar generator.
+- **What Was Changed (The Concrete Reality)**:
+  - The MCP server loads `RAG_CACHE_FILE` from the project `.env`, then invokes the PATH-resolved `rag_qdrant` command with that inherited environment.
+  - `rag_reindex()` incrementally indexes only `docs`, `Obsidian/Amiga/Design`, and `Obsidian/Amiga/Reference` under the `amiga` source tag. `rag_reindex(force=true)` passes `--reindex` for an explicit scoped rebuild.
+- **Why It Was Done & Architectural Rationale**:
+  - The project retains a narrow, reproducible document boundary while sharing Qdrant vectors and cache state with other projects through the universal external CLI.
+- **Verification & Test Results**:
+  - `python -m unittest discover -s tools/amiga-rag-mcp-server/tests -v`: 7 tests passed.
+  - `python -m compileall -q tools/amiga-rag-mcp-server tools/harness/rag_search.py`: passed.
+  - `skill-creator/scripts/quick_validate.py .agents/skills/index-amiga-rag`: passed.
+  - `cargo fmt --all -- --check`, `cargo test -p test_runner --test test_architecture_rules`, and `tools/harness/pre_flight.py`: passed.
+  - Live indexing was not run because the current shell does not expose the external `rag_qdrant` command on `PATH`.

@@ -1,6 +1,6 @@
 ---
 name: describe-diagram-assets
-description: Inspect circuit diagrams via multimodal vision, author technical sidecars (<image>.txt), and sync RAG cache.
+description: Inspect circuit diagrams via multimodal vision and author technical sidecar text files for Amiga RAG MCP retrieval.
 ---
 
 # Recipe: Technical Diagram & Asset Sidecar Generation
@@ -13,26 +13,22 @@ This skill provides the standard operational procedure for generating and synchr
 
 Activate this skill whenever:
 - Adding, replacing, or updating technical diagrams, waveforms, or pinouts in `Obsidian/Amiga/Reference/*/assets/`.
-- Preparing documentation assets for offline RAG indexing via `amiga_rag`.
-- Running an asset audit to verify all documentation diagrams have corresponding `.txt` sidecars.
+- Preparing documentation assets for Amiga RAG MCP retrieval.
+- Auditing documentation diagrams to verify each has a corresponding `.txt` sidecar.
 
 ---
 
 ## 2. Tooling & Asset Registry
 
-- **Assets Manager CLI:** `python tools/rag/rag_qdrant/assets_manager.py`
-- **Cache File:** Defined by `RAG_CACHE_FILE` in `.env` (default: `amiga_rag_cache.json`).
+- **Amiga RAG Integration:** The project retrieves indexed documentation through its MCP tools.
 - **Vision Inspection:** Native `view_file` tool (consuming IDE multimodal vision, 100% offline with zero external cloud API keys).
 
 ---
 
 ## 3. Step-by-Step Execution Workflow
 
-### Step 1: Detect Unindexed or Outdated Diagram Assets
-Run the asset manager to list all images whose SHA256 hash is missing or mismatched:
-```powershell
-python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --list-unindexed
-```
+### Step 1: Identify Diagram Assets That Need Descriptions
+Audit newly added or changed images and identify any missing or inaccurate `<image_path>.txt` sidecars.
 
 ### Step 2: Inspect Image with Multimodal Vision
 For each unindexed asset:
@@ -52,14 +48,11 @@ Create or update `<image_path>.txt` immediately alongside the image file, follow
 - Architectural Summary: <Core physical takeaway, cycle-exact timing rules, and hardware circuit behavior>
 ```
 
-### Step 4: Record Hash in RAG Cache
-Register the generated sidecar in `RAG_CACHE_FILE` using the assets manager:
-```powershell
-python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --update-cache
-```
+### Step 4: Preserve the Sidecar for MCP Retrieval
+Save the generated sidecar beside its image. The shared cache records hashes independently; run the Amiga MCP `rag_reindex()` workflow when the changed asset is in an indexed documentation scope.
 
 ### Step 5: Verification & Version Control
-1. Verify that `python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --list-unindexed` reports 0 unindexed assets.
+1. Verify every changed diagram has an accurate `<image_path>.txt` sidecar.
 2. Ensure both the diagram and its `<image_path>.txt` sidecar are tracked in Git.
 
 ---
@@ -79,7 +72,7 @@ python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --update-cache
     1. Inspect image with `view_file`.
     2. Extract active-low signals, pinouts, timing states, and hardware behavior.
     3. Author `<image_path>.txt` technical sidecar alongside image.
-    4. Register SHA256 hash in RAG cache via `assets_manager.py`.
+    4. Preserve the sidecar beside the image, then reindex its documentation scope through the Amiga MCP server.
     5. Return strictly the Sidecar Generation Report below.
     ```
 - **Return Contract (Mandatory Structured Output):**
@@ -89,5 +82,5 @@ python tools/rag/rag_qdrant/assets_manager.py "Obsidian/Amiga" --update-cache
   - **Asset Processed:** `<image_path>`
   - **Generated Sidecar:** [`<image_path>.txt`](file:///<image_path>.txt)
   - **Extracted Signals / Pinouts:** `<comma_separated_signals>` (e.g. `_AS`, `_DTACK`, `_BERR`, `IPL0-IPL2`)
-  - **Cache Hash Status:** Updated in `RAG_CACHE_FILE` (`assets_manager.py` PASS).
+  - **Sidecar Status:** Saved beside the image and ready for MCP-backed retrieval after ingestion.
   ```
