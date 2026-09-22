@@ -8937,3 +8937,24 @@ Every future modification or implementation task must append an entry following 
   - tools/harness/pre_flight.py --quick passed
   - cargo test -p test_runner --test test_architecture_rules passed (20 tests)
   - git diff --check passed.
+---
+
+### [2026-09-22 16:36 CEST] — Reference Images: Restore Bootstrap-Only Descriptions
+- **Affected Subsystems**:
+  - `tools/bootstrap/describe_reference_images.py`
+  - `image-description governance`
+  - `HTML/PDF conversion pipelines`
+- **What Was Changed (The Concrete Reality)**:
+  - Restored missing Reference image descriptions as a cache-free standalone bootstrap utility that creates only absent sidecars
+  - removed the asset-description rule and diagram skill
+  - removed sidecar writes from HTML and PDF conversion flows and their governance audit.
+- **Architectural Rationale & Trade-Offs**:
+  - Image description generation is a one-time Reference bootstrap concern
+  - not an indexing
+  - conversion
+  - or always-on agent responsibility. Existing curated sidecars are preserved and bootstrap orchestration remains intentionally unwired.
+- **Verification & Test Results**:
+  - Standalone tool tests passed (2)
+  - syntax-only compilation passed for changed Python tools
+  - cargo test -p test_runner --test test_architecture_rules passed (20 tests)
+  - git diff --check passed.

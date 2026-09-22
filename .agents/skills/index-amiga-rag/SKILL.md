@@ -26,10 +26,7 @@ This skill defines the Amiga project workflow for indexing technical Markdown th
 
 ## 3. Step-by-Step Execution Workflow
 
-### Step 1: Prepare Diagram & Asset Sidecars
-If diagrams, pinouts, or circuit schematics were modified or added, generate or update each companion `<image_path>.txt` description sidecar per [`.agents/rules/asset-descriptions.md`](../../rules/asset-descriptions.md). The current CLI does not index those sidecars; index any changed Markdown that describes or embeds them.
-
-### Step 2: Incrementally Index the Supported Scopes
+### Step 1: Incrementally Index the Supported Scopes
 Set `RAG_INDEX_JSON` to the shared state file, then run both commands from the
 repository root. The CLI recursively scans Markdown and processes only files
 whose SHA-256 hash changed. The `Obsidian/Amiga` root includes Design and
@@ -44,7 +41,7 @@ rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
 There is no forced-reindex mode; changed files replace their old vectors and
 files removed below an indexed root are removed from the collection.
 
-### Step 3: Verify Index Health and Retrieval
+### Step 2: Verify Index Health and Retrieval
 
 ```powershell
 rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json

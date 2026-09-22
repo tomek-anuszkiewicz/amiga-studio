@@ -1369,7 +1369,6 @@ fn test_all_rules_audited_in_quality_harness() {
     // Authoritative registry of all 31 active rules in .agents/rules/
     let registered_rules: &[&str] = &[
         "amiga-rag.md",
-        "asset-descriptions.md",
         "audio-transcription.md",
         "clean-break-refactoring.md",
         "diary-maintenance.md",

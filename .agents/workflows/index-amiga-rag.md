@@ -11,16 +11,14 @@ Use this workflow to execute incremental vector ingestion of Amiga hardware manu
 
 ## 1. Zero-Parameter Run (`/index-amiga-rag`)
 When invoked without parameters:
-1. **Audit Diagram Sidecars:**
-   - Ensure every modified or added diagram has an accurate Git-tracked `<image>.txt` sidecar.
-2. **Execute Incremental Vector Ingestion:**
+1. **Execute Incremental Vector Ingestion:**
    - Sets the CLI state file and runs incremental ingestion (skipping unchanged Markdown hashes):
      ```powershell
      $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
      rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
      rag_qdrant "Obsidian/Amiga" --source amiga --index-json $env:RAG_INDEX_JSON
      ```
-3. **Verify Database Health & Status:**
+2. **Verify Database Health & Status:**
    - Checks Qdrant collection vector counts and status:
      ```powershell
      rag_qdrant --status --index-json $env:RAG_INDEX_JSON --json
@@ -47,9 +45,8 @@ When invoked without parameters:
 
 ## 3. Execution Runbook
 Follow the operational procedure in [`.agents/skills/index-amiga-rag/SKILL.md`](../skills/index-amiga-rag/SKILL.md):
-1. **Sidecar Verification:** Ensure circuit diagrams and timing charts have accompanying `<image>.txt` technical sidecars per [`.agents/rules/asset-descriptions.md`](../rules/asset-descriptions.md).
-2. **Incremental Indexing:** Run the two canonical `rag_qdrant` commands to ingest changed Markdown into Qdrant under the `amiga` source. The CLI does not ingest image sidecars.
-3. **Status Query:** Confirm health, source counts, and retrieval of a distinctive phrase through `rag_qdrant`.
+1. **Incremental Indexing:** Run the two canonical `rag_qdrant` commands to ingest changed Markdown into Qdrant under the `amiga` source.
+2. **Status Query:** Confirm health, source counts, and retrieval of a distinctive phrase through `rag_qdrant`.
 
 ---
 
@@ -60,6 +57,5 @@ Conclude with the standardized summary report:
 - **Target Knowledge Source:** `amiga` (Commodore HRM, M68000 PRM, Obsidian specs)
 - **Files Re-indexed / Modified:** <count> files
 - **Unchanged Files Skipped:** <count> files (SHA256 cache)
-- **Diagram Sidecars Ingested:** <count> sidecars
 - **Qdrant Collection Status:** [HEALTHY | <points_count> vectors]
 ```

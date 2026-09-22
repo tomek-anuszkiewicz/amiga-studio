@@ -602,7 +602,6 @@ def check_workflow_and_skill_governance():
 
     ACTIVE_RULE_COMPANIONS = {
         "amiga-rag.md": {"index-amiga-rag"},
-        "asset-descriptions.md": {"describe-diagram-assets"},
         "docs-maintenance.md": {"sync-design-docs", "obsidian-vault-linking", "audit-docs-quality", "audit-semantic-parity"},
         "vault-linking-and-graph-integrity.md": {"obsidian-vault-linking", "audit-docs-quality"},
         "egui-best-practices.md": {"egui-vision-debugger", "capture-gui-screenshot"},
@@ -1121,7 +1120,6 @@ def check_semantic_sync():
 
 REGISTERED_RULE_AUDITS = {
     "amiga-rag.md": ["rag_qdrant", "audit_docs_quality.py (Pillar 5)"],
-    "asset-descriptions.md": ["audit_docs_quality.py (Pillar 10 asset sidecars)"],
     "audio-transcription.md": ["workflows (Conscience Check 1)"],
     "clean-break-refactoring.md": ["test_architecture_rules.rs (test_zero_backward_compatibility_shims_and_stale_aliases)"],
     "docs-maintenance.md": ["audit_docs_quality.py (Pillar 1 code drift)"],
@@ -1171,35 +1169,6 @@ def check_rule_audit_coverage():
         "issues": issues,
     }
 
-def check_diagram_asset_sidecars():
-    """Verifies that all technical diagrams and schematics have git-tracked .txt sidecars per asset-descriptions.md."""
-    search_dirs = [
-        REPO_ROOT / "Obsidian" / "Amiga" / "Reference",
-        REPO_ROOT / "Obsidian" / "Amiga" / "Design",
-    ]
-    images = []
-    for d in search_dirs:
-        if d.exists():
-            for ext in ("*.png", "*.jpg", "*.svg"):
-                images.extend(d.rglob(ext))
-
-    missing = []
-    for img in sorted(images):
-        sidecar = img.parent / (img.name + ".txt")
-        if not sidecar.exists() or sidecar.stat().st_size == 0:
-            rel = img.relative_to(REPO_ROOT).as_posix()
-            missing.append(rel)
-
-    issues = []
-    for m in missing:
-        issues.append({"message": f"Diagram `{m}` is missing a git-tracked `{m}.txt` sidecar"})
-
-    return {
-        "total_images": len(images),
-        "verified_images": len(images) - len(missing),
-        "issues": issues,
-    }
-
 def check_diary_structure_and_chronology():
     """Verifies that DIARY.md exists, contains Section 10, and entries are strictly chronological per diary-maintenance.md."""
     diary_path = REPO_ROOT / "DIARY.md"
@@ -1240,14 +1209,12 @@ def check_roadmap_zero_retention():
 def check_rule_audit_and_governance():
     """Aggregates all checks for Pillar 10: Rule Audit Coverage & Governance Invariants."""
     rac = check_rule_audit_coverage()
-    das = check_diagram_asset_sidecars()
     dsc = check_diary_structure_and_chronology()
     rzr = check_roadmap_zero_retention()
 
-    all_issues = rac["issues"] + das["issues"] + dsc["issues"] + rzr["issues"]
+    all_issues = rac["issues"] + dsc["issues"] + rzr["issues"]
     return {
         "rule_coverage": rac,
-        "asset_sidecars": das,
         "diary_chronology": dsc,
         "roadmap_retention": rzr,
         "issues": all_issues,
@@ -1483,13 +1450,11 @@ def main():
         print("\n[10. RULE AUDIT COVERAGE & GOVERNANCE INVARIANTS]")
         gov_inv = check_rule_audit_and_governance()
         rc = gov_inv["rule_coverage"]
-        sd = gov_inv["asset_sidecars"]
         dc = gov_inv["diary_chronology"]
         rm = gov_inv["roadmap_retention"]
         g_issues = gov_inv["issues"]
 
         print(f"  - Rule Audit Coverage: {rc['audited_rules']}/{rc['total_rules']} rules audited (100% coverage)")
-        print(f"  - Diagram Asset Sidecars: {sd['verified_images']}/{sd['total_images']} verified with .txt sidecars")
         print(f"  - Engineering Diary Integrity: {dc['total_entries']} chronological entries in Section 10")
         print(f"  - Roadmap Zero Retention: Verified (zero completed items retained)")
 

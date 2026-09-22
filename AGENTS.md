@@ -38,7 +38,6 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 - **egui & Frontend Best Practices** ([`egui-best-practices.md`](.agents/rules/egui-best-practices.md)): Synchronous state pull, bounded time-slicing, WASM/DPI adaptation.
 - **Git Merge Commits & Worktrees** ([`git-merge-commits.md`](.agents/rules/git-merge-commits.md)): Mandatory merge commits on conflict resolution; worktree lifecycle.
 - **Graphify Knowledge Graph** ([`graphify.md`](.agents/rules/graphify.md)): AST query before file inspection; updates via `graphify update .`.
-- **Asset Descriptions & Sidecars** ([`asset-descriptions.md`](.agents/rules/asset-descriptions.md)): Git-tracked `<image_path>.txt` technical sidecars for schematics.
 - **Parallel Execution & Async Tasks** ([`parallel-execution.md`](.agents/rules/parallel-execution.md)): Non-blocking background tasks, targeted sub-suite testing.
 - **Practitioner Voice & Tone** ([`practitioner-voice-and-tone.md`](.agents/rules/practitioner-voice-and-tone.md)): Hands-on lead architect persona, tech blog standard, zero academic jargon.
 

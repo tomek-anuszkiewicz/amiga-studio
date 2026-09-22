@@ -47,19 +47,6 @@ def compute_file_hash(path: Path) -> str:
     return h.hexdigest()
 
 
-def ensure_asset_sidecar(asset_path: Path, description: str):
-    """Ensures a Git-tracked technical sidecar (<image>.txt) exists for the asset."""
-    sidecar_path = asset_path.with_name(asset_path.name + ".txt")
-    if not sidecar_path.is_file():
-        content = (
-            f"Asset: {asset_path.name}\n"
-            f"Description: {description.strip()}\n"
-            f"Source: Extracted from HTML reference document.\n"
-        )
-        sidecar_path.write_text(content, encoding="utf-8")
-        print(f"    Created sidecar: {sidecar_path.name}")
-
-
 def extract_images_from_html(html_text: str) -> List[Dict[str, str]]:
     """Extracts src and alt attributes from all img tags in HTML."""
     results = []
@@ -166,7 +153,6 @@ def download_or_copy_assets(
             shutil.copy2(source_file, target_path)
 
         seen_hashes[file_hash] = target_name
-        ensure_asset_sidecar(target_path, alt)
         copied_count += 1
         print(f"  Saved to: {target_path.name}")
 

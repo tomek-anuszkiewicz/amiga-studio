@@ -218,13 +218,7 @@ def process_graphics(workspace_dir: Path, config: dict):
                 node["svg_path"] = None
                 node["sidecar_path"] = None
             else:
-                sidecar_name = res["sidecar_name"]
-                sidecar_text = res["sidecar_text"]
-                sidecar_path = assets_dir / sidecar_name
-                with open(sidecar_path, "w", encoding="utf-8") as sf:
-                    sf.write(sidecar_text)
-                node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{sidecar_name}"
-                sidecar_count += 1
+                node["sidecar_path"] = None
             transformed_count += 1
 
     for c_file, nodes in chapters.items():
@@ -286,7 +280,6 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
                     draft_md = f"![[{asset_file}|{genuine_caption}]]\n\n*{genuine_caption}*\n"
             else:
                 draft_md = f"![[{asset_file}]]\n"
-            draft_sidecar = generate_default_sidecar(node_id, raw_text, page_num)
 
             task_meta = {
                 "node_id": node_id,
@@ -300,7 +293,6 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
 
             meta_file = tasks_dir / f"{node_id}.json"
             md_file = tasks_dir / f"{node_id}.md"
-            sidecar_file = tasks_dir / f"{node_id}.sidecar.txt"
 
             with open(meta_file, "w", encoding="utf-8") as f:
                 json.dump(task_meta, f, indent=2)
@@ -308,10 +300,6 @@ def prepare_graphics_tasks(workspace_dir: Path) -> int:
             if not md_file.exists():
                 with open(md_file, "w", encoding="utf-8") as f:
                     f.write(draft_md)
-
-            if not sidecar_file.exists():
-                with open(sidecar_file, "w", encoding="utf-8") as f:
-                    f.write(draft_sidecar)
 
             count += 1
 
@@ -372,11 +360,6 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
             with open(md_file, "r", encoding="utf-8") as f:
                 rendered_by_node[node_id] = f.read().strip()
 
-        sidecar_name = f"{asset_file}.txt"
-        if sidecar_file.exists():
-            sidecar_dest = assets_dir / sidecar_name
-            with open(sidecar_file, "r", encoding="utf-8") as sf:
-                sidecar_dest.write_text(sf.read(), encoding="utf-8")
 
     applied_count = 0
     for c_file in sorted(list(input_dir.glob("*.json"))):
@@ -398,8 +381,7 @@ def apply_graphics_tasks(workspace_dir: Path) -> int:
                     node["svg_path"] = None
                     node["sidecar_path"] = None
                 else:
-                    asset_f = meta.get("asset_file", f"asset_{n_id}.png")
-                    node["sidecar_path"] = f"{assets_dir.relative_to(workspace_dir).as_posix()}/{asset_f}.txt"
+                    node["sidecar_path"] = None
                 applied_count += 1
 
         target_file = out_dir / c_file.name
