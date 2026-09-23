@@ -26,10 +26,6 @@ Launch the **Developer Studio & Debugger GUI** (default full desktop inspection 
 ```powershell
 cargo run -p gui
 ```
-> **Tip:** For silky-smooth 50 Hz real-time gaming frame rates, run with `--release`:
-> ```powershell
-> cargo run --release -p gui
-> ```
 
 Or run in **Clean Standalone Game Mode** (clean 50 Hz PAL display without toolbars or dock windows):
 ```powershell
