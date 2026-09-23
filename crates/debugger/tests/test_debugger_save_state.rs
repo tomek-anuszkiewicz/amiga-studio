@@ -59,6 +59,7 @@ fn test_debugger_session_quick_slots() {
         .save_quick_slot(1)
         .expect("Failed to save to quick slot 1");
     assert!(session.has_quick_slot(1));
+    assert_eq!(session.quick_slots[0].as_deref().unwrap().cck, 250);
 
     // Step to 750 CCKs and save to Slot 2
     for _ in 0..500 {

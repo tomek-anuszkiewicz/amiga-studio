@@ -32,7 +32,7 @@ pub struct DebuggerSession {
     pub prev_hex_base: u32,
 
     /// Quick Save Slots (slots 1..=5)
-    pub quick_slots: [Option<A500State>; 5],
+    pub quick_slots: [Option<Box<A500State>>; 5],
     /// Live CPU state preserved while scrubbing historical frames
     pub live_cpu_state: Option<CpuState>,
 }
@@ -341,7 +341,7 @@ impl DebuggerSession {
                 "Invalid quick slot index: {slot} (must be 1..=5)"
             )));
         }
-        self.quick_slots[slot - 1] = Some(self.save_state());
+        self.quick_slots[slot - 1] = Some(Box::new(self.save_state()));
         Ok(())
     }
 
@@ -352,9 +352,10 @@ impl DebuggerSession {
                 "Invalid quick slot index: {slot} (must be 1..=5)"
             )));
         }
-        let state = self.quick_slots[slot - 1]
-            .clone()
-            .ok_or_else(|| SaveStateError::CorruptedData(format!("Quick slot {slot} is empty")))?;
+        let state = (*self.quick_slots[slot - 1]
+            .as_ref()
+            .ok_or_else(|| SaveStateError::CorruptedData(format!("Quick slot {slot} is empty")))?)
+        .clone();
         self.load_state(&state)
     }
 
