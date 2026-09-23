@@ -22,7 +22,16 @@ Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`) without 
 
 ### Launching the Emulator
 
-Run in **Clean Standalone Game Mode** (clean 50 Hz PAL display without toolbars or dock windows):
+Launch the **Developer Studio & Debugger GUI** (default full desktop inspection suite with live M68000 CPU registers, cycle traces, disassembly, and custom chip state panels):
+```powershell
+cargo run -p gui
+```
+> **Tip:** For silky-smooth 50 Hz real-time gaming frame rates, run with `--release`:
+> ```powershell
+> cargo run --release -p gui
+> ```
+
+Or run in **Clean Standalone Game Mode** (clean 50 Hz PAL display without toolbars or dock windows):
 ```powershell
 cargo run -p gui -- --game
 ```
@@ -31,6 +40,7 @@ Or open the **WebAssembly Browser Canvas** (via Trunk):
 ```powershell
 trunk serve crates/gui/index.html --open
 ```
+*(Press **`F12`** at any time in the browser or desktop window to toggle the Developer Studio)*
 
 ### Screen Modes & Clean Toggle (`F12`)
 - Press **`F12`** at any time to toggle between **Clean Game Mode** and the **Developer Studio / Debugger**.
