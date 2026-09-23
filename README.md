@@ -15,58 +15,31 @@ Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`) without 
 
 ---
 
-## 1. For Players (Quick Start)
+## Current Runnable Demo
 
-> Prebuilt desktop executables (`.exe`) and WebAssembly browser bundles will be published under **Releases**.
-> To run directly from source (requires the [Rust toolchain](https://rustup.rs)):
+The emulator is still under active development and does not yet provide a playable Amiga system. The current interactive entry point is the **Developer Studio & M68000 Debugger**, where you can load and inspect small standalone processor programs.
 
-### Launching the Emulator
+Example programs are available under [`tests/bin/`](tests/bin). After launching the Developer Studio, select **File → Load Binary** and open one of the `.bin` files from that directory. The examples are designed to load at address `$001000`.
 
-Launch the **Developer Studio & Debugger GUI** (default full desktop inspection suite with live M68000 CPU registers, cycle traces, disassembly, and custom chip state panels):
+### Native Desktop Application
+
+Run the Developer Studio as a standalone desktop window:
+
 ```powershell
-cargo run -p gui
+cargo run --release -p gui
 ```
 
-Or run in **Clean Standalone Game Mode** (clean 50 Hz PAL display without toolbars or dock windows):
-```powershell
-cargo run -p gui -- --game
-```
+### Web Browser
 
-Or open the **WebAssembly Browser Canvas** (via Trunk):
+Run the WebAssembly build in a browser using [Trunk](https://trunkrs.dev):
+
 ```powershell
+cargo install --locked trunk
 trunk serve crates/gui/index.html --open
 ```
-*(Press **`F12`** at any time in the browser or desktop window to toggle the Developer Studio)*
-
-### Screen Modes & Clean Toggle (`F12`)
-- Press **`F12`** at any time to toggle between **Clean Game Mode** and the **Developer Studio / Debugger**.
-- Switching into Developer Studio pauses emulation immediately, allowing instant inspection of registers, custom chip states, and memory.
-
-### Loading Games
-- **Floppy Disks (`.adf`):** Drag and drop any `.adf` image directly onto the emulator window to insert it into `DF0:` and start playing.
-
-### Player Keybindings & Controls
-
-| Shortcut | Action | Description |
-| :--- | :--- | :--- |
-| **`F5` / `Space`** | **Run / Pause** | Toggles continuous emulation. |
-| **`Ctrl + R`** | **Reset / Restart** | Performs cold reset, restoring initial hardware state and rebooting. |
-| **`F12`** | **Toggle Screen Mode** | Switches between Clean Game Display and the Developer Studio. |
-| **Drag & Drop** | **Insert Floppy (`DF0:`)** | Drag any `.adf` disk image directly onto the window. |
-
-### Developer Studio & In-Game Debugging
-
-Press **`F12`** at any time to pause emulation and switch into the Developer Studio:
-- **Live State Inspection:** Inspect and live-edit M68000 registers, custom chip states, and Chip RAM in real time.
-- **Time-Travel Rewind:** Step backward through recent execution history using the rolling cycle trace buffer.
-- **Disassembly & Breakpoints:** Set PC breakpoints, memory watchpoints, and patch machine code instructions on the fly.
 
 For the complete controls reference, step-by-step shortcuts, and debugging workflows, see:
 👉 [**Developer Studio & Debugger Guide**](docs/debugger.md)
-
----
-
-## 2. For Developers
 
 For compilation instructions, bootstrapping options, test suites, and technical reference guides:
 👉 [**Developer Guide & Technical Index**](docs/developers.md)
