@@ -101,7 +101,7 @@ impl Default for UserPreferences {
 #[derive(Debug)]
 pub struct EmulatorApp {
     /// Headless machine execution controller & model
-    pub session: DebuggerSession,
+    pub session: Box<DebuggerSession>,
 
     // UI Configuration & Themes
     pub theme: AppTheme,
@@ -151,7 +151,7 @@ impl Default for EmulatorApp {
         };
 
         Self {
-            session: DebuggerSession::new(),
+            session: Box::new(DebuggerSession::new()),
             theme: AppTheme::Dark,
             view_mode,
             active_reg_edit: None,

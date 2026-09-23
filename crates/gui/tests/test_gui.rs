@@ -183,6 +183,12 @@ fn test_emulator_app_debug_derive() {
     let app = gui::EmulatorApp::default();
     let debug_str = format!("{:?}", app);
     assert!(debug_str.contains("EmulatorApp"));
+    // Verify EmulatorApp stack footprint is compact due to boxed DebuggerSession
+    assert!(
+        std::mem::size_of::<gui::EmulatorApp>() < 1024,
+        "EmulatorApp size {} exceeds compact stack threshold",
+        std::mem::size_of::<gui::EmulatorApp>()
+    );
 }
 
 #[test]
