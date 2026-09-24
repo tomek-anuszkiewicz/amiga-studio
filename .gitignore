@@ -77,3 +77,6 @@ tests/singlestep/
 
 # Keir Fraser Amiga Test Kit floppy disk images (.adf), debug symbols, and release docs.
 /tools/AmigaTestKit*/
+
+# not worthy roadmap.md and git history itsefl
+TODO.md
