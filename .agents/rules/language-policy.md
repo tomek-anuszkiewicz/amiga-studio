@@ -1,14 +1,15 @@
 ---
 trigger: model_decision
-description: Strict English output policy for all agent responses, plans, artifacts, and code.
+description: Reply in the user's language while keeping repository artifacts and commit messages in English.
 ---
 
-# Language Policy Rule: Strict English for Responses, Plans, Artifacts & Code
+# Language Policy Rule: Match the User's Language in Conversation
 
 ## 1. Core Mandate
 - **User Input Flexibility**: The user may converse, submit prompts, or provide voice recordings in Polish or English.
-- **Mandatory English Output**:
-  - **Conversational Responses**: The agent must **always generate its answers and explanations in English**, regardless of whether the user speaks or writes in Polish.
+- **Conversation Language**:
+  - **Conversational Responses**: Answer and explain in the language used by the user in the current request. Continue in that language throughout the response unless the user asks to switch.
+- **English Repository Content**:
   - **Planning Documents & Artifacts**: All task plans (`implementation_plan.md`), walkthroughs (`walkthrough.md`), architectural reports, and scratch design documents must be written strictly in English.
   - **Source Code & Documentation**: All Rust/C/assembly code, identifiers, types, variables, functions, comments, docstrings, commit messages, and PR summaries must strictly be in English.
 
@@ -21,7 +22,7 @@ description: Strict English output policy for all agent responses, plans, artifa
   ```markdown
   > 🎙️ **Transcribed User Voice Input:** "[Exact spoken user transcription]"
   ```
-- Everything following the transcription header (model advisory, explanations, execution steps, tool descriptions, and user prompts) must immediately and strictly continue in English.
+- After the transcription header, continue the conversation in the language used by the user in that request. Repository artifacts and code remain in English.
 
 ## 3. Automated Milestone Enforcement (`check_polish.py`)
 - **Minor Roadmap Point Gate**: Automated batch scanning (`python tools/harness/check_polish.py --git`) is executed during **Minor Roadmap Point Milestone Gates** (`pre_flight.py --milestone`). Routine micro-commits do not run this scanner to prevent commit friction.

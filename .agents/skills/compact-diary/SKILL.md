@@ -12,7 +12,7 @@ This skill defines the standardized procedure for logging milestone completions 
 ## 1. Milestone Engineering Diary Logging Protocol
 
 Whenever an agent finishes a minor roadmap point (e.g. Step 1.1, 1.2, 2.1) or major architectural milestone:
-- **Mandatory Milestone Trigger:** Append a detailed narrative entry to [`DIARY.md`](../../../DIARY.md) under Section 10 (Living Chronological Engineering Log). Routine micro-commits do not require diary logging.
+- **Mandatory Milestone Trigger:** Append a detailed narrative entry to [`DIARY.md`](../../../DIARY.md) under Section 10 (Living Chronological Engineering Log). Routine micro-commits must not add diary entries.
 - **Deterministic Logging Tool (`tools/harness/log_diary.py`):**
   Always use the deterministic CLI tool to eliminate prompt bloat:
   ```powershell

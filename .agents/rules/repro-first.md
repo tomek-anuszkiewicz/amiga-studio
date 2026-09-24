@@ -61,4 +61,4 @@ flowchart LR
 - [ ] Was the fix implemented in `crates/*/src/` with zero dynamic heap allocations in hot paths?
 - [ ] Does the reproduction test now PASS?
 - [ ] Have domain regression suites (`SingleStepTests`, `test_dma_cartesian`, `test_architecture_rules`) been run?
-- [ ] Has the bug and its architectural resolution been logged in `DIARY.md` (Section 10)?
+- [ ] If this fix completes a minor roadmap point or major milestone, has its outcome been logged in `DIARY.md` (Section 10)? Otherwise, leave `DIARY.md` unchanged.

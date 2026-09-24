@@ -23,7 +23,7 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
 - **Clean-Break Refactoring** ([`clean-break-refactoring.md`](.agents/rules/clean-break-refactoring.md)): Zero legacy aliases/shims, complete workspace cutover on changes.
 
 ### B. Domain-Specific Rules (`trigger: model_decision`)
-- **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Strict English for responses, plans, artifacts, code, and commit messages.
+- **Language Policy** ([`language-policy.md`](.agents/rules/language-policy.md)): Match the user's language in conversation; use English for repository plans, artifacts, code, and commit messages.
 - **Asset Descriptions & Markdown Fallbacks** ([`asset-descriptions.md`](.agents/rules/asset-descriptions.md)): One-time conversion-bootstrap contract for visual relevance, RAG sidecars, and collapsible Markdown fallbacks.
 - **Hardware Bus Topology** ([`hardware-bus-topology.md`](.agents/rules/hardware-bus-topology.md)): Agnus DMA address mastership, passive latching, zero inter-chip signal smuggling. Continuous + Per-Commit: AST verified in `pre_flight.py --quick` (Hardware Quality Pillar 1 & 2).
 - **Design Docs Maintenance** ([`docs-maintenance.md`](.agents/rules/docs-maintenance.md)): Sync `Obsidian/Amiga/Design/` specs with code; prune draft proposals.
@@ -103,7 +103,7 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
   - Pre-flight quick gate: `python tools/harness/pre_flight.py --quick` (formatting, AGENTS.md ceiling, test coupling, API coverage, clippy, Code Quality 1-2, Hardware Quality 1-2).
   - Automated architecture tests: `cargo test -p test_runner --test test_architecture_rules` *(not included in `--quick`; must be run separately)*.
   - Atomic commit following Conventional Commits in strict English per [`git-commits.md`](.agents/rules/git-commits.md).
-  - *Routine commits do not require diary logging, design doc edits, or roadmap pruning.*
+  - *Routine micro-commits must not add diary entries; design doc synchronization and roadmap pruning occur at minor roadmap points or milestones.*
 - **Minor Roadmap Point & Milestone Gates (Step 1.1, 1.2, 2.1...):**
   - Milestone pre-flight: `python tools/harness/pre_flight.py --milestone` (Code Quality 3-4, Hardware Quality 3-5, Docs Quality 100%).
   - Semantic parity: run [`audit-semantic-parity`](.agents/skills/audit-semantic-parity/SKILL.md) on modified subsystems.
