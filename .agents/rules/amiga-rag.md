@@ -5,7 +5,7 @@ description: Amiga RAG knowledge base tools and mandatory pre-task conceptual re
 
 ## Amiga RAG Knowledge Base (Amiga Docs + Developer Notes)
 
-You have access to a local knowledge base through the `rag_qdrant` command-line tool. When registered, the Amiga RAG MCP server exposes an optional adapter with `rag_search`, `rag_list_sources`, `rag_status`, and `rag_reindex`.
+You have access to a local knowledge base through the `rag_qdrant` command-line tool. When registered, the Amiga RAG MCP server exposes an optional adapter with `rag_search`, `rag_list_sources`, and `rag_status`.
 
 Knowledge Sources Configuration:
 - The Qdrant database hosts the unified `projects_docs` collection containing two distinct knowledge sources:

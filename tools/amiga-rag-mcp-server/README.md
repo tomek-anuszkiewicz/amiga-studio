@@ -1,10 +1,9 @@
 # Amiga RAG MCP Server
 
-This project-specific FastMCP server exposes Amiga documentation retrieval and scoped indexing through `rag_search`, `rag_list_sources`, `rag_status`, and `rag_reindex`.
+This project-specific FastMCP server exposes Amiga documentation retrieval and health inspection through `rag_search`, `rag_list_sources`, and `rag_status`.
 
 It does not import Qdrant, its cache, or the indexer. It invokes the standalone
-`rag_qdrant` command from `PATH` for every search, status, source-list, and
-index operation, so the CLI and its dependencies must be installed independently.
+`rag_qdrant` command from `PATH` for query execution and status inspection, so the CLI and its dependencies must be installed independently.
 
 ## Installation
 
@@ -35,18 +34,15 @@ by every command operating on `projects_docs`:
 RAG_INDEX_JSON=<shared-rag-index-state-file>
 ```
 
-`rag_reindex()` invokes `rag_qdrant` only for the Amiga documentation scopes:
+## Documentation Indexing
+
+Documentation indexing is a heavy batch process handled strictly outside the MCP server through the `rag_qdrant` CLI or `tools/bootstrap.ps1 -Rag` across the Amiga documentation scopes:
 
 - repository `docs`
 - `Obsidian/Amiga/Design`
 - `Obsidian/Amiga/Reference`
 
-It uses the `amiga` source tag and passes `RAG_INDEX_JSON` to every invocation.
-The CLI hashes every Markdown file on each run and has no forced-reindex mode.
+The CLI uses the `amiga` source tag and passes `RAG_INDEX_JSON` to every invocation. It hashes every Markdown file on each run and processes only modified or added files.
 
 When the MCP `rag_search` tool receives multiple source tags, it passes the
 deduplicated tags as the CLI's supported comma-separated `--source` value.
-
-The MCP server is the RAG integration point for agent retrieval and reindexing.
-For operator-driven setup, `tools/bootstrap.ps1 -Rag` invokes the same
-PATH-resolved command with these same two Amiga scopes.

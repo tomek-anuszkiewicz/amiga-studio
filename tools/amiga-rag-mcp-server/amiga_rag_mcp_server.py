@@ -6,9 +6,12 @@ from typing import List, Optional, Union
 
 from fastmcp import FastMCP
 
-from amiga_indexing import build_index_commands, build_search_command
 from environment import load_environment_file
-from rag_qdrant_command import RagQdrantCommandError, run_rag_qdrant, run_rag_qdrant_json
+from rag_qdrant_command import (
+    RagQdrantCommandError,
+    build_search_command,
+    run_rag_qdrant_json,
+)
 
 
 mcp = FastMCP("amiga-rag")
@@ -130,27 +133,6 @@ def rag_status() -> str:
         f"- Total Tracked Files: `{status.get('total_files', 0)} across "
         f"{status.get('source_count', 0)} source(s)."
     )
-
-
-@mcp.tool()
-def rag_reindex() -> str:
-    """Incrementally index docs, Design, and Reference under source ``amiga``."""
-    index_json = configured_index_json()
-    if index_json is None:
-        return "RAG commands require RAG_INDEX_JSON to name the shared CLI state file."
-
-    try:
-        outputs = [
-            run_rag_qdrant(command, timeout_seconds=1800)
-            for command in build_index_commands(PROJECT_ROOT, index_json)
-        ]
-    except RagQdrantCommandError as error:
-        return f"Error indexing Amiga RAG documentation: {error}"
-
-    output = "\n".join(line for result in outputs for line in result.splitlines() if line.strip())
-    if not output:
-        return "Amiga RAG incremental index completed for docs, Design, and Reference."
-    return f"Amiga RAG incremental index completed for docs, Design, and Reference.\n{output}"
 
 
 if __name__ == "__main__":
