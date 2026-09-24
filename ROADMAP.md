@@ -90,13 +90,15 @@ When an agent finishes any numbered item:
 ### Step 1: Clean-Slate Custom Chipset Spec Reset & Self-Bootstrapped Verification (Immediate Primary Focus)
 
 - **1.1: AI Agent Harness Modernization — Plugins, Strict MCP Server, Notes Guidance & Evaluation Framework (Evals)**
-  - **Objective:** Modernize and harden the autonomous agent execution environment by packaging domain capabilities into plugins, reforming the Amiga RAG server into a strict standard MCP server, configuring agent/subagent rules to enforce Graphify and RAG retrieval, and establishing an evaluation (evals) test harness.
+  - **Objective:** Modernize and harden the autonomous agent execution environment by packaging domain capabilities into plugins, reforming the Amiga RAG server into a strict standard MCP server, configuring agent/subagent rules to enforce Graphify and RAG retrieval, establishing an evaluation (evals) test harness, and authoring an architectural conditioning design note to guide future harness development.
   - **Actionable Scope:**
+    - **Agent Harness Architecture & Conditioning Design Note:** Author a dedicated design specification (`Obsidian/Amiga/Design/Agent Harness and Evals Architecture.md`) serving as the architectural beacon to condition and steer future agents—defining plugin conventions, tool whitelists, subagent delegation boundaries, FastMCP server contracts, and evaluation schemas.
     - **Plugin Architecture & Customizations:** Scaffold agent plugins (including an explorer plugin), configuring plugin-enforced workflows, specialized subagents, and directory-level `AGENTS.md` with explicit tool whitelists (`tools: [...]`) and skill constraints. Ensure the main agent functions as an orchestrator delegating focused work to subagents with explicit scopes.
     - **Strict MCP Server Reformation:** Refactor the `amiga-rag` server into a strict, compliant MCP server (standard JSON-RPC / FastMCP protocol) with robust schema publishing, ensuring reliable discovery and eager tool invocation by IDE models.
     - **Agent Guidance & Rule Enforcement:** Update agent instructions and subagent definitions to strictly operate with the main agent as an orchestrator, mandating `graphify query` for AST/code navigation and `rag_search` for hardware register specifications before source inspections.
     - **Agent Evaluation Harness (Evals):** Build and calibrate an automated evaluation framework to test the agent harness—benchmarking subagent delegation fidelity, tool usage adherence, and multi-step reasoning accuracy.
   - **Verification Gate:**
+    - Architecture and conditioning design note committed to `Obsidian/Amiga/Design/Agent Harness and Evals Architecture.md` adhering to inverted pyramid and dual-layer linking.
     - Standard MCP server verification tests pass with automatic tool discovery.
     - Agent eval suite successfully validates tool selection and retrieval compliance against synthetic queries.
     - Pre-flight quality checks pass (`python tools/harness/pre_flight.py --quick`).
