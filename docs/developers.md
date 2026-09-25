@@ -164,7 +164,7 @@ The centralized bootstrapper (`tools/bootstrap/bootstrap.ps1`) orchestrates all 
 <a id="full-development-setup-all"></a><a id="bootstrapper-commands"></a>
 ### Complete Development Setup (`-All`)
 
-To provision every external reference asset, knowledge base, and tooling index in a single run, use the `-All` switch:
+To provision the repository-managed reference assets and tooling indexes in a single run, use the `-All` switch. Its RAG phase still starts this repository's independent Qdrant container. When using the separate qdrant-rag repository, run the other provisioning switches individually and follow the RAG setup below:
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -All
@@ -172,10 +172,10 @@ To provision every external reference asset, knowledge base, and tooling index i
 
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
-| **Full Setup** | `-All` | Complete initial development setup | Executes all 4 phases sequentially in causal order: **Sources** $\to$ **Graphify** $\to$ **Documentation** $\to$ **RAG** |
+| **Full Setup** | `-All` | Provision repository-managed development assets | Executes all 4 phases sequentially in causal order: **Sources** $\to$ **Graphify** $\to$ **Documentation** $\to$ **RAG**. It uses the independent Qdrant container, not the external repository's Compose setup. |
 | **Verification Testbeds** | `-Sources` | Running exhaustive single-step M68000 suites and DMA contention stress tests | Downloads and decompresses external test suites, M68000 silicon vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS reference testbeds, and the Amiga Test Kit ADF |
 | **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Downloads original archival PDF scans and OEM technical reference manuals (HRM, TRM, PRM, UM, and technical articles) |
-| **Documentation & RAG** | `-Rag` | AI agent pair-programming, hardware research, architecture design | Initializes local Qdrant vector database (`http://localhost:6333`) and indexes reference manuals (`Obsidian/Amiga/Reference/`) and design specs (`Obsidian/Amiga/Design/`) via offline FastEmbed embeddings |
+| **Documentation & RAG** | `-Rag` | Legacy repository-managed Qdrant bootstrap | Starts its own Qdrant container and indexes the Amiga documentation scopes through the external `rag_qdrant` CLI; it does not install or configure the separate RAG service. |
 | **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | Performs AST analysis across active Rust crates (`crates/`) and reference C++ code (`ref_src/vAmiga`), generating the unified symbol dependency and call-hierarchy graph in `graphify-out/` |
 
 ---
@@ -242,18 +242,28 @@ When new reference manuals or updated editions are retrieved, use specialized ag
 <a id="domain-hardware-rag-setup-rag"></a>
 #### 3. Domain Hardware RAG Setup (`-Rag`)
 
-Provisions and indexes the local vector database for AI-assisted pair-programming and hardware reference retrieval:
+The Qdrant server configuration and `rag_qdrant` CLI live in the separate [qdrant-rag repository](https://github.com/tomek-anuszkiewicz/qdrant-rag). Clone and configure it before using RAG from this project:
 
 ```powershell
-.\tools\bootstrap\bootstrap.ps1 -Rag
+$RagRepo = "<path-to-qdrant-rag>"
+git clone https://github.com/tomek-anuszkiewicz/qdrant-rag.git $RagRepo
+Set-Location $RagRepo
+python -m pip install -r .\rag-qdrant\requirements.txt
+docker compose up -d
 ```
 
-**What It Does:**
-- Ensures that the local Docker-managed Qdrant container is running on `http://localhost:6333`.
-- Uses the persistent `amiga-rag-qdrant-storage` Docker volume by default. Set `AMIGA_QDRANT_CONTAINER` or `AMIGA_QDRANT_IMAGE` only when an operator needs a different container name or image.
-- Uses local FastEmbed (`BAAI/bge-small-en-v1.5`) to embed hardware manuals (`Obsidian/Amiga/Reference/`) and architectural notes (`Obsidian/Amiga/Design/`) into the unified `amiga` collection.
-- Requires `RAG_INDEX_JSON` to name the state file used for incremental reindexing.
-- For query tools, CLI commands, and FastMCP details, see [Chapter 5: Domain Hardware Knowledge: Local Vector RAG (`amiga-rag`)](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag).
+Start Docker Desktop before running `docker compose up -d`. Follow the cloned repository's README for any additional configuration required by the version you checked out. Qdrant stores its vectors in that repository's persistent Docker volume or bind mount; the CLI also needs a JSON file for incremental index state.
+
+Add the cloned repository's `rag-qdrant\bin` directory to `PATH` so `rag_qdrant` is available to the Amiga scripts and MCP adapter. For the current PowerShell session on Windows:
+
+```powershell
+$env:PATH = "$RagRepo\rag-qdrant\bin;$env:PATH"
+Get-Command rag_qdrant.bat
+$env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
+rag_qdrant.bat --status --index-json $env:RAG_INDEX_JSON --json
+```
+
+Set `RAG_INDEX_JSON` to an absolute path for a writable state file and reuse it for every command against this collection. Add the launcher directory to your persistent user `PATH` if other shells or IDE sessions need it. Run the three Amiga indexing commands in [Chapter 5](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag) from the Amiga repository root after the documentation audit succeeds. The `-Rag` and `-All` bootstrap switches still use this repository's older, independent Qdrant container helper and may conflict with the external repository's Compose container on ports 6333/6334. Use the external repository's Compose setup and the direct CLI commands for the shared database.
 
 <a id="code-knowledge-graph-setup-graphify"></a>
 #### 4. Code Knowledge Graph Setup (`-Graphify`)

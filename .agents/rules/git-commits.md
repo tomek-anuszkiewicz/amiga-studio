@@ -52,7 +52,7 @@ python tools/harness/pre_flight.py --quick
 cargo test -p test_runner --test test_architecture_rules
 ```
 
-> Routine commits do not require diary logging, design doc edits, or roadmap pruning. Those occur strictly upon completing minor roadmap points or milestones.
+> Routine micro-commits must not add `DIARY.md` entries. Diary logging, design doc synchronization, and roadmap pruning occur upon completing minor roadmap points or milestones.
 
 ---
 

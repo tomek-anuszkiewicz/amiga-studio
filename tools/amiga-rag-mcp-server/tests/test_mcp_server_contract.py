@@ -14,9 +14,12 @@ SERVER_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = SERVER_ROOT.parents[1]
 sys.path.insert(0, str(SERVER_ROOT))
 
-from amiga_indexing import build_index_commands, build_search_command
 from environment import load_environment_file
-from rag_qdrant_command import RAG_QDRANT_COMMAND, run_rag_qdrant, run_rag_qdrant_json
+from rag_qdrant_command import (
+    RAG_QDRANT_COMMAND,
+    build_search_command,
+    run_rag_qdrant_json,
+)
 
 
 class FakeMCP:
@@ -64,54 +67,6 @@ class CommandContractTests(unittest.TestCase):
             [RAG_QDRANT_COMMAND, "search", "Copper timing", "--index-json", "index.json", "--json"],
         )
         self.assertTrue(calls[0][1]["capture_output"])
-
-    def test_path_command_runner_returns_index_output(self):
-        def runner(command, **kwargs):
-            self.assertEqual(
-                command,
-                [RAG_QDRANT_COMMAND, "docs", "--source", "amiga", "--index-json", "index.json"],
-            )
-            self.assertEqual(kwargs["timeout"], 1800)
-            return SimpleNamespace(returncode=0, stdout="Indexed 3 files\n", stderr="")
-
-        self.assertEqual(
-            run_rag_qdrant(
-                ["docs", "--source", "amiga", "--index-json", "index.json"],
-                runner=runner,
-                timeout_seconds=1800,
-            ),
-            "Indexed 3 files\n",
-        )
-
-    def test_indexing_uses_explicit_scopes_and_shared_state_file(self):
-        repository_root = Path("repository")
-
-        self.assertEqual(
-            build_index_commands(repository_root, "index.json"),
-            [
-                ["repository\\docs", "--source", "amiga", "--index-json", "index.json"],
-                [
-                    str(repository_root / "Obsidian" / "Amiga" / "Design"),
-                    "--source",
-                    "amiga",
-                    "--index-json",
-                    "index.json",
-                ],
-                [
-                    str(repository_root / "Obsidian" / "Amiga" / "Reference"),
-                    "--source",
-                    "amiga",
-                    "--index-json",
-                    "index.json",
-                ],
-            ],
-        )
-
-    def test_indexing_uses_no_retired_scope_or_force_options(self):
-        commands = build_index_commands(Path("repository"), "index.json")
-
-        self.assertFalse(any("--include-dirs" in command for command in commands))
-        self.assertFalse(any("--reindex" in command for command in commands))
 
     def test_multisource_search_uses_the_cli_comma_separated_filter(self):
         self.assertEqual(
@@ -188,16 +143,17 @@ class CommandContractTests(unittest.TestCase):
             else:
                 os.environ[variable_name] = original
 
-    def test_mcp_server_requires_cli_state_file_and_exposes_incremental_indexing(self):
+    def test_mcp_server_requires_cli_state_file_and_exposes_read_only_tools(self):
         server_source = (SERVER_ROOT / "amiga_rag_mcp_server.py").read_text(encoding="utf-8")
 
         self.assertIn('RAG_INDEX_JSON_VARIABLE = "RAG_INDEX_JSON"', server_source)
         self.assertIn("build_search_command", server_source)
         self.assertIn("run_rag_qdrant_json", server_source)
-        self.assertIn("def rag_reindex()", server_source)
+        self.assertNotIn("def rag_reindex()", server_source)
         self.assertNotIn("RAG_CACHE_FILE", server_source)
         self.assertNotIn("--reindex", server_source)
         self.assertNotIn("KnowledgeIndexer", server_source)
+        self.assertFalse((SERVER_ROOT / "amiga_indexing.py").exists())
 
     def test_project_no_longer_contains_the_rag_qdrant_tool(self):
         self.assertFalse((REPOSITORY_ROOT / "tools" / "rag-qdrant").exists())

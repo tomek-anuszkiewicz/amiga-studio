@@ -10,13 +10,6 @@
 .env
 
 # ------------------------------------------------------------------------------
-# 2. Ephemeral Cloud Sync Buffers (Safe to delete)
-# ------------------------------------------------------------------------------
-# Temporary staging directories created by Google Drive background synchronization.
-.tmp.driveupload/
-.tmp.drivedownload/
-
-# ------------------------------------------------------------------------------
 # 3. Editor & Workspace UI State (Safe to delete)
 # ------------------------------------------------------------------------------
 # Local Obsidian vault state: active workspace tabs and remembered cursor positions.
@@ -77,3 +70,6 @@ tests/singlestep/
 
 # Keir Fraser Amiga Test Kit floppy disk images (.adf), debug symbols, and release docs.
 /tools/AmigaTestKit*/
+
+# not worthy roadmap.md and git history itsefl
+TODO.md

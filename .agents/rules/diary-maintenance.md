@@ -1,19 +1,21 @@
 ---
 trigger: model_decision
-description: Mandatory chronological engineering narrative logging in DIARY.md under Section 10 whenever implementing, refactoring, or modifying code or subsystems.
+description: Log completed minor roadmap points and major milestones in DIARY.md; never log routine micro-commits.
 ---
 
 # Engineering Diary Maintenance Rule (`DIARY.md`)
 
-This rule governs the continuous maintenance of the engineering chronicle in [`DIARY.md`](../../DIARY.md).
+This rule governs milestone entries in the engineering chronicle in [`DIARY.md`](../../DIARY.md).
 
 ---
 
-## 1. Mandatory Living Engineering Log (Section 10)
+## 1. Milestone-Only Engineering Log (Section 10)
 
-Whenever an agent implements, refactors, fixes, or modifies any code, subsystem, rule, or architectural document in this repository:
-- You **must append a detailed narrative entry to [`DIARY.md`](../../DIARY.md) under Section 10 (Living Chronological Engineering Log)**.
-- Format each entry with timestamp: `### [YYYY-MM-DD HH:MM CEST] — <Title>`
+Append an entry to [`DIARY.md`](../../DIARY.md) under Section 10 only after a minor roadmap point (for example, Step 1.1 or 1.2) or a major milestone has been completed and verified. Summarize the completed point or milestone, including the relevant work since its previous diary entry.
+
+Routine micro-commits, including intermediate fixes, refactors, tests, rule changes, and documentation edits, **must not create DIARY.md entries**. A completed task or Git commit alone is not a diary trigger.
+
+Format each milestone entry with timestamp: `### [YYYY-MM-DD HH:MM CEST] — <Title>`.
 
 ---
 
@@ -30,10 +32,10 @@ To prevent context bloat and eliminate reading the 90+ KB `DIARY.md` file into c
     --results "<test verification>"
   ```
 - The tool automatically computes the current timestamp (`### [YYYY-MM-DD HH:MM CEST] — <Title>`), formats all 4 required sections, and appends the entry cleanly in 0.05s without prompt overhead.
-- **Lifecycle Integration & Git Staging Order:**
-  - Execute `log_diary.py` **prior to creating the Git commit** once verification and test suites have passed.
-  - Stage the updated `DIARY.md` directly alongside the modified source code, unit tests, and design notes in the primary atomic commit per the **Cohesive Unit** protocol in [`.agents/rules/git-commits.md`](git-commits.md).
-  - Never commit the implementation first and leave `DIARY.md` to be committed as an orphan trailing `docs(diary): ...` commit.
+- **Milestone Lifecycle & Git Staging Order:**
+  - Execute `log_diary.py` only after the minor roadmap point or major milestone passes its completion gates, and before the milestone-completion commit.
+  - Stage `DIARY.md` with the milestone completion changes under the **Cohesive Unit** protocol in [`.agents/rules/git-commits.md`](git-commits.md). Earlier routine micro-commits must not include diary entries.
+  - Do not leave the required milestone entry for an orphan trailing `docs(diary): ...` commit.
 
 ---
 
@@ -48,13 +50,13 @@ Every log entry under Section 10 must systematically document:
 
 ---
 
-## 3. Rationale: The Narrative History
+## 4. Rationale: The Narrative History
 
-Git commits in this project are frequently squashed, batched, or merged into higher-level commits. Relying solely on commit messages causes granular design evolution and technical decisions to be lost. `DIARY.md` serves as the permanent, living chronological chronicle and narrative history of what was actually built.
+Git commits record routine changes. `DIARY.md` records the verified outcome, technical decisions, and evidence for each completed roadmap point or milestone, so the engineering history remains readable without duplicating every commit.
 
 ---
 
-## 4. Milestone Diary Compaction Gate
+## 5. Milestone Diary Compaction Gate
 
 Upon completing a major roadmap milestone in [`ROADMAP.md`](../../ROADMAP.md):
 - Invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) to synthesize older completed milestone entries into high-level architectural digests, preserving evolutionary rationale and key decisions while keeping recent entries granular.

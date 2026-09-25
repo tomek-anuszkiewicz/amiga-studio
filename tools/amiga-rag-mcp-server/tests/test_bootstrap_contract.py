@@ -28,7 +28,7 @@ def write_docker_command(temporary_root: Path) -> None:
 
 
 class BootstrapRagContractTests(unittest.TestCase):
-    def test_rag_switch_indexes_the_mcp_server_scopes_through_path_cli(self):
+    def test_rag_switch_indexes_the_amiga_scopes_through_path_cli(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary_root = Path(temporary_directory)
             command_log = temporary_root / "rag_qdrant.log"
