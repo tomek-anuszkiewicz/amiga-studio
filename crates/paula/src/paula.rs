@@ -357,6 +357,50 @@ impl Paula {
         self.interrupts.write_intreq(val);
     }
 
+    /// Stages an interrupt request bit into the propagation delay pipeline (1 CCK delay).
+    /// If an in-flight SET mutation for INTREQ ($09C) already exists, merges the request bit.
+    fn stage_interrupt_request(&mut self, mask: u16) {
+        // If already latched in INTREQ, no need to restage
+        if (self.interrupts.intreq & mask) == mask {
+            return;
+        }
+
+        // Check if a SET INTREQ write is already pending in the mutation pipeline
+        for slot in self.mutations.iter_mut() {
+            if let Some(m) = slot {
+                if m.reg_offset == 0x09C && (m.value & 0x8000) != 0 {
+                    // Merge bit into existing pending SET write
+                    m.value |= mask & 0x7FFF;
+                    return;
+                }
+            }
+        }
+
+        // Otherwise stage a new 1-CCK mutation for INTREQ ($09C)
+        let val = 0x8000 | (mask & 0x7FFF);
+        if !stage_mutation(&mut self.mutations, 0x09C, val, 1, MutationMode::Pipeline) {
+            self.commit_register_write(0x09C, val);
+        }
+    }
+
+    /// Sets the state of physical pin _INT2 (pin 31, connected to CIA-A /IRQ, active-low).
+    /// When active (true), stages a request for INTREQ bit 3 (PORTS) with 1 CCK propagation delay.
+    #[inline]
+    pub fn set_int2_pin(&mut self, active: bool) {
+        if active {
+            self.stage_interrupt_request(0x0008);
+        }
+    }
+
+    /// Sets the state of physical pin _INT6 (pin 30, connected to CIA-B /IRQ, active-low).
+    /// When active (true), stages a request for INTREQ bit 13 (EXTER) with 1 CCK propagation delay.
+    #[inline]
+    pub fn set_int6_pin(&mut self, active: bool) {
+        if active {
+            self.stage_interrupt_request(0x2000);
+        }
+    }
+
     /// Asserts interrupt request bits immediately
     #[inline]
     pub fn set_interrupt_request(&mut self, mask: u16) {
