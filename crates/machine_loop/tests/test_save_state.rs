@@ -3,7 +3,7 @@
 //! Integration tests for Amiga 500 Save State Serialization and Restoration
 
 use config::{A500Config, A500Preset, VideoStandard};
-use machine_loop::{A500Machine, A500State, SaveStateError, SAVE_STATE_MAGIC, SAVE_STATE_VERSION};
+use machine_loop::{A500Machine, A500State, SaveStateError, SAVE_STATE_VERSION};
 
 #[test]
 fn test_save_state_metadata_and_header() {
@@ -13,7 +13,6 @@ fn test_save_state_metadata_and_header() {
     ));
     let state = machine.save_state();
 
-    assert_eq!(state.header.magic, SAVE_STATE_MAGIC);
     assert_eq!(state.header.version, SAVE_STATE_VERSION);
     assert_eq!(state.header.chip_ram_size, 512 * 1024);
     assert_eq!(state.header.slow_ram_size, 512 * 1024);
@@ -46,7 +45,7 @@ fn test_save_state_json_roundtrip() {
 }
 
 #[test]
-fn test_save_state_compressed_roundtrip() {
+fn test_save_state_bytes_roundtrip() {
     let mut machine = A500Machine::new(A500Config::from_preset(
         A500Preset::Bare512k,
         VideoStandard::Pal,
@@ -54,15 +53,9 @@ fn test_save_state_compressed_roundtrip() {
     machine.step_cycles(500);
 
     let state = machine.save_state();
-    let compressed = state
-        .to_compressed_bytes()
-        .expect("Gzip compression failed");
-    assert!(
-        compressed.len() < 50_000,
-        "Compressed state should be lean (< 50KB)"
-    );
+    let json_bytes = serde_json::to_vec(&state).expect("Serialization failed");
 
-    let restored = A500State::from_bytes(&compressed).expect("Decompression failed");
+    let restored = A500State::from_bytes(&json_bytes).expect("Deserialization failed");
     assert_eq!(state, restored);
 }
 
@@ -205,10 +198,10 @@ fn test_save_state_file_persistence() {
     machine.step_cycles(150);
 
     let temp_dir = std::env::temp_dir();
-    let temp_path = temp_dir.join("test_save_state_amiga.a500z");
+    let temp_path = temp_dir.join("test_save_state_amiga.json");
 
     machine
-        .save_state_to_file(&temp_path, false)
+        .save_state_to_file(&temp_path)
         .expect("Failed to write save state file");
 
     let mut restored_machine = A500Machine::new(A500Config::from_preset(

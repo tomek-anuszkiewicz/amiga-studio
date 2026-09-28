@@ -456,7 +456,6 @@ impl A500Machine {
     /// Captures a complete machine state snapshot with fully embedded Kickstart ROM
     pub fn save_state(&self) -> A500State {
         let header = SaveStateHeader {
-            magic: SAVE_STATE_MAGIC,
             version: SAVE_STATE_VERSION,
             timestamp: 0,
             video_standard: self.config.video_standard(),
@@ -493,12 +492,7 @@ impl A500Machine {
 
     /// Restores a complete machine state snapshot with strict compatibility guards
     pub fn load_state(&mut self, state: &A500State) -> Result<(), SaveStateError> {
-        // 1. Verify Magic header
-        if state.header.magic != SAVE_STATE_MAGIC {
-            return Err(SaveStateError::InvalidMagic);
-        }
-
-        // 2. Verify Schema Version
+        // 1. Verify Schema Version
         if state.header.version != SAVE_STATE_VERSION {
             return Err(SaveStateError::IncompatibleVersion {
                 found: state.header.version,
@@ -506,7 +500,7 @@ impl A500Machine {
             });
         }
 
-        // 3. Verify Chip RAM configuration compatibility
+        // 2. Verify Chip RAM configuration compatibility
         let current_chip_size = self.physical_memory.chip_ram.len();
         if state.header.chip_ram_size != current_chip_size {
             return Err(SaveStateError::MemorySizeMismatch {
@@ -515,16 +509,16 @@ impl A500Machine {
             });
         }
 
-        // 4. Restore Physical Memory (unconditionally restoring RAM and Kickstart ROM)
+        // 3. Restore Physical Memory (unconditionally restoring RAM and Kickstart ROM)
         self.physical_memory = state.physical_memory.clone();
 
-        // 5. Restore Master Monotonic Color Clock counter
+        // 4. Restore Master Monotonic Color Clock counter
         self.cck = state.cck;
 
-        // 6. Restore CPU state and re-hydrate static micro-step pointers
+        // 5. Restore CPU state and re-hydrate static micro-step pointers
         self.cpu.restore_state(state.cpu.clone());
 
-        // 7. Restore Custom Chips & Peripherals
+        // 6. Restore Custom Chips & Peripherals
         self.rtc = state.rtc.clone();
         self.agnus = state.agnus.clone();
         self.denise = state.denise.clone();
@@ -535,27 +529,22 @@ impl A500Machine {
         self.keyboard = state.keyboard.clone();
         self.game_ports = state.game_ports.clone();
 
-        // 8. Re-poll peripheral pins to establish consistent signal line levels
+        // 7. Re-poll peripheral pins to establish consistent signal line levels
         self.poll_peripheral_pins();
 
         Ok(())
     }
 
-    /// Saves the machine state snapshot to a file (compressed if requested or matching extension)
+    /// Saves the machine state snapshot to a file as JSON
     pub fn save_state_to_file(
         &self,
         path: impl AsRef<std::path::Path>,
-        _compressed: bool,
     ) -> Result<(), SaveStateError> {
         let state = self.save_state();
-        let path = path.as_ref();
-        let is_gz = path
-            .extension()
-            .map_or(false, |ext| ext == "gz" || ext == "a500z");
-        state.save_to_file(path, is_gz)
+        state.save_to_file(path)
     }
 
-    /// Restores the machine state from a file, automatically detecting format/compression
+    /// Restores the machine state from a JSON file
     pub fn load_state_from_file(
         &mut self,
         path: impl AsRef<std::path::Path>,

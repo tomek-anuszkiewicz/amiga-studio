@@ -316,13 +316,12 @@ impl DebuggerSession {
         self.load_state(&state)
     }
 
-    /// Saves machine state directly to a file (compressed or JSON)
+    /// Saves machine state directly to a file as JSON
     pub fn save_state_to_file(
         &self,
         path: impl AsRef<std::path::Path>,
-        self_contained: bool,
     ) -> Result<(), SaveStateError> {
-        self.machine.save_state_to_file(path, self_contained)
+        self.machine.save_state_to_file(path)
     }
 
     /// Loads machine state directly from a file

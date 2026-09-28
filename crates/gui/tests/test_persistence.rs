@@ -133,3 +133,25 @@ fn test_persist_egui_memory_enabled() {
         "persist_egui_memory must be true so splitter positions and collapsing headers persist"
     );
 }
+
+#[test]
+fn test_app_session_save_state_file_json_roundtrip() {
+    let mut app = EmulatorApp::default();
+    app.session.machine.step_cycles(100);
+
+    let temp_dir = std::env::temp_dir();
+    let temp_file = temp_dir.join("gui_test_save_state.json");
+
+    app.session
+        .save_state_to_file(&temp_file)
+        .expect("Saving state from GUI app session must succeed");
+
+    let mut new_app = EmulatorApp::default();
+    new_app
+        .session
+        .load_state_from_file(&temp_file)
+        .expect("Loading state into GUI app session must succeed");
+
+    assert_eq!(app.session.machine.cck, new_app.session.machine.cck);
+    let _ = std::fs::remove_file(&temp_file);
+}

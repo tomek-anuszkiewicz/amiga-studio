@@ -2,22 +2,15 @@
 //!
 //! Provides decoupled, serde-compatible state snapshots (`A500State`),
 //! metadata headers (`SaveStateHeader`), compatibility verification, and
-//! round-trip serialization (JSON & gzip-compressed binary).
+//! round-trip serialization (formatted JSON).
 
 use std::fmt;
-use std::io::{Read, Write};
 use std::path::Path;
 
 use config::{A500Config, VideoStandard};
 use cpu::CpuState;
-use flate2::read::GzDecoder;
-use flate2::write::GzEncoder;
-use flate2::Compression;
 use physical_memory::PhysicalMemory;
 use serde::{Deserialize, Serialize};
-
-/// Magic identifier for Amiga 500 Save State files ("A500")
-pub const SAVE_STATE_MAGIC: [u8; 4] = *b"A500";
 
 /// Active schema format version for A500 save states
 pub const SAVE_STATE_VERSION: u32 = 1;
@@ -25,8 +18,6 @@ pub const SAVE_STATE_VERSION: u32 = 1;
 /// Metadata header identifying state compatibility, checksums, and machine configuration
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SaveStateHeader {
-    /// Format identifier: b"A500"
-    pub magic: [u8; 4],
     /// Schema format version (e.g. 1)
     pub version: u32,
     /// Unix timestamp when the save state was created (seconds since epoch)
@@ -77,8 +68,6 @@ pub struct A500State {
 /// Errors that can occur during save state serialization, deserialization, or verification
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SaveStateError {
-    /// File header magic bytes do not match "A500"
-    InvalidMagic,
     /// Save state schema version is unsupported
     IncompatibleVersion { found: u32, supported: u32 },
     /// Configured Chip RAM size does not match save state Chip RAM size
@@ -99,7 +88,6 @@ pub enum SaveStateError {
 impl fmt::Display for SaveStateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidMagic => write!(f, "Invalid save state magic header (expected 'A500')"),
             Self::IncompatibleVersion { found, supported } => {
                 write!(
                     f,
@@ -145,53 +133,20 @@ impl A500State {
             .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))
     }
 
-    /// Serializes and compresses the state snapshot to gzip-compressed bytes
-    pub fn to_compressed_bytes(&self) -> Result<Vec<u8>, SaveStateError> {
-        let json_bytes = serde_json::to_vec(self)
-            .map_err(|e| SaveStateError::SerializationFailed(e.to_string()))?;
-        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-        encoder
-            .write_all(&json_bytes)
-            .map_err(|e| SaveStateError::SerializationFailed(e.to_string()))?;
-        encoder
-            .finish()
-            .map_err(|e| SaveStateError::SerializationFailed(e.to_string()))
-    }
-
-    /// Deserializes an A500State snapshot from bytes, automatically detecting gzip vs raw JSON
+    /// Deserializes an A500State snapshot from raw JSON bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, SaveStateError> {
-        if bytes.len() >= 2 && bytes[0] == 0x1F && bytes[1] == 0x8B {
-            // Gzip compressed payload
-            let mut decoder = GzDecoder::new(bytes);
-            let mut decompressed = Vec::new();
-            decoder
-                .read_to_end(&mut decompressed)
-                .map_err(|e| SaveStateError::CorruptedData(e.to_string()))?;
-            serde_json::from_slice(&decompressed)
-                .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))
-        } else {
-            // Raw JSON bytes
-            serde_json::from_slice(bytes)
-                .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))
-        }
+        serde_json::from_slice(bytes)
+            .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))
     }
 
-    /// Saves the snapshot to a file (compressed if path ends in .gz / .a500z or requested)
-    pub(crate) fn save_to_file(
-        &self,
-        path: impl AsRef<Path>,
-        compressed: bool,
-    ) -> Result<(), SaveStateError> {
+    /// Saves the snapshot to a JSON file
+    pub(crate) fn save_to_file(&self, path: impl AsRef<Path>) -> Result<(), SaveStateError> {
         let path = path.as_ref();
-        let bytes = if compressed {
-            self.to_compressed_bytes()?
-        } else {
-            self.to_json_pretty()?.into_bytes()
-        };
-        std::fs::write(path, bytes).map_err(|e| SaveStateError::IoError(e.to_string()))
+        let json_pretty = self.to_json_pretty()?;
+        std::fs::write(path, json_pretty).map_err(|e| SaveStateError::IoError(e.to_string()))
     }
 
-    /// Loads a snapshot from a file, automatically detecting compression
+    /// Loads a snapshot from a JSON file
     pub fn load_from_file(path: impl AsRef<Path>) -> Result<Self, SaveStateError> {
         let path = path.as_ref();
         let bytes = std::fs::read(path).map_err(|e| SaveStateError::IoError(e.to_string()))?;

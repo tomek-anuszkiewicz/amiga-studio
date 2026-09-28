@@ -22,9 +22,7 @@ pub use disassembler::{
     format_movem_reg_list, Disassembly,
 };
 pub use loader::{inject_binary, DEFAULT_TARGET_ADDRESS};
-pub use machine_loop::{
-    A500State, SaveStateError, SaveStateHeader, SAVE_STATE_MAGIC, SAVE_STATE_VERSION,
-};
+pub use machine_loop::{A500State, SaveStateError, SaveStateHeader, SAVE_STATE_VERSION};
 pub use session::DebuggerSession;
 pub use stepping::{Debugger, StepMode};
 pub use temporal::{TemporalFrame, TemporalHistory, DEFAULT_TEMPORAL_CAPACITY, PAL_FRAME_CCK};

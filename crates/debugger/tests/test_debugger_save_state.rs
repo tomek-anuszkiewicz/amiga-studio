@@ -123,10 +123,10 @@ fn test_debugger_session_json_and_file() {
 
     // File roundtrip
     let temp_dir = std::env::temp_dir();
-    let temp_file = temp_dir.join("dbg_session_test.a500z");
+    let temp_file = temp_dir.join("dbg_session_test.json");
 
     session
-        .save_state_to_file(&temp_file, false)
+        .save_state_to_file(&temp_file)
         .expect("Failed to save state to file");
 
     let mut file_session = DebuggerSession::from_config(A500Config::from_preset(

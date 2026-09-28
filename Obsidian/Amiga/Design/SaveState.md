@@ -81,8 +81,6 @@ pub struct A500State {
 /// Metadata header identifying state compatibility and machine configuration.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SaveStateHeader {
-    /// Format identifier: b"A500"
-    pub magic: [u8; 4],
     /// Schema format version (e.g. 1)
     pub version: u32,
     /// Creation timestamp (UTC Unix seconds)
@@ -95,10 +93,6 @@ pub struct SaveStateHeader {
     pub slow_ram_size: usize,
     /// Configured Fast RAM size in bytes (0 to 8,388,608)
     pub fast_ram_size: usize,
-    /// Kickstart ROM verification checksum (IEEE 802.3 CRC32)
-    pub kickstart_crc32: u32,
-    /// True if Kickstart ROM bytes are embedded inside the state (self-contained mode)
-    pub is_self_contained: bool,
 }
 
 /// Motorola 68000 CPU core state.
@@ -507,7 +501,7 @@ When restoring a full keyframe snapshot (`A500State`), the emulator executes the
 
 ```mermaid
 flowchart TD
-    INPUT["Binary / JSON Stream"] --> HEADER["1. Verify Magic & Version\n(magic == 'A500' and version match)"]
+    INPUT["JSON File / Stream"] --> HEADER["1. Verify Schema Version\n(version match)"]
     HEADER --> CONFIG["2. Validate Configuration\n(RAM sizes & Video Standard match active machine)"]
     CONFIG --> ROM_CHECK{"3. ROM Check:\nEmbedded or Hash Reference?"}
     

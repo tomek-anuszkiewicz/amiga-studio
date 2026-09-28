@@ -254,11 +254,11 @@ pub(crate) fn open_save_state_dialog(app: &mut EmulatorApp) {
     {
         let file = rfd::FileDialog::new()
             .set_title("Save Amiga 500 State")
-            .add_filter("Amiga Save State (*.a500z, *.json)", &["a500z", "json"])
+            .add_filter("Amiga Save State (*.json)", &["json"])
             .save_file();
 
         if let Some(path) = file {
-            if let Ok(()) = app.session.save_state_to_file(&path, false) {
+            if let Ok(()) = app.session.save_state_to_file(&path) {
                 app.toast_message = Some((format!("State saved to {}", path.display()), 180));
             }
         }
@@ -271,7 +271,7 @@ pub(crate) fn open_load_state_dialog(app: &mut EmulatorApp) {
     {
         let file = rfd::FileDialog::new()
             .set_title("Load Amiga 500 State")
-            .add_filter("Amiga Save State (*.a500z, *.json)", &["a500z", "json"])
+            .add_filter("Amiga Save State (*.json)", &["json"])
             .pick_file();
 
         if let Some(path) = file {
