@@ -193,3 +193,9 @@ fn test_agnus_ntsc_line_ccks() {
 fn test_agnus_pipeline_lead_constant() {
     assert_eq!(agnus::VHPOSR_PIPELINE_LEAD_CCKS, 5);
 }
+
+#[test]
+fn test_agnus_chip_ram_bus_helpers_integration() {
+    let ram = vec![0xCA, 0xFE];
+    assert_eq!(config::chip_ram::read_u16(&ram, 0), 0xCAFE);
+}

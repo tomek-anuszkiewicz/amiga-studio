@@ -232,3 +232,38 @@ fn test_physical_memory_default_synthetic_kickstart_vectors() {
     let pc = ((pc_hi as u32) << 16) | (pc_lo as u32);
     assert_eq!(pc, 0x0000_0000);
 }
+
+#[test]
+fn test_chip_ram_direct_dma_word_access_bypasses_contention_and_overlay() {
+    let mut bus = PhysicalMemory::new();
+
+    // 1. Test contention bypass when Chip RAM is active at low memory
+    bus.map_chip_ram_to_low_memory();
+    bus.chip_ram_blocked = true;
+
+    // Standard CPU access returns WaitState under contention
+    assert_eq!(bus.write_word(0x002000, 0x1234), BusResult::WaitState);
+    assert_eq!(bus.read_word(0x002000), BusResult::WaitState);
+
+    // Hardware DMA direct access writes directly into physical Chip RAM despite contention
+    bus.write_chip_word(0x002000, 0xABCD);
+    assert_eq!(bus.read_chip_word(0x002000), 0xABCD);
+    assert_eq!(bus.chip_ram[0x2000], 0xAB);
+    assert_eq!(bus.chip_ram[0x2001], 0xCD);
+
+    // 2. Test overlay bypass: re-engage overlay (_OVL = true)
+    bus.map_kickstart_to_low_memory();
+    assert!(bus.is_low_memory_overlay_active());
+
+    // CPU write to $000000 hits Kickstart ROM (read-only, write ignored)
+    assert_eq!(bus.read_word_debug(0x000000), 0x0008); // default Kickstart SSP
+
+    // DMA write targets physical Chip RAM, completely bypassing CPU ROM overlay
+    bus.write_chip_word(0x000000, 0x5678);
+    assert_eq!(bus.read_chip_word(0x000000), 0x5678);
+    assert_eq!(bus.chip_ram[0], 0x56);
+    assert_eq!(bus.chip_ram[1], 0x78);
+
+    // CPU still sees Kickstart ROM at $000000 because overlay is still engaged
+    assert_eq!(bus.read_word_debug(0x000000), 0x0008);
+}

@@ -260,7 +260,7 @@ impl Copper {
                     return None;
                 }
                 if cck_left <= 1 {
-                    self.ir1 = read_chip_ram_word(chip_ram, self.cop_pc);
+                    self.ir1 = config::chip_ram::read_u16(chip_ram, self.cop_pc);
                     self.cop_pc = self.cop_pc.wrapping_add(2) & COPPER_ADDRESS_MASK_512K;
                     self.state = CopperState::FetchIR2(2);
                 } else {
@@ -273,7 +273,7 @@ impl Copper {
                     return None;
                 }
                 if cck_left <= 1 {
-                    self.ir2 = read_chip_ram_word(chip_ram, self.cop_pc);
+                    self.ir2 = config::chip_ram::read_u16(chip_ram, self.cop_pc);
                     self.cop_pc = self.cop_pc.wrapping_add(2) & COPPER_ADDRESS_MASK_512K;
                     self.execute_instruction(beam, blitter_busy)
                 } else {
@@ -311,19 +311,5 @@ impl Copper {
                 None
             }
         }
-    }
-}
-
-/// Reads a big-endian 16-bit word from Chip RAM with wrapping and bounds safety
-#[inline]
-fn read_chip_ram_word(chip_ram: &[u8], addr: u32) -> u16 {
-    if chip_ram.is_empty() {
-        return 0xFFFF;
-    }
-    let offset = (addr as usize) & (chip_ram.len().wrapping_sub(1));
-    if offset + 1 < chip_ram.len() {
-        u16::from_be_bytes([chip_ram[offset], chip_ram[offset + 1]])
-    } else {
-        0xFFFF
     }
 }

@@ -374,3 +374,10 @@ fn test_blitter_reset_clears_registers() {
     assert_eq!(blit.bltcon0, 0);
     assert!(!blit.is_busy);
 }
+
+#[test]
+fn test_blitter_chip_ram_bus_helpers_integration() {
+    let mut ram = vec![0u8; 1024];
+    config::chip_ram::write_u16(&mut ram, 0x100, 0x55AA);
+    assert_eq!(config::chip_ram::read_u16(&ram, 0x100), 0x55AA);
+}

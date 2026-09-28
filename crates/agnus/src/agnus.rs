@@ -230,22 +230,19 @@ impl Agnus {
             dma::DmaChannel::Bitplane(plane) => {
                 let p = plane as usize;
                 if p < 6 && !chip_ram.is_empty() {
-                    let addr = (self.bplpt[p] as usize) & (chip_ram.len().wrapping_sub(1));
-                    if addr + 1 < chip_ram.len() {
-                        let word = u16::from_be_bytes([chip_ram[addr], chip_ram[addr + 1]]);
-                        self.pending_bpl_dma = Some((plane, word));
-                        let mod_inc = if self.dma.is_last_bpl_block(self.hpos) {
-                            if p % 2 == 0 {
-                                self.bpl1mod as i32
-                            } else {
-                                self.bpl2mod as i32
-                            }
+                    let word = config::chip_ram::read_u16(chip_ram, self.bplpt[p]);
+                    self.pending_bpl_dma = Some((plane, word));
+                    let mod_inc = if self.dma.is_last_bpl_block(self.hpos) {
+                        if p % 2 == 0 {
+                            self.bpl1mod as i32
                         } else {
-                            0
-                        };
-                        self.bplpt[p] = self.bplpt[p].wrapping_add(2).wrapping_add(mod_inc as u32)
-                            & 0x0007_FFFE;
-                    }
+                            self.bpl2mod as i32
+                        }
+                    } else {
+                        0
+                    };
+                    self.bplpt[p] =
+                        self.bplpt[p].wrapping_add(2).wrapping_add(mod_inc as u32) & 0x0007_FFFE;
                 }
             }
             dma::DmaChannel::Sprite(sprite) => {

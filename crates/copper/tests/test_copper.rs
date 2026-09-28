@@ -357,3 +357,9 @@ fn test_copper_copcon_cdang_setting() {
     cop.set_copcon(0x0000);
     assert!(!cop.cdang);
 }
+
+#[test]
+fn test_copper_chip_ram_bus_helpers_integration() {
+    let ram = vec![0x12, 0x34];
+    assert_eq!(config::chip_ram::read_u16(&ram, 0), 0x1234);
+}

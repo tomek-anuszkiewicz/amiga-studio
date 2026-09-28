@@ -135,8 +135,7 @@ fn read_chip_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
 
 #[inline(always)]
 fn read_chip_ram_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
-    let idx = addr as usize;
-    u16::from_be_bytes([bus.chip_ram[idx], bus.chip_ram[idx + 1]])
+    bus.read_chip_word(addr)
 }
 
 #[inline(always)]
@@ -146,10 +145,7 @@ fn write_chip_ram_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
 
 #[inline(always)]
 fn write_chip_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
-    let idx = addr as usize;
-    let bytes = val.to_be_bytes();
-    bus.chip_ram[idx] = bytes[0];
-    bus.chip_ram[idx + 1] = bytes[1];
+    bus.write_chip_word(addr, val);
 }
 
 #[inline(always)]

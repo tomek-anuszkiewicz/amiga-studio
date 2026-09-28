@@ -114,10 +114,7 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     assert_eq!(harness.machine.agnus.dskpt, 0x0000_2008);
 
     // Chip RAM at $002000 must contain non-zero MFM data streamed from disk
-    let word0 = u16::from_be_bytes([
-        harness.machine.physical_memory.chip_ram[0x2000],
-        harness.machine.physical_memory.chip_ram[0x2001],
-    ]);
+    let word0 = harness.machine.physical_memory.read_chip_word(0x2000);
     assert_ne!(word0, 0, "Chip RAM should have received MFM data");
 
     // Paula INTREQ must have bit 1 (DSKBLK) asserted

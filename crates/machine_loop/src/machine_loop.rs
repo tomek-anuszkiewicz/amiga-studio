@@ -212,11 +212,7 @@ impl A500Machine {
             let is_write = self.paula.is_dsk_write();
             if !is_write {
                 if let Some(word) = self.floppy.consume_dma_word() {
-                    let pt = dskpt as usize;
-                    if pt + 1 < self.physical_memory.chip_ram.len() {
-                        self.physical_memory.chip_ram[pt] = (word >> 8) as u8;
-                        self.physical_memory.chip_ram[pt + 1] = (word & 0xFF) as u8;
-                    }
+                    self.physical_memory.write_chip_word(dskpt, word);
                     if self.paula.decrement_dsklen() {
                         self.floppy.notify_dskblk_done();
                     }

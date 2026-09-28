@@ -8,6 +8,7 @@ license.workspace = true
 path = "src/blitter.rs"
 
 [dependencies]
+config = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 
 [lints]

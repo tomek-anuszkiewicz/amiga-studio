@@ -531,6 +531,7 @@ version = "0.1.0"
 name = "blitter"
 version = "0.1.0"
 dependencies = [
+ "config",
  "serde",
 ]
 

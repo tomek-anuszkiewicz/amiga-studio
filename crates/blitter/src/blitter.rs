@@ -13,34 +13,6 @@ pub use phase::*;
 
 use serde::{Deserialize, Serialize};
 
-#[inline(always)]
-fn read_chip_ram_u16(ram: &[u8], addr: u32) -> u16 {
-    if ram.is_empty() {
-        return 0xFFFF;
-    }
-    let mask = ram.len() - 1;
-    let offset = (addr as usize & mask) & !1;
-    if offset + 1 < ram.len() {
-        u16::from_be_bytes([ram[offset], ram[offset + 1]])
-    } else {
-        0xFFFF
-    }
-}
-
-#[inline(always)]
-fn write_chip_ram_u16(ram: &mut [u8], addr: u32, val: u16) {
-    if ram.is_empty() {
-        return;
-    }
-    let mask = ram.len() - 1;
-    let offset = (addr as usize & mask) & !1;
-    if offset + 1 < ram.len() {
-        let bytes = val.to_be_bytes();
-        ram[offset] = bytes[0];
-        ram[offset + 1] = bytes[1];
-    }
-}
-
 /// Agnus 4-channel DMA Blitter state and registers
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Blitter {
@@ -340,7 +312,7 @@ impl Blitter {
         }
 
         if use_d {
-            write_chip_ram_u16(chip_ram, self.bltdpt, self.dhold);
+            config::chip_ram::write_u16(chip_ram, self.bltdpt, self.dhold);
             self.bltdpt = self.bltdpt.wrapping_add(step as u32);
         }
     }
@@ -382,19 +354,19 @@ impl Blitter {
         match phase {
             BlitterPhase::FetchA => {
                 if use_a {
-                    self.anew = read_chip_ram_u16(chip_ram, self.bltapt);
+                    self.anew = config::chip_ram::read_u16(chip_ram, self.bltapt);
                     self.bltapt = self.bltapt.wrapping_add(step as u32);
                 }
             }
             BlitterPhase::FetchB => {
                 if use_b {
-                    self.bnew = read_chip_ram_u16(chip_ram, self.bltbpt);
+                    self.bnew = config::chip_ram::read_u16(chip_ram, self.bltbpt);
                     self.bltbpt = self.bltbpt.wrapping_add(step as u32);
                 }
             }
             BlitterPhase::FetchC => {
                 if use_c {
-                    self.chold = read_chip_ram_u16(chip_ram, self.bltcpt);
+                    self.chold = config::chip_ram::read_u16(chip_ram, self.bltcpt);
                     self.bltcpt = self.bltcpt.wrapping_add(step as u32);
                 }
             }
@@ -452,12 +424,12 @@ impl Blitter {
         let minterm = (self.bltcon0 & 0xFF) as u8;
 
         if use_b {
-            self.bnew = read_chip_ram_u16(chip_ram, self.bltbpt);
+            self.bnew = config::chip_ram::read_u16(chip_ram, self.bltbpt);
             self.bltbpt = self.bltbpt.wrapping_add(self.bltbmod as i32 as u32);
         }
 
         if use_c {
-            self.chold = read_chip_ram_u16(chip_ram, self.bltcpt);
+            self.chold = config::chip_ram::read_u16(chip_ram, self.bltcpt);
         }
 
         let ash = (self.bltcon0 >> 12) & 0xF;
@@ -490,7 +462,7 @@ impl Blitter {
         }
 
         if write_enable {
-            write_chip_ram_u16(chip_ram, self.bltdpt, self.dhold);
+            config::chip_ram::write_u16(chip_ram, self.bltdpt, self.dhold);
         }
 
         self.bltdpt = self.bltcpt;

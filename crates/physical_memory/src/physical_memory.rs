@@ -178,6 +178,18 @@ impl PhysicalMemory {
         write_fn(self, addr, val)
     }
 
+    /// Reads a 16-bit word directly from Chip RAM (Agnus DMA bus access, bypassing CPU wait states and overlay).
+    #[inline(always)]
+    pub fn read_chip_word(&self, addr: u32) -> u16 {
+        config::chip_ram::read_u16(&self.chip_ram, addr)
+    }
+
+    /// Writes a 16-bit word directly to Chip RAM (Agnus DMA bus access, bypassing CPU wait states and overlay).
+    #[inline(always)]
+    pub fn write_chip_word(&mut self, addr: u32, val: u16) {
+        config::chip_ram::write_u16(&mut self.chip_ram, addr, val);
+    }
+
     /// Direct debug/injection byte block writer into physical memory.
     /// Bypasses bus arbitration locks (such as Chip RAM contention) and side-effects.
     /// Returns the number of bytes written.

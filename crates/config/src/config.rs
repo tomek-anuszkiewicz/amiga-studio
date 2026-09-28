@@ -4,6 +4,7 @@
 //! State mutation is restricted exclusively to applying canonical hardware presets.
 
 pub mod big_array;
+pub mod chip_ram;
 pub mod mutation;
 pub mod registers;
 
