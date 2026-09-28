@@ -110,6 +110,23 @@ fn test_machine_game_ports_routing() {
 }
 
 #[test]
+fn test_machine_step_line() {
+    let config = A500Config::default();
+    let mut machine = A500Machine::new(config);
+
+    assert_eq!(machine.cck, 0);
+    assert_eq!(machine.agnus.vpos, 0);
+
+    machine.step_line();
+    assert_eq!(machine.agnus.vpos, 1);
+    assert_eq!(machine.cck, 227);
+
+    machine.step_line();
+    assert_eq!(machine.agnus.vpos, 2);
+    assert_eq!(machine.cck, 454);
+}
+
+#[test]
 fn test_machine_step_frame() {
     let config = A500Config::default();
     let mut machine = A500Machine::new(config);

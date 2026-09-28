@@ -85,7 +85,7 @@ HOST_IO_AND_SPEC_SYMBOLS = {
     # Host Real-Time Clock
     "set_time",
     # System Topologies & Save States / Synchronous Stepping
-    "bare_512k", "expanded_power_user", "to_json", "step_cycles", "execute_blit",
+    "bare_512k", "expanded_power_user", "to_json", "step_cycles", "step_line", "execute_blit",
     # Bus Query & Overlay Status
     "is_wait", "is_low_memory_overlay_active",
     # HRM Figure 6-9 DMA Slot Timing Specifications

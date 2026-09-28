@@ -343,6 +343,14 @@ impl A500Machine {
         }
     }
 
+    /// Executes Color Clocks until the current horizontal scanline completes (beam advances to next line)
+    pub fn step_line(&mut self) {
+        let current_vpos = self.agnus.vpos;
+        while self.agnus.vpos == current_vpos {
+            self.step_cck();
+        }
+    }
+
     /// Executes Color Clocks until a full vertical video frame completes (VBlank transition)
     pub fn step_frame(&mut self) {
         if self.agnus.vpos == 0 {
