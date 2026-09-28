@@ -161,19 +161,6 @@ impl A500Machine {
         self.cpu.state.ipl = self.paula.pending_interrupt_level();
     }
 
-    /// Synchronizes Denise display pipeline DMA enables from Agnus master DMACON state
-    #[inline(always)]
-    pub fn sync_dmacon(&mut self) {
-        let dmacon = self.agnus.dmacon;
-        let dmaen = (dmacon & config::mask::dmacon::DMAEN) != 0;
-        self.denise
-            .sprites
-            .set_dma_enabled(dmaen && (dmacon & config::mask::dmacon::SPREN) != 0);
-        self.denise
-            .frame_builder
-            .set_dma_enabled(dmaen && (dmacon & config::mask::dmacon::BPLEN) != 0);
-    }
-
     /// Polls peripheral sensing lines into CIA input pins and custom chip port latches
     pub fn poll_peripheral_pins(&mut self) {
         // 1. Floppy disk drive control lines <- CIA-B Port B ($BFD100)
@@ -233,9 +220,6 @@ impl A500Machine {
             self.denise.write_bpldat(plane as usize, word);
         }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
-
-        // Synchronize Denise display pipeline DMA enables from Agnus master DMACON state
-        self.sync_dmacon();
 
         // Physical Trace: Blitter completion (_BLITINT pin) -> Paula INTREQ bit 6 (mask 0x0040)
         if self.agnus.poll_blitter_irq() {

@@ -137,12 +137,9 @@ fn test_frame_builder_step_cck_and_frame_lifecycle() {
 }
 
 #[test]
-fn test_frame_builder_dma_enabled_and_reset() {
+fn test_frame_builder_reset_and_pixel_state() {
     let mut fb = FrameBuilder::new();
-    assert!(!fb.dma_enabled);
-
-    fb.set_dma_enabled(true);
-    assert!(fb.dma_enabled);
+    assert!(!fb.frame_ready);
 
     fb.set_pixel(10, 10, 0xFFFFFFFF);
     fb.end_frame();
@@ -152,7 +149,6 @@ fn test_frame_builder_dma_enabled_and_reset() {
     fb.reset();
     assert_eq!(fb.vpos, 0);
     assert_eq!(fb.hpos, 0);
-    assert!(!fb.dma_enabled);
     assert!(!fb.frame_ready);
     assert_eq!(fb.get_pixel(10, 10), 0xFF000000);
 }

@@ -109,7 +109,10 @@ fn test_sprite_dma_toggle_disarms_channels() {
         .memory_bus()
         .write_custom_word(0x096, 0x8220);
     harness.step_cck(2);
-    assert!(harness.machine.denise.sprites.dma_enabled);
+    assert!(harness
+        .machine
+        .agnus
+        .is_dma_enabled(config::mask::dmacon::SPREN));
 
     // Arm Sprite 0
     harness
@@ -129,11 +132,19 @@ fn test_sprite_dma_toggle_disarms_channels() {
         .memory_bus()
         .write_custom_word(0x096, 0x0020);
     harness.step_cck(2);
+    assert!(!harness
+        .machine
+        .agnus
+        .is_dma_enabled(config::mask::dmacon::SPREN));
 
-    // When Sprite DMA is disabled via DMACON, sprite channels should disarm
-    assert!(!harness.machine.denise.sprites.dma_enabled);
+    // Writing SPR0CTL ($DFF142) disarms Sprite 0 per hardware silicon spec
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(0x142, 0x0000);
+    harness.step_cck(2);
     assert!(
         !harness.machine.denise.sprites.channels[0].is_armed,
-        "Disabling sprite DMA must disarm sprite channels"
+        "Writing SPR0CTL must disarm sprite 0"
     );
 }

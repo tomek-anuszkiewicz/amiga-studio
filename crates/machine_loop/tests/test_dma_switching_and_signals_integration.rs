@@ -18,7 +18,10 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
     assert_eq!(harness.machine.agnus.dmacon, 0);
     assert!(!harness.machine.agnus.copper.dma_enabled);
     assert!(!harness.machine.agnus.blitter.dma_enabled);
-    assert!(!harness.machine.denise.sprites.dma_enabled);
+    assert!(!harness
+        .machine
+        .agnus
+        .is_dma_enabled(config::mask::dmacon::SPREN));
 
     // 2. Set Master DMA (bit 9) + Copper (bit 7) + Blitter (bit 6) + Sprite (bit 5)
     // $8000 | $0200 | $0080 | $0040 | $0020 = $82E0
@@ -31,7 +34,10 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
     assert_eq!(harness.machine.agnus.dmacon & 0x02E0, 0x02E0);
     assert!(harness.machine.agnus.copper.dma_enabled);
     assert!(harness.machine.agnus.blitter.dma_enabled);
-    assert!(harness.machine.denise.sprites.dma_enabled);
+    assert!(harness
+        .machine
+        .agnus
+        .is_dma_enabled(config::mask::dmacon::SPREN));
 
     // 3. Clear only Copper DMA: write $0080 (bit 15 is 0 -> clear bit 7)
     harness
@@ -44,7 +50,10 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
     assert!(!harness.machine.agnus.copper.dma_enabled);
     // Other channels must remain enabled
     assert!(harness.machine.agnus.blitter.dma_enabled);
-    assert!(harness.machine.denise.sprites.dma_enabled);
+    assert!(harness
+        .machine
+        .agnus
+        .is_dma_enabled(config::mask::dmacon::SPREN));
 
     // 4. Clear Master DMA (DMAEN bit 9): write $0200
     harness
@@ -58,7 +67,10 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
     assert!(!harness.machine.agnus.is_dma_enabled(0x0040));
     assert!(!harness.machine.agnus.is_dma_enabled(0x0020));
     assert!(!harness.machine.agnus.blitter.dma_enabled);
-    assert!(!harness.machine.denise.sprites.dma_enabled);
+    assert!(!harness
+        .machine
+        .agnus
+        .is_dma_enabled(config::mask::dmacon::SPREN));
 }
 
 #[test]

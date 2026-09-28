@@ -297,32 +297,23 @@ fn test_sprite_multiplexing() {
 }
 
 #[test]
-fn test_sprite_dma_enable_transition_and_idempotence() {
+fn test_sprite_ctl_disarms_and_data_arms() {
     let mut sprites = Sprites::new();
 
-    // Arm sprite 0 manually
+    // Writing data arms sprite 0
     set_data(&mut sprites, 0, 0x1234, 0x5678);
     assert!(sprites.channels[0].is_armed);
 
-    // Redundant disable while already disabled must NOT disarm manually loaded sprite
-    sprites.set_dma_enabled(false);
-    assert!(
-        sprites.channels[0].is_armed,
-        "Redundant disable must not disarm"
-    );
-
-    // Enable DMA
-    sprites.set_dma_enabled(true);
-    assert!(sprites.dma_enabled);
-    assert!(sprites.channels[0].is_armed);
-
-    // Falling edge transition from true to false MUST disarm channels
-    sprites.set_dma_enabled(false);
-    assert!(!sprites.dma_enabled);
+    // Writing CTL disarms sprite 0 (hardware silicon specification)
+    set_ctl(&mut sprites, 0, 0x0000);
     assert!(
         !sprites.channels[0].is_armed,
-        "Falling edge must disarm channels"
+        "Writing CTL must disarm sprite channel"
     );
+
+    // Re-writing data arms sprite 0 again
+    set_data(&mut sprites, 0, 0xAAAA, 0x5555);
+    assert!(sprites.channels[0].is_armed);
 }
 
 #[test]

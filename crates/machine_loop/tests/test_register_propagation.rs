@@ -134,34 +134,28 @@ fn test_write_custom_word_and_byte_methods() {
 }
 
 #[test]
-fn test_dmacon_sync_to_denise_sprites_and_frame_builder() {
+fn test_dmacon_write_propagation_delay() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
 
-    // Initially both sprite and frame builder DMA are disabled
-    assert!(!machine.denise.sprites.dma_enabled);
-    assert!(!machine.denise.frame_builder.dma_enabled);
+    // Initially DMACON is 0
+    assert_eq!(machine.agnus.dmacon, 0);
 
     // Write DMACON = SET DMAEN (bit 9) + SPREN (bit 5) + BPLEN (bit 8) -> 0x8320
     machine.memory_bus().write_custom_word(0x096, 0x8320);
 
-    // Step 2 CCKs for DMACON write to mature in Agnus and sync to Denise
+    // After 1 CCK: in-flight in mutation pipeline, not yet committed in Agnus (2 CCKs delay)
     machine.step_cck();
-    machine.step_cck();
+    assert_eq!(machine.agnus.dmacon, 0);
 
-    assert!(machine.denise.sprites.dma_enabled);
-    assert!(machine.denise.frame_builder.dma_enabled);
+    // After 2 CCKs: matured and committed in Agnus
+    machine.step_cck();
+    assert_eq!(machine.agnus.dmacon, 0x0320);
 
     // Clear SPREN (bit 5)
     machine.memory_bus().write_custom_word(0x096, 0x0020);
     machine.step_cck();
+    assert_eq!(machine.agnus.dmacon, 0x0320);
+
     machine.step_cck();
-
-    assert!(!machine.denise.sprites.dma_enabled);
-    assert!(machine.denise.frame_builder.dma_enabled);
-
-    // Direct sync_dmacon() method verification on machine loop
-    machine.agnus.dmacon = 0;
-    machine.sync_dmacon();
-    assert!(!machine.denise.sprites.dma_enabled);
-    assert!(!machine.denise.frame_builder.dma_enabled);
+    assert_eq!(machine.agnus.dmacon, 0x0300);
 }

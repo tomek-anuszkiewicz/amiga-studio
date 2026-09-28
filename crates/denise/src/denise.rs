@@ -216,7 +216,7 @@ impl Denise {
             self.hflop = false;
         }
 
-        if self.frame_builder.dma_enabled && self.bitplane_count() > 0 && self.bpl_armed {
+        if self.bitplane_count() > 0 && self.bpl_armed {
             let period = if self.is_hires() { 4 } else { 8 };
             if beam.hpos % period == 0 {
                 self.shifters = self.bpldat_pipe;
@@ -237,7 +237,7 @@ impl Denise {
             let y = beam.vpos as usize;
             let cck_base_x = (beam.hpos as usize) * 4;
 
-            if self.frame_builder.dma_enabled && plane_count > 0 && self.bpl_armed {
+            if plane_count > 0 && self.bpl_armed {
                 let hires = self.is_hires();
                 if hires {
                     let p0 = self.shift_pixel();
@@ -414,9 +414,6 @@ impl Denise {
             if plane == 0 {
                 self.bpldat_pipe = self.bpldat;
                 self.bpl_armed = true;
-                if !self.frame_builder.dma_enabled {
-                    self.shifters = self.bpldat;
-                }
             }
         }
     }

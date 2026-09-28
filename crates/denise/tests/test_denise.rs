@@ -64,14 +64,12 @@ fn test_denise_write_bpldat_and_dma_reload() {
     denise.ddfstrt = 0x38;
     denise.ddfstop = 0xD0;
 
-    // Manual write when DMA is disabled reloads immediately on plane 0
-    denise.write_bpldat(0, 0x1234);
-    assert_eq!(denise.shifters[0], 0x1234);
-
-    // When DMA is enabled, writes go into bpldat and reload at block boundary
-    denise.frame_builder.dma_enabled = true;
+    // Writes go into bpldat and pipeline latch
     denise.write_bpldat(0, 0x5678);
-    // Not reloaded yet
+    assert_eq!(denise.bpldat[0], 0x5678);
+    assert_eq!(denise.bpldat_pipe[0], 0x5678);
+    assert!(denise.bpl_armed);
+    // Not reloaded into shifters yet
     assert_ne!(denise.shifters[0], 0x5678);
 
     // Advance to start of next block 0x40 (hpos = 0x40, phase = 0)
@@ -137,7 +135,6 @@ fn test_denise_color_write_immediate_commit_timing() {
 #[test]
 fn test_denise_hflop_comparator() {
     let mut denise = Denise::new(config::DeniseModel::Ocs8362);
-    denise.frame_builder.set_dma_enabled(true);
     // Standard PAL Display Window: HSTRT = $81 (129), HSTOP = $1C1 (449)
     denise.write_register(0x08E, 0x2C81); // DIWSTRT: V=44, H=129
     denise.write_register(0x090, 0xF4C1); // DIWSTOP: V=500, H=449

@@ -183,7 +183,6 @@ fn test_pipeline_pixels_latency_and_backdrop_immediacy() {
     denise.set_bplcon0(0x1200); // 1 bitplane, low-res
     denise.color[0] = 0xF00; // Red backdrop
     denise.color[1] = 0x0F0; // Green foreground
-    denise.frame_builder.dma_enabled = true;
     denise.set_diw(0x2C81, 0x2CC1); // Standard PAL display window
 
     // When bpl_armed is false: all 4 pixels of CCK receive backdrop immediately
@@ -263,7 +262,6 @@ fn test_scanline_end_cck_226_pixels_termination() {
     let mut denise = Denise::new(DeniseModel::Ocs8362);
     denise.set_bplcon0(0x1200); // 1 bitplane, low-res
     denise.color[0] = 0xF00; // Red backdrop
-    denise.frame_builder.dma_enabled = true;
     denise.write_bpldat(0, 0xFFFF); // Armed
     assert!(denise.bpl_armed);
 
@@ -285,7 +283,6 @@ fn test_scanline_end_open_diw_renders_bitplanes() {
     denise.set_bplcon0(0x1200); // 1 bitplane, low-res
     denise.color[0] = 0xF00; // Red backdrop
     denise.color[1] = 0x0F0; // Green foreground
-    denise.frame_builder.dma_enabled = true;
     denise.write_bpldat(0, 0xFFFF); // Armed with solid 1s
     assert!(denise.bpl_armed);
 

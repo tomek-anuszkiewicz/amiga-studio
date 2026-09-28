@@ -111,8 +111,6 @@ impl SpriteChannel {
 pub struct Sprites {
     /// 8 independent hardware sprite channels (Sprites 0 to 7)
     pub channels: [SpriteChannel; 8],
-    /// Sprite DMA enabled via DMACON (SPREN bit 5 and DMAEN bit 9)
-    pub dma_enabled: bool,
     /// Collision control mask (CLXCON: bits 15..12 enable odd sprites in collisions)
     pub clxcon: u16,
 }
@@ -122,7 +120,6 @@ impl Sprites {
     pub fn new() -> Self {
         Self {
             channels: [SpriteChannel::default(); 8],
-            dma_enabled: false,
             // By default on OCS, odd sprites participate if enabled in CLXCON
             clxcon: 0xF000,
         }
@@ -133,23 +130,7 @@ impl Sprites {
         for ch in &mut self.channels {
             *ch = SpriteChannel::default();
         }
-        self.dma_enabled = false;
         self.clxcon = 0xF000;
-    }
-
-    /// Sets Sprite DMA enabled state from DMACON
-    #[inline]
-    pub fn set_dma_enabled(&mut self, enabled: bool) {
-        if self.dma_enabled == enabled {
-            return;
-        }
-        self.dma_enabled = enabled;
-        if !enabled {
-            for ch in &mut self.channels {
-                ch.is_armed = false;
-                ch.pixel_counter = 0;
-            }
-        }
     }
 
     /// Advances Sprite engine state by 1 Color Clock observing beam coordinates

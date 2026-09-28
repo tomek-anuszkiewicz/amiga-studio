@@ -12,9 +12,9 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert!(!machine.agnus.copper.dma_enabled);
     assert!(!machine.agnus.blitter.dma_enabled);
     assert!(!machine.agnus.blitter.bltpri);
-    assert!(!machine.denise.sprites.dma_enabled);
+    assert!(!machine.agnus.is_dma_enabled(config::mask::dmacon::SPREN));
     assert_eq!(machine.paula.dma_enables & paula::DSKBYTR_DSKEN, 0);
-    assert!(!machine.denise.frame_builder.dma_enabled);
+    assert!(!machine.agnus.is_dma_enabled(config::mask::dmacon::BPLEN));
     for ch in 0..4 {
         assert!(!machine.paula.audio.channels[ch].dma_enabled);
     }
@@ -35,9 +35,9 @@ fn test_dmacon_routing_to_all_subsystems() {
     assert!(machine.agnus.copper.dma_enabled);
     assert!(machine.agnus.blitter.dma_enabled);
     assert!(!machine.agnus.blitter.bltpri);
-    assert!(machine.denise.sprites.dma_enabled);
+    assert!(machine.agnus.is_dma_enabled(config::mask::dmacon::SPREN));
     assert_ne!(machine.paula.dma_enables & paula::DSKBYTR_DSKEN, 0);
-    assert!(machine.denise.frame_builder.dma_enabled);
+    assert!(machine.agnus.is_dma_enabled(config::mask::dmacon::BPLEN));
     for ch in 0..4 {
         assert!(machine.paula.audio.channels[ch].dma_enabled);
     }
@@ -62,9 +62,9 @@ fn test_dmacon_routing_to_all_subsystems() {
     // Master DMAEN is now 0; all subsystems must be disabled
     assert!(!machine.agnus.copper.dma_enabled);
     assert!(!machine.agnus.blitter.dma_enabled);
-    assert!(!machine.denise.sprites.dma_enabled);
+    assert!(!machine.agnus.is_dma_enabled(config::mask::dmacon::SPREN));
     assert!(!machine.paula.dma_master);
-    assert!(!machine.denise.frame_builder.dma_enabled);
+    assert!(!machine.agnus.is_dma_enabled(config::mask::dmacon::BPLEN));
     for ch in 0..4 {
         assert!(!machine.paula.audio.channels[ch].dma_enabled);
     }
