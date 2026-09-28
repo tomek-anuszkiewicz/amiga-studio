@@ -121,3 +121,43 @@ fn test_cia_tod_50hz_vblank_tick() {
         "CIA-A TOD counter should increment by 1 on vertical frame boundary"
     );
 }
+
+#[test]
+fn test_poll_peripheral_pins_isolation_from_cia_interrupts() {
+    let mut harness = MachineHarness::new();
+
+    // 1. Enable Level 2 PORTS interrupt in Paula INTENA (bit 3 + master bit 14 = 0xC008)
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(0x09A, 0xC008);
+
+    // 2. Configure CIA-A Timer A and cause underflow
+    harness.machine.cia_a.commit_register_write(0x04, 1);
+    harness.machine.cia_a.commit_register_write(0x05, 0);
+    harness.machine.cia_a.commit_register_write(0x0D, 0x81);
+    harness.machine.cia_a.commit_register_write(0x0E, 0x01);
+
+    harness.step_cck(25);
+    assert!(harness.machine.cia_a.irq_pending());
+
+    // 3. Clear Paula INTREQ bit 3 to simulate clean state
+    harness.machine.paula.commit_register_write(0x09C, 0x0008);
+    assert_eq!(harness.machine.paula.interrupts.intreq & 0x0008, 0);
+
+    // 4. Calling poll_peripheral_pins() must NOT assert Paula's INT2 pin
+    harness.machine.poll_peripheral_pins();
+    assert_eq!(
+        harness.machine.paula.interrupts.intreq & 0x0008,
+        0,
+        "poll_peripheral_pins must not route CIA IRQ to Paula"
+    );
+
+    // 5. Stepping the CCK machine loop routes CIA IRQ to Paula's INT2 pin
+    harness.step_cck(2);
+    assert_ne!(
+        harness.machine.paula.interrupts.intreq & 0x0008,
+        0,
+        "Machine loop CCK stepping must route CIA IRQ to Paula INT2"
+    );
+}

@@ -196,16 +196,6 @@ impl A500Machine {
         self.paula.pot0dat = self.game_ports.pot0dat();
         self.paula.pot1dat = self.game_ports.pot1dat();
         self.paula.potgor = self.game_ports.potgor(self.paula.potgo);
-
-        // 7. CIA-A /IRQ pin -> Paula _INT2 pin (Level 2 PORTS)
-        if self.cia_a.irq_pending() {
-            self.paula.set_int2_pin(true);
-        }
-
-        // 8. CIA-B /IRQ pin -> Paula _INT6 pin (Level 6 EXTER)
-        if self.cia_b.irq_pending() {
-            self.paula.set_int6_pin(true);
-        }
     }
 
     /// Advances all peer custom chips, coprocessors, and peripheral subsystems by exactly 1 Color Clock (~280 ns),
@@ -275,10 +265,18 @@ impl A500Machine {
         self.cia_a.step_cck();
         self.cia_b.step_cck();
 
+        // Cross-Chip Signals: CIA /IRQ pins -> Paula _INT2 & _INT6 pins
+        if self.cia_a.irq_pending() {
+            self.paula.set_int2_pin(true);
+        }
+        if self.cia_b.irq_pending() {
+            self.paula.set_int6_pin(true);
+        }
+
         // 6. Step Real-Time Clock
         self.rtc.step_cck(1);
 
-        // 6. Cross-Chip Cascades (Physical Pins)
+        // 7. Cross-Chip Cascades (Physical Pins)
         if let Some(chip_ram_engaged) = self.cia_a.ovl_transition() {
             if chip_ram_engaged {
                 self.physical_memory.map_chip_ram_to_low_memory();
@@ -288,7 +286,7 @@ impl A500Machine {
         }
         self.poll_peripheral_pins();
 
-        // 7. Central interrupt priority line (IPL 1-6) arbitration
+        // 8. Central interrupt priority line (IPL 1-6) arbitration
         let ipl = self.paula.pending_interrupt_level();
         self.cpu.state.ipl = ipl;
     }
