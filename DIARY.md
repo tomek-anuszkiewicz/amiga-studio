@@ -8975,3 +8975,20 @@ Every future modification or implementation task must append an entry following 
   - PowerShell syntax validation passed
   - architecture rules passed (20)
   - quick pre-commit gates passed.
+---
+
+### [2026-09-29 01:37 CEST] — Step 1.4 Completed: MachineLoop Architecture Review and Subsystem Coordination Audit
+- **Affected Subsystems**:
+  - `crates/machine_loop`
+  - `Obsidian/Amiga/Design/`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Conducted end-to-end code review and architectural orientation of crates/machine_loop
+  - Authored Obsidian/Amiga/Design/MachineLoop Architecture Review.md documenting CCK phase progression, Agnus DMA mastership, passive chip latching, and bus arbitration
+  - Pruned Step 1.4 from ROADMAP.md and renumbered remaining sub-steps contiguously
+- **Architectural Rationale & Trade-Offs**:
+  - Establish an authoritative, cycle-exact mental model of machine loop execution flow
+  - Map inter-chip signal propagation and physical bus routing prior to executing remaining chipset verification and HRM alignment
+- **Verification & Test Results**:
+  - pre_flight.py --quick passed (100% compliance across formatting, AGENTS.md ceiling, API coverage, Clippy, Code Quality 1-2, Hardware Quality 1-2)
+  - test_architecture_rules passed (20/20)
