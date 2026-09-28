@@ -2098,6 +2098,7 @@ dependencies = [
  "denise",
  "floppy",
  "game_ports",
+ "image",
  "joystick",
  "keyboard",
  "memory_bus",

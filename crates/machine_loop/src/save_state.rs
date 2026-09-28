@@ -7,7 +7,7 @@
 use std::fmt;
 use std::path::Path;
 
-use config::{A500Config, VideoStandard};
+use config::A500Config;
 use cpu::CpuState;
 use physical_memory::PhysicalMemory;
 use serde::{Deserialize, Serialize};
@@ -15,21 +15,16 @@ use serde::{Deserialize, Serialize};
 /// Active schema format version for A500 save states
 pub const SAVE_STATE_VERSION: u32 = 1;
 
-/// Metadata header identifying state compatibility, checksums, and machine configuration
+/// Metadata header identifying state compatibility, creation time, and display preview
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SaveStateHeader {
     /// Schema format version (e.g. 1)
     pub version: u32,
     /// Unix timestamp when the save state was created (seconds since epoch)
     pub timestamp: u64,
-    /// Video standard (PAL or NTSC)
-    pub video_standard: VideoStandard,
-    /// Configured Chip RAM size in bytes (e.g. 524,288 or 1,048,576)
-    pub chip_ram_size: usize,
-    /// Configured Slow RAM size in bytes (0 or 524,288)
-    pub slow_ram_size: usize,
-    /// Configured Fast RAM size in bytes (0 to 8,388,608)
-    pub fast_ram_size: usize,
+    /// PNG-encoded screenshot bytes captured from Denise frame builder
+    #[serde(default)]
+    pub screenshot_png: Vec<u8>,
 }
 
 /// Master state container representing a full Amiga 500 machine snapshot
@@ -70,11 +65,6 @@ pub struct A500State {
 pub enum SaveStateError {
     /// Save state schema version is unsupported
     IncompatibleVersion { found: u32, supported: u32 },
-    /// Configured Chip RAM size does not match save state Chip RAM size
-    MemorySizeMismatch {
-        expected_chip: usize,
-        actual_chip: usize,
-    },
     /// Serialization error
     SerializationFailed(String),
     /// Deserialization error
@@ -92,15 +82,6 @@ impl fmt::Display for SaveStateError {
                 write!(
                     f,
                     "Incompatible save state version: found {found}, supported {supported}"
-                )
-            }
-            Self::MemorySizeMismatch {
-                expected_chip,
-                actual_chip,
-            } => {
-                write!(
-                    f,
-                    "Memory size mismatch: state has {expected_chip} bytes Chip RAM, machine has {actual_chip} bytes"
                 )
             }
             Self::SerializationFailed(msg) => write!(f, "Save state serialization failed: {msg}"),
@@ -152,4 +133,29 @@ impl A500State {
         let bytes = std::fs::read(path).map_err(|e| SaveStateError::IoError(e.to_string()))?;
         Self::from_bytes(&bytes)
     }
+}
+
+/// Encodes an ARGB (0xAARRGGBB) pixel buffer into PNG bytes.
+pub(crate) fn encode_screenshot_png(frame_buffer: &[u32], width: u32, height: u32) -> Vec<u8> {
+    use image::ImageEncoder;
+    let total_pixels = (width as usize).saturating_mul(height as usize);
+    if total_pixels == 0 || frame_buffer.len() < total_pixels {
+        return Vec::new();
+    }
+    let mut rgba = Vec::with_capacity(total_pixels.saturating_mul(4));
+    for &pixel in &frame_buffer[..total_pixels] {
+        rgba.push(((pixel >> 16) & 0xFF) as u8); // R
+        rgba.push(((pixel >> 8) & 0xFF) as u8); // G
+        rgba.push((pixel & 0xFF) as u8); // B
+        rgba.push(((pixel >> 24) & 0xFF) as u8); // A
+    }
+    let mut png_bytes = Vec::new();
+    let encoder = image::codecs::png::PngEncoder::new(&mut png_bytes);
+    if encoder
+        .write_image(&rgba, width, height, image::ExtendedColorType::Rgba8)
+        .is_err()
+    {
+        return Vec::new();
+    }
+    png_bytes
 }

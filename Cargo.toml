@@ -42,6 +42,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 bitflags = "2.4"
 flate2 = "1.0"
+image = { version = "0.25", default-features = false, features = ["png"] }
 config = { path = "crates/config" }
 copper = { path = "crates/copper" }
 blitter = { path = "crates/blitter" }

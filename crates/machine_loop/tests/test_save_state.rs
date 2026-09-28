@@ -3,7 +3,7 @@
 //! Integration tests for Amiga 500 Save State Serialization and Restoration
 
 use config::{A500Config, A500Preset, VideoStandard};
-use machine_loop::{A500Machine, A500State, SaveStateError, SAVE_STATE_VERSION};
+use machine_loop::{A500Machine, A500State, SAVE_STATE_VERSION};
 
 #[test]
 fn test_save_state_metadata_and_header() {
@@ -14,9 +14,12 @@ fn test_save_state_metadata_and_header() {
     let state = machine.save_state();
 
     assert_eq!(state.header.version, SAVE_STATE_VERSION);
-    assert_eq!(state.header.chip_ram_size, 512 * 1024);
-    assert_eq!(state.header.slow_ram_size, 512 * 1024);
-    assert_eq!(state.header.fast_ram_size, 0);
+    assert!(!state.header.screenshot_png.is_empty());
+    // PNG magic header: \x89PNG\r\n\x1a\n
+    assert_eq!(&state.header.screenshot_png[0..4], b"\x89PNG");
+    assert_eq!(state.config.chip_ram(), config::ChipRamSize::Kb512);
+    assert_eq!(state.config.slow_ram(), config::SlowRamSize::Kb512);
+    assert_eq!(state.config.fast_ram(), config::FastRamSize::None);
     assert_eq!(state.cck, 0);
 }
 
@@ -164,29 +167,26 @@ fn test_save_state_restores_kickstart_rom_unconditionally() {
 }
 
 #[test]
-fn test_save_state_ram_size_mismatch_guard() {
-    let mut machine = A500Machine::new(A500Config::from_preset(
+fn test_save_state_adopts_configuration_and_memory() {
+    let machine_1mb = A500Machine::new(A500Config::from_preset(
+        A500Preset::Standard1Mb,
+        VideoStandard::Pal,
+    ));
+    let state_1mb = machine_1mb.save_state();
+    assert!(state_1mb.physical_memory.slow_ram.is_some());
+
+    let mut machine_512k = A500Machine::new(A500Config::from_preset(
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
-    let mut state = machine.save_state();
+    assert!(machine_512k.physical_memory.slow_ram.is_none());
 
-    // Alter expected Chip RAM size to 1MB
-    state.header.chip_ram_size = 1024 * 1024;
+    machine_512k
+        .load_state(&state_1mb)
+        .expect("Loading state must seamlessly adopt configuration and memory");
 
-    let err = machine
-        .load_state(&state)
-        .expect_err("Loading state with mismatched Chip RAM size must fail");
-    match err {
-        SaveStateError::MemorySizeMismatch {
-            expected_chip,
-            actual_chip,
-        } => {
-            assert_eq!(expected_chip, 1024 * 1024);
-            assert_eq!(actual_chip, 512 * 1024);
-        }
-        other => panic!("Expected MemorySizeMismatch, got {:?}", other),
-    }
+    assert_eq!(machine_512k.config, state_1mb.config);
+    assert!(machine_512k.physical_memory.slow_ram.is_some());
 }
 
 #[test]

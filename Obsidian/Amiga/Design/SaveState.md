@@ -78,21 +78,15 @@ pub struct A500State {
     pub game_ports: game_ports::GamePorts,
 }
 
-/// Metadata header identifying state compatibility and machine configuration.
+/// Metadata header identifying state compatibility, creation time, and display preview.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SaveStateHeader {
     /// Schema format version (e.g. 1)
     pub version: u32,
     /// Creation timestamp (UTC Unix seconds)
     pub timestamp: u64,
-    /// Video standard (PAL or NTSC)
-    pub video_standard: VideoStandard,
-    /// Configured Chip RAM size in bytes (e.g. 524,288 or 1,048,576)
-    pub chip_ram_size: usize,
-    /// Configured Slow RAM size in bytes (0 or 524,288)
-    pub slow_ram_size: usize,
-    /// Configured Fast RAM size in bytes (0 to 8,388,608)
-    pub fast_ram_size: usize,
+    /// PNG-encoded screenshot bytes captured from Denise frame builder
+    pub screenshot_png: Vec<u8>,
 }
 
 /// Motorola 68000 CPU core state.
@@ -502,7 +496,7 @@ When restoring a full keyframe snapshot (`A500State`), the emulator executes the
 ```mermaid
 flowchart TD
     INPUT["JSON File / Stream"] --> HEADER["1. Verify Schema Version\n(version match)"]
-    HEADER --> CONFIG["2. Validate Configuration\n(RAM sizes & Video Standard match active machine)"]
+    HEADER --> CONFIG["2. Adopt Machine Configuration\n(Restore A500Config, RAM buffers & Video Standard)"]
     CONFIG --> ROM_CHECK{"3. ROM Check:\nEmbedded or Hash Reference?"}
     
     ROM_CHECK -->|Embedded ROM Present| LOAD_ROM["Inject Embedded ROM directly into MemoryBus\n(100% Self-Contained)"]

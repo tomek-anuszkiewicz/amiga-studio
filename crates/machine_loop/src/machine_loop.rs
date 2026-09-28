@@ -453,23 +453,18 @@ impl A500Machine {
         self.cpu.set_pc_and_prime_prefetch(target_pc, &mut bus);
     }
 
-    /// Captures a complete machine state snapshot with fully embedded Kickstart ROM
+    /// Captures a complete machine state snapshot with embedded frame buffer screenshot
     pub fn save_state(&self) -> A500State {
+        let screenshot_png = encode_screenshot_png(
+            self.denise.frame_builder.frame_buffer(),
+            self.denise.frame_builder.width,
+            self.denise.frame_builder.height,
+        );
+
         let header = SaveStateHeader {
             version: SAVE_STATE_VERSION,
             timestamp: 0,
-            video_standard: self.config.video_standard(),
-            chip_ram_size: self.physical_memory.chip_ram.len(),
-            slow_ram_size: self
-                .physical_memory
-                .slow_ram
-                .as_ref()
-                .map_or(0, |r| r.len()),
-            fast_ram_size: self
-                .physical_memory
-                .fast_ram
-                .as_ref()
-                .map_or(0, |r| r.len()),
+            screenshot_png,
         };
 
         A500State {
@@ -490,7 +485,7 @@ impl A500Machine {
         }
     }
 
-    /// Restores a complete machine state snapshot with strict compatibility guards
+    /// Restores a complete machine state snapshot, adopting configuration and memory
     pub fn load_state(&mut self, state: &A500State) -> Result<(), SaveStateError> {
         // 1. Verify Schema Version
         if state.header.version != SAVE_STATE_VERSION {
@@ -500,14 +495,8 @@ impl A500Machine {
             });
         }
 
-        // 2. Verify Chip RAM configuration compatibility
-        let current_chip_size = self.physical_memory.chip_ram.len();
-        if state.header.chip_ram_size != current_chip_size {
-            return Err(SaveStateError::MemorySizeMismatch {
-                expected_chip: state.header.chip_ram_size,
-                actual_chip: current_chip_size,
-            });
-        }
+        // 2. Restore Machine Configuration from Save State
+        self.config = state.config.clone();
 
         // 3. Restore Physical Memory (unconditionally restoring RAM and Kickstart ROM)
         self.physical_memory = state.physical_memory.clone();
