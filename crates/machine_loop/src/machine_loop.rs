@@ -161,29 +161,10 @@ impl A500Machine {
         self.cpu.state.ipl = self.resolve_ipl();
     }
 
-    /// Resolves the highest pending interrupt level across Paula, CIA-A, and CIA-B
+    /// Resolves the highest pending interrupt level from Paula's central priority encoder
     #[inline]
     pub fn resolve_ipl(&self) -> u8 {
-        let paula_ipl = self.paula.pending_interrupt_level();
-        // CIA-A (Level 2) and CIA-B (Level 6) lines pass through Paula INTENA (bits 3 and 13 + master bit 14)
-        let cia_a_ipl = if self.cia_a.irq_pending()
-            && (self.paula.interrupts.intena == 0
-                || (self.paula.interrupts.intena & 0x4008) == 0x4008)
-        {
-            2
-        } else {
-            0
-        };
-        let cia_b_ipl = if self.cia_b.irq_pending()
-            && (self.paula.interrupts.intena == 0
-                || (self.paula.interrupts.intena & 0x6000) == 0x6000)
-        {
-            6
-        } else {
-            0
-        };
-
-        paula_ipl.max(cia_a_ipl).max(cia_b_ipl)
+        self.paula.pending_interrupt_level()
     }
 
     /// Writes a 16-bit word to custom register space with physical propagation delay.
@@ -238,14 +219,24 @@ impl A500Machine {
         }
         self.cia_a.set_input_pins_a(fire_pins, 0xC0);
 
-        // 3. Mouse/joystick quadrature counters -> Denise JOY0DAT & JOY1DAT
+        // 5. Mouse/joystick quadrature counters -> Denise JOY0DAT & JOY1DAT
         self.denise.joy0dat = self.game_ports.joy0dat();
         self.denise.joy1dat = self.game_ports.joy1dat();
 
-        // 4. Analog potentiometer coordinates -> Paula POT0DAT, POT1DAT & POTGOR
+        // 6. Analog potentiometer coordinates -> Paula POT0DAT, POT1DAT & POTGOR
         self.paula.pot0dat = self.game_ports.pot0dat();
         self.paula.pot1dat = self.game_ports.pot1dat();
         self.paula.potgor = self.game_ports.potgor(self.paula.potgo);
+
+        // 7. CIA-A /IRQ pin -> Paula _INT2 pin (Level 2 PORTS)
+        if self.cia_a.irq_pending() {
+            self.paula.set_int2_pin(true);
+        }
+
+        // 8. CIA-B /IRQ pin -> Paula _INT6 pin (Level 6 EXTER)
+        if self.cia_b.irq_pending() {
+            self.paula.set_int6_pin(true);
+        }
     }
 
     /// Advances all peer custom chips, coprocessors, and peripheral subsystems by exactly 1 Color Clock (~280 ns),
@@ -317,16 +308,6 @@ impl A500Machine {
         // 5. Step CIAs
         self.cia_a.step_cck();
         self.cia_b.step_cck();
-
-        // Cross-Chip Signal: CIA-A /IRQ pin -> Paula INTREQ bit 3 (PORTS, mask 0x0008)
-        if self.cia_a.irq_pending() {
-            self.paula.set_interrupt_request(0x0008);
-        }
-
-        // Cross-Chip Signal: CIA-B /IRQ pin -> Paula INTREQ bit 13 (EXTER, mask 0x2000)
-        if self.cia_b.irq_pending() {
-            self.paula.set_interrupt_request(0x2000);
-        }
 
         // 6. Step Real-Time Clock
         self.rtc.step_cck(1);

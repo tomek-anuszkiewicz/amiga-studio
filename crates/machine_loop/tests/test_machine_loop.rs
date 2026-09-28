@@ -25,14 +25,17 @@ fn test_machine_interrupt_arbitration() {
 
     assert_eq!(machine.resolve_ipl(), 0);
 
+    // Unmask Level 2 (PORTS) and Level 6 (EXTER) with master INTEN in Paula INTENA
+    // 0x8000 (SET) | 0x4000 (INTEN) | 0x2000 (EXTER) | 0x0008 (PORTS) = 0xE008
+    machine.write_custom_word(0x09A, 0xE008);
+    machine.step_cycles(2);
+
     // Trigger CIA-A interrupt -> IPL 2
     machine.cia_a.write_register(0xD, 0x81); // Enable Timer A IRQ
     machine.cia_a.write_register(0x4, 1);
     machine.cia_a.write_register(0x5, 0);
     machine.cia_a.write_register(0xE, 0x01); // Start Timer A
-    for _ in 0..10 {
-        machine.cia_a.step_cck();
-    }
+    machine.step_cycles(15);
     assert!(machine.cia_a.irq_pending());
     assert_eq!(machine.resolve_ipl(), 2);
 
@@ -41,9 +44,7 @@ fn test_machine_interrupt_arbitration() {
     machine.cia_b.write_register(0x4, 1);
     machine.cia_b.write_register(0x5, 0);
     machine.cia_b.write_register(0xE, 0x01);
-    for _ in 0..10 {
-        machine.cia_b.step_cck();
-    }
+    machine.step_cycles(15);
     assert!(machine.cia_b.irq_pending());
     assert_eq!(machine.resolve_ipl(), 6);
 }

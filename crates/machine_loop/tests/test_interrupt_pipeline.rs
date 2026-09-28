@@ -137,6 +137,9 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
         assert!(cck_count < 200, "Timed out waiting for CIA-A IRQ");
     }
 
+    // Advance 1 CCK for physical pin propagation delay into Paula INTREQ
+    machine.step_cck();
+
     // Verify CIA-A asserts IRQ and Paula reflects PORTS bit 3
     assert!(machine.cia_a.irq_pending());
     assert_eq!(machine.paula.interrupts.intreq & 0x0008, 0x0008);
