@@ -43,6 +43,7 @@ pub struct MemoryBus<'a> {
 
 impl<'a> MemoryBus<'a> {
     /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT, DSKBYTR)
+    #[inline]
     pub fn read_custom_word(&mut self, offset: u16) -> u16 {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
@@ -73,6 +74,7 @@ impl<'a> MemoryBus<'a> {
     }
 
     /// Reads a 16-bit custom register without side-effects for debugging inspection
+    #[inline]
     pub fn read_custom_word_debug(&self, offset: u16) -> u16 {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {
@@ -160,6 +162,7 @@ impl<'a> MemoryBus<'a> {
     }
 
     /// Writes a 16-bit word to custom register space with physical propagation delay.
+    #[inline]
     pub fn write_custom_word(&mut self, offset: u16, val: u16) {
         let offset = offset & CUSTOM_REG_OFFSET_MASK;
         match offset {

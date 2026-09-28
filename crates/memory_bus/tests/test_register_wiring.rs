@@ -330,4 +330,14 @@ fn test_chip_namespaced_custom_register_dispatch() {
         mb.router().read_custom_word(custom_reg::paula::INTENAR),
         mb.paula.intenar()
     );
+
+    // 7. Additional custom word dispatch: COLOR01 write and debug readback
+    mb.router()
+        .write_custom_word(custom_reg::denise::COLOR01, 0x0F00);
+    assert_eq!(mb.denise.color[1], 0x0F00);
+    assert_eq!(
+        mb.router()
+            .read_custom_word_debug(custom_reg::denise::JOY0DAT),
+        0x4321
+    );
 }
