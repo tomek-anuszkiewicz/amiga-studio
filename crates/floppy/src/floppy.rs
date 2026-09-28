@@ -171,8 +171,6 @@ pub struct FloppyController {
     pub drives: [FloppyDrive; 4],
     /// Previously latched CIA-B Port B state (to detect falling edges of _SEL0..3 and _STEP)
     pub prev_ciab_prb: u8,
-    /// Disk DMA Pointer (DSKPTH / DSKPTL)
-    pub dskpt: u32,
     /// Disk DMA data holding register (DSKDAT)
     pub dskdat: u16,
     /// Disk byte and sync status register (DSKBYTR)
@@ -190,7 +188,14 @@ pub struct FloppyController {
     pub mfm_track_pos: usize,
     /// True when sync word has been matched during read
     pub wordsync_matched: bool,
+    /// Color Clock accumulator tracking head movement across the MFM bitstream (114 CCK per word)
+    pub cck_accum: u16,
+    /// True when a newly deserialized MFM word is ready in DSKDAT for DMA transfer
+    pub dma_word_ready: bool,
 }
+
+/// Double Density MFM word timing: 16 bits * 2.0 µs = 32 µs = ~114 Color Clocks in PAL
+pub const CCK_PER_MFM_WORD: u16 = 114;
 
 impl Default for FloppyController {
     fn default() -> Self {
@@ -202,7 +207,6 @@ impl Default for FloppyController {
                 FloppyDrive::default(),
             ],
             prev_ciab_prb: 0xFF, // All signals initially deasserted high
-            dskpt: 0,
             dskdat: 0,
             dskbytr: 0,
             dskblk_irq: false,
@@ -210,6 +214,8 @@ impl Default for FloppyController {
             mfm_track_buffer: Vec::new(),
             mfm_track_pos: 0,
             wordsync_matched: false,
+            cck_accum: 0,
+            dma_word_ready: false,
         }
     }
 }
@@ -223,7 +229,6 @@ impl FloppyController {
     /// Resets floppy controller registers and drive units
     pub fn reset(&mut self) {
         self.prev_ciab_prb = 0xFF;
-        self.dskpt = 0;
         self.dskdat = 0;
         self.dskbytr = 0;
         self.dskblk_irq = false;
@@ -231,6 +236,8 @@ impl FloppyController {
         self.mfm_track_buffer.clear();
         self.mfm_track_pos = 0;
         self.wordsync_matched = false;
+        self.cck_accum = 0;
+        self.dma_word_ready = false;
         for drive in &mut self.drives {
             drive.reset();
         }
@@ -324,12 +331,6 @@ impl FloppyController {
         self.read_dskbytr()
     }
 
-    /// Advances floppy controller state by 1 Color Clock
-    #[inline]
-    pub fn step_cck(&mut self) {
-        // Scaffold placeholder: MFM bit deserialization during active DMA
-    }
-
     /// Encodes the current track of the selected drive into raw MFM format
     fn load_current_track_mfm(&mut self) {
         for drive in &self.drives {
@@ -345,18 +346,30 @@ impl FloppyController {
         self.mfm_track_buffer = vec![0xAA; RAW_MFM_TRACK_BYTES];
     }
 
-    /// Advances floppy DMA streaming by 1 word slot into Chip RAM querying authoritative Paula registers
-    pub fn step_cck_ram(
-        &mut self,
-        chip_ram: &mut [u8],
-        adkcon: u16,
-        dsksyn: u16,
-        dsklen: &mut u16,
-        dma_active: &mut bool,
-    ) {
-        if !*dma_active {
+    /// Advances floppy drive rotation and MFM bit deserialization by 1 Color Clock (~280 ns).
+    ///
+    /// Double Density floppy drives stream 16-bit MFM words every 32 µs (~114 CCKs in PAL).
+    /// When WORDSYNC is enabled in ADKCON (bit 10), data is suppressed until the sync word
+    /// (typically $4489 in DSKSYN) matches the head bitstream.
+    pub fn step_cck(&mut self, adkcon: u16, dsksyn: u16) {
+        let mut drive_ready = false;
+        for drive in &self.drives {
+            if drive.selected && drive.is_ready() {
+                drive_ready = true;
+                break;
+            }
+        }
+        if !drive_ready {
+            self.cck_accum = 0;
             return;
         }
+
+        self.cck_accum += 1;
+        if self.cck_accum < CCK_PER_MFM_WORD {
+            return;
+        }
+        self.cck_accum = 0;
+
         if self.mfm_track_buffer.is_empty() {
             self.load_current_track_mfm();
             self.mfm_track_pos = 0;
@@ -366,32 +379,6 @@ impl FloppyController {
             return;
         }
 
-        let wordsync = (adkcon & 0x0400) != 0;
-
-        // If wordsync is enabled and not yet matched, scan for sync pattern
-        if wordsync && !self.wordsync_matched {
-            let mut found = false;
-            while self.mfm_track_pos + 1 < self.mfm_track_buffer.len() {
-                let word = u16::from_be_bytes([
-                    self.mfm_track_buffer[self.mfm_track_pos],
-                    self.mfm_track_buffer[self.mfm_track_pos + 1],
-                ]);
-                self.mfm_track_pos += 2;
-                if word == dsksyn {
-                    self.wordsync_matched = true;
-                    self.dsksyn_irq = true;
-                    self.dskbytr |= 0x1000; // Bit 12: DSKSYN matched
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                self.mfm_track_pos = 0;
-                return;
-            }
-        }
-
-        // Fetch next MFM word from track buffer
         if self.mfm_track_pos + 1 >= self.mfm_track_buffer.len() {
             self.mfm_track_pos = 0;
         }
@@ -401,30 +388,45 @@ impl FloppyController {
         ]);
         self.mfm_track_pos += 2;
 
-        self.dskdat = word;
-        // DSKBYTR: bit 15 (DSKBYT) = 1, bit 12 (DSKSYN) retained, byte 7..0 = low byte of MFM word
-        self.dskbytr = 0x8000 | (self.dskbytr & 0x1000) | ((word & 0x00FF) as u16);
+        let wordsync = (adkcon & 0x0400) != 0;
 
-        // DMA memory transfer to Chip RAM
-        let is_write = (*dsklen & 0x4000) != 0;
-        if !is_write {
-            let pt = self.dskpt as usize;
-            if pt + 1 < chip_ram.len() {
-                chip_ram[pt] = (word >> 8) as u8;
-                chip_ram[pt + 1] = (word & 0xFF) as u8;
+        if wordsync && !self.wordsync_matched {
+            if word == dsksyn {
+                self.wordsync_matched = true;
+                self.dsksyn_irq = true;
+                self.dskbytr |= 0x1000; // Bit 12: DSKSYN matched
+                self.dskdat = word;
+                self.dma_word_ready = true;
             }
-            self.dskpt = self.dskpt.wrapping_add(2);
-        }
-
-        // Decrement length counter
-        let len_words = *dsklen & 0x3FFF;
-        if len_words > 1 {
-            *dsklen = (*dsklen & 0xC000) | (len_words - 1);
         } else {
-            *dsklen &= 0xC000;
-            *dma_active = false;
-            self.dskblk_irq = true; // Level 1 DSKBLK completion interrupt
+            self.dskdat = word;
+            self.dma_word_ready = true;
+            // DSKBYTR: bit 15 (DSKBYT) = 1, bit 12 (DSKSYN) retained, byte 7..0 = low byte of MFM word
+            self.dskbytr = 0x8000 | (self.dskbytr & 0x1000) | ((word & 0x00FF) as u16);
         }
+    }
+
+    /// Returns true if a newly deserialized MFM word is waiting in DSKDAT for DMA transfer
+    #[inline]
+    pub fn has_dma_word(&self) -> bool {
+        self.dma_word_ready
+    }
+
+    /// Consumes and returns the waiting deserialized MFM word from DSKDAT
+    #[inline]
+    pub fn consume_dma_word(&mut self) -> Option<u16> {
+        if self.dma_word_ready {
+            self.dma_word_ready = false;
+            Some(self.dskdat)
+        } else {
+            None
+        }
+    }
+
+    /// Notifies the floppy controller that the active DMA block transfer has completed
+    pub fn notify_dskblk_done(&mut self) {
+        self.dskblk_irq = true;
+        self.wordsync_matched = false;
     }
 
     /// Polls and clears the disk block DMA completion interrupt strobe

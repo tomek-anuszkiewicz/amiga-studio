@@ -83,7 +83,6 @@ fn test_amiga_sector_checksum_validation() {
 #[test]
 fn test_amiga_track_dma_stream_and_sync() {
     let mut controller = FloppyController::new();
-    let mut chip_ram = vec![0u8; 0x20000];
 
     // Create an 880 KB ADF image with recognizable sector data
     let mut adf_image = vec![0u8; FORMATTED_DISK_BYTES];
@@ -103,21 +102,17 @@ fn test_amiga_track_dma_stream_and_sync() {
     assert!(controller.drives[0].selected);
     assert!(controller.drives[0].motor_on);
 
-    // Set DSKPT to 0x1000 in Chip RAM
-    controller.dskpt = 0x1000;
-
-    // Arm and start DMA: transfer 100 words with WORDSYNC ($0400) and sync word $4489
-    let mut dsklen = 0x8000 | 100;
-    let mut dma_active = true;
-
-    // Step DMA until transfer completes
+    let mut words_received = Vec::new();
     let mut cycles = 0;
-    while dma_active && cycles < 1000 {
-        controller.step_cck_ram(&mut chip_ram, 0x0400, 0x4489, &mut dsklen, &mut dma_active);
+    while words_received.len() < 100 && cycles < 200_000 {
+        controller.step_cck(0x0400, 0x4489);
+        if let Some(word) = controller.consume_dma_word() {
+            words_received.push(word);
+        }
         cycles += 1;
     }
 
-    assert!(!dma_active, "DMA should have completed");
+    assert_eq!(words_received.len(), 100);
     assert!(
         controller.wordsync_matched,
         "Sync word $4489 should have been matched"
@@ -126,34 +121,23 @@ fn test_amiga_track_dma_stream_and_sync() {
         controller.poll_dsksyn_irq(),
         "DSKSYN interrupt should have triggered"
     );
-    assert!(
-        controller.poll_dskblk_irq(),
-        "DSKBLK completion interrupt should have triggered"
-    );
 
-    // Verify DSKPT advanced by 200 bytes (100 words)
-    assert_eq!(controller.dskpt, 0x1000 + 200);
-
-    // First word after sync in Chip RAM should be the MFM header word
-    let word0 = u16::from_be_bytes([chip_ram[0x1000], chip_ram[0x1001]]);
-    assert_ne!(word0, 0, "Chip RAM should contain streamed MFM data");
+    // First word after sync should be non-zero MFM header word
+    assert_ne!(words_received[0], 0, "Should contain streamed MFM data");
 }
 
 #[test]
 fn test_dskbytr_clear_on_read() {
     let mut controller = FloppyController::new();
-    let mut chip_ram = vec![0u8; 0x1000];
 
     let adf_image = vec![0x77u8; FORMATTED_DISK_BYTES];
     controller.drives[0].insert_disk(&adf_image);
     controller.handle_ciab_port_b_write(0b0111_0111);
-    controller.dskpt = 0x0200;
 
-    // Read 2 words
-    let mut dsklen = 0x8002;
-    let mut dma_active = true;
-
-    controller.step_cck_ram(&mut chip_ram, 0x0000, 0x4489, &mut dsklen, &mut dma_active);
+    // Step for 1 MFM word period
+    for _ in 0..floppy::CCK_PER_MFM_WORD {
+        controller.step_cck(0x0000, 0x4489);
+    }
 
     // DSKBYTR should have bit 15 (DSKBYT) set
     assert_ne!(

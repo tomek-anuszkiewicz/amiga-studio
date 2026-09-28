@@ -175,6 +175,26 @@ impl Paula {
         self.dma_active
     }
 
+    /// Returns true if DSKLEN is configured for write to disk (bit 14 set)
+    #[inline]
+    pub fn is_dsk_write(&self) -> bool {
+        (self.dsklen & DSKLEN_WRITE_FLAG) != 0
+    }
+
+    /// Decrements DSKLEN word count after a DMA transfer slot, terminating DMA and returning true if finished
+    pub fn decrement_dsklen(&mut self) -> bool {
+        let len_words = self.dsklen & 0x3FFF;
+        if len_words > 1 {
+            self.dsklen = (self.dsklen & 0xC000) | (len_words - 1);
+            false
+        } else {
+            self.dsklen &= 0xC000;
+            self.dma_active = false;
+            self.interrupts.request(interrupts::IRQ_DSKBLK);
+            true
+        }
+    }
+
     /// Returns composite DSKBYTR status with live flags without side effects (for debuggers and peek inspection)
     #[inline]
     pub fn peek_dskbytr(&self) -> u16 {

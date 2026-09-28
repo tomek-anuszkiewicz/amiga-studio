@@ -19,10 +19,10 @@ fn test_floppy_geometry_and_stepping() {
 }
 
 #[test]
-fn test_dskpt_pointer_assignment() {
+fn test_dma_word_consumption() {
     let mut controller = FloppyController::new();
-    controller.dskpt = 0x0004_2000;
-    assert_eq!(controller.dskpt, 0x0004_2000);
+    assert!(!controller.has_dma_word());
+    assert_eq!(controller.consume_dma_word(), None);
 }
 
 #[test]
@@ -131,14 +131,12 @@ fn test_floppy_track_data_and_dma() {
     controller.drives[0].selected = true;
     controller.drives[0].set_motor(true);
 
-    let mut chip_ram = vec![0u8; 0x1000];
-    controller.dskpt = 0x0000;
-    let mut dsklen = 0x8004; // Write to RAM, 4 words
-    let mut dma_active = true;
     let dsksyn = 0x4489;
     let adkcon = 0x0400; // WORDSYNC enabled
 
-    controller.step_cck_ram(&mut chip_ram, adkcon, dsksyn, &mut dsklen, &mut dma_active);
+    for _ in 0..floppy::CCK_PER_MFM_WORD {
+        controller.step_cck(adkcon, dsksyn);
+    }
     assert_eq!(controller.drives[0].cylinder, 0);
     assert_eq!(controller.drives[0].side, 0);
 }

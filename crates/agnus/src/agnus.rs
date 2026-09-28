@@ -79,6 +79,12 @@ pub struct Agnus {
     pub audlc: [u32; 4],
     /// Floppy Disk DMA pointer ($020-$022)
     pub dskpt: u32,
+    /// Disk DMA request line asserted by Paula/Floppy (_DSKREQ pin)
+    #[serde(default)]
+    pub dsk_dma_req: bool,
+    /// Pending Disk DMA Chip RAM address slot awarded on this cycle
+    #[serde(default)]
+    pub pending_dsk_dma_slot: Option<u32>,
     /// Vertical blanking interrupt request strobe
     #[serde(default)]
     pub vblank_irq: bool,
@@ -107,6 +113,8 @@ impl Agnus {
             lol: false,
             chip_ram_blocked: false,
             pending_bpl_dma: None,
+            dsk_dma_req: false,
+            pending_dsk_dma_slot: None,
             dmacon: 0,
             ddfstrt: 0x0038,
             ddfstop: 0x00D0,
@@ -133,6 +141,8 @@ impl Agnus {
         self.lol = false;
         self.chip_ram_blocked = false;
         self.pending_bpl_dma = None;
+        self.dsk_dma_req = false;
+        self.pending_dsk_dma_slot = None;
         self.dmacon = 0;
         self.ddfstrt = 0x0038;
         self.ddfstop = 0x00D0;
@@ -201,7 +211,7 @@ impl Agnus {
         let owner = self.dma.arbitrate(
             beam.hpos,
             beam.vpos,
-            self.dskpt != 0,
+            self.dsk_dma_req,
             [true, true, true, true],
             copper_wants_bus,
             blitter_wants_bus,
@@ -212,6 +222,10 @@ impl Agnus {
         match owner {
             dma::DmaChannel::Blitter => {
                 self.blitter.step_cck_ram(chip_ram);
+            }
+            dma::DmaChannel::Disk => {
+                self.pending_dsk_dma_slot = Some(self.dskpt);
+                self.dskpt = self.dskpt.wrapping_add(2) & 0x0007_FFFE;
             }
             dma::DmaChannel::Bitplane(plane) => {
                 let p = plane as usize;
@@ -275,6 +289,18 @@ impl Agnus {
             due[i] = *item;
         }
         due
+    }
+
+    /// Sets the disk DMA request line asserted by Paula/Floppy
+    #[inline]
+    pub fn set_dsk_dma_req(&mut self, req: bool) {
+        self.dsk_dma_req = req;
+    }
+
+    /// Polls and clears any Disk DMA Chip RAM address slot awarded on this cycle
+    #[inline]
+    pub fn poll_dsk_dma_slot(&mut self) -> Option<u32> {
+        self.pending_dsk_dma_slot.take()
     }
 
     /// Polls and clears any custom register write emitted by the Copper on this cycle

@@ -200,3 +200,28 @@ fn test_paula_latch_floppy_dskbytr() {
     );
     assert_eq!(paula.dskbytr & paula::DSKBYTR_DATA_MASK, floppy_word);
 }
+
+#[test]
+fn test_decrement_dsklen_and_completion() {
+    let mut paula = Paula::new();
+    // Arm and start DMA: 2 words, read mode
+    paula.write_dsklen(0x8002);
+    paula.write_dsklen(0x8002);
+    assert!(paula.is_dsk_dma_active());
+    assert!(!paula.is_dsk_write());
+
+    // Word 1: decrements to 1, not finished
+    let finished1 = paula.decrement_dsklen();
+    assert!(!finished1);
+    assert!(paula.is_dsk_dma_active());
+    assert_eq!(paula.dsklen & 0x3FFF, 1);
+
+    // Word 2: decrements to 0, finished!
+    let finished2 = paula.decrement_dsklen();
+    assert!(finished2);
+    assert!(!paula.is_dsk_dma_active());
+    assert_eq!(paula.dsklen & 0x3FFF, 0);
+
+    // IRQ_DSKBLK (bit 1) must be requested in INTREQ
+    assert_eq!(paula.interrupts.read_intreqr() & (1 << 1), (1 << 1));
+}

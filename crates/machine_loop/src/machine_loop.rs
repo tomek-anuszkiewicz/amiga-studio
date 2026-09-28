@@ -196,6 +196,10 @@ impl A500Machine {
     /// Advances all peer custom chips, coprocessors, and peripheral subsystems by exactly 1 Color Clock (~280 ns),
     /// dispatching matured actions, advancing RTC, and arbitrating interrupts.
     pub fn step_subsystems_cck(&mut self) {
+        // Physical Trace: Disk DMA request line (_DSKREQ pin) -> Agnus
+        let dsk_req = self.paula.is_dsk_dma_active() && self.floppy.has_dma_word();
+        self.agnus.set_dsk_dma_req(dsk_req);
+
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
         self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
         if let Some((reg, val)) = self.agnus.poll_copper_write() {
@@ -203,6 +207,21 @@ impl A500Machine {
         }
         if let Some((plane, word)) = self.agnus.poll_bpl_dma() {
             self.denise.write_bpldat(plane as usize, word);
+        }
+        if let Some(dskpt) = self.agnus.poll_dsk_dma_slot() {
+            let is_write = self.paula.is_dsk_write();
+            if !is_write {
+                if let Some(word) = self.floppy.consume_dma_word() {
+                    let pt = dskpt as usize;
+                    if pt + 1 < self.physical_memory.chip_ram.len() {
+                        self.physical_memory.chip_ram[pt] = (word >> 8) as u8;
+                        self.physical_memory.chip_ram[pt + 1] = (word & 0xFF) as u8;
+                    }
+                    if self.paula.decrement_dsklen() {
+                        self.floppy.notify_dskblk_done();
+                    }
+                }
+            }
         }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
 
@@ -228,15 +247,12 @@ impl A500Machine {
 
         // 3. Step Paula (steps audio, serial_port, and mutation pipeline)
         self.paula.step_cck();
-        self.floppy.step_cck();
-        if self.paula.is_dsk_dma_active() {
-            self.floppy.step_cck_ram(
-                &mut self.physical_memory.chip_ram,
-                self.paula.adkcon,
-                self.paula.dsksync,
-                &mut self.paula.dsklen,
-                &mut self.paula.dma_active,
-            );
+        self.floppy.step_cck(self.paula.adkcon, self.paula.dsksync);
+
+        // Cross-Chip Signal: Disk sync pattern matched -> Paula INTREQ bit 12 (IRQ_DSKSYN)
+        if self.floppy.poll_dsksyn_irq() {
+            self.paula
+                .set_interrupt_request(paula::interrupts::IRQ_DSKSYN);
         }
 
         // Cross-Chip Signal: Disk block DMA finished -> Paula INTREQ bit 1 (IRQ_DSKBLK)

@@ -208,3 +208,28 @@ fn test_is_dma_enabled_requires_master_and_channel() {
         "DMA must be false when channel is cleared"
     );
 }
+
+#[test]
+fn test_dskpt_registers_and_dma_slot_advancement() {
+    let mut agnus = Agnus::new(AgnusModel::OcsPal8371);
+    // Write DSKPTH ($020) = 0x0004, DSKPTL ($022) = 0x2000
+    agnus.commit_register_write(0x020, 0x0004);
+    agnus.commit_register_write(0x022, 0x2000);
+    assert_eq!(agnus.dskpt, 0x0004_2000);
+
+    // Enable DMAEN and DSKEN in DMACON
+    agnus.commit_register_write(0x096, 0x8210);
+
+    // Assert disk DMA request
+    agnus.set_dsk_dma_req(true);
+
+    // Move beam to HPOS 6, then step to HPOS 7 (Slot 7 is Disk DMA)
+    agnus.hpos = 6;
+    let mut chip_ram = vec![0u8; 0x1000];
+    agnus.step_cck_ram(&mut chip_ram);
+
+    // Disk DMA slot 7 must have been granted
+    assert_eq!(agnus.poll_dsk_dma_slot(), Some(0x0004_2000));
+    assert_eq!(agnus.dskpt, 0x0004_2002);
+    assert!(agnus.is_chip_ram_blocked());
+}
