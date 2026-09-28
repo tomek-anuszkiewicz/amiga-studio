@@ -161,18 +161,6 @@ impl A500Machine {
         self.cpu.state.ipl = self.paula.pending_interrupt_level();
     }
 
-    /// Writes a 16-bit word to custom register space with physical propagation delay.
-    #[inline(always)]
-    pub fn write_custom_word(&mut self, offset: u16, val: u16) {
-        self.memory_bus().write_custom_word(offset, val);
-    }
-
-    /// Writes an 8-bit byte to custom register space with physical byte duplication.
-    #[inline(always)]
-    pub fn write_custom_byte(&mut self, addr: u32, val: u8) {
-        self.memory_bus().write_custom_byte(addr, val);
-    }
-
     /// Synchronizes Denise display pipeline DMA enables from Agnus master DMACON state
     #[inline(always)]
     pub fn sync_dmacon(&mut self) {
@@ -239,7 +227,7 @@ impl A500Machine {
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
         self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
         if let Some((reg, val)) = self.agnus.poll_copper_write() {
-            self.write_custom_word(reg, val);
+            self.memory_bus().write_custom_word(reg, val);
         }
         if let Some((plane, word)) = self.agnus.poll_bpl_dma() {
             self.denise.write_bpldat(plane as usize, word);

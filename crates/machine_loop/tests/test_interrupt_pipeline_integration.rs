@@ -16,11 +16,13 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
     // plus master INTEN (bit 14 = 0x4000) with SET/CLR (bit 15 = 0x8000)
     harness
         .machine
+        .memory_bus()
         .write_custom_word(0x09A, 0x8000 | 0x4000 | 0x2000 | 0x0080 | 0x0040 | 0x0002);
 
     // Request Level 1, Level 3, and Level 4 simultaneously in INTREQ
     harness
         .machine
+        .memory_bus()
         .write_custom_word(0x09C, 0x8000 | 0x0080 | 0x0040 | 0x0002);
 
     // Wait 2 CCKs for write to commit through delay pipeline
@@ -34,7 +36,10 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
     );
 
     // Clear Level 4 in INTREQ (bit 15 = 0 to clear, bit 7 = AUD0)
-    harness.machine.write_custom_word(0x09C, 0x0080);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(0x09C, 0x0080);
     harness.step_cck(2);
 
     // Next pending level should be Level 3 (Blitter)
@@ -45,7 +50,10 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
     );
 
     // Clear Level 3 in INTREQ
-    harness.machine.write_custom_word(0x09C, 0x0040);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(0x09C, 0x0040);
     harness.step_cck(2);
 
     // Next pending level should be Level 1 (Disk block)
@@ -56,7 +64,10 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
     );
 
     // Clear Level 1 in INTREQ
-    harness.machine.write_custom_word(0x09C, 0x0002);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(0x09C, 0x0002);
     harness.step_cck(2);
 
     assert_eq!(
@@ -73,6 +84,7 @@ fn test_intena_master_and_individual_channel_masking() {
     // Request Level 4 (AUD0 = 0x0080) and Level 3 (BLIT = 0x0040)
     harness
         .machine
+        .memory_bus()
         .write_custom_word(0x09C, 0x8000 | 0x0080 | 0x0040);
     harness.step_cck(2);
 
@@ -86,6 +98,7 @@ fn test_intena_master_and_individual_channel_masking() {
     // Enable only Level 3 and master INTEN in INTENA (0xC040)
     harness
         .machine
+        .memory_bus()
         .write_custom_word(0x09A, 0x8000 | 0x4000 | 0x0040);
     harness.step_cck(2);
 
@@ -97,7 +110,10 @@ fn test_intena_master_and_individual_channel_masking() {
     );
 
     // Clear master INTEN (bit 15 = 0, bit 14 = 1 in INTENA write)
-    harness.machine.write_custom_word(0x09A, 0x4000);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(0x09A, 0x4000);
     harness.step_cck(2);
 
     assert_eq!(
@@ -107,7 +123,10 @@ fn test_intena_master_and_individual_channel_masking() {
     );
 
     // Re-enable master INTEN
-    harness.machine.write_custom_word(0x09A, 0xC000);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(0x09A, 0xC000);
     harness.step_cck(2);
 
     assert_eq!(
@@ -135,9 +154,15 @@ fn test_cpu_autovector_exception_dispatch() {
     harness.machine.set_pc_and_prime_prefetch(main_code_addr);
 
     // Enable Level 3 and master INTEN in INTENA
-    harness.machine.write_custom_word(0x09A, 0xC040);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(0x09A, 0xC040);
     // Request Level 3 in INTREQ
-    harness.machine.write_custom_word(0x09C, 0x8040);
+    harness
+        .machine
+        .memory_bus()
+        .write_custom_word(0x09C, 0x8040);
     harness.step_cck(2);
 
     assert_eq!(harness.machine.paula.pending_interrupt_level(), 3);
