@@ -2,11 +2,11 @@
 
 //! Unit tests for Denise pixel decoding routines (HAM6, EHB, Dual Playfield)
 
-use denise::{decode_dual_playfield, decode_ehb, decode_ham6, COLOR_PALETTE_SIZE};
+use denise::{decode_dual_playfield, decode_ehb, decode_ham6, Denise};
 
 #[test]
 fn test_decode_ham6_modes() {
-    let mut palette = [0u16; COLOR_PALETTE_SIZE];
+    let mut palette = [0u16; Denise::COLOR_PALETTE_SIZE];
     palette[1] = 0x0F00; // Red
     palette[2] = 0x00F0; // Green
 
@@ -35,7 +35,7 @@ fn test_decode_ham6_modes() {
 
 #[test]
 fn test_decode_ehb_halving() {
-    let mut palette = [0u16; COLOR_PALETTE_SIZE];
+    let mut palette = [0u16; Denise::COLOR_PALETTE_SIZE];
     palette[1] = 0x0ECE; // R=14, G=12, B=14
 
     // Plane 5 == 0 -> normal color
@@ -47,7 +47,7 @@ fn test_decode_ehb_halving() {
 
 #[test]
 fn test_decode_dual_playfield_priorities() {
-    let mut palette = [0u16; COLOR_PALETTE_SIZE];
+    let mut palette = [0u16; Denise::COLOR_PALETTE_SIZE];
     palette[0] = 0x0000; // Background
     palette[1] = 0x0F00; // PF1 (planes 0, 2, 4)
     palette[9] = 0x00F0; // PF2 (planes 1, 3, 5 -> index 8 + 1)

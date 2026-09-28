@@ -10,12 +10,6 @@ pub use config::DeniseModel;
 use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
-/// Total number of hardware color palette registers
-pub const COLOR_PALETTE_SIZE: usize = 32;
-
-/// Fixed-capacity in-flight register mutation buffer for Denise (covers 32 colors + controls)
-const DENISE_MUTATION_CAPACITY: usize = 64;
-
 pub mod decode;
 pub use decode::{decode_dual_playfield, decode_ehb, decode_ham6};
 
@@ -54,7 +48,7 @@ pub struct Denise {
     /// Bitplane Modulo 2 ($10A, even bitplanes 2, 4, 6)
     pub bpl2mod: i16,
     /// 32 palette color registers (12-bit RGB444: 4 bits R, 4 bits G, 4 bits B)
-    pub color: [u16; COLOR_PALETTE_SIZE],
+    pub color: [u16; Denise::COLOR_PALETTE_SIZE],
     /// Collision Data Register (cleared upon read)
     pub clxdat: u16,
     /// Collision Control Register
@@ -83,10 +77,16 @@ pub struct Denise {
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
-    pub mutations: [Option<DelayedMutation>; DENISE_MUTATION_CAPACITY],
+    pub mutations: [Option<DelayedMutation>; Denise::MUTATION_CAPACITY],
 }
 
 impl Denise {
+    /// Total number of hardware color palette registers
+    pub const COLOR_PALETTE_SIZE: usize = 32;
+
+    /// Fixed-capacity in-flight register mutation buffer for Denise (covers 32 colors + controls)
+    pub const MUTATION_CAPACITY: usize = 64;
+
     /// Creates a new Denise instance with the specified hardware model
     pub fn new(model: DeniseModel) -> Self {
         Self {
@@ -105,7 +105,7 @@ impl Denise {
             ddfstop: 0,
             bpl1mod: 0,
             bpl2mod: 0,
-            color: [0; COLOR_PALETTE_SIZE],
+            color: [0; Self::COLOR_PALETTE_SIZE],
             clxdat: 0,
             clxcon: 0,
             potgo: 0,
@@ -118,7 +118,7 @@ impl Denise {
             last_ham_rgb: 0,
             pipeline_pixels: [0; 2],
             pipeline_pixels_valid: [false; 2],
-            mutations: [None; DENISE_MUTATION_CAPACITY],
+            mutations: [None; Self::MUTATION_CAPACITY],
         }
     }
 
@@ -151,7 +151,7 @@ impl Denise {
         self.last_ham_rgb = 0;
         self.pipeline_pixels = [0; 2];
         self.pipeline_pixels_valid = [false; 2];
-        self.mutations = [None; DENISE_MUTATION_CAPACITY];
+        self.mutations = [None; Self::MUTATION_CAPACITY];
     }
 
     /// Advances Denise pixel pipeline, steps sprites and frame builder,
@@ -385,7 +385,7 @@ impl Denise {
             }
         }
 
-        let mut committed = [None; DENISE_MUTATION_CAPACITY];
+        let mut committed = [None; Self::MUTATION_CAPACITY];
         let mut committed_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {
             if committed_count < committed.len() {
@@ -575,7 +575,7 @@ impl Denise {
             // Color palette $180..$1BE
             0x180..=0x1BE => {
                 let idx = ((offset - 0x180) / 2) as usize;
-                if idx < COLOR_PALETTE_SIZE {
+                if idx < Self::COLOR_PALETTE_SIZE {
                     self.color[idx] = val & 0x0FFF;
                 }
             }

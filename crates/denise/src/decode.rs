@@ -1,12 +1,10 @@
-//! Pixel decoding routines for Denise display modes: HAM6, EHB, and Dual Playfield.
-
-use super::COLOR_PALETTE_SIZE;
+use super::Denise;
 
 /// Decodes a HAM6 pixel given raw bitplane data and previous held RGB color
 #[inline(always)]
 pub fn decode_ham6(
     planes_data: u8,
-    palette: &[u16; COLOR_PALETTE_SIZE],
+    palette: &[u16; Denise::COLOR_PALETTE_SIZE],
     held_rgb: &mut u16,
 ) -> u16 {
     let ctrl = (planes_data >> 4) & 0x03;
@@ -43,7 +41,7 @@ pub fn decode_ham6(
 
 /// Decodes an Extra Half-Brite (EHB) pixel given raw bitplane data
 #[inline(always)]
-pub fn decode_ehb(planes_data: u8, palette: &[u16; COLOR_PALETTE_SIZE]) -> u16 {
+pub fn decode_ehb(planes_data: u8, palette: &[u16; Denise::COLOR_PALETTE_SIZE]) -> u16 {
     let idx = (planes_data & 0x1F) as usize;
     let col = palette[idx];
     if (planes_data & 0x20) != 0 {
@@ -60,7 +58,7 @@ pub fn decode_ehb(planes_data: u8, palette: &[u16; COLOR_PALETTE_SIZE]) -> u16 {
 #[inline(always)]
 pub fn decode_dual_playfield(
     planes_data: u8,
-    palette: &[u16; COLOR_PALETTE_SIZE],
+    palette: &[u16; Denise::COLOR_PALETTE_SIZE],
     pf2_priority: bool,
 ) -> u16 {
     let pf1_idx = (planes_data & 0x01)

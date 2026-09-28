@@ -13,25 +13,6 @@ pub use config::AgnusModel;
 use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
-/// Maximum horizontal Color Clock cycles per scanline (PAL)
-pub const PAL_LINE_CCKS: u16 = 227;
-/// Total vertical scanlines per frame (PAL)
-const PAL_FRAME_LINES: u16 = 312;
-/// Short scanline length in Color Clocks (NTSC standard)
-pub const NTSC_SHORT_LINE_CCKS: u16 = 227;
-/// Long scanline length in Color Clocks (NTSC interlace LOL bit active)
-pub const NTSC_LONG_LINE_CCKS: u16 = 228;
-/// Total vertical scanlines per frame (NTSC)
-const NTSC_FRAME_LINES: u16 = 262;
-
-/// Number of Color Clocks that Agnus's internal scheduling counter leads the visible display beam
-pub const VHPOSR_PIPELINE_LEAD_CCKS: u16 = 5;
-/// Number of Color Clocks after line wrap during which the vertical ripple counter is settling
-const VHPOSR_VERTICAL_SETTLE_CCKS: u16 = 1;
-
-/// Fixed-capacity in-flight register mutation buffer for Agnus (covers all writable registers)
-const AGNUS_MUTATION_CAPACITY: usize = 64;
-
 /// Agnus custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Agnus {
@@ -94,10 +75,29 @@ pub struct Agnus {
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
-    pub mutations: [Option<DelayedMutation>; AGNUS_MUTATION_CAPACITY],
+    pub mutations: [Option<DelayedMutation>; Agnus::MUTATION_CAPACITY],
 }
 
 impl Agnus {
+    /// Maximum horizontal Color Clock cycles per scanline (PAL)
+    pub const PAL_LINE_CCKS: u16 = 227;
+    /// Total vertical scanlines per frame (PAL)
+    const PAL_FRAME_LINES: u16 = 312;
+    /// Short scanline length in Color Clocks (NTSC standard)
+    pub const NTSC_SHORT_LINE_CCKS: u16 = 227;
+    /// Long scanline length in Color Clocks (NTSC interlace LOL bit active)
+    pub const NTSC_LONG_LINE_CCKS: u16 = 228;
+    /// Total vertical scanlines per frame (NTSC)
+    const NTSC_FRAME_LINES: u16 = 262;
+
+    /// Number of Color Clocks that Agnus's internal scheduling counter leads the visible display beam
+    pub const VHPOSR_PIPELINE_LEAD_CCKS: u16 = 5;
+    /// Number of Color Clocks after line wrap during which the vertical ripple counter is settling
+    const VHPOSR_VERTICAL_SETTLE_CCKS: u16 = 1;
+
+    /// Fixed-capacity in-flight register mutation buffer for Agnus (covers all writable registers)
+    pub const MUTATION_CAPACITY: usize = 64;
+
     /// Creates a new Agnus instance with specified chip revision
     pub fn new(model: AgnusModel) -> Self {
         Self {
@@ -126,7 +126,7 @@ impl Agnus {
             audpt: [0; 4],
             audlc: [0; 4],
             dskpt: 0,
-            mutations: [None; AGNUS_MUTATION_CAPACITY],
+            mutations: [None; Self::MUTATION_CAPACITY],
         }
     }
 
@@ -156,7 +156,7 @@ impl Agnus {
         self.dskpt = 0;
         self.vblank_irq = false;
         self.pending_copper_write = None;
-        self.mutations = [None; AGNUS_MUTATION_CAPACITY];
+        self.mutations = [None; Self::MUTATION_CAPACITY];
     }
 
     /// Advances raster beam position, steps embedded coprocessors and schedulers,
@@ -173,18 +173,18 @@ impl Agnus {
     pub fn step_cck_ram(&mut self, chip_ram: &mut [u8]) -> [Option<(u16, u16)>; 8] {
         // 1. Advance horizontal and vertical raster beam counters
         let max_lines = match self.model {
-            AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
-            _ => PAL_FRAME_LINES,
+            AgnusModel::OcsNtsc8370 => Self::NTSC_FRAME_LINES,
+            _ => Self::PAL_FRAME_LINES,
         };
         let line_ccks = match self.model {
             AgnusModel::OcsNtsc8370 => {
                 if self.lol {
-                    228
+                    Self::NTSC_LONG_LINE_CCKS
                 } else {
-                    227
+                    Self::NTSC_SHORT_LINE_CCKS
                 }
             }
-            _ => PAL_LINE_CCKS,
+            _ => Self::PAL_LINE_CCKS,
         };
 
         self.hpos = self.hpos.wrapping_add(1);
@@ -269,7 +269,7 @@ impl Agnus {
         self.pending_copper_write = self.copper.step_cck(beam, self.blitter.is_busy, chip_ram);
 
         // 3. Process and commit due register mutations
-        let mut committed = [None; AGNUS_MUTATION_CAPACITY];
+        let mut committed = [None; Self::MUTATION_CAPACITY];
         let mut committed_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {
             if committed_count < committed.len() {
@@ -328,21 +328,21 @@ impl Agnus {
     #[inline]
     fn pipelined_beam_readout(&self) -> (u16, u16) {
         let max_lines = match self.model {
-            AgnusModel::OcsNtsc8370 => NTSC_FRAME_LINES,
-            _ => PAL_FRAME_LINES,
+            AgnusModel::OcsNtsc8370 => Self::NTSC_FRAME_LINES,
+            _ => Self::PAL_FRAME_LINES,
         };
         let line_ccks = match self.model {
             AgnusModel::OcsNtsc8370 => {
                 if self.lol {
-                    NTSC_LONG_LINE_CCKS
+                    Self::NTSC_LONG_LINE_CCKS
                 } else {
-                    NTSC_SHORT_LINE_CCKS
+                    Self::NTSC_SHORT_LINE_CCKS
                 }
             }
-            _ => PAL_LINE_CCKS,
+            _ => Self::PAL_LINE_CCKS,
         };
 
-        let mut h = self.hpos + VHPOSR_PIPELINE_LEAD_CCKS;
+        let mut h = self.hpos + Self::VHPOSR_PIPELINE_LEAD_CCKS;
         let mut v = self.vpos;
         if h >= line_ccks {
             h -= line_ccks;
@@ -352,7 +352,7 @@ impl Agnus {
             }
         }
 
-        let effective_v = if h <= VHPOSR_VERTICAL_SETTLE_CCKS {
+        let effective_v = if h <= Self::VHPOSR_VERTICAL_SETTLE_CCKS {
             self.vpos
         } else {
             v

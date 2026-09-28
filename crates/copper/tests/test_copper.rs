@@ -318,24 +318,17 @@ fn test_copper_dma_denied_at_cycle_e0() {
 
 #[test]
 fn test_copper_canonical_constants() {
-    use copper::{
-        COPPER_ADDRESS_MASK_512K, COPPER_BFD_MASK, COPPER_CDANG_REGISTER_LIMIT,
-        COPPER_CYCLE_E0_DMA_LOCKOUT, COPPER_HPOS_COMPARE_MASK, COPPER_INSTR_TYPE_MASK,
-        COPPER_MOVE_REG_MASK, COPPER_OCS_MIN_REGISTER_LIMIT, COPPER_VPOS_FORCE_BIT7,
-        COPPER_WAIT_SKIP_MASK, COPPER_WAKEUP_HPOS_LEAD,
-    };
-
-    assert_eq!(COPPER_INSTR_TYPE_MASK, 0x0001);
-    assert_eq!(COPPER_WAIT_SKIP_MASK, 0x0001);
-    assert_eq!(COPPER_BFD_MASK, 0x8000);
-    assert_eq!(COPPER_VPOS_FORCE_BIT7, 0x0080);
-    assert_eq!(COPPER_HPOS_COMPARE_MASK, 0x00FE);
-    assert_eq!(COPPER_MOVE_REG_MASK, 0x01FE);
-    assert_eq!(COPPER_CYCLE_E0_DMA_LOCKOUT, 0x00E0);
-    assert_eq!(COPPER_WAKEUP_HPOS_LEAD, 2);
-    assert_eq!(COPPER_CDANG_REGISTER_LIMIT, 0x0080);
-    assert_eq!(COPPER_OCS_MIN_REGISTER_LIMIT, 0x0040);
-    assert_eq!(COPPER_ADDRESS_MASK_512K, 0x0007_FFFE);
+    assert_eq!(Copper::INSTR_TYPE_MASK, 0x0001);
+    assert_eq!(Copper::WAIT_SKIP_MASK, 0x0001);
+    assert_eq!(Copper::BFD_MASK, 0x8000);
+    assert_eq!(Copper::VPOS_FORCE_BIT7, 0x0080);
+    assert_eq!(Copper::HPOS_COMPARE_MASK, 0x00FE);
+    assert_eq!(Copper::MOVE_REG_MASK, 0x01FE);
+    assert_eq!(Copper::CYCLE_E0_DMA_LOCKOUT, 0x00E0);
+    assert_eq!(Copper::WAKEUP_HPOS_LEAD, 2);
+    assert_eq!(Copper::CDANG_REGISTER_LIMIT, 0x0080);
+    assert_eq!(Copper::OCS_MIN_REGISTER_LIMIT, 0x0040);
+    assert_eq!(Copper::ADDRESS_MASK_512K, 0x0007_FFFE);
 }
 
 #[test]

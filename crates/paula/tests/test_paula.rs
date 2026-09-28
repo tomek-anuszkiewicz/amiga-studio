@@ -35,6 +35,7 @@ fn test_paula_reset_state() {
     paula.reset();
     assert_eq!(paula.interrupts.intena, 0);
     assert_eq!(paula.pending_interrupt_level(), 0);
+    assert_eq!(Paula::MUTATION_CAPACITY, 32);
 }
 
 #[test]

@@ -12,9 +12,6 @@ pub use serial::SerialPort;
 use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
 use serde::{Deserialize, Serialize};
 
-/// Fixed-capacity in-flight register mutation buffer for Paula (covers audio, disk, uart, int)
-const PAULA_MUTATION_CAPACITY: usize = 32;
-
 /// Paula custom chip coordinator
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Paula {
@@ -50,7 +47,7 @@ pub struct Paula {
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
-    pub mutations: [Option<DelayedMutation>; PAULA_MUTATION_CAPACITY],
+    pub mutations: [Option<DelayedMutation>; Paula::MUTATION_CAPACITY],
 }
 
 pub const DSKBYTR_DSKBYT: u16 = 0x8000;
@@ -69,6 +66,9 @@ impl Default for Paula {
 }
 
 impl Paula {
+    /// Fixed-capacity in-flight register mutation buffer for Paula (covers audio, disk, uart, int)
+    pub const MUTATION_CAPACITY: usize = 32;
+
     /// Creates a new Paula instance
     pub fn new() -> Self {
         Self {
@@ -88,7 +88,7 @@ impl Paula {
             dma_active: false,
             dma_enables: 0,
             dma_master: false,
-            mutations: [None; PAULA_MUTATION_CAPACITY],
+            mutations: [None; Self::MUTATION_CAPACITY],
         }
     }
 
@@ -110,7 +110,7 @@ impl Paula {
         self.dma_active = false;
         self.dma_enables = 0;
         self.dma_master = false;
-        self.mutations = [None; PAULA_MUTATION_CAPACITY];
+        self.mutations = [None; Self::MUTATION_CAPACITY];
     }
 
     /// Advances Paula timers and processes in-flight register mutations by 1 Color Clock.

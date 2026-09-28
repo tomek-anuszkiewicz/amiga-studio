@@ -14,21 +14,6 @@ use rtc::RtcMsm6242b;
 
 pub use physical_memory;
 
-/// Physical memory map constants decoded by Gary logic
-pub const BANK_CIA: u8 = 0xBF;
-pub const BANK_RTC: u8 = 0xDC;
-pub const BANK_CUSTOM: u8 = 0xDF;
-
-pub const CIA_B_START: u32 = 0xBFD000;
-pub const CIA_B_END: u32 = 0xBFDF00;
-pub const CIA_A_START: u32 = 0xBFE001;
-pub const CIA_A_END: u32 = 0xBFEF01;
-
-pub const RTC_START: u32 = 0xDC0000;
-pub const RTC_END: u32 = 0xDC003F;
-
-pub const CUSTOM_REG_OFFSET_MASK: u16 = 0x01FE;
-
 /// Zero-cost stack-allocated router implementing `AddressBus` across all subsystems
 #[derive(Debug)]
 pub struct MemoryBus<'a> {
@@ -42,10 +27,25 @@ pub struct MemoryBus<'a> {
 }
 
 impl<'a> MemoryBus<'a> {
+    /// Physical memory map constants decoded by Gary logic
+    pub const BANK_CIA: u8 = 0xBF;
+    pub const BANK_RTC: u8 = 0xDC;
+    pub const BANK_CUSTOM: u8 = 0xDF;
+
+    pub const CIA_B_START: u32 = 0xBFD000;
+    pub const CIA_B_END: u32 = 0xBFDF00;
+    pub const CIA_A_START: u32 = 0xBFE001;
+    pub const CIA_A_END: u32 = 0xBFEF01;
+
+    pub const RTC_START: u32 = 0xDC0000;
+    pub const RTC_END: u32 = 0xDC003F;
+
+    pub const CUSTOM_REG_OFFSET_MASK: u16 = 0x01FE;
+
     /// Reads a 16-bit custom register with live read side-effects (e.g. clearing CLXDAT, DSKBYTR)
     #[inline]
     pub fn read_custom_word(&mut self, offset: u16) -> u16 {
-        let offset = offset & CUSTOM_REG_OFFSET_MASK;
+        let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
         match offset {
             custom_reg::agnus::DMACONR => self.agnus.dmaconr(),
             custom_reg::agnus::VPOSR => self.agnus.vposr(),
@@ -76,7 +76,7 @@ impl<'a> MemoryBus<'a> {
     /// Reads a 16-bit custom register without side-effects for debugging inspection
     #[inline]
     pub fn read_custom_word_debug(&self, offset: u16) -> u16 {
-        let offset = offset & CUSTOM_REG_OFFSET_MASK;
+        let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
         match offset {
             custom_reg::agnus::DMACONR => self.agnus.dmaconr_debug(),
             custom_reg::agnus::VPOSR => self.agnus.vposr_debug(),
@@ -99,7 +99,7 @@ impl<'a> MemoryBus<'a> {
     /// Reads an 8-bit byte from CIA register space ($BF0000..$BFFFFF)
     fn read_cia_byte(&mut self, addr: u32) -> u8 {
         // CIA-B ($BFD000-$BFDF00): Even byte addresses (A0 = 0)
-        if (CIA_B_START..=CIA_B_END).contains(&addr) {
+        if (Self::CIA_B_START..=Self::CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 return self.cia_b.read_register(reg);
@@ -107,7 +107,7 @@ impl<'a> MemoryBus<'a> {
             return 0xFF;
         }
         // CIA-A ($BFE001-$BFEF01): Odd byte addresses (A0 = 1)
-        if (CIA_A_START..=CIA_A_END).contains(&addr) {
+        if (Self::CIA_A_START..=Self::CIA_A_END).contains(&addr) {
             if (addr & 1) == 1 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 return self.cia_a.read_register(reg);
@@ -119,14 +119,14 @@ impl<'a> MemoryBus<'a> {
 
     /// Reads an 8-bit byte from CIA register space without side-effects for debugging inspection
     pub fn read_cia_byte_debug(&self, addr: u32) -> u8 {
-        if (CIA_B_START..=CIA_B_END).contains(&addr) {
+        if (Self::CIA_B_START..=Self::CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 return self.cia_b.read_register_debug(reg);
             }
             return 0xFF;
         }
-        if (CIA_A_START..=CIA_A_END).contains(&addr) {
+        if (Self::CIA_A_START..=Self::CIA_A_END).contains(&addr) {
             if (addr & 1) == 1 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 return self.cia_a.read_register_debug(reg);
@@ -139,7 +139,7 @@ impl<'a> MemoryBus<'a> {
     /// Writes an 8-bit byte to CIA register space ($BF0000..$BFFFFF)
     fn write_cia_byte(&mut self, addr: u32, val: u8) {
         // CIA-B ($BFD000-$BFDF00)
-        if (CIA_B_START..=CIA_B_END).contains(&addr) {
+        if (Self::CIA_B_START..=Self::CIA_B_END).contains(&addr) {
             if (addr & 1) == 0 {
                 let reg = ((addr >> 8) & 0x0F) as u8;
                 self.cia_b.write_register(reg, val);
@@ -147,7 +147,7 @@ impl<'a> MemoryBus<'a> {
             return;
         }
         // CIA-A ($BFE001-$BFEF01)
-        if (CIA_A_START..=CIA_A_END).contains(&addr) && (addr & 1) == 1 {
+        if (Self::CIA_A_START..=Self::CIA_A_END).contains(&addr) && (addr & 1) == 1 {
             let reg = ((addr >> 8) & 0x0F) as u8;
             self.cia_a.write_register(reg, val);
             // CIA-A bit 0 of Port A ($BFE001) controls the low-memory overlay (_OVL)
@@ -164,7 +164,7 @@ impl<'a> MemoryBus<'a> {
     /// Writes a 16-bit word to custom register space with physical propagation delay.
     #[inline]
     pub fn write_custom_word(&mut self, offset: u16, val: u16) {
-        let offset = offset & CUSTOM_REG_OFFSET_MASK;
+        let offset = offset & Self::CUSTOM_REG_OFFSET_MASK;
         match offset {
             custom_reg::agnus::DMACON => {
                 self.agnus.write_register(custom_reg::agnus::DMACON, val);
@@ -224,7 +224,7 @@ impl<'a> MemoryBus<'a> {
     /// (D15..D8 and D7..D0) and written as a 16-bit word `(val << 8) | val`.
     #[inline(always)]
     pub fn write_custom_byte(&mut self, addr: u32, val: u8) {
-        let offset = (addr & CUSTOM_REG_OFFSET_MASK as u32) as u16;
+        let offset = (addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16;
         let word_val = ((val as u16) << 8) | (val as u16);
         self.write_custom_word(offset, word_val);
     }
@@ -242,8 +242,9 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            BANK_CUSTOM => {
-                let word = self.read_custom_word((addr & CUSTOM_REG_OFFSET_MASK as u32) as u16);
+            Self::BANK_CUSTOM => {
+                let word =
+                    self.read_custom_word((addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16);
                 let byte = if (addr & 1) == 0 {
                     (word >> 8) as u8
                 } else {
@@ -251,9 +252,9 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 };
                 BusResult::Ready(byte)
             }
-            BANK_CIA => BusResult::Ready(self.read_cia_byte(addr)),
-            BANK_RTC => {
-                if (RTC_START..=RTC_END).contains(&addr) {
+            Self::BANK_CIA => BusResult::Ready(self.read_cia_byte(addr)),
+            Self::BANK_RTC => {
+                if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     BusResult::Ready(self.rtc.read_byte(addr))
                 } else {
                     BusResult::Ready(self.mem.unmapped_byte())
@@ -268,22 +269,22 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            BANK_CUSTOM => BusResult::Ready(
-                self.read_custom_word((addr & CUSTOM_REG_OFFSET_MASK as u32) as u16),
+            Self::BANK_CUSTOM => BusResult::Ready(
+                self.read_custom_word((addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16),
             ),
-            BANK_CIA => {
+            Self::BANK_CIA => {
                 let b0 = self.read_cia_byte(addr);
                 let b1 = self.read_cia_byte(addr.wrapping_add(1));
                 BusResult::Ready(u16::from_be_bytes([b0, b1]))
             }
-            BANK_RTC => {
-                let b0 = if (RTC_START..=RTC_END).contains(&addr) {
+            Self::BANK_RTC => {
+                let b0 = if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.read_byte(addr)
                 } else {
                     self.mem.unmapped_byte()
                 };
                 let next_addr = addr.wrapping_add(1);
-                let b1 = if (RTC_START..=RTC_END).contains(&next_addr) {
+                let b1 = if (Self::RTC_START..=Self::RTC_END).contains(&next_addr) {
                     self.rtc.read_byte(next_addr)
                 } else {
                     self.mem.unmapped_byte()
@@ -299,16 +300,16 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            BANK_CUSTOM => {
+            Self::BANK_CUSTOM => {
                 self.write_custom_byte(addr, val);
                 BusResult::Ready(())
             }
-            BANK_CIA => {
+            Self::BANK_CIA => {
                 self.write_cia_byte(addr, val);
                 BusResult::Ready(())
             }
-            BANK_RTC => {
-                if (RTC_START..=RTC_END).contains(&addr) {
+            Self::BANK_RTC => {
+                if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.write_byte(addr, val);
                 }
                 BusResult::Ready(())
@@ -322,24 +323,24 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            BANK_CUSTOM => {
-                let offset = (addr & CUSTOM_REG_OFFSET_MASK as u32) as u16;
+            Self::BANK_CUSTOM => {
+                let offset = (addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16;
                 self.write_custom_word(offset, val);
                 BusResult::Ready(())
             }
-            BANK_CIA => {
+            Self::BANK_CIA => {
                 let bytes = val.to_be_bytes();
                 self.write_cia_byte(addr, bytes[0]);
                 self.write_cia_byte(addr.wrapping_add(1), bytes[1]);
                 BusResult::Ready(())
             }
-            BANK_RTC => {
+            Self::BANK_RTC => {
                 let bytes = val.to_be_bytes();
-                if (RTC_START..=RTC_END).contains(&addr) {
+                if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.write_byte(addr, bytes[0]);
                 }
                 let next_addr = addr.wrapping_add(1);
-                if (RTC_START..=RTC_END).contains(&next_addr) {
+                if (Self::RTC_START..=Self::RTC_END).contains(&next_addr) {
                     self.rtc.write_byte(next_addr, bytes[1]);
                 }
                 BusResult::Ready(())
@@ -353,22 +354,22 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & 0x00FF_FFFF;
         let bank = (addr >> 16) as u8;
         match bank {
-            BANK_CUSTOM => {
-                self.read_custom_word_debug((addr & CUSTOM_REG_OFFSET_MASK as u32) as u16)
+            Self::BANK_CUSTOM => {
+                self.read_custom_word_debug((addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16)
             }
-            BANK_CIA => {
+            Self::BANK_CIA => {
                 let b0 = self.read_cia_byte_debug(addr);
                 let b1 = self.read_cia_byte_debug(addr.wrapping_add(1));
                 u16::from_be_bytes([b0, b1])
             }
-            BANK_RTC => {
-                let b0 = if (RTC_START..=RTC_END).contains(&addr) {
+            Self::BANK_RTC => {
+                let b0 = if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.read_byte(addr)
                 } else {
                     self.mem.unmapped_byte()
                 };
                 let next_addr = addr.wrapping_add(1);
-                let b1 = if (RTC_START..=RTC_END).contains(&next_addr) {
+                let b1 = if (Self::RTC_START..=Self::RTC_END).contains(&next_addr) {
                     self.rtc.read_byte(next_addr)
                 } else {
                     self.mem.unmapped_byte()

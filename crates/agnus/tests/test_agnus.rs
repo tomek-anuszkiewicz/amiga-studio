@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use agnus::{Agnus, AgnusModel, NTSC_LONG_LINE_CCKS, NTSC_SHORT_LINE_CCKS, PAL_LINE_CCKS};
+use agnus::{Agnus, AgnusModel};
 
 #[test]
 fn test_agnus_beam_progression() {
@@ -9,7 +9,7 @@ fn test_agnus_beam_progression() {
     assert_eq!(agnus.vpos, 0);
 
     // Step through one full horizontal scanline (227 CCKs)
-    for _ in 0..PAL_LINE_CCKS {
+    for _ in 0..Agnus::PAL_LINE_CCKS {
         agnus.step_cck();
     }
     assert_eq!(agnus.vpos, 1);
@@ -184,14 +184,14 @@ fn test_agnus_blitter_copper_step_order() {
 
 #[test]
 fn test_agnus_ntsc_line_ccks() {
-    assert_eq!(NTSC_SHORT_LINE_CCKS, 227);
-    assert_eq!(NTSC_LONG_LINE_CCKS, 228);
-    assert_eq!(PAL_LINE_CCKS, 227);
+    assert_eq!(Agnus::NTSC_SHORT_LINE_CCKS, 227);
+    assert_eq!(Agnus::NTSC_LONG_LINE_CCKS, 228);
+    assert_eq!(Agnus::PAL_LINE_CCKS, 227);
 }
 
 #[test]
 fn test_agnus_pipeline_lead_constant() {
-    assert_eq!(agnus::VHPOSR_PIPELINE_LEAD_CCKS, 5);
+    assert_eq!(Agnus::VHPOSR_PIPELINE_LEAD_CCKS, 5);
 }
 
 #[test]
