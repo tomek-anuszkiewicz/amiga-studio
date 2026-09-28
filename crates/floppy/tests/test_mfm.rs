@@ -188,3 +188,22 @@ fn test_dskbytr_peek_and_read_data_bits() {
     // Bit 15 cleared after read
     assert_eq!(controller.peek_dskbytr(), 0x10A5);
 }
+
+#[test]
+fn test_dskbytr_poll_pending() {
+    let mut controller = FloppyController::new();
+
+    // No byte ready initially
+    assert_eq!(controller.poll_pending_dskbytr(), None);
+
+    // Byte ready with sync match and data 0x42
+    controller.dskbytr = floppy::DSKBYTR_DSKBYT | floppy::DSKBYTR_WORDEQUAL | 0x42;
+    assert_eq!(
+        controller.poll_pending_dskbytr(),
+        Some(floppy::DSKBYTR_DSKBYT | floppy::DSKBYTR_WORDEQUAL | 0x42)
+    );
+
+    // After polling, bit 15 is cleared, subsequent poll yields None
+    assert_eq!(controller.poll_pending_dskbytr(), None);
+    assert_eq!(controller.dskbytr & floppy::DSKBYTR_DSKBYT, 0);
+}

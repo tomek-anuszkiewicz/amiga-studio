@@ -12,6 +12,18 @@ const CCK_PER_ECLOCK: u8 = 5;
 /// Total number of 8520 registers
 const CIA_REGISTER_COUNT: usize = 16;
 
+/// CIA-A Port A bit 6: /FIR0 (Port 1 left mouse button, active low)
+pub const CIAA_PRA_FIR0: u8 = 0x40;
+
+/// CIA-A Port A bit 7: /FIR1 (Port 2 joystick fire 1, active low)
+pub const CIAA_PRA_FIR1: u8 = 0x80;
+
+/// CIA-A Port A pin mask for game ports primary fire buttons (bits 6..7: /FIR0, /FIR1)
+pub const CIAA_PRA_FIRE_MASK: u8 = CIAA_PRA_FIR0 | CIAA_PRA_FIR1;
+
+/// CIA-A Port A pin mask for floppy drive status sensing lines (bits 2..5: _RDY, _TK0, _WPROT, _CHNG)
+pub const CIAA_PRA_FLOPPY_SENSE_MASK: u8 = 0x3C;
+
 /// CIA chip identity (CIA-A or CIA-B)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum CiaId {

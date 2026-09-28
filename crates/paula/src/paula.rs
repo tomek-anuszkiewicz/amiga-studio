@@ -53,8 +53,11 @@ pub struct Paula {
     pub mutations: [Option<DelayedMutation>; PAULA_MUTATION_CAPACITY],
 }
 
+pub const DSKBYTR_DSKBYT: u16 = 0x8000;
 pub const DSKBYTR_DMAON: u16 = 0x4000;
 pub const DSKBYTR_DISKWRITE: u16 = 0x2000;
+pub const DSKBYTR_WORDEQUAL: u16 = 0x1000;
+pub const DSKBYTR_DATA_BYTE: u16 = 0x00FF;
 pub const DSKBYTR_DATA_MASK: u16 = 0x90FF;
 pub const DSKLEN_WRITE_FLAG: u16 = 0x4000;
 pub const DSKBYTR_DSKEN: u16 = 0x0010;
@@ -182,15 +185,22 @@ impl Paula {
     #[inline]
     pub fn read_dskbytr(&mut self) -> u16 {
         let val = self.peek_dskbytr();
-        self.dskbytr &= !0x8000;
+        self.dskbytr &= !DSKBYTR_DSKBYT;
         val
+    }
+
+    /// Latches newly deserialized MFM data from the floppy drive into DSKBYTR,
+    /// preserving Paula's internal DMAON and DISKWRITE status bits.
+    #[inline]
+    pub fn latch_floppy_dskbytr(&mut self, floppy_bits: u16) {
+        self.dskbytr = (self.dskbytr & !DSKBYTR_DATA_MASK) | (floppy_bits & DSKBYTR_DATA_MASK);
     }
 
     /// Action method: latches a new deserialized MFM byte from the floppy drive bitstream
     #[inline]
     pub fn set_disk_byte(&mut self, byte: u8, sync_matched: bool) {
-        let sync_bit = if sync_matched { 0x1000 } else { 0 };
-        self.dskbytr = 0x8000 | sync_bit | (byte as u16);
+        let sync_bit = if sync_matched { DSKBYTR_WORDEQUAL } else { 0 };
+        self.dskbytr = DSKBYTR_DSKBYT | sync_bit | (byte as u16);
     }
 
     /// Assembles composite live DSKBYTR status from raw read word, DSKLEN, and Paula DMA enables.

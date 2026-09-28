@@ -166,12 +166,37 @@ fn test_paula_dskbytr_native_methods() {
     assert_eq!(paula.peek_dskbytr(), 0xF042);
     assert_eq!(paula.read_register(0x01A), 0xF042);
     // Ensure peek did not clear bit 15
-    assert_eq!(paula.dskbytr & 0x8000, 0x8000);
+    assert_eq!(paula.dskbytr & paula::DSKBYTR_DSKBYT, paula::DSKBYTR_DSKBYT);
 
     // Read with Clear-on-Read
     assert_eq!(paula.read_dskbytr(), 0xF042);
     // Bit 15 is now cleared in live register
-    assert_eq!(paula.dskbytr & 0x8000, 0);
+    assert_eq!(paula.dskbytr & paula::DSKBYTR_DSKBYT, 0);
     // Subsequent peek shows 0x7042
     assert_eq!(paula.peek_dskbytr(), 0x7042);
+}
+
+#[test]
+fn test_paula_latch_floppy_dskbytr() {
+    let mut paula = Paula::new();
+    paula.dma_master = true;
+    paula.dma_enables = paula::DSKBYTR_DSKEN;
+    paula.dsklen = paula::DSKLEN_WRITE_FLAG;
+
+    // Initially, composite peek reflects Paula internal flags (DMAON | DISKWRITE)
+    assert_eq!(
+        paula.peek_dskbytr(),
+        paula::DSKBYTR_DMAON | paula::DSKBYTR_DISKWRITE
+    );
+
+    // Latch external floppy word: DSKBYT | WORDEQUAL | byte 0x5A
+    let floppy_word = paula::DSKBYTR_DSKBYT | paula::DSKBYTR_WORDEQUAL | 0x5A;
+    paula.latch_floppy_dskbytr(floppy_word);
+
+    // Latch must incorporate floppy data without clobbering internal flags
+    assert_eq!(
+        paula.peek_dskbytr(),
+        paula::DSKBYTR_DMAON | paula::DSKBYTR_DISKWRITE | floppy_word
+    );
+    assert_eq!(paula.dskbytr & paula::DSKBYTR_DATA_MASK, floppy_word);
 }

@@ -168,25 +168,20 @@ impl A500Machine {
             self.floppy.handle_ciab_port_b_write(prb);
         }
 
-        // 2. Floppy disk sensing lines -> CIA-A Port A bits 2..5 (mask 0x3C)
+        // 2. Floppy disk sensing lines -> CIA-A Port A bits 2..5 (_RDY, _TK0, _WPROT, _CHNG)
         let floppy_inputs = self.floppy.sample_ciaa_port_a_inputs();
-        self.cia_a.set_input_pins_a(floppy_inputs, 0x3C);
+        self.cia_a
+            .set_input_pins_a(floppy_inputs, cia::CIAA_PRA_FLOPPY_SENSE_MASK);
 
         // 3. Floppy MFM stream / byte ready -> Paula DSKBYTR
-        if (self.floppy.dskbytr & 0x8000) != 0 {
-            self.paula.dskbytr = (self.paula.dskbytr & !0x90FF) | (self.floppy.dskbytr & 0x90FF);
-            self.floppy.dskbytr &= !0x8000;
+        if let Some(floppy_byte) = self.floppy.poll_pending_dskbytr() {
+            self.paula.latch_floppy_dskbytr(floppy_byte);
         }
 
-        // 4. Game ports fire buttons -> CIA-A Port A bits 6..7 (mask 0xC0, active low)
-        let mut fire_pins = 0xC0;
-        if self.game_ports.fire1_port1() {
-            fire_pins &= !0x40; // Bit 6 = /FIR0 (Port 1 left mouse button)
-        }
-        if self.game_ports.fire1_port2() {
-            fire_pins &= !0x80; // Bit 7 = /FIR1 (Port 2 joystick fire 1)
-        }
-        self.cia_a.set_input_pins_a(fire_pins, 0xC0);
+        // 4. Game ports fire buttons -> CIA-A Port A bits 6..7 (/FIR0, /FIR1, active low)
+        let fire_pins = self.game_ports.sample_ciaa_port_a_inputs();
+        self.cia_a
+            .set_input_pins_a(fire_pins, cia::CIAA_PRA_FIRE_MASK);
 
         // 5. Mouse/joystick quadrature counters -> Denise JOY0DAT & JOY1DAT
         self.denise.joy0dat = self.game_ports.joy0dat();
@@ -211,14 +206,16 @@ impl A500Machine {
         }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
 
-        // Physical Trace: Blitter completion (_BLITINT pin) -> Paula INTREQ bit 6 (mask 0x0040)
+        // Physical Trace: Blitter completion (_BLITINT pin) -> Paula INTREQ bit 6 (IRQ_BLIT)
         if self.agnus.poll_blitter_irq() {
-            self.paula.set_interrupt_request(0x0040);
+            self.paula
+                .set_interrupt_request(paula::interrupts::IRQ_BLIT);
         }
 
-        // Physical Trace: Vertical blanking interval (_VSYNC pin) -> Paula INTREQ bit 5 (mask 0x0020) & CIA-A TOD tick
+        // Physical Trace: Vertical blanking interval (_VSYNC pin) -> Paula INTREQ bit 5 (IRQ_VERTB) & CIA-A TOD tick
         if self.agnus.poll_vblank_irq() {
-            self.paula.set_interrupt_request(0x0020);
+            self.paula
+                .set_interrupt_request(paula::interrupts::IRQ_VERTB);
             self.cia_a.tick_tod();
         }
 
@@ -242,16 +239,18 @@ impl A500Machine {
             );
         }
 
-        // Cross-Chip Signal: Disk block DMA finished -> Paula INTREQ bit 1 (mask 0x0002)
+        // Cross-Chip Signal: Disk block DMA finished -> Paula INTREQ bit 1 (IRQ_DSKBLK)
         if self.floppy.poll_dskblk_irq() {
-            self.paula.set_interrupt_request(0x0002);
+            self.paula
+                .set_interrupt_request(paula::interrupts::IRQ_DSKBLK);
         }
 
         // Cross-Chip Signal: Audio channel buffer loop (AUDxDSR) -> Agnus audpt reload & Paula interrupt
         for ch in 0..4 {
             if self.paula.poll_audio_restart(ch) {
                 self.agnus.reload_audio_ptr(ch);
-                self.paula.set_interrupt_request(1u16 << (7 + ch));
+                self.paula
+                    .set_interrupt_request(paula::interrupts::irq_aud(ch));
             }
         }
 

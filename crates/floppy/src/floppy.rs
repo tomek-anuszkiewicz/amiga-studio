@@ -16,8 +16,11 @@ const TRACKS_PER_DISK: usize = (CYLINDERS_PER_DISK as usize) * (HEADS_PER_DISK a
 pub const SECTORS_PER_TRACK: usize = 11;
 pub const SECTOR_DATA_BYTES: usize = 512;
 pub const FORMATTED_DISK_BYTES: usize = TRACKS_PER_DISK * SECTORS_PER_TRACK * SECTOR_DATA_BYTES; // 901,120 bytes (880 KB)
+pub const DSKBYTR_DSKBYT: u16 = 0x8000;
 pub const DSKBYTR_DMAON: u16 = 0x4000;
 pub const DSKBYTR_DISKWRITE: u16 = 0x2000;
+pub const DSKBYTR_WORDEQUAL: u16 = 0x1000;
+pub const DSKBYTR_DATA_BYTE: u16 = 0x00FF;
 pub const DSKBYTR_DATA_MASK: u16 = 0x90FF;
 
 /// Individual 3.5-inch floppy disk drive (DF0: to DF3:)
@@ -291,15 +294,28 @@ impl FloppyController {
     /// atomically clearing bit 15 (`DSKBYT`) per Clear-on-Read hardware semantics.
     #[inline]
     pub fn read_dskbytr(&mut self) -> u16 {
-        let val = self.dskbytr & (DSKBYTR_DATA_MASK | 0x8000 | 0x1000);
-        self.dskbytr &= !0x8000;
+        let val = self.dskbytr & DSKBYTR_DATA_MASK;
+        self.dskbytr &= !DSKBYTR_DSKBYT;
         val
     }
 
     /// Peeks composite DSKBYTR without clearing bit 15 (for debuggers and UI)
     #[inline]
     pub fn peek_dskbytr(&self) -> u16 {
-        self.dskbytr & (DSKBYTR_DATA_MASK | 0x8000 | 0x1000)
+        self.dskbytr & DSKBYTR_DATA_MASK
+    }
+
+    /// Polls pending deserialized MFM byte and sync status if a new byte has matured,
+    /// atomically acknowledging (clearing) the byte ready flag.
+    #[inline]
+    pub fn poll_pending_dskbytr(&mut self) -> Option<u16> {
+        if (self.dskbytr & DSKBYTR_DSKBYT) != 0 {
+            let data = self.dskbytr & DSKBYTR_DATA_MASK;
+            self.dskbytr &= !DSKBYTR_DSKBYT;
+            Some(data)
+        } else {
+            None
+        }
     }
 
     /// Reads live DSKBYTR with clear-on-read side effect

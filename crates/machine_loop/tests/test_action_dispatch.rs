@@ -346,20 +346,53 @@ fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
     assert!(machine.floppy.drives[0].motor_on);
 
     // Simulate floppy controller shifting in MFM byte 0x42 with sync match (bit 12) and byte ready (bit 15)
-    machine.floppy.dskbytr = 0x9042;
+    machine.floppy.dskbytr = floppy::DSKBYTR_DSKBYT | floppy::DSKBYTR_WORDEQUAL | 0x42;
 
     // Step machine: poll_peripheral_pins transfers byte into Paula and clears bit 15 in floppy
     machine.step_cck();
-    assert_eq!(machine.floppy.dskbytr & 0x8000, 0);
-    assert_eq!(machine.paula.dskbytr & 0x90FF, 0x9042);
+    assert_eq!(machine.floppy.dskbytr & floppy::DSKBYTR_DSKBYT, 0);
+    assert_eq!(
+        machine.paula.dskbytr & paula::DSKBYTR_DATA_MASK,
+        paula::DSKBYTR_DSKBYT | paula::DSKBYTR_WORDEQUAL | 0x42
+    );
 
     // CPU reads DSKBYTR from Paula via memory bus
     let val = match machine.memory_bus().read_word(0xDFF01A) {
         BusResult::Ready(v) => v,
         _ => panic!("Expected Ready"),
     };
-    assert_eq!(val & 0x90FF, 0x9042);
+    assert_eq!(
+        val & paula::DSKBYTR_DATA_MASK,
+        paula::DSKBYTR_DSKBYT | paula::DSKBYTR_WORDEQUAL | 0x42
+    );
 
     // Paula bit 15 is cleared on read
-    assert_eq!(machine.paula.dskbytr & 0x8000, 0);
+    assert_eq!(machine.paula.dskbytr & paula::DSKBYTR_DSKBYT, 0);
+}
+
+#[test]
+fn test_game_ports_fire_buttons_ciaa_pra_polling() {
+    let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+
+    // Default: both fire pins float high (1)
+    machine.poll_peripheral_pins();
+    assert_eq!(
+        machine.cia_a.pra & cia::CIAA_PRA_FIRE_MASK,
+        cia::CIAA_PRA_FIRE_MASK
+    );
+
+    // Press mouse left button (Port 1 /FIR0)
+    machine.game_ports.set_mouse_buttons(true, false, false);
+    machine.poll_peripheral_pins();
+    assert_eq!(
+        machine.cia_a.pra & cia::CIAA_PRA_FIRE_MASK,
+        cia::CIAA_PRA_FIRE_MASK & !cia::CIAA_PRA_FIR0
+    );
+
+    // Press joystick fire (Port 2 /FIR1)
+    machine
+        .game_ports
+        .set_joystick(false, false, false, false, true, false);
+    machine.poll_peripheral_pins();
+    assert_eq!(machine.cia_a.pra & cia::CIAA_PRA_FIRE_MASK, 0);
 }

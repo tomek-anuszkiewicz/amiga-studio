@@ -147,3 +147,11 @@ fn test_controller_reset() {
     assert_eq!(ctrl.pending_level(), 0);
     assert_eq!(ctrl.pending_mask(), 0);
 }
+
+#[test]
+fn test_irq_aud_channel_calculation() {
+    assert_eq!(irq_aud(0), IRQ_AUD0);
+    assert_eq!(irq_aud(1), IRQ_AUD1);
+    assert_eq!(irq_aud(2), IRQ_AUD2);
+    assert_eq!(irq_aud(3), IRQ_AUD3);
+}

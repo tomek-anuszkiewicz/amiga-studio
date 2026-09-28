@@ -11,6 +11,15 @@ pub use mouse::{self, Mouse};
 
 use serde::{Deserialize, Serialize};
 
+/// CIA-A Port A bit 6: /FIR0 (Port 1 left mouse button, active low)
+pub const CIAA_PRA_FIR0: u8 = 0x40;
+
+/// CIA-A Port A bit 7: /FIR1 (Port 2 joystick fire 1, active low)
+pub const CIAA_PRA_FIR1: u8 = 0x80;
+
+/// CIA-A Port A mask for primary fire buttons (bits 6 and 7)
+pub const CIAA_PRA_FIRE_MASK: u8 = CIAA_PRA_FIR0 | CIAA_PRA_FIR1;
+
 /// Controller device plugged into a 9-pin game port
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PortDevice {
@@ -240,6 +249,22 @@ impl GamePorts {
     #[inline]
     pub fn fire1_port2(&self) -> bool {
         self.state.port2.is_fire1_pressed()
+    }
+
+    /// Samples CIA-A Port A fire button input pins (bits 6 and 7, active low).
+    ///
+    /// Bit 6 = /FIR0 (Port 1 left mouse button, 0 = pressed, 1 = released)
+    /// Bit 7 = /FIR1 (Port 2 joystick fire 1, 0 = pressed, 1 = released)
+    #[inline]
+    pub fn sample_ciaa_port_a_inputs(&self) -> u8 {
+        let mut fire_pins = CIAA_PRA_FIRE_MASK;
+        if self.fire1_port1() {
+            fire_pins &= !CIAA_PRA_FIR0;
+        }
+        if self.fire1_port2() {
+            fire_pins &= !CIAA_PRA_FIR1;
+        }
+        fire_pins
     }
 
     // --- Host Input Routing Helpers ---

@@ -228,3 +228,32 @@ fn test_port_device_methods_and_pot_registers() {
     assert_eq!(gp.pot0dat(), 0x1234);
     assert_eq!(gp.pot1dat(), 0x5678);
 }
+
+#[test]
+fn test_sample_ciaa_port_a_inputs() {
+    let mut gp = GamePorts::new();
+
+    // Default: both fire buttons unpressed -> active low pins float high (1)
+    assert_eq!(
+        gp.sample_ciaa_port_a_inputs(),
+        game_ports::CIAA_PRA_FIRE_MASK
+    );
+
+    // Press Port 1 left mouse button -> bit 6 pulled low (0)
+    gp.set_mouse_buttons(true, false, false);
+    assert_eq!(
+        gp.sample_ciaa_port_a_inputs(),
+        game_ports::CIAA_PRA_FIRE_MASK & !game_ports::CIAA_PRA_FIR0
+    );
+
+    // Press Port 2 joystick fire 1 -> bit 7 also pulled low (0)
+    gp.set_joystick(false, false, false, false, true, false);
+    assert_eq!(gp.sample_ciaa_port_a_inputs(), 0);
+
+    // Release mouse button, keep joystick fire pressed
+    gp.set_mouse_buttons(false, false, false);
+    assert_eq!(
+        gp.sample_ciaa_port_a_inputs(),
+        game_ports::CIAA_PRA_FIRE_MASK & !game_ports::CIAA_PRA_FIR1
+    );
+}

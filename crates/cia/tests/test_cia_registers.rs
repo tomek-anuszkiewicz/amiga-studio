@@ -101,3 +101,11 @@ fn test_cia_port_output_polling() {
     assert_eq!(cia.poll_pra_output(), Some(0x5A));
     assert_eq!(cia.poll_pra_output(), None);
 }
+
+#[test]
+fn test_ciaa_pra_pin_masks() {
+    assert_eq!(cia::CIAA_PRA_FIR0, 0x40);
+    assert_eq!(cia::CIAA_PRA_FIR1, 0x80);
+    assert_eq!(cia::CIAA_PRA_FIRE_MASK, 0xC0);
+    assert_eq!(cia::CIAA_PRA_FLOPPY_SENSE_MASK, 0x3C);
+}

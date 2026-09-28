@@ -33,6 +33,12 @@ pub const IRQ_AUD2: u16 = 1 << 9;
 /// Level 4: Audio channel 3 (AUD3)
 pub const IRQ_AUD3: u16 = 1 << 10;
 
+/// Returns the interrupt request bitmask for the specified audio channel (0..3)
+#[inline(always)]
+pub const fn irq_aud(channel: usize) -> u16 {
+    (IRQ_AUD0 as u32).wrapping_shl(channel as u32) as u16
+}
+
 /// Level 5: Serial receive buffer full (RBF)
 pub const IRQ_RBF: u16 = 1 << 11;
 /// Level 5: Floppy disk sync pattern matched (DSKSYN)
