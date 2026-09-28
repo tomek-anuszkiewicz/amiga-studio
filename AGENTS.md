@@ -108,7 +108,7 @@ Operational rules are modularized under `.agents/rules/` across two tiers:
   - Milestone pre-flight: `python tools/harness/pre_flight.py --milestone` (Code Quality 3-4, Hardware Quality 3-5, Docs Quality 100%).
   - Semantic parity: run [`audit-semantic-parity`](.agents/skills/audit-semantic-parity/SKILL.md) on modified subsystems.
   - Design docs sync & checkpoint bump per [`docs-maintenance.md`](.agents/rules/docs-maintenance.md).
-  - Log milestone completion in [DIARY.md](DIARY.md) (Section 10) via `tools/harness/log_diary.py` and run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) on major phase completions.
+  - Log milestone completion in [DIARY.md](DIARY.md) (Section 10) via `tools/harness/log_diary.py` and run [`compact-diary`](.agents/skills/compact-diary/SKILL.md) on minor points or major phase completions.
   - Prune completed steps from [ROADMAP.md](ROADMAP.md) (zero retention) per [`roadmap-maintenance.md`](.agents/rules/roadmap-maintenance.md).
 - **Verification Suites & Invariants:**
   - Single-Step CPU Validation: Run `$env:SINGLESTEP_FULL = "1"; cargo test -p test_runner --test test_singlestep` on any `crates/cpu` changes.

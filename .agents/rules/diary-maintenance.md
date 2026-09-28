@@ -58,5 +58,6 @@ Git commits record routine changes. `DIARY.md` records the verified outcome, tec
 
 ## 5. Milestone Diary Compaction Gate
 
-Upon completing a major roadmap milestone in [`ROADMAP.md`](../../ROADMAP.md):
-- Invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) to synthesize older completed milestone entries into high-level architectural digests, preserving evolutionary rationale and key decisions while keeping recent entries granular.
+Upon completing minor roadmap points (Step 1.1, 1.2, 1.3...) or major roadmap milestones in [`ROADMAP.md`](../../ROADMAP.md):
+- Invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) whenever Section 10 grows unwieldy (or exceeds operational thresholds ~150 KB / 1,500 lines), synthesizing settled historical milestone entries into high-level architectural digests while preserving active and recent entries in full granular detail.
+

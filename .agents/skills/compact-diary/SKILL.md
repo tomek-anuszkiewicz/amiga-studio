@@ -34,8 +34,11 @@ Whenever an agent finishes a minor roadmap point (e.g. Step 1.1, 1.2, 2.1) or ma
 
 ## 2. When to Trigger Historical Diary Compaction
 
-- **Mandatory Trigger:** Completion of a major milestone in [ROADMAP.md](../../../ROADMAP.md) (e.g. Phase 1 Custom Chipset milestones).
+- **Triggers:**
+  - Completion of a minor roadmap point (e.g. Step 1.1, 1.2, 1.3, 1.4) or major milestone in [ROADMAP.md](../../../ROADMAP.md).
+  - Whenever Section 10 grows unwieldy (e.g. exceeds operational threshold of ~150 KB or > 1,500 lines).
 - **Goal:** Prevent token bloat and maintain scannability while permanently safeguarding the architectural rationale, problem-solving insights, and evolutionary context of the emulator.
+
 
 ---
 
