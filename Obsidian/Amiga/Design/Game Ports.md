@@ -137,17 +137,17 @@ The state implements `serde::Serialize` and `serde::Deserialize` with zero point
 
 ## 4. Host Input Event Routing
 
-Host UI frameworks (such as egui or SDL) route physical keyboard, mouse, and gamepad events to the emulated machine through dedicated forwarder helpers:
+Host UI frameworks (such as egui or SDL) route physical keyboard, mouse, and gamepad events to the emulated machine through the public `game_ports` subsystem:
 
 ```rust
 // Relative mouse delta routing
-machine.apply_mouse_delta(dx, dy);
+machine.game_ports.apply_mouse_delta(dx, dy);
 
 // Mouse button state routing (left, right, middle)
-machine.set_mouse_buttons(left, right, middle);
+machine.game_ports.set_mouse_buttons(left, right, middle);
 
 // Joystick directional switches and dual fire buttons
-machine.set_joystick(up, down, left, right, fire1, fire2);
+machine.game_ports.set_joystick(up, down, left, right, fire1, fire2);
 ```
 
 The `game_ports` subsystem automatically routes mouse deltas to whichever port currently hosts a mouse and joystick events to whichever port currently hosts a joystick.

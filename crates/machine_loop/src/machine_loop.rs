@@ -161,33 +161,6 @@ impl A500Machine {
         self.cpu.state.ipl = self.resolve_ipl();
     }
 
-    /// Applies relative mouse movement deltas to the connected mouse (Port 1 default)
-    #[inline]
-    pub fn apply_mouse_delta(&mut self, dx: i32, dy: i32) {
-        self.game_ports.apply_mouse_delta(dx, dy);
-    }
-
-    /// Sets mouse button states on the connected mouse (Port 1 default)
-    #[inline]
-    pub fn set_mouse_buttons(&mut self, left: bool, right: bool, middle: bool) {
-        self.game_ports.set_mouse_buttons(left, right, middle);
-    }
-
-    /// Sets joystick directional switches and fire buttons on the connected joystick (Port 2 default)
-    #[inline]
-    pub fn set_joystick(
-        &mut self,
-        up: bool,
-        down: bool,
-        left: bool,
-        right: bool,
-        fire1: bool,
-        fire2: bool,
-    ) {
-        self.game_ports
-            .set_joystick(up, down, left, right, fire1, fire2);
-    }
-
     /// Resolves the highest pending interrupt level across Paula, CIA-A, and CIA-B
     #[inline]
     pub fn resolve_ipl(&self) -> u8 {

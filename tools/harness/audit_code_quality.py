@@ -68,8 +68,9 @@ HOST_IO_AND_SPEC_SYMBOLS = {
     # Host Keyboard Input & Protocol
     "key_down", "key_up", "poll_reset", "queue_powerup_stream", "has_pending_scancodes",
     "SCANCODE_LOST_SYNC", "SCANCODE_SELF_TEST_FAILED",
-    # Host Game Port / Mouse / Joystick Plugging
+    # Host Game Port / Mouse / Joystick Plugging & Input Injection
     "plug_port1", "plug_port2", "port1_mut", "port2_mut",
+    "apply_mouse_delta", "set_mouse_buttons", "set_joystick",
     # Host Parallel Port
     "write_data", "read_data",
     # Host Floppy Disk Drive Insertion
