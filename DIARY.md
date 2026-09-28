@@ -402,19 +402,71 @@ Every future modification or implementation task must append an entry following 
 
 ---
 
+### [2026-09-15 23:59 CEST] — Milestone Digest: Custom Chipset Silicon Calibration & Phase 1 vAmigaTS Verification
+- **Timestamp & Context**: 2026-09-14 to 2026-09-15 — Hardware circuit timing calibration across Agnus (Copper/Blitter), Denise display pipeline, and whole-machine integration testing.
+- **Affected Subsystems**: `crates/copper`, `crates/blitter`, `crates/denise`, `crates/machine_loop`, `crates/test_runner/src/vamiga`.
+- **What Was Changed (The Concrete Reality)**:
+  - Calibrated Agnus Copper execution timing: 1-CCK instruction fetch pipeline, comparator race conditions against beam counters, `CDANG` danger mode handling, and cycle `$E0` DMA denial in PAL display scanlines.
+  - Fully implemented Blitter HRM Table 6.2 decomposition: 256-minterm Boolean ALU, barrel shifters, modulo pointer advancement, unconnected channel latch calibration, and area fill logic with 100% pass on Blitter regression suites.
+  - Calibrated Denise pixel serializer and display window flip-flops (`DIWSTRT`/`DIWSTOP`), aligning pipeline latency and bitplane shifter arming.
+  - Implemented the 4-iteration whole-machine cascading integration verification framework in `crates/machine_loop/tests/`, testing Copper, Blitter, Denise, and interrupt cascades without external GUI overhead.
+- **Architectural Rationale & Trade-Offs**:
+  - *Silicon-Exact Comparator Matching:* Rather than using abstract programmatic coordinates, Copper beam comparisons evaluate on exact physical clock phases, mirroring Agnus comparator silicon.
+  - *Table 6.2 Truth Table Decomposition:* Modeling Blitter logic as a pure 256-entry lookup table avoids branch cascades and executes at peak throughput on modern host CPU architectures.
+- **Verification & Invariants**:
+  - 100% pass on vAmigaTS Blitter area fill and line drawer tests.
+  - Full suite of Tier 2 whole-machine integration tests passing in `crates/machine_loop/tests/`.
+
+---
+
+### [2026-09-16 12:00 CEST] — Milestone Digest: Multimodal Reference Ingestion & 14-Stage PDF-to-Markdown Pipeline
+- **Timestamp & Context**: 2026-09-15 to 2026-09-16 — Building the publication-grade technical manual ingestion and conversion pipeline.
+- **Affected Subsystems**: `.agents/skills/pdf-to-markdown/`, `tools/pdf/`, `Obsidian/Amiga/Reference/`.
+- **What Was Changed (The Concrete Reality)**:
+  - Architected and built the complete 14-stage stream-based technical PDF conversion pipeline driven by LLM multimodal capabilities.
+  - Integrated Gemini Vision OCR with integer millirange normalized bounding boxes (`box_2d`), producing clean layout geometry.
+  - Designed automated 3-way graphic triage: distinguishing technical schematics/block diagrams (processed into sidecar text descriptions), photos/illustrations, and register bitfield diagrams (transcribed into pure ASCII art / GFM tables).
+  - Built prioritized HTML table reconstruction with multi-cell row/colspan merging and automated multi-block table of contents (TOC) extraction.
+  - Established strict fail-fast error handling, single-pass page triage, and stage-workspace directory isolation.
+- **Architectural Rationale & Trade-Offs**:
+  - *Stream-Based 14-Stage Architecture:* Breaking document conversion into discrete stages (extract -> triage -> OCR -> tables -> proofread -> Markdown) prevents context window exhaustion and enables resume/recovery at stage boundaries.
+  - *ASCII Art for Registers over Bitmaps:* Converting hardware register layouts to text ASCII art makes them directly queryable by RAG and readable in terminal/IDE editors.
+- **Verification & Invariants**:
+  - Validated on 20 representative HRM and Amiga reference pages with 100% table and diagram fidelity.
+
+---
+
 ### [2026-09-16 23:59 CEST] — Milestone Digest: RAG Knowledge Base, Diagram Sidecars & Attractor Elimination
 - **Timestamp & Context**: 2026-09-16 — Offline knowledge retrieval, technical diagram processing, and codebase cleanup.
-- **Affected Subsystems**: `tools/rag`, `.agents/rules/amiga-rag.md`, `.agents/rules/asset-descriptions.md`, `.agents/rules/structural-root-cause.md`.
+- **Affected Subsystems**: `tools/amiga-rag-mcp-server/`, `tools/harness/rag_qdrant.py`, `.agents/rules/amiga-rag.md`, `.agents/rules/asset-descriptions.md`, `.agents/rules/structural-root-cause.md`.
 - **What Was Changed (The Concrete Reality)**:
-  - Integrated local vector-based RAG knowledge base (`tools/rag/`) indexing hardware documentation, chip schematics, and Obsidian design notes into a local Qdrant collection (`amiga`).
+  - Integrated local vector-based RAG knowledge base indexing hardware documentation, chip schematics, and Obsidian design notes into a local Qdrant collection (`amiga`).
   - Implemented offline diagram sidecar pipeline (`<image>.txt`), producing Git-tracked technical descriptions for custom chip schematics and block diagrams.
   - Codified the Structural Root-Cause Resolution rule, strictly prohibiting surface-level coordinate nudges or ad-hoc regex patches in favor of upstream data lifecycle and timing fixes.
+  - Codified Practitioner Voice & Tone guidelines, purging academic buzzwords in favor of concrete systems engineering terminology.
 - **Architectural Rationale & Trade-Offs**:
   - *Local Vector Search:* Eliminates reliance on cloud APIs and enables rapid, targeted retrieval of complex Amiga hardware register timings without manual page scanning.
   - *Sidecar Markdown Representation:* Storing visual circuit schematics as searchable text sidecars allows text-based agents and search indexes to reason about physical pinouts and bus topology directly.
 - **Verification & Invariants**:
-  - Offline CLI retrieval tests via `tools/harness/rag_search.py`.
+  - Offline CLI retrieval tests via `rag_qdrant`.
   - Sidecar validation in `audit_docs_quality.py`.
+
+---
+
+### [2026-09-17 23:59 CEST] — Milestone Digest: Tooling Ergonomics, Zero-Junction Invariant & Full Worktree Storage Isolation
+- **Timestamp & Context**: 2026-09-16 to 2026-09-17 — Git worktree engineering, zero-junction filesystem safety, and script standardization.
+- **Affected Subsystems**: `tools/bootstrap/`, `tools/harness/`, `.agents/skills/git-worktree/`, `docs/`.
+- **What Was Changed (The Concrete Reality)**:
+  - Eliminated NTFS directory junctions in Git worktree management, enforcing physical copying of untracked test assets, ROM slices, and `.env` to guarantee absolute filesystem isolation.
+  - Reorganized repository tooling into distinct directories: `tools/bootstrap/` (environment setup, dependency provisioning) and `tools/harness/` (testing, quality gates, benchmarking).
+  - Consolidated scattered bootstrap scripts into unified PowerShell entry points with standardized parameter validation and help texts.
+  - Unified developer-facing documentation into `docs/sources.md` and `docs/reference_documentation.md`, pruning redundant documentation fragments.
+- **Architectural Rationale & Trade-Offs**:
+  - *Zero NTFS Junctions:* Symlinks and junctions on Windows cause cross-worktree contamination when concurrent agent branches modify untracked scratch assets. Full physical isolation completely eliminates shared-state bugs.
+  - *Standardized Tooling Hierarchy:* Cleanly separating harness scripts from bootstrap scripts prevents accidental CI dependencies on setup tooling.
+- **Verification & Invariants**:
+  - Validated concurrent Git worktree creation and teardown with zero shared filesystem leakage.
+  - PowerShell syntax and pre-flight quality checks passing cleanly.
 
 ---
 
@@ -510,19 +562,28 @@ Every future modification or implementation task must append an entry following 
 
 ---
 
-### [2026-09-29 01:50 CEST] — Historical Section 10 Compaction into 7 Architectural Milestone Digests
+### [2026-09-29 01:50 CEST] — Historical Section 10 Compaction into 10 Architectural Milestone Digests
 - **Affected Subsystems**:
   - `DIARY.md` (Section 10 synthesized per `.agents/skills/compact-diary/SKILL.md`)
   - `.agents/rules/diary-maintenance.md`, `.agents/rules/roadmap-maintenance.md`, `.agents/skills/compact-diary/SKILL.md`
 - **What Was Changed (The Concrete Reality)**:
-  - Audited and compacted 340+ historical chronological entries in Section 10 (September 12–22, 2026) spanning over 8,500 lines into 7 high-signal Architectural Milestone Digests.
-  - Purged obsolete raw micro-diffs, transient command traces, and uncompacted historical duplication.
+  - Audited and compacted 340+ historical chronological entries in Section 10 (September 12–22, 2026) spanning over 8,500 lines into 10 high-signal Architectural Milestone Digests covering all major project phases:
+    1. Disassembler Extraction, Memory Banking & Core Machine Setup (2026-09-12)
+    2. Language Guardrails, HRM Alignment & vAmigaTS Verification Harness (2026-09-14)
+    3. Custom Chipset Silicon Calibration & Phase 1 vAmigaTS Verification (2026-09-15)
+    4. Multimodal Reference Ingestion & 14-Stage PDF-to-Markdown Pipeline (2026-09-16)
+    5. RAG Knowledge Base, Diagram Sidecars & Attractor Elimination (2026-09-16)
+    6. Tooling Ergonomics, Zero-Junction Invariant & Full Worktree Storage Isolation (2026-09-17)
+    7. MemoryBus Streamlining, Agnus DMA Mastership & Decoupled State Serialization (2026-09-18)
+    8. Tripartite Quality Audits, Crate Renaming (m68000 -> cpu), and Compiler Lints Baseline (2026-09-19)
+    9. Strict Compilation Policy, CPU Semantic Parity & Scope Discipline (2026-09-21)
+    10. RAG Tooling Reform, CLI Single Source of Truth & Documentation Scoping (2026-09-22)
+  - Purged obsolete raw micro-diffs, transient command traces, and uncompacted historical duplication while permanently preserving every major subsystem accomplishment, architectural dilemma, and verification result.
   - Retained the active September 29 roadmap milestone entry (Step 1.4: MachineLoop Architecture Review) in full granular detail.
   - Updated diary maintenance rules and skills to formally allow compaction upon completing minor roadmap points or when Section 10 exceeds operational size thresholds.
-  - Reduced `DIARY.md` from 8,995 lines (930 KB) down to ~530 lines (~58 KB) with zero loss of architectural wisdom or hardware rationale.
+  - Reduced `DIARY.md` from 8,995 lines (930 KB) down to ~620 lines (~75 KB) with zero loss of architectural wisdom or hardware rationale.
 - **Architectural Rationale & Trade-Offs**:
   - Eliminates prompt bloat and token exhaustion while permanently safeguarding core design dilemmas, hardware silicon discoveries, and human-AI collaboration dynamics.
 - **Verification & Invariants**:
   - `python tools/harness/pre_flight.py --quick` passed cleanly.
   - `cargo test -p test_runner --test test_architecture_rules` passed (20/20).
-
