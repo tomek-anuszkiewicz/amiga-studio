@@ -28,7 +28,7 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
 
     // Highest pending level should be Level 4 (Audio 0)
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         4,
         "Level 4 should take precedence over Level 3 and Level 1"
     );
@@ -39,7 +39,7 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
 
     // Next pending level should be Level 3 (Blitter)
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         3,
         "Level 3 should take precedence after Level 4 is cleared"
     );
@@ -50,7 +50,7 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
 
     // Next pending level should be Level 1 (Disk block)
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         1,
         "Level 1 should be active after Level 3 is cleared"
     );
@@ -60,7 +60,7 @@ fn test_multiple_simultaneous_interrupts_priority_order() {
     harness.step_cck(2);
 
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         0,
         "IPL should return to 0 when all requests are cleared"
     );
@@ -78,7 +78,7 @@ fn test_intena_master_and_individual_channel_masking() {
 
     // With INTENA = 0 (or master INTEN disabled), no IPL is asserted
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         0,
         "Interrupts must be suppressed when INTENA is not enabled"
     );
@@ -91,7 +91,7 @@ fn test_intena_master_and_individual_channel_masking() {
 
     // Although Level 4 is in INTREQ, it is masked in INTENA, so Level 3 should be resolved
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         3,
         "Only unmasked Level 3 should be resolved"
     );
@@ -101,7 +101,7 @@ fn test_intena_master_and_individual_channel_masking() {
     harness.step_cck(2);
 
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         0,
         "Clearing master INTEN should immediately suppress all custom interrupts"
     );
@@ -111,7 +111,7 @@ fn test_intena_master_and_individual_channel_masking() {
     harness.step_cck(2);
 
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         3,
         "Re-enabling master INTEN should immediately restore Level 3"
     );
@@ -140,7 +140,7 @@ fn test_cpu_autovector_exception_dispatch() {
     harness.machine.write_custom_word(0x09C, 0x8040);
     harness.step_cck(2);
 
-    assert_eq!(harness.machine.resolve_ipl(), 3);
+    assert_eq!(harness.machine.paula.pending_interrupt_level(), 3);
 
     // Step CPU instruction: finishes current instruction, takes interrupt on boundary
     harness.machine.step_instruction();

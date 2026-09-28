@@ -727,7 +727,7 @@ The entire M68000 instruction set is organized into dedicated, single-responsibi
 ### 7.12 Autovector Interrupt Processing & STOP Instruction Awakening
 
 - **Interrupt Priority Levels (IPL 1–7):**
-  - M68000 samples the 3-bit interrupt priority lines $\overline{\text{IPL0}}-\overline{\text{IPL2}}$ (driven in the emulator by `state.ipl` via `resolve_ipl()`).
+  - M68000 samples the 3-bit interrupt priority lines $\overline{\text{IPL0}}-\overline{\text{IPL2}}$ (driven in the emulator by `state.ipl` via `paula.pending_interrupt_level()`).
   - **Mask Evaluation:** An interrupt is recognized if `ipl > interrupt_mask` (bits 8–10 of $SR$) and `ipl > 0`, or unconditionally if `ipl == 7` (Level 7 Non-Maskable Interrupt / NMI).
   - Interrupts are sampled at instruction boundaries (during `retire_current_instruction()`) and while the CPU is suspended by the `STOP` instruction (`state.stopped = true`).
 - **Autovector Exception Micro-Step Pipeline (44 CPU Clocks / 22 CCKs):**

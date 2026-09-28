@@ -25,7 +25,7 @@ fn test_cia_a_timer_underflow_triggers_level2_interrupt() {
 
     // Assert initially no interrupt is pending
     assert!(!harness.machine.cia_a.irq_pending());
-    assert_eq!(harness.machine.resolve_ipl(), 0);
+    assert_eq!(harness.machine.paula.pending_interrupt_level(), 0);
 
     // Start Timer A in continuous mode (CRA bit 0 = 1)
     harness.machine.cia_a.commit_register_write(0x0E, 0x01);
@@ -52,7 +52,7 @@ fn test_cia_a_timer_underflow_triggers_level2_interrupt() {
 
     // Verify CPU IPL line is escalated to Level 2
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         2,
         "Machine loop should resolve IPL 2 for CIA-A interrupt"
     );
@@ -73,7 +73,7 @@ fn test_cia_b_timer_underflow_triggers_level6_interrupt() {
     harness.machine.cia_b.commit_register_write(0x0D, 0x81);
 
     assert!(!harness.machine.cia_b.irq_pending());
-    assert_eq!(harness.machine.resolve_ipl(), 0);
+    assert_eq!(harness.machine.paula.pending_interrupt_level(), 0);
 
     // Start Timer A in continuous mode (CRA bit 0 = 1)
     harness.machine.cia_b.commit_register_write(0x0E, 0x01);
@@ -91,7 +91,7 @@ fn test_cia_b_timer_underflow_triggers_level6_interrupt() {
 
     // Verify CPU IPL line is escalated to Level 6
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         6,
         "Machine loop should resolve IPL 6 for CIA-B interrupt"
     );

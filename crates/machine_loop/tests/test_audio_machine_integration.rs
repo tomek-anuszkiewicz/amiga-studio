@@ -70,7 +70,7 @@ fn test_audio_dma_playback_and_interrupt_propagation() {
         "Audio Channel 0 buffer finish did not assert INTREQ bit 7"
     );
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         4,
         "CPU IPL should be Level 4 following Audio 0 interrupt"
     );

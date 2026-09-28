@@ -108,7 +108,7 @@ fn test_blitter_copy_and_interrupt_propagation() {
         "Paula INTREQ bit 6 (_BLITINT) was not asserted upon Blitter completion"
     );
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         3,
         "CPU IPL should be 3 following Blitter completion"
     );

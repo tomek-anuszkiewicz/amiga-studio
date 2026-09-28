@@ -125,7 +125,7 @@ fn test_copper_triggers_interrupt_to_cpu() {
     harness.machine.write_custom_word(0x088, 0x0000);
 
     // Initial interrupt priority line should be 0
-    assert_eq!(harness.machine.resolve_ipl(), 0);
+    assert_eq!(harness.machine.paula.pending_interrupt_level(), 0);
 
     // Step until line 8
     harness.step_until_vpos(8, 3000);
@@ -133,7 +133,7 @@ fn test_copper_triggers_interrupt_to_cpu() {
     // Verify Copper wrote to INTREQ and Paula raised Level 3 IPL
     assert_eq!(harness.machine.paula.interrupts.intreq & 0x0010, 0x0010);
     assert_eq!(
-        harness.machine.resolve_ipl(),
+        harness.machine.paula.pending_interrupt_level(),
         3,
         "CPU IPL should be 3 following Copper interrupt"
     );

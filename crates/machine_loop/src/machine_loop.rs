@@ -108,7 +108,7 @@ impl A500Machine {
             game_ports,
         };
         machine.poll_peripheral_pins();
-        machine.cpu.state.ipl = machine.resolve_ipl();
+        machine.cpu.state.ipl = machine.paula.pending_interrupt_level();
         machine
     }
 
@@ -126,7 +126,7 @@ impl A500Machine {
         self.game_ports.reset();
         self.cpu.reset(&mut self.physical_memory);
         self.poll_peripheral_pins();
-        self.cpu.state.ipl = self.resolve_ipl();
+        self.cpu.state.ipl = self.paula.pending_interrupt_level();
     }
 
     /// Performs warm reset: preserves RAM, re-engages overlay, restarts execution
@@ -143,7 +143,7 @@ impl A500Machine {
         self.game_ports.reset();
         self.cpu.reset_warm(&mut self.physical_memory);
         self.poll_peripheral_pins();
-        self.cpu.state.ipl = self.resolve_ipl();
+        self.cpu.state.ipl = self.paula.pending_interrupt_level();
     }
 
     /// Resets all external devices (custom chips, CIAs, peripherals, overlay)
@@ -158,13 +158,7 @@ impl A500Machine {
         self.floppy.reset();
         self.game_ports.reset();
         self.poll_peripheral_pins();
-        self.cpu.state.ipl = self.resolve_ipl();
-    }
-
-    /// Resolves the highest pending interrupt level from Paula's central priority encoder
-    #[inline]
-    pub fn resolve_ipl(&self) -> u8 {
-        self.paula.pending_interrupt_level()
+        self.cpu.state.ipl = self.paula.pending_interrupt_level();
     }
 
     /// Writes a 16-bit word to custom register space with physical propagation delay.
@@ -323,7 +317,7 @@ impl A500Machine {
         self.poll_peripheral_pins();
 
         // 7. Central interrupt priority line (IPL 1-6) arbitration
-        let ipl = self.resolve_ipl();
+        let ipl = self.paula.pending_interrupt_level();
         self.cpu.state.ipl = ipl;
     }
 

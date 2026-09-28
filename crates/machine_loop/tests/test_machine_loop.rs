@@ -9,7 +9,7 @@ fn test_machine_creation_and_stepping() {
     let mut machine = A500Machine::new(config);
 
     assert_eq!(machine.cck, 0);
-    assert_eq!(machine.resolve_ipl(), 0);
+    assert_eq!(machine.paula.pending_interrupt_level(), 0);
     assert_eq!(machine.cpu.state.pc, 4);
     assert!(!machine.cpu.state.halted);
 
@@ -23,7 +23,7 @@ fn test_machine_interrupt_arbitration() {
     let config = A500Config::default();
     let mut machine = A500Machine::new(config);
 
-    assert_eq!(machine.resolve_ipl(), 0);
+    assert_eq!(machine.paula.pending_interrupt_level(), 0);
 
     // Unmask Level 2 (PORTS) and Level 6 (EXTER) with master INTEN in Paula INTENA
     // 0x8000 (SET) | 0x4000 (INTEN) | 0x2000 (EXTER) | 0x0008 (PORTS) = 0xE008
@@ -37,7 +37,7 @@ fn test_machine_interrupt_arbitration() {
     machine.cia_a.write_register(0xE, 0x01); // Start Timer A
     machine.step_cycles(15);
     assert!(machine.cia_a.irq_pending());
-    assert_eq!(machine.resolve_ipl(), 2);
+    assert_eq!(machine.paula.pending_interrupt_level(), 2);
 
     // Trigger CIA-B interrupt -> IPL 6 (higher priority than Level 2)
     machine.cia_b.write_register(0xD, 0x81);
@@ -46,7 +46,7 @@ fn test_machine_interrupt_arbitration() {
     machine.cia_b.write_register(0xE, 0x01);
     machine.step_cycles(15);
     assert!(machine.cia_b.irq_pending());
-    assert_eq!(machine.resolve_ipl(), 6);
+    assert_eq!(machine.paula.pending_interrupt_level(), 6);
 }
 
 #[test]

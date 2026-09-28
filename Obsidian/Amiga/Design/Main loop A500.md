@@ -100,7 +100,7 @@ The `MachineLoop` (`A500Machine`) acts as the physical motherboard PCB simulator
    - `floppy.poll_dskblk_irq()`: Samples disk block DMA completion line.
    - `cia_a.irq_pending()` / `cia_b.irq_pending()`: Samples CIA active `/IRQ` lines.
 3. **Motherboard Action Routing:** `MachineLoop` routes the sampled electrical transitions to the target chip's input latches (e.g. `paula.set_interrupt_request()`, `denise.write_bpldat()`, `agnus.reload_audio_ptr()`).
-4. **Central Arbitration & CPU Delivery:** `MachineLoop` calculates `resolve_ipl()` and sets `cpu.state.ipl` before stepping the 68000 CPU bus cycle.
+4. **Central Arbitration & CPU Delivery:** `MachineLoop` samples `paula.pending_interrupt_level()` and sets `cpu.state.ipl` before stepping the 68000 CPU bus cycle.
 
 ---
 
@@ -117,7 +117,7 @@ flowchart TD
     CIAA["CIA-A /IRQ\n(Timer A/B, TOD, SDR)"] -->|PORTS / Level 2| PAULA
     CIAB["CIA-B /IRQ\n(Timer A/B, TOD, SDR)"] -->|EXTER / Level 6| PAULA
 
-    PAULA["Paula INTREQ & INTENA\n(Bits 0..14 + Master INTEN)"] -->|Arbitrate Highest Unmasked Level| MAIN_LOOP["Main Machine Loop\n(resolve_ipl)"]
+    PAULA["Paula INTREQ & INTENA\n(Bits 0..14 + Master INTEN)"] -->|Arbitrate Highest Unmasked Level| MAIN_LOOP["Main Machine Loop\n(paula.pending_interrupt_level)"]
     MAIN_LOOP -->|cpu.state.ipl = 1..6| CPU["M68000 CPU\n(Autovector Exception / STOP Wakeup)"]
 ```
 
@@ -146,7 +146,7 @@ All peripheral interrupt requests are latched in Paula's `INTREQ` register (`$DF
 
 ### 4.2 Central Arbitration & CPU Delivery
 
-1. **`resolve_ipl()` Execution:**
+1. **`paula.pending_interrupt_level()` Resolution:**
    - Evaluates `paula.pending_interrupt_level()`, which checks `intreq & intena` conditioned on master `INTEN` (bit 14).
    - Validates CIA-A (Level 2) and CIA-B (Level 6) lines passing through Paula's `INTENA` mask bits.
    - Computes the monotonic maximum: `paula_ipl.max(cia_a_ipl).max(cia_b_ipl)`.
