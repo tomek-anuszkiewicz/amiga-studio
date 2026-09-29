@@ -15,14 +15,14 @@ When invoked without parameters:
    - Evaluates current line count and file size of `DIARY.md`.
    - Identifies entries belonging to the currently active or most recently completed milestone vs. older settled milestones.
 2. **Synthesize Older Milestones into Milestone Digests:**
-   - Consolidates older, settled entries into cohesive digests covering:
+   - Consolidates older, settled entries into distinct, cohesive digests for each separate architectural milestone (strictly avoiding merging distinct milestones into a single bucket), covering:
      - Scope & Date Range (e.g. `[Phase 1 Baseline CPU: Batches 1.1–1.11]`).
      - Architectural Breakthroughs (e.g. 2-clock micro-step slicing, contention modeling).
      - Key Decisions & Non-Obvious Trade-Offs (preserving the *why*).
      - Agent Collaboration & Root-Cause Lessons (subtle traps and permanent safeguards).
      - Final Verification Gates.
 3. **Preserve Active Milestone Detail:**
-   - Retains granular chronological records for the active milestone.
+   - Retains granular chronological records for the active or most recently completed milestone.
 4. **Verify Formatting & Invariants:**
    - Runs pre-flight checks and architecture rules.
 
@@ -30,10 +30,10 @@ When invoked without parameters:
 
 ## 2. Execution Runbook
 Follow the operational procedure in [`.agents/skills/compact-diary/SKILL.md`](../skills/compact-diary/SKILL.md):
-1. **Extraction:** Read older entries targeted for compaction.
-2. **Distillation:** Extract structural breakthroughs, non-obvious lessons, and architectural trade-offs while discarding micro-diffs.
-3. **Restructuring:** Replace verbose individual logs with the synthesized Milestone Digest block.
-4. **Verification:** Confirm zero loss of non-obvious domain knowledge.
+1. **Extraction:** Read older entries targeted for compaction and identify separate milestone boundaries.
+2. **Distillation:** Extract structural breakthroughs, non-obvious lessons, and architectural trade-offs per milestone domain while discarding commit-level micro-diffs.
+3. **Restructuring:** Replace verbose individual logs with the separate synthesized Milestone Digest blocks.
+4. **Verification:** Confirm zero loss of non-obvious domain knowledge and zero milestone flattening.
 
 ---
 

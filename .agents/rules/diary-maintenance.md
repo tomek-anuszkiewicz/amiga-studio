@@ -60,4 +60,6 @@ Git commits record routine changes. `DIARY.md` records the verified outcome, tec
 
 Upon completing minor roadmap points (Step 1.1, 1.2, 1.3...) or major roadmap milestones in [`ROADMAP.md`](../../ROADMAP.md):
 - Invoke the `compact-diary` skill ([`.agents/skills/compact-diary/`](../skills/compact-diary/SKILL.md)) whenever Section 10 grows unwieldy (or exceeds operational thresholds ~150 KB / 1,500 lines), synthesizing settled historical milestone entries into high-level architectural digests while preserving active and recent entries in full granular detail.
+- **Anti-Steamroller Invariant:** Never collapse multiple distinct major engineering milestones into a single generic bucket; each distinct architectural milestone retains its own dedicated Milestone Digest.
+
 
