@@ -1,0 +1,5 @@
+{
+  "name": "pdf-pipeline",
+  "version": "1.0.0",
+  "description": "Hierarchical Native Multi-Agent System (MAS) for converting vintage Commodore Amiga and Motorola 68000 technical PDF manuals into modern publication-ready Markdown."
+}

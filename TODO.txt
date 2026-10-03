@@ -1,0 +1,35 @@
+
+
+
+skill toc
+skill final copy, relink (chapters + assets)
+
+also when running amiga rag index update !!! exclude build
+bootstrap needs rewrite: need to call our skill for pdf, for html, perform rag index update
+
+
+====
+
+check:
+
+
+page 24, 36 - missing MathML in table
+page 43, 47 - hmm table inside table as md table, but that does not work
+page 54 - does an md table with MathML require RAG? or do all tables require RAG?
+page 57 - missing table
+page 63 - regeneration
+
+page 71 - as ASCII art, alternative is to crop these as images and RAG
+page 76 - similar, RAG would be useful
+page 91 - failed on table
+page 92,93 - failed on table
+page 96 - failed to handle
+page 102 - somehow extracted table
+page 103 - code formatting
+page 111 - backticks in HTML should be escaped
+page 115 - footnotes under table are in a single line
+page 125 - missing tables
+page 127 - footnote 1) inserted horizontal line
+page 130 - this should be text block, or multi-column table
+page 134 - image rotation, got clipped
+page 136,137 - backticks in table

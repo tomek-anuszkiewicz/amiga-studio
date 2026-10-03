@@ -69,7 +69,6 @@ not architectural judgement.
 ## Skills to Invoke
 - [`pdf-to-markdown`](../../skills/pdf-to-markdown/SKILL.md)
 - [`html-to-markdown`](../../skills/html-to-markdown/SKILL.md)
-- [`describe-diagram-assets`](../../skills/describe-diagram-assets/SKILL.md)
 - [`index-amiga-rag`](../../skills/index-amiga-rag/SKILL.md)
 
 ## Output Contract
