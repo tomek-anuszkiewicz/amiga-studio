@@ -732,3 +732,21 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - roadmap verification passed for 11 steps and 40 tasks with valid numbering, references and 20 local links
   - language and diff checks passed
   - no regeneration experiment or subsystem milestone was executed
+---
+
+### [2026-10-05 22:15 CEST] — Select Codex Vision for manual conversion
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the olmOCR and enriched Docling comparison with planned Codex Vision conversion
+  - align the workflow audit with replacing existing Gemini calls
+  - retain representative-sample validation and the asset contract
+- **Architectural Rationale & Trade-Offs**:
+  - Record the user's selected conversion approach and remove the unnecessary pipeline-selection experiment
+- **Verification & Test Results**:
+  - Quick pre-flight passed
+  - architecture tests passed 19 of 19
+  - roadmap numbering and local-link verification passed
+  - language and diff checks passed
+  - no olmOCR, Docling or RunPod comparison remains in ROADMAP.md
+  - converter implementation and conversion runs were not performed

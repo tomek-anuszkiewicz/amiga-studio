@@ -5,13 +5,13 @@
 Prepare source-faithful Markdown and searchable assets once, before routine emulator development. Tools: [PDF converter](tools/bootstrap/pdf-to-markdown/README.md), [HTML converter](tools/bootstrap/html-to-markdown/README.md), and [bootstrap dispatcher](tools/bootstrap/bootstrap_documentation.ps1).
 
 - **1.1: Review PDF and HTML Workflows**
-  - Trace Gemini calls, table/graphics processing, fallbacks, persisted outputs, and manual review/recovery. Consolidate the conversion contract and identify missing automation in both workflows.
+  - Trace existing Gemini calls, table/graphics processing, fallbacks, persisted outputs, and manual review/recovery. Identify the changes needed to use Codex Vision and consolidate the conversion contract for both workflows.
   - **Gate:** A workflow map identifies each stage's inputs, written outputs, and exact manual handoff artifacts; model responses and prepared tasks alone do not count as delivered output.
 
-- **1.2: Select the Conversion Pipeline and Asset Contract**
-  - Compare `olmOCR` and fully enriched Docling on the same representative inputs on RunPod, including code/formula enrichment and picture classification/descriptions. Record source fidelity, structured-output quality, runtime, and failures; retain local Docling as a limited-feature baseline.
-  - Define visual retention, descriptions, and Markdown fallbacks once for bootstrap. Select the base model from the comparison, then verify the custom stages below before approving bulk conversion; repeat this decision only when sources or the contract change.
-  - **Gate:** A reproducible comparison and approved representation contract show what the base pipeline preserves and what the custom stages must supply.
+- **1.2: Codex Vision Conversion and Asset Contract**
+  - Adapt the conversion workflows to use Codex Vision for visual transcription, segmentation, crop review, and table/image interpretation, replacing the existing Gemini calls as identified in Step 1.1.
+  - Define visual retention, descriptions, and Markdown fallbacks once for bootstrap. Validate the stages below on representative samples before bulk conversion; repeat validation when sources or the contract change.
+  - **Gate:** Persisted sample outputs demonstrate source fidelity and valid structured output, with documented failures and manual handoffs; the approved asset contract covers retained visuals, descriptions, and fallbacks.
 
 - **1.3: PDF Text Layer and Positioned Text Input**
   - Add OCR only where pages lack text layers; preserve native text, page order, dimensions, and visuals, distinguish blank pages, and always publish the validated PDF plus per-page native/OCR provenance, even when OCR is unnecessary.
