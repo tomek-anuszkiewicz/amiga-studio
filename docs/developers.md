@@ -230,7 +230,7 @@ The bootstrap converters prepare the initial reference knowledge base from raw s
 
 1. **PDF Scans to Markdown ([`pdf-to-markdown`](../tools/bootstrap/pdf-to-markdown/README.md)):**
    - Uses Codex text and original-detail image input to analyze document structure and partition into logical chapters.
-   - Extracts and crops circuit diagrams, register maps, and waveforms into high-resolution PNG/SVG assets.
+   - Renders each PDF page to PNG with text/geometry JSON, then crops circuit diagrams, register maps, and waveforms from those PNGs without generating single-page PDFs.
    - Stitches multi-page register tables into GitHub-flavored Markdown tables.
    - Generates Git-tracked multimodal sidecar text files (`<image>.txt`) describing timing diagrams for offline AI inspection.
 

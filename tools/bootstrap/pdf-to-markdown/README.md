@@ -55,7 +55,7 @@ tools/bootstrap/pdf-to-markdown/
 ├── config.yaml                              # Global configuration (DPI, paths, heuristics)
 └── stages/
     ├── 01_preprocess/
-    │   ├── preprocess.py                    # Splits PDF -> page_XXXX.pdf, 300 DPI PNG, text blocks JSON
+    │   ├── preprocess.py                    # Renders PDF -> 300 DPI PNG, text blocks and page geometry JSON
     │   └── README.md
     │
     ├── 02_page_segmentation/
@@ -65,7 +65,7 @@ tools/bootstrap/pdf-to-markdown/
     │
     ├── 03_build_raw_stream/
     │   ├── build_stream.py                  # Merges segmented pages into global raw_stream.json
-    │   ├── extract_initial_assets.py        # Extracts SVG/PNG clips; raw text stays in node JSON
+    │   ├── extract_initial_assets.py        # Crops Stage 01 PNGs; raw text stays in node JSON
     │   └── README.md
     │
     ├── 04_stream_reduction/

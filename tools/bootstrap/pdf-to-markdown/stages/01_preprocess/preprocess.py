@@ -2,7 +2,6 @@
 """
 stages/01_preprocess/preprocess.py:
 Deconstructs a physical input PDF into atomic, per-page representations:
-- Single-page vector PDF (page_XXXX.pdf)
 - 300 DPI high-resolution raster image (page_XXXX.png)
 - Geometry text dump from fitz.get_text("blocks") (page_XXXX.json)
 - Master workspace/pages_manifest.json
@@ -79,19 +78,12 @@ def preprocess_pdf(
         page = doc[page_idx]
         rect = page.rect
 
-        # 1. Save single-page vector PDF
-        single_doc = pymupdf.open()
-        single_doc.insert_pdf(doc, from_page=page_idx, to_page=page_idx)
-        pdf_out_path = pages_dir / f"{page_str}.pdf"
-        single_doc.save(str(pdf_out_path))
-        single_doc.close()
-
-        # 2. Render 300 DPI PNG
+        # 1. Render the page once at the configured DPI.
         pix = page.get_pixmap(dpi=dpi)
         png_out_path = pages_dir / f"{page_str}.png"
         pix.save(str(png_out_path))
 
-        # 3. Extract text blocks and word geometry
+        # 2. Extract text blocks and word geometry
         blocks = page.get_text("blocks")
         # Structure each block: [x0, y0, x1, y1, text, block_no, block_type]
         block_list = []
@@ -120,7 +112,6 @@ def preprocess_pdf(
 
         manifest["pages"].append({
             "page": page_num,
-            "pdf_file": f"01_preprocess/{page_str}.pdf",
             "png_file": f"01_preprocess/{page_str}.png",
             "json_file": f"01_preprocess/{page_str}.json",
             "width": round(rect.width, 2),
@@ -137,7 +128,7 @@ def preprocess_pdf(
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
-    # 4. Run scan detection & Gemini Vision OCR
+    # 3. Run scan detection and Codex Vision OCR.
     detect_and_ocr_pages(
         workspace_dir=workspace_dir,
         config_path=config_path,

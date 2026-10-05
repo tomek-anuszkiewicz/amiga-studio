@@ -68,7 +68,7 @@ def reduce_contiguous_graphics(
     workspace_dir: Path,
     codex: Optional[CodexClient],
     graphics_prompt: str,
-    padding_ratio: float = 0.10,
+    dpi: int = 300,
     reduced_assets_dir: Path = None,
     concurrency: int = 1,
 ) -> tuple:
@@ -209,9 +209,9 @@ def reduce_contiguous_graphics(
                     extract_assets_for_nodes(
                         workspace_dir,
                         [unified_node],
-                        padding_ratio=padding_ratio,
                         assets_dir=reduced_assets_dir,
-                        rel_prefix="04_stream_reduction/assets"
+                        rel_prefix="04_stream_reduction/assets",
+                        dpi=dpi,
                     )
 
                 print(f"    [+] Unified {len(run)} graphic nodes on page {page_num} into {unified_node['node_id']}: '{title}'")
@@ -231,7 +231,7 @@ def reduce_contiguous_graphics(
 def reduce_contiguous_tables(
     nodes: list,
     workspace_dir: Path,
-    padding_ratio: float = 0.10,
+    dpi: int = 300,
     reduced_assets_dir: Path = None,
 ) -> tuple:
     """
@@ -314,9 +314,9 @@ def reduce_contiguous_tables(
                     extract_assets_for_nodes(
                         workspace_dir,
                         [unified_node],
-                        padding_ratio=padding_ratio,
                         assets_dir=reduced_assets_dir,
-                        rel_prefix="04_stream_reduction/assets"
+                        rel_prefix="04_stream_reduction/assets",
+                        dpi=dpi,
                     )
 
                 print(f"    [+] Unified {len(run)} table nodes on page {page_num} into {unified_node['node_id']}")
@@ -390,13 +390,13 @@ def reduce_stream(workspace_dir: Path, config: dict):
 
         # Step 2: Unify contiguous graphic nodes on identical pages
         concurrency = int(config.get("llm", {}).get("concurrency", 1))
-        padding = config.get("render", {}).get("padding_margin_ratio", 0.10)
+        dpi = config.get("render", {}).get("dpi", 300)
         nodes_after_graphics, num_unifications, num_collapsed_graphics = reduce_contiguous_graphics(
             active_nodes,
             workspace_dir,
             codex,
             graphics_prompt_template,
-            padding_ratio=padding,
+            dpi=dpi,
             reduced_assets_dir=reduced_assets_dir,
             concurrency=concurrency,
         )
@@ -407,7 +407,7 @@ def reduce_stream(workspace_dir: Path, config: dict):
         nodes_after_tables, num_table_unifications, num_collapsed_tables = reduce_contiguous_tables(
             nodes_after_graphics,
             workspace_dir,
-            padding_ratio=padding,
+            dpi=dpi,
             reduced_assets_dir=reduced_assets_dir,
         )
         if num_table_unifications > 0:

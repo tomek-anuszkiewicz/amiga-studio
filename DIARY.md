@@ -1031,3 +1031,30 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Workspace cleanup verified raw_text equality and unchanged hashes for all remaining non-JSON artifacts
   - git diff --cached --check passed
   - Graphify AST refresh completed
+---
+
+### [2026-10-05 23:57 CEST] — Use PNG and JSON as PDF stage handoff
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tests/test_pdf_conversion_codex.py`
+  - `docs/developers.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Stop generating single-page PDFs and remove pdf_file from the page manifest
+  - Replace PDF clipping and rendering with direct crops from Stage 01 PNGs using JSON page dimensions
+  - Preserve typographic and vertical neighbor padding limits with outward pixel rounding
+  - Fail missing PNG or geometry inputs and invalid or empty crops
+  - Pass configured DPI through Stage 04 recropping and remove the unused percentage-padding option
+  - Update stage documentation
+  - Remove 50 legacy single-page PDFs from the selected workspace and retain all other artifacts
+- **Architectural Rationale & Trade-Offs**:
+  - PNG and JSON are the downstream inputs
+  - Source PDF access is confined to preprocessing and native vector extraction is intentionally removed
+- **Verification & Test Results**:
+  - Focused regression failed before the change and passed afterward
+  - All 36 offline conversion tests passed including native and scanned sources and exact crop pixels and merged table bounds and missing PNG rejection
+  - All 295 existing raw-stream visual crops were exercised in a disposable output directory
+  - Workspace cleanup verified unchanged hashes for retained files except removal of pdf_file from the manifest
+  - Quick pre-flight passed
+  - Architecture suite: 18 passed and 1 failed on the same 62 unrelated broken design-document Markdown links
+  - All PDF converter Python modules parsed and staged diff check passed
+  - Graphify AST refresh completed

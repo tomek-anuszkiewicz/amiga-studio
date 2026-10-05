@@ -2,7 +2,7 @@
 """
 stages/03_build_raw_stream/build_stream.py:
 Merges segmented pages into a global, flat, sequentially ordered raw_stream.json.
-Preserves segment raw_text in JSON and calls extract_initial_assets to crop SVGs/PNGs.
+Preserves segment raw_text in JSON and calls extract_initial_assets to crop Stage 01 PNGs.
 """
 
 import argparse

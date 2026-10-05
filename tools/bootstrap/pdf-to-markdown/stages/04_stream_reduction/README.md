@@ -10,12 +10,13 @@ Performs sequential normalization across the global node stream:
 ## Inputs
 - `workspace/03_build_raw_stream/raw_stream.json`: Master sequential node stream from Stage 03.
 - `workspace/01_preprocess/page_XXXX.png`: 300 DPI raster page images for vision verification.
+- `workspace/01_preprocess/page_XXXX.json`: Page dimensions used with the source PNG when cropping merged fragments.
 - `stages/04_stream_reduction/prompt_seam.md`: LLM prompt for cross-page text seams.
 - `stages/04_stream_reduction/prompt_graphics_union.md`: Vision prompt for contiguous graphic union validation.
 
 ## Outputs
 - `workspace/04_stream_reduction/reduced_stream.json`: Normalized, welded node stream.
-- `workspace/04_stream_reduction/assets/`: Consolidated visual assets (`asset_node_XXXXX.png`, `.svg`); raw text remains in the node JSON.
+- `workspace/04_stream_reduction/assets/`: Consolidated PNG visual assets; raw text remains in the node JSON. Merged crops come directly from Stage 01 PNGs without rereading the source PDF.
 
 ## Invocation Through the Orchestrator
 ```powershell

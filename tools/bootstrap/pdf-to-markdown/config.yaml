@@ -3,7 +3,6 @@
 render:
   dpi: 300
   image_format: "png"
-  padding_margin_ratio: 0.10  # 10% safety margin on raster fallback crops
 
 llm:
   timeout_seconds: 180

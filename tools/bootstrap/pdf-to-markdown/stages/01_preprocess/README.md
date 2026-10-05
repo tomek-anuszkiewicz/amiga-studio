@@ -5,7 +5,7 @@ Deconstructs a physical input PDF into atomic, per-page representations to serve
 
 Stage 01 handles both digital and physical documents through two unified processing pathways:
 1. **Born-Digital PDF Pathway (Direct Extraction):**
-   - Extracts native vector geometries, 300 DPI PNG renders, and native text blocks via PyMuPDF (`fitz.get_text("blocks")`).
+   - Renders 300 DPI PNGs and extracts native text blocks and page dimensions via PyMuPDF (`fitz.get_text("blocks")`).
    - Runs deterministically with zero network calls and sub-second latency.
 2. **Scanned / Visual PDF Pathway (Codex Vision OCR):**
    - Automatically detects pages lacking healthy native text (`total_chars < threshold`, default 20, or 0 text blocks).
@@ -36,10 +36,11 @@ stages/01_preprocess/
 - `stages/01_preprocess/prompt_ocr.md`: Vision prompt (used if scanned pages trigger OCR).
 
 ## Outputs
-- `workspace/01_preprocess/page_XXXX.pdf`: Single-page vector PDF for high-precision vector clipping.
-- `workspace/01_preprocess/page_XXXX.png`: 300 DPI high-resolution raster image for Vision LLM classification.
+- `workspace/01_preprocess/page_XXXX.png`: Raster page at the configured DPI (default 300), used for vision classification and all downstream visual crops.
 - `workspace/01_preprocess/page_XXXX.json`: Text geometry extraction with word spans, bounding boxes (`box_2d` and `bbox_norm`), and page classification (`text_page`, `pure_graphic`, `blank`).
 - `workspace/pages_manifest.json`: Document index, dimensions, block counts, and page list.
+
+Stage 01 reads the source PDF directly and writes no single-page PDFs. Downstream stages use PNG pixels and JSON text/geometry; visual crops retain the rendered resolution rather than native PDF vectors.
 
 ---
 

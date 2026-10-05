@@ -2,21 +2,20 @@
 """
 stages/03_build_raw_stream/extract_initial_assets.py:
 For every table and graphic node:
-1. Crops visual assets (SVG vector clip if available, or 300 DPI raster PNG with a 10% safety margin).
+1. Crops PNG assets from Stage 01 page renders with typographic padding.
 2. Annotates the node with visual file paths in raw_stream.json.
 Raw text remains in each node's raw_text field; no separate text dumps are written.
 """
 
 import json
+import math
 from pathlib import Path
-import pymupdf
 from PIL import Image
 
 
 def extract_assets_for_nodes(
     workspace_dir: Path,
     nodes: list,
-    padding_ratio: float = None,
     assets_dir: Path = None,
     rel_prefix: str = None,
     dpi: int = 300,
@@ -42,7 +41,7 @@ def extract_assets_for_nodes(
 
     print(f"[*] Extracting visual assets for tables & graphics (typographic padding: {padding_pt:.2f} pt / {padding_px} px at {dpi} DPI)...")
 
-    # Group nodes by page for efficient PDF access
+    # Group nodes by page so each source PNG is opened once.
     nodes_by_page = {}
     for node in nodes:
         if node["type"] in ("table", "graphic", "code_block"):
@@ -51,93 +50,52 @@ def extract_assets_for_nodes(
 
     for page_num, page_nodes in nodes_by_page.items():
         page_str = f"page_{page_num:04d}"
-        pdf_page_path = pages_dir / f"{page_str}.pdf"
+        json_page_path = pages_dir / f"{page_str}.json"
         png_page_path = pages_dir / f"{page_str}.png"
+        page_data = json.loads(json_page_path.read_text(encoding="utf-8"))
+        page_width = page_data["width"]
+        page_height = page_data["height"]
+        if page_width <= 0 or page_height <= 0:
+            raise ValueError(f"Invalid page dimensions in {json_page_path}")
 
-        doc = pymupdf.open(str(pdf_page_path)) if pdf_page_path.exists() else None
-        page = doc[0] if doc else None
-        page_pixmap = None
-        if png_page_path.exists():
-            try:
-                page_pixmap = Image.open(png_page_path)
-            except Exception:
-                page_pixmap = None
+        with Image.open(png_page_path) as page_image:
+            pixel_width, pixel_height = page_image.size
+            scale_x = pixel_width / page_width
+            scale_y = pixel_height / page_height
+            for node in page_nodes:
+                node_id = node["node_id"]
+                bbox = node["bbox"]  # [x0, y0, x1, y1] in page points
+                if len(bbox) != 4 or bbox[2] <= bbox[0] or bbox[3] <= bbox[1]:
+                    raise ValueError(f"Invalid bounding box for {node_id} on page {page_num}")
+                padded_bbox = [
+                    max(0.0, bbox[0] - padding_pt),
+                    max(0.0, bbox[1] - padding_pt),
+                    min(page_width, bbox[2] + padding_pt),
+                    min(page_height, bbox[3] + padding_pt),
+                ]
 
-        for node in page_nodes:
-            node_id = node["node_id"]
-            bbox = node.get("bbox", [0, 0, 100, 100]) # [x0, y0, x1, y1] in points
+                # Preserve the vertical padding limits imposed by neighboring nodes.
+                other_nodes = [n for n in nodes if n.get("page") == page_num and n.get("node_id") != node_id and n.get("bbox")]
+                for other in other_nodes:
+                    ob = other["bbox"]
+                    if ob[1] >= bbox[3] - 1.0:
+                        padded_bbox[3] = min(padded_bbox[3], max(bbox[3], ob[1] - 1.0))
+                    if ob[3] <= bbox[1] + 1.0:
+                        padded_bbox[1] = max(padded_bbox[1], min(bbox[1], ob[3] + 1.0))
 
-            # Calculate padded bounding box using absolute typographic half-letter padding
-            pad_x = padding_pt
-            pad_y = padding_pt
-
-            padded_bbox = [
-                max(0.0, bbox[0] - pad_x),
-                max(0.0, bbox[1] - pad_y),
-                min(page.rect.width if page else 9999.0, bbox[2] + pad_x),
-                min(page.rect.height if page else 9999.0, bbox[3] + pad_y),
-            ]
-
-            # Clamp padding so it never expands into other nodes on the same page
-            other_nodes = [n for n in nodes if n.get("page") == page_num and n.get("node_id") != node_id and n.get("bbox")]
-            for other in other_nodes:
-                ob = other["bbox"]
-                # If other is vertically below this node, do not expand bottom into it
-                if ob[1] >= bbox[3] - 1.0:
-                    padded_bbox[3] = min(padded_bbox[3], max(bbox[3], ob[1] - 1.0))
-                # If other is vertically above this node, do not expand top into it
-                if ob[3] <= bbox[1] + 1.0:
-                    padded_bbox[1] = max(padded_bbox[1], min(bbox[1], ob[3] + 1.0))
-
-            # Bound visual clips to the page.
-            clip_rect = pymupdf.Rect(*padded_bbox).normalize()
-            if page:
-                clip_rect = clip_rect.intersect(page.rect)
-
-            # 1. Extract Vector SVG Clip if supported
-            svg_filename = f"asset_{node_id}.svg"
-            svg_path = assets_dir / svg_filename
-            has_vector = False
-            if page and not clip_rect.is_empty and clip_rect.width > 0 and clip_rect.height > 0:
-                try:
-                    svg_data = page.get_svg_image(clip=clip_rect)
-                    if svg_data and len(svg_data) > 200:
-                        with open(svg_path, "w", encoding="utf-8") as f:
-                            f.write(svg_data)
-                        node["svg_path"] = f"{rel_prefix}/{svg_filename}"
-                        has_vector = True
-                except Exception:
-                    has_vector = False
-
-            # 2. Extract Raster PNG Clip (at configured DPI) with safety margin
-            png_filename = f"asset_{node_id}.png"
-            png_path = assets_dir / png_filename
-            if page and not clip_rect.is_empty and clip_rect.width > 2 and clip_rect.height > 2:
-                try:
-                    clip_pix = page.get_pixmap(dpi=dpi, clip=clip_rect)
-                    if clip_pix.width > 0 and clip_pix.height > 0:
-                        clip_pix.save(str(png_path))
-                        node["png_path"] = f"{rel_prefix}/{png_filename}"
-                except Exception as err:
-                    print(f"  [!] Warning: Could not save pixmap for node {node_id}: {err}")
-            elif page_pixmap:
-                # Fallback to cropping raster image using absolute pixel padding
-                pw, ph = page_pixmap.size
-                norm = node.get("bbox_norm", [0, 0, 1, 1])
-                x0 = int(max(0.0, norm[0] * pw - padding_px))
-                y0 = int(max(0.0, norm[1] * ph - padding_px))
-                x1 = int(min(float(pw), norm[2] * pw + padding_px))
-                y1 = int(min(float(ph), norm[3] * ph + padding_px))
-                if x1 > x0 and y1 > y0:
-                    try:
-                        cropped_img = page_pixmap.crop((x0, y0, x1, y1))
-                        cropped_img.save(png_path)
-                        node["png_path"] = f"{rel_prefix}/{png_filename}"
-                    except Exception as err:
-                        print(f"  [!] Warning: Could not crop PIL image for node {node_id}: {err}")
-
-        if doc:
-            doc.close()
+                # Round outward and clamp to the actual rendered pixel dimensions.
+                pixel_bbox = (
+                    max(0, math.floor(padded_bbox[0] * scale_x)),
+                    max(0, math.floor(padded_bbox[1] * scale_y)),
+                    min(pixel_width, math.ceil(padded_bbox[2] * scale_x)),
+                    min(pixel_height, math.ceil(padded_bbox[3] * scale_y)),
+                )
+                if pixel_bbox[2] <= pixel_bbox[0] or pixel_bbox[3] <= pixel_bbox[1]:
+                    raise ValueError(f"Empty crop for {node_id} on page {page_num}")
+                png_filename = f"asset_{node_id}.png"
+                with page_image.crop(pixel_bbox) as cropped_image:
+                    cropped_image.save(assets_dir / png_filename)
+                node["png_path"] = f"{rel_prefix}/{png_filename}"
 
     print(f"[+] Initial assets extracted to {assets_dir}")
     return nodes
