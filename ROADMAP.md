@@ -118,16 +118,28 @@ When an agent finishes any numbered item:
     - Use `.agents/rules/asset-descriptions.md` to decide whether images and diagrams convey non-redundant information worth retaining.
     - On RunPod, evaluate `olmOCR` and Docling with code enrichment, formula enrichment, picture classification, and picture description enabled; record their source-faithfulness, structured-output quality, runtime, and failure modes on the same representative inputs.
     - Treat the existing local Docling run as a limited-feature baseline; do not equate it with the fully enriched RunPod evaluation.
-    - Define and implement a follow-up processing stage for tables, ASCII art, and comparable structure that neither candidate preserves faithfully enough on its own.
-    - Choose the model and final processing pipeline from the evaluation results, including the custom stage's contribution, before bulk conversion begins.
+    - Define the input and output requirements for the separate description and fallback stage in Step 1.4, including structure that neither candidate preserves faithfully enough on its own.
+    - Select the base conversion model from the evaluation results; approve the final processing pipeline only after Step 1.4 verifies the custom stage's contribution, before bulk conversion begins.
     - Record the approved asset representation contract in the conversion bootstrap plan before bulk conversion begins.
-    - For retained HTML tables, preserve the HTML and add an equivalent GFM table in a collapsed Markdown block. For retained images, create same-basename `.txt` descriptions and repeat each description in a collapsed Markdown block. For ASCII art, retain the art and add a collapsed structural description.
-    - Assess description quality for RAG: each description must state the visual's purpose, named elements, and material spatial, logical, or timing relationships, rather than only repeating a caption or OCR labels.
     - Perform this pass once during conversion bootstrap, not page by page; repeat it only if the source assets or conversion contract changes.
   - **Verification Gate:**
-    - A reproducible comparison report for `olmOCR` and fully enriched Docling, plus representative rendered table, image, and ASCII-art samples, proves the selected pipeline, custom processing stage, fallback, sidecar, and collapsed descriptions are faithful and match.
+    - A reproducible comparison report for `olmOCR` and fully enriched Docling establishes the selected base model and the representation contract to implement and verify in Step 1.4.
 
-- **1.4: Test Suite Review & Structural Orientation**
+- **1.4: PDF-to-Markdown Table and Image Description Stage**
+  - **Objective:** Implement a separate, runnable stage in the PDF-to-Markdown pipeline that enriches converted Markdown with source-grounded descriptions beneath HTML tables and images, and writes image descriptions to adjacent plain-text files.
+  - **Actionable Scope:**
+    - Consume validated Markdown and extracted assets from the preceding conversion stage, with the source PDF context needed to describe each element faithfully.
+    - Preserve each retained HTML table and image embed in place. Insert a closed `<details>...</details>` block immediately beneath each element, with a `<summary>` label and its description; emit actual HTML in the Markdown, not an escaped or fenced code example.
+    - For HTML tables, describe the purpose, headers, values, and material relationships, and include an equivalent GFM Markdown table in the collapsed block, preserving cell order and span semantics.
+    - For images, describe the purpose, named elements, labels, values, and spatial, logical, or timing relationships visible in the source; captions or OCR label lists alone are insufficient.
+    - Write each image description to `<asset filename>.txt` beside the corresponding image, for example `assets/timing.png.txt` beside `assets/timing.png`. Use the same description text in the image's `<details>` block and its `.txt` file.
+    - Preserve retained ASCII art in a `text` fence and follow it with a closed `<details>` block containing a source-grounded structural description.
+    - Persist the enriched Markdown and sidecars as this stage's output. Support rerunning the stage without duplicating description blocks or producing mismatched sidecars.
+  - **Verification Gate:**
+    - Representative rendered HTML-table, image, and ASCII-art samples prove descriptions appear directly beneath their elements, remain collapsed by default, and preserve the source content and table fallback.
+    - Inspect the written output files: every retained image has an adjacent `<asset filename>.txt` whose description matches its Markdown block; model responses or prepared tasks alone do not count as persisted output. Verify a rerun produces no duplicate blocks.
+
+- **1.5: Test Suite Review & Structural Orientation**
   - **Objective:** Understand the current state of all test crates (`test_runner`, per-crate `tests/`) — what is covered, what is missing, what is structurally sound vs. accidental.
   - **Actionable Scope:**
     - Catalogue existing L1/L2/L3 tests per subsystem.
@@ -137,7 +149,7 @@ When an agent finishes any numbered item:
     - `python tools/harness/audit_code_quality.py --dead-code`
     - Written gap matrix committed to `Obsidian/Amiga/Design/Test Coverage Matrix.md`.
 
-- **1.5: Profiling Infrastructure — `cargo flamegraph` Feasibility & Manual Workflow**
+- **1.6: Profiling Infrastructure — `cargo flamegraph` Feasibility & Manual Workflow**
   - **Objective:** Establish whether `cargo flamegraph` (based on `perf` / `dtrace` / `samply`) is viable on this host; document the manual workflow if so.
   - **Actionable Scope:**
     - Attempt `cargo flamegraph --bin <emulator_binary>` on a headless run; capture a sample SVG.
@@ -146,7 +158,7 @@ When an agent finishes any numbered item:
   - **Verification Gate:**
     - At least one flamegraph SVG committed to `Obsidian/Amiga/Design/assets/`.
 
-- **1.6: Profiling Infrastructure — `cargo-profiler` / `perf` Feasibility & Manual Workflow**
+- **1.7: Profiling Infrastructure — `cargo-profiler` / `perf` Feasibility & Manual Workflow**
   - **Objective:** Evaluate `cargo-profiler` (callgrind / cachegrind backend) as a complementary profiling tool to flamegraph.
   - **Actionable Scope:**
     - Attempt `cargo profiler callgrind --bin <emulator_binary>` and capture annotated output.
@@ -155,7 +167,7 @@ When an agent finishes any numbered item:
   - **Verification Gate:**
     - Callgrind output or documented limitation note committed to benchmarking doc.
 
-- **1.7: Strategic Clean-Slate Reset of Custom Chips & Machine Loop (Baseline HRM Spec Alignment)**
+- **1.8: Strategic Clean-Slate Reset of Custom Chips & Machine Loop (Baseline HRM Spec Alignment)**
   - **Objective:** Cleanse and reset `crates/machine_loop` and all specialized custom chip subsystems (`agnus`, `denise`, `paula`, `cia`, `copper`, `blitter`, `floppy`) outside the CPU and physical memory to pure HRM architectural specifications, purging accumulated legacy scaffolding.
   - **Actionable Scope:**
     - Cleanse register definitions and reset states to align strictly with the official Commodore Amiga Hardware Reference Manual (HRM).
@@ -165,29 +177,29 @@ When an agent finishes any numbered item:
     - `cargo check --workspace`
     - `cargo test -p test_runner --test test_architecture_rules`
 
-- **1.8: Signal Propagation Documentation Audit & Hardening**
+- **1.9: Signal Propagation Documentation Audit & Hardening**
   - **Objective:** Ensure that all agent governance files (rules, skills, workflows, design docs) accurately and completely describe the two signal propagation mechanisms so any future agent has zero ambiguity about how to implement them correctly.
   - **Actionable Scope:**
     - **Register-write propagation:** Verify that `hardware-bus-topology.md`, relevant design specs, and `MachineLoop` documentation clearly describe what happens clock-phase by clock-phase when a CPU or DMA write lands in a custom chip register (e.g. `COLOR00`, `BPLCON0`, `INTENA`). Update or author missing sections.
     - **Special inter-chip signal lines:** Verify documentation for DMA request/grant (`RGA` bus), interrupt lines (`_IPL0`–`_IPL2`, `_INTREQ`/`_INTENA` propagation through Paula → CIA → CPU), and any other active signal paths (e.g. blitter busy, disk DMA, copper WAIT/SKIP). Ensure polling methods and timing are documented with cycle-phase precision.
-    - Sync any divergence between documentation and actual `MachineLoop` poll-and-route implementation found in Step 1.4.
+    - Sync any divergence between documentation and actual `MachineLoop` poll-and-route implementation found in Step 1.5.
   - **Verification Gate:**
     - `python tools/harness/pre_flight.py --milestone` (Docs Quality pillar).
     - All updated design docs have `last_verified_commit` checkpoint bumped.
 
-- **1.9: HRM-Aligned Subsystem Test Suite Authoring**
+- **1.10: HRM-Aligned Subsystem Test Suite Authoring**
   - **Objective:** Write a clean, authoritative test suite for each custom chip subsystem derived strictly from the Amiga Hardware Reference Manual — not from source code inference. Tests must be simple, register-behavioral, and free from cycle-exact timing complexity.
   - **Actionable Scope:**
     - One test file per subsystem: `test_agnus.rs`, `test_denise.rs`, `test_paula.rs`, `test_cia.rs`, `test_copper.rs`, `test_blitter.rs`.
     - Each test: write a register value → advance minimum required clocks → assert observable output or state. No multi-chip timing chains in L1 tests.
     - Simple inter-subsystem interaction tests (L2): focus on the cleanest signal paths — e.g. CIA timer overflow → Paula `_INT` → CPU IPL change. Prefer to write inter-chip tests and any required implementation changes during horizontal blanking (hblank return) when bus is idle, to minimize contention complexity.
-    - Do **not** target vAmigaTS or silicon-level cycle accuracy in this step — that is Step 1.13 & Step 3.
+    - Do **not** target vAmigaTS or silicon-level cycle accuracy in this step — that is Step 1.14 & Step 3.
   - **Verification Gate:**
     - `python tools/harness/pre_flight.py --quick`
     - `cargo test -p test_runner --test test_architecture_rules`
     - All new test files pass with ≥ 2 `#[test]` functions and ≥ 10 assertions per subsystem per unit-testing-policy.
 
-- **1.10: Lockstep Differential Tracer vs. vAmiga (Contingency)**
+- **1.11: Lockstep Differential Tracer vs. vAmiga (Contingency)**
   - **Trigger:** Only if HRM-aligned tests (1.10) fail to isolate a regression — i.e. tests pass but behavior diverges from reference in ways not yet covered by the test suite.
   - **Objective:** Build a cycle-exact co-simulation harness that runs the same ROM/ADF through both this emulator and vAmiga in lockstep, dumps a full machine state snapshot at every CCK boundary, and reports the first divergence point with a structured diff.
   - **Actionable Scope:**
@@ -199,7 +211,7 @@ When an agent finishes any numbered item:
     - Tracer successfully identifies the CCK and field of a known injected regression (synthetic test).
     - `cargo test -p test_runner --test test_lockstep_tracer` (smoke test against a trivial ROM loop).
 
-- **1.11: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
+- **1.12: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
 
   - **Objective:** Operationalize the authentic floppy disk subsystem and Kickstart ROM overlay bootloader sequence to load and execute genuine Amiga programs from disk images (`.adf`).
   - **Actionable Scope:**
@@ -210,7 +222,7 @@ When an agent finishes any numbered item:
     - Unit tests in `crates/floppy/tests/`
     - Machine loop boot integration tests in `crates/machine_loop/tests/`
 
-- **1.12: vAmigaTS Native Disk-Based Verification & Self-Testing**
+- **1.13: vAmigaTS Native Disk-Based Verification & Self-Testing**
   - **Objective:** Execute native Amiga disk-based test suites validating drive control, floppy DMA, and CPU coordination.
   - **Actionable Scope:**
     - Execute disk-based vAmigaTS tests verifying that the emulator can run native Amiga software to test itself.
@@ -218,7 +230,7 @@ When an agent finishes any numbered item:
   - **Verification Gate:**
     - Automated test run reports for disk-based test suites passing with zero unexpected halts.
 
-- **1.13: Principled, Rule-Compliant Custom Chip & Register Verification**
+- **1.14: Principled, Rule-Compliant Custom Chip & Register Verification**
   - **Objective:** Advance custom chips and registers systematically from clean baseline specifications to fully validated cycle-exact implementations.
   - **Actionable Scope:**
     - Implement and calibrate custom chip features following the substrate-first causality chain (Layer 0 $\to$ Layer 4).
