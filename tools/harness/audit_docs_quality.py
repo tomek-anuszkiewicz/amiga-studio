@@ -533,7 +533,6 @@ def check_skill_and_rule_governance():
 
     ACTIVE_RULE_COMPANIONS = {
         "amiga-rag.md": {"index-amiga-rag"},
-        "asset-descriptions.md": {"describe-diagram-assets"},
         "docs-maintenance.md": {"sync-design-docs", "obsidian-vault-linking", "audit-docs-quality", "audit-semantic-parity"},
         "vault-linking-and-graph-integrity.md": {"obsidian-vault-linking", "audit-docs-quality"},
         "egui-best-practices.md": {"egui-vision-debugger", "capture-gui-screenshot"},
@@ -549,6 +548,7 @@ def check_skill_and_rule_governance():
     }
 
     PASSIVE_INVARIANT_RULES = {
+        "asset-descriptions.md",
         "audio-transcription.md",
         "clean-break-refactoring.md",
         "information-hierarchy.md",

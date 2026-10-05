@@ -115,7 +115,7 @@ When an agent finishes any numbered item:
 - **1.3: Asset Description Bootstrap and RAG Decision Contract**
   - **Objective:** Run one visual-asset bootstrap pass before bulk document conversion so retained visuals are justified, searchable, and accompanied by faithful Markdown fallbacks; select the document-processing model and pipeline from comparable evidence.
   - **Actionable Scope:**
-    - Use `.agents/rules/asset-descriptions.md` and the `describe-diagram-assets` skill to decide whether images and diagrams convey non-redundant information worth retaining.
+    - Use `.agents/rules/asset-descriptions.md` to decide whether images and diagrams convey non-redundant information worth retaining.
     - On RunPod, evaluate `olmOCR` and Docling with code enrichment, formula enrichment, picture classification, and picture description enabled; record their source-faithfulness, structured-output quality, runtime, and failure modes on the same representative inputs.
     - Treat the existing local Docling run as a limited-feature baseline; do not equate it with the fully enriched RunPod evaluation.
     - Define and implement a follow-up processing stage for tables, ASCII art, and comparable structure that neither candidate preserves faithfully enough on its own.
