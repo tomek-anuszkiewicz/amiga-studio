@@ -49,11 +49,3 @@ llm:
 markers:
   toc_start: "<!-- TOC34534 -->"
   toc_end: "<!-- /TOC34534 -->"
-
-table_heuristics:
-  max_columns_gfm: 6
-  simple_table_check: true
-
-segmentation:
-  min_band_height_pt: 12.0
-  column_gutter_threshold_pt: 18.0

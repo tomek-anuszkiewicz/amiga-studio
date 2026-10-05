@@ -791,3 +791,17 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - active references to removed roles were eliminated
   - language and diff checks passed
   - converter configuration and code were unchanged, no conversion or fresh-client agent activation test was run
+---
+
+### [2026-10-05 22:33 CEST] — Remove unused PDF converter configuration sections
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown/config.yaml`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove unused table_heuristics and segmentation sections
+- **Architectural Rationale & Trade-Offs**:
+  - Remove ineffective controls because the converter does not read these settings.
+- **Verification & Test Results**:
+  - YAML parsing and comparison against HEAD passed: only the two unused sections were removed
+  - quick pre-flight passed
+  - architecture suite passed all 19 tests
+  - no document conversion was run
